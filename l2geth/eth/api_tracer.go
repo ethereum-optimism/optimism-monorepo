@@ -105,17 +105,20 @@ func (api *PrivateDebugAPI) TraceChain(ctx context.Context, start, end rpc.Block
 	// Fetch the block interval that we want to trace
 	var from, to *types.Block
 
-	switch start {
-	case rpc.PendingBlockNumber:
+	if !vm.UsingOVM && start == rpc.PendingBlockNumber {
 		from = api.eth.miner.PendingBlock()
+	}
+	switch start {
 	case rpc.LatestBlockNumber:
 		from = api.eth.blockchain.CurrentBlock()
 	default:
 		from = api.eth.blockchain.GetBlockByNumber(uint64(start))
 	}
-	switch end {
-	case rpc.PendingBlockNumber:
+
+	if !vm.UsingOVM && start == rpc.PendingBlockNumber {
 		to = api.eth.miner.PendingBlock()
+	}
+	switch end {
 	case rpc.LatestBlockNumber:
 		to = api.eth.blockchain.CurrentBlock()
 	default:
@@ -356,12 +359,11 @@ func (api *PrivateDebugAPI) TraceBlockByNumber(ctx context.Context, number rpc.B
 	// Fetch the block that we want to trace
 	var block *types.Block
 
-	switch number {
-	case rpc.PendingBlockNumber:
+	if !vm.UsingOVM && number == rpc.PendingBlockNumber {
 		block = api.eth.miner.PendingBlock()
-	case rpc.LatestBlockNumber:
+	} else if number == rpc.LatestBlockNumber {
 		block = api.eth.blockchain.CurrentBlock()
-	default:
+	} else {
 		block = api.eth.blockchain.GetBlockByNumber(uint64(number))
 	}
 	// Trace the block if it was found

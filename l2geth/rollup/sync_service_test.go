@@ -17,10 +17,14 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/eth/gasprice"
 	"github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/params"
 )
+
+var key, _ = crypto.GenerateKey()
+var signer = types.NewEIP155Signer(big.NewInt(420))
 
 func setupLatestEthContextTest() (*SyncService, *EthContext) {
 	service, _, _, _ := newTestSyncService(false)
@@ -106,7 +110,7 @@ func TestSyncServiceTransactionEnqueued(t *testing.T) {
 	// The layer one transaction origin is in the txmeta on the transaction
 	l1TxOrigin := common.HexToAddress("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8")
 	// The gasLimit is the `gasLimit` on the transaction
-	gasLimit := uint64(66)
+	gasLimit := uint64(50_000)
 	// The data is the `data` on the transaction
 	data := []byte{0x02, 0x92}
 	// The L1 blocknumber for the transaction's evm context
@@ -128,6 +132,10 @@ func TestSyncServiceTransactionEnqueued(t *testing.T) {
 		nil,
 	)
 	tx.SetTransactionMeta(txMeta)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
 
 	setupMockClient(service, map[string]interface{}{
 		"GetEnqueue": []*types.Transaction{
@@ -169,7 +177,7 @@ func TestTransactionToTipNoIndex(t *testing.T) {
 	timestamp := uint64(24)
 	target := common.HexToAddress("0x04668ec2f57cc15c381b461b9fedab5d451c8f7f")
 	l1TxOrigin := common.HexToAddress("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8")
-	gasLimit := uint64(66)
+	gasLimit := uint64(50_000)
 	data := []byte{0x02, 0x92}
 	l1BlockNumber := big.NewInt(100)
 
@@ -185,6 +193,10 @@ func TestTransactionToTipNoIndex(t *testing.T) {
 		nil,
 	)
 	tx.SetTransactionMeta(meta)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	go func() {
 		err = service.applyTransactionToTip(tx)
@@ -265,7 +277,7 @@ func TestTransactionToTipTimestamps(t *testing.T) {
 		err = service.applyTransactionToTip(tx3)
 	}()
 	result := <-txCh
-	service.chainHeadCh <- core.ChainHeadEvent{}
+	service.chainHeadCh <- core.ChainEvent{}
 
 	if result.Txs[0].L1Timestamp() != ts {
 		t.Fatal("Timestamp not updated correctly")
@@ -329,7 +341,7 @@ func TestApplyBatchedTransaction(t *testing.T) {
 	go func() {
 		err = service.applyBatchedTransaction(tx0)
 	}()
-	service.chainHeadCh <- core.ChainHeadEvent{}
+	service.chainHeadCh <- core.ChainEvent{}
 	<-txCh
 
 	// Catch race conditions with the database write
@@ -446,7 +458,7 @@ func TestSyncQueue(t *testing.T) {
 	}()
 
 	for i := 0; i < 4; i++ {
-		service.chainHeadCh <- core.ChainHeadEvent{}
+		service.chainHeadCh <- core.ChainEvent{}
 		event := <-txCh
 		tx := event.Txs[0]
 		if *tx.GetMeta().QueueIndex != uint64(i) {
@@ -561,7 +573,7 @@ func TestSyncServiceSync(t *testing.T) {
 	timestamp := uint64(24)
 	target := common.HexToAddress("0x04668ec2f57cc15c381b461b9fedab5d451c8f7f")
 	l1TxOrigin := common.HexToAddress("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8")
-	gasLimit := uint64(66)
+	gasLimit := uint64(50_000)
 	data := []byte{0x02, 0x92}
 	l1BlockNumber := big.NewInt(100)
 	queueIndex := uint64(0)
@@ -578,6 +590,10 @@ func TestSyncServiceSync(t *testing.T) {
 		nil,
 	)
 	tx.SetTransactionMeta(txMeta)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
 
 	setupMockClient(service, map[string]interface{}{
 		"GetTransaction": []*types.Transaction{
@@ -613,7 +629,7 @@ func TestInitializeL1ContextPostGenesis(t *testing.T) {
 	timestamp := uint64(24)
 	target := common.HexToAddress("0x04668ec2f57cc15c381b461b9fedab5d451c8f7f")
 	l1TxOrigin := common.HexToAddress("0xEA674fdDe714fd979de3EdF0F56AA9716B898ec8")
-	gasLimit := uint64(66)
+	gasLimit := uint64(50_000)
 	data := []byte{0x02, 0x92}
 	l1BlockNumber := big.NewInt(100)
 	queueIndex := uint64(100)
@@ -630,6 +646,10 @@ func TestInitializeL1ContextPostGenesis(t *testing.T) {
 		nil,
 	)
 	tx.SetTransactionMeta(txMeta)
+	tx, err = types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
 
 	setupMockClient(service, map[string]interface{}{
 		"GetEnqueue": []*types.Transaction{
@@ -692,6 +712,7 @@ func newTestSyncService(isVerifier bool) (*SyncService, chan core.NewTxsEvent, e
 		// The client needs to be mocked with a mockClient
 		RollupClientHttp: "",
 		Backend:          BackendL2,
+		GasLimit:         12_000_000,
 	}
 
 	service, err := NewSyncService(context.Background(), cfg, txPool, chain, db)
@@ -862,7 +883,7 @@ func mockTx() *types.Transaction {
 	rand.Read(address)
 	l1TxOrigin := common.BytesToAddress(address)
 
-	gasLimit := uint64(0)
+	gasLimit := uint64(50_000)
 	data := []byte{0x00, 0x00}
 	l1BlockNumber := big.NewInt(0)
 
@@ -878,6 +899,11 @@ func mockTx() *types.Transaction {
 		nil,
 	)
 	tx.SetTransactionMeta(meta)
+	tx, err := types.SignTx(tx, signer, key)
+	if err != nil {
+		panic(err)
+	}
+
 	return tx
 }
 

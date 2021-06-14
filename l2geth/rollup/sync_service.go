@@ -55,8 +55,9 @@ type SyncService struct {
 	OVMContext                OVMContext
 	pollInterval              time.Duration
 	timestampRefreshThreshold time.Duration
-	chainHeadCh               chan core.ChainHeadEvent
+	chainHeadCh               chan core.ChainEvent
 	backend                   Backend
+	gasLimit                  uint64
 	gpoAddress                common.Address
 	enableL2GasPolling        bool
 	enforceFees               bool
@@ -76,6 +77,7 @@ func NewSyncService(ctx context.Context, cfg Config, txpool *core.TxPool, bc *co
 	} else {
 		log.Info("Running in sequencer mode", "sync-backend", cfg.Backend.String())
 	}
+	log.Info("Sync service gas limit", "gas-limit", cfg.GasLimit)
 
 	pollInterval := cfg.PollInterval
 	if pollInterval == 0 {
@@ -105,13 +107,14 @@ func NewSyncService(ctx context.Context, cfg Config, txpool *core.TxPool, bc *co
 		syncing:                   atomic.Value{},
 		bc:                        bc,
 		txpool:                    txpool,
-		chainHeadCh:               make(chan core.ChainHeadEvent, 1),
+		chainHeadCh:               make(chan core.ChainEvent, 1),
 		eth1ChainId:               cfg.Eth1ChainId,
 		client:                    client,
 		db:                        db,
 		pollInterval:              pollInterval,
 		timestampRefreshThreshold: timestampRefreshThreshold,
 		backend:                   cfg.Backend,
+		gasLimit:                  cfg.GasLimit,
 		gpoAddress:                cfg.GasPriceOracleAddress,
 		enableL2GasPolling:        cfg.EnableL2GasPolling,
 		enforceFees:               cfg.EnforceFees,
@@ -123,7 +126,7 @@ func NewSyncService(ctx context.Context, cfg Config, txpool *core.TxPool, bc *co
 	// reorgs and also favors safety over liveliness. If a transaction breaks
 	// things downstream, it is expected that this channel will halt ingestion
 	// of additional transactions by the SyncService.
-	service.chainHeadSub = service.bc.SubscribeChainHeadEvent(service.chainHeadCh)
+	service.chainHeadSub = service.bc.SubscribeChainEvent(service.chainHeadCh)
 
 	// Initial sync service setup if it is enabled. This code depends on
 	// a remote server that indexes the layer one contracts. Place this
@@ -697,11 +700,75 @@ func (s *SyncService) applyTransactionToTip(tx *types.Transaction) error {
 
 	txs := types.Transactions{tx}
 	s.txFeed.Send(core.NewTxsEvent{Txs: txs})
+
+	block, receipts, logs, statedb, err := s.stateTransition(tx)
+	if err != nil {
+		log.Error("Cannot state transition", "msg", err)
+		return err
+	}
+
+	log.Info("Attempting to add block to chain", "index", block.Number().Uint64()-1)
+	_, err = s.bc.WriteBlockWithState(block, receipts, logs, statedb, false)
+	if err != nil {
+		log.Error("Cannot write state with block", "msg", err)
+		return err
+	}
+	log.Info("New Block", "index", block.Number().Uint64()-1, "tx", tx.Hash().Hex())
+
 	// Block until the transaction has been added to the chain
 	log.Trace("Waiting for transaction to be added to chain", "hash", tx.Hash().Hex())
 	<-s.chainHeadCh
 
 	return nil
+}
+
+func (s *SyncService) stateTransition(tx *types.Transaction) (*types.Block, []*types.Receipt, []*types.Log, *state.StateDB, error) {
+	config := s.bc.Config()
+	coinbase := common.Address{}
+	gasPool := new(core.GasPool).AddGas(s.gasLimit)
+	current := s.bc.CurrentHeader()
+	log.Info("State transition", "root", current.Root.Hex())
+	statedb, err := s.bc.StateAt(current.Root)
+	snap := statedb.Snapshot()
+	if err != nil {
+		return nil, nil, nil, nil, fmt.Errorf(": %w", err)
+	}
+	vmConfig := s.bc.GetVMConfig()
+
+	header := types.Header{
+		ParentHash: current.Hash(),
+		Coinbase:   coinbase,
+		Time:       tx.L1Timestamp(),
+		GasLimit:   s.gasLimit,
+		Nonce:      [8]byte{},
+		Number:     new(big.Int).Add(current.Number, common.Big1),
+		Difficulty: new(big.Int),
+	}
+
+	statedb.Prepare(tx.Hash(), common.Hash{}, 0)
+	gasUsed := uint64(0)
+	receipt, err := core.ApplyTransaction(config, s.bc, &coinbase, gasPool, statedb, &header, tx, &gasUsed, *vmConfig)
+	if err != nil {
+		statedb.RevertToSnapshot(snap)
+		return nil, nil, nil, nil, fmt.Errorf(": %w", err)
+	}
+	header.GasUsed = receipt.GasUsed
+	header.Root = statedb.IntermediateRoot(true)
+
+	receipts := []*types.Receipt{receipt}
+	// types.NewBlock will derive the transaction hash, receipt hash and uncle hash
+	block := types.NewBlock(&header, types.Transactions{tx}, nil, receipts)
+	hash := block.Hash()
+
+	receipt.BlockHash = hash
+	receipt.BlockNumber = block.Number()
+	receipt.TransactionIndex = 0
+
+	for _, log := range receipt.Logs {
+		log.BlockHash = hash
+	}
+
+	return block, []*types.Receipt{receipt}, receipt.Logs, statedb, nil
 }
 
 // applyBatchedTransaction applies transactions that were batched to layer one.
