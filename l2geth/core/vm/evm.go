@@ -120,7 +120,25 @@ func run(evm *EVM, contract *Contract, input []byte, readOnly bool) ([]byte, err
 		// OVM_ENABLED
 		// Only log for non `eth_call`s
 		if evm.Context.EthCallSender == nil {
-			log.Debug("Calling contract", "ID", evm.Id, "Address", contract.Address().Hex(), "Data", hexutil.Encode(input))
+			var isUnknown = true
+			for name, account := range evm.chainConfig.StateDump.Accounts {
+				if contract.Address() == account.Address {
+					isUnknown = false
+					abi := &(account.ABI)
+					method, err := abi.MethodById(input)
+					if err != nil {
+						log.Debug("Calling Known Contract", "ID", evm.Id, "Name", name, "Message", err, "Data", hexutil.Encode(input))
+					} else {
+						log.Debug("Calling Known Contract", "ID", evm.Id, "Name", name, "Method", method.RawName, "Data", hexutil.Encode(input))
+						if method.RawName == "ovmREVERT" {
+							log.Debug("Contract Threw Exception", "ID", evm.Id, "asciified", string(input))
+						}
+					}
+				}
+			}
+			if isUnknown {
+				log.Debug("Calling Unknown Contract", "ID", evm.Id, "Address", contract.Address().Hex(), "Data", hexutil.Encode(input))
+			}
 		}
 
 		// Uncomment to make Safety checker always returns true.
@@ -466,11 +484,11 @@ func (evm *EVM) Call(caller ContractRef, addr common.Address, input []byte, gas 
 					ret = []byte{}
 				}
 			}
+			if evm.Context.EthCallSender == nil {
+				log.Debug("Reached the end of an OVM execution", "ID", evm.Id, "Return Data", hexutil.Encode(ret), "Error", err)
+			}
 		}
 
-		if evm.Context.EthCallSender == nil {
-			log.Debug("Reached the end of an OVM execution", "ID", evm.Id, "Return Data", hexutil.Encode(ret), "Error", err)
-		}
 	}
 
 	return ret, contract.Gas, err

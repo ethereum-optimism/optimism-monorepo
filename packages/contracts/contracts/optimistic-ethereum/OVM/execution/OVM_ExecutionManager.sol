@@ -14,10 +14,10 @@ import { Lib_PredeployAddresses } from "../../libraries/constants/Lib_PredeployA
 /* Interface Imports */
 import { iOVM_ExecutionManager } from "../../iOVM/execution/iOVM_ExecutionManager.sol";
 import { iOVM_StateManager } from "../../iOVM/execution/iOVM_StateManager.sol";
-import { iOVM_SafetyChecker } from "../../iOVM/execution/iOVM_SafetyChecker.sol";
 
 /* Contract Imports */
 import { OVM_DeployerWhitelist } from "../predeploys/OVM_DeployerWhitelist.sol";
+import { OVM_SafetyChecker } from "../predeploys/OVM_SafetyChecker.sol";
 
 /* External Imports */
 import { Math } from "@openzeppelin/contracts/math/Math.sol";
@@ -43,7 +43,6 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
      * External Contract References *
      ********************************/
 
-    iOVM_SafetyChecker internal ovmSafetyChecker;
     iOVM_StateManager internal ovmStateManager;
 
 
@@ -111,7 +110,6 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
     )
         Lib_AddressResolver(_libAddressManager)
     {
-        ovmSafetyChecker = iOVM_SafetyChecker(resolve("OVM_SafetyChecker"));
         gasMeterConfig = _gasMeterConfig;
         globalContext = _globalContext;
         _resetContext();
@@ -948,9 +946,9 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         return gasMeterConfig.maxTransactionGasLimit;
     }
 
-    /********************************************
-     * Public Functions: Deployment Whitelisting *
-     ********************************************/
+    /*****************************************
+     * Internal Functions: Deployment Checks *
+     *****************************************/
 
     /**
      * Checks whether the given address is on the whitelist to ovmCREATE/ovmCREATE2, and reverts if not.
@@ -977,6 +975,38 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
             _revertWithFlag(RevertFlag.CREATOR_NOT_ALLOWED);
         }
     }
+
+    /**
+     * Checks whether the given the given bytecode is safe to run in the OVM
+     * @param _code Init or runtime bytecode.
+     */
+    function _checkBytecodeSafety(
+        bytes memory _code
+    )
+        internal
+        returns(
+            bool
+        )
+    {
+        // From an OVM semantics perspective, this will appear identical to
+        // the deployer ovmCALLing the SafetyCache.  This is fine--in a sense, we are forcing them to.
+        (bool success, bytes memory data) = ovmCALL(
+            gasleft(),
+            0x420000000000000000000000000000000000000c,
+            abi.encodeWithSelector(
+                OVM_SafetyChecker.checkAndRegisterSafeBytecode.selector,
+                _code
+            )
+        );
+
+        if (!success) {
+            return false;
+        }
+
+        // decodes to true if and only if safe
+        return abi.decode(data, (bool));
+    }
+
 
     /********************************************
      * Internal Functions: Contract Interaction *
@@ -1153,7 +1183,6 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         // behavior can be controlled. In particular, we enforce that flags are passed through
         // revert data as to retrieve execution metadata that would normally be reverted out of
         // existence.
-
         bool success;
         bytes memory returndata;
         if (_isCreateType(_messageType)) {
@@ -1209,7 +1238,6 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
                 uint256 ovmGasRefund,
                 bytes memory returndataFromFlag
             ) = _decodeRevertData(returndata);
-
             // INVALID_STATE_ACCESS is the only flag that triggers an immediate abort of the
             // parent EVM message. This behavior is necessary because INVALID_STATE_ACCESS must
             // halt any further transaction execution that could impact the execution result.
@@ -1290,8 +1318,8 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
             );
         }
 
-        // Check the creation bytecode against the OVM_SafetyChecker.
-        if (ovmSafetyChecker.isBytecodeSafe(_creationCode) == false) {
+        // Check the creation bytecode against the OVM_SafetyChecker
+        if (_checkBytecodeSafety(_creationCode) == false) {
             // Note: in the EVM, this case burns all allotted gas.  For improved
             // developer experience, we do return the remaining gas.
             _revertWithFlag(
@@ -1319,7 +1347,7 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         // Again simply checking that the deployed code is safe too. Contracts can generate
         // arbitrary deployment code, so there's no easy way to analyze this beforehand.
         bytes memory deployedCode = Lib_EthUtils.getCode(ethAddress);
-        if (ovmSafetyChecker.isBytecodeSafe(deployedCode) == false) {
+        if (_checkBytecodeSafety(deployedCode) == false) {
             _revertWithFlag(
                 RevertFlag.UNSAFE_BYTECODE,
                 Lib_ErrorUtils.encodeRevertString("Constructor attempted to deploy unsafe bytecode.")

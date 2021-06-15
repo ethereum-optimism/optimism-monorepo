@@ -163,6 +163,7 @@ export const makeStateDump = async (cfg: RollupDeployConfig): Promise<any> => {
     'OVM_GasPriceOracle',
     'OVM_SequencerFeeVault',
     'OVM_L2StandardBridge',
+    'OVM_SafetyChecker',
   ]
 
   const deploymentResult = await deploy(config)

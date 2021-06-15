@@ -22,7 +22,6 @@ const test_nuisanceGas: TestDefinition = {
   preState: {
     ExecutionManager: {
       ovmStateManager: '$OVM_STATE_MANAGER',
-      ovmSafetyChecker: '$OVM_SAFETY_CHECKER',
       messageRecord: {
         nuisanceGasLeft: OVM_TX_GAS_LIMIT,
       },

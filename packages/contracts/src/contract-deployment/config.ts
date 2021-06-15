@@ -172,16 +172,16 @@ export const makeContractDeployConfig = async (
       factory: getContractFactory('OVM_DeployerWhitelist', undefined, true),
       params: [],
     },
+    OVM_SafetyChecker: {
+      factory: getContractFactory('OVM_SafetyChecker'),
+      params: [],
+    },
     OVM_L1MessageSender: {
       factory: getContractFactory('OVM_L1MessageSender'),
       params: [],
     },
     OVM_L2ToL1MessagePasser: {
       factory: getContractFactory('OVM_L2ToL1MessagePasser'),
-      params: [],
-    },
-    OVM_SafetyChecker: {
-      factory: getContractFactory('OVM_SafetyChecker'),
       params: [],
     },
     OVM_ExecutionManager: {

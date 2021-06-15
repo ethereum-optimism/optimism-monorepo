@@ -40,6 +40,7 @@ import {
 import { getStorageXOR } from '../'
 import { UNSAFE_BYTECODE } from '../dummy'
 import { getContractFactory, predeploys } from '../../../src'
+import { safetyCheckerPrestate } from './safety-checker-prestate'
 
 export class ExecutionManagerTestRunner {
   private snapshot: string
@@ -80,10 +81,19 @@ export class ExecutionManagerTestRunner {
           codeHash: NON_NULL_BYTES32,
           ethAddress: '$OVM_PROXY_EOA',
         },
+        [predeploys.OVM_SafetyChecker]: {
+          codeHash: NON_NULL_BYTES32,
+          ethAddress: '$OVM_SAFETY_CHECKER',
+        },
+        // Address of hardhat/console.sol, comes in handy sometimes
+        ['0x000000000000000000636F6e736F6c652e6c6f67']: {
+          codeHash: NON_NULL_BYTES32,
+          ethAddress: '0x000000000000000000636F6e736F6c652e6c6f67',
+        },
       },
       contractStorage: {
         [predeploys.OVM_DeployerWhitelist]: {
-          '0x0000000000000000000000000000000000000000000000000000000000000000': {
+          [ethers.constants.HashZero]: {
             getStorageXOR: true,
             value: ethers.constants.HashZero,
           },
@@ -91,8 +101,8 @@ export class ExecutionManagerTestRunner {
       },
       verifiedContractStorage: {
         [predeploys.OVM_DeployerWhitelist]: {
-          '0x0000000000000000000000000000000000000000000000000000000000000000': true,
-        },
+          [ethers.constants.HashZero]: true,
+        }
       },
     },
     ExecutionManager: {
@@ -106,6 +116,7 @@ export class ExecutionManagerTestRunner {
     // tslint:disable-next-line:ban-comma-operator
     ;(test.preState = merge(
       cloneDeep(this.defaultPreState),
+      cloneDeep(safetyCheckerPrestate),
       cloneDeep(test.preState)
     )),
       (test.postState = test.postState || {})
@@ -214,7 +225,7 @@ export class ExecutionManagerTestRunner {
     ).deploy()
 
     const MockSafetyChecker = await smockit(SafetyChecker)
-    MockSafetyChecker.smocked.isBytecodeSafe.will.return.with(
+    MockSafetyChecker.smocked.checkAndRegisterSafeBytecode.will.return.with(
       (bytecode: string) => {
         return bytecode !== UNSAFE_BYTECODE
       }
@@ -222,10 +233,6 @@ export class ExecutionManagerTestRunner {
 
     this.contracts.OVM_SafetyChecker = MockSafetyChecker
 
-    await AddressManager.setAddress(
-      'OVM_SafetyChecker',
-      this.contracts.OVM_SafetyChecker.address
-    )
 
     const DeployerWhitelist = await getContractFactory(
       'OVM_DeployerWhitelist',
