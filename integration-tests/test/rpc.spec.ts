@@ -21,6 +21,8 @@ import {
   TransactionRequest,
 } from '@ethersproject/providers'
 import { solidity } from 'ethereum-waffle'
+import axios from 'axios'
+
 chai.use(chaiAsPromised)
 chai.use(solidity)
 
@@ -425,5 +427,24 @@ describe('Basic RPC tests', () => {
       await expect(provider.send('eth_estimateGas', [revertingDeployTx])).to.be
         .reverted
     })
+  })
+
+  /* tslint:disable-next-line */
+  describe('debug', function () {
+    it('debug_traceTransaction', async () => {
+      const tx = await wallet.sendTransaction(DEFAULT_TRANSACTION)
+      const receipt = await tx.wait()
+
+      const res = await axios.post(l2Provider.connection.url, {
+        jsonrpc: '2.0',
+        method: 'debug_traceTransaction',
+        params: [tx.hash],
+        id: '1',
+      })
+
+      const result = res.data.result
+      expect(receipt.gasUsed.toNumber()).to.deep.eq(result.gas)
+      expect(!!receipt.status).to.eq(result.failed)
+    }).timeout(40_000)
   })
 })
