@@ -49,7 +49,7 @@ describe('OVM_GasPriceOracle', () => {
 
   describe('get gasPrice', () => {
     it('should return zero at first', async () => {
-      expect(await OVM_GasPriceOracle.gasPrice()).to.equal(initialGasPrice)
+      expect(await OVM_GasPriceOracle.getGasPrice()).to.equal(initialGasPrice)
     })
 
     it('should change when setGasPrice is called', async () => {
@@ -57,7 +57,7 @@ describe('OVM_GasPriceOracle', () => {
 
       await OVM_GasPriceOracle.connect(signer1).setGasPrice(gasPrice)
 
-      expect(await OVM_GasPriceOracle.gasPrice()).to.equal(gasPrice)
+      expect(await OVM_GasPriceOracle.getGasPrice()).to.equal(gasPrice)
     })
 
     it('is the 1st storage slot', async () => {
@@ -72,7 +72,7 @@ describe('OVM_GasPriceOracle', () => {
         OVM_GasPriceOracle.address,
         slot
       )
-      expect(await OVM_GasPriceOracle.gasPrice()).to.equal(
+      expect(await OVM_GasPriceOracle.getGasPrice()).to.equal(
         ethers.BigNumber.from(priceAtSlot)
       )
     })
