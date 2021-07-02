@@ -453,25 +453,27 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
 
         // We will sequentially append leaves which are pointers to the queue.
         // The initial queue index is what is currently in storage.
-        uint40 nextQueueIndex = getNextQueueIndex();
+        uint40 subsequentQueueIndex = getNextQueueIndex();
 
+        // Note that the curContext is uninitialized for the first set of checks
         BatchContext memory curContext;
         for (uint32 i = 0; i < numContexts; i++) {
             BatchContext memory nextContext = _getBatchContext(i);
 
             if (i == 0) {
-                // Execute a special check for the first batch.
+                // Execute a special check for the first context.
                 _validateFirstBatchContext(nextContext);
             }
 
-            // Execute this check on every single batch, including the first one.
-            _validateNextBatchContext(
-                curContext,
-                nextContext,
-                nextQueueIndex,
-                queueRef
-            );
-
+            if(i < numContexts) {
+                // Execute this check on every single context, except the final one.
+                _validateConsecutiveBatchContexts(
+                    curContext,
+                    nextContext,
+                    subsequentQueueIndex,
+                    queueRef
+                );
+            }
             // Now we can update our current context.
             curContext = nextContext;
 
@@ -501,19 +503,19 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
             // Now process any subsequent queue transactions.
             for (uint32 j = 0; j < curContext.numSubsequentQueueTransactions; j++) {
                 require(
-                    nextQueueIndex < queueLength,
+                    subsequentQueueIndex < queueLength,
                     "Not enough queued transactions to append."
                 );
 
-                leaves[leafIndex] = _getQueueLeafHash(nextQueueIndex);
-                nextQueueIndex++;
+                leaves[leafIndex] = _getQueueLeafHash(subsequentQueueIndex);
+                subsequentQueueIndex++;
                 leafIndex++;
             }
         }
 
         _validateFinalBatchContext(
             curContext,
-            nextQueueIndex,
+            subsequentQueueIndex,
             queueLength,
             queueRef
         );
@@ -539,10 +541,10 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
         } else {
             // The last element is a queue tx, therefore pull timestamp and block number from the queue element.
             // curContext.numSubsequentQueueTransactions > 0 which means that we've processed at least one queue element.
-            // We increment nextQueueIndex after processing each queue element,
-            // so the index of the last element we processed is nextQueueIndex - 1.
+            // We increment subsequentQueueIndex after processing each queue element,
+            // so the index of the last element we processed is subsequentQueueIndex - 1.
             Lib_OVMCodec.QueueElement memory lastElement = _getQueueElement(
-                nextQueueIndex - 1,
+                subsequentQueueIndex - 1,
                 queueRef
             );
 
@@ -562,7 +564,7 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
         );
 
         emit SequencerBatchAppended(
-            nextQueueIndex - numQueuedTransactions,
+            subsequentQueueIndex - numQueuedTransactions,
             numQueuedTransactions,
             getTotalElements()
         );
@@ -971,54 +973,16 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
     }
 
     /**
-     * Checks that a given batch context has a time context which is below a given que element
-     * @param _context The batch context to validate has values lower.
-     * @param _queueIndex Index of the queue element we are validating came later than the context.
+     * Checks that consecutve batches, and the queue elements between them, are monotonic
+     * @param _firstContext The first batch context being validated.
+     * @param _secondContext The batch context that follows this one.
+     * @param _subsequentQueueIndex Index of the next queue element to process for the _firstContext's subsequentQueueElements.
      * @param _queueRef The storage container for the queue.
      */
-    function _validateContextBeforeEnqueue(
-        BatchContext memory _context,
-        uint40 _queueIndex,
-        iOVM_ChainStorageContainer _queueRef
-    )
-        internal
-        view
-    {
-            Lib_OVMCodec.QueueElement memory nextQueueElement = _getQueueElement(
-                _queueIndex,
-                _queueRef
-            );
-
-            // If the force inclusion period has passed for an enqueued transaction, it MUST be the next chain element.
-            require(
-                block.timestamp < nextQueueElement.timestamp + forceInclusionPeriodSeconds,
-                "Previously enqueued batches have expired and must be appended before a new sequencer batch."
-            );
-
-            // Just like sequencer transaction times must be increasing relative to each other,
-            // We also require that they be increasing relative to any interspersed queue elements.
-            require(
-                _context.timestamp <= nextQueueElement.timestamp,
-                "Sequencer transaction timestamp exceeds that of next queue element."
-            );
-
-            require(
-                _context.blockNumber <= nextQueueElement.blockNumber,
-                "Sequencer transaction blockNumber exceeds that of next queue element."
-            );
-    }
-
-    /**
-     * Checks that a given batch context is valid based on its previous context, and the next queue elemtent.
-     * @param _prevContext The previously validated batch context.
-     * @param _nextContext The batch context to validate with this call.
-     * @param _nextQueueIndex Index of the next queue element to process for the _nextContext's subsequentQueueElements.
-     * @param _queueRef The storage container for the queue.
-     */
-    function _validateNextBatchContext(
-        BatchContext memory _prevContext,
-        BatchContext memory _nextContext,
-        uint40 _nextQueueIndex,
+    function _validateConsecutiveBatchContexts(
+        BatchContext memory _firstContext,
+        BatchContext memory _secondContext,
+        uint40 _subsequentQueueIndex,
         iOVM_ChainStorageContainer _queueRef
     )
         internal
@@ -1026,35 +990,101 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
     {
         // All sequencer transactions' times must be greater than or equal to the previous ones.
         require(
-            _nextContext.timestamp >= _prevContext.timestamp,
+            _secondContext.timestamp >= _firstContext.timestamp,
             "Context timestamp values must monotonically increase."
         );
 
         require(
-            _nextContext.blockNumber >= _prevContext.blockNumber,
+            _secondContext.blockNumber >= _firstContext.blockNumber,
             "Context blockNumber values must monotonically increase."
         );
 
-        // If there is going to be a queue element pulled in from this context:
-        if (_nextContext.numSubsequentQueueTransactions > 0) {
-            _validateContextBeforeEnqueue(
-                _nextContext,
-                _nextQueueIndex,
+        // If there is going to be a queue element pulled between the current and next context
+        if (_firstContext.numSubsequentQueueTransactions > 0) {
+            _validateEnqueuesBetweenContexts(
+                _firstContext,
+                _secondContext,
+                _subsequentQueueIndex,
                 _queueRef
             );
         }
     }
 
     /**
-     * Checks that the final batch context in a sequencer submission is valid.
+     * Checks that a pair of adjacent batch contexts are monotonic with respect to each other,
+     * and with respect to any queue elements which may be appended between them.
+     * Also checks that any queue elements between are not yet older than the force inclusion
+     * period, which would force them to come next.
+     * @param _earlierContext The batch context to validate has values lower.
+     * @param _laterContext The batch context whose time values should come AFTER all of _earlierContext's subsequent queue transactions
+     * @param _subsequentQueueIndex Index of the queue element we are validating came later than the _earlierContext
+     * @param _queueRef The storage container for the queue.
+     */
+    function _validateEnqueuesBetweenContexts(
+        BatchContext memory _earlierContext,
+        BatchContext memory _laterContext,
+        uint40 _subsequentQueueIndex,
+        iOVM_ChainStorageContainer _queueRef
+    )
+        internal
+        view
+    {
+        Lib_OVMCodec.QueueElement memory earliestQueueElementBetween = _getQueueElement(
+            _subsequentQueueIndex,
+            _queueRef
+        );
+
+        // Assume the earliest and latest are the same, update the latest if not
+        Lib_OVMCodec.QueueElement memory latestQueueElementBetween;
+        if(_earlierContext.numSubsequentQueueTransactions > 1) {
+            latestQueueElementBetween = _getQueueElement(
+                _subsequentQueueIndex + uint40(_earlierContext.numSubsequentQueueTransactions) - 1,
+                _queueRef
+            );
+        } else {
+            latestQueueElementBetween = earliestQueueElementBetween;
+        }
+
+        // If the force inclusion period has passed for an enqueued transaction, it MUST be the next chain element.
+        require(
+            block.timestamp < earliestQueueElementBetween.timestamp + forceInclusionPeriodSeconds,
+            "Previously enqueued batches have expired and must be appended before a new sequencer batch."
+        );
+
+        // Just like sequencer transaction times must be increasing relative to each other,
+        // We also require that they be increasing relative to any interspersed queue elements.
+        require(
+            _earlierContext.timestamp <= earliestQueueElementBetween.timestamp,
+            "Sequencer transaction timestamp exceeds that of next queue element."
+        );
+
+        require(
+            _earlierContext.blockNumber <= earliestQueueElementBetween.blockNumber,
+            "Sequencer transaction blockNumber exceeds that of next queue element."
+        );
+
+        require(
+            _laterContext.timestamp >= latestQueueElementBetween.timestamp,
+            "Sequencer transaction timestamp is less than that of last queue element appended."
+        );
+
+        require(
+            _laterContext.blockNumber >= latestQueueElementBetween.blockNumber,
+            "Sequencer transaction block number must be greater than last queue element appended."
+        );
+    }
+
+    /**
+     * Checks that the final batch context in a sequencer submission cannot have a higher
+     * timestamp/blocknumber than the first queue element in a future submission.
      * @param _finalContext The batch context to validate.
      * @param _queueLength The length of the queue at the start of the batchAppend call.
-     * @param _nextQueueIndex The next element in the queue that will be pulled into the CTC.
+     * @param _subsequentQueueIndex The next element in the queue that will be pulled into the CTC.
      * @param _queueRef The storage container for the queue.
      */
     function _validateFinalBatchContext(
         BatchContext memory _finalContext,
-        uint40 _nextQueueIndex,
+        uint40 _subsequentQueueIndex,
         uint40 _queueLength,
         iOVM_ChainStorageContainer _queueRef
     )
@@ -1062,11 +1092,28 @@ contract OVM_CanonicalTransactionChain is iOVM_CanonicalTransactionChain, Lib_Ad
         view
     {
         // If the queue is not now empty, check the mononoticity of whatever the next batch that will come in is.
-        if (_queueLength - _nextQueueIndex > 0 && _finalContext.numSubsequentQueueTransactions == 0) {
-            _validateContextBeforeEnqueue(
-                _finalContext,
-                _nextQueueIndex,
+        if (_queueLength - _subsequentQueueIndex > 0) {
+            Lib_OVMCodec.QueueElement memory firstSubsequentQueueElement = _getQueueElement(
+                _subsequentQueueIndex,
                 _queueRef
+            );
+
+            // If the force inclusion period has passed for an enqueued transaction, it MUST be the next chain element.
+            require(
+                block.timestamp < firstSubsequentQueueElement.timestamp + forceInclusionPeriodSeconds,
+                "Previously enqueued batches have expired and must be appended before a new sequencer batch."
+            );
+
+            // Just like sequencer transaction times must be increasing relative to each other,
+            // We also require that they be increasing relative to any interspersed queue elements.
+            require(
+                _finalContext.timestamp <= firstSubsequentQueueElement.timestamp,
+                "Sequencer transaction timestamp exceeds that of next queue element."
+            );
+
+            require(
+                _finalContext.blockNumber <= firstSubsequentQueueElement.blockNumber,
+                "Sequencer transaction blockNumber exceeds that of next queue element."
             );
         }
         // Batches cannot be added from the future, or subsequent enqueue() contexts would violate monotonicity.
