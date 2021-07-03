@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/rollup/dump"
 )
 
@@ -79,11 +80,15 @@ func AsOvmMessage(tx *types.Transaction, signer types.Signer, decompressor commo
 
 	// Sequencer transactions get sent to the "sequencer entrypoint," a contract that decompresses
 	// the incoming transaction data.
+	raw, err := rlp.EncodeToBytes(tx)
+	if err != nil {
+		return msg, fmt.Errorf("Cannot rlp encode ovm message: %w", err)
+	}
 	outmsg, err := modMessage(
 		msg,
 		msg.From(),
 		&decompressor,
-		tx.GetMeta().RawTransaction,
+		raw,
 		gasLimit,
 	)
 

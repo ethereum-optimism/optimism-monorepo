@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/go-resty/resty/v2"
 )
 
@@ -336,72 +336,21 @@ func batchedTransactionToTransaction(res *transaction, signer *types.EIP155Signe
 	} else if res.QueueOrigin == l1 {
 		queueOrigin = types.QueueOriginL1ToL2
 	} else {
+		// TODO: handle malformed transactions
 		return nil, fmt.Errorf("Unknown queue origin: %s", res.QueueOrigin)
 	}
-	// Transactions that have been decoded are
-	// Queue Origin Sequencer transactions
-	if res.Decoded != nil {
-		nonce := res.Decoded.Nonce
-		to := res.Decoded.Target
-		value := new(big.Int).SetUint64(uint64(res.Decoded.Value))
-		// Note: there are two gas limits, one top level and
-		// another on the raw transaction itself. Maybe maxGasLimit
-		// for the top level?
-		gasLimit := res.Decoded.GasLimit
-		gasPrice := new(big.Int).SetUint64(res.Decoded.GasPrice)
-		data := res.Decoded.Data
 
-		var tx *types.Transaction
-		if to == nil {
-			tx = types.NewContractCreation(nonce, value, gasLimit, gasPrice, data)
-		} else {
-			tx = types.NewTransaction(nonce, *to, value, gasLimit, gasPrice, data)
-		}
-
-		txMeta := types.NewTransactionMeta(
-			new(big.Int).SetUint64(res.BlockNumber),
-			res.Timestamp,
-			res.Origin,
-			queueOrigin,
-			&res.Index,
-			res.QueueIndex,
-			res.Data,
-		)
-		tx.SetTransactionMeta(txMeta)
-
-		r, s := res.Decoded.Signature.R, res.Decoded.Signature.S
-		sig := make([]byte, crypto.SignatureLength)
-		copy(sig[32-len(r):32], r)
-		copy(sig[64-len(s):64], s)
-		sig[64] = byte(res.Decoded.Signature.V)
-
-		tx, err := tx.WithSignature(signer, sig[:])
-		if err != nil {
-			return nil, fmt.Errorf("Cannot add signature to transaction: %w", err)
-		}
-
-		return tx, nil
+	var tx *types.Transaction
+	err := rlp.DecodeBytes(res.Data, tx)
+	if err != nil {
+		// TODO: handle malformed transactions
+		return nil, fmt.Errorf("cannot rlp decode transaction: %w", err)
 	}
 
-	// The transaction is  either an L1 to L2 transaction or it does not have a
-	// known deserialization
-	nonce := uint64(0)
-	if res.QueueOrigin == l1 {
-		if res.QueueIndex == nil {
-			return nil, errors.New("Queue origin L1 to L2 without a queue index")
-		}
-		nonce = *res.QueueIndex
-	}
-	target := res.Target
-	gasLimit := res.GasLimit
-	data := res.Data
-	origin := res.Origin
-	value := new(big.Int).SetUint64(uint64(res.Value))
-	tx := types.NewTransaction(nonce, target, value, gasLimit, big.NewInt(0), data)
 	txMeta := types.NewTransactionMeta(
 		new(big.Int).SetUint64(res.BlockNumber),
 		res.Timestamp,
-		origin,
+		res.Origin,
 		queueOrigin,
 		&res.Index,
 		res.QueueIndex,

@@ -1358,7 +1358,8 @@ func newRPCTransaction(tx *types.Transaction, blockHash common.Hash, blockNumber
 	}
 
 	if meta := tx.GetMeta(); meta != nil {
-		result.RawTransaction = meta.RawTransaction
+		raw, _ := rlp.EncodeToBytes(tx)
+		result.RawTransaction = raw
 		result.L1TxOrigin = meta.L1MessageSender
 		result.L1Timestamp = (hexutil.Uint64)(meta.L1Timestamp)
 		if meta.L1BlockNumber != nil {
