@@ -50,5 +50,28 @@ describe('BatchEncoder', () => {
         expect(encoded).to.equal(calldata)
       }
     })
+
+    it('should throw an error', () => {
+      const batch = {
+        shouldStartAtElement: 10,
+        totalElementsToAppend: 1,
+        contexts: [
+          {
+            numSequencedTransactions: 2,
+            numSubsequentQueueTransactions: 1,
+            timestamp: 100,
+            blockNumber: 200,
+          },
+        ],
+        transactions: ['0x454234000000112', '0x45423400000012'],
+      }
+      expect(() => encodeAppendSequencerBatch(batch)).to.throw(
+        'Unexpected uneven hex string value!'
+      )
+
+      expect(() => sequencerBatch.decode('0x')).to.throw(
+        'Incorrect function signature'
+      )
+    })
   })
 })

@@ -207,6 +207,14 @@ yarn build:integration
 yarn test:integration
 ```
 
+### Generating test coverage:
+```shell
+yarn test:coverage
+```
+
+Coverage is generated using a combination of `solidity-coverage` and `istanbuljs`'s `nyc` depending on which directory you're in (`solidity-coverage` inside `contracts` and `nyc` in ts packages).
+
+
 ## Branching Model and Releases
 
 <!-- TODO: explain about changesets + how we do npm publishing + docker publishing -->

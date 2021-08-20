@@ -1,8 +1,9 @@
 import { expect } from '../setup'
 import * as fees from '../../src/fees'
-import { utils } from 'ethers'
+import { BigNumber, utils } from 'ethers'
 
 const hundredBillion = 10 ** 11
+const tenThousand = 10 ** 4
 
 describe('Fees', () => {
   it('should count zeros and ones', () => {
@@ -116,5 +117,12 @@ describe('Fees', () => {
         expect(decoded).to.deep.eq(roundedL2GasLimit)
       })
     }
+
+    it('should decode numbers', () => {
+      const x = 1
+      expect(fees.TxGasLimit.decode(x)).to.deep.equal(
+        BigNumber.from(x * tenThousand)
+      )
+    })
   })
 })

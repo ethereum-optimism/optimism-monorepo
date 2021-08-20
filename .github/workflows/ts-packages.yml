@@ -60,45 +60,8 @@ jobs:
         env:
           CC_SECRET: ${{ secrets.CC_SECRET }}
 
-  # A hack that allows running a job only if a specific directory changed.
-  # Ref: https://github.community/t/run-job-only-if-folder-changed/118292
-  is-contracts-package:
-    name: Check files for changes to the contracts package
-    # This job will break on a push event, so we just skip it,
-    # which in turn skips the test-coverage job.
-    if: ${{ github.event_name != 'push' }}
-    outputs:
-      run_coverage: ${{ steps.check_files.outputs.run_coverage }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v2
-      - run: git fetch origin $GITHUB_BASE_REF
-
-      - name: check modified files
-        id: check_files
-        run: |
-          echo "=============== list modified files ==============="
-          git diff --name-only origin/$GITHUB_BASE_REF HEAD -- .
-
-          echo "========== check paths of modified files =========="
-          git diff --name-only origin/$GITHUB_BASE_REF HEAD -- . > files.txt
-          while IFS= read -r file
-          do
-            echo $file
-            if [[ $file != packages/contracts/* ]]; then
-              echo "This modified files are not in the contracts package."
-              echo "::set-output name=run_coverage::false"
-              break
-            else
-              echo "::set-output name=run_coverage::true"
-            fi
-          done < files.txt
-
   test-coverage:
     name: Generate test coverage
-    needs: is-contracts-package
-    if: needs.is-contracts-package.outputs.run_coverage == 'true'
     runs-on: ubuntu-latest
 
     steps:
