@@ -161,7 +161,6 @@ var (
 		utils.Eth1ChainIdFlag,
 		utils.RollupClientHttpFlag,
 		utils.RollupEnableVerifierFlag,
-		utils.RollupAddressManagerOwnerAddressFlag,
 		utils.RollupTimstampRefreshFlag,
 		utils.RollupPollIntervalFlag,
 		utils.RollupStateDumpPathFlag,

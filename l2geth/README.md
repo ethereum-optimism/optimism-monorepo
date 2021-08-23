@@ -43,7 +43,6 @@ with their configuration can run the command:
 
 ```bash
 $ USING_OVM=true ./build/bin/geth \
-    --rollup.addressmanagerowneraddress $ADDRESS_MANAGER_OWNER_ADDRESS \
     --rollup.clienthttp $ROLLUP_CLIENT_HTTP \
     --rollup.pollinterval 3s \
     --eth1.networkid $LAYER1_NETWORK_ID \

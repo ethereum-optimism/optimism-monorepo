@@ -18,7 +18,6 @@ if [[ ! -z "$URL" ]]; then
     # set all the necessary env vars
     envSet ETH1_ADDRESS_RESOLVER_ADDRESS  AddressManager
     envSet ETH1_L1_CROSS_DOMAIN_MESSENGER_ADDRESS Proxy__OVM_L1CrossDomainMessenger
-    envSet ROLLUP_ADDRESS_MANAGER_OWNER_ADDRESS Deployer
 
     # set the address to the proxy gateway if possible
     envSet ETH1_L1_STANDARD_BRIDGE_ADDRESS Proxy__OVM_L1StandardBridge

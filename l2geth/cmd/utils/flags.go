@@ -869,12 +869,6 @@ var (
 		Usage:  "Enable the verifier",
 		EnvVar: "ROLLUP_VERIFIER_ENABLE",
 	}
-	RollupAddressManagerOwnerAddressFlag = cli.StringFlag{
-		Name:   "rollup.addressmanagerowneraddress",
-		Usage:  "Owner address of the address manager",
-		Value:  "0x0000000000000000000000000000000000000000",
-		EnvVar: "ROLLUP_ADDRESS_MANAGER_OWNER_ADDRESS",
-	}
 	RollupStateDumpPathFlag = cli.StringFlag{
 		Name:   "rollup.statedumppath",
 		Usage:  "Path to the state dump",
@@ -1163,10 +1157,6 @@ func setEth1(ctx *cli.Context, cfg *rollup.Config) {
 // UsingOVM
 // setRollup configures the rollup
 func setRollup(ctx *cli.Context, cfg *rollup.Config) {
-	if ctx.GlobalIsSet(RollupAddressManagerOwnerAddressFlag.Name) {
-		addr := ctx.GlobalString(RollupAddressManagerOwnerAddressFlag.Name)
-		cfg.AddressManagerOwnerAddress = common.HexToAddress(addr)
-	}
 	if ctx.GlobalIsSet(RollupEnableVerifierFlag.Name) {
 		cfg.IsVerifier = true
 	}
@@ -1777,11 +1767,10 @@ func SetEthConfig(ctx *cli.Context, stack *node.Node, cfg *eth.Config) {
 		}
 		xdomainAddress := cfg.Rollup.L1CrossDomainMessengerAddress
 		l1FeeWalletAddress := cfg.Rollup.L1FeeWalletAddress
-		addrManagerOwnerAddress := cfg.Rollup.AddressManagerOwnerAddress
 		l1StandardBridgeAddress := cfg.Rollup.L1StandardBridgeAddress
 		gpoOwnerAddress := cfg.Rollup.GasPriceOracleOwnerAddress
 		stateDumpPath := cfg.Rollup.StateDumpPath
-		cfg.Genesis = core.DeveloperGenesisBlock(uint64(ctx.GlobalInt(DeveloperPeriodFlag.Name)), developer.Address, xdomainAddress, l1StandardBridgeAddress, addrManagerOwnerAddress, gpoOwnerAddress, l1FeeWalletAddress, stateDumpPath, chainID, gasLimit)
+		cfg.Genesis = core.DeveloperGenesisBlock(uint64(ctx.GlobalInt(DeveloperPeriodFlag.Name)), developer.Address, xdomainAddress, l1StandardBridgeAddress, gpoOwnerAddress, l1FeeWalletAddress, stateDumpPath, chainID, gasLimit)
 		if !ctx.GlobalIsSet(MinerGasPriceFlag.Name) && !ctx.GlobalIsSet(MinerLegacyGasPriceFlag.Name) {
 			cfg.Miner.GasPrice = big.NewInt(1)
 		}

@@ -73,7 +73,6 @@ var AppHelpFlagGroups = []flagGroup{
 			utils.Eth1StandardBridgeAddressFlag,
 			utils.Eth1ChainIdFlag,
 			utils.RollupClientHttpFlag,
-			utils.RollupAddressManagerOwnerAddressFlag,
 			utils.RollupEnableVerifierFlag,
 			utils.RollupTimstampRefreshFlag,
 			utils.RollupPollIntervalFlag,
