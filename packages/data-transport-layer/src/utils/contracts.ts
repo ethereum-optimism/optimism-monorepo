@@ -1,12 +1,12 @@
 /* Imports: External */
 import { constants, Contract, Signer } from 'ethers'
-import { JsonRpcProvider } from '@ethersproject/providers'
+import { BaseProvider } from '@ethersproject/providers'
 import { getContractInterface } from '@eth-optimism/contracts'
 
 export const loadContract = (
   name: string,
   address: string,
-  provider: JsonRpcProvider
+  provider: BaseProvider
 ): Contract => {
   return new Contract(address, getContractInterface(name) as any, provider)
 }
@@ -15,7 +15,7 @@ export const loadProxyFromManager = async (
   name: string,
   proxy: string,
   Lib_AddressManager: Contract,
-  provider: JsonRpcProvider
+  provider: BaseProvider
 ): Promise<Contract> => {
   const address = await Lib_AddressManager.getAddress(proxy)
 
@@ -36,7 +36,7 @@ export interface OptimismContracts {
 }
 
 export const loadOptimismContracts = async (
-  l1RpcProvider: JsonRpcProvider,
+  l1RpcProvider: BaseProvider,
   addressManagerAddress: string,
   signer?: Signer
 ): Promise<OptimismContracts> => {
