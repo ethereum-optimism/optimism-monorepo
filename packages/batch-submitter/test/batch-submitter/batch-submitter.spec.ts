@@ -230,7 +230,6 @@ describe('BatchSubmitter', () => {
       1,
       new Logger({ name: TX_BATCH_SUBMITTER_LOG_TAG }),
       testMetrics,
-      false
     )
   }
 
