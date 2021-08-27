@@ -28,7 +28,7 @@ const deployFn: DeployFunction = async (hre) => {
   await tx.wait()
 
   const newRemoteOwner = await Lib_AddressManager.owner()
-  if (newRemoteOwner !== owner) {
+  if (newRemoteOwner.toLowerCase() !== owner.toLowerCase()) {
     throw new Error(
       `\n**FATAL ERROR. THIS SHOULD NEVER HAPPEN. CHECK YOUR DEPLOYMENT.**:\n` +
         `Could not transfer ownership of Lib_AddressManager.\n` +

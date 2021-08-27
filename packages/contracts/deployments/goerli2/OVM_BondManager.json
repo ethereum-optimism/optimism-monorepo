@@ -1,0 +1,243 @@
+{
+  "address": "0xAcC5eEa6248FBd6D1EAA7414aa8e1A076Be2Abfd",
+  "abi": [
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_libAddressManager",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "nonpayable",
+      "type": "constructor"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_who",
+          "type": "address"
+        }
+      ],
+      "name": "claim",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "deposit",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_preStateRoot",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_publisher",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_timestamp",
+          "type": "uint256"
+        }
+      ],
+      "name": "finalize",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "finalizeWithdrawal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_preStateRoot",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_who",
+          "type": "address"
+        }
+      ],
+      "name": "getGasSpent",
+      "outputs": [
+        {
+          "internalType": "uint256",
+          "name": "",
+          "type": "uint256"
+        }
+      ],
+      "stateMutability": "pure",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "address",
+          "name": "_who",
+          "type": "address"
+        }
+      ],
+      "name": "isCollateralized",
+      "outputs": [
+        {
+          "internalType": "bool",
+          "name": "",
+          "type": "bool"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "libAddressManager",
+      "outputs": [
+        {
+          "internalType": "contract Lib_AddressManager",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "bytes32",
+          "name": "_preStateRoot",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "bytes32",
+          "name": "_txHash",
+          "type": "bytes32"
+        },
+        {
+          "internalType": "address",
+          "name": "_who",
+          "type": "address"
+        },
+        {
+          "internalType": "uint256",
+          "name": "_gasSpent",
+          "type": "uint256"
+        }
+      ],
+      "name": "recordGasSpent",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    },
+    {
+      "inputs": [
+        {
+          "internalType": "string",
+          "name": "_name",
+          "type": "string"
+        }
+      ],
+      "name": "resolve",
+      "outputs": [
+        {
+          "internalType": "address",
+          "name": "",
+          "type": "address"
+        }
+      ],
+      "stateMutability": "view",
+      "type": "function"
+    },
+    {
+      "inputs": [],
+      "name": "startWithdrawal",
+      "outputs": [],
+      "stateMutability": "nonpayable",
+      "type": "function"
+    }
+  ],
+  "transactionHash": "0xcd331bfb042b336808a3627a501083512f0befb9b64bc109fdcbfdf689f31a41",
+  "receipt": {
+    "to": null,
+    "from": "0x956a5152D0f498dBA0c5966577bb44262F8F7078",
+    "contractAddress": "0xAcC5eEa6248FBd6D1EAA7414aa8e1A076Be2Abfd",
+    "transactionIndex": 5,
+    "gasUsed": "289629",
+    "logsBloom": "0x00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+    "blockHash": "0xebc7948dd2108fc3c5dfe5f5788ef77cab7e4c61e7c9c8d1dc4e54517f2f096c",
+    "transactionHash": "0xcd331bfb042b336808a3627a501083512f0befb9b64bc109fdcbfdf689f31a41",
+    "logs": [],
+    "blockNumber": 5394941,
+    "cumulativeGasUsed": "2474856",
+    "status": 1,
+    "byzantium": true
+  },
+  "args": [
+    "0x28D78E5Dee7af033DCbF74FC8d9E7F12C66e3Df2"
+  ],
+  "solcInputHash": "73fdc4281a82da591db90e5a96b58c73",
+  "metadata": "{\"compiler\":{\"version\":\"0.7.6+commit.7338295f\"},\"language\":\"Solidity\",\"output\":{\"abi\":[{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_libAddressManager\",\"type\":\"address\"}],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_who\",\"type\":\"address\"}],\"name\":\"claim\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"deposit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_preStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_publisher\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_timestamp\",\"type\":\"uint256\"}],\"name\":\"finalize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"finalizeWithdrawal\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_preStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_who\",\"type\":\"address\"}],\"name\":\"getGasSpent\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_who\",\"type\":\"address\"}],\"name\":\"isCollateralized\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"libAddressManager\",\"outputs\":[{\"internalType\":\"contract Lib_AddressManager\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_preStateRoot\",\"type\":\"bytes32\"},{\"internalType\":\"bytes32\",\"name\":\"_txHash\",\"type\":\"bytes32\"},{\"internalType\":\"address\",\"name\":\"_who\",\"type\":\"address\"},{\"internalType\":\"uint256\",\"name\":\"_gasSpent\",\"type\":\"uint256\"}],\"name\":\"recordGasSpent\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"string\",\"name\":\"_name\",\"type\":\"string\"}],\"name\":\"resolve\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"startWithdrawal\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"}],\"devdoc\":{\"details\":\"This contract is, for now, a stub of the \\\"real\\\" OVM_BondManager that does nothing but allow the \\\"OVM_Proposer\\\" to submit state root batches. Runtime target: EVM\",\"kind\":\"dev\",\"methods\":{\"resolve(string)\":{\"params\":{\"_name\":\"Name to resolve an address for.\"},\"returns\":{\"_0\":\"Address associated with the given name.\"}}},\"title\":\"OVM_BondManager\",\"version\":1},\"userdoc\":{\"kind\":\"user\",\"methods\":{\"resolve(string)\":{\"notice\":\"Resolves the address associated with a given name.\"}},\"version\":1}},\"settings\":{\"compilationTarget\":{\"contracts/optimistic-ethereum/OVM/verification/OVM_BondManager.sol\":\"OVM_BondManager\"},\"evmVersion\":\"istanbul\",\"libraries\":{},\"metadata\":{\"bytecodeHash\":\"none\",\"useLiteralContent\":true},\"optimizer\":{\"enabled\":true,\"runs\":200},\"remappings\":[]},\"sources\":{\"@openzeppelin/contracts/access/Ownable.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity >=0.6.0 <0.8.0;\\n\\nimport \\\"../utils/Context.sol\\\";\\n/**\\n * @dev Contract module which provides a basic access control mechanism, where\\n * there is an account (an owner) that can be granted exclusive access to\\n * specific functions.\\n *\\n * By default, the owner account will be the one that deploys the contract. This\\n * can later be changed with {transferOwnership}.\\n *\\n * This module is used through inheritance. It will make available the modifier\\n * `onlyOwner`, which can be applied to your functions to restrict their use to\\n * the owner.\\n */\\nabstract contract Ownable is Context {\\n    address private _owner;\\n\\n    event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);\\n\\n    /**\\n     * @dev Initializes the contract setting the deployer as the initial owner.\\n     */\\n    constructor () internal {\\n        address msgSender = _msgSender();\\n        _owner = msgSender;\\n        emit OwnershipTransferred(address(0), msgSender);\\n    }\\n\\n    /**\\n     * @dev Returns the address of the current owner.\\n     */\\n    function owner() public view virtual returns (address) {\\n        return _owner;\\n    }\\n\\n    /**\\n     * @dev Throws if called by any account other than the owner.\\n     */\\n    modifier onlyOwner() {\\n        require(owner() == _msgSender(), \\\"Ownable: caller is not the owner\\\");\\n        _;\\n    }\\n\\n    /**\\n     * @dev Leaves the contract without owner. It will not be possible to call\\n     * `onlyOwner` functions anymore. Can only be called by the current owner.\\n     *\\n     * NOTE: Renouncing ownership will leave the contract without an owner,\\n     * thereby removing any functionality that is only available to the owner.\\n     */\\n    function renounceOwnership() public virtual onlyOwner {\\n        emit OwnershipTransferred(_owner, address(0));\\n        _owner = address(0);\\n    }\\n\\n    /**\\n     * @dev Transfers ownership of the contract to a new account (`newOwner`).\\n     * Can only be called by the current owner.\\n     */\\n    function transferOwnership(address newOwner) public virtual onlyOwner {\\n        require(newOwner != address(0), \\\"Ownable: new owner is the zero address\\\");\\n        emit OwnershipTransferred(_owner, newOwner);\\n        _owner = newOwner;\\n    }\\n}\\n\",\"keccak256\":\"0x15e2d5bd4c28a88548074c54d220e8086f638a71ed07e6b3ba5a70066fcf458d\",\"license\":\"MIT\"},\"@openzeppelin/contracts/utils/Context.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\n\\npragma solidity >=0.6.0 <0.8.0;\\n\\n/*\\n * @dev Provides information about the current execution context, including the\\n * sender of the transaction and its data. While these are generally available\\n * via msg.sender and msg.data, they should not be accessed in such a direct\\n * manner, since when dealing with GSN meta-transactions the account sending and\\n * paying for execution may not be the actual sender (as far as an application\\n * is concerned).\\n *\\n * This contract is only required for intermediate, library-like contracts.\\n */\\nabstract contract Context {\\n    function _msgSender() internal view virtual returns (address payable) {\\n        return msg.sender;\\n    }\\n\\n    function _msgData() internal view virtual returns (bytes memory) {\\n        this; // silence state mutability warning without generating bytecode - see https://github.com/ethereum/solidity/issues/2691\\n        return msg.data;\\n    }\\n}\\n\",\"keccak256\":\"0x8d3cb350f04ff49cfb10aef08d87f19dcbaecc8027b0bed12f3275cd12f38cf0\",\"license\":\"MIT\"},\"contracts/optimistic-ethereum/OVM/verification/OVM_BondManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >0.5.0 <0.8.0;\\n\\n/* Interface Imports */\\nimport { iOVM_BondManager } from \\\"../../iOVM/verification/iOVM_BondManager.sol\\\";\\n\\n/* Contract Imports */\\nimport { Lib_AddressResolver } from \\\"../../libraries/resolver/Lib_AddressResolver.sol\\\";\\n\\n/**\\n * @title OVM_BondManager\\n * @dev This contract is, for now, a stub of the \\\"real\\\" OVM_BondManager that does nothing but\\n * allow the \\\"OVM_Proposer\\\" to submit state root batches.\\n *\\n * Runtime target: EVM\\n */\\ncontract OVM_BondManager is iOVM_BondManager, Lib_AddressResolver {\\n\\n    constructor(\\n        address _libAddressManager\\n    )\\n        Lib_AddressResolver(_libAddressManager)\\n    {}\\n\\n    function recordGasSpent(\\n        bytes32 _preStateRoot,\\n        bytes32 _txHash,\\n        address _who,\\n        uint256 _gasSpent\\n    )\\n        override\\n        public\\n    {}\\n\\n    function finalize(\\n        bytes32 _preStateRoot,\\n        address _publisher,\\n        uint256 _timestamp\\n    )\\n        override\\n        public\\n    {}\\n\\n    function deposit()\\n        override\\n        public\\n    {}\\n\\n    function startWithdrawal()\\n        override\\n        public\\n    {}\\n\\n    function finalizeWithdrawal()\\n        override\\n        public\\n    {}\\n\\n    function claim(\\n        address _who\\n    )\\n        override\\n        public\\n    {}\\n\\n    function isCollateralized(\\n        address _who\\n    )\\n        override\\n        public\\n        view\\n        returns (\\n            bool\\n        )\\n    {\\n        // Only authenticate sequencer to submit state root batches.\\n        return _who == resolve(\\\"OVM_Proposer\\\");\\n    }\\n\\n    function getGasSpent(\\n        bytes32 _preStateRoot,\\n        address _who\\n    )\\n        override\\n        public\\n        pure\\n        returns (\\n            uint256\\n        )\\n    {\\n        return 0;\\n    }\\n}\\n\",\"keccak256\":\"0xb56873a826a6b26d8718aaf8b1985fcc8a37ffbaebc828d3987283f702787ae5\",\"license\":\"MIT\"},\"contracts/optimistic-ethereum/iOVM/verification/iOVM_BondManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >0.5.0 <0.8.0;\\n\\n/**\\n * @title iOVM_BondManager\\n */\\ninterface iOVM_BondManager {\\n\\n    /********************\\n     * Public Functions *\\n     ********************/\\n\\n    function recordGasSpent(\\n        bytes32 _preStateRoot,\\n        bytes32 _txHash,\\n        address _who,\\n        uint256 _gasSpent\\n    ) external;\\n\\n    function finalize(\\n        bytes32 _preStateRoot,\\n        address _publisher,\\n        uint256 _timestamp\\n    ) external;\\n\\n    function deposit() external;\\n\\n    function startWithdrawal() external;\\n\\n    function finalizeWithdrawal() external;\\n\\n    function claim(\\n        address _who\\n    ) external;\\n\\n    function isCollateralized(\\n        address _who\\n    ) external view returns (bool);\\n\\n    function getGasSpent(\\n        bytes32 _preStateRoot,\\n        address _who\\n    ) external view returns (uint256);\\n}\\n\",\"keccak256\":\"0xd61b4261d83b54ea6c00bbf966fbd8e1556bb94606a872fdacd167b7c7c36ffa\",\"license\":\"MIT\"},\"contracts/optimistic-ethereum/libraries/resolver/Lib_AddressManager.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >0.5.0 <0.8.0;\\n\\n/* External Imports */\\nimport { Ownable } from \\\"@openzeppelin/contracts/access/Ownable.sol\\\";\\n\\n/**\\n * @title Lib_AddressManager\\n */\\ncontract Lib_AddressManager is Ownable {\\n\\n    /**********\\n     * Events *\\n     **********/\\n\\n    event AddressSet(\\n        string indexed _name,\\n        address _newAddress,\\n        address _oldAddress\\n    );\\n\\n\\n    /*************\\n     * Variables *\\n     *************/\\n\\n    mapping (bytes32 => address) private addresses;\\n\\n\\n    /********************\\n     * Public Functions *\\n     ********************/\\n\\n    /**\\n     * Changes the address associated with a particular name.\\n     * @param _name String name to associate an address with.\\n     * @param _address Address to associate with the name.\\n     */\\n    function setAddress(\\n        string memory _name,\\n        address _address\\n    )\\n        external\\n        onlyOwner\\n    {\\n        bytes32 nameHash = _getNameHash(_name);\\n        address oldAddress = addresses[nameHash];\\n        addresses[nameHash] = _address;\\n\\n        emit AddressSet(\\n            _name,\\n            _address,\\n            oldAddress\\n        );\\n    }\\n\\n    /**\\n     * Retrieves the address associated with a given name.\\n     * @param _name Name to retrieve an address for.\\n     * @return Address associated with the given name.\\n     */\\n    function getAddress(\\n        string memory _name\\n    )\\n        external\\n        view\\n        returns (\\n            address\\n        )\\n    {\\n        return addresses[_getNameHash(_name)];\\n    }\\n\\n\\n    /**********************\\n     * Internal Functions *\\n     **********************/\\n\\n    /**\\n     * Computes the hash of a name.\\n     * @param _name Name to compute a hash for.\\n     * @return Hash of the given name.\\n     */\\n    function _getNameHash(\\n        string memory _name\\n    )\\n        internal\\n        pure\\n        returns (\\n            bytes32\\n        )\\n    {\\n        return keccak256(abi.encodePacked(_name));\\n    }\\n}\\n\",\"keccak256\":\"0x636defb785a5c6650d101def6790d9104724cc7570e0d875138624d069eed257\",\"license\":\"MIT\"},\"contracts/optimistic-ethereum/libraries/resolver/Lib_AddressResolver.sol\":{\"content\":\"// SPDX-License-Identifier: MIT\\npragma solidity >0.5.0 <0.8.0;\\n\\n/* Library Imports */\\nimport { Lib_AddressManager } from \\\"./Lib_AddressManager.sol\\\";\\n\\n/**\\n * @title Lib_AddressResolver\\n */\\nabstract contract Lib_AddressResolver {\\n\\n    /*************\\n     * Variables *\\n     *************/\\n\\n    Lib_AddressManager public libAddressManager;\\n\\n\\n    /***************\\n     * Constructor *\\n     ***************/\\n\\n    /**\\n     * @param _libAddressManager Address of the Lib_AddressManager.\\n     */\\n    constructor(\\n        address _libAddressManager\\n    ) {\\n        libAddressManager = Lib_AddressManager(_libAddressManager);\\n    }\\n\\n\\n    /********************\\n     * Public Functions *\\n     ********************/\\n\\n    /**\\n     * Resolves the address associated with a given name.\\n     * @param _name Name to resolve an address for.\\n     * @return Address associated with the given name.\\n     */\\n    function resolve(\\n        string memory _name\\n    )\\n        public\\n        view\\n        returns (\\n            address\\n        )\\n    {\\n        return libAddressManager.getAddress(_name);\\n    }\\n}\\n\",\"keccak256\":\"0x65981feeabff6a81783ea97d44baf988a18a86c8cb374c46fdb71819cbacc7c0\",\"license\":\"MIT\"}},\"version\":1}",
+  "bytecode": "0x608060405234801561001057600080fd5b5060405161043e38038061043e8339818101604052602081101561003357600080fd5b5051600080546001600160a01b039092166001600160a01b03199092169190911790556103d9806100656000396000f3fe608060405234801561001057600080fd5b506004361061009e5760003560e01c8063abfbbe1311610066578063abfbbe1314610207578063bc2f8dd814610239578063c5b6aa2f14610239578063d0e30db014610239578063dc6453dc146102415761009e565b806302ad4d2a146100a35780631e16e92f146100dd5780631e83409a14610117578063299ca4781461013d578063461a447814610161575b600080fd5b6100c9600480360360208110156100b957600080fd5b50356001600160a01b031661027f565b604080519115158252519081900360200190f35b610115600480360360808110156100f357600080fd5b508035906020810135906001600160a01b0360408201351690606001356102c9565b005b6101156004803603602081101561012d57600080fd5b50356001600160a01b03166102cf565b6101456102d2565b604080516001600160a01b039092168252519081900360200190f35b6101456004803603602081101561017757600080fd5b81019060208101813564010000000081111561019257600080fd5b8201836020820111156101a457600080fd5b803590602001918460018302840111640100000000831117156101c657600080fd5b91908080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152509295506102e1945050505050565b6101156004803603606081101561021d57600080fd5b508035906001600160a01b0360208201351690604001356103bd565b6101156103c2565b61026d6004803603604081101561025757600080fd5b50803590602001356001600160a01b03166103c4565b60408051918252519081900360200190f35b60006102ae6040518060400160405280600c81526020016b27ab26afa83937b837b9b2b960a11b8152506102e1565b6001600160a01b0316826001600160a01b0316149050919050565b50505050565b50565b6000546001600160a01b031681565b6000805460405163bf40fac160e01b81526020600482018181528551602484015285516001600160a01b039094169363bf40fac19387938392604490920191908501908083838b5b83811015610341578181015183820152602001610329565b50505050905090810190601f16801561036e5780820380516001836020036101000a031916815260200191505b509250505060206040518083038186803b15801561038b57600080fd5b505afa15801561039f573d6000803e3d6000fd5b505050506040513d60208110156103b557600080fd5b505192915050565b505050565b565b60009291505056fea164736f6c6343000706000a",
+  "deployedBytecode": "0x608060405234801561001057600080fd5b506004361061009e5760003560e01c8063abfbbe1311610066578063abfbbe1314610207578063bc2f8dd814610239578063c5b6aa2f14610239578063d0e30db014610239578063dc6453dc146102415761009e565b806302ad4d2a146100a35780631e16e92f146100dd5780631e83409a14610117578063299ca4781461013d578063461a447814610161575b600080fd5b6100c9600480360360208110156100b957600080fd5b50356001600160a01b031661027f565b604080519115158252519081900360200190f35b610115600480360360808110156100f357600080fd5b508035906020810135906001600160a01b0360408201351690606001356102c9565b005b6101156004803603602081101561012d57600080fd5b50356001600160a01b03166102cf565b6101456102d2565b604080516001600160a01b039092168252519081900360200190f35b6101456004803603602081101561017757600080fd5b81019060208101813564010000000081111561019257600080fd5b8201836020820111156101a457600080fd5b803590602001918460018302840111640100000000831117156101c657600080fd5b91908080601f0160208091040260200160405190810160405280939291908181526020018383808284376000920191909152509295506102e1945050505050565b6101156004803603606081101561021d57600080fd5b508035906001600160a01b0360208201351690604001356103bd565b6101156103c2565b61026d6004803603604081101561025757600080fd5b50803590602001356001600160a01b03166103c4565b60408051918252519081900360200190f35b60006102ae6040518060400160405280600c81526020016b27ab26afa83937b837b9b2b960a11b8152506102e1565b6001600160a01b0316826001600160a01b0316149050919050565b50505050565b50565b6000546001600160a01b031681565b6000805460405163bf40fac160e01b81526020600482018181528551602484015285516001600160a01b039094169363bf40fac19387938392604490920191908501908083838b5b83811015610341578181015183820152602001610329565b50505050905090810190601f16801561036e5780820380516001836020036101000a031916815260200191505b509250505060206040518083038186803b15801561038b57600080fd5b505afa15801561039f573d6000803e3d6000fd5b505050506040513d60208110156103b557600080fd5b505192915050565b505050565b565b60009291505056fea164736f6c6343000706000a",
+  "devdoc": {
+    "details": "This contract is, for now, a stub of the \"real\" OVM_BondManager that does nothing but allow the \"OVM_Proposer\" to submit state root batches. Runtime target: EVM",
+    "kind": "dev",
+    "methods": {
+      "resolve(string)": {
+        "params": {
+          "_name": "Name to resolve an address for."
+        },
+        "returns": {
+          "_0": "Address associated with the given name."
+        }
+      }
+    },
+    "title": "OVM_BondManager",
+    "version": 1
+  },
+  "userdoc": {
+    "kind": "user",
+    "methods": {
+      "resolve(string)": {
+        "notice": "Resolves the address associated with a given name."
+      }
+    },
+    "version": 1
+  },
+  "storageLayout": {
+    "storage": [
+      {
+        "astId": 8040,
+        "contract": "contracts/optimistic-ethereum/OVM/verification/OVM_BondManager.sol:OVM_BondManager",
+        "label": "libAddressManager",
+        "offset": 0,
+        "slot": "0",
+        "type": "t_contract(Lib_AddressManager)8033"
+      }
+    ],
+    "types": {
+      "t_contract(Lib_AddressManager)8033": {
+        "encoding": "inplace",
+        "label": "contract Lib_AddressManager",
+        "numberOfBytes": "20"
+      }
+    }
+  }
+}

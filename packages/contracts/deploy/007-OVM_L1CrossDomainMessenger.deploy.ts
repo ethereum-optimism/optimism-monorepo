@@ -40,7 +40,9 @@ const deployFn: DeployFunction = async (hre) => {
   await OVM_L1CrossDomainMessenger.initialize(Lib_AddressManager.address)
 
   const libAddressManager = await OVM_L1CrossDomainMessenger.libAddressManager()
-  if (libAddressManager !== Lib_AddressManager.address) {
+  if (
+    libAddressManager.toLowerCase() !== Lib_AddressManager.address.toLowerCase()
+  ) {
     throw new Error(
       `\n**FATAL ERROR. THIS SHOULD NEVER HAPPEN. CHECK YOUR DEPLOYMENT.**:\n` +
         `OVM_L1CrossDomainMessenger could not be succesfully initialized.\n` +

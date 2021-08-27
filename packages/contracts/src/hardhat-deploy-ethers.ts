@@ -1,7 +1,8 @@
 /* Imports: External */
-import { Contract } from 'ethers'
+import { ethers, Contract } from 'ethers'
 import { Provider } from '@ethersproject/abstract-provider'
 import { Signer } from '@ethersproject/abstract-signer'
+import { sleep } from '@eth-optimism/core-utils'
 
 export const registerAddress = async ({
   hre,
@@ -19,7 +20,7 @@ export const registerAddress = async ({
   )
 
   const currentAddress = await Lib_AddressManager.getAddress(name)
-  if (address === currentAddress) {
+  if (address.toLowerCase() === currentAddress.toLowerCase()) {
     console.log(
       `✓ Not registering address for ${name} because it's already been correctly registered`
     )
@@ -30,8 +31,18 @@ export const registerAddress = async ({
   const tx = await Lib_AddressManager.setAddress(name, address)
   await tx.wait()
 
-  const remoteAddress = await Lib_AddressManager.getAddress(name)
-  if (remoteAddress !== address) {
+  let remoteAddress = await Lib_AddressManager.getAddress(name)
+  let retries = 10
+  while (remoteAddress === ethers.constants.AddressZero) {
+    await sleep(5000)
+    remoteAddress = await Lib_AddressManager.getAddress(name)
+    retries--
+    if (retries === 0) {
+      throw new Error(`Address for ${name} is still zero after 10 retries`)
+    }
+  }
+
+  if (remoteAddress.toLowerCase() !== address.toLowerCase()) {
     throw new Error(
       `\n**FATAL ERROR. THIS SHOULD NEVER HAPPEN. CHECK YOUR DEPLOYMENT.**:\n` +
         `Call to Lib_AddressManager.setAddress(${name}) was unsuccessful.\n` +
