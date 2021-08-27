@@ -1435,6 +1435,10 @@ func (bc *BlockChain) writeBlockWithState(block *types.Block, receipts []*types.
 	if status == CanonStatTy {
 		bc.chainFeed.Send(ChainEvent{Block: block, Hash: block.Hash(), Logs: logs})
 		if len(logs) > 0 {
+			// Set the correct blocknumber on the log before sending the event
+			for _, ethlog := range logs {
+				ethlog.BlockNumber = block.NumberU64()
+			}
 			bc.logsFeed.Send(logs)
 		}
 		// In theory we should fire a ChainHeadEvent when we inject

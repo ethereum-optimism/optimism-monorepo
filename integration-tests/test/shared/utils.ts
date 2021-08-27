@@ -31,6 +31,7 @@ if (process.env.IS_LIVE_NETWORK === 'true') {
 const env = cleanEnv(process.env, {
   L1_URL: str({ default: 'http://localhost:9545' }),
   L2_URL: str({ default: 'http://localhost:8545' }),
+  L2_WEBSOCKET_URL: str({ default: 'ws://localhost:8546' }),
   VERIFIER_URL: str({ default: 'http://localhost:8547' }),
   REPLICA_URL: str({ default: 'http://localhost:8549' }),
   L1_POLLING_INTERVAL: num({ default: 10 }),
@@ -54,6 +55,8 @@ l1Provider.pollingInterval = env.L1_POLLING_INTERVAL
 
 export const l2Provider = new providers.JsonRpcProvider(env.L2_URL)
 l2Provider.pollingInterval = env.L2_POLLING_INTERVAL
+
+export const l2WebsocketProvider = new providers.WebSocketProvider(env.L2_WEBSOCKET_URL)
 
 export const verifierProvider = new providers.JsonRpcProvider(env.VERIFIER_URL)
 verifierProvider.pollingInterval = env.VERIFIER_POLLING_INTERVAL
