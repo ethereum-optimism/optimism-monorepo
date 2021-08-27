@@ -110,7 +110,7 @@ describe('OVM_ExecutionManager gas consumption', () => {
       )
       console.log(`calculated gas cost of ${gasCost}`)
 
-      const benchmark: number = 110_000
+      const benchmark: number = 111_000
       expect(gasCost).to.be.lte(benchmark)
       expect(gasCost).to.be.gte(
         benchmark - 1_000,

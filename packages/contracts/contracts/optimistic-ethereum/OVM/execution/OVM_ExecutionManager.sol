@@ -164,6 +164,20 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
     }
 
     /**
+     * Enforces that a minimum amount of nuisance gas is required to continue
+     * execution, else throwing an EXCEEDS_NUISANCE_GAS reversion.
+     * @param _amount Amount of nuisance gas to enforce is left
+     */
+    modifier requiresNuisanceGas(
+        uint256 _amount
+    ) {
+        if (messageRecord.nuisanceGasLeft < _amount) {
+            _revertWithFlag(RevertFlag.EXCEEDS_NUISANCE_GAS);
+        }
+        _;
+    }
+
+    /**
      * Makes sure we're not inside a static context.
      */
     modifier notStatic() {
@@ -1164,7 +1178,11 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         // only use a few storage slots during any given transaction, this shouldn't be a limiting
         // factor.
         uint256 prevNuisanceGasLeft = messageRecord.nuisanceGasLeft;
-        uint256 nuisanceGasLimit = _getNuisanceGasLimit(_gasLimit);
+        // Here we will limit the Nuisance Gas forwarded to the external message to the minimum of
+        // the nuisance gas left in this call frame, and the gas limit provided to the call. This
+        // protects against an attack where an untrusted contract intentionally uses up all
+        // available nuisance gas.
+        uint256 nuisanceGasLimit = Math.min(_gasLimit, prevNuisanceGasLeft);
         messageRecord.nuisanceGasLeft = nuisanceGasLimit;
 
         // Make the call and make sure to pass in the gas limit. Another instance of hidden
@@ -1582,6 +1600,9 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
     function _checkAccountLoad(
         address _address
     )
+        requiresNuisanceGas(
+            NUISANCE_GAS_PER_CONTRACT_BYTE * 24000 + MIN_NUISANCE_GAS_PER_CONTRACT
+        )
         internal
     {
         // See `_checkContractStorageLoad` for more information.
@@ -1619,6 +1640,9 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         address _address
     )
         internal
+        requiresNuisanceGas(
+            NUISANCE_GAS_PER_CONTRACT_BYTE
+        )
     {
         // Start by checking for a load as we only want to charge nuisance gas proportional to
         // contract size once.
@@ -1630,13 +1654,13 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
             bool _wasAccountAlreadyChanged
         ) = ovmStateManager.testAndSetAccountChanged(_address);
 
-        // If we hadn't already loaded the account, then we'll need to charge "nuisance gas" based
-        // on the size of the contract code.
+        // If we are changing this account, we will require a call to
+        // OVM_StateTransitioner.commitContractState in the POST_EXECUTION phase,
+        // which requires an account-level MPT update (not dependent on codesize).
         if (_wasAccountAlreadyChanged == false) {
             ovmStateManager.incrementTotalUncommittedAccounts();
             _useNuisanceGas(
-                (Lib_EthUtils.getCodeSize(_getAccountEthAddress(_address))
-                * NUISANCE_GAS_PER_CONTRACT_BYTE) + MIN_NUISANCE_GAS_PER_CONTRACT
+                NUISANCE_GAS_PER_CONTRACT_BYTE
             );
         }
     }
@@ -1652,6 +1676,7 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         bytes32 _key
     )
         internal
+        requiresNuisanceGas(NUISANCE_GAS_SLOAD)
     {
         // Another case of hidden complexity. If we didn't enforce this requirement, then a
         // contract could pass in just enough gas to cause the INVALID_STATE_ACCESS check to fail
@@ -1693,6 +1718,7 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         address _contract,
         bytes32 _key
     )
+        requiresNuisanceGas(NUISANCE_GAS_SSTORE)
         internal
     {
         // Start by checking for load to make sure we have the storage slot and that we charge the
@@ -1839,26 +1865,6 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
      ******************************************/
 
     /**
-     * Computes the nuisance gas limit from the gas limit.
-     * @dev This function is currently using a naive implementation whereby the nuisance gas limit
-     *      is set to exactly equal the lesser of the gas limit or remaining gas. It's likely that
-     *      this implementation is perfectly fine, but we may change this formula later.
-     * @param _gasLimit Gas limit to compute from.
-     * @return _nuisanceGasLimit Computed nuisance gas limit.
-     */
-    function _getNuisanceGasLimit(
-        uint256 _gasLimit
-    )
-        internal
-        view
-        returns (
-            uint256 _nuisanceGasLimit
-        )
-    {
-        return _gasLimit < gasleft() ? _gasLimit : gasleft();
-    }
-
-    /**
      * Uses a certain amount of nuisance gas.
      * @param _amount Amount of nuisance gas to use.
      */
@@ -1867,9 +1873,10 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
     )
         internal
     {
-        // Essentially the same as a standard OUT_OF_GAS, except we also retain a record of the gas
-        // refund to be given at the end of the transaction.
+        // All functions invoking _useNuisanceGas should use the requiresNuisanceGas modifier with
+        // the upper bound nuisance gas usage. Just in case though, prevent overflow here.
         if (messageRecord.nuisanceGasLeft < _amount) {
+            messageRecord.nuisanceGasLeft = 0;
             _revertWithFlag(RevertFlag.EXCEEDS_NUISANCE_GAS);
         }
 
@@ -2113,7 +2120,7 @@ contract OVM_ExecutionManager is iOVM_ExecutionManager, Lib_AddressResolver {
         transactionContext.ovmL1TXORIGIN = _transaction.l1TxOrigin;
         transactionContext.ovmGASLIMIT = gasMeterConfig.maxGasPerQueuePerEpoch;
 
-        messageRecord.nuisanceGasLeft = _getNuisanceGasLimit(_transaction.gasLimit);
+        messageRecord.nuisanceGasLeft = _transaction.gasLimit;
     }
 
     /**
