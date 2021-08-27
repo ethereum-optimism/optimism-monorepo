@@ -2559,6 +2559,13 @@
   dependencies:
     "@types/node" "*"
 
+"@types/fs-extra@^9.0.11":
+  version "9.0.11"
+  resolved "https://registry.yarnpkg.com/@types/fs-extra/-/fs-extra-9.0.11.tgz#8cc99e103499eab9f347dbc6ca4e99fb8d2c2b87"
+  integrity sha512-mZsifGG4QeQ7hlkhO56u7zt/ycBgGxSVsFI/6lGTU34VtwkiqrrSDgw0+ygs8kFGWcXnFQWMrzF2h7TtDFNixA==
+  dependencies:
+    "@types/node" "*"
+
 "@types/glob@*", "@types/glob@^7.1.1", "@types/glob@^7.1.3":
   version "7.1.4"
   resolved "https://registry.yarnpkg.com/@types/glob/-/glob-7.1.4.tgz#ea59e21d2ee5c517914cb4bc8e4153b99e566672"
