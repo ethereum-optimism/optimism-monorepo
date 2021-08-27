@@ -55,6 +55,7 @@
     "@ethersproject/abstract-signer": "^5.4.1",
     "@ethersproject/contracts": "^5.4.1",
     "@ethersproject/hardware-wallets": "^5.4.0",
+    "@nomiclabs/hardhat-etherscan": "^2.1.5",
     "glob": "^7.1.6"
   },
   "devDependencies": {
