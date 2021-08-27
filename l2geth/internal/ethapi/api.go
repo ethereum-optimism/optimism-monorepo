@@ -85,6 +85,23 @@ func (s *PublicEthereumAPI) ProtocolVersion() hexutil.Uint {
 // - pulledStates:  number of state entries processed until now
 // - knownStates:   number of known state entries that still need to be pulled
 func (s *PublicEthereumAPI) Syncing() (interface{}, error) {
+	// Alter the syncing endpoint to determine if the node
+	// is syncing based on the sync service
+	if vm.UsingOVM {
+		syncing := s.b.IsSyncing()
+		if !syncing {
+			return false, nil
+		}
+		index, _, _ := s.b.GetRollupContext()
+		return map[string]interface{}{
+			"startingBlock": hexutil.Uint64(0),
+			"currentBlock":  hexutil.Uint64(index),
+			"highestBlock":  hexutil.Uint64(index),
+			"pulledStates":  hexutil.Uint64(index),
+			"knownStates":   hexutil.Uint64(index),
+		}, nil
+	}
+
 	progress := s.b.Downloader().Progress()
 
 	// Return not syncing if the synchronisation already completed
