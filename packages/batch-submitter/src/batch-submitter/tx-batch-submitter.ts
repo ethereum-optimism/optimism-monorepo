@@ -212,7 +212,13 @@ export class TransactionBatchSubmitter extends BatchSubmitter {
     // 1. it was truncated
     // 2. it is large enough
     // 3. enough time has passed since last submission
-    if (!wasBatchTruncated && !this._shouldSubmitBatch(batchSizeInBytes)) {
+    if (
+      !wasBatchTruncated &&
+      !this._shouldSubmitBatch(
+        batchSizeInBytes,
+        batchParams.totalElementsToAppend
+      )
+    ) {
       return
     }
     this.metrics.numTxPerBatch.observe(endBlock - startBlock)

@@ -149,9 +149,15 @@ export abstract class BatchSubmitter {
     }
   }
 
-  protected _shouldSubmitBatch(batchSizeInBytes: number): boolean {
+  protected _shouldSubmitBatch(
+    batchSizeInBytes: number,
+    numberOfElements: number
+  ): boolean {
     const currentTimestamp = Date.now()
-    if (batchSizeInBytes < this.minTxSize) {
+    if (
+      batchSizeInBytes < this.minTxSize &&
+      numberOfElements < this.maxBatchSize
+    ) {
       const timeSinceLastSubmission =
         currentTimestamp - this.lastBatchSubmissionTimestamp
       if (timeSinceLastSubmission < this.maxBatchSubmissionTime) {
