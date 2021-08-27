@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/math"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rollup/rcfg"
 	"golang.org/x/crypto/sha3"
 )
 
@@ -562,10 +563,16 @@ func opBlockhash(pc *uint64, interpreter *EVMInterpreter, contract *Contract, me
 	num := stack.pop()
 
 	n := interpreter.intPool.get().Sub(interpreter.evm.BlockNumber, common.Big257)
-	if num.Cmp(n) > 0 && num.Cmp(interpreter.evm.BlockNumber) < 0 {
-		stack.push(interpreter.evm.GetHash(num.Uint64()).Big())
-	} else {
+	// OVM: Until we're certain that we will have fully deterministic blockhashes, return hash(0).
+	// TODO: Remove this diff once our blockhashes are guaranteed to be deterministic.
+	if rcfg.UsingOVM {
 		stack.push(interpreter.intPool.getZero())
+	} else {
+		if num.Cmp(n) > 0 && num.Cmp(interpreter.evm.BlockNumber) < 0 {
+			stack.push(interpreter.evm.GetHash(num.Uint64()).Big())
+		} else {
+			stack.push(interpreter.intPool.getZero())
+		}
 	}
 	interpreter.intPool.put(num, n)
 	return nil, nil

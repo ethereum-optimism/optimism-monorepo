@@ -140,4 +140,18 @@ describe('OVM Context: Layer 2 EVM Context', () => {
     expect(info.ethContext.blockNumber).to.deep.equal(blockNumber.toNumber())
     expect(info.ethContext.timestamp).to.deep.equal(timestamp.toNumber())
   })
+
+  it('should always return a blockhash of zero', async () => {
+    const blockHashGetterFactory = await ethers.getContractFactory(
+      'BlockHashGetter'
+    )
+    const blockHashGetter = await blockHashGetterFactory.deploy()
+    const currentBlock = await env.l2Wallet.provider.getBlockNumber()
+
+    // Go over the last 10 blocks and make sure that the blockhash is zero.
+    for (let i = currentBlock - 1; i >= Math.max(currentBlock - 10, 0); i++) {
+      const blockHash = await blockHashGetter.getBlockHash(i)
+      expect(blockHash).to.equal(ethers.constants.HashZero)
+    }
+  })
 })
