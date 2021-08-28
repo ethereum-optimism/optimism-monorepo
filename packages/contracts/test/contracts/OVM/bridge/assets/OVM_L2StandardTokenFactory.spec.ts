@@ -36,10 +36,10 @@ describe('OVM_L2StandardTokenFactory', () => {
       const receipt = await tx.wait()
       const [tokenCreatedEvent] = receipt.events
 
-      // Expect there to be an event emmited for the standard token creation
+      // Expect there to be an event emitted for the standard token creation
       expect(tokenCreatedEvent.event).to.be.eq('StandardL2TokenCreated')
 
-      // Get the L2 token address from the emmited event and check it was created correctly
+      // Get the L2 token address from the emitted event and check it was created correctly
       const l2TokenAddress = tokenCreatedEvent.args._l2Token
       const l2Token = new Contract(
         l2TokenAddress,

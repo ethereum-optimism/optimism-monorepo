@@ -47,7 +47,7 @@ interface iOVM_L2ERC20Bridge {
      * @dev initiate a withdraw of some tokens to the caller's account on L1
      * @param _l2Token Address of L2 token where withdrawal was initiated.
      * @param _amount Amount of the token to withdraw.
-     * param _l1Gas Unused, but included for potential forward compatibility considerations.
+     * @param _l1Gas Unused, but included for potential forward compatibility considerations.
      * @param _data Optional data to forward to L1. This data is provided
      *        solely as a convenience for external contracts. Aside from enforcing a maximum
      *        length, these contracts provide no guarantees about its content.
@@ -65,7 +65,7 @@ interface iOVM_L2ERC20Bridge {
      * @param _l2Token Address of L2 token where withdrawal is initiated.
      * @param _to L1 adress to credit the withdrawal to.
      * @param _amount Amount of the token to withdraw.
-     * param _l1Gas Unused, but included for potential forward compatibility considerations.
+     * @param _l1Gas Unused, but included for potential forward compatibility considerations.
      * @param _data Optional data to forward to L1. This data is provided
      *        solely as a convenience for external contracts. Aside from enforcing a maximum
      *        length, these contracts provide no guarantees about its content.
