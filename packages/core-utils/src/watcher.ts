@@ -18,7 +18,7 @@ export class Watcher {
   public l1: Layer
   public l2: Layer
   public pollInterval = 3000
-  public blocksToFetch = 2000
+  public blocksToFetch = 1500
 
   constructor(opts: WatcherOptions) {
     this.l1 = opts.l1
