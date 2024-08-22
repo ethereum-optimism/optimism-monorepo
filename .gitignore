@@ -36,6 +36,8 @@ packages/contracts-bedrock/deployments/anvil
 
 .devnet*
 
+.devnet-interop
+
 # Ignore local fuzzing results
 **/testdata/fuzz/
 
