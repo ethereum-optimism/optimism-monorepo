@@ -48,6 +48,8 @@ eth2-testnet-genesis deneb \
   --eth1-withdrawal-address=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --eth1-match-genesis-time
 
+echo "Writing env files now..."
+
 # write env files for each L2 service
 
 chain_env=".devnet-interop/env/l2/900200"
@@ -71,3 +73,5 @@ echo "OP_PROPOSER_PRIVATE_KEY=$($key_cmd --name=proposer)" >> "$chain_env/op-pro
 echo "OP_PROPOSER_GAME_FACTORY_ADDRESS=$(jq -r .DisputeGameFactoryProxy .devnet-interop/deployments/l2/900201/addresses.json)" >> "$chain_env/op-proposer.env"
 # batcher
 echo "OP_BATCHER_PRIVATE_KEY=$($key_cmd --name=batcher)" >> "$chain_env/op-batcher.env"
+
+echo "Interop devnet setup is complete!"
