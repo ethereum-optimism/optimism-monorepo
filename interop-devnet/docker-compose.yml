@@ -72,7 +72,29 @@ services:
       - "/bin/sh"
       - "/entrypoint-vc.sh"
 
+  op-supervisor:
+    depends_on:
+      - l1
+    build:
+      context: ../
+      dockerfile: ops/docker/op-stack-go/Dockerfile
+      target: op-supervisor-target
+    ports:
+      - "9045:8545"
+    volumes:
+      - "supervisor_data:/db"
+    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
+    command: >
+      op-supervisor
+      --datadir="/db"
+      --l2-rpcs=""
+      --rpc.addr="0.0.0.0"
+      --rpc.port=8545
+      --rpc.enable-admin
+
   l2-a:
+    depends_on:
+      - op-supervisor
     build:
       context: ../ops-bedrock/
       dockerfile: l2-op-geth.Dockerfile
@@ -91,6 +113,8 @@ services:
       GETH_ROLLUP_INTEROPRPC: "ws://op-supervisor:8545"
 
   l2-b:
+    depends_on:
+      - op-supervisor
     build:
       context: ../ops-bedrock/
       dockerfile: l2-op-geth.Dockerfile
@@ -107,25 +131,6 @@ services:
     environment:
       GETH_MINER_RECOMMIT: 100ms
       GETH_ROLLUP_INTEROPRPC: "ws://op-supervisor:8545"
-
-  op-supervisor:
-    depends_on:
-      - l1
-    build:
-      context: ../
-      dockerfile: ops/docker/op-stack-go/Dockerfile
-      target: op-supervisor-target
-    ports:
-      - "9045:8545"
-    volumes:
-      - "supervisor_data:/db"
-    image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
-    command: >
-      op-supervisor
-      --datadir="/db"
-      --rpc.addr="0.0.0.0"
-      --rpc.port=8545
-      --rpc.enable-admin
 
   op-node-a:
     depends_on:
