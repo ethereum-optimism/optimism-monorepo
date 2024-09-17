@@ -31,3 +31,7 @@ devnet-clean:
 
 devnet-logs:
   docker compose logs -f
+
+supervisor-workaround:
+  cast rpc --rpc-url="http://localhost:9045" supervisor_addL2RPC "ws://l2-a:8546"
+  cast rpc --rpc-url="http://localhost:9045" supervisor_addL2RPC "ws://l2-b:8546"

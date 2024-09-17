@@ -111,8 +111,6 @@ services:
   op-supervisor:
     depends_on:
       - l1
-      - l2-a
-      - l2-b
     build:
       context: ../
       dockerfile: ops/docker/op-stack-go/Dockerfile
@@ -124,7 +122,6 @@ services:
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
     command: >
       op-supervisor
-      --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
       --datadir="/db"
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
