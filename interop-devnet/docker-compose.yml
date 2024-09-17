@@ -11,12 +11,14 @@ volumes:
   l2_b_data:
   safedb_b_data:
   supervisor_data:
+  op_log_a:
+  op_log_b:
 
 services:
 
   l1:
     build:
-      context: .
+      context: ../ops-bedrock
       dockerfile: l1-geth.Dockerfile
     ports:
       - "8545:8545"
@@ -24,8 +26,8 @@ services:
       - "7060:6060"
     volumes:
       - "l1_data:/db"
-      - "${PWD}/.devnet-interop/genesis/l1/genesis.json:/genesis.json"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../.devnet-interop/genesis/l1/genesis.json:/genesis.json"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     environment:
       GETH_MINER_RECOMMIT: 100ms
 
@@ -33,17 +35,17 @@ services:
     depends_on:
       - l1
     build:
-        context: .
+        context: ../ops-bedrock
         dockerfile: l1-lighthouse.Dockerfile
     ports:
       - "9000:9000"
       - "5052:5052"
     volumes:
       - "l1_bn_data:/db"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
-      - "${PWD}/ops-bedrock/beacon-data/config.yaml:/genesis/config.yaml"
-      - "${PWD}/ops-bedrock/beacon-data/deposit_contract_block.txt:/genesis/deposit_contract_block.txt"
-      - "${PWD}/.devnet-interop/genesis/l1/beaconstate.ssz:/genesis/genesis.ssz"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../ops-bedrock/beacon-data/config.yaml:/genesis/config.yaml"
+      - "${PWD}/../ops-bedrock/beacon-data/deposit_contract_block.txt:/genesis/deposit_contract_block.txt"
+      - "${PWD}/../.devnet-interop/genesis/l1/beaconstate.ssz:/genesis/genesis.ssz"
     environment:
       LH_EXECUTION_ENDPOINT: "http://l1:8551"
     entrypoint:
@@ -55,15 +57,15 @@ services:
       - l1
       - l1-bn
     build:
-        context: .
+        context: ../ops-bedrock
         dockerfile: l1-lighthouse.Dockerfile
     volumes:
       - "l1_vc_data:/db"
-      - "${PWD}/ops-bedrock/beacon-data/data/keys:/validator_setup/validators"
-      - "${PWD}/ops-bedrock/beacon-data/data/secrets:/validator_setup/secrets"
-      - "${PWD}/ops-bedrock/beacon-data/config.yaml:/genesis/config.yaml"
-      - "${PWD}/ops-bedrock/beacon-data/deposit_contract_block.txt:/genesis/deposit_contract_block.txt"
-      - "${PWD}/.devnet-interop/genesis/l1/beaconstate.ssz:/genesis/genesis.ssz"
+      - "${PWD}/../ops-bedrock/beacon-data/data/keys:/validator_setup/validators"
+      - "${PWD}/../ops-bedrock/beacon-data/data/secrets:/validator_setup/secrets"
+      - "${PWD}/../ops-bedrock/beacon-data/config.yaml:/genesis/config.yaml"
+      - "${PWD}/../ops-bedrock/beacon-data/deposit_contract_block.txt:/genesis/deposit_contract_block.txt"
+      - "${PWD}/../.devnet-interop/genesis/l1/beaconstate.ssz:/genesis/genesis.ssz"
     environment:
       LH_BEACON_NODES: "http://l1-bn:5052/"
     entrypoint:
@@ -75,12 +77,12 @@ services:
       context: ../ops-bedrock/
       dockerfile: l2-op-geth.Dockerfile
     ports:
-      - "9545:8545"
-      - "8060:6060"
+      - "9145:8545"
+      - "8160:6060"
     volumes:
       - "l2_a_data:/db"
-      - "${PWD}/.devnet-interop/genesis/l2/900200/genesis.json:/genesis.json"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../.devnet-interop/genesis/l2/900200/genesis.json:/genesis.json"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
       - "/bin/sh"
       - "/entrypoint.sh"
@@ -93,12 +95,12 @@ services:
       context: ../ops-bedrock/
       dockerfile: l2-op-geth.Dockerfile
     ports:
-      - "9545:8545"
-      - "8060:6060"
+      - "9245:8545"
+      - "8260:6060"
     volumes:
       - "l2_a_data:/db"
-      - "${PWD}/.devnet-interop/genesis/l2/900201/genesis.json:/genesis.json"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../.devnet-interop/genesis/l2/900201/genesis.json:/genesis.json"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
       - "/bin/sh"
       - "/entrypoint.sh"
@@ -116,7 +118,7 @@ services:
       dockerfile: ops/docker/op-stack-go/Dockerfile
       target: op-supervisor-target
     ports:
-      - "8545:8545"
+      - "9045:8545"
     volumes:
       - "supervisor_data:/db"
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
@@ -167,17 +169,17 @@ services:
       --rpc.enable-admin
       --safedb.path=/db
     ports:
-      - "7545:8545"
-      - "9003:9003"
-      - "7300:7300"
-      - "6060:6060"
+      - "7145:8545"
+      - "9103:9003"
+      - "7100:7300"
+      - "6160:6060"
     volumes:
       - "safedb_a_data:/db"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
-      - "${PWD}/.devnet-interop/genesis/l2/900200/rollup.json:/rollup.json"
-      - op_log:/op_log
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../.devnet-interop/genesis/l2/900200/rollup.json:/rollup.json"
+      - op_log_a:/op_log
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900200/op-node.env"
+      - "${PWD}/../.devnet-interop/env/l2/900200/op-node.env"
 
   op-node-b:
     depends_on:
@@ -218,17 +220,17 @@ services:
       --rpc.enable-admin
       --safedb.path=/db
     ports:
-      - "7545:8545"
-      - "9003:9003"
-      - "7300:7300"
-      - "6060:6060"
+      - "7245:8545"
+      - "9203:9003"
+      - "7200:7300"
+      - "6260:6060"
     volumes:
       - "safedb_b_data:/db"
-      - "${PWD}/ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
-      - "${PWD}/.devnet-interop/genesis/l2/900201/rollup.json:/rollup.json"
-      - op_log:/op_log
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
+      - "${PWD}/../.devnet-interop/genesis/l2/900201/rollup.json:/rollup.json"
+      - op_log_b:/op_log
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900201/op-node.env"
+      - "${PWD}/../.devnet-interop/env/l2/900201/op-node.env"
 
   op-proposer-a:
     depends_on:
@@ -240,9 +242,9 @@ services:
       target: op-proposer-target
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:devnet
     ports:
-      - "6062:6060"
-      - "7302:7300"
-      - "6546:8545"
+      - "6162:6060"
+      - "7102:7300"
+      - "6146:8545"
     environment:
       OP_PROPOSER_L1_ETH_RPC: http://l1:8545
       OP_PROPOSER_ROLLUP_RPC: http://op-node-a:8545
@@ -255,7 +257,7 @@ services:
       OP_PROPOSER_ALLOW_NON_FINALIZED: "true"
       OP_PROPOSER_RPC_ENABLE_ADMIN: "true"
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900200/op-proposer.env"
+      - "${PWD}/../.devnet-interop/env/l2/900200/op-proposer.env"
 
   op-proposer-b:
     depends_on:
@@ -267,9 +269,9 @@ services:
       target: op-proposer-target
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-proposer:devnet
     ports:
-      - "6062:6060"
-      - "7302:7300"
-      - "6546:8545"
+      - "6262:6060"
+      - "7202:7300"
+      - "6246:8545"
     environment:
       OP_PROPOSER_L1_ETH_RPC: http://l1:8545
       OP_PROPOSER_ROLLUP_RPC: http://op-node-b:8545
@@ -282,7 +284,7 @@ services:
       OP_PROPOSER_ALLOW_NON_FINALIZED: "true"
       OP_PROPOSER_RPC_ENABLE_ADMIN: "true"
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900201/op-proposer.env"
+      - "${PWD}/../.devnet-interop/env/l2/900201/op-proposer.env"
 
   op-batcher-a:
     depends_on:
@@ -295,9 +297,9 @@ services:
       target: op-batcher-target
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:devnet
     ports:
-      - "6061:6060"
-      - "7301:7300"
-      - "6545:8545"
+      - "6161:6060"
+      - "7101:7300"
+      - "6145:8545"
     environment:
       OP_BATCHER_L1_ETH_RPC: http://l1:8545
       OP_BATCHER_L2_ETH_RPC: http://l2-a:8545
@@ -313,7 +315,7 @@ services:
       # uncomment to use blobs
       # OP_BATCHER_DATA_AVAILABILITY_TYPE: blobs
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900200/op-batcher.env"
+      - "${PWD}/../.devnet-interop/env/l2/900200/op-batcher.env"
 
   op-batcher-b:
     depends_on:
@@ -326,9 +328,9 @@ services:
       target: op-batcher-target
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-batcher:devnet
     ports:
-      - "6061:6060"
-      - "7301:7300"
-      - "6545:8545"
+      - "6261:6060"
+      - "7201:7300"
+      - "6245:8545"
     environment:
       OP_BATCHER_L1_ETH_RPC: http://l1:8545
       OP_BATCHER_L2_ETH_RPC: http://l2-b:8545
@@ -344,4 +346,4 @@ services:
       # uncomment to use blobs
       # OP_BATCHER_DATA_AVAILABILITY_TYPE: blobs
     env_file:
-      - "${PWD}/.devnet-interop/env/l2/900201/op-batcher.env"
+      - "${PWD}/../.devnet-interop/env/l2/900201/op-batcher.env"

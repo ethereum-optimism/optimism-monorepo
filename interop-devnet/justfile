@@ -9,10 +9,10 @@ devnet-build-images:
        --build-arg GIT_DATE={git_date}
 
 devnet-up:
-  docker compose up \
-    docker compose up -d l1 l1-bn l1-vc
+  docker compose up -d l1 l1-bn l1-vc
 
   docker compose up -d \
+    op-supervisor \
     op-node-a op-batcher-a op-proposer-a \
     op-node-b op-batcher-b op-proposer-b
 
