@@ -98,7 +98,7 @@ services:
       - "9245:8545"
       - "8260:6060"
     volumes:
-      - "l2_a_data:/db"
+      - "l2_b_data:/db"
       - "${PWD}/../.devnet-interop/genesis/l2/900201/genesis.json:/genesis.json"
       - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
