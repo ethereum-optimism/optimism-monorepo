@@ -82,8 +82,10 @@ var (
 		EnvVars: prefixEnvVars("MAX_BLOCKS_PER_SPAN_BATCH"),
 	}
 	TargetNumFramesFlag = &cli.IntFlag{
-		Name:    "target-num-frames",
-		Usage:   "The target number of frames to create per channel. Controls number of blobs per blob tx, if using Blob DA.",
+		Name: "target-num-frames",
+		Usage: "The target number of frames to create per channel. " +
+			"Controls number of blobs per blob tx, if using Blob DA, " +
+			"or number of frames per blob, if using altDA.",
 		Value:   1,
 		EnvVars: prefixEnvVars("TARGET_NUM_FRAMES"),
 	}
