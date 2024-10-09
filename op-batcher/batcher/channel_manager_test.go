@@ -290,11 +290,12 @@ func newFakeDynamicEthChannelConfig(lgr log.Logger,
 	calldataCfg := ChannelConfig{
 		MaxFrameSize:    120_000 - 1,
 		TargetNumFrames: 1,
+		DaType:          DaTypeCalldata,
 	}
 	blobCfg := ChannelConfig{
 		MaxFrameSize:    eth.MaxBlobDataSize - 1,
 		TargetNumFrames: 3, // gets closest to amortized fixed tx costs
-		UseBlobs:        true,
+		DaType:          DaTypeBlob,
 	}
 	calldataCfg.InitNoneCompressor()
 	blobCfg.InitNoneCompressor()
@@ -348,7 +349,7 @@ func TestChannelManager_TxData(t *testing.T) {
 
 			cfg.chooseBlobs = tc.chooseBlobsWhenChannelCreated
 			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-			require.Equal(t, tc.chooseBlobsWhenChannelCreated, m.defaultCfg.UseBlobs)
+			require.Equal(t, tc.chooseBlobsWhenChannelCreated, m.defaultCfg.DaType == DaTypeBlob)
 
 			// Seed channel manager with a block
 			rng := rand.New(rand.NewSource(99))
@@ -385,8 +386,8 @@ func TestChannelManager_TxData(t *testing.T) {
 			}
 
 			require.Equal(t, tc.numExpectedAssessments, cfg.assessments)
-			require.Equal(t, tc.chooseBlobsWhenChannelSubmitted, data.asBlob)
-			require.Equal(t, tc.chooseBlobsWhenChannelSubmitted, m.defaultCfg.UseBlobs)
+			require.Equal(t, tc.chooseBlobsWhenChannelSubmitted, data.daType == DaTypeBlob)
+			require.Equal(t, tc.chooseBlobsWhenChannelSubmitted, m.defaultCfg.DaType == DaTypeBlob)
 		})
 	}
 
