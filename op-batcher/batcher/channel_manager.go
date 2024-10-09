@@ -214,16 +214,16 @@ func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
 	newCfg := s.cfgProvider.ChannelConfig()
 
 	// No change:
-	if newCfg.UseBlobs == s.defaultCfg.UseBlobs {
+	if newCfg.UseBlobs() == s.defaultCfg.UseBlobs() {
 		s.log.Debug("Recomputing optimal ChannelConfig: no need to switch DA type",
-			"useBlobs", s.defaultCfg.UseBlobs)
+			"useBlobs", s.defaultCfg.UseBlobs())
 		return s.nextTxData(channel)
 	}
 
 	// Change:
 	s.log.Info("Recomputing optimal ChannelConfig: changing DA type and requeing blocks...",
-		"useBlobsBefore", s.defaultCfg.UseBlobs,
-		"useBlobsAfter", newCfg.UseBlobs)
+		"useBlobsBefore", s.defaultCfg.UseBlobs(),
+		"useBlobsAfter", newCfg.UseBlobs())
 
 	// Invalidate the channel so its blocks
 	// get requeued:
@@ -326,7 +326,7 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 		"compression_algo", cfg.CompressorConfig.CompressionAlgo,
 		"target_num_frames", cfg.TargetNumFrames,
 		"max_frame_size", cfg.MaxFrameSize,
-		"use_blobs", cfg.UseBlobs,
+		"da_type", cfg.DaType,
 	)
 	s.metr.RecordChannelOpened(pc.ID(), s.blocks.Len())
 
