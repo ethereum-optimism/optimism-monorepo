@@ -160,8 +160,10 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 		}
 	}
 
-	l.wg.Add(1)
-	go l.loop()
+	receiptsCh := make(chan txmgr.TxReceipt[txRef])
+
+	go l.receiptsLoop(receiptsCh)
+	go l.mainLoop(receiptsCh)
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -404,7 +406,39 @@ const (
 	TxpoolCancelPending
 )
 
-func (l *BatchSubmitter) loop() {
+func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
+	l.wg.Add(1)
+	defer l.wg.Done()
+	l.txpoolMutex.Lock()
+	l.txpoolState = TxpoolGood
+	l.txpoolMutex.Unlock()
+
+	for {
+		select {
+		case r := <-receiptsCh:
+			l.txpoolMutex.Lock()
+			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
+				l.txpoolState = TxpoolBlocked
+				l.txpoolBlockedBlob = r.ID.isBlob
+				l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
+			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
+				// Set state to TxpoolGood even if the cancellation transaction ended in error
+				// since the stuck transaction could have cleared while we were waiting.
+				l.txpoolState = TxpoolGood
+				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
+			}
+			l.txpoolMutex.Unlock()
+			l.Log.Info("Handling receipt", "id", r.ID)
+			l.handleReceipt(r)
+		case <-l.shutdownCtx.Done():
+			l.Log.Info("Receipt processing loop done")
+			return
+		}
+	}
+}
+
+func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
+	l.wg.Add(1)
 	defer l.wg.Done()
 
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
@@ -424,7 +458,6 @@ func (l *BatchSubmitter) loop() {
 	defer close(receiptsLoopDone) // shut down receipt loop
 	l.l2BlockAdded = make(chan struct{})
 	defer close(l.l2BlockAdded)
-	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 	go l.processReceiptsLoop(receiptsCh, receiptsLoopDone)
 
 	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
