@@ -161,7 +161,7 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
-
+	l.wg.Add(2)
 	go l.receiptsLoop(receiptsCh)
 	go l.mainLoop(receiptsCh)
 
@@ -407,7 +407,6 @@ const (
 )
 
 func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
-	l.wg.Add(1)
 	defer l.wg.Done()
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
@@ -438,7 +437,6 @@ func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
 }
 
 func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
-	l.wg.Add(1)
 	defer l.wg.Done()
 
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
