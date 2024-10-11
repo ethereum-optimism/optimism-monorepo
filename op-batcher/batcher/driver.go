@@ -161,10 +161,10 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	}
 
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
+	receiptsLoopCtx, cancelReceiptsLoopCtx := context.WithCancel(context.Background())
 	l.wg.Add(2)
-	receiptsLoopDone := make(chan struct{})
-	go l.receiptsLoop(receiptsCh, receiptsLoopDone) // receives from receiptsCh
-	go l.mainLoop(receiptsCh, receiptsLoopDone)     // sends on receiptsCh, responsible for closing goroutine above
+	go l.receiptsLoop(receiptsLoopCtx, receiptsCh)                  // receives from receiptsCh
+	go l.mainLoop(l.shutdownCtx, receiptsCh, cancelReceiptsLoopCtx) // sends on receiptsCh
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -410,7 +410,7 @@ const (
 )
 
 // receiptsLoop handles transaction receipts from the DA layer
-func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], done chan struct{}) {
+func (l *BatchSubmitter) receiptsLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer l.wg.Done()
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
@@ -433,7 +433,7 @@ func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], do
 			l.txpoolMutex.Unlock()
 			l.Log.Info("Handling receipt", "id", r.ID)
 			l.handleReceipt(r)
-		case <-done:
+		case <-ctx.Done():
 			l.Log.Info("Receipt processing loop done")
 			return
 		}
@@ -446,9 +446,9 @@ func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], do
 // -  loads unsafe blocks from the sequencer
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
-func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopDone chan struct{}) {
+func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel context.CancelFunc) {
 	defer l.wg.Done()
-	defer close(receiptsLoopDone)
+	defer receiptsLoopCancel()
 
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
