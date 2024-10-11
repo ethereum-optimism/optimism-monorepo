@@ -226,11 +226,9 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	defer cancel()
 	go func() {
 		<-wrapped.Done()
-		l.Log.Warn("calling cancelKillCtx")
 		cancelKill()
 	}()
 
-	l.Log.Warn("calling cancelShutdownCtx")
 	l.cancelShutdownCtx()
 	l.wg.Wait()
 	l.cancelKillCtx()
