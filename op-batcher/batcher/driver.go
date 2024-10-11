@@ -471,17 +471,18 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 
 			l.state.pruneSafeBlocks(syncStatus.SafeL2)
 			l.state.pruneChannels(syncStatus.SafeL2)
-			if err := l.loadBlocksIntoState(*syncStatus, l.shutdownCtx); errors.Is(err, ErrReorg) {
-				// Wait for any in flight transactions
-				// to be ingested by the node before
-				// we start loading blocks again.
-				err := l.waitNodeSync()
-				if err != nil {
-					l.Log.Warn("error waiting for node sync", "err", err)
-				}
-				l.clearState(l.shutdownCtx)
+
+			err = l.checkExpectedProgress(*syncStatus)
+			if err != nil {
+				l.waitNodeSyncAndClearState()
 				continue
 			}
+
+			if err := l.loadBlocksIntoState(*syncStatus, l.shutdownCtx); errors.Is(err, ErrReorg) {
+				l.waitNodeSyncAndClearState()
+				continue
+			}
+
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-ctx.Done():
 			l.Log.Warn("main loop returning")
@@ -577,6 +578,45 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			return
 		}
 	}
+}
+
+func (l *BatchSubmitter) waitNodeSyncAndClearState() {
+	// Wait for any in flight transactions
+	// to be ingested by the node before
+	// we start loading blocks again.
+	err := l.waitNodeSync()
+	if err != nil {
+		l.Log.Warn("error waiting for node sync", "err", err)
+	}
+	l.clearState(l.shutdownCtx)
+}
+
+// checkExpectedProgress uses the supplied syncStatus to infer
+// whether the node providing the status has made the expected
+// safe head progress given fully submitted channels held in
+// state.
+func (l *BatchSubmitter) checkExpectedProgress(syncStatus eth.SyncStatus) error {
+
+	// Define a buffer: a delay denominated in L1 blocks
+	// to allow verifier to process blocks.
+	// Set to 0 to require immediate safe head advancement.
+	// Set to 1 to allow e.g. 12s for the safe head to advance
+	// after the L1 inclusion block was ingested.
+	// TODO extract this into a config variable
+	// TODO should we also wait numConfirmations (this is a txmgr config variable, not in scope of the batch submitter)
+
+	BUFFER := uint64(1)
+
+	verifierCurrentL1 := syncStatus.CurrentL1
+	for _, ch := range l.state.channelQueue {
+		if ch.isFullySubmitted() && // This implies a number of l1 confirmations has passed, depending on how the txmgr was configured
+			!ch.isTimedOut() &&
+			verifierCurrentL1.Number > ch.maxInclusionBlock+BUFFER &&
+			syncStatus.SafeL2.Number < ch.LatestL2().Number {
+			return errors.New("safe head did not make expected progress")
+		}
+	}
+	return nil
 }
 
 // waitNodeSync Check to see if there was a batcher tx sent recently that
