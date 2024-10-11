@@ -409,6 +409,7 @@ const (
 	TxpoolCancelPending
 )
 
+// receiptsLoop handles transaction receipts from the DA layer
 func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], done chan struct{}) {
 	defer l.wg.Done()
 	l.txpoolMutex.Lock()
@@ -439,6 +440,12 @@ func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], do
 	}
 }
 
+// mainLoop periodically:
+// -  polls the sequencer,
+// -  prunes the channel manager state (i.e. safe blocks)
+// -  loads unsafe blocks from the sequencer
+// -  drives the creation of channels and frames
+// -  sends transactions to the DA layer
 func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopDone chan struct{}) {
 	defer l.wg.Done()
 	defer close(receiptsLoopDone)
