@@ -162,8 +162,9 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 	l.wg.Add(2)
-	go l.receiptsLoop(receiptsCh)
-	go l.mainLoop(receiptsCh)
+	receiptsLoopDone := make(chan struct{})
+	go l.receiptsLoop(receiptsCh, receiptsLoopDone) // receives from receiptsCh
+	go l.mainLoop(receiptsCh, receiptsLoopDone)     // sends on receiptsCh, responsible for closing goroutine above
 
 	l.Log.Info("Batch Submitter started")
 	return nil
@@ -225,9 +226,11 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	defer cancel()
 	go func() {
 		<-wrapped.Done()
+		l.Log.Warn("calling cancelKillCtx")
 		cancelKill()
 	}()
 
+	l.Log.Warn("calling cancelShutdownCtx")
 	l.cancelShutdownCtx()
 	l.wg.Wait()
 	l.cancelKillCtx()
@@ -406,7 +409,7 @@ const (
 	TxpoolCancelPending
 )
 
-func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
+func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], done chan struct{}) {
 	defer l.wg.Done()
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
@@ -429,15 +432,16 @@ func (l *BatchSubmitter) receiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
 			l.txpoolMutex.Unlock()
 			l.Log.Info("Handling receipt", "id", r.ID)
 			l.handleReceipt(r)
-		case <-l.shutdownCtx.Done():
+		case <-done:
 			l.Log.Info("Receipt processing loop done")
 			return
 		}
 	}
 }
 
-func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef]) {
+func (l *BatchSubmitter) mainLoop(receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopDone chan struct{}) {
 	defer l.wg.Done()
+	defer close(receiptsLoopDone)
 
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
