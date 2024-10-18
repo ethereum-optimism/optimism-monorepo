@@ -111,7 +111,7 @@ type BatchSubmitter struct {
 	running bool
 
 	txpoolMutex       sync.Mutex // guards txpoolState and txpoolBlockedBlob
-	txpoolState       int
+	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
 	// lastStoredBlock is the last block loaded into `state`. If it is empty it should be set to the l2 safe head.
@@ -393,6 +393,8 @@ func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus)
 // Submitted batch, but it is not valid
 // Missed L2 block somehow.
 
+type TxPoolState int
+
 const (
 	// Txpool states.  Possible state transitions:
 	//   TxpoolGood -> TxpoolBlocked:
@@ -402,33 +404,34 @@ const (
 	//     send a cancellation transaction.
 	//   TxpoolCancelPending -> TxpoolGood:
 	//     happens once the cancel transaction completes, whether successfully or in error.
-	TxpoolGood int = iota
+	TxpoolGood TxPoolState = iota
 	TxpoolBlocked
 	TxpoolCancelPending
 )
 
+// setTxPoolState locks the mutex, sets the parameters to the supplied ones, and release the mutex.
+func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBlob bool) {
+	l.txpoolMutex.Lock()
+	l.txpoolState = txPoolState
+	l.txpoolBlockedBlob = txPoolBlockedBlob
+	l.txpoolMutex.Unlock()
+}
+
 // receiptsLoop handles transaction receipts from the DA layer
 func (l *BatchSubmitter) receiptsLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef]) {
 	defer l.wg.Done()
-	l.txpoolMutex.Lock()
-	l.txpoolState = TxpoolGood
-	l.txpoolMutex.Unlock()
-
 	for {
 		select {
 		case r := <-receiptsCh:
-			l.txpoolMutex.Lock()
 			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
-				l.txpoolState = TxpoolBlocked
-				l.txpoolBlockedBlob = r.ID.isBlob
+				l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
 				l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
 			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
 				// Set state to TxpoolGood even if the cancellation transaction ended in error
 				// since the stuck transaction could have cleared while we were waiting.
-				l.txpoolState = TxpoolGood
+				l.setTxPoolState(TxpoolGood, l.txpoolBlockedBlob)
 				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
 			}
-			l.txpoolMutex.Unlock()
 			l.Log.Info("Handling receipt", "id", r.ID)
 			l.handleReceipt(r)
 		case <-ctx.Done():
