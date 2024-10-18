@@ -425,7 +425,7 @@ func (l *BatchSubmitter) receiptsLoop(ctx context.Context, receiptsCh chan txmgr
 		case r := <-receiptsCh:
 			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
 				l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
-				l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
+				l.Log.Warn("incompatible tx in txpool", "id", r.ID, "is_blob", r.ID.isBlob)
 			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
 				// Set state to TxpoolGood even if the cancellation transaction ended in error
 				// since the stuck transaction could have cleared while we were waiting.
