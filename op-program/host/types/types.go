@@ -26,6 +26,8 @@ type L2Source interface {
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error)
 	OutputByNumber(ctx context.Context, blockNumber uint64) (eth.Output, error)
+	PayloadExecutionWitness(ctx context.Context, parentHash common.Hash, payload eth.PayloadAttributes) (*eth.ExecutionWitness, error)
+	GetProof(ctx context.Context, address common.Address, storage []common.Hash, blockTag string) (*eth.AccountResult, error)
 	RollupConfig() *rollup.Config
 	ExperimentalEnabled() bool
 }

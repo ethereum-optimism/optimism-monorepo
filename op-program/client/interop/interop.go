@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -42,6 +43,7 @@ type taskExecutor interface {
 		claimedBlockNumber uint64,
 		l1Oracle l1.Oracle,
 		l2Oracle l2.Oracle,
+		hClient preimage.Hinter,
 	) (tasks.DerivationResult, error)
 
 	BuildDepositOnlyBlock(
@@ -53,17 +55,18 @@ type taskExecutor interface {
 		l1Oracle l1.Oracle,
 		l2Oracle l2.Oracle,
 		optimisticBlock *ethtypes.Block,
+		hClient preimage.Hinter,
 	) (blockHash common.Hash, outputRoot eth.Bytes32, err error)
 }
 
-func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
-	return runInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, validateClaim, &interopTaskExecutor{})
+func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, hClient preimage.Hinter) error {
+	return runInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, validateClaim, &interopTaskExecutor{}, hClient)
 }
 
-func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, tasks taskExecutor) error {
+func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, tasks taskExecutor, hClient preimage.Hinter) error {
 	logger.Info("Interop Program Bootstrapped", "bootInfo", bootInfo)
 
-	expected, err := stateTransition(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, tasks)
+	expected, err := stateTransition(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, tasks, hClient)
 	if err != nil {
 		return err
 	}
@@ -73,7 +76,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Prei
 	return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.Claim), eth.Bytes32(expected))
 }
 
-func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, tasks taskExecutor) (common.Hash, error) {
+func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, tasks taskExecutor, hClient preimage.Hinter) (common.Hash, error) {
 	if bootInfo.AgreedPrestate == InvalidTransitionHash {
 		return InvalidTransitionHash, nil
 	}
@@ -93,7 +96,7 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 	}
 	expectedPendingProgress := transitionState.PendingProgress
 	if transitionState.Step < uint64(len(superRoot.Chains)) {
-		block, err := deriveOptimisticBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, transitionState, tasks)
+		block, err := deriveOptimisticBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, transitionState, tasks, hClient)
 		if errors.Is(err, ErrL1HeadReached) {
 			return InvalidTransitionHash, nil
 		} else if err != nil {
@@ -106,7 +109,7 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 			return common.Hash{}, fmt.Errorf("pending progress length does not match the expected step")
 		}
 		expectedSuperRoot, err := RunConsolidation(
-			logger, bootInfo, l1PreimageOracle, l2PreimageOracle, transitionState, superRoot, tasks)
+			logger, bootInfo, l1PreimageOracle, l2PreimageOracle, transitionState, superRoot, tasks, hClient)
 		if err != nil {
 			return common.Hash{}, err
 		}
@@ -140,7 +143,7 @@ func parseAgreedState(bootInfo *boot.BootInfoInterop, l2PreimageOracle l2.Oracle
 	return transitionState, superRoot, nil
 }
 
-func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor) (types.OptimisticBlock, error) {
+func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor, hClient preimage.Hinter) (types.OptimisticBlock, error) {
 	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
@@ -163,6 +166,7 @@ func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1
 		claimedBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
+		hClient,
 	)
 	if err != nil {
 		return types.OptimisticBlock{}, err
@@ -190,7 +194,7 @@ func (t *interopTaskExecutor) RunDerivation(
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
-) (tasks.DerivationResult, error) {
+	hClient preimage.Hinter) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
 		rollupCfg,
@@ -202,6 +206,7 @@ func (t *interopTaskExecutor) RunDerivation(
 		l2Oracle,
 		memorydb.New(),
 		tasks.DerivationOptions{StoreBlockData: true},
+		hClient,
 	)
 }
 
@@ -214,6 +219,7 @@ func (t *interopTaskExecutor) BuildDepositOnlyBlock(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	optimisticBlock *ethtypes.Block,
+	hClient preimage.Hinter,
 ) (common.Hash, eth.Bytes32, error) {
 	return tasks.BuildDepositOnlyBlock(
 		logger,
@@ -224,5 +230,6 @@ func (t *interopTaskExecutor) BuildDepositOnlyBlock(
 		agreedL2OutputRoot,
 		l1Oracle,
 		l2Oracle,
+		hClient,
 	)
 }
