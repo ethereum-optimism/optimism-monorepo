@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
@@ -18,7 +19,8 @@ import (
 var ErrNotFound = errors.New("not found")
 
 type OracleEngine struct {
-	api *engineapi.L2EngineAPI
+	api    *engineapi.L2EngineAPI
+	hinter preimage.Hinter
 
 	// backend is the actual implementation used to create and process blocks. It is specifically a
 	// engineapi.CachingEngineBackend to ensure that blocks are stored when they are created and don't need to be
@@ -27,12 +29,13 @@ type OracleEngine struct {
 	rollupCfg *rollup.Config
 }
 
-func NewOracleEngine(rollupCfg *rollup.Config, logger log.Logger, backend engineapi.CachingEngineBackend) *OracleEngine {
+func NewOracleEngine(rollupCfg *rollup.Config, logger log.Logger, backend engineapi.CachingEngineBackend, hinter preimage.Hinter) *OracleEngine {
 	engineAPI := engineapi.NewL2EngineAPI(logger, backend, nil)
 	return &OracleEngine{
 		api:       engineAPI,
 		backend:   backend,
 		rollupCfg: rollupCfg,
+		hinter:    hinter,
 	}
 }
 
@@ -60,6 +63,7 @@ func (o *OracleEngine) L2OutputAtBlockHash(blockHash common.Hash) (*eth.OutputV0
 
 func (o *OracleEngine) l2OutputAtHeader(header *types.Header) (*eth.OutputV0, error) {
 	blockHash := header.Hash()
+	o.hinter.Hint(AccountProofHint{BlockHash: blockHash, Address: predeploys.L2ToL1MessagePasserAddr})
 	stateDB, err := o.backend.StateAt(header.Root)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open L2 state db at block %s: %w", blockHash, err)
@@ -94,6 +98,22 @@ func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadIn
 }
 
 func (o *OracleEngine) ForkchoiceUpdate(ctx context.Context, state *eth.ForkchoiceState, attr *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
+	if attr != nil {
+		o.hinter.Hint(PayloadWitnessHint{
+			ParentBlockHash: state.HeadBlockHash,
+			PayloadAttributes: eth.PayloadAttributes{
+				PrevRandao:            attr.PrevRandao,
+				Timestamp:             attr.Timestamp,
+				SuggestedFeeRecipient: attr.SuggestedFeeRecipient,
+				Transactions:          attr.Transactions,
+				GasLimit:              attr.GasLimit,
+				EIP1559Params:         attr.EIP1559Params,
+				ParentBeaconBlockRoot: attr.ParentBeaconBlockRoot,
+				NoTxPool:              true,
+			},
+		})
+	}
+
 	switch method := o.rollupCfg.ForkchoiceUpdatedVersion(attr); method {
 	case eth.FCUV3:
 		return o.api.ForkchoiceUpdatedV3(ctx, state, attr)

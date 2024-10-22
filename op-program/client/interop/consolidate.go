@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -58,6 +59,7 @@ func RunConsolidation(
 	transitionState *types.TransitionState,
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
+	hClient preimage.Hinter,
 ) (eth.Bytes32, error) {
 	deps, err := newConsolidateCheckDeps(transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
@@ -103,6 +105,7 @@ func RunConsolidation(
 				chainAgreedPrestate,
 				tasks,
 				optimisticBlock,
+				hClient,
 			)
 			if err != nil {
 				return eth.Bytes32{}, err
@@ -277,6 +280,7 @@ func buildDepositOnlyBlock(
 	chainAgreedPrestate eth.ChainIDAndOutput,
 	tasks taskExecutor,
 	optimisticBlock *ethtypes.Block,
+	hClient preimage.Hinter,
 ) (common.Hash, eth.Bytes32, error) {
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
@@ -295,6 +299,7 @@ func buildDepositOnlyBlock(
 		l1PreimageOracle,
 		l2PreimageOracle,
 		optimisticBlock,
+		hClient,
 	)
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, err

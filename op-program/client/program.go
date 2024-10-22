@@ -64,12 +64,12 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 
 	if cfg.InteropEnabled {
 		bootInfo := boot.BootstrapInterop(pClient)
-		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, !cfg.SkipValidation)
+		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, !cfg.SkipValidation, hClient)
 	}
 	if cfg.DB == nil {
 		return errors.New("db config is required")
 	}
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
 	derivationOptions := tasks.DerivationOptions{StoreBlockData: cfg.StoreBlockData}
-	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB, derivationOptions)
+	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB, hClient, derivationOptions)
 }
