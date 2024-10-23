@@ -12,10 +12,23 @@ type msgKey struct {
 	logIndex   uint32
 }
 
-var ErrCycle = errors.New("cycle detected")
+var (
+	ErrCycle           = errors.New("cycle detected")
+	ErrInvalidLogIndex = errors.New("executing message references invalid log index")
+)
 
 type CycleCheckDeps interface {
-	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs []*types.ExecutingMessage, err error)
+	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+}
+
+// validateExecMsgs ensures all executing message log indices are valid
+func validateExecMsgs(logCount uint32, execMsgs map[uint32]*types.ExecutingMessage) error {
+	for logIdx := range execMsgs {
+		if logIdx >= logCount {
+			return fmt.Errorf("%w: log index %d >= log count %d", ErrInvalidLogIndex, logIdx, logCount)
+		}
+	}
+	return nil
 }
 
 // HazardCycleChecks performs a hazard-check where block.timestamp == execMsg.timestamp:
@@ -41,10 +54,15 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		hazardChainID := types.ChainIDFromUInt64(uint64(hazardChainIndex))
 		bl, logCount, msgs, err := d.OpenBlock(hazardChainID, hazardBlock.Number)
 		if err != nil {
-			// TODO
+			return fmt.Errorf("failed to open block: %w", err)
 		}
 		if bl != hazardBlock {
 			return fmt.Errorf("tried to open block %s of chain %s, but got different block %s than expected, use a reorg lock for consistency", hazardBlock, hazardChainID, bl)
+		}
+
+		// Validate executing message indices
+		if err := validateExecMsgs(logCount, msgs); err != nil {
+			return err
 		}
 
 		for i := uint32(0); i < logCount; i++ {
@@ -61,21 +79,35 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 			}
 		}
 
-		for _, m := range msgs {
+		// Add edges for executing messages to their initiating messages
+		// If the initiating message is itself an executing message (checked via msgs map),
+		// we create an edge to maintain proper dependency ordering
+		for execLogIdx, m := range msgs {
 			if m.Timestamp != inTimestamp {
 				continue // no need to worry about this edge. Already enforced by timestamp invariant
 			}
-			// add edge: init<>exec message
+
+			// Add edge from the initiating message to this executing message
 			k := msgKey{
 				chainIndex: m.Chain,
 				logIndex:   m.LogIdx,
 			}
-			inDegreeNon0[k] += 1
+
+			// The executing message itself is referenced by its log index in this block
+			execKey := msgKey{
+				chainIndex: hazardChainIndex,
+				logIndex:   execLogIdx,
+			}
+
+			inDegreeNon0[execKey] += 1
+			outgoingEdges[k] = append(outgoingEdges[k], execKey)
 		}
 	}
 
 	for {
+		// Process all nodes that have no incoming edges
 		for k := range inDegree0 {
+			// Remove all outgoing edges from this node
 			for _, out := range outgoingEdges[k] {
 				count := inDegreeNon0[out]
 				count -= 1
@@ -89,6 +121,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 			delete(outgoingEdges, k)
 			delete(inDegree0, k)
 		}
+
 		if len(inDegree0) == 0 {
 			if len(inDegreeNon0) == 0 {
 				// Done, without cycles!
