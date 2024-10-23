@@ -3,6 +3,7 @@ package cross
 import (
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -104,6 +105,10 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		}
 	}
 
+	// TODO: Remove after finishing this function
+	fmt.Println("Built graph:")
+	logMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
+
 	for {
 		// Process all nodes that have no incoming edges
 		for k := range inDegree0 {
@@ -128,8 +133,72 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 				return nil
 			} else {
 				// Some nodes left, but no nodes left with in-degree of 0. There must be a cycle.
+
+				fmt.Println("Found cycle; remaining sub-graph:")
+				logMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
 				return ErrCycle
 			}
 		}
 	}
+}
+
+// GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data
+func GenerateMermaidDiagram(inDegree0 map[msgKey]struct{}, inDegreeNon0 map[msgKey]uint32, outgoingEdges map[msgKey][]msgKey) string {
+	var sb strings.Builder
+
+	sb.WriteString("flowchart TD\n")
+
+	// Helper function to get a unique ID for each node
+	getNodeID := func(k msgKey) string {
+		return fmt.Sprintf("N%d_%d", k.chainIndex, k.logIndex)
+	}
+
+	// Helper function to get a label for each node
+	getNodeLabel := func(k msgKey) string {
+		return fmt.Sprintf("C%d:L%d", k.chainIndex, k.logIndex)
+	}
+
+	// Function to add a node to the diagram
+	addNode := func(k msgKey, inDegree uint32) {
+		nodeID := getNodeID(k)
+		nodeLabel := getNodeLabel(k)
+		var shape string
+		if inDegree == 0 {
+			shape = "((%s))"
+		} else {
+			shape = "[%s]"
+		}
+		sb.WriteString(fmt.Sprintf("    %s"+shape+"\n", nodeID, nodeLabel))
+	}
+
+	// Add all nodes
+	for k := range inDegree0 {
+		addNode(k, 0)
+	}
+	for k, inDegree := range inDegreeNon0 {
+		addNode(k, inDegree)
+	}
+
+	// Add all edges
+	for from, tos := range outgoingEdges {
+		fromID := getNodeID(from)
+		for _, to := range tos {
+			toID := getNodeID(to)
+			sb.WriteString(fmt.Sprintf("    %s --> %s\n", fromID, toID))
+		}
+	}
+
+	// Add a legend
+	sb.WriteString("    subgraph Legend\n")
+	sb.WriteString("        L1((In-Degree 0))\n")
+	sb.WriteString("        L2[In-Degree > 0]\n")
+	sb.WriteString("    end\n")
+
+	return sb.String()
+}
+
+// Helper function to generate a Mermaid diagram and log it
+func logMermaidDiagram(inDegree0 map[msgKey]struct{}, inDegreeNon0 map[msgKey]uint32, outgoingEdges map[msgKey][]msgKey) {
+	diagram := GenerateMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
+	fmt.Printf("\n%s", diagram)
 }
