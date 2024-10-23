@@ -495,6 +495,11 @@ library MIPSInstructions {
                 if (rtv == 0) {
                     shouldBranch = int32(_rs) < 0;
                 }
+                // bltzal
+                if (rtv == 0x10) {
+                    shouldBranch = int32(_rs) < 0;
+                    _registers[31] = _cpu.pc + 8; // always set regardless of branch taken
+                }
                 if (rtv == 1) {
                     shouldBranch = int32(_rs) >= 0;
                 }
