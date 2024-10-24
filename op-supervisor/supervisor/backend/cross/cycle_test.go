@@ -110,9 +110,9 @@ func TestHazardCycleChecks_NoCycle_1ExecLog(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{
-				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+				1: {Chain: types.ChainIndex(2), LogIdx: 0, Timestamp: 100},
 			}
-			return types.BlockSeal{Number: blockNum}, 1, msgs, nil
+			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
 		},
 	}
 	hazards := map[types.ChainIndex]types.BlockSeal{
@@ -170,7 +170,7 @@ func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
 }
 
 // Cycle tests
-//
+/
 
 func TestHazardCycleChecks_1CycleDetected(t *testing.T) {
 	deps := &mockCycleCheckDeps{
@@ -192,8 +192,8 @@ func TestHazardCycleChecks_2CycleDetected(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{
-				0: {Chain: types.ChainIndex(1), LogIdx: 1, Timestamp: 100}, // 0 points to 1
-				1: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100}, // 1 points back to 0
+				1: {Chain: types.ChainIndex(1), LogIdx: 2, Timestamp: 100}, // 0 points to 1
+				2: {Chain: types.ChainIndex(1), LogIdx: 1, Timestamp: 100}, // 1 points back to 0
 			}
 			return types.BlockSeal{Number: blockNum}, 3, msgs, nil
 		},
