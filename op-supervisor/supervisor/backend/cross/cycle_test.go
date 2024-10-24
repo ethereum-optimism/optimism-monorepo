@@ -75,6 +75,22 @@ func TestHazardCycleChecks_BlockMismatch(t *testing.T) {
 	require.Contains(t, err.Error(), "tried to open block", "expected block mismatch error message")
 }
 
+func TestHazardCycleChecks_SelfReferenceDetected(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{
+				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100}, // 0 points at itself
+			}
+			return types.BlockSeal{Number: blockNum}, 3, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, ErrSelfReferencing, "expected self reference detection error")
+}
+
 // No cycle tests
 //
 
@@ -170,23 +186,7 @@ func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
 }
 
 // Cycle tests
-/
-
-func TestHazardCycleChecks_1CycleDetected(t *testing.T) {
-	deps := &mockCycleCheckDeps{
-		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
-			msgs := map[uint32]*types.ExecutingMessage{
-				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100}, // 0 points at itself
-			}
-			return types.BlockSeal{Number: blockNum}, 3, msgs, nil
-		},
-	}
-	hazards := map[types.ChainIndex]types.BlockSeal{
-		types.ChainIndex(1): {Number: 1},
-	}
-	err := HazardCycleChecks(deps, 100, hazards)
-	require.ErrorIs(t, err, ErrCycle, "expected cycle detection error")
-}
+//
 
 func TestHazardCycleChecks_2CycleDetected(t *testing.T) {
 	deps := &mockCycleCheckDeps{

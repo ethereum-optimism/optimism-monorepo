@@ -16,6 +16,7 @@ type msgKey struct {
 var (
 	ErrCycle           = errors.New("cycle detected")
 	ErrInvalidLogIndex = errors.New("executing message references invalid log index")
+	ErrSelfReferencing = errors.New("executing message references itself")
 )
 
 type CycleCheckDeps interface {
@@ -89,24 +90,28 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		// If the initiating message is itself an executing message (checked via msgs map),
 		// we create an edge to maintain proper dependency ordering
 		for execLogIdx, m := range msgs {
+			// Skip if the message is not from the correct timestamp
 			if m.Timestamp != inTimestamp {
-				continue // no need to worry about this edge. Already enforced by timestamp invariant
+				continue
 			}
 
-			// Add edge from the initiating message to this executing message
-			k := msgKey{
+			initKey := msgKey{
 				chainIndex: m.Chain,
 				logIndex:   m.LogIdx,
 			}
-
-			// The executing message itself is referenced by its log index in this block
 			execKey := msgKey{
 				chainIndex: hazardChainIndex,
 				logIndex:   execLogIdx,
 			}
 
+			// Disallow self-referencing messages
+			if initKey == execKey {
+				return ErrSelfReferencing
+			}
+
+			// Add the edge
 			inDegreeNon0[execKey] += 1
-			outgoingEdges[k] = append(outgoingEdges[k], execKey)
+			outgoingEdges[initKey] = append(outgoingEdges[initKey], execKey)
 		}
 	}
 
