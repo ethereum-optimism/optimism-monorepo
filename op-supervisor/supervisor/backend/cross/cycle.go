@@ -76,7 +76,12 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 				inDegree0[k] = struct{}{}
 			} else {
 				// add edge: prev log <> current log
+				prevKey := msgKey{
+					chainIndex: hazardChainIndex,
+					logIndex:   i - 1,
+				}
 				inDegreeNon0[k] = 1
+				outgoingEdges[prevKey] = append(outgoingEdges[prevKey], k)
 			}
 		}
 
