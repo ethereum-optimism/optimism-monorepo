@@ -78,7 +78,21 @@ func TestHazardCycleChecks_BlockMismatch(t *testing.T) {
 // No cycle tests
 //
 
-func TestHazardCycleChecks_NoCycle_SingleBasicLog(t *testing.T) {
+func TestHazardCycleChecks_NoCycle_NoLogs(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{}
+			return types.BlockSeal{Number: blockNum}, 0, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for block with no logs")
+}
+
+func TestHazardCycleChecks_NoCycle_1BasicLog(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{}
@@ -90,6 +104,69 @@ func TestHazardCycleChecks_NoCycle_SingleBasicLog(t *testing.T) {
 	}
 	err := HazardCycleChecks(deps, 100, hazards)
 	require.ErrorIs(t, err, nil, "expected no cycle found for single basic log")
+}
+
+func TestHazardCycleChecks_NoCycle_1ExecLog(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{
+				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+			}
+			return types.BlockSeal{Number: blockNum}, 1, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for single exec log")
+}
+
+func TestHazardCycleChecks_NoCycle_2BasicLogs(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{}
+			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for two basic logs")
+}
+
+func TestHazardCycleChecks_NoCycle_2ExecLogs(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{
+				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+				1: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+			}
+			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs")
+}
+
+func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{
+				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+			}
+			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs")
 }
 
 // Cycle tests
