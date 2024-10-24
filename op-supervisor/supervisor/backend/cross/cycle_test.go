@@ -78,6 +78,20 @@ func TestHazardCycleChecks_BlockMismatch(t *testing.T) {
 // No cycle tests
 //
 
+func TestHazardCycleChecks_NoCycle_SingleBasicLog(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{}
+			return types.BlockSeal{Number: blockNum}, 1, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for single basic log")
+}
+
 // Cycle tests
 //
 
