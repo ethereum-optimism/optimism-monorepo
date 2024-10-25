@@ -7,6 +7,8 @@ import "src/dispute/lib/Types.sol";
 interface IDisputeGame is IInitializable {
     event Resolved(GameStatus indexed status);
 
+    function initialize() external payable;
+
     function createdAt() external view returns (Timestamp);
     function resolvedAt() external view returns (Timestamp);
     function status() external view returns (GameStatus);

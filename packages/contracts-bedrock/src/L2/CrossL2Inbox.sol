@@ -35,7 +35,7 @@ error NoExecutingDeposits();
 /// @title CrossL2Inbox
 /// @notice The CrossL2Inbox is responsible for executing a cross chain message on the destination
 ///         chain. It is permissionless to execute a cross chain message on behalf of any user.
-contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
+contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     /// @notice Storage slot that the interop start timestamp is stored at.
     ///         Equal to bytes32(uint256(keccak256("crossl2inbox.interopstart")) - 1)
     bytes32 internal constant INTEROP_START_SLOT = 0x5c769ee0ee8887661922049dc52480bb60322d765161507707dd9b190af5c149;
@@ -65,13 +65,13 @@ contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
     address internal constant DEPOSITOR_ACCOUNT = 0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.8
-    string public constant version = "1.0.0-beta.8";
+    /// @custom:semver 1.0.0-beta.9
+    string public constant version = "1.0.0-beta.9";
 
     /// @notice Emitted when a cross chain message is being executed.
     /// @param msgHash Hash of message payload being executed.
     /// @param id Encoded Identifier of the message.
-    event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
+    event ExecutingMessage(bytes32 indexed msgHash, ICrossL2Inbox.Identifier id);
 
     /// @notice Sets the Interop Start Timestamp for this chain. Can only be performed once and when the caller is the
     /// DEPOSITOR_ACCOUNT.
@@ -131,7 +131,7 @@ contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
     /// @param _target  Target address to call.
     /// @param _message Message payload to call target with.
     function executeMessage(
-        Identifier calldata _id,
+        ICrossL2Inbox.Identifier calldata _id,
         address _target,
         bytes memory _message
     )
@@ -163,7 +163,7 @@ contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
     ///         process it in a custom way.
     /// @param _id      Identifier of the message.
     /// @param _msgHash Hash of the message payload to call target with.
-    function validateMessage(Identifier calldata _id, bytes32 _msgHash) external {
+    function validateMessage(ICrossL2Inbox.Identifier calldata _id, bytes32 _msgHash) external {
         // We need to know if this is being called on a depositTx
         if (IL1BlockInterop(Predeploys.L1_BLOCK_ATTRIBUTES).isDeposit()) revert NoExecutingDeposits();
 
@@ -177,7 +177,7 @@ contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
     ///         it's timestamp is not in the future and the source chainId
     ///         is in the destination chain's dependency set.
     /// @param _id Identifier of the message.
-    function _checkIdentifier(Identifier calldata _id) internal view {
+    function _checkIdentifier(ICrossL2Inbox.Identifier calldata _id) internal view {
         if (_id.timestamp > block.timestamp || _id.timestamp <= interopStart()) revert InvalidTimestamp();
         if (!IDependencySet(Predeploys.L1_BLOCK_ATTRIBUTES).isInDependencySet(_id.chainId)) {
             revert InvalidChainId();
@@ -186,7 +186,7 @@ contract CrossL2Inbox is ICrossL2Inbox, ISemver, TransientReentrancyAware {
 
     /// @notice Stores the Identifier in transient storage.
     /// @param _id Identifier to store.
-    function _storeIdentifier(Identifier calldata _id) internal {
+    function _storeIdentifier(ICrossL2Inbox.Identifier calldata _id) internal {
         TransientContext.set(ORIGIN_SLOT, uint160(_id.origin));
         TransientContext.set(BLOCK_NUMBER_SLOT, _id.blockNumber);
         TransientContext.set(LOG_INDEX_SLOT, _id.logIndex);
