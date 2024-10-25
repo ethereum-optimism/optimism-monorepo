@@ -31,7 +31,7 @@ contract DelayedVetoable_Init is Test {
             DeployUtils.create1({
                 _name: "DelayedVetoable",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(IDelayedVetoable.__constructor__, (initiator, vetoer, address(target), operatingDelay))
+                    abi.encodeCall(IDelayedVetoable.__constructor__, (vetoer, initiator, address(target), operatingDelay))
                 )
             })
         );
