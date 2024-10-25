@@ -14,10 +14,11 @@ type msgKey struct {
 }
 
 var (
-	ErrCycle           = errors.New("cycle detected")
-	ErrInvalidLogIndex = errors.New("executing message references invalid log index")
-	ErrSelfReferencing = errors.New("executing message references itself")
-	ErrUnknownChain    = errors.New("executing message references unknown chain")
+	ErrFailedToOpenBlock = errors.New("failed to open block")
+	ErrCycle             = errors.New("cycle detected")
+	ErrInvalidLogIndex   = errors.New("executing message references invalid log index")
+	ErrSelfReferencing   = errors.New("executing message references itself")
+	ErrUnknownChain      = errors.New("executing message references unknown chain")
 )
 
 type CycleCheckDeps interface {
@@ -57,7 +58,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		hazardChainID := types.ChainIDFromUInt64(uint64(hazardChainIndex))
 		bl, logCount, msgs, err := d.OpenBlock(hazardChainID, hazardBlock.Number)
 		if err != nil {
-			return fmt.Errorf("failed to open block: %w", err)
+			return fmt.Errorf("%w: %w", ErrFailedToOpenBlock, err)
 		}
 		if bl != hazardBlock {
 			return fmt.Errorf("tried to open block %s of chain %s, but got different block %s than expected, use a reorg lock for consistency", hazardBlock, hazardChainID, bl)
