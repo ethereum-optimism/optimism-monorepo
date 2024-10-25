@@ -308,14 +308,14 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, logHash common.Hash) (types.SafetyLevel, error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), payloadHash)
+	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), logHash)
 	if errors.Is(err, types.ErrFuture) {
 		return types.LocalUnsafe, nil
 	}
