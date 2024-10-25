@@ -117,7 +117,8 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 				return ErrSelfReferencing
 			}
 
-			// Add the edge
+			// Add the edge; delete the in-degree 0 entry if it exists
+			delete(inDegree0, execKey)
 			inDegreeNon0[execKey] += 1
 			outgoingEdges[initKey] = append(outgoingEdges[initKey], execKey)
 		}
