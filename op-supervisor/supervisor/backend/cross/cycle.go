@@ -45,6 +45,54 @@ type CycleCheckDeps interface {
 	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
+// gatherBlockData collects all log counts and executing messages across all hazard blocks.
+// Returns:
+// - map of chain index to its log count
+// - map of chain index to map of log index to executing message (nil if doesn't exist or ignored)
+func gatherBlockData(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
+	map[types.ChainIndex]uint32, // logCounts
+	map[types.ChainIndex]map[uint32]*types.ExecutingMessage, // execMsgs
+	error,
+) {
+	logCounts := make(map[types.ChainIndex]uint32)
+	execMsgs := make(map[types.ChainIndex]map[uint32]*types.ExecutingMessage)
+
+	for hazardChainIndex, hazardBlock := range hazards {
+		// TODO(#11105): translate chain index to chain ID
+		hazardChainID := types.ChainIDFromUInt64(uint64(hazardChainIndex))
+		bl, logCount, msgs, err := d.OpenBlock(hazardChainID, hazardBlock.Number)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to open block: %w", err)
+		}
+		if bl != hazardBlock {
+			return nil, nil, fmt.Errorf("tried to open block %s of chain %s, but got different block %s than expected, use a reorg lock for consistency", hazardBlock, hazardChainID, bl)
+		}
+
+		// Validate executing message indices
+		if err := validateExecMsgs(logCount, msgs); err != nil {
+			return nil, nil, err
+		}
+
+		logCounts[hazardChainIndex] = logCount
+
+		// Initialize map for this chain if it has executing messages
+		if len(msgs) > 0 {
+			if _, exists := execMsgs[hazardChainIndex]; !exists {
+				execMsgs[hazardChainIndex] = make(map[uint32]*types.ExecutingMessage)
+			}
+		}
+
+		// Process executing messages - only include those at inTimestamp
+		for logIdx, msg := range msgs {
+			if msg.Timestamp == inTimestamp {
+				execMsgs[hazardChainIndex][logIdx] = msg
+			}
+		}
+	}
+
+	return logCounts, execMsgs, nil
+}
+
 // validateExecMsgs ensures all executing message log indices are valid
 func validateExecMsgs(logCount uint32, execMsgs map[uint32]*types.ExecutingMessage) error {
 	for logIdx := range execMsgs {
@@ -63,28 +111,19 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 		outgoingEdges: make(map[msgKey][]msgKey),
 	}
 
-	for hazardChainIndex, hazardBlock := range hazards {
-		// TODO(#11105): translate chain index to chain ID
-		hazardChainID := types.ChainIDFromUInt64(uint64(hazardChainIndex))
-		bl, logCount, msgs, err := d.OpenBlock(hazardChainID, hazardBlock.Number)
-		if err != nil {
-			return nil, fmt.Errorf("%w: %w", ErrFailedToOpenBlock, err)
-		}
-		if bl != hazardBlock {
-			return nil, fmt.Errorf("tried to open block %s of chain %s, but got different block %s than expected, use a reorg lock for consistency", hazardBlock, hazardChainID, bl)
-		}
+	logCounts, execMsgs, err := gatherBlockData(d, inTimestamp, hazards)
+	if err != nil {
+		return nil, err
+	}
 
-		// Validate executing message indices
-		if err := validateExecMsgs(logCount, msgs); err != nil {
-			return nil, err
-		}
-
-		// Add nodes for each log in the block, and add edges between sequential logs
+	// Add nodes for each log in the block, and add edges between sequential logs
+	for hazardChainIndex, logCount := range logCounts {
 		for i := uint32(0); i < logCount; i++ {
 			k := msgKey{
 				chainIndex: hazardChainIndex,
 				logIndex:   i,
 			}
+
 			if i == 0 {
 				// First log in block has no dependencies.=
 				g.inDegree0[k] = struct{}{}
@@ -97,17 +136,20 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 				g.addEdge(prevKey, k)
 			}
 		}
+	}
 
-		// Add edges for executing messages to their initiating messages
+	// Add edges for executing messages to their initiating messages
+	for hazardChainIndex, msgs := range execMsgs {
 		for execLogIdx, m := range msgs {
-			// Skip if the message is not from the correct timestamp
-			if m.Timestamp != inTimestamp {
-				continue
-			}
-
-			// Skip if the chain is unknown
+			// Error if the chain is unknown
 			if _, ok := hazards[m.Chain]; !ok {
 				return nil, ErrUnknownChain
+			}
+
+			// Check if we care about the init message
+			initMsg := execMsgs[m.Chain][m.LogIdx]
+			if initMsg == nil {
+				continue
 			}
 
 			initKey := msgKey{
