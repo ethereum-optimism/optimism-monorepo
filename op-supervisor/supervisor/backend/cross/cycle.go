@@ -69,16 +69,17 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 			return err
 		}
 
+		// Add nodes for each log in the block, and add edges between sequential logs
 		for i := uint32(0); i < logCount; i++ {
 			k := msgKey{
 				chainIndex: hazardChainIndex,
 				logIndex:   i,
 			}
 			if i == 0 {
-				// first log in block does not have a dependency
+				// First log in block has no dependencies.=
 				inDegree0[k] = struct{}{}
 			} else {
-				// add edge: prev log <> current log
+				// Add edge: prev log <> current log
 				prevKey := msgKey{
 					chainIndex: hazardChainIndex,
 					logIndex:   i - 1,
@@ -123,8 +124,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 	}
 
 	// TODO: Remove after finishing this function
-	fmt.Println("Built graph:")
-	logMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
+	logMermaidDiagram("Built graph", inDegree0, inDegreeNon0, outgoingEdges)
 
 	for {
 		// Process all nodes that have no incoming edges
@@ -151,8 +151,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 			} else {
 				// Some nodes left, but no nodes left with in-degree of 0. There must be a cycle.
 
-				fmt.Println("Found cycle; remaining sub-graph:")
-				logMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
+				logMermaidDiagram("Found cycle; remaining sub-graph", inDegree0, inDegreeNon0, outgoingEdges)
 				return ErrCycle
 			}
 		}
@@ -215,7 +214,7 @@ func GenerateMermaidDiagram(inDegree0 map[msgKey]struct{}, inDegreeNon0 map[msgK
 }
 
 // Helper function to generate a Mermaid diagram and log it
-func logMermaidDiagram(inDegree0 map[msgKey]struct{}, inDegreeNon0 map[msgKey]uint32, outgoingEdges map[msgKey][]msgKey) {
+func logMermaidDiagram(label string, inDegree0 map[msgKey]struct{}, inDegreeNon0 map[msgKey]uint32, outgoingEdges map[msgKey][]msgKey) {
 	diagram := GenerateMermaidDiagram(inDegree0, inDegreeNon0, outgoingEdges)
-	fmt.Printf("\n%s", diagram)
+	fmt.Printf("%s:\n%s", label, diagram)
 }
