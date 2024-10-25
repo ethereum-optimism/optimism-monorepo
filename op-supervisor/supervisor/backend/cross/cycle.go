@@ -17,6 +17,7 @@ var (
 	ErrCycle           = errors.New("cycle detected")
 	ErrInvalidLogIndex = errors.New("executing message references invalid log index")
 	ErrSelfReferencing = errors.New("executing message references itself")
+	ErrUnknownChain    = errors.New("executing message references unknown chain")
 )
 
 type CycleCheckDeps interface {
@@ -93,6 +94,11 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 			// Skip if the message is not from the correct timestamp
 			if m.Timestamp != inTimestamp {
 				continue
+			}
+
+			// Skip if the chain is unknown
+			if _, ok := hazards[m.Chain]; !ok {
+				return ErrUnknownChain
 			}
 
 			initKey := msgKey{

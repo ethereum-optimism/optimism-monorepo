@@ -91,6 +91,22 @@ func TestHazardCycleChecks_SelfReferenceDetected(t *testing.T) {
 	require.ErrorIs(t, err, ErrSelfReferencing, "expected self reference detection error")
 }
 
+func TestHazardCycleChecks_UnknownChain(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			msgs := map[uint32]*types.ExecutingMessage{
+				1: {Chain: types.ChainIndex(2), LogIdx: 0, Timestamp: 100},
+			}
+			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, ErrUnknownChain, "expected unknown chain error")
+}
+
 // No cycle tests
 //
 
@@ -126,7 +142,7 @@ func TestHazardCycleChecks_NoCycle_1ExecLog(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{
-				1: {Chain: types.ChainIndex(2), LogIdx: 0, Timestamp: 100},
+				1: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
 			}
 			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
 		},
