@@ -6,33 +6,46 @@ import { Test } from "forge-std/Test.sol";
 import { SimpleStorage } from "test/universal/Proxy.t.sol";
 
 // Contracts
-import { Proxy } from "src/universal/Proxy.sol";
-import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { AddressManager } from "src/legacy/AddressManager.sol";
 import { L1ChugSplashProxy } from "src/legacy/L1ChugSplashProxy.sol";
 import { ResolvedDelegateProxy } from "src/legacy/ResolvedDelegateProxy.sol";
 
 // Interfaces
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
+import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
+
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract ProxyAdmin_Test is Test {
     address alice = address(64);
 
-    Proxy proxy;
+    IProxy proxy;
     L1ChugSplashProxy chugsplash;
     ResolvedDelegateProxy resolved;
 
     AddressManager addressManager;
 
-    ProxyAdmin admin;
+    IProxyAdmin admin;
 
     SimpleStorage implementation;
 
     function setUp() external {
         // Deploy the proxy admin
-        admin = new ProxyAdmin(alice);
+        admin = IProxyAdmin(
+            DeployUtils.create1({
+                _name: "ProxyAdmin",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (alice)))
+            })
+        );
+
         // Deploy the standard proxy
-        proxy = new Proxy(address(admin));
+        proxy = IProxy(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (address(admin))))
+            })
+        );
 
         // Deploy the legacy L1ChugSplashProxy with the admin as the owner
         chugsplash = new L1ChugSplashProxy(address(admin));
@@ -57,9 +70,9 @@ contract ProxyAdmin_Test is Test {
         admin.setImplementationName(address(resolved), "a");
 
         // Set the proxy types
-        admin.setProxyType(address(proxy), ProxyAdmin.ProxyType.ERC1967);
-        admin.setProxyType(address(chugsplash), ProxyAdmin.ProxyType.CHUGSPLASH);
-        admin.setProxyType(address(resolved), ProxyAdmin.ProxyType.RESOLVED);
+        admin.setProxyType(address(proxy), IProxyAdmin.ProxyType.ERC1967);
+        admin.setProxyType(address(chugsplash), IProxyAdmin.ProxyType.CHUGSPLASH);
+        admin.setProxyType(address(resolved), IProxyAdmin.ProxyType.RESOLVED);
         vm.stopPrank();
 
         implementation = new SimpleStorage();
@@ -83,7 +96,7 @@ contract ProxyAdmin_Test is Test {
 
     function test_setProxyType_notOwner_reverts() external {
         vm.expectRevert("Ownable: caller is not the owner");
-        admin.setProxyType(address(0), ProxyAdmin.ProxyType.CHUGSPLASH);
+        admin.setProxyType(address(0), IProxyAdmin.ProxyType.CHUGSPLASH);
     }
 
     function test_owner_succeeds() external view {
@@ -91,9 +104,9 @@ contract ProxyAdmin_Test is Test {
     }
 
     function test_proxyType_succeeds() external view {
-        assertEq(uint256(admin.proxyType(address(proxy))), uint256(ProxyAdmin.ProxyType.ERC1967));
-        assertEq(uint256(admin.proxyType(address(chugsplash))), uint256(ProxyAdmin.ProxyType.CHUGSPLASH));
-        assertEq(uint256(admin.proxyType(address(resolved))), uint256(ProxyAdmin.ProxyType.RESOLVED));
+        assertEq(uint256(admin.proxyType(address(proxy))), uint256(IProxyAdmin.ProxyType.ERC1967));
+        assertEq(uint256(admin.proxyType(address(chugsplash))), uint256(IProxyAdmin.ProxyType.CHUGSPLASH));
+        assertEq(uint256(admin.proxyType(address(resolved))), uint256(IProxyAdmin.ProxyType.RESOLVED));
     }
 
     function test_erc1967GetProxyImplementation_succeeds() external {
@@ -153,7 +166,7 @@ contract ProxyAdmin_Test is Test {
     }
 
     function changeProxyAdmin(address payable _proxy) internal {
-        ProxyAdmin.ProxyType proxyType = admin.proxyType(address(_proxy));
+        IProxyAdmin.ProxyType proxyType = admin.proxyType(address(_proxy));
 
         vm.prank(alice);
         admin.changeProxyAdmin(_proxy, address(128));
@@ -162,13 +175,13 @@ contract ProxyAdmin_Test is Test {
         // no longer call the proxy interface except for
         // the ResolvedDelegate type on which anybody can
         // call the admin interface.
-        if (proxyType == ProxyAdmin.ProxyType.ERC1967) {
+        if (proxyType == IProxyAdmin.ProxyType.ERC1967) {
             vm.expectRevert("Proxy: implementation not initialized");
             admin.getProxyAdmin(_proxy);
-        } else if (proxyType == ProxyAdmin.ProxyType.CHUGSPLASH) {
+        } else if (proxyType == IProxyAdmin.ProxyType.CHUGSPLASH) {
             vm.expectRevert("L1ChugSplashProxy: implementation is not set yet");
             admin.getProxyAdmin(_proxy);
-        } else if (proxyType == ProxyAdmin.ProxyType.RESOLVED) {
+        } else if (proxyType == IProxyAdmin.ProxyType.RESOLVED) {
             // Just an empty block to show that all cases are covered
         } else {
             vm.expectRevert("ProxyAdmin: unknown proxy type");
@@ -177,11 +190,11 @@ contract ProxyAdmin_Test is Test {
         // Call the proxy contract directly to get the admin.
         // Different proxy types have different interfaces.
         vm.prank(address(128));
-        if (proxyType == ProxyAdmin.ProxyType.ERC1967) {
-            assertEq(Proxy(payable(_proxy)).admin(), address(128));
-        } else if (proxyType == ProxyAdmin.ProxyType.CHUGSPLASH) {
+        if (proxyType == IProxyAdmin.ProxyType.ERC1967) {
+            assertEq(IProxy(payable(_proxy)).admin(), address(128));
+        } else if (proxyType == IProxyAdmin.ProxyType.CHUGSPLASH) {
             assertEq(L1ChugSplashProxy(payable(_proxy)).getOwner(), address(128));
-        } else if (proxyType == ProxyAdmin.ProxyType.RESOLVED) {
+        } else if (proxyType == IProxyAdmin.ProxyType.RESOLVED) {
             assertEq(addressManager.owner(), address(128));
         } else {
             assert(false);

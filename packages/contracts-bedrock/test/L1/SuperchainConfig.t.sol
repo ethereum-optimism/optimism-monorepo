@@ -4,11 +4,13 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Target contract dependencies
-import { Proxy } from "src/universal/Proxy.sol";
+import { IProxy } from "src/universal/interfaces/IProxy.sol";
 
 // Target contract
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SuperchainConfig_Init_Test is CommonTest {
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
@@ -19,7 +21,12 @@ contract SuperchainConfig_Init_Test is CommonTest {
 
     /// @dev Tests that it can be intialized as paused.
     function test_initialize_paused_succeeds() external {
-        Proxy newProxy = new Proxy(alice);
+        IProxy newProxy = IProxy(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (alice)))
+            })
+        );
         ISuperchainConfig newImpl = ISuperchainConfig(address(new SuperchainConfig()));
 
         vm.startPrank(alice);

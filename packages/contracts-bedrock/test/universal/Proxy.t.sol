@@ -2,8 +2,9 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { Proxy } from "src/universal/Proxy.sol";
 import { Bytes32AddressLib } from "@rari-capital/solmate/src/utils/Bytes32AddressLib.sol";
+import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SimpleStorage {
     mapping(uint256 => uint256) internal store;
@@ -33,13 +34,18 @@ contract Proxy_Test is Test {
 
     bytes32 internal constant OWNER_KEY = bytes32(uint256(keccak256("eip1967.proxy.admin")) - 1);
 
-    Proxy proxy;
+    IProxy proxy;
     SimpleStorage simpleStorage;
 
     function setUp() external {
         // Deploy a proxy and simple storage contract as
         // the implementation
-        proxy = new Proxy(alice);
+        proxy = IProxy(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (alice)))
+            })
+        );
         simpleStorage = new SimpleStorage();
 
         vm.prank(alice);
