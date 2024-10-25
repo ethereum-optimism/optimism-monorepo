@@ -1569,8 +1569,8 @@ workflows:
     when:
       and:
         - or:
-            - equal: [ "develop", <<pipeline.git.branch>> ]
-            - equal: [ true, <<pipeline.parameters.fault_proofs_dispatch>> ]
+          - equal: [ "develop", <<pipeline.git.branch>> ]
+          - equal: [ true, <<pipeline.parameters.fault_proofs_dispatch>> ]
         - not:
             equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
@@ -1601,10 +1601,10 @@ workflows:
     when:
       and:
         - or:
-            - equal: [ "develop", <<pipeline.git.branch>> ]
-            - equal: [ true, <<pipeline.parameters.kontrol_dispatch>> ]
+          - equal: [ "develop", <<pipeline.git.branch>> ]
+          - equal: [ true, <<pipeline.parameters.kontrol_dispatch>> ]
         - not:
-            equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
+           equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - kontrol-tests:
           context:
@@ -1681,7 +1681,7 @@ workflows:
   scheduled-preimage-reproducibility:
     when:
       or:
-        - equal: [ build_daily, <<pipeline.schedule.name>> ]
+        - equal: [build_daily, <<pipeline.schedule.name>> ]
         # Trigger on manual triggers if explicitly requested
         - equal: [ true, << pipeline.parameters.reproducibility_dispatch >> ]
     jobs:
