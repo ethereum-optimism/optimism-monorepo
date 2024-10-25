@@ -201,6 +201,31 @@ func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
 	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs")
 }
 
+func TestHazardCycleChecks_NoCycle_FirstLogIsExec(t *testing.T) {
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			switch chainID.String() {
+			case "1":
+				// Chain 1 has an executing message at log index - that points to Chain 2's log 0
+				msgs := map[uint32]*types.ExecutingMessage{
+					0: {Chain: types.ChainIndex(2), LogIdx: 0, Timestamp: 100},
+				}
+				return types.BlockSeal{Number: blockNum}, 1, msgs, nil
+			case "2":
+				return types.BlockSeal{Number: blockNum}, 1, nil, nil
+			default:
+				return types.BlockSeal{}, 0, nil, errors.New("unexpected chain")
+			}
+		},
+	}
+	hazards := map[types.ChainIndex]types.BlockSeal{
+		types.ChainIndex(1): {Number: 1},
+		types.ChainIndex(2): {Number: 1},
+	}
+	err := HazardCycleChecks(deps, 100, hazards)
+	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs")
+}
+
 // Cycle tests
 //
 
