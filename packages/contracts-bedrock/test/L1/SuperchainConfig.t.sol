@@ -27,7 +27,12 @@ contract SuperchainConfig_Init_Test is CommonTest {
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (alice)))
             })
         );
-        ISuperchainConfig newImpl = ISuperchainConfig(address(new SuperchainConfig()));
+        ISuperchainConfig newImpl = ISuperchainConfig(
+            DeployUtils.create1({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+            })
+        );
 
         vm.startPrank(alice);
         newProxy.upgradeToAndCall(

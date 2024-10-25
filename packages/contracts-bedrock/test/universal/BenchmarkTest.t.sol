@@ -10,11 +10,12 @@ import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
 // Libraries
 import { Types } from "src/libraries/Types.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
-import { L1BlockInterop } from "src/L2/L1BlockInterop.sol";
+import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 
 // Interfaces
 import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Free function for setting the prevBaseFee param in the OptimismPortal.
 function setPrevBaseFee(Vm _vm, address _op, uint128 _prevBaseFee) {
@@ -257,11 +258,16 @@ contract GasBenchMark_L1Block_SetValuesEcotone_Warm is GasBenchMark_L1Block {
 }
 
 contract GasBenchMark_L1BlockInterop is GasBenchMark_L1Block {
-    L1BlockInterop l1BlockInterop;
+    IL1BlockInterop l1BlockInterop;
 
     function setUp() public virtual override {
         super.setUp();
-        l1BlockInterop = new L1BlockInterop();
+        l1BlockInterop = IL1BlockInterop(
+            DeployUtils.create1({
+                _name: "L1BlockInterop",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1BlockInterop.__constructor__, ()))
+            })
+        );
         setValuesCalldata = Encoding.encodeSetL1BlockValuesInterop(
             type(uint32).max,
             type(uint32).max,

@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { DelayedVetoable } from "src/L1/DelayedVetoable.sol";
 import { IDelayedVetoable } from "src/L1/interfaces/IDelayedVetoable.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DelayedVetoable_Init is Test {
     error Unauthorized(address expected, address actual);
@@ -27,14 +28,12 @@ contract DelayedVetoable_Init is Test {
         vm.deal(vetoer, 10000 ether);
 
         delayedVetoable = IDelayedVetoable(
-            address(
-                new DelayedVetoable({
-                    _initiator: initiator,
-                    _vetoer: vetoer,
-                    _target: address(target),
-                    _operatingDelay: operatingDelay
-                })
-            )
+            DeployUtils.create1({
+                _name: "DelayedVetoable",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(IDelayedVetoable.__constructor__, (initiator, vetoer, address(target), operatingDelay))
+                )
+            })
         );
 
         // Most tests will use the operating delay, so we call as the initiator with null data

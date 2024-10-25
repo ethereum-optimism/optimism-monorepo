@@ -8,7 +8,7 @@ import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 // Contracts
-import { DeputyGuardianModule } from "src/safe/DeputyGuardianModule.sol";
+import { IDeputyGuardianModule } from "src/safe/interfaces/IDeputyGuardianModule.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";
@@ -17,6 +17,7 @@ import "src/dispute/lib/Types.sol";
 import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
 import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
     using SafeTestLib for SafeInstance;
@@ -26,7 +27,7 @@ contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
 
     event ExecutionFromModuleSuccess(address indexed);
 
-    DeputyGuardianModule deputyGuardianModule;
+    IDeputyGuardianModule deputyGuardianModule;
     SafeInstance safeInstance;
     address deputyGuardian;
 
@@ -47,11 +48,16 @@ contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
 
         deputyGuardian = makeAddr("deputyGuardian");
 
-        deputyGuardianModule = new DeputyGuardianModule({
-            _safe: safeInstance.safe,
-            _superchainConfig: superchainConfig,
-            _deputyGuardian: deputyGuardian
-        });
+        deputyGuardianModule = IDeputyGuardianModule(
+            DeployUtils.create1({
+                _name: "DeputyGuardianModule",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IDeputyGuardianModule.__constructor__, (safeInstance.safe, superchainConfig, deputyGuardian)
+                    )
+                )
+            })
+        );
         safeInstance.enableModule(address(deputyGuardianModule));
     }
 }

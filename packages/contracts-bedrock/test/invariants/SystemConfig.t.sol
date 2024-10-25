@@ -18,7 +18,12 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (msg.sender)))
             })
         );
-        ISystemConfig configImpl = ISystemConfig(address(new SystemConfig()));
+        ISystemConfig configImpl = ISystemConfig(
+            DeployUtils.create1({
+                _name: "SystemConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
+            })
+        );
 
         vm.prank(msg.sender);
         proxy.upgradeToAndCall(
