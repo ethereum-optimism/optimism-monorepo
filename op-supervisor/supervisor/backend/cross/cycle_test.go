@@ -172,17 +172,17 @@ func TestHazardCycleChecks_NoCycle_2ExecLogs(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{
-				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
 				1: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+				2: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
 			}
-			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
+			return types.BlockSeal{Number: blockNum}, 3, msgs, nil
 		},
 	}
 	hazards := map[types.ChainIndex]types.BlockSeal{
 		types.ChainIndex(1): {Number: 1},
 	}
 	err := HazardCycleChecks(deps, 100, hazards)
-	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs")
+	require.ErrorIs(t, err, nil, "expected no cycle found for two exec logs pointing at the same log")
 }
 
 func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
