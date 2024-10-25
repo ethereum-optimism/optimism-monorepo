@@ -62,6 +62,6 @@ func FuzzStateSyscallCloneMT(f *testing.F) {
 		require.False(t, stepWitness.HasPreimage())
 
 		expected.Validate(t, state)
-		testutil.ValidateEVM(t, stepWitness, step, goVm, multithreaded.GetStateHashFn(), v.Contracts, nil)
+		testutil.ValidateEVM(t, stepWitness, step, goVm, multithreaded.GetStateHashFn(), v.Contracts)
 	})
 }

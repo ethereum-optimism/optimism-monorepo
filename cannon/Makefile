@@ -53,8 +53,11 @@ sanitize-program:
 contract:
 	cd ../packages/contracts-bedrock && forge build
 
-test: elf contract
+test: elf contract test64
 	go test -v ./...
+
+test64: elf contract
+	go test -tags=cannon64 -run '(TestEVM.*64|TestHelloEVM|TestClaimEVM)' ./mipsevm/tests
 
 diff-%-cannon: cannon elf
 	$$OTHER_CANNON load-elf --type $* --path ./testdata/example/bin/hello.elf --out ./bin/prestate-other.bin.gz --meta ""

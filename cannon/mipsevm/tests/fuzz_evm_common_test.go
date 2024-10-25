@@ -42,7 +42,7 @@ func FuzzStateSyscallBrk(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -97,7 +97,7 @@ func FuzzStateSyscallMmap(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -126,7 +126,7 @@ func FuzzStateSyscallExitGroup(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -182,7 +182,7 @@ func FuzzStateSyscallFcntl(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -219,7 +219,7 @@ func FuzzStateHintRead(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -282,7 +282,7 @@ func FuzzStatePreimageRead(f *testing.F) {
 				require.True(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -364,7 +364,7 @@ func FuzzStateHintWrite(f *testing.F) {
 				// Validate
 				require.Equal(t, expectedHints, oracle.Hints())
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})
@@ -424,7 +424,7 @@ func FuzzStatePreimageWrite(f *testing.F) {
 				require.False(t, stepWitness.HasPreimage())
 
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	})

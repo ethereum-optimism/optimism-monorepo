@@ -25,8 +25,6 @@ func TestEVM(t *testing.T) {
 	testFiles, err := os.ReadDir("open_mips_tests/test/bin")
 	require.NoError(t, err)
 
-	var tracer *tracing.Hooks // no-tracer by default, but test_util.MarkdownTracer
-
 	cases := GetMipsVersionTestCases(t)
 	skippedTests := map[string][]string{
 		"multi-threaded":  {"clone.bin"},
@@ -51,7 +49,6 @@ func TestEVM(t *testing.T) {
 				expectPanic := strings.HasSuffix(f.Name(), "panic.bin")
 
 				evm := testutil.NewMIPSEVM(c.Contracts)
-				evm.SetTracer(tracer)
 				evm.SetLocalOracle(oracle)
 				testutil.LogStepFailureAtCleanup(t, evm)
 
@@ -117,8 +114,6 @@ func TestEVM(t *testing.T) {
 }
 
 func TestEVMSingleStep_Jump(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name         string
@@ -157,15 +152,13 @@ func TestEVMSingleStep_Jump(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVMSingleStep_Operators(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name      string
@@ -236,15 +229,13 @@ func TestEVMSingleStep_Operators(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVMSingleStep_LoadStore(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	loadMemVal := Word(0x11_22_33_44)
 	loadMemValNeg := Word(0xF1_F2_F3_F4)
 	rtVal := Word(0xaa_bb_cc_dd)
@@ -330,14 +321,13 @@ func TestEVMSingleStep_LoadStore(t *testing.T) {
 
 				// Validate
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVMSingleStep_MovzMovn(t *testing.T) {
-	var tracer *tracing.Hooks
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name  string
@@ -376,7 +366,7 @@ func TestEVMSingleStep_MovzMovn(t *testing.T) {
 				require.NoError(t, err)
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 
 				if tt.funct == 0xa {
 					t2 = 0x1
@@ -392,7 +382,7 @@ func TestEVMSingleStep_MovzMovn(t *testing.T) {
 				require.NoError(t, err)
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
@@ -400,7 +390,6 @@ func TestEVMSingleStep_MovzMovn(t *testing.T) {
 }
 
 func TestEVMSingleStep_MfhiMflo(t *testing.T) {
-	var tracer *tracing.Hooks
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name  string
@@ -430,7 +419,7 @@ func TestEVMSingleStep_MfhiMflo(t *testing.T) {
 				require.NoError(t, err)
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
@@ -503,14 +492,13 @@ func TestEVMSingleStep_MulDiv(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVMSingleStep_MthiMtlo(t *testing.T) {
-	var tracer *tracing.Hooks
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name  string
@@ -544,15 +532,13 @@ func TestEVMSingleStep_MthiMtlo(t *testing.T) {
 				require.NoError(t, err)
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVM_MMap(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name         string
@@ -609,15 +595,13 @@ func TestEVM_MMap(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
 }
 
 func TestEVMSysWriteHint(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name             string
@@ -804,7 +788,7 @@ func TestEVMSysWriteHint(t *testing.T) {
 
 				expected.Validate(t, state)
 				require.Equal(t, tt.expectedHints, oracle.Hints())
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}
@@ -846,7 +830,6 @@ func TestEVMFault(t *testing.T) {
 
 func TestHelloEVM(t *testing.T) {
 	t.Parallel()
-	var tracer *tracing.Hooks // no-tracer by default, but see test_util.MarkdownTracer
 	versions := GetMipsVersionTestCases(t)
 
 	for _, v := range versions {
@@ -854,22 +837,21 @@ func TestHelloEVM(t *testing.T) {
 		t.Run(v.Name, func(t *testing.T) {
 			t.Parallel()
 			evm := testutil.NewMIPSEVM(v.Contracts)
-			evm.SetTracer(tracer)
 			testutil.LogStepFailureAtCleanup(t, evm)
 
 			var stdOutBuf, stdErrBuf bytes.Buffer
-			elfFile := "../../testdata/example/bin/hello.elf"
+			elfFile := testutil.ProgramPath("hello")
 			goVm := v.ElfVMFactory(t, elfFile, nil, io.MultiWriter(&stdOutBuf, os.Stdout), io.MultiWriter(&stdErrBuf, os.Stderr), testutil.CreateLogger())
 			state := goVm.GetState()
 
 			start := time.Now()
-			for i := 0; i < 400_000; i++ {
+			for i := 0; i < 430_000; i++ {
 				step := goVm.GetState().GetStep()
 				if goVm.GetState().GetExited() {
 					break
 				}
 				insn := state.GetMemory().GetUint32(state.GetPC())
-				if i%1000 == 0 { // avoid spamming test logs, we are executing many steps
+				if i%10_000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
 
@@ -897,7 +879,6 @@ func TestHelloEVM(t *testing.T) {
 
 func TestClaimEVM(t *testing.T) {
 	t.Parallel()
-	var tracer *tracing.Hooks // no-tracer by default, but see test_util.MarkdownTracer
 	versions := GetMipsVersionTestCases(t)
 
 	for _, v := range versions {
@@ -905,13 +886,12 @@ func TestClaimEVM(t *testing.T) {
 		t.Run(v.Name, func(t *testing.T) {
 			t.Parallel()
 			evm := testutil.NewMIPSEVM(v.Contracts)
-			evm.SetTracer(tracer)
 			testutil.LogStepFailureAtCleanup(t, evm)
 
 			oracle, expectedStdOut, expectedStdErr := testutil.ClaimTestOracle(t)
 
 			var stdOutBuf, stdErrBuf bytes.Buffer
-			elfFile := "../../testdata/example/bin/claim.elf"
+			elfFile := testutil.ProgramPath("claim")
 			goVm := v.ElfVMFactory(t, elfFile, oracle, io.MultiWriter(&stdOutBuf, os.Stdout), io.MultiWriter(&stdErrBuf, os.Stderr), testutil.CreateLogger())
 			state := goVm.GetState()
 
@@ -922,7 +902,7 @@ func TestClaimEVM(t *testing.T) {
 				}
 
 				insn := state.GetMemory().GetUint32(state.GetPC())
-				if i%1000 == 0 { // avoid spamming test logs, we are executing many steps
+				if i%10_000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
 
@@ -947,7 +927,6 @@ func TestClaimEVM(t *testing.T) {
 
 func TestEntryEVM(t *testing.T) {
 	t.Parallel()
-	var tracer *tracing.Hooks // no-tracer by default, but see test_util.MarkdownTracer
 	versions := GetMipsVersionTestCases(t)
 
 	for _, v := range versions {
@@ -955,11 +934,10 @@ func TestEntryEVM(t *testing.T) {
 		t.Run(v.Name, func(t *testing.T) {
 			t.Parallel()
 			evm := testutil.NewMIPSEVM(v.Contracts)
-			evm.SetTracer(tracer)
 			testutil.LogStepFailureAtCleanup(t, evm)
 
 			var stdOutBuf, stdErrBuf bytes.Buffer
-			elfFile := "../../testdata/example/bin/entry.elf"
+			elfFile := testutil.ProgramPath("entry")
 			goVm := v.ElfVMFactory(t, elfFile, nil, io.MultiWriter(&stdOutBuf, os.Stdout), io.MultiWriter(&stdErrBuf, os.Stderr), testutil.CreateLogger())
 			state := goVm.GetState()
 
@@ -993,8 +971,6 @@ func TestEntryEVM(t *testing.T) {
 }
 
 func TestEVMSingleStepBranch(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name         string
@@ -1077,7 +1053,7 @@ func TestEVMSingleStepBranch(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}

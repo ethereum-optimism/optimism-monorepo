@@ -22,6 +22,9 @@ import (
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 )
 
+// maxStepGas should be less than the L1 gas limit
+const maxStepGas = 20_000_000
+
 type MIPSEVM struct {
 	sender      vm.AccountRef
 	startingGas uint64
@@ -36,11 +39,29 @@ type MIPSEVM struct {
 	lastPreimageOracleInput []byte
 }
 
-func NewMIPSEVM(contracts *ContractMetadata) *MIPSEVM {
+func NewMIPSEVM(contracts *ContractMetadata, opts ...evmOption) *MIPSEVM {
 	env, evmState := NewEVMEnv(contracts)
 	sender := vm.AccountRef{0x13, 0x37}
-	startingGas := uint64(30_000_000)
-	return &MIPSEVM{sender, startingGas, env, evmState, contracts.Addresses, nil, contracts.Artifacts, math.MaxUint64, nil, nil}
+	startingGas := uint64(maxStepGas)
+	evm := &MIPSEVM{sender, startingGas, env, evmState, contracts.Addresses, nil, contracts.Artifacts, math.MaxUint64, nil, nil}
+	for _, opt := range opts {
+		opt(evm)
+	}
+	return evm
+}
+
+type evmOption func(c *MIPSEVM)
+
+func WithSourceMapTracer(t *testing.T, ver MipsVersion) evmOption {
+	return func(evm *MIPSEVM) {
+		evm.SetSourceMapTracer(t, ver)
+	}
+}
+
+func WithTracingHooks(tracer *tracing.Hooks) evmOption {
+	return func(evm *MIPSEVM) {
+		evm.SetTracer(tracer)
+	}
 }
 
 func (m *MIPSEVM) SetTracer(tracer *tracing.Hooks) {
@@ -171,15 +192,8 @@ func LogStepFailureAtCleanup(t *testing.T, mipsEvm *MIPSEVM) {
 }
 
 // ValidateEVM runs a single evm step and validates against an FPVM poststate
-func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM, hashFn mipsevm.HashFn, contracts *ContractMetadata, tracer *tracing.Hooks) {
-	if !arch.IsMips32 {
-		// TODO(#12250) Re-enable EVM validation once 64-bit MIPS contracts are completed
-		t.Logf("WARNING: Skipping EVM validation for 64-bit MIPS")
-		return
-	}
-
-	evm := NewMIPSEVM(contracts)
-	evm.SetTracer(tracer)
+func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM, hashFn mipsevm.HashFn, contracts *ContractMetadata, opts ...evmOption) {
+	evm := NewMIPSEVM(contracts, opts...)
 	LogStepFailureAtCleanup(t, evm)
 
 	evmPost := evm.Step(t, stepWitness, step, hashFn)
@@ -196,7 +210,7 @@ func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *Contract
 		ProofData: ProofData,
 	}
 	input := EncodeStepInput(t, stepWitness, mipsevm.LocalContext{}, contracts.Artifacts.MIPS)
-	startingGas := uint64(30_000_000)
+	startingGas := uint64(maxStepGas)
 
 	env, evmState := NewEVMEnv(contracts)
 	env.Config.Tracer = tracer
@@ -213,9 +227,8 @@ func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *Contract
 	require.Equal(t, 0, len(logs))
 }
 
-func AssertPreimageOracleReverts(t *testing.T, preimageKey [32]byte, preimageValue []byte, preimageOffset arch.Word, contracts *ContractMetadata, tracer *tracing.Hooks) {
-	evm := NewMIPSEVM(contracts)
-	evm.SetTracer(tracer)
+func AssertPreimageOracleReverts(t *testing.T, preimageKey [32]byte, preimageValue []byte, preimageOffset arch.Word, contracts *ContractMetadata, opts ...evmOption) {
+	evm := NewMIPSEVM(contracts, opts...)
 	LogStepFailureAtCleanup(t, evm)
 
 	evm.assertPreimageOracleReverts(t, preimageKey, preimageValue, preimageOffset)

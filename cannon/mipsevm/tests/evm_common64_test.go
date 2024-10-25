@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -134,12 +133,12 @@ func TestEVMSingleStep_Operators64(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
-func TestEVMSingleStep_Shift(t *testing.T) {
+func TestEVMSingleStep_Shift64(t *testing.T) {
 	cases := []struct {
 		name      string
 		rd        Word
@@ -190,7 +189,8 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 	for i, tt := range cases {
 		testName := fmt.Sprintf("%v %v", v.Name, tt.name)
 		t.Run(testName, func(t *testing.T) {
-			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPCAndNextPC(0))
+			pc := Word(0x0)
+			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPCAndNextPC(pc))
 			state := goVm.GetState()
 			var insn uint32
 			var rtReg uint32
@@ -200,7 +200,7 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 			insn = rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
 			state.GetRegistersRef()[rdReg] = tt.rd
 			state.GetRegistersRef()[rtReg] = tt.rt
-			testutil.StoreInstruction(state.GetMemory(), 0, insn)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
 			step := state.GetStep()
 
 			// Setup expectations
@@ -213,7 +213,7 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
@@ -455,12 +455,12 @@ func TestEVMSingleStep_LoadStore64(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
-func TestEVMSingleStep_DivMult(t *testing.T) {
+func TestEVMSingleStep_DivMult64(t *testing.T) {
 	cases := []struct {
 		name        string
 		rs          Word
@@ -560,15 +560,13 @@ func TestEVMSingleStep_DivMult(t *testing.T) {
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			}
 		})
 	}
 }
 
-func TestEVMSingleStepBranch64(t *testing.T) {
-	var tracer *tracing.Hooks
-
+func TestEVMSingleStep_Branch64(t *testing.T) {
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name         string
@@ -651,7 +649,7 @@ func TestEVMSingleStepBranch64(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}

@@ -5,7 +5,6 @@ import (
 	"os"
 	"testing"
 
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
@@ -17,8 +16,6 @@ import (
 )
 
 func TestEVM_LL(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	cases := []struct {
 		name    string
 		base    Word
@@ -61,14 +58,12 @@ func TestEVM_LL(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
 func TestEVM_SC(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	cases := []struct {
 		name    string
 		base    Word
@@ -115,14 +110,12 @@ func TestEVM_SC(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
 func TestEVM_SysRead_Preimage(t *testing.T) {
-	var tracer *tracing.Hooks
-
 	preimageValue := make([]byte, 0, 8)
 	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x12_34_56_78)
 	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x98_76_54_32)
@@ -183,14 +176,14 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 
 			if c.shouldPanic {
 				require.Panics(t, func() { _, _ = goVm.Step(true) })
-				testutil.AssertPreimageOracleReverts(t, preimageKey, preimageValue, c.preimageOffset, v.Contracts, tracer)
+				testutil.AssertPreimageOracleReverts(t, preimageKey, preimageValue, c.preimageOffset, v.Contracts)
 			} else {
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			}
 		})
 	}
