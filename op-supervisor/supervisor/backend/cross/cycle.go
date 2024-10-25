@@ -125,7 +125,7 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 			}
 
 			if i == 0 {
-				// First log in block has no dependencies.=
+				// First log in block has no dependencies
 				g.inDegree0[k] = struct{}{}
 			} else {
 				// Add edge: prev log <> current log
