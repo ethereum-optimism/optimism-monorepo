@@ -231,32 +231,56 @@ func TestHazardCycleChecksNoCycle(t *testing.T) {
 
 func TestHazardCycleChecksCycle(t *testing.T) {
 	tests := []testCase{
-		//{
-		// TODO: Creates the correct graph but fails to find the cycle
-		//  The same test below works only because it doesn't involve the first log
-		//  so something is going wrong there.
-		//
-		//	name: "2-cycle in single chain",
-		//	chainBlocks: map[string]chainBlockDef{
-		//		"1": {
-		//			logCount: 3,
-		//			messages: map[uint32]*types.ExecutingMessage{
-		//				0: execMsg("1", 2),
-		//				2: execMsg("1", 0),
-		//			},
-		//		},
-		//	},
-		//	expectErr: ErrCycle,
-		//	msg:       "expected cycle detection error",
-		//},
 		{
-			name: "2-cycle in single chain",
+			name: "2-cycle in single chain with first log",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 3,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("1", 2),
+						2: execMsg("1", 0),
+					},
+				},
+			},
+			expectErr: ErrCycle,
+			msg:       "expected cycle detection error",
+		},
+		{
+			name: "2-cycle in single chain with first log, adjacent",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("1", 1),
+						1: execMsg("1", 0),
+					},
+				},
+			},
+			expectErr: ErrCycle,
+			msg:       "expected cycle detection error",
+		},
+		{
+			name: "2-cycle in single chain, not first, adjacent",
 			chainBlocks: map[string]chainBlockDef{
 				"1": {
 					logCount: 3,
 					messages: map[uint32]*types.ExecutingMessage{
 						1: execMsg("1", 2),
 						2: execMsg("1", 1),
+					},
+				},
+			},
+			expectErr: ErrCycle,
+			msg:       "expected cycle detection error",
+		},
+		{
+			name: "2-cycle in single chain, not first, not adjacent",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 4,
+					messages: map[uint32]*types.ExecutingMessage{
+						1: execMsg("1", 3),
+						3: execMsg("1", 1),
 					},
 				},
 			},
