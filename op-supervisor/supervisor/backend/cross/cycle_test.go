@@ -321,6 +321,20 @@ func TestHazardCycleChecksCycle(t *testing.T) {
 			expectErr: ErrCycle,
 			msg:       "expected cycle detection error for 3-node cycle",
 		},
+		{
+			name: "cycle through adjacency dependency",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 10,
+					messages: map[uint32]*types.ExecutingMessage{
+						1: execMsg("1", 5), // Points to log 5
+						5: execMsg("1", 2), // Points back to log 2 which is adjacent to log 1
+					},
+				},
+			},
+			expectErr: ErrCycle,
+			msg:       "expected cycle detection error for when cycle goes through adjacency dependency",
+		},
 	}
 	runHazardTestCaseGroup(t, "Cycle", tests)
 }
