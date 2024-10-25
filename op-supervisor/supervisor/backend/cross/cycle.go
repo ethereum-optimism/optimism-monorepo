@@ -147,8 +147,11 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 			}
 
 			// Check if we care about the init message
-			initMsg := execMsgs[m.Chain][m.LogIdx]
-			if initMsg == nil {
+			initChainMsgs, ok := execMsgs[m.Chain]
+			if !ok {
+				continue
+			}
+			if _, ok := initChainMsgs[m.LogIdx]; !ok {
 				continue
 			}
 
