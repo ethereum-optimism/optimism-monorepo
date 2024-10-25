@@ -226,16 +226,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		return err
 	}
 
-	logMermaidDiagram("Built graph", g)
-
-	if err := checkGraphForCycle(g); err != nil {
-		if err == ErrCycle {
-			logMermaidDiagram("Found cycle; remaining sub-graph", g)
-		}
-		return err
-	}
-
-	return nil
+	return checkGraphForCycle(g)
 }
 
 // GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data
