@@ -7,7 +7,7 @@ import { Enum } from "safe-contracts/common/Enum.sol";
 
 // Libraries
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
-import "src/dispute/lib/Types.sol";
+import { GameType, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
@@ -48,8 +48,8 @@ contract DeputyGuardianModule is ISemver {
     address internal immutable DEPUTY_GUARDIAN;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.3
-    string public constant version = "2.0.1-beta.3";
+    /// @custom:semver 2.0.1-beta.4
+    string public constant version = "2.0.1-beta.4";
 
     // Constructor to initialize the Safe and baseModule instances
     constructor(Safe _safe, ISuperchainConfig _superchainConfig, address _deputyGuardian) {
