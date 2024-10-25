@@ -29,9 +29,11 @@ type testCase struct {
 	name        string
 	chainBlocks map[string]chainBlockDef
 	expectErr   error
+	msg         string
+
+	// Optional overrides
 	hazards     map[types.ChainIndex]types.BlockSeal
 	openBlockFn func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error)
-	msg         string
 }
 
 func chainIndex(s string) types.ChainIndex {
@@ -43,10 +45,14 @@ func chainIndex(s string) types.ChainIndex {
 }
 
 func execMsg(chain string, logIdx uint32) *types.ExecutingMessage {
+	return execMsgWithTimestamp(chain, logIdx, 100)
+}
+
+func execMsgWithTimestamp(chain string, logIdx uint32, timestamp uint64) *types.ExecutingMessage {
 	return &types.ExecutingMessage{
 		Chain:     chainIndex(chain),
 		LogIdx:    logIdx,
-		Timestamp: 100,
+		Timestamp: timestamp,
 	}
 }
 
@@ -224,6 +230,25 @@ func TestHazardCycleChecksNoCycle(t *testing.T) {
 				},
 			},
 			msg: "expected no cycle found first log is exec",
+		},
+		{
+			name: "cycle through different timestamp",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("2", 0),
+						1: execMsgWithTimestamp("2", 1, 99),
+					},
+				},
+				"2": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("1", 1),
+					},
+				},
+			},
+			msg: "expected no cycle detection error for cycle through messages with different timestamps",
 		},
 	}
 	runHazardTestCaseGroup(t, "NoCycle", tests)
