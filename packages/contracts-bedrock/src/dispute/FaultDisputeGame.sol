@@ -87,8 +87,6 @@ contract FaultDisputeGame is Clone, ISemver {
         address counteredBy;
     }
 
-    event Initialized(uint8 version);
-
     ////////////////////////////////////////////////////////////////
     //                         Events                             //
     ////////////////////////////////////////////////////////////////

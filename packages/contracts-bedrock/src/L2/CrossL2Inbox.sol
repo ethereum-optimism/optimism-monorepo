@@ -4,7 +4,6 @@ pragma solidity 0.8.25;
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { TransientContext, TransientReentrancyAware } from "src/libraries/TransientContext.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { ICrossL2Inbox } from "src/L2/interfaces/ICrossL2Inbox.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { IDependencySet } from "src/L2/interfaces/IDependencySet.sol";
 import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
@@ -29,6 +28,15 @@ error TargetCallFailed();
 
 /// @notice Thrown when trying to execute a cross chain message on a deposit transaction.
 error NoExecutingDeposits();
+
+/// @notice The struct for a pointer to a message payload in a remote (or local) chain.
+struct Identifier {
+    address origin;
+    uint256 blockNumber;
+    uint256 logIndex;
+    uint256 timestamp;
+    uint256 chainId;
+}
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000022
@@ -71,7 +79,7 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     /// @notice Emitted when a cross chain message is being executed.
     /// @param msgHash Hash of message payload being executed.
     /// @param id Encoded Identifier of the message.
-    event ExecutingMessage(bytes32 indexed msgHash, ICrossL2Inbox.Identifier id);
+    event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
 
     /// @notice Sets the Interop Start Timestamp for this chain. Can only be performed once and when the caller is the
     /// DEPOSITOR_ACCOUNT.
@@ -131,7 +139,7 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     /// @param _target  Target address to call.
     /// @param _message Message payload to call target with.
     function executeMessage(
-        ICrossL2Inbox.Identifier calldata _id,
+        Identifier calldata _id,
         address _target,
         bytes memory _message
     )
@@ -163,7 +171,7 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     ///         process it in a custom way.
     /// @param _id      Identifier of the message.
     /// @param _msgHash Hash of the message payload to call target with.
-    function validateMessage(ICrossL2Inbox.Identifier calldata _id, bytes32 _msgHash) external {
+    function validateMessage(Identifier calldata _id, bytes32 _msgHash) external {
         // We need to know if this is being called on a depositTx
         if (IL1BlockInterop(Predeploys.L1_BLOCK_ATTRIBUTES).isDeposit()) revert NoExecutingDeposits();
 
@@ -177,7 +185,7 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     ///         it's timestamp is not in the future and the source chainId
     ///         is in the destination chain's dependency set.
     /// @param _id Identifier of the message.
-    function _checkIdentifier(ICrossL2Inbox.Identifier calldata _id) internal view {
+    function _checkIdentifier(Identifier calldata _id) internal view {
         if (_id.timestamp > block.timestamp || _id.timestamp <= interopStart()) revert InvalidTimestamp();
         if (!IDependencySet(Predeploys.L1_BLOCK_ATTRIBUTES).isInDependencySet(_id.chainId)) {
             revert InvalidChainId();
@@ -186,7 +194,7 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
 
     /// @notice Stores the Identifier in transient storage.
     /// @param _id Identifier to store.
-    function _storeIdentifier(ICrossL2Inbox.Identifier calldata _id) internal {
+    function _storeIdentifier(Identifier calldata _id) internal {
         TransientContext.set(ORIGIN_SLOT, uint160(_id.origin));
         TransientContext.set(BLOCK_NUMBER_SLOT, _id.blockNumber);
         TransientContext.set(LOG_INDEX_SLOT, _id.logIndex);

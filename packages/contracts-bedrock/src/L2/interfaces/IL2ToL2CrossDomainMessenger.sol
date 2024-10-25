@@ -1,7 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { ICrossL2Inbox } from "src/L2/interfaces/ICrossL2Inbox.sol";
+struct Identifier {
+    address origin;
+    uint256 blockNumber;
+    uint256 logIndex;
+    uint256 timestamp;
+    uint256 chainId;
+}
 
 /// @title IL2ToL2CrossDomainMessenger
 /// @notice Interface for the L2ToL2CrossDomainMessenger contract.
@@ -95,7 +101,7 @@ interface IL2ToL2CrossDomainMessenger {
     ///         already received once and is currently being replayed.
     /// @param _id          Identifier of the SentMessage event to be relayed
     /// @param _sentMessage Message payload of the `SentMessage` event
-    function relayMessage(ICrossL2Inbox.Identifier calldata _id, bytes calldata _sentMessage) external payable;
+    function relayMessage(Identifier calldata _id, bytes calldata _sentMessage) external payable;
 
     function messageVersion() external view returns (uint16);
 

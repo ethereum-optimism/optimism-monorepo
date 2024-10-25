@@ -1,6 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+struct Identifier {
+    address origin;
+    uint256 blockNumber;
+    uint256 logIndex;
+    uint256 timestamp;
+    uint256 chainId;
+}
+
 /// @title ICrossL2Inbox
 /// @notice Interface for the CrossL2Inbox contract.
 interface ICrossL2Inbox {
@@ -27,16 +35,7 @@ interface ICrossL2Inbox {
     /// @notice Thrown when trying to execute a cross chain message on a deposit transaction.
     error NoExecutingDeposits();
 
-    event ExecutingMessage(bytes32 indexed msgHash, ICrossL2Inbox.Identifier id);
-
-    /// @notice The struct for a pointer to a message payload in a remote (or local) chain.
-    struct Identifier {
-        address origin;
-        uint256 blockNumber;
-        uint256 logIndex;
-        uint256 timestamp;
-        uint256 chainId;
-    }
+    event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
 
     function version() external view returns (string memory);
 
@@ -65,13 +64,7 @@ interface ICrossL2Inbox {
     /// @param _id An Identifier pointing to the initiating message.
     /// @param _target Account that is called with _msg.
     /// @param _message The message payload, matching the initiating message.
-    function executeMessage(
-        ICrossL2Inbox.Identifier calldata _id,
-        address _target,
-        bytes calldata _message
-    )
-        external
-        payable;
+    function executeMessage(Identifier calldata _id, address _target, bytes calldata _message) external payable;
 
     /// @notice Validates a cross chain message on the destination chain
     ///         and emits an ExecutingMessage event. This function is useful

@@ -10,8 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 
 // Target contract
-import { CrossL2Inbox } from "src/L2/CrossL2Inbox.sol";
-import { ICrossL2Inbox } from "src/L2/interfaces/ICrossL2Inbox.sol";
+import { CrossL2Inbox, Identifier } from "src/L2/CrossL2Inbox.sol";
 import {
     L2ToL2CrossDomainMessenger,
     NotEntered,
@@ -218,8 +217,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.mockCall({ callee: _target, msgValue: _value, data: _message, returnData: abi.encode(true) });
 
         // Construct the SentMessage payload & identifier
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
             abi.encode(_sender, _message) // data
@@ -264,8 +263,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.expectRevert(EventPayloadNotSentMessage.selector);
 
         // Point to a different remote log that the inbox validates
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage =
             abi.encode(L2ToL2CrossDomainMessenger.RelayedMessage.selector, _source, _nonce, _msgHash);
 
@@ -325,8 +324,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.expectCall({ callee: target, msgValue: _value, data: message });
 
         // Construct and relay the message
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, target, _nonce), // topics
             abi.encode(_sender, message) // data
@@ -368,8 +367,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         vm.expectRevert(ReentrantCall.selector);
 
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, 1, 1, 1, _source);
+        Identifier memory id = Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, 1, 1, 1, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, address(0), _nonce), // topics
             abi.encode(_sender, "") // data
@@ -407,8 +405,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.expectCall({ callee: target, msgValue: _value, data: message });
 
         // Construct and relay the message
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source1);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source1);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, target, _nonce), // topics
             abi.encode(_sender1, message) // data
@@ -457,7 +455,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Expect a revert with the IdOriginNotL2ToL2CrossDomainMessenger
         vm.expectRevert(IdOriginNotL2ToL2CrossDomainMessenger.selector);
 
-        ICrossL2Inbox.Identifier memory id = ICrossL2Inbox.Identifier(_origin, _blockNum, _logIndex, _time, _source);
+        Identifier memory id = Identifier(_origin, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
             abi.encode(_sender, _message) // data
@@ -489,8 +487,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Expect a revert with the MessageDestinationNotRelayChain selector
         vm.expectRevert(MessageDestinationNotRelayChain.selector);
 
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, _destination, _target, _nonce), // topics
             abi.encode(_sender, _message) // data
@@ -526,8 +524,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Call `relayMessage` with CrossL2Inbox as the target to provoke revert. The current chain is the destination
         // to prevent revert due to invalid destination
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(
                 L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, Predeploys.CROSS_L2_INBOX, _nonce
@@ -565,8 +563,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Call `relayMessage` with L2ToL2CrossDomainMessenger as the target to provoke revert. The current chain is the
         // destination to prevent revert due to invalid destination
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(
                 L2ToL2CrossDomainMessenger.SentMessage.selector,
@@ -620,8 +618,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             _source, _nonce, keccak256(abi.encode(block.chainid, _source, _nonce, _sender, _target, _message))
         );
 
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
             abi.encode(_sender, _message) // data
@@ -670,8 +668,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure that the target contract reverts
         vm.mockCallRevert({ callee: _target, msgValue: _value, data: _message, revertData: abi.encode(false) });
 
-        ICrossL2Inbox.Identifier memory id =
-            ICrossL2Inbox.Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
+        Identifier memory id =
+            Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
             abi.encode(_sender, _message) // data
