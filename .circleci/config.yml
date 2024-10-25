@@ -1245,9 +1245,24 @@ jobs:
         description: Goreleaser config file
         default: .goreleaser.yaml
         type: string
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
+    resource_class: large
     steps:
+      - setup_remote_docker
+      - gcp-cli/install
+      - gcp-oidc-authenticate
+      - name: Install goreleaser pro
+        run: |
+          mkdir goreleaser
+          curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.3.2-pro/goreleaser-pro_Linux_x86_64.tar.gz
+          tar -xzvf goreleaser.tgz
+          mv goreleaser /usr/local/bin/goreleaser
+          rm -rf goreleaser
+      - run:
+          name: Configure Docker
+          command: |
+            gcloud auth configure-docker us-docker.pkg.dev
       - checkout
       - run:
           name: Run goreleaser
@@ -1553,8 +1568,8 @@ workflows:
     when:
       and:
         - or:
-          - equal: [ "develop", <<pipeline.git.branch>> ]
-          - equal: [ true, <<pipeline.parameters.fault_proofs_dispatch>> ]
+            - equal: [ "develop", <<pipeline.git.branch>> ]
+            - equal: [ true, <<pipeline.parameters.fault_proofs_dispatch>> ]
         - not:
             equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
@@ -1585,10 +1600,10 @@ workflows:
     when:
       and:
         - or:
-          - equal: [ "develop", <<pipeline.git.branch>> ]
-          - equal: [ true, <<pipeline.parameters.kontrol_dispatch>> ]
+            - equal: [ "develop", <<pipeline.git.branch>> ]
+            - equal: [ true, <<pipeline.parameters.kontrol_dispatch>> ]
         - not:
-           equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
+            equal: [ scheduled_pipeline, << pipeline.trigger_source >> ]
     jobs:
       - kontrol-tests:
           context:
@@ -1665,7 +1680,7 @@ workflows:
   scheduled-preimage-reproducibility:
     when:
       or:
-        - equal: [build_daily, <<pipeline.schedule.name>> ]
+        - equal: [ build_daily, <<pipeline.schedule.name>> ]
         # Trigger on manual triggers if explicitly requested
         - equal: [ true, << pipeline.parameters.reproducibility_dispatch >> ]
     jobs:
