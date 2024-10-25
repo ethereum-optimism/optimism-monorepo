@@ -42,6 +42,11 @@ func LoadELF[T mipsevm.FPVMState](f *elf.File, initState CreateInitialFPVMState[
 			}
 		}
 
+		if prog.Memsz == 0 {
+			// Nothing to do
+			continue
+		}
+
 		lastByteToWrite := prog.Vaddr + prog.Memsz - 1
 		lastMemoryAddr := uint64(^arch.Word(0))
 		if lastByteToWrite > lastMemoryAddr || lastByteToWrite < prog.Vaddr {

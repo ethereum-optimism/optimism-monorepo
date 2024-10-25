@@ -26,6 +26,8 @@ func TestLoadELF(t *testing.T) {
 		expectedErr  string
 		shouldIgnore bool
 	}{
+		{name: "Zero length segment", progType: elf.PT_LOAD, fileSize: 0, memSize: 0, vAddr: 0},
+		{name: "Zero length segment, non-zero fileSize", progType: elf.PT_LOAD, fileSize: 2, memSize: 0, vAddr: 0, expectedErr: "file size (2) > mem size (0)"},
 		{name: "Loadable segment, fileSize > memSize", progType: elf.PT_LOAD, fileSize: dataSize * 2, memSize: dataSize, vAddr: 0x4000, expectedErr: "file size (16) > mem size (8)"},
 		{name: "Loadable segment, fileSize < memSize", progType: elf.PT_LOAD, fileSize: dataSize, memSize: dataSize * 2, vAddr: 0x4000},
 		{name: "Loadable segment, fileSize == memSize", progType: elf.PT_LOAD, fileSize: dataSize, memSize: dataSize, vAddr: 0x4000},
