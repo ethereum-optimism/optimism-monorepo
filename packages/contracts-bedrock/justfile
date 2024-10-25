@@ -27,8 +27,14 @@ forge-build:
 build: prebuild lint-fix-no-fail forge-build interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
-build-go-ffi:
+build-go-ffi-default:
   cd ./scripts/go-ffi && go build
+
+# Builds the go-ffi tool for MIPS64 contract tests.
+build-go-ffi-cannon64:
+  cd ./scripts/go-ffi && go build -tags=cannon64 -o ./go-ffi-cannon64
+
+build-go-ffi: build-go-ffi-default build-go-ffi-cannon64
 
 # Cleans build artifacts and deployments.
 clean:

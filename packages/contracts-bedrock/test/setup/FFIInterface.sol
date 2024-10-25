@@ -317,6 +317,90 @@ contract FFIInterface {
         return (memRoot, proof);
     }
 
+    function getCannonMemory64Proof(uint64 pc, uint64 insn) external returns (bytes32, bytes memory) {
+        string[] memory cmds = new string[](5);
+        cmds[0] = "scripts/go-ffi/go-ffi-cannon64";
+        cmds[1] = "diff";
+        cmds[2] = "cannonMemoryProof";
+        cmds[3] = vm.toString(pc);
+        cmds[4] = vm.toString(insn);
+        bytes memory result = Process.run(cmds);
+        (bytes32 memRoot, bytes memory proof) = abi.decode(result, (bytes32, bytes));
+        return (memRoot, proof);
+    }
+
+    function getCannonMemory64Proof(
+        uint64 pc,
+        uint64 insn,
+        uint64 memAddr,
+        uint64 memVal
+    )
+        external
+        returns (bytes32, bytes memory)
+    {
+        string[] memory cmds = new string[](7);
+        cmds[0] = "scripts/go-ffi/go-ffi-cannon64";
+        cmds[1] = "diff";
+        cmds[2] = "cannonMemoryProof";
+        cmds[3] = vm.toString(pc);
+        cmds[4] = vm.toString(insn);
+        cmds[5] = vm.toString(memAddr);
+        cmds[6] = vm.toString(memVal);
+        bytes memory result = Process.run(cmds);
+        (bytes32 memRoot, bytes memory proof) = abi.decode(result, (bytes32, bytes));
+        return (memRoot, proof);
+    }
+
+    function getCannonMemory64Proof(
+        uint64 pc,
+        uint64 insn,
+        uint64 memAddr,
+        uint64 memVal,
+        uint64 memAddr2,
+        uint64 memVal2
+    )
+        external
+        returns (bytes32, bytes memory)
+    {
+        string[] memory cmds = new string[](9);
+        cmds[0] = "scripts/go-ffi/go-ffi-cannon64";
+        cmds[1] = "diff";
+        cmds[2] = "cannonMemoryProof";
+        cmds[3] = vm.toString(pc);
+        cmds[4] = vm.toString(insn);
+        cmds[5] = vm.toString(memAddr);
+        cmds[6] = vm.toString(memVal);
+        cmds[7] = vm.toString(memAddr2);
+        cmds[8] = vm.toString(memVal2);
+        bytes memory result = Process.run(cmds);
+        (bytes32 memRoot, bytes memory proof) = abi.decode(result, (bytes32, bytes));
+        return (memRoot, proof);
+    }
+
+    function getCannonMemory64Proof2(
+        uint64 pc,
+        uint64 insn,
+        uint64 memAddr,
+        uint64 memVal,
+        uint64 memAddrForProof
+    )
+        external
+        returns (bytes32, bytes memory)
+    {
+        string[] memory cmds = new string[](8);
+        cmds[0] = "scripts/go-ffi/go-ffi-cannon64";
+        cmds[1] = "diff";
+        cmds[2] = "cannonMemoryProof2";
+        cmds[3] = vm.toString(pc);
+        cmds[4] = vm.toString(insn);
+        cmds[5] = vm.toString(memAddr);
+        cmds[6] = vm.toString(memVal);
+        cmds[7] = vm.toString(memAddrForProof);
+        bytes memory result = Process.run(cmds);
+        (bytes32 memRoot, bytes memory proof) = abi.decode(result, (bytes32, bytes));
+        return (memRoot, proof);
+    }
+
     function encodeScalarEcotone(uint32 _basefeeScalar, uint32 _blobbasefeeScalar) external returns (bytes32) {
         string[] memory cmds = new string[](5);
         cmds[0] = "scripts/go-ffi/go-ffi";
