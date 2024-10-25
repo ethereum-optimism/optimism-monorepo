@@ -189,7 +189,7 @@ func TestHazardCycleChecks_NoCycle_1BasicLog1ExecLog(t *testing.T) {
 	deps := &mockCycleCheckDeps{
 		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
 			msgs := map[uint32]*types.ExecutingMessage{
-				0: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
+				1: {Chain: types.ChainIndex(1), LogIdx: 0, Timestamp: 100},
 			}
 			return types.BlockSeal{Number: blockNum}, 2, msgs, nil
 		},
