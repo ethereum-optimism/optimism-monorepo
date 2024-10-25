@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
-	"math/big"
 	"strings"
 
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
@@ -29,16 +28,32 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-type DelayedWETHConfig struct {
+type DisputeGameConfig struct {
 	L1RPCUrl         string
 	PrivateKey       string
 	Logger           log.Logger
 	ArtifactsLocator *artifacts2.Locator
 
 	privateKeyECDSA *ecdsa.PrivateKey
+
+	MinProposalSizeBytes     uint64
+	ChallengePeriodSeconds   uint64
+	MipsVersion              uint8
+	GameKind                 string
+	GameType                 uint32
+	AbsolutePrestate         common.Hash
+	MaxGameDepth             uint64
+	SplitDepth               uint64
+	ClockExtension           uint64
+	MaxClockDuration         uint64
+	DelayedWethProxy         common.Address
+	AnchorStateRegistryProxy common.Address
+	L2ChainId                uint64
+	Proposer                 common.Address
+	Challenger               common.Address
 }
 
-func (c *DelayedWETHConfig) Check() error {
+func (c *DisputeGameConfig) Check() error {
 	if c.L1RPCUrl == "" {
 		return fmt.Errorf("l1RPCUrl must be specified")
 	}
@@ -64,7 +79,7 @@ func (c *DelayedWETHConfig) Check() error {
 	return nil
 }
 
-func DelayedWETHCLI(cliCtx *cli.Context) error {
+func DisputeGameCLI(cliCtx *cli.Context) error {
 	logCfg := oplog.ReadCLIConfig(cliCtx)
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
@@ -79,7 +94,7 @@ func DelayedWETHCLI(cliCtx *cli.Context) error {
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return DelayedWETH(ctx, DelayedWETHConfig{
+	return DisputeGame(ctx, DisputeGameConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
@@ -87,9 +102,9 @@ func DelayedWETHCLI(cliCtx *cli.Context) error {
 	})
 }
 
-func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
+func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for DelayedWETH: %w", err)
+		return fmt.Errorf("invalid config for DisputeGame: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -118,21 +133,9 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 	}
 	chainIDU64 := chainID.Uint64()
 
-	superCfg, err := standard.SuperchainFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting superchain config: %w", err)
-	}
 	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
 	if err != nil {
 		return fmt.Errorf("error getting standard versions TOML: %w", err)
-	}
-	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting superchain proxy admin: %w", err)
-	}
-	delayedWethOwner, err := standard.SystemOwnerAddrFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting superchain system owner: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -172,32 +175,41 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		release = "dev"
 	}
 
-	lgr.Info("deploying DelayedWETH", "release", release)
+	lgr.Info("deploying dispute game", "release", release)
 
-	superchainConfigAddr := common.Address(*superCfg.Config.SuperchainConfigAddr)
-
-	dwo, err := opcm.DeployDelayedWETH(
+	dgo, err := opcm.DeployDisputeGame(
 		host,
-		opcm.DeployDelayedWETHInput{
-			Release:               release,
-			StandardVersionsToml:  standardVersionsTOML,
-			ProxyAdmin:            proxyAdmin,
-			SuperchainConfigProxy: superchainConfigAddr,
-			DelayedWethOwner:      delayedWethOwner,
-			DelayedWethDelay:      big.NewInt(604800),
+		opcm.DeployDisputeGameInput{
+			Release:                  release,
+			StandardVersionsToml:     standardVersionsTOML,
+			MipsVersion:              cfg.MipsVersion,
+			MinProposalSizeBytes:     cfg.MinProposalSizeBytes,
+			ChallengePeriodSeconds:   cfg.ChallengePeriodSeconds,
+			GameKind:                 cfg.GameKind,
+			GameType:                 cfg.GameType,
+			AbsolutePrestate:         cfg.AbsolutePrestate,
+			MaxGameDepth:             cfg.MaxGameDepth,
+			SplitDepth:               cfg.SplitDepth,
+			ClockExtension:           cfg.ClockExtension,
+			MaxClockDuration:         cfg.MaxClockDuration,
+			DelayedWethProxy:         cfg.DelayedWethProxy,
+			AnchorStateRegistryProxy: cfg.AnchorStateRegistryProxy,
+			L2ChainId:                cfg.L2ChainId,
+			Proposer:                 cfg.Proposer,
+			Challenger:               cfg.Challenger,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying DelayedWETH: %w", err)
+		return fmt.Errorf("error deploying dispute game: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
 		return fmt.Errorf("failed to broadcast: %w", err)
 	}
 
-	lgr.Info("deployed DelayedWETH")
+	lgr.Info("deployed dispute game")
 
-	if err := jsonutil.WriteJSON(dwo, ioutil.ToStdOut()); err != nil {
+	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOut()); err != nil {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
 	return nil
