@@ -137,51 +137,51 @@ func envOrList[E any](key string,
 }
 
 func (c *CheatCodesPrecompile) EnvOr_4777f3cf(key string, defaultValue bool) (bool, error) {
-	return envOrSingular[bool](key, c.h.GetEnvVar, c.ParseBool, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseBool, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_5e97348f(key string, defaultValue *big.Int) (*big.Int, error) {
-	return envOrSingular[*big.Int](key, c.h.GetEnvVar, c.ParseUint, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseUint, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_bbcb713e(key string, defaultValue *ABIInt256) (*ABIInt256, error) {
-	return envOrSingular[*ABIInt256](key, c.h.GetEnvVar, c.ParseInt, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseInt, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_561fe540(key string, defaultValue common.Address) (common.Address, error) {
-	return envOrSingular[common.Address](key, c.h.GetEnvVar, c.ParseAddress, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseAddress, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_b4a85892(key string, defaultValue [32]byte) ([32]byte, error) {
-	return envOrSingular[[32]byte](key, c.h.GetEnvVar, c.ParseBytes32, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseBytes32, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_d145736c(key string, defaultValue string) (string, error) {
-	return envOrSingular[string](key, c.h.GetEnvVar, func(v string) (string, error) {
+	return envOrSingular(key, c.h.GetEnvVar, func(v string) (string, error) {
 		return v, nil
 	}, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_b3e47705(key string, defaultValue []byte) ([]byte, error) {
-	return envOrSingular[[]byte](key, c.h.GetEnvVar, c.ParseBytes, defaultValue)
+	return envOrSingular(key, c.h.GetEnvVar, c.ParseBytes, defaultValue)
 }
 
 func (c *CheatCodesPrecompile) EnvOr_eb85e83b(key string, delimiter string, defaultValue []bool) ([]bool, error) {
-	return envOrList[bool](key, c.h.GetEnvVar, delimiter, c.ParseBool, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseBool, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_74318528(key string, delimiter string, defaultValue []*big.Int) ([]*big.Int, error) {
-	return envOrList[*big.Int](key, c.h.GetEnvVar, delimiter, c.ParseUint, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseUint, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_4700d74b(key string, delimiter string, defaultValue []*ABIInt256) ([]*ABIInt256, error) {
-	return envOrList[*ABIInt256](key, c.h.GetEnvVar, delimiter, c.ParseInt, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseInt, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_c74e9deb(key string, delimiter string, defaultValue []common.Address) ([]common.Address, error) {
-	return envOrList[common.Address](key, c.h.GetEnvVar, delimiter, c.ParseAddress, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseAddress, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_2281f367(key string, delimiter string, defaultValue [][32]byte) ([][32]byte, error) {
-	return envOrList[[32]byte](key, c.h.GetEnvVar, delimiter, c.ParseBytes32, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseBytes32, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_859216bc(key string, delimiter string, defaultValue []string) ([]string, error) {
-	return envOrList[string](key, c.h.GetEnvVar, delimiter, func(v string) (string, error) {
+	return envOrList(key, c.h.GetEnvVar, delimiter, func(v string) (string, error) {
 		return v, nil
 	}, defaultValue)
 }
 func (c *CheatCodesPrecompile) EnvOr_64bc3e64(key string, delimiter string, defaultValue [][]byte) ([][]byte, error) {
-	return envOrList[[]byte](key, c.h.GetEnvVar, delimiter, c.ParseBytes, defaultValue)
+	return envOrList(key, c.h.GetEnvVar, delimiter, c.ParseBytes, defaultValue)
 }
 
 func envSingular[E any](key string,
