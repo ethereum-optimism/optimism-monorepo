@@ -5,13 +5,10 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { SimpleStorage } from "test/universal/Proxy.t.sol";
 
-// Contracts
+// Interfaces
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
 import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
-
-// Interfaces
-import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
 import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
 
