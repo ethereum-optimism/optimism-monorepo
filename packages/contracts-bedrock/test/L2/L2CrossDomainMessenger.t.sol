@@ -48,11 +48,9 @@ contract L2CrossDomainMessenger_Test is Bridge_Initializer {
             Encoding.encodeCrossDomainMessage(l2CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff");
         vm.expectCall(
             address(l2ToL1MessagePasser),
-            abi.encodeWithSelector(
-                IL2ToL1MessagePasser.initiateWithdrawal.selector,
-                address(l1CrossDomainMessenger),
-                l2CrossDomainMessenger.baseGas(hex"ff", 100),
-                xDomainCallData
+            abi.encodeCall(
+                IL2ToL1MessagePasser.initiateWithdrawal,
+                (address(l1CrossDomainMessenger), l2CrossDomainMessenger.baseGas(hex"ff", 100), xDomainCallData)
             )
         );
 
@@ -236,11 +234,9 @@ contract L2CrossDomainMessenger_Test is Bridge_Initializer {
             Encoding.encodeCrossDomainMessage(l2CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff");
         vm.expectCall(
             address(l2ToL1MessagePasser),
-            abi.encodeWithSelector(
-                IL2ToL1MessagePasser.initiateWithdrawal.selector,
-                address(l1CrossDomainMessenger),
-                l2CrossDomainMessenger.baseGas(hex"ff", 100),
-                xDomainCallData
+            abi.encodeCall(
+                IL2ToL1MessagePasser.initiateWithdrawal,
+                (address(l1CrossDomainMessenger), l2CrossDomainMessenger.baseGas(hex"ff", 100), xDomainCallData)
             )
         );
 

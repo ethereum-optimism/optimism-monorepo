@@ -58,14 +58,16 @@ contract L1CrossDomainMessenger_Test is Bridge_Initializer {
         // deposit transaction on the optimism portal should be called
         vm.expectCall(
             address(optimismPortal),
-            abi.encodeWithSelector(
-                IOptimismPortal.depositTransaction.selector,
-                Predeploys.L2_CROSS_DOMAIN_MESSENGER,
-                0,
-                l1CrossDomainMessenger.baseGas(hex"ff", 100),
-                false,
-                Encoding.encodeCrossDomainMessage(
-                    l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff"
+            abi.encodeCall(
+                IOptimismPortal.depositTransaction,
+                (
+                    Predeploys.L2_CROSS_DOMAIN_MESSENGER,
+                    0,
+                    l1CrossDomainMessenger.baseGas(hex"ff", 100),
+                    false,
+                    Encoding.encodeCrossDomainMessage(
+                        l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff"
+                    )
                 )
             )
         );
@@ -604,7 +606,7 @@ contract L1CrossDomainMessenger_Test is Bridge_Initializer {
 
     /// @dev Tests that the superchain config is called by the messengers paused function
     function test_pause_callsSuperchainConfig_succeeds() external {
-        vm.expectCall(address(superchainConfig), abi.encodeWithSelector(ISuperchainConfig.paused.selector));
+        vm.expectCall(address(superchainConfig), abi.encodeCall(ISuperchainConfig.paused, ()));
         l1CrossDomainMessenger.paused();
     }
 
@@ -630,14 +632,16 @@ contract L1CrossDomainMessenger_Test is Bridge_Initializer {
         // deposit transaction on the optimism portal should be called
         vm.expectCall(
             address(optimismPortal),
-            abi.encodeWithSelector(
-                IOptimismPortal.depositTransaction.selector,
-                Predeploys.L2_CROSS_DOMAIN_MESSENGER,
-                0,
-                l1CrossDomainMessenger.baseGas(hex"ff", 100),
-                false,
-                Encoding.encodeCrossDomainMessage(
-                    l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff"
+            abi.encodeCall(
+                IOptimismPortal.depositTransaction,
+                (
+                    Predeploys.L2_CROSS_DOMAIN_MESSENGER,
+                    0,
+                    l1CrossDomainMessenger.baseGas(hex"ff", 100),
+                    false,
+                    Encoding.encodeCrossDomainMessage(
+                        l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff"
+                    )
                 )
             )
         );
@@ -743,7 +747,7 @@ contract L1CrossDomainMessenger_ReinitReentryTest is Bridge_Initializer {
 
     // Common values used across functions
     uint256 constant messageValue = 50;
-    bytes constant selector = abi.encodeWithSelector(this.reinitAndReenter.selector);
+    bytes selector = abi.encodeCall(this.reinitAndReenter, ());
     address sender;
     bytes32 hash;
     address target;
@@ -760,7 +764,7 @@ contract L1CrossDomainMessenger_ReinitReentryTest is Bridge_Initializer {
 
     /// @dev This method will be called by the relayed message, and will attempt to reenter the relayMessage function
     ///      exactly once.
-    function reinitAndReenter() public payable {
+    function reinitAndReenter() external payable {
         // only attempt the attack once
         if (!attacked) {
             attacked = true;

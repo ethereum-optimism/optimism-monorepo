@@ -34,7 +34,7 @@ contract L1StandardBridgeKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
 
         vm.mockCall(
             address(l1standardBridge.messenger()),
-            abi.encodeWithSelector(CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1standardBridge.otherBridge()))
         );
 
@@ -59,7 +59,7 @@ contract L1StandardBridgeKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
 
         vm.mockCall(
             address(l1standardBridge.messenger()),
-            abi.encodeWithSelector(CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1standardBridge.otherBridge()))
         );
 

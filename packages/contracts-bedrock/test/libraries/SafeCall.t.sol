@@ -127,7 +127,7 @@ contract SafeCall_Test is Test {
             if (i < 65_907) {
                 assertFalse(caller.makeSafeCall(i, 25_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 25_000));
             }
 
@@ -147,7 +147,7 @@ contract SafeCall_Test is Test {
             if (i < 15_278_606) {
                 assertFalse(caller.makeSafeCall(i, 15_000_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 15_000_000));
             }
 
@@ -160,11 +160,11 @@ contract SimpleSafeCaller {
     uint256 public a;
 
     function makeSafeCall(uint64 gas, uint64 minGas) external returns (bool) {
-        return SafeCall.call(address(this), gas, 0, abi.encodeWithSelector(this.makeSafeCallMinGas.selector, minGas));
+        return SafeCall.call(address(this), gas, 0, abi.encodeCall(this.makeSafeCallMinGas, (minGas)));
     }
 
     function makeSafeCallMinGas(uint64 minGas) external returns (bool) {
-        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeWithSelector(this.setA.selector, 1));
+        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeCall(this.setA, (1)));
     }
 
     function setA(uint256 _a) external {

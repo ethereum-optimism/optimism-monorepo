@@ -63,11 +63,7 @@ contract OptimismSuperchainERC20Test is Test {
         EIP1967Helper.setImplementation(_addr, _impl);
 
         // Mock implementation address
-        vm.mockCall(
-            _impl,
-            abi.encodeWithSelector(IBeacon.implementation.selector),
-            abi.encode(address(optimismSuperchainERC20Impl))
-        );
+        vm.mockCall(_impl, abi.encodeCall(IBeacon.implementation, ()), abi.encode(address(optimismSuperchainERC20Impl)));
     }
 
     /// @notice Helper function to deploy a proxy of the OptimismSuperchainERC20 contract.

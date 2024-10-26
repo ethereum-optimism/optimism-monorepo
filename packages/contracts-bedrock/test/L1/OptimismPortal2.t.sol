@@ -1120,7 +1120,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         // this contract's callPortalAndExpectRevert() function above.
         Types.WithdrawalTransaction memory _testTx = _defaultTx;
         _testTx.target = address(this);
-        _testTx.data = abi.encodeWithSelector(this.callPortalAndExpectRevert.selector);
+        _testTx.data = abi.encodeCall(this.callPortalAndExpectRevert, ());
 
         // Get modified proof inputs.
         (
@@ -1420,7 +1420,7 @@ contract OptimismPortal2_Upgradeable_Test is CommonTest {
         // The value passed to the initialize must be larger than the last value
         // that initialize was called with.
         IProxy(payable(address(optimismPortal2))).upgradeToAndCall(
-            address(nextImpl), abi.encodeWithSelector(NextImpl.initialize.selector, 2)
+            address(nextImpl), abi.encodeCall(NextImpl.initialize, (2))
         );
         assertEq(IProxy(payable(address(optimismPortal2))).implementation(), address(nextImpl));
 
@@ -1498,9 +1498,7 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
             systemTxMaxGas: _systemTxMaxGas,
             maximumBaseFee: _maximumBaseFee
         });
-        vm.mockCall(
-            address(systemConfig), abi.encodeWithSelector(systemConfig.resourceConfig.selector), abi.encode(rcfg)
-        );
+        vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.resourceConfig, ()), abi.encode(rcfg));
 
         // Set the resource params
         uint256 _prevBlockNum = block.number - _blockDiff;
@@ -1647,9 +1645,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         vm.mockCall(address(systemConfig), abi.encodeWithSignature("gasPayingToken()"), abi.encode(address(token), 18));
 
         // Mock the token balance
-        vm.mockCall(
-            address(token), abi.encodeWithSelector(token.balanceOf.selector, address(optimismPortal)), abi.encode(0)
-        );
+        vm.mockCall(address(token), abi.encodeCall(token.balanceOf, (address(optimismPortal))), abi.encode(0));
 
         // Call minimumGasLimit(0) before vm.expectRevert to ensure vm.expectRevert is for depositERC20Transaction
         uint64 gasLimit = optimismPortal2.minimumGasLimit(0);
@@ -1748,9 +1744,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
 
         vm.expectCall(_defaultTx.target, 0, _defaultTx.data);
 
-        vm.expectCall(
-            address(token), 0, abi.encodeWithSelector(token.transfer.selector, _defaultTx.target, _defaultTx.value)
-        );
+        vm.expectCall(address(token), 0, abi.encodeCall(token.transfer, (_defaultTx.target, _defaultTx.value)));
 
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
 

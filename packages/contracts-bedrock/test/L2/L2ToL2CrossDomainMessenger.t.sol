@@ -227,7 +227,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -271,7 +271,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -312,7 +312,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Set the target and message for the reentrant call
         address target = address(this);
-        bytes memory message = abi.encodeWithSelector(this.mockTarget.selector, _source, _sender);
+        bytes memory message = abi.encodeCall(this.mockTarget, (_source, _sender));
 
         bytes32 msgHash = keccak256(abi.encode(block.chainid, _source, _nonce, _sender, target, message));
 
@@ -334,7 +334,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -399,7 +399,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Set the target and message for the reentrant call
         address target = address(this);
-        bytes memory message = abi.encodeWithSelector(this.mockTargetReentrant.selector, _source2, _nonce, _sender2);
+        bytes memory message = abi.encodeCall(this.mockTargetReentrant, (_source2, _nonce, _sender2));
 
         // Ensure the target contract is called with the correct parameters
         vm.expectCall({ callee: target, msgValue: _value, data: message });
@@ -415,7 +415,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -497,7 +497,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -536,7 +536,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -578,7 +578,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -628,7 +628,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -678,7 +678,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeWithSelector(CrossL2Inbox.validateMessage.selector, id, sentMessage),
+            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 

@@ -34,7 +34,7 @@ contract L1ERC721BridgeKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
 
         vm.mockCall(
             address(l1ERC721Bridge.messenger()),
-            abi.encodeWithSelector(CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1ERC721Bridge.otherBridge()))
         );
 

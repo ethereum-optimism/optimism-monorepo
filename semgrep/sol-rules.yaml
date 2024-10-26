@@ -54,7 +54,8 @@ rules:
               version\(\) public pure virtual returns \(string memory\)
               \{\s+return
               "(?P<VERSION2>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)";
-          - pattern-regex: /// @custom:semver (?P<VERSION1>[a-zA-Z0-9.+-]+)\s+function
+          - pattern-regex:
+              /// @custom:semver (?P<VERSION1>[a-zA-Z0-9.+-]+)\s+function
               version\(\) public pure override returns \(string memory\)
               \{\s+return string\.concat\(super\.version\(\),
               "(?P<VERSION2>[a-zA-Z0-9.+-]+)"\);
@@ -156,7 +157,15 @@ rules:
           abi.encodeWithSelector(...);
     paths:
       exclude:
-        - packages/contracts-bedrock/test
+        - packages/contracts-bedrock/test/L2/L2ToL2CrossDomainMessenger.t.sol
+        - packages/contracts-bedrock/test/dispute/FaultDisputeGame.t.sol
+        - packages/contracts-bedrock/test/dispute/DisputeGameFactory.t.sol
+        - packages/contracts-bedrock/test/L1/DelayedVetoable.t.sol
+        - packages/contracts-bedrock/test/L1/DataAvailabilityChallenge.t.sol
+        - packages/contracts-bedrock/test/L1/OptimismPortal.t.sol
+        - packages/contracts-bedrock/test/safe/DeputyGuardianModule.t.sol
+        - packages/contracts-bedrock/test/safe/LivenessModule.t.sol
+        - packages/contracts-bedrock/test/libraries/Blueprint.t.sol
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
         - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
         - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol

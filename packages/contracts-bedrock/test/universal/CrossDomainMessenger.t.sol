@@ -99,7 +99,7 @@ contract ExternalRelay is Test {
 
     /// @notice Helper function to get the callData for an `externalCallWithMinGas
     function getCallData() public pure returns (bytes memory) {
-        return abi.encodeWithSelector(ExternalRelay.externalCallWithMinGas.selector);
+        return abi.encodeCall(ExternalRelay.externalCallWithMinGas, ());
     }
 
     /// @notice Helper function to set the fuzzed sender

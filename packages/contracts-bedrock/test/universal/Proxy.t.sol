@@ -160,7 +160,7 @@ contract Proxy_Test is Test {
         vm.expectEmit(true, true, true, true);
         emit Upgraded(address(simpleStorage));
         vm.prank(alice);
-        proxy.upgradeToAndCall(address(simpleStorage), abi.encodeWithSelector(simpleStorage.set.selector, 1, 1));
+        proxy.upgradeToAndCall(address(simpleStorage), abi.encodeCall(SimpleStorage.set, (1, 1)));
 
         // The call should have impacted the state
         uint256 result = SimpleStorage(address(proxy)).get(1);
@@ -193,7 +193,7 @@ contract Proxy_Test is Test {
         // The attempt to `upgradeToAndCall`
         // should revert when it is not called by the owner.
         vm.expectRevert(bytes(""));
-        proxy.upgradeToAndCall(address(simpleStorage), abi.encodeWithSelector(simpleStorage.set.selector, 1, 1));
+        proxy.upgradeToAndCall(address(simpleStorage), abi.encodeCall(simpleStorage.set, (1, 1)));
     }
 
     function test_upgradeToAndCall_isPayable_succeeds() external {
@@ -202,9 +202,7 @@ contract Proxy_Test is Test {
         // Set the implementation and call and send
         // value.
         vm.prank(alice);
-        proxy.upgradeToAndCall{ value: 1 ether }(
-            address(simpleStorage), abi.encodeWithSelector(simpleStorage.set.selector, 1, 1)
-        );
+        proxy.upgradeToAndCall{ value: 1 ether }(address(simpleStorage), abi.encodeCall(simpleStorage.set, (1, 1)));
 
         // The implementation address should be correct
         vm.prank(alice);

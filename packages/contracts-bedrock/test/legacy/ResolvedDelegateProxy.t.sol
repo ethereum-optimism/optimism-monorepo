@@ -43,14 +43,14 @@ contract ResolvedDelegateProxy_Test is Test {
 
     /// @dev Tests that the proxy properly bubbles up returndata when the delegatecall succeeds.
     function testFuzz_fallback_delegateCallFoo_succeeds(uint256 x) public {
-        vm.expectCall(address(impl), abi.encodeWithSelector(impl.foo.selector, x));
+        vm.expectCall(address(impl), abi.encodeCall(impl.foo, (x)));
         assertEq(proxy.foo(x), x);
     }
 
     /// @dev Tests that the proxy properly bubbles up returndata when the delegatecall reverts.
     function test_fallback_delegateCallBar_reverts() public {
         vm.expectRevert("SimpleImplementation: revert");
-        vm.expectCall(address(impl), abi.encodeWithSelector(impl.bar.selector));
+        vm.expectCall(address(impl), abi.encodeCall(impl.bar, ()));
         proxy.bar();
     }
 

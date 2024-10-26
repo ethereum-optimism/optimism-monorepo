@@ -160,7 +160,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -170,7 +170,7 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
@@ -222,27 +222,27 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that id1's chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id1.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id1.chainId)),
             returnData: abi.encode(true)
         });
 
         // Ensure that id2's chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id2.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id2.chainId)),
             returnData: abi.encode(true)
         });
 
         // Set the target and message for the reentrant call
         address target = address(this);
-        bytes memory message = abi.encodeWithSelector(this.mockReentrant.selector, _id2);
+        bytes memory message = abi.encodeCall(this.mockReentrant, (_id2));
 
         // Ensure that the contract has enough balance to send with value
         vm.deal(address(this), _value);
@@ -282,7 +282,7 @@ contract CrossL2InboxTest is Test {
         // Ensure it is a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(true)
         });
 
@@ -312,7 +312,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -346,7 +346,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -375,14 +375,14 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that the chain ID is NOT in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(false)
         });
 
@@ -419,14 +419,14 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
@@ -451,14 +451,14 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -474,7 +474,7 @@ contract CrossL2InboxTest is Test {
         // Ensure it is a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(true)
         });
 
@@ -497,7 +497,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -526,7 +526,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -553,14 +553,14 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is NOT in the dependency set.
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(false)
         });
 
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 

@@ -353,7 +353,7 @@ contract Drippie_Test is Test {
         // Add in an action
         cfg.actions[0] = Drippie.DripAction({
             target: payable(address(simpleStorage)),
-            data: abi.encodeWithSelector(SimpleStorage.set.selector, key, value),
+            data: abi.encodeCall(SimpleStorage.set, (key, value)),
             value: 0
         });
 
@@ -365,7 +365,7 @@ contract Drippie_Test is Test {
         vm.prank(drippie.owner());
         drippie.status(dripName, Drippie.DripStatus.ACTIVE);
 
-        vm.expectCall(address(simpleStorage), 0, abi.encodeWithSelector(SimpleStorage.set.selector, key, value));
+        vm.expectCall(address(simpleStorage), 0, abi.encodeCall(SimpleStorage.set, (key, value)));
 
         vm.expectEmit(address(drippie));
         emit DripExecuted(dripName, dripName, address(this), block.timestamp);
@@ -383,7 +383,7 @@ contract Drippie_Test is Test {
         bytes32 valueOne = bytes32(uint256(3));
         actions[0] = Drippie.DripAction({
             target: payable(address(simpleStorage)),
-            data: abi.encodeWithSelector(simpleStorage.set.selector, keyOne, valueOne),
+            data: abi.encodeCall(SimpleStorage.set, (keyOne, valueOne)),
             value: 0
         });
 
@@ -391,7 +391,7 @@ contract Drippie_Test is Test {
         bytes32 valueTwo = bytes32(uint256(5));
         actions[1] = Drippie.DripAction({
             target: payable(address(simpleStorage)),
-            data: abi.encodeWithSelector(simpleStorage.set.selector, keyTwo, valueTwo),
+            data: abi.encodeCall(SimpleStorage.set, (keyTwo, valueTwo)),
             value: 0
         });
 
@@ -407,9 +407,9 @@ contract Drippie_Test is Test {
 
         vm.expectCall(drippie.dripConfigCheckAddress(dripName), drippie.dripConfigCheckParams(dripName));
 
-        vm.expectCall(address(simpleStorage), 0, abi.encodeWithSelector(SimpleStorage.set.selector, keyOne, valueOne));
+        vm.expectCall(address(simpleStorage), 0, abi.encodeCall(SimpleStorage.set, (keyOne, valueOne)));
 
-        vm.expectCall(address(simpleStorage), 0, abi.encodeWithSelector(SimpleStorage.set.selector, keyTwo, valueTwo));
+        vm.expectCall(address(simpleStorage), 0, abi.encodeCall(SimpleStorage.set, (keyTwo, valueTwo)));
 
         vm.expectEmit(address(drippie));
         emit DripExecuted(dripName, dripName, address(this), block.timestamp);

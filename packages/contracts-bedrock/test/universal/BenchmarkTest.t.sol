@@ -187,7 +187,7 @@ contract GasBenchMark_L1StandardBridge_Finalize is Bridge_Initializer {
         deal(address(L1Token), address(l1StandardBridge), 100, true);
         vm.mockCall(
             address(l1StandardBridge.messenger()),
-            abi.encodeWithSelector(ICrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1StandardBridge.OTHER_BRIDGE()))
         );
         vm.startPrank(address(l1StandardBridge.messenger()));
@@ -302,7 +302,7 @@ contract GasBenchMark_L1BlockInterop_DepositsComplete is GasBenchMark_L1BlockInt
     function test_depositsComplete_benchmark() external {
         SafeCall.call({
             _target: address(l1BlockInterop),
-            _calldata: abi.encodeWithSelector(l1BlockInterop.depositsComplete.selector)
+            _calldata: abi.encodeCall(IL1BlockInterop.depositsComplete, ())
         });
     }
 }
@@ -317,7 +317,7 @@ contract GasBenchMark_L1BlockInterop_DepositsComplete_Warm is GasBenchMark_L1Blo
     function test_depositsComplete_benchmark() external {
         SafeCall.call({
             _target: address(l1BlockInterop),
-            _calldata: abi.encodeWithSelector(l1BlockInterop.depositsComplete.selector)
+            _calldata: abi.encodeCall(l1BlockInterop.depositsComplete, ())
         });
     }
 }

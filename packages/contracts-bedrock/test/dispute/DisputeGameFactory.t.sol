@@ -110,7 +110,8 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         // Ensure the rootClaim has a VMStatus that disagrees with the validity.
         rootClaim = changeClaimStatus(rootClaim, VMStatuses.INVALID);
 
-        vm.expectRevert(abi.encodeWithSelector(NoImplementation.selector, gt));
+        vm.expectRevert(abi.encodeWithSelector(NoImplementation.selector, gt)); // nosemgrep:
+            // sol-style-use-abi-encodecall
         disputeGameFactory.create(gt, rootClaim, extraData);
     }
 

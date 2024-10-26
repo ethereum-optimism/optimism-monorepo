@@ -248,7 +248,7 @@ contract ProxyAdmin_Test is Test {
 
     function upgradeAndCall(address payable _proxy) internal {
         vm.prank(alice);
-        admin.upgradeAndCall(_proxy, address(implementation), abi.encodeWithSelector(SimpleStorage.set.selector, 1, 1));
+        admin.upgradeAndCall(_proxy, address(implementation), abi.encodeCall(SimpleStorage.set, (1, 1)));
 
         address impl = admin.getProxyImplementation(_proxy);
         assertEq(impl, address(implementation));
