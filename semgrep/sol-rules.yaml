@@ -48,6 +48,7 @@ rules:
       exclude:
         - packages/contracts-bedrock/src/universal/interfaces/IOptimismMintableERC721.sol
         - packages/contracts-bedrock/src/universal/interfaces/IWETH98.sol
+        - packages/contracts-bedrock/src/dispute/interfaces/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
