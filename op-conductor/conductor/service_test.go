@@ -187,11 +187,11 @@ func updateStatusAndExecuteAction[T any](s *OpConductorTestSuite, ch chan T, sta
 }
 
 func (s *OpConductorTestSuite) updateLeaderStatusAndExecuteAction(status bool) {
-	updateStatusAndExecuteAction[bool](s, s.leaderUpdateCh, status)
+	updateStatusAndExecuteAction(s, s.leaderUpdateCh, status)
 }
 
 func (s *OpConductorTestSuite) updateHealthStatusAndExecuteAction(status error) {
-	updateStatusAndExecuteAction[error](s, s.healthUpdateCh, status)
+	updateStatusAndExecuteAction(s, s.healthUpdateCh, status)
 }
 
 func (s *OpConductorTestSuite) executeAction() {
