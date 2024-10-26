@@ -131,6 +131,19 @@ func ManagerOwnerAddrFor(chainID uint64) (common.Address, error) {
 	}
 }
 
+func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		// Set to owner of superchain proxy admin
+		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
+	case 11155111:
+		// Set to development multisig
+		return common.HexToAddress("0xDEe57160aAfCF04c34C887B5962D0a69676d3C8B"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	switch tag {
 	case "op-contracts/v1.6.0":

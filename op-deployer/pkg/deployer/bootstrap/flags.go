@@ -73,11 +73,23 @@ var OPCMFlags = []cli.Flag{
 	MIPSVersionFlag,
 }
 
+var DelayedWETHFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	ArtifactsLocatorFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "opcm",
 		Usage:  "Bootstrap an instance of OPCM.",
 		Flags:  cliapp.ProtectFlags(OPCMFlags),
 		Action: OPCMCLI,
+	},
+	{
+		Name:   "delayedweth",
+		Usage:  "Bootstrap an instance of DelayedWETH.",
+		Flags:  cliapp.ProtectFlags(DelayedWETHFlags),
+		Action: DelayedWETHCLI,
 	},
 }
