@@ -7,7 +7,6 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
 
 // Target contract
-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
