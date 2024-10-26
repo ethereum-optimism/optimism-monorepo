@@ -2,7 +2,8 @@
 pragma solidity 0.8.15;
 
 import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
-import { ILegacyMintableERC20, IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
+import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
+import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract OptimismMintableERC20_Test is Bridge_Initializer {

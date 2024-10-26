@@ -55,7 +55,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct ICrossL2Inbox.Identifier",
+        "internalType": "struct Identifier",
         "name": "_id",
         "type": "tuple"
       },
@@ -164,7 +164,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct ICrossL2Inbox.Identifier",
+        "internalType": "struct Identifier",
         "name": "_id",
         "type": "tuple"
       },
@@ -230,7 +230,7 @@
           }
         ],
         "indexed": false,
-        "internalType": "struct ICrossL2Inbox.Identifier",
+        "internalType": "struct Identifier",
         "name": "id",
         "type": "tuple"
       }
