@@ -6,9 +6,9 @@ import { Test } from "forge-std/Test.sol";
 import { SimpleStorage } from "test/universal/Proxy.t.sol";
 
 // Contracts
-import { AddressManager } from "src/legacy/AddressManager.sol";
-import { L1ChugSplashProxy } from "src/legacy/L1ChugSplashProxy.sol";
-import { ResolvedDelegateProxy } from "src/legacy/ResolvedDelegateProxy.sol";
+import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
+import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
+import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
 
 // Interfaces
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
@@ -21,10 +21,10 @@ contract ProxyAdmin_Test is Test {
     address alice = address(64);
 
     IProxy proxy;
-    L1ChugSplashProxy chugsplash;
-    ResolvedDelegateProxy resolved;
+    IL1ChugSplashProxy chugsplash;
+    IResolvedDelegateProxy resolved;
 
-    AddressManager addressManager;
+    IAddressManager addressManager;
 
     IProxyAdmin admin;
 
@@ -48,17 +48,33 @@ contract ProxyAdmin_Test is Test {
         );
 
         // Deploy the legacy L1ChugSplashProxy with the admin as the owner
-        chugsplash = new L1ChugSplashProxy(address(admin));
+        chugsplash = IL1ChugSplashProxy(
+            DeployUtils.create1({
+                _name: "L1ChugSplashProxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ChugSplashProxy.__constructor__, (address(admin))))
+            })
+        );
 
         // Deploy the legacy AddressManager
-        addressManager = new AddressManager();
+        addressManager = IAddressManager(
+            DeployUtils.create1({
+                _name: "AddressManager",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAddressManager.__constructor__, ()))
+            })
+        );
         // The proxy admin must be the new owner of the address manager
         addressManager.transferOwnership(address(admin));
         // Deploy a legacy ResolvedDelegateProxy with the name `a`.
         // Whatever `a` is set to in AddressManager will be the address
         // that is used for the implementation.
-        resolved = new ResolvedDelegateProxy(addressManager, "a");
-
+        resolved = IResolvedDelegateProxy(
+            DeployUtils.create1({
+                _name: "ResolvedDelegateProxy",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(IResolvedDelegateProxy.__constructor__, (addressManager, "a"))
+                )
+            })
+        );
         // Impersonate alice for setting up the admin.
         vm.startPrank(alice);
         // Set the address of the address manager in the admin so that it
@@ -193,7 +209,7 @@ contract ProxyAdmin_Test is Test {
         if (proxyType == IProxyAdmin.ProxyType.ERC1967) {
             assertEq(IProxy(payable(_proxy)).admin(), address(128));
         } else if (proxyType == IProxyAdmin.ProxyType.CHUGSPLASH) {
-            assertEq(L1ChugSplashProxy(payable(_proxy)).getOwner(), address(128));
+            assertEq(IL1ChugSplashProxy(payable(_proxy)).getOwner(), address(128));
         } else if (proxyType == IProxyAdmin.ProxyType.RESOLVED) {
             assertEq(addressManager.owner(), address(128));
         } else {
