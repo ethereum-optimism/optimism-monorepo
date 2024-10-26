@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
@@ -83,10 +84,17 @@ func (d *InteropDeriver) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case engine.UnsafeUpdateEvent:
 		d.onLocalUnsafeUpdate(x)
-	case engine.LocalSafeUpdateEvent:
-		d.onLocalSafeUpdate(x)
+	case engine.InteropPendingSafeChangedEvent:
+		d.onInteropPendingSafeChangedEvent(x)
 	case finality.FinalizeL1Event:
 		d.onFinalizedL1(x)
+	case derive.DeriverL1StatusEvent:
+		d.log.Debug("deriver L1 traversal event", "l1", x.Origin, "l2", x.LastL2)
+		// Register traversal of L1, repeat the last local-safe L2
+		d.onInteropPendingSafeChangedEvent(engine.InteropPendingSafeChangedEvent{
+			Ref:         x.LastL2,
+			DerivedFrom: x.Origin,
+		})
 	case engine.CrossUnsafeUpdateEvent:
 		if err := d.onCrossUnsafe(x); err != nil {
 			d.log.Error("Failed to process cross-unsafe update", "err", err)
@@ -117,7 +125,7 @@ func (d *InteropDeriver) onLocalUnsafeUpdate(x engine.UnsafeUpdateEvent) {
 	d.emitter.Emit(engine.RequestCrossUnsafeEvent{})
 }
 
-func (d *InteropDeriver) onLocalSafeUpdate(x engine.LocalSafeUpdateEvent) {
+func (d *InteropDeriver) onInteropPendingSafeChangedEvent(x engine.InteropPendingSafeChangedEvent) {
 	d.log.Debug("Signaling derived-from update to interop backend", "derivedFrom", x.DerivedFrom, "block", x.Ref)
 	ctx, cancel := context.WithTimeout(d.driverCtx, rpcTimeout)
 	defer cancel()

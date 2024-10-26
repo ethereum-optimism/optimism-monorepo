@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/cross"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
@@ -42,6 +43,12 @@ type SupervisorBackend struct {
 
 	// chainProcessors are notified of new unsafe blocks, and add the unsafe log events data into the events DB
 	chainProcessors map[types.ChainID]*processors.ChainProcessor
+
+	// crossSafeProcessors take local-safe data and promote it to cross-safe when verified
+	crossSafeProcessors map[types.ChainID]*cross.Worker
+
+	// crossUnsafeProcessors take local-unsafe data and promote it to cross-unsafe when verified
+	crossUnsafeProcessors map[types.ChainID]*cross.Worker
 
 	// synchronousProcessors disables background-workers,
 	// requiring manual triggers for the backend to process anything.
@@ -71,18 +78,18 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 
 	// create initial per-chain resources
 	chainsDBs := db.NewChainsDB(logger, depSet)
-	chainProcessors := make(map[types.ChainID]*processors.ChainProcessor, len(chains))
-	chainMetrics := make(map[types.ChainID]*chainMetrics, len(chains))
 
 	// create the supervisor backend
 	super := &SupervisorBackend{
-		logger:          logger,
-		m:               m,
-		dataDir:         cfg.Datadir,
-		depSet:          depSet,
-		chainDBs:        chainsDBs,
-		chainProcessors: chainProcessors,
-		chainMetrics:    chainMetrics,
+		logger:                logger,
+		m:                     m,
+		dataDir:               cfg.Datadir,
+		depSet:                depSet,
+		chainDBs:              chainsDBs,
+		chainProcessors:       make(map[types.ChainID]*processors.ChainProcessor, len(chains)),
+		chainMetrics:          make(map[types.ChainID]*chainMetrics, len(chains)),
+		crossUnsafeProcessors: make(map[types.ChainID]*cross.Worker, len(chains)),
+		crossSafeProcessors:   make(map[types.ChainID]*cross.Worker, len(chains)),
 		// For testing we can avoid running the processors.
 		synchronousProcessors: cfg.SynchronousProcessors,
 	}
@@ -115,6 +122,17 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
 		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs)
 		su.chainProcessors[chainID] = chainProcessor
+	}
+
+	// initialize all cross-unsafe processors
+	for _, chainID := range chains {
+		worker := cross.NewCrossUnsafeWorker(su.logger, chainID, su.chainDBs)
+		su.crossUnsafeProcessors[chainID] = worker
+	}
+	// initialize all cross-safe processors
+	for _, chainID := range chains {
+		worker := cross.NewCrossSafeWorker(su.logger, chainID, su.chainDBs)
+		su.crossSafeProcessors[chainID] = worker
 	}
 
 	// the config has some RPC connections to attach to the chain-processors
@@ -231,6 +249,12 @@ func (su *SupervisorBackend) Start(ctx context.Context) error {
 		for _, processor := range su.chainProcessors {
 			processor.StartBackground()
 		}
+		for _, worker := range su.crossUnsafeProcessors {
+			worker.StartBackground()
+		}
+		for _, worker := range su.crossSafeProcessors {
+			worker.StartBackground()
+		}
 	}
 
 	return nil
@@ -249,6 +273,19 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 		processor.Close()
 	}
 	clear(su.chainProcessors)
+
+	for id, worker := range su.crossUnsafeProcessors {
+		su.logger.Info("stopping cross-unsafe processor", "chainID", id)
+		worker.Close()
+	}
+	clear(su.crossUnsafeProcessors)
+
+	for id, worker := range su.crossSafeProcessors {
+		su.logger.Info("stopping cross-safe processor", "chainID", id)
+		worker.Close()
+	}
+	clear(su.crossSafeProcessors)
+
 	// close the databases
 	return su.chainDBs.Close()
 }

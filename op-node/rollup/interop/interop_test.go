@@ -93,7 +93,7 @@ func TestInteropDeriver(t *testing.T) {
 		derivedFrom := testutils.RandomBlockRef(rng)
 		localSafe := testutils.RandomL2BlockRef(rng)
 		interopBackend.ExpectUpdateLocalSafe(chainID, derivedFrom, localSafe, nil)
-		interopDeriver.OnEvent(engine.LocalSafeUpdateEvent{
+		interopDeriver.OnEvent(engine.InteropPendingSafeChangedEvent{
 			Ref:         localSafe,
 			DerivedFrom: derivedFrom,
 		})

@@ -108,7 +108,7 @@ func TestLogProcessor(t *testing.T) {
 			},
 		}
 		execMsg := types.ExecutingMessage{
-			Chain:     4,
+			Chain:     4, // TODO(#11105): translate chain ID to chain index
 			BlockNum:  6,
 			LogIdx:    8,
 			Timestamp: 10,
