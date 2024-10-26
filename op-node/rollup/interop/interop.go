@@ -25,7 +25,7 @@ type InteropBackend interface {
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 
-	DerivedFrom(ctx context.Context, chainID types.ChainID, blockHash common.Hash, blockNumber uint64) (eth.L1BlockRef, error)
+	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error)
 
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error
@@ -220,7 +220,11 @@ func (d *InteropDeriver) onCrossSafeUpdateEvent(x engine.CrossSafeUpdateEvent) e
 		//  and then reset derivation, so this op-node can help get the supervisor back in sync.
 		return nil
 	}
-	derivedFrom, err := d.backend.DerivedFrom(ctx, d.chainID, result.Cross.Hash, result.Cross.Number)
+	derived := eth.BlockID{
+		Hash:   result.Cross.Hash,
+		Number: result.Cross.Number,
+	}
+	derivedFrom, err := d.backend.DerivedFrom(ctx, d.chainID, derived)
 	if err != nil {
 		return fmt.Errorf("failed to get derived-from of %s: %w", result.Cross, err)
 	}

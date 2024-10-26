@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
@@ -137,8 +136,8 @@ func TestInteropVerifier(gt *testing.T) {
 		out.Cross = request.Local
 		return out, nil
 	}
-	seqMockBackend.DerivedFromFn = func(ctx context.Context, chainID types.ChainID, blockHash common.Hash, blockNumber uint64) (eth.L1BlockRef, error) {
-		require.Equal(t, uint64(1), blockNumber)
+	seqMockBackend.DerivedFromFn = func(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
+		require.Equal(t, uint64(1), derived.Number)
 		return l1Head, nil
 	}
 	seqMockBackend.FinalizedFn = func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
