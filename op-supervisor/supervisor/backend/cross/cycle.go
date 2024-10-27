@@ -28,6 +28,7 @@ type node struct {
 }
 
 // graph is a directed graph of message dependencies.
+// It is represented as an adjacency list with in-degree counts to be friendly to cycle checking.
 type graph struct {
 	inDegree0     map[node]struct{}
 	inDegreeNon0  map[node]uint32
