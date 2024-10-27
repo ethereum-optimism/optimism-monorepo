@@ -104,16 +104,14 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 			}
 		}
 
+		// Store log count and in-timestamp executing messages
 		logCounts[hazardChainIndex] = logCount
 
-		// Initialize map for this chain if it has executing messages
 		if len(msgs) > 0 {
 			if _, exists := execMsgs[hazardChainIndex]; !exists {
 				execMsgs[hazardChainIndex] = make(map[uint32]*types.ExecutingMessage)
 			}
 		}
-
-		// Process executing messages - only include those at inTimestamp
 		for logIdx, msg := range msgs {
 			if msg.Timestamp == inTimestamp {
 				execMsgs[hazardChainIndex][logIdx] = msg
