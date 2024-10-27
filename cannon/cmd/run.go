@@ -279,6 +279,9 @@ func Run(ctx *cli.Context) error {
 	if ctx.Bool(RunPProfCPU.Name) {
 		defer profile.Start(profile.NoShutdownHook, profile.ProfilePath("."), profile.CPUProfile).Stop()
 	}
+	if err := checkFlags(ctx); err != nil {
+		return err
+	}
 
 	guestLogger := Logger(os.Stderr, log.LevelInfo)
 	outLog := &mipsevm.LoggingWriter{Log: guestLogger.With("module", "guest", "stream", "stdout")}
@@ -524,3 +527,13 @@ func CreateRunCommand(action cli.ActionFunc) *cli.Command {
 }
 
 var RunCommand = CreateRunCommand(Run)
+
+func checkFlags(ctx *cli.Context) error {
+	if output := ctx.Path(RunOutputFlag.Name); output != "" {
+		input := ctx.Path(RunInputFlag.Name)
+		if serialize.IsBinaryFile(input) != serialize.IsBinaryFile(output) {
+			return errors.New("Invalid --input and --output flags. Their file formats must be identical")
+		}
+	}
+	return nil
+}
