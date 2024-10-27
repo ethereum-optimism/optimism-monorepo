@@ -71,7 +71,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 		return err
 	}
 
-	return checkForCycles(g)
+	return checkGraph(g)
 }
 
 // gatherLogs collects all log counts and executing messages across all hazard blocks.
@@ -98,8 +98,10 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 		}
 
 		// Validate executing message indices
-		if err := validateExecMsgIndices(logCount, msgs); err != nil {
-			return nil, nil, err
+		for logIdx := range msgs {
+			if logIdx >= logCount {
+				return nil, nil, fmt.Errorf("%w: log index %d >= log count %d", ErrInvalidLogIndex, logIdx, logCount)
+			}
 		}
 
 		logCounts[hazardChainIndex] = logCount
@@ -120,16 +122,6 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 	}
 
 	return logCounts, execMsgs, nil
-}
-
-// validateExecMsgIndices ensures all executing message log indices are valid
-func validateExecMsgIndices(logCount uint32, execMsgs map[uint32]*types.ExecutingMessage) error {
-	for logIdx := range execMsgs {
-		if logIdx >= logCount {
-			return fmt.Errorf("%w: log index %d >= log count %d", ErrInvalidLogIndex, logIdx, logCount)
-		}
-	}
-	return nil
 }
 
 // buildGraph constructs a dependency graph from the hazard blocks.
@@ -206,14 +198,14 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 	return g, nil
 }
 
-// checkForCycles uses Kahn's topological sort algorithm to check for cycles in the graph.
+// checkGraph uses Kahn's topological sort algorithm to check for cycles in the graph.
 // It returns nil for acyclic graphs and ErrCycle for cyclic graphs.
 //
 // Algorithm:
 //  1. for each node with in-degree 0 (i.e. no dependencies), add it to the result, remove it from the work.
 //  2. along with removing, remove the outgoing edges
 //  3. if there is no node left with in-degree 0, then there is a cycle
-func checkForCycles(g *graph) error {
+func checkGraph(g *graph) error {
 	for {
 		// Process all nodes that have no incoming edges
 		for k := range g.inDegree0 {
