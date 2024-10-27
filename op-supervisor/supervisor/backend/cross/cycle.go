@@ -16,6 +16,11 @@ var (
 	ErrUnknownChain      = errors.New("executing message references unknown chain")
 )
 
+// CycleCheckDeps is an interface for checking cyclical dependencies between logs.
+type CycleCheckDeps interface {
+	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+}
+
 // node represents a log entry in our graph.
 type node struct {
 	chainIndex types.ChainIndex
@@ -39,11 +44,6 @@ func (g *graph) addEdge(from, to node) {
 
 	// Add the outgoing edge
 	g.outgoingEdges[from] = append(g.outgoingEdges[from], to)
-}
-
-// CycleCheckDeps is an interface for checking cyclical dependencies between logs.
-type CycleCheckDeps interface {
-	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
 // HazardCycleChecks checks for cyclical dependencies between logs at the given timestamp.
