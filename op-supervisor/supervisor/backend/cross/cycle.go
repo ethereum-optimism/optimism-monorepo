@@ -8,21 +8,29 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// msgKey is a unique identifier for a node in the graph.
-type msgKey struct {
+var (
+	ErrFailedToOpenBlock = errors.New("failed to open block")
+	ErrCycle             = errors.New("cycle detected")
+	ErrInvalidLogIndex   = errors.New("executing message references invalid log index")
+	ErrSelfReferencing   = errors.New("executing message references itself")
+	ErrUnknownChain      = errors.New("executing message references unknown chain")
+)
+
+// node represents a log entry in our graph.
+type node struct {
 	chainIndex types.ChainIndex
 	logIndex   uint32
 }
 
 // graph is a directed graph of message dependencies.
 type graph struct {
-	inDegree0     map[msgKey]struct{}
-	inDegreeNon0  map[msgKey]uint32
-	outgoingEdges map[msgKey][]msgKey
+	inDegree0     map[node]struct{}
+	inDegreeNon0  map[node]uint32
+	outgoingEdges map[node][]node
 }
 
 // addEdge adds a directed edge from -> to in the graph.
-func (g *graph) addEdge(from, to msgKey) {
+func (g *graph) addEdge(from, to node) {
 	// Remove the target from inDegree0 if it's there
 	delete(g.inDegree0, to)
 
@@ -33,25 +41,17 @@ func (g *graph) addEdge(from, to msgKey) {
 	g.outgoingEdges[from] = append(g.outgoingEdges[from], to)
 }
 
-var (
-	ErrFailedToOpenBlock = errors.New("failed to open block")
-	ErrCycle             = errors.New("cycle detected")
-	ErrInvalidLogIndex   = errors.New("executing message references invalid log index")
-	ErrSelfReferencing   = errors.New("executing message references itself")
-	ErrUnknownChain      = errors.New("executing message references unknown chain")
-)
-
 type CycleCheckDeps interface {
 	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
-// gatherBlockData collects all log counts and executing messages across all hazard blocks.
+// gatherLogs collects all log counts and executing messages across all hazard blocks.
 // Returns:
 // - map of chain index to its log count
 // - map of chain index to map of log index to executing message (nil if doesn't exist or ignored)
-func gatherBlockData(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
-	map[types.ChainIndex]uint32, // logCounts
-	map[types.ChainIndex]map[uint32]*types.ExecutingMessage, // execMsgs
+func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
+	map[types.ChainIndex]uint32,
+	map[types.ChainIndex]map[uint32]*types.ExecutingMessage,
 	error,
 ) {
 	logCounts := make(map[types.ChainIndex]uint32)
@@ -69,7 +69,7 @@ func gatherBlockData(d CycleCheckDeps, inTimestamp uint64, hazards map[types.Cha
 		}
 
 		// Validate executing message indices
-		if err := validateExecMsgs(logCount, msgs); err != nil {
+		if err := validateExecMsgIndices(logCount, msgs); err != nil {
 			return nil, nil, err
 		}
 
@@ -93,8 +93,8 @@ func gatherBlockData(d CycleCheckDeps, inTimestamp uint64, hazards map[types.Cha
 	return logCounts, execMsgs, nil
 }
 
-// validateExecMsgs ensures all executing message log indices are valid
-func validateExecMsgs(logCount uint32, execMsgs map[uint32]*types.ExecutingMessage) error {
+// validateExecMsgIndices ensures all executing message log indices are valid
+func validateExecMsgIndices(logCount uint32, execMsgs map[uint32]*types.ExecutingMessage) error {
 	for logIdx := range execMsgs {
 		if logIdx >= logCount {
 			return fmt.Errorf("%w: log index %d >= log count %d", ErrInvalidLogIndex, logIdx, logCount)
@@ -106,12 +106,12 @@ func validateExecMsgs(logCount uint32, execMsgs map[uint32]*types.ExecutingMessa
 // buildGraph constructs a dependency graph from the hazard blocks.
 func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (*graph, error) {
 	g := &graph{
-		inDegree0:     make(map[msgKey]struct{}),
-		inDegreeNon0:  make(map[msgKey]uint32),
-		outgoingEdges: make(map[msgKey][]msgKey),
+		inDegree0:     make(map[node]struct{}),
+		inDegreeNon0:  make(map[node]uint32),
+		outgoingEdges: make(map[node][]node),
 	}
 
-	logCounts, execMsgs, err := gatherBlockData(d, inTimestamp, hazards)
+	logCounts, execMsgs, err := gatherLogs(d, inTimestamp, hazards)
 	if err != nil {
 		return nil, err
 	}
@@ -119,7 +119,7 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 	// Add nodes for each log in the block, and add edges between sequential logs
 	for hazardChainIndex, logCount := range logCounts {
 		for i := uint32(0); i < logCount; i++ {
-			k := msgKey{
+			k := node{
 				chainIndex: hazardChainIndex,
 				logIndex:   i,
 			}
@@ -129,7 +129,7 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 				g.inDegree0[k] = struct{}{}
 			} else {
 				// Add edge: prev log <> current log
-				prevKey := msgKey{
+				prevKey := node{
 					chainIndex: hazardChainIndex,
 					logIndex:   i - 1,
 				}
@@ -155,11 +155,11 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 				continue
 			}
 
-			initKey := msgKey{
+			initKey := node{
 				chainIndex: m.Chain,
 				logIndex:   m.LogIdx,
 			}
-			execKey := msgKey{
+			execKey := node{
 				chainIndex: hazardChainIndex,
 				logIndex:   execLogIdx,
 			}
@@ -177,10 +177,14 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 	return g, nil
 }
 
-// checkGraphForCycle checks if the given graph contains any cycles.
-// Returns nil if no cycles are found or ErrCycle if a cycle is detected.
-// It modifies the graph in-place.
-func checkGraphForCycle(g *graph) error {
+// checkForCycles uses Kahn's topological sort algorithm to check for cycles in the graph.
+// It returns nil for acyclic graphs and ErrCycle for cyclic graphs.
+//
+// Algorithm:
+//  1. for each node with in-degree 0 (i.e. no dependencies), add it to the result, remove it from the work.
+//  2. along with removing, remove the outgoing edges
+//  3. if there is no node left with in-degree 0, then there is a cycle
+func checkForCycles(g *graph) error {
 	for {
 		// Process all nodes that have no incoming edges
 		for k := range g.inDegree0 {
@@ -211,45 +215,52 @@ func checkGraphForCycle(g *graph) error {
 	}
 }
 
-// HazardCycleChecks performs a hazard-check where block.timestamp == execMsg.timestamp:
-// here the timestamp invariant alone does not ensure ordering of messages.
-// To be fully confident that there are no intra-block cyclic message dependencies,
-// we have to sweep through the executing messages and check the hazards.
+// HazardCycleChecks checks for cyclical dependencies between logs at the given timestamp.
+// Here the timestamp invariant alone does not ensure ordering of messages.
+//
+// We perform this check in 3 steps:
+//   - Gather all logs across all hazard blocks at the given timestamp.
+//   - Build the logs into a directed graph of dependencies between logs.
+//   - Check the graph for cycles.
+//
+// The edges of the graph are determined by:
+//   - For all logs except the first in a block, there is an edge from the previous log.
+//   - For all executing messages, there is an edge from the initiating message.
+//
+// The edges between sequential logs ensure the graph is well-connected and free of any
+// disjoint subgraphs that would make cycle checking more difficult.
+//
+// The cycle check is performed by executing Kahn's topological sort algorithm which
+// succeeds if and only if a graph is acyclic.
+//
+// Returns nil if no cycles are found or ErrCycle if a cycle is detected.
 func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
-	// Algorithm: breadth-first-search (BFS).
-	// Types of incoming edges:
-	//   - the previous log event in the block
-	//   - executing another event
-	// Work:
-	//   1. for each node with in-degree 0 (i.e. no dependencies), add it to the result, remove it from the work.
-	//   2. along with removing, remove the outgoing edges
-	//   3. if there is no node left with in-degree 0, then there is a cycle
 	g, err := buildGraph(d, inTimestamp, hazards)
 	if err != nil {
 		return err
 	}
 
-	return checkGraphForCycle(g)
+	return checkForCycles(g)
 }
 
-// GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data
+// GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data for debugging.
 func GenerateMermaidDiagram(g *graph) string {
 	var sb strings.Builder
 
 	sb.WriteString("flowchart TD\n")
 
 	// Helper function to get a unique ID for each node
-	getNodeID := func(k msgKey) string {
+	getNodeID := func(k node) string {
 		return fmt.Sprintf("N%d_%d", k.chainIndex, k.logIndex)
 	}
 
 	// Helper function to get a label for each node
-	getNodeLabel := func(k msgKey) string {
+	getNodeLabel := func(k node) string {
 		return fmt.Sprintf("C%d:L%d", k.chainIndex, k.logIndex)
 	}
 
 	// Function to add a node to the diagram
-	addNode := func(k msgKey, inDegree uint32) {
+	addNode := func(k node, inDegree uint32) {
 		nodeID := getNodeID(k)
 		nodeLabel := getNodeLabel(k)
 		var shape string
@@ -287,7 +298,7 @@ func GenerateMermaidDiagram(g *graph) string {
 	return sb.String()
 }
 
-// Helper function to generate a Mermaid diagram and log it
+// logMermaidDiagram logs a Mermaid diagram for debugging.
 func logMermaidDiagram(label string, g *graph) {
 	diagram := GenerateMermaidDiagram(g)
 	fmt.Printf("%s:\n%s", label, diagram)
