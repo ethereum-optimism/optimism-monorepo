@@ -41,8 +41,37 @@ func (g *graph) addEdge(from, to node) {
 	g.outgoingEdges[from] = append(g.outgoingEdges[from], to)
 }
 
+// CycleCheckDeps is an interface for checking cyclical dependencies between logs.
 type CycleCheckDeps interface {
 	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+}
+
+// HazardCycleChecks checks for cyclical dependencies between logs at the given timestamp.
+// Here the timestamp invariant alone does not ensure ordering of messages.
+//
+// We perform this check in 3 steps:
+//   - Gather all logs across all hazard blocks at the given timestamp.
+//   - Build the logs into a directed graph of dependencies between logs.
+//   - Check the graph for cycles.
+//
+// The edges of the graph are determined by:
+//   - For all logs except the first in a block, there is an edge from the previous log.
+//   - For all executing messages, there is an edge from the initiating message.
+//
+// The edges between sequential logs ensure the graph is well-connected and free of any
+// disjoint subgraphs that would make cycle checking more difficult.
+//
+// The cycle check is performed by executing Kahn's topological sort algorithm which
+// succeeds if and only if a graph is acyclic.
+//
+// Returns nil if no cycles are found or ErrCycle if a cycle is detected.
+func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
+	g, err := buildGraph(d, inTimestamp, hazards)
+	if err != nil {
+		return err
+	}
+
+	return checkForCycles(g)
 }
 
 // gatherLogs collects all log counts and executing messages across all hazard blocks.
@@ -213,34 +242,6 @@ func checkForCycles(g *graph) error {
 			}
 		}
 	}
-}
-
-// HazardCycleChecks checks for cyclical dependencies between logs at the given timestamp.
-// Here the timestamp invariant alone does not ensure ordering of messages.
-//
-// We perform this check in 3 steps:
-//   - Gather all logs across all hazard blocks at the given timestamp.
-//   - Build the logs into a directed graph of dependencies between logs.
-//   - Check the graph for cycles.
-//
-// The edges of the graph are determined by:
-//   - For all logs except the first in a block, there is an edge from the previous log.
-//   - For all executing messages, there is an edge from the initiating message.
-//
-// The edges between sequential logs ensure the graph is well-connected and free of any
-// disjoint subgraphs that would make cycle checking more difficult.
-//
-// The cycle check is performed by executing Kahn's topological sort algorithm which
-// succeeds if and only if a graph is acyclic.
-//
-// Returns nil if no cycles are found or ErrCycle if a cycle is detected.
-func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
-	g, err := buildGraph(d, inTimestamp, hazards)
-	if err != nil {
-		return err
-	}
-
-	return checkForCycles(g)
 }
 
 // GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data for debugging.
