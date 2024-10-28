@@ -67,12 +67,12 @@ func (m *MockInteropBackend) ExpectDerivedFrom(chainID types.ChainID, derived et
 	m.Mock.On("DerivedFrom", chainID, derived).Once().Return(result, &err)
 }
 
-func (m *MockInteropBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
+func (m *MockInteropBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 	result := m.Mock.MethodCalled("UpdateLocalUnsafe", chainID, head)
 	return *result.Get(0).(*error)
 }
 
-func (m *MockInteropBackend) ExpectUpdateLocalUnsafe(chainID types.ChainID, head eth.L2BlockRef, err error) {
+func (m *MockInteropBackend) ExpectUpdateLocalUnsafe(chainID types.ChainID, head eth.BlockRef, err error) {
 	m.Mock.On("UpdateLocalUnsafe", chainID, head).Once().Return(&err)
 }
 
@@ -80,12 +80,12 @@ func (m *MockInteropBackend) ExpectAnyUpdateLocalUnsafe(chainID types.ChainID, e
 	m.Mock.On("UpdateLocalUnsafe", chainID, mock.Anything).Once().Return(&err)
 }
 
-func (m *MockInteropBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+func (m *MockInteropBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 	result := m.Mock.MethodCalled("UpdateLocalSafe", chainID, derivedFrom, lastDerived)
 	return *result.Get(0).(*error)
 }
 
-func (m *MockInteropBackend) ExpectUpdateLocalSafe(chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef, err error) {
+func (m *MockInteropBackend) ExpectUpdateLocalSafe(chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef, err error) {
 	m.Mock.On("UpdateLocalSafe", chainID, derivedFrom, lastDerived).Once().Return(&err)
 }
 

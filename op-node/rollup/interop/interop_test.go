@@ -36,7 +36,7 @@ func TestInteropDeriver(t *testing.T) {
 	t.Run("local-unsafe blocks push to supervisor and trigger cross-unsafe attempts", func(t *testing.T) {
 		emitter.ExpectOnce(engine.RequestCrossUnsafeEvent{})
 		unsafeHead := testutils.RandomL2BlockRef(rng)
-		interopBackend.ExpectUpdateLocalUnsafe(chainID, unsafeHead, nil)
+		interopBackend.ExpectUpdateLocalUnsafe(chainID, unsafeHead.BlockRef(), nil)
 		interopDeriver.OnEvent(engine.UnsafeUpdateEvent{Ref: unsafeHead})
 		emitter.AssertExpectations(t)
 		interopBackend.AssertExpectations(t)
@@ -93,7 +93,7 @@ func TestInteropDeriver(t *testing.T) {
 		emitter.ExpectOnce(engine.RequestCrossSafeEvent{})
 		derivedFrom := testutils.RandomBlockRef(rng)
 		localSafe := testutils.RandomL2BlockRef(rng)
-		interopBackend.ExpectUpdateLocalSafe(chainID, derivedFrom, localSafe, nil)
+		interopBackend.ExpectUpdateLocalSafe(chainID, derivedFrom, localSafe.BlockRef(), nil)
 		interopDeriver.OnEvent(engine.InteropPendingSafeChangedEvent{
 			Ref:         localSafe,
 			DerivedFrom: derivedFrom,

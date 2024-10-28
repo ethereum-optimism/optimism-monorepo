@@ -12,8 +12,8 @@ type FakeInteropBackend struct {
 	SafeViewFn          func(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	FinalizedFn         func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 	DerivedFromFn       func(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error)
-	UpdateLocalUnsafeFn func(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error
-	UpdateLocalSafeFn   func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error
+	UpdateLocalUnsafeFn func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
+	UpdateLocalSafeFn   func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error
 	UpdateFinalizedL1Fn func(ctx context.Context, chainID types.ChainID, finalized eth.L1BlockRef) error
 }
 
@@ -33,11 +33,11 @@ func (m *FakeInteropBackend) DerivedFrom(ctx context.Context, chainID types.Chai
 	return m.DerivedFromFn(ctx, chainID, derived)
 }
 
-func (m *FakeInteropBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
+func (m *FakeInteropBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 	return m.UpdateLocalUnsafeFn(ctx, chainID, head)
 }
 
-func (m *FakeInteropBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+func (m *FakeInteropBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 	return m.UpdateLocalSafeFn(ctx, chainID, derivedFrom, lastDerived)
 }
 

@@ -41,12 +41,12 @@ func TestInteropVerifier(gt *testing.T) {
 		helpers.WithInteropBackend(verMockBackend))
 
 	// Genesis block will be registered as local-safe when we first trigger the derivation pipeline
-	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 		require.Equal(t, sd.RollupCfg.Genesis.L1, derivedFrom.ID())
 		require.Equal(t, sd.RollupCfg.Genesis.L2, lastDerived.ID())
 		return nil
 	}
-	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 		require.Equal(t, sd.RollupCfg.Genesis.L1, derivedFrom.ID())
 		require.Equal(t, sd.RollupCfg.Genesis.L2, lastDerived.ID())
 		return nil
@@ -56,7 +56,7 @@ func TestInteropVerifier(gt *testing.T) {
 	ver.ActL2PipelineFull(t)
 
 	l2ChainID := types.ChainIDFromBig(sd.RollupCfg.L2ChainID)
-	seqMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
+	seqMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 		require.Equal(t, chainID, l2ChainID)
 		require.Equal(t, uint64(1), head.Number)
 		return nil
@@ -105,7 +105,7 @@ func TestInteropVerifier(gt *testing.T) {
 	// Sync the L1 block, to verify the L2 block as local-safe.
 	seqMockBackend.UpdateLocalUnsafeFn = nil
 	nextL2 := uint64(0)
-	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 		require.Equal(t, nextL2, lastDerived.Number)
 		nextL2 += 1
 		return nil
@@ -153,12 +153,12 @@ func TestInteropVerifier(gt *testing.T) {
 	require.Equal(t, uint64(1), status.SafeL2.Number, "cross-safe reached")
 	require.Equal(t, uint64(0), status.FinalizedL2.Number)
 
-	verMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
+	verMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 		require.Equal(t, uint64(1), head.Number)
 		return nil
 	}
 	nextL2 = 0
-	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 		require.Equal(t, nextL2, lastDerived.Number)
 		nextL2 += 1
 		require.Equal(t, l1Head.ID(), derivedFrom.ID())

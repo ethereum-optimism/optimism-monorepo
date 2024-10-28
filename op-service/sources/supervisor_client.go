@@ -97,17 +97,17 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
-func (cl *SupervisorClient) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
-	var result eth.L1BlockRef
+func (cl *SupervisorClient) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
+	var result eth.BlockRef
 	err := cl.client.CallContext(ctx, &result, "supervisor_derivedFrom", chainID, derived)
 	return result, err
 }
 
-func (cl *SupervisorClient) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
+func (cl *SupervisorClient) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 	return cl.client.CallContext(ctx, nil, "supervisor_updateLocalUnsafe", chainID, head)
 }
 
-func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 	return cl.client.CallContext(ctx, nil, "supervisor_updateLocalSafe", chainID, derivedFrom, lastDerived)
 }
 

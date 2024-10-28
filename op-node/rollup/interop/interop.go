@@ -15,6 +15,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/sources"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -27,10 +29,16 @@ type InteropBackend interface {
 
 	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error)
 
-	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error
-	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error
+	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
+	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error
 	UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.L1BlockRef) error
 }
+
+// For testing usage, the backend of the supervisor implements the interface, no need for RPC.
+var _ InteropBackend = (*backend.SupervisorBackend)(nil)
+
+// For RPC usage, the supervisor client implements the interop backend.
+var _ InteropBackend = (*sources.SupervisorClient)(nil)
 
 type L2Source interface {
 	L2BlockRefByNumber(context.Context, uint64) (eth.L2BlockRef, error)
@@ -117,7 +125,7 @@ func (d *InteropDeriver) onLocalUnsafeUpdate(x engine.UnsafeUpdateEvent) {
 	d.log.Debug("Signaling unsafe L2 head update to interop backend", "head", x.Ref)
 	ctx, cancel := context.WithTimeout(d.driverCtx, rpcTimeout)
 	defer cancel()
-	if err := d.backend.UpdateLocalUnsafe(ctx, d.chainID, x.Ref); err != nil {
+	if err := d.backend.UpdateLocalUnsafe(ctx, d.chainID, x.Ref.BlockRef()); err != nil {
 		d.log.Warn("Failed to signal unsafe L2 head to interop backend", "head", x.Ref, "err", err)
 		// still continue to try and do a cross-unsafe update
 	}
@@ -129,7 +137,7 @@ func (d *InteropDeriver) onInteropPendingSafeChangedEvent(x engine.InteropPendin
 	d.log.Debug("Signaling derived-from update to interop backend", "derivedFrom", x.DerivedFrom, "block", x.Ref)
 	ctx, cancel := context.WithTimeout(d.driverCtx, rpcTimeout)
 	defer cancel()
-	if err := d.backend.UpdateLocalSafe(ctx, d.chainID, x.DerivedFrom, x.Ref); err != nil {
+	if err := d.backend.UpdateLocalSafe(ctx, d.chainID, x.DerivedFrom, x.Ref.BlockRef()); err != nil {
 		d.log.Debug("Failed to signal derived-from update to interop backend", "derivedFrom", x.DerivedFrom, "block", x.Ref)
 		// still continue to try and do a cross-safe update
 	}
