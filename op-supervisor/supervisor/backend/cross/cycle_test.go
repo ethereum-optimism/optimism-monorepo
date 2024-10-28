@@ -423,3 +423,75 @@ func TestHazardCycleChecksCycle(t *testing.T) {
 	}
 	runHazardCycleChecksTestCaseGroup(t, "Cycle", tests)
 }
+
+const (
+	largeGraphChains       = 10
+	largeGraphLogsPerChain = 10000
+)
+
+func TestHazardCycleChecksLargeGraphNoCycle(t *testing.T) {
+	// Create a large but acyclic graph
+	chainBlocks := make(map[string]chainBlockDef)
+	for i := 1; i <= largeGraphChains; i++ {
+		msgs := make(map[uint32]*types.ExecutingMessage)
+		// Create a chain of dependencies across chains
+		if i > 1 {
+			for j := uint32(0); j < largeGraphLogsPerChain; j++ {
+				// Point to previous chain, same log index
+				msgs[j] = execMsg(strconv.Itoa(i-1), j)
+			}
+		}
+		chainBlocks[strconv.Itoa(i)] = chainBlockDef{
+			logCount: largeGraphLogsPerChain,
+			messages: msgs,
+		}
+	}
+
+	tc := hazardCycleChecksTestCase{
+		name:        "Large graph without cycles",
+		chainBlocks: chainBlocks,
+		expectErr:   nil,
+		msg:         "expected no cycle in large acyclic graph",
+	}
+	runHazardCycleChecksTestCase(t, tc)
+}
+
+func TestHazardCycleChecksLargeGraphCycle(t *testing.T) {
+	// Create a large graph with a cycle hidden in it
+	const cycleChain = 3
+	const cycleLogIndex = 5678
+
+	chainBlocks := make(map[string]chainBlockDef)
+	for i := 1; i <= largeGraphChains; i++ {
+		msgs := make(map[uint32]*types.ExecutingMessage)
+
+		// Create a chain of dependencies across chains
+		if i > 1 {
+			for j := uint32(0); j < largeGraphLogsPerChain; j++ {
+				if i == cycleChain && j == cycleLogIndex {
+					// Create a cycle by pointing back to chain 1
+					msgs[j] = execMsg("1", cycleLogIndex+1)
+				} else {
+					// Normal case: point to previous chain, same log index
+					msgs[j] = execMsg(strconv.Itoa(i-1), j)
+				}
+			}
+		} else {
+			// In chain 1, create the other side of the cycle
+			msgs[cycleLogIndex+1] = execMsg(strconv.Itoa(cycleChain), cycleLogIndex)
+		}
+
+		chainBlocks[strconv.Itoa(i)] = chainBlockDef{
+			logCount: largeGraphLogsPerChain,
+			messages: msgs,
+		}
+	}
+
+	tc := hazardCycleChecksTestCase{
+		name:        "Large graph with cycle",
+		chainBlocks: chainBlocks,
+		expectErr:   ErrCycle,
+		msg:         "expected to detect cycle in large cyclic graph",
+	}
+	runHazardCycleChecksTestCase(t, tc)
+}
