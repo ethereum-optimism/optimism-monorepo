@@ -7,6 +7,7 @@ import (
 	actionsHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	upgradesHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/upgrades/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -163,11 +164,13 @@ func LargeL1Gaps(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	dp.DeployConfig.L2BlockTime = 2
 	dp.DeployConfig.SequencerWindowSize = 4
 	dp.DeployConfig.MaxSequencerDrift = 32
-	dp.DeployConfig.L2GenesisEcotoneTimeOffset = nil
-	dp.DeployConfig.L2GenesisFjordTimeOffset = nil
+	if deltaTimeOffset != nil {
+		dp.DeployConfig.ActivateForkAtOffset(rollup.Delta, uint64(*deltaTimeOffset))
+	} else {
+		dp.DeployConfig.ActivateForkAtGenesis(rollup.Canyon)
+	}
 	// TODO(client-pod#831): The Ecotone (and Fjord) activation blocks don't include user txs,
 	// so disabling these forks for now.
-	upgradesHelpers.ApplyDeltaTimeOffset(dp, deltaTimeOffset)
 	sd := e2eutils.Setup(t, dp, actionsHelpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 
