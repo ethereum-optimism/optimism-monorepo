@@ -534,10 +534,12 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         Claim claim = _dummyClaim();
 
         // Expect an out of bounds revert for an attack
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
         gameProxy.attack(_dummyClaim(), 1, claim);
 
         // Expect an out of bounds revert for a defense
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
         gameProxy.defend(_dummyClaim(), 1, claim);
     }

@@ -91,7 +91,6 @@ contract DeputyGuardianModule_Pause_Test is DeputyGuardianModule_TestInit {
 
 contract DeputyGuardianModule_Pause_TestFail is DeputyGuardianModule_TestInit {
     /// @dev Tests that `pause` reverts when called by a non deputy guardian.
-    // nosemgrep: sol-style-use-abi-encodecall
     function test_pause_notDeputyGuardian_reverts() external {
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.pause();
@@ -99,10 +98,9 @@ contract DeputyGuardianModule_Pause_TestFail is DeputyGuardianModule_TestInit {
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_pause_targetReverts_reverts() external {
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(superchainConfig),
-            abi.encodeWithSelector(superchainConfig.pause.selector),
+            abi.encodePacked(superchainConfig.pause.selector),
             "SuperchainConfig: pause() reverted"
         );
 
@@ -150,10 +148,9 @@ contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_T
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_unpause_targetReverts_reverts() external {
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(superchainConfig),
-            abi.encodeWithSelector(superchainConfig.unpause.selector),
+            abi.encodePacked(superchainConfig.unpause.selector),
             "SuperchainConfig: unpause reverted"
         );
 
@@ -172,11 +169,8 @@ contract DeputyGuardianModule_SetAnchorState_TestFail is DeputyGuardianModule_Te
 
     function test_setAnchorState_targetReverts_reverts() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
-            address(asr),
-            abi.encodeWithSelector(asr.setAnchorState.selector),
-            "AnchorStateRegistry: setAnchorState reverted"
+            address(asr), abi.encodePacked(asr.setAnchorState.selector), "AnchorStateRegistry: setAnchorState reverted"
         );
         vm.prank(address(deputyGuardian));
         vm.expectRevert(
@@ -189,11 +183,8 @@ contract DeputyGuardianModule_SetAnchorState_TestFail is DeputyGuardianModule_Te
 contract DeputyGuardianModule_SetAnchorState_Test is DeputyGuardianModule_TestInit {
     function test_setAnchorState_succeeds() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
-            address(asr),
-            abi.encodeWithSelector(IAnchorStateRegistry.setAnchorState.selector, IFaultDisputeGame(address(0))),
-            ""
+            address(asr), abi.encodeCall(IAnchorStateRegistry.setAnchorState, (IFaultDisputeGame(address(0)))), ""
         );
         vm.expectEmit(address(safeInstance.safe));
         emit ExecutionFromModuleSuccess(address(deputyGuardianModule));
@@ -231,10 +222,9 @@ contract DeputyGuardianModule_BlacklistDisputeGame_TestFail is DeputyGuardianMod
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_blacklistDisputeGame_targetReverts_reverts() external {
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(optimismPortal2),
-            abi.encodeWithSelector(optimismPortal2.blacklistDisputeGame.selector),
+            abi.encodePacked(optimismPortal2.blacklistDisputeGame.selector),
             "OptimismPortal2: blacklistDisputeGame reverted"
         );
 
@@ -275,10 +265,9 @@ contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianMod
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_setRespectedGameType_targetReverts_reverts() external {
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(optimismPortal2),
-            abi.encodeWithSelector(optimismPortal2.setRespectedGameType.selector),
+            abi.encodePacked(optimismPortal2.setRespectedGameType.selector),
             "OptimismPortal2: setRespectedGameType reverted"
         );
 

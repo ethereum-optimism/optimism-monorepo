@@ -159,7 +159,6 @@ rules:
           - pattern: |
               abi.encodeWithSignature(...);
       - pattern-not: vm.expectRevert(abi.encodeWithSelector(...));
-      - pattern-not: vm.expectRevert(abi.encodeWithSignature(...));
     paths:
       exclude:
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
