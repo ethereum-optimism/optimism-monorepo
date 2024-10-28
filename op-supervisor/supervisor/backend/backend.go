@@ -439,3 +439,37 @@ func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID type
 
 	return su.chainDBs.UpdateFinalizedL1(finalized)
 }
+
+// Access to synchronous processing for tests
+// ----------------------------
+
+func (su *SupervisorBackend) SyncEvents(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.chainProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	ch.ProcessToHead()
+	return nil
+}
+
+func (su *SupervisorBackend) SyncCrossUnsafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossUnsafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
+}
+
+func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossSafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
+}
