@@ -25,7 +25,7 @@ type chainBlockDef struct {
 	error    error
 }
 
-type testCase struct {
+type hazardCycleChecksTestCase struct {
 	name        string
 	chainBlocks map[string]chainBlockDef
 	expectErr   error
@@ -34,6 +34,65 @@ type testCase struct {
 	// Optional overrides
 	hazards     map[types.ChainIndex]types.BlockSeal
 	openBlockFn func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error)
+}
+
+func runHazardCycleChecksTestCaseGroup(t *testing.T, group string, tests []hazardCycleChecksTestCase) {
+	for _, tc := range tests {
+		t.Run(group+"/"+tc.name, func(t *testing.T) {
+			runHazardCycleChecksTestCase(t, tc)
+		})
+	}
+}
+
+func runHazardCycleChecksTestCase(t *testing.T, tc hazardCycleChecksTestCase) {
+	// Create mocked dependencies
+	deps := &mockCycleCheckDeps{
+		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
+			// Use override if provided
+			if tc.openBlockFn != nil {
+				return tc.openBlockFn(chainID, blockNum)
+			}
+
+			// Default behavior
+			chainStr := chainID.String()
+			def, ok := tc.chainBlocks[chainStr]
+			if !ok {
+				return types.BlockSeal{}, 0, nil, errors.New("unexpected chain")
+			}
+			if def.error != nil {
+				return types.BlockSeal{}, 0, nil, def.error
+			}
+			return types.BlockSeal{Number: blockNum}, def.logCount, def.messages, nil
+		},
+	}
+
+	// Generate hazards map automatically if not explicitly provided
+	var hazards map[types.ChainIndex]types.BlockSeal
+	if tc.hazards != nil {
+		hazards = tc.hazards
+	} else {
+		hazards = make(map[types.ChainIndex]types.BlockSeal)
+		for chainStr := range tc.chainBlocks {
+			hazards[chainIndex(chainStr)] = types.BlockSeal{Number: 1}
+		}
+	}
+
+	// Run the test
+	err := HazardCycleChecks(deps, 100, hazards)
+
+	// No error expected
+	if tc.expectErr == nil {
+		require.NoError(t, err, tc.msg)
+		return
+	}
+
+	// Error expected, make sure it's the right one
+	require.Error(t, err, tc.msg)
+	if errors.Is(err, tc.expectErr) {
+		require.ErrorIs(t, err, tc.expectErr, tc.msg)
+	} else {
+		require.Contains(t, err.Error(), tc.expectErr.Error(), tc.msg)
+	}
 }
 
 func chainIndex(s string) types.ChainIndex {
@@ -64,7 +123,7 @@ var emptyChainBlocks = map[string]chainBlockDef{
 }
 
 func TestHazardCycleChecksFailures(t *testing.T) {
-	tests := []testCase{
+	tests := []hazardCycleChecksTestCase{
 		{
 			name:        "no hazards",
 			chainBlocks: emptyChainBlocks,
@@ -134,11 +193,11 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			msg:       "expected unknown chain error",
 		},
 	}
-	runHazardTestCaseGroup(t, "Failure", tests)
+	runHazardCycleChecksTestCaseGroup(t, "Failure", tests)
 }
 
 func TestHazardCycleChecksNoCycle(t *testing.T) {
-	tests := []testCase{
+	tests := []hazardCycleChecksTestCase{
 		{
 			name:        "no logs",
 			chainBlocks: emptyChainBlocks,
@@ -251,11 +310,11 @@ func TestHazardCycleChecksNoCycle(t *testing.T) {
 			msg: "expected no cycle detection error for cycle through messages with different timestamps",
 		},
 	}
-	runHazardTestCaseGroup(t, "NoCycle", tests)
+	runHazardCycleChecksTestCaseGroup(t, "NoCycle", tests)
 }
 
 func TestHazardCycleChecksCycle(t *testing.T) {
-	tests := []testCase{
+	tests := []hazardCycleChecksTestCase{
 		{
 			name: "2-cycle in single chain with first log",
 			chainBlocks: map[string]chainBlockDef{
@@ -361,63 +420,5 @@ func TestHazardCycleChecksCycle(t *testing.T) {
 			msg:       "expected cycle detection error for when cycle goes through adjacency dependency",
 		},
 	}
-	runHazardTestCaseGroup(t, "Cycle", tests)
-}
-
-func runHazardTestCaseGroup(t *testing.T, group string, tests []testCase) {
-	for _, tc := range tests {
-		t.Run(group+"/"+tc.name, func(t *testing.T) {
-			runHazardTestCase(t, tc)
-		})
-	}
-}
-
-func runHazardTestCase(t *testing.T, tc testCase) {
-	// Create mocked dependencies
-	deps := &mockCycleCheckDeps{
-		openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
-			// Use override if provided
-			if tc.openBlockFn != nil {
-				return tc.openBlockFn(chainID, blockNum)
-			}
-
-			// Default behavior
-			chainStr := chainID.String()
-			def, ok := tc.chainBlocks[chainStr]
-			if !ok {
-				return types.BlockSeal{}, 0, nil, errors.New("unexpected chain")
-			}
-			if def.error != nil {
-				return types.BlockSeal{}, 0, nil, def.error
-			}
-			return types.BlockSeal{Number: blockNum}, def.logCount, def.messages, nil
-		},
-	}
-
-	// Generate hazards map automatically if not explicitly provided
-	var hazards map[types.ChainIndex]types.BlockSeal
-	if tc.hazards != nil {
-		hazards = tc.hazards
-	} else {
-		hazards = make(map[types.ChainIndex]types.BlockSeal)
-		for chainStr := range tc.chainBlocks {
-			hazards[chainIndex(chainStr)] = types.BlockSeal{Number: 1}
-		}
-	}
-
-	err := HazardCycleChecks(deps, 100, hazards)
-
-	// No error expected
-	if tc.expectErr == nil {
-		require.NoError(t, err, tc.msg)
-		return
-	}
-
-	// Error expected, make sure it's the right one
-	require.Error(t, err, tc.msg)
-	if errors.Is(err, tc.expectErr) {
-		require.ErrorIs(t, err, tc.expectErr, tc.msg)
-	} else {
-		require.Contains(t, err.Error(), tc.expectErr.Error(), tc.msg)
-	}
+	runHazardCycleChecksTestCaseGroup(t, "Cycle", tests)
 }
