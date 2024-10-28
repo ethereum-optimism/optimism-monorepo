@@ -41,6 +41,12 @@ func TestInteropVerifier(gt *testing.T) {
 		l1Miner.L1Client(t, sd.RollupCfg), l1Miner.BlobStore(), &sync.Config{},
 		helpers.WithInteropBackend(verMockBackend))
 
+	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		return nil
+	}
+	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		return nil
+	}
 	seq.ActL2PipelineFull(t)
 	ver.ActL2PipelineFull(t)
 
@@ -94,6 +100,9 @@ func TestInteropVerifier(gt *testing.T) {
 	// Sync the L1 block, to verify the L2 block as local-safe.
 	seqMockBackend.UpdateLocalUnsafeFn = nil
 	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		if lastDerived.Number == 0 { // genesis comes first
+			return nil
+		}
 		require.Equal(t, uint64(1), lastDerived.Number)
 		return nil
 	}
@@ -144,6 +153,9 @@ func TestInteropVerifier(gt *testing.T) {
 		return nil
 	}
 	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		if lastDerived.Number == 0 { // genesis comes first
+			return nil
+		}
 		require.Equal(t, uint64(1), lastDerived.Number)
 		require.Equal(t, l1Head.ID(), derivedFrom.ID())
 		return nil
