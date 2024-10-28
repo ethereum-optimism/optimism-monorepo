@@ -531,12 +531,12 @@ var RunCommand = CreateRunCommand(Run)
 func checkFlags(ctx *cli.Context) error {
 	if output := ctx.Path(RunOutputFlag.Name); output != "" {
 		if !serialize.IsBinaryFile(output) {
-			return errors.New("Invalid --output file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+			return errors.New("invalid --output file format. Only binary file formats (ending in .bin or bin.gz) are supported")
 		}
 	}
 	if snapshotFmt := ctx.String(RunSnapshotFmtFlag.Name); snapshotFmt != "" {
 		if !serialize.IsBinaryFile(fmt.Sprintf(snapshotFmt, 0)) {
-			return errors.New("Invalid --snapshot-fmt file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+			return errors.New("invalid --snapshot-fmt file format. Only binary file formats (ending in .bin or bin.gz) are supported")
 		}
 	}
 	return nil
