@@ -110,7 +110,7 @@ contract LivenessGuard_CheckTx_Test is LivenessGuard_TestInit {
             vm.expectEmit(address(livenessGuard));
             emit OwnerRecorded(signers[i]);
         }
-        vm.expectCall(address(safeInstance.safe), abi.encodeWithSignature("nonce()"));
+        vm.expectCall(address(safeInstance.safe), abi.encodeCall(safeInstance.safe.nonce, ()));
         vm.expectCall(address(safeInstance.safe), abi.encodeCall(OwnerManager.getThreshold, ()));
         safeInstance.execTransaction({ to: address(1111), value: 0, data: hex"abba" });
         for (uint256 i; i < safeInstance.threshold; i++) {

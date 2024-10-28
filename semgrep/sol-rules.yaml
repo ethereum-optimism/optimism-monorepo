@@ -153,10 +153,19 @@ rules:
     severity: ERROR
     message: Use abi.encodeCall instead of abi.encodeWithSelector
     patterns:
-      - pattern: |
-          abi.encodeWithSelector(...);
+      - pattern-either:
+          - pattern: |
+              abi.encodeWithSelector(...);
+          - pattern: |
+              abi.encodeWithSignature(...);
     paths:
       exclude:
+        - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
+        - packages/contracts-bedrock/test/L2/GasPriceOracle.t.sol
+        - packages/contracts-bedrock/test/L2/SuperchainWETH.t.sol
+        - packages/contracts-bedrock/src/libraries/Encoding.sol
+        - packages/contracts-bedrock/test/safe/SafeSigners.t.sol
+        - packages/contracts-bedrock/src/libraries/LegacyCrossDomainUtils.sol
         - packages/contracts-bedrock/test/L2/L2ToL2CrossDomainMessenger.t.sol
         - packages/contracts-bedrock/test/dispute/FaultDisputeGame.t.sol
         - packages/contracts-bedrock/test/dispute/DisputeGameFactory.t.sol
