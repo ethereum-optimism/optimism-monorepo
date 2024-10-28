@@ -123,6 +123,7 @@ var emptyChainBlocks = map[string]chainBlockDef{
 }
 
 func TestHazardCycleChecksFailures(t *testing.T) {
+	testOpenBlockErr := errors.New("test OpenBlock error")
 	tests := []hazardCycleChecksTestCase{
 		{
 			name:        "no hazards",
@@ -135,7 +136,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			name:        "failed to open block error",
 			chainBlocks: emptyChainBlocks,
 			openBlockFn: func(chainID types.ChainID, blockNum uint64) (types.BlockSeal, uint32, map[uint32]*types.ExecutingMessage, error) {
-				return types.BlockSeal{}, 0, nil, ErrFailedToOpenBlock
+				return types.BlockSeal{}, 0, nil, testOpenBlockErr
 			},
 			expectErr: errors.New("failed to open block"),
 			msg:       "expected error when OpenBlock fails",
@@ -160,7 +161,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 					},
 				},
 			},
-			expectErr: ErrInvalidLogIndex,
+			expectErr: ErrExecMsgHasInvalidIndex,
 			msg:       "expected invalid log index error",
 		},
 		{
@@ -173,7 +174,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 					},
 				},
 			},
-			expectErr: ErrSelfReferencing,
+			expectErr: ErrExecMsgSelfReference,
 			msg:       "expected self reference detection error",
 		},
 		{
@@ -189,7 +190,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 			hazards: map[types.ChainIndex]types.BlockSeal{
 				1: {Number: 1}, // Only include chain 1.
 			},
-			expectErr: ErrUnknownChain,
+			expectErr: ErrExecMsgUnknownChain,
 			msg:       "expected unknown chain error",
 		},
 	}

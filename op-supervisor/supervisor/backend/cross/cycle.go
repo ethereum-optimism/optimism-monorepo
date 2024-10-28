@@ -9,19 +9,21 @@ import (
 )
 
 var (
-	ErrFailedToOpenBlock = errors.New("failed to open block")
-	ErrCycle             = errors.New("cycle detected")
-	ErrInvalidLogIndex   = errors.New("executing message references invalid log index")
-	ErrSelfReferencing   = errors.New("executing message references itself")
-	ErrUnknownChain      = errors.New("executing message references unknown chain")
+	ErrCycle                  = errors.New("cycle detected")
+	ErrExecMsgHasInvalidIndex = errors.New("executing message has invalid log index")
+	ErrExecMsgSelfReference   = errors.New("executing message references itself")
+	ErrExecMsgUnknownChain    = errors.New("executing message references unknown chain")
 )
 
 // CycleCheckDeps is an interface for checking cyclical dependencies between logs.
 type CycleCheckDeps interface {
+	// OpenBlock returns log data for the requested block, to be used for cycle checking.
 	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
-// node represents a log entry in our graph.
+// node represents a log entry in the dependency graph.
+// It could be an initiating message, executing message, both, or neither.
+// It is uniquely identified by chain index and the log index within its parent block.
 type node struct {
 	chainIndex types.ChainIndex
 	logIndex   uint32
@@ -101,7 +103,7 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 		// Validate executing message indices
 		for logIdx := range msgs {
 			if logIdx >= logCount {
-				return nil, nil, fmt.Errorf("%w: log index %d >= log count %d", ErrInvalidLogIndex, logIdx, logCount)
+				return nil, nil, fmt.Errorf("%w: log index %d >= log count %d", ErrExecMsgHasInvalidIndex, logIdx, logCount)
 			}
 		}
 
@@ -163,7 +165,7 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 		for execLogIdx, m := range msgs {
 			// Error if the chain is unknown
 			if _, ok := hazards[m.Chain]; !ok {
-				return nil, ErrUnknownChain
+				return nil, ErrExecMsgUnknownChain
 			}
 
 			// Check if we care about the init message
@@ -186,7 +188,7 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 
 			// Disallow self-referencing messages
 			if initKey == execKey {
-				return nil, ErrSelfReferencing
+				return nil, ErrExecMsgSelfReference
 			}
 
 			// Add the edge
@@ -198,7 +200,10 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 }
 
 // checkGraph uses Kahn's topological sort algorithm to check for cycles in the graph.
-// It returns nil for acyclic graphs and ErrCycle for cyclic graphs.
+//
+// Returns:
+//   - nil for acyclic graphs.
+//   - ErrCycle for cyclic graphs.
 //
 // Algorithm:
 //  1. for each node with in-degree 0 (i.e. no dependencies), add it to the result, remove it from the work.
