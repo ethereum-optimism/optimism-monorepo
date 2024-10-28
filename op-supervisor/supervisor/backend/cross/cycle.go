@@ -176,6 +176,11 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 				continue
 			}
 
+			// Check if the init message exists
+			if logCount, ok := logCounts[m.Chain]; !ok || m.LogIdx >= logCount {
+				return nil, fmt.Errorf("%w: initiating message log index out of bounds", types.ErrConflict)
+			}
+
 			initKey := node{
 				chainIndex: m.Chain,
 				logIndex:   m.LogIdx,
