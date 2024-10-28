@@ -11,7 +11,6 @@ import (
 var (
 	ErrCycle                  = errors.New("cycle detected")
 	ErrExecMsgHasInvalidIndex = errors.New("executing message has invalid log index")
-	ErrExecMsgSelfReference   = errors.New("executing message references itself")
 	ErrExecMsgUnknownChain    = errors.New("executing message references unknown chain")
 )
 
@@ -187,8 +186,9 @@ func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 			}
 
 			// Disallow self-referencing messages
+			// This should not be possible since the executing message contains the hash of the initiating message.
 			if initKey == execKey {
-				return nil, ErrExecMsgSelfReference
+				return nil, fmt.Errorf("%w: self referencial message", types.ErrConflict)
 			}
 
 			// Add the edge

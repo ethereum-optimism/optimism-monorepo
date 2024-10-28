@@ -188,7 +188,7 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 					},
 				},
 			},
-			expectErr: ErrExecMsgSelfReference,
+			expectErr: types.ErrConflict,
 			msg:       "expected self reference detection error",
 		},
 		{
