@@ -70,7 +70,8 @@ func (bs *BatchStage) NextBatch(ctx context.Context, parent eth.L2BlockRef) (*Si
 		// We only consider empty batch generation after we've drained all batches from the local
 		// span batch queue and the previous stage.
 		empty, err := bs.deriveNextEmptyBatch(ctx, true, parent)
-		return empty, false, err
+		// An empty batch always advances the safe head.
+		return empty, true, err
 	} else if err != nil {
 		return nil, false, err
 	}
