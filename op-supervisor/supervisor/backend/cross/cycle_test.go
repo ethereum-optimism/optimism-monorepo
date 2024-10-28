@@ -306,7 +306,27 @@ func TestHazardCycleChecksNoCycle(t *testing.T) {
 			msg: "expected no cycle found first log is exec",
 		},
 		{
-			name: "cycle through different timestamp",
+			name: "cycle through older timestamp",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("2", 0),
+						1: execMsgWithTimestamp("2", 1, 101),
+					},
+				},
+				"2": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						0: execMsg("1", 1),
+					},
+				},
+			},
+			msg: "expected no cycle detection error for cycle through messages with different timestamps",
+		},
+		// This should be caught by earlier validations, but included for completeness.
+		{
+			name: "cycle through younger timestamp",
 			chainBlocks: map[string]chainBlockDef{
 				"1": {
 					logCount: 2,
