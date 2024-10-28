@@ -3,6 +3,7 @@ package interop
 import (
 	"context"
 	"math/big"
+	"sync"
 	"testing"
 	"time"
 
@@ -106,11 +107,20 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 		EmitterA := s2.DeployEmitterContract(chainA, "Alice")
 		EmitterB := s2.DeployEmitterContract(chainB, "Alice")
 		payload1 := "SUPER JACKPOT!"
-		payload2 := "DOUBLE SUPER JACKPOT!"
-		for i := 0; i < 10; i++ {
-			s2.EmitData(chainA, "Alice", payload1)
-			s2.EmitData(chainB, "Alice", payload2)
+		numEmits := 10
+		// emit logs on both chains in parallel
+		var emitParallel sync.WaitGroup
+		emitOn := func(chainID string) {
+			for i := 0; i < numEmits; i++ {
+				s2.EmitData(chainID, "Alice", payload1)
+			}
+			emitParallel.Done()
 		}
+		emitParallel.Add(2)
+		go emitOn(chainA)
+		go emitOn(chainB)
+		emitParallel.Wait()
+
 		clientA := s2.L2GethClient(chainA)
 		clientB := s2.L2GethClient(chainB)
 		// check that the logs are emitted on chain A
@@ -119,7 +129,7 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 		}
 		logsA, err := clientA.FilterLogs(context.Background(), qA)
 		require.NoError(t, err)
-		require.Len(t, logsA, 10)
+		require.Len(t, logsA, numEmits)
 
 		// check that the logs are emitted on chain B
 		qB := ethereum.FilterQuery{
@@ -127,16 +137,18 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 		}
 		logsB, err := clientB.FilterLogs(context.Background(), qB)
 		require.NoError(t, err)
-		require.Len(t, logsB, 10)
+		require.Len(t, logsB, numEmits)
 
-		// wait 60 seconds for cross-safety to update
+		// wait for cross-safety to settle
+		// I've tried 30s but not all logs are cross-safe by then
 		time.Sleep(60 * time.Second)
 
 		supervisor := s2.SupervisorClient()
 
 		// requireMessage checks the safety level of a log against the supervisor
 		// it also checks that the error is as expected
-		requireMessage := func(log gethTypes.Log, expectedSafety types.SafetyLevel, expectedError error) {
+		requireMessage := func(chainID string, log gethTypes.Log, expectedSafety types.SafetyLevel, expectedError error) {
+			client := s2.L2GethClient(chainID)
 			// construct the expected hash of the log's payload
 			// (topics concatenated with data)
 			msgPayload := make([]byte, 0)
@@ -149,7 +161,9 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 			logHash := types.PayloadHashToLogHash(expectedHash, log.Address)
 
 			// get block for the log (for timestamp)
-			block, err := clientA.BlockByHash(context.Background(), log.BlockHash)
+			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
+			defer cancel()
+			block, err := client.BlockByHash(ctx, log.BlockHash)
 			require.NoError(t, err)
 
 			// make an identifier out of the sample log
@@ -158,7 +172,7 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 				BlockNumber: log.BlockNumber,
 				LogIndex:    uint64(log.Index),
 				Timestamp:   block.Time(),
-				ChainID:     types.ChainIDFromBig(s2.ChainID(chainA)),
+				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
 			}
 
 			safety, error := supervisor.CheckMessage(context.Background(),
@@ -166,15 +180,16 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 				logHash,
 			)
 			require.ErrorIs(t, error, expectedError)
-			require.Equal(t, expectedSafety, safety, "log: %v", log)
+			// the supervisor could progress the safety level more quickly than we expect,
+			// which is why we check for a minimum safety level
+			require.True(t, safety.AtLeastAsSafe(expectedSafety), "log: %v should be at least %s, but is %s", log, expectedSafety.String(), safety.String())
 		}
-
 		// all logs should be cross-safe
 		for _, log := range logsA {
-			requireMessage(log, types.CrossSafe, nil)
+			requireMessage(chainA, log, types.CrossSafe, nil)
 		}
 		for _, log := range logsB {
-			requireMessage(log, types.CrossSafe, nil)
+			requireMessage(chainB, log, types.CrossSafe, nil)
 		}
 	}
 	setupAndRun(t, test)
