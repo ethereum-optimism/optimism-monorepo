@@ -110,11 +110,11 @@ func TestChannelStage_NextData(t *testing.T) {
 
 				MaxRLPBytesPerChannelOverride: tc.rlpOverride,
 			}
-			cs := NewChannelStage(lgr, spec, fq, metrics.NoopMetrics)
+			cs := NewChannelAssembler(lgr, spec, fq, metrics.NoopMetrics)
 
 			for i, fs := range tc.frames {
 				fq.AddFrames(fs...)
-				data, err := cs.NextData(context.Background())
+				data, err := cs.NextRawChannel(context.Background())
 				require.Equal(t, tc.expData[i], string(data))
 				require.ErrorIs(t, tc.expErr[i], err)
 				// invariant: never holds a ready channel
@@ -129,7 +129,7 @@ func TestChannelStage_NextData(t *testing.T) {
 			}
 
 			// final call should always be io.EOF after exhausting frame queue
-			data, err := cs.NextData(context.Background())
+			data, err := cs.NextRawChannel(context.Background())
 			require.Nil(t, data)
 			require.Equal(t, io.EOF, err)
 		})
@@ -141,10 +141,10 @@ func TestChannelStage_NextData_Timeout(t *testing.T) {
 	fq := &fakeChannelBankInput{}
 	lgr := testlog.Logger(t, slog.LevelWarn)
 	spec := rollup.NewChainSpec(&rollup.Config{GraniteTime: ptr(uint64(0))}) // const channel timeout
-	cs := NewChannelStage(lgr, spec, fq, metrics.NoopMetrics)
+	cs := NewChannelAssembler(lgr, spec, fq, metrics.NoopMetrics)
 
 	fq.AddFrames("a:0:foo")
-	data, err := cs.NextData(context.Background())
+	data, err := cs.NextRawChannel(context.Background())
 	require.Nil(data)
 	require.Equal(io.EOF, err)
 	require.NotNil(cs.channel)
@@ -153,7 +153,7 @@ func TestChannelStage_NextData_Timeout(t *testing.T) {
 	// move close to timeout
 	fq.origin.Number = spec.ChannelTimeout(0)
 	fq.AddFrames("a:1:bar")
-	data, err = cs.NextData(context.Background())
+	data, err = cs.NextRawChannel(context.Background())
 	require.Nil(data)
 	require.Equal(io.EOF, err)
 	require.NotNil(cs.channel)
@@ -162,7 +162,7 @@ func TestChannelStage_NextData_Timeout(t *testing.T) {
 	// timeout channel by moving origin past timeout
 	fq.origin.Number = spec.ChannelTimeout(0) + 1
 	fq.AddFrames("a:2:baz!")
-	data, err = cs.NextData(context.Background())
+	data, err = cs.NextRawChannel(context.Background())
 	require.Nil(data)
 	require.Equal(io.EOF, err)
 	require.Nil(cs.channel)

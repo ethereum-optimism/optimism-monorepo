@@ -15,6 +15,8 @@ type BatchStage struct {
 	baseBatchStage
 }
 
+var _ SingularBatchProvider = (*BatchStage)(nil)
+
 func NewBatchStage(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) *BatchStage {
 	return &BatchStage{baseBatchStage: newBaseBatchStage(log, cfg, prev, l2)}
 }
