@@ -152,7 +152,7 @@ services:
       --l1.http-poll-interval=6s
       --l2=http://l2-a:8551
       --l2.jwt-secret=/config/jwt-secret.txt
-      --supervisor=http://supervisor:8545
+      --supervisor=http://op-supervisor:8545
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
@@ -203,7 +203,7 @@ services:
       --l1.http-poll-interval=6s
       --l2=http://l2-b:8551
       --l2.jwt-secret=/config/jwt-secret.txt
-      --supervisor=http://supervisor:8545
+      --supervisor=http://op-supervisor:8545
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
