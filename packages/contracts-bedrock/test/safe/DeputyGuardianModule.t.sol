@@ -91,13 +91,16 @@ contract DeputyGuardianModule_Pause_Test is DeputyGuardianModule_TestInit {
 
 contract DeputyGuardianModule_Pause_TestFail is DeputyGuardianModule_TestInit {
     /// @dev Tests that `pause` reverts when called by a non deputy guardian.
+    // nosemgrep: sol-style-use-abi-encodecall
     function test_pause_notDeputyGuardian_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.pause();
     }
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_pause_targetReverts_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(superchainConfig),
             abi.encodeWithSelector(superchainConfig.pause.selector),
@@ -105,6 +108,7 @@ contract DeputyGuardianModule_Pause_TestFail is DeputyGuardianModule_TestInit {
         );
 
         vm.prank(address(deputyGuardian));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(ExecutionFailed.selector, "SuperchainConfig: pause() reverted"));
         deputyGuardianModule.pause();
     }
@@ -141,6 +145,7 @@ contract DeputyGuardianModule_Unpause_Test is DeputyGuardianModule_TestInit {
 contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_Test {
     /// @dev Tests that `unpause` reverts when called by a non deputy guardian.
     function test_unpause_notDeputyGuardian_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.unpause();
         assertTrue(superchainConfig.paused());
@@ -148,6 +153,7 @@ contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_T
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_unpause_targetReverts_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(superchainConfig),
             abi.encodeWithSelector(superchainConfig.unpause.selector),
@@ -155,6 +161,7 @@ contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_T
         );
 
         vm.prank(address(deputyGuardian));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(ExecutionFailed.selector, "SuperchainConfig: unpause reverted"));
         deputyGuardianModule.unpause();
     }
@@ -163,18 +170,21 @@ contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_T
 contract DeputyGuardianModule_SetAnchorState_TestFail is DeputyGuardianModule_TestInit {
     function test_setAnchorState_notDeputyGuardian_reverts() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.setAnchorState(asr, IFaultDisputeGame(address(0)));
     }
 
     function test_setAnchorState_targetReverts_reverts() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(asr),
             abi.encodeWithSelector(asr.setAnchorState.selector),
             "AnchorStateRegistry: setAnchorState reverted"
         );
         vm.prank(address(deputyGuardian));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(ExecutionFailed.selector, "AnchorStateRegistry: setAnchorState reverted")
         );
@@ -185,6 +195,7 @@ contract DeputyGuardianModule_SetAnchorState_TestFail is DeputyGuardianModule_Te
 contract DeputyGuardianModule_SetAnchorState_Test is DeputyGuardianModule_TestInit {
     function test_setAnchorState_succeeds() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(asr),
             abi.encodeWithSelector(IAnchorStateRegistry.setAnchorState.selector, IFaultDisputeGame(address(0))),
@@ -219,6 +230,7 @@ contract DeputyGuardianModule_BlacklistDisputeGame_TestFail is DeputyGuardianMod
     /// @dev Tests that `blacklistDisputeGame` reverts when called by a non deputy guardian.
     function test_blacklistDisputeGame_notDeputyGuardian_reverts() external {
         IDisputeGame game = IDisputeGame(makeAddr("game"));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.blacklistDisputeGame(optimismPortal2, game);
         assertFalse(optimismPortal2.disputeGameBlacklist(game));
@@ -226,6 +238,7 @@ contract DeputyGuardianModule_BlacklistDisputeGame_TestFail is DeputyGuardianMod
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_blacklistDisputeGame_targetReverts_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(optimismPortal2),
             abi.encodeWithSelector(optimismPortal2.blacklistDisputeGame.selector),
@@ -234,6 +247,7 @@ contract DeputyGuardianModule_BlacklistDisputeGame_TestFail is DeputyGuardianMod
 
         IDisputeGame game = IDisputeGame(makeAddr("game"));
         vm.prank(address(deputyGuardian));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(ExecutionFailed.selector, "OptimismPortal2: blacklistDisputeGame reverted")
         );
@@ -262,6 +276,7 @@ contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianMod
     /// @dev Tests that `setRespectedGameType` when called by a non deputy guardian.
     function testFuzz_setRespectedGameType_notDeputyGuardian_reverts(GameType _gameType) external {
         vm.assume(GameType.unwrap(optimismPortal2.respectedGameType()) != GameType.unwrap(_gameType));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.setRespectedGameType(optimismPortal2, _gameType);
         assertNotEq(GameType.unwrap(optimismPortal2.respectedGameType()), GameType.unwrap(_gameType));
@@ -269,6 +284,7 @@ contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianMod
 
     /// @dev Tests that when the call from the Safe reverts, the error message is returned.
     function test_setRespectedGameType_targetReverts_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCallRevert(
             address(optimismPortal2),
             abi.encodeWithSelector(optimismPortal2.setRespectedGameType.selector),
@@ -277,6 +293,7 @@ contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianMod
 
         GameType gameType = GameType.wrap(1);
         vm.prank(address(deputyGuardian));
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(ExecutionFailed.selector, "OptimismPortal2: setRespectedGameType reverted")
         );

@@ -401,6 +401,7 @@ contract OptimismPortal_Test is CommonTest {
         uint256 startingBlockNumber = deploy.cfg().l2OutputOracleStartingBlockNumber();
 
         uint256 ts = block.timestamp;
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -830,6 +831,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
         // Mock a call where the resulting output root is anything but the original output root. In
         // this case we just use bytes32(uint256(1)).
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -885,6 +887,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
         // Mock an outputRoot change on the output proposal before attempting
         // to finalize the withdrawal.
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -916,6 +919,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
         // Mock a timestamp change on the output proposal that has not passed the
         // finalization period.
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -952,6 +956,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     function test_finalizeWithdrawalTransaction_onRecentWithdrawal_reverts() external {
         // Setup the Oracle to return an output with a recent timestamp
         uint256 recentTimestamp = block.timestamp - 1;
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -1004,6 +1009,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
             latestBlockhash: bytes32(0)
         });
 
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -1053,6 +1059,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
         // Setup the Oracle to return the outputRoot we want as well as a finalized timestamp.
         uint256 finalizedTimestamp = block.timestamp - l2OutputOracle.FINALIZATION_PERIOD_SECONDS() - 1;
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(optimismPortal.l2Oracle()),
             abi.encodeWithSelector(IL2OutputOracle.getL2Output.selector),
@@ -1127,6 +1134,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
         assertEq(withdrawalHash, Hashing.hashWithdrawal(_tx));
 
         // Setup the Oracle to return the outputRoot
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall(
             address(l2OutputOracle),
             abi.encodeWithSelector(l2OutputOracle.getL2Output.selector),

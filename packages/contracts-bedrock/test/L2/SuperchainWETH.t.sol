@@ -322,7 +322,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the internal mint function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_internal_mint_function_reverts(address _caller, address _to, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("_mint(address,uint256)", _to, _amount);
+        bytes memory _calldata = abi.encodeWithSignature("_mint(address,uint256)", _to, _amount); // nosemgrep:
+            // sol-style-use-abi-encodecall
         vm.expectRevert(bytes(""));
 
         // Act
@@ -336,7 +337,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the mint function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_mint_function_reverts(address _caller, address _to, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("mint(address,uint256)", _to, _amount);
+        bytes memory _calldata = abi.encodeWithSignature("mint(address,uint256)", _to, _amount); // nosemgrep:
+            // sol-style-use-abi-encodecall
         vm.expectRevert(bytes(""));
 
         // Act
@@ -350,7 +352,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the internal burn function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_internal_burn_function_reverts(address _caller, address _from, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("_burn(address,uint256)", _from, _amount);
+        bytes memory _calldata = abi.encodeWithSignature("_burn(address,uint256)", _from, _amount); // nosemgrep:
+            // sol-style-use-abi-encodecall
         vm.expectRevert(bytes(""));
 
         // Act
@@ -364,7 +367,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the burn function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_burn_function_reverts(address _caller, address _from, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("burn(address,uint256)", _from, _amount);
+        bytes memory _calldata = abi.encodeWithSignature("burn(address,uint256)", _from, _amount); // nosemgrep:
+            // sol-style-use-abi-encodecall
         vm.expectRevert(bytes(""));
 
         // Act

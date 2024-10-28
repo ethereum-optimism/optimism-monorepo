@@ -373,6 +373,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         _blockNumber = bound(_blockNumber, 0, startingL2Block);
 
         Claim claim = _dummyClaim();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(UnexpectedRootClaim.selector, claim));
         gameProxy =
             IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, claim, abi.encode(_blockNumber)))));
@@ -411,6 +412,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         }
 
         Claim claim = _dummyClaim();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(BadExtraData.selector));
         gameProxy = IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, claim, _extraData))));
     }
@@ -534,11 +536,11 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         Claim claim = _dummyClaim();
 
         // Expect an out of bounds revert for an attack
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32)); // nosemgrep: sol-style-use-abi-encodecall
         gameProxy.attack(_dummyClaim(), 1, claim);
 
         // Expect an out of bounds revert for a defense
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
+        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32)); // nosemgrep: sol-style-use-abi-encodecall
         gameProxy.defend(_dummyClaim(), 1, claim);
     }
 
@@ -827,6 +829,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         uint256 bond = _getRequiredBond(4);
         (,,,, disputed,,) = gameProxy.claimData(4);
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(UnexpectedRootClaim.selector, bytes32(0)));
         gameProxy.attack{ value: bond }(disputed, 4, Claim.wrap(bytes32(0)));
     }

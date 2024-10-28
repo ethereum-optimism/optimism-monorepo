@@ -138,6 +138,7 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         assertEq(Timestamp.unwrap(timestamp), block.timestamp);
 
         // Ensure that the `create` function reverts when called with parameters that would result in the same UUID.
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(GameAlreadyExists.selector, disputeGameFactory.getGameUUID(gt, rootClaim, extraData))
         );

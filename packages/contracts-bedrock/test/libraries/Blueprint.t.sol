@@ -203,11 +203,13 @@ contract Blueprint_Test is Test {
 
         bytes memory invalidBlueprintCode = hex"FE710400"; // ercVersion = uint8(0x04 & 0xfc) >> 2 = 1
         vm.etch(blueprintAddress, invalidBlueprintCode);
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Blueprint.UnsupportedERCVersion.selector, 1));
         blueprint.deployFrom(blueprintAddress, salt);
 
         invalidBlueprintCode = hex"FE71B000"; // ercVersion = uint8(0xB0 & 0xfc) >> 2 = 44
         vm.etch(blueprintAddress, invalidBlueprintCode);
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Blueprint.UnsupportedERCVersion.selector, 44));
         blueprint.deployFrom(blueprintAddress, salt);
     }
@@ -221,6 +223,7 @@ contract Blueprint_Test is Test {
         vm.etch(blueprintAddress, invalidBlueprintCode);
 
         // Expect revert with UnexpectedPreambleData error
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Blueprint.UnexpectedPreambleData.selector, hex"010203"));
         blueprint.deployFrom(blueprintAddress, salt);
     }

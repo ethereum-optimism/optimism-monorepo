@@ -74,14 +74,19 @@ contract DelayedVetoable_Getters_Test is DelayedVetoable_Init {
 contract DelayedVetoable_Getters_TestFail is DelayedVetoable_Init {
     /// @dev Check that getter calls from unauthorized entities will revert.
     function test_getters_notZeroAddress_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector, initiator, address(this)));
         delayedVetoable.initiator();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector, initiator, address(this)));
         delayedVetoable.vetoer();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector, initiator, address(this)));
         delayedVetoable.target();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector, initiator, address(this)));
         delayedVetoable.delay();
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector, initiator, address(this)));
         delayedVetoable.queuedAt(keccak256(abi.encode(0)));
     }
@@ -153,6 +158,7 @@ contract DelayedVetoable_HandleCall_Test is DelayedVetoable_Init {
 contract DelayedVetoable_HandleCall_TestFail is DelayedVetoable_Init {
     /// @dev Only the initiator can initiate a call.
     function test_handleCall_unauthorizedInitiation_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDelayedVetoable.Unauthorized.selector, initiator, address(this)));
         (bool revertsAsExpected,) = address(delayedVetoable).call(hex"00001234");
         assertTrue(revertsAsExpected);
@@ -189,6 +195,7 @@ contract DelayedVetoable_HandleCall_TestFail is DelayedVetoable_Init {
         assertTrue(success);
 
         // Attempt to forward the same call again.
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDelayedVetoable.Unauthorized.selector, initiator, address(this)));
         (bool revertsAsExpected,) = address(delayedVetoable).call(data);
         assertTrue(revertsAsExpected);
