@@ -97,7 +97,7 @@ services:
       - op-supervisor
     build:
       context: ../ops-bedrock/
-      dockerfile: l2-op-geth.Dockerfile
+      dockerfile: l2-op-geth-interop.Dockerfile
     ports:
       - "9145:8545"
       - "8160:6060"
@@ -117,7 +117,7 @@ services:
       - op-supervisor
     build:
       context: ../ops-bedrock/
-      dockerfile: l2-op-geth.Dockerfile
+      dockerfile: l2-op-geth-interop.Dockerfile
     ports:
       - "9245:8545"
       - "8260:6060"

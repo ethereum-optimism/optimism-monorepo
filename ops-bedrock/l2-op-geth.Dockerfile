@@ -1,4 +1,4 @@
-FROM us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101408.1-dev.1
+FROM us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:optimism
 
 RUN apk add --no-cache jq
 
