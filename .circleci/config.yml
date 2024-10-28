@@ -1257,11 +1257,11 @@ jobs:
       - run:
           name: Install goreleaser pro
           command: |
-            mkdir goreleaser
+            mkdir -p /tmp/goreleaser
+            cd /tmp/goreleaser
             curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.3.2-pro/goreleaser-pro_Linux_x86_64.tar.gz
             tar -xzvf goreleaser.tgz
             mv goreleaser /usr/local/bin/goreleaser
-            rm -rf goreleaser
       - run:
           name: Configure Docker
           command: |
