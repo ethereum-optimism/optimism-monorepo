@@ -26,7 +26,7 @@ import {
     DeployImplementations,
     DeployImplementationsInterop,
     DeployImplementationsOutput
-} from "scripts/DeployImplementations.s.sol";
+} from "scripts/deploy/DeployImplementations.s.sol";
 
 contract DeployImplementationsInput_Test is Test {
     DeployImplementationsInput dii;

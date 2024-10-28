@@ -16,13 +16,13 @@ import { LibStateDiff } from "scripts/libraries/LibStateDiff.sol";
 import { Process } from "scripts/libraries/Process.sol";
 import { ChainAssertions } from "scripts/deploy/ChainAssertions.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/DeploySuperchain.s.sol";
+import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 import {
     DeployImplementationsInput,
     DeployImplementations,
     DeployImplementationsInterop,
     DeployImplementationsOutput
-} from "scripts/DeployImplementations.s.sol";
+} from "scripts/deploy/DeployImplementations.s.sol";
 
 // Contracts
 import { StorageSetter } from "src/universal/StorageSetter.sol";
