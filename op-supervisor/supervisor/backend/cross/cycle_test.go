@@ -454,6 +454,31 @@ func TestHazardCycleChecksCycle(t *testing.T) {
 			expectErr: ErrCycle,
 			msg:       "expected cycle detection error for when cycle goes through adjacency dependency",
 		},
+		{
+			name: "2-cycle across chains with 3 hazard chains",
+			chainBlocks: map[string]chainBlockDef{
+				"1": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						1: execMsg("2", 1),
+					},
+				},
+				"2": {
+					logCount: 2,
+					messages: map[uint32]*types.ExecutingMessage{
+						1: execMsg("1", 1),
+					},
+				},
+				"3": {},
+			},
+			expectErr: ErrCycle,
+			hazards: map[types.ChainIndex]types.BlockSeal{
+				1: {Number: 1},
+				2: {Number: 1},
+				3: {Number: 1},
+			},
+			msg: "expected cycle detection error for cycle through executing messages",
+		},
 	}
 	runHazardCycleChecksTestCaseGroup(t, "Cycle", tests)
 }
