@@ -267,7 +267,6 @@ contract LivenessModule_RemoveOwners_TestFail is LivenessModule_TestInit {
         prevOwners[0] = ownersToRemove[0];
 
         _warpPastLivenessInterval();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(OwnerRemovalFailed.selector, (abi.encodeWithSignature("Error(string)", "GS205")))
         );
@@ -288,7 +287,6 @@ contract LivenessModule_RemoveOwners_TestFail is LivenessModule_TestInit {
         ownersToRemove[ownersToRemove.length - 1] = address(0);
 
         _warpPastLivenessInterval();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(OwnerRemovalFailed.selector, (abi.encodeWithSignature("Error(string)", "GS203")))
         );

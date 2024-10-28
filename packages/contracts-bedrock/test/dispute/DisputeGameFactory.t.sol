@@ -110,8 +110,7 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         // Ensure the rootClaim has a VMStatus that disagrees with the validity.
         rootClaim = changeClaimStatus(rootClaim, VMStatuses.INVALID);
 
-        vm.expectRevert(abi.encodeWithSelector(NoImplementation.selector, gt)); // nosemgrep:
-            // sol-style-use-abi-encodecall
+        vm.expectRevert(abi.encodeWithSelector(NoImplementation.selector, gt));
         disputeGameFactory.create(gt, rootClaim, extraData);
     }
 
@@ -138,7 +137,6 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
         assertEq(Timestamp.unwrap(timestamp), block.timestamp);
 
         // Ensure that the `create` function reverts when called with parameters that would result in the same UUID.
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(GameAlreadyExists.selector, disputeGameFactory.getGameUUID(gt, rootClaim, extraData))
         );

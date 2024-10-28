@@ -147,7 +147,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         uint256 actualBond = requiredBond - 1;
         dataAvailabilityChallenge.deposit{ value: actualBond }();
 
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(IDataAvailabilityChallenge.BondTooLow.selector, actualBond, requiredBond)
         );
@@ -165,7 +164,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
         // Second challenge of the same hash/blockNumber fails
         dataAvailabilityChallenge.deposit{ value: dataAvailabilityChallenge.bondSize() }();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeExists.selector));
         dataAvailabilityChallenge.challenge(0, challengedCommitment);
 
@@ -187,7 +185,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
         // Challenge fails because the current block number must be after the challenged block
         dataAvailabilityChallenge.deposit{ value: dataAvailabilityChallenge.bondSize() }();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeWindowNotOpen.selector));
         dataAvailabilityChallenge.challenge(challengedBlockNumber, challengedCommitment);
     }
@@ -201,7 +198,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
         // Challenge fails because the block number is after the challenge window
         dataAvailabilityChallenge.deposit{ value: dataAvailabilityChallenge.bondSize() }();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeWindowNotOpen.selector));
         dataAvailabilityChallenge.challenge(challengedBlockNumber, challengedCommitment);
     }
@@ -295,7 +291,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(challengedBlockNumber + 1);
 
         // Resolving a non-existent challenge fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotActive.selector));
         dataAvailabilityChallenge.resolve(challengedBlockNumber, computeCommitmentKeccak256(preImage), preImage);
     }
@@ -316,7 +311,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
 
         // Resolving an already resolved challenge fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotActive.selector));
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
@@ -337,7 +331,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(block.number + dataAvailabilityChallenge.resolveWindow() + 1);
 
         // Resolving an expired challenge fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotActive.selector));
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
@@ -358,7 +351,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(block.number + dataAvailabilityChallenge.resolveWindow() + 1);
 
         // Resolve the challenge
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotActive.selector));
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
@@ -417,7 +409,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(challengedBlockNumber + 1);
 
         // Unlock a bond of a non-existent challenge fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotExpired.selector));
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
@@ -438,7 +429,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
 
         // Attempting to unlock a bond of a resolved challenge fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotExpired.selector));
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
@@ -483,7 +473,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(block.number + dataAvailabilityChallenge.resolveWindow() - 1);
 
         // Expiring the challenge before the resolve window closes fails
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.ChallengeNotExpired.selector));
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
@@ -495,7 +484,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
         // Expect the challenge to fail because the bond is too low
         bytes memory challengedCommitment = computeCommitmentKeccak256("some hash");
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(IDataAvailabilityChallenge.BondTooLow.selector, actualBond, requiredBond)
         );
@@ -518,7 +506,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
     function testSetResolverRefundPercentageFail() public {
         address owner = dataAvailabilityChallenge.owner();
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(IDataAvailabilityChallenge.InvalidResolverRefundPercentage.selector, 101)
         );
@@ -541,13 +528,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.validateCommitment(validCommitment);
 
         // Should revert if the commitment type is unknown
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.UnknownCommitmentType.selector, uint8(1)));
         bytes memory unknownType = abi.encodePacked(uint8(1), keccak256("test"));
         dataAvailabilityChallenge.validateCommitment(unknownType);
 
         // Should revert if the commitment length does not match
-        // nosemgrep: sol-style-use-abi-encodecall
         vm.expectRevert(
             abi.encodeWithSelector(IDataAvailabilityChallenge.InvalidCommitmentLength.selector, uint8(0), 33, 34)
         );
