@@ -215,28 +215,29 @@ func checkGraph(g *graph) error {
 		for k := range g.inDegree0 {
 			// Remove all outgoing edges from this node
 			for _, out := range g.outgoingEdges[k] {
-				count := g.inDegreeNon0[out]
-				count -= 1
-				if count == 0 {
+				g.inDegreeNon0[out] -= 1
+				if g.inDegreeNon0[out] == 0 {
 					delete(g.inDegreeNon0, out)
 					g.inDegree0[out] = struct{}{}
-				} else {
-					g.inDegreeNon0[out] = count
 				}
 			}
 			delete(g.outgoingEdges, k)
 			delete(g.inDegree0, k)
 		}
 
-		if len(g.inDegree0) == 0 {
-			if len(g.inDegreeNon0) == 0 {
-				// Done, without cycles!
-				return nil
-			} else {
-				// Some nodes left, but no nodes left with in-degree of 0. There must be a cycle.
-				return ErrCycle
-			}
+		// If there are new nodes with in-degree 0 then process them
+		if len(g.inDegree0) > 0 {
+			continue
 		}
+
+		// We're done processing so check for remaining nodes
+		if len(g.inDegreeNon0) == 0 {
+			// Done, without cycles!
+			return nil
+		}
+
+		// Some nodes left; there must be a cycle.
+		return ErrCycle
 	}
 }
 
