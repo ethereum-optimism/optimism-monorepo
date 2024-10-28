@@ -1253,6 +1253,7 @@ jobs:
       - gcp-oidc-authenticate:
           gcp_cred_config_file_path: /root/gcp_cred_config.json
           oidc_token_file_path: /root/oidc_token.json
+      - checkout
       - run:
           name: Install goreleaser pro
           command: |
@@ -1265,7 +1266,6 @@ jobs:
           name: Configure Docker
           command: |
             gcloud auth configure-docker us-docker.pkg.dev
-      - checkout
       - run:
           name: Run goreleaser
           command: |
