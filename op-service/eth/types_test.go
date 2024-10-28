@@ -1,9 +1,12 @@
 package eth
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"testing"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/stretchr/testify/require"
 )
@@ -65,4 +68,22 @@ func FuzzEncodeScalar(f *testing.F) {
 		require.Equal(t, blobBaseFeeScalar, scalars.BlobBaseFeeScalar)
 		require.Equal(t, baseFeeScalar, scalars.BaseFeeScalar)
 	})
+}
+
+func TestSystemConfigMarshaling(t *testing.T) {
+	sysConfig := SystemConfig{
+		BatcherAddr: common.Address{'A'},
+		Overhead:    Bytes32{0x4, 0x5, 0x6},
+		Scalar:      Bytes32{0x7, 0x8, 0x9},
+		GasLimit:    1234,
+		// Leave EIP1559 params empty to prove that the
+		// zero value is sent.
+	}
+	j, err := json.Marshal(sysConfig)
+	require.NoError(t, err)
+	require.Equal(t, `{"batcherAddr":"0x4100000000000000000000000000000000000000","overhead":"0x0405060000000000000000000000000000000000000000000000000000000000","scalar":"0x0708090000000000000000000000000000000000000000000000000000000000","gasLimit":1234,"eip1559Params":"0x0000000000000000"}`, string(j))
+	sysConfig.MarshalPreHolocene = true
+	j, err = json.Marshal(sysConfig)
+	require.NoError(t, err)
+	require.Equal(t, `{"batcherAddr":"0x4100000000000000000000000000000000000000","overhead":"0x0405060000000000000000000000000000000000000000000000000000000000","scalar":"0x0708090000000000000000000000000000000000000000000000000000000000","gasLimit":1234}`, string(j))
 }

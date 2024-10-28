@@ -1,14 +1,14 @@
 [
   {
     "bytes": "32",
-    "label": "balanceOf",
+    "label": "_balanceOf",
     "offset": 0,
     "slot": "0",
     "type": "mapping(address => uint256)"
   },
   {
     "bytes": "32",
-    "label": "allowance",
+    "label": "_allowance",
     "offset": 0,
     "slot": "1",
     "type": "mapping(address => mapping(address => uint256))"

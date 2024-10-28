@@ -93,6 +93,7 @@ contract GasPriceOracleBedrock_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `setGasPrice` reverts since it was removed in bedrock.
     function test_setGasPrice_doesNotExist_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         (bool success, bytes memory returndata) =
             address(gasPriceOracle).call(abi.encodeWithSignature("setGasPrice(uint256)", 1));
 
@@ -102,6 +103,7 @@ contract GasPriceOracleBedrock_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `setL1BaseFee` reverts since it was removed in bedrock.
     function test_setL1BaseFee_doesNotExist_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         (bool success, bytes memory returndata) =
             address(gasPriceOracle).call(abi.encodeWithSignature("setL1BaseFee(uint256)", 1));
 
@@ -131,7 +133,7 @@ contract GasPriceOracleEcotone_Test is GasPriceOracle_Test {
         // Execute the function call
         vm.prank(depositor);
         (bool success,) = address(l1Block).call(calldataPacked);
-        require(success, "Function call failed");
+        require(success, "GasPriceOracleEcotone_Test: Function call failed");
     }
 
     /// @dev Tests that `setEcotone` is only callable by the depositor.
@@ -222,7 +224,7 @@ contract GasPriceOracleFjordActive_Test is GasPriceOracle_Test {
 
         vm.prank(depositor);
         (bool success,) = address(l1Block).call(calldataPacked);
-        require(success, "Function call failed");
+        require(success, "GasPriceOracleFjordActive_Test: Function call failed");
     }
 
     /// @dev Tests that `setFjord` cannot be called when Fjord is already activate

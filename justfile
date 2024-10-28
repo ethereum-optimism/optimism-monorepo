@@ -3,7 +3,11 @@ issues:
 
 # Runs semgrep on the entire monorepo.
 semgrep:
-  semgrep scan --config=.semgrep --error .
+  semgrep scan --config=semgrep --error .
+
+# Runs semgrep tests.
+semgrep-test:
+  semgrep scan --test semgrep/
 
 lint-shellcheck:
   find . -type f -name '*.sh' -not -path '*/node_modules/*' -not -path './packages/contracts-bedrock/lib/*' -not -path './packages/contracts-bedrock/kout*/*' -exec sh -c 'echo \"Checking $1\"; shellcheck \"$1\"' _ {} \\;

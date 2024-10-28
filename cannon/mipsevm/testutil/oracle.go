@@ -67,7 +67,7 @@ func StaticPrecompileOracle(t *testing.T, precompile common.Address, requiredGas
 }
 
 func ClaimTestOracle(t *testing.T) (po mipsevm.PreimageOracle, stdOut string, stdErr string) {
-	s := uint64(1000)
+	s := uint64(0x00FFFFFF_00001000)
 	a := uint64(3)
 	b := uint64(4)
 

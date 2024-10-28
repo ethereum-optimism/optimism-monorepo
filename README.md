@@ -52,7 +52,7 @@ The OP Stack is a collaborative project. By collaborating on free, open software
 
 [CONTRIBUTING.md](./CONTRIBUTING.md) contains a detailed explanation of the contributing process for this repository. Make sure to use the [Developer Quick Start](./CONTRIBUTING.md#development-quick-start) to properly set up your development environment.
 
-[Good First Issues](https://github.com/ethereum-optimism/optimism/issues?q=is:open+is:issue+label:D-good-first-issue) are a great place to look for tasks to tackle if you're not sure where to start.
+[Good First Issues](https://github.com/ethereum-optimism/optimism/issues?q=is:open+is:issue+label:D-good-first-issue) are a great place to look for tasks to tackle if you're not sure where to start, and see [CONTRIBUTING.md](./CONTRIBUTING.md) for info on larger projects.
 
 ## Security Policy and Vulnerability Reporting
 
@@ -125,7 +125,7 @@ All other components and packages should be considered development components on
 ### Development branch
 
 The primary development branch is [`develop`](https://github.com/ethereum-optimism/optimism/tree/develop/).
-`develop` contains the most up-to-date software that remains backwards compatible with the latest experimental [network deployments](https://community.optimism.io/docs/useful-tools/networks/).
+`develop` contains the most up-to-date software that remains backwards compatible with the latest experimental [network deployments](https://docs.optimism.io/chain/networks).
 If you're making a backwards compatible change, please direct your pull request towards `develop`.
 
 **Changes to contracts within `packages/contracts-bedrock/src` are usually NOT considered backwards compatible.**

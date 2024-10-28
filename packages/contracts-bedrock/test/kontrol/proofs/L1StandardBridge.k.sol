@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.13;
 
-import { DeploymentSummary } from "./utils/DeploymentSummary.sol";
+import { DeploymentSummaryFaultProofs } from "./utils/DeploymentSummaryFaultProofs.sol";
 import { KontrolUtils } from "./utils/KontrolUtils.sol";
 import { IL1StandardBridge as L1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
 import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { ICrossDomainMessenger as CrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
 
-contract L1StandardBridgeKontrol is DeploymentSummary, KontrolUtils {
+contract L1StandardBridgeKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
     L1StandardBridge l1standardBridge;
     SuperchainConfig superchainConfig;
 
@@ -34,7 +34,7 @@ contract L1StandardBridgeKontrol is DeploymentSummary, KontrolUtils {
 
         vm.mockCall(
             address(l1standardBridge.messenger()),
-            abi.encodeWithSelector(CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1standardBridge.otherBridge()))
         );
 
@@ -59,7 +59,7 @@ contract L1StandardBridgeKontrol is DeploymentSummary, KontrolUtils {
 
         vm.mockCall(
             address(l1standardBridge.messenger()),
-            abi.encodeWithSelector(CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1standardBridge.otherBridge()))
         );
 

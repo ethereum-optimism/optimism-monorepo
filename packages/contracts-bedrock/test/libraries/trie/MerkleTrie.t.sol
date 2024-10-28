@@ -351,7 +351,7 @@ contract MerkleTrie_get_Test is Test {
 
         // Ambiguous revert check- all that we care is that it *does* fail. This case may
         // fail within different branches.
-        vm.expectRevert();
+        vm.expectRevert(); // nosemgrep: sol-safety-expectrevert-no-args
         MerkleTrie.get(key, proof, root);
     }
 

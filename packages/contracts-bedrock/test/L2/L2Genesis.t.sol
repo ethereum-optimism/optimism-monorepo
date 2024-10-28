@@ -139,9 +139,7 @@ contract L2GenesisTest is Test {
     /// @notice Tests the genesis predeploys setup.
     function _test_genesis_predeploys(string memory _path, bool _useInterop) internal {
         // Set the useInterop value
-        vm.mockCall(
-            address(genesis.cfg()), abi.encodeWithSelector(genesis.cfg().useInterop.selector), abi.encode(_useInterop)
-        );
+        vm.mockCall(address(genesis.cfg()), abi.encodeCall(genesis.cfg().useInterop, ()), abi.encode(_useInterop));
 
         // Set the predeploy proxies into state
         genesis.setPredeployProxies();
@@ -170,7 +168,7 @@ contract L2GenesisTest is Test {
     }
 
     /// @notice Creates mock L1Dependencies for testing purposes.
-    function _dummyL1Deps() internal pure returns (L1Dependencies memory _deps) {
+    function _dummyL1Deps() internal pure returns (L1Dependencies memory deps_) {
         return L1Dependencies({
             l1CrossDomainMessengerProxy: payable(address(0x100000)),
             l1StandardBridgeProxy: payable(address(0x100001)),

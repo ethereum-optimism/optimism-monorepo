@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { IERC20 } from "@openzeppelin/contracts-v5/token/ERC20/IERC20.sol";
+import { IERC20Solady as IERC20 } from "src/vendor/interfaces/IERC20Solady.sol";
 
 // Target contract
 import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
@@ -60,9 +60,9 @@ contract SuperchainERC20Test is Test {
         vm.expectEmit(address(superchainERC20));
         emit IERC20.Transfer(ZERO_ADDRESS, _to, _amount);
 
-        // Look for the emit of the `CrosschainMinted` event
+        // Look for the emit of the `CrosschainMint` event
         vm.expectEmit(address(superchainERC20));
-        emit ICrosschainERC20.CrosschainMinted(_to, _amount);
+        emit ICrosschainERC20.CrosschainMint(_to, _amount);
 
         // Call the `mint` function with the bridge caller
         vm.prank(SUPERCHAIN_TOKEN_BRIDGE);
@@ -86,7 +86,7 @@ contract SuperchainERC20Test is Test {
         superchainERC20.crosschainBurn(_from, _amount);
     }
 
-    /// @notice Tests the `burn` burns the amount and emits the `CrosschainBurnt` event.
+    /// @notice Tests the `burn` burns the amount and emits the `CrosschainBurn` event.
     function testFuzz_crosschainBurn_succeeds(address _from, uint256 _amount) public {
         // Ensure `_from` is not the zero address
         vm.assume(_from != ZERO_ADDRESS);
@@ -103,9 +103,9 @@ contract SuperchainERC20Test is Test {
         vm.expectEmit(address(superchainERC20));
         emit IERC20.Transfer(_from, ZERO_ADDRESS, _amount);
 
-        // Look for the emit of the `CrosschainBurnt` event
+        // Look for the emit of the `CrosschainBurn` event
         vm.expectEmit(address(superchainERC20));
-        emit ICrosschainERC20.CrosschainBurnt(_from, _amount);
+        emit ICrosschainERC20.CrosschainBurn(_from, _amount);
 
         // Call the `burn` function with the bridge caller
         vm.prank(SUPERCHAIN_TOKEN_BRIDGE);

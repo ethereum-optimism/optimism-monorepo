@@ -69,7 +69,9 @@ func (m *MultiPrestateProvider) fetchPrestate(ctx context.Context, hash common.H
 		return fmt.Errorf("error creating prestate dir: %w", err)
 	}
 	prestateUrl := m.baseUrl.JoinPath(hash.Hex() + fileType)
-	in, err := m.fetch(ctx, prestateUrl)
+	tCtx, cancel := context.WithTimeout(ctx, time.Minute)
+	defer cancel()
+	in, err := m.fetch(tCtx, prestateUrl)
 	if err != nil {
 		return err
 	}
@@ -111,9 +113,7 @@ func (m *MultiPrestateProvider) fetch(ctx context.Context, prestateUrl *url.URL)
 		}
 		return in, err
 	}
-	tCtx, cancel := context.WithTimeout(ctx, time.Minute)
-	defer cancel()
-	req, err := http.NewRequestWithContext(tCtx, "GET", prestateUrl.String(), nil)
+	req, err := http.NewRequestWithContext(ctx, "GET", prestateUrl.String(), nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create prestate request: %w", err)
 	}

@@ -11,11 +11,12 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
 )
 
-func vmFactory(state *State, po mipsevm.PreimageOracle, stdOut, stdErr io.Writer, log log.Logger) mipsevm.FPVM {
-	return NewInstrumentedState(state, po, stdOut, stdErr, log, nil)
+func vmFactory(state *State, po mipsevm.PreimageOracle, stdOut, stdErr io.Writer, log log.Logger, meta *program.Metadata) mipsevm.FPVM {
+	return NewInstrumentedState(state, po, stdOut, stdErr, log, meta)
 }
 
 func TestInstrumentedState_OpenMips(t *testing.T) {
@@ -35,7 +36,7 @@ func TestInstrumentedState_Claim(t *testing.T) {
 
 func TestInstrumentedState_MultithreadedProgram(t *testing.T) {
 	t.Parallel()
-	state, _ := testutil.LoadELFProgram(t, "../../testdata/example/bin/multithreaded.elf", CreateInitialState, false)
+	state, _ := testutil.LoadELFProgram(t, testutil.ProgramPath("multithreaded"), CreateInitialState, false)
 	oracle := testutil.StaticOracle(t, []byte{})
 
 	var stdOutBuf, stdErrBuf bytes.Buffer
@@ -78,7 +79,7 @@ func TestInstrumentedState_Alloc(t *testing.T) {
 		test := test
 		t.Run(test.name, func(t *testing.T) {
 			t.Parallel()
-			state, meta := testutil.LoadELFProgram(t, "../../testdata/example/bin/alloc.elf", CreateInitialState, false)
+			state, meta := testutil.LoadELFProgram(t, testutil.ProgramPath("alloc"), CreateInitialState, false)
 			oracle := testutil.AllocOracle(t, test.numAllocs, test.allocSize)
 
 			us := NewInstrumentedState(state, oracle, os.Stdout, os.Stderr, testutil.CreateLogger(), meta)

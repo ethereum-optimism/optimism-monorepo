@@ -19,15 +19,37 @@
 
 pragma solidity 0.8.15;
 
-import { IWETH } from "src/universal/interfaces/IWETH.sol";
-
 /// @title WETH98
 /// @notice WETH98 is a version of WETH9 upgraded for Solidity 0.8.x.
-contract WETH98 is IWETH {
+contract WETH98 {
+    /// @notice Returns the number of decimals the token uses.
+    /// @return The number of decimals the token uses.
     uint8 public constant decimals = 18;
 
-    mapping(address => uint256) public balanceOf;
-    mapping(address => mapping(address => uint256)) public allowance;
+    mapping(address => uint256) internal _balanceOf;
+    mapping(address => mapping(address => uint256)) internal _allowance;
+
+    /// @notice Emitted when an approval is made.
+    /// @param src The address that approved the transfer.
+    /// @param guy The address that was approved to transfer.
+    /// @param wad The amount that was approved to transfer.
+    event Approval(address indexed src, address indexed guy, uint256 wad);
+
+    /// @notice Emitted when a transfer is made.
+    /// @param src The address that transferred the WETH.
+    /// @param dst The address that received the WETH.
+    /// @param wad The amount of WETH that was transferred.
+    event Transfer(address indexed src, address indexed dst, uint256 wad);
+
+    /// @notice Emitted when a deposit is made.
+    /// @param dst The address that deposited the WETH.
+    /// @param wad The amount of WETH that was deposited.
+    event Deposit(address indexed dst, uint256 wad);
+
+    /// @notice Emitted when a withdrawal is made.
+    /// @param src The address that withdrew the WETH.
+    /// @param wad The amount of WETH that was withdrawn.
+    event Withdrawal(address indexed src, uint256 wad);
 
     /// @notice Pipes to deposit.
     receive() external payable {
@@ -39,58 +61,88 @@ contract WETH98 is IWETH {
         deposit();
     }
 
-    /// @inheritdoc IWETH
-    function name() external view virtual override returns (string memory) {
+    /// @notice Returns the name of the token.
+    /// @return name_ The name of the token.
+    function name() external view virtual returns (string memory) {
         return "Wrapped Ether";
     }
 
-    /// @inheritdoc IWETH
-    function symbol() external view virtual override returns (string memory) {
+    /// @notice Returns the symbol of the token.
+    /// @return symbol_ The symbol of the token.
+    function symbol() external view virtual returns (string memory) {
         return "WETH";
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Returns the amount of WETH that the spender can transfer on behalf of the owner.
+    /// @param owner The address that owns the WETH.
+    /// @param spender The address that is approved to transfer the WETH.
+    /// @return The amount of WETH that the spender can transfer on behalf of the owner.
+    function allowance(address owner, address spender) public view virtual returns (uint256) {
+        return _allowance[owner][spender];
+    }
+
+    /// @notice Returns the balance of the given address.
+    /// @param src The address to query the balance of.
+    /// @return The balance of the given address.
+    function balanceOf(address src) public view returns (uint256) {
+        return _balanceOf[src];
+    }
+
+    /// @notice Allows WETH to be deposited by sending ether to the contract.
     function deposit() public payable virtual {
-        balanceOf[msg.sender] += msg.value;
+        _balanceOf[msg.sender] += msg.value;
         emit Deposit(msg.sender, msg.value);
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Withdraws an amount of ETH.
+    /// @param wad The amount of ETH to withdraw.
     function withdraw(uint256 wad) public virtual {
-        require(balanceOf[msg.sender] >= wad);
-        balanceOf[msg.sender] -= wad;
+        require(_balanceOf[msg.sender] >= wad);
+        _balanceOf[msg.sender] -= wad;
         payable(msg.sender).transfer(wad);
         emit Withdrawal(msg.sender, wad);
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Returns the total supply of WETH.
+    /// @return The total supply of WETH.
     function totalSupply() external view returns (uint256) {
         return address(this).balance;
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Approves the given address to transfer the WETH on behalf of the caller.
+    /// @param guy The address that is approved to transfer the WETH.
+    /// @param wad The amount that is approved to transfer.
+    /// @return True if the approval was successful.
     function approve(address guy, uint256 wad) external returns (bool) {
-        allowance[msg.sender][guy] = wad;
+        _allowance[msg.sender][guy] = wad;
         emit Approval(msg.sender, guy, wad);
         return true;
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Transfers the given amount of WETH to the given address.
+    /// @param dst The address to transfer the WETH to.
+    /// @param wad The amount of WETH to transfer.
+    /// @return True if the transfer was successful.
     function transfer(address dst, uint256 wad) external returns (bool) {
         return transferFrom(msg.sender, dst, wad);
     }
 
-    /// @inheritdoc IWETH
+    /// @notice Transfers the given amount of WETH from the given address to the given address.
+    /// @param src The address to transfer the WETH from.
+    /// @param dst The address to transfer the WETH to.
+    /// @param wad The amount of WETH to transfer.
+    /// @return True if the transfer was successful.
     function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
-        require(balanceOf[src] >= wad);
+        require(_balanceOf[src] >= wad);
 
-        if (src != msg.sender && allowance[src][msg.sender] != type(uint256).max) {
-            require(allowance[src][msg.sender] >= wad);
-            allowance[src][msg.sender] -= wad;
+        uint256 senderAllowance = allowance(src, msg.sender);
+        if (src != msg.sender && senderAllowance != type(uint256).max) {
+            require(senderAllowance >= wad);
+            _allowance[src][msg.sender] -= wad;
         }
 
-        balanceOf[src] -= wad;
-        balanceOf[dst] += wad;
+        _balanceOf[src] -= wad;
+        _balanceOf[dst] += wad;
 
         emit Transfer(src, dst, wad);
 

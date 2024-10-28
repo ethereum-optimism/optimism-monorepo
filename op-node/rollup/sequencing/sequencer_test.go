@@ -643,6 +643,8 @@ func createSequencer(log log.Logger) (*Sequencer, *sequencerTestDeps) {
 		DeltaTime:         new(uint64),
 		EcotoneTime:       new(uint64),
 		FjordTime:         new(uint64),
+		GraniteTime:       new(uint64),
+		HoloceneTime:      new(uint64),
 	}
 	deps := &sequencerTestDeps{
 		cfg:           cfg,

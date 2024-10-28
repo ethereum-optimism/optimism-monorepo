@@ -43,8 +43,8 @@ func main() {
 		os.Exit(2)
 	}
 
-	// Apply the custom configs by running op-program in the same process
-	runner, err := verify.NewRunner(l1RpcUrl, l1RpcKind, l1BeaconUrl, l2RpcUrl, dataDir, "", 901, true)
+	// Apply the custom configs by running op-program
+	runner, err := verify.NewRunner(l1RpcUrl, l1RpcKind, l1BeaconUrl, l2RpcUrl, dataDir, "901", 901, false)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to create runner: %v\n", err.Error())
 		os.Exit(1)

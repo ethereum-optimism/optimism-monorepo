@@ -8,6 +8,7 @@ import (
 // ApplyDeltaTimeOffset adjusts fork configuration to not conflict with the delta overrides
 func ApplyDeltaTimeOffset(dp *e2eutils.DeployParams, deltaTimeOffset *hexutil.Uint64) {
 	dp.DeployConfig.L2GenesisDeltaTimeOffset = deltaTimeOffset
+	dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
 	// configure Ecotone to not be before Delta accidentally
 	if dp.DeployConfig.L2GenesisEcotoneTimeOffset != nil {
 		if deltaTimeOffset == nil {

@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	monTypes "github.com/ethereum-optimism/optimism/op-dispute-mon/mon/types"
+	"github.com/ethereum-optimism/optimism/op-service/clock"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	"github.com/stretchr/testify/require"
 
@@ -26,7 +27,7 @@ var (
 
 func TestExtractor_Extract(t *testing.T) {
 	t.Run("FetchGamesError", func(t *testing.T) {
-		extractor, _, games, _ := setupExtractorTest(t)
+		extractor, _, games, _, _ := setupExtractorTest(t)
 		games.err = errors.New("boom")
 		_, _, _, err := extractor.Extract(context.Background(), common.Hash{}, 0)
 		require.ErrorIs(t, err, games.err)
@@ -34,7 +35,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("CreateGameErrorLog", func(t *testing.T) {
-		extractor, creator, games, logs := setupExtractorTest(t)
+		extractor, creator, games, logs, _ := setupExtractorTest(t)
 		games.games = []gameTypes.GameMetadata{{}}
 		creator.err = errors.New("boom")
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
@@ -50,7 +51,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("MetadataFetchErrorLog", func(t *testing.T) {
-		extractor, creator, games, logs := setupExtractorTest(t)
+		extractor, creator, games, logs, _ := setupExtractorTest(t)
 		games.games = []gameTypes.GameMetadata{{}}
 		creator.caller.metadataErr = errors.New("boom")
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
@@ -66,7 +67,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("ClaimsFetchErrorLog", func(t *testing.T) {
-		extractor, creator, games, logs := setupExtractorTest(t)
+		extractor, creator, games, logs, _ := setupExtractorTest(t)
 		games.games = []gameTypes.GameMetadata{{}}
 		creator.caller.claimsErr = errors.New("boom")
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
@@ -82,7 +83,7 @@ func TestExtractor_Extract(t *testing.T) {
 	})
 
 	t.Run("Success", func(t *testing.T) {
-		extractor, creator, games, _ := setupExtractorTest(t)
+		extractor, creator, games, _, _ := setupExtractorTest(t)
 		games.games = []gameTypes.GameMetadata{{}}
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
 		require.NoError(t, err)
@@ -97,7 +98,7 @@ func TestExtractor_Extract(t *testing.T) {
 
 	t.Run("EnricherFails", func(t *testing.T) {
 		enricher := &mockEnricher{err: errors.New("whoops")}
-		extractor, _, games, logs := setupExtractorTest(t, enricher)
+		extractor, _, games, logs, _ := setupExtractorTest(t, enricher)
 		games.games = []gameTypes.GameMetadata{{}}
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
 		require.NoError(t, err)
@@ -110,7 +111,7 @@ func TestExtractor_Extract(t *testing.T) {
 
 	t.Run("EnricherSuccess", func(t *testing.T) {
 		enricher := &mockEnricher{}
-		extractor, _, games, _ := setupExtractorTest(t, enricher)
+		extractor, _, games, _, _ := setupExtractorTest(t, enricher)
 		games.games = []gameTypes.GameMetadata{{}}
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
 		require.NoError(t, err)
@@ -123,8 +124,8 @@ func TestExtractor_Extract(t *testing.T) {
 	t.Run("MultipleEnrichersMultipleGames", func(t *testing.T) {
 		enricher1 := &mockEnricher{}
 		enricher2 := &mockEnricher{}
-		extractor, _, games, _ := setupExtractorTest(t, enricher1, enricher2)
-		games.games = []gameTypes.GameMetadata{{}, {}}
+		extractor, _, games, _, _ := setupExtractorTest(t, enricher1, enricher2)
+		games.games = []gameTypes.GameMetadata{{Proxy: common.Address{0xaa}}, {Proxy: common.Address{0xbb}}}
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
 		require.NoError(t, err)
 		require.Zero(t, ignored)
@@ -136,7 +137,7 @@ func TestExtractor_Extract(t *testing.T) {
 
 	t.Run("IgnoreGames", func(t *testing.T) {
 		enricher1 := &mockEnricher{}
-		extractor, _, games, logs := setupExtractorTest(t, enricher1)
+		extractor, _, games, logs, _ := setupExtractorTest(t, enricher1)
 		// Two games, one of which is ignored
 		games.games = []gameTypes.GameMetadata{{Proxy: ignoredGames[0]}, {Proxy: common.Address{0xaa}}}
 		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
@@ -151,6 +152,61 @@ func TestExtractor_Extract(t *testing.T) {
 			testlog.NewLevelFilter(log.LevelWarn),
 			testlog.NewMessageFilter("Ignoring game"),
 			testlog.NewAttributesFilter("game", ignoredGames[0].Hex())))
+	})
+
+	t.Run("UseCachedValueOnFailure", func(t *testing.T) {
+		enricher := &mockEnricher{
+			action: func(game *monTypes.EnrichedGameData) error {
+				game.Status = gameTypes.GameStatusDefenderWon
+				return nil
+			},
+		}
+		extractor, _, games, _, cl := setupExtractorTest(t, enricher)
+		gameA := common.Address{0xaa}
+		gameB := common.Address{0xbb}
+		games.games = []gameTypes.GameMetadata{{Proxy: gameA}, {Proxy: gameB}}
+
+		// First fetch succeeds and the results should be cached
+		enriched, ignored, failed, err := extractor.Extract(context.Background(), common.Hash{}, 0)
+		require.NoError(t, err)
+		require.Zero(t, ignored)
+		require.Zero(t, failed)
+		require.Len(t, enriched, 2)
+		require.Equal(t, 2, enricher.calls)
+		firstUpdateTime := cl.Now()
+		// All results should have current LastUpdateTime
+		for _, data := range enriched {
+			require.Equal(t, firstUpdateTime, data.LastUpdateTime)
+		}
+
+		cl.AdvanceTime(2 * time.Minute)
+		secondUpdateTime := cl.Now()
+		enricher.action = func(game *monTypes.EnrichedGameData) error {
+			if game.Proxy == gameA {
+				return errors.New("boom")
+			}
+			// Updated games will have a different status
+			game.Status = gameTypes.GameStatusChallengerWon
+			return nil
+		}
+		// Second fetch fails for one of the two games, it's cached value should be used.
+		enriched, ignored, failed, err = extractor.Extract(context.Background(), common.Hash{}, 0)
+		require.NoError(t, err)
+		require.Zero(t, ignored)
+		require.Equal(t, 1, failed)
+		require.Len(t, enriched, 2)
+		require.Equal(t, 4, enricher.calls)
+		// The returned games are not in a fixed order, create a map to look up the game we need to assert
+		actual := make(map[common.Address]*monTypes.EnrichedGameData)
+		for _, data := range enriched {
+			actual[data.Proxy] = data
+		}
+		require.Contains(t, actual, gameA)
+		require.Contains(t, actual, gameB)
+		require.Equal(t, actual[gameA].Status, gameTypes.GameStatusDefenderWon)   // Uses cached value from game A
+		require.Equal(t, actual[gameB].Status, gameTypes.GameStatusChallengerWon) // Updates game B
+		require.Equal(t, firstUpdateTime, actual[gameA].LastUpdateTime)
+		require.Equal(t, secondUpdateTime, actual[gameB].LastUpdateTime)
 	})
 }
 
@@ -170,20 +226,22 @@ func verifyLogs(t *testing.T, logs *testlog.CapturingHandler, createErr, metadat
 	require.Len(t, l, durationErr)
 }
 
-func setupExtractorTest(t *testing.T, enrichers ...Enricher) (*Extractor, *mockGameCallerCreator, *mockGameFetcher, *testlog.CapturingHandler) {
+func setupExtractorTest(t *testing.T, enrichers ...Enricher) (*Extractor, *mockGameCallerCreator, *mockGameFetcher, *testlog.CapturingHandler, *clock.DeterministicClock) {
 	logger, capturedLogs := testlog.CaptureLogger(t, log.LvlDebug)
 	games := &mockGameFetcher{}
 	caller := &mockGameCaller{rootClaim: mockRootClaim}
 	creator := &mockGameCallerCreator{caller: caller}
+	cl := clock.NewDeterministicClock(time.Unix(48294294, 58))
 	extractor := NewExtractor(
 		logger,
+		cl,
 		creator.CreateGameCaller,
 		games.FetchGames,
 		ignoredGames,
 		5,
 		enrichers...,
 	)
-	return extractor, creator, games, capturedLogs
+	return extractor, creator, games, capturedLogs, cl
 }
 
 type mockGameFetcher struct {
@@ -311,11 +369,15 @@ func (m *mockGameCaller) IsResolved(_ context.Context, _ rpcblock.Block, claims 
 }
 
 type mockEnricher struct {
-	err   error
-	calls int
+	err    error
+	calls  int
+	action func(game *monTypes.EnrichedGameData) error
 }
 
-func (m *mockEnricher) Enrich(_ context.Context, _ rpcblock.Block, _ GameCaller, _ *monTypes.EnrichedGameData) error {
+func (m *mockEnricher) Enrich(_ context.Context, _ rpcblock.Block, _ GameCaller, game *monTypes.EnrichedGameData) error {
 	m.calls++
+	if m.action != nil {
+		return m.action(game)
+	}
 	return m.err
 }

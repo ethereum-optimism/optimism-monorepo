@@ -7,7 +7,7 @@ import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
-import { BaseDeployIO } from "scripts/utils/BaseDeployIO.sol";
+import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
@@ -523,7 +523,7 @@ contract DeployOPChain is Script {
         require(systemConfig.basefeeScalar() == _doi.basefeeScalar(), "SYSCON-20");
         require(systemConfig.blobbasefeeScalar() == _doi.blobBaseFeeScalar(), "SYSCON-30");
         require(systemConfig.batcherHash() == bytes32(uint256(uint160(_doi.batcher()))), "SYSCON-40");
-        require(systemConfig.gasLimit() == uint64(30_000_000), "SYSCON-50");
+        require(systemConfig.gasLimit() == uint64(60_000_000), "SYSCON-50");
         require(systemConfig.unsafeBlockSigner() == _doi.unsafeBlockSigner(), "SYSCON-60");
         require(systemConfig.scalar() >> 248 == 1, "SYSCON-70");
 

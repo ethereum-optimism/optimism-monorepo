@@ -42,7 +42,7 @@ func TestEVM_LL(t *testing.T) {
 			insn := uint32((0b11_0000 << 26) | (baseReg & 0x1F << 21) | (rtReg & 0x1F << 16) | (0xFFFF & c.offset))
 			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(pc), testutil.WithNextPC(pc+4))
 			state := goVm.GetState()
-			state.GetMemory().SetUint32(pc, insn)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
 			state.GetMemory().SetWord(c.effAddr, c.value)
 			state.GetRegistersRef()[baseReg] = c.base
 			step := state.GetStep()
@@ -92,7 +92,7 @@ func TestEVM_SC(t *testing.T) {
 			insn := uint32((0b11_1000 << 26) | (baseReg & 0x1F << 21) | (rtReg & 0x1F << 16) | (0xFFFF & c.offset))
 			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPC(pc), testutil.WithNextPC(pc+4))
 			state := goVm.GetState()
-			state.GetMemory().SetUint32(pc, insn)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
 			state.GetRegistersRef()[baseReg] = c.base
 			state.GetRegistersRef()[rtReg] = c.value
 			step := state.GetStep()
@@ -103,7 +103,7 @@ func TestEVM_SC(t *testing.T) {
 			expected.PC = pc + 4
 			expected.NextPC = pc + 8
 			expectedMemory := memory.NewMemory()
-			expectedMemory.SetUint32(pc, insn)
+			testutil.StoreInstruction(expectedMemory, pc, insn)
 			expectedMemory.SetWord(c.effAddr, c.value)
 			expected.MemoryRoot = expectedMemory.MerkleRoot()
 			if rtReg != 0 {
@@ -135,8 +135,8 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 		count          Word
 		writeLen       Word
 		preimageOffset Word
-		prestateMem    uint32
-		postateMem     uint32
+		prestateMem    Word
+		postateMem     Word
 		shouldPanic    bool
 	}{
 		{name: "Aligned addr, write 1 byte", addr: 0x00_00_FF_00, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: 0xFF_FF_FF_FF, postateMem: 0x12_FF_FF_FF},
@@ -170,8 +170,8 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 			state.GetRegistersRef()[4] = exec.FdPreimageRead
 			state.GetRegistersRef()[5] = c.addr
 			state.GetRegistersRef()[6] = c.count
-			state.GetMemory().SetUint32(state.GetPC(), syscallInsn)
-			state.GetMemory().SetUint32(effAddr, c.prestateMem)
+			testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
+			state.GetMemory().SetWord(effAddr, c.prestateMem)
 
 			// Setup expectations
 			expected := testutil.NewExpectedState(state)
@@ -179,7 +179,7 @@ func TestEVM_SysRead_Preimage(t *testing.T) {
 			expected.Registers[2] = c.writeLen
 			expected.Registers[7] = 0 // no error
 			expected.PreimageOffset += c.writeLen
-			expected.ExpectMemoryWrite(effAddr, c.postateMem)
+			expected.ExpectMemoryWriteWord(effAddr, c.postateMem)
 
 			if c.shouldPanic {
 				require.Panics(t, func() { _, _ = goVm.Step(true) })

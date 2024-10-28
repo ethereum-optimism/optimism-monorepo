@@ -127,6 +127,7 @@ func (f *FakeBeacon) Start(addr string) error {
 						Slot:      eth.Uint64String(slot),
 					},
 				},
+				InclusionProof: make([]eth.Bytes32, 0),
 			}
 			copy(sidecars[i].Blob[:], bundle.Blobs[ix])
 		}

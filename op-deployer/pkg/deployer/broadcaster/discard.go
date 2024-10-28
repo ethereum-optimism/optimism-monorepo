@@ -9,7 +9,7 @@ import (
 type discardBroadcaster struct {
 }
 
-func DiscardBroadcaster() Broadcaster {
+func NoopBroadcaster() Broadcaster {
 	return &discardBroadcaster{}
 }
 

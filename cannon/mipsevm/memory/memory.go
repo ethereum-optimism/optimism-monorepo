@@ -192,25 +192,6 @@ func (m *Memory) pageLookup(pageIndex Word) (*CachedPage, bool) {
 	return p, ok
 }
 
-func (m *Memory) SetUint32(addr Word, v uint32) {
-	// addr must be aligned to WordSizeBytes bytes
-	if addr&arch.ExtMask != 0 {
-		panic(fmt.Errorf("unaligned memory access: %x", addr))
-	}
-
-	pageIndex := addr >> PageAddrSize
-	pageAddr := addr & PageAddrMask
-	p, ok := m.pageLookup(pageIndex)
-	if !ok {
-		// allocate the page if we have not already.
-		// Go may mmap relatively large ranges, but we only allocate the pages just in time.
-		p = m.AllocPage(pageIndex)
-	} else {
-		m.invalidate(addr) // invalidate this branch of memory, now that the value changed
-	}
-	binary.BigEndian.PutUint32(p.Data[pageAddr:pageAddr+4], v)
-}
-
 // SetWord stores [arch.Word] sized values at the specified address
 func (m *Memory) SetWord(addr Word, v Word) {
 	// addr must be aligned to WordSizeBytes bytes

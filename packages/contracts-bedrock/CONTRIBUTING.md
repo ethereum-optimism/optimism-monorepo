@@ -51,11 +51,12 @@ Enhancement suggestions are tracked as [GitHub issues](https://github.com/ethere
 The best place to begin contributing is by looking through the issues with the `good first issue` label. These are issues that are relatively easy to implement and are a great way to get familiar with the codebase.
 
 Optimism's smart contracts are written in Solidity and we use [foundry](https://github.com/foundry-rs/foundry) as our development framework. To get started, you'll need to install several dependencies:
+
 1. [just](https://github.com/casey/just)
-  1. Make sure to `just install`
+   Make sure to `just install`
 1. [foundry](https://getfoundry.sh)
-  1. Foundry is built with [rust](https://www.rust-lang.org/tools/install), and this project uses a pinned version of foundry. Install the rust toolchain with `rustup`.
-  1. Make sure to install the version of foundry used by `ci-builder`, defined in the `versions.json` file in the root of this repo under the `foundry` key. Once you have `foundryup` installed, there is a helper to do this: `just install-foundry`
+   Foundry is built with [rust](https://www.rust-lang.org/tools/install), and this project uses a pinned version of foundry. Install the rust toolchain with `rustup`.
+   Make sure to install the version of foundry used by `ci-builder`, defined in the `versions.json` file in the root of this repo under the `foundry` key. Once you have `foundryup` installed, there is a helper to do this: `just install-foundry`
 1. [golang](https://golang.org/doc/install)
 1. [python](https://www.python.org/downloads/)
 
@@ -63,9 +64,10 @@ Our [Style Guide](STYLE_GUIDE.md) contains information about the project structu
 
 Once you've read the style guide and are ready to work on your PR, there are a plethora of useful `just` scripts to know about that will help you with development.
 You can run `just -l` to list them all, some of the key ones are:
+
 1. `just build` Builds the smart contracts.
 1. `just test` Runs the full `forge` test suite.
-1  `just gas-snapshot` Generates the gas snapshot for the smart contracts.
+1. `just gas-snapshot` Generates the gas snapshot for the smart contracts.
 1. `just semver-lock` Generates the semver lockfile.
 1. `just snapshots` Generates the storage and ABI snapshots.
 1. `just clean` Removes all build artifacts for `forge` and `go` compilations.

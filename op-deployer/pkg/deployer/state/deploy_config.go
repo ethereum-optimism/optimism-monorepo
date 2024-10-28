@@ -5,8 +5,11 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -18,11 +21,19 @@ var (
 	vaultMinWithdrawalAmount = mustHexBigFromHex("0x8ac7230489e80000")
 )
 
-func DefaultDeployConfig(chainIntent *ChainIntent) genesis.DeployConfig {
-	return genesis.DeployConfig{
+func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State, chainState *ChainState) (genesis.DeployConfig, error) {
+	cfg := genesis.DeployConfig{
+		L1DependenciesConfig: genesis.L1DependenciesConfig{
+			L1StandardBridgeProxy:       chainState.L1StandardBridgeProxyAddress,
+			L1CrossDomainMessengerProxy: chainState.L1CrossDomainMessengerProxyAddress,
+			L1ERC721BridgeProxy:         chainState.L1ERC721BridgeProxyAddress,
+			SystemConfigProxy:           chainState.SystemConfigProxyAddress,
+			OptimismPortalProxy:         chainState.OptimismPortalProxyAddress,
+			ProtocolVersionsProxy:       state.SuperchainDeployment.ProtocolVersionsProxyAddress,
+		},
 		L2InitializationConfig: genesis.L2InitializationConfig{
 			L2GenesisBlockDeployConfig: genesis.L2GenesisBlockDeployConfig{
-				L2GenesisBlockGasLimit:      30_000_000,
+				L2GenesisBlockGasLimit:      60_000_000,
 				L2GenesisBlockBaseFeePerGas: &l2GenesisBlockBaseFeePerGas,
 			},
 			L2VaultsDeployConfig: genesis.L2VaultsDeployConfig{
@@ -40,6 +51,7 @@ func DefaultDeployConfig(chainIntent *ChainIntent) genesis.DeployConfig {
 				EnableGovernance:      true,
 				GovernanceTokenSymbol: "OP",
 				GovernanceTokenName:   "Optimism",
+				GovernanceTokenOwner:  common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad"),
 			},
 			GasPriceOracleDeployConfig: genesis.GasPriceOracleDeployConfig{
 				GasPriceOracleBaseFeeScalar:     1368,
@@ -60,15 +72,27 @@ func DefaultDeployConfig(chainIntent *ChainIntent) genesis.DeployConfig {
 				UseInterop:                  false,
 			},
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{
+				L1ChainID:                 intent.L1ChainID,
+				L2ChainID:                 chainState.ID.Big().Uint64(),
 				L2BlockTime:               2,
 				FinalizationPeriodSeconds: 12,
 				MaxSequencerDrift:         600,
 				SequencerWindowSize:       3600,
 				ChannelTimeoutBedrock:     300,
 				SystemConfigStartBlock:    0,
+				BatchInboxAddress:         calculateBatchInboxAddr(chainState.ID),
+			},
+			OperatorDeployConfig: genesis.OperatorDeployConfig{
+				BatchSenderAddress:  chainIntent.Roles.Batcher,
+				P2PSequencerAddress: chainIntent.Roles.UnsafeBlockSigner,
+			},
+			OwnershipDeployConfig: genesis.OwnershipDeployConfig{
+				ProxyAdminOwner:  chainIntent.Roles.L2ProxyAdminOwner,
+				FinalSystemOwner: chainIntent.Roles.L1ProxyAdminOwner,
 			},
 		},
 		FaultProofDeployConfig: genesis.FaultProofDeployConfig{
+			UseFaultProofs:                  true,
 			FaultGameWithdrawalDelay:        604800,
 			PreimageOracleMinProposalSize:   126000,
 			PreimageOracleChallengePeriod:   86400,
@@ -76,12 +100,39 @@ func DefaultDeployConfig(chainIntent *ChainIntent) genesis.DeployConfig {
 			DisputeGameFinalityDelaySeconds: 302400,
 		},
 	}
-}
 
-func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State, chainState *ChainState) (genesis.DeployConfig, error) {
-	firstChainIntent := intent.Chains[0]
-	cfg := DefaultDeployConfig(firstChainIntent)
+	if chainState.StartBlock == nil {
+		// These are dummy variables - see below for rationale.
+		num := rpc.LatestBlockNumber
+		cfg.L1StartingBlockTag = &genesis.MarshalableRPCBlockNumberOrHash{
+			BlockNumber: &num,
+		}
+	} else {
+		startHash := chainState.StartBlock.Hash()
+		cfg.L1StartingBlockTag = &genesis.MarshalableRPCBlockNumberOrHash{
+			BlockHash: &startHash,
+		}
+	}
 
+	// The below dummy variables are set in order to allow the deploy
+	// config to pass validation. The validation checks are useful to
+	// ensure that the L2 is properly configured. They are not used by
+	// the L2 genesis script itself.
+
+	cfg.L1BlockTime = 12
+	dummyAddr := common.Address{19: 0x01}
+	cfg.SuperchainL1DeployConfig = genesis.SuperchainL1DeployConfig{
+		SuperchainConfigGuardian: dummyAddr,
+	}
+	cfg.OutputOracleDeployConfig = genesis.OutputOracleDeployConfig{
+		L2OutputOracleSubmissionInterval: 1,
+		L2OutputOracleStartingTimestamp:  1,
+		L2OutputOracleProposer:           dummyAddr,
+		L2OutputOracleChallenger:         dummyAddr,
+	}
+	// End of dummy variables
+
+	// Apply overrides after setting the main values.
 	var err error
 	if len(intent.GlobalDeployOverrides) > 0 {
 		cfg, err = mergeJSON(cfg, intent.GlobalDeployOverrides)
@@ -98,21 +149,9 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 		}
 	}
 
-	cfg.L2ChainID = chainState.ID.Big().Uint64()
-	cfg.L1DependenciesConfig = genesis.L1DependenciesConfig{
-		L1StandardBridgeProxy:       chainState.L1StandardBridgeProxyAddress,
-		L1CrossDomainMessengerProxy: chainState.L1CrossDomainMessengerProxyAddress,
-		L1ERC721BridgeProxy:         chainState.L1ERC721BridgeProxyAddress,
-		SystemConfigProxy:           chainState.SystemConfigProxyAddress,
-		OptimismPortalProxy:         chainState.OptimismPortalProxyAddress,
-		ProtocolVersionsProxy:       state.SuperchainDeployment.ProtocolVersionsProxyAddress,
+	if err := cfg.Check(log.New(log.DiscardHandler())); err != nil {
+		return cfg, fmt.Errorf("combined deploy config failed validation: %w", err)
 	}
-	cfg.OperatorDeployConfig = genesis.OperatorDeployConfig{
-		BatchSenderAddress:  chainIntent.Roles.Batcher,
-		P2PSequencerAddress: chainIntent.Roles.UnsafeBlockSigner,
-	}
-	cfg.BatchInboxAddress = calculateBatchInboxAddr(chainState.ID)
-	cfg.L1ChainID = intent.L1ChainID
 
 	return cfg, nil
 }

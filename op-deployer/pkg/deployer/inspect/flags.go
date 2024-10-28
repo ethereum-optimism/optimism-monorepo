@@ -53,6 +53,22 @@ var Commands = []*cli.Command{
 		Action:    RollupCLI,
 		Flags:     Flags,
 	},
+	{
+		Name:      "deploy-config",
+		Usage:     "outputs the deploy config for an L2 chain",
+		Args:      true,
+		ArgsUsage: "<l2-chain-id>",
+		Action:    DeployConfigCLI,
+		Flags:     Flags,
+	},
+	{
+		Name:      "l2-semvers",
+		Usage:     "outputs the semvers for all L2 chains",
+		Args:      true,
+		ArgsUsage: "<l2-chain-id>",
+		Action:    L2SemversCLI,
+		Flags:     Flags,
+	},
 }
 
 type cliConfig struct {

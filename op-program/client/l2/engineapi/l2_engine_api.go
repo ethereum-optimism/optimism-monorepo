@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/stateless"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -100,6 +101,9 @@ func computePayloadId(headBlockHash common.Hash, attrs *eth.PayloadAttributes) e
 		hasher.Write(tx)
 	}
 	_ = binary.Write(hasher, binary.BigEndian, *attrs.GasLimit)
+	if attrs.EIP1559Params != nil {
+		hasher.Write(attrs.EIP1559Params[:])
+	}
 	var out engine.PayloadID
 	copy(out[:], hasher.Sum(nil)[:8])
 	return out
@@ -155,6 +159,7 @@ func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttribut
 	if err != nil {
 		return err
 	}
+
 	ea.blockProcessor = processor
 	ea.pendingIndices = make(map[common.Address]uint64)
 	ea.l2ForceEmpty = attrs.NoTxPool
@@ -256,14 +261,26 @@ func (ea *L2EngineAPI) ForkchoiceUpdatedV3(ctx context.Context, state *eth.Forkc
 // Ported from: https://github.com/ethereum-optimism/op-geth/blob/c50337a60a1309a0f1dca3bf33ed1bb38c46cdd7/eth/catalyst/api.go#L206-L218
 func (ea *L2EngineAPI) verifyPayloadAttributes(attr *eth.PayloadAttributes) error {
 	c := ea.config()
+	t := uint64(attr.Timestamp)
 
 	// Verify withdrawals attribute for Shanghai.
-	if err := checkAttribute(c.IsShanghai, attr.Withdrawals != nil, c.LondonBlock, uint64(attr.Timestamp)); err != nil {
+	if err := checkAttribute(c.IsShanghai, attr.Withdrawals != nil, c.LondonBlock, t); err != nil {
 		return fmt.Errorf("invalid withdrawals: %w", err)
 	}
 	// Verify beacon root attribute for Cancun.
-	if err := checkAttribute(c.IsCancun, attr.ParentBeaconBlockRoot != nil, c.LondonBlock, uint64(attr.Timestamp)); err != nil {
+	if err := checkAttribute(c.IsCancun, attr.ParentBeaconBlockRoot != nil, c.LondonBlock, t); err != nil {
 		return fmt.Errorf("invalid parent beacon block root: %w", err)
+	}
+	// Verify EIP-1559 params for Holocene.
+	if c.IsHolocene(t) {
+		if attr.EIP1559Params == nil {
+			return errors.New("got nil eip-1559 params while Holocene is active")
+		}
+		if err := eip1559.ValidateHolocene1559Params(attr.EIP1559Params[:]); err != nil {
+			return fmt.Errorf("invalid Holocene params: %w", err)
+		}
+	} else if attr.EIP1559Params != nil {
+		return errors.New("got Holocene params though fork not active")
 	}
 
 	return nil
@@ -316,6 +333,13 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 
 	if !ea.config().IsCancun(new(big.Int).SetUint64(uint64(params.BlockNumber)), uint64(params.Timestamp)) {
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("newPayloadV3 called pre-cancun"))
+	}
+
+	// Payload must have eip-1559 params in ExtraData after Holocene
+	if ea.config().IsHolocene(uint64(params.Timestamp)) {
+		if err := eip1559.ValidateHoloceneExtraData(params.ExtraData); err != nil {
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holoocene"))
+		}
 	}
 
 	return ea.newPayload(ctx, params, versionedHashes, beaconRoot)

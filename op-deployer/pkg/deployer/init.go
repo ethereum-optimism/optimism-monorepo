@@ -8,7 +8,7 @@ import (
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	state2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 
@@ -18,12 +18,17 @@ import (
 )
 
 type InitConfig struct {
-	L1ChainID  uint64
-	Outdir     string
-	L2ChainIDs []common.Hash
+	DeploymentStrategy state.DeploymentStrategy
+	L1ChainID          uint64
+	Outdir             string
+	L2ChainIDs         []common.Hash
 }
 
 func (c *InitConfig) Check() error {
+	if err := c.DeploymentStrategy.Check(); err != nil {
+		return err
+	}
+
 	if c.L1ChainID == 0 {
 		return fmt.Errorf("l1ChainID must be specified")
 	}
@@ -41,24 +46,30 @@ func (c *InitConfig) Check() error {
 
 func InitCLI() func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
+		deploymentStrategy := ctx.String(DeploymentStrategyFlagName)
 		l1ChainID := ctx.Uint64(L1ChainIDFlagName)
 		outdir := ctx.String(OutdirFlagName)
-
 		l2ChainIDsRaw := ctx.String(L2ChainIDsFlagName)
+
+		if len(l2ChainIDsRaw) == 0 {
+			return fmt.Errorf("must specify at least one L2 chain ID")
+		}
+
 		l2ChainIDsStr := strings.Split(strings.TrimSpace(l2ChainIDsRaw), ",")
 		l2ChainIDs := make([]common.Hash, len(l2ChainIDsStr))
 		for i, idStr := range l2ChainIDsStr {
 			id, err := op_service.Parse256BitChainID(idStr)
 			if err != nil {
-				return fmt.Errorf("invalid chain ID: %w", err)
+				return fmt.Errorf("invalid L2 chain ID '%s': %w", idStr, err)
 			}
 			l2ChainIDs[i] = id
 		}
 
 		err := Init(InitConfig{
-			L1ChainID:  l1ChainID,
-			Outdir:     outdir,
-			L2ChainIDs: l2ChainIDs,
+			DeploymentStrategy: state.DeploymentStrategy(deploymentStrategy),
+			L1ChainID:          l1ChainID,
+			Outdir:             outdir,
+			L2ChainIDs:         l2ChainIDs,
 		})
 		if err != nil {
 			return err
@@ -74,7 +85,8 @@ func Init(cfg InitConfig) error {
 		return fmt.Errorf("invalid config for init: %w", err)
 	}
 
-	intent := &state2.Intent{
+	intent := &state.Intent{
+		DeploymentStrategy: cfg.DeploymentStrategy,
 		L1ChainID:          cfg.L1ChainID,
 		FundDevAccounts:    true,
 		L1ContractsLocator: opcm.DefaultL1ContractsLocator,
@@ -96,7 +108,7 @@ func Init(cfg InitConfig) error {
 		}
 		return addr
 	}
-	intent.SuperchainRoles = state2.SuperchainRoles{
+	intent.SuperchainRoles = &state.SuperchainRoles{
 		ProxyAdminOwner:       addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig)),
 		ProtocolVersionsOwner: addrFor(devkeys.SuperchainProtocolVersionsOwner.Key(l1ChainIDBig)),
 		Guardian:              addrFor(devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig)),
@@ -104,26 +116,26 @@ func Init(cfg InitConfig) error {
 
 	for _, l2ChainID := range cfg.L2ChainIDs {
 		l2ChainIDBig := l2ChainID.Big()
-		intent.Chains = append(intent.Chains, &state2.ChainIntent{
+		intent.Chains = append(intent.Chains, &state.ChainIntent{
 			ID:                         l2ChainID,
 			BaseFeeVaultRecipient:      common.Address{},
 			L1FeeVaultRecipient:        common.Address{},
 			SequencerFeeVaultRecipient: common.Address{},
 			Eip1559Denominator:         50,
 			Eip1559Elasticity:          6,
-			Roles: state2.ChainRoles{
-				ProxyAdminOwner:      addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				SystemConfigOwner:    addrFor(devkeys.SystemConfigOwner.Key(l2ChainIDBig)),
-				GovernanceTokenOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				UnsafeBlockSigner:    addrFor(devkeys.SequencerP2PRole.Key(l2ChainIDBig)),
-				Batcher:              addrFor(devkeys.BatcherRole.Key(l2ChainIDBig)),
-				Proposer:             addrFor(devkeys.ProposerRole.Key(l2ChainIDBig)),
-				Challenger:           addrFor(devkeys.ChallengerRole.Key(l2ChainIDBig)),
+			Roles: state.ChainRoles{
+				L1ProxyAdminOwner: addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l2ChainIDBig)),
+				L2ProxyAdminOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
+				SystemConfigOwner: addrFor(devkeys.SystemConfigOwner.Key(l2ChainIDBig)),
+				UnsafeBlockSigner: addrFor(devkeys.SequencerP2PRole.Key(l2ChainIDBig)),
+				Batcher:           addrFor(devkeys.BatcherRole.Key(l2ChainIDBig)),
+				Proposer:          addrFor(devkeys.ProposerRole.Key(l2ChainIDBig)),
+				Challenger:        addrFor(devkeys.ChallengerRole.Key(l2ChainIDBig)),
 			},
 		})
 	}
 
-	st := &state2.State{
+	st := &state.State{
 		Version: 1,
 	}
 

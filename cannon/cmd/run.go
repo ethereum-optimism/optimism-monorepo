@@ -29,16 +29,16 @@ import (
 var (
 	RunInputFlag = &cli.PathFlag{
 		Name:      "input",
-		Usage:     "path of input JSON state. Stdin if left empty.",
+		Usage:     "path of input binary state. Stdin if left empty.",
 		TakesFile: true,
-		Value:     "state.json",
+		Value:     "state.bin.gz",
 		Required:  true,
 	}
 	RunOutputFlag = &cli.PathFlag{
 		Name:      "output",
-		Usage:     "path of output JSON state. Not written if empty, use - to write to Stdout.",
+		Usage:     "path of output binary state. Not written if empty, use - to write to Stdout.",
 		TakesFile: true,
-		Value:     "out.json",
+		Value:     "out.bin.gz",
 		Required:  false,
 	}
 	patternHelp    = "'never' (default), 'always', '=123' at exactly step 123, '%123' for every 123 steps"
@@ -63,7 +63,7 @@ var (
 	RunSnapshotFmtFlag = &cli.StringFlag{
 		Name:     "snapshot-fmt",
 		Usage:    "format for snapshot output file names.",
-		Value:    "state-%d.json",
+		Value:    "state-%d.bin.gz",
 		Required: false,
 	}
 	RunStopAtFlag = &cli.GenericFlag{
@@ -278,6 +278,9 @@ var _ mipsevm.PreimageOracle = (*ProcessPreimageOracle)(nil)
 func Run(ctx *cli.Context) error {
 	if ctx.Bool(RunPProfCPU.Name) {
 		defer profile.Start(profile.NoShutdownHook, profile.ProfilePath("."), profile.CPUProfile).Stop()
+	}
+	if err := checkFlags(ctx); err != nil {
+		return err
 	}
 
 	guestLogger := Logger(os.Stderr, log.LevelInfo)
@@ -524,3 +527,17 @@ func CreateRunCommand(action cli.ActionFunc) *cli.Command {
 }
 
 var RunCommand = CreateRunCommand(Run)
+
+func checkFlags(ctx *cli.Context) error {
+	if output := ctx.Path(RunOutputFlag.Name); output != "" {
+		if !serialize.IsBinaryFile(output) {
+			return errors.New("invalid --output file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+		}
+	}
+	if snapshotFmt := ctx.String(RunSnapshotFmtFlag.Name); snapshotFmt != "" {
+		if !serialize.IsBinaryFile(fmt.Sprintf(snapshotFmt, 0)) {
+			return errors.New("invalid --snapshot-fmt file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+		}
+	}
+	return nil
+}

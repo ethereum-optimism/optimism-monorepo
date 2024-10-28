@@ -28,8 +28,8 @@ var (
 	_ = event.NewSubscription
 )
 
-// ResourceMeteringResourceConfig is an auto generated low-level Go binding around an user-defined struct.
-type ResourceMeteringResourceConfig struct {
+// IResourceMeteringResourceConfig is an auto generated low-level Go binding around an user-defined struct.
+type IResourceMeteringResourceConfig struct {
 	MaxResourceLimit            uint32
 	ElasticityMultiplier        uint8
 	BaseFeeMaxChangeDenominator uint8
@@ -51,7 +51,7 @@ type SystemConfigAddresses struct {
 
 // SystemConfigMetaData contains all meta data concerning the SystemConfig contract.
 var SystemConfigMetaData = &bind.MetaData{
-	ABI: "[{\"inputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"inputs\":[],\"name\":\"BATCH_INBOX_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"DISPUTE_GAME_FACTORY_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"L1_CROSS_DOMAIN_MESSENGER_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"L1_ERC_721_BRIDGE_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"L1_STANDARD_BRIDGE_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"OPTIMISM_PORTAL_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"START_BLOCK_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"UNSAFE_BLOCK_SIGNER_SLOT\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"VERSION\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"basefeeScalar\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batchInbox\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"batcherHash\",\"outputs\":[{\"internalType\":\"bytes32\",\"name\":\"\",\"type\":\"bytes32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"blobbasefeeScalar\",\"outputs\":[{\"internalType\":\"uint32\",\"name\":\"\",\"type\":\"uint32\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"disputeGameFactory\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"gasLimit\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"gasPayingToken\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"},{\"internalType\":\"uint8\",\"name\":\"decimals_\",\"type\":\"uint8\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"gasPayingTokenName\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"name_\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"gasPayingTokenSymbol\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"symbol_\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_owner\",\"type\":\"address\"},{\"internalType\":\"uint32\",\"name\":\"_basefeeScalar\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_blobbasefeeScalar\",\"type\":\"uint32\"},{\"internalType\":\"bytes32\",\"name\":\"_batcherHash\",\"type\":\"bytes32\"},{\"internalType\":\"uint64\",\"name\":\"_gasLimit\",\"type\":\"uint64\"},{\"internalType\":\"address\",\"name\":\"_unsafeBlockSigner\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"uint32\",\"name\":\"maxResourceLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint8\",\"name\":\"elasticityMultiplier\",\"type\":\"uint8\"},{\"internalType\":\"uint8\",\"name\":\"baseFeeMaxChangeDenominator\",\"type\":\"uint8\"},{\"internalType\":\"uint32\",\"name\":\"minimumBaseFee\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"systemTxMaxGas\",\"type\":\"uint32\"},{\"internalType\":\"uint128\",\"name\":\"maximumBaseFee\",\"type\":\"uint128\"}],\"internalType\":\"structResourceMetering.ResourceConfig\",\"name\":\"_config\",\"type\":\"tuple\"},{\"internalType\":\"address\",\"name\":\"_batchInbox\",\"type\":\"address\"},{\"components\":[{\"internalType\":\"address\",\"name\":\"l1CrossDomainMessenger\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"l1ERC721Bridge\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"l1StandardBridge\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"disputeGameFactory\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"optimismPortal\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"optimismMintableERC20Factory\",\"type\":\"address\"},{\"internalType\":\"address\",\"name\":\"gasPayingToken\",\"type\":\"address\"}],\"internalType\":\"structSystemConfig.Addresses\",\"name\":\"_addresses\",\"type\":\"tuple\"}],\"name\":\"initialize\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"isCustomGasToken\",\"outputs\":[{\"internalType\":\"bool\",\"name\":\"\",\"type\":\"bool\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"l1CrossDomainMessenger\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"l1ERC721Bridge\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"l1StandardBridge\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"maximumGasLimit\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"pure\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"minimumGasLimit\",\"outputs\":[{\"internalType\":\"uint64\",\"name\":\"\",\"type\":\"uint64\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"optimismMintableERC20Factory\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"optimismPortal\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"overhead\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"owner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"renounceOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"resourceConfig\",\"outputs\":[{\"components\":[{\"internalType\":\"uint32\",\"name\":\"maxResourceLimit\",\"type\":\"uint32\"},{\"internalType\":\"uint8\",\"name\":\"elasticityMultiplier\",\"type\":\"uint8\"},{\"internalType\":\"uint8\",\"name\":\"baseFeeMaxChangeDenominator\",\"type\":\"uint8\"},{\"internalType\":\"uint32\",\"name\":\"minimumBaseFee\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"systemTxMaxGas\",\"type\":\"uint32\"},{\"internalType\":\"uint128\",\"name\":\"maximumBaseFee\",\"type\":\"uint128\"}],\"internalType\":\"structResourceMetering.ResourceConfig\",\"name\":\"\",\"type\":\"tuple\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"scalar\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"bytes32\",\"name\":\"_batcherHash\",\"type\":\"bytes32\"}],\"name\":\"setBatcherHash\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint256\",\"name\":\"_overhead\",\"type\":\"uint256\"},{\"internalType\":\"uint256\",\"name\":\"_scalar\",\"type\":\"uint256\"}],\"name\":\"setGasConfig\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint32\",\"name\":\"_basefeeScalar\",\"type\":\"uint32\"},{\"internalType\":\"uint32\",\"name\":\"_blobbasefeeScalar\",\"type\":\"uint32\"}],\"name\":\"setGasConfigEcotone\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"uint64\",\"name\":\"_gasLimit\",\"type\":\"uint64\"}],\"name\":\"setGasLimit\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"_unsafeBlockSigner\",\"type\":\"address\"}],\"name\":\"setUnsafeBlockSigner\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"startBlock\",\"outputs\":[{\"internalType\":\"uint256\",\"name\":\"startBlock_\",\"type\":\"uint256\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[{\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"transferOwnership\",\"outputs\":[],\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"unsafeBlockSigner\",\"outputs\":[{\"internalType\":\"address\",\"name\":\"addr_\",\"type\":\"address\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"inputs\":[],\"name\":\"version\",\"outputs\":[{\"internalType\":\"string\",\"name\":\"\",\"type\":\"string\"}],\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"uint256\",\"name\":\"version\",\"type\":\"uint256\"},{\"indexed\":true,\"internalType\":\"enumSystemConfig.UpdateType\",\"name\":\"updateType\",\"type\":\"uint8\"},{\"indexed\":false,\"internalType\":\"bytes\",\"name\":\"data\",\"type\":\"bytes\"}],\"name\":\"ConfigUpdate\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":false,\"internalType\":\"uint8\",\"name\":\"version\",\"type\":\"uint8\"}],\"name\":\"Initialized\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"internalType\":\"address\",\"name\":\"previousOwner\",\"type\":\"address\"},{\"indexed\":true,\"internalType\":\"address\",\"name\":\"newOwner\",\"type\":\"address\"}],\"name\":\"OwnershipTransferred\",\"type\":\"event\"}]",
+	ABI: "[{\"type\":\"constructor\",\"inputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"BATCH_INBOX_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"DISPUTE_GAME_FACTORY_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"L1_CROSS_DOMAIN_MESSENGER_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"L1_ERC_721_BRIDGE_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"L1_STANDARD_BRIDGE_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"OPTIMISM_PORTAL_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"START_BLOCK_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"UNSAFE_BLOCK_SIGNER_SLOT\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"VERSION\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"basefeeScalar\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"batchInbox\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"batcherHash\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"blobbasefeeScalar\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"disputeGameFactory\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"eip1559Denominator\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"eip1559Elasticity\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"gasLimit\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"gasPayingToken\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"decimals_\",\"type\":\"uint8\",\"internalType\":\"uint8\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"gasPayingTokenName\",\"inputs\":[],\"outputs\":[{\"name\":\"name_\",\"type\":\"string\",\"internalType\":\"string\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"gasPayingTokenSymbol\",\"inputs\":[],\"outputs\":[{\"name\":\"symbol_\",\"type\":\"string\",\"internalType\":\"string\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"initialize\",\"inputs\":[{\"name\":\"_owner\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"_basefeeScalar\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"_blobbasefeeScalar\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"_batcherHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"},{\"name\":\"_gasLimit\",\"type\":\"uint64\",\"internalType\":\"uint64\"},{\"name\":\"_unsafeBlockSigner\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"_config\",\"type\":\"tuple\",\"internalType\":\"structIResourceMetering.ResourceConfig\",\"components\":[{\"name\":\"maxResourceLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"elasticityMultiplier\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"baseFeeMaxChangeDenominator\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"minimumBaseFee\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"systemTxMaxGas\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"maximumBaseFee\",\"type\":\"uint128\",\"internalType\":\"uint128\"}]},{\"name\":\"_batchInbox\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"_addresses\",\"type\":\"tuple\",\"internalType\":\"structSystemConfig.Addresses\",\"components\":[{\"name\":\"l1CrossDomainMessenger\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"l1ERC721Bridge\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"l1StandardBridge\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"disputeGameFactory\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"optimismPortal\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"optimismMintableERC20Factory\",\"type\":\"address\",\"internalType\":\"address\"},{\"name\":\"gasPayingToken\",\"type\":\"address\",\"internalType\":\"address\"}]}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"isCustomGasToken\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"bool\",\"internalType\":\"bool\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"l1CrossDomainMessenger\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"l1ERC721Bridge\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"l1StandardBridge\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"maximumGasLimit\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"pure\"},{\"type\":\"function\",\"name\":\"minimumGasLimit\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"optimismMintableERC20Factory\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"optimismPortal\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"overhead\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"owner\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"renounceOwnership\",\"inputs\":[],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"resourceConfig\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"tuple\",\"internalType\":\"structIResourceMetering.ResourceConfig\",\"components\":[{\"name\":\"maxResourceLimit\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"elasticityMultiplier\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"baseFeeMaxChangeDenominator\",\"type\":\"uint8\",\"internalType\":\"uint8\"},{\"name\":\"minimumBaseFee\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"systemTxMaxGas\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"maximumBaseFee\",\"type\":\"uint128\",\"internalType\":\"uint128\"}]}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"scalar\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"setBatcherHash\",\"inputs\":[{\"name\":\"_batcherHash\",\"type\":\"bytes32\",\"internalType\":\"bytes32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setEIP1559Params\",\"inputs\":[{\"name\":\"_denominator\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"_elasticity\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setGasConfig\",\"inputs\":[{\"name\":\"_overhead\",\"type\":\"uint256\",\"internalType\":\"uint256\"},{\"name\":\"_scalar\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setGasConfigEcotone\",\"inputs\":[{\"name\":\"_basefeeScalar\",\"type\":\"uint32\",\"internalType\":\"uint32\"},{\"name\":\"_blobbasefeeScalar\",\"type\":\"uint32\",\"internalType\":\"uint32\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setGasLimit\",\"inputs\":[{\"name\":\"_gasLimit\",\"type\":\"uint64\",\"internalType\":\"uint64\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"setUnsafeBlockSigner\",\"inputs\":[{\"name\":\"_unsafeBlockSigner\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"startBlock\",\"inputs\":[],\"outputs\":[{\"name\":\"startBlock_\",\"type\":\"uint256\",\"internalType\":\"uint256\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"transferOwnership\",\"inputs\":[{\"name\":\"newOwner\",\"type\":\"address\",\"internalType\":\"address\"}],\"outputs\":[],\"stateMutability\":\"nonpayable\"},{\"type\":\"function\",\"name\":\"unsafeBlockSigner\",\"inputs\":[],\"outputs\":[{\"name\":\"addr_\",\"type\":\"address\",\"internalType\":\"address\"}],\"stateMutability\":\"view\"},{\"type\":\"function\",\"name\":\"version\",\"inputs\":[],\"outputs\":[{\"name\":\"\",\"type\":\"string\",\"internalType\":\"string\"}],\"stateMutability\":\"pure\"},{\"type\":\"event\",\"name\":\"ConfigUpdate\",\"inputs\":[{\"name\":\"version\",\"type\":\"uint256\",\"indexed\":true,\"internalType\":\"uint256\"},{\"name\":\"updateType\",\"type\":\"uint8\",\"indexed\":true,\"internalType\":\"enumSystemConfig.UpdateType\"},{\"name\":\"data\",\"type\":\"bytes\",\"indexed\":false,\"internalType\":\"bytes\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"Initialized\",\"inputs\":[{\"name\":\"version\",\"type\":\"uint8\",\"indexed\":false,\"internalType\":\"uint8\"}],\"anonymous\":false},{\"type\":\"event\",\"name\":\"OwnershipTransferred\",\"inputs\":[{\"name\":\"previousOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"},{\"name\":\"newOwner\",\"type\":\"address\",\"indexed\":true,\"internalType\":\"address\"}],\"anonymous\":false}]",
 }
 
 // SystemConfigABI is the input ABI used to generate the binding from.
@@ -665,6 +665,68 @@ func (_SystemConfig *SystemConfigCallerSession) DisputeGameFactory() (common.Add
 	return _SystemConfig.Contract.DisputeGameFactory(&_SystemConfig.CallOpts)
 }
 
+// Eip1559Denominator is a free data retrieval call binding the contract method 0xd220a9e0.
+//
+// Solidity: function eip1559Denominator() view returns(uint32)
+func (_SystemConfig *SystemConfigCaller) Eip1559Denominator(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _SystemConfig.contract.Call(opts, &out, "eip1559Denominator")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// Eip1559Denominator is a free data retrieval call binding the contract method 0xd220a9e0.
+//
+// Solidity: function eip1559Denominator() view returns(uint32)
+func (_SystemConfig *SystemConfigSession) Eip1559Denominator() (uint32, error) {
+	return _SystemConfig.Contract.Eip1559Denominator(&_SystemConfig.CallOpts)
+}
+
+// Eip1559Denominator is a free data retrieval call binding the contract method 0xd220a9e0.
+//
+// Solidity: function eip1559Denominator() view returns(uint32)
+func (_SystemConfig *SystemConfigCallerSession) Eip1559Denominator() (uint32, error) {
+	return _SystemConfig.Contract.Eip1559Denominator(&_SystemConfig.CallOpts)
+}
+
+// Eip1559Elasticity is a free data retrieval call binding the contract method 0xc9ff2d16.
+//
+// Solidity: function eip1559Elasticity() view returns(uint32)
+func (_SystemConfig *SystemConfigCaller) Eip1559Elasticity(opts *bind.CallOpts) (uint32, error) {
+	var out []interface{}
+	err := _SystemConfig.contract.Call(opts, &out, "eip1559Elasticity")
+
+	if err != nil {
+		return *new(uint32), err
+	}
+
+	out0 := *abi.ConvertType(out[0], new(uint32)).(*uint32)
+
+	return out0, err
+
+}
+
+// Eip1559Elasticity is a free data retrieval call binding the contract method 0xc9ff2d16.
+//
+// Solidity: function eip1559Elasticity() view returns(uint32)
+func (_SystemConfig *SystemConfigSession) Eip1559Elasticity() (uint32, error) {
+	return _SystemConfig.Contract.Eip1559Elasticity(&_SystemConfig.CallOpts)
+}
+
+// Eip1559Elasticity is a free data retrieval call binding the contract method 0xc9ff2d16.
+//
+// Solidity: function eip1559Elasticity() view returns(uint32)
+func (_SystemConfig *SystemConfigCallerSession) Eip1559Elasticity() (uint32, error) {
+	return _SystemConfig.Contract.Eip1559Elasticity(&_SystemConfig.CallOpts)
+}
+
 // GasLimit is a free data retrieval call binding the contract method 0xf68016b7.
 //
 // Solidity: function gasLimit() view returns(uint64)
@@ -1116,15 +1178,15 @@ func (_SystemConfig *SystemConfigCallerSession) Owner() (common.Address, error) 
 // ResourceConfig is a free data retrieval call binding the contract method 0xcc731b02.
 //
 // Solidity: function resourceConfig() view returns((uint32,uint8,uint8,uint32,uint32,uint128))
-func (_SystemConfig *SystemConfigCaller) ResourceConfig(opts *bind.CallOpts) (ResourceMeteringResourceConfig, error) {
+func (_SystemConfig *SystemConfigCaller) ResourceConfig(opts *bind.CallOpts) (IResourceMeteringResourceConfig, error) {
 	var out []interface{}
 	err := _SystemConfig.contract.Call(opts, &out, "resourceConfig")
 
 	if err != nil {
-		return *new(ResourceMeteringResourceConfig), err
+		return *new(IResourceMeteringResourceConfig), err
 	}
 
-	out0 := *abi.ConvertType(out[0], new(ResourceMeteringResourceConfig)).(*ResourceMeteringResourceConfig)
+	out0 := *abi.ConvertType(out[0], new(IResourceMeteringResourceConfig)).(*IResourceMeteringResourceConfig)
 
 	return out0, err
 
@@ -1133,14 +1195,14 @@ func (_SystemConfig *SystemConfigCaller) ResourceConfig(opts *bind.CallOpts) (Re
 // ResourceConfig is a free data retrieval call binding the contract method 0xcc731b02.
 //
 // Solidity: function resourceConfig() view returns((uint32,uint8,uint8,uint32,uint32,uint128))
-func (_SystemConfig *SystemConfigSession) ResourceConfig() (ResourceMeteringResourceConfig, error) {
+func (_SystemConfig *SystemConfigSession) ResourceConfig() (IResourceMeteringResourceConfig, error) {
 	return _SystemConfig.Contract.ResourceConfig(&_SystemConfig.CallOpts)
 }
 
 // ResourceConfig is a free data retrieval call binding the contract method 0xcc731b02.
 //
 // Solidity: function resourceConfig() view returns((uint32,uint8,uint8,uint32,uint32,uint128))
-func (_SystemConfig *SystemConfigCallerSession) ResourceConfig() (ResourceMeteringResourceConfig, error) {
+func (_SystemConfig *SystemConfigCallerSession) ResourceConfig() (IResourceMeteringResourceConfig, error) {
 	return _SystemConfig.Contract.ResourceConfig(&_SystemConfig.CallOpts)
 }
 
@@ -1239,7 +1301,7 @@ func (_SystemConfig *SystemConfigCallerSession) UnsafeBlockSigner() (common.Addr
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(string)
+// Solidity: function version() pure returns(string)
 func (_SystemConfig *SystemConfigCaller) Version(opts *bind.CallOpts) (string, error) {
 	var out []interface{}
 	err := _SystemConfig.contract.Call(opts, &out, "version")
@@ -1256,14 +1318,14 @@ func (_SystemConfig *SystemConfigCaller) Version(opts *bind.CallOpts) (string, e
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(string)
+// Solidity: function version() pure returns(string)
 func (_SystemConfig *SystemConfigSession) Version() (string, error) {
 	return _SystemConfig.Contract.Version(&_SystemConfig.CallOpts)
 }
 
 // Version is a free data retrieval call binding the contract method 0x54fd4d50.
 //
-// Solidity: function version() view returns(string)
+// Solidity: function version() pure returns(string)
 func (_SystemConfig *SystemConfigCallerSession) Version() (string, error) {
 	return _SystemConfig.Contract.Version(&_SystemConfig.CallOpts)
 }
@@ -1271,21 +1333,21 @@ func (_SystemConfig *SystemConfigCallerSession) Version() (string, error) {
 // Initialize is a paid mutator transaction binding the contract method 0xdb9040fa.
 //
 // Solidity: function initialize(address _owner, uint32 _basefeeScalar, uint32 _blobbasefeeScalar, bytes32 _batcherHash, uint64 _gasLimit, address _unsafeBlockSigner, (uint32,uint8,uint8,uint32,uint32,uint128) _config, address _batchInbox, (address,address,address,address,address,address,address) _addresses) returns()
-func (_SystemConfig *SystemConfigTransactor) Initialize(opts *bind.TransactOpts, _owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config ResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
+func (_SystemConfig *SystemConfigTransactor) Initialize(opts *bind.TransactOpts, _owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config IResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
 	return _SystemConfig.contract.Transact(opts, "initialize", _owner, _basefeeScalar, _blobbasefeeScalar, _batcherHash, _gasLimit, _unsafeBlockSigner, _config, _batchInbox, _addresses)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0xdb9040fa.
 //
 // Solidity: function initialize(address _owner, uint32 _basefeeScalar, uint32 _blobbasefeeScalar, bytes32 _batcherHash, uint64 _gasLimit, address _unsafeBlockSigner, (uint32,uint8,uint8,uint32,uint32,uint128) _config, address _batchInbox, (address,address,address,address,address,address,address) _addresses) returns()
-func (_SystemConfig *SystemConfigSession) Initialize(_owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config ResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
+func (_SystemConfig *SystemConfigSession) Initialize(_owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config IResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
 	return _SystemConfig.Contract.Initialize(&_SystemConfig.TransactOpts, _owner, _basefeeScalar, _blobbasefeeScalar, _batcherHash, _gasLimit, _unsafeBlockSigner, _config, _batchInbox, _addresses)
 }
 
 // Initialize is a paid mutator transaction binding the contract method 0xdb9040fa.
 //
 // Solidity: function initialize(address _owner, uint32 _basefeeScalar, uint32 _blobbasefeeScalar, bytes32 _batcherHash, uint64 _gasLimit, address _unsafeBlockSigner, (uint32,uint8,uint8,uint32,uint32,uint128) _config, address _batchInbox, (address,address,address,address,address,address,address) _addresses) returns()
-func (_SystemConfig *SystemConfigTransactorSession) Initialize(_owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config ResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
+func (_SystemConfig *SystemConfigTransactorSession) Initialize(_owner common.Address, _basefeeScalar uint32, _blobbasefeeScalar uint32, _batcherHash [32]byte, _gasLimit uint64, _unsafeBlockSigner common.Address, _config IResourceMeteringResourceConfig, _batchInbox common.Address, _addresses SystemConfigAddresses) (*types.Transaction, error) {
 	return _SystemConfig.Contract.Initialize(&_SystemConfig.TransactOpts, _owner, _basefeeScalar, _blobbasefeeScalar, _batcherHash, _gasLimit, _unsafeBlockSigner, _config, _batchInbox, _addresses)
 }
 
@@ -1329,6 +1391,27 @@ func (_SystemConfig *SystemConfigSession) SetBatcherHash(_batcherHash [32]byte) 
 // Solidity: function setBatcherHash(bytes32 _batcherHash) returns()
 func (_SystemConfig *SystemConfigTransactorSession) SetBatcherHash(_batcherHash [32]byte) (*types.Transaction, error) {
 	return _SystemConfig.Contract.SetBatcherHash(&_SystemConfig.TransactOpts, _batcherHash)
+}
+
+// SetEIP1559Params is a paid mutator transaction binding the contract method 0xc0fd4b41.
+//
+// Solidity: function setEIP1559Params(uint32 _denominator, uint32 _elasticity) returns()
+func (_SystemConfig *SystemConfigTransactor) SetEIP1559Params(opts *bind.TransactOpts, _denominator uint32, _elasticity uint32) (*types.Transaction, error) {
+	return _SystemConfig.contract.Transact(opts, "setEIP1559Params", _denominator, _elasticity)
+}
+
+// SetEIP1559Params is a paid mutator transaction binding the contract method 0xc0fd4b41.
+//
+// Solidity: function setEIP1559Params(uint32 _denominator, uint32 _elasticity) returns()
+func (_SystemConfig *SystemConfigSession) SetEIP1559Params(_denominator uint32, _elasticity uint32) (*types.Transaction, error) {
+	return _SystemConfig.Contract.SetEIP1559Params(&_SystemConfig.TransactOpts, _denominator, _elasticity)
+}
+
+// SetEIP1559Params is a paid mutator transaction binding the contract method 0xc0fd4b41.
+//
+// Solidity: function setEIP1559Params(uint32 _denominator, uint32 _elasticity) returns()
+func (_SystemConfig *SystemConfigTransactorSession) SetEIP1559Params(_denominator uint32, _elasticity uint32) (*types.Transaction, error) {
+	return _SystemConfig.Contract.SetEIP1559Params(&_SystemConfig.TransactOpts, _denominator, _elasticity)
 }
 
 // SetGasConfig is a paid mutator transaction binding the contract method 0x935f029e.

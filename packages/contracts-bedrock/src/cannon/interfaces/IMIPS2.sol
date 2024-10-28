@@ -7,6 +7,39 @@ import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
 /// @title IMIPS2
 /// @notice Interface for the MIPS2 contract.
 interface IMIPS2 is ISemver {
+    struct ThreadState {
+        uint32 threadID;
+        uint8 exitCode;
+        bool exited;
+        uint32 futexAddr;
+        uint32 futexVal;
+        uint64 futexTimeoutStep;
+        uint32 pc;
+        uint32 nextPC;
+        uint32 lo;
+        uint32 hi;
+        uint32[32] registers;
+    }
+
+    struct State {
+        bytes32 memRoot;
+        bytes32 preimageKey;
+        uint32 preimageOffset;
+        uint32 heap;
+        uint8 llReservationStatus;
+        uint32 llAddress;
+        uint32 llOwnerThread;
+        uint8 exitCode;
+        bool exited;
+        uint64 step;
+        uint64 stepsSinceLastContextSwitch;
+        uint32 wakeup;
+        bool traverseRight;
+        bytes32 leftThreadStack;
+        bytes32 rightThreadStack;
+        uint32 nextThreadID;
+    }
+
     error InvalidExitedValue();
     error InvalidMemoryProof();
     error InvalidSecondMemoryProof();

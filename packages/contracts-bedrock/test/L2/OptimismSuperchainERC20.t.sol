@@ -7,16 +7,18 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { IERC20 } from "@openzeppelin/contracts-v5/token/ERC20/IERC20.sol";
+import { IERC20Solady as IERC20 } from "src/vendor/interfaces/IERC20Solady.sol";
+
 import { Initializable } from "@openzeppelin/contracts-v5/proxy/utils/Initializable.sol";
 import { IERC165 } from "@openzeppelin/contracts-v5/utils/introspection/IERC165.sol";
 import { IBeacon } from "@openzeppelin/contracts-v5/proxy/beacon/IBeacon.sol";
 import { BeaconProxy } from "@openzeppelin/contracts-v5/proxy/beacon/BeaconProxy.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+import { Preinstalls } from "src/libraries/Preinstalls.sol";
 
 // Target contract
-import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
 import { IOptimismSuperchainERC20 } from "src/L2/interfaces/IOptimismSuperchainERC20.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 /// @title OptimismSuperchainERC20Test
 /// @notice Contract for testing the OptimismSuperchainERC20 contract.
@@ -29,12 +31,17 @@ contract OptimismSuperchainERC20Test is Test {
     address internal constant L2_BRIDGE = Predeploys.L2_STANDARD_BRIDGE;
     address internal constant MESSENGER = Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER;
 
-    OptimismSuperchainERC20 public optimismSuperchainERC20Impl;
-    OptimismSuperchainERC20 public optimismSuperchainERC20;
+    IOptimismSuperchainERC20 public optimismSuperchainERC20Impl;
+    IOptimismSuperchainERC20 public optimismSuperchainERC20;
 
     /// @notice Sets up the test suite.
     function setUp() public {
-        optimismSuperchainERC20Impl = new OptimismSuperchainERC20();
+        optimismSuperchainERC20Impl = IOptimismSuperchainERC20(
+            DeployUtils.create1({
+                _name: "OptimismSuperchainERC20",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismSuperchainERC20.__constructor__, ()))
+            })
+        );
 
         // Deploy the OptimismSuperchainERC20Beacon contract
         _deployBeacon();
@@ -56,11 +63,7 @@ contract OptimismSuperchainERC20Test is Test {
         EIP1967Helper.setImplementation(_addr, _impl);
 
         // Mock implementation address
-        vm.mockCall(
-            _impl,
-            abi.encodeWithSelector(IBeacon.implementation.selector),
-            abi.encode(address(optimismSuperchainERC20Impl))
-        );
+        vm.mockCall(_impl, abi.encodeCall(IBeacon.implementation, ()), abi.encode(address(optimismSuperchainERC20Impl)));
     }
 
     /// @notice Helper function to deploy a proxy of the OptimismSuperchainERC20 contract.
@@ -71,13 +74,13 @@ contract OptimismSuperchainERC20Test is Test {
         uint8 _decimals
     )
         internal
-        returns (OptimismSuperchainERC20)
+        returns (IOptimismSuperchainERC20)
     {
-        return OptimismSuperchainERC20(
+        return IOptimismSuperchainERC20(
             address(
                 new BeaconProxy(
                     Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON,
-                    abi.encodeCall(OptimismSuperchainERC20.initialize, (_remoteToken, _name, _symbol, _decimals))
+                    abi.encodeCall(IOptimismSuperchainERC20.initialize, (_remoteToken, _name, _symbol, _decimals))
                 )
             )
         );
@@ -217,25 +220,28 @@ contract OptimismSuperchainERC20Test is Test {
 
     /// @notice Tests the `decimals` function always returns the correct value.
     function testFuzz_decimals_succeeds(uint8 _decimals) public {
-        OptimismSuperchainERC20 _newSuperchainERC20 = _deploySuperchainERC20Proxy(REMOTE_TOKEN, NAME, SYMBOL, _decimals);
+        IOptimismSuperchainERC20 _newSuperchainERC20 =
+            _deploySuperchainERC20Proxy(REMOTE_TOKEN, NAME, SYMBOL, _decimals);
         assertEq(_newSuperchainERC20.decimals(), _decimals);
     }
 
     /// @notice Tests the `REMOTE_TOKEN` function always returns the correct value.
     function testFuzz_remoteToken_succeeds(address _remoteToken) public {
-        OptimismSuperchainERC20 _newSuperchainERC20 = _deploySuperchainERC20Proxy(_remoteToken, NAME, SYMBOL, DECIMALS);
+        IOptimismSuperchainERC20 _newSuperchainERC20 = _deploySuperchainERC20Proxy(_remoteToken, NAME, SYMBOL, DECIMALS);
         assertEq(_newSuperchainERC20.remoteToken(), _remoteToken);
     }
 
     /// @notice Tests the `name` function always returns the correct value.
     function testFuzz_name_succeeds(string memory _name) public {
-        OptimismSuperchainERC20 _newSuperchainERC20 = _deploySuperchainERC20Proxy(REMOTE_TOKEN, _name, SYMBOL, DECIMALS);
+        IOptimismSuperchainERC20 _newSuperchainERC20 =
+            _deploySuperchainERC20Proxy(REMOTE_TOKEN, _name, SYMBOL, DECIMALS);
         assertEq(_newSuperchainERC20.name(), _name);
     }
 
     /// @notice Tests the `symbol` function always returns the correct value.
     function testFuzz_symbol_succeeds(string memory _symbol) public {
-        OptimismSuperchainERC20 _newSuperchainERC20 = _deploySuperchainERC20Proxy(REMOTE_TOKEN, NAME, _symbol, DECIMALS);
+        IOptimismSuperchainERC20 _newSuperchainERC20 =
+            _deploySuperchainERC20Proxy(REMOTE_TOKEN, NAME, _symbol, DECIMALS);
         assertEq(_newSuperchainERC20.symbol(), _symbol);
     }
 
@@ -251,5 +257,65 @@ contract OptimismSuperchainERC20Test is Test {
         vm.assume(_interfaceId != type(IERC165).interfaceId);
         vm.assume(_interfaceId != type(IOptimismSuperchainERC20).interfaceId);
         assertFalse(optimismSuperchainERC20.supportsInterface(_interfaceId));
+    }
+
+    /// @notice Tests that the allowance function returns the max uint256 value when the spender is Permit.
+    /// @param _randomCaller The address that will call the function - used to fuzz better since the behaviour should be
+    ///                       the same regardless of the caller.
+    /// @param _owner The funds owner.
+    function testFuzz_allowance_fromPermit2_succeeds(address _randomCaller, address _owner) public {
+        vm.prank(_randomCaller);
+        uint256 _allowance = optimismSuperchainERC20.allowance(_owner, Preinstalls.Permit2);
+
+        assertEq(_allowance, type(uint256).max);
+    }
+
+    /// @notice Tests that the allowance function returns the correct allowance when the spender is not Permit.
+    /// @param _randomCaller The address that will call the function - used to fuzz better
+    ///                       since the behaviour should be the same regardless of the caller.
+    /// @param _owner The funds owner.
+    /// @param _guy The address of the spender - It cannot be Permit2.
+    function testFuzz_allowance_succeeds(address _randomCaller, address _owner, address _guy, uint256 _amount) public {
+        // Assume
+        vm.assume(_guy != Preinstalls.Permit2);
+
+        // Arrange
+        vm.prank(_owner);
+        optimismSuperchainERC20.approve(_guy, _amount);
+
+        // Act
+        vm.prank(_randomCaller);
+        uint256 _allowance = optimismSuperchainERC20.allowance(_owner, _guy);
+
+        // Assert
+        assertEq(_allowance, _amount);
+    }
+
+    /// @notice Tests that `transferFrom` works when the caller (spender) is Permit2, without any explicit approval.
+    /// @param _owner The funds owner.
+    /// @param _recipient The address of the recipient.
+    /// @param _amount The amount of tokens to transfer.
+    function testFuzz_transferFrom_whenPermit2IsCaller_succeeds(
+        address _owner,
+        address _recipient,
+        uint256 _amount
+    )
+        public
+    {
+        // Arrange
+        deal(address(optimismSuperchainERC20), _owner, _amount);
+
+        vm.expectEmit(address(optimismSuperchainERC20));
+        emit IERC20.Transfer(_owner, _recipient, _amount);
+
+        // Act
+        vm.prank(Preinstalls.Permit2);
+        optimismSuperchainERC20.transferFrom(_owner, _recipient, _amount);
+
+        // Assert
+        assertEq(optimismSuperchainERC20.balanceOf(_recipient), _amount);
+        // Handle the case where the source and destination are the same to check the source balance.
+        if (_owner != _recipient) assertEq(optimismSuperchainERC20.balanceOf(_owner), 0);
+        else assertEq(optimismSuperchainERC20.balanceOf(_owner), _amount);
     }
 }

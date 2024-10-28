@@ -18,7 +18,6 @@ contract DelayedWETH_Init is CommonTest {
     event Unwrap(address indexed src, uint256 wad);
 
     function setUp() public virtual override {
-        super.enableFaultProofs();
         super.setUp();
 
         // Transfer ownership of delayed WETH to the test contract.

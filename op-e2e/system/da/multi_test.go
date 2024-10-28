@@ -29,7 +29,7 @@ func TestBatcherMultiTx(t *testing.T) {
 	l1Client := sys.NodeClient("l1")
 	l2Seq := sys.NodeClient("sequencer")
 
-	_, err = geth.WaitForBlock(big.NewInt(10), l2Seq, time.Duration(cfg.DeployConfig.L2BlockTime*15)*time.Second)
+	_, err = geth.WaitForBlock(big.NewInt(10), l2Seq)
 	require.NoError(t, err, "Waiting for L2 blocks")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -47,7 +47,7 @@ func TestBatcherMultiTx(t *testing.T) {
 	// possible additional L1 blocks will be created before the batcher starts,
 	// so we wait additional blocks.
 	for i := int64(0); i < 5; i++ {
-		block, err := geth.WaitForBlock(big.NewInt(int64(l1Number)+i), l1Client, time.Duration(cfg.DeployConfig.L1BlockTime*2)*time.Second)
+		block, err := geth.WaitForBlock(big.NewInt(int64(l1Number)+i), l1Client)
 		require.NoError(t, err, "Waiting for l1 blocks")
 		// there are possibly other services (proposer/challenger) in the background sending txs
 		// so we only count the batcher txs

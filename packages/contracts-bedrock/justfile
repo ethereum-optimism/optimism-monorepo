@@ -126,10 +126,6 @@ gas-snapshot-check-no-build:
 # Checks that the gas snapshot is up to date.
 gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
 
-# Checks that the Kontrol deployment script has not changed.
-kontrol-deployment-check:
-  ./scripts/checks/check-kontrol-deployment.sh
-
 # Checks if the snapshots are up to date without building.
 snapshots-check-no-build:
   ./scripts/checks/check-snapshots.sh --no-build
@@ -159,13 +155,9 @@ semver-diff-check-no-build:
 # Checks that any contracts with a modified semver lock also have a modified semver version.
 semver-diff-check: build semver-diff-check-no-build
 
-# Checks that semver natspec is equal to the actual semver version.
-# Does not build contracts.
-semver-natspec-check-no-build:
-    go run ./scripts/checks/semver-natspec
-
-# Checks that semver natspec is equal to the actual semver version.
-semver-natspec-check: build semver-natspec-check-no-build
+# Checks that the semgrep tests are valid.
+semgrep-test-validity-check:
+  forge fmt ../../semgrep/sol-rules.t.sol --check
 
 # Checks that forge test names are correctly formatted.
 lint-forge-tests-check:
@@ -193,20 +185,25 @@ validate-spacers-no-build:
 # Checks that spacer variables are correctly inserted.
 validate-spacers: build validate-spacers-no-build
 
+# Checks that the Kontrol summary dummy files have not been modified.
+# If you have changed the summary files deliberately, update the hashes in the script.
+# Use `openssl dgst -sha256` to generate the hash for a file.
+check-kontrol-summaries-unchanged:
+  ./scripts/checks/check-kontrol-summaries-unchanged.sh
+
 # Runs semgrep on the contracts.
 semgrep:
-  cd ../../ && semgrep scan --config=.semgrep ./packages/contracts-bedrock
+  cd ../../ && semgrep scan --config=semgrep ./packages/contracts-bedrock
 
 # TODO: Also run lint-forge-tests-check but we need to fix the test names first.
 # Runs all checks.
 check:
   @just gas-snapshot-check-no-build \
+  semgrep-test-validity-check \
   unused-imports-check-no-build \
-  kontrol-deployment-check \
   snapshots-check-no-build \
   lint-check \
   semver-diff-check-no-build \
-  semver-natspec-check-no-build \
   validate-deploy-configs \
   validate-spacers-no-build \
   interfaces-check-no-build

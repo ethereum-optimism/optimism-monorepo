@@ -26,7 +26,7 @@ contract DeployVariations_Test is CommonTest {
     /// @dev It should be possible to enable Fault Proofs with any mix of CGT and Alt-DA.
     function testFuzz_enableFaultProofs(bool _enableCGT, bool _enableAltDa) public virtual {
         enableAddOns(_enableCGT, _enableAltDa);
-        super.enableFaultProofs();
+
         super.setUp();
     }
 
@@ -35,7 +35,7 @@ contract DeployVariations_Test is CommonTest {
     function test_enableInteropAndFaultProofs(bool _enableCGT, bool _enableAltDa) public virtual {
         enableAddOns(_enableCGT, _enableAltDa);
         super.enableInterop();
-        super.enableFaultProofs();
+
         super.setUp();
     }
 }

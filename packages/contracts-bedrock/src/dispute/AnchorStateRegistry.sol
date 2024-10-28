@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libraries
-import "src/dispute/lib/Types.sol";
+import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { UnregisteredGame, InvalidGameStatus } from "src/dispute/lib/Errors.sol";
 
@@ -30,8 +30,8 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.3
-    string public constant version = "2.0.1-beta.3";
+    /// @custom:semver 2.0.1-beta.4
+    string public constant version = "2.0.1-beta.4";
 
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;

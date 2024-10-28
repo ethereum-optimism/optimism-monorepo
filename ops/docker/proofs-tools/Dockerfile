@@ -3,11 +3,9 @@ ARG GIT_DATE
 
 ARG CHALLENGER_VERSION
 ARG KONA_VERSION
-ARG ASTERISC_VERSION
 
 FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/op-challenger:$CHALLENGER_VERSION AS challenger
 FROM --platform=$BUILDPLATFORM ghcr.io/anton-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
-FROM --platform=$BUILDPLATFORM ghcr.io/ethereum-optimism/asterisc/asterisc:$ASTERISC_VERSION AS asterisc
 
 FROM --platform=$BUILDPLATFORM ubuntu:22.04 AS proofs-tools
 RUN apt-get update && apt-get install -y --no-install-recommends musl openssl ca-certificates
@@ -19,8 +17,7 @@ ENV OP_CHALLENGER_CANNON_SERVER=/usr/local/bin/op-program
 
 COPY --from=kona /kona-host /usr/local/bin/
 ENV OP_CHALLENGER_ASTERISC_KONA_SERVER=/usr/local/bin/kona-host
-
-COPY --from=asterisc /usr/local/bin/asterisc /usr/local/bin/
+COPY --from=kona /asterisc /usr/local/bin/
 ENV OP_CHALLENGER_ASTERISC_BIN=/usr/local/bin/asterisc
 
 CMD /usr/local/bin/op-challenger

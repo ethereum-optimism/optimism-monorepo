@@ -97,7 +97,8 @@ func TestBasicRPCReceiptsFetcher_Reuse(t *testing.T) {
 func TestBasicRPCReceiptsFetcher_Concurrency(t *testing.T) {
 	require := require.New(t)
 	const numFetchers = 32
-	batchSize, txCount := 4, uint64(18) // 4.5 * 4
+	const batchSize, txCount = 4, 16
+	const numBatchCalls = txCount / batchSize
 	block, receipts := randomRpcBlockAndReceipts(rand.New(rand.NewSource(123)), txCount)
 	recMap := make(map[common.Hash]*types.Receipt, len(receipts))
 	for _, rec := range receipts {
@@ -128,7 +129,7 @@ func TestBasicRPCReceiptsFetcher_Concurrency(t *testing.T) {
 	mrpc.AssertExpectations(t)
 	finalNumCalls := int(numCalls.Load())
 	require.NotZero(finalNumCalls, "BatchCallContext should have been called.")
-	require.Less(finalNumCalls, numFetchers, "Some IterativeBatchCalls should have been shared.")
+	require.Less(finalNumCalls, numFetchers*numBatchCalls, "Some IterativeBatchCalls should have been shared.")
 }
 
 func runConcurrentFetchingTest(t *testing.T, rp ReceiptsProvider, numFetchers int, receipts types.Receipts, block *RPCBlock) {

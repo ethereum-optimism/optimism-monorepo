@@ -32,8 +32,8 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     event Unwrap(address indexed src, uint256 wad);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.2.0-beta.2
-    string public constant version = "1.2.0-beta.2";
+    /// @custom:semver 1.2.0-beta.3
+    string public constant version = "1.2.0-beta.3";
 
     /// @notice Returns a withdrawal request for the given address.
     mapping(address => mapping(address => WithdrawalRequest)) public withdrawals;
@@ -112,7 +112,7 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param _wad The amount of WETH to recover.
     function hold(address _guy, uint256 _wad) external {
         require(msg.sender == owner(), "DelayedWETH: not owner");
-        allowance[_guy][msg.sender] = _wad;
+        _allowance[_guy][msg.sender] = _wad;
         emit Approval(_guy, msg.sender, _wad);
     }
 }

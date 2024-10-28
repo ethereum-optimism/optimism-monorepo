@@ -4,8 +4,26 @@ pragma solidity 0.8.15;
 // Libraries
 import { LibKeccak } from "@lib-keccak/LibKeccak.sol";
 import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
-import "src/cannon/libraries/CannonErrors.sol";
-import "src/cannon/libraries/CannonTypes.sol";
+import {
+    PartOffsetOOB,
+    NotEnoughGas,
+    InvalidProof,
+    InvalidPreimage,
+    InvalidInputSize,
+    WrongStartingBlock,
+    StatesNotContiguous,
+    PostStateMatches,
+    TreeSizeOverflow,
+    AlreadyFinalized,
+    ActiveProposal,
+    BadProposal,
+    NotInitialized,
+    AlreadyInitialized,
+    NotEOA,
+    InsufficientBond,
+    BondTransferFailed
+} from "src/cannon/libraries/CannonErrors.sol";
+import { LPPMetaData } from "src/cannon/libraries/CannonTypes.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
@@ -33,8 +51,8 @@ contract PreimageOracle is ISemver {
     uint256 public constant PRECOMPILE_CALL_RESERVED_GAS = 100_000;
 
     /// @notice The semantic version of the Preimage Oracle contract.
-    /// @custom:semver 1.1.3-beta.5
-    string public constant version = "1.1.3-beta.5";
+    /// @custom:semver 1.1.3-beta.6
+    string public constant version = "1.1.3-beta.6";
 
     ////////////////////////////////////////////////////////////////
     //                 Authorized Preimage Parts                  //

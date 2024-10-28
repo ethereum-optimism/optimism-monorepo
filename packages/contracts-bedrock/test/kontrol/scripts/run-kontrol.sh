@@ -16,10 +16,11 @@ kontrol_build() {
   notif "Kontrol Build"
   # shellcheck disable=SC2086
   run kontrol build \
-    --verbose \
     --require $lemmas \
     --module-import $module \
-    $rekompile
+    --no-metadata \
+    ${rekompile} \
+    ${regen}
   return $?
 }
 
@@ -36,9 +37,15 @@ kontrol_prove() {
     $break_on_calls \
     $break_every_step \
     $tests \
-    --init-node-from $state_diff \
-    --kore-rpc-command 'kore-rpc-booster --equation-max-recursion 100' \
-    --xml-test-report
+    --init-node-from-diff $state_diff \
+    --kore-rpc-command 'kore-rpc-booster --no-post-exec-simplify --equation-max-recursion 100 --equation-max-iterations 1000' \
+    --xml-test-report \
+    --maintenance-rate 16 \
+    --assume-defined \
+    --no-log-rewrites \
+    --smt-timeout 16000 \
+    --smt-retry-limit 0 \
+    --no-stack-checks
   return $?
 }
 
@@ -107,10 +114,9 @@ lemmas=test/kontrol/pausability-lemmas.md
 base_module=PAUSABILITY-LEMMAS
 module=OptimismPortalKontrol:$base_module
 rekompile=--rekompile
-rekompile=
+# rekompile=
 regen=--regen
-# shellcheck disable=SC2034
-regen=
+# regen=
 
 #################################
 # Tests to symbolically execute #

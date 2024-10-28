@@ -456,7 +456,7 @@
         "type": "uint256"
       }
     ],
-    "name": "CrosschainBurnt",
+    "name": "CrosschainBurn",
     "type": "event"
   },
   {
@@ -475,7 +475,7 @@
         "type": "uint256"
       }
     ],
-    "name": "CrosschainMinted",
+    "name": "CrosschainMint",
     "type": "event"
   },
   {
@@ -568,6 +568,11 @@
   {
     "inputs": [],
     "name": "NotInitializing",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "Permit2AllowanceIsFixedAtInfinity",
     "type": "error"
   },
   {

@@ -59,16 +59,7 @@ func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*Op
 	l1Genesis, err := genesis.BuildL1DeveloperGenesis(cfg.DeployConfig, config.L1Allocs(config.AllocTypeStandard), config.L1Deployments(config.AllocTypeStandard))
 	require.NoError(t, err)
 	l1Block := l1Genesis.ToBlock()
-
-	var allocsMode genesis.L2AllocsMode
-	allocsMode = genesis.L2AllocsDelta
-	if graniteTime := cfg.DeployConfig.GraniteTime(l1Block.Time()); graniteTime != nil && *graniteTime <= 0 {
-		allocsMode = genesis.L2AllocsGranite
-	} else if fjordTime := cfg.DeployConfig.FjordTime(l1Block.Time()); fjordTime != nil && *fjordTime <= 0 {
-		allocsMode = genesis.L2AllocsFjord
-	} else if ecotoneTime := cfg.DeployConfig.EcotoneTime(l1Block.Time()); ecotoneTime != nil && *ecotoneTime <= 0 {
-		allocsMode = genesis.L2AllocsEcotone
-	}
+	allocsMode := e2eutils.GetL2AllocsMode(cfg.DeployConfig, l1Block.Time())
 	l2Allocs := config.L2Allocs(config.AllocTypeStandard, allocsMode)
 	l2Genesis, err := genesis.BuildL2Genesis(cfg.DeployConfig, l2Allocs, l1Block.Header())
 	require.NoError(t, err)
@@ -243,6 +234,10 @@ func (d *OpGeth) CreatePayloadAttributes(txs ...*types.Transaction) (*eth.Payloa
 		GasLimit:              (*eth.Uint64Quantity)(&d.SystemConfig.GasLimit),
 		Withdrawals:           withdrawals,
 		ParentBeaconBlockRoot: parentBeaconBlockRoot,
+	}
+	if d.L2ChainConfig.IsHolocene(uint64(timestamp)) {
+		attrs.EIP1559Params = new(eth.Bytes8)
+		*attrs.EIP1559Params = d.SystemConfig.EIP1559Params
 	}
 	return &attrs, nil
 }

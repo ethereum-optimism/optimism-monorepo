@@ -33,6 +33,7 @@ contract L2OutputOracle_MonotonicBlockNumIncrease_Invariant is CommonTest {
     L2OutputOracle_Proposer internal actor;
 
     function setUp() public override {
+        super.enableLegacyContracts();
         super.setUp();
 
         // Create a proposer actor.

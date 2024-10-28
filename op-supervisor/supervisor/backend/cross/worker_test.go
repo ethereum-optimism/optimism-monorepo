@@ -18,6 +18,7 @@ func TestWorker(t *testing.T) {
 			count++
 			return nil
 		})
+		t.Cleanup(w.Close)
 		// when ProcessWork is called, the workFn is called once
 		require.NoError(t, w.ProcessWork())
 		require.Equal(t, 1, count)
@@ -28,6 +29,7 @@ func TestWorker(t *testing.T) {
 			count++
 			return nil
 		})
+		t.Cleanup(w.Close)
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Second
 		// when StartBackground is called, the worker runs in the background
@@ -43,6 +45,7 @@ func TestWorker(t *testing.T) {
 			count++
 			return nil
 		})
+		t.Cleanup(w.Close)
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Second
 		// when StartBackground is called, the worker runs in the background
@@ -67,6 +70,7 @@ func TestWorker(t *testing.T) {
 			count++
 			return nil
 		})
+		t.Cleanup(w.Close)
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Millisecond
 		// when StartBackground is called, the worker runs in the background
@@ -82,6 +86,7 @@ func TestWorker(t *testing.T) {
 			count++
 			return nil
 		})
+		t.Cleanup(w.Close) // close on cleanup in case of early error
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Millisecond
 		// when StartBackground is called, the worker runs in the background

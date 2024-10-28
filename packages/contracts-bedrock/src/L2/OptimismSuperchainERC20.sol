@@ -59,8 +59,8 @@ contract OptimismSuperchainERC20 is SuperchainERC20, Initializable, ERC165 {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.6
-    string public constant override version = "1.0.0-beta.6";
+    /// @custom:semver 1.0.0-beta.8
+    string public constant override version = "1.0.0-beta.8";
 
     /// @notice Constructs the OptimismSuperchainERC20 contract.
     constructor() {
@@ -140,5 +140,10 @@ contract OptimismSuperchainERC20 is SuperchainERC20, Initializable, ERC165 {
     /// @return Whether or not the interface is supported by this contract.
     function supportsInterface(bytes4 _interfaceId) public view virtual override returns (bool) {
         return _interfaceId == type(IOptimismSuperchainERC20).interfaceId || super.supportsInterface(_interfaceId);
+    }
+
+    /// @notice Sets Permit2 contract's allowance at infinity.
+    function _givePermit2InfiniteAllowance() internal view virtual override returns (bool) {
+        return true;
     }
 }

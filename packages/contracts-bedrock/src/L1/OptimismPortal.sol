@@ -14,7 +14,19 @@ import { Hashing } from "src/libraries/Hashing.sol";
 import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
-import "src/libraries/PortalErrors.sol";
+import {
+    BadTarget,
+    LargeCalldata,
+    SmallGasLimit,
+    TransferFailed,
+    OnlyCustomGasToken,
+    NoValue,
+    Unauthorized,
+    CallPaused,
+    GasEstimation,
+    NonReentrant,
+    Unproven
+} from "src/libraries/PortalErrors.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -134,9 +146,9 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.8.1-beta.3
+    /// @custom:semver 2.8.1-beta.4
     function version() public pure virtual returns (string memory) {
-        return "2.8.1-beta.3";
+        return "2.8.1-beta.4";
     }
 
     /// @notice Constructs the OptimismPortal contract.

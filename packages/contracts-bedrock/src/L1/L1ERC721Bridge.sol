@@ -28,8 +28,8 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
     ISuperchainConfig public superchainConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.1.1-beta.4
-    string public constant version = "2.1.1-beta.4";
+    /// @custom:semver 2.2.0-beta.1
+    string public constant version = "2.2.0-beta.1";
 
     /// @notice Constructs the L1ERC721Bridge contract.
     constructor() ERC721Bridge() {
@@ -107,8 +107,8 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
         require(_remoteToken != address(0), "L1ERC721Bridge: remote token cannot be address(0)");
 
         // Construct calldata for _l2Token.finalizeBridgeERC721(_to, _tokenId)
-        bytes memory message = abi.encodeWithSelector(
-            IL2ERC721Bridge.finalizeBridgeERC721.selector, _remoteToken, _localToken, _from, _to, _tokenId, _extraData
+        bytes memory message = abi.encodeCall(
+            IL2ERC721Bridge.finalizeBridgeERC721, (_remoteToken, _localToken, _from, _to, _tokenId, _extraData)
         );
 
         // Lock token into bridge

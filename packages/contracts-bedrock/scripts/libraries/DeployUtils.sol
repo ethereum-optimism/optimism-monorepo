@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
 // Scripts
 import { Vm } from "forge-std/Vm.sol";
@@ -103,6 +103,11 @@ library DeployUtils {
         require(preComputedAddress.code.length == 0, "DeployUtils: contract already deployed");
         assembly {
             addr_ := create2(0, add(initCode, 0x20), mload(initCode), _salt)
+            if iszero(addr_) {
+                let size := returndatasize()
+                returndatacopy(0, 0, size)
+                revert(0, size)
+            }
         }
         assertValidContractAddress(addr_);
     }
@@ -215,6 +220,10 @@ library DeployUtils {
     /// @notice Asserts that the given address is a valid contract address.
     /// @param _who Address to check.
     function assertValidContractAddress(address _who) internal view {
+        // Foundry will set returned address to address(1) whenever a contract creation fails
+        // inside of a test. If this is the case then let Foundry handle the error itself and don't
+        // trigger a revert (which would probably break a test).
+        if (_who == address(1)) return;
         require(_who != address(0), "DeployUtils: zero address");
         require(_who.code.length > 0, string.concat("DeployUtils: no code at ", LibString.toHexStringChecksummed(_who)));
     }

@@ -232,7 +232,7 @@ func main() {
 	// Parse the command-line arguments
 	flag.Parse()
 
-	l2RPC, err := client.NewRPC(context.Background(), logger, rpcURL, client.WithDialBackoff(10))
+	l2RPC, err := client.NewRPC(context.Background(), logger, rpcURL, client.WithDialAttempts(10))
 	if err != nil {
 		log.Crit("Error creating RPC", "err", err)
 	}

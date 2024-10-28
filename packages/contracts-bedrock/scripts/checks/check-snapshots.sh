@@ -3,7 +3,7 @@ set -euo pipefail
 
 # Check for the --no-build flag
 # Generate snapshots
-if [ "$1" == "--no-build" ]; then
+if [ "${1:-}" == "--no-build" ]; then
     just snapshots-no-build
 else
     just snapshots

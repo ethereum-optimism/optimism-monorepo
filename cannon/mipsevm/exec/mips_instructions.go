@@ -2,13 +2,11 @@ package exec
 
 import (
 	"fmt"
+	"math/bits"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
-
-	// TODO(#12205): MIPS64 port. Replace with a custom library
-	u128 "lukechampine.com/uint128"
 )
 
 const (
@@ -16,6 +14,11 @@ const (
 	OpStoreConditional   = 0x38
 	OpLoadLinked64       = 0x34
 	OpStoreConditional64 = 0x3c
+	OpLoadDoubleLeft     = 0x1A
+	OpLoadDoubleRight    = 0x1B
+
+	// Return address register
+	RegRA = 31
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
@@ -31,7 +34,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 	if opcode == 2 || opcode == 3 {
 		linkReg := Word(0)
 		if opcode == 3 {
-			linkReg = 31
+			linkReg = RegRA
 		}
 		// Take the top bits of the next PC (its 256 MB region), and concatenate with the 26-bit offset
 		target := (cpu.NextPC & SignExtend(0xF0000000, 32)) | Word((insn&0x03FFFFFF)<<2)
@@ -77,7 +80,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 	}
 
 	if (opcode >= 4 && opcode < 8) || opcode == 1 {
-		err = HandleBranch(cpu, registers, opcode, insn, rtReg, rs)
+		err = HandleBranch(cpu, registers, opcode, insn, rtReg, rs, stackTracker)
 		return
 	}
 
@@ -85,7 +88,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 	// memory fetch (all I-type)
 	// we do the load for stores also
 	mem := Word(0)
-	if opcode >= 0x20 {
+	if opcode >= 0x20 || opcode == OpLoadDoubleLeft || opcode == OpLoadDoubleRight {
 		// M[R[rs]+SignExtImm]
 		rs += SignExtendImmediate(insn)
 		addr := rs & arch.AddressMask
@@ -311,10 +314,10 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x3C: // dsll32
 			assertMips64(insn)
 			return rt << (((insn >> 6) & 0x1f) + 32)
-		case 0x3E: // dsll32
+		case 0x3E: // dsrl32
 			assertMips64(insn)
 			return rt >> (((insn >> 6) & 0x1f) + 32)
-		case 0x3F: // dsll32
+		case 0x3F: // dsra32
 			assertMips64(insn)
 			return Word(int64(rt) >> (((insn >> 6) & 0x1f) + 32))
 		default:
@@ -340,56 +343,76 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		case 0x0F: // lui
 			return SignExtend(rt<<16, 32)
 		case 0x20: // lb
-			msb := uint32(arch.WordSize - 8) // 24 for 32-bit and 56 for 64-bit
-			return SignExtend((mem>>(msb-uint32(rs&arch.ExtMask)*8))&0xFF, 8)
+			return SelectSubWord(rs, mem, 1, true)
 		case 0x21: // lh
-			msb := uint32(arch.WordSize - 16) // 16 for 32-bit and 48 for 64-bit
-			mask := Word(arch.ExtMask - 1)
-			return SignExtend((mem>>(msb-uint32(rs&mask)*8))&0xFFFF, 16)
+			return SelectSubWord(rs, mem, 2, true)
 		case 0x22: // lwl
-			val := mem << ((rs & 3) * 8)
-			mask := Word(uint32(0xFFFFFFFF) << ((rs & 3) * 8))
-			return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+			if arch.IsMips32 {
+				val := mem << ((rs & 3) * 8)
+				mask := Word(uint32(0xFFFFFFFF) << ((rs & 3) * 8))
+				return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+			} else {
+				// similar to the above mips32 implementation but loads are constrained to the nearest 4-byte memory word
+				w := uint32(SelectSubWord(rs, mem, 4, false))
+				val := w << ((rs & 3) * 8)
+				mask := Word(uint32(0xFFFFFFFF) << ((rs & 3) * 8))
+				return SignExtend(((rt & ^mask)|Word(val))&0xFFFFFFFF, 32)
+			}
 		case 0x23: // lw
-			// TODO(#12205): port to MIPS64
-			return mem
-			//return SignExtend((mem>>(32-((rs&0x4)<<3)))&0xFFFFFFFF, 32)
+			return SelectSubWord(rs, mem, 4, true)
 		case 0x24: // lbu
-			msb := uint32(arch.WordSize - 8) // 24 for 32-bit and 56 for 64-bit
-			return (mem >> (msb - uint32(rs&arch.ExtMask)*8)) & 0xFF
+			return SelectSubWord(rs, mem, 1, false)
 		case 0x25: //  lhu
-			msb := uint32(arch.WordSize - 16) // 16 for 32-bit and 48 for 64-bit
-			mask := Word(arch.ExtMask - 1)
-			return (mem >> (msb - uint32(rs&mask)*8)) & 0xFFFF
+			return SelectSubWord(rs, mem, 2, false)
 		case 0x26: //  lwr
-			val := mem >> (24 - (rs&3)*8)
-			mask := Word(uint32(0xFFFFFFFF) >> (24 - (rs&3)*8))
-			return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+			if arch.IsMips32 {
+				val := mem >> (24 - (rs&3)*8)
+				mask := Word(uint32(0xFFFFFFFF) >> (24 - (rs&3)*8))
+				return SignExtend(((rt & ^mask)|val)&0xFFFFFFFF, 32)
+			} else {
+				// similar to the above mips32 implementation but constrained to the nearest 4-byte memory word
+				w := uint32(SelectSubWord(rs, mem, 4, false))
+				val := w >> (24 - (rs&3)*8)
+				mask := uint32(0xFFFFFFFF) >> (24 - (rs&3)*8)
+				lwrResult := ((uint32(rt) & ^mask) | val) & 0xFFFFFFFF
+				if rs&3 == 3 { // loaded bit 31
+					return SignExtend(Word(lwrResult), 32)
+				} else {
+					// NOTE: cannon64 implementation specific: We leave the upper word untouched
+					rtMask := uint64(0xFF_FF_FF_FF_00_00_00_00)
+					return (rt & Word(rtMask)) | Word(lwrResult)
+				}
+			}
 		case 0x28: //  sb
-			msb := uint32(arch.WordSize - 8) // 24 for 32-bit and 56 for 64-bit
-			val := (rt & 0xFF) << (msb - uint32(rs&arch.ExtMask)*8)
-			mask := ^Word(0) ^ Word(0xFF<<(msb-uint32(rs&arch.ExtMask)*8))
-			return (mem & mask) | val
+			return UpdateSubWord(rs, mem, 1, rt)
 		case 0x29: //  sh
-			msb := uint32(arch.WordSize - 16) // 16 for 32-bit and 48 for 64-bit
-			rsMask := Word(arch.ExtMask - 1)  // 2 for 32-bit and 6 for 64-bit
-			sl := msb - uint32(rs&rsMask)*8
-			val := (rt & 0xFFFF) << sl
-			mask := ^Word(0) ^ Word(0xFFFF<<sl)
-			return (mem & mask) | val
+			return UpdateSubWord(rs, mem, 2, rt)
 		case 0x2a: //  swl
-			// TODO(#12205): port to MIPS64
-			val := rt >> ((rs & 3) * 8)
-			mask := uint32(0xFFFFFFFF) >> ((rs & 3) * 8)
-			return (mem & Word(^mask)) | val
+			if arch.IsMips32 {
+				val := rt >> ((rs & 3) * 8)
+				mask := uint32(0xFFFFFFFF) >> ((rs & 3) * 8)
+				return (mem & Word(^mask)) | val
+			} else {
+				sr := (rs & 3) << 3
+				val := ((rt & 0xFFFFFFFF) >> sr) << (32 - ((rs & 0x4) << 3))
+				mask := (uint64(0xFFFFFFFF) >> sr) << (32 - ((rs & 0x4) << 3))
+				return (mem & Word(^mask)) | val
+			}
 		case 0x2b: //  sw
-			// TODO(#12205): port to MIPS64
-			return rt
+			return UpdateSubWord(rs, mem, 4, rt)
 		case 0x2e: //  swr
-			// TODO(#12205): port to MIPS64
-			val := rt << (24 - (rs&3)*8)
-			mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
-			return (mem & Word(^mask)) | val
+			if arch.IsMips32 {
+				val := rt << (24 - (rs&3)*8)
+				mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
+				return (mem & Word(^mask)) | val
+			} else {
+				// similar to the above mips32 implementation but constrained to the nearest 4-byte memory word
+				w := uint32(SelectSubWord(rs, mem, 4, false))
+				val := rt << (24 - (rs&3)*8)
+				mask := uint32(0xFFFFFFFF) << (24 - (rs&3)*8)
+				swrResult := (w & ^mask) | uint32(val)
+				return UpdateSubWord(rs, mem, 4, Word(swrResult))
+			}
 
 		// MIPS64
 		case 0x1A: // ldl
@@ -424,10 +447,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			return mem
 		case 0x3F: // sd
 			assertMips64(insn)
-			sl := (rs & 0x7) << 3
-			val := rt << sl
-			mask := ^Word(0) << sl
-			return (mem & ^mask) | val
+			return rt
 		default:
 			panic("invalid instruction")
 		}
@@ -446,12 +466,13 @@ func SignExtend(dat Word, idx Word) Word {
 	}
 }
 
-func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, insn uint32, rtReg Word, rs Word) error {
+func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, insn uint32, rtReg Word, rs Word, stackTracker StackTracker) error {
 	if cpu.NextPC != cpu.PC+4 {
 		panic("branch in delay slot")
 	}
 
 	shouldBranch := false
+	linked := false
 	if opcode == 4 || opcode == 5 { // beq/bne
 		rt := registers[rtReg]
 		shouldBranch = (rs == rt && opcode == 4) || (rs != rt && opcode == 5)
@@ -463,10 +484,15 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 		// regimm
 		rtv := (insn >> 16) & 0x1F
 		if rtv == 0 { // bltz
-			shouldBranch = int32(rs) < 0
+			shouldBranch = arch.SignedInteger(rs) < 0
 		}
 		if rtv == 1 { // bgez
-			shouldBranch = int32(rs) >= 0
+			shouldBranch = arch.SignedInteger(rs) >= 0
+		}
+		if rtv == 0x11 { // bgezal (i.e. bal mnemonic)
+			shouldBranch = arch.SignedInteger(rs) >= 0
+			registers[RegRA] = cpu.PC + 8 // always set regardless of branch taken
+			linked = true
 		}
 	}
 
@@ -474,12 +500,16 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 	cpu.PC = cpu.NextPC // execute the delay slot first
 	if shouldBranch {
 		cpu.NextPC = prevPC + 4 + (SignExtend(Word(insn&0xFFFF), 16) << 2) // then continue with the instruction the branch jumps to.
+		if linked {
+			stackTracker.PushStack(prevPC, cpu.NextPC)
+		}
 	} else {
 		cpu.NextPC = cpu.NextPC + 4 // branch not taken
 	}
 	return nil
 }
 
+// HandleHiLo handles instructions that modify HI and LO registers. It also additionally handles doubleword variable shift operations
 func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Word, rt Word, storeReg Word) error {
 	val := Word(0)
 	switch fun {
@@ -500,9 +530,15 @@ func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Wor
 		cpu.HI = SignExtend(Word(acc>>32), 32)
 		cpu.LO = SignExtend(Word(uint32(acc)), 32)
 	case 0x1a: // div
+		if rt == 0 {
+			panic("instruction divide by zero")
+		}
 		cpu.HI = SignExtend(Word(int32(rs)%int32(rt)), 32)
 		cpu.LO = SignExtend(Word(int32(rs)/int32(rt)), 32)
 	case 0x1b: // divu
+		if rt == 0 {
+			panic("instruction divide by zero")
+		}
 		cpu.HI = SignExtend(Word(uint32(rs)%uint32(rt)), 32)
 		cpu.LO = SignExtend(Word(uint32(rs)/uint32(rt)), 32)
 	case 0x14: // dsllv
@@ -515,22 +551,44 @@ func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Wor
 		assertMips64Fun(fun)
 		val = Word(int64(rt) >> (rs & 0x3F))
 	case 0x1c: // dmult
-		// TODO(#12205): port to MIPS64. Is signed multiply needed for dmult
 		assertMips64Fun(fun)
-		acc := u128.From64(uint64(rs)).Mul(u128.From64(uint64(rt)))
-		cpu.HI = Word(acc.Hi)
-		cpu.LO = Word(acc.Lo)
+		a := int64(rs)
+		b := int64(rt)
+		negative := (a < 0) != (b < 0) // set if operands have different signs
+
+		// Handle special case for most negative value to avoid overflow in negation
+		absA := uint64(abs64(a))
+		absB := uint64(abs64(b))
+
+		hi, lo := bits.Mul64(absA, absB)
+		if negative {
+			// Two's complement negation: flip all bits and add 1
+			hi = ^hi
+			lo = ^lo
+			if lo == 0xFFFFFFFFFFFFFFFF {
+				hi++
+			}
+			lo++
+		}
+		cpu.HI = Word(hi)
+		cpu.LO = Word(lo)
 	case 0x1d: // dmultu
 		assertMips64Fun(fun)
-		acc := u128.From64(uint64(rs)).Mul(u128.From64(uint64(rt)))
-		cpu.HI = Word(acc.Hi)
-		cpu.LO = Word(acc.Lo)
+		hi, lo := bits.Mul64(uint64(rs), uint64(rt))
+		cpu.HI = Word(hi)
+		cpu.LO = Word(lo)
 	case 0x1e: // ddiv
 		assertMips64Fun(fun)
+		if rt == 0 {
+			panic("instruction divide by zero")
+		}
 		cpu.HI = Word(int64(rs) % int64(rt))
 		cpu.LO = Word(int64(rs) / int64(rt))
 	case 0x1f: // ddivu
 		assertMips64Fun(fun)
+		if rt == 0 {
+			panic("instruction divide by zero")
+		}
 		cpu.HI = rs % rt
 		cpu.LO = rs / rt
 	}
@@ -570,46 +628,65 @@ func HandleRd(cpu *mipsevm.CpuScalars, registers *[32]Word, storeReg Word, val W
 	return nil
 }
 
-func LoadSubWord(memory *memory.Memory, addr Word, byteLength Word, signExtend bool, memoryTracker MemTracker) Word {
+// LoadSubWord loads a subword of byteLength size from memory based on the low-order bits of vaddr
+func LoadSubWord(memory *memory.Memory, vaddr Word, byteLength Word, signExtend bool, memoryTracker MemTracker) Word {
 	// Pull data from memory
-	effAddr := (addr) & arch.AddressMask
+	effAddr := (vaddr) & arch.AddressMask
 	memoryTracker.TrackMemAccess(effAddr)
 	mem := memory.GetWord(effAddr)
 
-	// Extract a sub-word based on the low-order bits in addr
-	dataMask, bitOffset, bitLength := calculateSubWordMaskAndOffset(addr, byteLength)
-	retVal := (mem >> bitOffset) & dataMask
-	if signExtend {
-		retVal = SignExtend(retVal, bitLength)
-	}
-
-	return retVal
+	return SelectSubWord(vaddr, mem, byteLength, signExtend)
 }
 
-func StoreSubWord(memory *memory.Memory, addr Word, byteLength Word, value Word, memoryTracker MemTracker) {
+// StoreSubWord stores a [Word] that has been updated by the specified value at bit positions determined by the vaddr
+func StoreSubWord(memory *memory.Memory, vaddr Word, byteLength Word, value Word, memoryTracker MemTracker) {
 	// Pull data from memory
-	effAddr := (addr) & arch.AddressMask
+	effAddr := (vaddr) & arch.AddressMask
 	memoryTracker.TrackMemAccess(effAddr)
 	mem := memory.GetWord(effAddr)
 
 	// Modify isolated sub-word within mem
-	dataMask, bitOffset, _ := calculateSubWordMaskAndOffset(addr, byteLength)
-	subWordValue := dataMask & value
-	memUpdateMask := dataMask << bitOffset
-	newMemVal := subWordValue<<bitOffset | (^memUpdateMask)&mem
-
+	newMemVal := UpdateSubWord(vaddr, mem, byteLength, value)
 	memory.SetWord(effAddr, newMemVal)
 }
 
-func calculateSubWordMaskAndOffset(addr Word, byteLength Word) (dataMask, bitOffset, bitLength Word) {
+// SelectSubWord selects a subword of byteLength size contained in memWord based on the low-order bits of vaddr
+// This is the nearest subword that is naturally aligned by the specified byteLength
+func SelectSubWord(vaddr Word, memWord Word, byteLength Word, signExtend bool) Word {
+	// Extract a sub-word based on the low-order bits in vaddr
+	dataMask, bitOffset, bitLength := calculateSubWordMaskAndOffset(vaddr, byteLength)
+	retVal := (memWord >> bitOffset) & dataMask
+	if signExtend {
+		retVal = SignExtend(retVal, bitLength)
+	}
+	return retVal
+}
+
+// UpdateSubWord returns a [Word] that has been updated by the specified value at bit positions determined by the vaddr
+func UpdateSubWord(vaddr Word, memWord Word, byteLength Word, value Word) Word {
+	dataMask, bitOffset, _ := calculateSubWordMaskAndOffset(vaddr, byteLength)
+	subWordValue := dataMask & value
+	memUpdateMask := dataMask << bitOffset
+	return subWordValue<<bitOffset | (^memUpdateMask)&memWord
+}
+
+func calculateSubWordMaskAndOffset(vaddr Word, byteLength Word) (dataMask, bitOffset, bitLength Word) {
 	bitLength = byteLength << 3
 	dataMask = ^Word(0) >> (arch.WordSize - bitLength)
 
-	// Figure out sub-word index based on the low-order bits in addr
-	byteIndexMask := addr & arch.ExtMask & ^(byteLength - 1)
+	// Figure out sub-word index based on the low-order bits in vaddr
+	byteIndexMask := vaddr & arch.ExtMask & ^(byteLength - 1)
 	maxByteShift := arch.WordSizeBytes - byteLength
-	byteIndex := addr & byteIndexMask
+	byteIndex := vaddr & byteIndexMask
 	bitOffset = (maxByteShift - byteIndex) << 3
 
 	return dataMask, bitOffset, bitLength
+}
+
+// abs64 returns the absolute value
+func abs64(x int64) int64 {
+	if x < 0 {
+		return -x
+	}
+	return x
 }

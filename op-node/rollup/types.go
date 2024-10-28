@@ -2,8 +2,10 @@ package rollup
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"math/big"
 	"time"
 
@@ -647,6 +649,15 @@ func (c *Config) LogDescription(log log.Logger, l2Chains map[string]string) {
 		"interop_time", fmtForkTimeOrUnset(c.InteropTime),
 		"alt_da", c.AltDAConfig != nil,
 	)
+}
+
+func (c *Config) ParseRollupConfig(in io.Reader) error {
+	dec := json.NewDecoder(in)
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(c); err != nil {
+		return fmt.Errorf("failed to decode rollup config: %w", err)
+	}
+	return nil
 }
 
 func fmtForkTimeOrUnset(v *uint64) string {

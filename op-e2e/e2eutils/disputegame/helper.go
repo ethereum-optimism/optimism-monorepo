@@ -291,7 +291,7 @@ func (h *FactoryHelper) WaitForBlock(l2Node string, l2BlockNumber uint64, cfg *G
 
 	l2Client := h.System.NodeClient(l2Node)
 	if cfg.allowUnsafe {
-		_, err := geth.WaitForBlock(new(big.Int).SetUint64(l2BlockNumber), l2Client, 1*time.Minute)
+		_, err := geth.WaitForBlock(new(big.Int).SetUint64(l2BlockNumber), l2Client, geth.WithAbsoluteTimeout(time.Minute))
 		h.Require.NoErrorf(err, "Block number %v did not become unsafe", l2BlockNumber)
 	} else {
 		_, err := geth.WaitForBlockToBeSafe(new(big.Int).SetUint64(l2BlockNumber), l2Client, 1*time.Minute)

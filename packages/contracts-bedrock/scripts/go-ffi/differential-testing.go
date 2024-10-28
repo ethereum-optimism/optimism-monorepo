@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/crossdomain"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -369,7 +370,7 @@ func DiffTestUtils() {
 		checkErr(err, "Error decoding addr")
 		insn, err := strconv.ParseUint(args[2], 10, 32)
 		checkErr(err, "Error decoding insn")
-		mem.SetUint32(uint32(pc), uint32(insn))
+		mem.SetWord(arch.Word(pc), arch.Word(insn))
 
 		var insnProof, memProof [896]byte
 		if len(args) >= 5 {
@@ -377,18 +378,18 @@ func DiffTestUtils() {
 			checkErr(err, "Error decoding memAddr")
 			memValue, err := strconv.ParseUint(args[4], 10, 32)
 			checkErr(err, "Error decoding memValue")
-			mem.SetUint32(uint32(memAddr), uint32(memValue))
-			memProof = mem.MerkleProof(uint32(memAddr))
+			mem.SetWord(arch.Word(memAddr), arch.Word(memValue))
+			memProof = mem.MerkleProof(arch.Word(memAddr))
 		}
 		if len(args) == 7 {
 			memAddr, err := strconv.ParseUint(args[5], 10, 32)
 			checkErr(err, "Error decoding memAddr")
 			memValue, err := strconv.ParseUint(args[6], 10, 32)
 			checkErr(err, "Error decoding memValue")
-			mem.SetUint32(uint32(memAddr), uint32(memValue))
-			memProof = mem.MerkleProof(uint32(memAddr))
+			mem.SetWord(arch.Word(memAddr), arch.Word(memValue))
+			memProof = mem.MerkleProof(arch.Word(memAddr))
 		}
-		insnProof = mem.MerkleProof(uint32(pc))
+		insnProof = mem.MerkleProof(arch.Word(pc))
 
 		output := struct {
 			MemRoot common.Hash
@@ -411,18 +412,18 @@ func DiffTestUtils() {
 		checkErr(err, "Error decoding addr")
 		insn, err := strconv.ParseUint(args[2], 10, 32)
 		checkErr(err, "Error decoding insn")
-		mem.SetUint32(uint32(pc), uint32(insn))
+		mem.SetWord(arch.Word(pc), arch.Word(insn))
 
 		var memProof [896]byte
 		memAddr, err := strconv.ParseUint(args[3], 10, 32)
 		checkErr(err, "Error decoding memAddr")
 		memValue, err := strconv.ParseUint(args[4], 10, 32)
 		checkErr(err, "Error decoding memValue")
-		mem.SetUint32(uint32(memAddr), uint32(memValue))
+		mem.SetWord(arch.Word(memAddr), arch.Word(memValue))
 
 		memAddr2, err := strconv.ParseUint(args[5], 10, 32)
 		checkErr(err, "Error decoding memAddr")
-		memProof = mem.MerkleProof(uint32(memAddr2))
+		memProof = mem.MerkleProof(arch.Word(memAddr2))
 
 		output := struct {
 			MemRoot common.Hash
@@ -444,18 +445,18 @@ func DiffTestUtils() {
 		checkErr(err, "Error decoding addr")
 		insn, err := strconv.ParseUint(args[2], 10, 32)
 		checkErr(err, "Error decoding insn")
-		mem.SetUint32(uint32(pc), uint32(insn))
+		mem.SetWord(arch.Word(pc), arch.Word(insn))
 
 		var insnProof, memProof [896]byte
 		memAddr, err := strconv.ParseUint(args[3], 10, 32)
 		checkErr(err, "Error decoding memAddr")
 		memValue, err := strconv.ParseUint(args[4], 10, 32)
 		checkErr(err, "Error decoding memValue")
-		mem.SetUint32(uint32(memAddr), uint32(memValue))
+		mem.SetWord(arch.Word(memAddr), arch.Word(memValue))
 
 		// Compute a valid proof for the root, but for the wrong leaves.
-		memProof = mem.MerkleProof(uint32(memAddr + 32))
-		insnProof = mem.MerkleProof(uint32(pc + 32))
+		memProof = mem.MerkleProof(arch.Word(memAddr + 32))
+		insnProof = mem.MerkleProof(arch.Word(pc + 32))
 
 		output := struct {
 			MemRoot common.Hash

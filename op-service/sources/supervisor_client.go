@@ -4,8 +4,6 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
@@ -99,9 +97,9 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
-func (cl *SupervisorClient) DerivedFrom(ctx context.Context, chainID types.ChainID, blockHash common.Hash, blockNumber uint64) (eth.L1BlockRef, error) {
+func (cl *SupervisorClient) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
 	var result eth.L1BlockRef
-	err := cl.client.CallContext(ctx, &result, "supervisor_derivedFrom", chainID, blockHash, blockNumber)
+	err := cl.client.CallContext(ctx, &result, "supervisor_derivedFrom", chainID, derived)
 	return result, err
 }
 

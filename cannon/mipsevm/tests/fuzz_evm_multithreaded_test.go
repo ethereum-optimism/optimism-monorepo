@@ -27,7 +27,7 @@ func FuzzStateSyscallCloneMT(f *testing.F) {
 
 		// Setup
 		state.NextThreadId = nextThreadId
-		state.GetMemory().SetUint32(state.GetPC(), syscallInsn)
+		testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 		state.GetRegistersRef()[2] = arch.SysClone
 		state.GetRegistersRef()[4] = exec.ValidCloneFlags
 		state.GetRegistersRef()[5] = stackPtr

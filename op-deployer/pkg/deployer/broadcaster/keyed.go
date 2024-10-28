@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"math/big"
+	"sync"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -29,6 +30,7 @@ type KeyedBroadcaster struct {
 	mgr    txmgr.TxManager
 	bcasts []script.Broadcast
 	client *ethclient.Client
+	mtx    sync.Mutex
 }
 
 type KeyedBroadcasterOpts struct {
@@ -88,20 +90,32 @@ func NewKeyedBroadcaster(cfg KeyedBroadcasterOpts) (*KeyedBroadcaster, error) {
 }
 
 func (t *KeyedBroadcaster) Hook(bcast script.Broadcast) {
+	t.mtx.Lock()
 	t.bcasts = append(t.bcasts, bcast)
+	t.mtx.Unlock()
 }
 
 func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, error) {
-	results := make([]BroadcastResult, len(t.bcasts))
-	futures := make([]<-chan txmgr.SendResponse, len(t.bcasts))
-	ids := make([]common.Hash, len(t.bcasts))
+	// Empty the internal broadcast buffer as soon as this method is called.
+	t.mtx.Lock()
+	bcasts := t.bcasts
+	t.bcasts = nil
+	t.mtx.Unlock()
+
+	if len(bcasts) == 0 {
+		return nil, nil
+	}
+
+	results := make([]BroadcastResult, len(bcasts))
+	futures := make([]<-chan txmgr.SendResponse, len(bcasts))
+	ids := make([]common.Hash, len(bcasts))
 
 	latestBlock, err := t.client.BlockByNumber(ctx, nil)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get latest block: %w", err)
 	}
 
-	for i, bcast := range t.bcasts {
+	for i, bcast := range bcasts {
 		futures[i], ids[i] = t.broadcast(ctx, bcast, latestBlock.GasLimit())
 		t.lgr.Info(
 			"transaction broadcasted",
@@ -116,7 +130,7 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 		bcastRes := <-fut
 		completed++
 		outRes := BroadcastResult{
-			Broadcast: t.bcasts[i],
+			Broadcast: bcasts[i],
 		}
 
 		if bcastRes.Err == nil {
@@ -131,7 +145,7 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 					"transaction failed on chain",
 					"id", ids[i],
 					"completed", completed,
-					"total", len(t.bcasts),
+					"total", len(bcasts),
 					"hash", outRes.Receipt.TxHash.String(),
 					"nonce", outRes.Broadcast.Nonce,
 				)
@@ -140,7 +154,7 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 					"transaction confirmed",
 					"id", ids[i],
 					"completed", completed,
-					"total", len(t.bcasts),
+					"total", len(bcasts),
 					"hash", outRes.Receipt.TxHash.String(),
 					"nonce", outRes.Broadcast.Nonce,
 					"creation", outRes.Receipt.ContractAddress,
@@ -153,7 +167,7 @@ func (t *KeyedBroadcaster) Broadcast(ctx context.Context) ([]BroadcastResult, er
 				"transaction failed",
 				"id", ids[i],
 				"completed", completed,
-				"total", len(t.bcasts),
+				"total", len(bcasts),
 				"err", bcastRes.Err,
 			)
 		}

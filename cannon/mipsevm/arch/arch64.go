@@ -25,10 +25,12 @@ const (
 	AddressMask = 0xFFFFFFFFFFFFFFF8
 	ExtMask     = 0x7
 
-	HeapStart       = 0x10_00_00_00_00_00_00_00
-	HeapEnd         = 0x60_00_00_00_00_00_00_00
-	ProgramBreak    = 0x40_00_00_00_00_00_00_00
-	HighMemoryStart = 0x7F_FF_FF_FF_D0_00_00_00
+	// Ensure virtual address is limited to 48-bits as many user programs assume such to implement packed pointers
+	// limit          0x00_00_FF_FF_FF_FF_FF_FF
+	HeapStart       = 0x00_00_10_00_00_00_00_00
+	HeapEnd         = 0x00_00_60_00_00_00_00_00
+	ProgramBreak    = 0x00_00_40_00_00_00_00_00
+	HighMemoryStart = 0x00_00_7F_FF_FF_FF_F0_00
 )
 
 // MIPS64 syscall table - https://github.com/torvalds/linux/blob/3efc57369a0ce8f76bf0804f7e673982384e4ac9/arch/mips/kernel/syscalls/syscall_n64.tbl. Generate the syscall numbers using the Makefile in that directory.
@@ -85,6 +87,8 @@ const (
 	SysLlseek        = UndefinedSysNr
 	SysMinCore       = 5026
 	SysTgkill        = 5225
+	SysGetRLimit     = 5095
+	SysLseek         = 5008
 	// Profiling-related syscalls
 	SysSetITimer    = 5036
 	SysTimerCreate  = 5216

@@ -17,7 +17,7 @@ func FuzzStateSyscallCloneST(f *testing.F) {
 		goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(seed))
 		state := goVm.GetState()
 		state.GetRegistersRef()[2] = arch.SysClone
-		state.GetMemory().SetUint32(state.GetPC(), syscallInsn)
+		testutil.StoreInstruction(state.GetMemory(), state.GetPC(), syscallInsn)
 		step := state.GetStep()
 
 		expected := testutil.NewExpectedState(state)

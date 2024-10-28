@@ -1,6 +1,12 @@
 package testutil
 
-import "encoding/binary"
+import (
+	"encoding/binary"
+	"fmt"
+
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
+)
 
 func Uint32ToBytes(val uint32) []byte {
 	data := make([]byte, 4)
@@ -15,3 +21,15 @@ func Uint64ToBytes(val uint64) []byte {
 
 	return data
 }
+
+// StoreInstruction writes a 4-byte instruction to memory
+func StoreInstruction(mem *memory.Memory, pc Word, insn uint32) {
+	if pc&0x3 != 0 {
+		panic(fmt.Errorf("unaligned memory access: %x", pc))
+	}
+	exec.StoreSubWord(mem, pc, 4, Word(insn), new(noopMemTracker))
+}
+
+type noopMemTracker struct{}
+
+func (n *noopMemTracker) TrackMemAccess(Word) {}

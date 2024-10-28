@@ -5,8 +5,8 @@ pragma solidity 0.8.15;
 import { FaultDisputeGame } from "src/dispute/FaultDisputeGame.sol";
 
 // Libraries
-import "src/dispute/lib/Types.sol";
-import "src/dispute/lib/Errors.sol";
+import { GameType, Claim, Duration } from "src/dispute/lib/Types.sol";
+import { BadAuth } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";

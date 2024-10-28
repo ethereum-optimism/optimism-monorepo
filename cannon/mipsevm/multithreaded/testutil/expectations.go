@@ -138,12 +138,6 @@ func (e *ExpectedMTState) ExpectMemoryWordWrite(addr arch.Word, val arch.Word) {
 	e.MemoryRoot = e.expectedMemory.MerkleRoot()
 }
 
-func (e *ExpectedMTState) ExpectMemoryWriteMultiple(addr arch.Word, val uint32, addr2 arch.Word, val2 uint32) {
-	e.expectedMemory.SetUint32(addr, val)
-	e.expectedMemory.SetUint32(addr2, val2)
-	e.MemoryRoot = e.expectedMemory.MerkleRoot()
-}
-
 func (e *ExpectedMTState) ExpectPreemption(preState *multithreaded.State) {
 	e.ActiveThreadId = FindNextThread(preState).ThreadId
 	e.StepsSinceLastContextSwitch = 0

@@ -374,8 +374,8 @@ contract ArtifactResourceMetering_Test is Test {
                                 // Call the metering code and catch the various
                                 // types of errors.
                                 uint256 gasConsumed = 0;
-                                try meter.use{ gas: 30_000_000 }(requestedGas) returns (uint256 _gasConsumed) {
-                                    gasConsumed = _gasConsumed;
+                                try meter.use{ gas: 30_000_000 }(requestedGas) returns (uint256 gasConsumed_) {
+                                    gasConsumed = gasConsumed_;
                                 } catch (bytes memory err) {
                                     bytes32 hash = keccak256(err);
                                     if (hash == cannotBuyMoreGas) {

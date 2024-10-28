@@ -25,6 +25,7 @@ fi
 
 checksum=$(bash scripts/ops/calculate-checksum.sh)
 
+echoerr "> Checksum: $checksum"
 echoerr "> Checking for existing artifacts..."
 exists=$(curl -s -o /dev/null --fail -LI "https://storage.googleapis.com/$DEPLOY_BUCKET/artifacts-v1-$checksum.tar.gz" || echo "fail")
 

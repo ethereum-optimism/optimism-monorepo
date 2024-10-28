@@ -185,6 +185,7 @@ func initAllocType(root string, allocType AllocType) {
 		}
 		l2Alloc[mode] = allocs
 	}
+	mustL2Allocs(genesis.L2AllocsHolocene)
 	mustL2Allocs(genesis.L2AllocsGranite)
 	mustL2Allocs(genesis.L2AllocsFjord)
 	mustL2Allocs(genesis.L2AllocsEcotone)

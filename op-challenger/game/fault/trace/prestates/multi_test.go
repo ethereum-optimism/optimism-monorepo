@@ -22,7 +22,13 @@ func TestDownloadPrestateHTTP(t *testing.T) {
 	for _, ext := range supportedFileTypes {
 		t.Run(ext, func(t *testing.T) {
 			dir := t.TempDir()
-			server := prestateHTTPServer(ext)
+			mkContent := func(path string) []byte {
+				// Large enough to be bigger than a single write buffer.
+				out := make([]byte, 16192)
+				copy(out, path)
+				return out
+			}
+			server := prestateHTTPServer(ext, mkContent)
 			defer server.Close()
 			hash := common.Hash{0xaa}
 			provider := NewMultiPrestateProvider(parseURL(t, server.URL), dir, &stubStateConverter{hash: hash})
@@ -33,7 +39,7 @@ func TestDownloadPrestateHTTP(t *testing.T) {
 			defer in.Close()
 			content, err := io.ReadAll(in)
 			require.NoError(t, err)
-			require.Equal(t, "/"+hash.Hex()+ext, string(content))
+			require.Equal(t, mkContent("/"+hash.Hex()+ext), content)
 		})
 	}
 }
@@ -65,7 +71,7 @@ func TestCreateDirectory(t *testing.T) {
 		t.Run(ext, func(t *testing.T) {
 			dir := t.TempDir()
 			dir = filepath.Join(dir, "test")
-			server := prestateHTTPServer(ext)
+			server := prestateHTTPServer(ext, func(path string) []byte { return []byte(path) })
 			defer server.Close()
 			hash := common.Hash{0xaa}
 			provider := NewMultiPrestateProvider(parseURL(t, server.URL), dir, &stubStateConverter{hash: hash})
@@ -188,10 +194,10 @@ func parseURL(t *testing.T, str string) *url.URL {
 	return parsed
 }
 
-func prestateHTTPServer(ext string) *httptest.Server {
+func prestateHTTPServer(ext string, content func(path string) []byte) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasSuffix(r.URL.Path, ext) {
-			_, _ = w.Write([]byte(r.URL.Path))
+			_, _ = w.Write(content(r.URL.Path))
 		} else {
 			w.WriteHeader(http.StatusNotFound)
 		}

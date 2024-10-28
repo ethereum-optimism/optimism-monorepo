@@ -1,7 +1,10 @@
 package deployer
 
 import (
+	"fmt"
 	"os"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -9,20 +12,21 @@ import (
 )
 
 const (
-	EnvVarPrefix       = "DEPLOYER"
-	L1RPCURLFlagName   = "l1-rpc-url"
-	L1ChainIDFlagName  = "l1-chain-id"
-	L2ChainIDsFlagName = "l2-chain-ids"
-	WorkdirFlagName    = "workdir"
-	OutdirFlagName     = "outdir"
-	PrivateKeyFlagName = "private-key"
+	EnvVarPrefix               = "DEPLOYER"
+	L1RPCURLFlagName           = "l1-rpc-url"
+	L1ChainIDFlagName          = "l1-chain-id"
+	L2ChainIDsFlagName         = "l2-chain-ids"
+	WorkdirFlagName            = "workdir"
+	OutdirFlagName             = "outdir"
+	PrivateKeyFlagName         = "private-key"
+	DeploymentStrategyFlagName = "deployment-strategy"
 )
 
 var (
 	L1RPCURLFlag = &cli.StringFlag{
 		Name: L1RPCURLFlagName,
-		Usage: "RPC URL for the L1 chain. Can be set to 'genesis' for deployments " +
-			"that will be deployed at the launch of the L1.",
+		Usage: "RPC URL for the L1 chain. Must be set for live chains. " +
+			"Can be blank for chains deploying to local allocs files.",
 		EnvVars: []string{
 			"L1_RPC_URL",
 		},
@@ -52,6 +56,12 @@ var (
 		Usage:   "Private key of the deployer account.",
 		EnvVars: PrefixEnvVar("PRIVATE_KEY"),
 	}
+	DeploymentStrategyFlag = &cli.StringFlag{
+		Name:    DeploymentStrategyFlagName,
+		Usage:   fmt.Sprintf("Deployment strategy to use. Options: %s, %s", state.DeploymentStrategyLive, state.DeploymentStrategyGenesis),
+		EnvVars: PrefixEnvVar("DEPLOYMENT_STRATEGY"),
+		Value:   string(state.DeploymentStrategyLive),
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -60,6 +70,7 @@ var InitFlags = []cli.Flag{
 	L1ChainIDFlag,
 	L2ChainIDsFlag,
 	WorkdirFlag,
+	DeploymentStrategyFlag,
 }
 
 var ApplyFlags = []cli.Flag{

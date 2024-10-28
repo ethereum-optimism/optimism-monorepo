@@ -17,7 +17,12 @@ import { Proxy } from "src/universal/Proxy.sol";
 import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
 import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
 
-contract L2OutputOracle_constructor_Test is CommonTest {
+contract L2OutputOracle_TestBase is CommonTest {
+    function setUp() public override {
+        super.enableLegacyContracts();
+        super.setUp();
+    }
+
     /// @dev Tests that constructor sets the initial values correctly.
     function test_constructor_succeeds() external {
         IL2OutputOracle oracleImpl = IL2OutputOracle(address(new L2OutputOracle()));
@@ -63,7 +68,7 @@ contract L2OutputOracle_constructor_Test is CommonTest {
     }
 }
 
-contract L2OutputOracle_getter_Test is CommonTest {
+contract L2OutputOracle_getter_Test is L2OutputOracle_TestBase {
     bytes32 proposedOutput1 = keccak256(abi.encode(1));
 
     /// @dev Tests that `latestBlockNumber` returns the correct value.
@@ -199,7 +204,7 @@ contract L2OutputOracle_getter_Test is CommonTest {
     }
 }
 
-contract L2OutputOracle_proposeL2Output_Test is CommonTest {
+contract L2OutputOracle_proposeL2Output_Test is L2OutputOracle_TestBase {
     /// @dev Test that `proposeL2Output` succeeds for a valid input
     ///      and when a block hash and number are not specified.
     function test_proposeL2Output_proposeAnotherOutput_succeeds() public {
@@ -291,7 +296,7 @@ contract L2OutputOracle_proposeL2Output_Test is CommonTest {
     }
 }
 
-contract L2OutputOracle_deleteOutputs_Test is CommonTest {
+contract L2OutputOracle_deleteOutputs_Test is L2OutputOracle_TestBase {
     /// @dev Tests that `deleteL2Outputs` succeeds for a single output.
     function test_deleteOutputs_singleOutput_succeeds() external {
         proposeAnotherOutput();
@@ -405,7 +410,7 @@ contract L2OutputOracle_deleteOutputs_Test is CommonTest {
     }
 }
 
-contract L2OutputOracleUpgradeable_Test is CommonTest {
+contract L2OutputOracleUpgradeable_Test is L2OutputOracle_TestBase {
     /// @dev Tests that the proxy can be successfully upgraded.
     function test_upgrading_succeeds() external {
         Proxy proxy = Proxy(deploy.mustGetAddress("L2OutputOracleProxy"));
@@ -417,7 +422,7 @@ contract L2OutputOracleUpgradeable_Test is CommonTest {
         vm.startPrank(EIP1967Helper.getAdmin(address(proxy)));
         // Reviewer note: the NextImpl() still uses reinitializer. If we want to remove that, we'll need to use a
         //   two step upgrade with the Storage lib.
-        proxy.upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(NextImpl.initialize.selector, 2));
+        proxy.upgradeToAndCall(address(nextImpl), abi.encodeCall(NextImpl.initialize, (2)));
         assertEq(proxy.implementation(), address(nextImpl));
 
         // Verify that the NextImpl contract initialized its values according as expected

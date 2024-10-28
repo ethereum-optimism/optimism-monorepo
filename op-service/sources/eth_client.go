@@ -315,6 +315,22 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 	return info, receipts, nil
 }
 
+// ExecutionWitness fetches execution witness data for a block number.
+func (s *EthClient) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
+	var witness *eth.ExecutionWitness
+
+	err := s.client.CallContext(ctx, &witness, "debug_executionWitness", hexutil.EncodeUint64(blockNum), true)
+	if err != nil {
+		return nil, err
+	}
+
+	if witness == nil {
+		return nil, ethereum.NotFound
+	}
+
+	return witness, nil
+}
+
 // GetProof returns an account proof result, with any optional requested storage proofs.
 // The retrieval does sanity-check that storage proofs for the expected keys are present in the response,
 // but does not verify the result. Call accountResult.Verify(stateRoot) to verify the result.
@@ -331,8 +347,8 @@ func (s *EthClient) GetProof(ctx context.Context, address common.Address, storag
 		return nil, fmt.Errorf("missing storage proof data, got %d proof entries but requested %d storage keys", len(getProofResponse.StorageProof), len(storage))
 	}
 	for i, key := range storage {
-		if key != getProofResponse.StorageProof[i].Key {
-			return nil, fmt.Errorf("unexpected storage proof key difference for entry %d: got %s but requested %s", i, getProofResponse.StorageProof[i].Key, key)
+		if key != common.BigToHash(getProofResponse.StorageProof[i].Key.ToInt()) {
+			return nil, fmt.Errorf("unexpected storage proof key difference for entry %d: got %s but requested %s", i, getProofResponse.StorageProof[i].Key.String(), key)
 		}
 	}
 	return getProofResponse, nil

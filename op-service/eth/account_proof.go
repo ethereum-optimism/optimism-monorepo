@@ -13,7 +13,7 @@ import (
 )
 
 type StorageProofEntry struct {
-	Key   common.Hash     `json:"key"`
+	Key   hexutil.Big     `json:"key"`
 	Value hexutil.Big     `json:"value"`
 	Proof []hexutil.Bytes `json:"proof"`
 }
@@ -46,20 +46,20 @@ func (res *AccountResult) Verify(stateRoot common.Hash) error {
 				return fmt.Errorf("failed to load storage proof node %d of storage value %d into mem db: %w", j, i, err)
 			}
 		}
-		path := crypto.Keccak256(entry.Key[:])
+		path := crypto.Keccak256(entry.Key.ToInt().FillBytes(make([]byte, 32)))
 		val, err := trie.VerifyProof(res.StorageHash, path, db)
 		if err != nil {
-			return fmt.Errorf("failed to verify storage value %d with key %s (path %x) in storage trie %s: %w", i, entry.Key, path, res.StorageHash, err)
+			return fmt.Errorf("failed to verify storage value %d with key %s (path %x) in storage trie %s: %w", i, entry.Key.String(), path, res.StorageHash, err)
 		}
 		if val == nil && entry.Value.ToInt().Cmp(common.Big0) == 0 { // empty storage is zero by default
 			continue
 		}
 		comparison, err := rlp.EncodeToBytes(entry.Value.ToInt().Bytes())
 		if err != nil {
-			return fmt.Errorf("failed to encode storage value %d with key %s (path %x) in storage trie %s: %w", i, entry.Key, path, res.StorageHash, err)
+			return fmt.Errorf("failed to encode storage value %d with key %s (path %x) in storage trie %s: %w", i, entry.Key.String(), path, res.StorageHash, err)
 		}
 		if !bytes.Equal(val, comparison) {
-			return fmt.Errorf("value %d in storage proof does not match proven value at key %s (path %x)", i, entry.Key, path)
+			return fmt.Errorf("value %d in storage proof does not match proven value at key %s (path %x)", i, entry.Key.String(), path)
 		}
 	}
 

@@ -130,7 +130,7 @@ func CreateL2(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceM
 	}
 	l2Host := script.NewHost(logger.New("role", "l2", "chain", l2Cfg.L2ChainID), fa, srcFS, l2Context)
 	l2Host.SetEnvVar("OUTPUT_MODE", "none") // we don't use the cheatcode, but capture the state outside of EVM execution
-	l2Host.SetEnvVar("FORK", "granite")     // latest fork
+	l2Host.SetEnvVar("FORK", "holocene")    // latest fork
 	return l2Host
 }
 

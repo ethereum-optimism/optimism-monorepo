@@ -17,6 +17,7 @@ remappings = [
   '@rari-capital/solmate/=lib/solmate',
   '@lib-keccak/=lib/lib-keccak/contracts/lib',
   '@solady/=lib/solady/src',
+  '@solady-v0.0.245/=lib/solady-v0.0.245/src',
   'forge-std/=lib/forge-std/src',
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
@@ -75,7 +76,7 @@ runs = 256
 depth = 32
 
 [profile.ciheavy]
-fuzz = { runs = 10000 }
+fuzz = { runs = 20000 }
 
 [profile.ciheavy.invariant]
 runs = 128
@@ -92,12 +93,6 @@ optimizer = false
 #                         PROFILE: KONTROL                     #
 ################################################################
 # See test/kontrol/README.md for an explanation of how the profiles are configured
-
-[profile.kdeploy]
-src = 'src'
-out = 'kout-deployment'
-test = 'test/kontrol'
-script = 'scripts-kontrol'
 
 [profile.kprove]
 src = 'test/kontrol/proofs'

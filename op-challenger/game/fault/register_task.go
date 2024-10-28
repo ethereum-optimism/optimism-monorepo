@@ -256,7 +256,7 @@ func (e *RegisterTask) Register(
 		}
 		return NewGamePlayer(ctx, systemClock, l1Clock, logger, m, dir, game.Proxy, txSender, contract, syncValidator, validators, creator, l1HeaderSource, selective, claimants)
 	}
-	err := registerOracle(ctx, m, oracles, gameFactory, caller, e.gameType)
+	err := registerOracle(ctx, logger, m, oracles, gameFactory, caller, e.gameType)
 	if err != nil {
 		return err
 	}
@@ -269,10 +269,14 @@ func (e *RegisterTask) Register(
 	return nil
 }
 
-func registerOracle(ctx context.Context, m metrics.Metricer, oracles OracleRegistry, gameFactory *contracts.DisputeGameFactoryContract, caller *batching.MultiCaller, gameType faultTypes.GameType) error {
+func registerOracle(ctx context.Context, logger log.Logger, m metrics.Metricer, oracles OracleRegistry, gameFactory *contracts.DisputeGameFactoryContract, caller *batching.MultiCaller, gameType faultTypes.GameType) error {
 	implAddr, err := gameFactory.GetGameImpl(ctx, gameType)
 	if err != nil {
 		return fmt.Errorf("failed to load implementation for game type %v: %w", gameType, err)
+	}
+	if implAddr == (common.Address{}) {
+		logger.Warn("No game implementation set for game type", "gameType", gameType)
+		return nil
 	}
 	contract, err := contracts.NewFaultDisputeGameContract(ctx, m, implAddr, caller)
 	if err != nil {

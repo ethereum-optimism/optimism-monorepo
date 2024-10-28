@@ -416,7 +416,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 				DerivedFrom: x.DerivedFrom,
 			})
 		}
-		// TODO temporary interop work around
+		// TODO(#12646): temporary interop work-around, assumes Holocene local-safe progression behavior.
 		d.emitter.Emit(InteropPendingSafeChangedEvent{
 			Ref:         x.Ref,
 			DerivedFrom: x.DerivedFrom,

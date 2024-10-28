@@ -14,8 +14,6 @@ import (
 )
 
 type ForecastResolution func(games []*types.EnrichedGameData, ignoredCount, failedCount int)
-type Bonds func(games []*types.EnrichedGameData)
-type Resolutions func(games []*types.EnrichedGameData)
 type Monitor func(games []*types.EnrichedGameData)
 type BlockHashFetcher func(ctx context.Context, number *big.Int) (common.Hash, error)
 type BlockNumberFetcher func(ctx context.Context) (uint64, error)
@@ -38,11 +36,7 @@ type gameMonitor struct {
 	monitorInterval time.Duration
 
 	forecast         ForecastResolution
-	bonds            Bonds
-	resolutions      Resolutions
-	claims           Monitor
-	withdrawals      Monitor
-	l2Challenges     Monitor
+	monitors         []Monitor
 	extract          Extract
 	fetchBlockHash   BlockHashFetcher
 	fetchBlockNumber BlockNumberFetcher
@@ -55,16 +49,11 @@ func newGameMonitor(
 	metrics MonitorMetrics,
 	monitorInterval time.Duration,
 	gameWindow time.Duration,
-	forecast ForecastResolution,
-	bonds Bonds,
-	resolutions Resolutions,
-	claims Monitor,
-	withdrawals Monitor,
-	l2Challenges Monitor,
-	extract Extract,
-	fetchBlockNumber BlockNumberFetcher,
 	fetchBlockHash BlockHashFetcher,
-) *gameMonitor {
+	fetchBlockNumber BlockNumberFetcher,
+	extract Extract,
+	forecast ForecastResolution,
+	monitors ...Monitor) *gameMonitor {
 	return &gameMonitor{
 		logger:           logger,
 		clock:            cl,
@@ -74,11 +63,7 @@ func newGameMonitor(
 		monitorInterval:  monitorInterval,
 		gameWindow:       gameWindow,
 		forecast:         forecast,
-		bonds:            bonds,
-		resolutions:      resolutions,
-		claims:           claims,
-		withdrawals:      withdrawals,
-		l2Challenges:     l2Challenges,
+		monitors:         monitors,
 		extract:          extract,
 		fetchBlockNumber: fetchBlockNumber,
 		fetchBlockHash:   fetchBlockHash,
@@ -101,12 +86,10 @@ func (m *gameMonitor) monitorGames() error {
 	if err != nil {
 		return fmt.Errorf("failed to load games: %w", err)
 	}
-	m.resolutions(enrichedGames)
 	m.forecast(enrichedGames, ignored, failed)
-	m.bonds(enrichedGames)
-	m.claims(enrichedGames)
-	m.withdrawals(enrichedGames)
-	m.l2Challenges(enrichedGames)
+	for _, monitor := range m.monitors {
+		monitor(enrichedGames)
+	}
 	timeTaken := m.clock.Since(start)
 	m.metrics.RecordMonitorDuration(timeTaken)
 	m.logger.Info("Completed monitoring update", "blockNumber", blockNumber, "blockHash", blockHash, "duration", timeTaken, "games", len(enrichedGames), "ignored", ignored, "failed", failed)

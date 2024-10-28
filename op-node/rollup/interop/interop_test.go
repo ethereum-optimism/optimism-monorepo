@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
@@ -93,7 +94,7 @@ func TestInteropDeriver(t *testing.T) {
 		derivedFrom := testutils.RandomBlockRef(rng)
 		localSafe := testutils.RandomL2BlockRef(rng)
 		interopBackend.ExpectUpdateLocalSafe(chainID, derivedFrom, localSafe, nil)
-		interopDeriver.OnEvent(engine.LocalSafeUpdateEvent{
+		interopDeriver.OnEvent(engine.InteropPendingSafeChangedEvent{
 			Ref:         localSafe,
 			DerivedFrom: derivedFrom,
 		})
@@ -114,7 +115,11 @@ func TestInteropDeriver(t *testing.T) {
 			Cross: nextCrossSafe.ID(),
 		}
 		interopBackend.ExpectSafeView(chainID, localView, supervisorView, nil)
-		interopBackend.ExpectDerivedFrom(chainID, nextCrossSafe.Hash, nextCrossSafe.Number, derivedFrom, nil)
+		derived := eth.BlockID{
+			Hash:   nextCrossSafe.Hash,
+			Number: nextCrossSafe.Number,
+		}
+		interopBackend.ExpectDerivedFrom(chainID, derived, derivedFrom, nil)
 		l2Source.ExpectL2BlockRefByHash(nextCrossSafe.Hash, nextCrossSafe, nil)
 		emitter.ExpectOnce(engine.PromoteSafeEvent{
 			Ref:         nextCrossSafe,

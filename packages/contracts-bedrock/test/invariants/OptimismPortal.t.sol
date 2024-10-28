@@ -88,6 +88,7 @@ contract OptimismPortal_Invariant_Harness is CommonTest {
     Types.OutputRootProof internal _outputRootProof;
 
     function setUp() public virtual override {
+        super.enableLegacyContracts();
         super.setUp();
 
         _defaultTx = Types.WithdrawalTransaction({

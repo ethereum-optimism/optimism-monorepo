@@ -39,7 +39,6 @@
   "l2GenesisRegolithTimeOffset": "0x0",
   "l2GenesisCanyonTimeOffset": "0x0",
   "l2GenesisDeltaTimeOffset": "0x0",
-  "l2GenesisBlockExtraData": null,
   "proxyAdminOwner": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "finalSystemOwner": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "superchainConfigGuardian": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",

@@ -39,7 +39,7 @@ import { Blueprint } from "src/libraries/Blueprint.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
-import { BaseDeployIO } from "scripts/utils/BaseDeployIO.sol";
+import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -570,9 +570,7 @@ contract DeployImplementations is Script {
             OPContractsManager.InitializerInputs(_blueprints, _setters, _release, true);
 
         vm.startBroadcast(msg.sender);
-        proxy.upgradeToAndCall(
-            address(opcmImpl), abi.encodeWithSelector(opcmImpl.initialize.selector, initializerInputs)
-        );
+        proxy.upgradeToAndCall(address(opcmImpl), abi.encodeCall(opcmImpl.initialize, (initializerInputs)));
 
         proxy.changeAdmin(address(opcmProxyOwner)); // transfer ownership of Proxy contract to the ProxyAdmin contract
         vm.stopBroadcast();
@@ -1146,9 +1144,7 @@ contract DeployImplementationsInterop is DeployImplementations {
             OPContractsManager.InitializerInputs(_blueprints, _setters, _release, true);
 
         vm.startBroadcast(msg.sender);
-        proxy.upgradeToAndCall(
-            address(opcmImpl), abi.encodeWithSelector(opcmImpl.initialize.selector, initializerInputs)
-        );
+        proxy.upgradeToAndCall(address(opcmImpl), abi.encodeCall(opcmImpl.initialize, (initializerInputs)));
 
         proxy.changeAdmin(opcmProxyOwner); // transfer ownership of Proxy contract to the ProxyAdmin contract
         vm.stopBroadcast();

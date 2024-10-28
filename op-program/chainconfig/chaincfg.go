@@ -37,13 +37,10 @@ func rollupConfigByChainID(chainID uint64, customChainFS embed.FS) (*rollup.Conf
 	} else if err != nil {
 		return nil, fmt.Errorf("failed to get rollup config for chain ID %d: %w", chainID, err)
 	}
-	dec := json.NewDecoder(file)
-	dec.DisallowUnknownFields()
+	defer file.Close()
+
 	var customRollupConfig rollup.Config
-	if err := dec.Decode(&customRollupConfig); err != nil {
-		return nil, fmt.Errorf("failed to parse rollup config for chain ID %d: %w", chainID, err)
-	}
-	return &customRollupConfig, nil
+	return &customRollupConfig, customRollupConfig.ParseRollupConfig(file)
 }
 
 func ChainConfigByChainID(chainID uint64) (*params.ChainConfig, error) {

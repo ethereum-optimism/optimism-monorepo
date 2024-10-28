@@ -46,7 +46,7 @@ contract Initializer_Test is Bridge_Initializer {
 
     function setUp() public override {
         super.enableAltDA();
-        // Run the `Bridge_Initializer`'s `setUp()` function.
+        super.enableLegacyContracts();
         super.setUp();
 
         // Initialize the `contracts` array with the addresses of the contracts to test, the

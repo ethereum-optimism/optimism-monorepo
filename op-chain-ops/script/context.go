@@ -19,6 +19,8 @@ var (
 	ConsoleAddr = common.HexToAddress("0x000000000000000000636F6e736F6c652e6c6f67")
 	// ScriptDeployer is used for temporary scripts address(uint160(uint256(keccak256("op-stack script deployer"))))
 	ScriptDeployer = common.HexToAddress("0x76Ce131128F3616871f8CDA86d18fAB44E4d0D8B")
+	// ForgeDeployer is used by some scripts as a default deployer address, e.g. makeAddr("deployer")
+	ForgeDeployer = common.HexToAddress("0xaE0bDc4eEAC5E950B67C6819B118761CaAF61946")
 )
 
 const (

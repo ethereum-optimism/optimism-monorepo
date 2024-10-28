@@ -61,6 +61,8 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 			dp.DeployConfig.L2GenesisFjordTimeOffset = &genesisBlock
 		case Granite:
 			dp.DeployConfig.L2GenesisGraniteTimeOffset = &genesisBlock
+		case Holocene:
+			dp.DeployConfig.L2GenesisHoloceneTimeOffset = &genesisBlock
 		}
 	})
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -193,7 +195,7 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			l2RPC := env.Engine.RPCClient()
 			l2Client, err := host.NewL2Client(l2RPC, env.log, nil, &host.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
 			require.NoError(t, err, "failed to create L2 client")
-			l2DebugCl := &host.L2Source{L2Client: l2Client, DebugClient: sources.NewDebugClient(l2RPC.CallContext)}
+			l2DebugCl := host.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
 			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv), nil
 		})

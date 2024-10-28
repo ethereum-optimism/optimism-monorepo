@@ -41,7 +41,7 @@ contract TransactorTest is Transactor_Initializer {
     /// @notice Tests CALL, should do a call to target
     function test_call_succeeds() external {
         // Initialize call data
-        bytes memory data = abi.encodeWithSelector(callRecorded.record.selector);
+        bytes memory data = abi.encodeCall(CallRecorder.record, ());
         // Run CALL
         vm.prank(alice);
         vm.expectCall(address(callRecorded), 200_000 wei, data);
@@ -51,7 +51,7 @@ contract TransactorTest is Transactor_Initializer {
     /// @notice It should revert if called by non-owner
     function test_call_unauthorized_reverts() external {
         // Initialize call data
-        bytes memory data = abi.encodeWithSelector(callRecorded.record.selector);
+        bytes memory data = abi.encodeCall(CallRecorder.record, ());
         // Run CALL
         vm.prank(bob);
         vm.expectRevert("UNAUTHORIZED");
@@ -61,7 +61,7 @@ contract TransactorTest is Transactor_Initializer {
     /// @notice Deletate call succeeds.
     function test_delegateCall_succeeds() external {
         // Initialize call data
-        bytes memory data = abi.encodeWithSelector(reverter.doRevert.selector);
+        bytes memory data = abi.encodeCall(Reverter.doRevert, ());
         // Run CALL
         vm.prank(alice);
         vm.expectCall(address(reverter), data);
@@ -71,7 +71,7 @@ contract TransactorTest is Transactor_Initializer {
     /// @notice It should revert if called by non-owner
     function test_delegateCall_unauthorized_reverts() external {
         // Initialize call data
-        bytes memory data = abi.encodeWithSelector(reverter.doRevert.selector);
+        bytes memory data = abi.encodeCall(Reverter.doRevert, ());
         // Run CALL
         vm.prank(bob);
         vm.expectRevert("UNAUTHORIZED");

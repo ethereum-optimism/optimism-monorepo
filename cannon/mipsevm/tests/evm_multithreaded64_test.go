@@ -56,7 +56,7 @@ func TestEVM_MT64_LL(t *testing.T) {
 				step := state.GetStep()
 
 				// Set up state
-				state.GetMemory().SetUint32(state.GetPC(), insn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 				state.GetMemory().SetWord(effAddr, c.memVal)
 				state.GetRegistersRef()[baseReg] = c.base
 				if withExistingReservation {
@@ -158,7 +158,7 @@ func TestEVM_MT64_SC(t *testing.T) {
 
 				// Setup state
 				state.GetCurrentThread().ThreadId = c.threadId
-				state.GetMemory().SetUint32(state.GetPC(), insn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 				state.GetRegistersRef()[baseReg] = c.base
 				state.GetRegistersRef()[rtReg] = c.value
 				state.LLReservationStatus = v.llReservationStatus
@@ -232,7 +232,7 @@ func TestEVM_MT64_LLD(t *testing.T) {
 				step := state.GetStep()
 
 				// Set up state
-				state.GetMemory().SetUint32(state.GetPC(), insn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 				state.GetMemory().SetWord(effAddr, c.memVal)
 				state.GetRegistersRef()[baseReg] = c.base
 				if withExistingReservation {
@@ -335,7 +335,7 @@ func TestEVM_MT64_SCD(t *testing.T) {
 
 				// Setup state
 				state.GetCurrentThread().ThreadId = c.threadId
-				state.GetMemory().SetUint32(state.GetPC(), insn)
+				testutil.StoreInstruction(state.GetMemory(), state.GetPC(), insn)
 				state.GetRegistersRef()[baseReg] = c.base
 				state.GetRegistersRef()[rtReg] = value
 				state.LLReservationStatus = v.llReservationStatus

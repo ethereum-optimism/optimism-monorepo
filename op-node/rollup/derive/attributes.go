@@ -149,7 +149,7 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		}
 	}
 
-	return &eth.PayloadAttributes{
+	r := &eth.PayloadAttributes{
 		Timestamp:             hexutil.Uint64(nextL2Time),
 		PrevRandao:            eth.Bytes32(l1Info.MixDigest()),
 		SuggestedFeeRecipient: predeploys.SequencerFeeVaultAddr,
@@ -158,5 +158,11 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		GasLimit:              (*eth.Uint64Quantity)(&sysConfig.GasLimit),
 		Withdrawals:           withdrawals,
 		ParentBeaconBlockRoot: parentBeaconRoot,
-	}, nil
+	}
+	if ba.rollupCfg.IsHolocene(nextL2Time) {
+		r.EIP1559Params = new(eth.Bytes8)
+		*r.EIP1559Params = sysConfig.EIP1559Params
+	}
+
+	return r, nil
 }

@@ -274,6 +274,19 @@ func TestL2Claim(t *testing.T) {
 	})
 }
 
+func TestL2Experimental(t *testing.T) {
+	t.Run("DefaultEmpty", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs())
+		require.Equal(t, cfg.L2ExperimentalURL, "")
+	})
+
+	t.Run("Valid", func(t *testing.T) {
+		expected := "https://example.com:8545"
+		cfg := configForArgs(t, replaceRequiredArg("--l2.experimental", expected))
+		require.EqualValues(t, expected, cfg.L2ExperimentalURL)
+	})
+}
+
 func TestL2BlockNumber(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
 		verifyArgsInvalid(t, "flag l2.blocknumber is required", addRequiredArgsExcept("--l2.blocknumber"))

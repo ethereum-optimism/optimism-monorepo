@@ -88,8 +88,8 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 		chainDBs:              chainsDBs,
 		chainProcessors:       make(map[types.ChainID]*processors.ChainProcessor, len(chains)),
 		chainMetrics:          make(map[types.ChainID]*chainMetrics, len(chains)),
-		crossUnsafeProcessors: make(map[types.ChainID]*cross.Worker),
-		crossSafeProcessors:   make(map[types.ChainID]*cross.Worker),
+		crossUnsafeProcessors: make(map[types.ChainID]*cross.Worker, len(chains)),
+		crossSafeProcessors:   make(map[types.ChainID]*cross.Worker, len(chains)),
 		// For testing we can avoid running the processors.
 		synchronousProcessors: cfg.SynchronousProcessors,
 	}

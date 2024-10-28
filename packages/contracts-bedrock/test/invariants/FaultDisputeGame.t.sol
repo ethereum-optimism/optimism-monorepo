@@ -69,7 +69,7 @@ contract FaultDisputeGame_Solvency_Invariant is FaultDisputeGame_Init {
             assertEq(DEFAULT_SENDER.balance, type(uint96).max - rootBond);
             assertEq(address(actor).balance, actor.totalBonded() + rootBond);
         } else {
-            revert("unreachable");
+            revert("FaultDisputeGame_Solvency_Invariant: unreachable");
         }
 
         assertEq(address(gameProxy).balance, 0);

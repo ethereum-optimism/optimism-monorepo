@@ -28,6 +28,7 @@ func TestCreatedBlocksAreCached(t *testing.T) {
 	require.NotNil(t, engineAPI)
 	genesis := backend.GetHeaderByNumber(0)
 	genesisHash := genesis.Hash()
+	eip1559Params := eth.Bytes8([]byte{0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8})
 	result, err := engineAPI.ForkchoiceUpdatedV3(context.Background(), &eth.ForkchoiceState{
 		HeadBlockHash:      genesisHash,
 		SafeBlockHash:      genesisHash,
@@ -40,6 +41,7 @@ func TestCreatedBlocksAreCached(t *testing.T) {
 		ParentBeaconBlockRoot: &common.Hash{0x22},
 		NoTxPool:              false,
 		GasLimit:              (*eth.Uint64Quantity)(&genesis.GasLimit),
+		EIP1559Params:         &eip1559Params,
 	})
 	require.NoError(t, err)
 	require.EqualValues(t, engine.VALID, result.PayloadStatus.Status)
@@ -81,13 +83,25 @@ func newStubBackend(t *testing.T) *stubCachingBackend {
 }
 
 func createGenesis() *core.Genesis {
+	config := *params.MergedTestChainConfig
+	var zero uint64
+	// activate recent OP-stack forks
+	config.RegolithTime = &zero
+	config.CanyonTime = &zero
+	config.EcotoneTime = &zero
+	config.FjordTime = &zero
+	config.GraniteTime = &zero
+	config.HoloceneTime = &zero
+
 	l2Genesis := &core.Genesis{
-		Config:     params.MergedTestChainConfig, // Arbitrary post-merge config
+		Config:     &config,
 		Difficulty: common.Big0,
 		ParentHash: common.Hash{},
 		BaseFee:    big.NewInt(7),
 		Alloc:      map[common.Address]types.Account{},
+		ExtraData:  []byte{0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8}, // for Holocene eip-1559 params
 	}
+
 	return l2Genesis
 }
 

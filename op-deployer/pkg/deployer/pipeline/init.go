@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	state2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
 
@@ -17,20 +17,12 @@ func IsSupportedStateVersion(version int) bool {
 	return version == 1
 }
 
-func Init(ctx context.Context, env *Env, _ ArtifactsBundle, intent *state2.Intent, st *state2.State) error {
-	lgr := env.Logger.New("stage", "init")
+func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *state.State) error {
+	lgr := env.Logger.New("stage", "init", "strategy", "live")
 	lgr.Info("initializing pipeline")
 
-	// Ensure the state version is supported.
-	if !IsSupportedStateVersion(st.Version) {
-		return fmt.Errorf("unsupported state version: %d", st.Version)
-	}
-
-	if st.Create2Salt == (common.Hash{}) {
-		_, err := rand.Read(st.Create2Salt[:])
-		if err != nil {
-			return fmt.Errorf("failed to generate CREATE2 salt: %w", err)
-		}
+	if err := initCommonChecks(st); err != nil {
+		return err
 	}
 
 	if intent.L1ContractsLocator.IsTag() {
@@ -46,7 +38,7 @@ func Init(ctx context.Context, env *Env, _ ArtifactsBundle, intent *state2.Inten
 
 		// Have to do this weird pointer thing below because the Superchain Registry defines its
 		// own Address type.
-		st.SuperchainDeployment = &state2.SuperchainDeployment{
+		st.SuperchainDeployment = &state.SuperchainDeployment{
 			ProxyAdminAddress:            proxyAdmin,
 			ProtocolVersionsProxyAddress: common.Address(*superCfg.Config.ProtocolVersionsAddr),
 			SuperchainConfigProxyAddress: common.Address(*superCfg.Config.SuperchainConfigAddr),
@@ -56,7 +48,7 @@ func Init(ctx context.Context, env *Env, _ ArtifactsBundle, intent *state2.Inten
 		if err != nil {
 			return fmt.Errorf("error getting OPCM proxy address: %w", err)
 		}
-		st.ImplementationsDeployment = &state2.ImplementationsDeployment{
+		st.ImplementationsDeployment = &state.ImplementationsDeployment{
 			OpcmProxyAddress: opcmProxy,
 		}
 	}
@@ -95,6 +87,38 @@ func Init(ctx context.Context, env *Env, _ ArtifactsBundle, intent *state2.Inten
 	}
 
 	// TODO: validate individual
+
+	return nil
+}
+
+func initCommonChecks(st *state.State) error {
+	// Ensure the state version is supported.
+	if !IsSupportedStateVersion(st.Version) {
+		return fmt.Errorf("unsupported state version: %d", st.Version)
+	}
+
+	if st.Create2Salt == (common.Hash{}) {
+		_, err := rand.Read(st.Create2Salt[:])
+		if err != nil {
+			return fmt.Errorf("failed to generate CREATE2 salt: %w", err)
+		}
+	}
+	return nil
+}
+
+func InitGenesisStrategy(env *Env, intent *state.Intent, st *state.State) error {
+	lgr := env.Logger.New("stage", "init", "strategy", "genesis")
+	lgr.Info("initializing pipeline")
+
+	if err := initCommonChecks(st); err != nil {
+		return err
+	}
+
+	if intent.SuperchainRoles == nil {
+		return fmt.Errorf("superchain roles must be set for genesis strategy")
+	}
+
+	// Mostly a stub for now.
 
 	return nil
 }

@@ -7,28 +7,21 @@ import (
 )
 
 const (
-	ArtifactsURLFlagName     = "artifacts-url"
-	ContractsReleaseFlagName = "contracts-release"
+	ArtifactsLocatorFlagName = "artifacts-locator"
 )
 
 var (
-	ArtifactsURLFlag = &cli.StringFlag{
-		Name:    ArtifactsURLFlagName,
-		Usage:   "URL to the artifacts directory.",
-		EnvVars: deployer.PrefixEnvVar("ARTIFACTS_URL"),
-	}
-	ContractsReleaseFlag = &cli.StringFlag{
-		Name:    ContractsReleaseFlagName,
-		Usage:   "Release of the contracts to deploy.",
-		EnvVars: deployer.PrefixEnvVar("CONTRACTS_RELEASE"),
+	ArtifactsLocatorFlag = &cli.StringFlag{
+		Name:    ArtifactsLocatorFlagName,
+		Usage:   "Locator for artifacts.",
+		EnvVars: deployer.PrefixEnvVar("ARTIFACTS_LOCATOR"),
 	}
 )
 
 var OPCMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
-	ArtifactsURLFlag,
-	ContractsReleaseFlag,
+	ArtifactsLocatorFlag,
 }
 
 var Commands = []*cli.Command{

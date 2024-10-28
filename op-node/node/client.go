@@ -66,7 +66,7 @@ func (cfg *L2EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCf
 	auth := rpc.WithHTTPAuth(gn.NewJWTAuth(cfg.L2EngineJWTSecret))
 	opts := []client.RPCOption{
 		client.WithGethRPCOptions(auth),
-		client.WithDialBackoff(10),
+		client.WithDialAttempts(10),
 	}
 	l2Node, err := client.NewRPC(ctx, log, cfg.L2EngineAddr, opts...)
 	if err != nil {
@@ -140,7 +140,7 @@ func (cfg *L1EndpointConfig) Check() error {
 func (cfg *L1EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (client.RPC, *sources.L1ClientConfig, error) {
 	opts := []client.RPCOption{
 		client.WithHttpPollInterval(cfg.HttpPollInterval),
-		client.WithDialBackoff(10),
+		client.WithDialAttempts(10),
 	}
 	if cfg.RateLimit != 0 {
 		opts = append(opts, client.WithRateLimit(cfg.RateLimit, cfg.BatchSize))

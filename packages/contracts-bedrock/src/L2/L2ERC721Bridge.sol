@@ -26,8 +26,8 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 ///         wait for the one-week challenge period to elapse before their Optimism-native NFT
 ///         can be refunded on L2.
 contract L2ERC721Bridge is ERC721Bridge, ISemver {
-    /// @custom:semver 1.7.1-beta.3
-    string public constant version = "1.7.1-beta.3";
+    /// @custom:semver 1.8.0-beta.2
+    string public constant version = "1.8.0-beta.2";
 
     /// @notice Constructs the L2ERC721Bridge contract.
     constructor() ERC721Bridge() {
@@ -117,8 +117,8 @@ contract L2ERC721Bridge is ERC721Bridge, ISemver {
         // slither-disable-next-line reentrancy-events
         IOptimismMintableERC721(_localToken).burn(_from, _tokenId);
 
-        bytes memory message = abi.encodeWithSelector(
-            IL1ERC721Bridge.finalizeBridgeERC721.selector, remoteToken, _localToken, _from, _to, _tokenId, _extraData
+        bytes memory message = abi.encodeCall(
+            IL1ERC721Bridge.finalizeBridgeERC721, (remoteToken, _localToken, _from, _to, _tokenId, _extraData)
         );
 
         // Send message to L1 bridge

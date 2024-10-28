@@ -6,7 +6,6 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
@@ -41,12 +40,18 @@ func TestInteropVerifier(gt *testing.T) {
 		l1Miner.L1Client(t, sd.RollupCfg), l1Miner.BlobStore(), &sync.Config{},
 		helpers.WithInteropBackend(verMockBackend))
 
+	// Genesis block will be registered as local-safe when we first trigger the derivation pipeline
 	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		require.Equal(t, sd.RollupCfg.Genesis.L1, derivedFrom.ID())
+		require.Equal(t, sd.RollupCfg.Genesis.L2, lastDerived.ID())
 		return nil
 	}
 	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
+		require.Equal(t, sd.RollupCfg.Genesis.L1, derivedFrom.ID())
+		require.Equal(t, sd.RollupCfg.Genesis.L2, lastDerived.ID())
 		return nil
 	}
+
 	seq.ActL2PipelineFull(t)
 	ver.ActL2PipelineFull(t)
 
@@ -99,11 +104,10 @@ func TestInteropVerifier(gt *testing.T) {
 
 	// Sync the L1 block, to verify the L2 block as local-safe.
 	seqMockBackend.UpdateLocalUnsafeFn = nil
+	nextL2 := uint64(0)
 	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
-		if lastDerived.Number == 0 { // genesis comes first
-			return nil
-		}
-		require.Equal(t, uint64(1), lastDerived.Number)
+		require.Equal(t, nextL2, lastDerived.Number)
+		nextL2 += 1
 		return nil
 	}
 	seqMockBackend.SafeViewFn = func(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
@@ -115,6 +119,7 @@ func TestInteropVerifier(gt *testing.T) {
 	seq.ActL1HeadSignal(t)
 	l1Head := seq.SyncStatus().HeadL1
 	seq.ActL2PipelineFull(t)
+	require.Equal(t, uint64(2), nextL2)
 
 	status = seq.SyncStatus()
 	require.Equal(t, uint64(1), status.UnsafeL2.Number)
@@ -131,8 +136,8 @@ func TestInteropVerifier(gt *testing.T) {
 		out.Cross = request.Local
 		return out, nil
 	}
-	seqMockBackend.DerivedFromFn = func(ctx context.Context, chainID types.ChainID, blockHash common.Hash, blockNumber uint64) (eth.L1BlockRef, error) {
-		require.Equal(t, uint64(1), blockNumber)
+	seqMockBackend.DerivedFromFn = func(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
+		require.Equal(t, uint64(1), derived.Number)
 		return l1Head, nil
 	}
 	seqMockBackend.FinalizedFn = func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
@@ -152,11 +157,10 @@ func TestInteropVerifier(gt *testing.T) {
 		require.Equal(t, uint64(1), head.Number)
 		return nil
 	}
+	nextL2 = 0
 	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
-		if lastDerived.Number == 0 { // genesis comes first
-			return nil
-		}
-		require.Equal(t, uint64(1), lastDerived.Number)
+		require.Equal(t, nextL2, lastDerived.Number)
+		nextL2 += 1
 		require.Equal(t, l1Head.ID(), derivedFrom.ID())
 		return nil
 	}
@@ -175,6 +179,7 @@ func TestInteropVerifier(gt *testing.T) {
 	}
 	ver.ActL1HeadSignal(t)
 	ver.ActL2PipelineFull(t)
+	require.Equal(t, uint64(2), nextL2)
 	status = ver.SyncStatus()
 	require.Equal(t, uint64(1), status.UnsafeL2.Number, "synced the block")
 	require.Equal(t, uint64(0), status.CrossUnsafeL2.Number, "not cross-verified yet")
@@ -185,6 +190,10 @@ func TestInteropVerifier(gt *testing.T) {
 	seqMockBackend.UpdateFinalizedL1Fn = func(ctx context.Context, chainID types.ChainID, finalized eth.L1BlockRef) error {
 		require.Equal(t, l1Head, finalized)
 		return nil
+	}
+	// Allow the supervisor to promote the cross-safe L2 block to finalized.
+	seqMockBackend.FinalizedFn = func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+		return seq.SyncStatus().SafeL2.ID(), nil
 	}
 	// signal that L1 finalized; the cross-safe block we have should get finalized too
 	l1Miner.ActL1SafeNext(t)

@@ -1,9 +1,6 @@
 package state
 
 import (
-	"bytes"
-	"compress/gzip"
-	"encoding/json"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/core/types"
@@ -40,6 +37,9 @@ type State struct {
 
 	// Chains contains data about L2 chain deployments.
 	Chains []*ChainState `json:"opChainDeployments"`
+
+	// L1StateDump contains the complete L1 state dump of the deployment.
+	L1StateDump *GzipData[foundry.ForgeAllocs] `json:"l1StateDump"`
 }
 
 func (s *State) WriteToFile(path string) error {
@@ -56,27 +56,25 @@ func (s *State) Chain(id common.Hash) (*ChainState, error) {
 }
 
 type SuperchainDeployment struct {
-	ProxyAdminAddress            common.Address       `json:"proxyAdminAddress"`
-	SuperchainConfigProxyAddress common.Address       `json:"superchainConfigProxyAddress"`
-	SuperchainConfigImplAddress  common.Address       `json:"superchainConfigImplAddress"`
-	ProtocolVersionsProxyAddress common.Address       `json:"protocolVersionsProxyAddress"`
-	ProtocolVersionsImplAddress  common.Address       `json:"protocolVersionsImplAddress"`
-	StateDump                    *foundry.ForgeAllocs `json:"-"`
+	ProxyAdminAddress            common.Address `json:"proxyAdminAddress"`
+	SuperchainConfigProxyAddress common.Address `json:"superchainConfigProxyAddress"`
+	SuperchainConfigImplAddress  common.Address `json:"superchainConfigImplAddress"`
+	ProtocolVersionsProxyAddress common.Address `json:"protocolVersionsProxyAddress"`
+	ProtocolVersionsImplAddress  common.Address `json:"protocolVersionsImplAddress"`
 }
 
 type ImplementationsDeployment struct {
-	OpcmProxyAddress                        common.Address       `json:"opcmProxyAddress"`
-	DelayedWETHImplAddress                  common.Address       `json:"delayedWETHImplAddress"`
-	OptimismPortalImplAddress               common.Address       `json:"optimismPortalImplAddress"`
-	PreimageOracleSingletonAddress          common.Address       `json:"preimageOracleSingletonAddress"`
-	MipsSingletonAddress                    common.Address       `json:"mipsSingletonAddress"`
-	SystemConfigImplAddress                 common.Address       `json:"systemConfigImplAddress"`
-	L1CrossDomainMessengerImplAddress       common.Address       `json:"l1CrossDomainMessengerImplAddress"`
-	L1ERC721BridgeImplAddress               common.Address       `json:"l1ERC721BridgeImplAddress"`
-	L1StandardBridgeImplAddress             common.Address       `json:"l1StandardBridgeImplAddress"`
-	OptimismMintableERC20FactoryImplAddress common.Address       `json:"optimismMintableERC20FactoryImplAddress"`
-	DisputeGameFactoryImplAddress           common.Address       `json:"disputeGameFactoryImplAddress"`
-	StateDump                               *foundry.ForgeAllocs `json:"-"`
+	OpcmProxyAddress                        common.Address `json:"opcmProxyAddress"`
+	DelayedWETHImplAddress                  common.Address `json:"delayedWETHImplAddress"`
+	OptimismPortalImplAddress               common.Address `json:"optimismPortalImplAddress"`
+	PreimageOracleSingletonAddress          common.Address `json:"preimageOracleSingletonAddress"`
+	MipsSingletonAddress                    common.Address `json:"mipsSingletonAddress"`
+	SystemConfigImplAddress                 common.Address `json:"systemConfigImplAddress"`
+	L1CrossDomainMessengerImplAddress       common.Address `json:"l1CrossDomainMessengerImplAddress"`
+	L1ERC721BridgeImplAddress               common.Address `json:"l1ERC721BridgeImplAddress"`
+	L1StandardBridgeImplAddress             common.Address `json:"l1StandardBridgeImplAddress"`
+	OptimismMintableERC20FactoryImplAddress common.Address `json:"optimismMintableERC20FactoryImplAddress"`
+	DisputeGameFactoryImplAddress           common.Address `json:"disputeGameFactoryImplAddress"`
 }
 
 type ChainState struct {
@@ -98,22 +96,7 @@ type ChainState struct {
 	DelayedWETHPermissionedGameProxyAddress   common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
 	DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
 
-	Allocs Base64Bytes `json:"allocs"`
+	Allocs *GzipData[foundry.ForgeAllocs] `json:"allocs"`
 
 	StartBlock *types.Header `json:"startBlock"`
-}
-
-func (c *ChainState) UnmarshalAllocs() (*foundry.ForgeAllocs, error) {
-	gr, err := gzip.NewReader(bytes.NewReader(c.Allocs))
-	if err != nil {
-		return nil, fmt.Errorf("failed to create gzip reader: %w", err)
-	}
-	defer gr.Close()
-
-	var allocs foundry.ForgeAllocs
-	if err := json.NewDecoder(gr).Decode(&allocs); err != nil {
-		return nil, fmt.Errorf("failed to decode allocs: %w", err)
-	}
-
-	return &allocs, nil
 }

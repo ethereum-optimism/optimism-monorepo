@@ -101,7 +101,7 @@ contract CrossDomainOwnable3_Test is Bridge_Initializer {
         address target = address(setter);
         uint256 value = 0;
         uint256 minGasLimit = 0;
-        bytes memory message = abi.encodeWithSelector(XDomainSetter3.set.selector, 1);
+        bytes memory message = abi.encodeCall(XDomainSetter3.set, (1));
 
         bytes32 hash = Hashing.hashCrossDomainMessage(
             Encoding.encodeVersionedNonce(nonce, 1), sender, target, value, minGasLimit, message
@@ -216,12 +216,7 @@ contract CrossDomainOwnable3_Test is Bridge_Initializer {
         // the L1CrossDomainMessenger
         vm.prank(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)));
         l2CrossDomainMessenger.relayMessage(
-            Encoding.encodeVersionedNonce(1, 1),
-            bob,
-            address(setter),
-            0,
-            0,
-            abi.encodeWithSelector(XDomainSetter3.set.selector, 2)
+            Encoding.encodeVersionedNonce(1, 1), bob, address(setter), 0, 0, abi.encodeCall(XDomainSetter3.set, (2))
         );
 
         assertEq(setter.value(), 2);

@@ -213,3 +213,11 @@ func (s *L2Sequencer) ActBuildL2ToGranite(t Testing) {
 		s.ActL2EndBlock(t)
 	}
 }
+
+func (s *L2Sequencer) ActBuildL2ToHolocene(t Testing) {
+	require.NotNil(t, s.RollupCfg.HoloceneTime, "cannot activate HoloceneTime when it is not scheduled")
+	for s.L2Unsafe().Time < *s.RollupCfg.HoloceneTime {
+		s.ActL2StartBlock(t)
+		s.ActL2EndBlock(t)
+	}
+}

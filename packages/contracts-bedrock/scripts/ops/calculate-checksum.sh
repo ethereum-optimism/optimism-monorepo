@@ -20,6 +20,7 @@ sha256sum foundry.toml >> manifest.txt
 LC_ALL=C sort -o manifest.txt manifest.txt
 checksum=$(sha256sum manifest.txt | awk '{print $1}')
 rm manifest.txt
+echoerr "> Checksum: $checksum"
 echoerr "> Done."
 
 echo -n "$checksum"

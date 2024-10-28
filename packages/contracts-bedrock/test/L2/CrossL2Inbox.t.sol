@@ -11,6 +11,7 @@ import { TransientContext } from "src/libraries/TransientContext.sol";
 // Target contracts
 import {
     CrossL2Inbox,
+    Identifier,
     NotEntered,
     NoExecutingDeposits,
     InvalidTimestamp,
@@ -20,7 +21,6 @@ import {
     InteropStartAlreadySet
 } from "src/L2/CrossL2Inbox.sol";
 import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
-import { ICrossL2Inbox } from "src/L2/interfaces/ICrossL2Inbox.sol";
 
 /// @title CrossL2InboxWithModifiableTransientStorage
 /// @dev CrossL2Inbox contract with methods to modify the transient storage.
@@ -141,7 +141,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function succeeds.
     function testFuzz_executeMessage_succeeds(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -160,7 +160,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -170,7 +170,7 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
@@ -200,14 +200,14 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Mock reentrant function that calls the `executeMessage` function.
     /// @param _id Identifier to pass to the `executeMessage` function.
-    function mockReentrant(ICrossL2Inbox.Identifier calldata _id) external payable {
+    function mockReentrant(Identifier calldata _id) external payable {
         crossL2Inbox.executeMessage({ _id: _id, _target: address(0), _message: "" });
     }
 
     /// @dev Tests that the `executeMessage` function successfully handles reentrant calls.
     function testFuzz_executeMessage_reentrant_succeeds(
-        ICrossL2Inbox.Identifier memory _id1, // identifier passed to `executeMessage` by the initial call.
-        ICrossL2Inbox.Identifier memory _id2, // identifier passed to `executeMessage` by the reentrant call.
+        Identifier memory _id1, // identifier passed to `executeMessage` by the initial call.
+        Identifier memory _id2, // identifier passed to `executeMessage` by the reentrant call.
         uint256 _value
     )
         external
@@ -222,27 +222,27 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that id1's chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id1.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id1.chainId)),
             returnData: abi.encode(true)
         });
 
         // Ensure that id2's chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id2.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id2.chainId)),
             returnData: abi.encode(true)
         });
 
         // Set the target and message for the reentrant call
         address target = address(this);
-        bytes memory message = abi.encodeWithSelector(this.mockReentrant.selector, _id2);
+        bytes memory message = abi.encodeCall(this.mockReentrant, (_id2));
 
         // Ensure that the contract has enough balance to send with value
         vm.deal(address(this), _value);
@@ -272,7 +272,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function reverts if the transaction comes from a deposit.
     function testFuzz_executeMessage_isDeposit_reverts(
-        ICrossL2Inbox.Identifier calldata _id,
+        Identifier calldata _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -282,7 +282,7 @@ contract CrossL2InboxTest is Test {
         // Ensure it is a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(true)
         });
 
@@ -298,7 +298,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function reverts when called with an identifier with an invalid timestamp.
     function testFuzz_executeMessage_invalidTimestamp_reverts(
-        ICrossL2Inbox.Identifier calldata _id,
+        Identifier calldata _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -312,7 +312,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -329,7 +329,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `executeMessage` function reverts when called with an identifier with a timestamp earlier
     /// than INTEROP_START timestamp
     function testFuzz_executeMessage_invalidTimestamp_interopStart_reverts(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -346,7 +346,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -360,7 +360,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `executeMessage` function reverts when called with an identifier with a chain ID not in
     /// dependency set.
     function testFuzz_executeMessage_invalidChainId_reverts(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -375,14 +375,14 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that the chain ID is NOT in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(false)
         });
 
@@ -398,7 +398,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function reverts when the target call fails.
     function testFuzz_executeMessage_targetCallFailed_reverts(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -419,14 +419,14 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
@@ -443,13 +443,7 @@ contract CrossL2InboxTest is Test {
         crossL2Inbox.executeMessage{ value: _value }({ _id: _id, _target: _target, _message: _message });
     }
 
-    function testFuzz_validateMessage_succeeds(
-        ICrossL2Inbox.Identifier memory _id,
-        bytes32 _messageHash
-    )
-        external
-        setInteropStart
-    {
+    function testFuzz_validateMessage_succeeds(Identifier memory _id, bytes32 _messageHash) external setInteropStart {
         // Ensure that the id's timestamp is valid (less than or equal to the current block timestamp and greater than
         // interop start time)
         _id.timestamp = bound(_id.timestamp, interopStartTime + 1, block.timestamp);
@@ -457,14 +451,14 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is in the dependency set
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(true)
         });
 
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -476,16 +470,11 @@ contract CrossL2InboxTest is Test {
         crossL2Inbox.validateMessage(_id, _messageHash);
     }
 
-    function testFuzz_validateMessage_isDeposit_reverts(
-        ICrossL2Inbox.Identifier calldata _id,
-        bytes32 _messageHash
-    )
-        external
-    {
+    function testFuzz_validateMessage_isDeposit_reverts(Identifier calldata _id, bytes32 _messageHash) external {
         // Ensure it is a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(true)
         });
 
@@ -499,7 +488,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp later
     /// than current block.timestamp.
     function testFuzz_validateMessage_invalidTimestamp_reverts(
-        ICrossL2Inbox.Identifier calldata _id,
+        Identifier calldata _id,
         bytes32 _messageHash
     )
         external
@@ -508,7 +497,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -525,7 +514,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp earlier
     /// than INTEROP_START timestamp
     function testFuzz_validateMessage_invalidTimestamp_interopStart_reverts(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         bytes32 _messageHash
     )
         external
@@ -537,7 +526,7 @@ contract CrossL2InboxTest is Test {
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 
@@ -551,7 +540,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a chain ID not in the
     /// dependency set.
     function testFuzz_validateMessage_invalidChainId_reverts(
-        ICrossL2Inbox.Identifier memory _id,
+        Identifier memory _id,
         bytes32 _messageHash
     )
         external
@@ -564,14 +553,14 @@ contract CrossL2InboxTest is Test {
         // Ensure that the chain ID is NOT in the dependency set.
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(L1BlockIsInDependencySetSelector, _id.chainId),
+            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
             returnData: abi.encode(false)
         });
 
         // Ensure is not a deposit transaction
         vm.mockCall({
             callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeWithSelector(IL1BlockInterop.isDeposit.selector),
+            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
             returnData: abi.encode(false)
         });
 

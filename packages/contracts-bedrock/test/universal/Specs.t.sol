@@ -430,6 +430,8 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("VERSION()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("batcherHash()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("gasLimit()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("eip1559Denominator()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("eip1559Elasticity()") });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.initialize.selector });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.minimumGasLimit.selector });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("overhead()") });
@@ -440,6 +442,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setBatcherHash.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setGasConfig.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setGasLimit.selector, _auth: Role.SYSTEMCONFIGOWNER });
+        _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setEIP1559Params.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({
             _name: "SystemConfig",
             _sel: ISystemConfig.setUnsafeBlockSigner.selector,
@@ -482,6 +485,8 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("VERSION()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("batcherHash()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasLimit()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Denominator()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Elasticity()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.initialize.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.minimumGasLimit.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("overhead()") });
@@ -502,6 +507,11 @@ contract Specification_Test is CommonTest {
         _addSpec({
             _name: "SystemConfigInterop",
             _sel: ISystemConfig.setGasLimit.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigInterop",
+            _sel: ISystemConfig.setEIP1559Params.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({
@@ -943,12 +953,13 @@ contract Specification_Test is CommonTest {
 
     /// @notice Ensures that there's an auth spec for every L1 contract function.
     function testContractAuth() public {
-        string[] memory pathExcludes = new string[](5);
+        string[] memory pathExcludes = new string[](6);
         pathExcludes[0] = "src/dispute/interfaces/*";
         pathExcludes[1] = "src/dispute/lib/*";
         pathExcludes[2] = "src/safe/SafeSigners.sol";
         pathExcludes[3] = "src/L1/interfaces/*";
         pathExcludes[4] = "src/governance/interfaces/*";
+        pathExcludes[5] = "src/safe/interfaces/*";
         Abi[] memory abis = ForgeArtifacts.getContractFunctionAbis(
             "src/{L1,dispute,governance,safe,universal/ProxyAdmin.sol,universal/WETH98.sol}", pathExcludes
         );

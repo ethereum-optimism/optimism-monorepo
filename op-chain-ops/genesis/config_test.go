@@ -24,8 +24,6 @@ func TestConfigDataMarshalUnmarshal(t *testing.T) {
 	dec := json.NewDecoder(bytes.NewReader(b))
 	decoded := new(DeployConfig)
 	require.NoError(t, dec.Decode(decoded))
-	require.EqualValues(t, "non-default value", string(decoded.L2GenesisBlockExtraData))
-
 	require.NoError(t, decoded.Check(testlog.Logger(t, log.LevelDebug)))
 
 	encoded, err := json.MarshalIndent(decoded, "", "  ")

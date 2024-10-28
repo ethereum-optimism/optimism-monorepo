@@ -32,8 +32,8 @@ func (c *Contract) getAddress(ctx context.Context, name string) (common.Address,
 	return c.callContractMethod(ctx, name, abi.Arguments{})
 }
 
-// Used to call getAddress(string) on legacy ResolvedDelegateProxy contract
-func (c *Contract) GetAddressByName(ctx context.Context, name string) (common.Address, error) {
+// Used to call getAddress(string) on legacy AddressManager contract
+func (c *Contract) GetAddressByNameViaAddressManager(ctx context.Context, name string) (common.Address, error) {
 	inputs := abi.Arguments{
 		abi.Argument{
 			Name:    "_name",
@@ -42,6 +42,61 @@ func (c *Contract) GetAddressByName(ctx context.Context, name string) (common.Ad
 		},
 	}
 	return c.callContractMethod(ctx, "getAddress", inputs, name)
+}
+
+func (c *Contract) GenericAddressGetter(ctx context.Context, functionName string) (common.Address, error) {
+	return c.callContractMethod(ctx, functionName, abi.Arguments{})
+}
+
+// GetImplementation retrieves the Implementation struct for a given release and contract name.
+func (c *Contract) GetOPCMImplementationAddress(ctx context.Context, release, contractName string) (common.Address, error) {
+	methodName := "implementations"
+	method := abi.NewMethod(
+		methodName,
+		methodName,
+		abi.Function,
+		"view",
+		true,
+		false,
+		abi.Arguments{
+			{Name: "release", Type: mustType("string")},
+			{Name: "contractName", Type: mustType("string")},
+		},
+		abi.Arguments{
+			{Name: "logic", Type: mustType("address")},
+			{Name: "initializer", Type: mustType("bytes4")},
+		},
+	)
+
+	calldata, err := method.Inputs.Pack(release, contractName)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to pack inputs: %w", err)
+	}
+
+	msg := ethereum.CallMsg{
+		To:   &c.addr,
+		Data: append(bytes.Clone(method.ID), calldata...),
+	}
+
+	result, err := c.client.CallContract(ctx, msg, nil)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to call contract: %w", err)
+	}
+
+	out, err := method.Outputs.Unpack(result)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to unpack result: %w", err)
+	}
+	if len(out) != 2 {
+		return common.Address{}, fmt.Errorf("unexpected output length: %d", len(out))
+	}
+
+	logic, ok := out[0].(common.Address)
+	if !ok {
+		return common.Address{}, fmt.Errorf("unexpected type for logic: %T", out[0])
+	}
+
+	return logic, nil
 }
 
 func (c *Contract) callContractMethod(ctx context.Context, methodName string, inputs abi.Arguments, args ...interface{}) (common.Address, error) {

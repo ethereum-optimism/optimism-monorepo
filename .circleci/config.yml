@@ -677,13 +677,15 @@ jobs:
           name: print forge version
           command: forge --version
       - run-contracts-check:
+          command: check-kontrol-summaries-unchanged
+      - run-contracts-check:
+          command: semgrep-test-validity-check
+      - run-contracts-check:
           command: semgrep
       - run-contracts-check:
           command: semver-lock
       - run-contracts-check:
           command: semver-diff-check-no-build
-      - run-contracts-check:
-          command: semver-natspec-check-no-build
       - run-contracts-check:
           command: validate-deploy-configs
       - run-contracts-check:
@@ -692,8 +694,6 @@ jobs:
           command: gas-snapshot-check
       - run-contracts-check:
           command: snapshots-check-no-build
-      - run-contracts-check:
-          command: kontrol-deployment-check
       - run-contracts-check:
           command: interfaces-check-no-build
       - run-contracts-check:
@@ -851,7 +851,7 @@ jobs:
           name: run tests
           command: |
             mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
-            
+
             packages=(
               op-batcher
               op-chain-ops
@@ -864,16 +864,15 @@ jobs:
               op-service
               op-supervisor
               op-deployer
-              packages/contracts-bedrock/scripts/checks/semver-natspec
             )
             formatted_packages=""
             for package in "${packages[@]}"; do
               formatted_packages="$formatted_packages ./$package/..."
             done
-            
+
             export ENABLE_ANVIL=true
             export SEPOLIA_RPC_URL="https://ci-sepolia-l1-archive.optimism.io"
-            
+
             gotestsum --format=testname \
               --junitfile=./tmp/test-results/results.xml \
               --jsonfile=./tmp/testlogs/log.json \
@@ -998,63 +997,11 @@ jobs:
   preimage-reproducibility:
     docker:
       - image: <<pipeline.parameters.ci_builder_image>>
-    parameters:
-      version:
-        type: string
     steps:
       - checkout
       - setup_remote_docker
       - run:
-          name: Switch to tag
-          command: |
-            git fetch
-            git checkout "op-program/v<<parameters.version>>"
-            git submodule update --init --recursive
-      - run:
-          name: Set expected prestate hashes
-          command: |
-            if [[ "<<parameters.version>>" == "0.1.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x038942ec840131a63c49fa514a3f0577ae401fd5584d56ad50cdf5a8b41d4538"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "0.2.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x031e3b504740d0b1264e8cf72b6dde0d497184cfb3f98e451c6be8b33bd3f808"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "0.3.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x034c8cc69f22c35ae386a97136715dd48aaf97fd190942a111bfa680c2f2f421"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.0.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x037ef3c1a487960b0e633d3e513df020c43432769f41a634d18a9595cbf53c55"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.1.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x03e69d3de5155f4a80da99dd534561cbddd4f9dd56c9ecc704d6886625711d2b"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.2.0" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x03617abec0b255dc7fc7a0513a2c2220140a1dcd7a1c8eca567659bd67e05cea"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.0-rc.1" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x0367c4aa897bffbded0b523f277ca892298dc3c691baf37bc2099b86024f9673"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.0-rc.2" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x0385c3f8ee78491001d92b90b07d0cf387b7b52ab9b83b4d87c994e92cf823ba"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.0-rc.3" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x030de10d9da911a2b180ecfae2aeaba8758961fc28262ce989458c6f9a547922"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.1-rc.1" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x03e806a2859a875267a563462a06d4d1d1b455a9efee959a46e21e54b6caf69a"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.1-rc.2" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c"' >> $BASH_ENV
-            elif [[ "<<parameters.version>>" == "1.3.1" ]]; then
-              echo 'export EXPECTED_PRESTATE_HASH="0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c"' >> $BASH_ENV
-            else
-              echo "Unknown prestate version <<parameters.version>>"
-              exit 1
-            fi
-      - run:
-          name: Build prestate
-          command: make reproducible-prestate
-      - run:
-          name: Verify prestate
-          command: |
-            ACTUAL=$(jq -r .pre ./op-program/bin/prestate-proof.json)
-            echo "Expected: ${EXPECTED_PRESTATE_HASH}"
-            echo "Actual:   ${ACTUAL}"
-            if [[ "${EXPECTED_PRESTATE_HASH}" != "${ACTUAL}" ]]
-            then
-              echo "Prestate did not match expected"
-              exit 1
-            fi
+          make -C op-program verify-reproducibility
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1297,14 +1244,32 @@ jobs:
         description: Goreleaser config file
         default: .goreleaser.yaml
         type: string
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
+    resource_class: large
     steps:
+      - setup_remote_docker
+      - gcp-cli/install
+      - gcp-oidc-authenticate:
+          gcp_cred_config_file_path: /root/gcp_cred_config.json
+          oidc_token_file_path: /root/oidc_token.json
       - checkout
+      - run:
+          name: Install goreleaser pro
+          command: |
+            mkdir -p /tmp/goreleaser
+            cd /tmp/goreleaser
+            curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.3.2-pro/goreleaser-pro_Linux_x86_64.tar.gz
+            tar -xzvf goreleaser.tgz
+            mv goreleaser /usr/local/bin/goreleaser
+      - run:
+          name: Configure Docker
+          command: |
+            gcloud auth configure-docker us-docker.pkg.dev
       - run:
           name: Run goreleaser
           command: |
-            ./bin/goreleaser release --clean -f ./<<parameters.module>>/<<parameters.filename>>
+            goreleaser release --clean -f ./<<parameters.module>>/<<parameters.filename>>
 
 workflows:
   main:
@@ -1349,10 +1314,12 @@ workflows:
       - contracts-bedrock-validate-spacers:
           requires:
             - contracts-bedrock-build
-      - semgrep-scan
       - semgrep-scan:
           name: semgrep-scan-local
-          scan_command: semgrep scan --timeout=100 --config=./.semgrep --error .
+          scan_command: semgrep scan --timeout=100 --config=./semgrep --error .
+      - semgrep-scan:
+          name: semgrep-test
+          scan_command: semgrep scan --test semgrep/
       - go-lint
       - fuzz-golang:
           name: fuzz-golang-<<matrix.package_name>>
@@ -1475,6 +1442,8 @@ workflows:
             branches:
               ignore: /.*/
           module: op-deployer
+          context:
+            - oplabs-gcr-release
 
   release:
     when:
@@ -1717,19 +1686,5 @@ workflows:
         - equal: [ true, << pipeline.parameters.reproducibility_dispatch >> ]
     jobs:
       - preimage-reproducibility:
-          matrix:
-            parameters:
-              version:
-                - "0.1.0"
-                - "0.2.0"
-                - "0.3.0"
-                - "1.0.0"
-                - "1.1.0"
-                - "1.2.0"
-                - "1.3.0-rc.1"
-                - "1.3.0-rc.2"
-                - "1.3.0-rc.3"
-                - "1.3.1-rc.1"
-                - "1.3.1-rc.2"
           context:
             slack

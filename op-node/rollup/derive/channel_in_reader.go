@@ -25,7 +25,10 @@ type ChannelInReader struct {
 	metrics     Metrics
 }
 
-var _ ResettableStage = (*ChannelInReader)(nil)
+var (
+	_ ResettableStage = (*ChannelInReader)(nil)
+	_ ChannelFlusher  = (*ChannelInReader)(nil)
+)
 
 // NewChannelInReader creates a ChannelInReader, which should be Reset(origin) before use.
 func NewChannelInReader(cfg *rollup.Config, log log.Logger, prev *ChannelBank, metrics Metrics) *ChannelInReader {
@@ -121,4 +124,9 @@ func (cr *ChannelInReader) NextBatch(ctx context.Context) (Batch, error) {
 func (cr *ChannelInReader) Reset(ctx context.Context, _ eth.L1BlockRef, _ eth.SystemConfig) error {
 	cr.nextBatchFn = nil
 	return io.EOF
+}
+
+func (cr *ChannelInReader) FlushChannel() {
+	cr.nextBatchFn = nil
+	// TODO(12157): cr.prev.FlushChannel() - when we do wiring with ChannelStage
 }

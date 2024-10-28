@@ -25,6 +25,8 @@ interface ISystemConfigInterop {
     function blobbasefeeScalar() external view returns (uint32);
     function disputeGameFactory() external view returns (address addr_);
     function gasLimit() external view returns (uint64);
+    function eip1559Denominator() external view returns (uint32);
+    function eip1559Elasticity() external view returns (uint32);
     function gasPayingToken() external view returns (address addr_, uint8 decimals_);
     function gasPayingTokenName() external view returns (string memory name_);
     function gasPayingTokenSymbol() external view returns (string memory symbol_);
@@ -46,6 +48,7 @@ interface ISystemConfigInterop {
     function setGasConfigEcotone(uint32 _basefeeScalar, uint32 _blobbasefeeScalar) external;
     function setGasLimit(uint64 _gasLimit) external;
     function setUnsafeBlockSigner(address _unsafeBlockSigner) external;
+    function setEIP1559Params(uint32 _denominator, uint32 _elasticity) external;
     function startBlock() external view returns (uint256 startBlock_);
     function transferOwnership(address newOwner) external; // nosemgrep
     function unsafeBlockSigner() external view returns (address addr_);

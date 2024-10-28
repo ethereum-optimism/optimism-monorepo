@@ -47,6 +47,11 @@ var (
 		Usage:   "Address of L2 JSON-RPC endpoint to use (eth and debug namespace required)",
 		EnvVars: prefixEnvVars("L2_RPC"),
 	}
+	L2NodeExperimentalAddr = &cli.StringFlag{
+		Name:    "l2.experimental",
+		Usage:   "Address of L2 JSON-RPC endpoint to use for experimental features (debug_executionWitness)",
+		EnvVars: prefixEnvVars("L2_RPC_EXPERIMENTAL_RPC"),
+	}
 	L1Head = &cli.StringFlag{
 		Name:    "l1.head",
 		Usage:   "Hash of the L1 head block. Derivation stops after this block is processed.",
@@ -131,6 +136,7 @@ var programFlags = []cli.Flag{
 	DataDir,
 	DataFormat,
 	L2NodeAddr,
+	L2NodeExperimentalAddr,
 	L2GenesisPath,
 	L1NodeAddr,
 	L1BeaconAddr,
@@ -157,6 +163,9 @@ func CheckRequired(ctx *cli.Context) error {
 	}
 	if network == "" && ctx.String(L2GenesisPath.Name) == "" {
 		return fmt.Errorf("flag %s is required for custom networks", L2GenesisPath.Name)
+	}
+	if ctx.String(L2GenesisPath.Name) != "" && network != "" {
+		return fmt.Errorf("cannot specify both %s and %s", L2GenesisPath.Name, Network.Name)
 	}
 	for _, flag := range requiredFlags {
 		if !ctx.IsSet(flag.Names()[0]) {

@@ -23,6 +23,9 @@ interface IERC20Solady {
     /// @dev The permit has expired.
     error PermitExpired();
 
+    /// @dev The allowance of Permit2 is fixed at infinity.
+    error Permit2AllowanceIsFixedAtInfinity();
+
     /// @dev Emitted when `amount` tokens is transferred from `from` to `to`.
     event Transfer(address indexed from, address indexed to, uint256 amount);
 

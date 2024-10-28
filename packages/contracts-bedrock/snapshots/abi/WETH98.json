@@ -11,12 +11,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "owner",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "",
+        "name": "spender",
         "type": "address"
       }
     ],
@@ -59,7 +59,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "src",
         "type": "address"
       }
     ],

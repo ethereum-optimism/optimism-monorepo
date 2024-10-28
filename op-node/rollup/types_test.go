@@ -242,6 +242,15 @@ func TestActivations(t *testing.T) {
 			},
 		},
 		{
+			name: "Holocene",
+			setUpgradeTime: func(t *uint64, c *Config) {
+				c.HoloceneTime = t
+			},
+			checkEnabled: func(t uint64, c *Config) bool {
+				return c.IsHolocene(t)
+			},
+		},
+		{
 			name: "Interop",
 			setUpgradeTime: func(t *uint64, c *Config) {
 				c.InteropTime = t

@@ -168,9 +168,9 @@ func (m *InstrumentedState) handleSyscall() error {
 			m.memoryTracker.TrackMemAccess(effAddr)
 			m.state.Memory.SetWord(effAddr, secs)
 			m.handleMemoryUpdate(effAddr)
-			m.memoryTracker.TrackMemAccess2(effAddr + 4)
-			m.state.Memory.SetWord(effAddr+4, nsecs)
-			m.handleMemoryUpdate(effAddr + 4)
+			m.memoryTracker.TrackMemAccess2(effAddr + arch.WordSizeBytes)
+			m.state.Memory.SetWord(effAddr+arch.WordSizeBytes, nsecs)
+			m.handleMemoryUpdate(effAddr + arch.WordSizeBytes)
 		default:
 			v0 = exec.SysErrorSignal
 			v1 = exec.MipsEINVAL
@@ -206,6 +206,8 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysTimerCreate:
 	case arch.SysTimerSetTime:
 	case arch.SysTimerDelete:
+	case arch.SysGetRLimit:
+	case arch.SysLseek:
 	default:
 		// These syscalls have the same values on 64-bit. So we use if-stmts here to avoid "duplicate case" compiler error for the cannon64 build
 		if arch.IsMips32 && syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek {

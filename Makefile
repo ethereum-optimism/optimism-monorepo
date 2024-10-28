@@ -164,6 +164,7 @@ mod-tidy: ## Cleans up unused dependencies in Go modules
 
 clean: ## Removes all generated files under bin/
 	rm -rf ./bin
+	cd packages/contracts-bedrock/ && forge clean
 .PHONY: clean
 
 nuke: clean devnet-clean ## Completely clean the project directory
@@ -172,10 +173,10 @@ nuke: clean devnet-clean ## Completely clean the project directory
 
 ## Prepares for running a local devnet
 pre-devnet: submodules $(DEVNET_CANNON_PRESTATE_FILES)
-	@if ! [ -x "$(command -v geth)" ]; then \
+	@if ! [ -x "$$(command -v geth)" ]; then \
 		make install-geth; \
 	fi
-	@if ! [ -x "$(command -v eth2-testnet-genesis)" ]; then \
+	@if ! [ -x "$$(command -v eth2-testnet-genesis)" ]; then \
 		make install-eth2-testnet-genesis; \
 	fi
 .PHONY: pre-devnet
@@ -185,10 +186,6 @@ devnet-up: pre-devnet ## Starts the local devnet
 		|| make devnet-allocs-single
 	PYTHONPATH=./bedrock-devnet $(PYTHON) ./bedrock-devnet/main.py --monorepo-dir=.
 .PHONY: devnet-up
-
-devnet-test: pre-devnet ## Runs tests on the local devnet
-	make -C op-e2e test-devnet
-.PHONY: devnet-test
 
 devnet-down: ## Stops the local devnet
 	@(cd ./ops-bedrock && GENESIS_TIMESTAMP=$(shell date +%s) docker compose stop)

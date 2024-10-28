@@ -250,7 +250,7 @@ contract L1ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l1CrossDomainMessenger),
-            abi.encodeWithSelector(l1CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l1CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(Predeploys.L2_ERC721_BRIDGE)
         );
         vm.prank(address(l1CrossDomainMessenger));
@@ -276,7 +276,7 @@ contract L1ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l1CrossDomainMessenger),
-            abi.encodeWithSelector(l1CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l1CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(alice)
         );
         vm.prank(address(l1CrossDomainMessenger));
@@ -290,7 +290,7 @@ contract L1ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l1CrossDomainMessenger),
-            abi.encodeWithSelector(l1CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l1CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(Predeploys.L2_ERC721_BRIDGE)
         );
         vm.prank(address(l1CrossDomainMessenger));
@@ -306,7 +306,7 @@ contract L1ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l1CrossDomainMessenger),
-            abi.encodeWithSelector(l1CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l1CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(Predeploys.L2_ERC721_BRIDGE)
         );
         vm.prank(address(l1CrossDomainMessenger));
@@ -325,7 +325,7 @@ contract L1ERC721Bridge_Pause_Test is Bridge_Initializer {
     /// @dev Ensures that the `paused` function of the bridge contract actually calls the `paused` function of the
     ///      `superchainConfig`.
     function test_pause_callsSuperchainConfig_succeeds() external {
-        vm.expectCall(address(superchainConfig), abi.encodeWithSelector(ISuperchainConfig.paused.selector));
+        vm.expectCall(address(superchainConfig), abi.encodeCall(ISuperchainConfig.paused, ()));
         l1ERC721Bridge.paused();
     }
 
@@ -354,7 +354,7 @@ contract L1ERC721Bridge_Pause_TestFail is Bridge_Initializer {
 
         vm.mockCall(
             address(l1ERC721Bridge.messenger()),
-            abi.encodeWithSelector(ICrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1ERC721Bridge.otherBridge()))
         );
     }
