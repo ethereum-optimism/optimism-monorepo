@@ -10,6 +10,18 @@ library Process {
     /// @notice Foundry cheatcode VM.
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
+    function bash(string memory _command) internal returns (string memory stdout_) {
+        stdout_ = bash({ _command: _command, _allowEmpty: false });
+    }
+
+    function bash(string memory _command, bool _allowEmpty) internal returns (string memory stdout_) {
+        string[] memory command = new string[](3);
+        command[0] = "bash";
+        command[1] = "-c";
+        command[2] = _command;
+        stdout_ = string(run({ _command: command, _allowEmpty: _allowEmpty }));
+    }
+
     /// @notice Run a command in a subprocess. Fails if no output is returned.
     /// @param _command Command to run.
     function run(string[] memory _command) internal returns (bytes memory stdout_) {

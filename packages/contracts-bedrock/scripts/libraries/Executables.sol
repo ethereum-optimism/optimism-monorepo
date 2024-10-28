@@ -25,10 +25,6 @@ library Executables {
     /// git commit of the contracts when they are packaged into docker images
     /// in order to avoid the need to have a git repository in the image.
     function gitCommitHash() internal returns (string memory) {
-        string[] memory commands = new string[](3);
-        commands[0] = bash;
-        commands[1] = "-c";
-        commands[2] = "cast abi-encode 'f(string)' $(git rev-parse HEAD || cat .gitcommit)";
-        return abi.decode(Process.run(commands), (string));
+        return Process.bash("cast abi-encode 'f(string)' $(git rev-parse HEAD || cat .gitcommit)");
     }
 }

@@ -432,10 +432,7 @@ contract Initializer_Test is Bridge_Initializer {
             }
 
             // Construct the query for the initialize function in the contract's ABI.
-            string[] memory command = new string[](3);
-            command[0] = Executables.bash;
-            command[1] = "-c";
-            command[2] = string.concat(
+            string memory cmd = string.concat(
                 Executables.echo,
                 " '",
                 ForgeArtifacts.getAbi(contractName),
@@ -446,7 +443,7 @@ contract Initializer_Test is Bridge_Initializer {
             );
 
             // If the contract does not have an `initialize()` function, skip it.
-            if (Process.run(command).length == 0) {
+            if (bytes(Process.bash(cmd)).length == 0) {
                 continue;
             }
 

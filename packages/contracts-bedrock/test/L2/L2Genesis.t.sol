@@ -22,32 +22,21 @@ contract L2GenesisTest is Test {
 
     /// @notice Creates a temp file and returns the path to it.
     function tmpfile() internal returns (string memory) {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = "mktemp";
-        bytes memory result = Process.run(commands);
-        return string(result);
+        return Process.bash("mktemp");
     }
 
     /// @notice Deletes a file at a given filesystem path. Does not force delete
     ///         and does not recursively delete.
     function deleteFile(string memory path) internal {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("rm ", path);
-        Process.run({ _command: commands, _allowEmpty: true });
+        Process.bash(string.concat("rm ", path), true);
     }
 
     /// @notice Returns the number of top level keys in a JSON object at a given
     ///         file path.
     function getJSONKeyCount(string memory path) internal returns (uint256) {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("jq 'keys | length' < ", path, " | xargs cast abi-encode 'f(uint256)'");
-        return abi.decode(Process.run(commands), (uint256));
+        bytes memory result =
+            bytes(Process.bash(string.concat("jq 'keys | length' < ", path, " | xargs cast abi-encode 'f(uint256)'")));
+        return abi.decode(result, (uint256));
     }
 
     /// @notice Helper function to run a function with a temporary dump file.
@@ -59,43 +48,44 @@ contract L2GenesisTest is Test {
 
     /// @notice Helper function for reading the number of storage keys for a given account.
     function getStorageKeysCount(string memory _path, address _addr) internal returns (uint256) {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] =
-            string.concat("jq -r '.[\"", vm.toLowercase(vm.toString(_addr)), "\"].storage | length' < ", _path);
-        return vm.parseUint(string(Process.run(commands)));
+        return vm.parseUint(
+            Process.bash(
+                string.concat("jq -r '.[\"", vm.toLowercase(vm.toString(_addr)), "\"].storage | length' < ", _path)
+            )
+        );
     }
 
     /// @notice Returns the number of accounts that contain particular code at a given path to a genesis file.
     function getCodeCount(string memory path, string memory name) internal returns (uint256) {
         bytes memory code = vm.getDeployedCode(name);
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat(
-            "jq -r 'map_values(select(.code == \"",
-            vm.toString(code),
-            "\")) | length' < ",
-            path,
-            " | xargs cast abi-encode 'f(uint256)'"
+        bytes memory result = bytes(
+            Process.bash(
+                string.concat(
+                    "jq -r 'map_values(select(.code == \"",
+                    vm.toString(code),
+                    "\")) | length' < ",
+                    path,
+                    " | xargs cast abi-encode 'f(uint256)'"
+                )
+            )
         );
-        return abi.decode(Process.run(commands), (uint256));
+        return abi.decode(result, (uint256));
     }
 
     /// @notice Returns the number of accounts that have a particular slot set.
     function getPredeployCountWithSlotSet(string memory path, bytes32 slot) internal returns (uint256) {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat(
-            "jq 'map_values(.storage | select(has(\"",
-            vm.toString(slot),
-            "\"))) | keys | length' < ",
-            path,
-            " | xargs cast abi-encode 'f(uint256)'"
+        bytes memory result = bytes(
+            Process.bash(
+                string.concat(
+                    "jq 'map_values(.storage | select(has(\"",
+                    vm.toString(slot),
+                    "\"))) | keys | length' < ",
+                    path,
+                    " | xargs cast abi-encode 'f(uint256)'"
+                )
+            )
         );
-        return abi.decode(Process.run(commands), (uint256));
+        return abi.decode(result, (uint256));
     }
 
     /// @notice Returns the number of accounts that have a particular slot set to a particular value.
@@ -107,19 +97,20 @@ contract L2GenesisTest is Test {
         internal
         returns (uint256)
     {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat(
-            "jq 'map_values(.storage | select(.\"",
-            vm.toString(slot),
-            "\" == \"",
-            vm.toString(value),
-            "\")) | length' < ",
-            path,
-            " | xargs cast abi-encode 'f(uint256)'"
+        bytes memory result = bytes(
+            Process.bash(
+                string.concat(
+                    "jq 'map_values(.storage | select(.\"",
+                    vm.toString(slot),
+                    "\" == \"",
+                    vm.toString(value),
+                    "\")) | length' < ",
+                    path,
+                    " | xargs cast abi-encode 'f(uint256)'"
+                )
+            )
         );
-        return abi.decode(Process.run(commands), (uint256));
+        return abi.decode(result, (uint256));
     }
 
     /// @notice Tests the genesis predeploys setup using a temp file for the case where useInterop is false.

@@ -995,17 +995,13 @@ contract Deploy is Deployer {
     function _loadDevnetStMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         // Fetch the absolute prestate dump
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof.json");
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("[[ -f ", filePath, " ]] && echo \"present\"");
-        if (Process.run(commands).length == 0) {
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
             revert(
                 "Deploy: cannon prestate dump not found, generate it with `make cannon-prestate` in the monorepo root"
             );
         }
-        commands[2] = string.concat("cat ", filePath, " | jq -r .pre");
-        mipsAbsolutePrestate_ = Claim.wrap(abi.decode(Process.run(commands), (bytes32)));
+        mipsAbsolutePrestate_ =
+            Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
         console.log(
             "[Cannon Dispute Game] Using devnet MIPS Absolute prestate: %s",
             vm.toString(Claim.unwrap(mipsAbsolutePrestate_))
@@ -1017,17 +1013,13 @@ contract Deploy is Deployer {
     function _loadDevnetMtMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         // Fetch the absolute prestate dump
         string memory filePath = string.concat(vm.projectRoot(), "/../../op-program/bin/prestate-proof-mt.json");
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("[[ -f ", filePath, " ]] && echo \"present\"");
-        if (Process.run(commands).length == 0) {
+        if (bytes(Process.bash(string.concat("[[ -f ", filePath, " ]] && echo \"present\""))).length == 0) {
             revert(
                 "Deploy: MT-Cannon prestate dump not found, generate it with `make cannon-prestate-mt` in the monorepo root"
             );
         }
-        commands[2] = string.concat("cat ", filePath, " | jq -r .pre");
-        mipsAbsolutePrestate_ = Claim.wrap(abi.decode(Process.run(commands), (bytes32)));
+        mipsAbsolutePrestate_ =
+            Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
         console.log(
             "[MT-Cannon Dispute Game] Using devnet MIPS2 Absolute prestate: %s",
             vm.toString(Claim.unwrap(mipsAbsolutePrestate_))
