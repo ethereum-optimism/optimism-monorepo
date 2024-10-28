@@ -412,13 +412,13 @@ func TestHazardCycleChecksCycle(t *testing.T) {
 				"1": {
 					logCount: 2,
 					messages: map[uint32]*types.ExecutingMessage{
-						1: execMsg("2", 1),
+						1: execMsg("2", 0),
 					},
 				},
 				"2": {
 					logCount: 2,
 					messages: map[uint32]*types.ExecutingMessage{
-						1: execMsg("1", 1),
+						0: execMsg("1", 1),
 					},
 				},
 			},
