@@ -47,8 +47,17 @@ func LoadELF[T mipsevm.FPVMState](f *elf.File, initState CreateInitialFPVMState[
 			continue
 		}
 
+		// Calculate the architecture-specific last valid memory address
+		var lastMemoryAddr uint64
+		if arch.IsMips32 {
+			// 32-bit virtual address space
+			lastMemoryAddr = (1 << 32) - 1
+		} else {
+			// 48-bit virtual address space
+			lastMemoryAddr = (1 << 48) - 1
+		}
+
 		lastByteToWrite := prog.Vaddr + prog.Memsz - 1
-		lastMemoryAddr := uint64(^arch.Word(0))
 		if lastByteToWrite > lastMemoryAddr || lastByteToWrite < prog.Vaddr {
 			return empty, fmt.Errorf("program %d out of memory range: %x - %x (size: %x)", i, prog.Vaddr, lastByteToWrite, prog.Memsz)
 		}

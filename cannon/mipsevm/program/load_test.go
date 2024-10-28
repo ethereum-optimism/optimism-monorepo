@@ -14,8 +14,11 @@ import (
 func TestLoadELF(t *testing.T) {
 	data := []byte{0x11, 0x22, 0x33, 0x44, 0x55, 0x66, 0x77, 0x88}
 	dataSize := uint64(len(data))
-	lastAddr := uint64(^Word(0))
 	lastValidAddr := uint64(HEAP_START - 1)
+	lastAddr := uint64(^uint32(0))
+	if !arch.IsMips32 {
+		lastAddr = (1 << 48) - 1
+	}
 
 	tests := []struct {
 		name         string
