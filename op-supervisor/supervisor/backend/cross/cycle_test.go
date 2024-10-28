@@ -126,11 +126,25 @@ func TestHazardCycleChecksFailures(t *testing.T) {
 	testOpenBlockErr := errors.New("test OpenBlock error")
 	tests := []hazardCycleChecksTestCase{
 		{
-			name:        "no hazards",
+			name:        "empty hazards",
 			chainBlocks: emptyChainBlocks,
 			hazards:     make(map[types.ChainIndex]types.BlockSeal),
 			expectErr:   nil,
 			msg:         "expected no error when there are no hazards",
+		},
+		{
+			name:        "nil hazards",
+			chainBlocks: emptyChainBlocks,
+			hazards:     nil,
+			expectErr:   nil,
+			msg:         "expected no error when there are nil hazards",
+		},
+		{
+			name:        "nil blocks",
+			chainBlocks: nil,
+			hazards:     nil,
+			expectErr:   nil,
+			msg:         "expected no error when there are nil blocks and hazards",
 		},
 		{
 			name:        "failed to open block error",
