@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import { Vm } from "forge-std/Vm.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { LibString } from "@solady/utils/LibString.sol";
-import { Executables } from "scripts/libraries/Executables.sol";
 import { Process } from "scripts/libraries/Process.sol";
 
 /// @notice Contains information about a storage slot. Mirrors the layout of the storage
@@ -37,11 +36,7 @@ library ForgeArtifacts {
     /// @notice Removes the semantic versioning from a contract name. The semver will exist if the contract is compiled
     /// more than once with different versions of the compiler.
     function _stripSemver(string memory _name) internal returns (string memory out_) {
-        out_ = Process.bash(
-            string.concat(
-                Executables.echo, " ", _name, " | ", Executables.sed, " -E 's/[.][0-9]+\\.[0-9]+\\.[0-9]+//g'"
-            )
-        );
+        out_ = Process.bash(string.concat("echo", " ", _name, " | ", "sed", " -E 's/[.][0-9]+\\.[0-9]+\\.[0-9]+//g'"));
     }
 
     /// @notice Builds the fully qualified name of a contract. Assumes that the
@@ -53,19 +48,20 @@ library ForgeArtifacts {
 
     /// @notice Returns the storage layout for a deployed contract.
     function getStorageLayout(string memory _name) internal returns (string memory layout_) {
-        layout_ = Process.bash(string.concat(Executables.jq, " -r '.storageLayout' < ", _getForgeArtifactPath(_name)));
+        layout_ = Process.bash(string.concat("jq", " -r '.storageLayout' < ", _getForgeArtifactPath(_name)));
     }
 
     /// @notice Returns the abi from a the forge artifact
     function getAbi(string memory _name) internal returns (string memory abi_) {
-        abi_ = Process.bash(string.concat(Executables.jq, " -r '.abi' < ", _getForgeArtifactPath(_name)));
+        abi_ = Process.bash(string.concat("jq", " -r '.abi' < ", _getForgeArtifactPath(_name)));
     }
 
     /// @notice Returns the methodIdentifiers from the forge artifact
     function getMethodIdentifiers(string memory _name) internal returns (string[] memory ids_) {
-        string memory res = Process.bash(
-            string.concat(Executables.jq, " '.methodIdentifiers // {} | keys ' < ", _getForgeArtifactPath(_name))
-        );
+        string memory res = Process.bash({
+            _command: string.concat("jq", " '.methodIdentifiers // {} | keys ' < ", _getForgeArtifactPath(_name)),
+            _allowEmpty: true
+        });
         ids_ = stdJson.readStringArray(res, "");
     }
 
@@ -75,7 +71,7 @@ library ForgeArtifacts {
     function getContractKind(string memory _name) internal returns (string memory kind_) {
         kind_ = Process.bash(
             string.concat(
-                Executables.jq,
+                "jq",
                 " -r '.ast.nodes[] | select(.nodeType == \"ContractDefinition\") | .contractKind' < ",
                 _getForgeArtifactPath(_name)
             )
@@ -93,11 +89,11 @@ library ForgeArtifacts {
         // does not make this easy but an updated script should likely make this possible.
         string memory res = Process.bash(
             string.concat(
-                Executables.jq,
+                "jq",
                 " -r '.rawMetadata' ",
                 _getForgeArtifactPath(_name),
                 " | ",
-                Executables.jq,
+                "jq",
                 " -r '.output.devdoc' | jq -r 'has(\"custom:proxied\")'"
             )
         );
@@ -112,11 +108,11 @@ library ForgeArtifacts {
         // functional for now. Deployment script should make this easier to determine.
         string memory res = Process.bash(
             string.concat(
-                Executables.jq,
+                "jq",
                 " -r '.rawMetadata' ",
                 _getForgeArtifactPath(_name),
                 " | ",
-                Executables.jq,
+                "jq",
                 " -r '.output.devdoc' | jq -r 'has(\"custom:predeploy\")'"
             )
         );
@@ -124,8 +120,7 @@ library ForgeArtifacts {
     }
 
     function _getForgeArtifactDirectory(string memory _name) internal returns (string memory dir_) {
-        string memory res =
-            Process.bash(string.concat(Executables.forge, " config --json | ", Executables.jq, " -r .out"));
+        string memory res = Process.bash(string.concat("forge", " config --json | ", "jq", " -r .out"));
         string memory contractName = _stripSemver(_name);
         dir_ = string.concat(vm.projectRoot(), "/", string(res), "/", contractName, ".sol");
     }
@@ -141,11 +136,11 @@ library ForgeArtifacts {
 
         string memory res = Process.bash(
             string.concat(
-                Executables.ls,
+                "ls",
                 " -1 --color=never ",
                 directory,
                 " | ",
-                Executables.jq,
+                "jq",
                 " -R -s -c 'split(\"\n\") | map(select(length > 0))'"
             )
         );
@@ -174,12 +169,12 @@ library ForgeArtifacts {
         bytes memory rawSlot = vm.parseJson(
             Process.bash(
                 string.concat(
-                    Executables.echo,
+                    "echo",
                     " '",
                     storageLayout,
                     "'",
                     " | ",
-                    Executables.jq,
+                    "jq",
                     " '.storage[] | select(.label == \"",
                     slotName,
                     "\" and .type == \"",
@@ -222,17 +217,17 @@ library ForgeArtifacts {
             vm.parseJson(
                 Process.bash(
                     string.concat(
-                        Executables.find,
+                        "find",
                         " ",
                         _path,
                         bytes(pathExcludesPat).length > 0 ? string.concat(" ! \\( ", pathExcludesPat, " \\)") : "",
                         " -type f ",
                         "-exec basename {} \\;",
                         " | ",
-                        Executables.sed,
+                        "sed",
                         " 's/\\.[^.]*$//'",
                         " | ",
-                        Executables.jq,
+                        "jq",
                         " -R -s 'split(\"\n\")[:-1]'"
                     )
                 )
