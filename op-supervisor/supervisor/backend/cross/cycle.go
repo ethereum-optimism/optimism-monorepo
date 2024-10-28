@@ -300,9 +300,3 @@ func GenerateMermaidDiagram(g *graph) string {
 
 	return sb.String()
 }
-
-// logMermaidDiagram logs a Mermaid diagram for debugging.
-func logMermaidDiagram(label string, g *graph) {
-	diagram := GenerateMermaidDiagram(g)
-	fmt.Printf("%s:\n%s", label, diagram)
-}
