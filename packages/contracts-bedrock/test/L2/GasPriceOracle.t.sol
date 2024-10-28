@@ -93,6 +93,7 @@ contract GasPriceOracleBedrock_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `setGasPrice` reverts since it was removed in bedrock.
     function test_setGasPrice_doesNotExist_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         (bool success, bytes memory returndata) =
             address(gasPriceOracle).call(abi.encodeWithSignature("setGasPrice(uint256)", 1));
 
@@ -102,6 +103,7 @@ contract GasPriceOracleBedrock_Test is GasPriceOracle_Test {
 
     /// @dev Tests that `setL1BaseFee` reverts since it was removed in bedrock.
     function test_setL1BaseFee_doesNotExist_reverts() external {
+        // nosemgrep: sol-style-use-abi-encodecall
         (bool success, bytes memory returndata) =
             address(gasPriceOracle).call(abi.encodeWithSignature("setL1BaseFee(uint256)", 1));
 

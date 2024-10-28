@@ -160,8 +160,6 @@ rules:
               abi.encodeWithSignature(...);
     paths:
       exclude:
-        - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
-        - packages/contracts-bedrock/test/L2/GasPriceOracle.t.sol
         - packages/contracts-bedrock/test/L2/SuperchainWETH.t.sol
         - packages/contracts-bedrock/src/libraries/Encoding.sol
         - packages/contracts-bedrock/test/safe/SafeSigners.t.sol
