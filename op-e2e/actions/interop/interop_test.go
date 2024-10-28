@@ -191,6 +191,10 @@ func TestInteropVerifier(gt *testing.T) {
 		require.Equal(t, l1Head, finalized)
 		return nil
 	}
+	// Allow the supervisor to promote the cross-safe L2 block to finalized.
+	seqMockBackend.FinalizedFn = func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+		return seq.SyncStatus().SafeL2.ID(), nil
+	}
 	// signal that L1 finalized; the cross-safe block we have should get finalized too
 	l1Miner.ActL1SafeNext(t)
 	l1Miner.ActL1FinalizeNext(t)
