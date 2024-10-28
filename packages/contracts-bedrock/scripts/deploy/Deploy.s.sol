@@ -12,7 +12,7 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 import { Config } from "scripts/libraries/Config.sol";
-import { LibStateDiff } from "scripts/libraries/LibStateDiff.sol";
+import { StateDiff } from "scripts/libraries/StateDiff.sol";
 import { Process } from "scripts/libraries/Process.sol";
 import { ChainAssertions } from "scripts/deploy/ChainAssertions.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
@@ -128,7 +128,7 @@ contract Deploy is Deployer {
             accesses.length,
             vm.toString(block.chainid)
         );
-        string memory json = LibStateDiff.encodeAccountAccesses(accesses);
+        string memory json = StateDiff.encodeAccountAccesses(accesses);
         string memory statediffPath =
             string.concat(vm.projectRoot(), "/snapshots/state-diff/", vm.toString(block.chainid), ".json");
         vm.writeJson({ json: json, path: statediffPath });
