@@ -5,6 +5,7 @@ import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
 import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
 import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
+import { MIPS64Arch as arch } from "src/cannon/libraries/MIPS64Arch.sol";
 
 library MIPS64Syscalls {
     struct SysReadParams {
@@ -29,9 +30,6 @@ library MIPS64Syscalls {
     }
 
     uint64 internal constant U64_MASK = 0xFFffFFffFFffFFff;
-    uint64 internal constant ADDRESS_MASK = 0xFFFFFFFFFFFFFFF8;
-    uint64 internal constant EXT_MASK = 0x7;
-    uint64 internal constant WORD_SIZE_BYTES = 8;
     uint64 internal constant PAGE_ADDR_MASK = 4095;
     uint64 internal constant PAGE_SIZE = 4096;
 
@@ -50,7 +48,7 @@ library MIPS64Syscalls {
     uint32 internal constant SYS_NANOSLEEP = 5034;
     uint32 internal constant SYS_CLOCKGETTIME = 5222;
     uint32 internal constant SYS_GETPID = 5038;
-    // unused syscalls
+    // no-op syscalls
     uint32 internal constant SYS_MUNMAP = 5011;
     uint32 internal constant SYS_GETAFFINITY = 5196;
     uint32 internal constant SYS_MADVISE = 5027;
@@ -153,6 +151,10 @@ library MIPS64Syscalls {
     uint32 internal constant REG_SYSCALL_PARAM3 = REG_A2;
     uint32 internal constant REG_SYSCALL_PARAM4 = REG_A3;
 
+    // Constants copied from MIPS64Arch for use in Yul
+    uint64 internal constant WORD_SIZE_BYTES = 8;
+    uint64 internal constant EXT_MASK = 0x7;
+
     /// @notice Extract syscall num and arguments from registers.
     /// @param _registers The cpu registers.
     /// @return sysCallNum_ The syscall number.
@@ -252,7 +254,7 @@ library MIPS64Syscalls {
             }
             // pre-image oracle read
             else if (_args.a0 == FD_PREIMAGE_READ) {
-                uint64 effAddr = _args.a1 & ADDRESS_MASK;
+                uint64 effAddr = _args.a1 & arch.ADDRESS_MASK;
                 // verify proof is correct, and get the existing memory.
                 // mask the addr to align it to 4 bytes
                 uint64 mem = MIPS64Memory.readMem(_args.memRoot, effAddr, _args.proofOffset);
@@ -272,9 +274,10 @@ library MIPS64Syscalls {
                     if lt(space, datLen) { datLen := space } // if less space than data, shorten data
                     if lt(a2, datLen) { datLen := a2 } // if requested to read less, read less
                     dat := shr(sub(256, mul(datLen, 8)), dat) // right-align data
-                    dat := shl(mul(sub(sub(8, datLen), alignment), 8), dat) // position data to insert into memory
-                    // word
-                    let mask := sub(shl(mul(sub(WORD_SIZE_BYTES, alignment), 8), 1), 1) // mask all bytes after start
+                    // position data to insert into memory word
+                    dat := shl(mul(sub(sub(WORD_SIZE_BYTES, datLen), alignment), 8), dat)
+                    // mask all bytes after start
+                    let mask := sub(shl(mul(sub(WORD_SIZE_BYTES, alignment), 8), 1), 1)
                     // mask of all bytes
                     let suffixMask := sub(shl(mul(sub(sub(WORD_SIZE_BYTES, alignment), datLen), 8), 1), 1)
                     // starting from end, maybe none
@@ -342,7 +345,7 @@ library MIPS64Syscalls {
             // pre-image oracle
             else if (_a0 == FD_PREIMAGE_WRITE) {
                 // mask the addr to align it to 4 bytes
-                uint64 mem = MIPS64Memory.readMem(_memRoot, _a1 & ADDRESS_MASK, _proofOffset);
+                uint64 mem = MIPS64Memory.readMem(_memRoot, _a1 & arch.ADDRESS_MASK, _proofOffset);
                 bytes32 key = _preimageKey;
 
                 // Construct pre-image key from memory

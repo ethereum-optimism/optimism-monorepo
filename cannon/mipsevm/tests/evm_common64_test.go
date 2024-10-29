@@ -530,6 +530,10 @@ func TestEVMSingleStep_DivMult64(t *testing.T) {
 		{name: "ddivu", funct: 0x1f, rs: ^Word(0), rt: ^Word(0), expectLo: 1, expectHi: 0},
 		{name: "ddivu", funct: 0x1f, rs: ^Word(0), rt: 2, expectLo: 0x7F_FF_FF_FF_FF_FF_FF_FF, expectHi: 1},
 		{name: "ddivu", funct: 0x1f, rs: 0x7F_FF_FF_FF_00_00_00_00, rt: ^Word(0), expectLo: 0, expectHi: 0x7F_FF_FF_FF_00_00_00_00},
+
+		// a couple div/divu 64-bit edge cases
+		{name: "div lower word zero", funct: 0x1a, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectPanic: "instruction divide by zero"},
+		{name: "divu lower word zero", funct: 0x1b, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectPanic: "instruction divide by zero"},
 	}
 
 	v := GetMultiThreadedTestCase(t)

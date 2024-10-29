@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
+import { MIPS64Arch as arch } from "src/cannon/libraries/MIPS64Arch.sol";
 
 library MIPS64Instructions {
     uint32 internal constant OP_LOAD_LINKED = 0x30;
@@ -12,10 +13,6 @@ library MIPS64Instructions {
     uint32 internal constant OP_LOAD_DOUBLE_LEFT = 0x1A;
     uint32 internal constant OP_LOAD_DOUBLE_RIGHT = 0x1B;
     uint32 internal constant REG_RA = 31;
-    uint64 internal constant WORD_SIZE = 64;
-    uint64 internal constant WORD_SIZE_BYTES = 8;
-    uint64 internal constant EXT_MASK = 0x7;
-    uint64 internal constant ADDRESS_MASK = 0xFFFFFFFFFFFFFFF8;
     uint64 internal constant U64_MASK = 0xFFFFFFFFFFFFFFFF;
     uint32 internal constant U32_MASK = 0xFFffFFff;
 
@@ -52,7 +49,7 @@ library MIPS64Instructions {
         returns (uint32 insn_, uint32 opcode_, uint32 fun_)
     {
         unchecked {
-            uint64 word = MIPS64Memory.readMem(_memRoot, _pc & ADDRESS_MASK, _insnProofOffset);
+            uint64 word = MIPS64Memory.readMem(_memRoot, _pc & arch.ADDRESS_MASK, _insnProofOffset);
             insn_ = uint32(selectSubWord(_pc, word, 4, false));
             opcode_ = insn_ >> 26; // First 6-bits
             fun_ = insn_ & 0x3f; // Last 6-bits
@@ -137,7 +134,7 @@ library MIPS64Instructions {
             if (_args.opcode >= 0x20 || _args.opcode == OP_LOAD_DOUBLE_LEFT || _args.opcode == OP_LOAD_DOUBLE_RIGHT) {
                 // M[R[rs]+SignExtImm]
                 rs += signExtendImmediate(_args.insn);
-                uint64 addr = rs & ADDRESS_MASK;
+                uint64 addr = rs & arch.ADDRESS_MASK;
                 mem = MIPS64Memory.readMem(_args.memRoot, addr, _args.memProofOffset);
                 if (_args.opcode >= 0x28) {
                     // store for 32-bit
@@ -155,7 +152,8 @@ library MIPS64Instructions {
             // Note: swr outputs more than 8 bytes without the u64_mask
             uint64 val = executeMipsInstruction(_args.insn, _args.opcode, _args.fun, rs, rt, mem) & U64_MASK;
 
-            if (_args.opcode == 0 && _args.fun >= 8 && _args.fun < 0x20) {
+            uint64 funSel = 0x20;
+            if (_args.opcode == 0 && _args.fun >= 8 && _args.fun < funSel) {
                 if (_args.fun == 8 || _args.fun == 9) {
                     // jr/jalr
                     handleJump(_args.cpu, _args.registers, _args.fun == 8 ? 0 : rdReg, rs);
@@ -589,7 +587,7 @@ library MIPS64Instructions {
     function signExtend(uint64 _dat, uint64 _idx) internal pure returns (uint64 out_) {
         unchecked {
             bool isSigned = (_dat >> (_idx - 1)) != 0;
-            uint256 signed = ((1 << (WORD_SIZE - _idx)) - 1) << _idx;
+            uint256 signed = ((1 << (arch.WORD_SIZE - _idx)) - 1) << _idx;
             uint256 mask = (1 << _idx) - 1;
             return uint64(_dat & mask | (isSigned ? signed : 0));
         }
@@ -904,11 +902,11 @@ library MIPS64Instructions {
         returns (uint64 dataMask_, uint64 bitOffset_, uint64 bitLength_)
     {
         uint64 bitLength = _byteLength << 3;
-        uint64 dataMask = ~uint64(0) >> (WORD_SIZE - bitLength);
+        uint64 dataMask = ~uint64(0) >> (arch.WORD_SIZE - bitLength);
 
         // Figure out sub-word index based on the low-order bits in vaddr
-        uint64 byteIndexMask = _vaddr & EXT_MASK & ~(_byteLength - 1);
-        uint64 maxByteShift = WORD_SIZE_BYTES - _byteLength;
+        uint64 byteIndexMask = _vaddr & arch.EXT_MASK & ~(_byteLength - 1);
+        uint64 maxByteShift = arch.WORD_SIZE_BYTES - _byteLength;
         uint64 byteIndex = _vaddr & byteIndexMask;
         uint64 bitOffset = (maxByteShift - byteIndex) << 3;
 

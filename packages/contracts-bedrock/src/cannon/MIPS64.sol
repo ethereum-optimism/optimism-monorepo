@@ -7,6 +7,7 @@ import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64Syscalls as sys } from "src/cannon/libraries/MIPS64Syscalls.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
 import { MIPS64Instructions as ins } from "src/cannon/libraries/MIPS64Instructions.sol";
+import { MIPS64Arch as arch } from "src/cannon/libraries/MIPS64Arch.sol";
 import { VMStatuses } from "src/dispute/lib/Types.sol";
 import {
     InvalidMemoryProof, InvalidRMWInstruction, InvalidSecondMemoryProof
@@ -63,8 +64,8 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS64 contract.
-    /// @custom:semver 0.0.1-beta.1
-    string public constant version = "0.0.1-beta.1";
+    /// @custom:semver 1.0.0-beta.1
+    string public constant version = "1.0.0-beta.1";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -219,7 +220,7 @@ contract MIPS64 is ISemver {
                 } else {
                     uint64 mem = MIPS64Memory.readMem(
                         state.memRoot,
-                        thread.futexAddr & ins.ADDRESS_MASK,
+                        thread.futexAddr & arch.ADDRESS_MASK,
                         MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1)
                     );
                     if (thread.futexVal == mem) {
@@ -284,7 +285,7 @@ contract MIPS64 is ISemver {
     }
 
     function handleMemoryUpdate(State memory _state, uint64 _memAddr) internal pure {
-        if (_memAddr == (ins.ADDRESS_MASK & _state.llAddress)) {
+        if (_memAddr == (arch.ADDRESS_MASK & _state.llAddress)) {
             // Reserved address was modified, clear the reservation
             clearLLMemoryReservation(_state);
         }
@@ -322,8 +323,7 @@ contract MIPS64 is ISemver {
             uint64 retVal = 0;
             uint64 threadId = _thread.threadID;
             if (_opcode == ins.OP_LOAD_LINKED || _opcode == ins.OP_LOAD_LINKED64) {
-                retVal = loadWord(_state, addr);
-                retVal = ins.selectSubWord(addr, retVal, byteLength, true);
+                retVal = loadSubWord(_state, addr, byteLength, true);
 
                 _state.llReservationStatus = targetStatus;
                 _state.llAddress = addr;
@@ -338,8 +338,7 @@ contract MIPS64 is ISemver {
                     clearLLMemoryReservation(_state);
 
                     uint64 val = _thread.registers[rtReg];
-                    val = ins.updateSubWord(addr, loadWord(_state, addr), byteLength, val);
-                    storeWord(_state, addr, val);
+                    storeSubWord(_state, addr, byteLength, val);
 
                     retVal = 1;
                 } else {
@@ -359,16 +358,38 @@ contract MIPS64 is ISemver {
         }
     }
 
-    function loadWord(State memory _state, uint64 _addr) internal pure returns (uint64 val_) {
-        uint64 effAddr = _addr & ins.ADDRESS_MASK;
+    /// @notice Loads a subword of byteLength size contained from memory based on the low-order bits of vaddr
+    /// @param _vaddr The virtual address of the the subword.
+    /// @param _byteLength The size of the subword.
+    /// @param _signExtend Whether to sign extend the selected subwrod.
+    function loadSubWord(
+        State memory _state,
+        uint64 _vaddr,
+        uint64 _byteLength,
+        bool _signExtend
+    )
+        internal
+        pure
+        returns (uint64 val_)
+    {
+        uint64 effAddr = _vaddr & arch.ADDRESS_MASK;
         uint256 memProofOffset = MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1);
-        val_ = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);
+        uint64 word = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);
+        val_ = ins.selectSubWord(_vaddr, word, _byteLength, _signExtend);
     }
 
-    function storeWord(State memory _state, uint64 _addr, uint64 _val) internal pure {
-        uint64 effAddr = _addr & ins.ADDRESS_MASK;
+    /// @notice Stores a word that has been updated by the specified subword at bit positions determined by the virtual
+    /// address
+    /// @param _vaddr The virtual address of the subword.
+    /// @param _byteLength The size of the subword.
+    /// @param _value The subword that updates _memWord.
+    function storeSubWord(State memory _state, uint64 _vaddr, uint64 _value, uint64 _byteLength) internal pure {
+        uint64 effAddr = _vaddr & arch.ADDRESS_MASK;
         uint256 memProofOffset = MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1);
-        _state.memRoot = MIPS64Memory.writeMem(effAddr, memProofOffset, _val);
+        uint64 mem = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);
+
+        uint64 newMemVal = ins.updateSubWord(_vaddr, mem, _byteLength, _value);
+        _state.memRoot = MIPS64Memory.writeMem(effAddr, memProofOffset, newMemVal);
     }
 
     function handleSyscall(bytes32 _localContext) internal returns (bytes32 out_) {
@@ -473,7 +494,7 @@ contract MIPS64 is ISemver {
                 return outputState();
             } else if (syscall_no == sys.SYS_FUTEX) {
                 // args: a0 = addr, a1 = op, a2 = val, a3 = timeout
-                uint64 effAddr = a0 & ins.ADDRESS_MASK;
+                uint64 effAddr = a0 & arch.ADDRESS_MASK;
                 if (a1 == sys.FUTEX_WAIT_PRIVATE) {
                     uint64 mem = MIPS64Memory.readMem(
                         state.memRoot, effAddr, MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1)
@@ -528,7 +549,7 @@ contract MIPS64 is ISemver {
                         secs = uint64(state.step / sys.HZ);
                         nsecs = uint64((state.step % sys.HZ) * (1_000_000_000 / sys.HZ));
                     }
-                    uint64 effAddr = a1 & ins.ADDRESS_MASK;
+                    uint64 effAddr = a1 & arch.ADDRESS_MASK;
                     // First verify the effAddr path
                     if (
                         !MIPS64Memory.isValidProof(
