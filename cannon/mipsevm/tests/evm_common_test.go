@@ -507,7 +507,7 @@ func TestEVMSingleStep_MulDiv(t *testing.T) {
 						_, _ = goVm.Step(
 							false)
 					})
-					testutil.AssertEVMReverts(t, state, v.Contracts, tracer, proofData, tt.errMsg)
+					testutil.AssertEVMReverts(t, state, v.Contracts, tracer, proofData, testutil.CreateErrorStringMatcher(tt.errMsg))
 					return
 				}
 
@@ -833,23 +833,38 @@ func TestEVMFault(t *testing.T) {
 	var tracer *tracing.Hooks // no-tracer by default, but see test_util.MarkdownTracer
 
 	versions := GetMipsVersionTestCases(t)
+
+	misAlignedInstructionErr := func() testutil.ErrMatcher {
+		if arch.IsMips32 {
+			// matches revert(0,0)
+			return testutil.CreateNoopErrorMatcher()
+		} else {
+			return testutil.CreateCustomErrorMatcher("InvalidPC()")
+		}
+	}
+
 	cases := []struct {
 		name                 string
+		pc                   arch.Word
 		nextPC               arch.Word
 		insn                 uint32
-		errMsg               string
+		errMsg               testutil.ErrMatcher
 		memoryProofAddresses []Word
 	}{
-		{"illegal instruction", 0, 0xFF_FF_FF_FF, "invalid instruction", []Word{0xa7ef00cc}},
-		{"branch in delay-slot", 8, 0x11_02_00_03, "branch in delay slot", []Word{}},
-		{"jump in delay-slot", 8, 0x0c_00_00_0c, "jump in delay slot", []Word{}},
+		{name: "illegal instruction", nextPC: 0, insn: 0xFF_FF_FF_FF, errMsg: testutil.CreateErrorStringMatcher("invalid instruction"), memoryProofAddresses: []Word{0xa7ef00cc}},
+		{name: "branch in delay-slot", nextPC: 8, insn: 0x11_02_00_03, errMsg: testutil.CreateErrorStringMatcher("branch in delay slot")},
+		{name: "jump in delay-slot", nextPC: 8, insn: 0x0c_00_00_0c, errMsg: testutil.CreateErrorStringMatcher("jump in delay slot")},
+		{name: "misaligned instruction", pc: 1, nextPC: 4, insn: 0b110111_00001_00001 << 16, errMsg: misAlignedInstructionErr()},
+		{name: "misaligned instruction", pc: 2, nextPC: 4, insn: 0b110111_00001_00001 << 16, errMsg: misAlignedInstructionErr()},
+		{name: "misaligned instruction", pc: 3, nextPC: 4, insn: 0b110111_00001_00001 << 16, errMsg: misAlignedInstructionErr()},
+		{name: "misaligned instruction", pc: 5, nextPC: 4, insn: 0b110111_00001_00001 << 16, errMsg: misAlignedInstructionErr()},
 	}
 
 	for _, v := range versions {
 		for _, tt := range cases {
 			testName := fmt.Sprintf("%v (%v)", tt.name, v.Name)
 			t.Run(testName, func(t *testing.T) {
-				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithNextPC(tt.nextPC))
+				goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithPC(tt.pc), testutil.WithNextPC(tt.nextPC))
 				state := goVm.GetState()
 				testutil.StoreInstruction(state.GetMemory(), 0, tt.insn)
 				// set the return address ($ra) to jump into when test completes

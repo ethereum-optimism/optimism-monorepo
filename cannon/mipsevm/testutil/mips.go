@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
@@ -202,8 +203,32 @@ func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, go
 		"mipsevm produced different state than EVM")
 }
 
+type ErrMatcher func(*testing.T, []byte)
+
+func CreateNoopErrorMatcher() ErrMatcher {
+	return func(t *testing.T, ret []byte) {}
+}
+
+// CreateErrorStringMatcher matches an Error(string)
+func CreateErrorStringMatcher(expect string) ErrMatcher {
+	return func(t *testing.T, ret []byte) {
+		require.Greaterf(t, len(ret), 4, "Return data length should be greater than 4 bytes: %x", ret)
+		unpacked, decodeErr := abi.UnpackRevert(ret)
+		require.NoError(t, decodeErr, "Failed to unpack revert reason")
+		require.Contains(t, unpacked, expect, "Revert reason mismatch")
+	}
+}
+
+// CreateCustomErrorMatcher matches a custom error given the error signature
+func CreateCustomErrorMatcher(sig string) ErrMatcher {
+	return func(t *testing.T, ret []byte) {
+		expect := crypto.Keccak256([]byte(sig))[:4]
+		require.EqualValuesf(t, expect, ret, "return value is %x", ret)
+	}
+}
+
 // AssertEVMReverts runs a single evm step from an FPVM prestate and asserts that the VM panics
-func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *ContractMetadata, tracer *tracing.Hooks, ProofData []byte, expectedReason string) {
+func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *ContractMetadata, tracer *tracing.Hooks, ProofData []byte, matcher ErrMatcher) {
 	encodedWitness, _ := state.EncodeWitness()
 	stepWitness := &mipsevm.StepWitness{
 		State:     encodedWitness,
@@ -218,10 +243,7 @@ func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *Contract
 	ret, _, err := env.Call(vm.AccountRef(sender), contracts.Addresses.MIPS, input, startingGas, common.U2560)
 
 	require.EqualValues(t, err, vm.ErrExecutionReverted)
-	require.Greater(t, len(ret), 4, "Return data length should be greater than 4 bytes")
-	unpacked, decodeErr := abi.UnpackRevert(ret)
-	require.NoError(t, decodeErr, "Failed to unpack revert reason")
-	require.Equal(t, expectedReason, unpacked, "Revert reason mismatch")
+	matcher(t, ret)
 
 	logs := evmState.Logs()
 	require.Equal(t, 0, len(logs))

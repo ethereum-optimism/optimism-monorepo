@@ -1165,7 +1165,7 @@ func TestEVM_UnsupportedSyscall(t *testing.T) {
 			require.Panics(t, func() { _, _ = goVm.Step(true) })
 
 			errorMessage := "MIPS2: unimplemented syscall"
-			testutil.AssertEVMReverts(t, state, contracts, tracer, proofData, errorMessage)
+			testutil.AssertEVMReverts(t, state, contracts, tracer, proofData, testutil.CreateErrorStringMatcher(errorMessage))
 		})
 	}
 }
@@ -1197,7 +1197,7 @@ func TestEVM_EmptyThreadStacks(t *testing.T) {
 				require.PanicsWithValue(t, "Active thread stack is empty", func() { _, _ = goVm.Step(false) })
 
 				errorMessage := "MIPS2: active thread stack is empty"
-				testutil.AssertEVMReverts(t, state, contracts, tracer, proofCase.Proof, errorMessage)
+				testutil.AssertEVMReverts(t, state, contracts, tracer, proofCase.Proof, testutil.CreateErrorStringMatcher(errorMessage))
 			})
 		}
 	}
