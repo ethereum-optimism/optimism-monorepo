@@ -16,6 +16,14 @@ var schemeUnmarshalerDispatch = map[string]schemeUnmarshaler{
 	"https": unmarshalURL,
 }
 
+var DefaultL1ContractsLocator = &ArtifactsLocator{
+	Tag: standard.DefaultL1ContractsTag,
+}
+
+var DefaultL2ContractsLocator = &ArtifactsLocator{
+	Tag: standard.DefaultL2ContractsTag,
+}
+
 type ArtifactsLocator struct {
 	URL *url.URL
 	Tag string

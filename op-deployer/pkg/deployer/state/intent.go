@@ -63,11 +63,11 @@ func (c *Intent) Check() error {
 	}
 
 	if c.L1ContractsLocator == nil {
-		c.L1ContractsLocator = standard.DefaultL1ContractsLocator
+		c.L1ContractsLocator = opcm.DefaultL1ContractsLocator
 	}
 
 	if c.L2ContractsLocator == nil {
-		c.L2ContractsLocator = standard.DefaultL2ContractsLocator
+		c.L2ContractsLocator = opcm.DefaultL2ContractsLocator
 	}
 
 	var err error

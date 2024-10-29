@@ -14,8 +14,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
-
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
@@ -479,8 +477,8 @@ func TestApplyExistingOPCM(t *testing.T) {
 		l1ChainID,
 		dk,
 		l2ChainID,
-		standard.DefaultL1ContractsLocator,
-		standard.DefaultL2ContractsLocator,
+		opcm.DefaultL1ContractsLocator,
+		opcm.DefaultL2ContractsLocator,
 	)
 
 	require.NoError(t, deployer.ApplyPipeline(

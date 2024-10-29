@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-
 	"github.com/BurntSushi/toml"
 
 	"github.com/ethereum-optimism/superchain-registry/superchain"
@@ -39,13 +37,9 @@ var L1VersionsSepolia L1Versions
 
 var L1VersionsMainnet L1Versions
 
-var DefaultL1ContractsLocator = &opcm.ArtifactsLocator{
-	Tag: "op-contracts/v1.6.0",
-}
+var DefaultL1ContractsTag = "op-contracts/v1.6.0"
 
-var DefaultL2ContractsLocator = &opcm.ArtifactsLocator{
-	Tag: "op-contracts/v1.7.0-beta.1+l2-contracts",
-}
+var DefaultL2ContractsTag = "op-contracts/v1.7.0-beta.1+l2-contracts"
 
 type L1Versions struct {
 	Releases map[string]L1VersionsReleases `toml:"releases"`
