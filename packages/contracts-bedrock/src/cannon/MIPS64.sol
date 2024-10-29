@@ -374,8 +374,8 @@ contract MIPS64 is ISemver {
     {
         uint64 effAddr = _vaddr & arch.ADDRESS_MASK;
         uint256 memProofOffset = MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1);
-        uint64 word = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);
-        val_ = ins.selectSubWord(_vaddr, word, _byteLength, _signExtend);
+        uint64 mem = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);
+        val_ = ins.selectSubWord(_vaddr, mem, _byteLength, _signExtend);
     }
 
     /// @notice Stores a word that has been updated by the specified subword at bit positions determined by the virtual
@@ -383,7 +383,7 @@ contract MIPS64 is ISemver {
     /// @param _vaddr The virtual address of the subword.
     /// @param _byteLength The size of the subword.
     /// @param _value The subword that updates _memWord.
-    function storeSubWord(State memory _state, uint64 _vaddr, uint64 _value, uint64 _byteLength) internal pure {
+    function storeSubWord(State memory _state, uint64 _vaddr, uint64 _byteLength, uint64 _value) internal pure {
         uint64 effAddr = _vaddr & arch.ADDRESS_MASK;
         uint256 memProofOffset = MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1);
         uint64 mem = MIPS64Memory.readMem(_state.memRoot, effAddr, memProofOffset);

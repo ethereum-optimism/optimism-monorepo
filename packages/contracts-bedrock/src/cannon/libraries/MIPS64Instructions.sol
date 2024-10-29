@@ -81,7 +81,7 @@ library MIPS64Instructions {
             if (_args.opcode == 2 || _args.opcode == 3) {
                 // Take top 4 bits of the next PC (its 256 MB region), and concatenate with the 26-bit offset
                 uint64 target = (_args.cpu.nextPC & signExtend(0xF0000000, 32)) | uint64((_args.insn & 0x03FFFFFF) << 2);
-                handleJump(_args.cpu, _args.registers, _args.opcode == 2 ? 0 : 31, target);
+                handleJump(_args.cpu, _args.registers, _args.opcode == 2 ? 0 : REG_RA, target);
                 return (newMemRoot_, memUpdated_, memAddr_);
             }
 
@@ -178,7 +178,7 @@ library MIPS64Instructions {
 
                 // lo and hi registers
                 // can write back
-                if (_args.fun >= 0x10 && _args.fun < 0x20) {
+                if (_args.fun >= 0x10 && _args.fun < funSel) {
                     handleHiLo({
                         _cpu: _args.cpu,
                         _registers: _args.registers,

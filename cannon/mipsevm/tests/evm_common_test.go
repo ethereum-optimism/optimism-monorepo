@@ -170,22 +170,48 @@ func TestEVMSingleStep_Operators(t *testing.T) {
 		opcode    uint32
 		expectRes Word
 	}{
-		{name: "add", funct: 0x20, isImm: false, rs: Word(12), rt: Word(20), expectRes: Word(32)},                        // add t0, s1, s2
-		{name: "addu", funct: 0x21, isImm: false, rs: Word(12), rt: Word(20), expectRes: Word(32)},                       // addu t0, s1, s2
-		{name: "addi", opcode: 0x8, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},         // addi t0, s1, 40
-		{name: "addi sign", opcode: 0x8, isImm: true, rs: Word(2), rt: Word(1), imm: uint16(0xfffe), expectRes: Word(0)}, // addi t0, s1, -2
-		{name: "addiu", opcode: 0x9, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},        // addiu t0, s1, 40
-		{name: "sub", funct: 0x22, isImm: false, rs: Word(20), rt: Word(12), expectRes: Word(8)},                         // sub t0, s1, s2
-		{name: "subu", funct: 0x23, isImm: false, rs: Word(20), rt: Word(12), expectRes: Word(8)},                        // subu t0, s1, s2
-		{name: "and", funct: 0x24, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(160)},                    // and t0, s1, s2
-		{name: "andi", opcode: 0xc, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(0)},          // andi t0, s1, 40
-		{name: "or", funct: 0x25, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(1530)},                    // or t0, s1, s2
-		{name: "ori", opcode: 0xd, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},          // ori t0, s1, 40
-		{name: "xor", funct: 0x26, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(1370)},                   // xor t0, s1, s2
-		{name: "xori", opcode: 0xe, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},         // xori t0, s1, 40
-		{name: "nor", funct: 0x27, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(4294965765)},             // nor t0, s1, s2
-		{name: "slt", funct: 0x2a, isImm: false, rs: 0xFF_FF_FF_FE, rt: Word(5), expectRes: Word(1)},                     // slt t0, s1, s2
-		{name: "sltu", funct: 0x2b, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(0)},                     // sltu t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: Word(12), rt: Word(20), expectRes: Word(32)},                                  // add t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: ^Word(0), rt: ^Word(0), expectRes: Word(0xFF_FF_FF_FE)},                       // add t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: Word(0x7F_FF_FF_FF), rt: Word(0x7F_FF_FF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // add t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: ^Word(0), rt: Word(2), expectRes: Word(1)},                                    // add t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: Word(2), rt: ^Word(0), expectRes: Word(1)},                                    // add t0, s1, s2
+		{name: "add", funct: 0x20, isImm: false, rs: Word(0x7F_FF_FF_FF), rt: Word(1), expectRes: Word(0x80_00_00_00)},             // add t0, s1, s2
+
+		{name: "addu", funct: 0x21, isImm: false, rs: Word(12), rt: Word(20), expectRes: Word(32)},                                  // addu t0, s1, s2
+		{name: "addu", funct: 0x21, isImm: false, rs: ^Word(0), rt: ^Word(0), expectRes: Word(0xFF_FF_FF_FE)},                       // addu t0, s1, s2
+		{name: "addu", funct: 0x21, isImm: false, rs: Word(0x7F_FF_FF_FF), rt: Word(0x7F_FF_FF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addu t0, s1, s2
+		{name: "addu", funct: 0x21, isImm: false, rs: Word(0x7F_FF_FF_FF), rt: Word(0x7F_FF_FF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addu t0, s1, s2
+		{name: "addu", funct: 0x21, isImm: false, rs: ^Word(0), rt: Word(2), expectRes: Word(1)},                                    // addu t0, s1, s2
+		{name: "addu", funct: 0x21, isImm: false, rs: Word(0x7F_FF_FF_FF), rt: Word(1), expectRes: Word(0x80_00_00_00)},             // addu t0, s1, s2
+
+		{name: "addi", opcode: 0x8, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},                              // addi t0, s1, 40
+		{name: "addi", opcode: 0x8, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(1), expectRes: Word(0)},                   // addi t0, s1, 40
+		{name: "addi", opcode: 0x8, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(0xFF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addi t0, s1, 40
+		{name: "addi", opcode: 0x8, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(0xFF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addi t0, s1, 40
+		{name: "addi sign", opcode: 0x8, isImm: true, rs: Word(2), rt: Word(1), imm: uint16(0xfffe), expectRes: Word(0)},                      // addi t0, s1, -2
+
+		{name: "addiu", opcode: 0x9, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},                              // addiu t0, s1, 40
+		{name: "addiu", opcode: 0x8, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(1), expectRes: Word(0)},                   // addiu t0, s1, 40
+		{name: "addiu", opcode: 0x9, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(0xFF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addiu t0, s1, 40
+		{name: "addiu", opcode: 0x9, isImm: true, rs: ^Word(0), rt: Word(0xAA_BB_CC_DD), imm: uint16(0xFF_FF), expectRes: Word(0xFF_FF_FF_FE)}, // addiu t0, s1, 40
+
+		{name: "sub", funct: 0x22, isImm: false, rs: Word(20), rt: Word(12), expectRes: Word(8)},            // sub t0, s1, s2
+		{name: "sub", funct: 0x22, isImm: false, rs: ^Word(0), rt: Word(1), expectRes: Word(0xFF_FF_FF_FE)}, // sub t0, s1, s2
+		{name: "sub", funct: 0x22, isImm: false, rs: Word(1), rt: ^Word(0), expectRes: Word(0x2)},           // sub t0, s1, s2
+
+		{name: "subu", funct: 0x23, isImm: false, rs: Word(20), rt: Word(12), expectRes: Word(8)},            // subu t0, s1, s2
+		{name: "subu", funct: 0x23, isImm: false, rs: ^Word(0), rt: Word(1), expectRes: Word(0xFF_FF_FF_FE)}, // subu t0, s1, s2
+		{name: "subu", funct: 0x23, isImm: false, rs: Word(1), rt: ^Word(0), expectRes: Word(0x2)},           // subu t0, s1, s2
+
+		{name: "and", funct: 0x24, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(160)},            // and t0, s1, s2
+		{name: "andi", opcode: 0xc, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(0)},  // andi t0, s1, 40
+		{name: "or", funct: 0x25, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(1530)},            // or t0, s1, s2
+		{name: "ori", opcode: 0xd, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},  // ori t0, s1, 40
+		{name: "xor", funct: 0x26, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(1370)},           // xor t0, s1, s2
+		{name: "xori", opcode: 0xe, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)}, // xori t0, s1, 40
+		{name: "nor", funct: 0x27, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(4294965765)},     // nor t0, s1, s2
+		{name: "slt", funct: 0x2a, isImm: false, rs: 0xFF_FF_FF_FE, rt: Word(5), expectRes: Word(1)},             // slt t0, s1, s2
+		{name: "sltu", funct: 0x2b, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(0)},             // sltu t0, s1, s2
 	}
 
 	for _, v := range versions {
@@ -442,9 +468,18 @@ func TestEVMSingleStep_MulDiv(t *testing.T) {
 		expectRevert string
 		errMsg       string
 	}{
-		{name: "mul", funct: uint32(0x2), rs: Word(5), rt: Word(2), opcode: uint32(28), rdReg: uint32(0x8), expectRes: Word(10)},                                                                   // mul t0, t1, t2
+		{name: "mul", funct: uint32(0x2), rs: Word(5), rt: Word(2), opcode: uint32(28), rdReg: uint32(0x8), expectRes: Word(10)}, // mul t0, t1, t2
+
 		{name: "mult", funct: uint32(0x18), rs: Word(0x0F_FF_00_00), rt: Word(100), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},                     // mult t1, t2
-		{name: "multu", funct: uint32(0x19), rs: Word(0x0F_FF_00_00), rt: Word(100), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},                    // multu t1, t2
+		{name: "mult", funct: uint32(0x18), rs: Word(0x1), rt: Word(0xFF_FF_FF_FF), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0x0), expectLo: Word(0xFF_FF_FF_FF)},                     // mult t1, t2
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xFF_FF_FF_FE), expectLo: Word(0x1)},           // mult t1, t2
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_DD), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xAA_BB_CC_BE), expectLo: Word(0xFC_FC_FD_27)}, // mult t1, t2
+
+		{name: "multu", funct: uint32(0x19), rs: Word(0x0F_FF_00_00), rt: Word(100), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},                     // multu t1, t2
+		{name: "multu", funct: uint32(0x19), rs: Word(0x1), rt: Word(0xFF_FF_FF_FF), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0x0), expectLo: Word(0xFF_FF_FF_FF)},                     // multu t1, t2
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xFF_FF_FF_FE), expectLo: Word(0x1)},           // multu t1, t2
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_DD), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(0xAA_BB_CC_BE), expectLo: Word(0xFC_FC_FD_27)}, // multu t1, t2
+
 		{name: "div", funct: uint32(0x1a), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},                                                  // div t1, t2
 		{name: "div by zero", funct: uint32(0x1a), rs: Word(5), rt: Word(0), rdReg: uint32(0x0), opcode: uint32(0), expectRevert: "instruction divide by zero", errMsg: "MIPS: division by zero"},  // div t1, t2
 		{name: "divu", funct: uint32(0x1b), rs: Word(5), rt: Word(2), rdReg: uint32(0x0), opcode: uint32(0), expectHi: Word(1), expectLo: Word(2)},                                                 // divu t1, t2
