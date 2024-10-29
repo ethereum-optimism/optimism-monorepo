@@ -18,6 +18,7 @@ const ( // iota is reset to 0
 	BlockV1 BlockVersion = iota
 	BlockV2
 	BlockV3
+	BlockV4
 )
 
 // ExecutionPayload and ExecutionPayloadEnvelope are the only SSZ types we have to marshal/unmarshal,
@@ -49,8 +50,11 @@ const (
 	// V1 + Withdrawals offset
 	blockV2FixedPart = blockV1FixedPart + 4
 
-	// V2 + BlobGasUed + ExcessBlobGas
+	// V2 + BlobGasUsed + ExcessBlobGas
 	blockV3FixedPart = blockV2FixedPart + 8 + 8
+
+	// V3 + WithdrawalsRoot
+	blockV4FixedPart = blockV3FixedPart + 32
 
 	withdrawalSize = 8 + 8 + 20 + 8
 
@@ -64,19 +68,25 @@ const (
 )
 
 func (v BlockVersion) HasBlobProperties() bool {
-	return v == BlockV3
+	return v == BlockV3 || v == BlockV4
 }
 
 func (v BlockVersion) HasWithdrawals() bool {
-	return v == BlockV2 || v == BlockV3
+	return v == BlockV2 || v == BlockV3 || v == BlockV4
 }
 
 func (v BlockVersion) HasParentBeaconBlockRoot() bool {
-	return v == BlockV3
+	return v == BlockV3 || v == BlockV4
+}
+
+func (v BlockVersion) HasWithdrawalsRoot() bool {
+	return v == BlockV4
 }
 
 func executionPayloadFixedPart(version BlockVersion) uint32 {
-	if version == BlockV3 {
+	if version == BlockV4 {
+		return blockV4FixedPart
+	} else if version == BlockV3 {
 		return blockV3FixedPart
 	} else if version == BlockV2 {
 		return blockV2FixedPart
@@ -86,7 +96,9 @@ func executionPayloadFixedPart(version BlockVersion) uint32 {
 }
 
 func (payload *ExecutionPayload) inferVersion() BlockVersion {
-	if payload.ExcessBlobGas != nil && payload.BlobGasUsed != nil {
+	if payload.WithdrawalsRoot != nil {
+		return BlockV4
+	} else if payload.ExcessBlobGas != nil && payload.BlobGasUsed != nil {
 		return BlockV3
 	} else if payload.Withdrawals != nil {
 		return BlockV2
@@ -197,7 +209,8 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 		offset += 4
 	}
 
-	if payload.inferVersion() == BlockV3 {
+	payloadVersion := payload.inferVersion()
+	if payloadVersion == BlockV3 || payloadVersion == BlockV4 {
 		if payload.BlobGasUsed == nil || payload.ExcessBlobGas == nil {
 			return 0, errors.New("cannot encode ecotone payload without dencun header attributes")
 		}
@@ -205,6 +218,14 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 		offset += 8
 		binary.LittleEndian.PutUint64(buf[offset:offset+8], uint64(*payload.ExcessBlobGas))
 		offset += 8
+	}
+
+	if payloadVersion == BlockV4 {
+		if payload.WithdrawalsRoot == nil {
+			return 0, errors.New("cannot encode Isthmus payload without withdrawals root")
+		}
+		copy(buf[offset:offset+32], (*payload.WithdrawalsRoot)[:])
+		offset += 32
 	}
 
 	if payload.Withdrawals != nil && offset != fixedSize {
@@ -330,7 +351,16 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 		offset += 8
 		excessBlobGas := binary.LittleEndian.Uint64(buf[offset : offset+8])
 		payload.ExcessBlobGas = (*Uint64Quantity)(&excessBlobGas)
+		offset += 8
 	}
+
+	if version == BlockV4 {
+		withdrawalsRoot := common.Hash{}
+		copy(withdrawalsRoot[:], buf[offset:offset+32])
+		payload.WithdrawalsRoot = &withdrawalsRoot
+		offset += 32
+	}
+
 	_ = offset // for future extensions: we keep the offset accurate for extensions
 
 	if transactionsOffset > extraDataOffset+32 || transactionsOffset > scope {
