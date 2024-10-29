@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Types } from "src/libraries/Types.sol";
-import "src/dispute/lib/Types.sol";
+import { GameType, Claim, Position, Clock, Hash, Duration } from "src/dispute/lib/Types.sol";
 
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";

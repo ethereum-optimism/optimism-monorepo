@@ -164,3 +164,12 @@ rules:
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
         - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
         - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol
+
+  - id: sol-style-no-bare-imports
+    languages: [solidity]
+    severity: ERROR
+    message: Import specific components instead of the entire file
+    pattern-regex: import\s+"[^"]+"\s*;
+    paths:
+      exclude:
+        - packages/contracts-bedrock/test

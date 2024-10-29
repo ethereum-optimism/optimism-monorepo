@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+// nosemgrep: sol-style-no-bare-imports
 import "src/dispute/lib/LibUDT.sol";
 
 /// @notice The current status of the dispute game.

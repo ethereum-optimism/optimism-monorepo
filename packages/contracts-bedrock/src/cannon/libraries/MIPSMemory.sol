@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import "src/cannon/libraries/CannonErrors.sol";
+import { InvalidMemoryProof } from "src/cannon/libraries/CannonErrors.sol";
 
 library MIPSMemory {
     /// @notice Reads a 32-bit value from memory.

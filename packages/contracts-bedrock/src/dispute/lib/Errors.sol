@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-import "src/dispute/lib/LibUDT.sol";
+import { GameType, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
 
 ////////////////////////////////////////////////////////////////
 //                `DisputeGameFactory` Errors                 //
