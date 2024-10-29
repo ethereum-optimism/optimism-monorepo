@@ -113,7 +113,7 @@ library ForgeArtifacts {
     }
 
     function _getForgeArtifactDirectory(string memory _name) internal returns (string memory dir_) {
-        string memory res = Process.bash(string.concat("forge config --json | jq -r .out"));
+        string memory res = Process.bash("forge config --json | jq -r .out");
         string memory contractName = _stripSemver(_name);
         dir_ = string.concat(vm.projectRoot(), "/", string(res), "/", contractName, ".sol");
     }
