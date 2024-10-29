@@ -1,0 +1,14 @@
+{
+  "dependencies": {
+    "900200": {
+      "chainIndex": "0",
+      "activationTime": 0,
+      "historyMinTime": 0
+    },
+    "900201": {
+      "chainIndex": "1",
+      "activationTime": 0,
+      "historyMinTime": 0
+    }
+  }
+}

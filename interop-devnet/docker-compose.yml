@@ -83,10 +83,12 @@ services:
       - "9045:8545"
     volumes:
       - "supervisor_data:/db"
+      - "./depset.json:/depset.json"
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
     command: >
       op-supervisor
       --datadir="/db"
+      --dependency-set="/depset.json"
       --l2-rpcs=""
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
