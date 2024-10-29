@@ -1031,7 +1031,7 @@ jobs:
           paths:
             - "/root/.cache/go-build"
       - notify-failures-on-develop:
-          mentions: "@proofs-squad"
+          mentions: "@proofs-team"
 
   semgrep-scan:
     parameters:
