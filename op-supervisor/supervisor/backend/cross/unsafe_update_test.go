@@ -144,7 +144,7 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		em1 := &types.ExecutingMessage{Timestamp: 1}
 		usd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			// include one executing message to ensure one hazard is returned
-			return bl, 0, map[uint32]*types.ExecutingMessage{1: em1}, nil
+			return bl, 2, map[uint32]*types.ExecutingMessage{1: em1}, nil
 		}
 		usd.deps = mockDependencySet{}
 		var updatingChainID types.ChainID
