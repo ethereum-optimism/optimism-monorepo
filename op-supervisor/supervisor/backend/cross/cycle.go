@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -17,7 +18,7 @@ var (
 // CycleCheckDeps is an interface for checking cyclical dependencies between logs.
 type CycleCheckDeps interface {
 	// OpenBlock returns log data for the requested block, to be used for cycle checking.
-	OpenBlock(chainID types.ChainID, blockNum uint64) (seal types.BlockSeal, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	OpenBlock(chainID types.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
 // node represents a log entry in the dependency graph.
@@ -95,7 +96,8 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to open block: %w", err)
 		}
-		if bl != hazardBlock {
+
+		if !blockSealMatchesRef(hazardBlock, bl) {
 			return nil, nil, fmt.Errorf("tried to open block %s of chain %s, but got different block %s than expected, use a reorg lock for consistency", hazardBlock, hazardChainID, bl)
 		}
 
@@ -244,6 +246,10 @@ func checkGraph(g *graph) error {
 		// Some nodes left; there must be a cycle.
 		return ErrCycle
 	}
+}
+
+func blockSealMatchesRef(seal types.BlockSeal, ref eth.BlockRef) bool {
+	return seal.Number == ref.Number && seal.Hash == ref.Hash
 }
 
 // GenerateMermaidDiagram creates a Mermaid flowchart diagram from the graph data for debugging.
