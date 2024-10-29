@@ -36,7 +36,7 @@ library ForgeArtifacts {
     /// @notice Removes the semantic versioning from a contract name. The semver will exist if the contract is compiled
     /// more than once with different versions of the compiler.
     function _stripSemver(string memory _name) internal returns (string memory out_) {
-        out_ = Process.bash(string.concat("echo", " ", _name, " | ", "sed", " -E 's/[.][0-9]+\\.[0-9]+\\.[0-9]+//g'"));
+        out_ = Process.bash(string.concat("echo ", _name, " | sed -E 's/[.][0-9]+\\.[0-9]+\\.[0-9]+//g'"));
     }
 
     /// @notice Builds the fully qualified name of a contract. Assumes that the
@@ -48,18 +48,18 @@ library ForgeArtifacts {
 
     /// @notice Returns the storage layout for a deployed contract.
     function getStorageLayout(string memory _name) internal returns (string memory layout_) {
-        layout_ = Process.bash(string.concat("jq", " -r '.storageLayout' < ", _getForgeArtifactPath(_name)));
+        layout_ = Process.bash(string.concat("jq -r '.storageLayout' < ", _getForgeArtifactPath(_name)));
     }
 
     /// @notice Returns the abi from a the forge artifact
     function getAbi(string memory _name) internal returns (string memory abi_) {
-        abi_ = Process.bash(string.concat("jq", " -r '.abi' < ", _getForgeArtifactPath(_name)));
+        abi_ = Process.bash(string.concat("jq -r '.abi' < ", _getForgeArtifactPath(_name)));
     }
 
     /// @notice Returns the methodIdentifiers from the forge artifact
     function getMethodIdentifiers(string memory _name) internal returns (string[] memory ids_) {
         string memory res = Process.bash({
-            _command: string.concat("jq", " '.methodIdentifiers // {} | keys ' < ", _getForgeArtifactPath(_name)),
+            _command: string.concat("jq '.methodIdentifiers // {} | keys ' < ", _getForgeArtifactPath(_name)),
             _allowEmpty: true
         });
         ids_ = stdJson.readStringArray(res, "");
@@ -71,8 +71,7 @@ library ForgeArtifacts {
     function getContractKind(string memory _name) internal returns (string memory kind_) {
         kind_ = Process.bash(
             string.concat(
-                "jq",
-                " -r '.ast.nodes[] | select(.nodeType == \"ContractDefinition\") | .contractKind' < ",
+                "jq -r '.ast.nodes[] | select(.nodeType == \"ContractDefinition\") | .contractKind' < ",
                 _getForgeArtifactPath(_name)
             )
         );
@@ -89,12 +88,9 @@ library ForgeArtifacts {
         // does not make this easy but an updated script should likely make this possible.
         string memory res = Process.bash(
             string.concat(
-                "jq",
-                " -r '.rawMetadata' ",
+                "jq -r '.rawMetadata' ",
                 _getForgeArtifactPath(_name),
-                " | ",
-                "jq",
-                " -r '.output.devdoc' | jq -r 'has(\"custom:proxied\")'"
+                " | jq -r '.output.devdoc' | jq -r 'has(\"custom:proxied\")'"
             )
         );
         out_ = stdJson.readBool(res, "");
@@ -108,19 +104,16 @@ library ForgeArtifacts {
         // functional for now. Deployment script should make this easier to determine.
         string memory res = Process.bash(
             string.concat(
-                "jq",
-                " -r '.rawMetadata' ",
+                "jq -r '.rawMetadata' ",
                 _getForgeArtifactPath(_name),
-                " | ",
-                "jq",
-                " -r '.output.devdoc' | jq -r 'has(\"custom:predeploy\")'"
+                " | jq -r '.output.devdoc' | jq -r 'has(\"custom:predeploy\")'"
             )
         );
         out_ = stdJson.readBool(res, "");
     }
 
     function _getForgeArtifactDirectory(string memory _name) internal returns (string memory dir_) {
-        string memory res = Process.bash(string.concat("forge", " config --json | ", "jq", " -r .out"));
+        string memory res = Process.bash(string.concat("forge config --json | jq -r .out"));
         string memory contractName = _stripSemver(_name);
         dir_ = string.concat(vm.projectRoot(), "/", string(res), "/", contractName, ".sol");
     }
@@ -135,14 +128,7 @@ library ForgeArtifacts {
         }
 
         string memory res = Process.bash(
-            string.concat(
-                "ls",
-                " -1 --color=never ",
-                directory,
-                " | ",
-                "jq",
-                " -R -s -c 'split(\"\n\") | map(select(length > 0))'"
-            )
+            string.concat("ls -1 --color=never ", directory, " | jq -R -s -c 'split(\"\n\") | map(select(length > 0))'")
         );
         string[] memory files = stdJson.readStringArray(res, "");
         out_ = string.concat(directory, "/", files[0]);
@@ -169,13 +155,9 @@ library ForgeArtifacts {
         bytes memory rawSlot = vm.parseJson(
             Process.bash(
                 string.concat(
-                    "echo",
-                    " '",
+                    "echo '",
                     storageLayout,
-                    "'",
-                    " | ",
-                    "jq",
-                    " '.storage[] | select(.label == \"",
+                    "' | jq '.storage[] | select(.label == \"",
                     slotName,
                     "\" and .type == \"",
                     slotType,
@@ -217,18 +199,10 @@ library ForgeArtifacts {
             vm.parseJson(
                 Process.bash(
                     string.concat(
-                        "find",
-                        " ",
+                        "find ",
                         _path,
                         bytes(pathExcludesPat).length > 0 ? string.concat(" ! \\( ", pathExcludesPat, " \\)") : "",
-                        " -type f ",
-                        "-exec basename {} \\;",
-                        " | ",
-                        "sed",
-                        " 's/\\.[^.]*$//'",
-                        " | ",
-                        "jq",
-                        " -R -s 'split(\"\n\")[:-1]'"
+                        " -type f -exec basename {} \\; | sed 's/\\.[^.]*$//' | jq -R -s 'split(\"\n\")[:-1]'"
                     )
                 )
             ),

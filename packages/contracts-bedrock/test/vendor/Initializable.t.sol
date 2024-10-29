@@ -432,13 +432,9 @@ contract Initializer_Test is Bridge_Initializer {
 
             // Construct the query for the initialize function in the contract's ABI.
             string memory cmd = string.concat(
-                "echo",
-                " '",
+                "echo '",
                 ForgeArtifacts.getAbi(contractName),
-                "'",
-                " | ",
-                "jq",
-                " '.[] | select(.name == \"initialize\" and .type == \"function\")'"
+                "' | jq '.[] | select(.name == \"initialize\" and .type == \"function\")'"
             );
 
             // If the contract does not have an `initialize()` function, skip it.
