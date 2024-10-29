@@ -297,8 +297,7 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		}
 		csd.deps = mockDependencySet{}
 
-		// when HazardCycleChecks returns an error,
-		// the error is returned with appropriate wrapping
+		// HazardCycleChecks returns an error with appropriate wrapping
 		blockRef, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "cycle detected")
 		require.ErrorContains(t, err, "failed to verify block")

@@ -151,8 +151,7 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		}
 		usd.deps = mockDependencySet{}
 
-		// when HazardCycleChecks returns an error,
-		// the error is returned with appropriate wrapping
+		// HazardCycleChecks returns an error with appropriate wrapping
 		err := CrossUnsafeUpdate(ctx, logger, chainID, usd)
 		require.ErrorContains(t, err, "cycle detected")
 		require.ErrorContains(t, err, "failed to verify block")
