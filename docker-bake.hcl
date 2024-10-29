@@ -207,7 +207,7 @@ target "proofs-tools" {
   context = "."
   args = {
     CHALLENGER_VERSION="005116d9b4e39c7ba0586ce95ceba4067123efd5"
-    KONA_VERSION="kona-client-v0.1.0-alpha.5"
+    KONA_VERSION="kona-client-v0.1.0-alpha.6"
   }
   target="proofs-tools"
   platforms = split(",", PLATFORMS)
