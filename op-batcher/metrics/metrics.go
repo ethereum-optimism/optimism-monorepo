@@ -2,6 +2,7 @@ package metrics
 
 import (
 	"io"
+	"sync/atomic"
 
 	"github.com/prometheus/client_golang/prometheus"
 
@@ -49,6 +50,8 @@ type Metricer interface {
 	RecordBlobUsedBytes(num int)
 
 	Document() []opmetrics.DocumentedMetric
+
+	PendingBytes() float64
 }
 
 type Metrics struct {
@@ -66,10 +69,13 @@ type Metrics struct {
 	// label by opened, closed, fully_submitted, timed_out
 	channelEvs opmetrics.EventVec
 
-	pendingBlocksCount        prometheus.GaugeVec
-	pendingBlocksBytesTotal   prometheus.Counter
-	pendingBlocksBytesCurrent prometheus.Gauge
-	blocksAddedCount          prometheus.Gauge
+	pendingBlocksCount      prometheus.GaugeVec
+	pendingBlocksBytesTotal prometheus.Counter
+
+	pendingBytes              int64
+	pendingBlocksBytesCurrent prometheus.GaugeFunc
+
+	blocksAddedCount prometheus.Gauge
 
 	channelInputBytes       prometheus.GaugeVec
 	channelReadyBytes       prometheus.Gauge
@@ -99,7 +105,7 @@ func NewMetrics(procName string) *Metrics {
 	registry := opmetrics.NewRegistry()
 	factory := opmetrics.With(registry)
 
-	return &Metrics{
+	m := &Metrics{
 		ns:       ns,
 		registry: registry,
 		factory:  factory,
@@ -132,11 +138,6 @@ func NewMetrics(procName string) *Metrics {
 			Namespace: ns,
 			Name:      "pending_blocks_bytes_total",
 			Help:      "Total size of transactions in pending blocks as they are fetched from L2",
-		}),
-		pendingBlocksBytesCurrent: factory.NewGauge(prometheus.GaugeOpts{
-			Namespace: ns,
-			Name:      "pending_blocks_bytes_current",
-			Help:      "Current size of transactions in the pending (fetched from L2 but not in a channel) stage.",
 		}),
 		blocksAddedCount: factory.NewGauge(prometheus.GaugeOpts{
 			Namespace: ns,
@@ -194,6 +195,13 @@ func NewMetrics(procName string) *Metrics {
 
 		batcherTxEvs: opmetrics.NewEventVec(factory, ns, "", "batcher_tx", "BatcherTx", []string{"stage"}),
 	}
+	m.pendingBlocksBytesCurrent = factory.NewGaugeFunc(prometheus.GaugeOpts{
+		Namespace: ns,
+		Name:      "pending_blocks_bytes_current",
+		Help:      "Current bytes pending to be written to the DA layer (from blocks fetched from L2 but not yet in a channel).",
+	}, m.PendingBytes)
+
+	return m
 }
 
 func (m *Metrics) Registry() *prometheus.Registry {
@@ -202,6 +210,12 @@ func (m *Metrics) Registry() *prometheus.Registry {
 
 func (m *Metrics) Document() []opmetrics.DocumentedMetric {
 	return m.factory.Document()
+}
+
+// PendingBytes returns the current number of bytes pending to be written to the DA layer (from blocks fetched from L2
+// but not yet in a channel).
+func (m *Metrics) PendingBytes() float64 {
+	return float64(atomic.LoadInt64(&m.pendingBytes))
 }
 
 func (m *Metrics) StartBalanceMetrics(l log.Logger, client *ethclient.Client, account common.Address) io.Closer {
@@ -278,14 +292,14 @@ func (m *Metrics) RecordChannelClosed(id derive.ChannelID, numPendingBlocks int,
 }
 
 func (m *Metrics) RecordL2BlockInPendingQueue(block *types.Block) {
-	size := float64(estimateBatchSize(block))
-	m.pendingBlocksBytesTotal.Add(size)
-	m.pendingBlocksBytesCurrent.Add(size)
+	size := estimateBatchSize(block)
+	m.pendingBlocksBytesTotal.Add(float64(size))
+	atomic.AddInt64(&m.pendingBytes, int64(size))
 }
 
 func (m *Metrics) RecordL2BlockInChannel(block *types.Block) {
-	size := float64(estimateBatchSize(block))
-	m.pendingBlocksBytesCurrent.Add(-1 * size)
+	size := estimateBatchSize(block)
+	atomic.AddInt64(&m.pendingBytes, -int64(size))
 	// Refer to RecordL2BlocksAdded to see the current + count of bytes added to a channel
 }
 
@@ -326,8 +340,13 @@ func estimateBatchSize(block *types.Block) uint64 {
 		if tx.IsDepositTx() {
 			continue
 		}
-		// Add 2 for the overhead of encoding the tx bytes in a RLP list
-		size += tx.Size() + 2
+		bigSize := types.EstimatedL1Size(tx.RollupCostData())
+		if bigSize.IsUint64() {
+			size += bigSize.Uint64()
+		} else {
+			// this shouldn't ever happen
+			size += tx.Size() + 2
+		}
 	}
 	return size
 }
