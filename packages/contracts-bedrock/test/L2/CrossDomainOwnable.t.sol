@@ -68,7 +68,7 @@ contract CrossDomainOwnableThroughPortal_Test is CommonTest {
             _value: 0,
             _gasLimit: 30_000,
             _isCreation: false,
-            _data: abi.encodeWithSelector(XDomainSetter.set.selector, 1)
+            _data: abi.encodeCall(XDomainSetter.set, (1))
         });
 
         // Simulate the operation of the `op-node` by parsing data

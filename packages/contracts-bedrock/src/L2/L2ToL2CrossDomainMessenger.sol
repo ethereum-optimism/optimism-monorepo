@@ -4,9 +4,7 @@ pragma solidity 0.8.25;
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { CrossL2Inbox } from "src/L2/CrossL2Inbox.sol";
-import { ICrossL2Inbox } from "src/L2/interfaces/ICrossL2Inbox.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
+import { CrossL2Inbox, Identifier } from "src/L2/CrossL2Inbox.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { TransientReentrancyAware } from "src/libraries/TransientContext.sol";
@@ -47,7 +45,7 @@ error TargetCallFailed();
 /// @notice The L2ToL2CrossDomainMessenger is a higher level abstraction on top of the CrossL2Inbox that provides
 ///         features necessary for secure transfers ERC20 tokens between L2 chains. Messages sent through the
 ///         L2ToL2CrossDomainMessenger on the source chain receive both replay protection as well as domain binding.
-contract L2ToL2CrossDomainMessenger is IL2ToL2CrossDomainMessenger, ISemver, TransientReentrancyAware {
+contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     /// @notice Storage slot for the sender of the current cross domain message.
     ///         Equal to bytes32(uint256(keccak256("l2tol2crossdomainmessenger.sender")) - 1)
     bytes32 internal constant CROSS_DOMAIN_MESSAGE_SENDER_SLOT =
@@ -67,8 +65,8 @@ contract L2ToL2CrossDomainMessenger is IL2ToL2CrossDomainMessenger, ISemver, Tra
     uint16 public constant messageVersion = uint16(0);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.9
-    string public constant version = "1.0.0-beta.9";
+    /// @custom:semver 1.0.0-beta.10
+    string public constant version = "1.0.0-beta.10";
 
     /// @notice Mapping of message hashes to boolean receipt values. Note that a message will only be present in this
     ///         mapping if it has successfully been relayed on this chain, and can therefore not be relayed again.
@@ -153,14 +151,7 @@ contract L2ToL2CrossDomainMessenger is IL2ToL2CrossDomainMessenger, ISemver, Tra
     ///         currently being replayed.
     /// @param _id          Identifier of the SentMessage event to be relayed
     /// @param _sentMessage Message payload of the `SentMessage` event
-    function relayMessage(
-        ICrossL2Inbox.Identifier calldata _id,
-        bytes calldata _sentMessage
-    )
-        external
-        payable
-        nonReentrant
-    {
+    function relayMessage(Identifier calldata _id, bytes calldata _sentMessage) external payable nonReentrant {
         // Ensure the log came from the messenger. Since the log origin is the CDM, there isn't a scenario where
         // this can be invoked from the CrossL2Inbox as the SentMessage log is not calldata for this function
         if (_id.origin != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER) {

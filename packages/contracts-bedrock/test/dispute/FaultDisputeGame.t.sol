@@ -6,6 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { DisputeGameFactory_Init } from "test/dispute/DisputeGameFactory.t.sol";
 import { AlphabetVM } from "test/mocks/AlphabetVM.sol";
+import { stdError } from "forge-std/StdError.sol";
 
 // Scripts
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
@@ -186,9 +187,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         // PreimageOracle constructor will revert if the challenge period is too large, so we need
         // to mock the call to pretend this is a bugged implementation where the challenge period
         // is allowed to be too large.
-        vm.mockCall(
-            address(oracle), abi.encodeWithSelector(oracle.challengePeriod.selector), abi.encode(_challengePeriod)
-        );
+        vm.mockCall(address(oracle), abi.encodeCall(IPreimageOracle.challengePeriod, ()), abi.encode(_challengePeriod));
 
         vm.expectRevert(InvalidChallengePeriod.selector);
         DeployUtils.create1({
@@ -536,11 +535,11 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         Claim claim = _dummyClaim();
 
         // Expect an out of bounds revert for an attack
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
+        vm.expectRevert(stdError.indexOOBError);
         gameProxy.attack(_dummyClaim(), 1, claim);
 
         // Expect an out of bounds revert for a defense
-        vm.expectRevert(abi.encodeWithSignature("Panic(uint256)", 0x32));
+        vm.expectRevert(stdError.indexOOBError);
         gameProxy.defend(_dummyClaim(), 1, claim);
     }
 
@@ -1704,14 +1703,14 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// resolves in favor of the defender but the game state is not newer than the anchor state.
     function test_resolve_validOlderStateSameAnchor_succeeds() public {
         // Mock the game block to be older than the game state.
-        vm.mockCall(address(gameProxy), abi.encodeWithSelector(gameProxy.l2BlockNumber.selector), abi.encode(0));
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(0));
 
         // Confirm that the anchor state is newer than the game state.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assert(l2BlockNumber >= gameProxy.l2BlockNumber());
 
         // Resolve the game.
-        vm.mockCall(address(gameProxy), abi.encodeWithSelector(gameProxy.l2BlockNumber.selector), abi.encode(0));
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(0));
         vm.warp(block.timestamp + 3 days + 12 hours);
         gameProxy.resolveClaim(0, 0);
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));

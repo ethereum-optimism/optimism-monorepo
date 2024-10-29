@@ -39,6 +39,33 @@ rules:
       exclude:
         - packages/contracts-bedrock/test/dispute/WETH98.t.sol
 
+  - id: sol-safety-natspec-semver-match
+    languages: [generic]
+    severity: ERROR
+    message: Semgrep defined in contract must match natspec $VERSION1 $VERSION2
+    patterns:
+      - pattern-either:
+          - pattern-regex: /// @custom:semver
+              (?P<VERSION1>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)\s+string
+              public constant version =
+              "(?P<VERSION2>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)";
+          - pattern-regex: /// @custom:semver
+              (?P<VERSION1>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)\s+function
+              version\(\) public pure virtual returns \(string memory\)
+              \{\s+return
+              "(?P<VERSION2>[0-9]+\.[0-9]+\.[0-9]+(?:-[a-zA-Z0-9.]+)?)";
+          - pattern-regex:
+              /// @custom:semver (?P<VERSION1>[a-zA-Z0-9.+-]+)\s+function
+              version\(\) public pure override returns \(string memory\)
+              \{\s+return string\.concat\(super\.version\(\),
+              "(?P<VERSION2>[a-zA-Z0-9.+-]+)"\);
+      - metavariable-comparison:
+          comparison: $VERSION1 != $VERSION2
+          metavariable: $VERSION1
+    paths:
+      include:
+        - packages/contracts-bedrock/src
+
   - id: sol-style-input-arg-fmt
     languages: [solidity]
     severity: ERROR
@@ -46,6 +73,9 @@ rules:
     pattern-regex: function\s+\w+\s*\(\s*([^)]*?\b\w+\s+(?!_)(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+\s*(?=,|\)))
     paths:
       exclude:
+        - packages/contracts-bedrock/src/universal/interfaces/IOptimismMintableERC721.sol
+        - packages/contracts-bedrock/src/universal/interfaces/IWETH98.sol
+        - packages/contracts-bedrock/src/dispute/interfaces/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
@@ -64,6 +94,7 @@ rules:
     pattern-regex: returns\s*(\w+\s*)?\(\s*([^)]*?\b\w+\s+(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+(?<!_)\s*(?=,|\)))
     paths:
       exclude:
+        - packages/contracts-bedrock/src/dispute/interfaces/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test/safe-tools
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
@@ -122,11 +153,14 @@ rules:
     severity: ERROR
     message: Use abi.encodeCall instead of abi.encodeWithSelector
     patterns:
-      - pattern: |
-          abi.encodeWithSelector(...);
+      - pattern-either:
+          - pattern: |
+              abi.encodeWithSelector(...);
+          - pattern: |
+              abi.encodeWithSignature(...);
+      - pattern-not: vm.expectRevert(abi.encodeWithSelector(...));
     paths:
       exclude:
-        - packages/contracts-bedrock/test
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
         - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
         - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol

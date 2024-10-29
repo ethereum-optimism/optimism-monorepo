@@ -19,9 +19,11 @@ interface Vm {
 library console {
     address constant CONSOLE_ADDRESS = address(0x000000000000000000636F6e736F6c652e6c6f67);
 
-    function _castLogPayloadViewToPure(
-        function(bytes memory) internal view fnIn
-    ) internal pure returns (function(bytes memory) internal pure fnOut) {
+    function _castLogPayloadViewToPure(function(bytes memory) internal view fnIn)
+        internal
+        pure
+        returns (function(bytes memory) internal pure fnOut)
+    {
         assembly {
             fnOut := fnIn
         }
@@ -42,30 +44,29 @@ library console {
     }
 
     function log(string memory p0) internal pure {
-        _sendLogPayload(abi.encodeWithSignature("log(string)", p0));
+        _sendLogPayload(abi.encodeWithSignature("log(string)", p0)); // nosemgrep: sol-style-use-abi-encodecall
     }
 
     function log(string memory p0, bool p1) internal pure {
-        _sendLogPayload(abi.encodeWithSignature("log(string,bool)", p0, p1));
+        _sendLogPayload(abi.encodeWithSignature("log(string,bool)", p0, p1)); // nosemgrep: sol-style-use-abi-encodecall
     }
 
     function log(string memory p0, uint256 p1) internal pure {
-        _sendLogPayload(abi.encodeWithSignature("log(string,uint256)", p0, p1));
+        _sendLogPayload(abi.encodeWithSignature("log(string,uint256)", p0, p1)); // nosemgrep: sol-style-use-abi-encodecall
     }
 
     function log(string memory p0, address p1) internal pure {
-        _sendLogPayload(abi.encodeWithSignature("log(string,address)", p0, p1));
+        _sendLogPayload(abi.encodeWithSignature("log(string,address)", p0, p1)); // nosemgrep: sol-style-use-abi-encodecall
     }
 
     function log(string memory p0, string memory p1, string memory p2) internal pure {
-        _sendLogPayload(abi.encodeWithSignature("log(string,string,string)", p0, p1, p2));
+        _sendLogPayload(abi.encodeWithSignature("log(string,string,string)", p0, p1, p2)); // nosemgrep: sol-style-use-abi-encodecall
     }
 }
 
 /// @title ScriptExample
 /// @notice ScriptExample is an example script. The Go forge script code tests that it can run this.
 contract ScriptExample {
-
     address internal constant VM_ADDRESS = address(uint160(uint256(keccak256("hevm cheat code"))));
     Vm internal constant vm = Vm(VM_ADDRESS);
 

@@ -677,6 +677,8 @@ jobs:
           name: print forge version
           command: forge --version
       - run-contracts-check:
+          command: check-kontrol-summaries-unchanged
+      - run-contracts-check:
           command: semgrep-test-validity-check
       - run-contracts-check:
           command: semgrep
@@ -684,8 +686,6 @@ jobs:
           command: semver-lock
       - run-contracts-check:
           command: semver-diff-check-no-build
-      - run-contracts-check:
-          command: semver-natspec-check-no-build
       - run-contracts-check:
           command: validate-deploy-configs
       - run-contracts-check:
@@ -864,7 +864,6 @@ jobs:
               op-service
               op-supervisor
               op-deployer
-              packages/contracts-bedrock/scripts/checks/semver-natspec
             )
             formatted_packages=""
             for package in "${packages[@]}"; do
@@ -1032,7 +1031,7 @@ jobs:
           paths:
             - "/root/.cache/go-build"
       - notify-failures-on-develop:
-          mentions: "@proofs-squad"
+          mentions: "@proofs-team"
 
   semgrep-scan:
     parameters:
@@ -1245,10 +1244,28 @@ jobs:
         description: Goreleaser config file
         default: .goreleaser.yaml
         type: string
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
+    resource_class: large
     steps:
+      - setup_remote_docker
+      - gcp-cli/install
+      - gcp-oidc-authenticate:
+          gcp_cred_config_file_path: /root/gcp_cred_config.json
+          oidc_token_file_path: /root/oidc_token.json
       - checkout
+      - run:
+          name: Install goreleaser pro
+          command: |
+            mkdir -p /tmp/goreleaser
+            cd /tmp/goreleaser
+            curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.3.2-pro/goreleaser-pro_Linux_x86_64.tar.gz
+            tar -xzvf goreleaser.tgz
+            mv goreleaser /usr/local/bin/goreleaser
+      - run:
+          name: Configure Docker
+          command: |
+            gcloud auth configure-docker us-docker.pkg.dev
       - run:
           name: Run goreleaser
           command: |
@@ -1297,7 +1314,6 @@ workflows:
       - contracts-bedrock-validate-spacers:
           requires:
             - contracts-bedrock-build
-      - semgrep-scan
       - semgrep-scan:
           name: semgrep-scan-local
           scan_command: semgrep scan --timeout=100 --config=./semgrep --error .

@@ -134,7 +134,7 @@ func (s *ChainProcessor) work() {
 		target := s.nextNum()
 		if err := s.update(target); err != nil {
 			if errors.Is(err, ethereum.NotFound) {
-				s.log.Info("Cannot find next block yet", "target", target)
+				s.log.Info("Cannot find next block yet", "target", target, "err", err)
 			} else if errors.Is(err, types.ErrNoRPCSource) {
 				s.log.Warn("No RPC source configured, cannot process new blocks")
 			} else {

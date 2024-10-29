@@ -1,0 +1,3 @@
+FROM debian:bookworm-20240812-slim
+ENTRYPOINT ["/op-deployer"]
+COPY op-deployer /op-deployer

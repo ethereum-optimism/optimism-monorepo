@@ -30,6 +30,9 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return opened, 10, execs, nil
 		}
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
 		csd.deps = mockDependencySet{}
 		// when scopedCrossSafeUpdate returns no error,
 		// no error is returned
@@ -256,6 +259,9 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return opened, 10, execs, nil
 		}
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
 		count := 0
 		csd.deps = mockDependencySet{}
 		// cause CrossSafeHazards to return an error by making ChainIDFromIndex return an error
@@ -274,6 +280,32 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		require.ErrorContains(t, err, "frontier")
 		require.Equal(t, eth.BlockRef{}, blockRef)
 	})
+	t.Run("HazardCycleChecks returns error", func(t *testing.T) {
+		logger := testlog.Logger(t, log.LevelDebug)
+		chainID := types.ChainIDFromUInt64(0)
+		csd := &mockCrossSafeDeps{}
+		candidate := eth.BlockRef{Number: 1, Time: 1}
+		candidateScope := eth.BlockRef{Number: 2}
+		csd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
+			return candidateScope, candidate, nil
+		}
+		opened := eth.BlockRef{Number: 1, Time: 1}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1, LogIdx: 2}
+		em2 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1, LogIdx: 1}
+		csd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+			return opened, 3, map[uint32]*types.ExecutingMessage{1: em1, 2: em2}, nil
+		}
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
+		csd.deps = mockDependencySet{}
+
+		// HazardCycleChecks returns an error with appropriate wrapping
+		blockRef, err := scopedCrossSafeUpdate(logger, chainID, csd)
+		require.ErrorContains(t, err, "cycle detected")
+		require.ErrorContains(t, err, "failed to verify block")
+		require.Equal(t, eth.BlockRef{Number: 2}, blockRef)
+	})
 	t.Run("UpdateCrossSafe returns error", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
@@ -288,15 +320,19 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return opened, 10, execs, nil
 		}
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
 		csd.deps = mockDependencySet{}
 		csd.updateCrossSafeFn = func(chain types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error {
 			return errors.New("some error")
 		}
 		// when UpdateCrossSafe returns an error,
 		// the error is returned
-		_, err := scopedCrossSafeUpdate(logger, chainID, csd)
+		blockRef, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 		require.ErrorContains(t, err, "failed to update")
+		require.Equal(t, eth.BlockRef{Number: 2}, blockRef)
 	})
 	t.Run("successful update", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -325,6 +361,9 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		// when no errors occur, the update is carried out
 		// the used candidate and scope are from CandidateCrossSafe
 		// the candidateScope is returned
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
 		blockRef, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.Equal(t, chainID, updatingChain)
 		require.Equal(t, candidateScope, updatingCandidateScope)
@@ -342,6 +381,7 @@ type mockCrossSafeDeps struct {
 	updateCrossSafeFn    func(chain types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
 	nextDerivedFromFn    func(chain types.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
 	previousDerivedFn    func(chain types.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
+	checkFn              func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 }
 
 func (m *mockCrossSafeDeps) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error) {
@@ -367,6 +407,9 @@ func (m *mockCrossSafeDeps) CrossDerivedFrom(chainID types.ChainID, derived eth.
 }
 
 func (m *mockCrossSafeDeps) Check(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+	if m.checkFn != nil {
+		return m.checkFn(chainID, blockNum, logIdx, logHash)
+	}
 	return types.BlockSeal{}, nil
 }
 

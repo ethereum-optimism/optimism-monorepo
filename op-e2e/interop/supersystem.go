@@ -7,6 +7,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sort"
 	"testing"
 	"time"
 
@@ -79,8 +80,10 @@ type SuperSystem interface {
 	L2GethClient(network string) *ethclient.Client
 	// get the secret for a network and role
 	L2OperatorKey(network string, role devkeys.ChainOperatorRole) ecdsa.PrivateKey
-	// get the list of network IDs
+	// get the list of network IDs as key-strings
 	L2IDs() []string
+	// get the chain ID for a network
+	ChainID(network string) *big.Int
 	// register a username to an account on all L2s
 	AddUser(username string)
 	// get the user key for a user on an L2
@@ -415,6 +418,10 @@ func (s *interopE2ESystem) newL2(id string, l2Out *interopgen.L2Output) l2Set {
 	}
 }
 
+func (s *interopE2ESystem) ChainID(network string) *big.Int {
+	return s.l2s[network].chainID
+}
+
 // prepareSupervisor creates a new supervisor for the system
 func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 	// Be verbose with op-supervisor, it's in early test phase
@@ -604,6 +611,7 @@ func (s *interopE2ESystem) L2IDs() []string {
 	for id := range s.l2s {
 		ids = append(ids, id)
 	}
+	sort.Strings(ids)
 	return ids
 }
 

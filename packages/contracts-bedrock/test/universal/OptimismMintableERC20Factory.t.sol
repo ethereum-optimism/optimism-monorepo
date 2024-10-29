@@ -42,7 +42,7 @@ contract OptimismMintableTokenFactory_Test is Bridge_Initializer {
         vm.startPrank(EIP1967Helper.getAdmin(address(proxy)));
         // Reviewer note: the NextImpl() still uses reinitializer. If we want to remove that, we'll need to use a
         //   two step upgrade with the Storage lib.
-        proxy.upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(NextImpl.initialize.selector, 2));
+        proxy.upgradeToAndCall(address(nextImpl), abi.encodeCall(NextImpl.initialize, (2)));
         assertEq(proxy.implementation(), address(nextImpl));
 
         // Verify that the NextImpl contract initialized its values according as expected

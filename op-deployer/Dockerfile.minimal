@@ -1,0 +1,3 @@
+FROM scratch
+ENTRYPOINT ["/op-deployer"]
+COPY op-deployer /op-deployer

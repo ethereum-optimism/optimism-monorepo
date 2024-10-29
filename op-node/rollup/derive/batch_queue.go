@@ -49,6 +49,8 @@ type baseBatchStage struct {
 	log    log.Logger
 	config *rollup.Config
 	prev   NextBatchProvider
+	l2     SafeBlockFetcher
+
 	origin eth.L1BlockRef
 
 	// l1Blocks contains consecutive eth.L1BlockRef sorted by time.
@@ -61,8 +63,6 @@ type baseBatchStage struct {
 
 	// nextSpan is cached SingularBatches derived from SpanBatch
 	nextSpan []*SingularBatch
-
-	l2 SafeBlockFetcher
 }
 
 func newBaseBatchStage(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) baseBatchStage {
@@ -84,11 +84,6 @@ func (bs *baseBatchStage) Log() log.Logger {
 	} else {
 		return bs.log.New("origin", bs.origin.ID(), "epoch", bs.l1Blocks[0])
 	}
-}
-
-type SingularBatchProvider interface {
-	ResettableStage
-	NextBatch(context.Context, eth.L2BlockRef) (*SingularBatch, bool, error)
 }
 
 // BatchQueue contains a set of batches for every L1 block.
@@ -262,10 +257,10 @@ func (bs *baseBatchStage) reset(base eth.L1BlockRef) {
 	// Copy over the Origin from the next stage
 	// It is set in the engine queue (two stages away) such that the L2 Safe Head origin is the progress
 	bs.origin = base
+	bs.l1Blocks = bs.l1Blocks[:0]
 	// Include the new origin as an origin to build on
 	// Note: This is only for the initialization case. During normal resets we will later
 	// throw out this block.
-	bs.l1Blocks = bs.l1Blocks[:0]
 	bs.l1Blocks = append(bs.l1Blocks, base)
 	bs.nextSpan = bs.nextSpan[:0]
 }

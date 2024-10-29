@@ -17,16 +17,16 @@ type AdminBackend interface {
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
-	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockID, err error)
+	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 }
 
 type UpdatesBackend interface {
-	UpdateLocalUnsafe(chainID types.ChainID, head eth.BlockRef) error
-	UpdateLocalSafe(chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
-	UpdateFinalizedL1(chainID types.ChainID, finalized eth.BlockRef) error
+	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
+	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
+	UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error
 }
 
 type Backend interface {
@@ -38,6 +38,8 @@ type Backend interface {
 type QueryFrontend struct {
 	Supervisor QueryBackend
 }
+
+var _ QueryBackend = (*QueryFrontend)(nil)
 
 // CheckMessage checks the safety-level of an individual message.
 // The payloadHash references the hash of the message-payload of the message.
@@ -65,13 +67,15 @@ func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (e
 	return q.Supervisor.Finalized(ctx, chainID)
 }
 
-func (q *QueryFrontend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockID, err error) {
+func (q *QueryFrontend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return q.Supervisor.DerivedFrom(ctx, chainID, derived)
 }
 
 type AdminFrontend struct {
 	Supervisor Backend
 }
+
+var _ AdminBackend = (*AdminFrontend)(nil)
 
 // Start starts the service, if it was previously stopped.
 func (a *AdminFrontend) Start(ctx context.Context) error {
@@ -92,14 +96,16 @@ type UpdatesFrontend struct {
 	Supervisor UpdatesBackend
 }
 
-func (u *UpdatesFrontend) UpdateLocalUnsafe(chainID types.ChainID, head eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalUnsafe(chainID, head)
+var _ UpdatesBackend = (*UpdatesFrontend)(nil)
+
+func (u *UpdatesFrontend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
+	return u.Supervisor.UpdateLocalUnsafe(ctx, chainID, head)
 }
 
-func (u *UpdatesFrontend) UpdateLocalSafe(chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
+func (u *UpdatesFrontend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
+	return u.Supervisor.UpdateLocalSafe(ctx, chainID, derivedFrom, lastDerived)
 }
 
-func (u *UpdatesFrontend) UpdateFinalizedL1(chainID types.ChainID, finalized eth.BlockRef) error {
-	return u.Supervisor.UpdateFinalizedL1(chainID, finalized)
+func (u *UpdatesFrontend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
+	return u.Supervisor.UpdateFinalizedL1(ctx, chainID, finalized)
 }

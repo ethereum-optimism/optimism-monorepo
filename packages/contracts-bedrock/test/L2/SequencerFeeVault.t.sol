@@ -7,12 +7,13 @@ import { Reverter } from "test/mocks/Callers.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Contracts
-import { SequencerFeeVault } from "src/L2/SequencerFeeVault.sol";
+import { ISequencerFeeVault } from "src/L2/interfaces/ISequencerFeeVault.sol";
 
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Types } from "src/libraries/Types.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SequencerFeeVault_Test is CommonTest {
     address recipient;
@@ -112,11 +113,19 @@ contract SequencerFeeVault_L2Withdrawal_Test is CommonTest {
         vm.etch(
             EIP1967Helper.getImplementation(Predeploys.SEQUENCER_FEE_WALLET),
             address(
-                new SequencerFeeVault(
-                    deploy.cfg().sequencerFeeVaultRecipient(),
-                    deploy.cfg().sequencerFeeVaultMinimumWithdrawalAmount(),
-                    Types.WithdrawalNetwork.L2
-                )
+                DeployUtils.create1({
+                    _name: "SequencerFeeVault",
+                    _args: DeployUtils.encodeConstructor(
+                        abi.encodeCall(
+                            ISequencerFeeVault.__constructor__,
+                            (
+                                deploy.cfg().sequencerFeeVaultRecipient(),
+                                deploy.cfg().sequencerFeeVaultMinimumWithdrawalAmount(),
+                                Types.WithdrawalNetwork.L2
+                            )
+                        )
+                    )
+                })
             ).code
         );
 

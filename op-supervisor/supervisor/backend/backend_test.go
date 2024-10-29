@@ -113,7 +113,7 @@ func TestBackendLifetime(t *testing.T) {
 
 	src.ExpectL1BlockRefByNumber(2, eth.L1BlockRef{}, ethereum.NotFound)
 
-	err = b.UpdateLocalUnsafe(chainA, blockY)
+	err = b.UpdateLocalUnsafe(context.Background(), chainA, blockY)
 	require.NoError(t, err)
 	// Make the processing happen, so we can rely on the new chain information,
 	// and not run into errors for future data that isn't mocked at this time.

@@ -96,8 +96,8 @@ contract SuperchainTokenBridgeTest is Bridge_Initializer {
             abi.encodeCall(superchainTokenBridge.relayERC20, (address(superchainERC20), _sender, _to, _amount));
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            abi.encodeWithSelector(
-                IL2ToL2CrossDomainMessenger.sendMessage.selector, _chainId, address(superchainTokenBridge), _message
+            abi.encodeCall(
+                IL2ToL2CrossDomainMessenger.sendMessage, (_chainId, address(superchainTokenBridge), _message)
             ),
             abi.encode(_msgHash)
         );
@@ -150,7 +150,7 @@ contract SuperchainTokenBridgeTest is Bridge_Initializer {
         // Mock the call over the `crossDomainMessageContext` function setting a wrong sender
         vm.mockCall(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.crossDomainMessageContext.selector),
+            abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
             abi.encode(_crossDomainMessageSender, _source)
         );
 
@@ -169,7 +169,7 @@ contract SuperchainTokenBridgeTest is Bridge_Initializer {
         // Mock the call over the `crossDomainMessageContext` function setting the same address as value
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            abi.encodeWithSelector(IL2ToL2CrossDomainMessenger.crossDomainMessageContext.selector),
+            abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
             abi.encode(address(superchainTokenBridge), _source)
         );
 

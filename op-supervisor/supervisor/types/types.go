@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
@@ -250,4 +251,16 @@ func BlockSealFromRef(ref eth.BlockRef) BlockSeal {
 		Number:    ref.Number,
 		Timestamp: ref.Time,
 	}
+}
+
+// PayloadHashToLogHash converts the payload hash to the log hash
+// it is the concatenation of the log's address and the hash of the log's payload,
+// which is then hashed again. This is the hash that is stored in the log storage.
+// The logHash can then be used to traverse from the executing message
+// to the log the referenced initiating message.
+func PayloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.Hash {
+	msg := make([]byte, 0, 2*common.HashLength)
+	msg = append(msg, addr.Bytes()...)
+	msg = append(msg, payloadHash.Bytes()...)
+	return crypto.Keccak256Hash(msg)
 }

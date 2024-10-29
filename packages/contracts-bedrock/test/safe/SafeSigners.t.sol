@@ -75,6 +75,7 @@ contract SafeSigners_Test is Test, SafeTestTools {
                 contractSigs++;
                 address addr = SafeTestLib.decodeSmartContractWalletAsAddress(pks[i]);
                 r = bytes32(uint256(uint160(addr)));
+                // nosemgrep: sol-style-use-abi-encodecall
                 vm.mockCall(
                     addr, abi.encodeWithSignature("isValidSignature(bytes,bytes)"), abi.encode(EIP1271_MAGIC_VALUE)
                 );

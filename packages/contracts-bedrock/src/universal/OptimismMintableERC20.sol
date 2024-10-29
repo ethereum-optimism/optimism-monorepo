@@ -4,7 +4,8 @@ pragma solidity 0.8.15;
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/draft-ERC20Permit.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { ILegacyMintableERC20, IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
+import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
+import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 
@@ -14,7 +15,7 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 ///         use an OptimismMintablERC20 as the L2 representation of an L1 token, or vice-versa.
 ///         Designed to be backwards compatible with the older StandardL2ERC20 token which was only
 ///         meant for use on L2.
-contract OptimismMintableERC20 is IOptimismMintableERC20, ILegacyMintableERC20, ERC20Permit, ISemver {
+contract OptimismMintableERC20 is ERC20Permit, ISemver {
     /// @notice Address of the corresponding version of this token on the remote chain.
     address public immutable REMOTE_TOKEN;
 
@@ -41,8 +42,8 @@ contract OptimismMintableERC20 is IOptimismMintableERC20, ILegacyMintableERC20, 
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0-beta.1
-    string public constant version = "1.4.0-beta.1";
+    /// @custom:semver 1.4.0-beta.2
+    string public constant version = "1.4.0-beta.2";
 
     /// @notice Getter function for the permit2 address. It deterministically deployed
     ///         so it will always be at the same address. It is also included as a preinstall,
@@ -96,15 +97,7 @@ contract OptimismMintableERC20 is IOptimismMintableERC20, ILegacyMintableERC20, 
     /// @notice Allows the StandardBridge on this network to mint tokens.
     /// @param _to     Address to mint tokens to.
     /// @param _amount Amount of tokens to mint.
-    function mint(
-        address _to,
-        uint256 _amount
-    )
-        external
-        virtual
-        override(IOptimismMintableERC20, ILegacyMintableERC20)
-        onlyBridge
-    {
+    function mint(address _to, uint256 _amount) external virtual onlyBridge {
         _mint(_to, _amount);
         emit Mint(_to, _amount);
     }
@@ -112,15 +105,7 @@ contract OptimismMintableERC20 is IOptimismMintableERC20, ILegacyMintableERC20, 
     /// @notice Allows the StandardBridge on this network to burn tokens.
     /// @param _from   Address to burn tokens from.
     /// @param _amount Amount of tokens to burn.
-    function burn(
-        address _from,
-        uint256 _amount
-    )
-        external
-        virtual
-        override(IOptimismMintableERC20, ILegacyMintableERC20)
-        onlyBridge
-    {
+    function burn(address _from, uint256 _amount) external virtual onlyBridge {
         _burn(_from, _amount);
         emit Burn(_from, _amount);
     }

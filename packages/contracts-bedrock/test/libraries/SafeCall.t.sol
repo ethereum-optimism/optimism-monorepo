@@ -122,12 +122,12 @@ contract SafeCall_Test is Test {
         for (uint64 i = 40_000; i < 100_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 65_907 is the exact amount of gas required to make the safe call
+            // 65_922 is the exact amount of gas required to make the safe call
             // successfully.
-            if (i < 65_907) {
+            if (i < 65_922) {
                 assertFalse(caller.makeSafeCall(i, 25_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 25_000));
             }
 
@@ -142,12 +142,12 @@ contract SafeCall_Test is Test {
         for (uint64 i = 15_200_000; i < 15_300_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 15_278_606 is the exact amount of gas required to make the safe call
+            // 15_278_621 is the exact amount of gas required to make the safe call
             // successfully.
-            if (i < 15_278_606) {
+            if (i < 15_278_621) {
                 assertFalse(caller.makeSafeCall(i, 15_000_000));
             } else {
-                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeWithSelector(caller.setA.selector, 1));
+                vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeCall(caller.setA, (1)));
                 assertTrue(caller.makeSafeCall(i, 15_000_000));
             }
 
@@ -160,11 +160,11 @@ contract SimpleSafeCaller {
     uint256 public a;
 
     function makeSafeCall(uint64 gas, uint64 minGas) external returns (bool) {
-        return SafeCall.call(address(this), gas, 0, abi.encodeWithSelector(this.makeSafeCallMinGas.selector, minGas));
+        return SafeCall.call(address(this), gas, 0, abi.encodeCall(this.makeSafeCallMinGas, (minGas)));
     }
 
     function makeSafeCallMinGas(uint64 minGas) external returns (bool) {
-        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeWithSelector(this.setA.selector, 1));
+        return SafeCall.callWithMinGas(address(this), minGas, 0, abi.encodeCall(this.setA, (1)));
     }
 
     function setA(uint256 _a) external {
