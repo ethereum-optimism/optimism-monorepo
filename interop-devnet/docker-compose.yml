@@ -91,6 +91,7 @@ services:
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
       --rpc.enable-admin
+      --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
 
   l2-a:
     depends_on:

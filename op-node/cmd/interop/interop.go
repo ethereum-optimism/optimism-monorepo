@@ -1,7 +1,6 @@
 package interop
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
 	"os"
@@ -17,6 +16,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/interopgen"
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
+	"github.com/ethereum-optimism/optimism/op-service/ioutil"
+	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/crypto"
 )
@@ -171,21 +172,7 @@ var InteropDevSetup = &cli.Command{
 }
 
 func writeJson(path string, content any) error {
-	outDir := filepath.Dir(path)
-	if err := os.MkdirAll(outDir, 0o755); err != nil {
-		return fmt.Errorf("failed to create dir %q: %w", outDir, err)
-	}
-	f, err := os.OpenFile(path, os.O_WRONLY|os.O_TRUNC|os.O_CREATE, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open %q: %w", path, err)
-	}
-	defer f.Close()
-	enc := json.NewEncoder(f)
-	enc.SetEscapeHTML(false)
-	if err := enc.Encode(content); err != nil {
-		return fmt.Errorf("failed to write JSON content: %w", err)
-	}
-	return nil
+	return jsonutil.WriteJSON[any](content, ioutil.ToBasicFile(path, 0o755))
 }
 
 var DevKeySecretCmd = &cli.Command{
