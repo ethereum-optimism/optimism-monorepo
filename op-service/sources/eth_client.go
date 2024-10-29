@@ -315,6 +315,22 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 	return info, receipts, nil
 }
 
+// ExecutionWitness fetches execution witness data for a block number.
+func (s *EthClient) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
+	var witness *eth.ExecutionWitness
+
+	err := s.client.CallContext(ctx, &witness, "debug_executionWitness", hexutil.EncodeUint64(blockNum), true)
+	if err != nil {
+		return nil, err
+	}
+
+	if witness == nil {
+		return nil, ethereum.NotFound
+	}
+
+	return witness, nil
+}
+
 // GetProof returns an account proof result, with any optional requested storage proofs.
 // The retrieval does sanity-check that storage proofs for the expected keys are present in the response,
 // but does not verify the result. Call accountResult.Verify(stateRoot) to verify the result.

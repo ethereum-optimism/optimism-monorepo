@@ -490,6 +490,11 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 		if rtv == 0 { // bltz
 			shouldBranch = arch.SignedInteger(rs) < 0
 		}
+		if rtv == 0x10 { // bltzal
+			shouldBranch = arch.SignedInteger(rs) < 0
+			registers[31] = cpu.PC + 8 // always set regardless of branch taken
+			linked = true
+		}
 		if rtv == 1 { // bgez
 			shouldBranch = arch.SignedInteger(rs) >= 0
 		}

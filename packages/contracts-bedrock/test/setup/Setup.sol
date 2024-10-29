@@ -45,7 +45,7 @@ import { IGasPriceOracle } from "src/L2/interfaces/IGasPriceOracle.sol";
 import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 import { ISuperchainWETH } from "src/L2/interfaces/ISuperchainWETH.sol";
 import { IETHLiquidity } from "src/L2/interfaces/IETHLiquidity.sol";
-import { IWETH } from "src/universal/interfaces/IWETH.sol";
+import { IWETH98 } from "src/universal/interfaces/IWETH98.sol";
 import { IGovernanceToken } from "src/governance/interfaces/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "src/legacy/interfaces/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "src/L2/interfaces/ISuperchainTokenBridge.sol";
@@ -105,7 +105,7 @@ contract Setup {
     IL1Block l1Block = IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES);
     IGovernanceToken governanceToken = IGovernanceToken(Predeploys.GOVERNANCE_TOKEN);
     ILegacyMessagePasser legacyMessagePasser = ILegacyMessagePasser(Predeploys.LEGACY_MESSAGE_PASSER);
-    IWETH weth = IWETH(payable(Predeploys.WETH));
+    IWETH98 weth = IWETH98(payable(Predeploys.WETH));
     ISuperchainWETH superchainWeth = ISuperchainWETH(payable(Predeploys.SUPERCHAIN_WETH));
     IETHLiquidity ethLiquidity = IETHLiquidity(Predeploys.ETH_LIQUIDITY);
     ISuperchainTokenBridge superchainTokenBridge = ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);

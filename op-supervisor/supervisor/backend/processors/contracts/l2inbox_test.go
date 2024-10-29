@@ -32,7 +32,7 @@ func TestDecodeExecutingMessageEvent(t *testing.T) {
 		Timestamp:   new(big.Int).SetUint64(expected.Timestamp),
 		LogIndex:    new(big.Int).SetUint64(uint64(expected.LogIdx)),
 	}
-	expected.Hash = payloadHashToLogHash(payloadHash, contractIdent.Origin)
+	expected.Hash = types.PayloadHashToLogHash(payloadHash, contractIdent.Origin)
 	abi := snapshots.LoadCrossL2InboxABI()
 	validData, err := abi.Events[eventExecutingMessage].Inputs.Pack(payloadHash, contractIdent)
 	require.NoError(t, err)

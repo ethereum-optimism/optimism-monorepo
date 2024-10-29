@@ -308,14 +308,14 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, logHash common.Hash) (types.SafetyLevel, error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), payloadHash)
+	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), logHash)
 	if errors.Is(err, types.ErrFuture) {
 		return types.LocalUnsafe, nil
 	}
@@ -402,21 +402,21 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainI
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockID, err error) {
+func (su *SupervisorBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	v, err := su.chainDBs.DerivedFrom(chainID, derived)
 	if err != nil {
-		return eth.BlockID{}, err
+		return eth.BlockRef{}, err
 	}
-	return v.ID(), nil
+	return v, nil
 }
 
 // Update methods
 // ----------------------------
 
-func (su *SupervisorBackend) UpdateLocalUnsafe(chainID types.ChainID, head eth.BlockRef) error {
+func (su *SupervisorBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 	ch, ok := su.chainProcessors[chainID]
@@ -426,16 +426,50 @@ func (su *SupervisorBackend) UpdateLocalUnsafe(chainID types.ChainID, head eth.B
 	return ch.OnNewHead(head)
 }
 
-func (su *SupervisorBackend) UpdateLocalSafe(chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
+func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	return su.chainDBs.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
 }
 
-func (su *SupervisorBackend) UpdateFinalizedL1(chainID types.ChainID, finalized eth.BlockRef) error {
+func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	return su.chainDBs.UpdateFinalizedL1(finalized)
+}
+
+// Access to synchronous processing for tests
+// ----------------------------
+
+func (su *SupervisorBackend) SyncEvents(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.chainProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	ch.ProcessToHead()
+	return nil
+}
+
+func (su *SupervisorBackend) SyncCrossUnsafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossUnsafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
+}
+
+func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossSafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
 }

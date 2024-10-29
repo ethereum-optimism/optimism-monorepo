@@ -36,7 +36,7 @@ test:
 	go test ./...
 
 op-deployer:
-	GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) CGO_ENABLED=0 go build -v $(LDFLAGS) -o ./bin/op-deployer ./cmd/op-deployer/main.go
+	GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) CGO_ENABLED=0 go build -v $(LDFLAGS) -o ./bin/op-deployer ../op-deployer/cmd/op-deployer/main.go
 
 fuzz:
 	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzEncodeDecodeWithdrawal ./crossdomain

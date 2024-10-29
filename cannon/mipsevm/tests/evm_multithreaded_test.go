@@ -1078,6 +1078,7 @@ var NoopSyscalls = map[string]uint32{
 	"SysPrlimit64":     4338,
 	"SysClose":         4006,
 	"SysPread64":       4200,
+	"SysStat":          4106,
 	"SysFstat":         4108,
 	"SysFstat64":       4215,
 	"SysOpenAt":        4288,

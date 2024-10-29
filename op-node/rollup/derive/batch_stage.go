@@ -15,6 +15,8 @@ type BatchStage struct {
 	baseBatchStage
 }
 
+var _ SingularBatchProvider = (*BatchStage)(nil)
+
 func NewBatchStage(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) *BatchStage {
 	return &BatchStage{baseBatchStage: newBaseBatchStage(log, cfg, prev, l2)}
 }
@@ -68,7 +70,8 @@ func (bs *BatchStage) NextBatch(ctx context.Context, parent eth.L2BlockRef) (*Si
 		// We only consider empty batch generation after we've drained all batches from the local
 		// span batch queue and the previous stage.
 		empty, err := bs.deriveNextEmptyBatch(ctx, true, parent)
-		return empty, false, err
+		// An empty batch always advances the safe head.
+		return empty, true, err
 	} else if err != nil {
 		return nil, false, err
 	}

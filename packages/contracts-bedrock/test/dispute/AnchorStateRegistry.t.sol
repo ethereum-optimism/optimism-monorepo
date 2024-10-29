@@ -49,9 +49,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         assert(l2BlockNumber < gameProxy.l2BlockNumber());
 
         // Mock the state that we want.
-        vm.mockCall(
-            address(gameProxy), abi.encodeWithSelector(gameProxy.status.selector), abi.encode(GameStatus.DEFENDER_WINS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
 
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
@@ -66,15 +64,13 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
     /// @dev Tests that updating the anchor state fails when the game state is valid but older.
     function test_tryUpdateAnchorState_validOlderState_fails() public {
         // Confirm that the anchor state is newer than the game state.
-        vm.mockCall(address(gameProxy), abi.encodeWithSelector(gameProxy.l2BlockNumber.selector), abi.encode(0));
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(0));
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assert(l2BlockNumber >= gameProxy.l2BlockNumber());
 
         // Mock the state that we want.
-        vm.mockCall(address(gameProxy), abi.encodeWithSelector(gameProxy.l2BlockNumber.selector), abi.encode(0));
-        vm.mockCall(
-            address(gameProxy), abi.encodeWithSelector(gameProxy.status.selector), abi.encode(GameStatus.DEFENDER_WINS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(0));
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
 
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
@@ -93,11 +89,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         assert(l2BlockNumber < gameProxy.l2BlockNumber());
 
         // Mock the state that we want.
-        vm.mockCall(
-            address(gameProxy),
-            abi.encodeWithSelector(gameProxy.status.selector),
-            abi.encode(GameStatus.CHALLENGER_WINS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.CHALLENGER_WINS));
 
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
@@ -118,8 +110,8 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         // Mock the state that we want.
         vm.mockCall(
             address(disputeGameFactory),
-            abi.encodeWithSelector(
-                disputeGameFactory.games.selector, gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData()
+            abi.encodeCall(
+                disputeGameFactory.games, (gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData())
             ),
             abi.encode(address(0), 0)
         );
@@ -146,8 +138,8 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         // Mock the state that we want.
         vm.mockCall(
             address(disputeGameFactory),
-            abi.encodeWithSelector(
-                disputeGameFactory.games.selector, gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData()
+            abi.encodeCall(
+                disputeGameFactory.games, (gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData())
             ),
             abi.encode(address(0), 0)
         );
@@ -168,11 +160,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
 
         // Mock the state that we want.
-        vm.mockCall(
-            address(gameProxy),
-            abi.encodeWithSelector(gameProxy.status.selector),
-            abi.encode(GameStatus.CHALLENGER_WINS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.CHALLENGER_WINS));
 
         // Set the anchor state.
         vm.prank(superchainConfig.guardian());
@@ -190,9 +178,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
 
         // Mock the state that we want.
-        vm.mockCall(
-            address(gameProxy), abi.encodeWithSelector(gameProxy.status.selector), abi.encode(GameStatus.IN_PROGRESS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.IN_PROGRESS));
 
         // Set the anchor state.
         vm.prank(superchainConfig.guardian());
@@ -208,9 +194,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
     /// @dev Tests that setting the anchor state succeeds.
     function test_setAnchorState_succeeds() public {
         // Mock the state that we want.
-        vm.mockCall(
-            address(gameProxy), abi.encodeWithSelector(gameProxy.status.selector), abi.encode(GameStatus.DEFENDER_WINS)
-        );
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
 
         // Set the anchor state.
         vm.prank(superchainConfig.guardian());

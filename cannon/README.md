@@ -39,6 +39,7 @@ make cannon
 # Note:
 #  - The L2 RPC is an archive L2 node on OP MAINNET.
 #  - The L1 RPC is a non-archive RPC, also change `--l1.rpckind` to reflect the correct L1 RPC type.
+#  - The network flag is only suitable for specific networks(https://github.com/ethereum-optimism/superchain-registry/blob/main/chainList.json). If you are running on the devnet, please use '--l2.genesis' to supply a path to the L2 devnet genesis file.
 ./bin/cannon run \
     --pprof.cpu \
     --info-at '%10000000' \
@@ -48,7 +49,7 @@ make cannon
     --input ./state.bin.gz \
     -- \
     ../op-program/bin/op-program \
-    --network op-mainnet \
+    --network <network name> \
     --l1 <L1_URL> \
     --l2 <L2_URL> \
     --l1.head <L1_HEAD> \

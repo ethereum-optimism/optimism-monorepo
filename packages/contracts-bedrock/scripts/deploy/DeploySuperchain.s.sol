@@ -11,7 +11,7 @@ import { IProxy } from "src/universal/interfaces/IProxy.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
-import { BaseDeployIO } from "scripts/utils/BaseDeployIO.sol";
+import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 
 // This comment block defines the requirements and rationale for the architecture used in this forge
 // script, along with other scripts that are being written as new Superchain-first deploy scripts to

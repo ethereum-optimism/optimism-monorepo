@@ -465,6 +465,17 @@ func (c *Config) IsInteropActivationBlock(l2BlockTime uint64) bool {
 		!c.IsInterop(l2BlockTime-c.BlockTime)
 }
 
+// IsActivationBlock returns the fork which activates at the block with time newTime if the previous
+// block's time is oldTime. It return an empty ForkName if no fork activation takes place between
+// those timestamps. It can be used for both, L1 and L2 blocks.
+// TODO(12490): Currently only supports Holocene. Will be modularized in a follow-up.
+func (c *Config) IsActivationBlock(oldTime, newTime uint64) ForkName {
+	if c.IsHolocene(newTime) && !c.IsHolocene(oldTime) {
+		return Holocene
+	}
+	return ""
+}
+
 func (c *Config) ActivateAtGenesis(hardfork ForkName) {
 	// IMPORTANT! ordered from newest to oldest
 	switch hardfork {

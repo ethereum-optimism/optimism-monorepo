@@ -375,9 +375,9 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         vm.assume(bytes(_name).length <= 32);
         vm.assume(bytes(_symbol).length <= 32);
 
-        vm.mockCall(_token, abi.encodeWithSelector(token.decimals.selector), abi.encode(18));
-        vm.mockCall(_token, abi.encodeWithSelector(token.name.selector), abi.encode(_name));
-        vm.mockCall(_token, abi.encodeWithSelector(token.symbol.selector), abi.encode(_symbol));
+        vm.mockCall(_token, abi.encodeCall(token.decimals, ()), abi.encode(18));
+        vm.mockCall(_token, abi.encodeCall(token.name, ()), abi.encode(_name));
+        vm.mockCall(_token, abi.encodeCall(token.symbol, ()), abi.encode(_symbol));
 
         cleanStorageAndInit(_token);
 
@@ -421,7 +421,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
 
     /// @dev Tests that initialization fails if decimals are not 18.
     function test_initialize_customGasToken_wrongDecimals_fails() external {
-        vm.mockCall(address(token), abi.encodeWithSelector(token.decimals.selector), abi.encode(8));
+        vm.mockCall(address(token), abi.encodeCall(token.decimals, ()), abi.encode(8));
         vm.expectRevert("SystemConfig: bad decimals of gas paying token");
 
         cleanStorageAndInit(address(token));
@@ -432,7 +432,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         string memory name = new string(32);
         name = string.concat(name, "a");
 
-        vm.mockCall(address(token), abi.encodeWithSelector(token.name.selector), abi.encode(name));
+        vm.mockCall(address(token), abi.encodeCall(token.name, ()), abi.encode(name));
         vm.expectRevert("GasPayingToken: string cannot be greater than 32 bytes");
 
         cleanStorageAndInit(address(token));
@@ -443,7 +443,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         string memory symbol = new string(33);
         symbol = string.concat(symbol, "a");
 
-        vm.mockCall(address(token), abi.encodeWithSelector(token.symbol.selector), abi.encode(symbol));
+        vm.mockCall(address(token), abi.encodeCall(token.symbol, ()), abi.encode(symbol));
         vm.expectRevert("GasPayingToken: string cannot be greater than 32 bytes");
 
         cleanStorageAndInit(address(token));

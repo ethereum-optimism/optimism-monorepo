@@ -167,15 +167,23 @@ func (db *ChainsDB) LastDerivedFrom(chainID types.ChainID, derivedFrom eth.Block
 	return crossDB.LastDerivedAt(derivedFrom)
 }
 
-func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
 
 	localDB, ok := db.localDBs[chainID]
 	if !ok {
-		return types.BlockSeal{}, types.ErrUnknownChain
+		return eth.BlockRef{}, types.ErrUnknownChain
 	}
-	return localDB.DerivedFrom(derived)
+	res, err := localDB.DerivedFrom(derived)
+	if err != nil {
+		return eth.BlockRef{}, err
+	}
+	parent, err := localDB.PreviousDerivedFrom(res.ID())
+	if err != nil {
+		return eth.BlockRef{}, err
+	}
+	return res.WithParent(parent.ID()), nil
 }
 
 // Check calls the underlying logDB to determine if the given log entry exists at the given location.
@@ -350,7 +358,7 @@ func (db *ChainsDB) NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID
 
 // Safest returns the strongest safety level that can be guaranteed for the given log entry.
 // it assumes the log entry has already been checked and is valid, this function only checks safety levels.
-// Cross-safety levels are all considered to be more safe than any form of local-safety.
+// Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32) (safest types.SafetyLevel, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()
