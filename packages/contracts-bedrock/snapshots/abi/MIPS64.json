@@ -77,6 +77,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidPC",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "InvalidRMWInstruction",
     "type": "error"
   },
