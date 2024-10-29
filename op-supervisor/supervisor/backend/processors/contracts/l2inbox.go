@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/snapshots"
 	"github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -74,7 +73,7 @@ func (i *CrossL2Inbox) DecodeExecutingMessageLog(l *ethTypes.Log) (types.Executi
 	if err != nil {
 		return types.ExecutingMessage{}, fmt.Errorf("failed to convert chain ID %v to uint32: %w", identifier.ChainId, err)
 	}
-	hash := payloadHashToLogHash(msgHash, identifier.Origin)
+	hash := types.PayloadHashToLogHash(msgHash, identifier.Origin)
 	return types.ExecutingMessage{
 		Chain:     types.ChainIndex(chainID), // TODO(#11105): translate chain ID to chain index
 		Hash:      hash,
@@ -116,18 +115,4 @@ func identifierFromBytes(identifierBytes io.Reader) (contractIdentifier, error) 
 		Timestamp:   timestamp,
 		ChainId:     chainID,
 	}, nil
-}
-
-// payloadHashToLogHash converts the payload hash to the log hash
-// it is the concatenation of the log's address and the hash of the log's payload,
-// which is then hashed again. This is the hash that is stored in the log storage.
-// The logHash can then be used to traverse from the executing message
-// to the log the referenced initiating message.
-// TODO(#12424): this function is duplicated between contracts and backend/source/log_processor.go
-// to avoid a circular dependency. It should be reorganized to avoid this duplication.
-func payloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.Hash {
-	msg := make([]byte, 0, 2*common.HashLength)
-	msg = append(msg, addr.Bytes()...)
-	msg = append(msg, payloadHash.Bytes()...)
-	return crypto.Keccak256Hash(msg)
 }

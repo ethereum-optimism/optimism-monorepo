@@ -358,7 +358,7 @@ func (db *ChainsDB) NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID
 
 // Safest returns the strongest safety level that can be guaranteed for the given log entry.
 // it assumes the log entry has already been checked and is valid, this function only checks safety levels.
-// Cross-safety levels are all considered to be more safe than any form of local-safety.
+// Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32) (safest types.SafetyLevel, err error) {
 	db.mu.RLock()
 	defer db.mu.RUnlock()

@@ -308,14 +308,14 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, logHash common.Hash) (types.SafetyLevel, error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), payloadHash)
+	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), logHash)
 	if errors.Is(err, types.ErrFuture) {
 		return types.LocalUnsafe, nil
 	}
@@ -438,4 +438,38 @@ func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID type
 	defer su.mu.RUnlock()
 
 	return su.chainDBs.UpdateFinalizedL1(finalized)
+}
+
+// Access to synchronous processing for tests
+// ----------------------------
+
+func (su *SupervisorBackend) SyncEvents(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.chainProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	ch.ProcessToHead()
+	return nil
+}
+
+func (su *SupervisorBackend) SyncCrossUnsafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossUnsafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
+}
+
+func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossSafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
 }
