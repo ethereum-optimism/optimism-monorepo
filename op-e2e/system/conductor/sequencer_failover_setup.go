@@ -307,6 +307,9 @@ func setupBatcher(t *testing.T, sys *e2esys.System, conductors map[string]*condu
 		DataAvailabilityType:         batcherFlags.CalldataType,
 		ActiveSequencerCheckDuration: 0,
 		CompressionAlgo:              derive.Zlib,
+		ThrottleThreshold:            0, // no DA throttling
+		ThrottleInterval:             2 * time.Second,
+		ThrottleTxSize:               0,
 	}
 
 	batcher, err := bss.BatcherServiceFromCLIConfig(context.Background(), "0.0.1", batcherCLIConfig, sys.Cfg.Loggers["batcher"])

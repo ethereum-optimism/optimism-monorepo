@@ -9,6 +9,7 @@ type Factory interface {
 	NewCounter(opts prometheus.CounterOpts) prometheus.Counter
 	NewCounterVec(opts prometheus.CounterOpts, labelNames []string) *prometheus.CounterVec
 	NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge
+	NewGaugeFunc(opts prometheus.GaugeOpts, function func() float64) prometheus.GaugeFunc
 	NewGaugeVec(opts prometheus.GaugeOpts, labelNames []string) *prometheus.GaugeVec
 	NewHistogram(opts prometheus.HistogramOpts) prometheus.Histogram
 	NewHistogramVec(opts prometheus.HistogramOpts, labelNames []string) *prometheus.HistogramVec
@@ -61,6 +62,15 @@ func (d *documentor) NewGauge(opts prometheus.GaugeOpts) prometheus.Gauge {
 		Help: opts.Help,
 	})
 	return d.factory.NewGauge(opts)
+}
+
+func (d *documentor) NewGaugeFunc(opts prometheus.GaugeOpts, function func() float64) prometheus.GaugeFunc {
+	d.metrics = append(d.metrics, DocumentedMetric{
+		Type: "gauge",
+		Name: fullName(opts.Namespace, opts.Subsystem, opts.Name),
+		Help: opts.Help,
+	})
+	return d.factory.NewGaugeFunc(opts, function)
 }
 
 func (d *documentor) NewGaugeVec(opts prometheus.GaugeOpts, labelNames []string) *prometheus.GaugeVec {

@@ -409,6 +409,9 @@ func (s *interopE2ESystem) newBatcherForL2(
 		MaxBlocksPerSpanBatch: 10,
 		DataAvailabilityType:  batcherFlags.CalldataType,
 		CompressionAlgo:       derive.Brotli,
+		ThrottleThreshold:     0, // no DA throttling
+		ThrottleInterval:      2 * time.Second,
+		ThrottleTxSize:        0,
 	}
 	batcher, err := bss.BatcherServiceFromCLIConfig(
 		context.Background(), "0.0.1", batcherCLIConfig,

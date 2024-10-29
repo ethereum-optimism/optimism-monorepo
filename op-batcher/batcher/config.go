@@ -96,6 +96,18 @@ type CLIConfig struct {
 	// ActiveSequencerCheckDuration is the duration between checks to determine the active sequencer endpoint.
 	ActiveSequencerCheckDuration time.Duration
 
+	// ThrottleThreshold is the number of pending bytes beyond which the batcher will start throttling future bytes
+	// written to DA. 0 means never throttle.
+	ThrottleThreshold uint64
+	// ThrottleInterval is the interval between performing DA throttling actions.
+	ThrottleInterval time.Duration
+	// ThrottleTxSize is the DA size of a transaction to start throttling when we are over the throttling threshold.
+	ThrottleTxSize uint64
+	// ThrottleBlockSize is the total per-block DA limit to start imposing on block building when we are over the throttling threshold.
+	ThrottleBlockSize uint64
+	// ThrottleAlwaysBlockSize is the total per-block DA limit to always imposing on block building.
+	ThrottleAlwaysBlockSize uint64
+
 	// TestUseMaxTxSizeForBlobs allows to set the blob size with MaxL1TxSize.
 	// Should only be used for testing purposes.
 	TestUseMaxTxSizeForBlobs bool
@@ -144,6 +156,9 @@ func (c *CLIConfig) Check() error {
 	}
 	if !flags.ValidDataAvailabilityType(c.DataAvailabilityType) {
 		return fmt.Errorf("unknown data availability type: %q", c.DataAvailabilityType)
+	}
+	if c.ThrottleInterval == 0 {
+		return errors.New("throttling interval must be non-zero")
 	}
 	// we want to enforce it for both blobs and auto
 	if c.DataAvailabilityType != flags.CalldataType && c.TargetNumFrames > eth.MaxBlobsPerBlobTx {
@@ -195,5 +210,10 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 		PprofConfig:                  oppprof.ReadCLIConfig(ctx),
 		RPC:                          oprpc.ReadCLIConfig(ctx),
 		AltDA:                        altda.ReadCLIConfig(ctx),
+		ThrottleThreshold:            ctx.Uint64(flags.ThrottleThresholdFlag.Name),
+		ThrottleInterval:             ctx.Duration(flags.ThrottleIntervalFlag.Name),
+		ThrottleTxSize:               ctx.Uint64(flags.ThrottleTxSizeFlag.Name),
+		ThrottleBlockSize:            ctx.Uint64(flags.ThrottleBlockSizeFlag.Name),
+		ThrottleAlwaysBlockSize:      ctx.Uint64(flags.ThrottleAlwaysBlockSizeFlag.Name),
 	}
 }

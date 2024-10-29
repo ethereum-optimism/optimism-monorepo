@@ -44,6 +44,11 @@ type BatcherConfig struct {
 
 	WaitNodeSync        bool
 	CheckRecentTxsDepth int
+
+	// For throttling DA. See CLIConfig in config.go for details on these parameters.
+	ThrottleThreshold, ThrottleTxSize          uint64
+	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
+	ThrottleInterval                           time.Duration
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,
@@ -101,6 +106,13 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.NetworkTimeout = cfg.TxMgrConfig.NetworkTimeout
 	bs.CheckRecentTxsDepth = cfg.CheckRecentTxsDepth
 	bs.WaitNodeSync = cfg.WaitNodeSync
+
+	bs.ThrottleThreshold = cfg.ThrottleThreshold
+	bs.ThrottleTxSize = cfg.ThrottleTxSize
+	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
+	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
+	bs.ThrottleInterval = cfg.ThrottleInterval
+
 	if err := bs.initRPCClients(ctx, cfg); err != nil {
 		return err
 	}
@@ -456,4 +468,14 @@ func (bs *BatcherService) TestDriver() *TestBatchSubmitter {
 	return &TestBatchSubmitter{
 		BatchSubmitter: bs.driver,
 	}
+}
+
+// ThrottlingTestDriver returns a handler for the batch-submitter driver element that is in "always throttle" mode, for
+// use only in testing.
+func (bs *BatcherService) ThrottlingTestDriver() *TestBatchSubmitter {
+	tbs := &TestBatchSubmitter{
+		BatchSubmitter: bs.driver,
+	}
+	tbs.BatchSubmitter.state.metr = new(metrics.ThrottlingMetrics)
+	return tbs
 }

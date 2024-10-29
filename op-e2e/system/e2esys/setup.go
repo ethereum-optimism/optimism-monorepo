@@ -325,6 +325,9 @@ type SystemConfig struct {
 	// SupportL1TimeTravel determines if the L1 node supports quickly skipping forward in time
 	SupportL1TimeTravel bool
 
+	// Batcher throttling params
+	ThrottleThreshold, ThrottleTxSize, ThrottleBlockSize uint64
+
 	AllocType config.AllocType
 }
 
@@ -904,6 +907,11 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		DataAvailabilityType:  sys.Cfg.DataAvailabilityType,
 		CompressionAlgo:       compressionAlgo,
 		AltDA:                 batcherAltDACLIConfig,
+
+		ThrottleThreshold: cfg.ThrottleThreshold,
+		ThrottleInterval:  500 * time.Millisecond,
+		ThrottleTxSize:    cfg.ThrottleTxSize,
+		ThrottleBlockSize: cfg.ThrottleBlockSize,
 	}
 	// Batch Submitter
 	batcher, err := bss.BatcherServiceFromCLIConfig(context.Background(), "0.0.1", batcherCLIConfig, sys.Cfg.Loggers["batcher"])

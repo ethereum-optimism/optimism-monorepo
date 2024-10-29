@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/txpool"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -34,6 +35,7 @@ var (
 			},
 		},
 	}
+	SetMaxDASizeMethod = "miner_setMaxDASize"
 )
 
 type txRef struct {
@@ -99,6 +101,8 @@ type BatchSubmitter struct {
 	cancelShutdownCtx context.CancelFunc
 	killCtx           context.Context
 	cancelKillCtx     context.CancelFunc
+
+	l2BlockAdded chan struct{} // notifies the throttling loop whenever an l2 block is added
 
 	mutex   sync.Mutex
 	running bool
@@ -290,6 +294,12 @@ func (l *BatchSubmitter) loadBlockIntoState(ctx context.Context, blockNumber uin
 		return nil, fmt.Errorf("adding L2 block to state: %w", err)
 	}
 
+	// notify the throttling loop it may be time to initiate throttling without blocking
+	select {
+	case l.l2BlockAdded <- struct{}{}:
+	default:
+	}
+
 	l.Log.Info("Added L2 block to local state", "block", eth.ToBlockID(block), "tx_count", len(block.Transactions()), "time", block.Time())
 	return block, nil
 }
@@ -384,7 +394,6 @@ const (
 func (l *BatchSubmitter) loop() {
 	defer l.wg.Done()
 
-	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
 	// errgroup with limit of 0 means no goroutine is able to run concurrently,
@@ -393,37 +402,22 @@ func (l *BatchSubmitter) loop() {
 		daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
 	}
 
-	// start the receipt/result processing loop
-	receiptLoopDone := make(chan struct{})
-	defer close(receiptLoopDone) // shut down receipt loop
-
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
-	go func() {
-		for {
-			select {
-			case r := <-receiptsCh:
-				l.txpoolMutex.Lock()
-				if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
-					l.txpoolState = TxpoolBlocked
-					l.txpoolBlockedBlob = r.ID.isBlob
-					l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
-				} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
-					// Set state to TxpoolGood even if the cancellation transaction ended in error
-					// since the stuck transaction could have cleared while we were waiting.
-					l.txpoolState = TxpoolGood
-					l.Log.Info("txpool may no longer be blocked", "err", r.Err)
-				}
-				l.txpoolMutex.Unlock()
-				l.Log.Info("Handling receipt", "id", r.ID)
-				l.handleReceipt(r)
-			case <-receiptLoopDone:
-				l.Log.Info("Receipt processing loop done")
-				return
-			}
-		}
-	}()
+
+	// start the receipt/result processing loop
+	receiptsLoopDone := make(chan struct{})
+	defer close(receiptsLoopDone) // shut down receipt loop
+	l.l2BlockAdded = make(chan struct{})
+	defer close(l.l2BlockAdded)
+	receiptsCh := make(chan txmgr.TxReceipt[txRef])
+	go l.processReceiptsLoop(receiptsCh, receiptsLoopDone)
+
+	// start the DA throttling loop
+	throttlingLoopDone := make(chan struct{})
+	defer close(throttlingLoopDone)
+	go l.throttlingLoop(throttlingLoopDone)
 
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
@@ -487,6 +481,84 @@ func (l *BatchSubmitter) loop() {
 			}
 			publishAndWait()
 			l.Log.Info("Finished publishing all remaining channel data")
+			return
+		}
+	}
+}
+
+func (l *BatchSubmitter) processReceiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopDone chan struct{}) {
+	l.Log.Info("Starting receipts processing loop")
+	for {
+		select {
+		case r := <-receiptsCh:
+			l.txpoolMutex.Lock()
+			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
+				l.txpoolState = TxpoolBlocked
+				l.txpoolBlockedBlob = r.ID.isBlob
+				l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
+			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
+				// Set state to TxpoolGood even if the cancellation transaction ended in error
+				// since the stuck transaction could have cleared while we were waiting.
+				l.txpoolState = TxpoolGood
+				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
+			}
+			l.txpoolMutex.Unlock()
+			l.Log.Info("Handling receipt", "id", r.ID)
+			l.handleReceipt(r)
+		case <-receiptsLoopDone:
+			l.Log.Info("Receipts processing loop done")
+			return
+		}
+	}
+}
+
+// throttlingLoop monitors the backlog in bytes we need to make available, and throttles incoming data appropriately to
+// keep it under a threshold.  Note that it's important to start this loop even if throttling is disabled
+// (ThrottleThreshold == 0) just in case we fail over to another sequencer that was previously configured
+// differently. By looping & calling the miner API setter continuously we ensure the engine currently in use is always
+// going to be reset to the proper throttling settings.
+func (l *BatchSubmitter) throttlingLoop(throttlingLoopDone chan struct{}) {
+	l.Log.Info("Starting DA throttling loop")
+	ticker := time.NewTicker(l.Config.ThrottleInterval)
+	defer ticker.Stop()
+
+	updateParams := func() {
+		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
+		defer cancel()
+		cl, err := l.EndpointProvider.EthClient(ctx)
+		if err != nil {
+			l.Log.Error("Can't reach sequencer execution RPC", "err", err)
+			return
+		}
+		pendingBytes := l.state.PendingDABytes()
+		maxTxSize := uint64(0)
+		maxBlockSize := l.Config.ThrottleAlwaysBlockSize
+		if l.Config.ThrottleThreshold != 0 && pendingBytes > int64(l.Config.ThrottleThreshold) {
+			l.Log.Warn("Pending bytes over limit, throttling DA", "bytes", pendingBytes, "limit", l.Config.ThrottleThreshold)
+			maxTxSize = l.Config.ThrottleTxSize
+			if maxBlockSize == 0 || (l.Config.ThrottleBlockSize != 0 && l.Config.ThrottleBlockSize < maxBlockSize) {
+				maxBlockSize = l.Config.ThrottleBlockSize
+			}
+		}
+		var success bool
+		if err := cl.Client().CallContext(
+			ctx, &success, SetMaxDASizeMethod, hexutil.Uint64(maxTxSize), hexutil.Uint64(maxBlockSize)); err != nil {
+			l.Log.Error("SetMaxDASize rpc failed", "err", err)
+			return
+		}
+		if !success {
+			l.Log.Error("Result of SetMaxDASize was false")
+		}
+	}
+
+	for {
+		select {
+		case <-l.l2BlockAdded:
+			updateParams()
+		case <-ticker.C:
+			updateParams()
+		case <-throttlingLoopDone:
+			l.Log.Info("DA throttling loop done")
 			return
 		}
 	}
