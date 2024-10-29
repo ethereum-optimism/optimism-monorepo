@@ -231,6 +231,8 @@ type ExecutionPayload struct {
 	BlobGasUsed *Uint64Quantity `json:"blobGasUsed,omitempty"`
 	// Nil if not present (Bedrock, Canyon, Delta)
 	ExcessBlobGas *Uint64Quantity `json:"excessBlobGas,omitempty"`
+	// Nil if not present (Isthmus)
+	WithdrawalsRoot *common.Hash `json:"withdrawalsRoot,omitempty"`
 }
 
 func (payload *ExecutionPayload) ID() BlockID {
@@ -254,6 +256,10 @@ func (s rawTransactions) EncodeIndex(i int, w *bytes.Buffer) {
 
 func (payload *ExecutionPayload) CanyonBlock() bool {
 	return payload.Withdrawals != nil
+}
+
+func (payload *ExecutionPayload) IsthmusBlock() bool {
+	return payload.WithdrawalsRoot != nil
 }
 
 // CheckBlockHash recomputes the block hash and returns if the embedded block hash matches.
@@ -283,7 +289,9 @@ func (envelope *ExecutionPayloadEnvelope) CheckBlockHash() (actual common.Hash, 
 		ParentBeaconRoot: envelope.ParentBeaconBlockRoot,
 	}
 
-	if payload.CanyonBlock() {
+	if payload.IsthmusBlock() {
+		header.WithdrawalsHash = payload.WithdrawalsRoot
+	} else if payload.CanyonBlock() {
 		withdrawalHash := types.DeriveSha(*payload.Withdrawals, hasher)
 		header.WithdrawalsHash = &withdrawalHash
 	}
