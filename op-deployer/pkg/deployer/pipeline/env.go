@@ -51,7 +51,7 @@ func NoopStateWriter() StateWriter {
 }
 
 func ReadIntent(workdir string) (*state.Intent, error) {
-	intentPath := path.Join(workdir, "intent.toml")
+	intentPath := path.Join(workdir, ".deployer/intent.toml")
 	intent, err := jsonutil.LoadTOML[state.Intent](intentPath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read intent file: %w", err)
@@ -60,7 +60,7 @@ func ReadIntent(workdir string) (*state.Intent, error) {
 }
 
 func ReadState(workdir string) (*state.State, error) {
-	statePath := path.Join(workdir, "state.json")
+	statePath := path.Join(workdir, ".deployer/state.json")
 	st, err := jsonutil.LoadJSON[state.State](statePath)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read state file: %w", err)
@@ -69,7 +69,7 @@ func ReadState(workdir string) (*state.State, error) {
 }
 
 func WriteState(workdir string, st *state.State) error {
-	statePath := path.Join(workdir, "state.json")
+	statePath := path.Join(workdir, ".deployer/state.json")
 	return st.WriteToFile(statePath)
 }
 
