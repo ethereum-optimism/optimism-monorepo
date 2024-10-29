@@ -16,6 +16,8 @@ library MIPS64Instructions {
     uint64 internal constant U64_MASK = 0xFFFFFFFFFFFFFFFF;
     uint32 internal constant U32_MASK = 0xFFffFFff;
 
+    error InvalidPC();
+
     struct CoreStepLogicParams {
         /// @param opcode The opcode value parsed from insn_.
         st.CpuScalars cpu;
@@ -49,6 +51,9 @@ library MIPS64Instructions {
         returns (uint32 insn_, uint32 opcode_, uint32 fun_)
     {
         unchecked {
+            if (_pc & 0x3 != 0) {
+                revert InvalidPC();
+            }
             uint64 word = MIPS64Memory.readMem(_memRoot, _pc & arch.ADDRESS_MASK, _insnProofOffset);
             insn_ = uint32(selectSubWord(_pc, word, 4, false));
             opcode_ = insn_ >> 26; // First 6-bits
