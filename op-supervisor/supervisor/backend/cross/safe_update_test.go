@@ -30,6 +30,9 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return opened, 10, execs, nil
 		}
+		csd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
 		csd.deps = mockDependencySet{}
 		// when scopedCrossSafeUpdate returns no error,
 		// no error is returned
