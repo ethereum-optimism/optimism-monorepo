@@ -300,9 +300,10 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 		}
 		// when UpdateCrossSafe returns an error,
 		// the error is returned
-		_, err := scopedCrossSafeUpdate(logger, chainID, csd)
+		blockRef, err := scopedCrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 		require.ErrorContains(t, err, "failed to update")
+		require.Equal(t, eth.BlockRef{Number: 2}, blockRef)
 	})
 	t.Run("successful update", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
