@@ -470,6 +470,14 @@ func TestEVMSingleStep_DivMult64(t *testing.T) {
 		expectHi    Word
 		expectPanic string
 	}{
+		// TOOD(#12598): Fix 32-bit tests and remove these
+		{name: "mult", funct: uint32(0x18), rs: Word(0x0F_FF_00_00), rt: Word(100), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), expectHi: Word(0x0), expectLo: Word(0x1)},
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_DD), expectHi: Word(0xE), expectLo: Word(0xFF_FF_FF_FF_FC_FC_FD_27)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0x0F_FF_00_00), rt: Word(100), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), expectHi: Word(0xFF_FF_FF_FF_FF_FF_FF_FE), expectLo: Word(0x1)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_BE), expectHi: Word(0xFF_FF_FF_FF_AA_BB_CC_9F), expectLo: Word(0xFF_FF_FF_FF_FC_FD_02_9A)},
+
 		// dmult s1, s2
 		// expected hi,lo were verified using qemu-mips
 		{name: "dmult 0", funct: 0x1c, rs: 0, rt: 0, expectLo: 0, expectHi: 0},

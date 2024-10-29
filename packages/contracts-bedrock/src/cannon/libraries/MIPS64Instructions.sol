@@ -452,7 +452,7 @@ library MIPS64Instructions {
                 if (_opcode == 0x1C) {
                     // mul
                     if (_fun == 0x2) {
-                        return signExtend(uint64(uint32(_rs) * uint32(_rt)), 32);
+                        return signExtend(uint32(int32(uint32(_rs)) * int32(uint32(_rt))), 32);
                     }
                     // clz, clo
                     else if (_fun == 0x20 || _fun == 0x21) {
@@ -709,7 +709,7 @@ library MIPS64Instructions {
             }
             // mult: Multiplies `rs` by `rt` and stores the result in HI and LO registers
             else if (_fun == 0x18) {
-                uint64 acc = uint64(int64(_rs) * int64(_rt));
+                uint64 acc = uint64(int64(int32(uint32(_rs))) * int64(int32(uint32(_rt))));
                 _cpu.hi = signExtend(uint64(acc >> 32), 32);
                 _cpu.lo = signExtend(uint64(uint32(acc)), 32);
             }
