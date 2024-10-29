@@ -384,7 +384,6 @@ const (
 func (l *BatchSubmitter) loop() {
 	defer l.wg.Done()
 
-	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
 	// errgroup with limit of 0 means no goroutine is able to run concurrently,
@@ -393,37 +392,15 @@ func (l *BatchSubmitter) loop() {
 		daGroup.SetLimit(int(l.Config.MaxConcurrentDARequests))
 	}
 
-	// start the receipt/result processing loop
-	receiptLoopDone := make(chan struct{})
-	defer close(receiptLoopDone) // shut down receipt loop
-
 	l.txpoolMutex.Lock()
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
-	go func() {
-		for {
-			select {
-			case r := <-receiptsCh:
-				l.txpoolMutex.Lock()
-				if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
-					l.txpoolState = TxpoolBlocked
-					l.txpoolBlockedBlob = r.ID.isBlob
-					l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
-				} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
-					// Set state to TxpoolGood even if the cancellation transaction ended in error
-					// since the stuck transaction could have cleared while we were waiting.
-					l.txpoolState = TxpoolGood
-					l.Log.Info("txpool may no longer be blocked", "err", r.Err)
-				}
-				l.txpoolMutex.Unlock()
-				l.Log.Info("Handling receipt", "id", r.ID)
-				l.handleReceipt(r)
-			case <-receiptLoopDone:
-				l.Log.Info("Receipt processing loop done")
-				return
-			}
-		}
-	}()
+
+	// start the receipt/result processing loop
+	receiptsLoopDone := make(chan struct{})
+	defer close(receiptsLoopDone) // shut down receipt loop
+	receiptsCh := make(chan txmgr.TxReceipt[txRef])
+	go l.processReceiptsLoop(receiptsCh, receiptsLoopDone)
 
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
@@ -487,6 +464,31 @@ func (l *BatchSubmitter) loop() {
 			}
 			publishAndWait()
 			l.Log.Info("Finished publishing all remaining channel data")
+			return
+		}
+	}
+}
+
+func (l *BatchSubmitter) processReceiptsLoop(receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopDone chan struct{}) {
+	for {
+		select {
+		case r := <-receiptsCh:
+			l.txpoolMutex.Lock()
+			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
+				l.txpoolState = TxpoolBlocked
+				l.txpoolBlockedBlob = r.ID.isBlob
+				l.Log.Info("incompatible tx in txpool", "is_blob", r.ID.isBlob)
+			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
+				// Set state to TxpoolGood even if the cancellation transaction ended in error
+				// since the stuck transaction could have cleared while we were waiting.
+				l.txpoolState = TxpoolGood
+				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
+			}
+			l.txpoolMutex.Unlock()
+			l.Log.Info("Handling receipt", "id", r.ID)
+			l.handleReceipt(r)
+		case <-receiptsLoopDone:
+			l.Log.Info("Receipt processing loop done")
 			return
 		}
 	}
