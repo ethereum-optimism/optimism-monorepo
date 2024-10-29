@@ -937,6 +937,18 @@ func TestAdditionalBondClaimants(t *testing.T) {
 	})
 }
 
+func TestSignerTLS(t *testing.T) {
+	t.Run("EnabledByDefault", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs(types.TraceTypeAlphabet))
+		require.True(t, cfg.TxMgrConfig.SignerCLIConfig.TLSConfig.Enabled)
+	})
+
+	t.Run("Disabled", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs(types.TraceTypeAlphabet, "--signer.tls.enabled=false"))
+		require.False(t, cfg.TxMgrConfig.SignerCLIConfig.TLSConfig.Enabled)
+	})
+}
+
 func verifyArgsInvalid(t *testing.T, messageContains string, cliArgs []string) {
 	_, _, err := dryRunWithArgs(cliArgs)
 	require.ErrorContains(t, err, messageContains)
