@@ -40,7 +40,12 @@ library MIPS64Memory {
             validateMemoryProofAvailability(_proofOffset);
             assembly {
                 // Validate the address alignment.
-                if and(_addr, EXT_MASK) { revert(0, 0) }
+                if and(_addr, EXT_MASK) {
+                    // revert InvalidAddress();
+                    let ptr := mload(0x40)
+                    mstore(ptr, shl(224, 0xe6c4247b))
+                    revert(ptr, 0x4)
+                }
 
                 // Load the leaf value.
                 let leaf := calldataload(_proofOffset)
@@ -89,7 +94,12 @@ library MIPS64Memory {
             validateMemoryProofAvailability(_proofOffset);
             assembly {
                 // Validate the address alignment.
-                if and(_addr, EXT_MASK) { revert(0, 0) }
+                if and(_addr, EXT_MASK) {
+                    // revert InvalidAddress();
+                    let ptr := mload(0x40)
+                    mstore(ptr, shl(224, 0xe6c4247b))
+                    revert(ptr, 0x4)
+                }
 
                 // Load the leaf value.
                 let leaf := calldataload(_proofOffset)

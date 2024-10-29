@@ -8,6 +8,8 @@ import { InvalidMemoryProof } from "src/cannon/libraries/CannonErrors.sol";
 contract MIPS64Memory_Test is CommonTest {
     MIPS64MemoryWithCalldata mem;
 
+    error InvalidAddress();
+
     function setUp() public virtual override {
         super.setUp();
         mem = new MIPS64MemoryWithCalldata();
@@ -46,18 +48,18 @@ contract MIPS64Memory_Test is CommonTest {
         assertEq(readWord, word);
     }
 
-    /// @dev Static unit test asserting that reads reverts when a misaligned memory address is provided
+    /// @dev Static unit test asserting that reads revert when a misaligned memory address is provided
     function test_readInvalidAddress_reverts() external {
         uint64 addr = 0x100;
         uint64 word = 0x11_22_33_44_55_66_77_88;
         bytes32 root;
         bytes memory proof;
         (root, proof) = ffi.getCannonMemory64Proof(addr, word);
-        vm.expectRevert(bytes(""));
+        vm.expectRevert(InvalidAddress.selector);
         mem.readMem(root, addr + 4, 0, proof);
     }
 
-    /// @dev Static unit test asserting that reads reverts when an invalid proof is provided
+    /// @dev Static unit test asserting that reads revert when an invalid proof is provided
     function test_readInvalidProof_reverts() external {
         uint64 addr = 0x100;
         uint64 word = 0x11_22_33_44_55_66_77_88;
@@ -165,6 +167,14 @@ contract MIPS64Memory_Test is CommonTest {
 
         bytes32 newRoot = mem.writeMem(addr + 8, word2, 0, initProof);
         assertEq(newRoot, expectedRoot);
+    }
+
+    /// @dev Static unit test asserting that writes revert when a misaligned memory address is provided
+    function test_writeMemInvalidAddress_reverts() external {
+        bytes memory zeroProof;
+        (, zeroProof) = ffi.getCannonMemory64Proof(0x100, 0);
+        vm.expectRevert(InvalidAddress.selector);
+        mem.writeMem(0x104, 0x0, 0, zeroProof);
     }
 }
 
