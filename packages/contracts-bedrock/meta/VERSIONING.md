@@ -1,17 +1,3 @@
-<!-- START doctoc generated TOC please keep comment here to allow auto update -->
-<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
-**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
-
-- [Smart Contract Versioning and Release Process](#smart-contract-versioning-and-release-process)
-  - [Semver Rules](#semver-rules)
-  - [Individual Contract Versioning](#individual-contract-versioning)
-  - [Monorepo Contracts Release Versioning](#monorepo-contracts-release-versioning)
-  - [Release Process](#release-process)
-    - [Additional Release Candidates](#additional-release-candidates)
-    - [Merging Back to Develop After Governance Approval](#merging-back-to-develop-after-governance-approval)
-
-<!-- END doctoc generated TOC please keep comment here to allow auto update -->
-
 # Smart Contract Versioning and Release Process
 
 The Smart Contract Versioning and Release Process closely follows a true [semver](https://semver.org) for both individual contracts and monorepo releases.
