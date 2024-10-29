@@ -1,9 +1,10 @@
 package state
 
 import (
-	"encoding/json"
 	"fmt"
 	"math/big"
+
+	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -135,7 +136,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	// Apply overrides after setting the main values.
 	var err error
 	if len(intent.GlobalDeployOverrides) > 0 {
-		cfg, err = mergeJSON(cfg, intent.GlobalDeployOverrides)
+		cfg, err = jsonutil.MergeJSON(cfg, intent.GlobalDeployOverrides)
 		if err != nil {
 			return genesis.DeployConfig{}, fmt.Errorf("error merging global L2 overrides: %w", err)
 
@@ -143,7 +144,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	}
 
 	if len(chainIntent.DeployOverrides) > 0 {
-		cfg, err = mergeJSON(cfg, chainIntent.DeployOverrides)
+		cfg, err = jsonutil.MergeJSON(cfg, chainIntent.DeployOverrides)
 		if err != nil {
 			return genesis.DeployConfig{}, fmt.Errorf("error merging chain L2 overrides: %w", err)
 		}
@@ -154,40 +155,6 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	}
 
 	return cfg, nil
-}
-
-// mergeJSON merges the provided overrides into the input struct. Fields
-// must be JSON-serializable for this to work. Overrides are applied in
-// order of precedence - i.e., the last overrides will override keys from
-// all preceding overrides.
-func mergeJSON[T any](in T, overrides ...map[string]any) (T, error) {
-	var out T
-	inJSON, err := json.Marshal(in)
-	if err != nil {
-		return out, err
-	}
-
-	var tmpMap map[string]interface{}
-	if err := json.Unmarshal(inJSON, &tmpMap); err != nil {
-		return out, err
-	}
-
-	for _, override := range overrides {
-		for k, v := range override {
-			tmpMap[k] = v
-		}
-	}
-
-	inJSON, err = json.Marshal(tmpMap)
-	if err != nil {
-		return out, err
-	}
-
-	if err := json.Unmarshal(inJSON, &out); err != nil {
-		return out, err
-	}
-
-	return out, nil
 }
 
 func mustHexBigFromHex(hex string) *hexutil.Big {

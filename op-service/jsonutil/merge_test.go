@@ -1,4 +1,4 @@
-package state
+package jsonutil
 
 import (
 	"testing"
@@ -13,7 +13,7 @@ func TestMergeJSON(t *testing.T) {
 		C bool   `json:"c"`
 	}
 
-	out, err := mergeJSON(
+	out, err := MergeJSON(
 		testStruct{
 			"hello",
 			42,

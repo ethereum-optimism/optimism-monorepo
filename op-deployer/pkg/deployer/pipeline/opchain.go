@@ -6,6 +6,9 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
@@ -26,7 +29,10 @@ func DeployOPChainLiveStrategy(ctx context.Context, env *Env, bundle ArtifactsBu
 		return fmt.Errorf("failed to get chain intent: %w", err)
 	}
 
-	input := makeDCI(thisIntent, chainID, st)
+	input, err := makeDCI(intent, thisIntent, chainID, st)
+	if err != nil {
+		return fmt.Errorf("error making deploy OP chain input: %w", err)
+	}
 
 	var dco opcm.DeployOPChainOutput
 	lgr.Info("deploying OP chain using existing OPCM", "id", chainID.Hex(), "opcmAddress", st.ImplementationsDeployment.OpcmProxyAddress.Hex())
@@ -152,7 +158,10 @@ func DeployOPChainGenesisStrategy(env *Env, intent *state.Intent, st *state.Stat
 		return fmt.Errorf("failed to get chain intent: %w", err)
 	}
 
-	input := makeDCI(thisIntent, chainID, st)
+	input, err := makeDCI(intent, thisIntent, chainID, st)
+	if err != nil {
+		return fmt.Errorf("error making deploy OP chain input: %w", err)
+	}
 
 	env.L1ScriptHost.ImportState(st.L1StateDump.Data)
 
@@ -171,7 +180,32 @@ func DeployOPChainGenesisStrategy(env *Env, intent *state.Intent, st *state.Stat
 	return nil
 }
 
-func makeDCI(thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) opcm.DeployOPChainInput {
+type ChainProofParams struct {
+	DisputeGameType         uint32      `json:"disputeGameType" toml:"disputeGameType"`
+	DisputeAbsolutePrestate common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
+	DisputeMaxGameDepth     uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
+	DisputeSplitDepth       uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
+	DisputeClockExtension   uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
+	DisputeMaxClockDuration uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+}
+
+func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
+	proofParams, err := jsonutil.MergeJSON(
+		ChainProofParams{
+			DisputeGameType:         standard.DisputeGameType,
+			DisputeAbsolutePrestate: standard.DisputeAbsolutePrestate,
+			DisputeMaxGameDepth:     standard.DisputeMaxGameDepth,
+			DisputeSplitDepth:       standard.DisputeSplitDepth,
+			DisputeClockExtension:   standard.DisputeClockExtension,
+			DisputeMaxClockDuration: standard.DisputeMaxClockDuration,
+		},
+		intent.GlobalDeployOverrides,
+		thisIntent.DeployOverrides,
+	)
+	if err != nil {
+		return opcm.DeployOPChainInput{}, fmt.Errorf("error merging proof params from overrides: %w", err)
+	}
+
 	return opcm.DeployOPChainInput{
 		OpChainProxyAdminOwner:  thisIntent.Roles.L1ProxyAdminOwner,
 		SystemConfigOwner:       thisIntent.Roles.SystemConfigOwner,
@@ -185,13 +219,13 @@ func makeDCI(thisIntent *state.ChainIntent, chainID common.Hash, st *state.State
 		OpcmProxy:               st.ImplementationsDeployment.OpcmProxyAddress,
 		SaltMixer:               st.Create2Salt.String(), // passing through salt generated at state initialization
 		GasLimit:                60_000_000,
-		DisputeGameType:         1, // PERMISSIONED_CANNON Game Type
-		DisputeAbsolutePrestate: common.HexToHash("0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c"),
-		DisputeMaxGameDepth:     73,
-		DisputeSplitDepth:       30,
-		DisputeClockExtension:   10800,  // 3 hours (input in seconds)
-		DisputeMaxClockDuration: 302400, // 3.5 days (input in seconds)
-	}
+		DisputeGameType:         proofParams.DisputeGameType,
+		DisputeAbsolutePrestate: proofParams.DisputeAbsolutePrestate,
+		DisputeMaxGameDepth:     proofParams.DisputeMaxGameDepth,
+		DisputeSplitDepth:       proofParams.DisputeSplitDepth,
+		DisputeClockExtension:   proofParams.DisputeClockExtension,   // 3 hours (input in seconds)
+		DisputeMaxClockDuration: proofParams.DisputeMaxClockDuration, // 3.5 days (input in seconds)
+	}, nil
 }
 
 func makeChainState(chainID common.Hash, dco opcm.DeployOPChainOutput) *state.ChainState {

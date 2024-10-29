@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"net/url"
 	"strings"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 )
 
 type schemeUnmarshaler func(string) (*ArtifactsLocator, error)
@@ -61,7 +63,7 @@ func unmarshalTag(tag string) (*ArtifactsLocator, error) {
 		return nil, fmt.Errorf("invalid tag: %s", tag)
 	}
 
-	if _, err := StandardArtifactsURLForTag(tag); err != nil {
+	if _, err := standard.ArtifactsURLForTag(tag); err != nil {
 		return nil, err
 	}
 

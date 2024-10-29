@@ -15,6 +15,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
@@ -42,7 +44,7 @@ func DownloadArtifacts(ctx context.Context, loc *opcm.ArtifactsLocator, progress
 	var u *url.URL
 	var err error
 	if loc.IsTag() {
-		u, err = opcm.StandardArtifactsURLForTag(loc.Tag)
+		u, err = standard.ArtifactsURLForTag(loc.Tag)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get standard artifacts URL for tag %s: %w", loc.Tag, err)
 		}
