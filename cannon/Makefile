@@ -15,6 +15,9 @@ endif
 
 .DEFAULT_GOAL := cannon
 
+# The MIPS64 r1 opcodes not supported by cannon. This list does not include coprocess-specific opcodes.
+UNSUPPORTED_OPCODES := (dclo|dclz)
+
 cannon32-impl:
 	env GO111MODULE=on GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build --tags=cannon32 -v $(LDFLAGS) -o ./bin/cannon32-impl .
 
@@ -43,7 +46,7 @@ elf:
 	make -C ./testdata/example elf
 
 sanitize-program:
-	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $3}' | grep -Ew -m1 '(bltzal)'; }; then \
+	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
 		echo "guest program is sanitized for unsupported instructions"; \
 	else \
 		echo "found unsupported instructions in the guest program"; \
