@@ -144,41 +144,27 @@ func TestMemory64ReadWrite(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
+		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
 		m.SetWord(16, 0xAABB1CDD_EEFF1122)
 		require.Equal(t, Word(0xAABB1CDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
+		require.Equal(t, Word(0xAABB1CDD_EEFF1122), m.GetWord(16))
 		m.SetWord(16, 0xAABB1CDD_EEFF1123)
 		require.Equal(t, Word(0xAABB1CDD_EEFF1123), m.GetWord(16))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1123), m.GetUint32(20))
+		require.Equal(t, Word(0xAABB1CDD_EEFF1123), m.GetWord(16))
 	})
 
 	t.Run("unaligned read", func(t *testing.T) {
 		m := NewMemory()
-		m.SetWord(16, 0xAABBCCDD_EEFF1122)
+		m.SetWord(16, Word(0xAABBCCDD_EEFF1122))
 		m.SetWord(24, 0x11223344_55667788)
 		for i := Word(17); i < 24; i++ {
 			require.Panics(t, func() {
 				m.GetWord(i)
 			})
-			if i != 20 {
-				require.Panics(t, func() {
-					m.GetUint32(i)
-				})
-			}
 		}
 		require.Equal(t, Word(0x11223344_55667788), m.GetWord(24))
-		require.Equal(t, uint32(0x11223344), m.GetUint32(24))
 		require.Equal(t, Word(0), m.GetWord(32))
-		require.Equal(t, uint32(0), m.GetUint32(32))
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
-
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
-		require.Equal(t, uint32(0x55667788), m.GetUint32(28))
 	})
 
 	t.Run("unaligned write", func(t *testing.T) {
@@ -206,7 +192,6 @@ func TestMemory64ReadWrite(t *testing.T) {
 			m.SetWord(23, 0x11223344)
 		})
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
 	})
 }
 
@@ -218,7 +203,6 @@ func TestMemory64JSON(t *testing.T) {
 	var res Memory
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, Word(0xAABBCCDD_EEFF1122), res.GetWord(8))
-	require.Equal(t, uint32(0xAABBCCDD), res.GetUint32(8))
 }
 
 func TestMemory64Copy(t *testing.T) {
@@ -226,6 +210,5 @@ func TestMemory64Copy(t *testing.T) {
 	m.SetWord(0xAABBCCDD_8000, 0x000000_AABB)
 	mcpy := m.Copy()
 	require.Equal(t, Word(0xAABB), mcpy.GetWord(0xAABBCCDD_8000))
-	require.Equal(t, uint32(0), mcpy.GetUint32(0xAABBCCDD_8000))
 	require.Equal(t, m.MerkleRoot(), mcpy.MerkleRoot())
 }

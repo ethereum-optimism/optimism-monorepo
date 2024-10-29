@@ -86,7 +86,7 @@ func TestEVM(t *testing.T) {
 					if exitGroup && goVm.GetState().GetExited() {
 						break
 					}
-					insn := state.GetMemory().GetUint32(state.GetPC())
+					insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 
 					stepWitness, err := goVm.Step(true)
@@ -868,7 +868,7 @@ func TestHelloEVM(t *testing.T) {
 				if goVm.GetState().GetExited() {
 					break
 				}
-				insn := state.GetMemory().GetUint32(state.GetPC())
+				insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
 				if i%1000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
@@ -921,7 +921,7 @@ func TestClaimEVM(t *testing.T) {
 					break
 				}
 
-				insn := state.GetMemory().GetUint32(state.GetPC())
+				insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
 				if i%1000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
@@ -969,7 +969,7 @@ func TestEntryEVM(t *testing.T) {
 				if goVm.GetState().GetExited() {
 					break
 				}
-				insn := state.GetMemory().GetUint32(state.GetPC())
+				insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
 				if i%10_000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}

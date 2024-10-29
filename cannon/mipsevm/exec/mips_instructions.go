@@ -22,7 +22,11 @@ const (
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
-	insn = memory.GetUint32(pc)
+	if pc&0x3 != 0 {
+		panic(fmt.Errorf("invalid pc: %x", pc))
+	}
+	word := memory.GetWord(pc & arch.AddressMask)
+	insn = uint32(SelectSubWord(pc, word, 4, false))
 	opcode = insn >> 26 // First 6-bits
 	fun = insn & 0x3f   // Last 6-bits
 

@@ -125,7 +125,6 @@ func TestMemoryReadWrite(t *testing.T) {
 			v := m.GetWord(i)
 			expected := binary.BigEndian.Uint32(data[i : i+4])
 			require.Equalf(t, expected, v, "read at %d", i)
-			require.Equalf(t, expected, m.GetUint32(i), "read at %d", i)
 		}
 	})
 
@@ -144,10 +143,8 @@ func TestMemoryReadWrite(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(12, 0xAABBCCDD)
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 		m.SetWord(12, 0xAABB1CDD)
 		require.Equal(t, uint32(0xAABB1CDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(12))
 	})
 
 	t.Run("unaligned read", func(t *testing.T) {
@@ -156,22 +153,16 @@ func TestMemoryReadWrite(t *testing.T) {
 		m.SetWord(16, 0x11223344)
 		require.Panics(t, func() {
 			m.GetWord(13)
-			m.GetUint32(13)
 		})
 		require.Panics(t, func() {
 			m.GetWord(14)
-			m.GetUint32(14)
 		})
 		require.Panics(t, func() {
 			m.GetWord(15)
-			m.GetUint32(15)
 		})
 		require.Equal(t, uint32(0x11223344), m.GetWord(16))
-		require.Equal(t, uint32(0x11223344), m.GetUint32(16))
 		require.Equal(t, uint32(0), m.GetWord(20))
-		require.Equal(t, uint32(0), m.GetUint32(20))
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 	})
 
 	t.Run("unaligned write", func(t *testing.T) {
@@ -187,7 +178,6 @@ func TestMemoryReadWrite(t *testing.T) {
 			m.SetWord(15, 0x11223344)
 		})
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 	})
 }
 
@@ -199,7 +189,6 @@ func TestMemoryJSON(t *testing.T) {
 	var res Memory
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, uint32(0xAABBCCDD), res.GetWord(8))
-	require.Equal(t, uint32(0xAABBCCDD), res.GetUint32(8))
 }
 
 func TestMemoryCopy(t *testing.T) {
@@ -207,6 +196,5 @@ func TestMemoryCopy(t *testing.T) {
 	m.SetWord(0x8000, 123)
 	mcpy := m.Copy()
 	require.Equal(t, Word(123), mcpy.GetWord(0x8000))
-	require.Equal(t, Word(123), mcpy.GetUint32(0x8000))
 	require.Equal(t, m.MerkleRoot(), mcpy.MerkleRoot())
 }
