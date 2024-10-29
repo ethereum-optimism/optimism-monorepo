@@ -1,3 +1,16 @@
+<!-- START doctoc generated TOC please keep comment here to allow auto update -->
+<!-- DON'T EDIT THIS SECTION, INSTEAD RE-RUN doctoc TO UPDATE -->
+**Table of Contents**  *generated with [DocToc](https://github.com/thlorenz/doctoc)*
+
+- [Policy](#policy)
+  - [Contributing](#contributing)
+  - [Versioning Policy](#versioning-policy)
+  - [Upgrade Policy](#upgrade-policy)
+  - [Style Guide](#style-guide)
+  - [Revert Data](#revert-data)
+
+<!-- END doctoc generated TOC please keep comment here to allow auto update -->
+
 # Policy
 
 This document outlines upgrade policies regarding the OP Stack codebase.
