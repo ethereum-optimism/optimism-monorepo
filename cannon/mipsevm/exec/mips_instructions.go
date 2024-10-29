@@ -22,7 +22,7 @@ const (
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
-	if pc & 0x3 != 0 {
+	if pc&0x3 != 0 {
 		panic(fmt.Errorf("invalid pc: %x", pc))
 	}
 	word := memory.GetWord(pc & arch.AddressMask)
