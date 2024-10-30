@@ -75,7 +75,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			ProtocolVersionsProxy:           st.SuperchainDeployment.ProtocolVersionsProxyAddress,
 			OpcmProxyOwner:                  st.SuperchainDeployment.ProxyAdminAddress,
 			StandardVersionsToml:            standardVersionsTOML,
-			UseInterop:                      false,
+			UseInterop:                      intent.UseInterop,
 		},
 	)
 	if err != nil {

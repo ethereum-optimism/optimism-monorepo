@@ -40,6 +40,8 @@ type Intent struct {
 
 	FundDevAccounts bool `json:"fundDevAccounts" toml:"fundDevAccounts"`
 
+	UseInterop bool `json:"useInterop" toml:"useInterop"`
+
 	L1ContractsLocator *opcm.ArtifactsLocator `json:"l1ContractsLocator" toml:"l1ContractsLocator"`
 
 	L2ContractsLocator *opcm.ArtifactsLocator `json:"l2ContractsLocator" toml:"l2ContractsLocator"`
