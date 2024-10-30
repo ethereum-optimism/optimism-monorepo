@@ -739,6 +739,48 @@ func TestProofParamOverrides(t *testing.T) {
 	}
 }
 
+func TestInteropDeployment(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	depKey := new(deployerKey)
+	l1ChainID := big.NewInt(77799777)
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+
+	l2ChainID1 := uint256.NewInt(1)
+
+	deployerAddr, err := dk.Address(depKey)
+	require.NoError(t, err)
+
+	loc := localArtifactsLocator(t)
+
+	env, bundle, _ := createEnv(t, ctx, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
+	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
+	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
+	intent.UseInterop = true
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	chainState := st.Chains[0]
+	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
+	checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot)
+	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.L1ProxyAdminOwner.Bytes())
+	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
+
+}
+
 func TestInvalidL2Genesis(t *testing.T) {
 	op_e2e.InitParallel(t)
 
