@@ -280,18 +280,22 @@ func (m *Memory) SetMemoryRange(addr Word, r io.Reader) error {
 	for {
 		pageIndex := addr >> PageAddrSize
 		pageAddr := addr & PageAddrMask
-		p, ok := m.pageLookup(pageIndex)
-		if !ok {
-			p = m.AllocPage(pageIndex)
-		}
-		p.InvalidateFull()
-		n, err := r.Read(p.Data[pageAddr:])
+		readLen := PageSize - pageAddr
+		chunk := make([]byte, readLen)
+		n, err := r.Read(chunk)
 		if err != nil {
 			if err == io.EOF {
 				return nil
 			}
 			return err
 		}
+
+		p, ok := m.pageLookup(pageIndex)
+		if !ok {
+			p = m.AllocPage(pageIndex)
+		}
+		p.InvalidateFull()
+		copy(p.Data[pageAddr:], chunk)
 		addr += Word(n)
 	}
 }

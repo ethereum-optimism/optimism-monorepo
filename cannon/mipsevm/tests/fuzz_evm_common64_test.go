@@ -91,12 +91,6 @@ func FuzzStateConsistencyMultuOp(f *testing.F) {
 	})
 }
 
-type insn struct {
-	opcode      uint32
-	expectRdReg bool
-	funct       uint32
-}
-
 func mulOpConsistencyCheck(
 	t *testing.T, versions []VersionedVMTestCase,
 	opcode uint32, expectRdReg bool, funct uint32,

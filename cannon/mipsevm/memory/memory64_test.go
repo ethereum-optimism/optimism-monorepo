@@ -140,6 +140,35 @@ func TestMemory64ReadWrite(t *testing.T) {
 		require.Equal(t, make([]byte, 10), res[len(res)-10:], "empty end")
 	})
 
+	t.Run("empty range", func(t *testing.T) {
+		m := NewMemory()
+		addr := Word(0xAABBCC00)
+		rr := bytes.NewReader(nil)
+		r := io.Reader(io.NewSectionReader(rr, 0, 0))
+		pre := m.MerkleRoot()
+		preJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		var preSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&preSerialized))
+
+		require.NoError(t, m.SetMemoryRange(addr, r))
+		v := m.GetWord(0)
+		require.Equal(t, Word(0), v)
+		post := m.MerkleRoot()
+		require.Equal(t, pre, post)
+
+		// Assert that there are no extra zero pages in serialization
+		postJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, preJSON, postJSON)
+
+		var postSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&postSerialized))
+		require.Equal(t, preSerialized.Bytes(), postSerialized.Bytes())
+	})
+
+
+
 	t.Run("read-write", func(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
