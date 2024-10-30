@@ -144,12 +144,9 @@ func TestMemory64ReadWrite(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
 		m.SetWord(16, 0xAABB1CDD_EEFF1122)
 		require.Equal(t, Word(0xAABB1CDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, Word(0xAABB1CDD_EEFF1122), m.GetWord(16))
 		m.SetWord(16, 0xAABB1CDD_EEFF1123)
-		require.Equal(t, Word(0xAABB1CDD_EEFF1123), m.GetWord(16))
 		require.Equal(t, Word(0xAABB1CDD_EEFF1123), m.GetWord(16))
 	})
 

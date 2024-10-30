@@ -412,7 +412,7 @@ func Run(ctx *cli.Context) error {
 		if infoAt(state) {
 			delta := time.Since(start)
 			pc := state.GetPC()
-			insn := mipsexec.LoadSubWord(state.GetMemory(), pc, 4, false, new(noopMemoryTracker))
+			insn := mipsexec.LoadSubWord(state.GetMemory(), pc, 4, false, new(mipsexec.NoopMemoryTracker))
 			l.Info("processing",
 				"step", step,
 				"pc", mipsevm.HexU32(state.GetPC()),
@@ -544,7 +544,3 @@ func checkFlags(ctx *cli.Context) error {
 	}
 	return nil
 }
-
-type noopMemoryTracker struct{}
-
-func (n *noopMemoryTracker) TrackMemAccess(arch.Word) {}
