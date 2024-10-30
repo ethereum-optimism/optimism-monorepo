@@ -184,6 +184,7 @@ func (su *SupervisorService) Start(ctx context.Context) error {
 
 func (su *SupervisorService) Stop(ctx context.Context) error {
 	if !su.closing.CompareAndSwap(false, true) {
+		su.log.Warn("Supervisor is already closing")
 		return nil // already closing
 	}
 	su.log.Info("Stopping JSON-RPC server")

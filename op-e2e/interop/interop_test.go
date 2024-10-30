@@ -2,6 +2,10 @@ package interop
 
 import (
 	"context"
+	"github.com/ethereum-optimism/optimism/op-service/dial"
+	oplog "github.com/ethereum-optimism/optimism/op-service/log"
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum/log"
 	"math/big"
 	"sync"
 	"testing"
@@ -175,11 +179,11 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
 			}
 
-			safety, error := supervisor.CheckMessage(context.Background(),
+			safety, err := supervisor.CheckMessage(context.Background(),
 				identifier,
 				logHash,
 			)
-			require.ErrorIs(t, error, expectedError)
+			require.ErrorIs(t, err, expectedError)
 			// the supervisor could progress the safety level more quickly than we expect,
 			// which is why we check for a minimum safety level
 			require.True(t, safety.AtLeastAsSafe(expectedSafety), "log: %v should be at least %s, but is %s", log, expectedSafety.String(), safety.String())
@@ -191,6 +195,101 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 		for _, log := range logsB {
 			requireMessage(chainB, log, types.CrossSafe, nil)
 		}
+	}
+	setupAndRun(t, test)
+}
+
+func TestInteropBlockBuilding(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelInfo)
+	oplog.SetGlobalLogHandler(logger.Handler())
+
+	test := func(t *testing.T, s2 SuperSystem) {
+		ids := s2.L2IDs()
+		chainA := ids[0]
+		chainB := ids[1]
+		// We will initiate on chain A, and execute on chain B
+		s2.DeployEmitterContract(chainA, "Alice")
+
+		// Add chain A as dependency to chain B,
+		// such that we can execute a message on B that was initiated on A.
+		depRec := s2.AddDependency(chainB, s2.ChainID(chainA))
+		t.Logf("Dependency set in L1 block %d", depRec.BlockNumber)
+
+		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
+		require.NoError(t, err)
+
+		// Now wait for the dependency to be visible in the L2 (receipt needs to be picked up)
+		require.Eventually(t, func() bool {
+			status, err := rollupClA.SyncStatus(context.Background())
+			require.NoError(t, err)
+			return status.CrossUnsafeL2.L1Origin.Number >= depRec.BlockNumber.Uint64()
+		}, time.Second*30, time.Second, "wait for L1 origin to match dependency L1 block")
+		t.Log("Dependency information has been processed in L2 block")
+
+		// emit log on chain A
+		emitRec := s2.EmitData(chainA, "Alice", "hello world")
+		t.Logf("Emitted a log event in block %d", emitRec.BlockNumber.Uint64())
+
+		// Wait for initiating side to become cross-unsafe
+		require.Eventually(t, func() bool {
+			status, err := rollupClA.SyncStatus(context.Background())
+			require.NoError(t, err)
+			return status.CrossUnsafeL2.Number >= emitRec.BlockNumber.Uint64()
+		}, time.Second*60, time.Second, "wait for emitted data to become cross-unsafe")
+		t.Logf("Reached cross-unsafe block %d", emitRec.BlockNumber.Uint64())
+
+		// Identify the log
+		require.Len(t, emitRec.Logs, 1)
+		ev := emitRec.Logs[0]
+		ethCl := s2.L2GethClient(chainA)
+		header, err := ethCl.HeaderByHash(context.Background(), emitRec.BlockHash)
+		require.NoError(t, err)
+		identifier := types.Identifier{
+			Origin:      ev.Address,
+			BlockNumber: ev.BlockNumber,
+			LogIndex:    uint64(ev.Index),
+			Timestamp:   header.Time,
+			ChainID:     types.ChainIDFromBig(s2.ChainID(chainA)),
+		}
+
+		msgPayload := types.LogToMessagePayload(ev)
+		payloadHash := crypto.Keccak256Hash(msgPayload)
+		logHash := types.PayloadHashToLogHash(payloadHash, identifier.Origin)
+		t.Logf("expected payload hash: %s", payloadHash)
+		t.Logf("expected log hash: %s", logHash)
+
+		invalidPayload := []byte("test invalid message")
+		invalidPayloadHash := crypto.Keccak256Hash(invalidPayload)
+		invalidLogHash := types.PayloadHashToLogHash(invalidPayloadHash, identifier.Origin)
+		t.Logf("invalid payload hash: %s", invalidPayloadHash)
+		t.Logf("invalid log hash: %s", invalidLogHash)
+
+		// submit executing txs on B
+
+		t.Log("Testing invalid message")
+		{
+			bobAddr := s2.Address(chainA, "Bob") // direct it to a random account without code
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+			defer cancel()
+			// Send an executing message, but with different payload.
+			// We expect the miner to be unable to include this tx, and confirmation to thus time out.
+			_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload)
+			require.NotNil(t, err)
+			require.ErrorIs(t, err, ctx.Err())
+			require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
+		}
+
+		t.Log("Testing valid message now")
+		{
+			bobAddr := s2.Address(chainA, "Bob") // direct it to a random account without code
+			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
+			defer cancel()
+			// Send an executing message with the correct identifier / payload
+			rec, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, msgPayload)
+			require.NoError(t, err, "expecting tx to be confirmed")
+			t.Logf("confirmed executing msg in block %s", rec.BlockNumber)
+		}
+		t.Log("Done")
 	}
 	setupAndRun(t, test)
 }

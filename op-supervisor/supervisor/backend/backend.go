@@ -267,6 +267,7 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 	if !su.started.CompareAndSwap(true, false) {
 		return errAlreadyStopped
 	}
+	su.logger.Info("Closing supervisor backend")
 	// close all processors
 	for id, processor := range su.chainProcessors {
 		su.logger.Info("stopping chain processor", "chainID", id)
@@ -308,18 +309,21 @@ func (su *SupervisorBackend) DependencySet() depset.DependencySet {
 // Query methods
 // ----------------------------
 
-func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, logHash common.Hash) (types.SafetyLevel, error) {
+func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
+	logHash := types.PayloadHashToLogHash(payloadHash, identifier.Origin)
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
 	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), logHash)
 	if errors.Is(err, types.ErrFuture) {
+		su.logger.Debug("Future message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.LocalUnsafe, nil
 	}
 	if errors.Is(err, types.ErrConflict) {
+		su.logger.Debug("Conflicting message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.Invalid, nil
 	}
 	if err != nil {
@@ -334,12 +338,21 @@ func (su *SupervisorBackend) CheckMessages(
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
+	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety)
+
 	for _, msg := range messages {
+		su.logger.Debug("Checking message",
+			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash)
 		if err != nil {
+			su.logger.Error("Check message failed", "err", err,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 			return fmt.Errorf("failed to check message: %w", err)
 		}
 		if !safety.AtLeastAsSafe(minSafety) {
+			su.logger.Error("Message is not sufficiently safe",
+				"safety", safety, "minSafety", minSafety,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 			return fmt.Errorf("message %v (safety level: %v) does not meet the minimum safety %v",
 				msg.Identifier,
 				safety,

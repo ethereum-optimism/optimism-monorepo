@@ -109,6 +109,7 @@ func prefundL2Accounts(l1Cfg *L1Config, l2Cfg *L2Config, addrs devkeys.Addresses
 	l1Cfg.Prefund[l2Cfg.BatchSenderAddress] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.Deployer] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.FinalSystemOwner] = Ether(10_000_000)
+	l1Cfg.Prefund[l2Cfg.SystemConfigOwner] = Ether(10_000_000)
 	proposer, err := addrs.Address(devkeys.ChainOperatorKey{
 		ChainID: new(big.Int).SetUint64(l2Cfg.L2ChainID),
 		Role:    devkeys.ProposerRole,

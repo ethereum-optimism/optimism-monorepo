@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"math"
 	"math/big"
 	"strconv"
@@ -190,6 +191,10 @@ func (id ChainID) ToUInt32() (uint32, error) {
 	return uint32(v64), nil
 }
 
+func (id *ChainID) ToBig() *big.Int {
+	return (*uint256.Int)(id).ToBig()
+}
+
 func (id ChainID) MarshalText() ([]byte, error) {
 	return []byte(id.String()), nil
 }
@@ -263,4 +268,16 @@ func PayloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.H
 	msg = append(msg, addr.Bytes()...)
 	msg = append(msg, payloadHash.Bytes()...)
 	return crypto.Keccak256Hash(msg)
+}
+
+// LogToMessagePayload is the data that is hashed to get the payloadHash
+// it is the concatenation of the log's topics and data
+// the implementation is based on the interop messaging spec
+func LogToMessagePayload(l *ethTypes.Log) []byte {
+	msg := make([]byte, 0)
+	for _, topic := range l.Topics {
+		msg = append(msg, topic.Bytes()...)
+	}
+	msg = append(msg, l.Data...)
+	return msg
 }
