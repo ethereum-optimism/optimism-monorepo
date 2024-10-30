@@ -85,11 +85,19 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 	envVars["SCR_DEPLOY_CONFIG"] = deployConfigFilepath
 	envVars["SCR_DEPLOYMENTS_DIR"] = l1ContractsFilepath
 
-	envFilepath := filepath.Join(cfg.Workdir, ".env")
+	envFilepath := filepath.Join(cfg.Workdir, "superchain-registry.env")
 	err = writeEnvFile(envFilepath, envVars)
 	if err != nil {
 		return fmt.Errorf("failed to write .env file: %w", err)
 	}
+
+	fmt.Printf("---------------------------------------------------\n"+
+		"Please populate any empty values in your .env file\n"+
+		"before creating your pull-request to add this chain\n"+
+		"to the superchain-registry repo.\n\n"+
+		"  * %s\n"+
+		"---------------------------------------------------\n", envFilepath,
+	)
 
 	return nil
 }
