@@ -273,6 +273,7 @@ func (d *InteropDeriver) onFinalizedUpdate(x engine.FinalizedUpdateEvent) error 
 	if err != nil {
 		return fmt.Errorf("failed to get block ref of %s: %w", finalized, err)
 	}
+	d.log.Info("New finalized block from supervisor", "block", finalized.Number)
 	d.emitter.Emit(engine.PromoteFinalizedEvent{
 		Ref: ref,
 	})
