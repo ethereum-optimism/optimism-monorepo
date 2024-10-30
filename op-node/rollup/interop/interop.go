@@ -236,6 +236,7 @@ func (d *InteropDeriver) onCrossSafeUpdateEvent(x engine.CrossSafeUpdateEvent) e
 	if err != nil {
 		return fmt.Errorf("failed to get derived-from of %s: %w", result.Cross, err)
 	}
+	d.log.Info("New cross-safe block", "block", result.Cross.Number)
 	ref, err := d.l2.L2BlockRefByHash(ctx, result.Cross.Hash)
 	if err != nil {
 		return fmt.Errorf("failed to get block ref of %s: %w", result.Cross, err)
