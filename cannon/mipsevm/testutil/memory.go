@@ -34,5 +34,5 @@ func GetInstruction(mem *memory.Memory, pc Word) uint32 {
 	if pc&0x3 != 0 {
 		panic(fmt.Errorf("unaligned memory access: %x", pc))
 	}
-	return exec.LoadSubWord(mem, pc, 4, false, new(exec.NoopMemoryTracker))
+	return uint32(exec.LoadSubWord(mem, pc, 4, false, new(exec.NoopMemoryTracker)))
 }
