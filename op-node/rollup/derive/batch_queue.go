@@ -27,10 +27,6 @@ import (
 // It is internally responsible for making sure that batches with L1 inclusions block outside it's
 // working range are not considered or pruned.
 
-type ChannelFlusher interface {
-	FlushChannel()
-}
-
 type NextBatchProvider interface {
 	ChannelFlusher
 	Origin() eth.L1BlockRef
@@ -269,6 +265,12 @@ func (bq *BatchQueue) Reset(_ context.Context, base eth.L1BlockRef, _ eth.System
 	bq.baseBatchStage.reset(base)
 	bq.batches = bq.batches[:0]
 	return io.EOF
+}
+
+func (bq *BatchQueue) FlushChannel() {
+	// We need to implement the ChannelFlusher interface with the BatchQueue but it's never called
+	// of which the BatchMux takes care.
+	panic("BatchQueue: invalid FlushChannel call")
 }
 
 func (bq *BatchQueue) AddBatch(ctx context.Context, batch Batch, parent eth.L2BlockRef) {

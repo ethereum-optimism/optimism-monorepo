@@ -38,6 +38,13 @@ type ResettableStage interface {
 	Reset(ctx context.Context, base eth.L1BlockRef, baseCfg eth.SystemConfig) error
 }
 
+// A ChannelFlusher flushes all internal state related to the current channel and then
+// calls FlushChannel on the stage it owns. Note that this is in contrast to Reset, which
+// is called by the owning Pipeline in a loop over all stages.
+type ChannelFlusher interface {
+	FlushChannel()
+}
+
 type ForkTransformer interface {
 	Transform(rollup.ForkName)
 }
@@ -89,16 +96,16 @@ func NewDerivationPipeline(log log.Logger, rollupCfg *rollup.Config, l1Fetcher L
 	dataSrc := NewDataSourceFactory(log, rollupCfg, l1Fetcher, l1Blobs, altDA) // auxiliary stage for L1Retrieval
 	l1Src := NewL1Retrieval(log, dataSrc, l1Traversal)
 	frameQueue := NewFrameQueue(log, rollupCfg, l1Src)
-	bank := NewChannelMux(log, spec, frameQueue, metrics)
-	chInReader := NewChannelInReader(rollupCfg, log, bank, metrics)
-	batchQueue := NewBatchMux(log, rollupCfg, chInReader, l2Source)
+	channelMux := NewChannelMux(log, spec, frameQueue, metrics)
+	chInReader := NewChannelInReader(rollupCfg, log, channelMux, metrics)
+	batchMux := NewBatchMux(log, rollupCfg, chInReader, l2Source)
 	attrBuilder := NewFetchingAttributesBuilder(rollupCfg, l1Fetcher, l2Source)
-	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchQueue)
+	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchMux)
 
 	// Reset from ResetEngine then up from L1 Traversal. The stages do not talk to each other during
 	// the ResetEngine, but after the ResetEngine, this is the order in which the stages could talk to each other.
 	// Note: The ResetEngine is the only reset that can fail.
-	stages := []ResettableStage{l1Traversal, l1Src, altDA, frameQueue, bank, chInReader, batchQueue, attributesQueue}
+	stages := []ResettableStage{l1Traversal, l1Src, altDA, frameQueue, channelMux, chInReader, batchMux, attributesQueue}
 
 	return &DerivationPipeline{
 		log:       log,
@@ -125,6 +132,10 @@ func (dp *DerivationPipeline) Reset() {
 	dp.resetSysConfig = eth.SystemConfig{}
 	dp.resetL2Safe = eth.L2BlockRef{}
 	dp.engineIsReset = false
+}
+
+func (dp *DerivationPipeline) DepositsOnlyAttributes(parent eth.BlockID, derivedFrom eth.L1BlockRef) (*AttributesWithParent, error) {
+	return dp.attrib.DepositsOnlyAttributes(parent, derivedFrom)
 }
 
 // Origin is the L1 block of the inner-most stage of the derivation pipeline,

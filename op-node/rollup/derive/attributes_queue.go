@@ -2,6 +2,7 @@ package derive
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"time"
@@ -35,17 +36,32 @@ type AttributesWithParent struct {
 	DerivedFrom eth.L1BlockRef
 }
 
+// WithDepositsOnly return a shallow clone with all non-Deposit transactions
+// stripped from the transactions of its attributes. The order is preserved.
+func (a *AttributesWithParent) WithDepositsOnly() *AttributesWithParent {
+	clone := *a
+	clone.Attributes = clone.Attributes.WithDepositsOnly()
+	return &clone
+}
+
+func (a *AttributesWithParent) IsDerived() bool {
+	return a.DerivedFrom != (eth.L1BlockRef{})
+}
+
 type AttributesQueue struct {
-	log          log.Logger
-	config       *rollup.Config
-	builder      AttributesBuilder
-	prev         SingularBatchProvider
+	log     log.Logger
+	config  *rollup.Config
+	builder AttributesBuilder
+	prev    SingularBatchProvider
+
 	batch        *SingularBatch
 	isLastInSpan bool
+	lastAttribs  *AttributesWithParent
 }
 
 type SingularBatchProvider interface {
 	ResettableStage
+	ChannelFlusher
 	Origin() eth.L1BlockRef
 	NextBatch(context.Context, eth.L2BlockRef) (*SingularBatch, bool, error)
 }
@@ -85,11 +101,11 @@ func (aq *AttributesQueue) NextAttributes(ctx context.Context, parent eth.L2Bloc
 			IsLastInSpan: aq.isLastInSpan,
 			DerivedFrom:  aq.Origin(),
 		}
+		aq.lastAttribs = &attr
 		aq.batch = nil
 		aq.isLastInSpan = false
 		return &attr, nil
 	}
-
 }
 
 // createNextAttributes transforms a batch into a payload attributes. This sets `NoTxPool` and appends the batched transactions
@@ -120,8 +136,35 @@ func (aq *AttributesQueue) createNextAttributes(ctx context.Context, batch *Sing
 	return attrs, nil
 }
 
-func (aq *AttributesQueue) Reset(ctx context.Context, _ eth.L1BlockRef, _ eth.SystemConfig) error {
+func (aq *AttributesQueue) reset() {
 	aq.batch = nil
 	aq.isLastInSpan = false // overwritten later, but set for consistency
+	aq.lastAttribs = nil
+}
+
+func (aq *AttributesQueue) Reset(ctx context.Context, _ eth.L1BlockRef, _ eth.SystemConfig) error {
+	aq.reset()
 	return io.EOF
+}
+
+func (aq *AttributesQueue) DepositsOnlyAttributes(parent eth.BlockID, derivedFrom eth.L1BlockRef) (*AttributesWithParent, error) {
+	// Sanity checks - these cannot happen with correct deriver implementations.
+	if aq.batch != nil {
+		return nil, fmt.Errorf("unexpected buffered batch, parent hash: %s, epoch: %s", aq.batch.ParentHash, aq.batch.Epoch())
+	} else if aq.lastAttribs == nil {
+		return nil, errors.New("no attributes generated yet")
+	} else if derivedFrom != aq.lastAttribs.DerivedFrom {
+		return nil, fmt.Errorf(
+			"unexpected derivation origin, last_origin: %s, invalid_origin: %s",
+			aq.lastAttribs.DerivedFrom, derivedFrom)
+	} else if parent != aq.lastAttribs.Parent.ID() {
+		return nil, fmt.Errorf(
+			"unexpected parent: last_parent: %s, invalid_parent: %s",
+			aq.lastAttribs.Parent.ID(), parent)
+	}
+
+	aq.prev.FlushChannel() // flush all channel data in previous stages
+	attrs := aq.lastAttribs.WithDepositsOnly()
+	aq.lastAttribs = attrs
+	return attrs, nil
 }

@@ -32,6 +32,7 @@ var (
 
 type RawChannelProvider interface {
 	ResettableStage
+	ChannelFlusher
 	Origin() eth.L1BlockRef
 	NextRawChannel(ctx context.Context) ([]byte, error)
 }
@@ -134,5 +135,5 @@ func (cr *ChannelInReader) Reset(ctx context.Context, _ eth.L1BlockRef, _ eth.Sy
 
 func (cr *ChannelInReader) FlushChannel() {
 	cr.nextBatchFn = nil
-	// TODO(12157): cr.prev.FlushChannel() - when we do wiring with ChannelStage
+	cr.prev.FlushChannel()
 }

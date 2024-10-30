@@ -203,6 +203,12 @@ func (cb *ChannelBank) Reset(ctx context.Context, base eth.L1BlockRef, _ eth.Sys
 	return io.EOF
 }
 
+func (bq *ChannelBank) FlushChannel() {
+	// We need to implement the ChannelFlusher interface with the ChannelBank but it's never called
+	// of which the ChannelMux takes care.
+	panic("ChannelBank: invalid FlushChannel call")
+}
+
 type L1BlockRefByHashFetcher interface {
 	L1BlockRefByHash(context.Context, common.Hash) (eth.L1BlockRef, error)
 }

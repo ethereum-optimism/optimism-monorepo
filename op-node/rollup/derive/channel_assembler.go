@@ -51,6 +51,10 @@ func (ca *ChannelAssembler) Reset(context.Context, eth.L1BlockRef, eth.SystemCon
 	return io.EOF
 }
 
+func (ca *ChannelAssembler) FlushChannel() {
+	ca.resetChannel()
+}
+
 func (ca *ChannelAssembler) resetChannel() {
 	ca.channel = nil
 }

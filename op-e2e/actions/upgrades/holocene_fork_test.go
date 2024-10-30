@@ -1,13 +1,18 @@
 package upgrades
 
 import (
+	"context"
+	"math/big"
 	"testing"
+
+	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/stretchr/testify/require"
 )
 
 func TestHoloceneActivationAtGenesis(gt *testing.T) {
@@ -126,4 +131,86 @@ func TestHoloceneLateActivationAndReset(gt *testing.T) {
 	// duplicate activation logs
 	requirePreHoloceneActivationLogs(e2esys.RoleSeq, 4)
 	requirePreHoloceneActivationLogs(e2esys.RoleVerif, 4)
+}
+
+func TestHoloceneInvalidPayload(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	env := helpers.SetupEnv(t, helpers.WithActiveGenesisFork(rollup.Holocene))
+	ctx := context.Background()
+
+	requireDepositOnlyLogs := func(role string, expNumLogs int) {
+		t.Helper()
+		recs := env.Logs.FindLogs(testlog.NewMessageContainsFilter("deposits-only attributes"), testlog.NewAttributesFilter("role", role))
+		require.Len(t, recs, expNumLogs)
+	}
+
+	// Start op-nodes
+	env.Seq.ActL2PipelineFull(t)
+
+	// generate and batch buffer two empty blocks
+	env.Seq.ActL2EmptyBlock(t) // 1 - genesis is 0
+	env.Batcher.ActL2BatchBuffer(t)
+	env.Seq.ActL2EmptyBlock(t) // 2
+	env.Batcher.ActL2BatchBuffer(t)
+
+	// send and include a single transaction
+	env.Alice.L2.ActResetTxOpts(t)
+	env.Alice.L2.ActSetTxToAddr(&env.DeployParams.Addresses.Bob)
+	env.Alice.L2.ActMakeTx(t)
+
+	env.Seq.ActL2StartBlock(t)
+	env.SeqEngine.ActL2IncludeTx(env.Alice.Address())(t)
+	env.Seq.ActL2EndBlock(t) // 3
+	env.Alice.L2.ActCheckReceiptStatusOfLastTx(true)(t)
+	l2Unsafe := env.Seq.L2Unsafe()
+	const invalidNum = 3
+	require.EqualValues(t, invalidNum, l2Unsafe.Number)
+	b, err := env.SeqEngine.EthClient().BlockByNumber(ctx, big.NewInt(invalidNum))
+	require.NoError(t, err)
+	require.Len(t, b.Transactions(), 2)
+
+	// buffer into the batcher, invalidating the tx via signature zeroing
+	env.Batcher.ActL2BatchBuffer(t, func(block *types.Block) {
+		// Replace the tx with one that has a bad signature.
+		txs := block.Transactions()
+		newTx, err := txs[1].WithSignature(env.Alice.L2.Signer(), make([]byte, 65))
+		require.NoError(t, err)
+		txs[1] = newTx
+	})
+
+	// generate two more empty blocks
+	env.Seq.ActL2EmptyBlock(t) // 4
+	env.Seq.ActL2EmptyBlock(t) // 5
+	require.EqualValues(t, 5, env.Seq.L2Unsafe().Number)
+
+	// submit it all
+	env.ActBatchSubmitAllAndMine(t)
+
+	// derive chain on sequencer
+	env.Seq.ActL1HeadSignal(t)
+	env.Seq.ActL2PipelineFull(t)
+
+	// TODO(12695): need to properly update safe after completed L1 block derivation
+	l2Safe := env.Seq.L2PendingSafe()
+	require.EqualValues(t, invalidNum, l2Safe.Number)
+	require.NotEqual(t, l2Safe.Hash, l2Unsafe.Hash, // old L2Unsafe above
+		"block-3 should have been replaced by deposit-only version")
+	requireDepositOnlyLogs(e2esys.RoleSeq, 2)
+	require.Equal(t, l2Safe, env.Seq.L2Unsafe(), "unsafe chain should have reorg'd")
+	b, err = env.SeqEngine.EthClient().BlockByNumber(ctx, big.NewInt(invalidNum))
+	require.NoError(t, err)
+	require.Len(t, b.Transactions(), 1)
+
+	// test that building on top of reorg'd chain and deriving further works
+
+	env.Seq.ActL2EmptyBlock(t) // 4
+	env.Seq.ActL2EmptyBlock(t) // 5
+	l2Unsafe = env.Seq.L2Unsafe()
+	require.EqualValues(t, 5, l2Unsafe.Number)
+
+	env.Batcher.Reset() // need to reset batcher to become aware of reorg
+	env.ActBatchSubmitAllAndMine(t)
+	env.Seq.ActL1HeadSignal(t)
+	env.Seq.ActL2PipelineFull(t)
+	require.Equal(t, l2Unsafe, env.Seq.L2Safe())
 }
