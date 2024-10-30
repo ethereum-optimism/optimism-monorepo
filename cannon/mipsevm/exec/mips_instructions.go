@@ -22,7 +22,11 @@ const (
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
-	insn = memory.GetUint32(pc)
+	if pc&0x3 != 0 {
+		panic(fmt.Errorf("invalid pc: %x", pc))
+	}
+	word := memory.GetWord(pc & arch.AddressMask)
+	insn = uint32(SelectSubWord(pc, word, 4, false))
 	opcode = insn >> 26 // First 6-bits
 	fun = insn & 0x3f   // Last 6-bits
 
@@ -485,6 +489,11 @@ func HandleBranch(cpu *mipsevm.CpuScalars, registers *[32]Word, opcode uint32, i
 		rtv := (insn >> 16) & 0x1F
 		if rtv == 0 { // bltz
 			shouldBranch = arch.SignedInteger(rs) < 0
+		}
+		if rtv == 0x10 { // bltzal
+			shouldBranch = arch.SignedInteger(rs) < 0
+			registers[31] = cpu.PC + 8 // always set regardless of branch taken
+			linked = true
 		}
 		if rtv == 1 { // bgez
 			shouldBranch = arch.SignedInteger(rs) >= 0

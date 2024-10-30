@@ -56,7 +56,11 @@ type Config struct {
 	L2Head common.Hash
 	// L2OutputRoot is the agreed L2 output root to start derivation from
 	L2OutputRoot common.Hash
-	L2URL        string
+	// L2URL is the URL of the L2 node to fetch L2 data from, this is the canonical URL for L2 data
+	// This URL is used as a fallback for L2ExperimentalURL if the experimental URL fails or cannot retrieve the desired data
+	L2URL string
+	// L2ExperimentalURL is the URL of the L2 node (non hash db archival node, for example, reth archival node) to fetch L2 data from
+	L2ExperimentalURL string
 	// L2Claim is the claimed L2 output root to verify
 	L2Claim common.Hash
 	// L2ClaimBlockNumber is the block number the claimed L2 output root is from
@@ -218,6 +222,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		DataDir:             ctx.String(flags.DataDir.Name),
 		DataFormat:          dbFormat,
 		L2URL:               ctx.String(flags.L2NodeAddr.Name),
+		L2ExperimentalURL:   ctx.String(flags.L2NodeExperimentalAddr.Name),
 		L2ChainConfig:       l2ChainConfig,
 		L2Head:              l2Head,
 		L2OutputRoot:        l2OutputRoot,

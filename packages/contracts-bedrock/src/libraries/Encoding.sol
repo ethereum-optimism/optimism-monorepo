@@ -77,6 +77,7 @@ library Encoding {
         pure
         returns (bytes memory)
     {
+        // nosemgrep: sol-style-use-abi-encodecall
         return abi.encodeWithSignature("relayMessage(address,address,bytes,uint256)", _target, _sender, _data, _nonce);
     }
 
@@ -100,6 +101,7 @@ library Encoding {
         pure
         returns (bytes memory)
     {
+        // nosemgrep: sol-style-use-abi-encodecall
         return abi.encodeWithSignature(
             "relayMessage(uint256,address,address,uint256,uint256,bytes)",
             _nonce,

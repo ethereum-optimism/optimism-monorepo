@@ -6,8 +6,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { Reverter } from "test/mocks/Callers.sol";
 
 // Contracts
-import { FeeVault } from "src/L2/FeeVault.sol";
-import { SequencerFeeVault } from "src/L2/SequencerFeeVault.sol";
+import { ISequencerFeeVault } from "src/L2/interfaces/ISequencerFeeVault.sol";
 
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";

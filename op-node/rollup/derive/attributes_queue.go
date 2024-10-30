@@ -39,12 +39,18 @@ type AttributesQueue struct {
 	log          log.Logger
 	config       *rollup.Config
 	builder      AttributesBuilder
-	prev         *BatchQueue
+	prev         SingularBatchProvider
 	batch        *SingularBatch
 	isLastInSpan bool
 }
 
-func NewAttributesQueue(log log.Logger, cfg *rollup.Config, builder AttributesBuilder, prev *BatchQueue) *AttributesQueue {
+type SingularBatchProvider interface {
+	ResettableStage
+	Origin() eth.L1BlockRef
+	NextBatch(context.Context, eth.L2BlockRef) (*SingularBatch, bool, error)
+}
+
+func NewAttributesQueue(log log.Logger, cfg *rollup.Config, builder AttributesBuilder, prev SingularBatchProvider) *AttributesQueue {
 	return &AttributesQueue{
 		log:     log,
 		config:  cfg,

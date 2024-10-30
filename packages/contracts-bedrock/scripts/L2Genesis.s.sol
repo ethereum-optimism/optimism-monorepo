@@ -29,10 +29,6 @@ import { IGovernanceToken } from "src/governance/interfaces/IGovernanceToken.sol
 import { IGasPriceOracle } from "src/L2/interfaces/IGasPriceOracle.sol";
 import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 
-interface IInitializable {
-    function initialize(address _addr) external;
-}
-
 struct L1Dependencies {
     address payable l1CrossDomainMessengerProxy;
     address payable l1StandardBridgeProxy;

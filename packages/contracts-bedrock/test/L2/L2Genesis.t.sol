@@ -139,9 +139,7 @@ contract L2GenesisTest is Test {
     /// @notice Tests the genesis predeploys setup.
     function _test_genesis_predeploys(string memory _path, bool _useInterop) internal {
         // Set the useInterop value
-        vm.mockCall(
-            address(genesis.cfg()), abi.encodeWithSelector(genesis.cfg().useInterop.selector), abi.encode(_useInterop)
-        );
+        vm.mockCall(address(genesis.cfg()), abi.encodeCall(genesis.cfg().useInterop, ()), abi.encode(_useInterop));
 
         // Set the predeploy proxies into state
         genesis.setPredeployProxies();

@@ -12,9 +12,10 @@ import (
 )
 
 const (
-	TLSCaCertFlagName = "tls.ca"
-	TLSCertFlagName   = "tls.cert"
-	TLSKeyFlagName    = "tls.key"
+	TLSCaCertFlagName  = "tls.ca"
+	TLSCertFlagName    = "tls.cert"
+	TLSKeyFlagName     = "tls.key"
+	TLSEnabledFlagName = "tls.enabled"
 )
 
 // CLIFlags returns flags with env var envPrefix
@@ -24,9 +25,10 @@ func CLIFlags(envPrefix string) []cli.Flag {
 }
 
 var (
-	defaultTLSCaCert = "tls/ca.crt"
-	defaultTLSCert   = "tls/tls.crt"
-	defaultTLSKey    = "tls/tls.key"
+	defaultTLSCaCert  = "tls/ca.crt"
+	defaultTLSCert    = "tls/tls.crt"
+	defaultTLSKey     = "tls/tls.key"
+	defaultTLSEnabled = true
 )
 
 // CLIFlagsWithFlagPrefix returns flags with env var and cli flag prefixes
@@ -39,6 +41,12 @@ func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string) []cli.Flag {
 		return opservice.PrefixEnvVar(envPrefix, name)
 	}
 	return []cli.Flag{
+		&cli.BoolFlag{
+			Name:    prefixFunc(TLSEnabledFlagName),
+			Usage:   "Enable or disable TLS client authentication for the signer",
+			Value:   defaultTLSEnabled,
+			EnvVars: prefixEnvVars("TLS_ENABLED"),
+		},
 		&cli.StringFlag{
 			Name:    prefixFunc(TLSCaCertFlagName),
 			Usage:   "tls ca cert path",
@@ -72,7 +80,7 @@ func NewCLIConfig() CLIConfig {
 		TLSCaCert: defaultTLSCaCert,
 		TLSCert:   defaultTLSCert,
 		TLSKey:    defaultTLSKey,
-		Enabled:   false,
+		Enabled:   true,
 	}
 }
 
@@ -95,7 +103,7 @@ func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 		TLSCaCert: ctx.String(TLSCaCertFlagName),
 		TLSCert:   ctx.String(TLSCertFlagName),
 		TLSKey:    ctx.String(TLSKeyFlagName),
-		Enabled:   ctx.IsSet(TLSCaCertFlagName) || ctx.IsSet(TLSCertFlagName) || ctx.IsSet(TLSKeyFlagName),
+		Enabled:   ctx.Bool(TLSEnabledFlagName),
 	}
 }
 
@@ -109,6 +117,6 @@ func ReadCLIConfigWithPrefix(ctx *cli.Context, flagPrefix string) CLIConfig {
 		TLSCaCert: ctx.String(prefixFunc(TLSCaCertFlagName)),
 		TLSCert:   ctx.String(prefixFunc(TLSCertFlagName)),
 		TLSKey:    ctx.String(prefixFunc(TLSKeyFlagName)),
-		Enabled:   ctx.IsSet(TLSCaCertFlagName) || ctx.IsSet(TLSCertFlagName) || ctx.IsSet(TLSKeyFlagName),
+		Enabled:   ctx.Bool(prefixFunc(TLSEnabledFlagName)),
 	}
 }

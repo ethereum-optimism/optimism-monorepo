@@ -187,6 +187,7 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysPrlimit64:
 	case arch.SysClose:
 	case arch.SysPread64:
+	case arch.SysStat:
 	case arch.SysFstat:
 	case arch.SysOpenAt:
 	case arch.SysReadlink:

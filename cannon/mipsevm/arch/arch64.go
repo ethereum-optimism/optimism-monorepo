@@ -69,6 +69,7 @@ const (
 	SysPrlimit64     = 5297
 	SysClose         = 5003
 	SysPread64       = 5016
+	SysStat          = 5004
 	SysFstat         = 5005
 	SysFstat64       = UndefinedSysNr
 	SysOpenAt        = 5247

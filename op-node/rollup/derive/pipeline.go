@@ -38,6 +38,10 @@ type ResettableStage interface {
 	Reset(ctx context.Context, base eth.L1BlockRef, baseCfg eth.SystemConfig) error
 }
 
+type ForkTransformer interface {
+	Transform(rollup.ForkName)
+}
+
 type L2Source interface {
 	PayloadByHash(context.Context, common.Hash) (*eth.ExecutionPayloadEnvelope, error)
 	PayloadByNumber(context.Context, uint64) (*eth.ExecutionPayloadEnvelope, error)
@@ -79,14 +83,15 @@ type DerivationPipeline struct {
 func NewDerivationPipeline(log log.Logger, rollupCfg *rollup.Config, l1Fetcher L1Fetcher, l1Blobs L1BlobsFetcher,
 	altDA AltDAInputFetcher, l2Source L2Source, metrics Metrics,
 ) *DerivationPipeline {
+	spec := rollup.NewChainSpec(rollupCfg)
 	// Pull stages
 	l1Traversal := NewL1Traversal(log, rollupCfg, l1Fetcher)
 	dataSrc := NewDataSourceFactory(log, rollupCfg, l1Fetcher, l1Blobs, altDA) // auxiliary stage for L1Retrieval
 	l1Src := NewL1Retrieval(log, dataSrc, l1Traversal)
 	frameQueue := NewFrameQueue(log, rollupCfg, l1Src)
-	bank := NewChannelBank(log, rollupCfg, frameQueue, metrics)
+	bank := NewChannelMux(log, spec, frameQueue, metrics)
 	chInReader := NewChannelInReader(rollupCfg, log, bank, metrics)
-	batchQueue := NewBatchQueue(log, rollupCfg, chInReader, l2Source)
+	batchQueue := NewBatchMux(log, rollupCfg, chInReader, l2Source)
 	attrBuilder := NewFetchingAttributesBuilder(rollupCfg, l1Fetcher, l2Source)
 	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchQueue)
 
@@ -177,6 +182,7 @@ func (dp *DerivationPipeline) Step(ctx context.Context, pendingSafeHead eth.L2Bl
 		if err := VerifyNewL1Origin(ctx, prevOrigin, dp.l1Fetcher, newOrigin); err != nil {
 			return nil, fmt.Errorf("failed to verify L1 origin transition: %w", err)
 		}
+		dp.transformStages(prevOrigin, newOrigin)
 		dp.origin = newOrigin
 	}
 
@@ -236,6 +242,20 @@ func (dp *DerivationPipeline) initialReset(ctx context.Context, resetL2Safe eth.
 	dp.resetSysConfig = sysCfg
 	dp.resetL2Safe = resetL2Safe
 	return nil
+}
+
+func (db *DerivationPipeline) transformStages(oldOrigin, newOrigin eth.L1BlockRef) {
+	fork := db.rollupCfg.IsActivationBlock(oldOrigin.Time, newOrigin.Time)
+	if fork == "" {
+		return
+	}
+
+	db.log.Info("Transforming stages", "fork", fork)
+	for _, stage := range db.stages {
+		if tf, ok := stage.(ForkTransformer); ok {
+			tf.Transform(fork)
+		}
+	}
 }
 
 func (dp *DerivationPipeline) ConfirmEngineReset() {

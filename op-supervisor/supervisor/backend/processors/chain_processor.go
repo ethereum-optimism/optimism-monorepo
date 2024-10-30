@@ -17,8 +17,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-var ErrNoRPCSource = errors.New("no RPC client configured")
-
 type Source interface {
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, gethtypes.Receipts, error)
@@ -136,8 +134,8 @@ func (s *ChainProcessor) work() {
 		target := s.nextNum()
 		if err := s.update(target); err != nil {
 			if errors.Is(err, ethereum.NotFound) {
-				s.log.Info("Cannot find next block yet", "target", target)
-			} else if errors.Is(err, ErrNoRPCSource) {
+				s.log.Info("Cannot find next block yet", "target", target, "err", err)
+			} else if errors.Is(err, types.ErrNoRPCSource) {
 				s.log.Warn("No RPC source configured, cannot process new blocks")
 			} else {
 				s.log.Error("Failed to process new block", "err", err)
@@ -158,7 +156,7 @@ func (s *ChainProcessor) update(nextNum uint64) error {
 	defer s.clientLock.Unlock()
 
 	if s.client == nil {
-		return ErrNoRPCSource
+		return types.ErrNoRPCSource
 	}
 
 	ctx, cancel := context.WithTimeout(s.ctx, time.Second*10)

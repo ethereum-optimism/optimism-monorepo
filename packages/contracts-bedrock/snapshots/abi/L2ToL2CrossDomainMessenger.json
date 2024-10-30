@@ -99,7 +99,7 @@
             "type": "uint256"
           }
         ],
-        "internalType": "struct ICrossL2Inbox.Identifier",
+        "internalType": "struct Identifier",
         "name": "_id",
         "type": "tuple"
       },

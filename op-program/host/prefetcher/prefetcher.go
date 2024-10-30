@@ -28,6 +28,11 @@ var (
 	precompileFailure = [1]byte{0}
 )
 
+var (
+	ErrExperimentalPrefetchFailed   = errors.New("experimental prefetch failed")
+	ErrExperimentalPrefetchDisabled = errors.New("experimental prefetch disabled")
+)
+
 var acceleratedPrecompiles = []common.Address{
 	common.BytesToAddress([]byte{0x1}),  // ecrecover
 	common.BytesToAddress([]byte{0x8}),  // bn256Pairing

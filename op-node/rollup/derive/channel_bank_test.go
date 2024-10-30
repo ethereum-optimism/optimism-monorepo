@@ -106,32 +106,31 @@ func TestChannelBankSimple(t *testing.T) {
 	input.AddFrames("a:0:first", "a:2:third!")
 	input.AddFrames("a:1:second")
 
-	cfg := &rollup.Config{ChannelTimeoutBedrock: 10}
-
-	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), cfg, input, metrics.NoopMetrics)
+	spec := rollup.NewChainSpec(&rollup.Config{ChannelTimeoutBedrock: 10})
+	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), spec, input, metrics.NoopMetrics)
 
 	// Load the first frame
-	out, err := cb.NextData(context.Background())
+	out, err := cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load the third frame
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load the second frame
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Pull out the channel data
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "firstsecondthird", string(out))
 
 	// No more data
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, out)
 	require.Equal(t, io.EOF, err)
 }
@@ -149,52 +148,51 @@ func TestChannelBankInterleavedPreCanyon(t *testing.T) {
 	input.AddFrames("b:0:premiere")
 	input.AddFrames("a:1:second")
 
-	cfg := &rollup.Config{ChannelTimeoutBedrock: 10, CanyonTime: nil}
-
-	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), cfg, input, metrics.NoopMetrics)
+	spec := rollup.NewChainSpec(&rollup.Config{ChannelTimeoutBedrock: 10})
+	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), spec, input, metrics.NoopMetrics)
 
 	// Load a:0
-	out, err := cb.NextData(context.Background())
+	out, err := cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:2
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:1
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load a:2
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:0 & Channel b is complete, but channel a was opened first
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load a:1
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Pull out the channel a
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "firstsecondthird", string(out))
 
 	// Pull out the channel b
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "premieredeuxtrois", string(out))
 
 	// No more data
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, out)
 	require.Equal(t, io.EOF, err)
 }
@@ -213,52 +211,51 @@ func TestChannelBankInterleaved(t *testing.T) {
 	input.AddFrames("a:1:second")
 
 	ct := uint64(0)
-	cfg := &rollup.Config{ChannelTimeoutBedrock: 10, CanyonTime: &ct}
-
-	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), cfg, input, metrics.NoopMetrics)
+	spec := rollup.NewChainSpec(&rollup.Config{ChannelTimeoutBedrock: 10, CanyonTime: &ct})
+	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), spec, input, metrics.NoopMetrics)
 
 	// Load a:0
-	out, err := cb.NextData(context.Background())
+	out, err := cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:2
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:1
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load a:2
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load b:0 & Channel b is complete. Channel a was opened first but isn't ready
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Pull out the channel b because it's ready first.
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "premieredeuxtrois", string(out))
 
 	// Load a:1
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Pull out the channel a
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "firstsecondthird", string(out))
 
 	// No more data
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, out)
 	require.Equal(t, io.EOF, err)
 }
@@ -272,40 +269,39 @@ func TestChannelBankDuplicates(t *testing.T) {
 	input.AddFrames("a:0:altfirst", "a:2:altthird!")
 	input.AddFrames("a:1:second")
 
-	cfg := &rollup.Config{ChannelTimeoutBedrock: 10}
-
-	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), cfg, input, metrics.NoopMetrics)
+	spec := rollup.NewChainSpec(&rollup.Config{ChannelTimeoutBedrock: 10})
+	cb := NewChannelBank(testlog.Logger(t, log.LevelCrit), spec, input, metrics.NoopMetrics)
 
 	// Load the first frame
-	out, err := cb.NextData(context.Background())
+	out, err := cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load the third frame
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load the duplicate frames
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Load the second frame
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.ErrorIs(t, err, NotEnoughData)
 	require.Equal(t, []byte(nil), out)
 
 	// Pull out the channel data. Expect to see the original set & not the duplicates
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, err)
 	require.Equal(t, "firstsecondthird", string(out))
 
 	// No more data
-	out, err = cb.NextData(context.Background())
+	out, err = cb.NextRawChannel(context.Background())
 	require.Nil(t, out)
 	require.Equal(t, io.EOF, err)
 }

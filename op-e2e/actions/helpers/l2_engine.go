@@ -24,7 +24,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/client"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
@@ -37,8 +36,6 @@ type L2Engine struct {
 	node *node.Node
 	Eth  *geth.Ethereum
 
-	rollupGenesis *rollup.Genesis
-
 	// L2 evm / chain
 	l2Chain  *core.BlockChain
 	l2Signer types.Signer
@@ -50,20 +47,14 @@ type L2Engine struct {
 
 type EngineOption func(ethCfg *ethconfig.Config, nodeCfg *node.Config) error
 
-func NewL2Engine(t Testing, log log.Logger, genesis *core.Genesis, rollupGenesisL1 eth.BlockID, jwtPath string, options ...EngineOption) *L2Engine {
+func NewL2Engine(t Testing, log log.Logger, genesis *core.Genesis, jwtPath string, options ...EngineOption) *L2Engine {
 	n, ethBackend, apiBackend := newBackend(t, genesis, jwtPath, options)
 	engineApi := engineapi.NewL2EngineAPI(log, apiBackend, ethBackend.Downloader())
 	chain := ethBackend.BlockChain()
-	genesisBlock := chain.Genesis()
 	eng := &L2Engine{
-		log:  log,
-		node: n,
-		Eth:  ethBackend,
-		rollupGenesis: &rollup.Genesis{
-			L1:     rollupGenesisL1,
-			L2:     eth.BlockID{Hash: genesisBlock.Hash(), Number: genesisBlock.NumberU64()},
-			L2Time: genesis.Timestamp,
-		},
+		log:       log,
+		node:      n,
+		Eth:       ethBackend,
 		l2Chain:   chain,
 		l2Signer:  types.LatestSigner(genesis.Config),
 		EngineApi: engineApi,

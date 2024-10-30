@@ -27,8 +27,14 @@ forge-build:
 build: prebuild lint-fix-no-fail forge-build interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
-build-go-ffi:
+build-go-ffi-default:
   cd ./scripts/go-ffi && go build
+
+# Builds the go-ffi tool for MIPS64 contract tests.
+build-go-ffi-cannon64:
+  cd ./scripts/go-ffi && go build -tags=cannon64 -o ./go-ffi-cannon64
+
+build-go-ffi: build-go-ffi-default build-go-ffi-cannon64
 
 # Cleans build artifacts and deployments.
 clean:
@@ -155,14 +161,6 @@ semver-diff-check-no-build:
 # Checks that any contracts with a modified semver lock also have a modified semver version.
 semver-diff-check: build semver-diff-check-no-build
 
-# Checks that semver natspec is equal to the actual semver version.
-# Does not build contracts.
-semver-natspec-check-no-build:
-    go run ./scripts/checks/semver-natspec
-
-# Checks that semver natspec is equal to the actual semver version.
-semver-natspec-check: build semver-natspec-check-no-build
-
 # Checks that the semgrep tests are valid.
 semgrep-test-validity-check:
   forge fmt ../../semgrep/sol-rules.t.sol --check
@@ -193,6 +191,12 @@ validate-spacers-no-build:
 # Checks that spacer variables are correctly inserted.
 validate-spacers: build validate-spacers-no-build
 
+# Checks that the Kontrol summary dummy files have not been modified.
+# If you have changed the summary files deliberately, update the hashes in the script.
+# Use `openssl dgst -sha256` to generate the hash for a file.
+check-kontrol-summaries-unchanged:
+  ./scripts/checks/check-kontrol-summaries-unchanged.sh
+
 # Runs semgrep on the contracts.
 semgrep:
   cd ../../ && semgrep scan --config=semgrep ./packages/contracts-bedrock
@@ -206,7 +210,6 @@ check:
   snapshots-check-no-build \
   lint-check \
   semver-diff-check-no-build \
-  semver-natspec-check-no-build \
   validate-deploy-configs \
   validate-spacers-no-build \
   interfaces-check-no-build

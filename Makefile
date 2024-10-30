@@ -164,6 +164,7 @@ mod-tidy: ## Cleans up unused dependencies in Go modules
 
 clean: ## Removes all generated files under bin/
 	rm -rf ./bin
+	cd packages/contracts-bedrock/ && forge clean
 .PHONY: clean
 
 nuke: clean devnet-clean ## Completely clean the project directory
@@ -172,10 +173,10 @@ nuke: clean devnet-clean ## Completely clean the project directory
 
 ## Prepares for running a local devnet
 pre-devnet: submodules $(DEVNET_CANNON_PRESTATE_FILES)
-	@if ! [ -x "$(command -v geth)" ]; then \
+	@if ! [ -x "$$(command -v geth)" ]; then \
 		make install-geth; \
 	fi
-	@if ! [ -x "$(command -v eth2-testnet-genesis)" ]; then \
+	@if ! [ -x "$$(command -v eth2-testnet-genesis)" ]; then \
 		make install-eth2-testnet-genesis; \
 	fi
 .PHONY: pre-devnet

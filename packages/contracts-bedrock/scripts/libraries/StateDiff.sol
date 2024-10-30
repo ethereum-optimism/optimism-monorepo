@@ -4,10 +4,10 @@ pragma solidity 0.8.15;
 import { stdJson } from "forge-std/StdJson.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
-/// @title LibStateDiff
+/// @title StateDiff
 /// @author refcell
 /// @notice Library to write StateDiff output to json.
-library LibStateDiff {
+library StateDiff {
     /// @notice Accepts an array of AccountAccess structs from the Vm and encodes them as a json string.
     /// @param _accountAccesses Array of AccountAccess structs.
     /// @return serialized_ string

@@ -1,186 +1,109 @@
 package interop
 
 import (
-	"context"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
-
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum-optimism/optimism/op-service/testutils"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-var _ interop.InteropBackend = (*testutils.FakeInteropBackend)(nil)
-
-func TestInteropVerifier(gt *testing.T) {
+func TestFullInterop(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
-	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
-	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
-	// Temporary work-around: interop needs to be active, for cross-safety to not be instant.
-	// The state genesis in this test is pre-interop however.
-	sd.RollupCfg.InteropTime = new(uint64)
-	logger := testlog.Logger(t, log.LevelDebug)
-	seqMockBackend := &testutils.FakeInteropBackend{}
-	l1Miner, seqEng, seq := helpers.SetupSequencerTest(t, sd, logger,
-		helpers.WithVerifierOpts(helpers.WithInteropBackend(seqMockBackend)))
 
-	batcher := helpers.NewL2Batcher(logger, sd.RollupCfg, helpers.DefaultBatcherCfg(dp),
-		seq.RollupClient(), l1Miner.EthClient(), seqEng.EthClient(), seqEng.EngineClient(t, sd.RollupCfg))
+	is := SetupInterop(t)
+	actors := is.CreateActors()
 
-	verMockBackend := &testutils.FakeInteropBackend{}
-	_, ver := helpers.SetupVerifier(t, sd, logger,
-		l1Miner.L1Client(t, sd.RollupCfg), l1Miner.BlobStore(), &sync.Config{},
-		helpers.WithInteropBackend(verMockBackend))
+	// get both sequencers set up
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 
-	seq.ActL2PipelineFull(t)
-	ver.ActL2PipelineFull(t)
+	// No blocks yet
+	status := actors.ChainA.Sequencer.SyncStatus()
+	require.Equal(t, uint64(0), status.UnsafeL2.Number)
 
-	l2ChainID := types.ChainIDFromBig(sd.RollupCfg.L2ChainID)
-	seqMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
-		require.Equal(t, chainID, l2ChainID)
-		require.Equal(t, uint64(1), head.Number)
-		return nil
-	}
-	seqMockBackend.UnsafeViewFn = func(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, chainID, l2ChainID)
-		require.Equal(t, uint64(1), unsafe.Local.Number)
-		require.Equal(t, uint64(0), unsafe.Cross.Number)
-		return unsafe, nil
-	}
-	// create an unsafe L2 block
-	seq.ActL2StartBlock(t)
-	seq.ActL2EndBlock(t)
-	seq.ActL2PipelineFull(t)
-	status := seq.SyncStatus()
-	require.Equal(t, uint64(1), status.UnsafeL2.Number)
+	// sync chain A
+	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
+	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
+	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
+
+	// sync chain B
+	actors.Supervisor.SyncEvents(t, actors.ChainB.ChainID)
+	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainB.ChainID)
+	actors.Supervisor.SyncCrossSafe(t, actors.ChainB.ChainID)
+
+	// Build L2 block on chain A
+	actors.ChainA.Sequencer.ActL2StartBlock(t)
+	actors.ChainA.Sequencer.ActL2EndBlock(t)
+	status = actors.ChainA.Sequencer.SyncStatus()
+	head := status.UnsafeL2.ID()
+	require.Equal(t, uint64(1), head.Number)
 	require.Equal(t, uint64(0), status.CrossUnsafeL2.Number)
 	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
 	require.Equal(t, uint64(0), status.SafeL2.Number)
+	require.Equal(t, uint64(0), status.FinalizedL2.Number)
 
-	// promote it to cross-unsafe in the backend
-	// and see if the node picks up on it
-	seqMockBackend.UnsafeViewFn = func(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, chainID, l2ChainID)
-		require.Equal(t, uint64(1), unsafe.Local.Number)
-		require.Equal(t, uint64(0), unsafe.Cross.Number)
-		out := unsafe
-		out.Cross = unsafe.Local
-		return out, nil
-	}
-	seq.ActInteropBackendCheck(t)
-	seq.ActL2PipelineFull(t)
-	status = seq.SyncStatus()
-	require.Equal(t, uint64(1), status.UnsafeL2.Number)
-	require.Equal(t, uint64(1), status.CrossUnsafeL2.Number, "cross unsafe now")
+	// Verify as cross-unsafe with supervisor
+	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
+	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	status = actors.ChainA.Sequencer.SyncStatus()
+	require.Equal(t, head, status.UnsafeL2.ID())
+	require.Equal(t, head, status.CrossUnsafeL2.ID())
 	require.Equal(t, uint64(0), status.LocalSafeL2.Number)
 	require.Equal(t, uint64(0), status.SafeL2.Number)
+	require.Equal(t, uint64(0), status.FinalizedL2.Number)
 
-	// submit all new L2 blocks
-	batcher.ActSubmitAll(t)
-	// new L1 block with L2 batch
-	l1Miner.ActL1StartBlock(12)(t)
-	l1Miner.ActL1IncludeTx(sd.RollupCfg.Genesis.SystemConfig.BatcherAddr)(t)
-	l1Miner.ActL1EndBlock(t)
-
-	// Sync the L1 block, to verify the L2 block as local-safe.
-	seqMockBackend.UpdateLocalUnsafeFn = nil
-	seqMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
-		require.Equal(t, uint64(1), lastDerived.Number)
-		return nil
-	}
-	seqMockBackend.SafeViewFn = func(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, chainID, l2ChainID)
-		require.Equal(t, uint64(1), safe.Local.Number)
-		require.Equal(t, uint64(0), safe.Cross.Number)
-		return safe, nil
-	}
-	seq.ActL1HeadSignal(t)
-	l1Head := seq.SyncStatus().HeadL1
-	seq.ActL2PipelineFull(t)
-
-	status = seq.SyncStatus()
-	require.Equal(t, uint64(1), status.UnsafeL2.Number)
-	require.Equal(t, uint64(1), status.CrossUnsafeL2.Number)
-	require.Equal(t, uint64(1), status.LocalSafeL2.Number, "local safe changed")
+	// Submit the L2 block, sync the local-safe data
+	actors.ChainA.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+	actors.ChainA.Sequencer.ActL1HeadSignal(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	status = actors.ChainA.Sequencer.SyncStatus()
+	require.Equal(t, head, status.UnsafeL2.ID())
+	require.Equal(t, head, status.CrossUnsafeL2.ID())
+	require.Equal(t, head, status.LocalSafeL2.ID())
 	require.Equal(t, uint64(0), status.SafeL2.Number)
-
-	// Now mark it as cross-safe
-	seqMockBackend.SafeViewFn = func(ctx context.Context, chainID types.ChainID, request types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, chainID, l2ChainID)
-		require.Equal(t, uint64(1), request.Local.Number)
-		require.Equal(t, uint64(0), request.Cross.Number)
-		out := request
-		out.Cross = request.Local
-		return out, nil
-	}
-	seqMockBackend.DerivedFromFn = func(ctx context.Context, chainID types.ChainID, blockHash common.Hash, blockNumber uint64) (eth.L1BlockRef, error) {
-		require.Equal(t, uint64(1), blockNumber)
-		return l1Head, nil
-	}
-	seqMockBackend.FinalizedFn = func(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
-		return seq.RollupCfg.Genesis.L1, nil
-	}
-	seq.ActInteropBackendCheck(t)
-	seq.ActL2PipelineFull(t)
-
-	status = seq.SyncStatus()
-	require.Equal(t, uint64(1), status.UnsafeL2.Number)
-	require.Equal(t, uint64(1), status.CrossUnsafeL2.Number)
-	require.Equal(t, uint64(1), status.LocalSafeL2.Number)
-	require.Equal(t, uint64(1), status.SafeL2.Number, "cross-safe reached")
 	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+	// Local-safe does not count as "safe" in RPC
+	n := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
+	require.Equal(t, uint64(0), n)
 
-	verMockBackend.UpdateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.L2BlockRef) error {
-		require.Equal(t, uint64(1), head.Number)
-		return nil
-	}
-	verMockBackend.UpdateLocalSafeFn = func(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.L2BlockRef) error {
-		require.Equal(t, uint64(1), lastDerived.Number)
-		require.Equal(t, l1Head.ID(), derivedFrom.ID())
-		return nil
-	}
-	// The verifier might not see the L2 block that was just derived from L1 as cross-verified yet.
-	verMockBackend.UnsafeViewFn = func(ctx context.Context, chainID types.ChainID, request types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, uint64(1), request.Local.Number)
-		require.Equal(t, uint64(0), request.Cross.Number)
-		// Don't promote the Cross value yet
-		return request, nil
-	}
-	verMockBackend.SafeViewFn = func(ctx context.Context, chainID types.ChainID, request types.ReferenceView) (types.ReferenceView, error) {
-		require.Equal(t, uint64(1), request.Local.Number)
-		require.Equal(t, uint64(0), request.Cross.Number)
-		// Don't promote the Cross value yet
-		return request, nil
-	}
-	ver.ActL1HeadSignal(t)
-	ver.ActL2PipelineFull(t)
-	status = ver.SyncStatus()
-	require.Equal(t, uint64(1), status.UnsafeL2.Number, "synced the block")
-	require.Equal(t, uint64(0), status.CrossUnsafeL2.Number, "not cross-verified yet")
-	require.Equal(t, uint64(1), status.LocalSafeL2.Number, "derived from L1, thus local-safe")
-	require.Equal(t, uint64(0), status.SafeL2.Number, "not yet cross-safe")
+	// Cross-safe verify it
+	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
+	actors.ChainA.Sequencer.ActInteropBackendCheck(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	status = actors.ChainA.Sequencer.SyncStatus()
+	require.Equal(t, head, status.UnsafeL2.ID())
+	require.Equal(t, head, status.CrossUnsafeL2.ID())
+	require.Equal(t, head, status.LocalSafeL2.ID())
+	require.Equal(t, head, status.SafeL2.ID())
 	require.Equal(t, uint64(0), status.FinalizedL2.Number)
+	h := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Hash()
+	require.Equal(t, head.Hash, h)
 
-	seqMockBackend.UpdateFinalizedL1Fn = func(ctx context.Context, chainID types.ChainID, finalized eth.L1BlockRef) error {
-		require.Equal(t, l1Head, finalized)
-		return nil
-	}
-	// signal that L1 finalized; the cross-safe block we have should get finalized too
-	l1Miner.ActL1SafeNext(t)
-	l1Miner.ActL1FinalizeNext(t)
-	seq.ActL1SafeSignal(t)
-	seq.ActL1FinalizedSignal(t)
-	seq.ActL2PipelineFull(t)
+	// Finalize L1, and see how the op-node forwards it to the supervisor.
+	// The supervisor then determines finality, which the op-node can use.
+	actors.L1Miner.ActL1SafeNext(t)
+	actors.L1Miner.ActL1FinalizeNext(t)
+	actors.ChainA.Sequencer.ActL1SafeSignal(t)
+	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
+	require.NoError(t, err)
+	require.Equal(t, head, finalizedL2BlockID)
 
-	status = seq.SyncStatus()
-	require.Equal(t, uint64(1), status.FinalizedL2.Number, "finalized the block")
+	// The op-node needs a poke to look at the updated supervisor finality state
+	actors.ChainA.Sequencer.ActInteropBackendCheck(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	h = actors.ChainA.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
+	require.Equal(t, head.Hash, h)
+	status = actors.ChainA.Sequencer.SyncStatus()
+	require.Equal(t, head, status.UnsafeL2.ID())
+	require.Equal(t, head, status.CrossUnsafeL2.ID())
+	require.Equal(t, head, status.LocalSafeL2.ID())
+	require.Equal(t, head, status.SafeL2.ID())
+	require.Equal(t, head, status.FinalizedL2.ID())
 }

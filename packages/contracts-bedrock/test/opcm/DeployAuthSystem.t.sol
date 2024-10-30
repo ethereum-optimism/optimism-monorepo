@@ -5,7 +5,7 @@ import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 import { stdToml } from "forge-std/StdToml.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 
-import { DeployAuthSystemInput, DeployAuthSystem, DeployAuthSystemOutput } from "scripts/DeployAuthSystem.s.sol";
+import { DeployAuthSystemInput, DeployAuthSystem, DeployAuthSystemOutput } from "scripts/deploy/DeployAuthSystem.s.sol";
 
 contract DeployAuthSystemInput_Test is Test {
     DeployAuthSystemInput dasi;
