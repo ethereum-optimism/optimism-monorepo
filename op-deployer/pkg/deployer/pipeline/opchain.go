@@ -181,13 +181,13 @@ func DeployOPChainGenesisStrategy(env *Env, intent *state.Intent, st *state.Stat
 }
 
 type ChainProofParams struct {
-	DisputeGameType              uint32      `json:"disputeGameType" toml:"disputeGameType"`
-	DisputeAbsolutePrestate      common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
-	DisputeMaxGameDepth          uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
-	DisputeSplitDepth            uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
-	DisputeClockExtension        uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
-	DisputeMaxClockDuration      uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
-	AllowCustomDisputeParameters bool        `json:"allowCustomDisputeParameters" toml:"allowCustomDisputeParameters"`
+	DisputeGameType                         uint32      `json:"disputeGameType" toml:"disputeGameType"`
+	DisputeAbsolutePrestate                 common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
+	DisputeMaxGameDepth                     uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
+	DisputeSplitDepth                       uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
+	DisputeClockExtension                   uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
+	DisputeMaxClockDuration                 uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+	DangerouslyAllowCustomDisputeParameters bool        `json:"dangerouslyAllowCustomDisputeParameters" toml:"dangerouslyAllowCustomDisputeParameters"`
 }
 
 func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
@@ -226,7 +226,7 @@ func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common
 		DisputeSplitDepth:            proofParams.DisputeSplitDepth,
 		DisputeClockExtension:        proofParams.DisputeClockExtension,   // 3 hours (input in seconds)
 		DisputeMaxClockDuration:      proofParams.DisputeMaxClockDuration, // 3.5 days (input in seconds)
-		AllowCustomDisputeParameters: proofParams.AllowCustomDisputeParameters,
+		AllowCustomDisputeParameters: proofParams.DangerouslyAllowCustomDisputeParameters,
 	}, nil
 }
 

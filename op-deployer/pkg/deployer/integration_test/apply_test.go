@@ -644,19 +644,19 @@ func TestProofParamOverrides(t *testing.T) {
 	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
 	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 	intent.GlobalDeployOverrides = map[string]any{
-		"withdrawalDelaySeconds":          standard.WithdrawalDelaySeconds + 1,
-		"minProposalSizeBytes":            standard.MinProposalSizeBytes + 1,
-		"challengePeriodSeconds":          standard.ChallengePeriodSeconds + 1,
-		"proofMaturityDelaySeconds":       standard.ProofMaturityDelaySeconds + 1,
-		"disputeGameFinalityDelaySeconds": standard.DisputeGameFinalityDelaySeconds + 1,
-		"mipsVersion":                     standard.MIPSVersion + 1,
-		"disputeGameType":                 standard.DisputeGameType, // This must be set to the permissioned game
-		"disputeAbsolutePrestate":         common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
-		"disputeMaxGameDepth":             standard.DisputeMaxGameDepth + 1,
-		"disputeSplitDepth":               standard.DisputeSplitDepth + 1,
-		"disputeClockExtension":           standard.DisputeClockExtension + 1,
-		"disputeMaxClockDuration":         standard.DisputeMaxClockDuration + 1,
-		"allowCustomDisputeParameters":    true,
+		"withdrawalDelaySeconds":                  standard.WithdrawalDelaySeconds + 1,
+		"minProposalSizeBytes":                    standard.MinProposalSizeBytes + 1,
+		"challengePeriodSeconds":                  standard.ChallengePeriodSeconds + 1,
+		"proofMaturityDelaySeconds":               standard.ProofMaturityDelaySeconds + 1,
+		"disputeGameFinalityDelaySeconds":         standard.DisputeGameFinalityDelaySeconds + 1,
+		"mipsVersion":                             standard.MIPSVersion + 1,
+		"disputeGameType":                         standard.DisputeGameType, // This must be set to the permissioned game
+		"disputeAbsolutePrestate":                 common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"disputeMaxGameDepth":                     standard.DisputeMaxGameDepth + 1,
+		"disputeSplitDepth":                       standard.DisputeSplitDepth + 1,
+		"disputeClockExtension":                   standard.DisputeClockExtension + 1,
+		"disputeMaxClockDuration":                 standard.DisputeMaxClockDuration + 1,
+		"dangerouslyAllowCustomDisputeParameters": true,
 	}
 
 	require.NoError(t, deployer.ApplyPipeline(
