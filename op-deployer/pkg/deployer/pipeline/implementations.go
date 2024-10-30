@@ -17,7 +17,7 @@ type SuperchainProofParams struct {
 	ChallengePeriodSeconds          uint64 `json:"challengePeriodSeconds" toml:"challengePeriodSeconds"`
 	ProofMaturityDelaySeconds       uint64 `json:"proofMaturityDelaySeconds" toml:"proofMaturityDelaySeconds"`
 	DisputeGameFinalityDelaySeconds uint64 `json:"disputeGameFinalityDelaySeconds" toml:"disputeGameFinalityDelaySeconds"`
-	MipsVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
+	MIPSVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
 }
 
 func DeployImplementations(env *Env, intent *state.Intent, st *state.State) error {
@@ -50,7 +50,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			ChallengePeriodSeconds:          standard.ChallengePeriodSeconds,
 			ProofMaturityDelaySeconds:       standard.ProofMaturityDelaySeconds,
 			DisputeGameFinalityDelaySeconds: standard.DisputeGameFinalityDelaySeconds,
-			MipsVersion:                     standard.MIPSVersion,
+			MIPSVersion:                     standard.MIPSVersion,
 		},
 		intent.GlobalDeployOverrides,
 	)
@@ -69,7 +69,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			ChallengePeriodSeconds:          new(big.Int).SetUint64(proofParams.ChallengePeriodSeconds),
 			ProofMaturityDelaySeconds:       new(big.Int).SetUint64(proofParams.ProofMaturityDelaySeconds),
 			DisputeGameFinalityDelaySeconds: new(big.Int).SetUint64(proofParams.DisputeGameFinalityDelaySeconds),
-			MipsVersion:                     new(big.Int).SetUint64(proofParams.MipsVersion),
+			MipsVersion:                     new(big.Int).SetUint64(proofParams.MIPSVersion),
 			Release:                         contractsRelease,
 			SuperchainConfigProxy:           st.SuperchainDeployment.SuperchainConfigProxyAddress,
 			ProtocolVersionsProxy:           st.SuperchainDeployment.ProtocolVersionsProxyAddress,

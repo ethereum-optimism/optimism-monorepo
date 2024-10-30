@@ -12,6 +12,9 @@ import (
 )
 
 const (
+	GasLimit                        uint64 = 60_000_000
+	BasefeeScalar                   uint32 = 1368
+	BlobBaseFeeScalar               uint32 = 801949
 	WithdrawalDelaySeconds          uint64 = 604800
 	MinProposalSizeBytes            uint64 = 126000
 	ChallengePeriodSeconds          uint64 = 86400

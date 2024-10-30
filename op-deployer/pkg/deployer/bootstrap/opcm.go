@@ -30,16 +30,12 @@ import (
 )
 
 type OPCMConfig struct {
-	L1RPCUrl                        string
-	PrivateKey                      string
-	Logger                          log.Logger
-	ArtifactsLocator                *opcm.ArtifactsLocator
-	WithdrawalDelaySeconds          uint64
-	MinProposalSizeBytes            uint64
-	ChallengePeriodSeconds          uint64
-	ProofMaturityDelaySeconds       uint64
-	DisputeGameFinalityDelaySeconds uint64
-	MIPSVersion                     uint64
+	pipeline.SuperchainProofParams
+
+	L1RPCUrl         string
+	PrivateKey       string
+	Logger           log.Logger
+	ArtifactsLocator *opcm.ArtifactsLocator
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -110,16 +106,18 @@ func OPCMCLI(cliCtx *cli.Context) error {
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
 	return OPCM(ctx, OPCMConfig{
-		L1RPCUrl:                        l1RPCUrl,
-		PrivateKey:                      privateKey,
-		Logger:                          l,
-		ArtifactsLocator:                artifactsLocator,
-		WithdrawalDelaySeconds:          cliCtx.Uint64(WithdrawalDelaySecondsFlagName),
-		MinProposalSizeBytes:            cliCtx.Uint64(MinProposalSizeBytesFlagName),
-		ChallengePeriodSeconds:          cliCtx.Uint64(ChallengePeriodSecondsFlagName),
-		ProofMaturityDelaySeconds:       cliCtx.Uint64(ProofMaturityDelaySecondsFlagName),
-		DisputeGameFinalityDelaySeconds: cliCtx.Uint64(DisputeGameFinalityDelaySecondsFlagName),
-		MIPSVersion:                     cliCtx.Uint64(MIPSVersionFlagName),
+		L1RPCUrl:         l1RPCUrl,
+		PrivateKey:       privateKey,
+		Logger:           l,
+		ArtifactsLocator: artifactsLocator,
+		SuperchainProofParams: pipeline.SuperchainProofParams{
+			WithdrawalDelaySeconds:          cliCtx.Uint64(WithdrawalDelaySecondsFlagName),
+			MinProposalSizeBytes:            cliCtx.Uint64(MinProposalSizeBytesFlagName),
+			ChallengePeriodSeconds:          cliCtx.Uint64(ChallengePeriodSecondsFlagName),
+			ProofMaturityDelaySeconds:       cliCtx.Uint64(ProofMaturityDelaySecondsFlagName),
+			DisputeGameFinalityDelaySeconds: cliCtx.Uint64(DisputeGameFinalityDelaySecondsFlagName),
+			MIPSVersion:                     cliCtx.Uint64(MIPSVersionFlagName),
+		},
 	})
 }
 
