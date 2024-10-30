@@ -37,7 +37,7 @@ func NewWorker(log log.Logger, workFn workFn) *Worker {
 		log:  log,
 		poke: make(chan struct{}, 1),
 		// The data may have changed, and we may have missed a poke, so re-attempt regularly.
-		pollDuration: time.Second * 4,
+		pollDuration: 250 * time.Millisecond,
 		ctx:          ctx,
 		cancel:       cancel,
 	}
