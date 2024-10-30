@@ -160,11 +160,11 @@ func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
 }
 
 func (db *ChainsDB) LastDerivedFrom(chainID types.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
-	crossDB, ok := db.crossDBs[chainID]
+	localDB, ok := db.localDBs[chainID]
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
-	return crossDB.LastDerivedAt(derivedFrom)
+	return localDB.LastDerivedAt(derivedFrom)
 }
 
 func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
