@@ -2,9 +2,9 @@ package inspect
 
 import (
 	"fmt"
-	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
@@ -69,9 +69,22 @@ func L1CLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read intent: %w", err)
 	}
 
-	chainState, err := globalState.Chain(cfg.ChainID)
+	l1Contracts, err := L1(globalState, cfg.ChainID)
 	if err != nil {
-		return fmt.Errorf("failed to get chain state for ID %s: %w", cfg.ChainID.String(), err)
+		return fmt.Errorf("failed to generate l1Contracts: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(cfg.Outfile, 0o666)); err != nil {
+		return fmt.Errorf("failed to write L1 contract addresses: %w", err)
+	}
+
+	return nil
+}
+
+func L1(globalState *state.State, chainID common.Hash) (*L1Contracts, error) {
+	chainState, err := globalState.Chain(chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain state for ID %s: %w", chainID.String(), err)
 	}
 
 	l1Contracts := L1Contracts{
@@ -114,14 +127,5 @@ func L1CLI(cliCtx *cli.Context) error {
 		},
 	}
 
-	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(cfg.Outfile, 0o666)); err != nil {
-		return fmt.Errorf("failed to write L1 contract addresses: %w", err)
-	}
-
-	chainState.Artifacts.ContractAddresses = filepath.Join(cfg.Workdir, cfg.Outfile)
-	if err = pipeline.WriteState(cfg.Workdir, globalState); err != nil {
-		return fmt.Errorf("failed to write updated globalState: %w", err)
-	}
-
-	return nil
+	return &l1Contracts, nil
 }

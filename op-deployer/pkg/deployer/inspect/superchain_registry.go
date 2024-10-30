@@ -3,9 +3,12 @@ package inspect
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+	"github.com/ethereum-optimism/optimism/op-service/ioutil"
+	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 
 	"github.com/urfave/cli/v2"
 )
@@ -21,22 +24,13 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read intent: %w", err)
 	}
 
-	chainIntent, err := globalIntent.Chain(cfg.ChainID)
-	if err != nil {
-		return fmt.Errorf("failed to get chain ID %s: %w", cfg.ChainID.String(), err)
-	}
-
 	envVars := map[string]string{}
+	envVars["SCR_CHAIN_NAME"] = ""
+	envVars["SCR_CHAIN_SHORT_NAME"] = ""
+	envVars["SCR_PUBLIC_RPC"] = ""
+	envVars["SCR_SEQUENCER_RPC"] = ""
+	envVars["SCR_EXPLORER"] = ""
 	envVars["SCR_STANDARD_CHAIN_CANDIDATE"] = "false"
-
-	if err = chainIntent.SuperchainRegistry.Check(); err != nil {
-		return fmt.Errorf("must fill all fields in intent's superchainRegistryConfig struct")
-	}
-	envVars["SCR_CHAIN_NAME"] = chainIntent.SuperchainRegistry.ChainName
-	envVars["SCR_CHAIN_SHORT_NAME"] = chainIntent.SuperchainRegistry.ChainShortName
-	envVars["SCR_PUBLIC_RPC"] = chainIntent.SuperchainRegistry.PublicRpc
-	envVars["SCR_SEQUENCER_RPC"] = chainIntent.SuperchainRegistry.SequencerRpc
-	envVars["SCR_EXPLORER"] = chainIntent.SuperchainRegistry.ExplorerUrl
 
 	creationCommit, err := standard.CommitForDeployTag(globalIntent.L2ContractsLocator.Tag)
 	if err != nil {
@@ -54,34 +48,58 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
-	chainState, err := globalState.Chain(cfg.ChainID)
-	if err != nil {
-		return fmt.Errorf("failed to get chain state for ID %s: %w", cfg.ChainID.String(), err)
-	}
-	if err = chainState.Artifacts.Check(); err != nil {
-		return fmt.Errorf("%w: chainId %s", err, cfg.ChainID.String())
-	}
-	envVars["SCR_DEPLOYMENTS_DIR"] = chainState.Artifacts.ContractAddresses
-	envVars["SCR_ROLLUP_CONFIG"] = chainState.Artifacts.RollupConfig
-	envVars["SCR_GENESIS"] = chainState.Artifacts.Genesis
-	envVars["SCR_DEPLOY_CONFIG"] = chainState.Artifacts.DeployConfig
 
-	err = writeEnvFile(envVars)
+	genesis, rollup, err := GenesisAndRollup(globalState, cfg.ChainID)
+	if err != nil {
+		return fmt.Errorf("failed to generate genesis and rollup: %w", err)
+	}
+	genesisFilepath := filepath.Join(cfg.Workdir, "genesis.json")
+	if err := jsonutil.WriteJSON(genesis, ioutil.ToStdOutOrFileOrNoop(genesisFilepath, 0o666)); err != nil {
+		return fmt.Errorf("failed to write genesis: %w", err)
+	}
+	rollupFilepath := filepath.Join(cfg.Workdir, "rollup.json")
+	if err := jsonutil.WriteJSON(rollup, ioutil.ToStdOutOrFileOrNoop(rollupFilepath, 0o666)); err != nil {
+		return fmt.Errorf("failed to write rollup: %w", err)
+	}
+
+	deployConfig, err := DeployConfig(globalState, cfg.ChainID)
+	if err != nil {
+		return fmt.Errorf("failed to generate deploy config: %w", err)
+	}
+	deployConfigFilepath := filepath.Join(cfg.Workdir, "deploy-config.json")
+	if err := jsonutil.WriteJSON(deployConfig, ioutil.ToStdOutOrFileOrNoop(deployConfigFilepath, 0o666)); err != nil {
+		return fmt.Errorf("failed to write rollup: %w", err)
+	}
+
+	l1Contracts, err := L1(globalState, cfg.ChainID)
+	if err != nil {
+		return fmt.Errorf("failed to generate l1 contracts: %w", err)
+	}
+	l1ContractsFilepath := filepath.Join(cfg.Workdir, "l1-contracts.json")
+	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(l1ContractsFilepath, 0o666)); err != nil {
+		return fmt.Errorf("failed to write rollup: %w", err)
+	}
+
+	envVars["SCR_GENESIS"] = genesisFilepath
+	envVars["SCR_ROLLUP_CONFIG"] = rollupFilepath
+	envVars["SCR_DEPLOY_CONFIG"] = deployConfigFilepath
+	envVars["SCR_DEPLOYMENTS_DIR"] = l1ContractsFilepath
+
+	envFilepath := filepath.Join(cfg.Workdir, ".env")
+	err = writeEnvFile(envFilepath, envVars)
 
 	return nil
 }
 
-func writeEnvFile(envVars map[string]string) error {
-	// Open the file for writing, create it if it doesn't exist
-	file, err := os.Create(".env")
+func writeEnvFile(filepath string, envVars map[string]string) error {
+	file, err := os.Create(filepath)
 	if err != nil {
 		return err
 	}
 	defer file.Close()
 
-	// Write each environment variable to the file
 	for key, value := range envVars {
-		_, err := file.WriteString(fmt.Sprintf("%s=%s\n", key, value))
+		_, err := file.WriteString(fmt.Sprintf("%s=\"%s\"\n", key, value))
 		if err != nil {
 			return err
 		}

@@ -139,25 +139,6 @@ func (c *Intent) checkL2Prod() error {
 	return err
 }
 
-type SuperchainRegistryConfig struct {
-	ChainName      string `json:"chainName" toml:"chainName"`
-	ChainShortName string `json:"chainShortName" toml:"chainShortName"`
-	PublicRpc      string `json:"publicRpc" toml:"publicRpc"`
-	SequencerRpc   string `json:"sequencerRpc" toml:"sequencerRpc"`
-	ExplorerUrl    string `json:"explorerUrl" toml:"explorerUrl"`
-}
-
-func (s SuperchainRegistryConfig) Check() error {
-	if s.ChainName == "" ||
-		s.ChainShortName == "" ||
-		s.ExplorerUrl == "" ||
-		s.PublicRpc == "" ||
-		s.SequencerRpc == "" {
-		return fmt.Errorf("incomplete superchain registry config")
-	}
-	return nil
-}
-
 type SuperchainRoles struct {
 	ProxyAdminOwner common.Address `json:"proxyAdminOwner" toml:"proxyAdminOwner"`
 
@@ -180,8 +161,6 @@ type ChainIntent struct {
 	Eip1559Elasticity uint64 `json:"eip1559Elasticity" toml:"eip1559Elasticity"`
 
 	Roles ChainRoles `json:"roles" toml:"roles"`
-
-	SuperchainRegistry SuperchainRegistryConfig `json:"superchainRegistryConfig" toml:"superchainRegistryConfig"`
 
 	DeployOverrides map[string]any `json:"deployOverrides" toml:"deployOverrides"`
 }

@@ -55,23 +55,6 @@ func (s *State) Chain(id common.Hash) (*ChainState, error) {
 	return nil, fmt.Errorf("chain not found: %s", id.Hex())
 }
 
-type ArtifactFilepaths struct {
-	DeployConfig      string `json:"deployConfig"`
-	RollupConfig      string `json:"rollupConfig"`
-	Genesis           string `json:"genesis"`
-	ContractAddresses string `json:"contractAddresses"`
-}
-
-func (a ArtifactFilepaths) Check() error {
-	if a.DeployConfig == "" || a.DeployConfig == "-" ||
-		a.RollupConfig == "" || a.RollupConfig == "-" ||
-		a.Genesis == "" || a.Genesis == "-" ||
-		a.ContractAddresses == "" || a.ContractAddresses == "-" {
-		return fmt.Errorf("incomplete artifact filepaths")
-	}
-	return nil
-}
-
 type SuperchainDeployment struct {
 	ProxyAdminAddress            common.Address `json:"proxyAdminAddress"`
 	SuperchainConfigProxyAddress common.Address `json:"superchainConfigProxyAddress"`
@@ -112,8 +95,6 @@ type ChainState struct {
 	PermissionedDisputeGameAddress            common.Address `json:"permissionedDisputeGameAddress"`
 	DelayedWETHPermissionedGameProxyAddress   common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
 	DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
-
-	Artifacts ArtifactFilepaths `json:"artifactFilepaths"`
 
 	Allocs *GzipData[foundry.ForgeAllocs] `json:"allocs"`
 
