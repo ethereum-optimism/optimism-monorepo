@@ -40,6 +40,7 @@ interface ISystemConfigInterop {
     function optimismPortal() external view returns (address addr_);
     function overhead() external view returns (uint256);
     function owner() external view returns (address);
+    function feeAdmin() external view returns (address);
     function renounceOwnership() external;
     function resourceConfig() external view returns (IResourceMetering.ResourceConfig memory);
     function scalar() external view returns (uint256);
@@ -57,7 +58,7 @@ interface ISystemConfigInterop {
     function removeDependency(uint256 _chainId) external;
     function dependencyManager() external view returns (address);
     function initialize(
-        address _owner,
+        ISystemConfig.Roles memory _roles,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
         bytes32 _batcherHash,

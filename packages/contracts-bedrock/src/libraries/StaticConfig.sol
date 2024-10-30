@@ -1,6 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { Types } from "src/libraries/Types.sol";
+
+// The main benefit of this library is to give the reader the ability to observe that
+// the encode decode logic is correct by being able to see it right next to each other.
+// Otherwise the encode/decode will exist in many different locations, between mocks and
+// runtime code. It is overly verbose and I don't like it.
+
 /// @title StaticConfig
 /// @notice Library for encoding and decoding static configuration data.
 library StaticConfig {
@@ -55,6 +62,48 @@ library StaticConfig {
     /// @param _data Encoded static configuration data.
     /// @return Decoded chain ID of the dependency to remove.
     function decodeRemoveDependency(bytes memory _data) internal pure returns (uint256) {
+        return abi.decode(_data, (uint256));
+    }
+
+    /// @notice
+    function encodeSetFeeVaultConfig(
+        address _recipient,
+        uint256 _min,
+        Types.WithdrawalNetwork _network
+    )
+        internal
+        pure
+        returns (bytes memory)
+    {
+        return abi.encode(_recipient, _min, _network);
+    }
+
+    /// @notice
+    function decodeSetFeeVaultConfig(bytes memory _data)
+        internal
+        pure
+        returns (address, uint256, Types.WithdrawalNetwork)
+    {
+        return abi.decode(_data, (address, uint256, Types.WithdrawalNetwork));
+    }
+
+    /// @notice
+    function encodeSetAddress(address _address) internal pure returns (bytes memory) {
+        return abi.encode(_address);
+    }
+
+    /// @notice
+    function decodeSetAddress(bytes memory _data) internal pure returns (address) {
+        return abi.decode(_data, (address));
+    }
+
+    /// @notice
+    function encodeSetRemoteChainId(uint256 _chainId) internal pure returns (bytes memory) {
+        return abi.encode(_chainId);
+    }
+
+    /// @notice
+    function decodeSetRemoteChainId(bytes memory _data) internal pure returns (uint256) {
         return abi.decode(_data, (uint256));
     }
 }

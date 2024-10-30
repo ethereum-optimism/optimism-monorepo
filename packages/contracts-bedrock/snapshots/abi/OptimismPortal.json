@@ -413,27 +413,17 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "_decimals",
+        "internalType": "enum Types.ConfigType",
+        "name": "_type",
         "type": "uint8"
       },
       {
-        "internalType": "bytes32",
-        "name": "_name",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_symbol",
-        "type": "bytes32"
+        "internalType": "bytes",
+        "name": "_value",
+        "type": "bytes"
       }
     ],
-    "name": "setGasPayingToken",
+    "name": "setConfig",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

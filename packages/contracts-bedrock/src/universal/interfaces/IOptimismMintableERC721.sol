@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { IL2ERC721Bridge } from "src/L2/interfaces/IL2ERC721Bridge.sol";
+
 /// @title IOptimismMintableERC721
 /// @notice Interface for contracts that are compatible with the OptimismMintableERC721 standard.
 ///         Tokens that follow this standard can be easily transferred across the ERC721 bridge.
 interface IOptimismMintableERC721 {
     function __constructor__(
-        address _bridge,
+        IL2ERC721Bridge _bridge,
         uint256 _remoteChainId,
         address _remoteToken,
         string memory _name,
@@ -64,11 +66,13 @@ interface IOptimismMintableERC721 {
 
     function REMOTE_TOKEN() external view returns (address);
 
-    function BRIDGE() external view returns (address);
+    /// @notice Address of the ERC721 bridge on this network.
+    function BRIDGE() external view returns (IL2ERC721Bridge);
 
     function remoteChainId() external view returns (uint256);
 
     function remoteToken() external view returns (address);
 
-    function bridge() external view returns (address);
+    /// @notice Address of the ERC721 bridge on this network.
+    function bridge() external view returns (IL2ERC721Bridge);
 }

@@ -131,7 +131,7 @@ rules:
       - pattern-not: require($ERR);
       - focus-metavariable: $ERR
       - pattern-not-regex: \"(\w+:\s[^"]+)\"
-      - pattern-not-regex: string\.concat\(\"(\w+:\s[^"]+)\"\,[^"]+\)
+      - pattern-not-regex: string\.concat\(\"(\w+:\s)\"[^)]+\)
       - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
       - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
     paths:
@@ -152,7 +152,7 @@ rules:
       - pattern-not: revert $ERR(...);
       - focus-metavariable: $MSG
       - pattern-not-regex: \"(\w+:\s[^"]+)\"
-      - pattern-not-regex: string\.concat\(\"(\w+:\s[^"]+)\"\,[^"]+\)
+      - pattern-not-regex: string\.concat\(\"(\w+:\s)\"[^)]+\)
       - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
       - pattern-not-regex: \"([a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+-[a-zA-Z0-9\s]+)\"
     paths:

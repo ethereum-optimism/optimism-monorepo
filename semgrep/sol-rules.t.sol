@@ -500,6 +500,9 @@ contract SemgrepTest__sol_style_malformed_require {
             )
         );
 
+        // ok: sol-style-malformed-require
+        require(result.length > 0, string.concat("ForgeArtifacts: ", _contractName, "is not initializable"));
+
         // ruleid: sol-style-malformed-require
         require(cond, "MyContract: ");
 
@@ -543,6 +546,9 @@ contract SemgrepTest__sol_style_malformed_revert {
                 "DeployUtils: check failed, duplicates at ", LibString.toString(i), ",", LibString.toString(j)
             )
         );
+
+        // ok: sol-style-malformed-revert
+        revert(string.concat("ForgeArtifacts: ", _contractName, "is not initializable"));
 
         // ruleid: sol-style-malformed-revert
         revert("MyContract: ");

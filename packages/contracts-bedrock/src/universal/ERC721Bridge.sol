@@ -1,24 +1,25 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
-abstract contract ERC721Bridge is Initializable {
+abstract contract ERC721Bridge {
     /// @custom:spacer ERC721Bridge's initializer slot spacing
-    /// @notice Spacer to avoid packing into the initializer slot
-    bytes30 private spacer_0_2_30;
+    /// @notice Spacer for legacy initializable slot
+    bytes32 private spacer_0_0_32;
 
-    /// @notice Messenger contract on this domain.
-    /// @custom:network-specific
-    ICrossDomainMessenger public messenger;
+    /// @custom:legacy
+    /// @custom:spacer messenger
+    /// @notice Spacer for backwards compatibility.
+    address private spacer_1_0_20;
 
-    /// @notice Contract of the bridge on the other network.
-    /// @custom:network-specific
-    ERC721Bridge public otherBridge;
+    /// @custom:legacy
+    /// @custom:spacer otherBridge
+    /// @notice Spacer for backwards compatibility.
+    address private spacer_2_0_20;
 
     /// @notice Reserve extra slots (to a total of 50) in the storage layout for future upgrades.
     uint256[46] private __gap;
@@ -57,41 +58,37 @@ abstract contract ERC721Bridge is Initializable {
 
     /// @notice Ensures that the caller is a cross-chain message from the other bridge.
     modifier onlyOtherBridge() {
+        ICrossDomainMessenger crossDomainMessenger = messenger();
         require(
-            msg.sender == address(messenger) && messenger.xDomainMessageSender() == address(otherBridge),
+            msg.sender == address(crossDomainMessenger)
+                && crossDomainMessenger.xDomainMessageSender() == address(otherBridge()),
             "ERC721Bridge: function can only be called from the other bridge"
         );
         _;
     }
 
-    /// @notice Initializer.
-    /// @param _messenger   Contract of the CrossDomainMessenger on this network.
-    /// @param _otherBridge Contract of the ERC721 bridge on the other network.
-    function __ERC721Bridge_init(
-        ICrossDomainMessenger _messenger,
-        ERC721Bridge _otherBridge
-    )
-        internal
-        onlyInitializing
-    {
-        messenger = _messenger;
-        otherBridge = _otherBridge;
-    }
+    /// @notice Getter function for the messenger contract.
+    /// @return Messenger contract on this domain.
+    function messenger() public view virtual returns (ICrossDomainMessenger);
 
     /// @notice Legacy getter for messenger contract.
     ///         Public getter is legacy and will be removed in the future. Use `messenger` instead.
     /// @return Messenger contract on this domain.
     /// @custom:legacy
     function MESSENGER() external view returns (ICrossDomainMessenger) {
-        return messenger;
+        return messenger();
     }
+
+    /// @notice Getter function for the other bridge.
+    /// @return Contract of the bridge on the other network.
+    function otherBridge() public view virtual returns (ERC721Bridge);
 
     /// @notice Legacy getter for other bridge address.
     ///         Public getter is legacy and will be removed in the future. Use `otherBridge` instead.
     /// @return Contract of the bridge on the other network.
     /// @custom:legacy
     function OTHER_BRIDGE() external view returns (ERC721Bridge) {
-        return otherBridge;
+        return otherBridge();
     }
 
     /// @notice This function should return true if the contract is paused.

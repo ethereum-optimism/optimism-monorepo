@@ -21,10 +21,9 @@ contract PredeploysBaseTest is CommonTest {
         return _addr == Predeploys.L1_MESSAGE_SENDER;
     }
 
-    /// @dev Returns true if the predeploy is initializable.
-    function _isInitializable(address _addr) internal pure returns (bool) {
-        return _addr == Predeploys.L2_CROSS_DOMAIN_MESSENGER || _addr == Predeploys.L2_STANDARD_BRIDGE
-            || _addr == Predeploys.L2_ERC721_BRIDGE || _addr == Predeploys.OPTIMISM_MINTABLE_ERC20_FACTORY;
+    /// @dev No predeploys should ever be initializable.
+    function _isInitializable(address) internal pure returns (bool) {
+        return false;
     }
 
     /// @dev Returns true if the predeploy uses immutables.
@@ -105,6 +104,8 @@ contract PredeploysBaseTest is CommonTest {
                 assertEq(implAddr.code, supposedCode, "proxy implementation contract should match contract source");
             }
 
+            // todo: l2genesis: this whole branch is a no-op.
+            //   Either run the check, or remove the branch.
             if (_isInitializable(addr)) {
                 assertEq(l2Genesis.loadInitializedSlot(cname), uint8(1));
             }

@@ -77,10 +77,17 @@
     "type": "uint256"
   },
   {
+    "bytes": "1",
+    "label": "isIsthmus",
+    "offset": 0,
+    "slot": "8",
+    "type": "bool"
+  },
+  {
     "bytes": "64",
     "label": "dependencySet",
     "offset": 0,
-    "slot": "8",
+    "slot": "9",
     "type": "struct EnumerableSet.UintSet"
   }
 ]

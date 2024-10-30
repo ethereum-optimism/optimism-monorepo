@@ -1,0 +1,58 @@
+[
+  {
+    "bytes": "32",
+    "label": "spacer_0_0_32",
+    "offset": 0,
+    "slot": "0",
+    "type": "bytes32"
+  },
+  {
+    "bytes": "32",
+    "label": "spacer_1_0_32",
+    "offset": 0,
+    "slot": "1",
+    "type": "bytes32"
+  },
+  {
+    "bytes": "32",
+    "label": "deployments",
+    "offset": 0,
+    "slot": "2",
+    "type": "mapping(address => address)"
+  },
+  {
+    "bytes": "1536",
+    "label": "__gap",
+    "offset": 0,
+    "slot": "3",
+    "type": "uint256[48]"
+  },
+  {
+    "bytes": "1",
+    "label": "_initialized",
+    "offset": 0,
+    "slot": "51",
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "51",
+    "type": "bool"
+  },
+  {
+    "bytes": "30",
+    "label": "spacer_51_2_30",
+    "offset": 2,
+    "slot": "51",
+    "type": "bytes30"
+  },
+  {
+    "bytes": "20",
+    "label": "standardBridge",
+    "offset": 0,
+    "slot": "52",
+    "type": "address"
+  }
+]

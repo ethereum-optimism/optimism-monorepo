@@ -122,6 +122,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "enum Types.ConfigType",
+        "name": "_type",
+        "type": "uint8"
+      }
+    ],
+    "name": "getConfig",
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "data_",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "hash",
     "outputs": [
@@ -137,6 +156,19 @@
   {
     "inputs": [],
     "name": "isCustomGasToken",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "isIsthmus",
     "outputs": [
       {
         "internalType": "bool",
@@ -202,6 +234,24 @@
   {
     "inputs": [
       {
+        "internalType": "enum Types.ConfigType",
+        "name": "_type",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_value",
+        "type": "bytes"
+      }
+    ],
+    "name": "setConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "address",
         "name": "_token",
         "type": "address"
@@ -223,6 +273,13 @@
       }
     ],
     "name": "setGasPayingToken",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "setIsthmus",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -342,6 +399,11 @@
   {
     "inputs": [],
     "name": "NotDepositor",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "UnsafeCast",
     "type": "error"
   }
 ]

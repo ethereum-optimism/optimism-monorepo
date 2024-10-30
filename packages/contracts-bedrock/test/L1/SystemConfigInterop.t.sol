@@ -6,12 +6,12 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { ConfigType } from "src/L2/L1BlockInterop.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
+import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
@@ -50,7 +50,7 @@ contract SystemConfigInterop_Test is CommonTest {
             abi.encodeCall(
                 IOptimismPortalInterop.setConfig,
                 (
-                    ConfigType.SET_GAS_PAYING_TOKEN,
+                    Types.ConfigType.GAS_PAYING_TOKEN,
                     StaticConfig.encodeSetGasPayingToken({
                         _token: _token,
                         _decimals: 18,
@@ -70,7 +70,7 @@ contract SystemConfigInterop_Test is CommonTest {
             address(optimismPortal),
             abi.encodeCall(
                 IOptimismPortalInterop.setConfig,
-                (ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId))
+                (Types.ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId))
             )
         );
 
@@ -92,7 +92,7 @@ contract SystemConfigInterop_Test is CommonTest {
             address(optimismPortal),
             abi.encodeCall(
                 IOptimismPortalInterop.setConfig,
-                (ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(_chainId))
+                (Types.ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(_chainId))
             )
         );
 
@@ -117,7 +117,7 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_SYMBOL_SLOT, bytes32(0));
 
         systemConfig.initialize({
-            _owner: alice,
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
             _basefeeScalar: 2100,
             _blobbasefeeScalar: 1000000,
             _batcherHash: bytes32(hex"abcd"),

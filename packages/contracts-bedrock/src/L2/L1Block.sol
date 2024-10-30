@@ -3,7 +3,17 @@ pragma solidity 0.8.15;
 
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { Constants } from "src/libraries/Constants.sol";
+import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
+import { IFeeVault, Types as ITypes } from "src/L2/interfaces/IFeeVault.sol";
+import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
+import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
+import { IERC721Bridge } from "src/universal/interfaces/IERC721Bridge.sol";
+import { IOptimismMintableERC721Factory } from "src/L2/interfaces/IOptimismMintableERC721Factory.sol";
+import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Encoding } from "src/libraries/Encoding.sol";
+import { Storage } from "src/libraries/Storage.sol";
+import { Types } from "src/libraries/Types.sol";
 import { NotDepositor } from "src/libraries/L1BlockErrors.sol";
 
 /// @custom:proxied true
@@ -16,6 +26,31 @@ import { NotDepositor } from "src/libraries/L1BlockErrors.sol";
 contract L1Block is ISemver, IGasToken {
     /// @notice Event emitted when the gas paying token is set.
     event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);
+
+    /// @notice Storage slot for the base fee vault configuration
+    bytes32 internal constant BASE_FEE_VAULT_CONFIG_SLOT = bytes32(uint256(keccak256("opstack.basefeevaultconfig")) - 1);
+
+    /// @notice Storage slot for the L1 fee vault configuration
+    bytes32 internal constant L1_FEE_VAULT_CONFIG_SLOT = bytes32(uint256(keccak256("opstack.l1feevaultconfig")) - 1);
+
+    /// @notice Storage slot for the sequencer fee vault configuration
+    bytes32 internal constant SEQUENCER_FEE_VAULT_CONFIG_SLOT =
+        bytes32(uint256(keccak256("opstack.sequencerfeevaultconfig")) - 1);
+
+    /// @notice Storage slot for the L1 cross domain messenger address
+    bytes32 internal constant L1_CROSS_DOMAIN_MESSENGER_ADDRESS_SLOT =
+        bytes32(uint256(keccak256("opstack.l1crossdomainmessengeraddress")) - 1);
+
+    /// @notice Storage slot for the L1 ERC721 bridge address
+    bytes32 internal constant L1_ERC_721_BRIDGE_ADDRESS_SLOT =
+        bytes32(uint256(keccak256("opstack.l1erc721bridgeaddress")) - 1);
+
+    /// @notice Storage slot for the L1 standard bridge address
+    bytes32 internal constant L1_STANDARD_BRIDGE_ADDRESS_SLOT =
+        bytes32(uint256(keccak256("opstack.l1standardbridgeaddress")) - 1);
+
+    /// @notice Storage slot for the remote chain ID
+    bytes32 internal constant REMOTE_CHAIN_ID_SLOT = bytes32(uint256(keccak256("opstack.remotechainid")) - 1);
 
     /// @notice Address of the special depositor account.
     function DEPOSITOR_ACCOUNT() public pure returns (address addr_) {
@@ -57,9 +92,12 @@ contract L1Block is ISemver, IGasToken {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
-    /// @custom:semver 1.5.1-beta.3
+    /// @notice Indicates whether the network has gone through the Isthmus upgrade.
+    bool public isIsthmus;
+
+    /// @custom:semver 1.5.1-beta.4
     function version() public pure virtual returns (string memory) {
-        return "1.5.1-beta.3";
+        return "1.5.1-beta.4";
     }
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.
@@ -168,14 +206,107 @@ contract L1Block is ISemver, IGasToken {
         }
     }
 
+    /// @notice Sets static configuration options for the L2 system. Can only be called by the special
+    ///         depositor account.
+    /// @param _type  The type of configuration to set.
+    /// @param _value The encoded value with which to set the configuration.
+    function setConfig(Types.ConfigType _type, bytes calldata _value) public virtual {
+        if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
+
+        if (_type == Types.ConfigType.GAS_PAYING_TOKEN) {
+            (address token, uint8 decimals, bytes32 name, bytes32 symbol) = StaticConfig.decodeSetGasPayingToken(_value);
+            GasPayingToken.set({ _token: token, _decimals: decimals, _name: name, _symbol: symbol });
+            emit GasPayingTokenSet({ token: token, decimals: decimals, name: name, symbol: symbol });
+        } else if (_type == Types.ConfigType.BASE_FEE_VAULT_CONFIG) {
+            Storage.setBytes32(BASE_FEE_VAULT_CONFIG_SLOT, abi.decode(_value, (bytes32)));
+        } else if (_type == Types.ConfigType.L1_FEE_VAULT_CONFIG) {
+            Storage.setBytes32(L1_FEE_VAULT_CONFIG_SLOT, abi.decode(_value, (bytes32)));
+        } else if (_type == Types.ConfigType.L1_ERC_721_BRIDGE_ADDRESS) {
+            Storage.setAddress(L1_ERC_721_BRIDGE_ADDRESS_SLOT, abi.decode(_value, (address)));
+        } else if (_type == Types.ConfigType.REMOTE_CHAIN_ID) {
+            Storage.setUint(REMOTE_CHAIN_ID_SLOT, abi.decode(_value, (uint256)));
+        } else if (_type == Types.ConfigType.L1_CROSS_DOMAIN_MESSENGER_ADDRESS) {
+            Storage.setAddress(L1_CROSS_DOMAIN_MESSENGER_ADDRESS_SLOT, abi.decode(_value, (address)));
+        } else if (_type == Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS) {
+            Storage.setAddress(L1_STANDARD_BRIDGE_ADDRESS_SLOT, abi.decode(_value, (address)));
+        } else if (_type == Types.ConfigType.SEQUENCER_FEE_VAULT_CONFIG) {
+            Storage.setBytes32(SEQUENCER_FEE_VAULT_CONFIG_SLOT, abi.decode(_value, (bytes32)));
+        }
+    }
+
+    /// @notice Returns the configuration value for the given type. All configuration related storage values in
+    ///         the L2 contracts, should be stored in this contract.
+    /// @param _type The type of configuration to get.
+    /// @return data_ The encoded configuration value.
+    function getConfig(Types.ConfigType _type) public view virtual returns (bytes memory data_) {
+        if (_type == Types.ConfigType.GAS_PAYING_TOKEN) {
+            (address addr, uint8 decimals) = gasPayingToken();
+            data_ = abi.encode(
+                addr,
+                decimals,
+                GasPayingToken.sanitize(gasPayingTokenName()),
+                GasPayingToken.sanitize(gasPayingTokenSymbol())
+            );
+        } else if (_type == Types.ConfigType.BASE_FEE_VAULT_CONFIG) {
+            data_ = abi.encode(Storage.getBytes32(BASE_FEE_VAULT_CONFIG_SLOT));
+        } else if (_type == Types.ConfigType.L1_ERC_721_BRIDGE_ADDRESS) {
+            data_ = abi.encode(Storage.getAddress(L1_ERC_721_BRIDGE_ADDRESS_SLOT));
+        } else if (_type == Types.ConfigType.REMOTE_CHAIN_ID) {
+            data_ = abi.encode(Storage.getUint(REMOTE_CHAIN_ID_SLOT));
+        } else if (_type == Types.ConfigType.L1_CROSS_DOMAIN_MESSENGER_ADDRESS) {
+            data_ = abi.encode(Storage.getAddress(L1_CROSS_DOMAIN_MESSENGER_ADDRESS_SLOT));
+        } else if (_type == Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS) {
+            data_ = abi.encode(Storage.getAddress(L1_STANDARD_BRIDGE_ADDRESS_SLOT));
+        } else if (_type == Types.ConfigType.SEQUENCER_FEE_VAULT_CONFIG) {
+            data_ = abi.encode(Storage.getBytes32(SEQUENCER_FEE_VAULT_CONFIG_SLOT));
+        } else if (_type == Types.ConfigType.L1_FEE_VAULT_CONFIG) {
+            data_ = abi.encode(Storage.getBytes32(L1_FEE_VAULT_CONFIG_SLOT));
+        }
+    }
+
     /// @notice Sets the gas paying token for the L2 system. Can only be called by the special
-    ///         depositor account. This function is not called on every L2 block but instead
-    ///         only called by specially crafted L1 deposit transactions.
+    ///         depositor account, initiated by a deposit transaction from L1.
+    ///         This is a legacy setter that exists to give compabilitity with the legacy SystemConfig.
+    ///         Custom gas token can now be set using `setConfig`. This can be removed in the future.
     function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external {
         if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
 
         GasPayingToken.set({ _token: _token, _decimals: _decimals, _name: _name, _symbol: _symbol });
-
         emit GasPayingTokenSet({ token: _token, decimals: _decimals, name: _name, symbol: _symbol });
+    }
+
+    /// @notice Sets the L1 block values for an Isthmus upgraded chain.
+    function setIsthmus() external {
+        if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
+        require(isIsthmus == false, "L1Block: Isthmus already active");
+        isIsthmus = true;
+
+        Storage.setBytes32(BASE_FEE_VAULT_CONFIG_SLOT, _migrateFeeVaultConfig(Predeploys.BASE_FEE_VAULT));
+        Storage.setBytes32(L1_FEE_VAULT_CONFIG_SLOT, _migrateFeeVaultConfig(Predeploys.L1_FEE_VAULT));
+        Storage.setBytes32(SEQUENCER_FEE_VAULT_CONFIG_SLOT, _migrateFeeVaultConfig(Predeploys.SEQUENCER_FEE_WALLET));
+
+        Storage.setAddress(
+            L1_CROSS_DOMAIN_MESSENGER_ADDRESS_SLOT,
+            address(IL1CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER).otherMessenger())
+        );
+        Storage.setAddress(
+            L1_STANDARD_BRIDGE_ADDRESS_SLOT,
+            address(IStandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE)).otherBridge())
+        );
+        Storage.setAddress(
+            L1_ERC_721_BRIDGE_ADDRESS_SLOT, address(IERC721Bridge(Predeploys.L2_ERC721_BRIDGE).otherBridge())
+        );
+        Storage.setUint(
+            REMOTE_CHAIN_ID_SLOT,
+            IOptimismMintableERC721Factory(Predeploys.OPTIMISM_MINTABLE_ERC721_FACTORY).remoteChainId()
+        );
+    }
+
+    /// @notice Helper function for migrating deploy config.
+    function _migrateFeeVaultConfig(address _addr) internal view returns (bytes32) {
+        address recipient = IFeeVault(payable(_addr)).recipient();
+        uint256 amount = IFeeVault(payable(_addr)).minWithdrawalAmount();
+        ITypes.WithdrawalNetwork network = IFeeVault(payable(_addr)).withdrawalNetwork();
+        return Encoding.encodeFeeVaultConfig(recipient, amount, Types.WithdrawalNetwork(uint8(network)));
     }
 }

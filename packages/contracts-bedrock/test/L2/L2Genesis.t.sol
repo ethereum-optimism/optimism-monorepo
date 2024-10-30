@@ -179,7 +179,7 @@ contract L2GenesisTest is Test {
     /// @notice Tests the number of accounts in the genesis setup
     function _test_allocs_size(string memory _path) internal {
         genesis.cfg().setFundDevAccounts(false);
-        genesis.runWithLatestLocal(_dummyL1Deps());
+        genesis.runWithLatestLocal();
         genesis.writeGenesisAllocs(_path);
 
         uint256 expected = 0;
@@ -191,7 +191,7 @@ contract L2GenesisTest is Test {
         // 16 prefunded dev accounts are excluded
         assertEq(expected, getJSONKeyCount(_path), "key count check");
 
-        // 3 slots: implementation, owner, admin
-        assertEq(3, getStorageKeysCount(_path, Predeploys.PROXY_ADMIN), "proxy admin storage check");
+        // 2 slots: implementation, admin
+        assertEq(2, getStorageKeysCount(_path, Predeploys.PROXY_ADMIN), "proxy admin storage check");
     }
 }

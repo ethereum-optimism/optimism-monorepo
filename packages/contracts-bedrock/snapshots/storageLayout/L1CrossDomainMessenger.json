@@ -7,18 +7,11 @@
     "type": "address"
   },
   {
-    "bytes": "1",
-    "label": "_initialized",
+    "bytes": "12",
+    "label": "spacer_0_20_12",
     "offset": 20,
     "slot": "0",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 21,
-    "slot": "0",
-    "type": "bool"
+    "type": "bytes12"
   },
   {
     "bytes": "1600",
@@ -92,10 +85,10 @@
   },
   {
     "bytes": "20",
-    "label": "xDomainMsgSender",
+    "label": "spacer_204_0_20",
     "offset": 0,
     "slot": "204",
-    "type": "address"
+    "type": "bytes20"
   },
   {
     "bytes": "30",
@@ -113,17 +106,52 @@
   },
   {
     "bytes": "20",
-    "label": "otherMessenger",
+    "label": "spacer_207_0_20",
     "offset": 0,
     "slot": "207",
-    "type": "contract CrossDomainMessenger"
+    "type": "address"
   },
   {
-    "bytes": "1376",
-    "label": "__gap",
+    "bytes": "20",
+    "label": "xDomainMsgSender",
     "offset": 0,
     "slot": "208",
-    "type": "uint256[43]"
+    "type": "address"
+  },
+  {
+    "bytes": "12",
+    "label": "spacer_208_20_12",
+    "offset": 20,
+    "slot": "208",
+    "type": "bytes12"
+  },
+  {
+    "bytes": "1312",
+    "label": "__gap",
+    "offset": 0,
+    "slot": "209",
+    "type": "uint256[41]"
+  },
+  {
+    "bytes": "1",
+    "label": "_initialized",
+    "offset": 0,
+    "slot": "250",
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "250",
+    "type": "bool"
+  },
+  {
+    "bytes": "30",
+    "label": "spacer_250_2_30",
+    "offset": 2,
+    "slot": "250",
+    "type": "bytes30"
   },
   {
     "bytes": "20",

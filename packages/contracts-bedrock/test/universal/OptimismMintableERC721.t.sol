@@ -23,7 +23,7 @@ contract OptimismMintableERC721_Test is Bridge_Initializer {
 
         // Set up the token pair.
         L1NFT = new ERC721("L1NFT", "L1T");
-        L2NFT = new OptimismMintableERC721(address(l2ERC721Bridge), 1, address(L1NFT), "L2NFT", "L2T");
+        L2NFT = new OptimismMintableERC721(l2ERC721Bridge, 1, address(L1NFT), "L2NFT", "L2T");
 
         // Label the addresses for nice traces.
         vm.label(address(L1NFT), "L1ERC721Token");
@@ -34,10 +34,10 @@ contract OptimismMintableERC721_Test is Bridge_Initializer {
         assertEq(L2NFT.name(), "L2NFT");
         assertEq(L2NFT.symbol(), "L2T");
         assertEq(L2NFT.remoteToken(), address(L1NFT));
-        assertEq(L2NFT.bridge(), address(l2ERC721Bridge));
+        assertEq(address(L2NFT.bridge()), address(l2ERC721Bridge));
         assertEq(L2NFT.remoteChainId(), 1);
         assertEq(L2NFT.REMOTE_TOKEN(), address(L1NFT));
-        assertEq(L2NFT.BRIDGE(), address(l2ERC721Bridge));
+        assertEq(address(L2NFT.BRIDGE()), address(l2ERC721Bridge));
         assertEq(L2NFT.REMOTE_CHAIN_ID(), 1);
     }
 

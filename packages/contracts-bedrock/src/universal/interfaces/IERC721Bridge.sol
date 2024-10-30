@@ -20,7 +20,6 @@ interface IERC721Bridge {
         uint256 tokenId,
         bytes extraData
     );
-    event Initialized(uint8 version);
 
     function MESSENGER() external view returns (ICrossDomainMessenger);
     function OTHER_BRIDGE() external view returns (IERC721Bridge);

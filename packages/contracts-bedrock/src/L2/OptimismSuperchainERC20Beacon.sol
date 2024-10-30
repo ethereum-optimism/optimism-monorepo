@@ -11,8 +11,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 /// @notice OptimismSuperchainERC20Beacon is the beacon proxy for the OptimismSuperchainERC20 implementation.
 contract OptimismSuperchainERC20Beacon is IBeacon, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.2
-    string public constant version = "1.0.0-beta.2";
+    /// @custom:semver 1.0.0-beta.3
+    string public constant version = "1.0.0-beta.3";
 
     /// @inheritdoc IBeacon
     function implementation() external pure override returns (address) {

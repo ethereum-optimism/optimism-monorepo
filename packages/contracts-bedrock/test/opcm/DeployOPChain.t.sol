@@ -35,6 +35,7 @@ contract DeployOPChainInput_Test is Test {
     // Define defaults.
     address opChainProxyAdminOwner = makeAddr("opChainProxyAdminOwner");
     address systemConfigOwner = makeAddr("systemConfigOwner");
+    address systemConfigFeeAdmin = makeAddr("systemConfigFeeAdmin");
     address batcher = makeAddr("batcher");
     address unsafeBlockSigner = makeAddr("unsafeBlockSigner");
     address proposer = makeAddr("proposer");
@@ -52,6 +53,7 @@ contract DeployOPChainInput_Test is Test {
     function test_set_succeeds() public {
         doi.set(doi.opChainProxyAdminOwner.selector, opChainProxyAdminOwner);
         doi.set(doi.systemConfigOwner.selector, systemConfigOwner);
+        doi.set(doi.systemConfigFeeAdmin.selector, systemConfigFeeAdmin);
         doi.set(doi.batcher.selector, batcher);
         doi.set(doi.unsafeBlockSigner.selector, unsafeBlockSigner);
         doi.set(doi.proposer.selector, proposer);
@@ -67,6 +69,7 @@ contract DeployOPChainInput_Test is Test {
         // Compare the default inputs to the getter methods.
         assertEq(opChainProxyAdminOwner, doi.opChainProxyAdminOwner(), "200");
         assertEq(systemConfigOwner, doi.systemConfigOwner(), "300");
+        assertEq(systemConfigFeeAdmin, doi.systemConfigFeeAdmin(), "310");
         assertEq(batcher, doi.batcher(), "400");
         assertEq(unsafeBlockSigner, doi.unsafeBlockSigner(), "500");
         assertEq(proposer, doi.proposer(), "600");
@@ -86,6 +89,9 @@ contract DeployOPChainInput_Test is Test {
 
         vm.expectRevert(expectedErr);
         doi.systemConfigOwner();
+
+        vm.expectRevert(expectedErr);
+        doi.systemConfigFeeAdmin();
 
         vm.expectRevert(expectedErr);
         doi.batcher();
@@ -330,6 +336,7 @@ contract DeployOPChain_TestBase is Test {
     // `opcm` is set during `setUp` since it is an output of the previous step.
     address opChainProxyAdminOwner = makeAddr("defaultOPChainProxyAdminOwner");
     address systemConfigOwner = makeAddr("defaultSystemConfigOwner");
+    address systemConfigFeeAdmin = makeAddr("defaultSystemConfigFeeAdmin");
     address batcher = makeAddr("defaultBatcher");
     address unsafeBlockSigner = makeAddr("defaultUnsafeBlockSigner");
     address proposer = makeAddr("defaultProposer");
@@ -430,13 +437,14 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
     function testFuzz_run_memory_succeed(bytes32 _seed) public {
         opChainProxyAdminOwner = address(uint160(uint256(hash(_seed, 0))));
         systemConfigOwner = address(uint160(uint256(hash(_seed, 1))));
-        batcher = address(uint160(uint256(hash(_seed, 2))));
-        unsafeBlockSigner = address(uint160(uint256(hash(_seed, 3))));
-        proposer = address(uint160(uint256(hash(_seed, 4))));
-        challenger = address(uint160(uint256(hash(_seed, 5))));
-        basefeeScalar = uint32(uint256(hash(_seed, 6)));
-        blobBaseFeeScalar = uint32(uint256(hash(_seed, 7)));
-        l2ChainId = uint256(hash(_seed, 8));
+        systemConfigFeeAdmin = address(uint160(uint256(hash(_seed, 2))));
+        batcher = address(uint160(uint256(hash(_seed, 3))));
+        unsafeBlockSigner = address(uint160(uint256(hash(_seed, 4))));
+        proposer = address(uint160(uint256(hash(_seed, 5))));
+        challenger = address(uint160(uint256(hash(_seed, 6))));
+        basefeeScalar = uint32(uint256(hash(_seed, 7)));
+        blobBaseFeeScalar = uint32(uint256(hash(_seed, 8)));
+        l2ChainId = uint256(hash(_seed, 9));
 
         // Set the initial anchor states. The typical usage we expect is to pass in one root per game type.
         uint256 cannonBlock = uint256(hash(_seed, 9));
@@ -459,6 +467,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
 
         doi.set(doi.opChainProxyAdminOwner.selector, opChainProxyAdminOwner);
         doi.set(doi.systemConfigOwner.selector, systemConfigOwner);
+        doi.set(doi.systemConfigFeeAdmin.selector, systemConfigFeeAdmin);
         doi.set(doi.batcher.selector, batcher);
         doi.set(doi.unsafeBlockSigner.selector, unsafeBlockSigner);
         doi.set(doi.proposer.selector, proposer);
@@ -483,6 +492,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         // Assert that individual input fields were properly set based on the inputs.
         assertEq(opChainProxyAdminOwner, doi.opChainProxyAdminOwner(), "100");
         assertEq(systemConfigOwner, doi.systemConfigOwner(), "200");
+        assertEq(systemConfigFeeAdmin, doi.systemConfigFeeAdmin(), "210");
         assertEq(batcher, doi.batcher(), "300");
         assertEq(unsafeBlockSigner, doi.unsafeBlockSigner(), "400");
         assertEq(proposer, doi.proposer(), "500");
@@ -502,6 +512,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         // Assert inputs were properly passed through to the contract initializers.
         assertEq(address(doo.opChainProxyAdmin().owner()), opChainProxyAdminOwner, "2100");
         assertEq(address(doo.systemConfigProxy().owner()), systemConfigOwner, "2200");
+        assertEq(address(doo.systemConfigProxy().feeAdmin()), systemConfigFeeAdmin, "2210");
         address batcherActual = address(uint160(uint256(doo.systemConfigProxy().batcherHash())));
         assertEq(batcherActual, batcher, "2300");
         assertEq(address(doo.systemConfigProxy().unsafeBlockSigner()), unsafeBlockSigner, "2400");

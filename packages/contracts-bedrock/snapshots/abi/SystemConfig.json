@@ -227,6 +227,19 @@
   },
   {
     "inputs": [],
+    "name": "feeAdmin",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "addr_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "gasLimit",
     "outputs": [
       {
@@ -285,9 +298,21 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_owner",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "address",
+            "name": "owner",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "feeAdmin",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct SystemConfig.Roles",
+        "name": "_roles",
+        "type": "tuple"
       },
       {
         "internalType": "uint32",
@@ -633,6 +658,34 @@
   {
     "inputs": [
       {
+        "internalType": "enum Types.ConfigType",
+        "name": "_type",
+        "type": "uint8"
+      },
+      {
+        "internalType": "address",
+        "name": "_recipient",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_min",
+        "type": "uint256"
+      },
+      {
+        "internalType": "enum Types.WithdrawalNetwork",
+        "name": "_network",
+        "type": "uint8"
+      }
+    ],
+    "name": "setFeeVaultConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "uint256",
         "name": "_overhead",
         "type": "uint256"
@@ -800,5 +853,10 @@
     ],
     "name": "OwnershipTransferred",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "UnsafeCast",
+    "type": "error"
   }
 ]

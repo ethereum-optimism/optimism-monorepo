@@ -5,6 +5,7 @@ import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extension
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { IOptimismMintableERC721 } from "src/universal/interfaces/IOptimismMintableERC721.sol";
+import { IL2ERC721Bridge } from "src/L2/interfaces/IL2ERC721Bridge.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 
 /// @title OptimismMintableERC721
@@ -29,20 +30,20 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     address public immutable REMOTE_TOKEN;
 
     /// @notice Address of the ERC721 bridge on this network.
-    address public immutable BRIDGE;
+    IL2ERC721Bridge public immutable BRIDGE;
 
     /// @notice Base token URI for this token.
     string public baseTokenURI;
 
     /// @notice Modifier that prevents callers other than the bridge from calling the function.
     modifier onlyBridge() {
-        require(msg.sender == BRIDGE, "OptimismMintableERC721: only bridge can call this function");
+        require(msg.sender == address(BRIDGE), "OptimismMintableERC721: only bridge can call this function");
         _;
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.3
-    string public constant version = "1.3.1-beta.3";
+    /// @custom:semver 1.3.1-beta.4
+    string public constant version = "1.3.1-beta.4";
 
     /// @param _bridge        Address of the bridge on this network.
     /// @param _remoteChainId Chain ID where the remote token is deployed.
@@ -50,7 +51,7 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     /// @param _name          ERC721 name.
     /// @param _symbol        ERC721 symbol.
     constructor(
-        address _bridge,
+        IL2ERC721Bridge _bridge,
         uint256 _remoteChainId,
         address _remoteToken,
         string memory _name,
@@ -58,7 +59,7 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     )
         ERC721(_name, _symbol)
     {
-        require(_bridge != address(0), "OptimismMintableERC721: bridge cannot be address(0)");
+        require(address(_bridge) != address(0), "OptimismMintableERC721: bridge cannot be address(0)");
         require(_remoteChainId != 0, "OptimismMintableERC721: remote chain id cannot be zero");
         require(_remoteToken != address(0), "OptimismMintableERC721: remote token cannot be address(0)");
 
@@ -90,8 +91,8 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     }
 
     /// @notice Address of the ERC721 bridge on this network.
-    function bridge() external view returns (address) {
-        return BRIDGE;
+    function bridge() external view returns (IL2ERC721Bridge) {
+        return IL2ERC721Bridge(BRIDGE);
     }
 
     /// @notice Mints some token ID for a user, checking first that contract recipients

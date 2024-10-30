@@ -21,12 +21,14 @@ contract L2CrossDomainMessenger_Test is Bridge_Initializer {
     address recipient = address(0xabbaacdc);
 
     /// @dev Tests that the implementation is initialized correctly.
+    ///      The implementation returns the actual address rather than `address(0)`
+    ///      because the contract calls L1Block for the result.
     function test_constructor_succeeds() external view {
         IL2CrossDomainMessenger impl =
             IL2CrossDomainMessenger(EIP1967Helper.getImplementation(deploy.mustGetAddress("L2CrossDomainMessenger")));
-        assertEq(address(impl.OTHER_MESSENGER()), address(0));
-        assertEq(address(impl.otherMessenger()), address(0));
-        assertEq(address(impl.l1CrossDomainMessenger()), address(0));
+        assertEq(address(impl.OTHER_MESSENGER()), address(l1CrossDomainMessenger));
+        assertEq(address(impl.otherMessenger()), address(l1CrossDomainMessenger));
+        assertEq(address(impl.l1CrossDomainMessenger()), address(l1CrossDomainMessenger));
     }
 
     /// @dev Tests that the proxy is initialized correctly.

@@ -1,24 +1,10 @@
 [
   {
-    "bytes": "1",
-    "label": "_initialized",
+    "bytes": "32",
+    "label": "spacer_0_0_32",
     "offset": 0,
     "slot": "0",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 1,
-    "slot": "0",
-    "type": "bool"
-  },
-  {
-    "bytes": "30",
-    "label": "spacer_0_2_30",
-    "offset": 2,
-    "slot": "0",
-    "type": "bytes30"
+    "type": "bytes32"
   },
   {
     "bytes": "20",
@@ -36,23 +22,23 @@
   },
   {
     "bytes": "20",
-    "label": "messenger",
+    "label": "spacer_3_0_20",
     "offset": 0,
     "slot": "3",
-    "type": "contract ICrossDomainMessenger"
+    "type": "address"
   },
   {
     "bytes": "20",
-    "label": "otherBridge",
+    "label": "spacer_4_0_20",
     "offset": 0,
     "slot": "4",
-    "type": "contract StandardBridge"
+    "type": "address"
   },
   {
-    "bytes": "1440",
+    "bytes": "1408",
     "label": "__gap",
     "offset": 0,
     "slot": "5",
-    "type": "uint256[45]"
+    "type": "uint256[44]"
   }
 ]

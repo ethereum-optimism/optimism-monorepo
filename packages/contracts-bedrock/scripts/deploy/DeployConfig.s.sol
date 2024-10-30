@@ -86,6 +86,7 @@ contract DeployConfig is Script {
     uint256 public daResolveWindow;
     uint256 public daBondSize;
     uint256 public daResolverRefundPercentage;
+    address public systemConfigFeeAdmin;
 
     bool public useCustomGasToken;
     address public customGasTokenAddress;
@@ -101,6 +102,7 @@ contract DeployConfig is Script {
         }
 
         finalSystemOwner = stdJson.readAddress(_json, "$.finalSystemOwner");
+        systemConfigFeeAdmin = stdJson.readAddress(_json, "$.systemConfigFeeAdmin");
         superchainConfigGuardian = stdJson.readAddress(_json, "$.superchainConfigGuardian");
         l1ChainID = stdJson.readUint(_json, "$.l1ChainID");
         l2ChainID = stdJson.readUint(_json, "$.l2ChainID");

@@ -22,7 +22,7 @@ contract TestERC721 is ERC721 {
 
 contract TestMintableERC721 is OptimismMintableERC721 {
     constructor(
-        address _bridge,
+        IL2ERC721Bridge _bridge,
         address _remoteToken
     )
         OptimismMintableERC721(_bridge, 1, _remoteToken, "Test", "TST")
@@ -61,7 +61,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         super.setUp();
 
         remoteToken = new TestERC721();
-        localToken = new TestMintableERC721(address(l2ERC721Bridge), address(remoteToken));
+        localToken = new TestMintableERC721(l2ERC721Bridge, address(remoteToken));
 
         // Mint alice a token.
         localToken.mint(alice, tokenId);

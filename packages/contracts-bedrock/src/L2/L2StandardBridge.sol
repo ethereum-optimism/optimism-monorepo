@@ -7,6 +7,7 @@ import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
@@ -58,23 +59,22 @@ contract L2StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.11.1-beta.3
+    /// @custom:semver 1.11.1-beta.4
     function version() public pure virtual returns (string memory) {
-        return "1.11.1-beta.3";
+        return "1.11.1-beta.4";
     }
 
-    /// @notice Constructs the L2StandardBridge contract.
-    constructor() StandardBridge() {
-        initialize({ _otherBridge: StandardBridge(payable(address(0))) });
+    /// @notice
+    /// TODO: this should be IStandardBridge
+    function otherBridge() public view override returns (StandardBridge) {
+        bytes memory data =
+            IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).getConfig(Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS);
+        return StandardBridge(abi.decode(data, (address)));
     }
 
-    /// @notice Initializer.
-    /// @param _otherBridge Contract for the corresponding bridge on the other chain.
-    function initialize(StandardBridge _otherBridge) public initializer {
-        __StandardBridge_init({
-            _messenger: ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER),
-            _otherBridge: _otherBridge
-        });
+    /// @notice
+    function messenger() public pure override returns (ICrossDomainMessenger) {
+        return ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER);
     }
 
     /// @notice Allows EOAs to bridge ETH by sending directly to the bridge.
@@ -146,7 +146,7 @@ contract L2StandardBridge is StandardBridge, ISemver {
     /// @notice Retrieves the access of the corresponding L1 bridge contract.
     /// @return Address of the corresponding L1 bridge contract.
     function l1TokenBridge() external view returns (address) {
-        return address(otherBridge);
+        return address(otherBridge());
     }
 
     /// @custom:legacy

@@ -13,9 +13,10 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SuperchainConfig_Init_Test is CommonTest {
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
-    function test_initialize_unpaused_succeeds() external view {
+    function test_initialize_succeeds() external view {
         assertFalse(superchainConfig.paused());
         assertEq(superchainConfig.guardian(), deploy.cfg().superchainConfigGuardian());
+        assertEq(superchainConfig.upgrader(), deploy.cfg().finalSystemOwner());
     }
 
     /// @dev Tests that it can be intialized as paused.
@@ -36,11 +37,15 @@ contract SuperchainConfig_Init_Test is CommonTest {
         vm.startPrank(alice);
         newProxy.upgradeToAndCall(
             address(newImpl),
-            abi.encodeCall(ISuperchainConfig.initialize, (deploy.cfg().superchainConfigGuardian(), true))
+            abi.encodeCall(
+                ISuperchainConfig.initialize,
+                (deploy.cfg().superchainConfigGuardian(), deploy.cfg().finalSystemOwner(), true)
+            )
         );
 
         assertTrue(ISuperchainConfig(address(newProxy)).paused());
         assertEq(ISuperchainConfig(address(newProxy)).guardian(), deploy.cfg().superchainConfigGuardian());
+        assertEq(ISuperchainConfig(address(newProxy)).upgrader(), deploy.cfg().finalSystemOwner());
     }
 }
 

@@ -8,7 +8,7 @@ import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
 import { Types } from "src/libraries/Types.sol";
 
 // Test the implementations of the FeeVault
-contract FeeVault_Test is Bridge_Initializer {
+contract L1FeeVault_Test is Bridge_Initializer {
     /// @dev Tests that the constructor sets the correct values.
     function test_constructor_l1FeeVault_succeeds() external view {
         assertEq(l1FeeVault.RECIPIENT(), deploy.cfg().l1FeeVaultRecipient());

@@ -7,6 +7,7 @@ import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
 import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { Types } from "src/libraries/Types.sol";
 
 interface IOptimismPortal2 {
     error AlreadyFinalized();
@@ -108,11 +109,12 @@ interface IOptimismPortal2 {
         returns (IDisputeGame disputeGameProxy, uint64 timestamp); // nosemgrep
     function respectedGameType() external view returns (GameType);
     function respectedGameTypeUpdatedAt() external view returns (uint64);
-    function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external;
     function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);
     function version() external pure returns (string memory);
+    function setConfig(Types.ConfigType _type, bytes memory _value) external;
+    function upgrade(uint32 _gasLimit, bytes memory _calldata) external;
 
     function __constructor__(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) external;
 }

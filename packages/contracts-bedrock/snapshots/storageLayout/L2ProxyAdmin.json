@@ -1,0 +1,37 @@
+[
+  {
+    "bytes": "20",
+    "label": "_owner",
+    "offset": 0,
+    "slot": "0",
+    "type": "address"
+  },
+  {
+    "bytes": "32",
+    "label": "proxyType",
+    "offset": 0,
+    "slot": "1",
+    "type": "mapping(address => enum ProxyAdmin.ProxyType)"
+  },
+  {
+    "bytes": "32",
+    "label": "implementationName",
+    "offset": 0,
+    "slot": "2",
+    "type": "mapping(address => string)"
+  },
+  {
+    "bytes": "20",
+    "label": "addressManager",
+    "offset": 0,
+    "slot": "3",
+    "type": "contract IAddressManager"
+  },
+  {
+    "bytes": "1",
+    "label": "upgrading",
+    "offset": 20,
+    "slot": "3",
+    "type": "bool"
+  }
+]

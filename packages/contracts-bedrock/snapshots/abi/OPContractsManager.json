@@ -137,6 +137,11 @@
                 "internalType": "address",
                 "name": "challenger",
                 "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "feeAdmin",
+                "type": "address"
               }
             ],
             "internalType": "struct OPContractsManager.Roles",

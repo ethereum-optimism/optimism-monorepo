@@ -71,7 +71,7 @@ contract CrossDomainOwnable3_Test is Bridge_Initializer {
         setter.transferOwnership({ _owner: alice, _isLocal: false });
 
         // set the xDomainMsgSender storage slot
-        bytes32 key = bytes32(uint256(204));
+        bytes32 key = bytes32(uint256(208));
         bytes32 value = Bytes32AddressLib.fillLast12Bytes(bob);
         vm.store(address(l2CrossDomainMessenger), key, value);
 

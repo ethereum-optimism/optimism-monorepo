@@ -22,8 +22,8 @@ contract OptimismSuperchainERC20Factory is ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.0-beta.5
+    string public constant version = "1.0.0-beta.5";
 
     /// @notice Mapping of the deployed OptimismSuperchainERC20 to the remote token address.
     ///         This is used to keep track of the token deployments.

@@ -75,4 +75,29 @@ library Types {
         L1,
         L2
     }
+
+    /// @notice Enum representing different types of configurations that can be set on L1BlockIsthmus.
+    /// @custom:value GAS_PAYING_TOKEN  Config type for the gas paying token.
+    /// @custom:value BASE_FEE_VAULT_CONFIG Config type for the base fee vault config.
+    /// @custom:value L1_FEE_VAULT_CONFIG Config type for the L1 fee vault config.
+    /// @custom:value SEQUENCER_FEE_VAULT_CONFIG Config type for the sequencer fee vault config.
+    /// @custom:value L1_CROSS_DOMAIN_MESSENGER_ADDRESS Config type for the L1 Cross Domain Messenger address.
+    /// @custom:value L1_ERC_721_BRIDGE_ADDRESS Config type for the L1 ERC721 Bridge address.
+    /// @custom:value L1_STANDARD_BRIDGE_ADDRESS Config type for the L1 Standard Bridge address.
+    /// @custom:value REMOTE_CHAIN_ID Config type for the remote chain ID.
+    /// @custom:value ADD_DEPENDENCY        Config type for adding a chain to the interop dependency set.
+    /// @custom:value REMOVE_DEPENDENCY     Config type for removing a chain from the interop dependency
+    /// set.
+    enum ConfigType {
+        GAS_PAYING_TOKEN,
+        BASE_FEE_VAULT_CONFIG,
+        L1_FEE_VAULT_CONFIG,
+        SEQUENCER_FEE_VAULT_CONFIG,
+        L1_CROSS_DOMAIN_MESSENGER_ADDRESS,
+        L1_ERC_721_BRIDGE_ADDRESS,
+        L1_STANDARD_BRIDGE_ADDRESS,
+        REMOTE_CHAIN_ID,
+        ADD_DEPENDENCY,
+        REMOVE_DEPENDENCY
+    }
 }

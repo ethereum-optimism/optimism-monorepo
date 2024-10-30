@@ -8,13 +8,16 @@ import { Vm } from "forge-std/Vm.sol";
 // Scripts
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
-import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
+import { L2Genesis } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+import { Constants } from "src/libraries/Constants.sol";
+import { Encoding } from "src/libraries/Encoding.sol";
+import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
@@ -27,7 +30,7 @@ import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityC
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IOptimismMintableERC721Factory } from "src/universal/interfaces/IOptimismMintableERC721Factory.sol";
+import { IOptimismMintableERC721Factory } from "src/L2/interfaces/IOptimismMintableERC721Factory.sol";
 import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
@@ -35,7 +38,8 @@ import { IL2CrossDomainMessenger } from "src/L2/interfaces/IL2CrossDomainMesseng
 import { IL2StandardBridgeInterop } from "src/L2/interfaces/IL2StandardBridgeInterop.sol";
 import { IL2ToL1MessagePasser } from "src/L2/interfaces/IL2ToL1MessagePasser.sol";
 import { IL2ERC721Bridge } from "src/L2/interfaces/IL2ERC721Bridge.sol";
-import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
+import { IL1OptimismMintableERC20Factory } from "src/L1/interfaces/IL1OptimismMintableERC20Factory.sol";
+import { IL2OptimismMintableERC20Factory } from "src/L2/interfaces/IL2OptimismMintableERC20Factory.sol";
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 import { IOptimismSuperchainERC20Factory } from "src/L2/interfaces/IOptimismSuperchainERC20Factory.sol";
 import { IBaseFeeVault } from "src/L2/interfaces/IBaseFeeVault.sol";
@@ -83,7 +87,7 @@ contract Setup {
     IL1CrossDomainMessenger l1CrossDomainMessenger;
     IAddressManager addressManager;
     IL1ERC721Bridge l1ERC721Bridge;
-    IOptimismMintableERC20Factory l1OptimismMintableERC20Factory;
+    IL1OptimismMintableERC20Factory l1OptimismMintableERC20Factory;
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
@@ -93,8 +97,8 @@ contract Setup {
         IL2CrossDomainMessenger(payable(Predeploys.L2_CROSS_DOMAIN_MESSENGER));
     IL2StandardBridgeInterop l2StandardBridge = IL2StandardBridgeInterop(payable(Predeploys.L2_STANDARD_BRIDGE));
     IL2ToL1MessagePasser l2ToL1MessagePasser = IL2ToL1MessagePasser(payable(Predeploys.L2_TO_L1_MESSAGE_PASSER));
-    IOptimismMintableERC20Factory l2OptimismMintableERC20Factory =
-        IOptimismMintableERC20Factory(Predeploys.OPTIMISM_MINTABLE_ERC20_FACTORY);
+    IL2OptimismMintableERC20Factory l2OptimismMintableERC20Factory =
+        IL2OptimismMintableERC20Factory(Predeploys.OPTIMISM_MINTABLE_ERC20_FACTORY);
     IL2ERC721Bridge l2ERC721Bridge = IL2ERC721Bridge(Predeploys.L2_ERC721_BRIDGE);
     IOptimismMintableERC721Factory l2OptimismMintableERC721Factory =
         IOptimismMintableERC721Factory(Predeploys.OPTIMISM_MINTABLE_ERC721_FACTORY);
@@ -154,7 +158,7 @@ contract Setup {
         addressManager = IAddressManager(deploy.mustGetAddress("AddressManager"));
         l1ERC721Bridge = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721BridgeProxy"));
         l1OptimismMintableERC20Factory =
-            IOptimismMintableERC20Factory(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"));
+            IL1OptimismMintableERC20Factory(deploy.mustGetAddress("L1OptimismMintableERC20FactoryProxy"));
         protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
         superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
         anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
@@ -174,8 +178,8 @@ contract Setup {
         vm.label(address(addressManager), "AddressManager");
         vm.label(address(l1ERC721Bridge), "L1ERC721Bridge");
         vm.label(deploy.mustGetAddress("L1ERC721BridgeProxy"), "L1ERC721BridgeProxy");
-        vm.label(address(l1OptimismMintableERC20Factory), "OptimismMintableERC20Factory");
-        vm.label(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"), "OptimismMintableERC20FactoryProxy");
+        vm.label(address(l1OptimismMintableERC20Factory), "L1OptimismMintableERC20Factory");
+        vm.label(deploy.mustGetAddress("L1OptimismMintableERC20FactoryProxy"), "L1OptimismMintableERC20FactoryProxy");
         vm.label(address(protocolVersions), "ProtocolVersions");
         vm.label(deploy.mustGetAddress("ProtocolVersionsProxy"), "ProtocolVersionsProxy");
         vm.label(address(superchainConfig), "SuperchainConfig");
@@ -200,15 +204,9 @@ contract Setup {
     /// @dev Sets up the L2 contracts. Depends on `L1()` being called first.
     function L2() public {
         console.log("Setup: creating L2 genesis with fork %s", l2Fork.toString());
-        l2Genesis.runWithOptions(
-            OutputMode.NONE,
-            l2Fork,
-            L1Dependencies({
-                l1CrossDomainMessengerProxy: payable(address(l1CrossDomainMessenger)),
-                l1StandardBridgeProxy: payable(address(l1StandardBridge)),
-                l1ERC721BridgeProxy: payable(address(l1ERC721Bridge))
-            })
-        );
+        l2Genesis.runWithOptions(OutputMode.NONE, l2Fork);
+
+        // TODO: Prank using depositor address to set the L2 network specific config
 
         // Set the governance token's owner to be the final system owner
         address finalSystemOwner = deploy.cfg().finalSystemOwner();
@@ -216,8 +214,47 @@ contract Setup {
         governanceToken.transferOwnership(finalSystemOwner);
         vm.stopPrank();
 
+        // These calls by the depositor account simulate the SystemConfig setting setting the
+        // network specific configuration into L2. Ideally there is a library that automatically
+        // translates TransactionDeposited and ConfigUpdate events into the appropriate calls
+        // TODO: sort out using StaticTypes library vs abi.encode
+        vm.startPrank(Constants.DEPOSITOR_ACCOUNT);
+        l1Block.setConfig(Types.ConfigType.L1_ERC_721_BRIDGE_ADDRESS, abi.encode(l1ERC721Bridge));
+        l1Block.setConfig(Types.ConfigType.REMOTE_CHAIN_ID, abi.encode(deploy.cfg().l1ChainID()));
+        l1Block.setConfig(Types.ConfigType.L1_CROSS_DOMAIN_MESSENGER_ADDRESS, abi.encode(l1CrossDomainMessenger));
+        l1Block.setConfig(Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS, abi.encode(l1StandardBridge));
+
+        bytes32 sequencerFeeVaultConfig = Encoding.encodeFeeVaultConfig({
+            _recipient: deploy.cfg().sequencerFeeVaultRecipient(),
+            _amount: deploy.cfg().sequencerFeeVaultMinimumWithdrawalAmount(),
+            _network: Types.WithdrawalNetwork(deploy.cfg().sequencerFeeVaultWithdrawalNetwork())
+        });
+        l1Block.setConfig(Types.ConfigType.SEQUENCER_FEE_VAULT_CONFIG, abi.encode(sequencerFeeVaultConfig));
+
+        bytes32 baseFeeVaultConfig = Encoding.encodeFeeVaultConfig({
+            _recipient: deploy.cfg().baseFeeVaultRecipient(),
+            _amount: deploy.cfg().baseFeeVaultMinimumWithdrawalAmount(),
+            _network: Types.WithdrawalNetwork(deploy.cfg().baseFeeVaultWithdrawalNetwork())
+        });
+        l1Block.setConfig(Types.ConfigType.BASE_FEE_VAULT_CONFIG, abi.encode(baseFeeVaultConfig));
+
+        bytes32 l1FeeVaultConfig = Encoding.encodeFeeVaultConfig({
+            _recipient: deploy.cfg().l1FeeVaultRecipient(),
+            _amount: deploy.cfg().l1FeeVaultMinimumWithdrawalAmount(),
+            _network: Types.WithdrawalNetwork(deploy.cfg().l1FeeVaultWithdrawalNetwork())
+        });
+        l1Block.setConfig(Types.ConfigType.L1_FEE_VAULT_CONFIG, abi.encode(l1FeeVaultConfig));
+        vm.stopPrank();
+
+        // Reset the ResourceConfig gas used to 0
+        bytes32 slot = vm.load(address(optimismPortal), bytes32(uint256(1)));
+        slot = bytes32(uint256(slot) & ~(uint256(type(uint64).max) << 128));
+        vm.store(address(optimismPortal), bytes32(uint256(1)), slot);
+        vm.store(address(optimismPortal2), bytes32(uint256(1)), slot);
+
         // L2 predeploys
         labelPredeploy(Predeploys.L2_STANDARD_BRIDGE);
+        labelPredeploy(Predeploys.OPTIMISM_MINTABLE_ERC721_FACTORY);
         labelPredeploy(Predeploys.L2_CROSS_DOMAIN_MESSENGER);
         labelPredeploy(Predeploys.L2_TO_L1_MESSAGE_PASSER);
         labelPredeploy(Predeploys.SEQUENCER_FEE_WALLET);
@@ -232,6 +269,7 @@ contract Setup {
         labelPredeploy(Predeploys.EAS);
         labelPredeploy(Predeploys.SCHEMA_REGISTRY);
         labelPredeploy(Predeploys.WETH);
+        labelPredeploy(Predeploys.L2_ERC721_BRIDGE);
         labelPredeploy(Predeploys.SUPERCHAIN_WETH);
         labelPredeploy(Predeploys.ETH_LIQUIDITY);
         labelPredeploy(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
@@ -259,7 +297,11 @@ contract Setup {
     }
 
     function labelPredeploy(address _addr) internal {
-        vm.label(_addr, Predeploys.getName(_addr));
+        string memory name = Predeploys.getName(_addr);
+        vm.label(_addr, name);
+        if (!Predeploys.notProxied(_addr)) {
+            vm.label(Predeploys.predeployToCodeNamespace(_addr), string.concat(name, "Implementation"));
+        }
     }
 
     function labelPreinstall(address _addr) internal {

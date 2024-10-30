@@ -46,6 +46,7 @@ contract OPContractsManager is ISemver, Initializable {
         address unsafeBlockSigner;
         address proposer;
         address challenger;
+        address feeAdmin;
     }
 
     /// @notice The full set of inputs to deploy a new OP Stack chain.
@@ -129,8 +130,8 @@ contract OPContractsManager is ISemver, Initializable {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.20
-    string public constant version = "1.0.0-beta.20";
+    /// @custom:semver 1.0.0-beta.21
+    string public constant version = "1.0.0-beta.21";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
@@ -254,7 +255,7 @@ contract OPContractsManager is ISemver, Initializable {
         output.systemConfigProxy =
             ISystemConfig(deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "SystemConfig"));
         output.optimismMintableERC20FactoryProxy = IOptimismMintableERC20Factory(
-            deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "OptimismMintableERC20Factory")
+            deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "L1OptimismMintableERC20Factory")
         );
         output.disputeGameFactoryProxy =
             IDisputeGameFactory(deployProxy(l2ChainId, output.opChainProxyAdmin, saltMixer, "DisputeGameFactory"));
@@ -468,7 +469,7 @@ contract OPContractsManager is ISemver, Initializable {
 
             return abi.encodeWithSelector(
                 _selector,
-                _input.roles.systemConfigOwner,
+                ISystemConfig.Roles({ owner: _input.roles.systemConfigOwner, feeAdmin: _input.roles.feeAdmin }),
                 _input.basefeeScalar,
                 _input.blobBasefeeScalar,
                 bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
@@ -487,7 +488,7 @@ contract OPContractsManager is ISemver, Initializable {
 
             return abi.encodeWithSelector(
                 _selector,
-                _input.roles.systemConfigOwner,
+                ISystemConfig.Roles({ owner: _input.roles.systemConfigOwner, feeAdmin: _input.roles.feeAdmin }),
                 _input.basefeeScalar,
                 _input.blobBasefeeScalar,
                 bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash

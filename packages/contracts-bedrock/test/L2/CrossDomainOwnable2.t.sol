@@ -7,7 +7,6 @@ import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
-import { Bytes32AddressLib } from "@rari-capital/solmate/src/utils/Bytes32AddressLib.sol";
 
 // Target contract dependencies
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
@@ -36,18 +35,6 @@ contract CrossDomainOwnable2_Test is Bridge_Initializer {
     /// @dev Tests that the `onlyOwner` modifier reverts when the caller is not the messenger.
     function test_onlyOwner_notMessenger_reverts() external {
         vm.expectRevert("CrossDomainOwnable2: caller is not the messenger");
-        setter.set(1);
-    }
-
-    /// @dev Tests that the `onlyOwner` modifier reverts when not called by the owner.
-    function test_onlyOwner_notOwner_reverts() external {
-        // set the xDomainMsgSender storage slot
-        bytes32 key = bytes32(uint256(204));
-        bytes32 value = Bytes32AddressLib.fillLast12Bytes(address(alice));
-        vm.store(address(l2CrossDomainMessenger), key, value);
-
-        vm.prank(address(l2CrossDomainMessenger));
-        vm.expectRevert("CrossDomainOwnable2: caller is not the owner");
         setter.set(1);
     }
 

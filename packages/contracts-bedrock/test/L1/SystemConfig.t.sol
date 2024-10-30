@@ -11,6 +11,9 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
+import { StaticConfig } from "src/libraries/StaticConfig.sol";
+import { Types } from "src/libraries/Types.sol";
+import { Encoding } from "src/libraries/Encoding.sol";
 
 // Interfaces
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
@@ -48,18 +51,18 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
     /// @dev Tests that constructor sets the correct values.
     function test_constructor_succeeds() external view {
         ISystemConfig impl = ISystemConfig(systemConfigImpl);
-        assertEq(impl.owner(), address(0xdEaD));
+        assertEq(impl.owner(), address(0));
         assertEq(impl.overhead(), 0);
-        assertEq(impl.scalar(), uint256(0x01) << 248);
+        assertEq(impl.scalar(), 0);
         assertEq(impl.batcherHash(), bytes32(0));
-        assertEq(impl.gasLimit(), 1);
+        assertEq(impl.gasLimit(), 0);
         assertEq(impl.unsafeBlockSigner(), address(0));
         assertEq(impl.basefeeScalar(), 0);
         assertEq(impl.blobbasefeeScalar(), 0);
         IResourceMetering.ResourceConfig memory actual = impl.resourceConfig();
-        assertEq(actual.maxResourceLimit, 1);
-        assertEq(actual.elasticityMultiplier, 1);
-        assertEq(actual.baseFeeMaxChangeDenominator, 2);
+        assertEq(actual.maxResourceLimit, 0);
+        assertEq(actual.elasticityMultiplier, 0);
+        assertEq(actual.baseFeeMaxChangeDenominator, 0);
         assertEq(actual.minimumBaseFee, 0);
         assertEq(actual.systemTxMaxGas, 0);
         assertEq(actual.maximumBaseFee, 0);
@@ -78,6 +81,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         assertEq(decimals, 18);
     }
 
+    // TODO: add a reinit test to ensure calls are made to the Portal.
     /// @dev Tests that initialization sets the correct values.
     function test_initialize_succeeds() external view {
         assertEq(systemConfig.owner(), owner);
@@ -128,7 +132,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
 
         vm.expectRevert("SystemConfig: gas limit too low");
         systemConfig.initialize({
-            _owner: alice,
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
@@ -141,7 +145,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 l1ERC721Bridge: address(0),
                 l1StandardBridge: address(0),
                 disputeGameFactory: address(0),
-                optimismPortal: address(0),
+                optimismPortal: address(optimismPortal),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: Constants.ETHER
             })
@@ -158,7 +162,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
         // Initialize and check that StartBlock updates to current block number
         vm.prank(systemConfig.owner());
         systemConfig.initialize({
-            _owner: alice,
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
@@ -171,7 +175,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 l1ERC721Bridge: address(0),
                 l1StandardBridge: address(0),
                 disputeGameFactory: address(0),
-                optimismPortal: address(0),
+                optimismPortal: address(optimismPortal),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: Constants.ETHER
             })
@@ -189,7 +193,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
         // Initialize and check that StartBlock doesn't update
         vm.prank(systemConfig.owner());
         systemConfig.initialize({
-            _owner: alice,
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
@@ -202,7 +206,7 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
                 l1ERC721Bridge: address(0),
                 l1StandardBridge: address(0),
                 disputeGameFactory: address(0),
-                optimismPortal: address(0),
+                optimismPortal: address(optimismPortal),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: Constants.ETHER
             })
@@ -284,7 +288,7 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
 
         vm.expectRevert(bytes(revertMessage));
         systemConfig.initialize({
-            _owner: address(0xdEaD),
+            _roles: ISystemConfig.Roles({ owner: address(0xdEaD), feeAdmin: address(0xdEaD) }),
             _basefeeScalar: 0,
             _blobbasefeeScalar: 0,
             _batcherHash: bytes32(0),
@@ -297,7 +301,7 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
                 l1ERC721Bridge: address(0),
                 l1StandardBridge: address(0),
                 disputeGameFactory: address(0),
-                optimismPortal: address(0),
+                optimismPortal: address(optimismPortal),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: address(0)
             })
@@ -323,7 +327,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_SYMBOL_SLOT, bytes32(0));
 
         systemConfig.initialize({
-            _owner: alice,
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
             _basefeeScalar: 2100,
             _blobbasefeeScalar: 1000000,
             _batcherHash: bytes32(hex"abcd"),
@@ -341,6 +345,13 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
                 gasPayingToken: _gasPayingToken
             })
         });
+
+        // TODO
+        // vm.roll(block.number + 1);
+        // Reset the OptimismPortal resource config gas used
+        //bytes32 slot = vm.load(address(optimismPortal), bytes32(uint256(1)));
+        //vm.store(address(optimismPortal), bytes32(uint256(1)), bytes32(uint256(slot) & ~(uint256(type(uint64).max) <<
+        // 64)));
     }
 
     /// @dev Tests that initialization sets the correct values and getters work.
@@ -451,9 +462,15 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
 
     /// @dev Tests that initialization works with OptimismPortal.
     function test_initialize_customGasTokenCall_succeeds() external {
+        bytes memory data = StaticConfig.encodeSetGasPayingToken({
+            _token: address(token),
+            _decimals: 18,
+            _name: bytes32("Silly"),
+            _symbol: bytes32("SIL")
+        });
+
         vm.expectCall(
-            address(optimismPortal),
-            abi.encodeCall(optimismPortal.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
+            address(optimismPortal), abi.encodeCall(optimismPortal.setConfig, (Types.ConfigType.GAS_PAYING_TOKEN, data))
         );
 
         vm.expectEmit(address(optimismPortal));
@@ -466,7 +483,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
                 uint256(0), // value
                 uint64(200_000), // gasLimit
                 false, // isCreation,
-                abi.encodeCall(IL1Block.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
+                abi.encodeCall(IL1Block.setConfig, (Types.ConfigType.GAS_PAYING_TOKEN, data))
             )
         );
 
@@ -525,6 +542,26 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
         vm.prank(systemConfig.owner());
         vm.expectRevert("SystemConfig: gas limit too high");
         systemConfig.setGasLimit(maximumGasLimit + 1);
+    }
+
+    /// @dev Tests that `setFeeVaultConfig` reverts if the config type is not a fee vault config.
+    function testFuzz_setFeeVaultConfig_badType_reverts(uint8 _type) external {
+        // Ensure that _type is a valid ConfigType, but not a fee vault type.
+        _type = uint8(bound(uint256(_type), 0, uint256(uint8(type(Types.ConfigType).max))));
+        vm.assume(_type == 0 || _type > 3);
+
+        vm.prank(systemConfig.feeAdmin());
+        vm.expectRevert("SystemConfig: ConfigType is is not a Fee Vault Config type");
+        systemConfig.setFeeVaultConfig(Types.ConfigType(_type), address(0), 0, Types.WithdrawalNetwork.L1);
+    }
+
+    /// @dev Tests that `setFeeVaultConfig` reverts if the caller is not authorized.
+    function testFuzz_setFeeVaultConfig_badAuth_reverts(address _caller) external {
+        vm.assume(_caller != systemConfig.feeAdmin());
+        vm.expectRevert("SystemConfig: caller is not the fee admin");
+
+        vm.prank(_caller);
+        systemConfig.setFeeVaultConfig(Types.ConfigType.L1_FEE_VAULT_CONFIG, _caller, 0, Types.WithdrawalNetwork.L1);
     }
 
     /// @dev Tests that `setEIP1559Params` reverts if the caller is not the owner.
@@ -615,6 +652,43 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
         assertEq(systemConfig.unsafeBlockSigner(), newUnsafeSigner);
     }
 
+    /// @dev Tests that `setFeeVaultConfig` emits the expected event in the OptimismPortal
+    function testFuzz_setFeeVaultConfig_succeeds(
+        uint8 _vaultConfig,
+        address _recipient,
+        uint256 _min,
+        uint8 _network
+    )
+        external
+    {
+        vm.assume(_min <= type(uint88).max);
+        // Bound the _vaultConfig to one of the 3 enum entries associated with Fee Vault Config.
+        Types.ConfigType feeType = Types.ConfigType(uint8(bound(_vaultConfig, 1, 3)));
+        // Bound the _network to one of the 2 enum entries associated with Withdrawal Network.
+        Types.WithdrawalNetwork withdrawalNetwork = Types.WithdrawalNetwork(uint8(bound(_network, 0, 1)));
+
+        bytes memory value = abi.encode(Encoding.encodeFeeVaultConfig(_recipient, _min, withdrawalNetwork));
+
+        address feeAdmin = systemConfig.feeAdmin();
+        vm.expectEmit(address(optimismPortal2));
+        emit TransactionDeposited(
+            0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
+            Predeploys.L1_BLOCK_ATTRIBUTES,
+            0,
+            abi.encodePacked(
+                uint256(0), // mint
+                uint256(0), // value
+                uint64(200_000), // gasLimit
+                false, // isCreation,
+                abi.encodeCall(IL1Block.setConfig, (feeType, value))
+            )
+        );
+
+        // TODO: add new role
+        vm.prank(feeAdmin);
+        systemConfig.setFeeVaultConfig(feeType, _recipient, _min, withdrawalNetwork);
+    }
+
     /// @dev Tests that `setEIP1559Params` updates the EIP1559 parameters successfully.
     function testFuzz_setEIP1559Params_succeeds(uint32 _denominator, uint32 _elasticity) external {
         vm.assume(_denominator > 1);
@@ -631,3 +705,5 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
         assertEq(systemConfig.eip1559Elasticity(), _elasticity);
     }
 }
+
+// TODO: GasBenchmarks for initialize

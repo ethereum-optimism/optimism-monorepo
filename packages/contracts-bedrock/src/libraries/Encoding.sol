@@ -8,6 +8,9 @@ import { RLPWriter } from "src/libraries/rlp/RLPWriter.sol";
 /// @title Encoding
 /// @notice Encoding handles Optimism's various different encoding schemes.
 library Encoding {
+    /// @notice Error to be used when an unsafe cast is attempted.
+    error UnsafeCast();
+
     /// @notice RLP encodes the L2 transaction that would be generated when a given deposit is sent
     ///         to the L2 system. Useful for searching for a deposit in the L2 system. The
     ///         transaction is prefixed with 0x7e to identify its EIP-2718 type.
@@ -134,6 +137,31 @@ library Encoding {
             version := shr(240, _nonce)
         }
         return (nonce, version);
+    }
+
+    /// @notice
+    function encodeFeeVaultConfig(
+        address _recipient,
+        uint256 _amount,
+        Types.WithdrawalNetwork _network
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
+        if (_amount > type(uint88).max) revert UnsafeCast();
+        return bytes32(uint256(_network) << 248 | _amount << 160 | uint256(uint160(_recipient)));
+    }
+
+    /// @notice
+    function decodeFeeVaultConfig(bytes32 _data)
+        internal
+        pure
+        returns (address recipient_, uint256 amount_, Types.WithdrawalNetwork network_)
+    {
+        recipient_ = address(uint160(uint256(_data) & uint256(type(uint160).max)));
+        amount_ = (uint256(_data) & uint256(type(uint88).max) << 160) >> 160;
+        network_ = Types.WithdrawalNetwork(uint8(uint256(_data >> 248)));
     }
 
     /// @notice Returns an appropriately encoded call to L1Block.setL1BlockValuesEcotone

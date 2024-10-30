@@ -29,7 +29,8 @@ import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
 import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
-import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
+import { IL1OptimismMintableERC20Factory as IOptimismMintableERC20Factory } from
+    "src/L1/interfaces/IL1OptimismMintableERC20Factory.sol";
 
 import { OPContractsManagerInterop } from "src/L1/OPContractsManagerInterop.sol";
 import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
@@ -370,19 +371,19 @@ contract DeployImplementationsOutput is BaseDeployIO {
 
         DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _slot: 0, _offset: 0 });
 
-        require(systemConfig.owner() == address(0xdead), "SYSCON-10");
+        require(systemConfig.owner() == address(0), "SYSCON-10");
         require(systemConfig.overhead() == 0, "SYSCON-20");
-        require(systemConfig.scalar() == uint256(0x01) << 248, "SYSCON-30");
+        require(systemConfig.scalar() == 0, "SYSCON-30");
         require(systemConfig.basefeeScalar() == 0, "SYSCON-40");
         require(systemConfig.blobbasefeeScalar() == 0, "SYSCON-50");
         require(systemConfig.batcherHash() == bytes32(0), "SYSCON-60");
-        require(systemConfig.gasLimit() == 1, "SYSCON-70");
+        require(systemConfig.gasLimit() == 0, "SYSCON-70");
         require(systemConfig.unsafeBlockSigner() == address(0), "SYSCON-80");
 
         IResourceMetering.ResourceConfig memory resourceConfig = systemConfig.resourceConfig();
-        require(resourceConfig.maxResourceLimit == 1, "SYSCON-90");
-        require(resourceConfig.elasticityMultiplier == 1, "SYSCON-100");
-        require(resourceConfig.baseFeeMaxChangeDenominator == 2, "SYSCON-110");
+        require(resourceConfig.maxResourceLimit == 0, "SYSCON-90");
+        require(resourceConfig.elasticityMultiplier == 0, "SYSCON-100");
+        require(resourceConfig.baseFeeMaxChangeDenominator == 0, "SYSCON-110");
         require(resourceConfig.systemTxMaxGas == 0, "SYSCON-120");
         require(resourceConfig.minimumBaseFee == 0, "SYSCON-130");
         require(resourceConfig.maximumBaseFee == 0, "SYSCON-140");
@@ -400,7 +401,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidL1CrossDomainMessengerImpl(DeployImplementationsInput) internal view {
         IL1CrossDomainMessenger messenger = l1CrossDomainMessengerImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
+        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 250, _offset: 0 });
 
         require(address(messenger.OTHER_MESSENGER()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-10");
         require(address(messenger.otherMessenger()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-20");
@@ -408,14 +409,15 @@ contract DeployImplementationsOutput is BaseDeployIO {
         require(address(messenger.portal()) == address(0), "L1xDM-40");
         require(address(messenger.superchainConfig()) == address(0), "L1xDM-50");
 
-        bytes32 xdmSenderSlot = vm.load(address(messenger), bytes32(uint256(204)));
-        require(address(uint160(uint256(xdmSenderSlot))) == Constants.DEFAULT_L2_SENDER, "L1xDM-60");
+        // TODO: vm.expectRevert is not supported by op-chain-ops, so we can't check this yet.
+        // vm.expectRevert("CrossDomainMessenger: xDomainMessageSender is not set");
+        // messenger.xDomainMessageSender();
     }
 
     function assertValidL1ERC721BridgeImpl(DeployImplementationsInput) internal view {
         IL1ERC721Bridge bridge = l1ERC721BridgeImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge) });
 
         require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "L721B-10");
         require(address(bridge.otherBridge()) == Predeploys.L2_ERC721_BRIDGE, "L721B-20");
@@ -427,7 +429,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidL1StandardBridgeImpl(DeployImplementationsInput) internal view {
         IL1StandardBridge bridge = l1StandardBridgeImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 49, _offset: 0 });
 
         require(address(bridge.MESSENGER()) == address(0), "L1SB-10");
         require(address(bridge.messenger()) == address(0), "L1SB-20");
@@ -439,7 +441,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidOptimismMintableERC20FactoryImpl(DeployImplementationsInput) internal view {
         IOptimismMintableERC20Factory factory = optimismMintableERC20FactoryImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 51, _offset: 0 });
 
         require(address(factory.BRIDGE()) == address(0), "MERC20F-10");
         require(address(factory.bridge()) == address(0), "MERC20F-20");
@@ -788,7 +790,7 @@ contract DeployImplementations is Script {
             vm.broadcast(msg.sender);
             impl = IOptimismMintableERC20Factory(
                 DeployUtils.create1({
-                    _name: "OptimismMintableERC20Factory",
+                    _name: "L1OptimismMintableERC20Factory",
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
                 })
             );
@@ -796,7 +798,7 @@ contract DeployImplementations is Script {
             revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
-        vm.label(address(impl), "OptimismMintableERC20FactoryImpl");
+        vm.label(address(impl), "L1OptimismMintableERC20FactoryImpl");
         _dio.set(_dio.optimismMintableERC20FactoryImpl.selector, address(impl));
     }
 
