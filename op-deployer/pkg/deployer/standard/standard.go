@@ -105,6 +105,28 @@ func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
 	}
 }
 
+func ChainNameFor(chainID uint64) (string, error) {
+	switch chainID {
+	case 1:
+		return "mainnet", nil
+	case 11155111:
+		return "sepolia", nil
+	default:
+		return "", fmt.Errorf("unrecognized chain ID: %d", chainID)
+	}
+}
+
+func CommitForDeployTag(tag string) (string, error) {
+	switch tag {
+	case "op-contracts/v1.6.0":
+		return "33f06d2d5e4034125df02264a5ffe84571bd0359", nil
+	case "op-contracts/v1.7.0-beta.1+l2-contracts":
+		return "5e14a61547a45eef2ebeba677aee4a049f106ed8", nil
+	default:
+		return "", fmt.Errorf("unsupported tag: %s", tag)
+	}
+}
+
 func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:

@@ -2,6 +2,7 @@ package inspect
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
@@ -18,7 +19,7 @@ func DeployConfigCLI(cliCtx *cli.Context) error {
 
 	globalState, err := pipeline.ReadState(cliCfg.Workdir)
 	if err != nil {
-		return fmt.Errorf("failed to read intent: %w", err)
+		return fmt.Errorf("failed to read globalState: %w", err)
 	}
 	chainState, err := globalState.Chain(cliCfg.ChainID)
 	if err != nil {
@@ -40,6 +41,11 @@ func DeployConfigCLI(cliCtx *cli.Context) error {
 	}
 	if err := jsonutil.WriteJSON(config, ioutil.ToStdOutOrFileOrNoop(cliCfg.Outfile, 0o666)); err != nil {
 		return fmt.Errorf("failed to write deploy config: %w", err)
+	}
+
+	chainState.Artifacts.DeployConfig = filepath.Join(cliCfg.Workdir, cliCfg.Outfile)
+	if err = pipeline.WriteState(cliCfg.Workdir, globalState); err != nil {
+		return fmt.Errorf("failed to write updated globalState: %w", err)
 	}
 
 	return nil

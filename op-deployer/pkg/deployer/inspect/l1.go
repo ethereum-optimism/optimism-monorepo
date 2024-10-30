@@ -2,6 +2,7 @@ package inspect
 
 import (
 	"fmt"
+	"path/filepath"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 
@@ -115,6 +116,11 @@ func L1CLI(cliCtx *cli.Context) error {
 
 	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(cfg.Outfile, 0o666)); err != nil {
 		return fmt.Errorf("failed to write L1 contract addresses: %w", err)
+	}
+
+	chainState.Artifacts.ContractAddresses = filepath.Join(cfg.Workdir, cfg.Outfile)
+	if err = pipeline.WriteState(cfg.Workdir, globalState); err != nil {
+		return fmt.Errorf("failed to write updated globalState: %w", err)
 	}
 
 	return nil
