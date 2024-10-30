@@ -87,6 +87,9 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 
 	envFilepath := filepath.Join(cfg.Workdir, ".env")
 	err = writeEnvFile(envFilepath, envVars)
+	if err != nil {
+		return fmt.Errorf("failed to write .env file: %w", err)
+	}
 
 	return nil
 }
