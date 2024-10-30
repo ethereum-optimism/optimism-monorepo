@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/stretchr/testify/require"
 )
 
@@ -143,8 +144,7 @@ func TestMemory64ReadWrite(t *testing.T) {
 	t.Run("empty range", func(t *testing.T) {
 		m := NewMemory()
 		addr := Word(0xAABBCC00)
-		rr := bytes.NewReader(nil)
-		r := io.Reader(io.NewSectionReader(rr, 0, 0))
+		r := bytes.NewReader(nil)
 		pre := m.MerkleRoot()
 		preJSON, err := m.MarshalJSON()
 		require.NoError(t, err)
@@ -167,7 +167,23 @@ func TestMemory64ReadWrite(t *testing.T) {
 		require.Equal(t, preSerialized.Bytes(), postSerialized.Bytes())
 	})
 
+	t.Run("range page overlap", func(t *testing.T) {
+		m := NewMemory()
+		data := bytes.Repeat([]byte{0xAA}, PageAddrSize)
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		for i := 0; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA_AAAAAAAA), m.GetWord(addr))
+		}
 
+		data = []byte{0x11, 0x22, 0x33, 0x44}
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		require.Equal(t, Word(0x11223344_AAAAAAAA), m.GetWord(0))
+		for i := 1; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA_AAAAAAAA), m.GetWord(addr))
+		}
+	})
 
 	t.Run("read-write", func(t *testing.T) {
 		m := NewMemory()

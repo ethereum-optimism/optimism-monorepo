@@ -295,7 +295,7 @@ func (m *Memory) SetMemoryRange(addr Word, r io.Reader) error {
 			p = m.AllocPage(pageIndex)
 		}
 		p.InvalidateFull()
-		copy(p.Data[pageAddr:], chunk)
+		copy(p.Data[pageAddr:], chunk[:n])
 		addr += Word(n)
 	}
 }
