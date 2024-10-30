@@ -57,3 +57,7 @@ func (m *MemoryTrackerImpl) MemProof() [memory.MemProofSize]byte {
 func (m *MemoryTrackerImpl) MemProof2() [memory.MemProofSize]byte {
 	return m.memProof2
 }
+
+type NoopMemoryTracker struct{}
+
+func (n *NoopMemoryTracker) TrackMemAccess(Word) {}

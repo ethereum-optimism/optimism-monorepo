@@ -212,20 +212,6 @@ func (m *Memory) SetWord(addr Word, v Word) {
 	arch.ByteOrderWord.PutWord(p.Data[pageAddr:pageAddr+arch.WordSizeBytes], v)
 }
 
-// GetUint32 returns the first 32 bits located at the specified location.
-func (m *Memory) GetUint32(addr Word) uint32 {
-	// addr must be aligned to 4 bytes
-	if addr&3 != 0 {
-		panic(fmt.Errorf("unaligned memory access: %x", addr))
-	}
-	p, ok := m.pageLookup(addr >> PageAddrSize)
-	if !ok {
-		return 0
-	}
-	pageAddr := addr & PageAddrMask
-	return binary.BigEndian.Uint32(p.Data[pageAddr : pageAddr+4])
-}
-
 // GetWord reads the maximum sized value, [arch.Word], located at the specified address.
 // Note: Also referred to by the MIPS64 specification as a "double-word" memory access.
 func (m *Memory) GetWord(addr Word) Word {

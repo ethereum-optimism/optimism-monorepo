@@ -13,6 +13,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
+	mipsexec "github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/versions"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
@@ -410,14 +411,16 @@ func Run(ctx *cli.Context) error {
 
 		if infoAt(state) {
 			delta := time.Since(start)
+			pc := state.GetPC()
+			insn := mipsexec.LoadSubWord(state.GetMemory(), pc, 4, false, new(mipsexec.NoopMemoryTracker))
 			l.Info("processing",
 				"step", step,
 				"pc", mipsevm.HexU32(state.GetPC()),
-				"insn", mipsevm.HexU32(state.GetMemory().GetUint32(state.GetPC())),
+				"insn", mipsevm.HexU32(insn),
 				"ips", float64(step-startStep)/(float64(delta)/float64(time.Second)),
 				"pages", state.GetMemory().PageCount(),
 				"mem", state.GetMemory().Usage(),
-				"name", meta.LookupSymbol(state.GetPC()),
+				"name", meta.LookupSymbol(pc),
 			)
 		}
 
