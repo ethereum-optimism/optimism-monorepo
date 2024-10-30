@@ -39,6 +39,7 @@ type OPCMConfig struct {
 	ChallengePeriodSeconds          uint64
 	ProofMaturityDelaySeconds       uint64
 	DisputeGameFinalityDelaySeconds uint64
+	MIPSVersion                     uint64
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -86,6 +87,10 @@ func (c *OPCMConfig) Check() error {
 		c.DisputeGameFinalityDelaySeconds = standard.DisputeGameFinalityDelaySeconds
 	}
 
+	if c.MIPSVersion == 0 {
+		c.MIPSVersion = standard.MIPSVersion
+	}
+
 	return nil
 }
 
@@ -114,6 +119,7 @@ func OPCMCLI(cliCtx *cli.Context) error {
 		ChallengePeriodSeconds:          cliCtx.Uint64(ChallengePeriodSecondsFlagName),
 		ProofMaturityDelaySeconds:       cliCtx.Uint64(ProofMaturityDelaySecondsFlagName),
 		DisputeGameFinalityDelaySeconds: cliCtx.Uint64(DisputeGameFinalityDelaySecondsFlagName),
+		MIPSVersion:                     cliCtx.Uint64(MIPSVersionFlagName),
 	})
 }
 
@@ -229,6 +235,7 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 			ChallengePeriodSeconds:          new(big.Int).SetUint64(cfg.ChallengePeriodSeconds),
 			ProofMaturityDelaySeconds:       new(big.Int).SetUint64(cfg.ProofMaturityDelaySeconds),
 			DisputeGameFinalityDelaySeconds: new(big.Int).SetUint64(cfg.DisputeGameFinalityDelaySeconds),
+			MipsVersion:                     new(big.Int).SetUint64(cfg.MIPSVersion),
 			Release:                         release,
 			SuperchainConfigProxy:           superchainConfigAddr,
 			ProtocolVersionsProxy:           protocolVersionsAddr,

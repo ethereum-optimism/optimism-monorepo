@@ -38,12 +38,13 @@ type DeployOPChainInput struct {
 	SaltMixer         string
 	GasLimit          uint64
 
-	DisputeGameType         uint32
-	DisputeAbsolutePrestate common.Hash
-	DisputeMaxGameDepth     uint64
-	DisputeSplitDepth       uint64
-	DisputeClockExtension   uint64
-	DisputeMaxClockDuration uint64
+	DisputeGameType              uint32
+	DisputeAbsolutePrestate      common.Hash
+	DisputeMaxGameDepth          uint64
+	DisputeSplitDepth            uint64
+	DisputeClockExtension        uint64
+	DisputeMaxClockDuration      uint64
+	AllowCustomDisputeParameters bool
 }
 
 func (input *DeployOPChainInput) InputSet() bool {

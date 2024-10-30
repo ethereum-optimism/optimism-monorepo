@@ -14,6 +14,7 @@ const (
 	ChallengePeriodSecondsFlagName          = "challenge-period-seconds"
 	ProofMaturityDelaySecondsFlagName       = "proof-maturity-delay-seconds"
 	DisputeGameFinalityDelaySecondsFlagName = "dispute-game-finality-delay-seconds"
+	MIPSVersionFlagName                     = "mips-version"
 )
 
 var (
@@ -52,6 +53,12 @@ var (
 		EnvVars: deployer.PrefixEnvVar("DISPUTE_GAME_FINALITY_DELAY_SECONDS"),
 		Value:   standard.DisputeGameFinalityDelaySeconds,
 	}
+	MIPSVersionFlag = &cli.Uint64Flag{
+		Name:    MIPSVersionFlagName,
+		Usage:   "MIPS version.",
+		EnvVars: deployer.PrefixEnvVar("MIPS_VERSION"),
+		Value:   standard.MIPSVersion,
+	}
 )
 
 var OPCMFlags = []cli.Flag{
@@ -63,6 +70,7 @@ var OPCMFlags = []cli.Flag{
 	ChallengePeriodSecondsFlag,
 	ProofMaturityDelaySecondsFlag,
 	DisputeGameFinalityDelaySecondsFlag,
+	MIPSVersionFlag,
 }
 
 var Commands = []*cli.Command{

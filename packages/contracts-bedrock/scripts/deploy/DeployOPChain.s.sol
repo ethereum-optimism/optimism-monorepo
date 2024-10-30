@@ -58,6 +58,7 @@ contract DeployOPChainInput is BaseDeployIO {
     uint256 internal _disputeSplitDepth;
     Duration internal _disputeClockExtension;
     Duration internal _disputeMaxClockDuration;
+    bool internal _allowCustomDisputeParameters;
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPChainInput: cannot set zero address");
@@ -105,6 +106,11 @@ contract DeployOPChainInput is BaseDeployIO {
     function set(bytes4 _sel, bytes32 _value) public {
         if (_sel == this.disputeAbsolutePrestate.selector) _disputeAbsolutePrestate = Claim.wrap(_value);
         else revert("DeployImplementationsInput: unknown selector");
+    }
+
+    function set(bytes4 _sel, bool _value) public {
+        if (_sel == this.allowCustomDisputeParameters.selector) _allowCustomDisputeParameters = _value;
+        else revert("DeployOPChainInput: unknown selector");
     }
 
     function opChainProxyAdminOwner() public view returns (address) {
@@ -205,6 +211,10 @@ contract DeployOPChainInput is BaseDeployIO {
 
     function disputeMaxClockDuration() public view returns (Duration) {
         return _disputeMaxClockDuration;
+    }
+
+    function allowCustomDisputeParameters() public view returns (bool) {
+        return _allowCustomDisputeParameters;
     }
 }
 
@@ -457,6 +467,11 @@ contract DeployOPChain is Script {
         IPermissionedDisputeGame game = _doo.permissionedDisputeGame();
 
         require(GameType.unwrap(game.gameType()) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON), "DPG-10");
+
+        if (_doi.allowCustomDisputeParameters()) {
+            return;
+        }
+
         // This hex string is the absolutePrestate of the latest op-program release, see where the
         // `EXPECTED_PRESTATE_HASH` is defined in `config.yml`.
         require(

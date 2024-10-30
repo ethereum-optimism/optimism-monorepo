@@ -14,6 +14,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
@@ -368,10 +370,10 @@ func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, int
 		alloc := chainState.Allocs.Data.Accounts
 
 		chainIntent := intent.Chains[i]
-		checkImmutable(t, alloc, predeploys.BaseFeeVaultAddr, chainIntent.BaseFeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.L1FeeVaultAddr, chainIntent.L1FeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.SequencerFeeVaultAddr, chainIntent.SequencerFeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.OptimismMintableERC721FactoryAddr, common.BigToHash(new(big.Int).SetUint64(intent.L1ChainID)))
+		checkImmutableBehindProxy(t, alloc, predeploys.BaseFeeVaultAddr, chainIntent.BaseFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.L1FeeVaultAddr, chainIntent.L1FeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.SequencerFeeVaultAddr, chainIntent.SequencerFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.OptimismMintableERC721FactoryAddr, common.BigToHash(new(big.Int).SetUint64(intent.L1ChainID)))
 
 		// ownership slots
 		var addrAsSlot common.Hash
@@ -399,8 +401,12 @@ type bytesMarshaler interface {
 	Bytes() []byte
 }
 
-func checkImmutable(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
+func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
 	implementationAddress := getEIP1967ImplementationAddress(t, allocations, proxyContract)
+	checkImmutable(t, allocations, implementationAddress, thing)
+}
+
+func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) {
 	account, ok := allocations[implementationAddress]
 	require.True(t, ok, "%s not found in allocations", implementationAddress)
 	require.NotEmpty(t, account.Code, "%s should have code", implementationAddress)
@@ -609,6 +615,126 @@ func TestApplyGenesisStrategy(t *testing.T) {
 	for i := range intent.Chains {
 		t.Run(fmt.Sprintf("chain-%d", i), func(t *testing.T) {
 			validateOPChainDeployment(t, cg, st, intent)
+		})
+	}
+}
+
+func TestProofParamOverrides(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	depKey := new(deployerKey)
+	l1ChainID := big.NewInt(77799777)
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+
+	l2ChainID1 := uint256.NewInt(1)
+
+	deployerAddr, err := dk.Address(depKey)
+	require.NoError(t, err)
+
+	loc := localArtifactsLocator(t)
+
+	env, bundle, _ := createEnv(t, ctx, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
+	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
+	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
+	intent.GlobalDeployOverrides = map[string]any{
+		"withdrawalDelaySeconds":          standard.WithdrawalDelaySeconds + 1,
+		"minProposalSizeBytes":            standard.MinProposalSizeBytes + 1,
+		"challengePeriodSeconds":          standard.ChallengePeriodSeconds + 1,
+		"proofMaturityDelaySeconds":       standard.ProofMaturityDelaySeconds + 1,
+		"disputeGameFinalityDelaySeconds": standard.DisputeGameFinalityDelaySeconds + 1,
+		"mipsVersion":                     standard.MIPSVersion + 1,
+		"disputeGameType":                 standard.DisputeGameType, // This must be set to the permissioned game
+		"disputeAbsolutePrestate":         common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"disputeMaxGameDepth":             standard.DisputeMaxGameDepth + 1,
+		"disputeSplitDepth":               standard.DisputeSplitDepth + 1,
+		"disputeClockExtension":           standard.DisputeClockExtension + 1,
+		"disputeMaxClockDuration":         standard.DisputeMaxClockDuration + 1,
+		"allowCustomDisputeParameters":    true,
+	}
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	allocs := st.L1StateDump.Data.Accounts
+	chainState := st.Chains[0]
+
+	uint64Caster := func(t *testing.T, val any) common.Hash {
+		return common.BigToHash(new(big.Int).SetUint64(val.(uint64)))
+	}
+
+	tests := []struct {
+		name    string
+		caster  func(t *testing.T, val any) common.Hash
+		address common.Address
+	}{
+		{
+			"withdrawalDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.DelayedWETHImplAddress,
+		},
+		{
+			"minProposalSizeBytes",
+			uint64Caster,
+			st.ImplementationsDeployment.PreimageOracleSingletonAddress,
+		},
+		{
+			"challengePeriodSeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.PreimageOracleSingletonAddress,
+		},
+		{
+			"proofMaturityDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.OptimismPortalImplAddress,
+		},
+		{
+			"disputeGameFinalityDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.OptimismPortalImplAddress,
+		},
+		{
+			"disputeAbsolutePrestate",
+			func(t *testing.T, val any) common.Hash {
+				return val.(common.Hash)
+			},
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeMaxGameDepth",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeSplitDepth",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeClockExtension",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeMaxClockDuration",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checkImmutable(t, allocs, tt.address, tt.caster(t, intent.GlobalDeployOverrides[tt.name]))
 		})
 	}
 }

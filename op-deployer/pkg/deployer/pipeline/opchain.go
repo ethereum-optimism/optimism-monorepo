@@ -181,12 +181,13 @@ func DeployOPChainGenesisStrategy(env *Env, intent *state.Intent, st *state.Stat
 }
 
 type ChainProofParams struct {
-	DisputeGameType         uint32      `json:"disputeGameType" toml:"disputeGameType"`
-	DisputeAbsolutePrestate common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
-	DisputeMaxGameDepth     uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
-	DisputeSplitDepth       uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
-	DisputeClockExtension   uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
-	DisputeMaxClockDuration uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+	DisputeGameType              uint32      `json:"disputeGameType" toml:"disputeGameType"`
+	DisputeAbsolutePrestate      common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
+	DisputeMaxGameDepth          uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
+	DisputeSplitDepth            uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
+	DisputeClockExtension        uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
+	DisputeMaxClockDuration      uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+	AllowCustomDisputeParameters bool        `json:"allowCustomDisputeParameters" toml:"allowCustomDisputeParameters"`
 }
 
 func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
@@ -207,24 +208,25 @@ func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common
 	}
 
 	return opcm.DeployOPChainInput{
-		OpChainProxyAdminOwner:  thisIntent.Roles.L1ProxyAdminOwner,
-		SystemConfigOwner:       thisIntent.Roles.SystemConfigOwner,
-		Batcher:                 thisIntent.Roles.Batcher,
-		UnsafeBlockSigner:       thisIntent.Roles.UnsafeBlockSigner,
-		Proposer:                thisIntent.Roles.Proposer,
-		Challenger:              thisIntent.Roles.Challenger,
-		BasefeeScalar:           1368,
-		BlobBaseFeeScalar:       801949,
-		L2ChainId:               chainID.Big(),
-		OpcmProxy:               st.ImplementationsDeployment.OpcmProxyAddress,
-		SaltMixer:               st.Create2Salt.String(), // passing through salt generated at state initialization
-		GasLimit:                60_000_000,
-		DisputeGameType:         proofParams.DisputeGameType,
-		DisputeAbsolutePrestate: proofParams.DisputeAbsolutePrestate,
-		DisputeMaxGameDepth:     proofParams.DisputeMaxGameDepth,
-		DisputeSplitDepth:       proofParams.DisputeSplitDepth,
-		DisputeClockExtension:   proofParams.DisputeClockExtension,   // 3 hours (input in seconds)
-		DisputeMaxClockDuration: proofParams.DisputeMaxClockDuration, // 3.5 days (input in seconds)
+		OpChainProxyAdminOwner:       thisIntent.Roles.L1ProxyAdminOwner,
+		SystemConfigOwner:            thisIntent.Roles.SystemConfigOwner,
+		Batcher:                      thisIntent.Roles.Batcher,
+		UnsafeBlockSigner:            thisIntent.Roles.UnsafeBlockSigner,
+		Proposer:                     thisIntent.Roles.Proposer,
+		Challenger:                   thisIntent.Roles.Challenger,
+		BasefeeScalar:                1368,
+		BlobBaseFeeScalar:            801949,
+		L2ChainId:                    chainID.Big(),
+		OpcmProxy:                    st.ImplementationsDeployment.OpcmProxyAddress,
+		SaltMixer:                    st.Create2Salt.String(), // passing through salt generated at state initialization
+		GasLimit:                     60_000_000,
+		DisputeGameType:              proofParams.DisputeGameType,
+		DisputeAbsolutePrestate:      proofParams.DisputeAbsolutePrestate,
+		DisputeMaxGameDepth:          proofParams.DisputeMaxGameDepth,
+		DisputeSplitDepth:            proofParams.DisputeSplitDepth,
+		DisputeClockExtension:        proofParams.DisputeClockExtension,   // 3 hours (input in seconds)
+		DisputeMaxClockDuration:      proofParams.DisputeMaxClockDuration, // 3.5 days (input in seconds)
+		AllowCustomDisputeParameters: proofParams.AllowCustomDisputeParameters,
 	}, nil
 }
 
