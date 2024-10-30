@@ -23,7 +23,7 @@ ARG GIT_DATE
 
 ARG TARGETOS TARGETARCH
 
-FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.1.0-alpha.3 AS cannon-v2
+FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.1.0-alpha.4 AS cannon-v2
 
 FROM --platform=$BUILDPLATFORM builder as cannon-verify
 COPY --from=cannon-v2 /usr/local/bin/cannon /usr/local/bin/cannon-v2
