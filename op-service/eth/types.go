@@ -38,8 +38,7 @@ const (
 
 var ErrBedrockScalarPaddingNotEmpty = errors.New("version 0 scalar value has non-empty padding")
 
-// InputError distinguishes an user-input error from regular rpc errors,
-// to help the (Engine) API user divert from accidental input mistakes.
+// InputError can be used to create rpc.Error instances with a specific error code.
 type InputError struct {
 	Inner error
 	Code  ErrorCode
@@ -47,6 +46,11 @@ type InputError struct {
 
 func (ie InputError) Error() string {
 	return fmt.Sprintf("input error %d: %s", ie.Code, ie.Inner.Error())
+}
+
+// Makes InputError implement the rpc.Error interface
+func (ie InputError) ErrorCode() int {
+	return int(ie.Code)
 }
 
 func (ie InputError) Unwrap() error {

@@ -2,6 +2,9 @@ package engine
 
 import (
 	"context"
+	"errors"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -23,7 +26,9 @@ func (eq *EngDeriver) onBuildCancel(ev BuildCancelEvent) {
 	eq.log.Warn("cancelling old block building job", "info", ev.Info)
 	_, err := eq.ec.engine.GetPayload(ctx, ev.Info)
 	if err != nil {
-		if x, ok := err.(eth.InputError); ok && x.Code == eth.UnknownPayload { //nolint:all
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()) == eth.UnknownPayload {
+			eq.log.Warn("tried cancelling unknown block building job", "info", ev.Info, "err", err)
 			return // if unknown, then it did not need to be cancelled anymore.
 		}
 		eq.log.Error("failed to cancel block building job", "info", ev.Info, "err", err)
