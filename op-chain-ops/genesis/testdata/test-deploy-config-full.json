@@ -22,6 +22,7 @@
   "l1GenesisBlockGasLimit": "0x1c9c380",
   "l1GenesisBlockDifficulty": "0x1",
   "finalSystemOwner": "0xbcd4042de499d14e55001ccbb24a551f3b954096",
+  "systemConfigFeeAdmin": "0xbcd4042de499d14e55001ccbb24a551f3b954096",
   "superchainConfigGuardian": "0x0000000000000000000000000000000000000112",
   "finalizationPeriodSeconds": 2,
   "l1GenesisBlockMixHash": "0x0000000000000000000000000000000000000000000000000000000000000000",

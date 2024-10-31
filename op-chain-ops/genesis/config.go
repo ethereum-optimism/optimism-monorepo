@@ -288,7 +288,7 @@ type OperatorDeployConfig struct {
 	BatchSenderAddress common.Address `json:"batchSenderAddress"`
 
 	// SystemConfigfeeAdmin is the address of the account that has the ability to set the fee parameters.
-	SystemConfigfeeAdmin common.Address `json:"systemConfigfeeAdmin"`
+	SystemConfigfeeAdmin common.Address `json:"systemConfigFeeAdmin"`
 }
 
 var _ ConfigChecker = (*OperatorDeployConfig)(nil)
