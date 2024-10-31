@@ -190,8 +190,7 @@ func TestHoloceneInvalidPayload(gt *testing.T) {
 	env.Seq.ActL1HeadSignal(t)
 	env.Seq.ActL2PipelineFull(t)
 
-	// TODO(12695): need to properly update safe after completed L1 block derivation
-	l2Safe := env.Seq.L2PendingSafe()
+	l2Safe := env.Seq.L2Safe()
 	require.EqualValues(t, invalidNum, l2Safe.Number)
 	require.NotEqual(t, l2Safe.Hash, l2Unsafe.Hash, // old L2Unsafe above
 		"block-3 should have been replaced by deposit-only version")

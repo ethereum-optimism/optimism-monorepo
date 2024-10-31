@@ -29,9 +29,9 @@ type AttributesBuilder interface {
 }
 
 type AttributesWithParent struct {
-	Attributes   *eth.PayloadAttributes
-	Parent       eth.L2BlockRef
-	IsLastInSpan bool
+	Attributes *eth.PayloadAttributes
+	Parent     eth.L2BlockRef
+	Concluding bool // Concluding indicates that the attributes conclude the pending safe phase
 
 	DerivedFrom eth.L1BlockRef
 }
@@ -54,9 +54,9 @@ type AttributesQueue struct {
 	builder AttributesBuilder
 	prev    SingularBatchProvider
 
-	batch        *SingularBatch
-	isLastInSpan bool
-	lastAttribs  *AttributesWithParent
+	batch       *SingularBatch
+	concluding  bool
+	lastAttribs *AttributesWithParent
 }
 
 type SingularBatchProvider interface {
@@ -82,12 +82,12 @@ func (aq *AttributesQueue) Origin() eth.L1BlockRef {
 func (aq *AttributesQueue) NextAttributes(ctx context.Context, parent eth.L2BlockRef) (*AttributesWithParent, error) {
 	// Get a batch if we need it
 	if aq.batch == nil {
-		batch, isLastInSpan, err := aq.prev.NextBatch(ctx, parent)
+		batch, concluding, err := aq.prev.NextBatch(ctx, parent)
 		if err != nil {
 			return nil, err
 		}
 		aq.batch = batch
-		aq.isLastInSpan = isLastInSpan
+		aq.concluding = concluding
 	}
 
 	// Actually generate the next attributes
@@ -96,14 +96,14 @@ func (aq *AttributesQueue) NextAttributes(ctx context.Context, parent eth.L2Bloc
 	} else {
 		// Clear out the local state once we will succeed
 		attr := AttributesWithParent{
-			Attributes:   attrs,
-			Parent:       parent,
-			IsLastInSpan: aq.isLastInSpan,
-			DerivedFrom:  aq.Origin(),
+			Attributes:  attrs,
+			Parent:      parent,
+			Concluding:  aq.concluding,
+			DerivedFrom: aq.Origin(),
 		}
 		aq.lastAttribs = &attr
 		aq.batch = nil
-		aq.isLastInSpan = false
+		aq.concluding = false
 		return &attr, nil
 	}
 }
@@ -138,7 +138,7 @@ func (aq *AttributesQueue) createNextAttributes(ctx context.Context, batch *Sing
 
 func (aq *AttributesQueue) reset() {
 	aq.batch = nil
-	aq.isLastInSpan = false // overwritten later, but set for consistency
+	aq.concluding = false // overwritten later, but set for consistency
 	aq.lastAttribs = nil
 }
 

@@ -281,10 +281,10 @@ func (d *Sequencer) onBuildSealed(x engine.BuildSealedEvent) {
 	d.asyncGossip.Gossip(x.Envelope)
 	// Now after having gossiped the block, try to put it in our own canonical chain
 	d.emitter.Emit(engine.PayloadProcessEvent{
-		IsLastInSpan: x.IsLastInSpan,
-		DerivedFrom:  x.DerivedFrom,
-		Envelope:     x.Envelope,
-		Ref:          x.Ref,
+		Concluding:  x.Concluding,
+		DerivedFrom: x.DerivedFrom,
+		Envelope:    x.Envelope,
+		Ref:         x.Ref,
 	})
 	d.latest.Ref = x.Ref
 	d.latestSealed = x.Ref
@@ -334,7 +334,7 @@ func (d *Sequencer) onPayloadSuccess(x engine.PayloadSuccessEvent) {
 	d.asyncGossip.Clear()
 }
 
-func (d *Sequencer) onSequencerAction(x SequencerActionEvent) {
+func (d *Sequencer) onSequencerAction(SequencerActionEvent) {
 	d.log.Debug("Sequencer action")
 	payload := d.asyncGossip.Get()
 	if payload != nil {
@@ -356,10 +356,10 @@ func (d *Sequencer) onSequencerAction(x SequencerActionEvent) {
 		// meaning that we have seen BuildSealedEvent already.
 		// We can retry processing to make it canonical.
 		d.emitter.Emit(engine.PayloadProcessEvent{
-			IsLastInSpan: false,
-			DerivedFrom:  eth.L1BlockRef{},
-			Envelope:     payload,
-			Ref:          ref,
+			Concluding:  false,
+			DerivedFrom: eth.L1BlockRef{},
+			Envelope:    payload,
+			Ref:         ref,
 		})
 		d.latest.Ref = ref
 	} else {
@@ -371,7 +371,7 @@ func (d *Sequencer) onSequencerAction(x SequencerActionEvent) {
 			d.emitter.Emit(engine.BuildSealEvent{
 				Info:         d.latest.Info,
 				BuildStarted: d.latest.Started,
-				IsLastInSpan: false,
+				Concluding:   false,
 				DerivedFrom:  eth.L1BlockRef{},
 			})
 		} else if d.latest == (BuildingState{}) {
@@ -416,7 +416,7 @@ func (d *Sequencer) onReset(x rollup.ResetEvent) {
 	d.nextActionOK = false
 }
 
-func (d *Sequencer) onEngineResetConfirmedEvent(x engine.EngineResetConfirmedEvent) {
+func (d *Sequencer) onEngineResetConfirmedEvent(engine.EngineResetConfirmedEvent) {
 	d.nextActionOK = d.active.Load()
 	// Before sequencing we can wait a block,
 	// assuming the execution-engine just churned through some work for the reset.
@@ -552,10 +552,10 @@ func (d *Sequencer) startBuildingBlock() {
 
 	// Start a payload building process.
 	withParent := &derive.AttributesWithParent{
-		Attributes:   attrs,
-		Parent:       l2Head,
-		IsLastInSpan: false,
-		DerivedFrom:  eth.L1BlockRef{}, // zero, not going to be pending-safe / safe
+		Attributes:  attrs,
+		Parent:      l2Head,
+		Concluding:  false,
+		DerivedFrom: eth.L1BlockRef{}, // zero, not going to be pending-safe / safe
 	}
 
 	// Don't try to start building a block again, until we have heard back from this attempt
