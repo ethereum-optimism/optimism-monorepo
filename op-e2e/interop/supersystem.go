@@ -3,11 +3,6 @@ package interop
 import (
 	"context"
 	"crypto/ecdsa"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
-	"github.com/ethereum-optimism/optimism/op-e2e/interop/contracts/bindings/systemconfig"
-	"github.com/ethereum-optimism/optimism/op-service/predeploys"
-	"github.com/ethereum/go-ethereum/eth/ethconfig"
-	gn "github.com/ethereum/go-ethereum/node"
 	"math/big"
 	"os"
 	"path"
@@ -15,6 +10,12 @@ import (
 	"sort"
 	"testing"
 	"time"
+
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
+	"github.com/ethereum-optimism/optimism/op-e2e/interop/contracts/bindings/systemconfig"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
+	"github.com/ethereum/go-ethereum/eth/ethconfig"
+	gn "github.com/ethereum/go-ethereum/node"
 
 	"github.com/stretchr/testify/require"
 

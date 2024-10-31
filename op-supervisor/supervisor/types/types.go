@@ -4,10 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"math"
 	"math/big"
 	"strconv"
+
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/holiman/uint256"
 
