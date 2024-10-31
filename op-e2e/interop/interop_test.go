@@ -162,8 +162,6 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 			}
 			msgPayload = append(msgPayload, log.Data...)
 			expectedHash := common.BytesToHash(crypto.Keccak256(msgPayload))
-			// convert payload hash to log hash
-			logHash := types.PayloadHashToLogHash(expectedHash, log.Address)
 
 			// get block for the log (for timestamp)
 			ctx, cancel := context.WithTimeout(context.Background(), 3*time.Second)
@@ -182,7 +180,7 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 
 			safety, err := supervisor.CheckMessage(context.Background(),
 				identifier,
-				logHash,
+				expectedHash,
 			)
 			require.ErrorIs(t, err, expectedError)
 			// the supervisor could progress the safety level more quickly than we expect,
