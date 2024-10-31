@@ -191,6 +191,7 @@ func (s *L2Client) outputV0(ctx context.Context, block eth.BlockInfo) (*eth.Outp
 	if block == nil {
 		return nil, ethereum.NotFound
 	}
+
 	blockHash := block.Hash()
 	proof, err := s.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, blockHash.String())
 	if err != nil {
@@ -203,10 +204,30 @@ func (s *L2Client) outputV0(ctx context.Context, block eth.BlockInfo) (*eth.Outp
 	if err := proof.Verify(block.Root()); err != nil {
 		return nil, fmt.Errorf("invalid withdrawal root hash, state root was %s: %w", block.Root(), err)
 	}
+
+	var messagePasserStorageRoot eth.Bytes32
+	if s.rollupCfg.IsIsthmus(head.Time()) {
+		// If Isthmus hard fork has activated, we can get the messagePasserStorageRoot directly from the header
+		// instead of having to compute it from the contract storage trie.
+		messagePasserStorageRoot = eth.Bytes32(*head.WithdrawalsRoot())
+	} else {
+		proof, err := s.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, blockHash.String())
+		if err != nil {
+			return nil, fmt.Errorf("failed to get contract proof at block %s: %w", blockHash, err)
+		}
+		if proof == nil {
+			return nil, fmt.Errorf("proof %w", ethereum.NotFound)
+		}
+		// make sure that the proof (including storage hash) that we retrieved is correct by verifying it against the state-root
+		if err := proof.Verify(head.Root()); err != nil {
+			return nil, fmt.Errorf("invalid withdrawal root hash, state root was %s: %w", head.Root(), err)
+		}
+		messagePasserStorageRoot = eth.Bytes32(proof.StorageHash)
+	}
 	stateRoot := block.Root()
 	return &eth.OutputV0{
 		StateRoot:                eth.Bytes32(stateRoot),
-		MessagePasserStorageRoot: eth.Bytes32(proof.StorageHash),
+		MessagePasserStorageRoot: eth.Bytes32(messagePasserStorageRoot),
 		BlockHash:                blockHash,
 	}, nil
 }
