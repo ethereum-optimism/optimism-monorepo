@@ -91,7 +91,7 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 				Info:         c.currentPayloadInfo,
 				BuildStarted: c.clock.Now(),
 				Parent:       x.Attributes.Parent,
-				IsLastInSpan: false,
+				Concluding:   false,
 				DerivedFrom:  eth.L1BlockRef{},
 			})
 		}
@@ -124,10 +124,10 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 
 		if c.currentPayloadInfo == (eth.PayloadInfo{}) {
 			c.emitter.Emit(engine.PayloadSealExpiredErrorEvent{
-				Info:         x.Info,
-				Err:          errors.New("job was cancelled"),
-				IsLastInSpan: false,
-				DerivedFrom:  eth.L1BlockRef{},
+				Info:        x.Info,
+				Err:         errors.New("job was cancelled"),
+				Concluding:  false,
+				DerivedFrom: eth.L1BlockRef{},
 			})
 			return true
 		}
@@ -142,17 +142,17 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 		switch {
 		case p < 0.03: // 3%
 			c.emitter.Emit(engine.PayloadSealInvalidEvent{
-				Info:         x.Info,
-				Err:          errors.New("mock invalid seal"),
-				IsLastInSpan: x.IsLastInSpan,
-				DerivedFrom:  x.DerivedFrom,
+				Info:        x.Info,
+				Err:         errors.New("mock invalid seal"),
+				Concluding:  x.Concluding,
+				DerivedFrom: x.DerivedFrom,
 			})
 		case p < 0.08: // 5%
 			c.emitter.Emit(engine.PayloadSealExpiredErrorEvent{
-				Info:         x.Info,
-				Err:          errors.New("mock temp engine error"),
-				IsLastInSpan: x.IsLastInSpan,
-				DerivedFrom:  x.DerivedFrom,
+				Info:        x.Info,
+				Err:         errors.New("mock temp engine error"),
+				Concluding:  x.Concluding,
+				DerivedFrom: x.DerivedFrom,
 			})
 		default:
 			payloadEnvelope := &eth.ExecutionPayloadEnvelope{
@@ -178,11 +178,11 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 				SequenceNumber: 0, // ignored
 			}
 			c.emitter.Emit(engine.BuildSealedEvent{
-				Info:         x.Info,
-				Envelope:     payloadEnvelope,
-				Ref:          payloadRef,
-				IsLastInSpan: x.IsLastInSpan,
-				DerivedFrom:  x.DerivedFrom,
+				Info:        x.Info,
+				Envelope:    payloadEnvelope,
+				Ref:         payloadRef,
+				Concluding:  x.Concluding,
+				DerivedFrom: x.DerivedFrom,
 			})
 		}
 		c.currentPayloadInfo = eth.PayloadInfo{}

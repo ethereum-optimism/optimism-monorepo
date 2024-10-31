@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
@@ -37,9 +38,9 @@ type OpChainDeployment struct {
 	DisputeGameFactoryProxyAddress           common.Address `json:"disputeGameFactoryProxyAddress"`
 	AnchorStateRegistryProxyAddress          common.Address `json:"anchorStateRegistryProxyAddress"`
 	AnchorStateRegistryImplAddress           common.Address `json:"anchorStateRegistryImplAddress"`
-	// FaultDisputeGameAddress                  common.Address `json:"faultDisputeGameAddress"`
-	PermissionedDisputeGameAddress          common.Address `json:"permissionedDisputeGameAddress"`
-	DelayedWETHPermissionedGameProxyAddress common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
+	FaultDisputeGameAddress                  common.Address `json:"faultDisputeGameAddress"`
+	PermissionedDisputeGameAddress           common.Address `json:"permissionedDisputeGameAddress"`
+	DelayedWETHPermissionedGameProxyAddress  common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
 	// DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
 }
 
@@ -68,9 +69,22 @@ func L1CLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read intent: %w", err)
 	}
 
-	chainState, err := globalState.Chain(cfg.ChainID)
+	l1Contracts, err := L1(globalState, cfg.ChainID)
 	if err != nil {
-		return fmt.Errorf("failed to get chain state for ID %s: %w", cfg.ChainID.String(), err)
+		return fmt.Errorf("failed to generate l1Contracts: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(cfg.Outfile, 0o666)); err != nil {
+		return fmt.Errorf("failed to write L1 contract addresses: %w", err)
+	}
+
+	return nil
+}
+
+func L1(globalState *state.State, chainID common.Hash) (*L1Contracts, error) {
+	chainState, err := globalState.Chain(chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain state for ID %s: %w", chainID.String(), err)
 	}
 
 	l1Contracts := L1Contracts{
@@ -93,9 +107,9 @@ func L1CLI(cliCtx *cli.Context) error {
 			DisputeGameFactoryProxyAddress:           chainState.DisputeGameFactoryProxyAddress,
 			AnchorStateRegistryProxyAddress:          chainState.AnchorStateRegistryProxyAddress,
 			AnchorStateRegistryImplAddress:           chainState.AnchorStateRegistryImplAddress,
-			// FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
-			PermissionedDisputeGameAddress:          chainState.PermissionedDisputeGameAddress,
-			DelayedWETHPermissionedGameProxyAddress: chainState.DelayedWETHPermissionedGameProxyAddress,
+			FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
+			PermissionedDisputeGameAddress:           chainState.PermissionedDisputeGameAddress,
+			DelayedWETHPermissionedGameProxyAddress:  chainState.DelayedWETHPermissionedGameProxyAddress,
 			// DelayedWETHPermissionlessGameProxyAddress: chainState.DelayedWETHPermissionlessGameProxyAddress,
 		},
 		ImplementationsDeployment: ImplementationsDeployment{
@@ -113,9 +127,5 @@ func L1CLI(cliCtx *cli.Context) error {
 		},
 	}
 
-	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(cfg.Outfile, 0o666)); err != nil {
-		return fmt.Errorf("failed to write L1 contract addresses: %w", err)
-	}
-
-	return nil
+	return &l1Contracts, nil
 }

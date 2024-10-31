@@ -200,7 +200,7 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 
 	l1Host.SetTxOrigin(cfg.Deployer)
 
-	output, err := opcm.DeployOPChain(l1Host, opcm.DeployOPChainInput{
+	output, err := opcm.DeployOPChainV160(l1Host, opcm.DeployOPChainInputV160{
 		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
 		SystemConfigOwner:       cfg.SystemConfigOwner,
 		Batcher:                 cfg.BatchSenderAddress,

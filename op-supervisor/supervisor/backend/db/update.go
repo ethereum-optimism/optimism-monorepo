@@ -15,10 +15,7 @@ func (db *ChainsDB) AddLog(
 	parentBlock eth.BlockID,
 	logIdx uint32,
 	execMsg *types.ExecutingMessage) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot AddLog: %w: %v", types.ErrUnknownChain, chain)
 	}
@@ -26,10 +23,7 @@ func (db *ChainsDB) AddLog(
 }
 
 func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot SealBlock: %w: %v", types.ErrUnknownChain, chain)
 	}
@@ -42,10 +36,7 @@ func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
 }
 
 func (db *ChainsDB) Rewind(chain types.ChainID, headBlockNum uint64) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot Rewind: %w: %s", types.ErrUnknownChain, chain)
 	}
@@ -53,10 +44,7 @@ func (db *ChainsDB) Rewind(chain types.ChainID, headBlockNum uint64) error {
 }
 
 func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	localDB, ok := db.localDBs[chain]
+	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot UpdateLocalSafe: %w: %v", types.ErrUnknownChain, chain)
 	}
@@ -65,22 +53,17 @@ func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRe
 }
 
 func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	if _, ok := db.crossUnsafe[chain]; !ok {
+	v, ok := db.crossUnsafe.Get(chain)
+	if !ok {
 		return fmt.Errorf("cannot UpdateCrossUnsafe: %w: %s", types.ErrUnknownChain, chain)
 	}
 	db.logger.Debug("Updating cross unsafe", "chain", chain, "crossUnsafe", crossUnsafe)
-	db.crossUnsafe[chain] = crossUnsafe
+	v.Set(crossUnsafe)
 	return nil
 }
 
 func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	crossDB, ok := db.crossDBs[chain]
+	crossDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot UpdateCrossSafe: %w: %s", types.ErrUnknownChain, chain)
 	}
@@ -89,13 +72,14 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 }
 
 func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
+	// Lock, so we avoid race-conditions in-between getting (for comparison) and setting.
+	db.finalizedL1.Lock()
+	defer db.finalizedL1.Unlock()
 
-	if db.finalizedL1.Number > finalized.Number {
-		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", db.finalizedL1, finalized)
+	if v := db.finalizedL1.Value; v.Number > finalized.Number {
+		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", v, finalized)
 	}
 	db.logger.Debug("Updating finalized L1", "finalizedL1", finalized)
-	db.finalizedL1 = finalized
+	db.finalizedL1.Value = finalized
 	return nil
 }

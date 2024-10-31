@@ -58,13 +58,13 @@ func (m *MockInteropBackend) ExpectFinalized(chainID types.ChainID, result eth.B
 	m.Mock.On("Finalized", chainID).Once().Return(result, &err)
 }
 
-func (m *MockInteropBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
-	result := m.Mock.MethodCalled("DerivedFrom", chainID, derived)
+func (m *MockInteropBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
+	result := m.Mock.MethodCalled("CrossDerivedFrom", chainID, derived)
 	return result.Get(0).(eth.L1BlockRef), *result.Get(1).(*error)
 }
 
 func (m *MockInteropBackend) ExpectDerivedFrom(chainID types.ChainID, derived eth.BlockID, result eth.L1BlockRef, err error) {
-	m.Mock.On("DerivedFrom", chainID, derived).Once().Return(result, &err)
+	m.Mock.On("CrossDerivedFrom", chainID, derived).Once().Return(result, &err)
 }
 
 func (m *MockInteropBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {

@@ -68,7 +68,7 @@ func (eq *EngDeriver) onBuildStart(ev BuildStartEvent) {
 	eq.emitter.Emit(BuildStartedEvent{
 		Info:         eth.PayloadInfo{ID: id, Timestamp: uint64(ev.Attributes.Attributes.Timestamp)},
 		BuildStarted: buildStartTime,
-		IsLastInSpan: ev.Attributes.IsLastInSpan,
+		Concluding:   ev.Attributes.Concluding,
 		DerivedFrom:  ev.Attributes.DerivedFrom,
 		Parent:       ev.Attributes.Parent,
 	})

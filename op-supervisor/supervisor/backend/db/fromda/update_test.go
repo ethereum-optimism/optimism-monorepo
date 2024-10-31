@@ -64,7 +64,7 @@ func TestBadUpdates(t *testing.T) {
 			assertFn: noChange,
 		},
 		{
-			name: "DerivedFrom with conflicting parent root, same L1 height, new L2: accepted, L1 parent-hash is used only on L1 increments.",
+			name: "CrossDerivedFrom with conflicting parent root, same L1 height, new L2: accepted, L1 parent-hash is used only on L1 increments.",
 			setupFn: func(t *testing.T, db *DB, m *stubMetrics) {
 				require.NoError(t, db.AddDerived(toRef(dDerivedFrom, common.Hash{0x42}), toRef(eDerived, dDerived.Hash)), types.ErrConflict)
 			},

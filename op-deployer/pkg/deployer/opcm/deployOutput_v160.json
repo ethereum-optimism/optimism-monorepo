@@ -1,0 +1,77 @@
+[
+  {
+    "type": "function",
+    "name": "decodeOutput",
+    "inputs": [],
+    "outputs": [
+      {
+        "name": "output",
+        "indexed": false,
+        "type": "tuple",
+        "components": [
+          {
+            "name": "opChainProxyAdmin",
+            "type": "address"
+          },
+          {
+            "name": "addressManager",
+            "type": "address"
+          },
+          {
+            "name": "l1ERC721BridgeProxy",
+            "type": "address"
+          },
+          {
+            "name": "systemConfigProxy",
+            "type": "address"
+          },
+          {
+            "name": "optimismMintableERC20FactoryProxy",
+            "type": "address"
+          },
+          {
+            "name": "l1StandardBridgeProxy",
+            "type": "address"
+          },
+          {
+            "name": "l1CrossDomainMessengerProxy",
+            "type": "address"
+          },
+          {
+            "name": "optimismPortalProxy",
+            "type": "address"
+          },
+          {
+            "name": "disputeGameFactoryProxy",
+            "type": "address"
+          },
+          {
+            "name": "anchorStateRegistryProxy",
+            "type": "address"
+          },
+          {
+            "name": "anchorStateRegistryImpl",
+            "type": "address"
+          },
+          {
+            "name": "faultDisputeGame",
+            "type": "address",
+            "internalType": "contract FaultDisputeGame"
+          },
+          {
+            "name": "permissionedDisputeGame",
+            "type": "address"
+          },
+          {
+            "name": "delayedWETHPermissionedGameProxy",
+            "type": "address"
+          },
+          {
+            "name": "delayedWETHPermissionlessGameProxy",
+            "type": "address"
+          }
+        ]
+      }
+    ]
+  }
+]

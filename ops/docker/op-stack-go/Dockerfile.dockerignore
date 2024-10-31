@@ -6,6 +6,7 @@
 !/op-batcher
 !/op-bootnode
 !/op-chain-ops
+!/op-deployer
 !/op-challenger
 !/packages/contracts-bedrock/snapshots
 !/op-dispute-mon

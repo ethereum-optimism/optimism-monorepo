@@ -70,7 +70,7 @@ func (bs *BatchStage) NextBatch(ctx context.Context, parent eth.L2BlockRef) (*Si
 		// We only consider empty batch generation after we've drained all batches from the local
 		// span batch queue and the previous stage.
 		empty, err := bs.deriveNextEmptyBatch(ctx, true, parent)
-		// An empty batch always advances the safe head.
+		// An empty batch always advances the (local) safe head.
 		return empty, true, err
 	} else if err != nil {
 		return nil, false, err
@@ -81,7 +81,8 @@ func (bs *BatchStage) NextBatch(ctx context.Context, parent eth.L2BlockRef) (*Si
 	switch validity {
 	case BatchAccept: // continue
 		batch.LogContext(bs.Log()).Debug("Found next singular batch")
-		return batch, len(bs.nextSpan) == 0, nil
+		// BatchStage is only used with Holocene, where blocks immediately become (local) safe
+		return batch, true, nil
 	case BatchPast:
 		batch.LogContext(bs.Log()).Warn("Dropping past singular batch")
 		// NotEnoughData to read in next batch until we're through all past batches

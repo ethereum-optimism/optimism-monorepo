@@ -12,10 +12,7 @@ import (
 )
 
 func (db *ChainsDB) FindSealedBlock(chain types.ChainID, number uint64) (seal types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, fmt.Errorf("%w: %v", types.ErrUnknownChain, chain)
 	}
@@ -26,10 +23,7 @@ func (db *ChainsDB) FindSealedBlock(chain types.ChainID, number uint64) (seal ty
 // for the given chain. It does not contain safety guarantees.
 // The block number might not be available (empty database, or non-existent chain).
 func (db *ChainsDB) LatestBlockNum(chain types.ChainID) (num uint64, ok bool) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, knownChain := db.logDBs[chain]
+	logDB, knownChain := db.logDBs.Get(chain)
 	if !knownChain {
 		return 0, false
 	}
@@ -37,16 +31,15 @@ func (db *ChainsDB) LatestBlockNum(chain types.ChainID) (num uint64, ok bool) {
 }
 
 func (db *ChainsDB) IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	v, ok := db.crossUnsafe[chainID]
+	v, ok := db.crossUnsafe.Get(chainID)
 	if !ok {
 		return types.ErrUnknownChain
 	}
-	if v == (types.BlockSeal{}) {
+	crossUnsafe := v.Get()
+	if crossUnsafe == (types.BlockSeal{}) {
 		return types.ErrFuture
 	}
-	if block.Number > v.Number {
+	if block.Number > crossUnsafe.Number {
 		return types.ErrFuture
 	}
 	// TODO(#11693): make cross-unsafe reorg safe
@@ -54,9 +47,7 @@ func (db *ChainsDB) IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) erro
 }
 
 func (db *ChainsDB) ParentBlock(chainID types.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	logDB, ok := db.logDBs[chainID]
+	logDB, ok := db.logDBs.Get(chainID)
 	if !ok {
 		return eth.BlockID{}, types.ErrUnknownChain
 	}
@@ -72,9 +63,7 @@ func (db *ChainsDB) ParentBlock(chainID types.ChainID, parentOf eth.BlockID) (pa
 }
 
 func (db *ChainsDB) IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) error {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	logDB, ok := db.logDBs[chainID]
+	logDB, ok := db.logDBs.Get(chainID)
 	if !ok {
 		return types.ErrUnknownChain
 	}
@@ -89,10 +78,7 @@ func (db *ChainsDB) IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) erro
 }
 
 func (db *ChainsDB) LocalUnsafe(chainID types.ChainID) (types.BlockSeal, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	eventsDB, ok := db.logDBs[chainID]
+	eventsDB, ok := db.logDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -104,29 +90,24 @@ func (db *ChainsDB) LocalUnsafe(chainID types.ChainID) (types.BlockSeal, error) 
 }
 
 func (db *ChainsDB) CrossUnsafe(chainID types.ChainID) (types.BlockSeal, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	result, ok := db.crossUnsafe[chainID]
+	result, ok := db.crossUnsafe.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
+	crossUnsafe := result.Get()
 	// Fall back to cross-safe if cross-unsafe is not known yet
-	if result == (types.BlockSeal{}) {
+	if crossUnsafe == (types.BlockSeal{}) {
 		_, crossSafe, err := db.CrossSafe(chainID)
 		if err != nil {
 			return types.BlockSeal{}, fmt.Errorf("no cross-unsafe known for chain %s, and failed to fall back to cross-safe value: %w", chainID, err)
 		}
 		return crossSafe, nil
 	}
-	return result, nil
+	return crossUnsafe, nil
 }
 
 func (db *ChainsDB) LocalSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	localDB, ok := db.localDBs[chainID]
+	localDB, ok := db.localDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -134,10 +115,7 @@ func (db *ChainsDB) LocalSafe(chainID types.ChainID) (derivedFrom types.BlockSea
 }
 
 func (db *ChainsDB) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	crossDB, ok := db.crossDBs[chainID]
+	crossDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -145,10 +123,7 @@ func (db *ChainsDB) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSea
 }
 
 func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	finalizedL1 := db.finalizedL1
+	finalizedL1 := db.finalizedL1.Get()
 	if finalizedL1 == (eth.L1BlockRef{}) {
 		return types.BlockSeal{}, errors.New("no finalized L1 signal, cannot determine L2 finality yet")
 	}
@@ -160,26 +135,25 @@ func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
 }
 
 func (db *ChainsDB) LastDerivedFrom(chainID types.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error) {
-	crossDB, ok := db.crossDBs[chainID]
+	crossDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
 	return crossDB.LastDerivedAt(derivedFrom)
 }
 
-func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	localDB, ok := db.localDBs[chainID]
+// CrossDerivedFromBlockRef returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+// This includes the parent-block lookup. Use CrossDerivedFrom if no parent-block info is needed.
+func (db *ChainsDB) CrossDerivedFromBlockRef(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+	xdb, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return eth.BlockRef{}, types.ErrUnknownChain
 	}
-	res, err := localDB.DerivedFrom(derived)
+	res, err := xdb.DerivedFrom(derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
-	parent, err := localDB.PreviousDerivedFrom(res.ID())
+	parent, err := xdb.PreviousDerivedFrom(res.ID())
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
@@ -189,10 +163,7 @@ func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (der
 // Check calls the underlying logDB to determine if the given log entry exists at the given location.
 // If the block-seal of the block that includes the log is known, it is returned. It is fully zeroed otherwise, if the block is in-progress.
 func (db *ChainsDB) Check(chain types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, fmt.Errorf("%w: %v", types.ErrUnknownChain, chain)
 	}
@@ -202,10 +173,7 @@ func (db *ChainsDB) Check(chain types.ChainID, blockNum uint64, logIdx uint32, l
 // OpenBlock returns the Executing Messages for the block at the given number on the given chain.
 // it routes the request to the appropriate logDB.
 func (db *ChainsDB) OpenBlock(chainID types.ChainID, blockNum uint64) (seal eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	logDB, ok := db.logDBs[chainID]
+	logDB, ok := db.logDBs.Get(chainID)
 	if !ok {
 		return eth.BlockRef{}, 0, nil, types.ErrUnknownChain
 	}
@@ -215,10 +183,7 @@ func (db *ChainsDB) OpenBlock(chainID types.ChainID, blockNum uint64) (seal eth.
 // LocalDerivedFrom returns the block that the given block was derived from, if it exists in the local derived-from storage.
 // it routes the request to the appropriate localDB.
 func (db *ChainsDB) LocalDerivedFrom(chain types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	lDB, ok := db.localDBs[chain]
+	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -228,10 +193,7 @@ func (db *ChainsDB) LocalDerivedFrom(chain types.ChainID, derived eth.BlockID) (
 // CrossDerivedFrom returns the block that the given block was derived from, if it exists in the cross derived-from storage.
 // it routes the request to the appropriate crossDB.
 func (db *ChainsDB) CrossDerivedFrom(chain types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	xDB, ok := db.crossDBs[chain]
+	xDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -247,15 +209,12 @@ func (db *ChainsDB) CrossDerivedFrom(chain types.ChainID, derived eth.BlockID) (
 // Or ErrOutOfScope, with non-zero derivedFromScope,
 // if additional L1 data is needed to cross-verify the candidate L2 block.
 func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
-	xDB, ok := db.crossDBs[chain]
+	xDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return eth.BlockRef{}, eth.BlockRef{}, types.ErrUnknownChain
 	}
 
-	lDB, ok := db.localDBs[chain]
+	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return eth.BlockRef{}, eth.BlockRef{}, types.ErrUnknownChain
 	}
@@ -323,9 +282,7 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 }
 
 func (db *ChainsDB) PreviousDerived(chain types.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	lDB, ok := db.localDBs[chain]
+	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -333,9 +290,7 @@ func (db *ChainsDB) PreviousDerived(chain types.ChainID, derived eth.BlockID) (p
 }
 
 func (db *ChainsDB) PreviousDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	lDB, ok := db.localDBs[chain]
+	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return types.BlockSeal{}, types.ErrUnknownChain
 	}
@@ -343,9 +298,7 @@ func (db *ChainsDB) PreviousDerivedFrom(chain types.ChainID, derivedFrom eth.Blo
 }
 
 func (db *ChainsDB) NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-	lDB, ok := db.localDBs[chain]
+	lDB, ok := db.localDBs.Get(chain)
 	if !ok {
 		return eth.BlockRef{}, types.ErrUnknownChain
 	}
@@ -360,9 +313,6 @@ func (db *ChainsDB) NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID
 // it assumes the log entry has already been checked and is valid, this function only checks safety levels.
 // Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32) (safest types.SafetyLevel, err error) {
-	db.mu.RLock()
-	defer db.mu.RUnlock()
-
 	if finalized, err := db.Finalized(chainID); err == nil {
 		if finalized.Number >= blockNum {
 			return types.Finalized, nil
@@ -395,7 +345,7 @@ func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32)
 }
 
 func (db *ChainsDB) IteratorStartingAt(chain types.ChainID, sealedNum uint64, logIndex uint32) (logs.Iterator, error) {
-	logDB, ok := db.logDBs[chain]
+	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return nil, fmt.Errorf("%w: %v", types.ErrUnknownChain, chain)
 	}

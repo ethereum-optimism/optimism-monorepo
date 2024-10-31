@@ -402,11 +402,11 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainI
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
-	v, err := su.chainDBs.DerivedFrom(chainID, derived)
+	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
