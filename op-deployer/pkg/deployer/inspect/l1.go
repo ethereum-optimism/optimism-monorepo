@@ -36,7 +36,6 @@ type OpChainDeployment struct {
 	OptimismPortalProxyAddress               common.Address `json:"optimismPortalProxyAddress"`
 	DisputeGameFactoryProxyAddress           common.Address `json:"disputeGameFactoryProxyAddress"`
 	AnchorStateRegistryProxyAddress          common.Address `json:"anchorStateRegistryProxyAddress"`
-	AnchorStateRegistryImplAddress           common.Address `json:"anchorStateRegistryImplAddress"`
 	// FaultDisputeGameAddress                  common.Address `json:"faultDisputeGameAddress"`
 	PermissionedDisputeGameAddress          common.Address `json:"permissionedDisputeGameAddress"`
 	DelayedWETHPermissionedGameProxyAddress common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
@@ -55,6 +54,7 @@ type ImplementationsDeployment struct {
 	L1StandardBridgeImplAddress             common.Address `json:"l1StandardBridgeImplAddress"`
 	OptimismMintableERC20FactoryImplAddress common.Address `json:"optimismMintableERC20FactoryImplAddress"`
 	DisputeGameFactoryImplAddress           common.Address `json:"disputeGameFactoryImplAddress"`
+	AnchorStateRegistryImplAddress          common.Address `json:"anchorStateRegistryImplAddress"`
 }
 
 func L1CLI(cliCtx *cli.Context) error {
@@ -92,7 +92,6 @@ func L1CLI(cliCtx *cli.Context) error {
 			OptimismPortalProxyAddress:               chainState.OptimismPortalProxyAddress,
 			DisputeGameFactoryProxyAddress:           chainState.DisputeGameFactoryProxyAddress,
 			AnchorStateRegistryProxyAddress:          chainState.AnchorStateRegistryProxyAddress,
-			AnchorStateRegistryImplAddress:           chainState.AnchorStateRegistryImplAddress,
 			// FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
 			PermissionedDisputeGameAddress:          chainState.PermissionedDisputeGameAddress,
 			DelayedWETHPermissionedGameProxyAddress: chainState.DelayedWETHPermissionedGameProxyAddress,
@@ -110,6 +109,7 @@ func L1CLI(cliCtx *cli.Context) error {
 			L1StandardBridgeImplAddress:             globalState.ImplementationsDeployment.L1StandardBridgeImplAddress,
 			OptimismMintableERC20FactoryImplAddress: globalState.ImplementationsDeployment.OptimismMintableERC20FactoryImplAddress,
 			DisputeGameFactoryImplAddress:           globalState.ImplementationsDeployment.DisputeGameFactoryImplAddress,
+			AnchorStateRegistryImplAddress:          globalState.ImplementationsDeployment.AnchorStateRegistryImplAddress,
 		},
 	}
 
