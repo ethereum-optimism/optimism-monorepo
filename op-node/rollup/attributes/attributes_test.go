@@ -84,6 +84,8 @@ func TestAttributesHandler(t *testing.T) {
 		EcotoneTime:   new(uint64),
 	}
 
+	emptyWithdrawals := make(types.Withdrawals, 0)
+
 	a1L1Info, err := derive.L1InfoDepositBytes(cfg, cfg.Genesis.SystemConfig, 1, aL1Info, refA0.Time+cfg.BlockTime)
 	require.NoError(t, err)
 	parentBeaconBlockRoot := testutils.RandomHash(rng)
@@ -102,6 +104,7 @@ func TestAttributesHandler(t *testing.T) {
 		BaseFeePerGas: eth.Uint256Quantity(*uint256.NewInt(7)),
 		BlockHash:     common.Hash{},
 		Transactions:  []eth.Data{a1L1Info},
+		Withdrawals:   &emptyWithdrawals,
 	}, ParentBeaconBlockRoot: &parentBeaconBlockRoot}
 	// fix up the block-hash
 	payloadA1.ExecutionPayload.BlockHash, _ = payloadA1.CheckBlockHash()
@@ -139,6 +142,7 @@ func TestAttributesHandler(t *testing.T) {
 		BaseFeePerGas: eth.Uint256Quantity(*uint256.NewInt(7)),
 		BlockHash:     common.Hash{},
 		Transactions:  []eth.Data{a1L1Info},
+		Withdrawals:   &emptyWithdrawals,
 	}, ParentBeaconBlockRoot: &parentBeaconBlockRoot}
 	// fix up the block-hash
 	payloadA1Alt.ExecutionPayload.BlockHash, _ = payloadA1Alt.CheckBlockHash()
