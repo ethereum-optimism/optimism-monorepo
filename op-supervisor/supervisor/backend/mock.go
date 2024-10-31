@@ -62,7 +62,7 @@ func (m *MockBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth
 	return eth.BlockID{}, nil
 }
 
-func (m *MockBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (m *MockBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return eth.BlockRef{}, nil
 }
 

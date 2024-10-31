@@ -223,7 +223,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.ErrorContains(t, err, "some error")
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, DerivedFrom returns error", func(t *testing.T) {
+	t.Run("timestamp is less, CrossDerivedFrom returns error", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
@@ -245,7 +245,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.ErrorContains(t, err, "some error")
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, DerivedFrom Number is greater", func(t *testing.T) {
+	t.Run("timestamp is less, CrossDerivedFrom Number is greater", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
@@ -268,7 +268,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.ErrorIs(t, err, types.ErrOutOfScope)
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, DerivedFrom Number less", func(t *testing.T) {
+	t.Run("timestamp is less, CrossDerivedFrom Number less", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {
@@ -291,7 +291,7 @@ func TestCrossSafeHazards(t *testing.T) {
 		require.NoError(t, err)
 		require.Empty(t, hazards)
 	})
-	t.Run("timestamp is less, DerivedFrom Number equal", func(t *testing.T) {
+	t.Run("timestamp is less, CrossDerivedFrom Number equal", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		sampleBlockSeal := types.BlockSeal{Number: 3, Hash: common.BytesToHash([]byte{0x02})}
 		ssd.checkFn = func() (includedIn types.BlockSeal, err error) {

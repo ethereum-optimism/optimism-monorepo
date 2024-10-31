@@ -142,16 +142,18 @@ func (db *ChainsDB) LastDerivedFrom(chainID types.ChainID, derivedFrom eth.Block
 	return crossDB.LastDerivedAt(derivedFrom)
 }
 
-func (db *ChainsDB) DerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	localDB, ok := db.localDBs.Get(chainID)
+// CrossDerivedFromBlockRef returns the block that the given block was derived from, if it exists in the cross derived-from storage.
+// This includes the parent-block lookup. Use CrossDerivedFrom if no parent-block info is needed.
+func (db *ChainsDB) CrossDerivedFromBlockRef(chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+	xdb, ok := db.crossDBs.Get(chainID)
 	if !ok {
 		return eth.BlockRef{}, types.ErrUnknownChain
 	}
-	res, err := localDB.DerivedFrom(derived)
+	res, err := xdb.DerivedFrom(derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
-	parent, err := localDB.PreviousDerivedFrom(res.ID())
+	parent, err := xdb.PreviousDerivedFrom(res.ID())
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
