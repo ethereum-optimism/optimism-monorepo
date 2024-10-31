@@ -100,7 +100,7 @@ fuzz:
 		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMulOp ./mipsevm/tests" \
 		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultOp ./mipsevm/tests" \
 		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultuOp ./mipsevm/tests" \
-	| parallel -j $(shell nproc) {}
+	| parallel -j 8 {}
 
 .PHONY: \
 	cannon32-impl \

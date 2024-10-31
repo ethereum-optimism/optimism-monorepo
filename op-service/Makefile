@@ -19,7 +19,7 @@ fuzz:
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzEncodeDecodeBlob ./eth" \
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzDetectNonBijectivity ./eth" \
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzEncodeScalar ./eth" \
-	| parallel -j $(shell nproc) {}
+	| parallel -j 8 {}
 
 .PHONY: \
 	test \

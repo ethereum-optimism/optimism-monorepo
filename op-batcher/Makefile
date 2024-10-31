@@ -43,7 +43,7 @@ fuzz:
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzChannelZeroCloseTimeout ./batcher" \
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzSeqWindowClose ./batcher" \
 		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzSeqWindowZeroTimeoutClose ./batcher" \
-	| parallel -j $(shell nproc) {}
+	| parallel -j 8 {}
 
 .PHONY: \
 	op-batcher \
