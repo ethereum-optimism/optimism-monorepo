@@ -443,11 +443,14 @@ func (e *EngineController) TryBackupUnsafeReorg(ctx context.Context) (bool, erro
 	if err != nil {
 		var rpcErr rpc.Error
 		if errors.As(err, &rpcErr) {
-			e.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
 			switch eth.ErrorCode(rpcErr.ErrorCode()) {
 			case eth.InvalidForkchoiceState:
+				e.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
 				return true, derive.NewResetError(fmt.Errorf("forkchoice update was inconsistent with engine, need reset to resolve: %w", rpcErr))
 			default:
+				// Retry when forkChoiceUpdate returns non-input error.
+				// Do not reset backupUnsafeHead because it will be used again.
+				e.needFCUCallForBackupUnsafeReorg = true
 				return true, derive.NewTemporaryError(fmt.Errorf("unexpected error code in forkchoice-updated response: %w", err))
 			}
 		} else {
