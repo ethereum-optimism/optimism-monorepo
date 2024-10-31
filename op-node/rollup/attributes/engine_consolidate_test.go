@@ -24,7 +24,7 @@ var (
 	validParentBeaconRoot = common.HexToHash("0x456")
 	validPrevRandao       = eth.Bytes32(common.HexToHash("0x789"))
 	validGasLimit         = eth.Uint64Quantity(1000)
-	validWithdrawals      = types.Withdrawals{}
+	validWithdrawals      = make(types.Withdrawals, 0)
 	validFeeRecipient     = predeploys.SequencerFeeVaultAddr
 )
 
@@ -43,7 +43,7 @@ func ecotoneArgs() args {
 				Timestamp:    validTimestamp,
 				PrevRandao:   validPrevRandao,
 				GasLimit:     validGasLimit,
-				Withdrawals:  &validWithdrawals,
+				Withdrawals:  nil,
 				FeeRecipient: validFeeRecipient,
 			},
 		},
@@ -52,7 +52,7 @@ func ecotoneArgs() args {
 			PrevRandao:            validPrevRandao,
 			GasLimit:              &validGasLimit,
 			ParentBeaconBlockRoot: &validParentBeaconRoot,
-			Withdrawals:           &validWithdrawals,
+			Withdrawals:           nil,
 			SuggestedFeeRecipient: validFeeRecipient,
 		},
 		parentHash: validParentHash,
@@ -145,137 +145,283 @@ func createMismatchedFeeRecipient() args {
 }
 
 func TestAttributesMatch(t *testing.T) {
+	canyonTimeInFuture := uint64(100)
+	canyonTimeInPast := uint64(0)
+	isthmusTimeInFuture := uint64(250)
+
+	rollupCfgPreCanyonChecks := &rollup.Config{CanyonTime: &canyonTimeInFuture}
+	rollupCfgPreIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInFuture}
+
 	rollupCfg := &rollup.Config{}
 
 	tests := []struct {
 		shouldMatch bool
 		args        args
+		rollupCfg   *rollup.Config
+		desc        string
 	}{
 		{
 			shouldMatch: true,
 			args:        ecotoneArgs(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneArgs",
 		},
 		{
 			shouldMatch: true,
 			args:        canyonArgs(),
+			rollupCfg:   rollupCfgPreIsthmusChecks,
+			desc:        "canyonArgs",
 		},
 		{
 			shouldMatch: true,
 			args:        bedrockArgs(),
+			rollupCfg:   rollupCfgPreIsthmusChecks,
+			desc:        "bedrockArgs",
 		},
 		{
 			shouldMatch: false,
 			args:        mismatchedParentHashArgs(),
+			rollupCfg:   rollupCfgPreIsthmusChecks,
+			desc:        "mismatchedParentHashArgs",
 		},
 		{
 			shouldMatch: false,
 			args:        ecotoneNoParentBeaconBlockRoot(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneNoParentBeaconBlockRoot",
 		},
 		{
 			shouldMatch: false,
 			args:        ecotoneUnexpectedParentBeaconBlockRoot(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneUnexpectedParentBeaconBlockRoot",
 		},
 		{
 			shouldMatch: false,
 			args:        ecotoneMismatchParentBeaconBlockRoot(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneMismatchParentBeaconBlockRoot",
 		},
 		{
 			shouldMatch: true,
 			args:        ecotoneMismatchParentBeaconBlockRootPtr(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneMismatchParentBeaconBlockRootPtr",
 		},
 		{
 			shouldMatch: true,
 			args:        ecotoneNilParentBeaconBlockRoots(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "ecotoneNilParentBeaconBlockRoots",
 		},
 		{
 			shouldMatch: false,
 			args:        createMismatchedPrevRandao(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "createMismatchedPrevRandao",
 		},
 		{
 			shouldMatch: false,
 			args:        createMismatchedGasLimit(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "createMismatchedGasLimit",
 		},
 		{
 			shouldMatch: false,
 			args:        createNilGasLimit(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "createNilGasLimit",
 		},
 		{
 			shouldMatch: false,
 			args:        createMismatchedTimestamp(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "createMismatchedTimestamp",
 		},
 		{
 			shouldMatch: false,
 			args:        createMismatchedFeeRecipient(),
+			rollupCfg:   rollupCfgPreCanyonChecks,
+			desc:        "createMismatchedFeeRecipient",
 		},
 	}
 
-	for i, test := range tests {
+	for _, test := range tests {
 		err := AttributesMatchBlock(rollupCfg, test.args.attrs, test.args.parentHash, test.args.envelope, testlog.Logger(t, log.LevelInfo))
 		if test.shouldMatch {
-			require.NoError(t, err, "fail %d", i)
+			require.NoError(t, err, "fail: %s", test.desc)
 		} else {
-			require.Error(t, err, "fail %d", i)
+			require.Error(t, err, "fail: %s", test.desc)
 		}
 	}
 }
 
 func TestWithdrawalsMatch(t *testing.T) {
+	canyonTimeInFuture := uint64(100)
+	canyonTimeInPast := uint64(0)
+	isthmusTimeInPast := uint64(150)
+	isthmusTimeInFuture := uint64(250)
+
+	emptyWithdrawals := make(types.Withdrawals, 0)
+
+	rollupCfgPreCanyonChecks := &rollup.Config{CanyonTime: &canyonTimeInFuture}
+	rollupCfgPreIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInFuture}
+	rollupCfgPostIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInPast}
+
 	tests := []struct {
-		attrs       *types.Withdrawals
-		block       *types.Withdrawals
-		shouldMatch bool
+		cfg        *rollup.Config
+		attrs      *eth.PayloadAttributes
+		block      *eth.ExecutionPayload
+		checkFails bool
+		desc       string
 	}{
 		{
-			attrs:       nil,
-			block:       nil,
-			shouldMatch: true,
+			cfg:        rollupCfgPreCanyonChecks,
+			attrs:      nil,
+			block:      nil,
+			checkFails: true,
+			desc:       "nil attributes/block",
 		},
 		{
-			attrs:       &types.Withdrawals{},
-			block:       nil,
-			shouldMatch: false,
+			cfg:        rollupCfgPreCanyonChecks,
+			attrs:      &eth.PayloadAttributes{Withdrawals: nil},
+			block:      &eth.ExecutionPayload{Timestamp: 0},
+			checkFails: false,
+			desc:       "pre-canyon: nil attr withdrawals",
 		},
 		{
-			attrs:       nil,
-			block:       &types.Withdrawals{},
-			shouldMatch: false,
-		},
-		{
-			attrs:       &types.Withdrawals{},
-			block:       &types.Withdrawals{},
-			shouldMatch: true,
-		},
-		{
-			attrs: &types.Withdrawals{
-				{
-					Index: 1,
+			cfg: rollupCfgPreCanyonChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &types.Withdrawals{
+					&types.Withdrawal{
+						Index: 1,
+					},
 				},
 			},
-			block:       &types.Withdrawals{},
-			shouldMatch: false,
+			block:      &eth.ExecutionPayload{Timestamp: 0},
+			checkFails: true,
+			desc:       "pre-canyon: non-nil withdrawals",
 		},
 		{
-			attrs: &types.Withdrawals{
-				{
-					Index: 1,
+			cfg:   rollupCfgPostIsthmusChecks,
+			attrs: &eth.PayloadAttributes{},
+			block: &eth.ExecutionPayload{
+				Timestamp: 200,
+				Withdrawals: &types.Withdrawals{
+					&types.Withdrawal{
+						Index: 1,
+					},
 				},
 			},
-			block: &types.Withdrawals{
-				{
-					Index: 2,
+			checkFails: true,
+			desc:       "post-isthmus: non-empty block withdrawals list",
+		},
+		{
+			cfg:   rollupCfgPostIsthmusChecks,
+			attrs: &eth.PayloadAttributes{},
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				WithdrawalsRoot: nil,
+				Withdrawals:     &emptyWithdrawals,
+			},
+			checkFails: true,
+			desc:       "post-isthmus: nil block withdrawalsRoot",
+		},
+		{
+			cfg: rollupCfgPostIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &types.Withdrawals{
+					&types.Withdrawal{
+						Index: 1,
+					},
 				},
 			},
-			shouldMatch: false,
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				WithdrawalsRoot: &common.Hash{},
+				Withdrawals:     &emptyWithdrawals,
+			},
+			checkFails: true,
+			desc:       "post-isthmus: non-emtpy attr withdrawals list",
+		},
+		{
+			cfg: rollupCfgPostIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &emptyWithdrawals,
+			},
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				WithdrawalsRoot: &common.Hash{},
+				Withdrawals:     &emptyWithdrawals,
+			},
+			checkFails: false,
+			desc:       "post-isthmus: non-empty block withdrawalsRoot and empty block/attr withdrawals list",
+		},
+		{
+			cfg:   rollupCfgPreIsthmusChecks,
+			attrs: &eth.PayloadAttributes{},
+			block: &eth.ExecutionPayload{
+				Timestamp: 200,
+				Withdrawals: &types.Withdrawals{
+					&types.Withdrawal{
+						Index: 1,
+					},
+				},
+			},
+			checkFails: true,
+			desc:       "pre-isthmus: non-emtpy block withdrawals list",
+		},
+		{
+			cfg:   rollupCfgPreIsthmusChecks,
+			attrs: &eth.PayloadAttributes{},
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				Withdrawals:     &types.Withdrawals{},
+				WithdrawalsRoot: &common.Hash{},
+			},
+			checkFails: true,
+			desc:       "pre-isthmus: non-emtpy block withdrawalsRoot",
+		},
+		{
+			cfg: rollupCfgPreIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &types.Withdrawals{
+					&types.Withdrawal{
+						Index: 1,
+					},
+				},
+			},
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				Withdrawals:     &types.Withdrawals{},
+				WithdrawalsRoot: nil,
+			},
+			checkFails: true,
+			desc:       "pre-isthmus: non-emtpy attr withdrawals list",
+		},
+		{
+			cfg: rollupCfgPreIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &emptyWithdrawals,
+			},
+			block: &eth.ExecutionPayload{
+				Timestamp:       200,
+				WithdrawalsRoot: nil,
+				Withdrawals:     &emptyWithdrawals,
+			},
+			checkFails: false,
+			desc:       "pre-isthmus: nil block withdrawalsRoot and empty block/attr withdrawals list",
 		},
 	}
 
 	for _, test := range tests {
-		err := checkWithdrawalsMatch(test.attrs, test.block)
+		t.Log(test.desc)
+		err := checkWithdrawals(test.cfg, test.attrs, test.block)
 
-		if test.shouldMatch {
-			require.NoError(t, err)
+		if test.checkFails {
+			require.Error(t, err, "test: %s", test.desc)
 		} else {
-			require.Error(t, err)
+			require.NoError(t, err, "test: %s", test.desc)
 		}
 	}
 }
