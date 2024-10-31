@@ -206,6 +206,7 @@ type PeerStats struct {
 	BlocksTopic   uint `json:"blocksTopic"`
 	BlocksTopicV2 uint `json:"blocksTopicV2"`
 	BlocksTopicV3 uint `json:"blocksTopicV3"`
+	BlocksTopicV4 uint `json:"blocksTopicV4"`
 	Banned        uint `json:"banned"`
 	Known         uint `json:"known"`
 }
@@ -223,6 +224,7 @@ func (s *APIBackend) PeerStats(_ context.Context) (*PeerStats, error) {
 		BlocksTopic:   uint(len(s.node.GossipOut().BlocksTopicV1Peers())),
 		BlocksTopicV2: uint(len(s.node.GossipOut().BlocksTopicV2Peers())),
 		BlocksTopicV3: uint(len(s.node.GossipOut().BlocksTopicV3Peers())),
+		BlocksTopicV4: uint(len(s.node.GossipOut().BlocksTopicV4Peers())),
 		Banned:        0,
 		Known:         uint(len(pstore.Peers())),
 	}
