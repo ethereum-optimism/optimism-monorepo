@@ -60,7 +60,7 @@ type Message struct {
 type Identifier struct {
 	Origin      common.Address
 	BlockNumber uint64
-	LogIndex    uint64
+	LogIndex    uint32
 	Timestamp   uint64
 	ChainID     ChainID // flat, not a pointer, to make Identifier safe as map key
 }
@@ -90,7 +90,10 @@ func (id *Identifier) UnmarshalJSON(input []byte) error {
 	}
 	id.Origin = dec.Origin
 	id.BlockNumber = uint64(dec.BlockNumber)
-	id.LogIndex = uint64(dec.LogIndex)
+	if dec.LogIndex > math.MaxUint32 {
+		return fmt.Errorf("log index too large: %d", dec.LogIndex)
+	}
+	id.LogIndex = uint32(dec.LogIndex)
 	id.Timestamp = uint64(dec.Timestamp)
 	id.ChainID = (ChainID)(dec.ChainID)
 	return nil

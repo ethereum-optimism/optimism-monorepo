@@ -13,7 +13,7 @@ import (
 )
 
 func FuzzRoundtripIdentifierJSONMarshal(f *testing.F) {
-	f.Fuzz(func(t *testing.T, origin []byte, blockNumber uint64, logIndex uint64, timestamp uint64, chainID []byte) {
+	f.Fuzz(func(t *testing.T, origin []byte, blockNumber uint64, logIndex uint32, timestamp uint64, chainID []byte) {
 		if len(chainID) > 32 {
 			chainID = chainID[:32]
 		}
@@ -55,7 +55,19 @@ func TestChainID_String(t *testing.T) {
 	for _, test := range tests {
 		test := test
 		t.Run(test.expected, func(t *testing.T) {
-			require.Equal(t, test.expected, test.input.String())
+			t.Run("String", func(t *testing.T) {
+				require.Equal(t, test.expected, test.input.String())
+			})
+			t.Run("MarshalText", func(t *testing.T) {
+				data, err := test.input.MarshalText()
+				require.NoError(t, err)
+				require.Equal(t, test.expected, string(data))
+			})
+			t.Run("UnmarshalText", func(t *testing.T) {
+				var id ChainID
+				require.NoError(t, id.UnmarshalText([]byte(test.expected)))
+				require.Equal(t, test.input, id)
+			})
 		})
 	}
 }

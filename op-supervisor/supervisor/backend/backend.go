@@ -317,7 +317,7 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), logHash)
+	_, err := su.chainDBs.Check(chainID, blockNum, logIdx, logHash)
 	if errors.Is(err, types.ErrFuture) {
 		su.logger.Debug("Future message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.LocalUnsafe, nil
@@ -329,7 +329,7 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	if err != nil {
 		return types.Invalid, fmt.Errorf("failed to check log: %w", err)
 	}
-	return su.chainDBs.Safest(chainID, blockNum, uint32(logIdx))
+	return su.chainDBs.Safest(chainID, blockNum, logIdx)
 }
 
 func (su *SupervisorBackend) CheckMessages(
