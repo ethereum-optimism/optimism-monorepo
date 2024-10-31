@@ -36,8 +36,8 @@ func (eq *EngDeriver) onPayloadProcess(ev PayloadProcessEvent) {
 	}
 	switch status.Status {
 	case eth.ExecutionInvalid, eth.ExecutionInvalidBlockHash:
-		// TODO: I'm not sure how derivation can reach this point. By my understand, it would
-		// already fail earlier during the FCU call.
+		// Depending on execution engine, not all block-validity checks run immediately on build-start
+		// at the time of the forkchoiceUpdated engine-API call, nor during getPayload.
 		if ev.DerivedFrom != (eth.L1BlockRef{}) && eq.cfg.IsHolocene(ev.DerivedFrom.Time) {
 			eq.emitDepositsOnlyPayloadAttributesRequest(ev.Ref.ParentID(), ev.DerivedFrom)
 			return
