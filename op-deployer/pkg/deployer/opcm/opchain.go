@@ -59,7 +59,7 @@ type opcmDeployInputV160 struct {
 
 type opcmRolesIsthmus struct {
 	opcmRolesBase
-	FeeAdmin common.Address
+	SystemConfigFeeAdmin common.Address
 }
 
 type opcmDeployInputIsthmus struct {
@@ -135,8 +135,8 @@ func DeployOPChainInputIsthmusDeployCalldata(input DeployOPChainInputIsthmus) an
 	v160Data := DeployOPChainInputV160DeployCalldata(input.DeployOPChainInputV160).(opcmDeployInputV160)
 	return opcmDeployInputIsthmus{
 		Roles: opcmRolesIsthmus{
-			opcmRolesBase: v160Data.Roles,
-			FeeAdmin:      input.SystemConfigFeeAdmin,
+			opcmRolesBase:        v160Data.Roles,
+			SystemConfigFeeAdmin: input.SystemConfigFeeAdmin,
 		},
 		opcmDeployInputBase: v160Data.opcmDeployInputBase,
 	}
