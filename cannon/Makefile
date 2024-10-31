@@ -101,7 +101,7 @@ fuzz:
 		go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMulOp ./mipsevm/tests; \
 		go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultOp ./mipsevm/tests; \
 		go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultuOp ./mipsevm/tests" \
-	| xargs -I CMD -P $(nproc) sh -c CMD
+	| xargs -I CMD -P $(shell nproc) sh -c CMD
 
 .PHONY: \
 	cannon32-impl \

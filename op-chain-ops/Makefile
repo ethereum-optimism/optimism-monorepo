@@ -44,7 +44,7 @@ fuzz:
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzEncodeDecodeLegacyWithdrawal ./crossdomain; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzAliasing ./crossdomain; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzVersionedNonce ./crossdomain" \
-	| xargs -I CMD -P $(nproc) sh -c CMD
+	| xargs -I CMD -P $(shell nproc) sh -c CMD
 
 
 sync-standard-version:

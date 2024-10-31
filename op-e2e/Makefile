@@ -73,4 +73,4 @@ fuzz:
 		go test -run NOTAREALTEST -tags cgo_test -v -fuzztime 10s -fuzz FuzzFjordCostFunction ./opgeth; \
 		go test -run NOTAREALTEST -tags cgo_test -v -fuzztime 10s -fuzz FuzzFastLzGethSolidity ./opgeth; \
 		go test -run NOTAREALTEST -tags cgo_test -v -fuzztime 10s -fuzz FuzzFastLzCgo ./opgeth" \
-	| xargs -I CMD -P $(nproc) sh -c CMD
+	| xargs -I CMD -P $(shell nproc) sh -c CMD

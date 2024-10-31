@@ -49,7 +49,7 @@ fuzz:
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzParseL1InfoDepositTxDataBadLength ./rollup/derive; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzRejectCreateBlockBadTimestamp ./rollup/driver; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzDecodeDepositTxDataToL1Info ./rollup/driver" \
-	| xargs -I CMD -P $(nproc) sh -c CMD
+	| xargs -I CMD -P $(shell nproc) sh -c CMD
 
 generate-mocks:
 	go generate ./...

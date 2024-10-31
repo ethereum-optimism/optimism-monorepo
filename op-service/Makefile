@@ -19,7 +19,7 @@ fuzz:
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzEncodeDecodeBlob ./eth; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzDetectNonBijectivity ./eth; \
 		go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz FuzzEncodeScalar ./eth" \
-	| xargs -I CMD -P $(nproc) sh -c CMD
+	| xargs -I CMD -P $(shell nproc) sh -c CMD
 
 .PHONY: \
 	test \
