@@ -763,6 +763,9 @@ jobs:
             - golang-build-cache-fuzz-golang-{{ checksum "go.sum" }}
             - golang-build-cache-fuzz-golang-
       - run:
+          name: Install parallel
+          command: apt-get update && apt-get install -y parallel
+      - run:
           name: Fuzz
           command: make fuzz
           working_directory: "<<parameters.package_name>>"

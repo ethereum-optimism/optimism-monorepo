@@ -86,23 +86,21 @@ cannon-stf-verify:
 	@docker build --progress plain -f Dockerfile.diff ../
 
 fuzz:
-  # Common vm tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallBrk ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallMmap ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallExitGroup ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallFcntl ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateHintRead ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStatePreimageRead ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateHintWrite ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStatePreimageWrite ./mipsevm/tests
-	# Single-threaded tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallCloneST ./mipsevm/tests
-	# Multi-threaded tests
-	go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallCloneMT ./mipsevm/tests
-	# 64-bit tests - increased fuzztime for a larger input space
-	go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMulOp ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultOp ./mipsevm/tests
-	go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultuOp ./mipsevm/tests
+	printf "%s\n" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallBrk ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallMmap ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallExitGroup ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallFcntl ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateHintRead ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStatePreimageRead ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateHintWrite ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStatePreimageWrite ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallCloneST ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -run NOTAREALTEST -v -fuzztime 10s -fuzz=FuzzStateSyscallCloneMT ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMulOp ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultOp ./mipsevm/tests" \
+		"go test $(FUZZLDFLAGS) -tags=cannon64 -run NOTAREALTEST -v -fuzztime 20s -fuzz=FuzzStateConsistencyMultuOp ./mipsevm/tests" \
+	| parallel -j $(shell nproc) {}
 
 .PHONY: \
 	cannon32-impl \
