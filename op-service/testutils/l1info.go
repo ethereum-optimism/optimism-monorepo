@@ -30,6 +30,7 @@ type MockBlockInfo struct {
 	InfoHeaderRLP   []byte
 
 	InfoParentBeaconRoot *common.Hash
+	InfoWithdrawalsRoot  *common.Hash
 }
 
 func (l *MockBlockInfo) Hash() common.Hash {
@@ -86,6 +87,10 @@ func (l *MockBlockInfo) ID() eth.BlockID {
 
 func (l *MockBlockInfo) ParentBeaconRoot() *common.Hash {
 	return l.InfoParentBeaconRoot
+}
+
+func (l *MockBlockInfo) WithdrawalsRoot() *common.Hash {
+	return l.InfoWithdrawalsRoot
 }
 
 func (l *MockBlockInfo) HeaderRLP() ([]byte, error) {

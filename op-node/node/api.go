@@ -135,6 +135,8 @@ func (n *nodeAPI) OutputAtBlock(ctx context.Context, number hexutil.Uint64) (*et
 		return nil, fmt.Errorf("failed to get L2 block ref with sync status: %w", err)
 	}
 
+	// OutputV0AtBlock uses the WithdrawalsRoot in the block header as the value for the
+	// output MessagePasserStorageRoot, if Isthmus hard fork has activated.
 	output, err := n.client.OutputV0AtBlock(ctx, ref.Hash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get L2 output at block %s: %w", ref, err)

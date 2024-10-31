@@ -95,6 +95,10 @@ func (h headerInfo) ParentBeaconRoot() *common.Hash {
 	return h.Header.ParentBeaconRoot
 }
 
+func (h headerInfo) WithdrawalsRoot() *common.Hash {
+	return h.Header.WithdrawalsHash
+}
+
 func (h headerInfo) HeaderRLP() ([]byte, error) {
 	return rlp.EncodeToBytes(h.Header)
 }
@@ -293,23 +297,24 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 	}
 
 	payload := &eth.ExecutionPayload{
-		ParentHash:    block.ParentHash,
-		FeeRecipient:  block.Coinbase,
-		StateRoot:     eth.Bytes32(block.Root),
-		ReceiptsRoot:  eth.Bytes32(block.ReceiptHash),
-		LogsBloom:     block.Bloom,
-		PrevRandao:    eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
-		BlockNumber:   block.Number,
-		GasLimit:      block.GasLimit,
-		GasUsed:       block.GasUsed,
-		Timestamp:     block.Time,
-		ExtraData:     eth.BytesMax32(block.Extra),
-		BaseFeePerGas: eth.Uint256Quantity(baseFee),
-		BlockHash:     block.Hash,
-		Transactions:  opaqueTxs,
-		Withdrawals:   block.Withdrawals,
-		BlobGasUsed:   block.BlobGasUsed,
-		ExcessBlobGas: block.ExcessBlobGas,
+		ParentHash:      block.ParentHash,
+		FeeRecipient:    block.Coinbase,
+		StateRoot:       eth.Bytes32(block.Root),
+		ReceiptsRoot:    eth.Bytes32(block.ReceiptHash),
+		LogsBloom:       block.Bloom,
+		PrevRandao:      eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
+		BlockNumber:     block.Number,
+		GasLimit:        block.GasLimit,
+		GasUsed:         block.GasUsed,
+		Timestamp:       block.Time,
+		ExtraData:       eth.BytesMax32(block.Extra),
+		BaseFeePerGas:   eth.Uint256Quantity(baseFee),
+		BlockHash:       block.Hash,
+		Transactions:    opaqueTxs,
+		Withdrawals:     block.Withdrawals,
+		BlobGasUsed:     block.BlobGasUsed,
+		ExcessBlobGas:   block.ExcessBlobGas,
+		WithdrawalsRoot: block.WithdrawalsRoot,
 	}
 
 	return &eth.ExecutionPayloadEnvelope{

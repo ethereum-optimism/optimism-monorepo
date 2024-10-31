@@ -26,6 +26,7 @@ type BlockInfo interface {
 	GasUsed() uint64
 	GasLimit() uint64
 	ParentBeaconRoot() *common.Hash // Dencun extension
+	WithdrawalsRoot() *common.Hash  // Isthmus extension
 
 	// HeaderRLP returns the RLP of the block header as per consensus rules
 	// Returns an error if the header RLP could not be written
@@ -70,6 +71,10 @@ func (b blockInfo) HeaderRLP() ([]byte, error) {
 
 func (b blockInfo) ParentBeaconRoot() *common.Hash {
 	return b.Block.BeaconRoot()
+}
+
+func (b blockInfo) WithdrawalsRoot() *common.Hash {
+	return b.Header().WithdrawalsHash
 }
 
 func BlockToInfo(b *types.Block) BlockInfo {
@@ -131,6 +136,10 @@ func (h headerBlockInfo) GasLimit() uint64 {
 
 func (h headerBlockInfo) ParentBeaconRoot() *common.Hash {
 	return h.Header.ParentBeaconRoot
+}
+
+func (h headerBlockInfo) WithdrawalsRoot() *common.Hash {
+	return h.Header.WithdrawalsHash
 }
 
 func (h headerBlockInfo) HeaderRLP() ([]byte, error) {
