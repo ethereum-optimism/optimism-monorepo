@@ -65,6 +65,9 @@ func Deploy(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceMap
 	// after creating the final config for any particular L2. Will add comments.
 
 	for l2ChainID, l2Cfg := range cfg.L2s {
+		// moose failed to deploy L2 1374620053792 to L1: failed to deploy L2 OP chain: failed to
+		// run DeployOPChain script: revert: unrecognized 4 byte signature: 117e2e39
+		// `systemConfigFeeAdmin()`
 		l2Deployment, err := DeployL2ToL1(l1Host, cfg.Superchain, superDeployment, l2Cfg)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to deploy L2 %d to L1: %w", &l2ChainID, err)
