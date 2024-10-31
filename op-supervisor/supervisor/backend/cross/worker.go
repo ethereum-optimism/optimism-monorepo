@@ -6,6 +6,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -69,7 +70,11 @@ func (s *Worker) worker() {
 			if errors.Is(err, s.ctx.Err()) {
 				return
 			}
-			s.log.Error("Failed to process work", "err", err)
+			if errors.Is(err, types.ErrFuture) {
+				s.log.Debug("Failed to process work", "err", err)
+			} else {
+				s.log.Warn("Failed to process work", "err", err)
+			}
 		}
 
 		// await next time we process, or detect shutdown
