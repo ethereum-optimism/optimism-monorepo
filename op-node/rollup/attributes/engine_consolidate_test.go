@@ -24,7 +24,6 @@ var (
 	validParentBeaconRoot = common.HexToHash("0x456")
 	validPrevRandao       = eth.Bytes32(common.HexToHash("0x789"))
 	validGasLimit         = eth.Uint64Quantity(1000)
-	validWithdrawals      = make(types.Withdrawals, 0)
 	validFeeRecipient     = predeploys.SequencerFeeVaultAddr
 )
 
@@ -342,7 +341,7 @@ func TestWithdrawalsMatch(t *testing.T) {
 				Withdrawals:     &emptyWithdrawals,
 			},
 			checkFails: true,
-			desc:       "post-isthmus: non-emtpy attr withdrawals list",
+			desc:       "post-isthmus: non-empty attr withdrawals list",
 		},
 		{
 			cfg: rollupCfgPostIsthmusChecks,
@@ -369,7 +368,7 @@ func TestWithdrawalsMatch(t *testing.T) {
 				},
 			},
 			checkFails: true,
-			desc:       "pre-isthmus: non-emtpy block withdrawals list",
+			desc:       "pre-isthmus: non-empty block withdrawals list",
 		},
 		{
 			cfg:   rollupCfgPreIsthmusChecks,
@@ -380,7 +379,7 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: &common.Hash{},
 			},
 			checkFails: true,
-			desc:       "pre-isthmus: non-emtpy block withdrawalsRoot",
+			desc:       "pre-isthmus: non-empty block withdrawalsRoot",
 		},
 		{
 			cfg: rollupCfgPreIsthmusChecks,
@@ -397,7 +396,7 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: nil,
 			},
 			checkFails: true,
-			desc:       "pre-isthmus: non-emtpy attr withdrawals list",
+			desc:       "pre-isthmus: non-empty attr withdrawals list",
 		},
 		{
 			cfg: rollupCfgPreIsthmusChecks,
