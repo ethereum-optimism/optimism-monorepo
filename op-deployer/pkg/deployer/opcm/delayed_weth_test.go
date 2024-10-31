@@ -27,6 +27,7 @@ func TestDeployDelayedWETH(t *testing.T) {
 	require.NoError(t, err)
 
 	standardVersionsTOML, err := standard.L1VersionsDataFor(11155111)
+	require.NoError(t, err)
 
 	input := DeployDelayedWETHInput{
 		Release:               "dev",
