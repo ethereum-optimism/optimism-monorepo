@@ -173,7 +173,7 @@ func TestInteropTrivial_EmitLogs(t *testing.T) {
 			identifier := types.Identifier{
 				Origin:      log.Address,
 				BlockNumber: log.BlockNumber,
-				LogIndex:    uint64(log.Index),
+				LogIndex:    uint32(log.Index),
 				Timestamp:   block.Time(),
 				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
 			}
@@ -246,7 +246,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 		identifier := types.Identifier{
 			Origin:      ev.Address,
 			BlockNumber: ev.BlockNumber,
-			LogIndex:    uint64(ev.Index),
+			LogIndex:    uint32(ev.Index),
 			Timestamp:   header.Time,
 			ChainID:     types.ChainIDFromBig(s2.ChainID(chainA)),
 		}

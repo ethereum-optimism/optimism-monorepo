@@ -740,7 +740,7 @@ func (s *interopE2ESystem) ExecuteMessage(
 	identifier := inbox.Identifier{
 		Origin:      msgIdentifier.Origin,
 		BlockNumber: new(big.Int).SetUint64(msgIdentifier.BlockNumber),
-		LogIndex:    new(big.Int).SetUint64(msgIdentifier.LogIndex),
+		LogIndex:    new(big.Int).SetUint64(uint64(msgIdentifier.LogIndex)),
 		Timestamp:   new(big.Int).SetUint64(msgIdentifier.Timestamp),
 		ChainId:     msgIdentifier.ChainID.ToBig(),
 	}
