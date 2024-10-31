@@ -38,9 +38,9 @@ type OpChainDeployment struct {
 	DisputeGameFactoryProxyAddress           common.Address `json:"disputeGameFactoryProxyAddress"`
 	AnchorStateRegistryProxyAddress          common.Address `json:"anchorStateRegistryProxyAddress"`
 	AnchorStateRegistryImplAddress           common.Address `json:"anchorStateRegistryImplAddress"`
-	// FaultDisputeGameAddress                  common.Address `json:"faultDisputeGameAddress"`
-	PermissionedDisputeGameAddress          common.Address `json:"permissionedDisputeGameAddress"`
-	DelayedWETHPermissionedGameProxyAddress common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
+	FaultDisputeGameAddress                  common.Address `json:"faultDisputeGameAddress"`
+	PermissionedDisputeGameAddress           common.Address `json:"permissionedDisputeGameAddress"`
+	DelayedWETHPermissionedGameProxyAddress  common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
 	// DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
 }
 
@@ -107,9 +107,9 @@ func L1(globalState *state.State, chainID common.Hash) (*L1Contracts, error) {
 			DisputeGameFactoryProxyAddress:           chainState.DisputeGameFactoryProxyAddress,
 			AnchorStateRegistryProxyAddress:          chainState.AnchorStateRegistryProxyAddress,
 			AnchorStateRegistryImplAddress:           chainState.AnchorStateRegistryImplAddress,
-			// FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
-			PermissionedDisputeGameAddress:          chainState.PermissionedDisputeGameAddress,
-			DelayedWETHPermissionedGameProxyAddress: chainState.DelayedWETHPermissionedGameProxyAddress,
+			FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
+			PermissionedDisputeGameAddress:           chainState.PermissionedDisputeGameAddress,
+			DelayedWETHPermissionedGameProxyAddress:  chainState.DelayedWETHPermissionedGameProxyAddress,
 			// DelayedWETHPermissionlessGameProxyAddress: chainState.DelayedWETHPermissionlessGameProxyAddress,
 		},
 		ImplementationsDeployment: ImplementationsDeployment{

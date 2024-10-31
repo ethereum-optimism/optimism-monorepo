@@ -7,8 +7,12 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
+	"github.com/ethereum/go-ethereum/common"
+
+	"github.com/ethereum-optimism/superchain-registry/superchain"
 
 	"github.com/urfave/cli/v2"
 )
@@ -75,15 +79,21 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to generate l1 contracts: %w", err)
 	}
-	l1ContractsFilepath := filepath.Join(cfg.Workdir, "l1-contracts.json")
-	if err := jsonutil.WriteJSON(l1Contracts, ioutil.ToStdOutOrFileOrNoop(l1ContractsFilepath, 0o666)); err != nil {
-		return fmt.Errorf("failed to write rollup: %w", err)
+
+	addressList, err := createAddressList(l1Contracts, globalState.AppliedIntent, cfg.ChainID)
+	if err != nil {
+		return fmt.Errorf("failed to create address list: %w", err)
+	}
+
+	addressListFilepath := filepath.Join(cfg.Workdir, "addresses.json")
+	if err := jsonutil.WriteJSON(addressList, ioutil.ToStdOutOrFileOrNoop(addressListFilepath, 0o666)); err != nil {
+		return fmt.Errorf("failed to write address list: %w", err)
 	}
 
 	envVars["SCR_GENESIS"] = genesisFilepath
 	envVars["SCR_ROLLUP_CONFIG"] = rollupFilepath
 	envVars["SCR_DEPLOY_CONFIG"] = deployConfigFilepath
-	envVars["SCR_DEPLOYMENTS_DIR"] = l1ContractsFilepath
+	envVars["SCR_DEPLOYMENTS_DIR"] = addressListFilepath
 
 	envFilepath := filepath.Join(cfg.Workdir, "superchain-registry.env")
 	err = writeEnvFile(envFilepath, envVars)
@@ -117,4 +127,47 @@ func writeEnvFile(filepath string, envVars map[string]string) error {
 	}
 
 	return nil
+}
+
+func createAddressList(l1Contracts *L1Contracts, appliedIntent *state.Intent, chainId common.Hash) (*superchain.AddressList, error) {
+	chainIntent, err := appliedIntent.Chain(chainId)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get applied chain intent: %w", err)
+	}
+
+	addressList := superchain.AddressList{
+		// Roles
+		Roles: superchain.Roles{
+			Guardian:          superchain.Address(appliedIntent.SuperchainRoles.Guardian),
+			SystemConfigOwner: superchain.Address(chainIntent.Roles.SystemConfigOwner),
+			ProxyAdminOwner:   superchain.Address(chainIntent.Roles.L1ProxyAdminOwner),
+			Challenger:        superchain.Address(chainIntent.Roles.Challenger),
+			Proposer:          superchain.Address(chainIntent.Roles.Proposer),
+			UnsafeBlockSigner: superchain.Address(chainIntent.Roles.UnsafeBlockSigner),
+			BatchSubmitter:    superchain.Address(chainIntent.Roles.Batcher),
+		},
+
+		// Contracts
+		AddressManager:                    superchain.Address(l1Contracts.OpChainDeployment.AddressManagerAddress),
+		L1CrossDomainMessengerProxy:       superchain.Address(l1Contracts.OpChainDeployment.L1CrossDomainMessengerProxyAddress),
+		L1ERC721BridgeProxy:               superchain.Address(l1Contracts.OpChainDeployment.L1ERC721BridgeProxyAddress),
+		L1StandardBridgeProxy:             superchain.Address(l1Contracts.OpChainDeployment.L1StandardBridgeProxyAddress),
+		OptimismMintableERC20FactoryProxy: superchain.Address(l1Contracts.OpChainDeployment.OptimismMintableERC20FactoryProxyAddress),
+		OptimismPortalProxy:               superchain.Address(l1Contracts.OpChainDeployment.OptimismPortalProxyAddress),
+		SystemConfigProxy:                 superchain.Address(l1Contracts.OpChainDeployment.SystemConfigProxyAddress),
+
+		ProxyAdmin:       superchain.Address(l1Contracts.OpChainDeployment.ProxyAdminAddress),
+		SuperchainConfig: superchain.Address(l1Contracts.SuperchainDeployment.SuperchainConfigProxyAddress),
+
+		// Fault proof contracts
+		AnchorStateRegistryProxy: superchain.Address(l1Contracts.OpChainDeployment.AnchorStateRegistryProxyAddress),
+		DelayedWETHProxy:         superchain.Address(l1Contracts.OpChainDeployment.L1CrossDomainMessengerProxyAddress),
+		DisputeGameFactoryProxy:  superchain.Address(l1Contracts.OpChainDeployment.DisputeGameFactoryProxyAddress),
+		FaultDisputeGame:         superchain.Address(l1Contracts.OpChainDeployment.FaultDisputeGameAddress),
+		MIPS:                     superchain.Address(l1Contracts.ImplementationsDeployment.MipsSingletonAddress),
+		PermissionedDisputeGame:  superchain.Address(l1Contracts.OpChainDeployment.PermissionedDisputeGameAddress),
+		PreimageOracle:           superchain.Address(l1Contracts.ImplementationsDeployment.PreimageOracleSingletonAddress),
+	}
+
+	return &addressList, nil
 }
