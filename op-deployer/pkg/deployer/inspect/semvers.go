@@ -8,6 +8,10 @@ import (
 	"regexp"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
@@ -53,7 +57,7 @@ func L2SemversCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("chain state does not have allocs")
 	}
 
-	artifactsFS, cleanup, err := pipeline.DownloadArtifacts(ctx, intent.L2ContractsLocator, pipeline.LogProgressor(l))
+	artifactsFS, cleanup, err := artifacts.Download(ctx, intent.L2ContractsLocator, artifacts.LogProgressor(l))
 	if err != nil {
 		return fmt.Errorf("failed to download L2 artifacts: %w", err)
 	}
@@ -63,7 +67,7 @@ func L2SemversCLI(cliCtx *cli.Context) error {
 		}
 	}()
 
-	host, err := pipeline.DefaultScriptHost(
+	host, err := env.DefaultScriptHost(
 		broadcaster.NoopBroadcaster(),
 		l,
 		common.Address{19: 0x01},

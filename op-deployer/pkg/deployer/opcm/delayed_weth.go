@@ -14,8 +14,8 @@ type DeployDelayedWETHInput struct {
 	StandardVersionsToml  string
 	ProxyAdmin            common.Address
 	SuperchainConfigProxy common.Address
-	DelayedWETHOwner      common.Address
-	DelayedWETHDelay      *big.Int
+	DelayedWethOwner      common.Address
+	DelayedWethDelay      *big.Int
 }
 
 func (input *DeployDelayedWETHInput) InputSet() bool {
@@ -23,8 +23,8 @@ func (input *DeployDelayedWETHInput) InputSet() bool {
 }
 
 type DeployDelayedWETHOutput struct {
-	DelayedWETHImpl  common.Address
-	DelayedWETHProxy common.Address
+	DelayedWethImpl  common.Address
+	DelayedWethProxy common.Address
 }
 
 func (output *DeployDelayedWETHOutput) CheckOutput(input common.Address) error {

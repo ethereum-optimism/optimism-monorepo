@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 
@@ -144,7 +146,7 @@ func conditionallySetImplementationAddresses(ctx context.Context, client *ethcli
 	return nil
 }
 
-func setMipsSingletonAddress(ctx context.Context, client *ethclient.Client, l1ArtifactsLocator *opcm.ArtifactsLocator, errCh chan error, opcmProxyAddress common.Address, singletonAddress *common.Address) {
+func setMipsSingletonAddress(ctx context.Context, client *ethclient.Client, l1ArtifactsLocator *artifacts.Locator, errCh chan error, opcmProxyAddress common.Address, singletonAddress *common.Address) {
 	if !l1ArtifactsLocator.IsTag() {
 		errCh <- errors.New("L1 contracts locator is not a tag, cannot set MIPS singleton address")
 		return

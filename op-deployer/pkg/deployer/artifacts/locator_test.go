@@ -1,4 +1,4 @@
-package opcm
+package artifacts
 
 import (
 	"net/url"
@@ -7,17 +7,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestArtifactsLocator_Marshaling(t *testing.T) {
+func TestLocator_Marshaling(t *testing.T) {
 	tests := []struct {
 		name string
 		in   string
-		out  *ArtifactsLocator
+		out  *Locator
 		err  bool
 	}{
 		{
 			name: "valid tag",
 			in:   "tag://op-contracts/v1.6.0",
-			out: &ArtifactsLocator{
+			out: &Locator{
 				Tag: "op-contracts/v1.6.0",
 			},
 			err: false,
@@ -37,7 +37,7 @@ func TestArtifactsLocator_Marshaling(t *testing.T) {
 		{
 			name: "valid HTTPS URL",
 			in:   "https://example.com",
-			out: &ArtifactsLocator{
+			out: &Locator{
 				URL: parseUrl(t, "https://example.com"),
 			},
 			err: false,
@@ -45,7 +45,7 @@ func TestArtifactsLocator_Marshaling(t *testing.T) {
 		{
 			name: "valid file URL",
 			in:   "file:///tmp/artifacts",
-			out: &ArtifactsLocator{
+			out: &Locator{
 				URL: parseUrl(t, "file:///tmp/artifacts"),
 			},
 			err: false,
@@ -71,7 +71,7 @@ func TestArtifactsLocator_Marshaling(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var a ArtifactsLocator
+			var a Locator
 			err := a.UnmarshalText([]byte(tt.in))
 			if tt.err {
 				require.Error(t, err)

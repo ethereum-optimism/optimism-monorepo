@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
@@ -42,9 +42,9 @@ type Intent struct {
 
 	UseInterop bool `json:"useInterop" toml:"useInterop"`
 
-	L1ContractsLocator *opcm.ArtifactsLocator `json:"l1ContractsLocator" toml:"l1ContractsLocator"`
+	L1ContractsLocator *artifacts.Locator `json:"l1ContractsLocator" toml:"l1ContractsLocator"`
 
-	L2ContractsLocator *opcm.ArtifactsLocator `json:"l2ContractsLocator" toml:"l2ContractsLocator"`
+	L2ContractsLocator *artifacts.Locator `json:"l2ContractsLocator" toml:"l2ContractsLocator"`
 
 	Chains []*ChainIntent `json:"chains" toml:"chains"`
 
@@ -65,11 +65,11 @@ func (c *Intent) Check() error {
 	}
 
 	if c.L1ContractsLocator == nil {
-		c.L1ContractsLocator = opcm.DefaultL1ContractsLocator
+		c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 	}
 
 	if c.L2ContractsLocator == nil {
-		c.L2ContractsLocator = opcm.DefaultL2ContractsLocator
+		c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
 	}
 
 	var err error

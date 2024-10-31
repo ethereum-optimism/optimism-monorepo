@@ -1,4 +1,4 @@
-package pipeline
+package artifacts
 
 import (
 	"archive/tar"
@@ -19,8 +19,6 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 )
 
@@ -40,7 +38,7 @@ func LogProgressor(lgr log.Logger) DownloadProgressor {
 	}
 }
 
-func DownloadArtifacts(ctx context.Context, loc *opcm.ArtifactsLocator, progress DownloadProgressor) (foundry.StatDirFs, CleanupFunc, error) {
+func Download(ctx context.Context, loc *Locator, progress DownloadProgressor) (foundry.StatDirFs, CleanupFunc, error) {
 	var u *url.URL
 	var err error
 	if loc.IsTag() {

@@ -7,7 +7,7 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
@@ -90,8 +90,8 @@ func Init(cfg InitConfig) error {
 		DeploymentStrategy: cfg.DeploymentStrategy,
 		L1ChainID:          cfg.L1ChainID,
 		FundDevAccounts:    true,
-		L1ContractsLocator: opcm.DefaultL1ContractsLocator,
-		L2ContractsLocator: opcm.DefaultL2ContractsLocator,
+		L1ContractsLocator: artifacts.DefaultL1ContractsLocator,
+		L2ContractsLocator: artifacts.DefaultL2ContractsLocator,
 	}
 
 	l1ChainIDBig := intent.L1ChainIDBig()

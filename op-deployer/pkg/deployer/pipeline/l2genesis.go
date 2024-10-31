@@ -3,6 +3,8 @@ package pipeline
 import (
 	"fmt"
 
+	env2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
@@ -36,7 +38,7 @@ func GenerateL2Genesis(env *Env, intent *state.Intent, bundle ArtifactsBundle, s
 		return fmt.Errorf("failed to combine L2 init config: %w", err)
 	}
 
-	host, err := DefaultScriptHost(
+	host, err := env2.DefaultScriptHost(
 		broadcaster.NoopBroadcaster(),
 		env.Logger,
 		env.Deployer,

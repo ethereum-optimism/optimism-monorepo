@@ -1,4 +1,4 @@
-package pipeline
+package artifacts
 
 import (
 	"context"
@@ -8,8 +8,6 @@ import (
 	"net/url"
 	"os"
 	"testing"
-
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 
 	"github.com/stretchr/testify/require"
 )
@@ -29,11 +27,11 @@ func TestDownloadArtifacts(t *testing.T) {
 	ctx := context.Background()
 	artifactsURL, err := url.Parse(ts.URL)
 	require.NoError(t, err)
-	loc := &opcm.ArtifactsLocator{
+	loc := &Locator{
 		URL: artifactsURL,
 	}
 
-	fs, cleanup, err := DownloadArtifacts(ctx, loc, nil)
+	fs, cleanup, err := Download(ctx, loc, nil)
 	require.NoError(t, err)
 	require.NotNil(t, fs)
 	defer func() {

@@ -8,6 +8,10 @@ import (
 	"math/big"
 	"strings"
 
+	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
@@ -35,7 +39,7 @@ type OPCMConfig struct {
 	L1RPCUrl         string
 	PrivateKey       string
 	Logger           log.Logger
-	ArtifactsLocator *opcm.ArtifactsLocator
+	ArtifactsLocator *artifacts2.Locator
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -98,7 +102,7 @@ func OPCMCLI(cliCtx *cli.Context) error {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
-	artifactsLocator := new(opcm.ArtifactsLocator)
+	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
@@ -131,7 +135,7 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 		lgr.Info("artifacts download progress", "current", curr, "total", total)
 	}
 
-	artifactsFS, cleanup, err := pipeline.DownloadArtifacts(ctx, cfg.ArtifactsLocator, progressor)
+	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
 		return fmt.Errorf("failed to download artifacts: %w", err)
 	}
@@ -184,7 +188,7 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 		return fmt.Errorf("failed to get starting nonce: %w", err)
 	}
 
-	host, err := pipeline.DefaultScriptHost(
+	host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
 		chainDeployer,
