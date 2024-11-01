@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { console2 as console } from "forge-std/console2.sol";
 import { Script } from "forge-std/Script.sol";
 
 import { LibString } from "@solady/utils/LibString.sol";
@@ -501,6 +502,8 @@ contract DeployImplementations is Script {
         bytes4 selector = LibString.eq(_dii.release(), "op-contracts/v1.6.0")
             ? ISystemConfigV160.initialize.selector
             : ISystemConfig.initialize.selector;
+        console.log("selector:");
+        console.logBytes4(selector);
         return OPContractsManager.ImplementationSetter({
             name: "SystemConfig",
             info: OPContractsManager.Implementation(address(_dio.systemConfigImpl()), selector)
@@ -1251,6 +1254,8 @@ contract DeployImplementationsInterop is DeployImplementations {
         override
         returns (OPContractsManager.ImplementationSetter memory)
     {
+        console.log("selector:");
+        console.logBytes4(ISystemConfigInterop.initialize.selector);
         return OPContractsManager.ImplementationSetter({
             name: "SystemConfig",
             info: OPContractsManager.Implementation(

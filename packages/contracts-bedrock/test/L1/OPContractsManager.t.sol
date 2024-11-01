@@ -8,6 +8,7 @@ import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 
 // Exposes internal functions for testing.
@@ -72,6 +73,11 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
                 proposer: _doi.proposer(),
                 challenger: _doi.challenger(),
                 systemConfigFeeAdmin: msg.sender
+            }),
+            feeVaultConfigs: ISystemConfig.FeeVaultConfigs({
+                baseFeeVaultConfig: _doi.feeVaultConfigs().baseFeeVaultConfig,
+                sequencerFeeVaultConfig: _doi.feeVaultConfigs().sequencerFeeVaultConfig,
+                l1FeeVaultConfig: _doi.feeVaultConfigs().l1FeeVaultConfig
             }),
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),

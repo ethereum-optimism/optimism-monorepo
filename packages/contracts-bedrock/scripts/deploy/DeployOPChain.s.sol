@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { console2 as console } from "forge-std/console2.sol";
 import { Script } from "forge-std/Script.sol";
 
 import { SafeCast } from "@openzeppelin/contracts/utils/math/SafeCast.sol";
@@ -43,6 +44,8 @@ contract DeployOPChainInput is BaseDeployIO {
     address internal _unsafeBlockSigner;
     address internal _proposer;
     address internal _challenger;
+
+    ISystemConfig.FeeVaultConfigs internal _feeVaultConfigs;
 
     // TODO Add fault proofs inputs in a future PR.
     uint32 internal _basefeeScalar;
@@ -115,6 +118,11 @@ contract DeployOPChainInput is BaseDeployIO {
         else revert("DeployOPChainInput: unknown selector");
     }
 
+    function set(bytes4 _sel, ISystemConfig.FeeVaultConfigs memory _value) public {
+        if (_sel == this.feeVaultConfigs.selector) _feeVaultConfigs = _value;
+        else revert("DeployOPChainInput: unknown selector");
+    }
+
     function opChainProxyAdminOwner() public view returns (address) {
         require(_opChainProxyAdminOwner != address(0), "DeployOPChainInput: not set");
         return _opChainProxyAdminOwner;
@@ -153,6 +161,16 @@ contract DeployOPChainInput is BaseDeployIO {
     function basefeeScalar() public view returns (uint32) {
         require(_basefeeScalar != 0, "DeployOPChainInput: not set");
         return _basefeeScalar;
+    }
+
+    function feeVaultConfigs() public view returns (ISystemConfig.FeeVaultConfigs memory) {
+        require(
+            _feeVaultConfigs.baseFeeVaultConfig.recipient != address(0)
+                && _feeVaultConfigs.sequencerFeeVaultConfig.recipient != address(0)
+                && _feeVaultConfigs.l1FeeVaultConfig.recipient != address(0),
+            "DeployOPChainInput: not set"
+        );
+        return _feeVaultConfigs;
     }
 
     function blobBaseFeeScalar() public view returns (uint32) {
@@ -367,6 +385,7 @@ contract DeployOPChain is Script {
         });
         OPContractsManager.DeployInput memory deployInput = OPContractsManager.DeployInput({
             roles: roles,
+            feeVaultConfigs: _doi.feeVaultConfigs(),
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),
             l2ChainId: _doi.l2ChainId(),
@@ -539,6 +558,7 @@ contract DeployOPChain is Script {
 
     function assertValidSystemConfig(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         ISystemConfig systemConfig = _doo.systemConfigProxy();
+        console.log("assertValidSystemConfig:", address(systemConfig));
 
         DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _slot: 0, _offset: 0 });
 

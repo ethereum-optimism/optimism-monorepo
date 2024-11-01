@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { Types } from "src/libraries/Types.sol";
 
 interface ISystemConfigInterop {
     event ConfigUpdate(uint256 indexed version, ISystemConfig.UpdateType indexed updateType, bytes data);
@@ -45,6 +46,7 @@ interface ISystemConfigInterop {
     function resourceConfig() external view returns (IResourceMetering.ResourceConfig memory);
     function scalar() external view returns (uint256);
     function setBatcherHash(bytes32 _batcherHash) external;
+    function setFeeVaultConfig(Types.ConfigType _type, Types.FeeVaultConfig memory _config) external;
     function setGasConfig(uint256 _overhead, uint256 _scalar) external;
     function setGasConfigEcotone(uint32 _basefeeScalar, uint32 _blobbasefeeScalar) external;
     function setGasLimit(uint64 _gasLimit) external;

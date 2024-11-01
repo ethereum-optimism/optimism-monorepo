@@ -652,7 +652,10 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
 
         vm.prank(systemConfig.feeAdmin());
         vm.expectRevert("SystemConfig: ConfigType is is not a Fee Vault Config type");
-        systemConfig.setFeeVaultConfig(Types.ConfigType(_type), address(0), 0, Types.WithdrawalNetwork.L1);
+        systemConfig.setFeeVaultConfig(
+            Types.ConfigType(_type),
+            Types.FeeVaultConfig({ recipient: address(0), min: 0, withdrawalNetwork: Types.WithdrawalNetwork.L1 })
+        );
     }
 
     /// @dev Tests that `setFeeVaultConfig` reverts if the caller is not authorized.
@@ -661,7 +664,10 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
         vm.expectRevert("SystemConfig: caller is not the fee admin");
 
         vm.prank(_caller);
-        systemConfig.setFeeVaultConfig(Types.ConfigType.L1_FEE_VAULT_CONFIG, _caller, 0, Types.WithdrawalNetwork.L1);
+        systemConfig.setFeeVaultConfig(
+            Types.ConfigType.L1_FEE_VAULT_CONFIG,
+            Types.FeeVaultConfig({ recipient: address(0), min: 0, withdrawalNetwork: Types.WithdrawalNetwork.L1 })
+        );
     }
 
     /// @dev Tests that `setEIP1559Params` reverts if the caller is not the owner.
@@ -785,7 +791,9 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
         );
 
         vm.prank(feeAdmin);
-        systemConfig.setFeeVaultConfig(feeType, _recipient, _min, withdrawalNetwork);
+        systemConfig.setFeeVaultConfig(
+            feeType, Types.FeeVaultConfig({ recipient: _recipient, min: _min, withdrawalNetwork: withdrawalNetwork })
+        );
     }
 
     /// @dev Tests that `setEIP1559Params` updates the EIP1559 parameters successfully.

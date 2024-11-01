@@ -1292,6 +1292,23 @@ contract Deploy is Deployer {
                 challenger: cfg.l2OutputOracleChallenger(),
                 systemConfigFeeAdmin: cfg.systemConfigFeeAdmin()
             }),
+            feeVaultConfigs: ISystemConfig.FeeVaultConfigs({
+                baseFeeVaultConfig: TypesLib.FeeVaultConfig({
+                    recipient: cfg.baseFeeVaultRecipient(),
+                    min: cfg.baseFeeVaultMinimumWithdrawalAmount(),
+                    withdrawalNetwork: TypesLib.WithdrawalNetwork(cfg.baseFeeVaultWithdrawalNetwork())
+                }),
+                sequencerFeeVaultConfig: TypesLib.FeeVaultConfig({
+                    recipient: cfg.sequencerFeeVaultRecipient(),
+                    min: cfg.sequencerFeeVaultMinimumWithdrawalAmount(),
+                    withdrawalNetwork: TypesLib.WithdrawalNetwork(cfg.sequencerFeeVaultWithdrawalNetwork())
+                }),
+                l1FeeVaultConfig: TypesLib.FeeVaultConfig({
+                    recipient: cfg.l1FeeVaultRecipient(),
+                    min: cfg.l1FeeVaultMinimumWithdrawalAmount(),
+                    withdrawalNetwork: TypesLib.WithdrawalNetwork(cfg.l1FeeVaultWithdrawalNetwork())
+                })
+            }),
             basefeeScalar: cfg.basefeeScalar(),
             blobBasefeeScalar: cfg.blobbasefeeScalar(),
             l2ChainId: cfg.l2ChainID(),
