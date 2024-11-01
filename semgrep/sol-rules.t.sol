@@ -9,22 +9,22 @@
 
 /// begin SemgrepTest__sol-style-no-bare-imports
 // ok: sol-style-no-bare-imports
-import {SomeStruct} from "some-library.sol";
+import { SomeStruct } from "some-library.sol";
 
 // ok: sol-style-no-bare-imports
-import {SomeStruct, AnotherThing} from "some-library.sol";
+import { SomeStruct, AnotherThing } from "some-library.sol";
 
 // ok: sol-style-no-bare-imports
-import {SomeStruct as SomeOtherStruct} from "some-library.sol";
+import { SomeStruct as SomeOtherStruct } from "some-library.sol";
 
 // ok: sol-style-no-bare-imports
-import {SomeStruct as SomeOtherStruct, AnotherThing as AnotherOtherThing} from "some-library.sol";
+import { SomeStruct as SomeOtherStruct, AnotherThing as AnotherOtherThing } from "some-library.sol";
 
 // ok: sol-style-no-bare-imports
-import {SomeStruct as SomeOtherStruct, AnotherThing} from "some-library.sol";
+import { SomeStruct as SomeOtherStruct, AnotherThing } from "some-library.sol";
 
 // ok: sol-style-no-bare-imports
-import {AnotherThing, SomeStruct as SomeOtherStruct} from "some-library.sol";
+import { AnotherThing, SomeStruct as SomeOtherStruct } from "some-library.sol";
 
 // ruleid: sol-style-no-bare-imports
 import "some-library.sol";
@@ -40,7 +40,7 @@ contract SemgrepTest__sol_safety_deployutils_args {
         });
 
         // ruleid: sol-safety-deployutils-args
-        DeployUtils.create1({_name: "SuperchainConfig", _args: abi.encodeCall(ISuperchainConfig.__constructor__, ())});
+        DeployUtils.create1({ _name: "SuperchainConfig", _args: abi.encodeCall(ISuperchainConfig.__constructor__, ()) });
 
         // ruleid: sol-safety-deployutils-args
         DeployUtils.create2AndSave({
