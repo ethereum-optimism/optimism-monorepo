@@ -20,40 +20,39 @@ func main() {
 }
 
 func run() error {
-	// find semver files
-	files, err := findSemverFiles()
+	// Find semver files
+	// Execute grep command to find files with @custom:semver
+	var cmd = exec.Command("bash", "-c", "grep -rl '@custom:semver' src | jq -Rs 'split(\"\n\") | map(select(length > 0))'")
+	cmdOutput, err := cmd.Output()
 	if err != nil {
 		return err
 	}
 
-	// Call the function to write semver lock (implementation needed)
-	if err := writeSemverLock(files); err != nil {
-		return fmt.Errorf("failed to write semver lock: %w", err)
-	}
-
-	return nil
-}
-
-func findSemverFiles() ([]string, error) {
-	// Execute grep command to find files with @custom:semver
-	var cmd = exec.Command("bash", "-c", "grep -rl '@custom:semver' src | jq -Rs 'split(\"\n\") | map(select(length > 0))'")
-	output, err := cmd.Output()
-	if err != nil {
-		return nil, err
-	}
-
 	// Parse the JSON array of files
 	var files []string
-	if err := json.Unmarshal(output, &files); err != nil {
-		return nil, fmt.Errorf("failed to parse JSON output: %w", err)
+	if err := json.Unmarshal(cmdOutput, &files); err != nil {
+		return fmt.Errorf("failed to parse JSON output: %w", err)
 	}
 
-	return files, nil
-}
-
-func writeSemverLock(files []string) error {
+	// Hash and write to JSON file
 	// Map to store our JSON output
 	output := make(map[string]map[string]string)
+
+	// regex to extract contract name from file path
+	re := regexp.MustCompile(`src/.*/(.+)\.sol`)
+
+	// Get artifacts directory
+	cmd = exec.Command("forge", "config", "--json")
+	out, err := cmd.Output()
+	if err != nil {
+		return fmt.Errorf("failed to get forge config: %w", err)
+	}
+	var config struct {
+		Out string `json:"out"`
+	}
+	if err := json.Unmarshal(out, &config); err != nil {
+		return fmt.Errorf("failed to parse forge config: %w", err)
+	}
 
 	for _, file := range files {
 		// Read file contents
@@ -63,25 +62,11 @@ func writeSemverLock(files []string) error {
 		}
 
 		// Extract contract name from file path using regex
-		re := regexp.MustCompile(`src/.*/(.+)\.sol`)
 		matches := re.FindStringSubmatch(file)
 		if len(matches) < 2 {
 			return fmt.Errorf("invalid file path format: %s", file)
 		}
 		contractName := matches[1]
-
-		// Get artifacts directory
-		cmd := exec.Command("forge", "config", "--json")
-		out, err := cmd.Output()
-		if err != nil {
-			return fmt.Errorf("failed to get forge config: %w", err)
-		}
-		var config struct {
-			Out string `json:"out"`
-		}
-		if err := json.Unmarshal(out, &config); err != nil {
-			return fmt.Errorf("failed to parse forge config: %w", err)
-		}
 
 		// Get artifact files
 		artifactDir := filepath.Join(config.Out, contractName+".sol")
@@ -110,14 +95,14 @@ func writeSemverLock(files []string) error {
 		}
 
 		// convert the hex bytecode to a uint8 array / bytes
-		bytes, err := hex.DecodeString(strings.TrimPrefix(artifactObj.Bytecode.Object, "0x"))
+		initCodeBytes, err := hex.DecodeString(strings.TrimPrefix(artifactObj.Bytecode.Object, "0x"))
 		if err != nil {
 			return fmt.Errorf("failed to decode hex: %w", err)
 		}
 
 		// Calculate hashes using Keccak256
 		var sourceCode = []byte(strings.TrimSuffix(string(fileContents), "\n"))
-		initCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(bytes))
+		initCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(initCodeBytes))
 		sourceCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(sourceCode))
 
 		// Store in output map
