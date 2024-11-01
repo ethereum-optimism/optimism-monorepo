@@ -66,23 +66,23 @@ library MIPS64Instructions {
     /// @notice Execute core MIPS step logic.
     /// @return newMemRoot_ The updated merkle root of memory after any modifications, may be unchanged.
     /// @return memUpdated_ True if memory was modified.
-    /// @return memAddr_ Holds the memory address that was updated if memUpdated_ is true.
+    /// @return effMemAddr_ Holds the effective address that was updated if memUpdated_ is true.
     function execMipsCoreStepLogic(CoreStepLogicParams memory _args)
         internal
         pure
-        returns (bytes32 newMemRoot_, bool memUpdated_, uint64 memAddr_)
+        returns (bytes32 newMemRoot_, bool memUpdated_, uint64 effMemAddr_)
     {
         unchecked {
             newMemRoot_ = _args.memRoot;
             memUpdated_ = false;
-            memAddr_ = 0;
+            effMemAddr_ = 0;
 
             // j-type j/jal
             if (_args.opcode == 2 || _args.opcode == 3) {
                 // Take top 4 bits of the next PC (its 256 MB region), and concatenate with the 26-bit offset
                 uint64 target = (_args.cpu.nextPC & signExtend(0xF0000000, 32)) | uint64((_args.insn & 0x03FFFFFF) << 2);
                 handleJump(_args.cpu, _args.registers, _args.opcode == 2 ? 0 : REG_RA, target);
-                return (newMemRoot_, memUpdated_, memAddr_);
+                return (newMemRoot_, memUpdated_, effMemAddr_);
             }
 
             // register fetch
@@ -129,7 +129,7 @@ library MIPS64Instructions {
                     _rtReg: rtReg,
                     _rs: rs
                 });
-                return (newMemRoot_, memUpdated_, memAddr_);
+                return (newMemRoot_, memUpdated_, effMemAddr_);
             }
 
             uint64 storeAddr = U64_MASK;
@@ -162,18 +162,18 @@ library MIPS64Instructions {
                 if (_args.fun == 8 || _args.fun == 9) {
                     // jr/jalr
                     handleJump(_args.cpu, _args.registers, _args.fun == 8 ? 0 : rdReg, rs);
-                    return (newMemRoot_, memUpdated_, memAddr_);
+                    return (newMemRoot_, memUpdated_, effMemAddr_);
                 }
 
                 if (_args.fun == 0xa) {
                     // movz
                     handleRd(_args.cpu, _args.registers, rdReg, rs, rt == 0);
-                    return (newMemRoot_, memUpdated_, memAddr_);
+                    return (newMemRoot_, memUpdated_, effMemAddr_);
                 }
                 if (_args.fun == 0xb) {
                     // movn
                     handleRd(_args.cpu, _args.registers, rdReg, rs, rt != 0);
-                    return (newMemRoot_, memUpdated_, memAddr_);
+                    return (newMemRoot_, memUpdated_, effMemAddr_);
                 }
 
                 // lo and hi registers
@@ -187,7 +187,7 @@ library MIPS64Instructions {
                         _rt: rt,
                         _storeReg: rdReg
                     });
-                    return (newMemRoot_, memUpdated_, memAddr_);
+                    return (newMemRoot_, memUpdated_, effMemAddr_);
                 }
             }
 
@@ -195,13 +195,13 @@ library MIPS64Instructions {
             if (storeAddr != U64_MASK) {
                 newMemRoot_ = MIPS64Memory.writeMem(storeAddr, _args.memProofOffset, val);
                 memUpdated_ = true;
-                memAddr_ = storeAddr;
+                effMemAddr_ = storeAddr;
             }
 
             // write back the value to destination register
             handleRd(_args.cpu, _args.registers, rdReg, val, true);
 
-            return (newMemRoot_, memUpdated_, memAddr_);
+            return (newMemRoot_, memUpdated_, effMemAddr_);
         }
     }
 
