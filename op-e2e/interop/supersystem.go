@@ -25,9 +25,9 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/bindings/emit"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/bindings/inbox"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/bindings/systemconfig"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/emit"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/systemconfig"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 
