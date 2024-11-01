@@ -1,21 +1,11 @@
 #!/usr/bin/env bash
 
-SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
-CONTRACTS_BASE=$(dirname "$(dirname "$SCRIPT_DIR")")
-MONOREPO_BASE=$(dirname "$(dirname "$CONTRACTS_BASE")")
-VERSIONS_FILE="${MONOREPO_BASE}/versions.json"
+VERSIONS_FILE="versions.json"
 
 if ! command -v jq &> /dev/null
 then
   # shellcheck disable=SC2006
   echo "Please install jq" >&2
-  exit 1
-fi
-
-if ! command -v semgrep &> /dev/null
-then
-  # shellcheck disable=SC2006
-  echo "Please install semgrep" >&2
   exit 1
 fi
 
