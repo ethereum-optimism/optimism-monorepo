@@ -27,11 +27,11 @@ func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
 	if !ok {
 		return fmt.Errorf("cannot SealBlock: %w: %v", types.ErrUnknownChain, chain)
 	}
-	db.logger.Debug("Updating local unsafe", "chain", chain, "block", block)
 	err := logDB.SealBlock(block.ParentHash, block.ID(), block.Time)
 	if err != nil {
 		return fmt.Errorf("failed to seal block %v: %w", block, err)
 	}
+	db.logger.Info("Updated local unsafe", "chain", chain, "block", block)
 	return nil
 }
 
@@ -57,8 +57,8 @@ func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.Blo
 	if !ok {
 		return fmt.Errorf("cannot UpdateCrossUnsafe: %w: %s", types.ErrUnknownChain, chain)
 	}
-	db.logger.Debug("Updating cross unsafe", "chain", chain, "crossUnsafe", crossUnsafe)
 	v.Set(crossUnsafe)
+	db.logger.Info("Updated cross-unsafe", "chain", chain, "crossUnsafe", crossUnsafe)
 	return nil
 }
 
@@ -67,8 +67,11 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 	if !ok {
 		return fmt.Errorf("cannot UpdateCrossSafe: %w: %s", types.ErrUnknownChain, chain)
 	}
-	db.logger.Debug("Updating cross safe", "chain", chain, "l1View", l1View, "lastCrossDerived", lastCrossDerived)
-	return crossDB.AddDerived(l1View, lastCrossDerived)
+	if err := crossDB.AddDerived(l1View, lastCrossDerived); err != nil {
+		return err
+	}
+	db.logger.Info("Updated cross-safe", "chain", chain, "l1View", l1View, "lastCrossDerived", lastCrossDerived)
+	return nil
 }
 
 func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
@@ -79,7 +82,7 @@ func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	if v := db.finalizedL1.Value; v.Number > finalized.Number {
 		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", v, finalized)
 	}
-	db.logger.Debug("Updating finalized L1", "finalizedL1", finalized)
 	db.finalizedL1.Value = finalized
+	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
 	return nil
 }

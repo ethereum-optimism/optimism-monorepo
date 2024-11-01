@@ -71,7 +71,7 @@ func (s *Worker) worker() {
 				return
 			}
 			if errors.Is(err, types.ErrFuture) {
-				s.log.Debug("Failed to process work", "err", err)
+				s.log.Debug("Worker awaits more data", "err", err)
 			} else {
 				s.log.Warn("Failed to process work", "err", err)
 			}
@@ -92,14 +92,13 @@ func (s *Worker) worker() {
 	}
 }
 
-func (s *Worker) OnNewData() error {
+func (s *Worker) OnNewData() {
 	// signal that we have something to process
 	select {
 	case s.poke <- struct{}{}:
 	default:
 		// already requested an update
 	}
-	return nil
 }
 
 func (s *Worker) Close() {

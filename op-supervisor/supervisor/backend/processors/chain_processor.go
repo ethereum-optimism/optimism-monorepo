@@ -55,8 +55,8 @@ type ChainProcessor struct {
 	// channel with capacity of 1, full if there is work to do
 	newHead chan struct{}
 
-	// channel with capacity of 1, to signal work complete if running in synchroneous mode
-	out chan struct{}
+	// to signal to the other services that new indexed data is available
+	onIndexed func()
 
 	// lifetime management of the chain processor
 	ctx    context.Context
@@ -64,7 +64,7 @@ type ChainProcessor struct {
 	wg     sync.WaitGroup
 }
 
-func NewChainProcessor(log log.Logger, chain types.ChainID, processor LogProcessor, rewinder DatabaseRewinder) *ChainProcessor {
+func NewChainProcessor(log log.Logger, chain types.ChainID, processor LogProcessor, rewinder DatabaseRewinder, onIndexed func()) *ChainProcessor {
 	ctx, cancel := context.WithCancel(context.Background())
 	out := &ChainProcessor{
 		log:       log.New("chain", chain),
@@ -73,7 +73,7 @@ func NewChainProcessor(log log.Logger, chain types.ChainID, processor LogProcess
 		processor: processor,
 		rewinder:  rewinder,
 		newHead:   make(chan struct{}, 1),
-		out:       make(chan struct{}, 1),
+		onIndexed: onIndexed,
 		ctx:       ctx,
 		cancel:    cancel,
 	}
@@ -134,7 +134,7 @@ func (s *ChainProcessor) work() {
 		target := s.nextNum()
 		if err := s.update(target); err != nil {
 			if errors.Is(err, ethereum.NotFound) {
-				s.log.Info("Cannot find next block yet", "target", target, "err", err)
+				s.log.Debug("Event-indexer cannot find next block yet", "target", target, "err", err)
 			} else if errors.Is(err, types.ErrNoRPCSource) {
 				s.log.Warn("No RPC source configured, cannot process new blocks")
 			} else {
@@ -192,7 +192,10 @@ func (s *ChainProcessor) update(nextNum uint64) error {
 			// If no logs were written successfully then the rewind wouldn't have done anything anyway.
 			s.log.Error("Failed to rewind after error processing block", "block", next, "err", err)
 		}
+		return err
 	}
+	s.log.Info("Indexed block events", "block", next, "txs", len(receipts))
+	s.onIndexed()
 	return nil
 }
 

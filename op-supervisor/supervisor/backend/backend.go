@@ -117,13 +117,6 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		}
 	}
 
-	// for each chain initialize a chain processor service
-	for _, chainID := range chains {
-		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
-		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs)
-		su.chainProcessors[chainID] = chainProcessor
-	}
-
 	// initialize all cross-unsafe processors
 	for _, chainID := range chains {
 		worker := cross.NewCrossUnsafeWorker(su.logger, chainID, su.chainDBs)
@@ -134,6 +127,13 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		worker := cross.NewCrossSafeWorker(su.logger, chainID, su.chainDBs)
 		su.crossSafeProcessors[chainID] = worker
 	}
+	// For each chain initialize a chain processor service,
+	// after cross-unsafe workers are ready to receive updates
+	for _, chainID := range chains {
+		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
+		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs, su.onIndexedLocalUnsafeData)
+		su.chainProcessors[chainID] = chainProcessor
+	}
 
 	// the config has some RPC connections to attach to the chain-processors
 	for _, rpc := range cfg.L2RPCs {
@@ -143,6 +143,36 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		}
 	}
 	return nil
+}
+
+// onIndexedLocalUnsafeData is called by the event indexing workers.
+// This signals to cross-unsafe workers that there's data to index.
+func (su *SupervisorBackend) onIndexedLocalUnsafeData() {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+
+	// We signal all workers, since dependencies on a chain may be unblocked
+	// by new data on other chains.
+	// Busy workers don't block processing.
+	// The signal is picked up only if the worker is running in the background.
+	for _, w := range su.crossUnsafeProcessors {
+		w.OnNewData()
+	}
+}
+
+// onNewLocalSafeData is called by the safety-indexing.
+// This signals to cross-safe workers that there's data to index.
+func (su *SupervisorBackend) onNewLocalSafeData() {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+
+	// We signal all workers, since dependencies on a chain may be unblocked
+	// by new data on other chains.
+	// Busy workers don't block processing.
+	// The signal is picked up only if the worker is running in the background.
+	for _, w := range su.crossSafeProcessors {
+		w.OnNewData()
+	}
 }
 
 // openChainDBs initializes all the DB resources of a specific chain.
@@ -443,7 +473,12 @@ func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
-	return su.chainDBs.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
+	err := su.chainDBs.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
+	if err != nil {
+		return err
+	}
+	su.onNewLocalSafeData()
+	return nil
 }
 
 func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
