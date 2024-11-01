@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -301,6 +302,7 @@ func compareABIs(abi1, abi2 json.RawMessage) (bool, error) {
 	// Compare using go-cmp
 	diff := cmp.Diff(data1, data2)
 	if diff != "" {
+		log.Printf("ABI diff: %s", diff)
 		return false, nil
 	}
 	return true, nil

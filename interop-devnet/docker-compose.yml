@@ -94,6 +94,8 @@ services:
       --rpc.port=8545
       --rpc.enable-admin
       --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
+    environment:
+      OP_SUPERVISOR_METRICS_ENABLED: "true"
 
   l2-a:
     depends_on:
@@ -352,3 +354,44 @@ services:
       # OP_BATCHER_DATA_AVAILABILITY_TYPE: blobs
     env_file:
       - "${PWD}/../.devnet-interop/env/l2/900201/op-batcher.env"
+
+  grafana:
+    image: grafana/grafana:11.1.0
+    restart: unless-stopped
+    env_file:
+      - monitoring/grafana.env
+    volumes:
+      - ./monitoring/grafana/provisioning/:/etc/grafana/provisioning/:ro
+      - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
+      # - grafana_data:/var/lib/grafana
+    ports:
+      - 3300:3000
+
+  prometheus:
+    image: prom/prometheus:latest
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus:/etc/prometheus
+      # - prometheus_data:/prometheus
+    ports:
+      - 3090:9090
+    command: --config.file=/etc/prometheus/prometheus.yml --log.level=debug
+
+  loki:
+    image: grafana/loki:3.1.1
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/loki:/etc/loki
+    ports:
+      - 3200:3200
+    command: -config.file=/etc/loki/config.yaml
+
+  promtail:
+    image: grafana/promtail:3.1.1
+    restart: unless-stopped
+    volumes:
+      # uncomment to scrape system logs
+      # - /var/log:/var/log
+      - ./monitoring/promtail:/etc/promtail
+      - /var/run/docker.sock:/var/run/docker.sock # Mount Docker socket to read container logs
+    command: -config.file=/etc/promtail/config.yaml

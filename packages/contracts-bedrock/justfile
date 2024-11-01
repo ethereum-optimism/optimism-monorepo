@@ -201,6 +201,10 @@ check-kontrol-summaries-unchanged:
 semgrep:
   cd ../../ && semgrep scan --config=semgrep ./packages/contracts-bedrock
 
+# Runs semgrep tests.
+semgrep-test:
+  cd ../../ && semgrep scan --test semgrep
+
 # TODO: Also run lint-forge-tests-check but we need to fix the test names first.
 # Runs all checks.
 check:
