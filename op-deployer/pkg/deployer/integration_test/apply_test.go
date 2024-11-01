@@ -723,7 +723,19 @@ func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, int
 		alloc := chainState.Allocs.Data.Accounts
 
 		chainIntent := intent.Chains[i]
-		checkImmutableBehindProxy(t, alloc, predeploys.ProxyAdminAddr, common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001"))
+
+		// First try to read the owner from the bytecode, which is the situation with the
+		// Isthmus L2ProxyAdmin (on this commit).
+		if err := checkImmutableBehindProxy(t, alloc, predeploys.ProxyAdminAddr, common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001")); err != nil {
+			t.Logf("Warning: Failed to check immutable behind proxy for L2ProxyAdmin, falling back to <=v1.6.0 storage check")
+			// If the bytecode check fails, fall back to reading the owner from storage.
+			// Note however that the L2ProxyAdmin owner address here (0xe59a881b2626f948f56f509f180c32428585629a) comes from the chainIntent,
+			// and does not actually match the `owner()` of the L2ProxyAdmin contract deployed on Sepolia (0x2FC3ffc903729a0f03966b917003800B145F67F3).
+			// It seems the L2 state is locally constructed rather than pulled from an L2 RPC.
+			var L2ProxyAdminOwner common.Hash
+			L2ProxyAdminOwner.SetBytes(chainIntent.Roles.L2ProxyAdminOwner.Bytes())
+			checkStorageSlot(t, alloc, predeploys.ProxyAdminAddr, common.Hash{}, L2ProxyAdminOwner)
+		}
 
 		var defaultGovOwner common.Hash
 		defaultGovOwner.SetBytes(common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad").Bytes())
@@ -745,20 +757,23 @@ type bytesMarshaler interface {
 	Bytes() []byte
 }
 
-func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
+func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) error {
 	implementationAddress := getEIP1967ImplementationAddress(t, allocations, proxyContract)
-	checkImmutable(t, allocations, implementationAddress, thing)
+	return checkImmutable(t, allocations, implementationAddress, thing)
 }
 
-func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) {
+func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) error {
 	account, ok := allocations[implementationAddress]
-	require.True(t, ok, "%s not found in allocations", implementationAddress)
-	require.NotEmpty(t, account.Code, "%s should have code", implementationAddress)
-	require.True(
-		t,
-		bytes.Contains(account.Code, thing.Bytes()),
-		"%s code should contain %s immutable", implementationAddress, hex.EncodeToString(thing.Bytes()),
-	)
+	if !ok {
+		return fmt.Errorf("%s not found in allocations", implementationAddress)
+	}
+	if len(account.Code) == 0 {
+		return fmt.Errorf("%s should have code", implementationAddress)
+	}
+	if !bytes.Contains(account.Code, thing.Bytes()) {
+		return fmt.Errorf("%s code should contain %s immutable", implementationAddress, hex.EncodeToString(thing.Bytes()))
+	}
+	return nil
 }
 
 func checkStorageSlot(t *testing.T, allocs types.GenesisAlloc, address common.Address, slot common.Hash, expected common.Hash) {
