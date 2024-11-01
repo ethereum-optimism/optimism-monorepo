@@ -121,11 +121,18 @@ type EthClient struct {
 	// cache BlockRef by hash
 	// common.Hash -> eth.BlockRef
 	blockRefsCache *caching.LRUCache[common.Hash, eth.BlockRef]
+
+	// any checks for if RPC response is valid
+	respChecker RPCRespCheck
+}
+
+type RPCRespCheck interface {
+	ValidateWithdrawals(withdrawals *types.Withdrawals, withdrawalRoot *common.Hash) error
 }
 
 // NewEthClient returns an [EthClient], wrapping an RPC with bindings to fetch ethereum data with added error logging,
 // metric tracking, and caching. The [EthClient] uses a [LimitRPC] wrapper to limit the number of concurrent RPC requests.
-func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, config *EthClientConfig) (*EthClient, error) {
+func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, config *EthClientConfig, checker RPCRespCheck) (*EthClient, error) {
 	if err := config.Check(); err != nil {
 		return nil, fmt.Errorf("bad config, cannot create L1 source: %w", err)
 	}
@@ -145,6 +152,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 		headersCache:      caching.NewLRUCache[common.Hash, eth.BlockInfo](metrics, "headers", config.HeadersCacheSize),
 		payloadsCache:     caching.NewLRUCache[common.Hash, *eth.ExecutionPayloadEnvelope](metrics, "payloads", config.PayloadsCacheSize),
 		blockRefsCache:    caching.NewLRUCache[common.Hash, eth.L1BlockRef](metrics, "blockrefs", config.BlockRefsCacheSize),
+		respChecker:       checker,
 	}, nil
 }
 
@@ -214,7 +222,7 @@ func (s *EthClient) blockCall(ctx context.Context, method string, id rpcBlockID)
 	if block == nil {
 		return nil, nil, ethereum.NotFound
 	}
-	info, txs, err := block.Info(s.trustRPC, s.mustBePostMerge)
+	info, txs, err := block.Info(s.trustRPC, s.mustBePostMerge, s.respChecker)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -235,7 +243,7 @@ func (s *EthClient) payloadCall(ctx context.Context, method string, id rpcBlockI
 	if block == nil {
 		return nil, ethereum.NotFound
 	}
-	envelope, err := block.ExecutionPayloadEnvelope(s.trustRPC)
+	envelope, err := block.ExecutionPayloadEnvelope(s.trustRPC, s.respChecker)
 	if err != nil {
 		return nil, err
 	}
