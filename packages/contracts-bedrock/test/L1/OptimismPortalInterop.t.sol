@@ -18,9 +18,6 @@ import { L1BlockInterop } from "src/L2/L1BlockInterop.sol";
 // Interfaces
 import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
 
-// TODO: The OptimismPortalInterop contract is currently just a think wrapper around the OptimismPortal2 contract.
-//       The tests here are duplicated in OptimismPortal2.t.sol. Can we remove these tests (or even the
-//     OptimismPortalInterop contract)?
 contract OptimismPortalInterop_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol

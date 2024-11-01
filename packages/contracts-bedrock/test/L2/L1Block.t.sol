@@ -246,7 +246,8 @@ contract L1BlockConfig_Test is L1BlockTest {
 
         symbol;
         name;
-        // TODO: this fails for some reason
+        // TODO: this fails because Solady's LibString.fromSmallString() is returning an empty string,
+        //       I believe it expects right padded bytes32 values as input.
         // assertEq(name, _name);
         //assertEq(symbol, _symbol);
     }

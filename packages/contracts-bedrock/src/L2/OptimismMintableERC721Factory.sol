@@ -14,7 +14,6 @@ import { Types } from "src/libraries/Types.sol";
 ///         used and is therefore set up to work on L2. This could be abstracted in the
 ///         future to be deployable on L1 as well.
 contract OptimismMintableERC721Factory is ISemver {
-    // TODO: check storage layout
     /// @notice Tracks addresses created by this factory.
     mapping(address => bool) public isOptimismMintableERC721;
 
@@ -50,7 +49,7 @@ contract OptimismMintableERC721Factory is ISemver {
         return bridge();
     }
 
-    /// @notice TODO: stronger type
+    /// @notice Returns the ERC721 bridge contract.
     function bridge() public pure returns (IL2ERC721Bridge) {
         return IL2ERC721Bridge(Predeploys.L2_ERC721_BRIDGE);
     }

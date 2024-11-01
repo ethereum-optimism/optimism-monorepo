@@ -215,7 +215,6 @@ contract Setup {
         // These calls by the depositor account simulate the SystemConfig setting setting the
         // network specific configuration into L2. Ideally there is a library that automatically
         // translates TransactionDeposited and ConfigUpdate events into the appropriate calls
-        // TODO: sort out using StaticTypes library vs abi.encode
         vm.startPrank(Constants.DEPOSITOR_ACCOUNT);
         l1Block.setConfig(Types.ConfigType.L1_ERC_721_BRIDGE_ADDRESS, abi.encode(l1ERC721Bridge));
         l1Block.setConfig(Types.ConfigType.REMOTE_CHAIN_ID, abi.encode(deploy.cfg().l1ChainID()));

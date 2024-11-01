@@ -3,13 +3,13 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
-
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -115,8 +115,8 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
     }
 
     /// @notice
-    function otherBridge() public pure override returns (StandardBridge) {
-        return StandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE));
+    function otherBridge() public pure override returns (IStandardBridge) {
+        return IStandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE));
     }
 
     /// @notice Getter function for the messenger contract.

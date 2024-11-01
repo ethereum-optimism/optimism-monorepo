@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
+import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
 import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 // Libraries
@@ -64,15 +65,14 @@ contract L2StandardBridge is StandardBridge, ISemver {
         return "1.11.1-beta.4";
     }
 
-    /// @notice
-    /// TODO: this should be IStandardBridge
-    function otherBridge() public view override returns (StandardBridge) {
+    /// @notice Returns the corresponding L1 StandardBridge contract.
+    function otherBridge() public view override returns (IStandardBridge) {
         bytes memory data =
             IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).getConfig(Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS);
-        return StandardBridge(abi.decode(data, (address)));
+        return IStandardBridge(abi.decode(data, (address)));
     }
 
-    /// @notice
+    /// @notice Returns the cross domain messenger.
     function messenger() public pure override returns (ICrossDomainMessenger) {
         return ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER);
     }
