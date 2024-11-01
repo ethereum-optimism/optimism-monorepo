@@ -110,7 +110,7 @@ snapshots-abi-storage:
 
 # Updates the semver-lock.json file.
 semver-lock:
-  forge script scripts/autogen/SemverLock.s.sol
+  go run scripts/autogen/generate-semver-lock/main.go
 
 # Generates core snapshots without building contracts. Currently just an alias for
 # snapshots-abi-storage because we no longer run Kontrol snapshots here. Run

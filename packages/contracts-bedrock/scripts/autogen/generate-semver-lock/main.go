@@ -116,8 +116,9 @@ func writeSemverLock(files []string) error {
 		}
 
 		// Calculate hashes using Keccak256
+		var sourceCode = []byte(strings.TrimSuffix(string(fileContents), "\n"))
 		initCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(bytes))
-		sourceCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash([]byte(strings.TrimSuffix(string(fileContents), "\n"))))
+		sourceCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(sourceCode))
 
 		// Store in output map
 		output[file] = map[string]string{
