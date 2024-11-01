@@ -329,6 +329,16 @@
             "internalType": "address",
             "name": "feeAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "unsafeBlockSigner",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "batcherHash",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct SystemConfig.Roles",
@@ -346,19 +356,9 @@
         "type": "uint32"
       },
       {
-        "internalType": "bytes32",
-        "name": "_batcherHash",
-        "type": "bytes32"
-      },
-      {
         "internalType": "uint64",
         "name": "_gasLimit",
         "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "_unsafeBlockSigner",
-        "type": "address"
       },
       {
         "components": [
@@ -463,6 +463,16 @@
             "internalType": "address",
             "name": "feeAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "unsafeBlockSigner",
+            "type": "address"
+          },
+          {
+            "internalType": "bytes32",
+            "name": "batcherHash",
+            "type": "bytes32"
           }
         ],
         "internalType": "struct SystemConfig.Roles",
@@ -480,19 +490,9 @@
         "type": "uint32"
       },
       {
-        "internalType": "bytes32",
-        "name": "_batcherHash",
-        "type": "bytes32"
-      },
-      {
         "internalType": "uint64",
         "name": "_gasLimit",
         "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "_unsafeBlockSigner",
-        "type": "address"
       },
       {
         "components": [
