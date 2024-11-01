@@ -513,7 +513,7 @@ contract Specification_Test is CommonTest {
         _addSpec({
             _name: "SystemConfigInterop",
             _sel: _getSel(
-                "initialize((address,address),uint32,uint32,bytes32,uint64,address,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address),address)"
+                "initialize((address,address,address,bytes32),uint32,uint32,uint64,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address),address)"
             )
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("overhead()") });
