@@ -129,8 +129,9 @@ func (c *OpConductor) initSequencerControl(ctx context.Context) error {
 		return errors.Wrap(err, "failed to create geth rpc client")
 	}
 	execCfg := sources.L2ClientDefaultConfig(&c.cfg.RollupCfg, true)
+	l2RpcChecker := sources.NewL2RPCChecker()
 	// TODO: Add metrics tracer here. tracked by https://github.com/ethereum-optimism/protocol-quest/issues/45
-	exec, err := sources.NewEthClient(ec, c.log, nil, &execCfg.EthClientConfig)
+	exec, err := sources.NewEthClient(ec, c.log, nil, &execCfg.EthClientConfig, l2RpcChecker)
 	if err != nil {
 		return errors.Wrap(err, "failed to create geth client")
 	}

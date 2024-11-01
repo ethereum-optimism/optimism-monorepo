@@ -164,7 +164,8 @@ func (tc *ReceiptsTestCase) Run(t *testing.T) {
 		testCfg.MethodResetDuration = 0
 	}
 	logger := testlog.Logger(t, log.LevelError)
-	ethCl, err := NewEthClient(client.NewBaseRPCClient(cl), logger, nil, testCfg)
+	l2RpcChecker := NewL2RPCChecker()
+	ethCl, err := NewEthClient(client.NewBaseRPCClient(cl), logger, nil, testCfg, l2RpcChecker)
 	require.NoError(t, err)
 	defer ethCl.Close()
 

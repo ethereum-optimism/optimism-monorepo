@@ -1,7 +1,6 @@
 package sources
 
 import (
-	"errors"
 	"fmt"
 	"math/big"
 	"strings"
@@ -220,7 +219,7 @@ type RPCBlock struct {
 	Withdrawals  *types.Withdrawals   `json:"withdrawals,omitempty"`
 }
 
-func (block *RPCBlock) verify() error {
+func (block *RPCBlock) verify(checker RPCRespCheck) error {
 	if computed := block.computeBlockHash(); computed != block.Hash {
 		return fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, block.Hash)
 	}
@@ -232,34 +231,22 @@ func (block *RPCBlock) verify() error {
 	if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
 		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	}
-	if block.WithdrawalsRoot != nil {
-		if block.Withdrawals == nil {
-			return errors.New("expected withdrawals")
-		}
-		for i, w := range *block.Withdrawals {
-			if w == nil {
-				return fmt.Errorf("block withdrawal %d is null", i)
-			}
-		}
-		if computed := types.DeriveSha(*block.Withdrawals, trie.NewStackTrie(nil)); *block.WithdrawalsRoot != computed {
-			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, block.WithdrawalsRoot)
-		}
-	} else {
-		if block.Withdrawals != nil {
-			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*block.Withdrawals))
-		}
+
+	if err := checker.ValidateWithdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
+		return err
 	}
+
 	return nil
 }
 
-func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, types.Transactions, error) {
+func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool, checker RPCRespCheck) (eth.BlockInfo, types.Transactions, error) {
 	if mustBePostMerge {
 		if err := block.checkPostMerge(); err != nil {
 			return nil, nil, err
 		}
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.verify(checker); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -273,12 +260,12 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInf
 	return info, block.Transactions, nil
 }
 
-func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.ExecutionPayloadEnvelope, error) {
+func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool, checker RPCRespCheck) (*eth.ExecutionPayloadEnvelope, error) {
 	if err := block.checkPostMerge(); err != nil {
 		return nil, err
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.verify(checker); err != nil {
 			return nil, err
 		}
 	}
