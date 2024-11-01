@@ -140,7 +140,7 @@
               },
               {
                 "internalType": "address",
-                "name": "feeAdmin",
+                "name": "systemConfigFeeAdmin",
                 "type": "address"
               }
             ],
