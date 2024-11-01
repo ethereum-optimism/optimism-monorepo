@@ -2,7 +2,6 @@ package processors
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -10,7 +9,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors/contracts"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -24,21 +22,17 @@ type ChainsDBClientForLogProcessor interface {
 	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
 }
 
-type EventDecoder interface {
-	DecodeExecutingMessageLog(log *ethTypes.Log) (types.ExecutingMessage, error)
-}
-
 type logProcessor struct {
 	chain        types.ChainID
 	logStore     LogStorage
-	eventDecoder EventDecoder
+	eventDecoder EventDecoderFn
 }
 
 func NewLogProcessor(chain types.ChainID, logStore LogStorage) LogProcessor {
 	return &logProcessor{
 		chain:        chain,
 		logStore:     logStore,
-		eventDecoder: contracts.NewCrossL2Inbox(),
+		eventDecoder: DecodeExecutingMessageLog,
 	}
 }
 
@@ -49,19 +43,15 @@ func (p *logProcessor) ProcessLogs(_ context.Context, block eth.BlockRef, rcpts 
 		for _, l := range rcpt.Logs {
 			// log hash represents the hash of *this* log as a potentially initiating message
 			logHash := logToLogHash(l)
-			var execMsg *types.ExecutingMessage
-			msg, err := p.eventDecoder.DecodeExecutingMessageLog(l)
-			if err != nil && !errors.Is(err, contracts.ErrEventNotFound) {
-				return fmt.Errorf("failed to decode executing message log: %w", err)
-			} else if err == nil {
-				// if the log is an executing message, store the message
-				execMsg = &msg
+			// The log may be an executing message emitted by the CrossL2Inbox
+			execMsg, err := p.eventDecoder(l)
+			if err != nil {
+				return fmt.Errorf("invalid log %d from block %s: %w", l.Index, block.ID(), err)
 			}
 			// executing messages have multiple entries in the database
 			// they should start with the initiating message and then include the execution
-			err = p.logStore.AddLog(p.chain, logHash, block.ParentID(), uint32(l.Index), execMsg)
-			if err != nil {
-				return fmt.Errorf("failed to add log %d from block %v: %w", l.Index, block.ID(), err)
+			if err := p.logStore.AddLog(p.chain, logHash, block.ParentID(), uint32(l.Index), execMsg); err != nil {
+				return fmt.Errorf("failed to add log %d from block %s: %w", l.Index, block.ID(), err)
 			}
 		}
 	}
@@ -77,6 +67,6 @@ func (p *logProcessor) ProcessLogs(_ context.Context, block eth.BlockRef, rcpts 
 // The address is hashed into the payload hash to save space in the log storage,
 // and because they represent paired data.
 func logToLogHash(l *ethTypes.Log) common.Hash {
-	payloadHash := crypto.Keccak256(types.LogToMessagePayload(l))
-	return types.PayloadHashToLogHash(common.Hash(payloadHash), l.Address)
+	payloadHash := crypto.Keccak256Hash(types.LogToMessagePayload(l))
+	return types.PayloadHashToLogHash(payloadHash, l.Address)
 }
