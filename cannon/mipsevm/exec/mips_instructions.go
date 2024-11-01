@@ -33,7 +33,9 @@ func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun ui
 	return insn, opcode, fun
 }
 
-func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory *memory.Memory, insn, opcode, fun uint32, memTracker MemTracker, stackTracker StackTracker) (memUpdated bool, memAddr Word, err error) {
+// ExecMipsCoreStepLogic executes a MIPS instruction that isn't a syscall nor a RMW operation
+// If a store operation occurred, then it returns the effective address of the store memory location.
+func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory *memory.Memory, insn, opcode, fun uint32, memTracker MemTracker, stackTracker StackTracker) (memUpdated bool, effMemAddr Word, err error) {
 	// j-type j/jal
 	if opcode == 2 || opcode == 3 {
 		linkReg := Word(0)
@@ -153,7 +155,7 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		memTracker.TrackMemAccess(storeAddr)
 		memory.SetWord(storeAddr, val)
 		memUpdated = true
-		memAddr = storeAddr
+		effMemAddr = storeAddr
 	}
 
 	// write back the value to destination register
