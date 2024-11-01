@@ -3,11 +3,12 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum/go-ethereum/log"
 	"path"
 	"runtime"
 	"testing"
+
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
