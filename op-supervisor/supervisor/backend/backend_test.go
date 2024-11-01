@@ -117,7 +117,8 @@ func TestBackendLifetime(t *testing.T) {
 	require.NoError(t, err)
 	// Make the processing happen, so we can rely on the new chain information,
 	// and not run into errors for future data that isn't mocked at this time.
-	b.chainProcessors[chainA].ProcessToHead()
+	proc, _ := b.chainProcessors.Get(chainA)
+	proc.ProcessToHead()
 
 	_, err = b.UnsafeView(context.Background(), chainA, types.ReferenceView{})
 	require.ErrorIs(t, err, types.ErrFuture, "still no data yet, need cross-unsafe")
