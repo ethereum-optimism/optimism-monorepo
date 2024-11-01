@@ -413,8 +413,8 @@ func TestInteropDeployment(t *testing.T) {
 	chainState := st.Chains[0]
 	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
 	require.NoError(t, checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot))
-	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.L1ProxyAdminOwner.Bytes())
-	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
+	systemConfigOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
+	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, systemConfigOwnerHash)
 }
 
 func TestInvalidL2Genesis(t *testing.T) {
