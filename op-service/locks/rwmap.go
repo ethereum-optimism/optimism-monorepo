@@ -51,5 +51,5 @@ func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {
 func (m *RWMap[K, V]) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
-	m.inner = make(map[K]V, 0)
+	clear(m.inner)
 }
