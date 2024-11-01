@@ -60,8 +60,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     struct Roles {
         address owner;
         address feeAdmin;
+        address unsafeBlockSigner;
     }
-    // TODO: add unsafe block signer and batcher hash?
 
     /// @notice Version identifier, used for upgrades.
     uint256 public constant VERSION = 0;
@@ -179,7 +179,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @param _blobbasefeeScalar Initial blobbasefee scalar value.
     /// @param _batcherHash       Initial batcher hash.
     /// @param _gasLimit          Initial gas limit.
-    /// @param _unsafeBlockSigner Initial unsafe block signer address.
     /// @param _config            Initial ResourceConfig.
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
@@ -190,7 +189,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         uint32 _blobbasefeeScalar,
         bytes32 _batcherHash,
         uint64 _gasLimit,
-        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         SystemConfig.Addresses memory _addresses
@@ -206,7 +204,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         _setGasConfigEcotone({ _basefeeScalar: _basefeeScalar, _blobbasefeeScalar: _blobbasefeeScalar });
         _setGasLimit(_gasLimit);
 
-        Storage.setAddress(UNSAFE_BLOCK_SIGNER_SLOT, _unsafeBlockSigner);
+        Storage.setAddress(UNSAFE_BLOCK_SIGNER_SLOT, _roles.unsafeBlockSigner);
         Storage.setAddress(FEE_ADMIN_SLOT, _roles.feeAdmin);
         Storage.setAddress(BATCH_INBOX_SLOT, _batchInbox);
 

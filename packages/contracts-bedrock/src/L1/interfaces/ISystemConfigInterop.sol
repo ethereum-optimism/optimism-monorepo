@@ -63,7 +63,6 @@ interface ISystemConfigInterop {
         uint32 _blobbasefeeScalar,
         bytes32 _batcherHash,
         uint64 _gasLimit,
-        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         ISystemConfig.Addresses memory _addresses,

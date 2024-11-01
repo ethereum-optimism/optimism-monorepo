@@ -180,12 +180,15 @@ contract Initializer_Test is Bridge_Initializer {
                 initCalldata: abi.encodeCall(
                     systemConfig.initialize,
                     (
-                        ISystemConfig.Roles({ owner: address(0xdead), feeAdmin: address(0xdead) }),
+                        ISystemConfig.Roles({
+                            owner: address(0xdead),
+                            feeAdmin: address(0xdead),
+                            unsafeBlockSigner: address(0)
+                        }),
                         0,
                         0,
                         bytes32(0),
                         1,
-                        address(0),
                         IResourceMetering.ResourceConfig({
                             maxResourceLimit: 1,
                             elasticityMultiplier: 1,
@@ -216,12 +219,15 @@ contract Initializer_Test is Bridge_Initializer {
                 initCalldata: abi.encodeCall(
                     systemConfig.initialize,
                     (
-                        ISystemConfig.Roles({ owner: address(0xdead), feeAdmin: address(0xdead) }),
+                        ISystemConfig.Roles({
+                            owner: address(0xdead),
+                            feeAdmin: address(0xdead),
+                            unsafeBlockSigner: address(0)
+                        }),
                         0,
                         0,
                         bytes32(0),
                         1,
-                        address(0),
                         IResourceMetering.ResourceConfig({
                             maxResourceLimit: 1,
                             elasticityMultiplier: 1,

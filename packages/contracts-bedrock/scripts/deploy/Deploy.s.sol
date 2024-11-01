@@ -827,12 +827,15 @@ contract Deploy is Deployer {
             _data: abi.encodeCall(
                 ISystemConfig.initialize,
                 (
-                    ISystemConfig.Roles({ owner: cfg.finalSystemOwner(), feeAdmin: cfg.systemConfigFeeAdmin() }),
+                    ISystemConfig.Roles({
+                        owner: cfg.finalSystemOwner(),
+                        feeAdmin: cfg.systemConfigFeeAdmin(),
+                        unsafeBlockSigner: cfg.p2pSequencerAddress()
+                    }),
                     cfg.basefeeScalar(),
                     cfg.blobbasefeeScalar(),
                     batcherHash,
                     uint64(cfg.l2GenesisBlockGasLimit()),
-                    cfg.p2pSequencerAddress(),
                     Constants.DEFAULT_RESOURCE_CONFIG(),
                     cfg.batchInboxAddress(),
                     ISystemConfig.Addresses({

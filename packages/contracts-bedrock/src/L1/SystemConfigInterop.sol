@@ -30,7 +30,6 @@ contract SystemConfigInterop is SystemConfig {
     /// @param _blobbasefeeScalar Initial blobbasefee scalar value.
     /// @param _batcherHash       Initial batcher hash.
     /// @param _gasLimit          Initial gas limit.
-    /// @param _unsafeBlockSigner Initial unsafe block signer address.
     /// @param _config            Initial ResourceConfig.
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
@@ -42,7 +41,6 @@ contract SystemConfigInterop is SystemConfig {
         uint32 _blobbasefeeScalar,
         bytes32 _batcherHash,
         uint64 _gasLimit,
-        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         SystemConfig.Addresses memory _addresses,
@@ -57,7 +55,6 @@ contract SystemConfigInterop is SystemConfig {
             _blobbasefeeScalar: _blobbasefeeScalar,
             _batcherHash: _batcherHash,
             _gasLimit: _gasLimit,
-            _unsafeBlockSigner: _unsafeBlockSigner,
             _config: _config,
             _batchInbox: _batchInbox,
             _addresses: _addresses

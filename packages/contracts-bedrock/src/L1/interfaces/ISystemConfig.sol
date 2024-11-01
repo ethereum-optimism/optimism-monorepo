@@ -29,6 +29,7 @@ interface ISystemConfig {
     struct Roles {
         address owner;
         address feeAdmin;
+        address unsafeBlockSigner;
     }
 
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
@@ -62,7 +63,6 @@ interface ISystemConfig {
         uint32 _blobbasefeeScalar,
         bytes32 _batcherHash,
         uint64 _gasLimit,
-        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         Addresses memory _addresses

@@ -132,12 +132,11 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
 
         vm.expectRevert("SystemConfig: gas limit too low");
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob, unsafeBlockSigner: address(1) }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
             _gasLimit: minimumGasLimit - 1,
-            _unsafeBlockSigner: address(1),
             _config: Constants.DEFAULT_RESOURCE_CONFIG(),
             _batchInbox: address(0),
             _addresses: ISystemConfig.Addresses({
@@ -162,12 +161,11 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
         // Initialize and check that StartBlock updates to current block number
         vm.prank(systemConfig.owner());
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob, unsafeBlockSigner: address(1) }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
             _gasLimit: gasLimit,
-            _unsafeBlockSigner: address(1),
             _config: Constants.DEFAULT_RESOURCE_CONFIG(),
             _batchInbox: address(0),
             _addresses: ISystemConfig.Addresses({
@@ -193,12 +191,11 @@ contract SystemConfig_Initialize_TestFail is SystemConfig_Initialize_Test {
         // Initialize and check that StartBlock doesn't update
         vm.prank(systemConfig.owner());
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob, unsafeBlockSigner: address(1) }),
             _basefeeScalar: basefeeScalar,
             _blobbasefeeScalar: blobbasefeeScalar,
             _batcherHash: bytes32(hex"abcd"),
             _gasLimit: gasLimit,
-            _unsafeBlockSigner: address(1),
             _config: Constants.DEFAULT_RESOURCE_CONFIG(),
             _batchInbox: address(0),
             _addresses: ISystemConfig.Addresses({
@@ -288,12 +285,11 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
 
         vm.expectRevert(bytes(revertMessage));
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: address(0xdEaD), feeAdmin: address(0xdEaD) }),
+            _roles: ISystemConfig.Roles({ owner: address(0xdEaD), feeAdmin: address(0xdEaD), unsafeBlockSigner: address(1) }),
             _basefeeScalar: 0,
             _blobbasefeeScalar: 0,
             _batcherHash: bytes32(0),
             _gasLimit: gasLimit,
-            _unsafeBlockSigner: address(0),
             _config: config,
             _batchInbox: address(0),
             _addresses: ISystemConfig.Addresses({
@@ -327,12 +323,11 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_SYMBOL_SLOT, bytes32(0));
 
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob }),
+            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob, unsafeBlockSigner: address(1) }),
             _basefeeScalar: 2100,
             _blobbasefeeScalar: 1000000,
             _batcherHash: bytes32(hex"abcd"),
             _gasLimit: 30_000_000,
-            _unsafeBlockSigner: address(1),
             _config: Constants.DEFAULT_RESOURCE_CONFIG(),
             _batchInbox: address(0),
             _addresses: ISystemConfig.Addresses({

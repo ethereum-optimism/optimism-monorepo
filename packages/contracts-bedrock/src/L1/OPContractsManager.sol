@@ -469,12 +469,15 @@ contract OPContractsManager is ISemver, Initializable {
 
             return abi.encodeWithSelector(
                 _selector,
-                ISystemConfig.Roles({ owner: _input.roles.systemConfigOwner, feeAdmin: _input.roles.feeAdmin }),
+                ISystemConfig.Roles({
+                    owner: _input.roles.systemConfigOwner,
+                    feeAdmin: _input.roles.feeAdmin,
+                    unsafeBlockSigner: _input.roles.unsafeBlockSigner
+                }),
                 _input.basefeeScalar,
                 _input.blobBasefeeScalar,
                 bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
                 _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
                 referenceResourceConfig,
                 chainIdToBatchInboxAddress(_input.l2ChainId),
                 opChainAddrs
@@ -488,12 +491,15 @@ contract OPContractsManager is ISemver, Initializable {
 
             return abi.encodeWithSelector(
                 _selector,
-                ISystemConfig.Roles({ owner: _input.roles.systemConfigOwner, feeAdmin: _input.roles.feeAdmin }),
+                ISystemConfig.Roles({
+                    owner: _input.roles.systemConfigOwner,
+                    feeAdmin: _input.roles.feeAdmin,
+                    unsafeBlockSigner: _input.roles.unsafeBlockSigner
+                }),
                 _input.basefeeScalar,
                 _input.blobBasefeeScalar,
                 bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
                 _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
                 referenceResourceConfig,
                 chainIdToBatchInboxAddress(_input.l2ChainId),
                 opChainAddrs
