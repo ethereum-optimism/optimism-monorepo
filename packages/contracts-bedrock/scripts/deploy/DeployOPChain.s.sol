@@ -363,7 +363,7 @@ contract DeployOPChain is Script {
             unsafeBlockSigner: _doi.unsafeBlockSigner(),
             proposer: _doi.proposer(),
             challenger: _doi.challenger(),
-            feeAdmin: _doi.systemConfigFeeAdmin()
+            systemConfigFeeAdmin: _doi.systemConfigFeeAdmin()
         });
         OPContractsManager.DeployInput memory deployInput = OPContractsManager.DeployInput({
             roles: roles,

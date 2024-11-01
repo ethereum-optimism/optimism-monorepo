@@ -1272,7 +1272,7 @@ contract Deploy is Deployer {
                 unsafeBlockSigner: cfg.p2pSequencerAddress(),
                 proposer: cfg.l2OutputOracleProposer(),
                 challenger: cfg.l2OutputOracleChallenger(),
-                feeAdmin: cfg.systemConfigFeeAdmin()
+                systemConfigFeeAdmin: cfg.systemConfigFeeAdmin()
             }),
             basefeeScalar: cfg.basefeeScalar(),
             blobBasefeeScalar: cfg.blobbasefeeScalar(),

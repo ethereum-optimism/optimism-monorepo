@@ -46,7 +46,7 @@ contract OPContractsManager is ISemver, Initializable {
         address unsafeBlockSigner;
         address proposer;
         address challenger;
-        address feeAdmin;
+        address systemConfigFeeAdmin;
     }
 
     /// @notice The full set of inputs to deploy a new OP Stack chain.
@@ -471,7 +471,7 @@ contract OPContractsManager is ISemver, Initializable {
                 _selector,
                 ISystemConfig.Roles({
                     owner: _input.roles.systemConfigOwner,
-                    feeAdmin: _input.roles.feeAdmin,
+                    feeAdmin: _input.roles.systemConfigFeeAdmin,
                     unsafeBlockSigner: _input.roles.unsafeBlockSigner,
                     batcherHash: bytes32(uint256(uint160(_input.roles.batcher)))
                 }),
@@ -493,7 +493,7 @@ contract OPContractsManager is ISemver, Initializable {
                 _selector,
                 ISystemConfig.Roles({
                     owner: _input.roles.systemConfigOwner,
-                    feeAdmin: _input.roles.feeAdmin,
+                    feeAdmin: _input.roles.systemConfigFeeAdmin,
                     unsafeBlockSigner: _input.roles.unsafeBlockSigner,
                     batcherHash: bytes32(uint256(uint160(_input.roles.batcher)))
                 }),

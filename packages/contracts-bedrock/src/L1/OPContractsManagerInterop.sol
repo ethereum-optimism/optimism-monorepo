@@ -43,7 +43,7 @@ contract OPContractsManagerInterop is OPContractsManager {
             _selector,
             ISystemConfig.Roles({
                 owner: _input.roles.systemConfigOwner,
-                feeAdmin: _input.roles.feeAdmin,
+                feeAdmin: _input.roles.systemConfigFeeAdmin,
                 unsafeBlockSigner: _input.roles.unsafeBlockSigner,
                 batcherHash: bytes32(uint256(uint160(_input.roles.batcher)))
             }),
