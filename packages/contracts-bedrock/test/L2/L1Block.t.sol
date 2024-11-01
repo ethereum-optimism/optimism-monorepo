@@ -10,6 +10,7 @@ import { Types } from "src/libraries/Types.sol";
 import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import "src/libraries/L1BlockErrors.sol";
+import { LibString } from "lib/solady/src/utils/LibString.sol";
 
 contract L1BlockTest is CommonTest {
     address depositor;
@@ -235,6 +236,8 @@ contract L1BlockConfig_Test is L1BlockTest {
     )
         external
     {
+        _name = LibString.normalizeSmallString(_name);
+        _symbol = LibString.normalizeSmallString(_symbol);
         vm.assume(_token != address(0));
         vm.prank(Constants.DEPOSITOR_ACCOUNT);
         l1Block.setConfig(Types.ConfigType.GAS_PAYING_TOKEN, abi.encode(_token, _decimals, _name, _symbol));
@@ -244,12 +247,8 @@ contract L1BlockConfig_Test is L1BlockTest {
         assertEq(token, _token);
         assertEq(decimals, _decimals);
 
-        symbol;
-        name;
-        // TODO: this fails because Solady's LibString.fromSmallString() is returning an empty string,
-        //       I believe it expects right padded bytes32 values as input.
-        // assertEq(name, _name);
-        //assertEq(symbol, _symbol);
+        assertEq(name, _name);
+        assertEq(symbol, _symbol);
     }
 
     /// @notice
