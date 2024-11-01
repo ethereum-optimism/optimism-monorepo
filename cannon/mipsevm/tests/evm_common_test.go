@@ -875,6 +875,10 @@ func TestEVMFault(t *testing.T) {
 }
 
 func TestHelloEVM(t *testing.T) {
+	if os.Getenv("SKIP_SLOW_TESTS") == "true" {
+		t.Skip("Skipping slow test because SKIP_SLOW_TESTS is enabled")
+	}
+
 	t.Parallel()
 	versions := GetMipsVersionTestCases(t)
 
@@ -918,6 +922,10 @@ func TestHelloEVM(t *testing.T) {
 }
 
 func TestClaimEVM(t *testing.T) {
+	if os.Getenv("SKIP_SLOW_TESTS") == "true" {
+		t.Skip("Skipping slow test because SKIP_SLOW_TESTS is enabled")
+	}
+
 	t.Parallel()
 	versions := GetMipsVersionTestCases(t)
 
@@ -959,6 +967,10 @@ func TestClaimEVM(t *testing.T) {
 }
 
 func TestEntryEVM(t *testing.T) {
+	if os.Getenv("SKIP_SLOW_TESTS") == "true" {
+		t.Skip("Skipping slow test because SKIP_SLOW_TESTS is enabled")
+	}
+
 	t.Parallel()
 	versions := GetMipsVersionTestCases(t)
 
