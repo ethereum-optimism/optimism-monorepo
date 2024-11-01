@@ -118,4 +118,15 @@ contract PreinstallsTest is CommonTest {
     function test_preinstall_createX_succeeds() external view {
         assertPreinstall(Preinstalls.CreateX, Preinstalls.CreateXCode);
     }
+
+    function test_createX_runtimeBytecodeHash() external view {
+        bytes memory createXRuntimeBytecode = Preinstalls.CreateX.code;
+        bytes32 createXRuntimeBytecodeHash = keccak256(createXRuntimeBytecode);
+
+        assertEq(
+            createXRuntimeBytecodeHash,
+            0xbd8a7ea8cfca7b4e5f5041d7d4b17bc317c5ce42cfbc42066a00cf26b43eb53f,
+            "CreateX runtime bytecode hash mismatch"
+        );
+    }
 }
