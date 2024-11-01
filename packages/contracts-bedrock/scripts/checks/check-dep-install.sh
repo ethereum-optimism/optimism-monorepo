@@ -12,6 +12,13 @@ then
   exit 1
 fi
 
+if ! command -v semgrep &> /dev/null
+then
+  # shellcheck disable=SC2006
+  echo "Please install semgrep" >&2
+  exit 1
+fi
+
 if ! command -v forge &> /dev/null
 then
   # shellcheck disable=SC2006

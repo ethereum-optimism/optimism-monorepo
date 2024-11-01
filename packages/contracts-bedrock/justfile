@@ -17,7 +17,7 @@ dep-status:
 
 # Checks that the correct version of Foundry is installed.
 prebuild:
-  ./scripts/checks/check-foundry-install.sh
+  ./scripts/checks/check-dep-install.sh
 
 # Core forge build command
 forge-build:
