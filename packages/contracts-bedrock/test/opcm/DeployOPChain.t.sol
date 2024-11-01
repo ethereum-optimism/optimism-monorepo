@@ -563,6 +563,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
     function setDOI() internal {
         doi.set(doi.opChainProxyAdminOwner.selector, opChainProxyAdminOwner);
         doi.set(doi.systemConfigOwner.selector, systemConfigOwner);
+        doi.set(doi.systemConfigFeeAdmin.selector, systemConfigFeeAdmin);
         doi.set(doi.batcher.selector, batcher);
         doi.set(doi.unsafeBlockSigner.selector, unsafeBlockSigner);
         doi.set(doi.proposer.selector, proposer);
