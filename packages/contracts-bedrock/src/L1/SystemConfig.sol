@@ -18,12 +18,6 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { IOptimismPortal2 as IOptimismPortal } from "src/L1/interfaces/IOptimismPortal2.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 
-// TODO: need rbac construction for being able to set the fee vault config to keep
-//       the roles 1:1 as today. today the L2 proxy admin owner is the only entity
-//       that can modify the fee vault config, in practice this means that its the
-//       security council/foundation. do we want to source the value from the
-//       superchain config for simplicity?
-
 /// @custom:proxied true
 /// @title SystemConfig
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.

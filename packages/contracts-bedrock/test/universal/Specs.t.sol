@@ -41,7 +41,8 @@ contract Specification_Test is CommonTest {
         DELAYEDWETHOWNER,
         COUNCILSAFE,
         COUNCILSAFEOWNER,
-        DEPENDENCYMANAGER
+        DEPENDENCYMANAGER,
+        FEEADMIN
     }
 
     /// @notice Represents the specification of a function.
@@ -334,8 +335,7 @@ contract Specification_Test is CommonTest {
             _name: "OptimismPortalInterop",
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
-        // TODO: auth
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("upgrade(uint32,bytes)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("upgrade(uint32,bytes)"), _auth: Role.FEEADMIN });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("setConfig(uint8,bytes)") });
 
         // OptimismPortal2
@@ -383,8 +383,7 @@ contract Specification_Test is CommonTest {
             _name: "OptimismPortal2",
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
-        // TODO: auth
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("upgrade(uint32,bytes)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("upgrade(uint32,bytes)"), _auth: Role.FEEADMIN });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setConfig(uint8,bytes)") });
 
         // L1OptimismMintableERC20Factory

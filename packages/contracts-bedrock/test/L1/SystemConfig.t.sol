@@ -699,7 +699,6 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
             )
         );
 
-        // TODO: add new role
         vm.prank(feeAdmin);
         systemConfig.setFeeVaultConfig(feeType, _recipient, _min, withdrawalNetwork);
     }

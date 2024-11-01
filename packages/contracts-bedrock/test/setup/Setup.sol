@@ -206,8 +206,6 @@ contract Setup {
         console.log("Setup: creating L2 genesis with fork %s", l2Fork.toString());
         l2Genesis.runWithOptions(OutputMode.NONE, l2Fork);
 
-        // TODO: Prank using depositor address to set the L2 network specific config
-
         // Set the governance token's owner to be the final system owner
         address finalSystemOwner = deploy.cfg().finalSystemOwner();
         vm.startPrank(governanceToken.owner());
