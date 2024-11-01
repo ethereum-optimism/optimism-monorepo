@@ -12,17 +12,16 @@ import {
     GameStatus,
     GameType,
     Claim,
-    Position,
     Clock,
     Duration,
     Timestamp,
     Hash,
     OutputRoot,
-    LibPosition,
     LibClock,
     LocalPreimageKey,
     VMStatuses
 } from "src/dispute/lib/Types.sol";
+import { Position, LibPosition } from "src/dispute/lib/LibPosition.sol";
 import {
     InvalidParent,
     ClaimAlreadyExists,

@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
-// nosemgrep: sol-style-no-bare-imports
-import "src/dispute/lib/LibPosition.sol";
+import { Position } from "src/dispute/lib/LibPosition.sol";
 
 using LibClaim for Claim global;
 using LibHash for Hash global;
