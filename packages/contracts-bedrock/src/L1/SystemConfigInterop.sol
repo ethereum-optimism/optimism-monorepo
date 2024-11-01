@@ -28,7 +28,6 @@ contract SystemConfigInterop is SystemConfig {
     /// @param _roles             Initial roles.
     /// @param _basefeeScalar     Initial basefee scalar value.
     /// @param _blobbasefeeScalar Initial blobbasefee scalar value.
-    /// @param _batcherHash       Initial batcher hash.
     /// @param _gasLimit          Initial gas limit.
     /// @param _config            Initial ResourceConfig.
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
@@ -39,7 +38,6 @@ contract SystemConfigInterop is SystemConfig {
         SystemConfig.Roles memory _roles,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
-        bytes32 _batcherHash,
         uint64 _gasLimit,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
@@ -53,7 +51,6 @@ contract SystemConfigInterop is SystemConfig {
             _roles: _roles,
             _basefeeScalar: _basefeeScalar,
             _blobbasefeeScalar: _blobbasefeeScalar,
-            _batcherHash: _batcherHash,
             _gasLimit: _gasLimit,
             _config: _config,
             _batchInbox: _batchInbox,

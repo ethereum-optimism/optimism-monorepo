@@ -44,11 +44,11 @@ contract OPContractsManagerInterop is OPContractsManager {
             ISystemConfig.Roles({
                 owner: _input.roles.systemConfigOwner,
                 feeAdmin: _input.roles.feeAdmin,
-                unsafeBlockSigner: _input.roles.unsafeBlockSigner
+                unsafeBlockSigner: _input.roles.unsafeBlockSigner,
+                batcherHash: bytes32(uint256(uint160(_input.roles.batcher)))
             }),
             _input.basefeeScalar,
             _input.blobBasefeeScalar,
-            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
             _input.gasLimit,
             referenceResourceConfig,
             chainIdToBatchInboxAddress(_input.l2ChainId),

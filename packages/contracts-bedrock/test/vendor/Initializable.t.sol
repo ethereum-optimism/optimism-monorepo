@@ -183,11 +183,11 @@ contract Initializer_Test is Bridge_Initializer {
                         ISystemConfig.Roles({
                             owner: address(0xdead),
                             feeAdmin: address(0xdead),
-                            unsafeBlockSigner: address(0)
+                            unsafeBlockSigner: address(0),
+                            batcherHash: bytes32(0)
                         }),
                         0,
                         0,
-                        bytes32(0),
                         1,
                         IResourceMetering.ResourceConfig({
                             maxResourceLimit: 1,
@@ -222,11 +222,11 @@ contract Initializer_Test is Bridge_Initializer {
                         ISystemConfig.Roles({
                             owner: address(0xdead),
                             feeAdmin: address(0xdead),
-                            unsafeBlockSigner: address(0)
+                            unsafeBlockSigner: address(0),
+                            batcherHash: bytes32(0)
                         }),
                         0,
                         0,
-                        bytes32(0),
                         1,
                         IResourceMetering.ResourceConfig({
                             maxResourceLimit: 1,

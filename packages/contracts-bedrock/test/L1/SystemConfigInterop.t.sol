@@ -117,10 +117,14 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_SYMBOL_SLOT, bytes32(0));
 
         systemConfig.initialize({
-            _roles: ISystemConfig.Roles({ owner: alice, feeAdmin: bob, unsafeBlockSigner: address(1) }),
+            _roles: ISystemConfig.Roles({
+                owner: alice,
+                feeAdmin: bob,
+                unsafeBlockSigner: address(1),
+                batcherHash: bytes32(hex"abcd")
+            }),
             _basefeeScalar: 2100,
             _blobbasefeeScalar: 1000000,
-            _batcherHash: bytes32(hex"abcd"),
             _gasLimit: 30_000_000,
             _config: Constants.DEFAULT_RESOURCE_CONFIG(),
             _batchInbox: address(0),

@@ -61,7 +61,6 @@ interface ISystemConfigInterop {
         ISystemConfig.Roles memory _roles,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
-        bytes32 _batcherHash,
         uint64 _gasLimit,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,

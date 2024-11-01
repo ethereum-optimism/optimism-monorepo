@@ -40,11 +40,11 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
                     ISystemConfig.Roles({
                         owner: address(0xbeef),
                         feeAdmin: address(0xbeef),
-                        unsafeBlockSigner: address(1)
+                        unsafeBlockSigner: address(1),
+                        batcherHash: bytes32(hex"abcd")
                     }),
                     2100, // overhead
                     1000000, // scalar
-                    bytes32(hex"abcd"), // batcher hash
                     30_000_000, // gas limit
                     Constants.DEFAULT_RESOURCE_CONFIG(),
                     address(0), // _batchInbox

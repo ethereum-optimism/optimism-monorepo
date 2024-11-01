@@ -61,6 +61,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         address owner;
         address feeAdmin;
         address unsafeBlockSigner;
+        bytes32 batcherHash;
     }
 
     /// @notice Version identifier, used for upgrades.
@@ -177,7 +178,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @param _roles             Initial roles.
     /// @param _basefeeScalar     Initial basefee scalar value.
     /// @param _blobbasefeeScalar Initial blobbasefee scalar value.
-    /// @param _batcherHash       Initial batcher hash.
     /// @param _gasLimit          Initial gas limit.
     /// @param _config            Initial ResourceConfig.
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
@@ -187,7 +187,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         Roles memory _roles,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
-        bytes32 _batcherHash,
         uint64 _gasLimit,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
@@ -200,7 +199,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         transferOwnership(_roles.owner);
 
         // These are set in ascending order of their UpdateTypes.
-        _setBatcherHash(_batcherHash);
+        _setBatcherHash(_roles.batcherHash);
         _setGasConfigEcotone({ _basefeeScalar: _basefeeScalar, _blobbasefeeScalar: _blobbasefeeScalar });
         _setGasLimit(_gasLimit);
 

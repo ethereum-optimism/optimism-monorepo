@@ -30,6 +30,7 @@ interface ISystemConfig {
         address owner;
         address feeAdmin;
         address unsafeBlockSigner;
+        bytes32 batcherHash;
     }
 
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
@@ -61,7 +62,6 @@ interface ISystemConfig {
         Roles memory _roles,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
-        bytes32 _batcherHash,
         uint64 _gasLimit,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,

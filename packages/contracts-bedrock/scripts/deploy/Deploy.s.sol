@@ -830,11 +830,11 @@ contract Deploy is Deployer {
                     ISystemConfig.Roles({
                         owner: cfg.finalSystemOwner(),
                         feeAdmin: cfg.systemConfigFeeAdmin(),
-                        unsafeBlockSigner: cfg.p2pSequencerAddress()
+                        unsafeBlockSigner: cfg.p2pSequencerAddress(),
+                        batcherHash: batcherHash
                     }),
                     cfg.basefeeScalar(),
                     cfg.blobbasefeeScalar(),
-                    batcherHash,
                     uint64(cfg.l2GenesisBlockGasLimit()),
                     Constants.DEFAULT_RESOURCE_CONFIG(),
                     cfg.batchInboxAddress(),
