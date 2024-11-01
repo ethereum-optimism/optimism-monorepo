@@ -279,7 +279,10 @@ library DeployUtils {
 
     /// @notice Builds an L1ChugSplashProxy with a dummy implementation.
     /// @param _proxyImplName Name of the implementation contract.
-    function buildL1ChugSplashProxyWithImpl(string memory _proxyImplName) public returns (IL1ChugSplashProxy proxy_) {
+    function buildL1ChugSplashProxyWithImpl(string memory _proxyImplName)
+        internal
+        returns (IL1ChugSplashProxy proxy_)
+    {
         proxy_ = IL1ChugSplashProxy(
             create1({
                 _name: "L1ChugSplashProxy",
@@ -299,7 +302,7 @@ library DeployUtils {
         IAddressManager _addressManager,
         string memory _proxyImplName
     )
-        public
+        internal
         returns (IResolvedDelegateProxy proxy_)
     {
         proxy_ = IResolvedDelegateProxy(
@@ -316,7 +319,7 @@ library DeployUtils {
     }
 
     /// @notice Builds an AddressManager contract.
-    function buildAddressManager() public returns (IAddressManager addressManager_) {
+    function buildAddressManager() internal returns (IAddressManager addressManager_) {
         addressManager_ = IAddressManager(
             create1({
                 _name: "AddressManager",

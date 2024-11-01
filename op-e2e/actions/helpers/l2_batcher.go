@@ -146,8 +146,8 @@ func (s *L2Batcher) Reset() {
 
 // ActL2BatchBuffer adds the next L2 block to the batch buffer.
 // If the buffer is being submitted, the buffer is wiped.
-func (s *L2Batcher) ActL2BatchBuffer(t Testing) {
-	require.NoError(t, s.Buffer(t), "failed to add block to channel")
+func (s *L2Batcher) ActL2BatchBuffer(t Testing, opts ...BlockModifier) {
+	require.NoError(t, s.Buffer(t, opts...), "failed to add block to channel")
 }
 
 type BlockModifier = func(block *types.Block)

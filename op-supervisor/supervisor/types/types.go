@@ -8,10 +8,13 @@ import (
 	"math/big"
 	"strconv"
 
+	ethTypes "github.com/ethereum/go-ethereum/core/types"
+
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
@@ -57,7 +60,7 @@ type Message struct {
 type Identifier struct {
 	Origin      common.Address
 	BlockNumber uint64
-	LogIndex    uint64
+	LogIndex    uint32
 	Timestamp   uint64
 	ChainID     ChainID // flat, not a pointer, to make Identifier safe as map key
 }
@@ -87,7 +90,10 @@ func (id *Identifier) UnmarshalJSON(input []byte) error {
 	}
 	id.Origin = dec.Origin
 	id.BlockNumber = uint64(dec.BlockNumber)
-	id.LogIndex = uint64(dec.LogIndex)
+	if dec.LogIndex > math.MaxUint32 {
+		return fmt.Errorf("log index too large: %d", dec.LogIndex)
+	}
+	id.LogIndex = uint32(dec.LogIndex)
 	id.Timestamp = uint64(dec.Timestamp)
 	id.ChainID = (ChainID)(dec.ChainID)
 	return nil
@@ -189,6 +195,10 @@ func (id ChainID) ToUInt32() (uint32, error) {
 	return uint32(v64), nil
 }
 
+func (id *ChainID) ToBig() *big.Int {
+	return (*uint256.Int)(id).ToBig()
+}
+
 func (id ChainID) MarshalText() ([]byte, error) {
 	return []byte(id.String()), nil
 }
@@ -250,4 +260,28 @@ func BlockSealFromRef(ref eth.BlockRef) BlockSeal {
 		Number:    ref.Number,
 		Timestamp: ref.Time,
 	}
+}
+
+// PayloadHashToLogHash converts the payload hash to the log hash
+// it is the concatenation of the log's address and the hash of the log's payload,
+// which is then hashed again. This is the hash that is stored in the log storage.
+// The logHash can then be used to traverse from the executing message
+// to the log the referenced initiating message.
+func PayloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.Hash {
+	msg := make([]byte, 0, 2*common.HashLength)
+	msg = append(msg, addr.Bytes()...)
+	msg = append(msg, payloadHash.Bytes()...)
+	return crypto.Keccak256Hash(msg)
+}
+
+// LogToMessagePayload is the data that is hashed to get the payloadHash
+// it is the concatenation of the log's topics and data
+// the implementation is based on the interop messaging spec
+func LogToMessagePayload(l *ethTypes.Log) []byte {
+	msg := make([]byte, 0)
+	for _, topic := range l.Topics {
+		msg = append(msg, topic.Bytes()...)
+	}
+	msg = append(msg, l.Data...)
+	return msg
 }

@@ -25,8 +25,7 @@ type Metrics interface {
 // forkchoice-update event, to signal the latest forkchoice to other derivers.
 // This helps decouple derivers from the actual engine state,
 // while also not making the derivers wait for a forkchoice update at random.
-type ForkchoiceRequestEvent struct {
-}
+type ForkchoiceRequestEvent struct{}
 
 func (ev ForkchoiceRequestEvent) String() string {
 	return "forkchoice-request"
@@ -110,7 +109,7 @@ func (ev InteropPendingSafeChangedEvent) String() string {
 // PromotePendingSafeEvent signals that a block can be marked as pending-safe, and/or safe.
 type PromotePendingSafeEvent struct {
 	Ref         eth.L2BlockRef
-	Safe        bool
+	Concluding  bool // Concludes the pending phase, so can be promoted to (local) safe
 	DerivedFrom eth.L1BlockRef
 }
 
@@ -184,8 +183,7 @@ func (ev ProcessAttributesEvent) String() string {
 	return "process-attributes"
 }
 
-type PendingSafeRequestEvent struct {
-}
+type PendingSafeRequestEvent struct{}
 
 func (ev PendingSafeRequestEvent) String() string {
 	return "pending-safe-request"
@@ -199,15 +197,13 @@ func (ev ProcessUnsafePayloadEvent) String() string {
 	return "process-unsafe-payload"
 }
 
-type TryBackupUnsafeReorgEvent struct {
-}
+type TryBackupUnsafeReorgEvent struct{}
 
 func (ev TryBackupUnsafeReorgEvent) String() string {
 	return "try-backup-unsafe-reorg"
 }
 
-type TryUpdateEngineEvent struct {
-}
+type TryUpdateEngineEvent struct{}
 
 func (ev TryUpdateEngineEvent) String() string {
 	return "try-update-engine"
@@ -277,7 +273,8 @@ type EngDeriver struct {
 var _ event.Deriver = (*EngDeriver)(nil)
 
 func NewEngDeriver(log log.Logger, ctx context.Context, cfg *rollup.Config,
-	metrics Metrics, ec *EngineController) *EngDeriver {
+	metrics Metrics, ec *EngineController,
+) *EngDeriver {
 	return &EngDeriver{
 		log:     log,
 		cfg:     cfg,
@@ -410,7 +407,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 				Unsafe:      d.ec.UnsafeL2Head(),
 			})
 		}
-		if x.Safe && x.Ref.Number > d.ec.LocalSafeL2Head().Number {
+		if x.Concluding && x.Ref.Number > d.ec.LocalSafeL2Head().Number {
 			d.emitter.Emit(PromoteLocalSafeEvent{
 				Ref:         x.Ref,
 				DerivedFrom: x.DerivedFrom,
@@ -471,10 +468,10 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		d.onBuildStart(x)
 	case BuildStartedEvent:
 		d.onBuildStarted(x)
-	case BuildSealedEvent:
-		d.onBuildSealed(x)
 	case BuildSealEvent:
 		d.onBuildSeal(x)
+	case BuildSealedEvent:
+		d.onBuildSealed(x)
 	case BuildInvalidEvent:
 		d.onBuildInvalid(x)
 	case BuildCancelEvent:

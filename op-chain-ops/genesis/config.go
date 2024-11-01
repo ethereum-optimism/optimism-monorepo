@@ -369,6 +369,81 @@ func offsetToUpgradeTime(offset *hexutil.Uint64, genesisTime uint64) *uint64 {
 	return &v
 }
 
+func (d *UpgradeScheduleDeployConfig) ForkTimeOffset(fork rollup.ForkName) *uint64 {
+	switch fork {
+	case rollup.Regolith:
+		return (*uint64)(d.L2GenesisRegolithTimeOffset)
+	case rollup.Canyon:
+		return (*uint64)(d.L2GenesisCanyonTimeOffset)
+	case rollup.Delta:
+		return (*uint64)(d.L2GenesisDeltaTimeOffset)
+	case rollup.Ecotone:
+		return (*uint64)(d.L2GenesisEcotoneTimeOffset)
+	case rollup.Fjord:
+		return (*uint64)(d.L2GenesisFjordTimeOffset)
+	case rollup.Granite:
+		return (*uint64)(d.L2GenesisGraniteTimeOffset)
+	case rollup.Holocene:
+		return (*uint64)(d.L2GenesisHoloceneTimeOffset)
+	case rollup.Interop:
+		return (*uint64)(d.L2GenesisInteropTimeOffset)
+	default:
+		panic(fmt.Sprintf("unknown fork: %s", fork))
+	}
+}
+
+func (d *UpgradeScheduleDeployConfig) SetForkTimeOffset(fork rollup.ForkName, offset *uint64) {
+	switch fork {
+	case rollup.Regolith:
+		d.L2GenesisRegolithTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Canyon:
+		d.L2GenesisCanyonTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Delta:
+		d.L2GenesisDeltaTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Ecotone:
+		d.L2GenesisEcotoneTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Fjord:
+		d.L2GenesisFjordTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Granite:
+		d.L2GenesisGraniteTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Holocene:
+		d.L2GenesisHoloceneTimeOffset = (*hexutil.Uint64)(offset)
+	case rollup.Interop:
+		d.L2GenesisInteropTimeOffset = (*hexutil.Uint64)(offset)
+	default:
+		panic(fmt.Sprintf("unknown fork: %s", fork))
+	}
+}
+
+var scheduleableForks = rollup.ForksFrom(rollup.Regolith)
+
+// ActivateForkAtOffset activates the given fork at the given offset. Previous forks are activated
+// at genesis and later forks are deactivated.
+// If multiple forks should be activated at a later time than genesis, first call
+// ActivateForkAtOffset with the earliest fork and then SetForkTimeOffset to individually set later
+// forks.
+func (d *UpgradeScheduleDeployConfig) ActivateForkAtOffset(fork rollup.ForkName, offset uint64) {
+	if !rollup.IsValidFork(fork) || fork == rollup.Bedrock {
+		panic(fmt.Sprintf("invalid fork: %s", fork))
+	}
+	ts := new(uint64)
+	for i, f := range scheduleableForks {
+		if f == fork {
+			d.SetForkTimeOffset(fork, &offset)
+			ts = nil
+		} else {
+			d.SetForkTimeOffset(scheduleableForks[i], ts)
+		}
+	}
+}
+
+// ActivateForkAtGenesis activates the given fork, and all previous forks, at genesis.
+// Later forks are deactivated.
+// See also [ActivateForkAtOffset].
+func (d *UpgradeScheduleDeployConfig) ActivateForkAtGenesis(fork rollup.ForkName) {
+	d.ActivateForkAtOffset(fork, 0)
+}
+
 func (d *UpgradeScheduleDeployConfig) RegolithTime(genesisTime uint64) *uint64 {
 	return offsetToUpgradeTime(d.L2GenesisRegolithTimeOffset, genesisTime)
 }
@@ -402,7 +477,6 @@ func (d *UpgradeScheduleDeployConfig) InteropTime(genesisTime uint64) *uint64 {
 }
 
 func (d *UpgradeScheduleDeployConfig) AllocMode(genesisTime uint64) L2AllocsMode {
-
 	forks := d.forks()
 	for i := len(forks) - 1; i >= 0; i-- {
 		if forkTime := offsetToUpgradeTime(forks[i].L2GenesisTimeOffset, genesisTime); forkTime != nil && *forkTime == 0 {

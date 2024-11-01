@@ -10,7 +10,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-var _ NextFrameProvider = &FrameQueue{}
+var (
+	_ NextFrameProvider = (*FrameQueue)(nil)
+	_ ForkTransformer   = (*FrameQueue)(nil)
+)
 
 //go:generate mockery --name NextDataProvider --case snake
 type NextDataProvider interface {
@@ -33,13 +36,20 @@ func NewFrameQueue(log log.Logger, cfg *rollup.Config, prev NextDataProvider) *F
 	}
 }
 
+func (fq *FrameQueue) Transform(f rollup.ForkName) {
+	switch f {
+	case rollup.Holocene:
+		fq.log.Info("FrameQueue: resetting with Holocene activation")
+		// With Holocene activation, the frame queue is simply reset
+		fq.reset()
+	}
+}
+
 func (fq *FrameQueue) Origin() eth.L1BlockRef {
 	return fq.prev.Origin()
 }
 
 func (fq *FrameQueue) NextFrame(ctx context.Context) (Frame, error) {
-	// TODO(12157): reset frame queue once at Holocene L1 origin block
-
 	// Only load more frames if necessary
 	if len(fq.frames) == 0 {
 		if err := fq.loadNextFrames(ctx); err != nil {
@@ -129,7 +139,11 @@ func pruneFrameQueue(frames []Frame) []Frame {
 	return frames
 }
 
-func (fq *FrameQueue) Reset(_ context.Context, _ eth.L1BlockRef, _ eth.SystemConfig) error {
-	fq.frames = fq.frames[:0]
+func (fq *FrameQueue) Reset(context.Context, eth.L1BlockRef, eth.SystemConfig) error {
+	fq.reset()
 	return io.EOF
+}
+
+func (fq *FrameQueue) reset() {
+	fq.frames = fq.frames[:0]
 }

@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -40,6 +41,12 @@ func TestInvalidConfig(t *testing.T) {
 			test.configChange(&cfg)
 			err := cfg.Check()
 			require.ErrorContains(t, err, "all tls flags must be set if at least one is set")
+		})
+		t.Run(fmt.Sprintf("%sAllowedWhenDisabled", test.name), func(t *testing.T) {
+			cfg := NewCLIConfig()
+			cfg.Enabled = false
+			test.configChange(&cfg)
+			require.NoError(t, cfg.Check())
 		})
 	}
 }

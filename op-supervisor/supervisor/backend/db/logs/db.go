@@ -287,7 +287,7 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 	db.log.Trace("Found initiatingEvent", "blockNum", blockNum, "logIdx", logIdx, "hash", evtHash)
 	// Found the requested block and log index, check if the hash matches
 	if evtHash != logHash {
-		return types.BlockSeal{}, fmt.Errorf("payload hash mismatch: expected %s, got %s", logHash, evtHash)
+		return types.BlockSeal{}, fmt.Errorf("payload hash mismatch: expected %s, got %s %w", logHash, evtHash, types.ErrConflict)
 	}
 	// Now find the block seal after the log, to identify where the log was included in.
 	err = iter.TraverseConditional(func(state IteratorState) error {

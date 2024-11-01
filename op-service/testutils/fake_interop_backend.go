@@ -29,7 +29,7 @@ func (m *FakeInteropBackend) Finalized(ctx context.Context, chainID types.ChainI
 	return m.FinalizedFn(ctx, chainID)
 }
 
-func (m *FakeInteropBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
+func (m *FakeInteropBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error) {
 	return m.DerivedFromFn(ctx, chainID, derived)
 }
 

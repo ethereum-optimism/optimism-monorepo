@@ -1,0 +1,15 @@
+[
+  {
+    "type": "function",
+    "name": "addDependency",
+    "inputs": [
+      {
+        "name": "_chainId",
+        "type": "uint256",
+        "internalType": "uint256"
+      }
+    ],
+    "outputs": [],
+    "stateMutability": "nonpayable"
+  }
+]

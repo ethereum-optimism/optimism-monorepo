@@ -77,30 +77,6 @@ func (p *logProcessor) ProcessLogs(_ context.Context, block eth.BlockRef, rcpts 
 // The address is hashed into the payload hash to save space in the log storage,
 // and because they represent paired data.
 func logToLogHash(l *ethTypes.Log) common.Hash {
-	payloadHash := crypto.Keccak256(logToMessagePayload(l))
-	return payloadHashToLogHash(common.Hash(payloadHash), l.Address)
-}
-
-// logToMessagePayload is the data that is hashed to get the logHash
-// it is the concatenation of the log's topics and data
-// the implementation is based on the interop messaging spec
-func logToMessagePayload(l *ethTypes.Log) []byte {
-	msg := make([]byte, 0)
-	for _, topic := range l.Topics {
-		msg = append(msg, topic.Bytes()...)
-	}
-	msg = append(msg, l.Data...)
-	return msg
-}
-
-// payloadHashToLogHash converts the payload hash to the log hash
-// it is the concatenation of the log's address and the hash of the log's payload,
-// which is then hashed. This is the hash that is stored in the log storage.
-// The logHash can then be used to traverse from the executing message
-// to the log the referenced initiating message.
-func payloadHashToLogHash(payloadHash common.Hash, addr common.Address) common.Hash {
-	msg := make([]byte, 0, 2*common.HashLength)
-	msg = append(msg, addr.Bytes()...)
-	msg = append(msg, payloadHash.Bytes()...)
-	return crypto.Keccak256Hash(msg)
+	payloadHash := crypto.Keccak256(types.LogToMessagePayload(l))
+	return types.PayloadHashToLogHash(common.Hash(payloadHash), l.Address)
 }

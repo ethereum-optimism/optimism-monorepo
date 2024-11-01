@@ -117,13 +117,6 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		}
 	}
 
-	// for each chain initialize a chain processor service
-	for _, chainID := range chains {
-		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
-		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs)
-		su.chainProcessors[chainID] = chainProcessor
-	}
-
 	// initialize all cross-unsafe processors
 	for _, chainID := range chains {
 		worker := cross.NewCrossUnsafeWorker(su.logger, chainID, su.chainDBs)
@@ -134,6 +127,13 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		worker := cross.NewCrossSafeWorker(su.logger, chainID, su.chainDBs)
 		su.crossSafeProcessors[chainID] = worker
 	}
+	// For each chain initialize a chain processor service,
+	// after cross-unsafe workers are ready to receive updates
+	for _, chainID := range chains {
+		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
+		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs, su.onIndexedLocalUnsafeData)
+		su.chainProcessors[chainID] = chainProcessor
+	}
 
 	// the config has some RPC connections to attach to the chain-processors
 	for _, rpc := range cfg.L2RPCs {
@@ -143,6 +143,36 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		}
 	}
 	return nil
+}
+
+// onIndexedLocalUnsafeData is called by the event indexing workers.
+// This signals to cross-unsafe workers that there's data to index.
+func (su *SupervisorBackend) onIndexedLocalUnsafeData() {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+
+	// We signal all workers, since dependencies on a chain may be unblocked
+	// by new data on other chains.
+	// Busy workers don't block processing.
+	// The signal is picked up only if the worker is running in the background.
+	for _, w := range su.crossUnsafeProcessors {
+		w.OnNewData()
+	}
+}
+
+// onNewLocalSafeData is called by the safety-indexing.
+// This signals to cross-safe workers that there's data to index.
+func (su *SupervisorBackend) onNewLocalSafeData() {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+
+	// We signal all workers, since dependencies on a chain may be unblocked
+	// by new data on other chains.
+	// Busy workers don't block processing.
+	// The signal is picked up only if the worker is running in the background.
+	for _, w := range su.crossSafeProcessors {
+		w.OnNewData()
+	}
 }
 
 // openChainDBs initializes all the DB resources of a specific chain.
@@ -267,6 +297,7 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 	if !su.started.CompareAndSwap(true, false) {
 		return errAlreadyStopped
 	}
+	su.logger.Info("Closing supervisor backend")
 	// close all processors
 	for id, processor := range su.chainProcessors {
 		su.logger.Info("stopping chain processor", "chainID", id)
@@ -312,20 +343,23 @@ func (su *SupervisorBackend) CheckMessage(identifier types.Identifier, payloadHa
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
+	logHash := types.PayloadHashToLogHash(payloadHash, identifier.Origin)
 	chainID := identifier.ChainID
 	blockNum := identifier.BlockNumber
 	logIdx := identifier.LogIndex
-	_, err := su.chainDBs.Check(chainID, blockNum, uint32(logIdx), payloadHash)
+	_, err := su.chainDBs.Check(chainID, blockNum, logIdx, logHash)
 	if errors.Is(err, types.ErrFuture) {
+		su.logger.Debug("Future message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.LocalUnsafe, nil
 	}
 	if errors.Is(err, types.ErrConflict) {
+		su.logger.Debug("Conflicting message", "identifier", identifier, "payloadHash", payloadHash, "err", err)
 		return types.Invalid, nil
 	}
 	if err != nil {
 		return types.Invalid, fmt.Errorf("failed to check log: %w", err)
 	}
-	return su.chainDBs.Safest(chainID, blockNum, uint32(logIdx))
+	return su.chainDBs.Safest(chainID, blockNum, logIdx)
 }
 
 func (su *SupervisorBackend) CheckMessages(
@@ -334,12 +368,21 @@ func (su *SupervisorBackend) CheckMessages(
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
+	su.logger.Debug("Checking messages", "count", len(messages), "minSafety", minSafety)
+
 	for _, msg := range messages {
+		su.logger.Debug("Checking message",
+			"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 		safety, err := su.CheckMessage(msg.Identifier, msg.PayloadHash)
 		if err != nil {
+			su.logger.Error("Check message failed", "err", err,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 			return fmt.Errorf("failed to check message: %w", err)
 		}
 		if !safety.AtLeastAsSafe(minSafety) {
+			su.logger.Error("Message is not sufficiently safe",
+				"safety", safety, "minSafety", minSafety,
+				"identifier", msg.Identifier, "payloadHash", msg.PayloadHash.String())
 			return fmt.Errorf("message %v (safety level: %v) does not meet the minimum safety %v",
 				msg.Identifier,
 				safety,
@@ -402,11 +445,11 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainI
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
-	v, err := su.chainDBs.DerivedFrom(chainID, derived)
+	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
@@ -430,7 +473,12 @@ func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.
 	su.mu.RLock()
 	defer su.mu.RUnlock()
 
-	return su.chainDBs.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
+	err := su.chainDBs.UpdateLocalSafe(chainID, derivedFrom, lastDerived)
+	if err != nil {
+		return err
+	}
+	su.onNewLocalSafeData()
+	return nil
 }
 
 func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
@@ -438,4 +486,38 @@ func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID type
 	defer su.mu.RUnlock()
 
 	return su.chainDBs.UpdateFinalizedL1(finalized)
+}
+
+// Access to synchronous processing for tests
+// ----------------------------
+
+func (su *SupervisorBackend) SyncEvents(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.chainProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	ch.ProcessToHead()
+	return nil
+}
+
+func (su *SupervisorBackend) SyncCrossUnsafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossUnsafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
+}
+
+func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
+	su.mu.RLock()
+	defer su.mu.RUnlock()
+	ch, ok := su.crossSafeProcessors[chainID]
+	if !ok {
+		return types.ErrUnknownChain
+	}
+	return ch.ProcessWork()
 }

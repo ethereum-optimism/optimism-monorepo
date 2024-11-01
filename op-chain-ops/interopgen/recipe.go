@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -79,7 +79,7 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 				MipsVersion:                     big.NewInt(1),
 			},
 			UseInterop:           true,
-			StandardVersionsToml: opcm.StandardVersionsMainnetData,
+			StandardVersionsToml: standard.VersionsMainnetData,
 		},
 		SuperchainL1DeployConfig: genesis.SuperchainL1DeployConfig{
 			RequiredProtocolVersion:    params.OPStackSupport,
@@ -109,6 +109,7 @@ func prefundL2Accounts(l1Cfg *L1Config, l2Cfg *L2Config, addrs devkeys.Addresses
 	l1Cfg.Prefund[l2Cfg.BatchSenderAddress] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.Deployer] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.FinalSystemOwner] = Ether(10_000_000)
+	l1Cfg.Prefund[l2Cfg.SystemConfigOwner] = Ether(10_000_000)
 	proposer, err := addrs.Address(devkeys.ChainOperatorKey{
 		ChainID: new(big.Int).SetUint64(l2Cfg.L2ChainID),
 		Role:    devkeys.ProposerRole,

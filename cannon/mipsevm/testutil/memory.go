@@ -27,9 +27,12 @@ func StoreInstruction(mem *memory.Memory, pc Word, insn uint32) {
 	if pc&0x3 != 0 {
 		panic(fmt.Errorf("unaligned memory access: %x", pc))
 	}
-	exec.StoreSubWord(mem, pc, 4, Word(insn), new(noopMemTracker))
+	exec.StoreSubWord(mem, pc, 4, Word(insn), new(exec.NoopMemoryTracker))
 }
 
-type noopMemTracker struct{}
-
-func (n *noopMemTracker) TrackMemAccess(Word) {}
+func GetInstruction(mem *memory.Memory, pc Word) uint32 {
+	if pc&0x3 != 0 {
+		panic(fmt.Errorf("unaligned memory access: %x", pc))
+	}
+	return uint32(exec.LoadSubWord(mem, pc, 4, false, new(exec.NoopMemoryTracker)))
+}

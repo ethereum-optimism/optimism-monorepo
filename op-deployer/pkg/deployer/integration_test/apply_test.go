@@ -7,21 +7,23 @@ import (
 	"fmt"
 	"log/slog"
 	"math/big"
-	"net/url"
 	"os"
-	"path"
-	"runtime"
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/testutil"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
@@ -108,7 +110,7 @@ func TestEndToEndApply(t *testing.T) {
 	deployerAddr, err := dk.Address(depKey)
 	require.NoError(t, err)
 
-	loc := localArtifactsLocator(t)
+	loc, _ := testutil.LocalArtifacts(t)
 
 	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
 		Logger:  log.NewLogger(log.DiscardHandler()),
@@ -119,7 +121,7 @@ func TestEndToEndApply(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	env, bundle, _ := createEnv(t, ctx, lgr, l1Client, bcaster, deployerAddr)
+	env, bundle, _ := createEnv(t, lgr, l1Client, bcaster, deployerAddr)
 	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 	cg := ethClientCodeGetter(ctx, l1Client)
 
@@ -139,7 +141,7 @@ func TestEndToEndApply(t *testing.T) {
 	t.Run("subsequent chain", func(t *testing.T) {
 		// create a new environment with wiped state to ensure we can continue using the
 		// state from the previous deployment
-		env, bundle, _ = createEnv(t, ctx, lgr, l1Client, bcaster, deployerAddr)
+		env, bundle, _ = createEnv(t, lgr, l1Client, bcaster, deployerAddr)
 		intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID2))
 
 		require.NoError(t, deployer.ApplyPipeline(
@@ -154,44 +156,370 @@ func TestEndToEndApply(t *testing.T) {
 	})
 }
 
-func localArtifactsLocator(t *testing.T) *opcm.ArtifactsLocator {
-	_, testFilename, _, ok := runtime.Caller(0)
-	require.Truef(t, ok, "failed to get test filename")
-	monorepoDir := path.Join(path.Dir(testFilename), "..", "..", "..", "..")
-	artifactsDir := path.Join(monorepoDir, "packages", "contracts-bedrock", "forge-artifacts")
-	artifactsURL, err := url.Parse(fmt.Sprintf("file://%s", artifactsDir))
-	require.NoError(t, err)
-	loc := &opcm.ArtifactsLocator{
-		URL: artifactsURL,
+func TestApplyExistingOPCM(t *testing.T) {
+	anvil.Test(t)
+
+	forkRPCUrl := os.Getenv("SEPOLIA_RPC_URL")
+	if forkRPCUrl == "" {
+		t.Skip("no fork RPC URL provided")
 	}
-	return loc
+
+	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+	defer cancel()
+
+	runner, err := anvil.New(
+		forkRPCUrl,
+		lgr,
+	)
+	require.NoError(t, err)
+
+	require.NoError(t, runner.Start(ctx))
+	t.Cleanup(func() {
+		require.NoError(t, runner.Stop())
+	})
+
+	l1Client, err := ethclient.Dial(runner.RPCUrl())
+	require.NoError(t, err)
+
+	l1ChainID := big.NewInt(11155111)
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+	// index 0 from Anvil's test set
+	priv, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err)
+	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(priv, l1ChainID))
+	deployerAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
+
+	l2ChainID := uint256.NewInt(1)
+
+	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
+		Logger:  lgr,
+		ChainID: l1ChainID,
+		Client:  l1Client,
+		Signer:  signer,
+		From:    deployerAddr,
+	})
+	require.NoError(t, err)
+
+	env, bundle, _ := createEnv(t, lgr, l1Client, bcaster, deployerAddr)
+
+	intent, st := newIntent(
+		t,
+		l1ChainID,
+		dk,
+		l2ChainID,
+		artifacts.DefaultL1ContractsLocator,
+		artifacts.DefaultL2ContractsLocator,
+	)
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent)
+}
+
+func TestL2BlockTimeOverride(t *testing.T) {
+	op_e2e.InitParallel(t)
+	kurtosisutil.Test(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, bundle, intent, st := setupGenesisChain(t)
+	intent.GlobalDeployOverrides = map[string]interface{}{
+		"l2BlockTime": float64(3),
+	}
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	cfg, err := state.CombineDeployConfig(intent, intent.Chains[0], st, st.Chains[0])
+	require.NoError(t, err)
+	require.Equal(t, uint64(3), cfg.L2InitializationConfig.L2CoreDeployConfig.L2BlockTime, "L2 block time should be 3 seconds")
+}
+
+func TestApplyGenesisStrategy(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, bundle, intent, st := setupGenesisChain(t)
+	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	cg := stateDumpCodeGetter(st)
+	validateSuperchainDeployment(t, st, cg)
+
+	for i := range intent.Chains {
+		t.Run(fmt.Sprintf("chain-%d", i), func(t *testing.T) {
+			validateOPChainDeployment(t, cg, st, intent)
+		})
+	}
+}
+
+func TestProofParamOverrides(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, bundle, intent, st := setupGenesisChain(t)
+	intent.GlobalDeployOverrides = map[string]any{
+		"withdrawalDelaySeconds":                  standard.WithdrawalDelaySeconds + 1,
+		"minProposalSizeBytes":                    standard.MinProposalSizeBytes + 1,
+		"challengePeriodSeconds":                  standard.ChallengePeriodSeconds + 1,
+		"proofMaturityDelaySeconds":               standard.ProofMaturityDelaySeconds + 1,
+		"disputeGameFinalityDelaySeconds":         standard.DisputeGameFinalityDelaySeconds + 1,
+		"mipsVersion":                             standard.MIPSVersion + 1,
+		"disputeGameType":                         standard.DisputeGameType, // This must be set to the permissioned game
+		"disputeAbsolutePrestate":                 common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"disputeMaxGameDepth":                     standard.DisputeMaxGameDepth + 1,
+		"disputeSplitDepth":                       standard.DisputeSplitDepth + 1,
+		"disputeClockExtension":                   standard.DisputeClockExtension + 1,
+		"disputeMaxClockDuration":                 standard.DisputeMaxClockDuration + 1,
+		"dangerouslyAllowCustomDisputeParameters": true,
+	}
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	allocs := st.L1StateDump.Data.Accounts
+	chainState := st.Chains[0]
+
+	uint64Caster := func(t *testing.T, val any) common.Hash {
+		return common.BigToHash(new(big.Int).SetUint64(val.(uint64)))
+	}
+
+	tests := []struct {
+		name    string
+		caster  func(t *testing.T, val any) common.Hash
+		address common.Address
+	}{
+		{
+			"withdrawalDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.DelayedWETHImplAddress,
+		},
+		{
+			"minProposalSizeBytes",
+			uint64Caster,
+			st.ImplementationsDeployment.PreimageOracleSingletonAddress,
+		},
+		{
+			"challengePeriodSeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.PreimageOracleSingletonAddress,
+		},
+		{
+			"proofMaturityDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.OptimismPortalImplAddress,
+		},
+		{
+			"disputeGameFinalityDelaySeconds",
+			uint64Caster,
+			st.ImplementationsDeployment.OptimismPortalImplAddress,
+		},
+		{
+			"disputeAbsolutePrestate",
+			func(t *testing.T, val any) common.Hash {
+				return val.(common.Hash)
+			},
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeMaxGameDepth",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeSplitDepth",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeClockExtension",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+		{
+			"disputeMaxClockDuration",
+			uint64Caster,
+			chainState.PermissionedDisputeGameAddress,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			checkImmutable(t, allocs, tt.address, tt.caster(t, intent.GlobalDeployOverrides[tt.name]))
+		})
+	}
+}
+
+func TestInteropDeployment(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, bundle, intent, st := setupGenesisChain(t)
+	intent.UseInterop = true
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	chainState := st.Chains[0]
+	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
+	checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot)
+	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
+	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
+}
+
+func TestInvalidL2Genesis(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	depKey := new(deployerKey)
+	l1ChainID := big.NewInt(77799777)
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+
+	l2ChainID1 := uint256.NewInt(1)
+
+	deployerAddr, err := dk.Address(depKey)
+	require.NoError(t, err)
+
+	loc, _ := testutil.LocalArtifacts(t)
+
+	// these tests were generated by grepping all usages of the deploy
+	// config in L2Genesis.s.sol.
+	tests := []struct {
+		name      string
+		overrides map[string]any
+	}{
+		{
+			name: "L2 proxy admin owner not set",
+			overrides: map[string]any{
+				"proxyAdminOwner": nil,
+			},
+		},
+		{
+			name: "base fee vault recipient not set",
+			overrides: map[string]any{
+				"baseFeeVaultRecipient": nil,
+			},
+		},
+		{
+			name: "l1 fee vault recipient not set",
+			overrides: map[string]any{
+				"l1FeeVaultRecipient": nil,
+			},
+		},
+		{
+			name: "sequencer fee vault recipient not set",
+			overrides: map[string]any{
+				"sequencerFeeVaultRecipient": nil,
+			},
+		},
+		{
+			name: "l1 chain ID not set",
+			overrides: map[string]any{
+				"l1ChainID": nil,
+			},
+		},
+		{
+			name: "l2 chain ID not set",
+			overrides: map[string]any{
+				"l2ChainID": nil,
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
+			intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+			intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
+			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
+			intent.GlobalDeployOverrides = tt.overrides
+
+			err := deployer.ApplyPipeline(
+				ctx,
+				env,
+				bundle,
+				intent,
+				st,
+			)
+			require.Error(t, err)
+			require.ErrorContains(t, err, "failed to combine L2 init config")
+		})
+	}
+}
+
+func setupGenesisChain(t *testing.T) (*pipeline.Env, pipeline.ArtifactsBundle, *state.Intent, *state.State) {
+	lgr := testlog.Logger(t, slog.LevelDebug)
+
+	depKey := new(deployerKey)
+	l1ChainID := big.NewInt(77799777)
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+
+	l2ChainID1 := uint256.NewInt(1)
+
+	deployerAddr, err := dk.Address(depKey)
+	require.NoError(t, err)
+
+	loc, _ := testutil.LocalArtifacts(t)
+
+	env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
+	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
+	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
+	return env, bundle, intent, st
 }
 
 func createEnv(
 	t *testing.T,
-	ctx context.Context,
 	lgr log.Logger,
 	l1Client *ethclient.Client,
 	bcaster broadcaster.Broadcaster,
 	deployerAddr common.Address,
 ) (*pipeline.Env, pipeline.ArtifactsBundle, *script.Host) {
-	_, testFilename, _, ok := runtime.Caller(0)
-	require.Truef(t, ok, "failed to get test filename")
-	monorepoDir := path.Join(path.Dir(testFilename), "..", "..", "..", "..")
-	artifactsDir := path.Join(monorepoDir, "packages", "contracts-bedrock", "forge-artifacts")
-	artifactsURL, err := url.Parse(fmt.Sprintf("file://%s", artifactsDir))
-	require.NoError(t, err)
-	artifactsLocator := &opcm.ArtifactsLocator{
-		URL: artifactsURL,
-	}
+	_, artifactsFS := testutil.LocalArtifacts(t)
 
-	artifactsFS, cleanupArtifacts, err := pipeline.DownloadArtifacts(ctx, artifactsLocator, pipeline.NoopDownloadProgressor)
-	require.NoError(t, err)
-	defer func() {
-		require.NoError(t, cleanupArtifacts())
-	}()
-
-	host, err := pipeline.DefaultScriptHost(
+	host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
 		deployerAddr,
@@ -228,8 +556,8 @@ func newIntent(
 	l1ChainID *big.Int,
 	dk *devkeys.MnemonicDevKeys,
 	l2ChainID *uint256.Int,
-	l1Loc *opcm.ArtifactsLocator,
-	l2Loc *opcm.ArtifactsLocator,
+	l1Loc *artifacts.Locator,
+	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
 		DeploymentStrategy: state.DeploymentStrategyLive,
@@ -368,10 +696,10 @@ func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, int
 		alloc := chainState.Allocs.Data.Accounts
 
 		chainIntent := intent.Chains[i]
-		checkImmutable(t, alloc, predeploys.BaseFeeVaultAddr, chainIntent.BaseFeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.L1FeeVaultAddr, chainIntent.L1FeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.SequencerFeeVaultAddr, chainIntent.SequencerFeeVaultRecipient)
-		checkImmutable(t, alloc, predeploys.OptimismMintableERC721FactoryAddr, common.BigToHash(new(big.Int).SetUint64(intent.L1ChainID)))
+		checkImmutableBehindProxy(t, alloc, predeploys.BaseFeeVaultAddr, chainIntent.BaseFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.L1FeeVaultAddr, chainIntent.L1FeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.SequencerFeeVaultAddr, chainIntent.SequencerFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.OptimismMintableERC721FactoryAddr, common.BigToHash(new(big.Int).SetUint64(intent.L1ChainID)))
 
 		// ownership slots
 		var addrAsSlot common.Hash
@@ -399,8 +727,12 @@ type bytesMarshaler interface {
 	Bytes() []byte
 }
 
-func checkImmutable(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
+func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
 	implementationAddress := getEIP1967ImplementationAddress(t, allocations, proxyContract)
+	checkImmutable(t, allocations, implementationAddress, thing)
+}
+
+func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) {
 	account, ok := allocations[implementationAddress]
 	require.True(t, ok, "%s not found in allocations", implementationAddress)
 	require.NotEmpty(t, account.Code, "%s should have code", implementationAddress)
@@ -421,278 +753,4 @@ func checkStorageSlot(t *testing.T, allocs types.GenesisAlloc, address common.Ad
 	}
 	require.True(t, ok, "slot %s not found for account %s", slot, address)
 	require.Equal(t, expected, value, "slot %s for account %s should be %s", slot, address, expected)
-}
-
-func TestApplyExistingOPCM(t *testing.T) {
-	anvil.Test(t)
-
-	forkRPCUrl := os.Getenv("SEPOLIA_RPC_URL")
-	if forkRPCUrl == "" {
-		t.Skip("no fork RPC URL provided")
-	}
-
-	lgr := testlog.Logger(t, slog.LevelDebug)
-
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
-	defer cancel()
-
-	runner, err := anvil.New(
-		forkRPCUrl,
-		lgr,
-	)
-	require.NoError(t, err)
-
-	require.NoError(t, runner.Start(ctx))
-	t.Cleanup(func() {
-		require.NoError(t, runner.Stop())
-	})
-
-	l1Client, err := ethclient.Dial(runner.RPCUrl())
-	require.NoError(t, err)
-
-	l1ChainID := big.NewInt(11155111)
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-	// index 0 from Anvil's test set
-	priv, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
-	require.NoError(t, err)
-	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(priv, l1ChainID))
-	deployerAddr := common.HexToAddress("0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266")
-
-	l2ChainID := uint256.NewInt(1)
-
-	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-		Logger:  lgr,
-		ChainID: l1ChainID,
-		Client:  l1Client,
-		Signer:  signer,
-		From:    deployerAddr,
-	})
-	require.NoError(t, err)
-
-	env, bundle, _ := createEnv(t, ctx, lgr, l1Client, bcaster, deployerAddr)
-
-	intent, st := newIntent(
-		t,
-		l1ChainID,
-		dk,
-		l2ChainID,
-		opcm.DefaultL1ContractsLocator,
-		opcm.DefaultL2ContractsLocator,
-	)
-
-	require.NoError(t, deployer.ApplyPipeline(
-		ctx,
-		env,
-		bundle,
-		intent,
-		st,
-	))
-
-	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent)
-}
-
-func TestL2BlockTimeOverride(t *testing.T) {
-	op_e2e.InitParallel(t)
-	kurtosisutil.Test(t)
-
-	lgr := testlog.Logger(t, slog.LevelDebug)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package", TestParams)
-
-	service, err := enclaveCtx.GetServiceContext("el-1-geth-lighthouse")
-	require.NoError(t, err)
-
-	ip := service.GetMaybePublicIPAddress()
-	ports := service.GetPublicPorts()
-	rpcURL := fmt.Sprintf("http://%s:%d", ip, ports["rpc"].GetNumber())
-	l1Client, err := ethclient.Dial(rpcURL)
-	require.NoError(t, err)
-
-	depKey := new(deployerKey)
-	l1ChainID := big.NewInt(77799777)
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-	pk, err := dk.Secret(depKey)
-	require.NoError(t, err)
-	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(pk, l1ChainID))
-
-	l2ChainID := uint256.NewInt(1)
-
-	deployerAddr, err := dk.Address(depKey)
-	require.NoError(t, err)
-
-	loc := localArtifactsLocator(t)
-
-	bcaster, err := broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-		Logger:  lgr,
-		ChainID: l1ChainID,
-		Client:  l1Client,
-		Signer:  signer,
-		From:    deployerAddr,
-	})
-	require.NoError(t, err)
-
-	env, bundle, _ := createEnv(t, ctx, lgr, l1Client, bcaster, deployerAddr)
-
-	intent, st := newIntent(
-		t,
-		l1ChainID,
-		dk,
-		l2ChainID,
-		loc,
-		loc,
-	)
-
-	intent.GlobalDeployOverrides = map[string]interface{}{
-		"l2BlockTime": float64(3),
-	}
-
-	require.NoError(t, deployer.ApplyPipeline(
-		ctx,
-		env,
-		bundle,
-		intent,
-		st,
-	))
-
-	chainIntent, err := intent.Chain(l2ChainID.Bytes32())
-	require.NoError(t, err)
-	chainState, err := st.Chain(l2ChainID.Bytes32())
-	require.NoError(t, err)
-	cfg, err := state.CombineDeployConfig(intent, chainIntent, st, chainState)
-	require.NoError(t, err)
-
-	require.Equal(t, uint64(3), cfg.L2InitializationConfig.L2CoreDeployConfig.L2BlockTime, "L2 block time should be 3 seconds")
-}
-
-func TestApplyGenesisStrategy(t *testing.T) {
-	op_e2e.InitParallel(t)
-
-	lgr := testlog.Logger(t, slog.LevelDebug)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	depKey := new(deployerKey)
-	l1ChainID := big.NewInt(77799777)
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-
-	l2ChainID1 := uint256.NewInt(1)
-	l2ChainID2 := uint256.NewInt(2)
-
-	deployerAddr, err := dk.Address(depKey)
-	require.NoError(t, err)
-
-	loc := localArtifactsLocator(t)
-
-	env, bundle, _ := createEnv(t, ctx, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
-	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
-	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID2))
-	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
-
-	require.NoError(t, deployer.ApplyPipeline(
-		ctx,
-		env,
-		bundle,
-		intent,
-		st,
-	))
-
-	cg := stateDumpCodeGetter(st)
-	validateSuperchainDeployment(t, st, cg)
-
-	for i := range intent.Chains {
-		t.Run(fmt.Sprintf("chain-%d", i), func(t *testing.T) {
-			validateOPChainDeployment(t, cg, st, intent)
-		})
-	}
-}
-
-func TestInvalidL2Genesis(t *testing.T) {
-	op_e2e.InitParallel(t)
-
-	lgr := testlog.Logger(t, slog.LevelDebug)
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-
-	depKey := new(deployerKey)
-	l1ChainID := big.NewInt(77799777)
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-
-	l2ChainID1 := uint256.NewInt(1)
-
-	deployerAddr, err := dk.Address(depKey)
-	require.NoError(t, err)
-
-	loc := localArtifactsLocator(t)
-
-	// these tests were generated by grepping all usages of the deploy
-	// config in L2Genesis.s.sol.
-	tests := []struct {
-		name      string
-		overrides map[string]any
-	}{
-		{
-			name: "L2 proxy admin owner not set",
-			overrides: map[string]any{
-				"proxyAdminOwner": nil,
-			},
-		},
-		{
-			name: "base fee vault recipient not set",
-			overrides: map[string]any{
-				"baseFeeVaultRecipient": nil,
-			},
-		},
-		{
-			name: "l1 fee vault recipient not set",
-			overrides: map[string]any{
-				"l1FeeVaultRecipient": nil,
-			},
-		},
-		{
-			name: "sequencer fee vault recipient not set",
-			overrides: map[string]any{
-				"sequencerFeeVaultRecipient": nil,
-			},
-		},
-		{
-			name: "l1 chain ID not set",
-			overrides: map[string]any{
-				"l1ChainID": nil,
-			},
-		},
-		{
-			name: "l2 chain ID not set",
-			overrides: map[string]any{
-				"l2ChainID": nil,
-			},
-		},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			env, bundle, _ := createEnv(t, ctx, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
-			intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
-			intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
-			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
-			intent.GlobalDeployOverrides = tt.overrides
-
-			err := deployer.ApplyPipeline(
-				ctx,
-				env,
-				bundle,
-				intent,
-				st,
-			)
-			require.Error(t, err)
-			require.ErrorContains(t, err, "failed to combine L2 init config")
-		})
-	}
 }

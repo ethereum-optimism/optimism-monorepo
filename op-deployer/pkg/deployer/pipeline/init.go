@@ -5,7 +5,8 @@ import (
 	"crypto/rand"
 	"fmt"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
@@ -26,12 +27,12 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 	}
 
 	if intent.L1ContractsLocator.IsTag() {
-		superCfg, err := opcm.SuperchainFor(intent.L1ChainID)
+		superCfg, err := standard.SuperchainFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain config: %w", err)
 		}
 
-		proxyAdmin, err := opcm.ManagerOwnerAddrFor(intent.L1ChainID)
+		proxyAdmin, err := standard.ManagerOwnerAddrFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain proxy admin address: %w", err)
 		}
@@ -44,7 +45,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			SuperchainConfigProxyAddress: common.Address(*superCfg.Config.SuperchainConfigAddr),
 		}
 
-		opcmProxy, err := opcm.ManagerImplementationAddrFor(intent.L1ChainID)
+		opcmProxy, err := standard.ManagerImplementationAddrFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting OPCM proxy address: %w", err)
 		}

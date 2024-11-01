@@ -72,6 +72,17 @@ func (su *SupervisorService) initBackend(ctx context.Context, cfg *config.Config
 		su.backend = backend.NewMockBackend()
 		return nil
 	}
+	// the flag is a string slice, which has the potential to have empty strings
+	filterBlank := func(in []string) []string {
+		out := make([]string, 0, len(in))
+		for _, s := range in {
+			if s != "" {
+				out = append(out, s)
+			}
+		}
+		return out
+	}
+	cfg.L2RPCs = filterBlank(cfg.L2RPCs)
 	be, err := backend.NewSupervisorBackend(ctx, su.log, su.metrics, cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create supervisor backend: %w", err)
@@ -173,6 +184,7 @@ func (su *SupervisorService) Start(ctx context.Context) error {
 
 func (su *SupervisorService) Stop(ctx context.Context) error {
 	if !su.closing.CompareAndSwap(false, true) {
+		su.log.Warn("Supervisor is already closing")
 		return nil // already closing
 	}
 	su.log.Info("Stopping JSON-RPC server")

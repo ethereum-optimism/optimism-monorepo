@@ -10,7 +10,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
-	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/stretchr/testify/require"
 )
 
@@ -134,12 +133,12 @@ func TestEVMSingleStep_Operators64(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
-func TestEVMSingleStep_Shift(t *testing.T) {
+func TestEVMSingleStep_Shift64(t *testing.T) {
 	cases := []struct {
 		name      string
 		rd        Word
@@ -190,7 +189,8 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 	for i, tt := range cases {
 		testName := fmt.Sprintf("%v %v", v.Name, tt.name)
 		t.Run(testName, func(t *testing.T) {
-			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPCAndNextPC(0))
+			pc := Word(0x0)
+			goVm := v.VMFactory(nil, os.Stdout, os.Stderr, testutil.CreateLogger(), testutil.WithRandomization(int64(i)), testutil.WithPCAndNextPC(pc))
 			state := goVm.GetState()
 			var insn uint32
 			var rtReg uint32
@@ -200,7 +200,7 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 			insn = rtReg<<16 | rdReg<<11 | tt.sa<<6 | tt.funct
 			state.GetRegistersRef()[rdReg] = tt.rd
 			state.GetRegistersRef()[rtReg] = tt.rt
-			testutil.StoreInstruction(state.GetMemory(), 0, insn)
+			testutil.StoreInstruction(state.GetMemory(), pc, insn)
 			step := state.GetStep()
 
 			// Setup expectations
@@ -213,7 +213,7 @@ func TestEVMSingleStep_Shift(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
@@ -455,12 +455,12 @@ func TestEVMSingleStep_LoadStore64(t *testing.T) {
 
 			// Check expectations
 			expected.Validate(t, state)
-			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+			testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 		})
 	}
 }
 
-func TestEVMSingleStep_DivMult(t *testing.T) {
+func TestEVMSingleStep_DivMult64(t *testing.T) {
 	cases := []struct {
 		name        string
 		rs          Word
@@ -470,6 +470,14 @@ func TestEVMSingleStep_DivMult(t *testing.T) {
 		expectHi    Word
 		expectPanic string
 	}{
+		// TODO(#12598): Fix 32-bit tests and remove these
+		{name: "mult", funct: uint32(0x18), rs: Word(0x0F_FF_00_00), rt: Word(100), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), expectHi: Word(0x0), expectLo: Word(0x1)},
+		{name: "mult", funct: uint32(0x18), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_DD), expectHi: Word(0xE), expectLo: Word(0xFF_FF_FF_FF_FC_FC_FD_27)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0x0F_FF_00_00), rt: Word(100), expectHi: Word(0x6), expectLo: Word(0x3F_9C_00_00)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_FF), rt: Word(0xFF_FF_FF_FF), expectHi: Word(0xFF_FF_FF_FF_FF_FF_FF_FE), expectLo: Word(0x1)},
+		{name: "multu", funct: uint32(0x19), rs: Word(0xFF_FF_FF_D3), rt: Word(0xAA_BB_CC_BE), expectHi: Word(0xFF_FF_FF_FF_AA_BB_CC_9F), expectLo: Word(0xFF_FF_FF_FF_FC_FD_02_9A)},
+
 		// dmult s1, s2
 		// expected hi,lo were verified using qemu-mips
 		{name: "dmult 0", funct: 0x1c, rs: 0, rt: 0, expectLo: 0, expectHi: 0},
@@ -530,6 +538,10 @@ func TestEVMSingleStep_DivMult(t *testing.T) {
 		{name: "ddivu", funct: 0x1f, rs: ^Word(0), rt: ^Word(0), expectLo: 1, expectHi: 0},
 		{name: "ddivu", funct: 0x1f, rs: ^Word(0), rt: 2, expectLo: 0x7F_FF_FF_FF_FF_FF_FF_FF, expectHi: 1},
 		{name: "ddivu", funct: 0x1f, rs: 0x7F_FF_FF_FF_00_00_00_00, rt: ^Word(0), expectLo: 0, expectHi: 0x7F_FF_FF_FF_00_00_00_00},
+
+		// a couple div/divu 64-bit edge cases
+		{name: "div lower word zero", funct: 0x1a, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectPanic: "instruction divide by zero"},
+		{name: "divu lower word zero", funct: 0x1b, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectPanic: "instruction divide by zero"},
 	}
 
 	v := GetMultiThreadedTestCase(t)
@@ -560,15 +572,13 @@ func TestEVMSingleStep_DivMult(t *testing.T) {
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, nil)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			}
 		})
 	}
 }
 
-func TestEVMSingleStepBranch64(t *testing.T) {
-	var tracer *tracing.Hooks
-
+func TestEVMSingleStep_Branch64(t *testing.T) {
 	versions := GetMipsVersionTestCases(t)
 	cases := []struct {
 		name         string
@@ -651,7 +661,7 @@ func TestEVMSingleStepBranch64(t *testing.T) {
 
 				// Check expectations
 				expected.Validate(t, state)
-				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts, tracer)
+				testutil.ValidateEVM(t, stepWitness, step, goVm, v.StateHashFn, v.Contracts)
 			})
 		}
 	}

@@ -6,6 +6,8 @@ import (
 	"math/big"
 	"strings"
 
+	_ "embed"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
@@ -23,7 +25,49 @@ var PermissionedGameStartingAnchorRoots = []byte{
 	0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0xde, 0xad, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
 }
 
-type DeployOPChainInput struct {
+// opcmRolesBase is an internal struct used to pass the roles to OPCM. See opcmDeployInputV160 for more info.
+type opcmRolesBase struct {
+	OpChainProxyAdminOwner common.Address
+	SystemConfigOwner      common.Address
+	Batcher                common.Address
+	UnsafeBlockSigner      common.Address
+	Proposer               common.Address
+	Challenger             common.Address
+}
+
+type opcmDeployInputBase struct {
+	BasefeeScalar           uint32
+	BlobBasefeeScalar       uint32
+	L2ChainId               *big.Int
+	StartingAnchorRoots     []byte
+	SaltMixer               string
+	GasLimit                uint64
+	DisputeGameType         uint32
+	DisputeAbsolutePrestate common.Hash
+	DisputeMaxGameDepth     *big.Int
+	DisputeSplitDepth       *big.Int
+	DisputeClockExtension   uint64
+	DisputeMaxClockDuration uint64
+}
+
+// opcmDeployInputV160 is the input struct for the deploy method of the OPStackManager contract. We
+// define a separate struct here to match what the OPSM contract expects.
+type opcmDeployInputV160 struct {
+	opcmDeployInputBase
+	Roles opcmRolesBase
+}
+
+type opcmRolesIsthmus struct {
+	opcmRolesBase
+	FeeAdmin common.Address
+}
+
+type opcmDeployInputIsthmus struct {
+	opcmDeployInputBase
+	Roles opcmRolesIsthmus
+}
+
+type DeployOPChainInputV160 struct {
 	OpChainProxyAdminOwner common.Address
 	SystemConfigOwner      common.Address
 	Batcher                common.Address
@@ -38,20 +82,64 @@ type DeployOPChainInput struct {
 	SaltMixer         string
 	GasLimit          uint64
 
-	DisputeGameType         uint32
-	DisputeAbsolutePrestate common.Hash
-	DisputeMaxGameDepth     uint64
-	DisputeSplitDepth       uint64
-	DisputeClockExtension   uint64
-	DisputeMaxClockDuration uint64
+	DisputeGameType              uint32
+	DisputeAbsolutePrestate      common.Hash
+	DisputeMaxGameDepth          uint64
+	DisputeSplitDepth            uint64
+	DisputeClockExtension        uint64
+	DisputeMaxClockDuration      uint64
+	AllowCustomDisputeParameters bool
 }
 
-func (input *DeployOPChainInput) InputSet() bool {
+func (input *DeployOPChainInputV160) InputSet() bool {
 	return true
 }
 
-func (input *DeployOPChainInput) StartingAnchorRoots() []byte {
+func (input *DeployOPChainInputV160) StartingAnchorRoots() []byte {
 	return PermissionedGameStartingAnchorRoots
+}
+
+func DeployOPChainInputV160DeployCalldata(input DeployOPChainInputV160) any {
+	return opcmDeployInputV160{
+		Roles: opcmRolesBase{
+			OpChainProxyAdminOwner: input.OpChainProxyAdminOwner,
+			SystemConfigOwner:      input.SystemConfigOwner,
+			Batcher:                input.Batcher,
+			UnsafeBlockSigner:      input.UnsafeBlockSigner,
+			Proposer:               input.Proposer,
+			Challenger:             input.Challenger,
+		},
+		opcmDeployInputBase: opcmDeployInputBase{
+			BasefeeScalar:           input.BasefeeScalar,
+			BlobBasefeeScalar:       input.BlobBaseFeeScalar,
+			L2ChainId:               input.L2ChainId,
+			StartingAnchorRoots:     input.StartingAnchorRoots(),
+			SaltMixer:               input.SaltMixer,
+			GasLimit:                input.GasLimit,
+			DisputeGameType:         input.DisputeGameType,
+			DisputeAbsolutePrestate: input.DisputeAbsolutePrestate,
+			DisputeMaxGameDepth:     new(big.Int).SetUint64(input.DisputeMaxGameDepth),
+			DisputeSplitDepth:       new(big.Int).SetUint64(input.DisputeSplitDepth),
+			DisputeClockExtension:   input.DisputeClockExtension,
+			DisputeMaxClockDuration: input.DisputeMaxClockDuration,
+		},
+	}
+}
+
+type DeployOPChainInputIsthmus struct {
+	DeployOPChainInputV160
+	SystemConfigFeeAdmin common.Address
+}
+
+func DeployOPChainInputIsthmusDeployCalldata(input DeployOPChainInputIsthmus) any {
+	v160Data := DeployOPChainInputV160DeployCalldata(input.DeployOPChainInputV160).(opcmDeployInputV160)
+	return opcmDeployInputIsthmus{
+		Roles: opcmRolesIsthmus{
+			opcmRolesBase: v160Data.Roles,
+			FeeAdmin:      input.SystemConfigFeeAdmin,
+		},
+		opcmDeployInputBase: v160Data.opcmDeployInputBase,
+	}
 }
 
 type DeployOPChainOutput struct {
@@ -81,12 +169,20 @@ type DeployOPChainScript struct {
 	Run func(input, output common.Address) error
 }
 
-func DeployOPChain(host *script.Host, input DeployOPChainInput) (DeployOPChainOutput, error) {
+func DeployOPChainV160(host *script.Host, input DeployOPChainInputV160) (DeployOPChainOutput, error) {
+	return deployOPChain(host, input)
+}
+
+func DeployOPChainIsthmus(host *script.Host, input DeployOPChainInputIsthmus) (DeployOPChainOutput, error) {
+	return deployOPChain(host, input)
+}
+
+func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, error) {
 	var dco DeployOPChainOutput
 	inputAddr := host.NewScriptAddress()
 	outputAddr := host.NewScriptAddress()
 
-	cleanupInput, err := script.WithPrecompileAtAddress[*DeployOPChainInput](host, inputAddr, &input)
+	cleanupInput, err := script.WithPrecompileAtAddress[*T](host, inputAddr, &input)
 	if err != nil {
 		return dco, fmt.Errorf("failed to insert DeployOPChainInput precompile: %w", err)
 	}
@@ -114,127 +210,46 @@ func DeployOPChain(host *script.Host, input DeployOPChainInput) (DeployOPChainOu
 	return dco, nil
 }
 
-// opcmRoles is an internal struct used to pass the roles to OPSM. See opcmDeployInput for more info.
-type opcmRoles struct {
-	OpChainProxyAdminOwner common.Address
-	SystemConfigOwner      common.Address
-	Batcher                common.Address
-	UnsafeBlockSigner      common.Address
-	Proposer               common.Address
-	Challenger             common.Address
-}
-
-// opcmDeployInput is the input struct for the deploy method of the OPStackManager contract. We
-// define a separate struct here to match what the OPSM contract expects.
-type opcmDeployInput struct {
-	Roles                   opcmRoles
-	BasefeeScalar           uint32
-	BlobBasefeeScalar       uint32
-	L2ChainId               *big.Int
-	StartingAnchorRoots     []byte
-	SaltMixer               string
-	GasLimit                uint64
-	DisputeGameType         uint32
-	DisputeAbsolutePrestate common.Hash
-	DisputeMaxGameDepth     *big.Int
-	DisputeSplitDepth       *big.Int
-	DisputeClockExtension   uint64
-	DisputeMaxClockDuration uint64
-}
-
-// decodeOutputABIJSON defines an ABI for a fake method called "decodeOutput" that returns the
+// decodeOutputABIJSONV160 defines an ABI for a fake method called "decodeOutput" that returns the
 // DeployOutput struct. This allows the code in the deployer to decode directly into a struct
 // using Geth's ABI library.
-const decodeOutputABIJSON = `
-[
-  {
-    "type": "function",
-    "name": "decodeOutput",
-    "inputs": [],
-    "outputs": [
-      {
-        "name": "output",
-        "indexed": false,
-		"type": "tuple",
-        "components": [
-          {
-            "name": "opChainProxyAdmin",
-            "type": "address"
-          },
-          {
-            "name": "addressManager",
-            "type": "address"
-          },
-          {
-            "name": "l1ERC721BridgeProxy",
-            "type": "address"
-          },
-          {
-            "name": "systemConfigProxy",
-            "type": "address"
-          },
-          {
-            "name": "optimismMintableERC20FactoryProxy",
-            "type": "address"
-          },
-          {
-            "name": "l1StandardBridgeProxy",
-            "type": "address"
-          },
-          {
-            "name": "l1CrossDomainMessengerProxy",
-            "type": "address"
-          },
-          {
-            "name": "optimismPortalProxy",
-            "type": "address"
-          },
-          {
-            "name": "disputeGameFactoryProxy",
-            "type": "address"
-          },
-          {
-            "name": "anchorStateRegistryProxy",
-            "type": "address"
-          },
-          {
-            "name": "anchorStateRegistryImpl",
-            "type": "address"
-          },
-          {
-            "name": "faultDisputeGame",
-            "type": "address",
-            "internalType": "contract FaultDisputeGame"
-          },
-          {
-            "name": "permissionedDisputeGame",
-            "type": "address"
-          },
-          {
-            "name": "delayedWETHPermissionedGameProxy",
-            "type": "address"
-          },
-          {
-            "name": "delayedWETHPermissionlessGameProxy",
-            "type": "address"
-          }
-        ]
-      }
-    ]
-  }
-]
-`
+//
+//go:embed deployOutput_v160.json
+var decodeOutputABIJSONV160 string
 
-var decodeOutputABI abi.ABI
+var decodeOutputABIV160 abi.ABI
 
-// DeployOPChainRaw deploys an OP Chain using a raw call to a pre-deployed OPSM contract.
-func DeployOPChainRaw(
+func DeployOPChainRawV160(
 	ctx context.Context,
 	l1 *ethclient.Client,
 	bcast broadcaster.Broadcaster,
 	deployer common.Address,
 	artifacts foundry.StatDirFs,
-	input DeployOPChainInput,
+	input DeployOPChainInputV160,
+) (DeployOPChainOutput, error) {
+	return deployOPChainRaw(ctx, l1, bcast, deployer, artifacts, input.OpcmProxy, DeployOPChainInputV160DeployCalldata(input))
+}
+
+func DeployOPChainRawIsthmus(
+	ctx context.Context,
+	l1 *ethclient.Client,
+	bcast broadcaster.Broadcaster,
+	deployer common.Address,
+	artifacts foundry.StatDirFs,
+	input DeployOPChainInputIsthmus,
+) (DeployOPChainOutput, error) {
+	return deployOPChainRaw(ctx, l1, bcast, deployer, artifacts, input.OpcmProxy, DeployOPChainInputIsthmusDeployCalldata(input))
+}
+
+// DeployOPChainRaw deploys an OP Chain using a raw call to a pre-deployed OPSM contract.
+func deployOPChainRaw(
+	ctx context.Context,
+	l1 *ethclient.Client,
+	bcast broadcaster.Broadcaster,
+	deployer common.Address,
+	artifacts foundry.StatDirFs,
+	opcmProxyAddress common.Address,
+	input any,
 ) (DeployOPChainOutput, error) {
 	var out DeployOPChainOutput
 
@@ -245,28 +260,7 @@ func DeployOPChainRaw(
 	}
 
 	opcmABI := opcmArtifacts.ABI
-	calldata, err := opcmABI.Pack("deploy", opcmDeployInput{
-		Roles: opcmRoles{
-			OpChainProxyAdminOwner: input.OpChainProxyAdminOwner,
-			SystemConfigOwner:      input.SystemConfigOwner,
-			Batcher:                input.Batcher,
-			UnsafeBlockSigner:      input.UnsafeBlockSigner,
-			Proposer:               input.Proposer,
-			Challenger:             input.Challenger,
-		},
-		BasefeeScalar:           input.BasefeeScalar,
-		BlobBasefeeScalar:       input.BlobBaseFeeScalar,
-		L2ChainId:               input.L2ChainId,
-		StartingAnchorRoots:     input.StartingAnchorRoots(),
-		SaltMixer:               input.SaltMixer,
-		GasLimit:                input.GasLimit,
-		DisputeGameType:         input.DisputeGameType,
-		DisputeAbsolutePrestate: input.DisputeAbsolutePrestate,
-		DisputeMaxGameDepth:     new(big.Int).SetUint64(input.DisputeMaxGameDepth),
-		DisputeSplitDepth:       new(big.Int).SetUint64(input.DisputeSplitDepth),
-		DisputeClockExtension:   input.DisputeClockExtension,
-		DisputeMaxClockDuration: input.DisputeMaxClockDuration,
-	})
+	calldata, err := opcmABI.Pack("deploy", input)
 	if err != nil {
 		return out, fmt.Errorf("failed to pack deploy input: %w", err)
 	}
@@ -278,7 +272,7 @@ func DeployOPChainRaw(
 
 	bcast.Hook(script.Broadcast{
 		From:  deployer,
-		To:    input.OpcmProxy,
+		To:    opcmProxyAddress,
 		Input: calldata,
 		Value: (*hexutil.U256)(uint256.NewInt(0)),
 		// use hardcoded 19MM gas for now since this is roughly what we've seen this deployment cost.
@@ -312,7 +306,7 @@ func DeployOPChainRaw(
 			Output DeployOPChainOutput
 		}
 		var outData OutputData
-		if err := decodeOutputABI.UnpackIntoInterface(&outData, "decodeOutput", data.DeployOutput); err != nil {
+		if err := decodeOutputABIV160.UnpackIntoInterface(&outData, "decodeOutput", data.DeployOutput); err != nil {
 			return out, fmt.Errorf("failed to unpack DeployOutput: %w", err)
 		}
 
@@ -324,7 +318,7 @@ func DeployOPChainRaw(
 
 func init() {
 	var err error
-	decodeOutputABI, err = abi.JSON(strings.NewReader(decodeOutputABIJSON))
+	decodeOutputABIV160, err = abi.JSON(strings.NewReader(decodeOutputABIJSONV160))
 	if err != nil {
 		panic(fmt.Sprintf("failed to parse decodeOutput ABI: %v", err))
 	}

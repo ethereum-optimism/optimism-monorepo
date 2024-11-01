@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -173,7 +175,7 @@ func DeploySuperchainToL1(l1Host *script.Host, superCfg *SuperchainConfig) (*Sup
 		ProtocolVersionsProxy:           superDeployment.ProtocolVersionsProxy,
 		OpcmProxyOwner:                  superDeployment.SuperchainProxyAdmin,
 		UseInterop:                      superCfg.Implementations.UseInterop,
-		StandardVersionsToml:            opcm.StandardVersionsMainnetData,
+		StandardVersionsToml:            standard.VersionsMainnetData,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy Implementations contracts: %w", err)
@@ -198,7 +200,7 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 
 	l1Host.SetTxOrigin(cfg.Deployer)
 
-	output, err := opcm.DeployOPChain(l1Host, opcm.DeployOPChainInput{
+	output, err := opcm.DeployOPChainV160(l1Host, opcm.DeployOPChainInputV160{
 		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
 		SystemConfigOwner:       cfg.SystemConfigOwner,
 		Batcher:                 cfg.BatchSenderAddress,

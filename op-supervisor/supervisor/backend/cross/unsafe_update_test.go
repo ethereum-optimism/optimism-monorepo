@@ -131,6 +131,31 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		err := CrossUnsafeUpdate(ctx, logger, chainID, usd)
 		require.ErrorContains(t, err, "some error")
 	})
+	t.Run("HazardCycleChecks returns error", func(t *testing.T) {
+		ctx := context.Background()
+		logger := testlog.Logger(t, log.LevelDebug)
+		chainID := types.ChainIDFromUInt64(0)
+		usd := &mockCrossUnsafeDeps{}
+		crossUnsafe := types.BlockSeal{Hash: common.Hash{0x01}}
+		usd.crossUnsafeFn = func(chainID types.ChainID) (types.BlockSeal, error) {
+			return crossUnsafe, nil
+		}
+		bl := eth.BlockRef{ParentHash: common.Hash{0x01}, Number: 1, Time: 1}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1, LogIdx: 2}
+		em2 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1, LogIdx: 1}
+		usd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+			return bl, 3, map[uint32]*types.ExecutingMessage{1: em1, 2: em2}, nil
+		}
+		usd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
+		}
+		usd.deps = mockDependencySet{}
+
+		// HazardCycleChecks returns an error with appropriate wrapping
+		err := CrossUnsafeUpdate(ctx, logger, chainID, usd)
+		require.ErrorContains(t, err, "cycle detected")
+		require.ErrorContains(t, err, "failed to verify block")
+	})
 	t.Run("successful update", func(t *testing.T) {
 		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
@@ -144,7 +169,7 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		em1 := &types.ExecutingMessage{Timestamp: 1}
 		usd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			// include one executing message to ensure one hazard is returned
-			return bl, 0, map[uint32]*types.ExecutingMessage{1: em1}, nil
+			return bl, 2, map[uint32]*types.ExecutingMessage{1: em1}, nil
 		}
 		usd.deps = mockDependencySet{}
 		var updatingChainID types.ChainID
@@ -168,6 +193,7 @@ type mockCrossUnsafeDeps struct {
 	crossUnsafeFn       func(chainID types.ChainID) (types.BlockSeal, error)
 	openBlockFn         func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 	updateCrossUnsafeFn func(chain types.ChainID, crossUnsafe types.BlockSeal) error
+	checkFn             func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 }
 
 func (m *mockCrossUnsafeDeps) CrossUnsafe(chainID types.ChainID) (derived types.BlockSeal, err error) {
@@ -182,6 +208,9 @@ func (m *mockCrossUnsafeDeps) DependencySet() depset.DependencySet {
 }
 
 func (m *mockCrossUnsafeDeps) Check(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+	if m.checkFn != nil {
+		return m.checkFn(chainID, blockNum, logIdx, logHash)
+	}
 	return types.BlockSeal{}, nil
 }
 

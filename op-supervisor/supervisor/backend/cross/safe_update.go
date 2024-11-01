@@ -89,9 +89,9 @@ func scopedCrossSafeUpdate(logger log.Logger, chainID types.ChainID, d CrossSafe
 	if err := HazardSafeFrontierChecks(d, candidateScope.ID(), hazards); err != nil {
 		return candidateScope, fmt.Errorf("failed to verify block %s in cross-safe frontier: %w", candidate, err)
 	}
-	//if err := HazardCycleChecks(d, candidate.Timestamp, hazards); err != nil {
-	// TODO
-	//}
+	if err := HazardCycleChecks(d, candidate.Time, hazards); err != nil {
+		return candidateScope, fmt.Errorf("failed to verify block %s in cross-safe check for cycle hazards: %w", candidate, err)
+	}
 
 	// promote the candidate block to cross-safe
 	if err := d.UpdateCrossSafe(chainID, candidateScope, candidate); err != nil {

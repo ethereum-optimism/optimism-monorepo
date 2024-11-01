@@ -55,7 +55,7 @@ func TestWorker(t *testing.T) {
 			return count == 1
 		}, 2*time.Second, 100*time.Millisecond)
 		// when OnNewData is called, the worker runs again
-		require.NoError(t, w.OnNewData())
+		w.OnNewData()
 		require.Eventually(t, func() bool {
 			return count == 2
 		}, 2*time.Second, 100*time.Millisecond)

@@ -32,12 +32,12 @@ contract OPContractsManagerInterop is OPContractsManager {
         (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
             defaultSystemConfigParams(_selector, _input, _output);
 
-        // TODO For now we assume that the dependency manager is the same as the proxy admin owner.
+        // TODO For now we assume that the dependency manager is the same as system config owner.
         // This is currently undefined since it's not part of the standard config, so we may need
         // to update where this value is pulled from in the future. To support a different dependency
         // manager in this contract without an invasive change of redefining the `Roles` struct,
         // we will make the change described in https://github.com/ethereum-optimism/optimism/issues/11783.
-        address dependencyManager = address(_input.roles.opChainProxyAdminOwner);
+        address dependencyManager = address(_input.roles.systemConfigOwner);
 
         return abi.encodeWithSelector(
             _selector,

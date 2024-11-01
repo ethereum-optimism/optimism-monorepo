@@ -22,7 +22,11 @@ const (
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
-	insn = memory.GetUint32(pc)
+	if pc&0x3 != 0 {
+		panic(fmt.Errorf("invalid pc: %x", pc))
+	}
+	word := memory.GetWord(pc & arch.AddressMask)
+	insn = uint32(SelectSubWord(pc, word, 4, false))
 	opcode = insn >> 26 // First 6-bits
 	fun = insn & 0x3f   // Last 6-bits
 
@@ -374,7 +378,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 				w := uint32(SelectSubWord(rs, mem, 4, false))
 				val := w >> (24 - (rs&3)*8)
 				mask := uint32(0xFFFFFFFF) >> (24 - (rs&3)*8)
-				lwrResult := ((uint32(rt) & ^mask) | val) & 0xFFFFFFFF
+				lwrResult := (uint32(rt) & ^mask) | val
 				if rs&3 == 3 { // loaded bit 31
 					return SignExtend(Word(lwrResult), 32)
 				} else {
@@ -535,13 +539,13 @@ func HandleHiLo(cpu *mipsevm.CpuScalars, registers *[32]Word, fun uint32, rs Wor
 		cpu.HI = SignExtend(Word(acc>>32), 32)
 		cpu.LO = SignExtend(Word(uint32(acc)), 32)
 	case 0x1a: // div
-		if rt == 0 {
+		if uint32(rt) == 0 {
 			panic("instruction divide by zero")
 		}
 		cpu.HI = SignExtend(Word(int32(rs)%int32(rt)), 32)
 		cpu.LO = SignExtend(Word(int32(rs)/int32(rt)), 32)
 	case 0x1b: // divu
-		if rt == 0 {
+		if uint32(rt) == 0 {
 			panic("instruction divide by zero")
 		}
 		cpu.HI = SignExtend(Word(uint32(rs)%uint32(rt)), 32)

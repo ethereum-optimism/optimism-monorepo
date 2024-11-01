@@ -20,16 +20,16 @@ type ChannelAssembler struct {
 	prev NextFrameProvider
 }
 
-var _ ResettableStage = (*ChannelAssembler)(nil)
+var _ RawChannelProvider = (*ChannelAssembler)(nil)
 
 type ChannelStageSpec interface {
 	ChannelTimeout(t uint64) uint64
 	MaxRLPBytesPerChannel(t uint64) uint64
 }
 
-// NewChannelStage creates a Holocene ChannelStage.
-// It must only be used for derivation from Holocene activation.
-func NewChannelStage(log log.Logger, spec ChannelStageSpec, prev NextFrameProvider, m Metrics) *ChannelAssembler {
+// NewChannelAssembler creates the Holocene channel stage.
+// It must only be used for derivation from Holocene origins.
+func NewChannelAssembler(log log.Logger, spec ChannelStageSpec, prev NextFrameProvider, m Metrics) *ChannelAssembler {
 	return &ChannelAssembler{
 		log:     log,
 		spec:    spec,
@@ -51,6 +51,10 @@ func (ca *ChannelAssembler) Reset(context.Context, eth.L1BlockRef, eth.SystemCon
 	return io.EOF
 }
 
+func (ca *ChannelAssembler) FlushChannel() {
+	ca.resetChannel()
+}
+
 func (ca *ChannelAssembler) resetChannel() {
 	ca.channel = nil
 }
@@ -60,7 +64,7 @@ func (ca *ChannelAssembler) channelTimedOut() bool {
 	return ca.channel.OpenBlockNumber()+ca.spec.ChannelTimeout(ca.Origin().Time) < ca.Origin().Number
 }
 
-func (ca *ChannelAssembler) NextData(ctx context.Context) ([]byte, error) {
+func (ca *ChannelAssembler) NextRawChannel(ctx context.Context) ([]byte, error) {
 	if ca.channel != nil && ca.channelTimedOut() {
 		ca.metrics.RecordChannelTimedOut()
 		ca.resetChannel()

@@ -27,7 +27,7 @@ type InteropBackend interface {
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 
-	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error)
+	CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.L1BlockRef, error)
 
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error
@@ -232,10 +232,11 @@ func (d *InteropDeriver) onCrossSafeUpdateEvent(x engine.CrossSafeUpdateEvent) e
 		Hash:   result.Cross.Hash,
 		Number: result.Cross.Number,
 	}
-	derivedFrom, err := d.backend.DerivedFrom(ctx, d.chainID, derived)
+	derivedFrom, err := d.backend.CrossDerivedFrom(ctx, d.chainID, derived)
 	if err != nil {
 		return fmt.Errorf("failed to get derived-from of %s: %w", result.Cross, err)
 	}
+	d.log.Info("New cross-safe block", "block", result.Cross.Number)
 	ref, err := d.l2.L2BlockRefByHash(ctx, result.Cross.Hash)
 	if err != nil {
 		return fmt.Errorf("failed to get block ref of %s: %w", result.Cross, err)
@@ -272,6 +273,7 @@ func (d *InteropDeriver) onFinalizedUpdate(x engine.FinalizedUpdateEvent) error 
 	if err != nil {
 		return fmt.Errorf("failed to get block ref of %s: %w", finalized, err)
 	}
+	d.log.Info("New finalized block from supervisor", "block", finalized.Number)
 	d.emitter.Emit(engine.PromoteFinalizedEvent{
 		Ref: ref,
 	})

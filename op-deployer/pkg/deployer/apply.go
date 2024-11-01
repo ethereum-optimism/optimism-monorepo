@@ -7,6 +7,10 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum/go-ethereum/common"
@@ -146,7 +150,7 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		cfg.Logger.Info("artifacts download progress", "current", curr, "total", total)
 	}
 
-	l1ArtifactsFS, cleanupL1, err := pipeline.DownloadArtifacts(ctx, intent.L1ContractsLocator, progressor)
+	l1ArtifactsFS, cleanupL1, err := artifacts.Download(ctx, intent.L1ContractsLocator, progressor)
 	if err != nil {
 		return fmt.Errorf("failed to download L1 artifacts: %w", err)
 	}
@@ -156,7 +160,7 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		}
 	}()
 
-	l2ArtifactsFS, cleanupL2, err := pipeline.DownloadArtifacts(ctx, intent.L2ContractsLocator, progressor)
+	l2ArtifactsFS, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
 	if err != nil {
 		return fmt.Errorf("failed to download L2 artifacts: %w", err)
 	}
@@ -171,7 +175,7 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		L2: l2ArtifactsFS,
 	}
 
-	l1Host, err := pipeline.DefaultScriptHost(bcaster, cfg.Logger, deployer, bundle.L1, startingNonce)
+	l1Host, err := env.DefaultScriptHost(bcaster, cfg.Logger, deployer, bundle.L1, startingNonce)
 	if err != nil {
 		return fmt.Errorf("failed to create L1 script host: %w", err)
 	}

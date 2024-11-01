@@ -59,6 +59,7 @@ contract DeployOPChainInput_Test is Test {
         doi.set(doi.basefeeScalar.selector, basefeeScalar);
         doi.set(doi.blobBaseFeeScalar.selector, blobBaseFeeScalar);
         doi.set(doi.l2ChainId.selector, l2ChainId);
+        doi.set(doi.allowCustomDisputeParameters.selector, true);
 
         (IProxy opcmProxy) = DeployUtils.buildERC1967ProxyWithImpl("opcmProxy");
         doi.set(doi.opcmProxy.selector, address(opcmProxy));
@@ -74,6 +75,7 @@ contract DeployOPChainInput_Test is Test {
         assertEq(blobBaseFeeScalar, doi.blobBaseFeeScalar(), "900");
         assertEq(l2ChainId, doi.l2ChainId(), "1000");
         assertEq(address(opcmProxy), address(doi.opcmProxy()), "1100");
+        assertEq(true, doi.allowCustomDisputeParameters(), "1200");
     }
 
     function test_getters_whenNotSet_revert() public {
@@ -530,6 +532,42 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         assertEq(address(doo.opChainProxyAdmin().addressManager().owner()), address(doo.opChainProxyAdmin()), "3600");
         assertEq(address(doo.opChainProxyAdmin().addressManager()), address(doo.addressManager()), "3700");
         assertEq(address(doo.opChainProxyAdmin().owner()), opChainProxyAdminOwner, "3800");
+    }
+
+    function test_customDisputeGame_customDisabled_reverts() public {
+        setDOI();
+        doi.set(doi.disputeSplitDepth.selector, disputeSplitDepth + 1);
+        vm.expectRevert("DPG-90");
+        deployOPChain.run(doi, doo);
+    }
+
+    function test_customDisputeGame_customEnabled_doesNotRevert() public {
+        setDOI();
+        doi.set(doi.allowCustomDisputeParameters.selector, true);
+        doi.set(doi.disputeSplitDepth.selector, disputeSplitDepth + 1);
+        deployOPChain.run(doi, doo);
+        assertEq(doo.permissionedDisputeGame().splitDepth(), disputeSplitDepth + 1);
+    }
+
+    function setDOI() internal {
+        doi.set(doi.opChainProxyAdminOwner.selector, opChainProxyAdminOwner);
+        doi.set(doi.systemConfigOwner.selector, systemConfigOwner);
+        doi.set(doi.batcher.selector, batcher);
+        doi.set(doi.unsafeBlockSigner.selector, unsafeBlockSigner);
+        doi.set(doi.proposer.selector, proposer);
+        doi.set(doi.challenger.selector, challenger);
+        doi.set(doi.basefeeScalar.selector, basefeeScalar);
+        doi.set(doi.blobBaseFeeScalar.selector, blobBaseFeeScalar);
+        doi.set(doi.l2ChainId.selector, l2ChainId);
+        doi.set(doi.opcmProxy.selector, address(opcm));
+        doi.set(doi.saltMixer.selector, saltMixer);
+        doi.set(doi.gasLimit.selector, gasLimit);
+        doi.set(doi.disputeGameType.selector, disputeGameType);
+        doi.set(doi.disputeAbsolutePrestate.selector, disputeAbsolutePrestate);
+        doi.set(doi.disputeMaxGameDepth.selector, disputeMaxGameDepth);
+        doi.set(doi.disputeSplitDepth.selector, disputeSplitDepth);
+        doi.set(doi.disputeClockExtension.selector, disputeClockExtension);
+        doi.set(doi.disputeMaxClockDuration.selector, disputeMaxClockDuration);
     }
 }
 

@@ -358,6 +358,31 @@ type PayloadAttributes struct {
 	EIP1559Params *Bytes8 `json:"eip1559Params,omitempty"`
 }
 
+// IsDepositsOnly returns whether all transactions of the PayloadAttributes are of Deposit
+// type. Empty transactions are also considered non-Deposit transactions.
+func (a *PayloadAttributes) IsDepositsOnly() bool {
+	for _, tx := range a.Transactions {
+		if len(tx) == 0 || tx[0] != types.DepositTxType {
+			return false
+		}
+	}
+	return true
+}
+
+// WithDepositsOnly return a shallow clone with all non-Deposit transactions stripped from its
+// transactions. The order is preserved.
+func (a *PayloadAttributes) WithDepositsOnly() *PayloadAttributes {
+	clone := *a
+	depositTxs := make([]Data, 0, len(a.Transactions))
+	for _, tx := range a.Transactions {
+		if len(tx) > 0 && tx[0] == types.DepositTxType {
+			depositTxs = append(depositTxs, tx)
+		}
+	}
+	clone.Transactions = depositTxs
+	return &clone
+}
+
 type ExecutePayloadStatus string
 
 const (

@@ -17,7 +17,7 @@ type AdminBackend interface {
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
-	DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
+	CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
@@ -67,8 +67,8 @@ func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (e
 	return q.Supervisor.Finalized(ctx, chainID)
 }
 
-func (q *QueryFrontend) DerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
-	return q.Supervisor.DerivedFrom(ctx, chainID, derived)
+func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
 }
 
 type AdminFrontend struct {
