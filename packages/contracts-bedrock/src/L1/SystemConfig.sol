@@ -51,6 +51,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         address gasPayingToken;
     }
 
+    /// @notice Struct representing the roles of the system.
+    /// @notice The owner (chain operator) of the system.
+    /// @notice The fee admin of the system.
+    /// @notice The unsafe block signer of the system.
+    /// @notice The batcher hash of the system.
     struct Roles {
         address owner;
         address feeAdmin;

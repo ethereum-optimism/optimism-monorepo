@@ -53,7 +53,7 @@
   },
   "src/L1/SystemConfig.sol": {
     "initCodeHash": "0x94395ca10d88dd7d0c8d09dd89908ce6c13464bee5ee4a13da5f0aa5b6ac47e2",
-    "sourceCodeHash": "0x30a468067a4c881a352b85d04326b8b39ee7388d031f78500ef585e5abd9d91d"
+    "sourceCodeHash": "0xfaa12d449ee7ffbe01c81f7f7acedf571e6e6e62cf128093ec625722799efaf0"
   },
   "src/L1/SystemConfigInterop.sol": {
     "initCodeHash": "0xfe1e3d8e63982a44eb798c11fff3041175bc9da92f53bcc924f05c14e18ffc11",
