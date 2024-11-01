@@ -363,7 +363,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       # - grafana_data:/var/lib/grafana
     ports:
-      - 3000:3300
+      - 3300:3000
 
   prometheus:
     image: prom/prometheus:latest
@@ -372,7 +372,7 @@ services:
       - ./monitoring/prometheus:/etc/prometheus
       # - prometheus_data:/prometheus
     ports:
-      - 9090:3090
+      - 3090:9090
     command: --config.file=/etc/prometheus/prometheus.yml --log.level=debug
 
   loki:
