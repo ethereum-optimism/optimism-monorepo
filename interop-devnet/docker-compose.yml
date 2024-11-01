@@ -363,7 +363,7 @@ services:
       - ./monitoring/grafana/dashboards:/var/lib/grafana/dashboards
       # - grafana_data:/var/lib/grafana
     ports:
-      - 3000:3000
+      - 3000:3300
 
   prometheus:
     image: prom/prometheus:latest
