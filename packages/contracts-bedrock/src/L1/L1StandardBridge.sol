@@ -114,7 +114,8 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
         crossDomainMessenger = _messenger;
     }
 
-    /// @notice
+    /// @notice Returns the contract of the bridge on the other chain.
+    /// @return Contract of the bridge on the other chain.
     function otherBridge() public pure override returns (IStandardBridge) {
         return IStandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE));
     }

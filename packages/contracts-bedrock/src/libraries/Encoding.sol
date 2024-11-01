@@ -139,7 +139,11 @@ library Encoding {
         return (nonce, version);
     }
 
-    /// @notice
+    /// @notice Encodes a fee vault configuration.
+    /// @param _recipient Address of the recipient of the fee vault.
+    /// @param _amount    Amount of the fee vault.
+    /// @param _network   Network of the fee vault.
+    /// @return Encoded fee vault configuration.
     function encodeFeeVaultConfig(
         address _recipient,
         uint256 _amount,
@@ -153,7 +157,11 @@ library Encoding {
         return bytes32(uint256(_network) << 248 | _amount << 160 | uint256(uint160(_recipient)));
     }
 
-    /// @notice
+    /// @notice Decodes a fee vault configuration.
+    /// @param _data Encoded fee vault configuration.
+    /// @return recipient_ Recipient of the fee vault.
+    /// @return amount_ Amount of the fee vault.
+    /// @return network_ Network of the fee vault.
     function decodeFeeVaultConfig(bytes32 _data)
         internal
         pure

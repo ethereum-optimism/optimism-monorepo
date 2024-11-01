@@ -28,7 +28,7 @@ contract L1ERC721Bridge is ERC721Bridge, Initializable, ISemver {
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
-    /// @notice
+    /// @notice Contract of the CrossDomainMessenger on this chain.
     ICrossDomainMessenger internal crossDomainMessenger;
 
     /// @notice Semantic version.

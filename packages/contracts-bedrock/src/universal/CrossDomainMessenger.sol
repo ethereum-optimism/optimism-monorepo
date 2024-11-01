@@ -311,7 +311,9 @@ abstract contract CrossDomainMessenger is CrossDomainMessengerLegacySpacer {
         }
     }
 
-    /// @notice
+    /// @notice Retrieves the address of the contract or wallet that initiated the currently
+    ///         executing message on the other chain.
+    /// @return Address of the sender of the currently executing message on the other chain.
     function getCrossDomainMessageSender() internal view returns (address) {
         if (xDomainMsgSender == address(0)) return Constants.DEFAULT_L2_SENDER;
         return xDomainMsgSender;
@@ -333,7 +335,8 @@ abstract contract CrossDomainMessenger is CrossDomainMessengerLegacySpacer {
         return sender;
     }
 
-    /// @notice
+    /// @notice Returns the contract of the other messenger on this chain.
+    /// @return Contract of the other messenger on this chain.
     function otherMessenger() public view virtual returns (CrossDomainMessenger);
 
     /// @notice Retrieves the address of the paired CrossDomainMessenger contract on the other chain

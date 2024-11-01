@@ -130,7 +130,8 @@ abstract contract StandardBridge {
         return token != Constants.ETHER;
     }
 
-    /// @notice
+    /// @notice Returns the contract of the CrossDomainMessenger on this chain.
+    /// @return Contract of the CrossDomainMessenger on this chain.
     function messenger() public view virtual returns (ICrossDomainMessenger);
 
     /// @notice Getter for messenger contract.
@@ -141,7 +142,8 @@ abstract contract StandardBridge {
         return messenger();
     }
 
-    /// @notice
+    /// @notice Returns the contract of the bridge on the other chain.
+    /// @return Contract of the bridge on the other chain.
     function otherBridge() public view virtual returns (IStandardBridge);
 
     /// @notice Getter for the other bridge contract.

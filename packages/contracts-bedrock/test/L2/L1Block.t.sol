@@ -251,17 +251,17 @@ contract L1BlockConfig_Test is L1BlockTest {
         assertEq(symbol, _symbol);
     }
 
-    /// @notice
+    /// @notice Tests roundtrip setConfig/getConfig for base fee vault config
     function test_getConfigRoundtripBaseFeeVault_succeeds(bytes32 _config) external {
         _getConfigRoundTrip(_config, Types.ConfigType.BASE_FEE_VAULT_CONFIG);
     }
 
-    /// @notice
+    /// @notice Tests roundtrip setConfig/getConfig for L1 fee vault config
     function test_getConfigRoundtripL1FeeVault_succeeds(bytes32 _config) external {
         _getConfigRoundTrip(_config, Types.ConfigType.L1_FEE_VAULT_CONFIG);
     }
 
-    /// @notice
+    /// @notice Tests roundtrip setConfig/getConfig for sequencer fee vault config
     function test_getConfigRoundtripSequencerFeeVault_succeeds(bytes32 _config) external {
         _getConfigRoundTrip(_config, Types.ConfigType.SEQUENCER_FEE_VAULT_CONFIG);
     }
