@@ -25,7 +25,7 @@ scrape_configs:
         filters:
           - name: name
             # Filter logging to just our containers
-            values: ["op-batcher-*", "op-proposer-*", "op-node-*", "op-supervisor-*"]
+            values: ["op-batcher-*", "op-proposer-*", "op-node-*", "op-supervisor-*", "l1-*", "l1-bn-*", "l1-vc-*", "l2-a-*", "l2-b-*"]
     relabel_configs:
       - source_labels: ["__meta_docker_container_name"]
         regex: "/(.*)"
