@@ -403,7 +403,7 @@ contract OptimismPortal2_Test is CommonTest {
         optimismPortal2.upgrade(_gasLimit, _calldata);
     }
 
-    /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
+    /// @notice Ensures that the deposit event is correct for the `upgrade`
     ///         code path that manually emits a deposit transaction outside of the
     ///         `depositTransaction` function. This is a simple differential test.
     function test_upgrade_correctEvent_succeeds(uint32 _gasLimit, bytes memory _calldata) external {

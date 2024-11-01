@@ -100,4 +100,14 @@ library Types {
         ADD_DEPENDENCY,
         REMOVE_DEPENDENCY
     }
+
+    /// @notice Struct representing the configuration of a fee vault.
+    /// @custom:field recipient Address that should receive the funds.
+    /// @custom:field min Minimum withdrawal amount allowed to be processed.
+    /// @custom:field withdrawalNetwork The network in which the fees should be withdrawn to.
+    struct FeeVaultConfig {
+        address recipient;
+        uint256 min;
+        Types.WithdrawalNetwork withdrawalNetwork;
+    }
 }

@@ -65,7 +65,8 @@ interface ISystemConfigInterop {
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         ISystemConfig.Addresses memory _addresses,
-        address _dependencyManager
+        address _dependencyManager,
+        ISystemConfig.FeeVaultConfigs memory _feeVaultConfigs
     )
         external;
     function version() external pure returns (string memory);

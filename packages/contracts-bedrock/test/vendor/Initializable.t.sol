@@ -14,6 +14,7 @@ import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import "src/dispute/lib/Types.sol";
 import "scripts/deploy/Deployer.sol";
+import { Types as TypesLib } from "src/libraries/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
@@ -206,6 +207,23 @@ contract Initializer_Test is Bridge_Initializer {
                             optimismPortal: address(0),
                             optimismMintableERC20Factory: address(0),
                             gasPayingToken: Constants.ETHER
+                        }),
+                        ISystemConfig.FeeVaultConfigs({
+                            baseFeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            }),
+                            sequencerFeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            }),
+                            l1FeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            })
                         })
                     )
                 )
@@ -245,6 +263,23 @@ contract Initializer_Test is Bridge_Initializer {
                             optimismPortal: address(0),
                             optimismMintableERC20Factory: address(0),
                             gasPayingToken: Constants.ETHER
+                        }),
+                        ISystemConfig.FeeVaultConfigs({
+                            baseFeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            }),
+                            sequencerFeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            }),
+                            l1FeeVaultConfig: TypesLib.FeeVaultConfig({
+                                recipient: address(0),
+                                min: 0,
+                                withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                            })
                         })
                     )
                 )

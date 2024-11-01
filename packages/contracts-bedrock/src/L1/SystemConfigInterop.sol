@@ -42,7 +42,8 @@ contract SystemConfigInterop is SystemConfig {
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         SystemConfig.Addresses memory _addresses,
-        address _dependencyManager
+        address _dependencyManager,
+        FeeVaultConfigs memory _feeVaultConfigs
     )
         external
     {
@@ -54,7 +55,8 @@ contract SystemConfigInterop is SystemConfig {
             _gasLimit: _gasLimit,
             _config: _config,
             _batchInbox: _batchInbox,
-            _addresses: _addresses
+            _addresses: _addresses,
+            _feeVaultConfigs: _feeVaultConfigs
         });
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }

@@ -6,6 +6,7 @@ import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { Types } from "src/libraries/Types.sol";
 
 contract ConfigSetter {
     function setConfig(uint8, bytes calldata) external {
@@ -56,6 +57,23 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
                         optimismPortal: address(setter),
                         optimismMintableERC20Factory: address(0),
                         gasPayingToken: Constants.ETHER
+                    }),
+                    ISystemConfig.FeeVaultConfigs({
+                        baseFeeVaultConfig: Types.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: Types.WithdrawalNetwork.L1
+                        }),
+                        sequencerFeeVaultConfig: Types.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: Types.WithdrawalNetwork.L1
+                        }),
+                        l1FeeVaultConfig: Types.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: Types.WithdrawalNetwork.L1
+                        })
                     })
                 )
             )

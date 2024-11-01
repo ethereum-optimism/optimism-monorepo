@@ -34,6 +34,7 @@ import { Types } from "scripts/libraries/Types.sol";
 import { Duration } from "src/dispute/lib/LibUDT.sol";
 import { StorageSlot, ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import "src/dispute/lib/Types.sol";
+import { Types as TypesLib } from "src/libraries/Types.sol";
 
 // Interfaces
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
@@ -846,6 +847,23 @@ contract Deploy is Deployer {
                         optimismPortal: mustGetAddress("OptimismPortalProxy"),
                         optimismMintableERC20Factory: mustGetAddress("L1OptimismMintableERC20FactoryProxy"),
                         gasPayingToken: customGasTokenAddress
+                    }),
+                    ISystemConfig.FeeVaultConfigs({
+                        baseFeeVaultConfig: TypesLib.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                        }),
+                        sequencerFeeVaultConfig: TypesLib.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                        }),
+                        l1FeeVaultConfig: TypesLib.FeeVaultConfig({
+                            recipient: address(0),
+                            min: 0,
+                            withdrawalNetwork: TypesLib.WithdrawalNetwork.L1
+                        })
                     })
                 )
             )

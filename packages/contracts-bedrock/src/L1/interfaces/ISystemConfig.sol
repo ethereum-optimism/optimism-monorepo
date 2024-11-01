@@ -33,6 +33,12 @@ interface ISystemConfig {
         bytes32 batcherHash;
     }
 
+    struct FeeVaultConfigs {
+        Types.FeeVaultConfig baseFeeVaultConfig;
+        Types.FeeVaultConfig sequencerFeeVaultConfig;
+        Types.FeeVaultConfig l1FeeVaultConfig;
+    }
+
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
     event Initialized(uint8 version);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -65,7 +71,8 @@ interface ISystemConfig {
         uint64 _gasLimit,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        Addresses memory _addresses
+        Addresses memory _addresses,
+        FeeVaultConfigs memory _feeVaultConfigs
     )
         external;
     function isCustomGasToken() external view returns (bool);
