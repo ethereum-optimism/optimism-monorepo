@@ -94,6 +94,8 @@ services:
       --rpc.port=8545
       --rpc.enable-admin
       --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
+    environment:
+      OP_SUPERVISOR_METRICS_ENABLED: "true"
 
   l2-a:
     depends_on:
