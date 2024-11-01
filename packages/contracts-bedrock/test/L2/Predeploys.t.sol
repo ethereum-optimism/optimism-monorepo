@@ -103,12 +103,6 @@ contract PredeploysBaseTest is CommonTest {
                 // can't check bytecode if it's modified with immutables in genesis.
                 assertEq(implAddr.code, supposedCode, "proxy implementation contract should match contract source");
             }
-
-            // todo: l2genesis: this whole branch is a no-op.
-            //   Either run the check, or remove the branch.
-            if (_isInitializable(addr)) {
-                assertEq(l2Genesis.loadInitializedSlot(cname), uint8(1));
-            }
         }
     }
 }
