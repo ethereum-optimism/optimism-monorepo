@@ -66,6 +66,17 @@ rules:
       include:
         - packages/contracts-bedrock/src
 
+  - id: sol-safety-no-public-in-libraries
+    languages: [generic]
+    severity: ERROR
+    message: Public functions in libraries are not allowed
+    patterns:
+      - pattern-inside: |
+          library $LIBRARY {
+              ...
+          }
+      - pattern-regex: function\s+\w+\s*\([^)]*\)\s+(?:.*\s+)?(public|external)\s+.*\{
+
   - id: sol-style-input-arg-fmt
     languages: [solidity]
     severity: ERROR
