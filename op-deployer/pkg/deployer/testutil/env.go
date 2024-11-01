@@ -3,7 +3,8 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"net/url"
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum/log"
 	"path"
 	"runtime"
 	"testing"
@@ -25,13 +26,11 @@ func LocalArtifacts(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
 }
 
 func ArtifactsFromURL(t *testing.T, artifactsURLStr string) (*artifacts.Locator, foundry.StatDirFs) {
-	artifactsURL, err := url.Parse(artifactsURLStr)
-	require.NoError(t, err)
-	loc := &artifacts.Locator{
-		URL: artifactsURL,
-	}
+	loc := new(artifacts.Locator)
+	require.NoError(t, loc.UnmarshalText([]byte(artifactsURLStr)))
 
-	artifactsFS, cleanupArtifacts, err := artifacts.Download(context.Background(), loc, artifacts.NoopDownloadProgressor)
+	progressor := artifacts.LogProgressor(testlog.Logger(t, log.LevelInfo))
+	artifactsFS, cleanupArtifacts, err := artifacts.Download(context.Background(), loc, progressor)
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		_ = cleanupArtifacts()
