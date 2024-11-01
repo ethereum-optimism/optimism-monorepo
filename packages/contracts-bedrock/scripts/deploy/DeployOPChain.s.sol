@@ -163,6 +163,7 @@ contract DeployOPChainInput is BaseDeployIO {
         return _basefeeScalar;
     }
 
+    // todo: this needs to be a simple type (ie. not a struct) but bytes, to work with the go deploy scripts
     function feeVaultConfigs() public view returns (ISystemConfig.FeeVaultConfigs memory) {
         require(
             _feeVaultConfigs.baseFeeVaultConfig.recipient != address(0)
