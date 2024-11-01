@@ -617,13 +617,14 @@ func newChainIntent(t *testing.T, dk *devkeys.MnemonicDevKeys, l1ChainID *big.In
 		Eip1559Denominator:         50,
 		Eip1559Elasticity:          6,
 		Roles: state.ChainRoles{
-			L1ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
-			L2ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
-			SystemConfigOwner: addrFor(t, dk, devkeys.SystemConfigOwner.Key(l1ChainID)),
-			UnsafeBlockSigner: addrFor(t, dk, devkeys.SequencerP2PRole.Key(l1ChainID)),
-			Batcher:           addrFor(t, dk, devkeys.BatcherRole.Key(l1ChainID)),
-			Proposer:          addrFor(t, dk, devkeys.ProposerRole.Key(l1ChainID)),
-			Challenger:        addrFor(t, dk, devkeys.ChallengerRole.Key(l1ChainID)),
+			L1ProxyAdminOwner:    addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
+			L2ProxyAdminOwner:    addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
+			SystemConfigOwner:    addrFor(t, dk, devkeys.SystemConfigOwner.Key(l1ChainID)),
+			SystemConfigFeeAdmin: addrFor(t, dk, devkeys.SystemConfigFeeAdmin.Key(l1ChainID)),
+			UnsafeBlockSigner:    addrFor(t, dk, devkeys.SequencerP2PRole.Key(l1ChainID)),
+			Batcher:              addrFor(t, dk, devkeys.BatcherRole.Key(l1ChainID)),
+			Proposer:             addrFor(t, dk, devkeys.ProposerRole.Key(l1ChainID)),
+			Challenger:           addrFor(t, dk, devkeys.ChallengerRole.Key(l1ChainID)),
 		},
 	}
 }
