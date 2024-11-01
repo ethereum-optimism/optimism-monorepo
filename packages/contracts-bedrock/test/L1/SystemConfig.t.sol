@@ -360,6 +360,13 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
                 gasPayingToken: _gasPayingToken
             })
         });
+
+        vm.roll(block.number + 1);
+        // Reset the OptimismPortal resource config gas used
+        bytes32 slot = vm.load(address(optimismPortal), bytes32(uint256(1)));
+        vm.store(
+            address(optimismPortal), bytes32(uint256(1)), bytes32(uint256(slot) & ~(uint256(type(uint64).max) << 64))
+        );
     }
 
     /// @dev Tests that initialization sets the correct values and getters work.
