@@ -71,10 +71,11 @@ func (c *SuperchainConfig) Check(log log.Logger) error {
 }
 
 type L2Config struct {
-	Deployer          common.Address // account used to deploy contracts to L2
-	Proposer          common.Address
-	Challenger        common.Address
-	SystemConfigOwner common.Address
+	Deployer             common.Address // account used to deploy contracts to L2
+	Proposer             common.Address
+	Challenger           common.Address
+	SystemConfigOwner    common.Address
+	SystemConfigFeeAdmin common.Address
 	genesis.L2InitializationConfig
 	Prefund                 map[common.Address]*big.Int
 	SaltMixer               string

@@ -67,6 +67,7 @@ func Deploy(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceMap
 	for l2ChainID, l2Cfg := range cfg.L2s {
 		l2Deployment, err := DeployL2ToL1(l1Host, cfg.Superchain, superDeployment, l2Cfg)
 		if err != nil {
+			// moose
 			return nil, nil, fmt.Errorf("failed to deploy L2 %d to L1: %w", &l2ChainID, err)
 		}
 		deployments.L2s[l2ChainID] = l2Deployment
@@ -200,25 +201,27 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 
 	l1Host.SetTxOrigin(cfg.Deployer)
 
-	output, err := opcm.DeployOPChainV160(l1Host, opcm.DeployOPChainInputV160{
-		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
-		SystemConfigOwner:       cfg.SystemConfigOwner,
-		Batcher:                 cfg.BatchSenderAddress,
-		UnsafeBlockSigner:       cfg.P2PSequencerAddress,
-		Proposer:                cfg.Proposer,
-		Challenger:              cfg.Challenger,
-		BasefeeScalar:           cfg.GasPriceOracleBaseFeeScalar,
-		BlobBaseFeeScalar:       cfg.GasPriceOracleBlobBaseFeeScalar,
-		L2ChainId:               new(big.Int).SetUint64(cfg.L2ChainID),
-		OpcmProxy:               superDeployment.OpcmProxy,
-		SaltMixer:               cfg.SaltMixer,
-		GasLimit:                cfg.GasLimit,
-		DisputeGameType:         cfg.DisputeGameType,
-		DisputeAbsolutePrestate: cfg.DisputeAbsolutePrestate,
-		DisputeMaxGameDepth:     cfg.DisputeMaxGameDepth,
-		DisputeSplitDepth:       cfg.DisputeSplitDepth,
-		DisputeClockExtension:   cfg.DisputeClockExtension,
-		DisputeMaxClockDuration: cfg.DisputeMaxClockDuration,
+	output, err := opcm.DeployOPChainIsthmus(l1Host, opcm.DeployOPChainInputIsthmus{
+		DeployOPChainInputV160: opcm.DeployOPChainInputV160{
+			OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
+			SystemConfigOwner:       cfg.SystemConfigOwner,
+			Batcher:                 cfg.BatchSenderAddress,
+			UnsafeBlockSigner:       cfg.P2PSequencerAddress,
+			Proposer:                cfg.Proposer,
+			Challenger:              cfg.Challenger,
+			BasefeeScalar:           cfg.GasPriceOracleBaseFeeScalar,
+			BlobBaseFeeScalar:       cfg.GasPriceOracleBlobBaseFeeScalar,
+			L2ChainId:               new(big.Int).SetUint64(cfg.L2ChainID),
+			OpcmProxy:               superDeployment.OpcmProxy,
+			SaltMixer:               cfg.SaltMixer,
+			GasLimit:                cfg.GasLimit,
+			DisputeGameType:         cfg.DisputeGameType,
+			DisputeAbsolutePrestate: cfg.DisputeAbsolutePrestate,
+			DisputeMaxGameDepth:     cfg.DisputeMaxGameDepth,
+			DisputeSplitDepth:       cfg.DisputeSplitDepth,
+			DisputeClockExtension:   cfg.DisputeClockExtension,
+			DisputeMaxClockDuration: cfg.DisputeMaxClockDuration},
+		SystemConfigFeeAdmin: cfg.SystemConfigFeeAdmin,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy L2 OP chain: %w", err)
