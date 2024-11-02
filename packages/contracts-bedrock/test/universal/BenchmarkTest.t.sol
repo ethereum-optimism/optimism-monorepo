@@ -5,7 +5,6 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
