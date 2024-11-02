@@ -117,8 +117,15 @@ func (d *DA) OnFinalizedHeadSignal(f HeadSignalFn) {
 func (d *DA) updateFinalizedHead(l1Finalized eth.L1BlockRef) {
 	d.l1FinalizedHead = l1Finalized
 	// Prune the state to the finalized head
-	d.state.Prune(l1Finalized.ID())
-	d.finalizedHead = d.state.lastPrunedCommitment
+	lastPrunedCommIncBlock := d.state.Prune(l1Finalized.ID())
+	d.log.Debug("updateFinalizedHead", "currFinalizedHead", d.finalizedHead.Number, "lastPrunedCommIncBlock", lastPrunedCommIncBlock.Number, "l1Finalized", l1Finalized.Number)
+	// If a commitment was pruned, set the finalized head to that commitment's inclusion block
+	// When no commitments are left to be pruned (one example is if we have failed over to ethda)
+	// then updateFinalizedFromL1 becomes the main driver of the finalized head.
+	// Note that updateFinalizedFromL1 is only called when d.state.NoCommitments() is true.
+	if lastPrunedCommIncBlock != (eth.L1BlockRef{}) {
+		d.finalizedHead = lastPrunedCommIncBlock
+	}
 }
 
 // updateFinalizedFromL1 updates the finalized head based on the challenge window.
@@ -133,6 +140,7 @@ func (d *DA) updateFinalizedFromL1(ctx context.Context, l1 L1Fetcher) error {
 	if err != nil {
 		return err
 	}
+	d.log.Debug("updateFinalizedFromL1", "currFinalizedHead", d.finalizedHead.Number, "newFinalizedHead", ref.Number, "l1FinalizedHead", d.l1FinalizedHead.Number, "challengeWindow", d.cfg.ChallengeWindow)
 	d.finalizedHead = ref
 	return nil
 }

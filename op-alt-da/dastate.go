@@ -52,15 +52,14 @@ func challengeKey(comm CommitmentData, inclusionBlockNumber uint64) string {
 // In the special case of a L2 reorg, challenges are still tracked but commitments are removed.
 // This will allow the altDA fetcher to find the expired challenge.
 type State struct {
-	commitments          []Commitment          // commitments where the challenge/resolve period has not expired yet
-	expiredCommitments   []Commitment          // commitments where the challenge/resolve period has expired but not finalized
-	challenges           []*Challenge          // challenges ordered by L1 inclusion
-	expiredChallenges    []*Challenge          // challenges ordered by L1 inclusion
-	challengesMap        map[string]*Challenge // challenges by serialized comm + block number for easy lookup
-	lastPrunedCommitment eth.L1BlockRef        // the last commitment to be pruned
-	cfg                  Config
-	log                  log.Logger
-	metrics              Metricer
+	commitments        []Commitment          // commitments where the challenge/resolve period has not expired yet
+	expiredCommitments []Commitment          // commitments where the challenge/resolve period has expired but not finalized
+	challenges         []*Challenge          // challenges ordered by L1 inclusion
+	expiredChallenges  []*Challenge          // challenges ordered by L1 inclusion
+	challengesMap      map[string]*Challenge // challenges by serialized comm + block number for easy lookup
+	cfg                Config
+	log                log.Logger
+	metrics            Metricer
 }
 
 func NewState(log log.Logger, m Metricer, cfg Config) *State {
@@ -207,15 +206,17 @@ func (s *State) ExpireChallenges(origin eth.BlockID) {
 }
 
 // Prune removes challenges & commitments which have an expiry block number beyond the given block number.
-func (s *State) Prune(origin eth.BlockID) {
+func (s *State) Prune(origin eth.BlockID) eth.L1BlockRef {
 	// Commitments rely on challenges, so we prune commitments first.
-	s.pruneCommitments(origin)
+	lastPrunedCommIncBlock := s.pruneCommitments(origin)
 	s.pruneChallenges(origin)
+	return lastPrunedCommIncBlock
 }
 
 // pruneCommitments removes commitments which have are beyond a given block number.
 // It will remove commitments in order of inclusion until it finds a commitment which is not beyond the given block number.
-func (s *State) pruneCommitments(origin eth.BlockID) {
+func (s *State) pruneCommitments(origin eth.BlockID) eth.L1BlockRef {
+	var lastPrunedCommIncBlock eth.L1BlockRef
 	for len(s.expiredCommitments) > 0 {
 		c := s.expiredCommitments[0]
 		challenge, ok := s.GetChallenge(c.data, c.inclusionBlock.Number)
@@ -236,8 +237,9 @@ func (s *State) pruneCommitments(origin eth.BlockID) {
 		s.expiredCommitments = s.expiredCommitments[1:]
 
 		// Record the latest inclusion block to be returned
-		s.lastPrunedCommitment = c.inclusionBlock
+		lastPrunedCommIncBlock = c.inclusionBlock
 	}
+	return lastPrunedCommIncBlock
 }
 
 // pruneChallenges removes challenges which have are beyond a given block number.
