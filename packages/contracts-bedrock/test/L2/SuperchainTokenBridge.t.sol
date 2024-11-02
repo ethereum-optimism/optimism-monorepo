@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -16,7 +16,7 @@ import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 
 /// @title SuperchainTokenBridgeTest
 /// @notice Contract for testing the SuperchainTokenBridge contract.
-contract SuperchainTokenBridgeTest is Bridge_Initializer {
+contract SuperchainTokenBridgeTest is CommonTest {
     address internal constant ZERO_ADDRESS = address(0);
     string internal constant NAME = "SuperchainERC20";
     string internal constant SYMBOL = "OSE";

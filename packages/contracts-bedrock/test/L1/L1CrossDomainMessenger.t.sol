@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { Reverter } from "test/mocks/Callers.sol";
 
 // Libraries
@@ -17,7 +17,7 @@ import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 
-contract L1CrossDomainMessenger_Test is Bridge_Initializer {
+contract L1CrossDomainMessenger_Test is CommonTest {
     /// @dev The receiver address
     address recipient = address(0xabbaacdc);
 
@@ -742,7 +742,7 @@ contract L1CrossDomainMessenger_Test is Bridge_Initializer {
 
 /// @dev A regression test against a reentrancy vulnerability in the CrossDomainMessenger contract, which
 ///      was possible by intercepting and sandwhiching a signed Safe Transaction to upgrade it.
-contract L1CrossDomainMessenger_ReinitReentryTest is Bridge_Initializer {
+contract L1CrossDomainMessenger_ReinitReentryTest is CommonTest {
     bool attacked;
 
     // Common values used across functions

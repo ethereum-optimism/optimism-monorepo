@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { CREATE3, Bytes32AddressLib } from "@rari-capital/solmate/src/utils/CREATE3.sol";
@@ -13,7 +13,7 @@ import { IERC20Metadata } from "@openzeppelin/contracts/interfaces/IERC20Metadat
 
 /// @title OptimismSuperchainERC20FactoryTest
 /// @notice Contract for testing the OptimismSuperchainERC20Factory contract.
-contract OptimismSuperchainERC20FactoryTest is Bridge_Initializer {
+contract OptimismSuperchainERC20FactoryTest is CommonTest {
     using Bytes32AddressLib for bytes32;
 
     event OptimismSuperchainERC20Created(

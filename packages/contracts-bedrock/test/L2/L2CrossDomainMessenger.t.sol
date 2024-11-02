@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { Reverter } from "test/mocks/Callers.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
@@ -16,7 +16,7 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { IL2CrossDomainMessenger } from "src/L2/interfaces/IL2CrossDomainMessenger.sol";
 import { IL2ToL1MessagePasser } from "src/L2/interfaces/IL2ToL1MessagePasser.sol";
 
-contract L2CrossDomainMessenger_Test is Bridge_Initializer {
+contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Receiver address for testing
     address recipient = address(0xabbaacdc);
 

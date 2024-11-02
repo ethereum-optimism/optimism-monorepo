@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Scripts
 import { Executables } from "scripts/libraries/Executables.sol";
@@ -12,8 +12,7 @@ import { Process } from "scripts/libraries/Process.sol";
 // Libraries
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
-import "src/dispute/lib/Types.sol";
-import "scripts/deploy/Deployer.sol";
+import { GameType } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
@@ -27,7 +26,7 @@ import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistr
 ///      once. This contract inherits from `ERC721Bridge_Initializer` because it is the
 ///      deepest contract in the inheritance chain for setting up the system contracts.
 ///      For each L1 contract both the implementation and the proxy are tested.
-contract Initializer_Test is Bridge_Initializer {
+contract Initializer_Test is CommonTest {
     /// @notice Contains the address of an `Initializable` contract and the calldata
     ///         used to initialize it.
     struct InitializeableContract {

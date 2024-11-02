@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -10,7 +10,7 @@ import { IBeacon } from "@openzeppelin/contracts/proxy/beacon/IBeacon.sol";
 
 /// @title OptimismSuperchainERC20BeaconTest
 /// @notice Contract for testing the OptimismSuperchainERC20Beacon contract.
-contract OptimismSuperchainERC20BeaconTest is Bridge_Initializer {
+contract OptimismSuperchainERC20BeaconTest is CommonTest {
     /// @notice Sets up the test suite.
     function setUp() public override {
         super.enableInterop();
