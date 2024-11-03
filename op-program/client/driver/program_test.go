@@ -104,12 +104,12 @@ func TestProgramDeriver(t *testing.T) {
 			require.NoError(t, p.result)
 		})
 	})
-	// on exhaustion of input data: stop without error
+	// Do not stop processing when the deriver is idle, the engine may still be busy and create further events.
 	t.Run("deriver idle", func(t *testing.T) {
 		p, m := newProgram(t, 1000)
 		p.OnEvent(derive.DeriverIdleEvent{})
 		m.AssertExpectations(t)
-		require.True(t, p.closing)
+		require.False(t, p.closing)
 		require.Nil(t, p.result)
 	})
 	// on inconsistent chain data: stop with error

@@ -62,10 +62,6 @@ func (d *ProgramDeriver) OnEvent(ev event.Event) bool {
 			d.logger.Info("Derivation complete: reached L2 block", "head", x.SafeL2Head)
 			d.closing = true
 		}
-	case derive.DeriverIdleEvent:
-		// Not enough data to reach target
-		d.closing = true
-		d.logger.Info("Derivation complete: no further data to process")
 	case rollup.ResetEvent:
 		d.closing = true
 		d.result = fmt.Errorf("unexpected reset error: %w", x.Err)
