@@ -6,7 +6,7 @@ import { Constants } from "src/libraries/Constants.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 import { IFeeVault, Types as ITypes } from "src/L2/interfaces/IFeeVault.sol";
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
+import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
 import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
 import { IERC721Bridge } from "src/universal/interfaces/IERC721Bridge.sol";
 import { IOptimismMintableERC721Factory } from "src/L2/interfaces/IOptimismMintableERC721Factory.sol";
@@ -287,7 +287,7 @@ contract L1Block is ISemver, IGasToken {
 
         Storage.setAddress(
             L1_CROSS_DOMAIN_MESSENGER_ADDRESS_SLOT,
-            address(IL1CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER).otherMessenger())
+            address(ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER).otherMessenger())
         );
         Storage.setAddress(
             L1_STANDARD_BRIDGE_ADDRESS_SLOT,
