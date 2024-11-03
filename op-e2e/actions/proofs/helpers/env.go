@@ -145,6 +145,12 @@ func WithL2Claim(claim common.Hash) FixtureInputParam {
 	}
 }
 
+func WithL2BlockNumber(num uint64) FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.L2BlockNumber = num
+	}
+}
+
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
 	// Fetch the pre and post output roots for the fault proof.
 	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum-1)
