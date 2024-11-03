@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import {Test} from "forge-std/Test.sol";
+import { Test } from "forge-std/Test.sol";
 
-import {DeployAltDAInput, DeployAltDAOutput, DeployAltDA} from "scripts/deploy/DeployAltDA.s.sol";
-import {IDataAvailabilityChallenge} from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
+import { DeployAltDAInput, DeployAltDAOutput, DeployAltDA } from "scripts/deploy/DeployAltDA.s.sol";
+import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
 import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
-import {IProxy} from "src/universal/interfaces/IProxy.sol";
-import {DeployUtils} from "scripts/libraries/DeployUtils.sol";
+import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeployAltDAInput_Test is Test {
     DeployAltDAInput dai;
@@ -107,23 +107,16 @@ contract DeployAltDAOutput_Test is Test {
         vm.etch(address(dataAvailabilityChallengeImpl), hex"01");
 
         // Build proxy with implementation
-        (IProxy dataAvailabilityChallengeProxy) = DeployUtils.buildERC1967ProxyWithImpl("dataAvailabilityChallengeProxy");
+        (IProxy dataAvailabilityChallengeProxy) =
+            DeployUtils.buildERC1967ProxyWithImpl("dataAvailabilityChallengeProxy");
 
         // Set the addresses
         dao.set(dao.dataAvailabilityChallengeProxy.selector, address(dataAvailabilityChallengeProxy));
         dao.set(dao.dataAvailabilityChallengeImpl.selector, address(dataAvailabilityChallengeImpl));
 
         // Verify the addresses were set correctly
-        assertEq(
-            address(dataAvailabilityChallengeProxy),
-            address(dao.dataAvailabilityChallengeProxy()),
-            "100"
-        );
-        assertEq(
-            address(dataAvailabilityChallengeImpl),
-            address(dao.dataAvailabilityChallengeImpl()),
-            "200"
-        );
+        assertEq(address(dataAvailabilityChallengeProxy), address(dao.dataAvailabilityChallengeProxy()), "100");
+        assertEq(address(dataAvailabilityChallengeImpl), address(dao.dataAvailabilityChallengeImpl()), "200");
     }
 
     function test_getters_whenNotSet_revert() public {
@@ -243,7 +236,9 @@ contract DeployAltDA_Test is Test {
         uint256 _resolveWindow,
         uint256 _bondSize,
         uint256 _resolverRefundPercentage
-    ) public {
+    )
+        public
+    {
         // Bound the values to reasonable ranges
         _challengeWindow = bound(_challengeWindow, 1, 365 days);
         _resolveWindow = bound(_resolveWindow, 1, 365 days);
