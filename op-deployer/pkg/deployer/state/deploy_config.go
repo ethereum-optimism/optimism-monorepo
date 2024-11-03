@@ -115,6 +115,11 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 		}
 	}
 
+	if chainIntent.DangerousAltDAConfig.UseAltDA {
+		cfg.AltDADeployConfig = chainIntent.DangerousAltDAConfig
+		cfg.L1DependenciesConfig.DAChallengeProxy = chainState.DataAvailabilityChallengeProxyAddress
+	}
+
 	// The below dummy variables are set in order to allow the deploy
 	// config to pass validation. The validation checks are useful to
 	// ensure that the L2 is properly configured. They are not used by

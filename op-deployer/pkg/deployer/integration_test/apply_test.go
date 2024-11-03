@@ -11,6 +11,10 @@ import (
 	"testing"
 	"time"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
@@ -402,6 +406,45 @@ func TestInteropDeployment(t *testing.T) {
 	checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot)
 	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
 	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
+}
+
+func TestAltDADeployment(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	env, bundle, intent, st := setupGenesisChain(t)
+	altDACfg := genesis.AltDADeployConfig{
+		UseAltDA:                   true,
+		DACommitmentType:           altda.KeccakCommitmentString,
+		DAChallengeWindow:          10,
+		DAResolveWindow:            10,
+		DABondSize:                 100,
+		DAResolverRefundPercentage: 50,
+	}
+	intent.Chains[0].DangerousAltDAConfig = altDACfg
+
+	require.NoError(t, deployer.ApplyPipeline(
+		ctx,
+		env,
+		bundle,
+		intent,
+		st,
+	))
+
+	chainState := st.Chains[0]
+	require.NotEmpty(t, chainState.DataAvailabilityChallengeProxyAddress)
+	require.NotEmpty(t, chainState.DataAvailabilityChallengeImplAddress)
+
+	_, rollupCfg, err := inspect.GenesisAndRollup(st, chainState.ID)
+	require.NoError(t, err)
+	require.EqualValues(t, &rollup.AltDAConfig{
+		CommitmentType:     altda.KeccakCommitmentString,
+		DAChallengeWindow:  altDACfg.DAChallengeWindow,
+		DAChallengeAddress: chainState.DataAvailabilityChallengeProxyAddress,
+		DAResolveWindow:    altDACfg.DAResolveWindow,
+	}, rollupCfg.AltDAConfig)
 }
 
 func TestInvalidL2Genesis(t *testing.T) {

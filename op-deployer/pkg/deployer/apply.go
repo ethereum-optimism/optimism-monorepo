@@ -237,6 +237,11 @@ func ApplyPipeline(
 				}
 			},
 		}, pipelineStage{
+			fmt.Sprintf("deploy-alt-da-%s", chainID.Hex()),
+			func() error {
+				return pipeline.DeployAltDA(env, intent, st, chainID)
+			},
+		}, pipelineStage{
 			fmt.Sprintf("generate-l2-genesis-%s", chainID.Hex()),
 			func() error {
 				return pipeline.GenerateL2Genesis(env, intent, bundle, st, chainID)
