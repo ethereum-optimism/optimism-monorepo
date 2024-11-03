@@ -14,7 +14,7 @@ cd "$CONTRACTS_DIR"
 echoerr "> Calculating contracts checksum..."
 
 find . -type f -name '*.sol' -exec sha256sum {} + > manifest.txt
-sha256sum semver-lock.json >> manifest.txt
+sha256sum snapshots/semver-lock.json >> manifest.txt
 sha256sum foundry.toml >> manifest.txt
 # need to specify the locale to ensure consistent sorting across platforms
 LC_ALL=C sort -o manifest.txt manifest.txt

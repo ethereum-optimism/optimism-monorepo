@@ -9,7 +9,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "$SCRIPT_DIR/utils/semver-utils.sh"
 
 # Path to semver-lock.json.
-SEMVER_LOCK="semver-lock.json"
+SEMVER_LOCK="snapshots/semver-lock.json"
 
 # Create a temporary directory.
 temp_dir=$(mktemp -d)
@@ -22,7 +22,14 @@ if ! { git diff origin/develop...HEAD --name-only; git diff --name-only; git dif
 fi
 
 # Get the upstream semver-lock.json.
-git show origin/develop:packages/contracts-bedrock/semver-lock.json > "$temp_dir/upstream_semver_lock.json"
+# git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json"
+
+if ! git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
+    if ! git show origin/develop:packages/contracts-bedrock/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
+        echo "❌ Error: Could not find semver-lock.json in either snapshots/ or root directory of develop branch"
+        exit 1
+    fi
+fi
 
 # Copy the local semver-lock.json.
 cp "$SEMVER_LOCK" "$temp_dir/local_semver_lock.json"

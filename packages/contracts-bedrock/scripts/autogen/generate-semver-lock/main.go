@@ -13,6 +13,8 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
+const semverLockFile = "snapshots/semver-lock.json"
+
 func main() {
 	if err := run(); err != nil {
 		panic(err)
@@ -117,10 +119,10 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal JSON: %w", err)
 	}
-	if err := os.WriteFile("semver-lock.json", jsonData, 0644); err != nil {
+	if err := os.WriteFile(semverLockFile, jsonData, 0644); err != nil {
 		return fmt.Errorf("failed to write semver lock file: %w", err)
 	}
 
-	fmt.Println("Wrote semver lock file to \"semver-lock.json\".")
+	fmt.Printf("Wrote semver lock file to \"%s\".\n", semverLockFile)
 	return nil
 }
