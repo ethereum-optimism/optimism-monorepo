@@ -108,7 +108,7 @@ kontrol-summary-full: kontrol-summary kontrol-summary-fp
 snapshots-abi-storage:
   go run ./scripts/autogen/generate-snapshots .
 
-# Updates the semver-lock.json file.
+# Updates the snapshots/semver-lock.json file.
 semver-lock:
   go run scripts/autogen/generate-semver-lock/main.go
 

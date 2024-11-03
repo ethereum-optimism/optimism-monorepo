@@ -22,7 +22,7 @@ if ! { git diff origin/develop...HEAD --name-only; git diff --name-only; git dif
 fi
 
 # Get the upstream semver-lock.json.
-git show origin/develop:packages/contracts-bedrock/semver-lock.json > "$temp_dir/upstream_semver_lock.json"
+git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json"
 
 # Copy the local semver-lock.json.
 cp "$SEMVER_LOCK" "$temp_dir/local_semver_lock.json"

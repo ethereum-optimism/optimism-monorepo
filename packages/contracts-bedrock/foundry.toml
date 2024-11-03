@@ -48,7 +48,6 @@ fs_permissions = [
   { access='read', path='./deploy-config-periphery/' },
   { access='read', path='./broadcast/' },
   { access='read', path = './forge-artifacts/' },
-  { access='write', path='./semver-lock.json' },
   { access='read-write', path='./.testdata/' },
   { access='read', path='./kout-deployment' },
   { access='read', path='./test/fixtures' },
