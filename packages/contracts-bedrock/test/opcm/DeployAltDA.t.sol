@@ -234,7 +234,7 @@ contract DeployAltDA_Test is Test {
         deployer.deployDataAvailabilityChallengeProxy(dai, dao);
         deployer.deployDataAvailabilityChallengeImpl(dai, dao);
 
-        vm.expectRevert(); // Will revert when checking initialization
+        vm.expectRevert("DeployUtils: zero address");
         deployer.checkOutput(dai, dao);
     }
 
