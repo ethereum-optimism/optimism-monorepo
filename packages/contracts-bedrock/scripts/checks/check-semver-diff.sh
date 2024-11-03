@@ -9,7 +9,7 @@ SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
 source "$SCRIPT_DIR/utils/semver-utils.sh"
 
 # Path to semver-lock.json.
-SEMVER_LOCK="semver-lock.json"
+SEMVER_LOCK="snapshots/semver-lock.json"
 
 # Create a temporary directory.
 temp_dir=$(mktemp -d)

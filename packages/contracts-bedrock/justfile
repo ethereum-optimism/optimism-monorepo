@@ -88,7 +88,7 @@ deploy:
 
 # Generates a gas snapshot without building.
 gas-snapshot-no-build:
-  forge snapshot --match-contract GasBenchMark
+  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot
 
 # Generates a gas snapshot.
 gas-snapshot: build-go-ffi gas-snapshot-no-build
@@ -127,7 +127,7 @@ snapshots: build snapshots-no-build
 
 # Checks that the gas snapshot is up to date without building.
 gas-snapshot-check-no-build:
-  forge snapshot --match-contract GasBenchMark --check
+  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot --check
 
 # Checks that the gas snapshot is up to date.
 gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
