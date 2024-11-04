@@ -48,6 +48,8 @@ func (c *MockDAClient) DeleteData(key []byte) error {
 	return c.store.Delete(key)
 }
 
+// DAErrFaker is a DA client that can be configured to return errors on GetInput
+// and SetInput calls.
 type DAErrFaker struct {
 	Client *MockDAClient
 
@@ -107,6 +109,10 @@ func (d *AltDADisabled) AdvanceL1Origin(ctx context.Context, l1 L1Fetcher, block
 // FakeDAServer is a fake DA server for e2e tests.
 // It is a small wrapper around DAServer that allows for setting request latencies,
 // to mimic a DA service with slow responses (eg. eigenDA with 10 min batching interval).
+//
+// We use this FakeDaServer as opposed to the DAErrFaker client in the op-e2e altda system tests
+// because the batcher service only has a constructor to build from CLI flags (no dependency injection),
+// meaning the da client is built from an rpc url config instead of being injected.
 type FakeDAServer struct {
 	*DAServer
 	putRequestLatency time.Duration

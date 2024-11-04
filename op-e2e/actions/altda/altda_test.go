@@ -1,6 +1,7 @@
 package altda
 
 import (
+	"log/slog"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -49,6 +50,12 @@ type L2AltDA struct {
 
 type AltDAParam func(p *e2eutils.TestParams)
 
+func WithLogLevel(level slog.Level) AltDAParam {
+	return func(p *e2eutils.TestParams) {
+		p.LogLevel = level
+	}
+}
+
 func NewL2AltDA(t helpers.Testing, params ...AltDAParam) *L2AltDA {
 	p := &e2eutils.TestParams{
 		MaxSequencerDrift:   40,
@@ -57,11 +64,12 @@ func NewL2AltDA(t helpers.Testing, params ...AltDAParam) *L2AltDA {
 		L1BlockTime:         12,
 		UseAltDA:            true,
 		AllocType:           config.AllocTypeAltDA,
+		LogLevel:            log.LevelDebug,
 	}
 	for _, apply := range params {
 		apply(p)
 	}
-	log := testlog.Logger(t, log.LvlDebug)
+	log := testlog.Logger(t, p.LogLevel)
 
 	dp := e2eutils.MakeDeployParams(t, p)
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -75,14 +83,13 @@ func NewL2AltDA(t helpers.Testing, params ...AltDAParam) *L2AltDA {
 	engine := helpers.NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 	engCl := engine.EngineClient(t, sd.RollupCfg)
 
-	storage := &altda.DAErrFaker{Client: altda.NewMockDAClient(log)}
-
 	l1F, err := sources.NewL1Client(miner.RPCClient(), log, nil, sources.L1ClientDefaultConfig(sd.RollupCfg, false, sources.RPCKindBasic))
 	require.NoError(t, err)
 
 	altDACfg, err := sd.RollupCfg.GetOPAltDAConfig()
 	require.NoError(t, err)
 
+	storage := &altda.DAErrFaker{Client: altda.NewMockDAClient(log)}
 	daMgr := altda.NewAltDAWithStorage(log, altDACfg, storage, &altda.NoopMetrics{})
 
 	sequencer := helpers.NewL2Sequencer(t, log, l1F, miner.BlobStore(), daMgr, engCl, sd.RollupCfg, 0)
@@ -175,6 +182,34 @@ func (a *L2AltDA) ActNewL2Tx(t helpers.Testing) {
 	a.miner.ActL1EndBlock(t)
 
 	a.lastCommBn = a.miner.L1Chain().CurrentBlock().Number.Uint64()
+}
+
+// ActNewL2TxFinalized sends a new L2 transaction, submits a batch containing it to L1
+// and finalizes the L1 and L2 chains (including advancing enough to clear the altda challenge window).
+//
+// TODO: understand why (notation is l1unsafe/l1safe/l1finalized-l2unsafe/l2safe/l2finalized):
+//   - the first call advances heads by (0/0/17-71/71/1)
+//   - second call advances by 0/0/17-204/204/82,
+//   - but all subsequent calls advance status by exactly 0/0/17-204/204/204.
+//
+// 17 makes sense because challengeWindow=16 and we create 1 extra block before that,
+// and 204 L2blocks = 17 L1blocks * 12 L2blocks/L1block (L1blocktime=12s, L2blocktime=1s)
+func (a *L2AltDA) ActNewL2TxFinalized(t helpers.Testing) {
+	// Include a new l2 batcher transaction, submitting an input commitment to the l1.
+	a.ActNewL2Tx(t)
+	// Create ChallengeWindow empty blocks so the above batcher blocks can finalize (can't be challenged anymore)
+	a.ActL1Blocks(t, a.altDACfg.ChallengeWindow)
+	// Finalize the L1 chain and the L2 chain (by draining all events and running through derivation pipeline)
+	// TODO: understand why we need to drain the pipeline before AND after actL1Finalized
+	a.sequencer.ActL2PipelineFull(t)
+	a.ActL1Finalized(t)
+	a.sequencer.ActL2PipelineFull(t)
+
+	// Uncomment the below code to observe the behavior described in the TODO above
+	// syncStatus := a.sequencer.SyncStatus()
+	// a.log.Info("Sync status after ActNewL2TxFinalized",
+	// 	"unsafeL1", syncStatus.HeadL1.Number, "safeL1", syncStatus.SafeL1.Number, "finalizedL1", syncStatus.FinalizedL1.Number,
+	// 	"unsafeL2", syncStatus.UnsafeL2.Number, "safeL2", syncStatus.SafeL2.Number, "finalizedL2", syncStatus.FinalizedL2.Number)
 }
 
 func (a *L2AltDA) ActDeleteLastInput(t helpers.Testing) {
@@ -363,7 +398,7 @@ func TestAltDA_ChallengeResolved(gt *testing.T) {
 }
 
 // DA storage service goes offline while sequencer keeps making blocks. When storage comes back online, it should be able to catch up.
-func TestAltDA_StorageError(gt *testing.T) {
+func TestAltDA_StorageGetError(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	harness := NewL2AltDA(t)
 
@@ -528,11 +563,12 @@ func TestAltDA_Finalization(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	a := NewL2AltDA(t)
 
-	// build L1 block #1
+	// Notation everywhere below is l1unsafe/l1safe/l1finalized-l2unsafe/l2safe/l2finalized
+	// build L1 block #1: 0/0/0-0/0/0 -> 1/1/0-0/0/0
 	a.ActL1Blocks(t, 1)
 	a.miner.ActL1SafeNext(t)
 
-	// Fill with l2 blocks up to the L1 head
+	// Fill with l2 blocks up to the L1 head: 1/1/0:0/0/0 -> 1/1/0:1/1/0
 	a.sequencer.ActL1HeadSignal(t)
 	a.sequencer.ActBuildToL1Head(t)
 
@@ -540,7 +576,7 @@ func TestAltDA_Finalization(gt *testing.T) {
 	a.sequencer.ActL1SafeSignal(t)
 	require.Equal(t, uint64(1), a.sequencer.SyncStatus().SafeL1.Number)
 
-	// add L1 block #2
+	// add L1 block #2: 1/1/0:1/1/0 -> 2/2/1:2/1/0
 	a.ActL1Blocks(t, 1)
 	a.miner.ActL1SafeNext(t)
 	a.miner.ActL1FinalizeNext(t)
@@ -552,7 +588,7 @@ func TestAltDA_Finalization(gt *testing.T) {
 	a.sequencer.ActL1FinalizedSignal(t)
 	a.sequencer.ActL1SafeSignal(t)
 
-	// commit all the l2 blocks to L1
+	// commit all the l2 blocks to L1: 2/2/1:2/1/0 -> 3/2/1:2/1/0
 	a.batcher.ActSubmitAll(t)
 	a.miner.ActL1StartBlock(12)(t)
 	a.miner.ActL1IncludeTx(a.dp.Addresses.Batcher)(t)
@@ -561,31 +597,31 @@ func TestAltDA_Finalization(gt *testing.T) {
 	// verify
 	a.sequencer.ActL2PipelineFull(t)
 
-	// fill with more unsafe L2 blocks
+	// fill with more unsafe L2 blocks: 3/2/1:2/1/0 -> 3/2/1:3/1/0
 	a.sequencer.ActL1HeadSignal(t)
 	a.sequencer.ActBuildToL1Head(t)
 
-	// submit those blocks too, block #4
+	// submit those blocks too, block #4: 3/2/1:3/1/0 -> 4/2/1:3/1/0
 	a.batcher.ActSubmitAll(t)
 	a.miner.ActL1StartBlock(12)(t)
 	a.miner.ActL1IncludeTx(a.dp.Addresses.Batcher)(t)
 	a.miner.ActL1EndBlock(t)
 
-	// add some more L1 blocks #5, #6
+	// add some more L1 blocks #5, #6: 4/2/1:3/1/0 -> 6/2/1:3/1/0
 	a.miner.ActEmptyBlock(t)
 	a.miner.ActEmptyBlock(t)
 
-	// and more unsafe L2 blocks
+	// and more unsafe L2 blocks: 6/2/1:3/1/0 -> 6/2/1:6/1/0
 	a.sequencer.ActL1HeadSignal(t)
 	a.sequencer.ActBuildToL1Head(t)
 
-	// move safe/finalize markers: finalize the L1 chain block with the first batch, but not the second
+	// move safe/finalize markers: 6/2/1:6/1/0 -> 6/4/3:6/1/0
 	a.miner.ActL1SafeNext(t)     // #2 -> #3
 	a.miner.ActL1SafeNext(t)     // #3 -> #4
 	a.miner.ActL1FinalizeNext(t) // #1 -> #2
 	a.miner.ActL1FinalizeNext(t) // #2 -> #3
 
-	// L1 safe and finalized as expected
+	// L1 safe and finalized as expected:
 	a.sequencer.ActL2PipelineFull(t)
 	a.sequencer.ActL1FinalizedSignal(t)
 	a.sequencer.ActL1SafeSignal(t)
@@ -606,4 +642,65 @@ func TestAltDA_Finalization(gt *testing.T) {
 
 	// given 12s l1 time and 1s l2 time, l2 should be 12 * 3 = 36 blocks finalized
 	require.Equal(t, uint64(36), a.sequencer.SyncStatus().FinalizedL2.Number)
+}
+
+// This test tests ethDA -> altDA -> ethDA finalization behavior, simulating a temp altDA failure.
+func TestAltDA_FinalizationAfterEthDAFailover(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	// we only print critical logs to be able to see the statusLogs
+	harness := NewL2AltDA(t, WithLogLevel(log.LevelDebug))
+
+	// We first call this twice because the first 2 times are irregular.
+	// See ActNewL2TxFinalized's TODO comment.
+	harness.ActNewL2TxFinalized(t)
+	harness.ActNewL2TxFinalized(t)
+
+	// ActNewL2TxFinalized advances L1 by (1+ChallengeWindow)L1 blocks, and there are 12 L2 blocks per L1 block.
+	diffL2Blocks := (1 + harness.altDACfg.ChallengeWindow) * 12
+
+	for i := 0; i < 5; i++ {
+		ssBefore := harness.sequencer.SyncStatus()
+		harness.ActNewL2TxFinalized(t)
+		ssAfter := harness.sequencer.SyncStatus()
+		// Finalized head should advance normally in altda mode
+		require.Equal(t, ssBefore.FinalizedL2.Number+diffL2Blocks, ssAfter.FinalizedL2.Number)
+	}
+
+	// We swap out altda batcher for ethda batcher
+	harness.batcher.ActAltDAFailoverToEthDA(t)
+
+	for i := 0; i < 3; i++ {
+		ssBefore := harness.sequencer.SyncStatus()
+		harness.ActNewL2TxFinalized(t)
+		if i == 0 {
+			// TODO: figure out why we need to act twice for the first time after failover.
+			// I think it's because the L1 driven finalizedHead is set to L1FinalizedHead-ChallengeWindow (see damgr.go updateFinalizedFromL1),
+			// so it trails behind by an extra challenge_window when we switch over to ethDA.
+			harness.ActNewL2TxFinalized(t)
+		}
+		ssAfter := harness.sequencer.SyncStatus()
+		// Even after failover, the finalized head should continue advancing normally
+		require.Equal(t, ssBefore.FinalizedL2.Number+diffL2Blocks, ssAfter.FinalizedL2.Number)
+	}
+
+	// Revert back to altda batcher (simulating that altda's temporary outage is resolved)
+	harness.batcher.ActAltDAFallbackToAltDA(t)
+
+	for i := 0; i < 3; i++ {
+		ssBefore := harness.sequencer.SyncStatus()
+		harness.ActNewL2TxFinalized(t)
+		ssAfter := harness.sequencer.SyncStatus()
+
+		// Even after fallback to altda, the finalized head should continue advancing normally
+		if i == 0 {
+			// This is the opposite as the altda->ethda direction. In this case, the first time we fallback to altda,
+			// the finalized head will advance by 2*diffL2Blocks: in ethda mode when driven by L1 finalization,
+			// the head is set to L1FinalizedHead-ChallengeWindow. After sending an altda commitment, the finalized head
+			// is now driven by the finalization of the altda commitment.
+			require.Equal(t, ssBefore.FinalizedL2.Number+2*diffL2Blocks, ssAfter.FinalizedL2.Number)
+		} else {
+			require.Equal(t, ssBefore.FinalizedL2.Number+diffL2Blocks, ssAfter.FinalizedL2.Number)
+		}
+
+	}
 }

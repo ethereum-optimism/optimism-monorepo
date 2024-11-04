@@ -1,6 +1,7 @@
 package e2eutils
 
 import (
+	"log/slog"
 	"math/big"
 	"os"
 	"path"
@@ -50,6 +51,7 @@ type TestParams struct {
 	L1BlockTime         uint64
 	UseAltDA            bool
 	AllocType           config.AllocType
+	LogLevel            slog.Level
 }
 
 func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
@@ -66,7 +68,7 @@ func MakeDeployParams(t require.TestingT, tp *TestParams) *DeployParams {
 	deployConfig.UseAltDA = tp.UseAltDA
 	ApplyDeployConfigForks(deployConfig)
 
-	logger := log.NewLogger(log.DiscardHandler())
+	logger := log.NewLogger(log.NewTerminalHandlerWithLevel(os.Stdout, tp.LogLevel, true))
 	require.NoError(t, deployConfig.Check(logger))
 	require.Equal(t, addresses.Batcher, deployConfig.BatchSenderAddress)
 	require.Equal(t, addresses.Proposer, deployConfig.L2OutputOracleProposer)
