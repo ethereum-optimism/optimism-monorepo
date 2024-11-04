@@ -102,6 +102,10 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 		},
 	}
 
+	if intent.UseInterop {
+		cfg.L2InitializationConfig.UpgradeScheduleDeployConfig.L2GenesisInteropTimeOffset = u64UtilPtr(0)
+	}
+
 	if chainState.StartBlock == nil {
 		// These are dummy variables - see below for rationale.
 		num := rpc.LatestBlockNumber
