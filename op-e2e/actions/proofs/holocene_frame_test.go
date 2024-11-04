@@ -28,8 +28,8 @@ func (h holoceneExpectations) RequireExpectedProgress(t actionsHelpers.StatefulT
 		require.Equal(t, expectedHash, actualSafeHead.Hash)
 	}
 }
-func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 
+func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 	type testCase struct {
 		name   string
 		frames []uint
@@ -39,28 +39,33 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 	// An ordered list of frames to read from the channel and submit
 	// on L1. We expect a different progression of the safe head under Holocene
 	// derivation rules, compared with pre Holocene.
-	var testCases = []testCase{
+	testCases := []testCase{
 		// Standard frame submission,
-		{name: "case-0", frames: []uint{0, 1, 2},
+		{
+			name: "case-0", frames: []uint{0, 1, 2},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3,
-				safeHeadHolocene:    3},
+				safeHeadHolocene:    3,
+			},
 		},
 
 		// Non-standard frame submission
-		{name: "case-1a", frames: []uint{2, 1, 0},
+		{
+			name: "case-1a", frames: []uint{2, 1, 0},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // frames are buffered, so ordering does not matter
 				safeHeadHolocene:    0, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
 			},
 		},
-		{name: "case-1b", frames: []uint{0, 1, 0, 2},
+		{
+			name: "case-1b", frames: []uint{0, 1, 0, 2},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // frames are buffered, so ordering does not matter
 				safeHeadHolocene:    0, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
 			},
 		},
-		{name: "case-1c", frames: []uint{0, 1, 1, 2},
+		{
+			name: "case-1c", frames: []uint{0, 1, 1, 2},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // frames are buffered, so ordering does not matter
 				safeHeadHolocene:    3, // non-contiguous frames are dropped. So this reduces to case-0.
@@ -125,9 +130,7 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 
 		t.Log("Safe head progressed as expected", "l2SafeHeadNumber", l2SafeHead.Number)
 
-		if safeHeadNumber := l2SafeHead.Number; safeHeadNumber > 0 {
-			env.RunFaultProofProgram(t, safeHeadNumber, testCfg.CheckResult, testCfg.InputParams...)
-		}
+		env.RunFaultProofProgram(t, l2SafeHead.Number, testCfg.CheckResult, testCfg.InputParams...)
 	}
 
 	matrix := helpers.NewMatrix[testCase]()

@@ -12,7 +12,6 @@ import (
 )
 
 func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
-
 	type testCase struct {
 		name        string
 		blocks      []uint // blocks is an ordered list of blocks (by number) to add to a single channel.
@@ -23,9 +22,10 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 	// Depending on the blocks list,  we expect a different
 	// progression of the safe head under Holocene
 	// derivation rules, compared with pre Holocene.
-	var testCases = []testCase{
+	testCases := []testCase{
 		// Standard channel composition
-		{name: "case-0", blocks: []uint{1, 2, 3},
+		{
+			name: "case-0", blocks: []uint{1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3,
 				safeHeadHolocene:    3,
@@ -33,26 +33,30 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 		},
 
 		// Non-standard channel composition
-		{name: "case-2a", blocks: []uint{1, 3, 2},
+		{
+			name: "case-2a", blocks: []uint{1, 3, 2},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // batches are buffered, so the block ordering does not matter
 				safeHeadHolocene:    1, // batch for block 3 is considered invalid because it is from the future. This batch + remaining channel is dropped.
 			},
 		},
-		{name: "case-2b", blocks: []uint{2, 1, 3},
+		{
+			name: "case-2b", blocks: []uint{2, 1, 3},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // batches are buffered, so the block ordering does not matter
 				safeHeadHolocene:    0, // batch for block 2 is considered invalid because it is from the future. This batch + remaining channel is dropped.
 			},
 		},
 
-		{name: "case-2c", blocks: []uint{1, 1, 2, 3},
+		{
+			name: "case-2c", blocks: []uint{1, 1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // duplicate batches are silently dropped, so this reduceds to case-0
 				safeHeadHolocene:    3, // duplicate batches are silently dropped
 			},
 		},
-		{name: "case-2d", blocks: []uint{2, 2, 1, 3},
+		{
+			name: "case-2d", blocks: []uint{2, 2, 1, 3},
 			holoceneExpectations: holoceneExpectations{
 				safeHeadPreHolocene: 3, // duplicate batches are silently dropped, so this reduces to case-2b
 				safeHeadHolocene:    0, // duplicate batches are silently dropped, so this reduces to case-2b
@@ -69,13 +73,9 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 			env.Miner.ActL1StartBlock(12)(t)
 			env.Miner.ActL1IncludeTxByHash(env.Batcher.LastSubmitted.Hash())(t)
 			env.Miner.ActL1EndBlock(t)
-
-			// Finalize the block with the first channel frame on L1.
-			env.Miner.ActL1SafeNext(t)
-			env.Miner.ActL1FinalizeNext(t)
 		}
 
-		var max = func(input []uint) uint {
+		max := func(input []uint) uint {
 			max := uint(0)
 			for _, val := range input {
 				if val > max {
@@ -116,9 +116,7 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 
 		t.Log("Safe head progressed as expected", "l2SafeHeadNumber", l2SafeHead.Number)
 
-		if safeHeadNumber := l2SafeHead.Number; safeHeadNumber > 0 {
-			env.RunFaultProofProgram(t, safeHeadNumber, testCfg.CheckResult, testCfg.InputParams...)
-		}
+		env.RunFaultProofProgram(t, l2SafeHead.Number, testCfg.CheckResult, testCfg.InputParams...)
 	}
 
 	matrix := helpers.NewMatrix[testCase]()

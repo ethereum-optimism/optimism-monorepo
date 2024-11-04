@@ -153,7 +153,12 @@ func WithL2BlockNumber(num uint64) FixtureInputParam {
 
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
 	// Fetch the pre and post output roots for the fault proof.
-	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum-1)
+	l2PreBlockNum := l2ClaimBlockNum - 1
+	if l2ClaimBlockNum == 0 {
+		// If we are at genesis, we assert that we don't move the chain at all.
+		l2PreBlockNum = 0
+	}
+	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2PreBlockNum)
 	require.NoError(t, err)
 	claimRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum)
 	require.NoError(t, err)
