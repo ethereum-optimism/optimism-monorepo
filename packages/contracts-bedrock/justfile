@@ -167,7 +167,7 @@ semgrep-test-validity-check:
 
 # Checks that forge test names are correctly formatted.
 lint-forge-tests-check:
-  go run ./scripts/checks/names
+  go run ./scripts/checks/test-names
 
 # Checks that contracts are properly linted.
 lint-check:
