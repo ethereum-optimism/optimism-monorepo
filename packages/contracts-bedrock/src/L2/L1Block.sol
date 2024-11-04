@@ -276,6 +276,16 @@ contract L1Block is ISemver, IGasToken {
     }
 
     /// @notice Sets the L1 block values for an Isthmus upgraded chain.
+    ///         This function is intended to be called only once, and only on existing chains which are undergoing
+    ///         the Isthmus upgrade. Chains deployed with the Isthmus upgrade activated will have the values set here
+    ///         already populated by the L2 Genesis generation process.
+    ///         In the case of an existing chain underoing the Isthmus upgrade, the expectation is that
+    ///         The upgrade flow will use the following series of Network upgrade automation transactions:
+    ///         1. Deploy a new `L1BlockImpl` contract.
+    ///         2. Upgrade only the `L1Block` contract to the new implementation by
+    ///            calling `L2ProxyAdmin.upgrade(address(L1BlockProxy), address(L1BlockImpl))`.
+    ///         3. Call `L1Block.setIsthmus()` to pull the values from L2 contracts.
+    ///         4. Upgrades the remainder of the L2 contracts via `L2ProxyAdmin.upgrade()`.
     function setIsthmus() external {
         if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
         require(isIsthmus == false, "L1Block: Isthmus already active");
