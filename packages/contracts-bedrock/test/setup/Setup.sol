@@ -212,7 +212,7 @@ contract Setup {
         governanceToken.transferOwnership(finalSystemOwner);
         vm.stopPrank();
 
-        // These calls by the depositor account simulate the SystemConfig setting setting the
+        // These calls by the depositor account simulate the SystemConfig setting the
         // network specific configuration into L2. Ideally there is a library that automatically
         // translates TransactionDeposited and ConfigUpdate events into the appropriate calls
         vm.startPrank(Constants.DEPOSITOR_ACCOUNT);

@@ -638,7 +638,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         useGas(_gasLimit);
 
-        // Emit the special deposit transaction directly that sets the config in the L1Block predeploy contract.
+        // Emit the special deposit transaction which calls to the L2 Proxy Admin
         emit TransactionDeposited(
             Constants.DEPOSITOR_ACCOUNT,
             Predeploys.PROXY_ADMIN,
