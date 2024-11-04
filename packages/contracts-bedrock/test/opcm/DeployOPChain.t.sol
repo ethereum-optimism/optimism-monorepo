@@ -78,7 +78,7 @@ contract DeployOPChainInput_Test is Test {
         assertEq(true, doi.allowCustomDisputeParameters(), "1200");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         bytes memory expectedErr = "DeployOPChainInput: not set";
 
         vm.expectRevert(expectedErr);
@@ -182,7 +182,7 @@ contract DeployOPChainOutput_Test is Test {
         // "1600");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         bytes memory expectedErr = "DeployUtils: zero address";
 
         vm.expectRevert(expectedErr);
@@ -427,7 +427,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         return keccak256(abi.encode(_seed, _i));
     }
 
-    function testFuzz_run_memory_succeed(bytes32 _seed) public {
+    function testFuzz_run_memory_succeeds(bytes32 _seed) public {
         opChainProxyAdminOwner = address(uint160(uint256(hash(_seed, 0))));
         systemConfigOwner = address(uint160(uint256(hash(_seed, 1))));
         batcher = address(uint160(uint256(hash(_seed, 2))));
@@ -541,7 +541,7 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         deployOPChain.run(doi, doo);
     }
 
-    function test_customDisputeGame_customEnabled_doesNotRevert() public {
+    function test_customDisputeGame_customEnabled_succeeds() public {
         setDOI();
         doi.set(doi.allowCustomDisputeParameters.selector, true);
         doi.set(doi.disputeSplitDepth.selector, disputeSplitDepth + 1);
