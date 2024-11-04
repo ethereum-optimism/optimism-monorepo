@@ -216,7 +216,8 @@ check:
   semver-diff-check-no-build \
   validate-deploy-configs \
   validate-spacers-no-build \
-  interfaces-check-no-build
+  interfaces-check-no-build \
+  lint-forge-tests-check
 
 ########################################################
 #                      DEV TOOLS                       #
