@@ -70,7 +70,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 				L2GenesisEcotoneTimeOffset:  u64UtilPtr(0),
 				L2GenesisFjordTimeOffset:    u64UtilPtr(0),
 				L2GenesisGraniteTimeOffset:  u64UtilPtr(0),
-				UseInterop:                  false,
+				UseInterop:                  intent.UseInterop,
 			},
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{
 				L1ChainID:                 intent.L1ChainID,
