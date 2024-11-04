@@ -707,7 +707,7 @@ jobs:
       - run-contracts-check:
           command: unused-imports-check-no-build
       - run-contracts-check:
-          command: lint-forge-tests-check
+          command: lint-forge-tests-check-no-build
 
   contracts-bedrock-validate-spacers:
     docker:
