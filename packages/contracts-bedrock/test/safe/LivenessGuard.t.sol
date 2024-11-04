@@ -68,7 +68,7 @@ contract LivenessGuard_Getters_Test is LivenessGuard_TestInit {
 
 contract LivenessGuard_CheckTx_TestFails is LivenessGuard_TestInit {
     /// @dev Tests that the checkTransaction function reverts if the caller is not the Safe
-    function test_checkTransaction_callerIsNotSafe_revert() external {
+    function test_checkTransaction_callerIsNotSafe_reverts() external {
         vm.expectRevert("LivenessGuard: only Safe can call this function");
         livenessGuard.checkTransaction({
             _to: address(0),
@@ -123,7 +123,7 @@ contract LivenessGuard_CheckTx_Test is LivenessGuard_TestInit {
 
 contract LivenessGuard_CheckAfterExecution_TestFails is LivenessGuard_TestInit {
     /// @dev Tests that the checkAfterExecution function reverts if the caller is not the Safe
-    function test_checkAfterExecution_callerIsNotSafe_revert() external {
+    function test_checkAfterExecution_callerIsNotSafe_reverts() external {
         vm.expectRevert("LivenessGuard: only Safe can call this function");
         livenessGuard.checkAfterExecution(bytes32(0), false);
     }
@@ -229,7 +229,7 @@ contract LivenessGuard_FuzzOwnerManagement_Test is StdCheats, StdUtils, Liveness
 
     /// @dev Tests that the guard correctly manages the lastLive mapping when owners are added, removed, or swapped
     /// forge-config: ciheavy.fuzz.runs = 8192
-    function testFuzz_OwnerManagement_works(
+    function testFuzz_ownerManagement_works(
         uint256 initialOwners,
         uint256 threshold,
         OwnerChange[] memory changes

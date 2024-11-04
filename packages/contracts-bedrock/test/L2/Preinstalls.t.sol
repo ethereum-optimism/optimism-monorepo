@@ -9,7 +9,7 @@ import { IEIP712 } from "src/universal/interfaces/IEIP712.sol";
 /// @title PreinstallsTest
 contract PreinstallsTest is CommonTest {
     /// @dev The domain separator commits to the chainid of the chain
-    function test_preinstall_permit2_domain_separator() external view {
+    function test_preinstall_permit2DomainSeparator_works() external view {
         bytes32 domainSeparator = IEIP712(Preinstalls.Permit2).DOMAIN_SEPARATOR();
         bytes32 typeHash =
             keccak256(abi.encodePacked("EIP712Domain(string name,uint256 chainId,address verifyingContract)"));
@@ -23,7 +23,7 @@ contract PreinstallsTest is CommonTest {
         // Warning the Permit2 domain separator as cached in the DeployPermit2.sol bytecode is incorrect.
     }
 
-    function test_permit2_templating() external pure {
+    function test_permit2_templating_works() external pure {
         bytes memory customCode = Preinstalls.getPermit2Code(1234);
         assertNotEq(customCode.length, 0, "must have code");
         assertEq(uint256(bytes32(Bytes.slice(customCode, 6945, 32))), uint256(1234), "expecting custom chain ID");

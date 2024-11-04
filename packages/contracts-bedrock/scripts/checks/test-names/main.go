@@ -18,37 +18,7 @@ type CheckInfo struct {
 	error string
 }
 
-var excludes = map[string]bool{
-	"L1BlockInteropTest":                          true,
-	"L1CrossDomainMessenger_Test":                 true,
-	"L2CrossDomainMessenger_Test":                 true,
-	"L2GenesisTest":                               true,
-	"LivenessGuard_CheckAfterExecution_TestFails": true,
-	"LivenessGuard_CheckTx_TestFails":             true,
-	"LivenessGuard_FuzzOwnerManagement_Test":      true,
-	"LivenessModule_RemoveOwnersFuzz_Test":        true,
-	"MIPS_Test":                                   true,
-	"MIPS2_Test":                                  true,
-	"MIPS64Memory_Test":                           true,
-	"OptimismMintableERC20_Test":                  true,
-	"OptimismPortal_FinalizeWithdrawal_Test":      true,
-	"OptimismPortalWithMockERC20_Test":            true,
-	"OptimismPortal2WithMockERC20_Test":           true,
-	"OptimismPortal2_FinalizeWithdrawal_Test":     true,
-	"OptimismPortalInterop_Test":                  true,
-	"OptimismSuperchainERC20Test":                 true,
-	"OptimismSuperchainERC20BeaconTest":           true,
-	"PredeploysTest":                              true,
-	"PredeploysBaseTest":                          true,
-	"PredeploysInteropTest":                       true,
-	"PreimageOracle_LargePreimageProposals_Test":  true,
-	"PreinstallsTest":                             true,
-	"Specification_Test":                          true,
-	"SuperchainWETH_Test":                         true,
-	"SystemConfig_Init_CustomGasToken":            true,
-	"TransientContextTest":                        true,
-	"TransientReentrancyAwareTest":                true,
-}
+var excludes = map[string]bool{}
 
 var checks = []CheckInfo{
 	{

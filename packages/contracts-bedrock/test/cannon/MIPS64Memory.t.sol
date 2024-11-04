@@ -49,7 +49,7 @@ contract MIPS64Memory_Test is CommonTest {
     }
 
     /// @dev Static unit test asserting that reads revert when a misaligned memory address is provided
-    function test_readInvalidAddress_reverts() external {
+    function test_readMem_readInvalidAddress_reverts() external {
         uint64 addr = 0x100;
         uint64 word = 0x11_22_33_44_55_66_77_88;
         bytes32 root;
@@ -60,7 +60,7 @@ contract MIPS64Memory_Test is CommonTest {
     }
 
     /// @dev Static unit test asserting that reads revert when an invalid proof is provided
-    function test_readInvalidProof_reverts() external {
+    function test_readMem_readInvalidProof_reverts() external {
         uint64 addr = 0x100;
         uint64 word = 0x11_22_33_44_55_66_77_88;
         bytes32 root;
@@ -170,7 +170,7 @@ contract MIPS64Memory_Test is CommonTest {
     }
 
     /// @dev Static unit test asserting that writes revert when a misaligned memory address is provided
-    function test_writeMemInvalidAddress_reverts() external {
+    function test_writeMem_writeMemInvalidAddress_reverts() external {
         bytes memory zeroProof;
         (, zeroProof) = ffi.getCannonMemory64Proof(0x100, 0);
         vm.expectRevert(InvalidAddress.selector);

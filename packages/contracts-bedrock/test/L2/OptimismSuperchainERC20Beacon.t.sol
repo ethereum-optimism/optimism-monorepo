@@ -18,7 +18,7 @@ contract OptimismSuperchainERC20BeaconTest is Bridge_Initializer {
     }
 
     /// @notice Test that calling the implementation function returns the correct implementation address.
-    function test_implementation_is_correct() public view {
+    function test_implementation_isCorrect_works() public view {
         IBeacon beacon = IBeacon(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON);
         assertEq(beacon.implementation(), Predeploys.OPTIMISM_SUPERCHAIN_ERC20);
     }

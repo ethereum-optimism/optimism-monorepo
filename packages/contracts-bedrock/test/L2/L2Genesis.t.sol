@@ -123,14 +123,14 @@ contract L2GenesisTest is Test {
     }
 
     /// @notice Tests the genesis predeploys setup using a temp file for the case where useInterop is false.
-    function test_genesis_predeploys_notUsingInterop() external {
+    function test_genesisPredeploys_notUsingInterop_works() external {
         string memory path = tmpfile();
         _test_genesis_predeploys(path, false);
         deleteFile(path);
     }
 
     /// @notice Tests the genesis predeploys setup using a temp file for the case where useInterop is true.
-    function test_genesis_predeploys_usingInterop() external {
+    function test_genesisPredeploys_usingInterop_works() external {
         string memory path = tmpfile();
         _test_genesis_predeploys(path, true);
         deleteFile(path);
@@ -163,7 +163,7 @@ contract L2GenesisTest is Test {
     }
 
     /// @notice Tests the number of accounts in the genesis setup
-    function test_allocs_size() external {
+    function test_allocs_size_works() external {
         withTempDump(_test_allocs_size);
     }
 
