@@ -115,11 +115,11 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
-		done, blocks := channel.TxConfirmed(id, inclusionBlock)
+		done, blocksToRequeue := channel.TxConfirmed(id, inclusionBlock)
 		if done {
-			s.removePendingChannel(channel)
-			if len(blocks) > 0 {
-				s.blocks.Prepend(blocks...)
+			for _, b := range blocksToRequeue {
+				s.blocks.Prepend(b)
+				s.metr.RecordL2BlockInPendingQueue(b)
 			}
 		}
 	} else {
@@ -504,9 +504,8 @@ func (s *channelManager) Requeue(newCfg ChannelConfig) {
 	}
 
 	// We put the blocks back at the front of the queue:
-	s.blocks.Prepend(blocksToRequeue...)
-
 	for _, b := range blocksToRequeue {
+		s.blocks.Prepend(b)
 		s.metr.RecordL2BlockInPendingQueue(b)
 	}
 
