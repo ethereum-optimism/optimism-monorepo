@@ -246,7 +246,7 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 				derivedFromRef = derivedFrom.ForceWithParent(eth.BlockID{})
 			}
 			// the first derived must be the genesis block, panic otherwise
-			derivedRef := derived.MustWithParent(derivedFrom.ID())
+			derivedRef := derived.MustWithParent(eth.BlockID{})
 			return derivedFromRef, derivedRef, nil
 		}
 		return eth.BlockRef{}, eth.BlockRef{}, err
