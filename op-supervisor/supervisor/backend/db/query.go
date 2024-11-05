@@ -154,7 +154,11 @@ func (db *ChainsDB) CrossDerivedFromBlockRef(chainID types.ChainID, derived eth.
 		return eth.BlockRef{}, err
 	}
 	parent, err := xdb.PreviousDerivedFrom(res.ID())
-	if err != nil {
+	// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
+	// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
+	if errors.Is(err, types.ErrPreviousToFirst) {
+		return res.ForceWithParent(eth.BlockID{}), nil
+	} else if err != nil {
 		return eth.BlockRef{}, err
 	}
 	return res.MustWithParent(parent.ID()), nil
@@ -266,7 +270,11 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 	candidateRef := candidate.MustWithParent(crossDerived.ID())
 
 	parentDerivedFrom, err := lDB.PreviousDerivedFrom(candidateFrom.ID())
-	if err != nil {
+	// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
+	// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
+	if errors.Is(err, types.ErrPreviousToFirst) {
+		parentDerivedFrom = types.BlockSeal{}
+	} else if err != nil {
 		return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", candidateFrom, err)
 	}
 	candidateFromRef := candidateFrom.MustWithParent(parentDerivedFrom.ID())
@@ -275,12 +283,18 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 	if candidateFrom.Number > crossDerivedFrom.Number+1 {
 		// If we are not ready to process the candidate block,
 		// then we need to stick to the current scope, so the caller can bump up from there.
+		var crossDerivedFromRef eth.BlockRef
 		parent, err := lDB.PreviousDerivedFrom(crossDerivedFrom.ID())
-		if err != nil {
-			return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w",
-				crossDerivedFrom, err)
+		// if we are working with the first item in the database, PreviousDerivedFrom will return ErrPreviousToFirst
+		// in which case we can attach a zero parent to the cross-derived-from block, as the parent block is unknown
+		if errors.Is(err, types.ErrPreviousToFirst) {
+			crossDerivedFromRef = crossDerivedFrom.ForceWithParent(eth.BlockID{})
+		} else if err != nil {
+			return eth.BlockRef{}, eth.BlockRef{},
+				fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w", crossDerivedFrom, err)
+		} else {
+			crossDerivedFromRef = crossDerivedFrom.MustWithParent(parent.ID())
 		}
-		crossDerivedFromRef := crossDerivedFrom.MustWithParent(parent.ID())
 		return crossDerivedFromRef, eth.BlockRef{},
 			fmt.Errorf("candidate is from %s, while current scope is %s: %w",
 				candidateFrom, crossDerivedFrom, types.ErrOutOfScope)

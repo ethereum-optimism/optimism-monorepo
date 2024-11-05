@@ -189,7 +189,8 @@ func (db *DB) PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom type
 		if self.derivedFrom.Number == 0 {
 			return types.BlockSeal{}, nil
 		} else {
-			return types.BlockSeal{}, fmt.Errorf("cannot find previous derived before start of database: %s", derivedFrom)
+			return types.BlockSeal{},
+				fmt.Errorf("cannot find previous derived before start of database: %s (%w)", derivedFrom, types.ErrPreviousToFirst)
 		}
 	}
 	prev, err := db.readAt(selfIndex - 1)
