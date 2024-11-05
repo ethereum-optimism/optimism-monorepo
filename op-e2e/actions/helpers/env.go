@@ -52,7 +52,7 @@ func WithActiveGenesisFork(fork rollup.ForkName) EnvOpt {
 // DefaultFork specifies the default fork to use when setting up the action test environment.
 // Currently manually set to Holocene.
 // Replace with `var DefaultFork = func() rollup.ForkName { return rollup.AllForks[len(rollup.AllForks)-1] }()` after Interop launch.
-const DefaultFork = rollup.Holocene
+const DefaultFork = rollup.Isthmus
 
 // SetupEnv sets up a default action test environment. If no fork is specified, the default fork as
 // specified by the package variable [defaultFork] is used.

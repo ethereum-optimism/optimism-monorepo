@@ -27,6 +27,7 @@ type hardforkScheduledTest struct {
 	fjordTime    *hexutil.Uint64
 	graniteTime  *hexutil.Uint64
 	holoceneTime *hexutil.Uint64
+	isthmusTime  *hexutil.Uint64
 	runToFork    string
 	allocType    config.AllocType
 }
@@ -41,6 +42,8 @@ func (tc *hardforkScheduledTest) GetFork(fork string) *uint64 {
 
 func (tc *hardforkScheduledTest) fork(fork string) **hexutil.Uint64 {
 	switch fork {
+	case "isthmus":
+		return &tc.isthmusTime
 	case "holocene":
 		return &tc.holoceneTime
 	case "granite":
@@ -88,6 +91,7 @@ func testCrossLayerUser(t *testing.T, allocType config.AllocType) {
 		"fjord",
 		"granite",
 		"holocene",
+		"isthmus",
 	}
 	for i, fork := range forks {
 		i := i
@@ -146,6 +150,7 @@ func runCrossLayerUserTest(gt *testing.T, test hardforkScheduledTest) {
 	dp.DeployConfig.L2GenesisFjordTimeOffset = test.fjordTime
 	dp.DeployConfig.L2GenesisGraniteTimeOffset = test.graniteTime
 	dp.DeployConfig.L2GenesisHoloceneTimeOffset = test.holoceneTime
+	dp.DeployConfig.L2GenesisIsthmusTimeOffset = test.isthmusTime
 
 	if test.canyonTime != nil {
 		require.Zero(t, uint64(*test.canyonTime)%uint64(dp.DeployConfig.L2BlockTime), "canyon fork must be aligned")
