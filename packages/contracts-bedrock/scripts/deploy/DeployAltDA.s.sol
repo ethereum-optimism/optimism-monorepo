@@ -119,7 +119,7 @@ contract DeployAltDA is Script {
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (msg.sender)))
             })
         );
-        vm.label("DataAvailabilityChallengeProxy", address(proxy));
+        vm.label(address(proxy), "DataAvailabilityChallengeProxy");
         _dao.set(_dao.dataAvailabilityChallengeProxy.selector, address(proxy));
     }
 
@@ -133,7 +133,7 @@ contract DeployAltDA is Script {
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IDataAvailabilityChallenge.__constructor__, ()))
             })
         );
-        vm.label("DataAvailabilityChallengeImpl", address(impl));
+        vm.label(address(impl), "DataAvailabilityChallengeImpl");
         _dao.set(_dao.dataAvailabilityChallengeImpl.selector, address(impl));
     }
 
