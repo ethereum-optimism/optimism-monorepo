@@ -1,0 +1,17 @@
+name: Validate Workflows
+
+on:
+  pull_request:
+    paths:
+      - ".github/workflows/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Validate workflows
+        uses: docker://rhysd/actionlint:latest
+        with:
+          args: -color

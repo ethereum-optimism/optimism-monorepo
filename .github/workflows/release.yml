@@ -1,0 +1,133 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "da-server/v*"
+      - "ci-builder*/v*"
+      - "proofs-tools/v*"
+      - "cannon/v*"
+      - "ufm-*/v*"
+      - "op-*/v*"
+
+env:
+  REGISTRY: ghcr.io
+  REPO: ${{ github.repository_owner }}
+
+jobs:
+  docker-release:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        include:
+          # Standard multi-platform components
+          - component: op-node
+            platforms: linux/amd64,linux/arm64
+          - component: op-batcher
+            platforms: linux/amd64,linux/arm64
+          - component: op-proposer
+            platforms: linux/amd64,linux/arm64
+          - component: op-challenger
+            platforms: linux/amd64,linux/arm64
+          - component: op-dispute-mon
+            platforms: linux/amd64,linux/arm64
+          - component: op-conductor
+            platforms: linux/amd64,linux/arm64
+          - component: da-server
+            platforms: linux/amd64,linux/arm64
+          - component: op-ufm
+            platforms: linux/amd64,linux/arm64
+          - component: op-supervisor
+            platforms: linux/amd64,linux/arm64
+          - component: op-deployer
+            platforms: linux/amd64,linux/arm64
+          - component: cannon
+            platforms: linux/amd64,linux/arm64
+          # AMD64-only components that need larger runners
+          - component: ci-builder
+            platforms: linux/amd64
+            runs-on: ubuntu-latest-xlarge
+          - component: ci-builder-rust
+            platforms: linux/amd64
+            runs-on: ubuntu-latest-xlarge
+          - component: proofs-tools
+            platforms: linux/amd64
+            runs-on: ubuntu-latest-xlarge
+        runs-on: ${{ matrix.runs-on || 'ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Docker meta
+        id: meta
+        uses: docker/metadata-action@v4
+        with:
+          images: ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}
+          tags: |
+            type=sha
+            type=ref,event=branch
+            type=ref,event=tag
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: true
+          platforms: ${{ matrix.platforms }}
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  check-cross-platform:
+    needs: [docker-release]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        component:
+          [
+            op-node,
+            op-batcher,
+            op-proposer,
+            op-challenger,
+            op-dispute-mon,
+            op-conductor,
+            da-server,
+            op-ufm,
+            op-supervisor,
+            op-deployer,
+            cannon,
+          ]
+    steps:
+      - name: Verify ARM64 Support
+        if: ${{ !contains(fromJson('["ci-builder", "ci-builder-rust", "proofs-tools"]'), matrix.component) }}
+        run: |
+          image_name="${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}:${{ github.sha }}"
+
+          echo "Retrieving Docker image manifest: $image_name"
+          MANIFEST=$(docker manifest inspect $image_name)
+
+          echo "Verifying 'linux/arm64' is supported..."
+          SUPPORTED_PLATFORM=$(echo "$MANIFEST" | jq -r '.manifests[] | select(.platform.architecture == "arm64" and .platform.os == "linux")')
+          if [ -z "$SUPPORTED_PLATFORM" ]; then
+            echo "Platform 'linux/arm64' not supported by this image"
+            exit 1
+          fi
+
+      - name: Test Image
+        run: |
+          image_name="${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}:${{ github.sha }}"
+          docker pull $image_name
+          docker run $image_name ${{ matrix.component }} --version

@@ -1,0 +1,71 @@
+name: CI
+
+env:
+  FOUNDRY_PROFILE: ci
+  DOCKER_BUILDKIT: 1
+  REGISTRY: ghcr.io
+  REPO: ${{ github.repository_owner }}
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        component:
+          - op-node
+          - op-batcher
+          - op-program
+          - op-proposer
+          - op-challenger
+          - proofs-tools
+          - op-dispute-mon
+          - op-conductor
+          - da-server
+          - op-supervisor
+          - cannon
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+
+      - name: Log in to GitHub Container Registry
+        uses: docker/login-action@v2
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v4
+        with:
+          context: .
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}:${{ github.sha }}
+            ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}:${{ github.ref_name }}
+          platforms: linux/amd64
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Save Docker image for testing
+        if: github.event_name == 'pull_request'
+        run: |
+          docker save ${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.component }}:${{ github.sha }} > /tmp/${{ matrix.component }}.tar
+
+      - name: Upload Docker image
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v3
+        with:
+          name: docker-${{ matrix.component }}
+          path: /tmp/${{ matrix.component }}.tar

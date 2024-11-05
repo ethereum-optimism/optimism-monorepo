@@ -1,0 +1,118 @@
+name: Cannon Tests
+
+env:
+  FOUNDRY_PROFILE: ci
+  OP_E2E_CANNON_ENABLED: "false"
+
+on:
+  push:
+    branches: [celestia-develop]
+  pull_request:
+    branches: [celestia-develop]
+  workflow_dispatch:
+
+jobs:
+  cannon-prestate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Build cannon
+        run: make cannon
+
+      - name: Build op-program
+        run: make op-program
+
+      - name: Cache cannon prestate
+        id: cache-prestate
+        uses: actions/cache@v3
+        with:
+          path: |
+            op-program/bin/prestate.bin.gz
+            op-program/bin/meta.json
+            op-program/bin/prestate-proof.json
+          key: cannon-prestate-${{ hashFiles('cannon/bin/cannon') }}-${{ hashFiles('op-program/bin/op-program-client.elf') }}
+
+      - name: Sanitize op-program guest
+        run: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
+
+      - name: Generate cannon prestate
+        if: steps.cache-prestate.outputs.cache-hit != 'true'
+        run: make cannon-prestate
+
+      - name: Generate cannon-mt prestate
+        run: make cannon-prestate-mt
+
+      - name: Cache cannon-mt prestate
+        uses: actions/cache@v3
+        with:
+          path: |
+            op-program/bin/prestate-mt.json
+            op-program/bin/meta-mt.json
+            op-program/bin/prestate-proof-mt.json
+          key: cannon-prestate-mt-${{ hashFiles('cannon/bin/cannon') }}-${{ hashFiles('op-program/bin/op-program-client.elf') }}
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: prestate-artifacts
+          path: |
+            op-program/bin/prestate.bin.gz
+            op-program/bin/meta.json
+            op-program/bin/prestate-proof.json
+
+  cannon-go-test:
+    runs-on: ubuntu-latest
+    needs: [cannon-prestate]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: "1.21"
+
+      - name: Build example binaries
+        working-directory: cannon/testdata/example
+        run: make elf
+
+      - name: Run Go lint
+        working-directory: cannon
+        run: make lint
+
+      - name: Run tests
+        working-directory: cannon
+        run: |
+          go install gotest.tools/gotestsum@latest
+          gotestsum --format=testname --junitfile=../tmp/test-results/cannon.xml --jsonfile=../tmp/testlogs/log.json \
+          -- -parallel=$(nproc) -coverpkg=github.com/ethereum-optimism/optimism/cannon/... -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v3
+        with:
+          files: ./cannon/coverage.out
+          flags: cannon-go-tests
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v3
+        with:
+          name: test-results
+          path: |
+            tmp/test-results
+            tmp/testlogs
+
+  op-e2e-cannon-tests:
+    runs-on: ubuntu-latest
+    needs: [cannon-prestate]
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Download prestate artifacts
+        uses: actions/download-artifact@v3
+        with:
+          name: prestate-artifacts
+
+      - name: Run cannon tests
+        working-directory: op-e2e
+        run: |
+          make test-cannon
