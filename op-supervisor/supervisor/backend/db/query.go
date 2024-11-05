@@ -157,7 +157,7 @@ func (db *ChainsDB) CrossDerivedFromBlockRef(chainID types.ChainID, derived eth.
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
-	return res.WithParent(parent.ID()), nil
+	return res.MustWithParent(parent.ID()), nil
 }
 
 // Check calls the underlying logDB to determine if the given log entry exists at the given location.
@@ -238,9 +238,16 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 			if err != nil {
 				return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to find first local-safe block: %w", err)
 			}
-			// First block has no parent
-			return derivedFrom.WithParent(eth.BlockID{}),
-				derived.WithParent(eth.BlockID{}), nil
+			// the first derivedFrom (L1 block) is unlikely to be the genesis block,
+			derivedFromRef, err := derivedFrom.WithParent(eth.BlockID{})
+			if err != nil {
+				// if the first derivedFrom isn't the genesis block, just warn and continue anyway
+				db.logger.Warn("First DerivedFrom is not genesis block")
+				derivedFromRef = derivedFrom.ForceWithParent(eth.BlockID{})
+			}
+			// the first derived must be the genesis block, panic otherwise
+			derivedRef := derived.MustWithParent(derivedFrom.ID())
+			return derivedFromRef, derivedRef, nil
 		}
 		return eth.BlockRef{}, eth.BlockRef{}, err
 	}
@@ -256,13 +263,13 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 		return eth.BlockRef{}, eth.BlockRef{}, err
 	}
 
-	candidateRef := candidate.WithParent(crossDerived.ID())
+	candidateRef := candidate.MustWithParent(crossDerived.ID())
 
 	parentDerivedFrom, err := lDB.PreviousDerivedFrom(candidateFrom.ID())
 	if err != nil {
 		return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to find parent-block of derived-from %s: %w", candidateFrom, err)
 	}
-	candidateFromRef := candidateFrom.WithParent(parentDerivedFrom.ID())
+	candidateFromRef := candidateFrom.MustWithParent(parentDerivedFrom.ID())
 
 	// Allow increment of DA by 1, if we know the floor (due to local safety) is 1 ahead of the current cross-safe L1 scope.
 	if candidateFrom.Number > crossDerivedFrom.Number+1 {
@@ -273,7 +280,7 @@ func (db *ChainsDB) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, c
 			return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to find parent-block of cross-derived-from %s: %w",
 				crossDerivedFrom, err)
 		}
-		crossDerivedFromRef := crossDerivedFrom.WithParent(parent.ID())
+		crossDerivedFromRef := crossDerivedFrom.MustWithParent(parent.ID())
 		return crossDerivedFromRef, eth.BlockRef{},
 			fmt.Errorf("candidate is from %s, while current scope is %s: %w",
 				candidateFrom, crossDerivedFrom, types.ErrOutOfScope)
@@ -306,7 +313,7 @@ func (db *ChainsDB) NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID
 	if err != nil {
 		return eth.BlockRef{}, err
 	}
-	return v.WithParent(derivedFrom), nil
+	return v.MustWithParent(derivedFrom), nil
 }
 
 // Safest returns the strongest safety level that can be guaranteed for the given log entry.

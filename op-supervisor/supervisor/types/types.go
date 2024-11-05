@@ -240,12 +240,29 @@ func (s BlockSeal) ID() eth.BlockID {
 	return eth.BlockID{Hash: s.Hash, Number: s.Number}
 }
 
-func (s BlockSeal) WithParent(parent eth.BlockID) eth.BlockRef {
+func (s BlockSeal) MustWithParent(parent eth.BlockID) eth.BlockRef {
+	ref, err := s.WithParent(parent)
+	if err != nil {
+		panic(err)
+	}
+	return ref
+}
+
+func (s BlockSeal) WithParent(parent eth.BlockID) (eth.BlockRef, error) {
 	// prevent parent attachment if the parent is not the previous block,
 	// and the block is not the genesis block
 	if s.Number != parent.Number+1 && s.Number != 0 {
-		panic(fmt.Errorf("invalid parent block %s to combine with %s", parent, s))
+		return eth.BlockRef{}, fmt.Errorf("invalid parent block %s to combine with %s", parent, s)
 	}
+	return eth.BlockRef{
+		Hash:       s.Hash,
+		Number:     s.Number,
+		ParentHash: parent.Hash,
+		Time:       s.Timestamp,
+	}, nil
+}
+
+func (s BlockSeal) ForceWithParent(parent eth.BlockID) eth.BlockRef {
 	return eth.BlockRef{
 		Hash:       s.Hash,
 		Number:     s.Number,
