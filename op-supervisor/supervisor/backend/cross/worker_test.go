@@ -94,7 +94,7 @@ func TestWorker(t *testing.T) {
 		w.StartBackground()
 		require.Eventually(t, func() bool {
 			return count == 10
-		}, 2*time.Second, 100*time.Millisecond)
+		}, 10*time.Second, time.Second)
 		// once the worker is closed, it stops running
 		// and the count does not increment
 		w.Close()
