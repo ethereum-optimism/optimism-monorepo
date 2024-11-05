@@ -156,10 +156,16 @@ var (
 		Value:   false,
 		EnvVars: prefixEnvVars("WAIT_NODE_SYNC"),
 	}
+	ThrottleIntervalFlag = &cli.DurationFlag{
+		Name:    "throttle-interval",
+		Usage:   "Interval between potential DA throttling actions",
+		Value:   2 * time.Second, // should be equal to the l2 block interval, or 0 to disable throttling loop entirely (not recommended except for testing)
+		EnvVars: prefixEnvVars("THROTTLE_INTERVAL"),
+	}
 	ThrottleThresholdFlag = &cli.IntFlag{
 		Name:    "throttle-threshold",
 		Usage:   "The threshold on pending-blocks-bytes-current beyond which the batcher will instruct the block builder to start throttling transactions with larger DA demands",
-		Value:   0, // never throttle
+		Value:   1_000_000,
 		EnvVars: prefixEnvVars("THROTTLE_THRESHOLD"),
 	}
 	ThrottleTxSizeFlag = &cli.IntFlag{
@@ -179,12 +185,6 @@ var (
 		Usage:   "The total DA limit to start imposing on block building at all times",
 		Value:   130_000, // should be larger than the builder's max-l2-tx-size to prevent endlessly throttling some txs
 		EnvVars: prefixEnvVars("THROTTLE_ALWAYS_BLOCK_SIZE"),
-	}
-	ThrottleIntervalFlag = &cli.DurationFlag{
-		Name:    "throttle-interval",
-		Usage:   "Interval between potential DA throttling actions",
-		Value:   2 * time.Second, // should be equal to the l2 block interval
-		EnvVars: prefixEnvVars("THROTTLE_INTERVAL"),
 	}
 	// Legacy Flags
 	SequencerHDPathFlag = txmgr.SequencerHDPathFlag

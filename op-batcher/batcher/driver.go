@@ -414,10 +414,14 @@ func (l *BatchSubmitter) loop() {
 	receiptsCh := make(chan txmgr.TxReceipt[txRef])
 	go l.processReceiptsLoop(receiptsCh, receiptsLoopDone)
 
-	// start the DA throttling loop
-	throttlingLoopDone := make(chan struct{})
-	defer close(throttlingLoopDone)
-	go l.throttlingLoop(throttlingLoopDone)
+	// DA throttling loop should always be started except for testing (indicated by ThrottleInterval == 0)
+	if l.Config.ThrottleInterval > 0 {
+		throttlingLoopDone := make(chan struct{})
+		defer close(throttlingLoopDone)
+		go l.throttlingLoop(throttlingLoopDone)
+	} else {
+		l.Log.Warn("Throttling loop is DISABLED due to 0 throttle-interval. This should not be disabled in prod.")
+	}
 
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
@@ -512,11 +516,10 @@ func (l *BatchSubmitter) processReceiptsLoop(receiptsCh chan txmgr.TxReceipt[txR
 	}
 }
 
-// throttlingLoop monitors the backlog in bytes we need to make available, and throttles incoming data appropriately to
-// keep it under a threshold.  Note that it's important to start this loop even if throttling is disabled
-// (ThrottleThreshold == 0) just in case we fail over to another sequencer that was previously configured
-// differently. By looping & calling the miner API setter continuously we ensure the engine currently in use is always
-// going to be reset to the proper throttling settings.
+// throttlingLoop monitors the backlog in bytes we need to make available, and appropriately enables or disables
+// throttling of incoming data prevent the backlog from growing too large. By looping & calling the miner API setter
+// continuously, we ensure the engine currently in use is always going to be reset to the proper throttling settings
+// even in the event of sequencer failover.
 func (l *BatchSubmitter) throttlingLoop(throttlingLoopDone chan struct{}) {
 	l.Log.Info("Starting DA throttling loop")
 	ticker := time.NewTicker(l.Config.ThrottleInterval)
@@ -533,7 +536,7 @@ func (l *BatchSubmitter) throttlingLoop(throttlingLoopDone chan struct{}) {
 		pendingBytes := l.state.PendingDABytes()
 		maxTxSize := uint64(0)
 		maxBlockSize := l.Config.ThrottleAlwaysBlockSize
-		if l.Config.ThrottleThreshold != 0 && pendingBytes > int64(l.Config.ThrottleThreshold) {
+		if pendingBytes > int64(l.Config.ThrottleThreshold) {
 			l.Log.Warn("Pending bytes over limit, throttling DA", "bytes", pendingBytes, "limit", l.Config.ThrottleThreshold)
 			maxTxSize = l.Config.ThrottleTxSize
 			if maxBlockSize == 0 || (l.Config.ThrottleBlockSize != 0 && l.Config.ThrottleBlockSize < maxBlockSize) {
