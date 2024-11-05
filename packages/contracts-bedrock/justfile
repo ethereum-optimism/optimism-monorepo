@@ -163,7 +163,7 @@ semver-diff-check: build semver-diff-check-no-build
 
 # Checks that the semgrep tests are valid.
 semgrep-test-validity-check:
-  forge fmt ../../semgrep/sol-rules.t.sol --check
+  forge fmt ../../.semgrep/tests/sol-rules.t.sol --check
 
 # Checks that forge test names are correctly formatted.
 lint-forge-tests-check:
@@ -199,11 +199,11 @@ check-kontrol-summaries-unchanged:
 
 # Runs semgrep on the contracts.
 semgrep:
-  cd ../../ && semgrep scan --config=semgrep ./packages/contracts-bedrock
+  cd ../../ && semgrep scan --config .semgrep/rules/ ./packages/contracts-bedrock
 
 # Runs semgrep tests.
 semgrep-test:
-  cd ../../ && semgrep scan --test semgrep
+  cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
 
 # TODO: Also run lint-forge-tests-check but we need to fix the test names first.
 # Runs all checks.
