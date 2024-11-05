@@ -249,6 +249,79 @@ func FuzzExecutionPayloadMarshalUnmarshalV3(f *testing.F) {
 	})
 }
 
+func FuzzExecutionPayloadMarshalUnmarshalV4(f *testing.F) {
+	f.Fuzz(func(t *testing.T, data []byte, a, b, c, d uint64, extraData []byte, txs uint16, txsData []byte, wCount uint16, blobGasUsed, excessBlobGas uint64) {
+		if len(data) < 32+20+32+32+256+32+32+32+32 {
+			return
+		}
+		var payload ExecutionPayload
+		payload.ParentHash = *(*common.Hash)(data[:32])
+		data = data[32:]
+		payload.FeeRecipient = *(*common.Address)(data[:20])
+		data = data[20:]
+		payload.StateRoot = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.ReceiptsRoot = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.LogsBloom = *(*Bytes256)(data[:256])
+		data = data[256:]
+		payload.PrevRandao = *(*Bytes32)(data[:32])
+		data = data[32:]
+		payload.BlockNumber = Uint64Quantity(a)
+		payload.GasLimit = Uint64Quantity(a)
+		payload.GasUsed = Uint64Quantity(a)
+		payload.Timestamp = Uint64Quantity(a)
+		payload.BlobGasUsed = (*Uint64Quantity)(&blobGasUsed)
+		payload.ExcessBlobGas = (*Uint64Quantity)(&excessBlobGas)
+		payload.WithdrawalsRoot = (*common.Hash)(data[:32])
+		if len(extraData) > 32 {
+			extraData = extraData[:32]
+		}
+		payload.ExtraData = extraData
+		(*uint256.Int)(&payload.BaseFeePerGas).SetBytes(data[:32])
+		payload.BlockHash = *(*common.Hash)(data[:32])
+		payload.Transactions = make([]Data, txs)
+		for i := 0; i < int(txs); i++ {
+			if len(txsData) < 2 {
+				payload.Transactions[i] = make(Data, 0)
+				continue
+			}
+			txSize := binary.LittleEndian.Uint16(txsData[:2])
+			txsData = txsData[2:]
+			if int(txSize) > len(txsData) {
+				txSize = uint16(len(txsData))
+			}
+			payload.Transactions[i] = txsData[:txSize]
+			txsData = txsData[txSize:]
+		}
+
+		wCount = wCount % maxWithdrawalsPerPayload
+		withdrawals := make(types.Withdrawals, wCount)
+		for i := 0; i < int(wCount); i++ {
+			withdrawals[i] = &types.Withdrawal{
+				Index:     a,
+				Validator: b,
+				Address:   common.BytesToAddress(data[:20]),
+				Amount:    c,
+			}
+		}
+		payload.Withdrawals = &withdrawals
+
+		var buf bytes.Buffer
+		if _, err := payload.MarshalSSZ(&buf); err != nil {
+			t.Fatalf("failed to marshal ExecutionPayload: %v", err)
+		}
+		var roundTripped ExecutionPayload
+		err := roundTripped.UnmarshalSSZ(BlockV4, uint32(len(buf.Bytes())), bytes.NewReader(buf.Bytes()))
+		if err != nil {
+			t.Fatalf("failed to decode previously marshalled payload: %v", err)
+		}
+		if diff := cmp.Diff(payload, roundTripped); diff != "" {
+			t.Fatalf("The data did not round trip correctly:\n%s", diff)
+		}
+	})
+}
+
 func FuzzOBP01(f *testing.F) {
 	payload := &ExecutionPayload{
 		ExtraData: make([]byte, 32),
