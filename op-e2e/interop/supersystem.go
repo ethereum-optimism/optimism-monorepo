@@ -118,10 +118,13 @@ type SuperSystem interface {
 	// Access a contract on a network by name
 	Contract(network string, contractName string) interface{}
 }
+type SuperSystemConfig struct {
+	mempoolFiltering bool
+}
 
 // NewSuperSystem creates a new SuperSystem from a recipe. It creates an interopE2ESystem.
-func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths) SuperSystem {
-	s2 := &interopE2ESystem{recipe: recipe}
+func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths, config SuperSystemConfig) SuperSystem {
+	s2 := &interopE2ESystem{recipe: recipe, config: &config}
 	s2.prepare(t, w)
 	return s2
 }
@@ -144,6 +147,7 @@ type interopE2ESystem struct {
 	l2GethClients   map[string]*ethclient.Client
 	supervisor      *supervisor.SupervisorService
 	superClient     *sources.SupervisorClient
+	config          *SuperSystemConfig
 }
 
 // l2Set is a set of resources for an L2 chain
@@ -263,6 +267,7 @@ func (s *interopE2ESystem) newGethForL2(id string, l2Out *interopgen.L2Output) *
 	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath,
 		func(ethCfg *ethconfig.Config, nodeCfg *gn.Config) error {
 			ethCfg.InteropMessageRPC = s.supervisor.RPC()
+			ethCfg.InteropMempoolFiltering = s.config.mempoolFiltering
 			return nil
 		})
 	require.NoError(s.t, err)
