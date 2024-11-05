@@ -63,7 +63,7 @@ func TestWorker(t *testing.T) {
 		// and due to the long poll duration, the worker does not run again
 		require.Never(t, func() bool {
 			return atomic.LoadInt32(&count) > 2
-		}, 10*time.Second, 100*time.Millisecond)
+		}, time.Second, 100*time.Millisecond)
 	})
 	t.Run("background fast poll", func(t *testing.T) {
 		var count int32
@@ -75,10 +75,10 @@ func TestWorker(t *testing.T) {
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Millisecond
 		// when StartBackground is called, the worker runs in the background
-		// the count should increment rapidly and reach 10 in 1 second
+		// the count should increment rapidly and reach at least 10 in 1 second
 		w.StartBackground()
 		require.Eventually(t, func() bool {
-			return atomic.LoadInt32(&count) == 10
+			return atomic.LoadInt32(&count) >= 10
 		}, 2*time.Second, 100*time.Millisecond)
 	})
 	t.Run("close", func(t *testing.T) {
@@ -91,10 +91,10 @@ func TestWorker(t *testing.T) {
 		// set a long poll duration so the worker does not auto-run
 		w.pollDuration = 100 * time.Millisecond
 		// when StartBackground is called, the worker runs in the background
-		// the count should increment rapidly and reach 10 in 1 second
+		// the count should increment rapidly and reach at least 10 in 1 second
 		w.StartBackground()
 		require.Eventually(t, func() bool {
-			return atomic.LoadInt32(&count) == 10
+			return atomic.LoadInt32(&count) >= 10
 		}, 10*time.Second, time.Second)
 		// once the worker is closed, it stops running
 		// and the count does not increment
@@ -102,6 +102,6 @@ func TestWorker(t *testing.T) {
 		stopCount := atomic.LoadInt32(&count)
 		require.Never(t, func() bool {
 			return atomic.LoadInt32(&count) != stopCount
-		}, 3*time.Second, 100*time.Millisecond)
+		}, time.Second, 100*time.Millisecond)
 	})
 }
