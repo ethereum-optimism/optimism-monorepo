@@ -1,0 +1,28 @@
+name: Validate Workflows
+
+on:
+  pull_request:
+    branches:
+      - celestia-develop
+    paths:
+      - ".github/workflows/**"
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create actionlint config
+        run: |
+          echo "self-hosted-runner:
+            # Add your custom runner labels here if needed
+            labels:
+              - ubuntu-latest
+              - ubuntu-latest-16-cores" > .actionlint.yaml
+
+      - name: Validate workflows
+        uses: docker://rhysd/actionlint:latest
+        with:
+          shellcheck: true
+          fail-on-error: true

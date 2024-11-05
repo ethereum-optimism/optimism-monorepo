@@ -1,0 +1,253 @@
+name: Cannon Tests
+
+env:
+  FOUNDRY_PROFILE: ci
+  OP_E2E_CANNON_ENABLED: "false"
+
+on:
+  push:
+    branches: [celestia-develop]
+  pull_request:
+    branches: [celestia-develop]
+  workflow_dispatch:
+
+jobs:
+  contracts-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # Debug step to check directory structure
+      - name: Debug directory structure
+        run: |
+          echo "Current directory: $(pwd)"
+          echo "Directory contents:"
+          ls -la
+          echo "Checking for packages directory:"
+          ls -la packages || echo "No packages directory"
+
+      # Install just command
+      - name: Install just
+        run: |
+          curl --proto '=https' --tlsv1.2 -sSf https://just.systems/install.sh | bash -s -- --to "$HOME/.local/bin"
+          echo "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      # Install Node.js without npm cache initially
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+
+      - name: Install npm dependencies
+        run: |
+          if [ ! -d "packages/contracts-bedrock" ]; then
+            echo "contracts-bedrock directory not found. Creating it..."
+            mkdir -p packages/contracts-bedrock
+          fi
+          cd packages/contracts-bedrock
+
+          # Initialize package.json if it doesn't exist
+          if [ ! -f "package.json" ]; then
+            echo "Creating package.json..."
+            echo '{
+              "name": "contracts-bedrock",
+              "version": "1.0.0",
+              "private": true,
+              "description": "Optimism Bedrock smart contracts",
+              "scripts": {
+                "test": "echo \"Error: no test specified\" && exit 1"
+              }
+            }' > package.json
+          fi
+
+          # List contents after setup
+          echo "Directory contents after setup:"
+          ls -la
+
+          npm install
+
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+
+      - name: Install contract dependencies
+        working-directory: packages/contracts-bedrock
+        run: just install
+
+      - name: Pull artifacts
+        working-directory: packages/contracts-bedrock
+        run: bash scripts/ops/pull-artifacts.sh
+
+      - name: Build contracts
+        working-directory: packages/contracts-bedrock
+        run: forge build --deny-warnings
+
+      - name: Upload contract artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: contract-artifacts
+          path: |
+            packages/contracts-bedrock/artifacts
+            packages/contracts-bedrock/forge-artifacts
+            packages/contracts-bedrock/cache
+
+  cannon-prestate:
+    needs: [contracts-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create contract artifact directories
+        run: |
+          mkdir -p packages/contracts-bedrock/{artifacts,forge-artifacts,cache}
+
+      - name: Download contract artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-artifacts
+          path: packages/contracts-bedrock
+
+      - name: Build cannon
+        run: make cannon
+
+      - name: Build op-program
+        run: make op-program
+
+      - name: Create prestate directories
+        run: mkdir -p op-program/bin
+
+      - name: Cache cannon prestate
+        id: cache-prestate
+        uses: actions/cache@v4
+        with:
+          path: |
+            op-program/bin/prestate.bin.gz
+            op-program/bin/meta.json
+            op-program/bin/prestate-proof.json
+          key: cannon-prestate-${{ hashFiles('cannon/bin/cannon') }}-${{ hashFiles('op-program/bin/op-program-client.elf') }}
+
+      - name: Sanitize op-program guest
+        run: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
+
+      - name: Generate cannon prestate
+        if: steps.cache-prestate.outputs.cache-hit != 'true'
+        run: make cannon-prestate
+
+      - name: Generate cannon-mt prestate
+        run: make cannon-prestate-mt
+
+      - name: Upload prestate artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: prestate-artifacts
+          path: |
+            op-program/bin/prestate.bin.gz
+            op-program/bin/meta.json
+            op-program/bin/prestate-proof.json
+
+  cannon-go-test:
+    needs: [contracts-build]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Create contract artifact directories
+        run: |
+          mkdir -p packages/contracts-bedrock/{artifacts,forge-artifacts,cache}
+
+      - name: Download contract artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: contract-artifacts
+          path: packages/contracts-bedrock
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.21"
+
+      - name: Build example binaries
+        working-directory: cannon/testdata/example
+        run: make elf
+
+      - name: Run Go lint
+        working-directory: cannon
+        run: make lint
+
+      - name: Create test results directory
+        run: |
+          mkdir -p tmp/test-results
+          mkdir -p tmp/testlogs
+
+      - name: Run tests
+        working-directory: cannon
+        run: |
+          go install gotest.tools/gotestsum@latest
+          gotestsum --format=testname --junitfile=../tmp/test-results/cannon.xml --jsonfile=../tmp/testlogs/log.json \
+          -- -parallel="$(nproc)" -coverpkg=github.com/ethereum-optimism/optimism/cannon/... -coverprofile=coverage.out ./...
+
+      - name: Upload coverage
+        uses: codecov/codecov-action@v4
+        with:
+          files: ./cannon/coverage.out
+          flags: cannon-go-tests
+
+      - name: Upload test results
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results
+          path: |
+            tmp/test-results
+            tmp/testlogs
+
+  # op-e2e-cannon-tests:
+  #   needs: [contracts-build, cannon-prestate]
+  #   runs-on: ubuntu-latest
+  #   steps:
+  #     - uses: actions/checkout@v4
+
+  #     - name: Install Foundry
+  #       uses: foundry-rs/foundry-toolchain@v1
+
+  #     - name: Create directories
+  #       run: |
+  #         mkdir -p packages/contracts-bedrock/{artifacts,forge-artifacts,cache}
+  #         mkdir -p op-program/bin
+
+  #     - name: Download contract artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: contract-artifacts
+  #         path: packages/contracts-bedrock
+
+  #     - name: Download prestate artifacts
+  #       uses: actions/download-artifact@v4
+  #       with:
+  #         name: prestate-artifacts
+  #         path: op-program/bin
+
+  #     # Add Go installation since op-e2e tests are in Go
+  #     - name: Set up Go
+  #       uses: actions/setup-go@v5
+  #       with:
+  #         go-version: "1.21"
+
+  #     # Install any required Go dependencies
+  #     - name: Install Go dependencies
+  #       run: |
+  #         go mod download
+
+  #     # Debug step to verify forge installation and environment
+  #     - name: Debug environment
+  #       run: |
+  #         echo "Foundry version:"
+  #         forge --version
+  #         echo "Go version:"
+  #         go version
+  #         echo "Directory structure:"
+  #         ls -R packages/contracts-bedrock/
+  #         ls -R op-program/bin/
+
+  #     - name: Run cannon tests
+  #       working-directory: op-e2e
+  #       run: |
+  #         make test-cannon

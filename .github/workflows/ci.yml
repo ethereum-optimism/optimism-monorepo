@@ -1,0 +1,106 @@
+name: CI
+
+env:
+  FOUNDRY_PROFILE: ci
+  DOCKER_BUILDKIT: 1
+  REGISTRY: ghcr.io
+  REPO: ${{ github.repository_owner }}
+
+on:
+  push:
+    branches:
+      - celestia-develop
+      - test/github-actions
+  pull_request:
+    branches:
+      - celestia-develop
+    types: [opened, synchronize, reopened]
+  workflow_dispatch:
+
+jobs:
+  docker-build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        docker_name:
+          - op-node
+          - op-batcher
+          - op-program
+          - op-proposer
+          - op-challenger
+          - proofs-tools
+          - op-dispute-mon
+          - op-conductor
+          - da-server
+          - op-supervisor
+          - cannon
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Login to GitHub Container Registry
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate clean branch name
+        id: clean_branch
+        run: |
+          # Replace invalid characters with dash
+          CLEAN_BRANCH="$(echo "${{ github.ref_name }}" | sed 's/[^a-zA-Z0-9.]/-/g')"
+          echo "name=${CLEAN_BRANCH}" >> "$GITHUB_OUTPUT"
+
+      - name: Set build environment
+        run: |
+          {
+            echo "REGISTRY=${{ env.REGISTRY }}"
+            echo "REPOSITORY=${{ env.REPO }}"
+            echo "GIT_COMMIT=$(git rev-parse HEAD)"
+            echo "GIT_DATE=$(git show -s --format='%ct')"
+            echo "GIT_VERSION=untagged"
+            echo "IMAGE_TAGS=${{ github.sha }},${{ steps.clean_branch.outputs.name }}"
+            echo "PLATFORMS=linux/amd64"
+          } >> "$GITHUB_ENV"
+
+      - name: Build Docker image
+        run: |
+          # Create buildx builder
+          docker buildx create --driver=docker-container --name=buildx-build --bootstrap --use
+
+          # For PRs, use --load to make the image available locally
+          # For pushes, use --push to publish to registry
+          OUTPUT_ARG=""
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            OUTPUT_ARG="--load"
+          else
+            OUTPUT_ARG="--push"
+          fi
+
+          # Build using docker-bake.hcl
+          docker buildx bake \
+            --progress plain \
+            --builder=buildx-build \
+            -f docker-bake.hcl \
+            "${OUTPUT_ARG}" \
+            "${{ matrix.docker_name }}"
+
+      - name: Save Docker image
+        if: github.event_name == 'pull_request'
+        run: |
+          CLEAN_TAG="${{ steps.clean_branch.outputs.name }}"
+          IMAGE_NAME="${{ env.REGISTRY }}/${{ env.REPO }}/${{ matrix.docker_name }}:${CLEAN_TAG}"
+          docker save "${IMAGE_NAME}" > "/tmp/${{ matrix.docker_name }}.tar"
+
+      - name: Upload Docker image
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@v4
+        with:
+          name: docker-${{ matrix.docker_name }}
+          path: /tmp/${{ matrix.docker_name }}.tar
