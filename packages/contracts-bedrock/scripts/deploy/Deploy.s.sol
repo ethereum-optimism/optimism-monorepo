@@ -380,7 +380,8 @@ contract Deploy is Deployer {
         string memory release = "dev";
         dii.set(dii.release.selector, release);
         dii.set(
-            dii.standardVersionsToml.selector, string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml")
+            dii.standardVersionsToml.selector,
+            vm.readFile(string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml"))
         );
         dii.set(dii.superchainConfigProxy.selector, mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, mustGetAddress("ProtocolVersionsProxy"));
