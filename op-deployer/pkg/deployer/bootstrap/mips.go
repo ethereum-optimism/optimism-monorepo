@@ -65,6 +65,13 @@ func (c *MIPSConfig) Check() error {
 		return fmt.Errorf("preimage oracle must be specified")
 	}
 
+	if c.MipsVersion == 0 {
+		return fmt.Errorf("mips version must be specified")
+	}
+	if c.MipsVersion != 1 && c.MipsVersion != 2 {
+		return fmt.Errorf("mips version must be either 1 or 2")
+	}
+
 	return nil
 }
 
