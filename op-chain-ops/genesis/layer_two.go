@@ -27,6 +27,7 @@ const (
 	L2AllocsFjord    L2AllocsMode = "fjord"
 	L2AllocsGranite  L2AllocsMode = "granite"
 	L2AllocsHolocene L2AllocsMode = "holocene"
+	L2AllocsIsthmus  L2AllocsMode = "isthmus"
 )
 
 var (
