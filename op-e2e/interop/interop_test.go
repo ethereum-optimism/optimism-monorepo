@@ -278,13 +278,15 @@ func TestInteropBlockBuilding(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 			defer cancel()
 			// Send an executing message, but with different payload.
-			// We expect the miner to be unable to include this tx, and confirmation to thus time out.
-			_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload)
-			require.NotNil(t, err)
-			require.ErrorIs(t, err, ctx.Err())
 			if s2.(*interopE2ESystem).config.mempoolFiltering {
-				require.ErrorIs(t, ctx.Err(), gethCore.ErrTxFilteredOut)
+				// We expect the traqnsaction to be filtered out by the mempool if mempool filtering is enabled.
+				// ExecuteMessage the ErrTxFilteredOut error is checked when sending the tx.
+				_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload, gethCore.ErrTxFilteredOut)
+				require.ErrorContains(t, err, gethCore.ErrTxFilteredOut.Error())
 			} else {
+				// We expect the miner to be unable to include this tx, and confirmation to thus time out, if mempool filtering is disabled.
+				_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload, nil)
+				require.ErrorIs(t, err, ctx.Err())
 				require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
 			}
 		}
@@ -295,22 +297,25 @@ func TestInteropBlockBuilding(t *testing.T) {
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 			defer cancel()
 			// Send an executing message with the correct identifier / payload
-			rec, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, msgPayload)
+			rec, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, msgPayload, nil)
 			require.NoError(t, err, "expecting tx to be confirmed")
 			t.Logf("confirmed executing msg in block %s", rec.BlockNumber)
 		}
 		t.Log("Done")
 	}
 
-	config := SuperSystemConfig{
-		mempoolFiltering: false,
-	}
-	// run once without mempool filtering to observe the miner behavior
-	setupAndRun(t, config, test)
+	t.Run("without mempool filtering", func(t *testing.T) {
+		config := SuperSystemConfig{
+			mempoolFiltering: false,
+		}
+		setupAndRun(t, config, test)
+	})
 
-	config = SuperSystemConfig{
-		mempoolFiltering: true,
-	}
-	// run again with mempool filtering to observe the behavior of the mempool filter
-	setupAndRun(t, config, test)
+	t.Run("with mempool filtering", func(t *testing.T) {
+		config := SuperSystemConfig{
+			mempoolFiltering: true,
+		}
+		// run again with mempool filtering to observe the behavior of the mempool filter
+		setupAndRun(t, config, test)
+	})
 }

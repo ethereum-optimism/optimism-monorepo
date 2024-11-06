@@ -114,6 +114,7 @@ type SuperSystem interface {
 		msgIdentifier supervisortypes.Identifier,
 		target common.Address,
 		message []byte,
+		expectedError error,
 	) (*types.Receipt, error)
 	// Access a contract on a network by name
 	Contract(network string, contractName string) interface{}
@@ -726,6 +727,10 @@ func (s *interopE2ESystem) SendL2Tx(
 		newApply)
 }
 
+// ExecuteMessage calls the CrossL2Inbox executeMessage function
+// it uses the L2's chain ID, username key, and geth client.
+// expectedError represents the error returned by `ExecuteMessage` if it is expected.
+// the returned err is related to `WaitMined`
 func (s *interopE2ESystem) ExecuteMessage(
 	ctx context.Context,
 	id string,
@@ -733,6 +738,7 @@ func (s *interopE2ESystem) ExecuteMessage(
 	msgIdentifier supervisortypes.Identifier,
 	target common.Address,
 	message []byte,
+	expectedError error,
 ) (*types.Receipt, error) {
 	secret := s.UserKey(id, sender)
 	auth, err := bind.NewKeyedTransactorWithChainID(&secret, s.l2s[id].chainID)
@@ -751,7 +757,12 @@ func (s *interopE2ESystem) ExecuteMessage(
 		ChainId:     msgIdentifier.ChainID.ToBig(),
 	}
 	tx, err := contract.InboxTransactor.ExecuteMessage(auth, identifier, target, message)
-	require.NoError(s.t, err)
+	if expectedError != nil {
+		require.ErrorContains(s.t, err, expectedError.Error())
+		return nil, err
+	} else {
+		require.NoError(s.t, err)
+	}
 	s.logger.Info("Executing message", "tx", tx.Hash(), "to", tx.To(), "target", target, "data", hexutil.Bytes(tx.Data()))
 	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
 }
