@@ -35,6 +35,14 @@ Hence this may take additional L1 data, beyond what a `local safe` block is deri
 And once the dependencies become irreversibly valid, we consider it `finalized`.
 We can thus look at what `cross-safe` has been derived from, and verify against the
 
+```mermaid
+flowchart TD
+    LocalUnsafe[Local Unsafe]--Pass cross-L2 checks-->CrossUnsafe[Cross Unsafe]
+    LocalUnsafe--Individually reproducible from L1-->LocalSafe
+    LocalSafe[Local Safe]--All cross-L2 dependencies checked<br/> and reproducible from L1-->CrossSafe[Cross Safe]
+    CrossSafe--Dependencies are irreversible-->Finalized
+```
+
 ### Verification flow
 
 Op-nodes, or any compatible consensus-layer L2 node, interact with the op-supervisor, to:
@@ -93,8 +101,8 @@ opsup-->>opnodeA: finalized L2
 opnodeA->>opgethA: engine forkchoice-update of finalized block
 ```
 
-Implementers note: the op-supervisor may need "local" data
-from multiple chains before being able to provide "cross" verified updated views.
+Implementers note: the op-supervisor needs "local" data
+from the chains before being able to provide "cross" verified updated views.
 The op-node is not currently notified when the "cross" verified view changes,
 and thus relies on a revisit of the op-supervisor to determine change.
 
@@ -108,7 +116,7 @@ The op-supervisor maintains a few databases:
   was locally derived from which L1 block.
   I.e. this persists the DA dependency information.
 - `cross safe` (`fromda` kind): per chain, we store which L2 block
-  became cross-safe given the cross-L2 data available at which L1 block.
+  became cross-safe, given all the L2 data available, at which L1 block.
   I.e. this persists the merged results of verifying both DA and cross-L2 dependencies.
 
 Additionally, the op-supervisor tracks `cross unsafe` in memory, not persisting it to a database:
@@ -123,6 +131,7 @@ For both the `events` and `fromda` DB kinds an append-only format was chosen
 to make the database efficient and robust:
 data can be read in parallel, does not require compaction (a known problem with execution-layer databases),
 and data can always be rewound to a previous consistent state by truncating to a checkpoint.
+The database can be searched with binary lookups, and written with O(1) appends.
 
 ### Internal Architecture
 
@@ -175,6 +184,10 @@ Main components:
 - `Chain processor`: indexes blocks/events, including unsafe blocks
 - `Cross-unsafe worker`: updates cross-unsafe, by cross-verifying unsafe data
 - `Cross-safe worker`: updates cross-safe, by cross-verifying safe data within a L1 view
+
+Note that the `cross-unsafe` worker operates on any available L2 dependency data,
+whereas the `cross-safe` worker incrementally expands the L1 scope,
+to capture the `cross-safe` state relative to each L1 block.
 
 Most supervisor branching logic deals with the edge-cases that come with
 syncing dependency data, and updating the safety views as the dependencies change.
