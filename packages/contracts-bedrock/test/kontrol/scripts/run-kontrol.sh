@@ -207,13 +207,13 @@ get_log_results
 
 # Now you can use ${results[0]} and ${results[1]}
 # to check the results of kontrol_build and kontrol_prove, respectively
-if [ ${results[0]} -ne 0 ] && [ ${results[1]} -ne 0 ]; then
+if [ "${results[0]}" -ne 0 ] && [ "${results[1]}" -ne 0 ]; then
   echo "Kontrol Build and Prove Failed"
   exit 1
-elif [ ${results[0]} -ne 0 ]; then
+elif [ "${results[0]}" -ne 0 ]; then
   echo "Kontrol Build Failed"
   exit 1
-elif [ ${results[1]} -ne 0 ]; then
+elif [ "${results[1]}" -ne 0 ]; then
   echo "Kontrol Prove Failed"
   exit 2
 else
