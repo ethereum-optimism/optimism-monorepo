@@ -219,6 +219,12 @@ contract Deploy is Deployer {
         _run();
     }
 
+    /// @notice Deploy all of the L1 contracts necessary for a single Op Chain.
+    function runSingleOpChain() public {
+        console.log("Deploying a fresh OP Stack");
+        _run(false);
+    }
+
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
     /// @param _superchainConfigProxy Address of the existing SuperchainConfig proxy
     /// @param _protocolVersionsProxy Address of the existing ProtocolVersions proxy
