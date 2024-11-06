@@ -307,8 +307,8 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 		panic("expected iterator to stop with error")
 	}
 	if errors.Is(err, types.ErrFuture) {
-		// Log is known, but as part of an unsealed block.
-		return types.BlockSeal{}, nil
+		// Log is known, but as part of an unsealed block (we did not reach the block number yet).
+		return types.BlockSeal{}, types.ErrIndexing
 	}
 	if errors.Is(err, types.ErrStop) {
 		h, n, _ := iter.SealedBlock()

@@ -70,8 +70,10 @@ func (s *Worker) worker() {
 			if errors.Is(err, s.ctx.Err()) {
 				return
 			}
-			if errors.Is(err, types.ErrFuture) {
-				s.log.Debug("Worker awaits more data", "err", err)
+			if errors.Is(err, types.ErrIndexing) {
+				s.log.Debug("Worker awaits data that is being indexed", "err", err)
+			} else if errors.Is(err, types.ErrFuture) {
+				s.log.Debug("Worker awaits additional blocks", "err", err)
 			} else {
 				s.log.Warn("Failed to process work", "err", err)
 			}
