@@ -10,6 +10,16 @@ import (
 	"sync"
 	"time"
 
+	"golang.org/x/sync/errgroup"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core"
+	"github.com/ethereum/go-ethereum/core/txpool"
+	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
+
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -17,13 +27,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/core"
-	"github.com/ethereum/go-ethereum/core/txpool"
-	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/log"
-	"golang.org/x/sync/errgroup"
 )
 
 var (
@@ -543,14 +546,26 @@ func (l *BatchSubmitter) throttlingLoop(throttlingLoopDone chan struct{}) {
 				maxBlockSize = l.Config.ThrottleBlockSize
 			}
 		}
-		var success bool
+		var (
+			success bool
+			rpcErr  rpc.Error
+		)
 		if err := cl.Client().CallContext(
-			ctx, &success, SetMaxDASizeMethod, hexutil.Uint64(maxTxSize), hexutil.Uint64(maxBlockSize)); err != nil {
-			l.Log.Error("SetMaxDASize rpc failed", "err", err)
+			ctx, &success, SetMaxDASizeMethod, hexutil.Uint64(maxTxSize), hexutil.Uint64(maxBlockSize),
+		); errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()).IsGenericRPCError() {
+			l.Log.Error("SetMaxDASize rpc unavailable or broken, shutting down. Either enable it or disable throttling.", "err", err)
+			// We'd probably hit this error right after startup, so a short shutdown duration should suffice.
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			// Always returns nil. An error is only returned to expose this function as an RPC.
+			_ = l.StopBatchSubmitting(ctx)
+			return
+		} else if err != nil {
+			l.Log.Error("SetMaxDASize rpc failed, retrying.", "err", err)
 			return
 		}
 		if !success {
-			l.Log.Error("Result of SetMaxDASize was false")
+			l.Log.Error("Result of SetMaxDASize was false, retrying.")
 		}
 	}
 

@@ -157,9 +157,9 @@ var (
 		EnvVars: prefixEnvVars("WAIT_NODE_SYNC"),
 	}
 	ThrottleIntervalFlag = &cli.DurationFlag{
-		Name: "throttle-interval",
-		Usage: "Interval between potential DA throttling actions. Zero (default) disables throttling. " +
-			"Recommended to be set to L2 block time if enabling.",
+		Name:    "throttle-interval",
+		Usage:   "Interval between potential DA throttling actions. Zero disables throttling.",
+		Value:   2 * time.Second,
 		EnvVars: prefixEnvVars("THROTTLE_INTERVAL"),
 	}
 	ThrottleThresholdFlag = &cli.IntFlag{
