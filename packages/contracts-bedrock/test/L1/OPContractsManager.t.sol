@@ -14,9 +14,11 @@ import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 contract OPContractsManager_Harness is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
-        IProtocolVersions _protocolVersions
+        IProtocolVersions _protocolVersions,
+        string memory _l1ContractsReleaseVersion,
+        InputContracts memory _inputContracts
     )
-        OPContractsManager(_superchainConfig, _protocolVersions)
+        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsReleaseVersion, _inputContracts)
     { }
 
     function chainIdToBatchInboxAddress_exposed(uint256 l2ChainId) public pure returns (address) {
@@ -49,7 +51,7 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
         doi.set(doi.basefeeScalar.selector, basefeeScalar);
         doi.set(doi.blobBaseFeeScalar.selector, blobBaseFeeScalar);
         doi.set(doi.l2ChainId.selector, l2ChainId);
-        doi.set(doi.opcmProxy.selector, address(opcm));
+        doi.set(doi.opcm.selector, address(opcm));
         doi.set(doi.gasLimit.selector, gasLimit);
 
         doi.set(doi.disputeGameType.selector, disputeGameType);
@@ -116,12 +118,15 @@ contract OPContractsManager_InternalMethods_Test is Test {
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
+        OPContractsManager.InputContracts memory emptyInputContracts;
         vm.etch(address(superchainConfigProxy), hex"01");
         vm.etch(address(protocolVersionsProxy), hex"01");
 
         opcmHarness = new OPContractsManager_Harness({
             _superchainConfig: superchainConfigProxy,
-            _protocolVersions: protocolVersionsProxy
+            _protocolVersions: protocolVersionsProxy,
+            _l1ContractsReleaseVersion: "dev", // TODO: @blmalone update this to the correct value for this test.
+            _inputContracts: emptyInputContracts
         });
     }
 

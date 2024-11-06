@@ -10,6 +10,94 @@
         "internalType": "contract IProtocolVersions",
         "name": "_protocolVersions",
         "type": "address"
+      },
+      {
+        "internalType": "string",
+        "name": "_l1ContractsReleaseVersion",
+        "type": "string"
+      },
+      {
+        "components": [
+          {
+            "components": [
+              {
+                "internalType": "address",
+                "name": "addressManager",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "proxy",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "proxyAdmin",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "l1ChugSplashProxy",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "resolvedDelegateProxy",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "anchorStateRegistry",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "permissionedDisputeGame1",
+                "type": "address"
+              },
+              {
+                "internalType": "address",
+                "name": "permissionedDisputeGame2",
+                "type": "address"
+              }
+            ],
+            "internalType": "struct OPContractsManager.Blueprints",
+            "name": "blueprints",
+            "type": "tuple"
+          },
+          {
+            "components": [
+              {
+                "internalType": "string",
+                "name": "name",
+                "type": "string"
+              },
+              {
+                "components": [
+                  {
+                    "internalType": "address",
+                    "name": "logic",
+                    "type": "address"
+                  },
+                  {
+                    "internalType": "bytes4",
+                    "name": "initializer",
+                    "type": "bytes4"
+                  }
+                ],
+                "internalType": "struct OPContractsManager.Implementation",
+                "name": "info",
+                "type": "tuple"
+              }
+            ],
+            "internalType": "struct OPContractsManager.ImplementationSetter[]",
+            "name": "setters",
+            "type": "tuple[]"
+          }
+        ],
+        "internalType": "struct OPContractsManager.InputContracts",
+        "name": "_inputContracts",
+        "type": "tuple"
       }
     ],
     "stateMutability": "nonpayable",
@@ -303,11 +391,6 @@
         "internalType": "string",
         "name": "",
         "type": "string"
-      },
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
       }
     ],
     "name": "implementations",
@@ -327,109 +410,8 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "components": [
-          {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "addressManager",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "proxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "proxyAdmin",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "l1ChugSplashProxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "resolvedDelegateProxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "anchorStateRegistry",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "permissionedDisputeGame1",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "permissionedDisputeGame2",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct OPContractsManager.Blueprints",
-            "name": "blueprints",
-            "type": "tuple"
-          },
-          {
-            "components": [
-              {
-                "internalType": "string",
-                "name": "name",
-                "type": "string"
-              },
-              {
-                "components": [
-                  {
-                    "internalType": "address",
-                    "name": "logic",
-                    "type": "address"
-                  },
-                  {
-                    "internalType": "bytes4",
-                    "name": "initializer",
-                    "type": "bytes4"
-                  }
-                ],
-                "internalType": "struct OPContractsManager.Implementation",
-                "name": "info",
-                "type": "tuple"
-              }
-            ],
-            "internalType": "struct OPContractsManager.ImplementationSetter[]",
-            "name": "setters",
-            "type": "tuple[]"
-          },
-          {
-            "internalType": "string",
-            "name": "release",
-            "type": "string"
-          },
-          {
-            "internalType": "bool",
-            "name": "isLatest",
-            "type": "bool"
-          }
-        ],
-        "internalType": "struct OPContractsManager.InitializerInputs",
-        "name": "_initializerInputs",
-        "type": "tuple"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
-    "name": "latestRelease",
+    "name": "l1ContractsReleaseVersion",
     "outputs": [
       {
         "internalType": "string",
@@ -527,19 +509,6 @@
       }
     ],
     "name": "Deployed",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": false,
-        "internalType": "uint8",
-        "name": "version",
-        "type": "uint8"
-      }
-    ],
-    "name": "Initialized",
     "type": "event"
   },
   {
