@@ -131,7 +131,6 @@ func TestDABlockThrottling(t *testing.T) {
 		require.NotEqual(t, 0, r1.BlockNumber.Cmp(r3.BlockNumber))
 		require.NotEqual(t, 0, r2.BlockNumber.Cmp(r3.BlockNumber))
 	}
-
 }
 
 func setupTest(t *testing.T, maxTxSize, maxBlockSize uint64) (e2esys.SystemConfig, *sources.RollupClient, *ethclient.Client, *ethclient.Client, *batcher.TestBatchSubmitter) {
@@ -142,13 +141,11 @@ func setupTest(t *testing.T, maxTxSize, maxBlockSize uint64) (e2esys.SystemConfi
 			return nil
 		},
 	}...)
-	cfg.ThrottleThreshold = 1 // make sure throttling is always active
-	cfg.ThrottleTxSize = maxTxSize
-	cfg.ThrottleBlockSize = maxBlockSize
 	// disable batcher because we start it manually later
 	cfg.DisableBatcher = true
 
-	sys, err := cfg.Start(t)
+	sys, err := cfg.Start(t,
+		e2esys.WithBatcherThrottling(500*time.Millisecond, 1, maxTxSize, maxBlockSize))
 	require.NoError(t, err, "Error starting up system")
 
 	rollupClient := sys.RollupClient("verifier")

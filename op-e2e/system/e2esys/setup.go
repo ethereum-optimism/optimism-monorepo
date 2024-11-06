@@ -325,9 +325,6 @@ type SystemConfig struct {
 	// SupportL1TimeTravel determines if the L1 node supports quickly skipping forward in time
 	SupportL1TimeTravel bool
 
-	// Batcher throttling params
-	ThrottleThreshold, ThrottleTxSize, ThrottleBlockSize uint64
-
 	AllocType config.AllocType
 }
 
@@ -474,6 +471,9 @@ type StartOption struct {
 	Key    string
 	Role   string
 	Action SystemConfigHook
+
+	// Batcher CLIConfig modifications to apply before starting the batcher.
+	BatcherMod func(*bss.CLIConfig)
 }
 
 type startOptions struct {
@@ -492,6 +492,25 @@ func parseStartOptions(_opts []StartOption) (startOptions, error) {
 	return startOptions{
 		opts: opts,
 	}, nil
+}
+
+func WithBatcherCompressionAlgo(ca derive.CompressionAlgo) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.CompressionAlgo = ca
+		},
+	}
+}
+
+func WithBatcherThrottling(interval time.Duration, threshold, txSize, blockSize uint64) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.ThrottleInterval = interval
+			cfg.ThrottleThreshold = threshold
+			cfg.ThrottleTxSize = txSize
+			cfg.ThrottleBlockSize = blockSize
+		},
+	}
 }
 
 func (s *startOptions) Get(key, role string) (SystemConfigHook, bool) {
@@ -862,12 +881,6 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		batcherTargetNumFrames = 1
 	}
 
-	var compressionAlgo derive.CompressionAlgo = derive.Zlib
-	// if opt has brotli key, set the compression algo as brotli
-	if _, ok := parsedStartOpts.Get("compressionAlgo", "brotli"); ok {
-		compressionAlgo = derive.Brotli10
-	}
-
 	var batcherAltDACLIConfig altda.CLIConfig
 	if cfg.DeployConfig.UseAltDA {
 		fakeAltDAServer := altda.NewFakeDAServer("127.0.0.1", 0, sys.Cfg.Loggers["da-server"])
@@ -905,14 +918,17 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		BatchType:             cfg.BatcherBatchType,
 		MaxBlocksPerSpanBatch: cfg.BatcherMaxBlocksPerSpanBatch,
 		DataAvailabilityType:  sys.Cfg.DataAvailabilityType,
-		CompressionAlgo:       compressionAlgo,
+		CompressionAlgo:       derive.Zlib,
 		AltDA:                 batcherAltDACLIConfig,
-
-		ThrottleThreshold: cfg.ThrottleThreshold,
-		ThrottleInterval:  500 * time.Millisecond,
-		ThrottleTxSize:    cfg.ThrottleTxSize,
-		ThrottleBlockSize: cfg.ThrottleBlockSize,
 	}
+
+	// Apply batcher cli modifications
+	for _, opt := range startOpts {
+		if opt.BatcherMod != nil {
+			opt.BatcherMod(batcherCLIConfig)
+		}
+	}
+
 	// Batch Submitter
 	batcher, err := bss.BatcherServiceFromCLIConfig(context.Background(), "0.0.1", batcherCLIConfig, sys.Cfg.Loggers["batcher"])
 	if err != nil {
