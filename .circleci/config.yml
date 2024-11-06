@@ -1593,6 +1593,7 @@ workflows:
           target: test-cannon
           notify: true
           mentions: "@proofs-team"
+          resource_class: ethereum-optimism/latitude-fps-1
           requires:
             - contracts-bedrock-build
             - cannon-prestate
