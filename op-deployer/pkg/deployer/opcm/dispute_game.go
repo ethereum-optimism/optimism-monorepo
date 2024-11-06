@@ -11,7 +11,7 @@ import (
 type DeployDisputeGameInput struct {
 	Release                  string
 	StandardVersionsToml     string
-	MipsVersion              uint8
+	MipsVersion              uint64
 	MinProposalSizeBytes     uint64
 	ChallengePeriodSeconds   uint64
 	GameKind                 string

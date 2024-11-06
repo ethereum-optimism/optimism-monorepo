@@ -7,10 +7,9 @@ import (
 	"strings"
 
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
-
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 
@@ -35,9 +34,8 @@ type MIPSConfig struct {
 
 	privateKeyECDSA *ecdsa.PrivateKey
 
-	MinProposalSizeBytes   uint64
-	ChallengePeriodSeconds uint64
-	MipsVersion            uint8
+	PreimageOracle common.Address
+	MipsVersion    uint64
 }
 
 func (c *MIPSConfig) Check() error {
@@ -63,6 +61,10 @@ func (c *MIPSConfig) Check() error {
 		return fmt.Errorf("artifacts locator must be specified")
 	}
 
+	if c.PreimageOracle == (common.Address{}) {
+		return fmt.Errorf("preimage oracle must be specified")
+	}
+
 	return nil
 }
 
@@ -79,6 +81,9 @@ func MIPSCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
 
+	mipsVersion := cliCtx.Uint64(MIPSVersionFlagName)
+	preimageOracle := common.HexToAddress(cliCtx.String(PreimageOracleFlagName))
+
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
 	return MIPS(ctx, MIPSConfig{
@@ -86,6 +91,8 @@ func MIPSCLI(cliCtx *cli.Context) error {
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
+		MipsVersion:      mipsVersion,
+		PreimageOracle:   preimageOracle,
 	})
 }
 
@@ -117,12 +124,6 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
 		return fmt.Errorf("failed to get chain ID: %w", err)
-	}
-	chainIDU64 := chainID.Uint64()
-
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -167,11 +168,8 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 	dgo, err := opcm.DeployMIPS(
 		host,
 		opcm.DeployMIPSInput{
-			Release:                release,
-			StandardVersionsToml:   standardVersionsTOML,
-			MipsVersion:            cfg.MipsVersion,
-			MinProposalSizeBytes:   cfg.MinProposalSizeBytes,
-			ChallengePeriodSeconds: cfg.ChallengePeriodSeconds,
+			MipsVersion:    cfg.MipsVersion,
+			PreimageOracle: cfg.PreimageOracle,
 		},
 	)
 	if err != nil {

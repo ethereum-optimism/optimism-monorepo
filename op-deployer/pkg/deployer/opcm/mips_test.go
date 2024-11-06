@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/testutil"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -25,20 +24,13 @@ func TestDeployMIPS(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	standardVersionsTOML, err := standard.L1VersionsDataFor(11155111)
-	require.NoError(t, err)
-
 	input := DeployMIPSInput{
-		Release:                "dev",
-		StandardVersionsToml:   standardVersionsTOML,
-		MipsVersion:            1,
-		MinProposalSizeBytes:   standard.MinProposalSizeBytes,
-		ChallengePeriodSeconds: standard.ChallengePeriodSeconds,
+		MipsVersion:    1,
+		PreimageOracle: common.Address{0xab},
 	}
 
 	output, err := DeployMIPS(host, input)
 	require.NoError(t, err)
 
 	require.NotEmpty(t, output.MipsSingleton)
-	require.NotEmpty(t, output.PreimageOracleSingleton)
 }

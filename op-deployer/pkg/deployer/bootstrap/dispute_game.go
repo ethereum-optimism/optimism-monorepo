@@ -38,7 +38,7 @@ type DisputeGameConfig struct {
 
 	MinProposalSizeBytes     uint64
 	ChallengePeriodSeconds   uint64
-	MipsVersion              uint8
+	MipsVersion              uint64
 	GameKind                 string
 	GameType                 uint32
 	AbsolutePrestate         common.Hash

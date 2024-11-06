@@ -9,11 +9,8 @@ import (
 )
 
 type DeployMIPSInput struct {
-	Release                string
-	StandardVersionsToml   string
-	MipsVersion            uint8
-	MinProposalSizeBytes   uint64
-	ChallengePeriodSeconds uint64
+	MipsVersion    uint64
+	PreimageOracle common.Address
 }
 
 func (input *DeployMIPSInput) InputSet() bool {
@@ -21,8 +18,7 @@ func (input *DeployMIPSInput) InputSet() bool {
 }
 
 type DeployMIPSOutput struct {
-	MipsSingleton           common.Address
-	PreimageOracleSingleton common.Address
+	MipsSingleton common.Address
 }
 
 func (output *DeployMIPSOutput) CheckOutput(input common.Address) error {
