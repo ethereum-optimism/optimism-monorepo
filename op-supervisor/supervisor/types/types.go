@@ -131,19 +131,27 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 }
 
 // AtLeastAsSafe returns true if the receiver is at least as safe as the other SafetyLevel.
+// Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (lvl *SafetyLevel) AtLeastAsSafe(min SafetyLevel) bool {
-	switch min {
-	case Invalid:
-		return true
-	case CrossUnsafe:
-		return *lvl != Invalid
-	case CrossSafe:
-		return *lvl == CrossSafe || *lvl == Finalized
-	case Finalized:
-		return *lvl == Finalized
-	default:
+	relativeSafety := map[SafetyLevel]int{
+		Invalid:     0,
+		LocalUnsafe: 1,
+		LocalSafe:   2,
+		CrossUnsafe: 3,
+		CrossSafe:   4,
+		Finalized:   5,
+	}
+	// if either level is not recognized, return false
+	_, ok := relativeSafety[*lvl]
+	if !ok {
 		return false
 	}
+	_, ok = relativeSafety[min]
+	if !ok {
+		return false
+	}
+	// compare the relative safety levels to determine if the receiver is at least as safe as the other
+	return relativeSafety[*lvl] >= relativeSafety[min]
 }
 
 const (
