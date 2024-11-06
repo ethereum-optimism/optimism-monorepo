@@ -181,6 +181,15 @@ var DisputeGameFlags = []cli.Flag{
 	ChallengerFlag,
 }
 
+var MIPSFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	ArtifactsLocatorFlag,
+	MinProposalSizeBytesFlag,
+	ChallengePeriodSecondsFlag,
+	MIPSVersionFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "opcm",
@@ -199,5 +208,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of a FaultDisputeGame or PermissionedDisputeGame.",
 		Flags:  cliapp.ProtectFlags(DisputeGameFlags),
 		Action: DisputeGameCLI,
+	},
+	{
+		Name:   "mips",
+		Usage:  "Bootstrap an instance of MIPS.",
+		Flags:  cliapp.ProtectFlags(MIPSFlags),
+		Action: MIPSCLI,
 	},
 }
