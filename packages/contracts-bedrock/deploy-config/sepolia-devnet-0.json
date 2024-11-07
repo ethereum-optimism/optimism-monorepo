@@ -41,6 +41,7 @@
   "l2GenesisDeltaTimeOffset": "0x0",
   "proxyAdminOwner": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "finalSystemOwner": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
+  "systemConfigFeeAdmin": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "superchainConfigGuardian": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "baseFeeVaultRecipient": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
   "l1FeeVaultRecipient": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",

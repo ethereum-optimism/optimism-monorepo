@@ -1,0 +1,96 @@
+{
+  "chainId": $L1_CHAIN_ID,
+  "metadata": {
+    "name": "Holocene Hardfork - Contracts Upgrade",
+    "description": "Upgrades the `SystemConfig.sol`, `MIPS.sol`, `FaultDisputeGame.sol`, and `PermissionedDisputeGame.sol` contracts for Holocene."
+  },
+  "transactions": [
+    {
+      "metadata": {
+        "name": "Upgrade `SystemConfig` proxy",
+        "description": "Upgrades the `SystemConfig` proxy to the new implementation, featuring configurable EIP-1559 parameters."
+      },
+      "to": "$PROXY_ADMIN_ADDR",
+      "value": "0x0",
+      "data": "$TX_1_PAYLOAD",
+      "contractMethod": {
+        "type": "function",
+        "name": "upgrade",
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address"
+          },
+          {
+            "name": "_implementation",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_proxy": "$SYSTEM_CONFIG_PROXY_ADDR",
+        "_implementation": "$SYSTEM_CONFIG_IMPL"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Upgrade `CANNON` game type in `DisputeGameFactory`",
+        "description": "Upgrades the `CANNON` game type to the new Holocene deployment, with an updated version of `op-program` as the absolute prestate hash."
+      },
+      "to": "$DISPUTE_GAME_FACTORY_PROXY_ADDR",
+      "value": "0x0",
+      "data": "$TX_2_PAYLOAD",
+      "contractMethod": {
+        "type": "function",
+        "name": "setImplementation",
+        "inputs": [
+          {
+            "name": "_gameType",
+            "type": "uint32"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_gameType": "0",
+        "_impl": "$FDG_IMPL"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Upgrade `PERMISSIONED_CANNON` game type in `DisputeGameFactory`",
+        "description": "Upgrades the `PERMISSIONED_CANNON` game type to the new Holocene deployment, with an updated version of `op-program` as the absolute prestate hash."
+      },
+      "to": "$DISPUTE_GAME_FACTORY_PROXY_ADDR",
+      "value": "0x0",
+      "data": "$TX_3_PAYLOAD",
+      "contractMethod": {
+        "type": "function",
+        "name": "setImplementation",
+        "inputs": [
+          {
+            "name": "_gameType",
+            "type": "uint32"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_gameType": "1",
+        "_impl": "$PDG_IMPL"
+      }
+    }
+  ]
+}
