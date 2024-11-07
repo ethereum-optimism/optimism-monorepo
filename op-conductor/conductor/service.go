@@ -169,10 +169,12 @@ func (c *OpConductor) initConsensus(ctx context.Context) error {
 		return nil
 	}
 
-	serverAddr := fmt.Sprintf("%s:%d", c.cfg.ConsensusAddr, c.cfg.ConsensusPort)
 	raftConsensusConfig := &consensus.RaftConsensusConfig{
-		ServerID:          c.cfg.RaftServerID,
-		ServerAddr:        serverAddr,
+		ServerID: c.cfg.RaftServerID,
+		// AdvertisedAddr may be empty: the server will then default to what it binds to.
+		AdvertisedAddr:    raft.ServerAddress(c.cfg.ConsensusAdvertisedAddr),
+		ListenAddr:        c.cfg.ConsensusAddr,
+		ListenPort:        c.cfg.ConsensusPort,
 		StorageDir:        c.cfg.RaftStorageDir,
 		Bootstrap:         c.cfg.RaftBootstrap,
 		RollupCfg:         &c.cfg.RollupCfg,
@@ -467,6 +469,12 @@ func (oc *OpConductor) Paused() bool {
 	return oc.paused.Load()
 }
 
+// ConsensusEndpoint returns the raft consensus server address to connect to.
+func (oc *OpConductor) ConsensusEndpoint() string {
+	return oc.cons.Addr()
+}
+
+// HTTPEndpoint returns the HTTP RPC endpoint
 func (oc *OpConductor) HTTPEndpoint() string {
 	if oc.rpcServer == nil {
 		return ""

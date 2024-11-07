@@ -42,6 +42,9 @@ type ServerInfo struct {
 //
 //go:generate mockery --name Consensus --output mocks/ --with-expecter=true
 type Consensus interface {
+	// Addr returns the address of this consensus server.
+	// Internally the server may override what is advertised, or fall back to the address it listens to.
+	Addr() string
 	// AddVoter adds a voting member into the cluster, voter is eligible to become leader.
 	// If version is non-zero, this will only be applied if the current cluster version matches the expected version.
 	AddVoter(id, addr string, version uint64) error

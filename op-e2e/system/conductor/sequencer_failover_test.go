@@ -103,7 +103,6 @@ func TestSequencerFailover_ConductorRPC(t *testing.T) {
 			t, VerifierName, t.TempDir(),
 			sys.RollupEndpoint(Sequencer3Name).RPC(),
 			sys.NodeEndpoint(Sequencer3Name).RPC(),
-			findAvailablePort(t),
 			false,
 			*sys.RollupConfig,
 		)

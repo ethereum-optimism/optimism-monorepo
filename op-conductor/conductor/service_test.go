@@ -30,7 +30,7 @@ func mockConfig(t *testing.T) Config {
 	now := uint64(time.Now().Unix())
 	return Config{
 		ConsensusAddr:  "127.0.0.1",
-		ConsensusPort:  50050,
+		ConsensusPort:  0,
 		RaftServerID:   "SequencerA",
 		RaftStorageDir: "/tmp/raft",
 		RaftBootstrap:  false,

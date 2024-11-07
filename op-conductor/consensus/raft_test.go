@@ -28,7 +28,9 @@ func TestCommitAndRead(t *testing.T) {
 	}
 	raftConsensusConfig := &RaftConsensusConfig{
 		ServerID:          "SequencerA",
-		ServerAddr:        "127.0.0.1:0",
+		ListenPort:        0,
+		ListenAddr:        "127.0.0.1", // local test, don't bind to external interface
+		AdvertisedAddr:    "",          // use local address that the server binds to
 		StorageDir:        storageDir,
 		Bootstrap:         true,
 		RollupCfg:         rollupCfg,

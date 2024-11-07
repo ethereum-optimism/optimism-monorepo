@@ -1,6 +1,7 @@
 package opnode
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/json"
 	"errors"
@@ -80,7 +81,7 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		ctx.IsSet(flags.HeartbeatURLFlag.Name) {
 		log.Warn("Heartbeat functionality is not supported anymore, CLI flags will be removed in following release.")
 	}
-
+	conductorRPCEndpoint := ctx.String(flags.ConductorRpcFlag.Name)
 	cfg := &node.Config{
 		L1:         l1Endpoint,
 		L2:         l2Endpoint,
@@ -108,8 +109,10 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		Sync:                        *syncConfig,
 		RollupHalt:                  haltOption,
 
-		ConductorEnabled:    ctx.Bool(flags.ConductorEnabledFlag.Name),
-		ConductorRpc:        ctx.String(flags.ConductorRpcFlag.Name),
+		ConductorEnabled: ctx.Bool(flags.ConductorEnabledFlag.Name),
+		ConductorRpc: func(context.Context) (string, error) {
+			return conductorRPCEndpoint, nil
+		},
 		ConductorRpcTimeout: ctx.Duration(flags.ConductorRpcTimeoutFlag.Name),
 
 		AltDA: altda.ReadCLIConfig(ctx),
