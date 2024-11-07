@@ -84,6 +84,9 @@ func (c *ConductorClient) Leader(ctx context.Context) (bool, error) {
 		record := c.metrics.RecordRPCClientRequest("conductor_leader")
 		result, err := c.apiClient.Get().Leader(ctx)
 		record(err)
+		if err != nil {
+			c.log.Error("Failed to check conductor for leadership", "err", err)
+		}
 		return result, err
 	})
 	return isLeader, err

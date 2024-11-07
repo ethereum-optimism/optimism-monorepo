@@ -232,7 +232,7 @@ func setupConductor(
 		RollupCfg:      rollupCfg,
 		RPCEnableProxy: true,
 		LogConfig: oplog.CLIConfig{
-			Level: log.LevelInfo,
+			Level: log.LevelDebug,
 			Color: false,
 		},
 		RPC: oprpc.CLIConfig{
@@ -241,8 +241,9 @@ func setupConductor(
 		},
 	}
 
+	logger := testlog.Logger(t, log.LevelDebug)
 	ctx := context.Background()
-	service, err := con.New(ctx, &cfg, testlog.Logger(t, log.LevelInfo), "0.0.1")
+	service, err := con.New(ctx, &cfg, logger, "0.0.1")
 	if err != nil {
 		return nil, err
 	}
@@ -251,6 +252,8 @@ func setupConductor(
 	if err != nil {
 		return nil, err
 	}
+
+	logger.Info("Started conductor", "nodeRPC", nodeRPC, "engineRPC", engineRPC)
 
 	rawClient, err := rpc.DialContext(ctx, service.HTTPEndpoint())
 	if err != nil {
