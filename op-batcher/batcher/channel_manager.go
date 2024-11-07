@@ -118,6 +118,7 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 		delete(s.txChannels, id)
 		done, blocksToRequeue := channel.TxConfirmed(id, inclusionBlock)
 		if done {
+			s.removePendingChannel(channel)
 			if len(blocksToRequeue) > 0 {
 				s.blocks.Prepend(blocksToRequeue...)
 			}
