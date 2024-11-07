@@ -1,5 +1,10 @@
 [
   {
+    "inputs": [],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "stateMutability": "payable",
     "type": "receive"
   },
@@ -21,7 +26,7 @@
     "name": "OTHER_BRIDGE",
     "outputs": [
       {
-        "internalType": "contract IStandardBridge",
+        "internalType": "contract StandardBridge",
         "name": "",
         "type": "address"
       }
@@ -232,6 +237,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "contract StandardBridge",
+        "name": "_otherBridge",
+        "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "l1TokenBridge",
     "outputs": [
@@ -254,7 +272,7 @@
         "type": "address"
       }
     ],
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -262,7 +280,7 @@
     "name": "otherBridge",
     "outputs": [
       {
-        "internalType": "contract IStandardBridge",
+        "internalType": "contract StandardBridge",
         "name": "",
         "type": "address"
       }
@@ -546,6 +564,19 @@
       }
     ],
     "name": "ETHBridgeInitiated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint8",
+        "name": "version",
+        "type": "uint8"
+      }
+    ],
+    "name": "Initialized",
     "type": "event"
   },
   {

@@ -276,7 +276,7 @@ func makeDCIIsthmus(intent *state.Intent, thisIntent *state.ChainIntent, chainID
 
 	return opcm.DeployOPChainInputIsthmus{
 		DeployOPChainInputV160: dci,
-		SystemConfigFeeAdmin:   thisIntent.Roles.SystemConfigFeeAdmin,
+		SystemConfigFeeAdmin:   common.Address{'D', 'E', 'A', 'D'},
 	}, nil
 }
 

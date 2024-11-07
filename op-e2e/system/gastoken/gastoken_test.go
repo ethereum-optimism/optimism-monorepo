@@ -159,20 +159,17 @@ func setCustomGasToken(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 	require.NoError(t, err)
 
 	// Get existing parameters from SystemConfigProxy contract
-	roles := bindings.SystemConfigRoles{}
-	roles.Owner, err = systemConfig.Owner(&bind.CallOpts{})
-	require.NoError(t, err)
-	roles.FeeAdmin, err = systemConfig.FeeAdmin(&bind.CallOpts{})
-	require.NoError(t, err)
-	roles.UnsafeBlockSigner, err = systemConfig.UnsafeBlockSigner(&bind.CallOpts{})
-	require.NoError(t, err)
-	roles.BatcherHash, err = systemConfig.BatcherHash(&bind.CallOpts{})
+	owner, err := systemConfig.Owner(&bind.CallOpts{})
 	require.NoError(t, err)
 	basefeeScalar, err := systemConfig.BasefeeScalar(&bind.CallOpts{})
 	require.NoError(t, err)
 	blobbasefeeScalar, err := systemConfig.BlobbasefeeScalar(&bind.CallOpts{})
 	require.NoError(t, err)
+	batcherHash, err := systemConfig.BatcherHash(&bind.CallOpts{})
+	require.NoError(t, err)
 	gasLimit, err := systemConfig.GasLimit(&bind.CallOpts{})
+	require.NoError(t, err)
+	unsafeBlockSigner, err := systemConfig.UnsafeBlockSigner(&bind.CallOpts{})
 	require.NoError(t, err)
 	resourceConfig, err := systemConfig.ResourceConfig(&bind.CallOpts{})
 	require.NoError(t, err)
@@ -231,10 +228,12 @@ func setCustomGasToken(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 	waitForTx(t, tx, err, l1Client)
 
 	// Reinitialise with existing initializer values but with custom gas token set
-	tx, err = systemConfig.Initialize(deployerOpts, roles,
+	tx, err = systemConfig.Initialize(deployerOpts, owner,
 		basefeeScalar,
 		blobbasefeeScalar,
+		batcherHash,
 		gasLimit,
+		unsafeBlockSigner,
 		resourceConfig,
 		batchInbox,
 		addresses)

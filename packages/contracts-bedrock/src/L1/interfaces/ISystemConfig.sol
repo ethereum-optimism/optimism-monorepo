@@ -2,12 +2,9 @@
 pragma solidity ^0.8.0;
 
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { Types } from "src/libraries/Types.sol";
 
 /// @notice This interface corresponds to the Custom Gas Token version of the SystemConfig contract.
 interface ISystemConfig {
-    error UnsafeCast();
-
     enum UpdateType {
         BATCHER,
         FEE_SCALARS,
@@ -24,13 +21,6 @@ interface ISystemConfig {
         address optimismPortal;
         address optimismMintableERC20Factory;
         address gasPayingToken;
-    }
-
-    struct Roles {
-        address owner;
-        address feeAdmin;
-        address unsafeBlockSigner;
-        bytes32 batcherHash;
     }
 
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
@@ -59,10 +49,12 @@ interface ISystemConfig {
     function gasPayingTokenName() external view returns (string memory name_);
     function gasPayingTokenSymbol() external view returns (string memory symbol_);
     function initialize(
-        Roles memory _roles,
+        address _owner,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
+        bytes32 _batcherHash,
         uint64 _gasLimit,
+        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         Addresses memory _addresses
@@ -78,18 +70,10 @@ interface ISystemConfig {
     function optimismPortal() external view returns (address addr_);
     function overhead() external view returns (uint256);
     function owner() external view returns (address);
-    function feeAdmin() external view returns (address addr_);
     function renounceOwnership() external;
     function resourceConfig() external view returns (IResourceMetering.ResourceConfig memory);
     function scalar() external view returns (uint256);
     function setBatcherHash(bytes32 _batcherHash) external;
-    function setFeeVaultConfig(
-        Types.ConfigType _type,
-        address _recipient,
-        uint256 _min,
-        Types.WithdrawalNetwork _network
-    )
-        external;
     function setGasConfig(uint256 _overhead, uint256 _scalar) external;
     function setGasConfigEcotone(uint32 _basefeeScalar, uint32 _blobbasefeeScalar) external;
     function setGasLimit(uint64 _gasLimit) external;

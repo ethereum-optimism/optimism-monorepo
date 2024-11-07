@@ -26,7 +26,7 @@
     "name": "OTHER_BRIDGE",
     "outputs": [
       {
-        "internalType": "contract IStandardBridge",
+        "internalType": "contract StandardBridge",
         "name": "",
         "type": "address"
       }
@@ -447,7 +447,7 @@
         "type": "address"
       }
     ],
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -468,12 +468,12 @@
     "name": "otherBridge",
     "outputs": [
       {
-        "internalType": "contract IStandardBridge",
+        "internalType": "contract StandardBridge",
         "name": "",
         "type": "address"
       }
     ],
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {

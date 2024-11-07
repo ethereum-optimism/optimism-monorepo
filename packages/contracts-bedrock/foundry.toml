@@ -76,9 +76,7 @@ runs = 256
 depth = 32
 
 [profile.ciheavy]
-# temp reduce fuzz runs for 1 pr
-# fuzz = { runs = 20000 }
-fuzz = { runs = 200 }
+fuzz = { runs = 20000 }
 
 [profile.ciheavy.invariant]
 runs = 128

@@ -359,7 +359,6 @@ contract DeploySuperchain is Script {
 
     function deployAndInitializeSuperchainConfig(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
         address guardian = _dsi.guardian();
-        address upgrader = _dsi.superchainProxyAdminOwner();
         bool paused = _dsi.paused();
 
         IProxyAdmin superchainProxyAdmin = _dso.superchainProxyAdmin();
@@ -377,7 +376,7 @@ contract DeploySuperchain is Script {
         superchainProxyAdmin.upgradeAndCall(
             payable(address(superchainConfigProxy)),
             address(superchainConfigImpl),
-            abi.encodeCall(ISuperchainConfig.initialize, (guardian, upgrader, paused))
+            abi.encodeCall(ISuperchainConfig.initialize, (guardian, paused))
         );
         vm.stopBroadcast();
 

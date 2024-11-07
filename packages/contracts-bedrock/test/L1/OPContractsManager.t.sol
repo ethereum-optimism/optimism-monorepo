@@ -70,8 +70,7 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
                 batcher: _doi.batcher(),
                 unsafeBlockSigner: _doi.unsafeBlockSigner(),
                 proposer: _doi.proposer(),
-                challenger: _doi.challenger(),
-                systemConfigFeeAdmin: msg.sender
+                challenger: _doi.challenger()
             }),
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),

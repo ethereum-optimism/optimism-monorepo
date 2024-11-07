@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
 
 interface IL2StandardBridge is IStandardBridge {
     event DepositFinalized(
@@ -24,13 +23,8 @@ interface IL2StandardBridge is IStandardBridge {
 
     receive() external payable;
 
+    function initialize(IStandardBridge _otherBridge) external;
     function l1TokenBridge() external view returns (address);
-    function MESSENGER() external view returns (ICrossDomainMessenger);
-    function messenger() external pure returns (ICrossDomainMessenger);
-
-    function OTHER_BRIDGE() external view returns (IStandardBridge);
-    function otherBridge() external view returns (IStandardBridge);
-
     function version() external pure returns (string memory);
     function withdraw(
         address _l2Token,

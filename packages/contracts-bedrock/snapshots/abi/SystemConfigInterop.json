@@ -248,19 +248,6 @@
   },
   {
     "inputs": [],
-    "name": "feeAdmin",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "addr_",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "gasLimit",
     "outputs": [
       {
@@ -319,167 +306,11 @@
   {
     "inputs": [
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "feeAdmin",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "unsafeBlockSigner",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "batcherHash",
-            "type": "bytes32"
-          }
-        ],
-        "internalType": "struct SystemConfig.Roles",
-        "name": "_roles",
-        "type": "tuple"
-      },
-      {
-        "internalType": "uint32",
-        "name": "_basefeeScalar",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint32",
-        "name": "_blobbasefeeScalar",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint64",
-        "name": "_gasLimit",
-        "type": "uint64"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint32",
-            "name": "maxResourceLimit",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint8",
-            "name": "elasticityMultiplier",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "baseFeeMaxChangeDenominator",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint32",
-            "name": "minimumBaseFee",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint32",
-            "name": "systemTxMaxGas",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint128",
-            "name": "maximumBaseFee",
-            "type": "uint128"
-          }
-        ],
-        "internalType": "struct IResourceMetering.ResourceConfig",
-        "name": "_config",
-        "type": "tuple"
-      },
-      {
         "internalType": "address",
-        "name": "_batchInbox",
+        "name": "_owner",
         "type": "address"
       },
       {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "l1CrossDomainMessenger",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1ERC721Bridge",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1StandardBridge",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "disputeGameFactory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismPortal",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismMintableERC20Factory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "gasPayingToken",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SystemConfig.Addresses",
-        "name": "_addresses",
-        "type": "tuple"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "owner",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "feeAdmin",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "unsafeBlockSigner",
-            "type": "address"
-          },
-          {
-            "internalType": "bytes32",
-            "name": "batcherHash",
-            "type": "bytes32"
-          }
-        ],
-        "internalType": "struct SystemConfig.Roles",
-        "name": "_roles",
-        "type": "tuple"
-      },
-      {
         "internalType": "uint32",
         "name": "_basefeeScalar",
         "type": "uint32"
@@ -490,9 +321,19 @@
         "type": "uint32"
       },
       {
+        "internalType": "bytes32",
+        "name": "_batcherHash",
+        "type": "bytes32"
+      },
+      {
         "internalType": "uint64",
         "name": "_gasLimit",
         "type": "uint64"
+      },
+      {
+        "internalType": "address",
+        "name": "_unsafeBlockSigner",
+        "type": "address"
       },
       {
         "components": [
@@ -582,6 +423,128 @@
         "internalType": "address",
         "name": "_dependencyManager",
         "type": "address"
+      }
+    ],
+    "name": "initialize",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_owner",
+        "type": "address"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_basefeeScalar",
+        "type": "uint32"
+      },
+      {
+        "internalType": "uint32",
+        "name": "_blobbasefeeScalar",
+        "type": "uint32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_batcherHash",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint64",
+        "name": "_gasLimit",
+        "type": "uint64"
+      },
+      {
+        "internalType": "address",
+        "name": "_unsafeBlockSigner",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "uint32",
+            "name": "maxResourceLimit",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint8",
+            "name": "elasticityMultiplier",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint8",
+            "name": "baseFeeMaxChangeDenominator",
+            "type": "uint8"
+          },
+          {
+            "internalType": "uint32",
+            "name": "minimumBaseFee",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint32",
+            "name": "systemTxMaxGas",
+            "type": "uint32"
+          },
+          {
+            "internalType": "uint128",
+            "name": "maximumBaseFee",
+            "type": "uint128"
+          }
+        ],
+        "internalType": "struct IResourceMetering.ResourceConfig",
+        "name": "_config",
+        "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "_batchInbox",
+        "type": "address"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessenger",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1ERC721Bridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20Factory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "gasPayingToken",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct SystemConfig.Addresses",
+        "name": "_addresses",
+        "type": "tuple"
       }
     ],
     "name": "initialize",
@@ -831,34 +794,6 @@
   {
     "inputs": [
       {
-        "internalType": "enum Types.ConfigType",
-        "name": "_type",
-        "type": "uint8"
-      },
-      {
-        "internalType": "address",
-        "name": "_recipient",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_min",
-        "type": "uint256"
-      },
-      {
-        "internalType": "enum Types.WithdrawalNetwork",
-        "name": "_network",
-        "type": "uint8"
-      }
-    ],
-    "name": "setFeeVaultConfig",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "uint256",
         "name": "_overhead",
         "type": "uint256"
@@ -1026,10 +961,5 @@
     ],
     "name": "OwnershipTransferred",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "UnsafeCast",
-    "type": "error"
   }
 ]

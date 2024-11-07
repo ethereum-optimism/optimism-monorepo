@@ -605,7 +605,7 @@
   {
     "inputs": [
       {
-        "internalType": "enum Types.ConfigType",
+        "internalType": "enum ConfigType",
         "name": "_type",
         "type": "uint8"
       },
@@ -616,6 +616,34 @@
       }
     ],
     "name": "setConfig",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_token",
+        "type": "address"
+      },
+      {
+        "internalType": "uint8",
+        "name": "_decimals",
+        "type": "uint8"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_name",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "_symbol",
+        "type": "bytes32"
+      }
+    ],
+    "name": "setGasPayingToken",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -657,24 +685,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint32",
-        "name": "_gasLimit",
-        "type": "uint32"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_calldata",
-        "type": "bytes"
-      }
-    ],
-    "name": "upgrade",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

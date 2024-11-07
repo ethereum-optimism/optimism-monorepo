@@ -7,7 +7,6 @@ import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
 // Libraries
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
@@ -21,22 +20,26 @@ import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 ///         L2 on the L2 side. Users are generally encouraged to use this contract instead of lower
 ///         level message passing contracts.
 contract L2CrossDomainMessenger is CrossDomainMessenger, ISemver {
-    /// @custom:semver 2.1.1-beta.5
-    string public constant version = "2.1.1-beta.5";
+    /// @custom:semver 2.1.1-beta.4
+    string public constant version = "2.1.1-beta.4";
 
-    /// @notice Getter for the remote chain's messenger.
-    function otherMessenger() public view override returns (CrossDomainMessenger) {
-        bytes memory data =
-            IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).getConfig(Types.ConfigType.L1_CROSS_DOMAIN_MESSENGER_ADDRESS);
-        return CrossDomainMessenger(abi.decode(data, (address)));
+    /// @notice Constructs the L2CrossDomainMessenger contract.
+    constructor() CrossDomainMessenger() {
+        initialize({ _l1CrossDomainMessenger: CrossDomainMessenger(address(0)) });
     }
 
-    /// @notice Legay getter for the remote chain's messenger.
+    /// @notice Initializer.
+    /// @param _l1CrossDomainMessenger L1CrossDomainMessenger contract on the other network.
+    function initialize(CrossDomainMessenger _l1CrossDomainMessenger) public initializer {
+        __CrossDomainMessenger_init({ _otherMessenger: _l1CrossDomainMessenger });
+    }
+
+    /// @notice Getter for the remote messenger.
     ///         Public getter is legacy and will be removed in the future. Use `otherMessenger()` instead.
     /// @return L1CrossDomainMessenger contract.
     /// @custom:legacy
     function l1CrossDomainMessenger() public view returns (CrossDomainMessenger) {
-        return otherMessenger();
+        return otherMessenger;
     }
 
     /// @inheritdoc CrossDomainMessenger
@@ -53,7 +56,7 @@ contract L2CrossDomainMessenger is CrossDomainMessenger, ISemver {
 
     /// @inheritdoc CrossDomainMessenger
     function _isOtherMessenger() internal view override returns (bool) {
-        return AddressAliasHelper.undoL1ToL2Alias(msg.sender) == address(otherMessenger());
+        return AddressAliasHelper.undoL1ToL2Alias(msg.sender) == address(otherMessenger);
     }
 
     /// @inheritdoc CrossDomainMessenger

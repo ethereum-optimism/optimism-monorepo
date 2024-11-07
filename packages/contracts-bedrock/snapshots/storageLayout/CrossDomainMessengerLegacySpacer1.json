@@ -1,0 +1,65 @@
+[
+  {
+    "bytes": "1600",
+    "label": "spacer_1_0_1600",
+    "offset": 0,
+    "slot": "0",
+    "type": "uint256[50]"
+  },
+  {
+    "bytes": "20",
+    "label": "spacer_51_0_20",
+    "offset": 0,
+    "slot": "50",
+    "type": "address"
+  },
+  {
+    "bytes": "1568",
+    "label": "spacer_52_0_1568",
+    "offset": 0,
+    "slot": "51",
+    "type": "uint256[49]"
+  },
+  {
+    "bytes": "1",
+    "label": "spacer_101_0_1",
+    "offset": 0,
+    "slot": "100",
+    "type": "bool"
+  },
+  {
+    "bytes": "1568",
+    "label": "spacer_102_0_1568",
+    "offset": 0,
+    "slot": "101",
+    "type": "uint256[49]"
+  },
+  {
+    "bytes": "32",
+    "label": "spacer_151_0_32",
+    "offset": 0,
+    "slot": "150",
+    "type": "uint256"
+  },
+  {
+    "bytes": "1568",
+    "label": "spacer_152_0_1568",
+    "offset": 0,
+    "slot": "151",
+    "type": "uint256[49]"
+  },
+  {
+    "bytes": "32",
+    "label": "spacer_201_0_32",
+    "offset": 0,
+    "slot": "200",
+    "type": "mapping(bytes32 => bool)"
+  },
+  {
+    "bytes": "32",
+    "label": "spacer_202_0_32",
+    "offset": 0,
+    "slot": "201",
+    "type": "mapping(bytes32 => bool)"
+  }
+]

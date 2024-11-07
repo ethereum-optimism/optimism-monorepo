@@ -137,11 +137,6 @@
                 "internalType": "address",
                 "name": "challenger",
                 "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "systemConfigFeeAdmin",
-                "type": "address"
               }
             ],
             "internalType": "struct OPContractsManager.Roles",

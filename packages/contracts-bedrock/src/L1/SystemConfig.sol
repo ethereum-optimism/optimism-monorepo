@@ -4,18 +4,15 @@ pragma solidity 0.8.15;
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { StaticConfig } from "src/libraries/StaticConfig.sol";
-import { Encoding } from "src/libraries/Encoding.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
-import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismPortal2 as IOptimismPortal } from "src/L1/interfaces/IOptimismPortal2.sol";
+import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 
 /// @custom:proxied true
@@ -51,18 +48,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         address gasPayingToken;
     }
 
-    /// @notice Struct representing the roles of the system.
-    /// @notice The owner (chain operator) of the system.
-    /// @notice The fee admin of the system.
-    /// @notice The unsafe block signer of the system.
-    /// @notice The batcher hash of the system.
-    struct Roles {
-        address owner;
-        address feeAdmin;
-        address unsafeBlockSigner;
-        bytes32 batcherHash;
-    }
-
     /// @notice Version identifier, used for upgrades.
     uint256 public constant VERSION = 0;
 
@@ -75,9 +60,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     ///         happens. It is unlikely that keccak second preimage resistance will be broken,
     ///         but it is better to be safe than sorry.
     bytes32 public constant UNSAFE_BLOCK_SIGNER_SLOT = keccak256("systemconfig.unsafeblocksigner");
-
-    /// @notice Storage slot that the feeAdmin address is stored at.
-    bytes32 internal constant FEE_ADMIN_SLOT = keccak256("systemconfig.feeadmin");
 
     /// @notice Storage slot that the L1CrossDomainMessenger address is stored at.
     bytes32 public constant L1_CROSS_DOMAIN_MESSENGER_SLOT =
@@ -155,9 +137,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.6
+    /// @custom:semver 2.3.0-beta.5
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.6";
+        return "2.3.0-beta.5";
     }
 
     /// @notice Constructs the SystemConfig contract. Cannot set
@@ -165,28 +147,55 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     ///         implementation, so set it to `address(0xdEaD)`
     /// @dev    START_BLOCK_SLOT is set to type(uint256).max here so that it will be a dead value
     ///         in the singleton and is skipped by initialize when setting the start block.
-    ///         _disableInitializers is called to prevent the need to make calls during the constructor
-    ///         if initialize is called directly.
     constructor() {
         Storage.setUint(START_BLOCK_SLOT, type(uint256).max);
-        _disableInitializers();
+        initialize({
+            _owner: address(0xdEaD),
+            _basefeeScalar: 0,
+            _blobbasefeeScalar: 0,
+            _batcherHash: bytes32(0),
+            _gasLimit: 1,
+            _unsafeBlockSigner: address(0),
+            _config: IResourceMetering.ResourceConfig({
+                maxResourceLimit: 1,
+                elasticityMultiplier: 1,
+                baseFeeMaxChangeDenominator: 2,
+                minimumBaseFee: 0,
+                systemTxMaxGas: 0,
+                maximumBaseFee: 0
+            }),
+            _batchInbox: address(0),
+            _addresses: SystemConfig.Addresses({
+                l1CrossDomainMessenger: address(0),
+                l1ERC721Bridge: address(0),
+                l1StandardBridge: address(0),
+                disputeGameFactory: address(0),
+                optimismPortal: address(0),
+                optimismMintableERC20Factory: address(0),
+                gasPayingToken: address(0)
+            })
+        });
     }
 
     /// @notice Initializer.
     ///         The resource config must be set before the require check.
-    /// @param _roles             Initial roles.
+    /// @param _owner             Initial owner of the contract.
     /// @param _basefeeScalar     Initial basefee scalar value.
     /// @param _blobbasefeeScalar Initial blobbasefee scalar value.
+    /// @param _batcherHash       Initial batcher hash.
     /// @param _gasLimit          Initial gas limit.
+    /// @param _unsafeBlockSigner Initial unsafe block signer address.
     /// @param _config            Initial ResourceConfig.
     /// @param _batchInbox        Batch inbox address. An identifier for the op-node to find
     ///                           canonical data.
     /// @param _addresses         Set of L1 contract addresses. These should be the proxies.
     function initialize(
-        Roles memory _roles,
+        address _owner,
         uint32 _basefeeScalar,
         uint32 _blobbasefeeScalar,
+        bytes32 _batcherHash,
         uint64 _gasLimit,
+        address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
         SystemConfig.Addresses memory _addresses
@@ -195,56 +204,27 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         initializer
     {
         __Ownable_init();
-        transferOwnership(_roles.owner);
+        transferOwnership(_owner);
 
         // These are set in ascending order of their UpdateTypes.
-        _setBatcherHash(_roles.batcherHash);
+        _setBatcherHash(_batcherHash);
         _setGasConfigEcotone({ _basefeeScalar: _basefeeScalar, _blobbasefeeScalar: _blobbasefeeScalar });
         _setGasLimit(_gasLimit);
 
-        Storage.setAddress(UNSAFE_BLOCK_SIGNER_SLOT, _roles.unsafeBlockSigner);
-        Storage.setAddress(FEE_ADMIN_SLOT, _roles.feeAdmin);
+        Storage.setAddress(UNSAFE_BLOCK_SIGNER_SLOT, _unsafeBlockSigner);
         Storage.setAddress(BATCH_INBOX_SLOT, _batchInbox);
-
-        Storage.setAddress(OPTIMISM_PORTAL_SLOT, _addresses.optimismPortal);
+        Storage.setAddress(L1_CROSS_DOMAIN_MESSENGER_SLOT, _addresses.l1CrossDomainMessenger);
+        Storage.setAddress(L1_ERC_721_BRIDGE_SLOT, _addresses.l1ERC721Bridge);
+        Storage.setAddress(L1_STANDARD_BRIDGE_SLOT, _addresses.l1StandardBridge);
         Storage.setAddress(DISPUTE_GAME_FACTORY_SLOT, _addresses.disputeGameFactory);
+        Storage.setAddress(OPTIMISM_PORTAL_SLOT, _addresses.optimismPortal);
         Storage.setAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT, _addresses.optimismMintableERC20Factory);
 
-        _setGasPayingToken(_addresses.gasPayingToken);
-        _setAddress(
-            L1_CROSS_DOMAIN_MESSENGER_SLOT,
-            _addresses.l1CrossDomainMessenger,
-            Types.ConfigType.L1_CROSS_DOMAIN_MESSENGER_ADDRESS
-        );
-        _setAddress(L1_ERC_721_BRIDGE_SLOT, _addresses.l1ERC721Bridge, Types.ConfigType.L1_ERC_721_BRIDGE_ADDRESS);
-        _setAddress(L1_STANDARD_BRIDGE_SLOT, _addresses.l1StandardBridge, Types.ConfigType.L1_STANDARD_BRIDGE_ADDRESS);
-
-        _setRemoteChainId();
         _setStartBlock();
-
-        // TODO: set fee vault config calls
+        _setGasPayingToken(_addresses.gasPayingToken);
 
         _setResourceConfig(_config);
         require(_gasLimit >= minimumGasLimit(), "SystemConfig: gas limit too low");
-    }
-
-    /// @notice Internal setter for L1 system addresses that need to be legible from within L2.
-    /// @param _slot The local storage slot that the address should be stored in.
-    /// @param _addr The address of the L1 based system address.
-    /// @param _type The ConfigType that represents what the address is.
-    function _setAddress(bytes32 _slot, address _addr, Types.ConfigType _type) internal {
-        Storage.setAddress(_slot, _addr);
-        IOptimismPortal(payable(optimismPortal())).setConfig({ _type: _type, _value: abi.encode(_addr) });
-    }
-
-    /// @notice Internal setter for the base chain's chain id. This allows for the
-    ///         base chain's chain id to be legible from within the parent chain.
-    ///         In the case of an L2, this would be the L1 chain id.
-    function _setRemoteChainId() internal {
-        IOptimismPortal(payable(optimismPortal())).setConfig({
-            _type: Types.ConfigType.REMOTE_CHAIN_ID,
-            _value: abi.encode(block.chainid)
-        });
     }
 
     /// @notice Returns the minimum L2 gas limit that can be safely set for the system to
@@ -271,12 +251,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @return addr_ Address of the unsafe block signer.
     function unsafeBlockSigner() public view returns (address addr_) {
         addr_ = Storage.getAddress(UNSAFE_BLOCK_SIGNER_SLOT);
-    }
-
-    /// @notice High level getter for the fee admin address.
-    /// @return addr_ Address of the fee admin.
-    function feeAdmin() public view returns (address addr_) {
-        addr_ = Storage.getAddress(FEE_ADMIN_SLOT);
     }
 
     /// @notice Getter for the L1CrossDomainMessenger address.
@@ -346,7 +320,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     ///         to set the token address. This prevents the token address from being changed
     ///         and makes it explicitly opt-in to use custom gas token.
     /// @param _token Address of the gas paying token.
-    function _setGasPayingToken(address _token) internal {
+    function _setGasPayingToken(address _token) internal virtual {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
             require(
                 ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
@@ -354,17 +328,14 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
             bytes32 name = GasPayingToken.sanitize(ERC20(_token).name());
             bytes32 symbol = GasPayingToken.sanitize(ERC20(_token).symbol());
 
-            // Set the gas paying token in storage and call the OptimismPortal.
+            // Set the gas paying token in storage and in the OptimismPortal.
             GasPayingToken.set({ _token: _token, _decimals: GAS_PAYING_TOKEN_DECIMALS, _name: name, _symbol: symbol });
-            IOptimismPortal(payable(optimismPortal())).setConfig(
-                Types.ConfigType.GAS_PAYING_TOKEN,
-                StaticConfig.encodeSetGasPayingToken({
-                    _token: _token,
-                    _decimals: GAS_PAYING_TOKEN_DECIMALS,
-                    _name: name,
-                    _symbol: symbol
-                })
-            );
+            IOptimismPortal(payable(optimismPortal())).setGasPayingToken({
+                _token: _token,
+                _decimals: GAS_PAYING_TOKEN_DECIMALS,
+                _name: name,
+                _symbol: symbol
+            });
         }
     }
 
@@ -445,47 +416,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         _setGasLimit(_gasLimit);
     }
 
-    /// @notice Setter for the FeeVault predeploy configuration.
-    /// @param _type The FeeVault type.
-    /// @param _recipient Address that should receive the funds.
-    /// @param _min Minimum withdrawal amount allowed to be processed.
-    /// @param _network The network in which the fees should be withdrawn to.
-    function setFeeVaultConfig(
-        Types.ConfigType _type,
-        address _recipient,
-        uint256 _min,
-        Types.WithdrawalNetwork _network
-    )
-        external
-    {
-        require(msg.sender == feeAdmin(), "SystemConfig: caller is not the fee admin");
-        _setFeeVaultConfig(_type, _recipient, _min, _network);
-    }
-
-    /// @notice Internal function for setting the FeeVault config by type.
-    /// @param _type The FeeVault type
-    /// @param _recipient Address that should receive the funds.
-    /// @param _min Minimum withdrawal amount allowed to be processed.
-    /// @param _network The network in which the fees should be withdrawn to.
-    function _setFeeVaultConfig(
-        Types.ConfigType _type,
-        address _recipient,
-        uint256 _min,
-        Types.WithdrawalNetwork _network
-    )
-        internal
-    {
-        require(
-            _type == Types.ConfigType.BASE_FEE_VAULT_CONFIG || _type == Types.ConfigType.L1_FEE_VAULT_CONFIG
-                || _type == Types.ConfigType.SEQUENCER_FEE_VAULT_CONFIG,
-            "SystemConfig: ConfigType is is not a Fee Vault Config type"
-        );
-        IOptimismPortal(payable(optimismPortal())).setConfig({
-            _type: _type,
-            _value: abi.encode(Encoding.encodeFeeVaultConfig(_recipient, _min, _network))
-        });
-    }
-
     /// @notice Internal function for updating the L2 gas limit.
     /// @param _gasLimit New gas limit.
     function _setGasLimit(uint64 _gasLimit) internal {
@@ -561,9 +491,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
                 == _config.maxResourceLimit,
             "SystemConfig: precision loss with target resource limit"
         );
-
-        // TODO: maxResourceLimit must be large enough to handle the SystemConfig.initialize
-        //       call
 
         _resourceConfig = _config;
     }

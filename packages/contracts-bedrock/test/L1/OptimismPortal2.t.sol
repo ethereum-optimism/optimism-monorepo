@@ -19,7 +19,6 @@ import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
-import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import "src/dispute/lib/Types.sol";
 import "src/libraries/PortalErrors.sol";
 
@@ -309,13 +308,6 @@ contract OptimismPortal2_Test is CommonTest {
     )
         external
     {
-        bytes memory data = StaticConfig.encodeSetGasPayingToken({
-            _token: _token,
-            _decimals: _decimals,
-            _name: _name,
-            _symbol: _symbol
-        });
-
         vm.expectEmit(address(optimismPortal2));
         emit TransactionDeposited(
             0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
@@ -326,12 +318,12 @@ contract OptimismPortal2_Test is CommonTest {
                 uint256(0), // value
                 uint64(200_000), // gasLimit
                 false, // isCreation,
-                abi.encodeCall(IL1Block.setConfig, (Types.ConfigType.GAS_PAYING_TOKEN, data))
+                abi.encodeCall(IL1Block.setGasPayingToken, (_token, _decimals, _name, _symbol))
             )
         );
 
         vm.prank(address(systemConfig));
-        optimismPortal2.setConfig(Types.ConfigType.GAS_PAYING_TOKEN, data);
+        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: _name, _symbol: _symbol });
     }
 
     /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
@@ -350,12 +342,10 @@ contract OptimismPortal2_Test is CommonTest {
         bytes32 name = GasPayingToken.sanitize(_name);
         bytes32 symbol = GasPayingToken.sanitize(_symbol);
 
-        bytes memory data = StaticConfig.encodeSetGasPayingToken(_token, 18, name, symbol);
-
         vm.recordLogs();
 
         vm.prank(address(systemConfig));
-        optimismPortal2.setConfig(Types.ConfigType.GAS_PAYING_TOKEN, data);
+        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: 18, _name: name, _symbol: symbol });
 
         vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
         optimismPortal2.depositTransaction({
@@ -363,7 +353,7 @@ contract OptimismPortal2_Test is CommonTest {
             _value: 0,
             _gasLimit: 200_000,
             _isCreation: false,
-            _data: abi.encodeCall(IL1Block.setConfig, (Types.ConfigType.GAS_PAYING_TOKEN, data))
+            _data: abi.encodeCall(IL1Block.setGasPayingToken, (_token, 18, name, symbol))
         });
 
         VmSafe.Log[] memory logs = vm.getRecordedLogs();
@@ -381,104 +371,12 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(systemPath.data, userPath.data);
     }
 
-    /// @dev Tests that the upgrade function succeeds.
-    function testFuzz_upgrade_succeeds(uint32 _gasLimit, bytes memory _calldata) external {
-        address upgrader = superchainConfig.upgrader();
-
-        vm.expectEmit(address(optimismPortal2));
-        emit TransactionDeposited(
-            0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
-            Predeploys.PROXY_ADMIN,
-            0,
-            abi.encodePacked(
-                uint256(0), // mint
-                uint256(0), // value
-                uint64(_gasLimit), // gasLimit
-                false, // isCreation,
-                _calldata
-            )
-        );
-
-        vm.prank(upgrader);
-        optimismPortal2.upgrade(_gasLimit, _calldata);
-    }
-
-    /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
-    ///         code path that manually emits a deposit transaction outside of the
-    ///         `depositTransaction` function. This is a simple differential test.
-    function test_upgrade_correctEvent_succeeds(uint32 _gasLimit, bytes memory _calldata) external {
-        vm.assume(_calldata.length <= 120_000);
-        IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
-        _gasLimit =
-            uint32(bound(_gasLimit, optimismPortal2.minimumGasLimit(uint32(_calldata.length)), rcfg.maxResourceLimit));
-
-        vm.recordLogs();
-
-        vm.prank(superchainConfig.upgrader());
-        optimismPortal2.upgrade(_gasLimit, _calldata);
-
-        // Advance the block to ensure that the deposit transaction is processed in the next block, so that we
-        // aren't limited by the resource limit consumed by the previous call.
-        vm.roll(block.number + 1);
-        vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
-        optimismPortal2.depositTransaction({
-            _to: Predeploys.PROXY_ADMIN,
-            _value: 0,
-            _gasLimit: uint64(_gasLimit),
-            _isCreation: false,
-            _data: _calldata
-        });
-
-        VmSafe.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(logs.length, 2);
-
-        VmSafe.Log memory systemPath = logs[0];
-        VmSafe.Log memory userPath = logs[1];
-
-        assertEq(systemPath.topics.length, 4);
-        assertEq(systemPath.topics.length, userPath.topics.length);
-        assertEq(systemPath.topics[0], userPath.topics[0]);
-        assertEq(systemPath.topics[1], userPath.topics[1]);
-        assertEq(systemPath.topics[2], userPath.topics[2]);
-        assertEq(systemPath.topics[3], userPath.topics[3]);
-        assertEq(systemPath.data, userPath.data);
-    }
-
-    /// @dev Tests that any config type can be set by the system config.
-    function testFuzz_setConfig_succeeds(uint8 _configType, bytes calldata _value) public {
-        // Ensure that _configType is within the range of the ConfigType enum
-        _configType = uint8(bound(uint256(_configType), 0, uint256(type(Types.ConfigType).max)));
-
-        vm.expectEmit(address(optimismPortal2));
-        emitTransactionDeposited({
-            _from: Constants.DEPOSITOR_ACCOUNT,
-            _to: Predeploys.L1_BLOCK_ATTRIBUTES,
-            _value: 0,
-            _mint: 0,
-            _gasLimit: 200_000,
-            _isCreation: false,
-            _data: abi.encodeCall(IL1Block.setConfig, (Types.ConfigType(_configType), _value))
-        });
-
-        vm.prank(address(optimismPortal2.systemConfig()));
-        optimismPortal2.setConfig(Types.ConfigType(_configType), _value);
-    }
-
-    /// @dev Tests that the gas paying token cannot be set by a non-system config for any config type.
-    function testFuzz_setConfig_notSystemConfig_fails(
-        address _caller,
-        uint8 _configType,
-        bytes calldata _value
-    )
-        external
-    {
-        // Ensure that _configType is within the range of the ConfigType enum
-        _configType = uint8(bound(uint256(_configType), 0, uint256(type(Types.ConfigType).max)));
-
+    /// @dev Tests that the gas paying token cannot be set by a non-system config.
+    function test_setGasPayingToken_notSystemConfig_fails(address _caller) external {
         vm.assume(_caller != address(systemConfig));
         vm.prank(_caller);
         vm.expectRevert(Unauthorized.selector);
-        optimismPortal2.setConfig(Types.ConfigType(_configType), _value);
+        optimismPortal2.setGasPayingToken({ _token: address(0), _decimals: 0, _name: "", _symbol: "" });
     }
 
     /// @dev Tests that `depositERC20Transaction` reverts when the gas paying token is ether.

@@ -21,9 +21,10 @@ contract PredeploysBaseTest is CommonTest {
         return _addr == Predeploys.L1_MESSAGE_SENDER;
     }
 
-    /// @dev No predeploys should ever be initializable.
-    function _isInitializable(address) internal pure returns (bool) {
-        return false;
+    /// @dev Returns true if the predeploy is initializable.
+    function _isInitializable(address _addr) internal pure returns (bool) {
+        return _addr == Predeploys.L2_CROSS_DOMAIN_MESSENGER || _addr == Predeploys.L2_STANDARD_BRIDGE
+            || _addr == Predeploys.L2_ERC721_BRIDGE || _addr == Predeploys.OPTIMISM_MINTABLE_ERC20_FACTORY;
     }
 
     /// @dev Returns true if the predeploy uses immutables.
@@ -48,7 +49,7 @@ contract PredeploysBaseTest is CommonTest {
         );
     }
 
-    function _test_predeploys(bool _useInterop) internal view {
+    function _test_predeploys(bool _useInterop) internal {
         uint256 count = 2048;
         uint160 prefix = uint160(0x420) << 148;
 
@@ -103,6 +104,10 @@ contract PredeploysBaseTest is CommonTest {
                 // can't check bytecode if it's modified with immutables in genesis.
                 assertEq(implAddr.code, supposedCode, "proxy implementation contract should match contract source");
             }
+
+            if (_isInitializable(addr)) {
+                assertEq(l2Genesis.loadInitializedSlot(cname), uint8(1));
+            }
         }
     }
 }
@@ -110,7 +115,7 @@ contract PredeploysBaseTest is CommonTest {
 contract PredeploysTest is PredeploysBaseTest {
     /// @dev Tests that the predeploy addresses are set correctly. They have code
     ///      and the proxied accounts have the correct admin.
-    function test_predeploys_succeeds() external view {
+    function test_predeploys_succeeds() external {
         _test_predeploys(false);
     }
 }
@@ -124,7 +129,7 @@ contract PredeploysInteropTest is PredeploysBaseTest {
 
     /// @dev Tests that the predeploy addresses are set correctly. They have code
     ///      and the proxied accounts have the correct admin. Using interop.
-    function test_predeploys_succeeds() external view {
+    function test_predeploys_succeeds() external {
         _test_predeploys(true);
     }
 }

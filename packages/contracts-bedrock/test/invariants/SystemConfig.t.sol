@@ -7,12 +7,6 @@ import { IProxy } from "src/universal/interfaces/IProxy.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
-contract ConfigSetter {
-    function setConfig(uint8, bytes calldata) external {
-        // noop
-    }
-}
-
 contract SystemConfig_GasLimitBoundaries_Invariant is Test {
     ISystemConfig public config;
 
@@ -29,7 +23,6 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
             })
         );
-        ConfigSetter setter = new ConfigSetter();
 
         vm.prank(msg.sender);
         proxy.upgradeToAndCall(
@@ -37,15 +30,12 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
             abi.encodeCall(
                 configImpl.initialize,
                 (
-                    ISystemConfig.Roles({
-                        owner: address(0xbeef),
-                        feeAdmin: address(0xbeef),
-                        unsafeBlockSigner: address(1),
-                        batcherHash: bytes32(hex"abcd")
-                    }),
+                    address(0xbeef), // owner
                     2100, // overhead
                     1000000, // scalar
+                    bytes32(hex"abcd"), // batcher hash
                     30_000_000, // gas limit
+                    address(1), // unsafe block signer
                     Constants.DEFAULT_RESOURCE_CONFIG(),
                     address(0), // _batchInbox
                     ISystemConfig.Addresses({ // _addrs
@@ -53,7 +43,7 @@ contract SystemConfig_GasLimitBoundaries_Invariant is Test {
                         l1ERC721Bridge: address(0),
                         l1StandardBridge: address(0),
                         disputeGameFactory: address(0),
-                        optimismPortal: address(setter),
+                        optimismPortal: address(0),
                         optimismMintableERC20Factory: address(0),
                         gasPayingToken: Constants.ETHER
                     })

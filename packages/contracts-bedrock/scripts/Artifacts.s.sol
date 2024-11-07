@@ -47,6 +47,7 @@ abstract contract Artifacts {
     /// @notice Setup function. The arguments here
     function setUp() public virtual {
         deploymentOutfile = Config.deploymentOutfile();
+        console.log("Writing artifact to %s", deploymentOutfile);
         ForgeArtifacts.ensurePath(deploymentOutfile);
 
         uint256 chainId = Config.chainID();
@@ -182,6 +183,7 @@ abstract contract Artifacts {
     /// @param _name The name of the deployment.
     /// @param _deployed The address of the deployment.
     function save(string memory _name, address _deployed) public {
+        console.log("Saving %s: %s", _name, _deployed);
         if (bytes(_name).length == 0) {
             revert InvalidDeployment("EmptyName");
         }

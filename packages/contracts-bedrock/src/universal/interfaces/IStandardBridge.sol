@@ -22,10 +22,12 @@ interface IStandardBridge {
     );
     event ETHBridgeFinalized(address indexed from, address indexed to, uint256 amount, bytes extraData);
     event ETHBridgeInitiated(address indexed from, address indexed to, uint256 amount, bytes extraData);
+    event Initialized(uint8 version);
 
     receive() external payable;
 
     function MESSENGER() external view returns (ICrossDomainMessenger);
+    function OTHER_BRIDGE() external view returns (IStandardBridge);
     function bridgeERC20(
         address _localToken,
         address _remoteToken,
@@ -58,7 +60,6 @@ interface IStandardBridge {
     function finalizeBridgeETH(address _from, address _to, uint256 _amount, bytes memory _extraData) external payable;
     function messenger() external view returns (ICrossDomainMessenger);
     function otherBridge() external view returns (IStandardBridge);
-    function OTHER_BRIDGE() external view returns (IStandardBridge);
     function paused() external view returns (bool);
 
     function __constructor__() external;

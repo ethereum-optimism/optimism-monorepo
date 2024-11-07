@@ -3,7 +3,6 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -19,10 +18,7 @@ import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 /// @notice The L1CrossDomainMessenger is a message passing interface between L1 and L2 responsible
 ///         for sending and receiving data on the L1 side. Users are encouraged to use this
 ///         interface instead of interacting with lower-level contracts directly.
-contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver, Initializable {
-    /// @notice Spacer to give the initializer a full slot, to avoid offsetting the superchainConfig slot.
-    bytes30 private spacer_250_2_30;
-
+contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     /// @notice Contract of the SuperchainConfig.
     ISuperchainConfig public superchainConfig;
 
@@ -34,12 +30,16 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver, Initializable 
     ISystemConfig public systemConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.1-beta.3
-    string public constant version = "2.4.1-beta.3";
+    /// @custom:semver 2.4.1-beta.2
+    string public constant version = "2.4.1-beta.2";
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() CrossDomainMessenger() {
-        _disableInitializers();
+        initialize({
+            _superchainConfig: ISuperchainConfig(address(0)),
+            _portal: IOptimismPortal(payable(address(0))),
+            _systemConfig: ISystemConfig(address(0))
+        });
     }
 
     /// @notice Initializes the contract.
@@ -57,12 +57,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver, Initializable 
         superchainConfig = _superchainConfig;
         portal = _portal;
         systemConfig = _systemConfig;
-    }
-
-    /// @notice Getter function for the other messenger.
-    /// @return Contract of the messenger on the other network.
-    function otherMessenger() public pure override returns (CrossDomainMessenger) {
-        return CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER);
+        __CrossDomainMessenger_init({ _otherMessenger: CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER) });
     }
 
     /// @inheritdoc CrossDomainMessenger
@@ -91,7 +86,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver, Initializable 
 
     /// @inheritdoc CrossDomainMessenger
     function _isOtherMessenger() internal view override returns (bool) {
-        return msg.sender == address(portal) && portal.l2Sender() == address(otherMessenger());
+        return msg.sender == address(portal) && portal.l2Sender() == address(otherMessenger);
     }
 
     /// @inheritdoc CrossDomainMessenger

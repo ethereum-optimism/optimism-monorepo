@@ -24,8 +24,8 @@ import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErro
 ///         do not use a custom gas token.
 contract SuperchainWETH is WETH98, IERC7802, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.11
-    string public constant version = "1.0.0-beta.11";
+    /// @custom:semver 1.0.0-beta.10
+    string public constant version = "1.0.0-beta.10";
 
     /// @inheritdoc WETH98
     function deposit() public payable override {

@@ -3,16 +3,15 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
+
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
-import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 /// @custom:proxied true
 /// @title L1StandardBridge
@@ -24,7 +23,7 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
 ///         of some token types that may not be properly supported by this contract include, but are
 ///         not limited to: tokens with transfer fees, rebasing tokens, and tokens with blocklists.
-contract L1StandardBridge is StandardBridge, ISemver, Initializable {
+contract L1StandardBridge is StandardBridge, ISemver {
     /// @custom:legacy
     /// @notice Emitted whenever a deposit of ETH from L1 into L2 is initiated.
     /// @param from      Address of the depositor.
@@ -76,13 +75,8 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.3
-    string public constant version = "2.2.1-beta.3";
-
-    /// @custom:spacer
-    /// @notice Spacer to fill the remainder of the _initialized slot, preventing the superchainConfig
-    ///         address from being packed with it.
-    bytes30 private spacer_49_2_30;
+    /// @custom:semver 2.2.1-beta.2
+    string public constant version = "2.2.1-beta.2";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -90,12 +84,13 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
     /// @notice Address of the SystemConfig contract.
     ISystemConfig public systemConfig;
 
-    /// @notice Contract for the CrossDomainMessenger on this network.
-    ICrossDomainMessenger internal crossDomainMessenger;
-
     /// @notice Constructs the L1StandardBridge contract.
     constructor() StandardBridge() {
-        _disableInitializers();
+        initialize({
+            _messenger: ICrossDomainMessenger(address(0)),
+            _superchainConfig: ISuperchainConfig(address(0)),
+            _systemConfig: ISystemConfig(address(0))
+        });
     }
 
     /// @notice Initializer.
@@ -111,19 +106,10 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
     {
         superchainConfig = _superchainConfig;
         systemConfig = _systemConfig;
-        crossDomainMessenger = _messenger;
-    }
-
-    /// @notice Returns the contract of the bridge on the other chain.
-    /// @return Contract of the bridge on the other chain.
-    function otherBridge() public pure override returns (IStandardBridge) {
-        return IStandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE));
-    }
-
-    /// @notice Getter function for the messenger contract.
-    /// @return Contract of the messenger on this domain.
-    function messenger() public view override returns (ICrossDomainMessenger) {
-        return ICrossDomainMessenger(crossDomainMessenger);
+        __StandardBridge_init({
+            _messenger: _messenger,
+            _otherBridge: StandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE))
+        });
     }
 
     /// @inheritdoc StandardBridge
@@ -255,8 +241,8 @@ contract L1StandardBridge is StandardBridge, ISemver, Initializable {
     /// @custom:legacy
     /// @notice Retrieves the access of the corresponding L2 bridge contract.
     /// @return Address of the corresponding L2 bridge contract.
-    function l2TokenBridge() external pure returns (address) {
-        return address(otherBridge());
+    function l2TokenBridge() external view returns (address) {
+        return address(otherBridge);
     }
 
     /// @notice Internal function for initiating an ETH deposit.

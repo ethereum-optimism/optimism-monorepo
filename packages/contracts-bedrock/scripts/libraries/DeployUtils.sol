@@ -351,11 +351,6 @@ library DeployUtils {
         }
     }
 
-    /// @notice The unstructured storage slot that is used for v5 openzeppelin initializable. Computed as:
-    ///         keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Initializable")) - 1)) &
-    /// ~bytes32(uint256(0xff))
-    bytes32 internal constant INITIALIZABLE_STORAGE = 0xf0c57e16840df040f15088dc2f81fe391c3923bec73e23a9662efc9c229c6a00;
-
     /// @notice Asserts that for a given contract the value of a storage slot at an offset is 1 or
     ///         `type(uint8).max`. The value is set to 1 when a contract is initialized, and set to
     ///         `type(uint8).max` when `_disableInitializers` is called.
@@ -366,10 +361,5 @@ library DeployUtils {
             value == 1 || value == type(uint8).max,
             "DeployUtils: value at the given slot and offset does not indicate initialization"
         );
-    }
-
-    /// @notice Asserts that the contract has been initialized, assuming that it is using openzeppelin v5 initializable.
-    function assertInitialized(address _contractAddress) internal view {
-        assertInitialized({ _contractAddress: _contractAddress, _slot: uint256(INITIALIZABLE_STORAGE), _offset: 0 });
     }
 }

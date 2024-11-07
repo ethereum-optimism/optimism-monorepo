@@ -14,6 +14,7 @@ import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 // Interfaces
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
+import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
@@ -41,8 +42,7 @@ contract Specification_Test is CommonTest {
         DELAYEDWETHOWNER,
         COUNCILSAFE,
         COUNCILSAFEOWNER,
-        DEPENDENCYMANAGER,
-        FEEADMIN
+        DEPENDENCYMANAGER
     }
 
     /// @notice Represents the specification of a function.
@@ -276,7 +276,7 @@ contract Specification_Test is CommonTest {
             _name: "OptimismPortal",
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("setConfig(uint8,bytes)") });
+        _addSpec({ _name: "OptimismPortal", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
 
         // OptimismPortalInterop
         _addSpec({
@@ -335,8 +335,12 @@ contract Specification_Test is CommonTest {
             _name: "OptimismPortalInterop",
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("upgrade(uint32,bytes)"), _auth: Role.FEEADMIN });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("setConfig(uint8,bytes)") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
+        _addSpec({
+            _name: "OptimismPortalInterop",
+            _sel: IOptimismPortalInterop.setConfig.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -383,27 +387,7 @@ contract Specification_Test is CommonTest {
             _name: "OptimismPortal2",
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("upgrade(uint32,bytes)"), _auth: Role.FEEADMIN });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setConfig(uint8,bytes)") });
-
-        // L1OptimismMintableERC20Factory
-        _addSpec({ _name: "L1OptimismMintableERC20Factory", _sel: _getSel("BRIDGE()") });
-        _addSpec({ _name: "L1OptimismMintableERC20Factory", _sel: _getSel("bridge()") });
-        _addSpec({
-            _name: "L1OptimismMintableERC20Factory",
-            _sel: _getSel("createOptimismMintableERC20(address,string,string)")
-        });
-        _addSpec({
-            _name: "L1OptimismMintableERC20Factory",
-            _sel: _getSel("createOptimismMintableERC20WithDecimals(address,string,string,uint8)")
-        });
-        _addSpec({
-            _name: "L1OptimismMintableERC20Factory",
-            _sel: _getSel("createStandardL2Token(address,string,string)")
-        });
-        _addSpec({ _name: "L1OptimismMintableERC20Factory", _sel: _getSel("deployments(address)") });
-        _addSpec({ _name: "L1OptimismMintableERC20Factory", _sel: _getSel("version()") });
-        _addSpec({ _name: "L1OptimismMintableERC20Factory", _sel: _getSel("initialize(address)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -434,13 +418,11 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("GUARDIAN_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("PAUSED_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,address,bool)") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,bool)") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("UPGRADER_SLOT()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("upgrader()") });
 
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -454,7 +436,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.minimumGasLimit.selector });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("overhead()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("owner()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("feeAdmin()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("renounceOwnership()"), _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.resourceConfig.selector });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("scalar()") });
@@ -497,7 +478,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("setFeeVaultConfig(uint8,address,uint256,uint8)") });
 
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -509,15 +489,8 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Elasticity()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.initialize.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.minimumGasLimit.selector });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel(
-                "initialize((address,address,address,bytes32),uint32,uint32,uint64,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address),address)"
-            )
-        });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("overhead()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("owner()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("feeAdmin()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("renounceOwnership()"), _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.resourceConfig.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("scalar()") });
@@ -587,7 +560,12 @@ contract Specification_Test is CommonTest {
             _auth: Role.DEPENDENCYMANAGER
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("setFeeVaultConfig(uint8,address,uint256,uint8)") });
+        _addSpec({
+            _name: "SystemConfigInterop",
+            _sel: _getSel(
+                "initialize(address,uint32,uint32,bytes32,uint64,address,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address),address)"
+            )
+        });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });

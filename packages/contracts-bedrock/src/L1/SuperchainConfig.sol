@@ -12,10 +12,8 @@ import { Storage } from "src/libraries/Storage.sol";
 contract SuperchainConfig is Initializable, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
-    /// @custom:value UPGRADER            Represents an update to the upgrader.
     enum UpdateType {
-        GUARDIAN,
-        UPGRADER
+        GUARDIAN
     }
 
     /// @notice Whether or not the Superchain is paused.
@@ -24,10 +22,6 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice The address of the guardian, which can pause withdrawals from the System.
     ///         It can only be modified by an upgrade.
     bytes32 public constant GUARDIAN_SLOT = bytes32(uint256(keccak256("superchainConfig.guardian")) - 1);
-
-    /// @notice The address of the upgrader, which can faciliate upgrades of L2 predeploys.
-    /// .       It can only be modified by an upgrade.
-    bytes32 public constant UPGRADER_SLOT = bytes32(uint256(keccak256("superchainConfig.upgrader")) - 1);
 
     /// @notice Emitted when the pause is triggered.
     /// @param identifier A string helping to identify provenance of the pause transaction.
@@ -42,20 +36,19 @@ contract SuperchainConfig is Initializable, ISemver {
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.2
-    string public constant version = "1.1.1-beta.2";
+    /// @custom:semver 1.1.1-beta.1
+    string public constant version = "1.1.1-beta.1";
 
     /// @notice Constructs the SuperchainConfig contract.
     constructor() {
-        _disableInitializers();
+        initialize({ _guardian: address(0), _paused: false });
     }
 
     /// @notice Initializer.
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, address _upgrader, bool _paused) public initializer {
+    function initialize(address _guardian, bool _paused) public initializer {
         _setGuardian(_guardian);
-        _setUpgrader(_upgrader);
         if (_paused) {
             _pause("Initializer paused");
         }
@@ -64,11 +57,6 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice Getter for the guardian address.
     function guardian() public view returns (address guardian_) {
         guardian_ = Storage.getAddress(GUARDIAN_SLOT);
-    }
-
-    /// @notice Getter for the upgrader address.
-    function upgrader() public view returns (address upgrader_) {
-        upgrader_ = Storage.getAddress(UPGRADER_SLOT);
     }
 
     /// @notice Getter for the current paused status.
@@ -103,13 +91,5 @@ contract SuperchainConfig is Initializable, ISemver {
     function _setGuardian(address _guardian) internal {
         Storage.setAddress(GUARDIAN_SLOT, _guardian);
         emit ConfigUpdate(UpdateType.GUARDIAN, abi.encode(_guardian));
-    }
-
-    /// @notice Sets the upgrader address. This is only callable during initialization, so an upgrade
-    ///         will be required to change the upgrader.
-    /// @param _upgrader The new upgrader address.
-    function _setUpgrader(address _upgrader) internal {
-        Storage.setAddress(UPGRADER_SLOT, _upgrader);
-        emit ConfigUpdate(UpdateType.UPGRADER, abi.encode(_upgrader));
     }
 }

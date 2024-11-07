@@ -1,15 +1,31 @@
 [
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_bridge",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_remoteChainId",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
     "inputs": [],
     "name": "BRIDGE",
     "outputs": [
       {
-        "internalType": "contract IL2ERC721Bridge",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
     ],
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -30,12 +46,12 @@
     "name": "bridge",
     "outputs": [
       {
-        "internalType": "contract IL2ERC721Bridge",
+        "internalType": "address",
         "name": "",
         "type": "address"
       }
     ],
-    "stateMutability": "pure",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -88,7 +104,7 @@
   },
   {
     "inputs": [],
-    "name": "remoteChainId",
+    "name": "remoteChainID",
     "outputs": [
       {
         "internalType": "uint256",

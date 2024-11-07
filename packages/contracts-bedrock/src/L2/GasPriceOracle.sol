@@ -29,8 +29,8 @@ contract GasPriceOracle is ISemver {
     uint256 public constant DECIMALS = 6;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.4
-    string public constant version = "1.3.1-beta.4";
+    /// @custom:semver 1.3.1-beta.3
+    string public constant version = "1.3.1-beta.3";
 
     /// @notice This is the intercept value for the linear regression used to estimate the final size of the
     ///         compressed transaction.

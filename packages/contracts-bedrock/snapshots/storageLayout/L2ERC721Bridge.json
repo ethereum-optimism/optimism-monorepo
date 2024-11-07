@@ -1,24 +1,38 @@
 [
   {
-    "bytes": "32",
-    "label": "spacer_0_0_32",
+    "bytes": "1",
+    "label": "_initialized",
     "offset": 0,
     "slot": "0",
-    "type": "bytes32"
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "0",
+    "type": "bool"
+  },
+  {
+    "bytes": "30",
+    "label": "spacer_0_2_30",
+    "offset": 2,
+    "slot": "0",
+    "type": "bytes30"
   },
   {
     "bytes": "20",
-    "label": "spacer_1_0_20",
+    "label": "messenger",
     "offset": 0,
     "slot": "1",
-    "type": "address"
+    "type": "contract ICrossDomainMessenger"
   },
   {
     "bytes": "20",
-    "label": "spacer_2_0_20",
+    "label": "otherBridge",
     "offset": 0,
     "slot": "2",
-    "type": "address"
+    "type": "contract ERC721Bridge"
   },
   {
     "bytes": "1472",

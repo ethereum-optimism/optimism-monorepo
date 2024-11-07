@@ -6,9 +6,9 @@ import { L1Block } from "src/L2/L1Block.sol";
 
 // Libraries
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
+import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Types } from "src/libraries/Types.sol";
 import {
     NotDepositor,
     NotCrossL2Inbox,
@@ -17,6 +17,16 @@ import {
     AlreadyDependency,
     CantRemovedDependency
 } from "src/libraries/L1BlockErrors.sol";
+
+/// @notice Enum representing different types of configurations that can be set on L1BlockInterop.
+/// @custom:value SET_GAS_PAYING_TOKEN  Represents the config type for setting the gas paying token.
+/// @custom:value ADD_DEPENDENCY        Represents the config type for adding a chain to the interop dependency set.
+/// @custom:value REMOVE_DEPENDENCY     Represents the config type for removing a chain from the interop dependency set.
+enum ConfigType {
+    SET_GAS_PAYING_TOKEN,
+    ADD_DEPENDENCY,
+    REMOVE_DEPENDENCY
+}
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000015
@@ -39,9 +49,9 @@ contract L1BlockInterop is L1Block {
     /// keccak256(abi.encode(uint256(keccak256("l1Block.identifier.isDeposit")) - 1)) & ~bytes32(uint256(0xff))
     uint256 internal constant IS_DEPOSIT_SLOT = 0x921bd3a089295c6e5540e8fba8195448d253efd6f2e3e495b499b627dc36a300;
 
-    /// @custom:semver +interop-beta.2
+    /// @custom:semver +interop-beta.1
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.2");
+        return string.concat(super.version(), "+interop-beta.1");
     }
 
     /// @notice Returns whether the call was triggered from a a deposit or not.
@@ -94,14 +104,26 @@ contract L1BlockInterop is L1Block {
     ///         depositor account.
     /// @param _type  The type of configuration to set.
     /// @param _value The encoded value with which to set the configuration.
-    function setConfig(Types.ConfigType _type, bytes calldata _value) public override {
-        super.setConfig(_type, _value);
+    function setConfig(ConfigType _type, bytes calldata _value) external {
+        if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
 
-        if (_type == Types.ConfigType.ADD_DEPENDENCY) {
+        if (_type == ConfigType.SET_GAS_PAYING_TOKEN) {
+            _setGasPayingToken(_value);
+        } else if (_type == ConfigType.ADD_DEPENDENCY) {
             _addDependency(_value);
-        } else if (_type == Types.ConfigType.REMOVE_DEPENDENCY) {
+        } else if (_type == ConfigType.REMOVE_DEPENDENCY) {
             _removeDependency(_value);
         }
+    }
+
+    /// @notice Internal method to set the gas paying token.
+    /// @param _value The encoded value with which to set the gas paying token.
+    function _setGasPayingToken(bytes calldata _value) internal {
+        (address token, uint8 decimals, bytes32 name, bytes32 symbol) = StaticConfig.decodeSetGasPayingToken(_value);
+
+        GasPayingToken.set({ _token: token, _decimals: decimals, _name: name, _symbol: symbol });
+
+        emit GasPayingTokenSet({ token: token, decimals: decimals, name: name, symbol: symbol });
     }
 
     /// @notice Internal method to add a dependency to the interop dependency set.

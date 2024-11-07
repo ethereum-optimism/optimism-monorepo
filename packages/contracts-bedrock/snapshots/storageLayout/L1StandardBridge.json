@@ -1,10 +1,24 @@
 [
   {
-    "bytes": "32",
-    "label": "spacer_0_0_32",
+    "bytes": "1",
+    "label": "_initialized",
     "offset": 0,
     "slot": "0",
-    "type": "bytes32"
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "0",
+    "type": "bool"
+  },
+  {
+    "bytes": "30",
+    "label": "spacer_0_2_30",
+    "offset": 2,
+    "slot": "0",
+    "type": "bytes30"
   },
   {
     "bytes": "20",
@@ -22,45 +36,24 @@
   },
   {
     "bytes": "20",
-    "label": "spacer_3_0_20",
+    "label": "messenger",
     "offset": 0,
     "slot": "3",
-    "type": "address"
+    "type": "contract ICrossDomainMessenger"
   },
   {
     "bytes": "20",
-    "label": "spacer_4_0_20",
+    "label": "otherBridge",
     "offset": 0,
     "slot": "4",
-    "type": "address"
+    "type": "contract StandardBridge"
   },
   {
-    "bytes": "1408",
+    "bytes": "1440",
     "label": "__gap",
     "offset": 0,
     "slot": "5",
-    "type": "uint256[44]"
-  },
-  {
-    "bytes": "1",
-    "label": "_initialized",
-    "offset": 0,
-    "slot": "49",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 1,
-    "slot": "49",
-    "type": "bool"
-  },
-  {
-    "bytes": "30",
-    "label": "spacer_49_2_30",
-    "offset": 2,
-    "slot": "49",
-    "type": "bytes30"
+    "type": "uint256[45]"
   },
   {
     "bytes": "20",
@@ -75,12 +68,5 @@
     "offset": 0,
     "slot": "51",
     "type": "contract ISystemConfig"
-  },
-  {
-    "bytes": "20",
-    "label": "crossDomainMessenger",
-    "offset": 0,
-    "slot": "52",
-    "type": "contract ICrossDomainMessenger"
   }
 ]

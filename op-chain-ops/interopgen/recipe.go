@@ -178,17 +178,12 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 	if err != nil {
 		return nil, err
 	}
-	systemConfigFeeAdmin, err := addrs.Address(chainOps(devkeys.SystemConfigFeeAdmin))
-	if err != nil {
-		return nil, err
-	}
 
 	l2Cfg := &L2Config{
-		Deployer:             deployer,
-		Proposer:             proposer,
-		Challenger:           challenger,
-		SystemConfigOwner:    systemConfigOwner,
-		SystemConfigFeeAdmin: systemConfigFeeAdmin,
+		Deployer:          deployer,
+		Proposer:          proposer,
+		Challenger:        challenger,
+		SystemConfigOwner: systemConfigOwner,
 		L2InitializationConfig: genesis.L2InitializationConfig{
 			DevDeployConfig: genesis.DevDeployConfig{
 				FundDevAccounts: true,

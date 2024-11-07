@@ -286,9 +286,6 @@ type OperatorDeployConfig struct {
 	// BatchSenderAddress represents the initial sequencer account that authorizes batches.
 	// Transactions sent from this account to the batch inbox address are considered valid.
 	BatchSenderAddress common.Address `json:"batchSenderAddress"`
-
-	// SystemConfigfeeAdmin is the address of the account that has the ability to set the fee parameters.
-	SystemConfigfeeAdmin common.Address `json:"systemConfigFeeAdmin"`
 }
 
 var _ ConfigChecker = (*OperatorDeployConfig)(nil)

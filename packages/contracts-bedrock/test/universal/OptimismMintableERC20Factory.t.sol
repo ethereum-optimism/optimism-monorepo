@@ -12,10 +12,18 @@ import { OptimismMintableERC20Factory } from "src/universal/OptimismMintableERC2
 
 // Interfaces
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
 
 contract OptimismMintableTokenFactory_Test is Bridge_Initializer {
     event StandardL2TokenCreated(address indexed remoteToken, address indexed localToken);
     event OptimismMintableERC20Created(address indexed localToken, address indexed remoteToken, address deployer);
+
+    /// @notice Tests that the constructor is initialized correctly.
+    function test_constructor_succeeds() external {
+        IOptimismMintableERC20Factory impl = IOptimismMintableERC20Factory(address(new OptimismMintableERC20Factory()));
+        assertEq(address(impl.BRIDGE()), address(0));
+        assertEq(address(impl.bridge()), address(0));
+    }
 
     /// @notice Tests that the proxy is initialized correctly.
     function test_initialize_succeeds() external view {
@@ -25,7 +33,7 @@ contract OptimismMintableTokenFactory_Test is Bridge_Initializer {
 
     /// @notice Tests that the upgrade is successful.
     function test_upgrading_succeeds() external {
-        IProxy proxy = IProxy(deploy.mustGetAddress("L1OptimismMintableERC20FactoryProxy"));
+        IProxy proxy = IProxy(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"));
         // Check an unused slot before upgrading.
         bytes32 slot21Before = vm.load(address(l1OptimismMintableERC20Factory), bytes32(uint256(21)));
         assertEq(bytes32(0), slot21Before);

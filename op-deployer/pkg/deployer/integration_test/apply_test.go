@@ -12,7 +12,6 @@ import (
 	"time"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 
@@ -126,7 +125,7 @@ func TestEndToEndApply(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	env, bundle, _ := createEnv(t, lgr, l1Client, bcaster, deployerAddr, localArtifactsFactory, localArtifactsFactory)
+	env, bundle, _ := createEnv(t, lgr, l1Client, bcaster, deployerAddr)
 	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 	cg := ethClientCodeGetter(ctx, l1Client)
 
@@ -146,7 +145,7 @@ func TestEndToEndApply(t *testing.T) {
 	t.Run("subsequent chain", func(t *testing.T) {
 		// create a new environment with wiped state to ensure we can continue using the
 		// state from the previous deployment
-		env, bundle, _ = createEnv(t, lgr, l1Client, bcaster, deployerAddr, localArtifactsFactory, localArtifactsFactory)
+		env, bundle, _ = createEnv(t, lgr, l1Client, bcaster, deployerAddr)
 		intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID2))
 
 		require.NoError(t, deployer.ApplyPipeline(
@@ -208,17 +207,7 @@ func TestApplyExistingOPCM(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	// use the l2 contracts here because the v1.7.0 contracts are compatible with the v1.6.0
-	// contracts and createEnv uses the same artifacts for both L1/L2 in the bundle.
-	env, bundle, _ := createEnv(
-		t,
-		lgr,
-		l1Client,
-		bcaster,
-		deployerAddr,
-		taggedArtifactsFactory(standard.DefaultL1ContractsTag),
-		taggedArtifactsFactory(standard.DefaultL2ContractsTag),
-	)
+	env, bundle, _ := createEnv(t, lgr, l1Client, bcaster, deployerAddr)
 
 	intent, st := newIntent(
 		t,
@@ -390,8 +379,7 @@ func TestProofParamOverrides(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := checkImmutable(t, allocs, tt.address, tt.caster(t, intent.GlobalDeployOverrides[tt.name]))
-			require.NoError(t, err)
+			checkImmutable(t, allocs, tt.address, tt.caster(t, intent.GlobalDeployOverrides[tt.name]))
 		})
 	}
 }
@@ -415,9 +403,9 @@ func TestInteropDeployment(t *testing.T) {
 
 	chainState := st.Chains[0]
 	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
-	require.NoError(t, checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot))
-	systemConfigOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
-	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, systemConfigOwnerHash)
+	checkImmutable(t, st.L1StateDump.Data.Accounts, st.ImplementationsDeployment.SystemConfigImplAddress, depManagerSlot)
+	proxyAdminOwnerHash := common.BytesToHash(intent.Chains[0].Roles.SystemConfigOwner.Bytes())
+	checkStorageSlot(t, st.L1StateDump.Data.Accounts, chainState.SystemConfigProxyAddress, depManagerSlot, proxyAdminOwnerHash)
 }
 
 func TestAltDADeployment(t *testing.T) {
@@ -524,7 +512,7 @@ func TestInvalidL2Genesis(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr, localArtifactsFactory, localArtifactsFactory)
+			env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
 			intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 			intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
 			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
@@ -558,23 +546,11 @@ func setupGenesisChain(t *testing.T) (*pipeline.Env, pipeline.ArtifactsBundle, *
 
 	loc, _ := testutil.LocalArtifacts(t)
 
-	env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr, localArtifactsFactory, localArtifactsFactory)
+	env, bundle, _ := createEnv(t, lgr, nil, broadcaster.NoopBroadcaster(), deployerAddr)
 	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID1))
 	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 	return env, bundle, intent, st
-}
-
-type artifactsFactory func(t *testing.T) (*artifacts.Locator, foundry.StatDirFs)
-
-func localArtifactsFactory(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
-	return testutil.LocalArtifacts(t)
-}
-
-func taggedArtifactsFactory(tag string) artifactsFactory {
-	return func(t *testing.T) (*artifacts.Locator, foundry.StatDirFs) {
-		return testutil.ArtifactsFromURL(t, fmt.Sprintf("tag://%s", tag))
-	}
 }
 
 func createEnv(
@@ -583,17 +559,14 @@ func createEnv(
 	l1Client *ethclient.Client,
 	bcaster broadcaster.Broadcaster,
 	deployerAddr common.Address,
-	l1Factory artifactsFactory,
-	l2Factory artifactsFactory,
 ) (*pipeline.Env, pipeline.ArtifactsBundle, *script.Host) {
-	_, l1AFS := l1Factory(t)
-	_, l2AFS := l2Factory(t)
+	_, artifactsFS := testutil.LocalArtifacts(t)
 
 	host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
 		deployerAddr,
-		l1AFS,
+		artifactsFS,
 		0,
 	)
 	require.NoError(t, err)
@@ -608,8 +581,8 @@ func createEnv(
 	}
 
 	bundle := pipeline.ArtifactsBundle{
-		L1: l1AFS,
-		L2: l2AFS,
+		L1: artifactsFS,
+		L2: artifactsFS,
 	}
 
 	return env, bundle, host
@@ -659,14 +632,13 @@ func newChainIntent(t *testing.T, dk *devkeys.MnemonicDevKeys, l1ChainID *big.In
 		Eip1559Denominator:         50,
 		Eip1559Elasticity:          6,
 		Roles: state.ChainRoles{
-			L1ProxyAdminOwner:    addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
-			L2ProxyAdminOwner:    addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
-			SystemConfigOwner:    addrFor(t, dk, devkeys.SystemConfigOwner.Key(l1ChainID)),
-			SystemConfigFeeAdmin: addrFor(t, dk, devkeys.SystemConfigFeeAdmin.Key(l1ChainID)),
-			UnsafeBlockSigner:    addrFor(t, dk, devkeys.SequencerP2PRole.Key(l1ChainID)),
-			Batcher:              addrFor(t, dk, devkeys.BatcherRole.Key(l1ChainID)),
-			Proposer:             addrFor(t, dk, devkeys.ProposerRole.Key(l1ChainID)),
-			Challenger:           addrFor(t, dk, devkeys.ChallengerRole.Key(l1ChainID)),
+			L1ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
+			L2ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
+			SystemConfigOwner: addrFor(t, dk, devkeys.SystemConfigOwner.Key(l1ChainID)),
+			UnsafeBlockSigner: addrFor(t, dk, devkeys.SequencerP2PRole.Key(l1ChainID)),
+			Batcher:           addrFor(t, dk, devkeys.BatcherRole.Key(l1ChainID)),
+			Proposer:          addrFor(t, dk, devkeys.ProposerRole.Key(l1ChainID)),
+			Challenger:        addrFor(t, dk, devkeys.ChallengerRole.Key(l1ChainID)),
 		},
 	}
 }
@@ -767,20 +739,17 @@ func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, int
 		alloc := chainState.Allocs.Data.Accounts
 
 		chainIntent := intent.Chains[i]
+		checkImmutableBehindProxy(t, alloc, predeploys.BaseFeeVaultAddr, chainIntent.BaseFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.L1FeeVaultAddr, chainIntent.L1FeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.SequencerFeeVaultAddr, chainIntent.SequencerFeeVaultRecipient)
+		checkImmutableBehindProxy(t, alloc, predeploys.OptimismMintableERC721FactoryAddr, common.BigToHash(new(big.Int).SetUint64(intent.L1ChainID)))
 
-		// First try to read the owner from the bytecode, which is the situation with the
-		// Isthmus L2ProxyAdmin (on this commit).
-		if err := checkImmutableBehindProxy(t, alloc, predeploys.ProxyAdminAddr, common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001")); err != nil {
-			t.Logf("Warning: Failed to check immutable behind proxy for L2ProxyAdmin, falling back to <=v1.6.0 storage check")
-			// If the bytecode check fails, fall back to reading the owner from storage.
-			// Note however that the L2ProxyAdmin owner address here (0xe59a881b2626f948f56f509f180c32428585629a) comes from the chainIntent,
-			// and does not actually match the `owner()` of the L2ProxyAdmin contract deployed on Sepolia (0x2FC3ffc903729a0f03966b917003800B145F67F3).
-			// It seems the L2 state is locally constructed rather than pulled from an L2 RPC.
-			var L2ProxyAdminOwner common.Hash
-			L2ProxyAdminOwner.SetBytes(chainIntent.Roles.L2ProxyAdminOwner.Bytes())
-			checkStorageSlot(t, alloc, predeploys.ProxyAdminAddr, common.Hash{}, L2ProxyAdminOwner)
-		}
-
+		// ownership slots
+		var addrAsSlot common.Hash
+		addrAsSlot.SetBytes(chainIntent.Roles.L1ProxyAdminOwner.Bytes())
+		// slot 0
+		ownerSlot := common.Hash{}
+		checkStorageSlot(t, alloc, predeploys.ProxyAdminAddr, ownerSlot, addrAsSlot)
 		var defaultGovOwner common.Hash
 		defaultGovOwner.SetBytes(common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad").Bytes())
 		checkStorageSlot(t, alloc, predeploys.GovernanceTokenAddr, common.Hash{31: 0x0a}, defaultGovOwner)
@@ -801,23 +770,20 @@ type bytesMarshaler interface {
 	Bytes() []byte
 }
 
-func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) error {
+func checkImmutableBehindProxy(t *testing.T, allocations types.GenesisAlloc, proxyContract common.Address, thing bytesMarshaler) {
 	implementationAddress := getEIP1967ImplementationAddress(t, allocations, proxyContract)
-	return checkImmutable(t, allocations, implementationAddress, thing)
+	checkImmutable(t, allocations, implementationAddress, thing)
 }
 
-func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) error {
+func checkImmutable(t *testing.T, allocations types.GenesisAlloc, implementationAddress common.Address, thing bytesMarshaler) {
 	account, ok := allocations[implementationAddress]
-	if !ok {
-		return fmt.Errorf("%s not found in allocations", implementationAddress)
-	}
-	if len(account.Code) == 0 {
-		return fmt.Errorf("%s should have code", implementationAddress)
-	}
-	if !bytes.Contains(account.Code, thing.Bytes()) {
-		return fmt.Errorf("%s code should contain %s immutable", implementationAddress, hex.EncodeToString(thing.Bytes()))
-	}
-	return nil
+	require.True(t, ok, "%s not found in allocations", implementationAddress)
+	require.NotEmpty(t, account.Code, "%s should have code", implementationAddress)
+	require.True(
+		t,
+		bytes.Contains(account.Code, thing.Bytes()),
+		"%s code should contain %s immutable", implementationAddress, hex.EncodeToString(thing.Bytes()),
+	)
 }
 
 func checkStorageSlot(t *testing.T, allocs types.GenesisAlloc, address common.Address, slot common.Hash, expected common.Hash) {

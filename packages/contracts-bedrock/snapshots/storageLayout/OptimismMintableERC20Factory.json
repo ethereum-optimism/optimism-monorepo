@@ -22,37 +22,23 @@
   },
   {
     "bytes": "20",
-    "label": "messenger",
+    "label": "bridge",
     "offset": 0,
     "slot": "1",
-    "type": "contract ICrossDomainMessenger"
-  },
-  {
-    "bytes": "20",
-    "label": "otherBridge",
-    "offset": 0,
-    "slot": "2",
-    "type": "contract ERC721Bridge"
-  },
-  {
-    "bytes": "1472",
-    "label": "__gap",
-    "offset": 0,
-    "slot": "3",
-    "type": "uint256[46]"
+    "type": "address"
   },
   {
     "bytes": "32",
-    "label": "deposits",
+    "label": "deployments",
     "offset": 0,
-    "slot": "49",
-    "type": "mapping(address => mapping(address => mapping(uint256 => bool)))"
+    "slot": "2",
+    "type": "mapping(address => address)"
   },
   {
-    "bytes": "20",
-    "label": "superchainConfig",
+    "bytes": "1536",
+    "label": "__gap",
     "offset": 0,
-    "slot": "50",
-    "type": "contract ISuperchainConfig"
+    "slot": "3",
+    "type": "uint256[48]"
   }
 ]

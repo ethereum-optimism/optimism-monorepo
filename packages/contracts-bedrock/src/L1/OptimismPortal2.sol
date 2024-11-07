@@ -183,9 +183,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.7
+    /// @custom:semver 3.11.0-beta.6
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.7";
+        return "3.11.0-beta.6";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -605,17 +605,17 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         emit TransactionDeposited(from, _to, DEPOSIT_VERSION, opaqueData);
     }
 
-    /// @notice Sets static configuration options for the L2 system.
-    /// @param _type  Type of configuration to set.
-    /// @param _value Encoded value of the configuration.
-    function setConfig(Types.ConfigType _type, bytes memory _value) external {
+    /// @notice Sets the gas paying token for the L2 system. This token is used as the
+    ///         L2 native asset. Only the SystemConfig contract can call this function.
+    function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external {
         if (msg.sender != address(systemConfig)) revert Unauthorized();
 
         // Set L2 deposit gas as used without paying burning gas. Ensures that deposits cannot use too much L2 gas.
-        // This value must be large enough to cover the cost of calling `L1Block.setConfig`.
+        // This value must be large enough to cover the cost of calling `L1Block.setGasPayingToken`.
         useGas(SYSTEM_DEPOSIT_GAS_LIMIT);
 
-        // Emit the special deposit transaction directly that sets the config in the L1Block predeploy contract.
+        // Emit the special deposit transaction directly that sets the gas paying
+        // token in the L1Block predeploy contract.
         emit TransactionDeposited(
             Constants.DEPOSITOR_ACCOUNT,
             Predeploys.L1_BLOCK_ATTRIBUTES,
@@ -625,30 +625,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
                 uint256(0), // value
                 uint64(SYSTEM_DEPOSIT_GAS_LIMIT), // gasLimit
                 false, // isCreation,
-                abi.encodeCall(IL1Block.setConfig, (_type, _value))
-            )
-        );
-    }
-
-    /// @notice Calls the L2ProxyAdmin as the DEPOSITOR_ACCOUNT. This function can be used
-    ///         to upgrade the predeploys on L2. Only callable by the upgrader role on the
-    ///         SuperchainConfig.
-    function upgrade(uint32 _gasLimit, bytes memory _calldata) external {
-        if (msg.sender != superchainConfig.upgrader()) revert Unauthorized();
-
-        useGas(_gasLimit);
-
-        // Emit the special deposit transaction which calls to the L2 Proxy Admin
-        emit TransactionDeposited(
-            Constants.DEPOSITOR_ACCOUNT,
-            Predeploys.PROXY_ADMIN,
-            DEPOSIT_VERSION,
-            abi.encodePacked(
-                uint256(0), // mint
-                uint256(0), // value
-                uint64(_gasLimit), // gasLimit
-                false, // isCreation,
-                _calldata // data
+                abi.encodeCall(IL1Block.setGasPayingToken, (_token, _decimals, _name, _symbol))
             )
         );
     }

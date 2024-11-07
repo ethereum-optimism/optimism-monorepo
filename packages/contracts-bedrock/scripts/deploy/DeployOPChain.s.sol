@@ -38,7 +38,6 @@ import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimis
 contract DeployOPChainInput is BaseDeployIO {
     address internal _opChainProxyAdminOwner;
     address internal _systemConfigOwner;
-    address internal _systemConfigFeeAdmin;
     address internal _batcher;
     address internal _unsafeBlockSigner;
     address internal _proposer;
@@ -65,7 +64,6 @@ contract DeployOPChainInput is BaseDeployIO {
         require(_addr != address(0), "DeployOPChainInput: cannot set zero address");
         if (_sel == this.opChainProxyAdminOwner.selector) _opChainProxyAdminOwner = _addr;
         else if (_sel == this.systemConfigOwner.selector) _systemConfigOwner = _addr;
-        else if (_sel == this.systemConfigFeeAdmin.selector) _systemConfigFeeAdmin = _addr;
         else if (_sel == this.batcher.selector) _batcher = _addr;
         else if (_sel == this.unsafeBlockSigner.selector) _unsafeBlockSigner = _addr;
         else if (_sel == this.proposer.selector) _proposer = _addr;
@@ -123,11 +121,6 @@ contract DeployOPChainInput is BaseDeployIO {
     function systemConfigOwner() public view returns (address) {
         require(_systemConfigOwner != address(0), "DeployOPChainInput: not set");
         return _systemConfigOwner;
-    }
-
-    function systemConfigFeeAdmin() public view returns (address) {
-        require(_systemConfigFeeAdmin != address(0), "DeployOPChainInput: not set");
-        return _systemConfigFeeAdmin;
     }
 
     function batcher() public view returns (address) {
@@ -362,8 +355,7 @@ contract DeployOPChain is Script {
             batcher: _doi.batcher(),
             unsafeBlockSigner: _doi.unsafeBlockSigner(),
             proposer: _doi.proposer(),
-            challenger: _doi.challenger(),
-            systemConfigFeeAdmin: _doi.systemConfigFeeAdmin()
+            challenger: _doi.challenger()
         });
         OPContractsManager.DeployInput memory deployInput = OPContractsManager.DeployInput({
             roles: roles,
@@ -580,7 +572,7 @@ contract DeployOPChain is Script {
     function assertValidL1CrossDomainMessenger(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IL1CrossDomainMessenger messenger = _doo.l1CrossDomainMessengerProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 250, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
 
         require(address(messenger.OTHER_MESSENGER()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-10");
         require(address(messenger.otherMessenger()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-20");
@@ -589,16 +581,15 @@ contract DeployOPChain is Script {
         require(address(messenger.portal()) == address(_doo.optimismPortalProxy()), "L1xDM-40");
         require(address(messenger.superchainConfig()) == address(_doi.opcmProxy().superchainConfig()), "L1xDM-50");
 
-        // TODO: vm.expectRevert is not supported by op-chain-ops, so we can't check this yet.
-        // vm.expectRevert("CrossDomainMessenger: xDomainMessageSender is not set");
-        // messenger.xDomainMessageSender();
+        bytes32 xdmSenderSlot = vm.load(address(messenger), bytes32(uint256(204)));
+        require(address(uint160(uint256(xdmSenderSlot))) == Constants.DEFAULT_L2_SENDER, "L1xDM-60");
     }
 
     function assertValidL1StandardBridge(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IL1StandardBridge bridge = _doo.l1StandardBridgeProxy();
         IL1CrossDomainMessenger messenger = _doo.l1CrossDomainMessengerProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 49, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
 
         require(address(bridge.MESSENGER()) == address(messenger), "L1SB-10");
         require(address(bridge.messenger()) == address(messenger), "L1SB-20");
@@ -610,7 +601,7 @@ contract DeployOPChain is Script {
     function assertValidOptimismMintableERC20Factory(DeployOPChainInput, DeployOPChainOutput _doo) internal {
         IOptimismMintableERC20Factory factory = _doo.optimismMintableERC20FactoryProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 51, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
 
         require(factory.BRIDGE() == address(_doo.l1StandardBridgeProxy()), "MERC20F-10");
         require(factory.bridge() == address(_doo.l1StandardBridgeProxy()), "MERC20F-20");
@@ -619,7 +610,7 @@ contract DeployOPChain is Script {
     function assertValidL1ERC721Bridge(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IL1ERC721Bridge bridge = _doo.l1ERC721BridgeProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge) });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
 
         require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "L721B-10");
         require(address(bridge.otherBridge()) == Predeploys.L2_ERC721_BRIDGE, "L721B-20");

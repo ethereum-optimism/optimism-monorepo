@@ -155,7 +155,7 @@ contract Deploy is Deployer {
             DelayedWETH: getAddress("DelayedWETHProxy"),
             PermissionedDelayedWETH: getAddress("PermissionedDelayedWETHProxy"),
             AnchorStateRegistry: getAddress("AnchorStateRegistryProxy"),
-            OptimismMintableERC20Factory: getAddress("L1OptimismMintableERC20FactoryProxy"),
+            OptimismMintableERC20Factory: getAddress("OptimismMintableERC20FactoryProxy"),
             OptimismPortal: getAddress("OptimismPortalProxy"),
             OptimismPortal2: getAddress("OptimismPortalProxy"),
             SystemConfig: getAddress("SystemConfigProxy"),
@@ -176,7 +176,7 @@ contract Deploy is Deployer {
             DelayedWETH: getAddress("DelayedWETH"),
             PermissionedDelayedWETH: getAddress("PermissionedDelayedWETH"),
             AnchorStateRegistry: getAddress("AnchorStateRegistry"),
-            OptimismMintableERC20Factory: getAddress("L1OptimismMintableERC20Factory"),
+            OptimismMintableERC20Factory: getAddress("OptimismMintableERC20Factory"),
             OptimismPortal: getAddress("OptimismPortal"),
             OptimismPortal2: getAddress("OptimismPortal2"),
             SystemConfig: getAddress("SystemConfig"),
@@ -398,9 +398,7 @@ contract Deploy is Deployer {
         }
 
         save("L1CrossDomainMessenger", address(dio.l1CrossDomainMessengerImpl()));
-        // Save under both names for backwards compatibility
         save("OptimismMintableERC20Factory", address(dio.optimismMintableERC20FactoryImpl()));
-        save("L1OptimismMintableERC20Factory", address(dio.optimismMintableERC20FactoryImpl()));
         save("SystemConfig", address(dio.systemConfigImpl()));
         save("L1StandardBridge", address(dio.l1StandardBridgeImpl()));
         save("L1ERC721Bridge", address(dio.l1ERC721BridgeImpl()));
@@ -415,7 +413,7 @@ contract Deploy is Deployer {
         save("OPContractsManager", address(dio.opcmImpl()));
 
         Types.ContractSet memory contracts = _impls();
-        ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _isProxy: false });
+        ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
         ChainAssertions.checkL1StandardBridge({ _contracts: contracts, _isProxy: false });
         ChainAssertions.checkL1ERC721Bridge({ _contracts: contracts, _isProxy: false });
         ChainAssertions.checkOptimismPortal2({ _contracts: contracts, _cfg: cfg, _isProxy: false });
@@ -458,9 +456,7 @@ contract Deploy is Deployer {
         save("AddressManager", address(deployOutput.addressManager));
         save("L1ERC721BridgeProxy", address(deployOutput.l1ERC721BridgeProxy));
         save("SystemConfigProxy", address(deployOutput.systemConfigProxy));
-        // Save under both names for backwards compatibility
         save("OptimismMintableERC20FactoryProxy", address(deployOutput.optimismMintableERC20FactoryProxy));
-        save("L1OptimismMintableERC20FactoryProxy", address(deployOutput.optimismMintableERC20FactoryProxy));
         save("L1StandardBridgeProxy", address(deployOutput.l1StandardBridgeProxy));
         save("L1CrossDomainMessengerProxy", address(deployOutput.l1CrossDomainMessengerProxy));
 
@@ -827,15 +823,12 @@ contract Deploy is Deployer {
             _data: abi.encodeCall(
                 ISystemConfig.initialize,
                 (
-                    ISystemConfig.Roles({
-                        owner: cfg.finalSystemOwner(),
-                        feeAdmin: cfg.systemConfigFeeAdmin(),
-                        unsafeBlockSigner: cfg.p2pSequencerAddress(),
-                        batcherHash: batcherHash
-                    }),
+                    cfg.finalSystemOwner(),
                     cfg.basefeeScalar(),
                     cfg.blobbasefeeScalar(),
+                    batcherHash,
                     uint64(cfg.l2GenesisBlockGasLimit()),
+                    cfg.p2pSequencerAddress(),
                     Constants.DEFAULT_RESOURCE_CONFIG(),
                     cfg.batchInboxAddress(),
                     ISystemConfig.Addresses({
@@ -844,7 +837,7 @@ contract Deploy is Deployer {
                         l1StandardBridge: mustGetAddress("L1StandardBridgeProxy"),
                         disputeGameFactory: mustGetAddress("DisputeGameFactoryProxy"),
                         optimismPortal: mustGetAddress("OptimismPortalProxy"),
-                        optimismMintableERC20Factory: mustGetAddress("L1OptimismMintableERC20FactoryProxy"),
+                        optimismMintableERC20Factory: mustGetAddress("OptimismMintableERC20FactoryProxy"),
                         gasPayingToken: customGasTokenAddress
                     })
                 )
@@ -1271,8 +1264,7 @@ contract Deploy is Deployer {
                 batcher: cfg.batchSenderAddress(),
                 unsafeBlockSigner: cfg.p2pSequencerAddress(),
                 proposer: cfg.l2OutputOracleProposer(),
-                challenger: cfg.l2OutputOracleChallenger(),
-                systemConfigFeeAdmin: cfg.systemConfigFeeAdmin()
+                challenger: cfg.l2OutputOracleChallenger()
             }),
             basefeeScalar: cfg.basefeeScalar(),
             blobBasefeeScalar: cfg.blobbasefeeScalar(),
