@@ -25,11 +25,7 @@ clean:
 test:
 	go test -v ./...
 
-visualize:
-	./scripts/visualize.sh
-
 .PHONY: \
 	op-challenger \
 	clean \
-	test \
-	visualize
+	test
