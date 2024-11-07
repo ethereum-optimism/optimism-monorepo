@@ -360,7 +360,7 @@ func sequencerCfg(conductorRPCEndpoint rollupNode.ConductorRPCFunc) *rollupNode.
 		Sync:                        sync.Config{SyncMode: sync.CLSync},
 		ConductorEnabled:            true,
 		ConductorRpc:                conductorRPCEndpoint,
-		ConductorRpcTimeout:         1 * time.Second,
+		ConductorRpcTimeout:         5 * time.Second,
 	}
 }
 
