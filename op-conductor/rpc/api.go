@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-conductor/consensus"
@@ -61,13 +62,19 @@ type API interface {
 	CommitUnsafePayload(ctx context.Context, payload *eth.ExecutionPayloadEnvelope) error
 }
 
-// ExecutionProxyAPI defines the methods proxied to the execution rpc backend
+// ExecutionProxyAPI defines the methods proxied to the execution 'eth_' rpc backend
 // This should include all methods that are called by op-batcher or op-proposer
 type ExecutionProxyAPI interface {
 	GetBlockByNumber(ctx context.Context, number rpc.BlockNumber, fullTx bool) (map[string]interface{}, error)
 }
 
-// NodeProxyAPI defines the methods proxied to the node rpc backend
+// ExecutionMinerProxyAPI defines the methods proxied to the execution 'miner_' rpc backend
+// This should include all methods that are called by op-batcher or op-proposer
+type ExecutionMinerProxyAPI interface {
+	SetMaxDASize(ctx context.Context, maxTxSize hexutil.Big, maxBlockSize hexutil.Big) bool
+}
+
+// NodeProxyAPI defines the methods proxied to the node 'optimism_' rpc backend
 // This should include all methods that are called by op-batcher or op-proposer
 type NodeProxyAPI interface {
 	OutputAtBlock(ctx context.Context, blockNumString string) (*eth.OutputResponse, error)
@@ -75,7 +82,7 @@ type NodeProxyAPI interface {
 	RollupConfig(ctx context.Context) (*rollup.Config, error)
 }
 
-// NodeProxyAPI defines the methods proxied to the node rpc backend
+// NodeAdminProxyAPI defines the methods proxied to the node 'admin_' rpc backend
 // This should include all methods that are called by op-batcher or op-proposer
 type NodeAdminProxyAPI interface {
 	SequencerActive(ctx context.Context) (bool, error)
