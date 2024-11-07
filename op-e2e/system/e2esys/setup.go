@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
@@ -669,6 +671,14 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	err = l1Geth.Node.Start()
 	if err != nil {
 		return nil, err
+	}
+
+	sysLogger := testlog.Logger(t, log.LevelInfo).New("role", "system")
+
+	l1UpCtx, l1UpCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer l1UpCancel()
+	if err := wait.ForNodeUp(l1UpCtx, sys.NodeClient(RoleL1), sysLogger); err != nil {
+		return nil, fmt.Errorf("l1 never came up: %w", err)
 	}
 
 	// Ordered such that the Sequencer is initialized first. Setup this way so that

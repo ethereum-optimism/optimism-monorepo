@@ -9,6 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -161,6 +163,30 @@ func AndGet[T interface{}](ctx context.Context, pollRate time.Duration, get func
 			if predicate(val) {
 				return val, nil
 			}
+		}
+	}
+}
+
+func ForNodeUp(ctx context.Context, client *ethclient.Client, lgr log.Logger) error {
+	for {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+			// Create a new context deliberately. The shorter timeout is used to detect
+			// potential I/O timeouts on the RPC so we can retry.
+			callCtx, cancel := context.WithTimeout(context.Background(), 500*time.Millisecond)
+			_, err := client.BlockNumber(callCtx)
+			cancel()
+			if err == nil {
+				lgr.Info("node is up")
+				return nil
+			}
+			if errors.Is(err, context.DeadlineExceeded) || errors.Is(err, os.ErrDeadlineExceeded) {
+				lgr.Info("timeout waiting for node come up, trying again")
+				continue
+			}
+			return err
 		}
 	}
 }
