@@ -582,6 +582,8 @@ func TestAddDependentLog(t *testing.T) {
 				require.NoError(t, db.lastEntryContext.forceBlock(bl15, 5000))
 				err := db.AddLog(createHash(1), bl15, 0, &execMsg)
 				require.NoError(t, err)
+				bl16 := eth.BlockID{Hash: createHash(16), Number: 16}
+				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5002))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				requireContains(t, db, 16, 0, createHash(1), execMsg)
@@ -602,6 +604,8 @@ func TestAddDependentLog(t *testing.T) {
 				require.Equal(t, m.entryCount, int64(searchCheckpointFrequency+2))
 				err := db.AddLog(createHash(1), bl16, 0, &execMsg)
 				require.NoError(t, err)
+				bl17 := eth.BlockID{Hash: createHash(17), Number: 17}
+				require.NoError(t, db.SealBlock(bl16.Hash, bl17, 5002))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				requireContains(t, db, 16, 0, createHash(9))
@@ -632,6 +636,8 @@ func TestAddDependentLog(t *testing.T) {
 				// 260 = executing message check
 				require.Equal(t, int64(261), m.entryCount)
 				db.debugTip()
+				bl16 := eth.BlockID{Hash: createHash(16), Number: 16}
+				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5001))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				requireContains(t, db, 16, 251, createHash(9))
@@ -661,6 +667,8 @@ func TestAddDependentLog(t *testing.T) {
 				// 260 = executing message check
 				db.debugTip()
 				require.Equal(t, int64(261), m.entryCount)
+				bl16 := eth.BlockID{Hash: createHash(16), Number: 16}
+				require.NoError(t, db.SealBlock(bl15.Hash, bl16, 5001))
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
 				requireContains(t, db, 16, 252, createHash(9))
@@ -689,8 +697,8 @@ func TestContains(t *testing.T) {
 			requireContains(t, db, 51, 0, createHash(1))
 			requireContains(t, db, 51, 1, createHash(3))
 			requireContains(t, db, 51, 2, createHash(2))
-			requireContains(t, db, 53, 0, createHash(1))
-			requireContains(t, db, 53, 1, createHash(3))
+			requireFuture(t, db, 53, 0, createHash(1))
+			requireFuture(t, db, 53, 1, createHash(3))
 
 			// 52 was sealed as empty
 			requireConflicts(t, db, 52, 0, createHash(1))
@@ -1039,7 +1047,7 @@ func TestRewind(t *testing.T) {
 				requireContains(t, db, 51, 1, createHash(2))
 				requireContains(t, db, 52, 0, createHash(3))
 				// Still have the pending log of unsealed block if the rewind to unknown sealed block fails
-				requireContains(t, db, 53, 0, createHash(4))
+				requireFuture(t, db, 53, 0, createHash(4))
 			})
 	})
 
@@ -1055,8 +1063,9 @@ func TestRewind(t *testing.T) {
 				require.ErrorIs(t, db.Rewind(25), types.ErrSkipped)
 			},
 			func(t *testing.T, db *DB, m *stubMetrics) {
-				requireContains(t, db, 51, 0, createHash(1))
-				requireContains(t, db, 51, 0, createHash(1))
+				// block 51 is not sealed yet
+				requireFuture(t, db, 51, 0, createHash(1))
+				requireFuture(t, db, 51, 0, createHash(1))
 			})
 	})
 
@@ -1189,7 +1198,8 @@ func TestRewind(t *testing.T) {
 				// try to add a log to 17, on top of 16
 				err = db.AddLog(createHash(42), bl16, 0, nil)
 				require.NoError(t, err)
-				requireContains(t, db, 17, 0, createHash(42))
+				// not sealed yet
+				requireFuture(t, db, 17, 0, createHash(42))
 			})
 	})
 }

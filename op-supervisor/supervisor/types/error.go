@@ -13,8 +13,6 @@ var (
 	ErrSkipped = errors.New("skipped data")
 	// ErrFuture happens when data is just not yet available
 	ErrFuture = errors.New("future data")
-	// ErrIndexing happens when data is there, but indexed and ready to use yet.
-	ErrIndexing = errors.New("indexing data")
 	// ErrConflict happens when we know for sure that there is different canonical data
 	ErrConflict = errors.New("conflicting data")
 	// ErrStop can be used in iterators to indicate iteration has to stop
