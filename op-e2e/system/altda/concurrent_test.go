@@ -65,7 +65,7 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 		require.NoError(t, err, "Waiting for l1 blocks")
 		// there are possibly other services (proposer/challenger) in the background sending txs
 		// so we only count the batcher txs
-		batcherTxCount, err := transactions.TransactionsBySender(block, cfg.DeployConfig.BatchSenderAddress)
+		batcherTxCount, err := transactions.TransactionsBySenderCount(block, cfg.DeployConfig.BatchSenderAddress)
 		require.NoError(t, err)
 		if batcherTxCount > 1 {
 			return

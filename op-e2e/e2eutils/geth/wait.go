@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/transactions"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum/go-ethereum"
@@ -84,6 +85,31 @@ func WaitForTransaction(hash common.Hash, client *ethclient.Client, timeout time
 		case <-ticker.C:
 		}
 	}
+}
+
+// WaitForBlockWithTxFromSender waits for a block with a transaction from a specific sender address.
+// It starts from the current block and checks the next nBlocks blocks.
+func WaitForBlockWithTxFromSender(sender common.Address, client *ethclient.Client, nBlocks uint64) (*types.Block, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	blockNum, err := client.BlockNumber(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for blockNum := blockNum; blockNum < blockNum+nBlocks; blockNum++ {
+		blockL1, err := WaitForBlock(big.NewInt(0).SetUint64(blockNum), client)
+		if err != nil {
+			return nil, err
+		}
+		batcherTxCount, err := transactions.TransactionsBySenderCount(blockL1, sender)
+		if err != nil {
+			return nil, err
+		}
+		if batcherTxCount > 0 {
+			return blockL1, nil
+		}
+	}
+	return nil, fmt.Errorf("no block with tx from sender %s found in the last %d blocks", sender.Hex(), nBlocks)
 }
 
 type waitForBlockOptions struct {
