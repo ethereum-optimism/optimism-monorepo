@@ -445,6 +445,7 @@ func (n *OpNode) initRPCServer(cfg *Config) error {
 	if err := server.Start(); err != nil {
 		return fmt.Errorf("unable to start RPC server: %w", err)
 	}
+	n.log.Info("Started JSON-RPC server", "addr", server.Addr())
 	n.server = server
 	return nil
 }

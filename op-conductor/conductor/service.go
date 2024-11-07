@@ -616,7 +616,8 @@ func (oc *OpConductor) handleHealthUpdate(hcerr error) {
 		oc.queueAction()
 	}
 
-	if oc.healthy.Swap(healthy) != healthy {
+	if old := oc.healthy.Swap(healthy); old != healthy {
+		oc.log.Info("Health state changed", "old", old, "new", healthy)
 		// queue an action if health status changed.
 		oc.queueAction()
 	}
