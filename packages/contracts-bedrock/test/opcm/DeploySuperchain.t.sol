@@ -24,7 +24,7 @@ contract DeploySuperchainInput_Test is Test {
         dsi = new DeploySuperchainInput();
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeploySuperchainInput: superchainProxyAdminOwner not set");
         dsi.superchainProxyAdminOwner();
 
@@ -83,7 +83,7 @@ contract DeploySuperchainOutput_Test is Test {
         assertEq(address(protocolVersionsProxy), address(dso.protocolVersionsProxy()), "500");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployUtils: zero address");
         dso.superchainConfigImpl();
 
@@ -194,7 +194,7 @@ contract DeploySuperchain_Test is Test {
         dso.checkOutput(dsi);
     }
 
-    function test_run_NullInput_reverts() public {
+    function test_run_nullInput_reverts() public {
         // Set default values for all inputs.
         dsi.set(dsi.superchainProxyAdminOwner.selector, defaultProxyAdminOwner);
         dsi.set(dsi.protocolVersionsOwner.selector, defaultProtocolVersionsOwner);

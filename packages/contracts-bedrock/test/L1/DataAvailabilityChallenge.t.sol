@@ -17,20 +17,20 @@ contract DataAvailabilityChallengeTest is CommonTest {
         super.setUp();
     }
 
-    function testDeposit() public {
+    function test_deposit_succeeds() public {
         assertEq(dataAvailabilityChallenge.balances(address(this)), 0);
         dataAvailabilityChallenge.deposit{ value: 1000 }();
         assertEq(dataAvailabilityChallenge.balances(address(this)), 1000);
     }
 
-    function testReceive() public {
+    function test_receive_succeeds() public {
         assertEq(dataAvailabilityChallenge.balances(address(this)), 0);
         (bool success,) = payable(address(dataAvailabilityChallenge)).call{ value: 1000 }("");
         assertTrue(success);
         assertEq(dataAvailabilityChallenge.balances(address(this)), 1000);
     }
 
-    function testWithdraw(address sender, uint256 amount) public {
+    function test_withdraw_succeeds(address sender, uint256 amount) public {
         assumePayable(sender);
         assumeNotPrecompile(sender);
         // EntryPoint will revert if using amount > type(uint112).max.
@@ -52,7 +52,13 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(sender.balance, amount);
     }
 
-    function testChallengeSuccess(address challenger, uint256 challengedBlockNumber, bytes calldata preImage) public {
+    function test_challenge_succeeds(
+        address challenger,
+        uint256 challengedBlockNumber,
+        bytes calldata preImage
+    )
+        public
+    {
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
 
         // Assume the challenger is not the 0 address
@@ -99,7 +105,13 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(dataAvailabilityChallenge.balances(challenger), 0);
     }
 
-    function testChallengeDeposit(address challenger, uint256 challengedBlockNumber, bytes memory preImage) public {
+    function test_challenge_deposit_succeeds(
+        address challenger,
+        uint256 challengedBlockNumber,
+        bytes memory preImage
+    )
+        public
+    {
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
 
         // Assume the challenger is not the 0 address
@@ -142,7 +154,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(dataAvailabilityChallenge.balances(challenger), 0);
     }
 
-    function testChallengeFailBondTooLow() public {
+    function test_challenge_bondTooLow_reverts() public {
         uint256 requiredBond = dataAvailabilityChallenge.bondSize();
         uint256 actualBond = requiredBond - 1;
         dataAvailabilityChallenge.deposit{ value: actualBond }();
@@ -153,7 +165,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.challenge(0, computeCommitmentKeccak256("some hash"));
     }
 
-    function testChallengeFailChallengeExists() public {
+    function test_challenge_challengeExists_reverts() public {
         // Move to a block after the hash to challenge
         vm.roll(2);
 
@@ -176,7 +188,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.challenge(0, computeCommitmentKeccak256("some other hash"));
     }
 
-    function testChallengeFailBeforeChallengeWindow() public {
+    function test_challenge_beforeChallengeWindow_reverts() public {
         uint256 challengedBlockNumber = 1;
         bytes memory challengedCommitment = computeCommitmentKeccak256("some hash");
 
@@ -189,7 +201,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.challenge(challengedBlockNumber, challengedCommitment);
     }
 
-    function testChallengeFailAfterChallengeWindow() public {
+    function test_challenge_afterChallengeWindow_reverts() public {
         uint256 challengedBlockNumber = 1;
         bytes memory challengedCommitment = computeCommitmentKeccak256("some hash");
 
@@ -202,7 +214,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.challenge(challengedBlockNumber, challengedCommitment);
     }
 
-    function testResolveSuccess(
+    function test_resolve_succeeds(
         address challenger,
         address resolver,
         bytes memory preImage,
@@ -283,7 +295,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(address(0).balance - zeroAddressBalanceBeforeResolve, burned, "burned bond");
     }
 
-    function testResolveFailNonExistentChallenge() public {
+    function test_resolve_nonExistentChallenge_reverts() public {
         bytes memory preImage = "some preimage";
         uint256 challengedBlockNumber = 1;
 
@@ -295,7 +307,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, computeCommitmentKeccak256(preImage), preImage);
     }
 
-    function testResolveFailResolved() public {
+    function test_resolve_resolved_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -315,7 +327,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
 
-    function testResolveFailExpired() public {
+    function test_resolve_expired_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -335,7 +347,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
 
-    function testResolveFailAfterResolveWindow() public {
+    function test_resolve_afterResolveWindow_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -355,7 +367,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
 
-    function testUnlockBondSuccess(bytes memory preImage, uint256 challengedBlockNumber) public {
+    function test_unlockBond_succeeds(bytes memory preImage, uint256 challengedBlockNumber) public {
         // Assume the block number is not close to the max uint256 value
         vm.assume(
             challengedBlockNumber
@@ -400,7 +412,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(dataAvailabilityChallenge.balances(address(this)), balanceAfterUnlock);
     }
 
-    function testUnlockBondFailNonExistentChallenge() public {
+    function test_unlockBond_nonExistentChallenge_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -413,7 +425,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
 
-    function testUnlockBondFailResolvedChallenge() public {
+    function test_unlockBond_resolvedChallenge_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -433,7 +445,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
 
-    function testUnlockBondExpiredChallengeTwice() public {
+    function test_unlockBond_expiredChallengeTwice_fails() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -458,7 +470,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(dataAvailabilityChallenge.balances(address(this)), balanceAfterUnlock);
     }
 
-    function testUnlockFailResolveWindowNotClosed() public {
+    function test_unlockBond_resolveWindowNotClosed_reverts() public {
         bytes memory preImage = "some preimage";
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
         uint256 challengedBlockNumber = 1;
@@ -477,7 +489,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.unlockBond(challengedBlockNumber, challengedCommitment);
     }
 
-    function testSetBondSize() public {
+    function test_setBondSize_succeeds() public {
         uint256 requiredBond = dataAvailabilityChallenge.bondSize();
         uint256 actualBond = requiredBond - 1;
         dataAvailabilityChallenge.deposit{ value: actualBond }();
@@ -497,14 +509,14 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.challenge(0, challengedCommitment);
     }
 
-    function testSetResolverRefundPercentage(uint256 resolverRefundPercentage) public {
+    function test_setResolverRefundPercentage_succeeds(uint256 resolverRefundPercentage) public {
         resolverRefundPercentage = bound(resolverRefundPercentage, 0, 100);
         vm.prank(dataAvailabilityChallenge.owner());
         dataAvailabilityChallenge.setResolverRefundPercentage(resolverRefundPercentage);
         assertEq(dataAvailabilityChallenge.resolverRefundPercentage(), resolverRefundPercentage);
     }
 
-    function testSetResolverRefundPercentageFail() public {
+    function test_setResolverRefundPercentage_invalidResolverRefundPercentage_reverts() public {
         address owner = dataAvailabilityChallenge.owner();
         vm.expectRevert(
             abi.encodeWithSelector(IDataAvailabilityChallenge.InvalidResolverRefundPercentage.selector, 101)
@@ -513,7 +525,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.setResolverRefundPercentage(101);
     }
 
-    function testSetBondSizeFailOnlyOwner(address notOwner, uint256 newBondSize) public {
+    function test_setBondSize_onlyOwner_reverts(address notOwner, uint256 newBondSize) public {
         vm.assume(notOwner != dataAvailabilityChallenge.owner());
 
         // Expect setting the bond size to fail because the sender is not the owner
@@ -522,7 +534,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.setBondSize(newBondSize);
     }
 
-    function testValidateCommitment() public {
+    function test_validateCommitment_succeeds() public {
         // Should not revert given a valid commitment
         bytes memory validCommitment = abi.encodePacked(CommitmentType.Keccak256, keccak256("test"));
         dataAvailabilityChallenge.validateCommitment(validCommitment);

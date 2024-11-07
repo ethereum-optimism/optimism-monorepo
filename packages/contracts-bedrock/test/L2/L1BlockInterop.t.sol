@@ -104,7 +104,7 @@ contract L1BlockInteropTest is CommonTest {
     }
 
     /// @dev Tests that setting the gas paying token config as not the depositor reverts.
-    function testFuzz_setConfig_gasPayingToken_notDepositor_reverts(
+    function testFuzz_setConfig_gasPayingTokenButNotDepositor_reverts(
         address _token,
         uint8 _decimals,
         bytes32 _name,
@@ -132,13 +132,13 @@ contract L1BlockInteropTest is CommonTest {
     }
 
     /// @dev Tests that adding a dependency reverts if it's the chain's chain id
-    function test_setConfig_addDependency_chainChainId_reverts() public prankDepositor {
+    function test_setConfig_addDependencyButChainChainId_reverts() public prankDepositor {
         vm.expectRevert(AlreadyDependency.selector);
         _l1BlockInterop().setConfig(ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(block.chainid));
     }
 
     /// @dev Tests that adding a dependency already in the set reverts
-    function test_setConfig_addDependency_alreadyDependency_reverts(uint256 _chainId) public prankDepositor {
+    function test_setConfig_addDependencyButAlreadyDependency_reverts(uint256 _chainId) public prankDepositor {
         vm.assume(_chainId != block.chainid);
 
         _l1BlockInterop().setConfig(ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId));
@@ -148,13 +148,13 @@ contract L1BlockInteropTest is CommonTest {
     }
 
     /// @dev Tests that setting the add dependency config as not the depositor reverts.
-    function testFuzz_setConfig_addDependency_notDepositor_reverts(uint256 _chainId) public {
+    function testFuzz_setConfig_addDependencyButNotDepositor_reverts(uint256 _chainId) public {
         vm.expectRevert(NotDepositor.selector);
         _l1BlockInterop().setConfig(ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId));
     }
 
     /// @dev Tests that setting the add dependency config when the dependency set size is too large reverts.
-    function test_setConfig_addDependency_dependencySetSizeTooLarge_reverts() public prankDepositor {
+    function test_setConfig_addDependencyButDependencySetSizeTooLarge_reverts() public prankDepositor {
         for (uint256 i = 0; i < type(uint8).max; i++) {
             _l1BlockInterop().setConfig(ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(i));
         }
@@ -179,19 +179,19 @@ contract L1BlockInteropTest is CommonTest {
     }
 
     /// @dev Tests that setting the remove dependency config as not the depositor reverts.
-    function testFuzz_setConfig_removeDependency_notDepositor_reverts(uint256 _chainId) public {
+    function testFuzz_setConfig_removeDependencyButNotDepositor_reverts(uint256 _chainId) public {
         vm.expectRevert(NotDepositor.selector);
         _l1BlockInterop().setConfig(ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(_chainId));
     }
 
     /// @dev Tests that setting the remove dependency config for the chain's chain ID reverts.
-    function test_setConfig_removeDependency_chainChainId_reverts() public prankDepositor {
+    function test_setConfig_removeDependencyButChainChainId_reverts() public prankDepositor {
         vm.expectRevert(CantRemovedDependency.selector);
         _l1BlockInterop().setConfig(ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(block.chainid));
     }
 
     /// @dev Tests that setting the remove dependency config for a chain ID that is not in the dependency set reverts.
-    function testFuzz_setConfig_removeDependency_notDependency_reverts(uint256 _chainId) public prankDepositor {
+    function testFuzz_setConfig_removeDependencyButNotDependency_reverts(uint256 _chainId) public prankDepositor {
         vm.assume(_chainId != block.chainid);
 
         vm.expectRevert(NotDependency.selector);
@@ -284,7 +284,7 @@ contract L1BlockInteropSetL1BlockValuesInterop_Test is L1BlockInteropTest {
 
 contract L1BlockDepositsComplete_Test is L1BlockInteropTest {
     // @dev Tests that `depositsComplete` reverts if the caller is not the depositor.
-    function test_deposits_is_depositor_reverts(address _caller) external {
+    function test_depositsComplete_notDepositor_reverts(address _caller) external {
         vm.assume(_caller != _l1BlockInterop().DEPOSITOR_ACCOUNT());
         vm.expectRevert(NotDepositor.selector);
         _l1BlockInterop().depositsComplete();

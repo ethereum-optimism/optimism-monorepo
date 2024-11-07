@@ -88,7 +88,7 @@ contract TransientContextTest is Test {
     /// @param _slot    Slot to test.
     /// @param _value1  Value to write to slot at call depth 0.
     /// @param _value2  Value to write to slot at call depth 1.
-    function testFuzz_setGet_twice_sameDepth_succeeds(bytes32 _slot, uint256 _value1, uint256 _value2) public {
+    function testFuzz_setGet_twiceSameDepth_succeeds(bytes32 _slot, uint256 _value1, uint256 _value2) public {
         assertEq(TransientContext.callDepth(), 0);
         testFuzz_set_succeeds(_slot, _value1);
         assertEq(TransientContext.get(_slot), _value1);
@@ -102,7 +102,7 @@ contract TransientContextTest is Test {
     /// @param _slot    Slot to test.
     /// @param _value1  Value to write to slot at call depth 0.
     /// @param _value2  Value to write to slot at call depth 1.
-    function testFuzz_setGet_twice_differentDepth_succeeds(bytes32 _slot, uint256 _value1, uint256 _value2) public {
+    function testFuzz_setGet_twiceDifferentDepth_succeeds(bytes32 _slot, uint256 _value1, uint256 _value2) public {
         assertEq(TransientContext.callDepth(), 0);
         testFuzz_set_succeeds(_slot, _value1);
         assertEq(TransientContext.get(_slot), _value1);

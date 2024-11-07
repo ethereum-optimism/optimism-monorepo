@@ -34,7 +34,7 @@ contract PredeploysBaseTest is CommonTest {
             || _addr == Predeploys.GOVERNANCE_TOKEN;
     }
 
-    function test_predeployToCodeNamespace() external pure {
+    function test_predeployToCodeNamespace_works() external pure {
         assertEq(
             address(0xc0D3C0d3C0d3C0D3c0d3C0d3c0D3C0d3c0d30000),
             Predeploys.predeployToCodeNamespace(Predeploys.LEGACY_MESSAGE_PASSER)
