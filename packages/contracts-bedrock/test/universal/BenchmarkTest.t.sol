@@ -5,7 +5,6 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
@@ -110,7 +109,7 @@ contract GasBenchMark_OptimismPortal is CommonTest {
     }
 }
 
-contract GasBenchMark_L1CrossDomainMessenger is Bridge_Initializer {
+contract GasBenchMark_L1CrossDomainMessenger is CommonTest {
     function test_sendMessage_benchmark_0() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal), 1 gwei);
@@ -132,7 +131,7 @@ contract GasBenchMark_L1CrossDomainMessenger is Bridge_Initializer {
     }
 }
 
-contract GasBenchMark_L1StandardBridge_Deposit is Bridge_Initializer {
+contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
     function setUp() public virtual override {
         super.setUp();
         deal(address(L1Token), alice, 100000, true);
@@ -181,7 +180,7 @@ contract GasBenchMark_L1StandardBridge_Deposit is Bridge_Initializer {
     }
 }
 
-contract GasBenchMark_L1StandardBridge_Finalize is Bridge_Initializer {
+contract GasBenchMark_L1StandardBridge_Finalize is CommonTest {
     function setUp() public virtual override {
         super.setUp();
         deal(address(L1Token), address(l1StandardBridge), 100, true);

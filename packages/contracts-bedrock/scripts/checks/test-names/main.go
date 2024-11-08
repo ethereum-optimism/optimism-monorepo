@@ -18,6 +18,8 @@ type CheckInfo struct {
 	error string
 }
 
+var excludes = map[string]bool{}
+
 var checks = []CheckInfo{
 	{
 		error: "test name parts should be in camelCase",
@@ -94,6 +96,10 @@ func main() {
 		}
 
 		if info.IsDir() {
+			return nil
+		}
+
+		if excludes[strings.TrimSuffix(filepath.Base(path), filepath.Ext(path))] {
 			return nil
 		}
 

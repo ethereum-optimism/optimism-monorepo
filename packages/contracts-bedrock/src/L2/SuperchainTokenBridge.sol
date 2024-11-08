@@ -7,6 +7,7 @@ import { ZeroAddress, Unauthorized } from "src/libraries/errors/CommonErrors.sol
 
 // Interfaces
 import { ISuperchainERC20 } from "src/L2/interfaces/ISuperchainERC20.sol";
+import { IERC7802, IERC165 } from "src/L2/interfaces/IERC7802.sol";
 import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
 
 /// @custom:proxied true
@@ -19,6 +20,9 @@ contract SuperchainTokenBridge {
     /// @notice Thrown when attempting to relay a message and the cross domain message sender is not the
     /// SuperchainTokenBridge.
     error InvalidCrossDomainSender();
+
+    /// @notice Thrown when attempting to use a token that does not implement the ERC7802 interface.
+    error InvalidERC7802();
 
     /// @notice Emitted when tokens are sent from one chain to another.
     /// @param token         Address of the token sent.
@@ -42,8 +46,8 @@ contract SuperchainTokenBridge {
     address internal constant MESSENGER = Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.2
-    string public constant version = "1.0.0-beta.2";
+    /// @custom:semver 1.0.0-beta.3
+    string public constant version = "1.0.0-beta.3";
 
     /// @notice Sends tokens to a target address on another chain.
     /// @dev Tokens are burned on the source chain.
@@ -62,6 +66,8 @@ contract SuperchainTokenBridge {
         returns (bytes32 msgHash_)
     {
         if (_to == address(0)) revert ZeroAddress();
+
+        if (!IERC165(_token).supportsInterface(type(IERC7802).interfaceId)) revert InvalidERC7802();
 
         ISuperchainERC20(_token).crosschainBurn(msg.sender, _amount);
 
@@ -82,6 +88,7 @@ contract SuperchainTokenBridge {
 
         (address crossDomainMessageSender, uint256 source) =
             IL2ToL2CrossDomainMessenger(MESSENGER).crossDomainMessageContext();
+
         if (crossDomainMessageSender != address(this)) revert InvalidCrossDomainSender();
 
         ISuperchainERC20(_token).crosschainMint(_to, _amount);

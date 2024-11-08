@@ -61,7 +61,7 @@ contract DelayedVetoable_Init is Test {
 
 contract DelayedVetoable_Getters_Test is DelayedVetoable_Init {
     /// @dev The getters return the expected values when called by the zero address.
-    function test_getters() external {
+    function test_getters_succeeds() external {
         vm.startPrank(address(0));
         assertEq(delayedVetoable.initiator(), initiator);
         assertEq(delayedVetoable.vetoer(), vetoer);

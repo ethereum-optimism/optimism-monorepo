@@ -170,12 +170,13 @@ func TestHoloceneInvalidPayload(gt *testing.T) {
 	require.Len(t, b.Transactions(), 2)
 
 	// buffer into the batcher, invalidating the tx via signature zeroing
-	env.Batcher.ActL2BatchBuffer(t, func(block *types.Block) {
+	env.Batcher.ActL2BatchBuffer(t, func(block *types.Block) *types.Block {
 		// Replace the tx with one that has a bad signature.
 		txs := block.Transactions()
 		newTx, err := txs[1].WithSignature(env.Alice.L2.Signer(), make([]byte, 65))
 		require.NoError(t, err)
 		txs[1] = newTx
+		return block
 	})
 
 	// generate two more empty blocks

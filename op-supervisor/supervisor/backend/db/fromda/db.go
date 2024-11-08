@@ -184,8 +184,14 @@ func (db *DB) PreviousDerivedFrom(derivedFrom eth.BlockID) (prevDerivedFrom type
 	if self.derivedFrom.ID() != derivedFrom {
 		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derivedFrom, derivedFrom, types.ErrConflict)
 	}
-	if selfIndex == 0 { // genesis block has a zeroed block as parent block
-		return types.BlockSeal{}, nil
+	if selfIndex == 0 {
+		// genesis block has a zeroed block as parent block
+		if self.derivedFrom.Number == 0 {
+			return types.BlockSeal{}, nil
+		} else {
+			return types.BlockSeal{},
+				fmt.Errorf("cannot find previous derived before start of database: %s (%w)", derivedFrom, types.ErrPreviousToFirst)
+		}
 	}
 	prev, err := db.readAt(selfIndex - 1)
 	if err != nil {

@@ -124,12 +124,12 @@ contract ScriptExample {
         console.log("contract deployment");
         vm.broadcast(address(uint160(0x123456)));
         FooBar x = new FooBar(1234);
-        require(x.foo() == 1234);
+        require(x.foo() == 1234, "FooBar: foo in create is not 1234");
 
         console.log("create 2");
         vm.broadcast(address(uint160(0xcafe)));
         FooBar y = new FooBar{salt: bytes32(uint256(42))}(1234);
-        require(y.foo() == 1234);
+        require(y.foo() == 1234, "FooBar: foo in create2 is not 1234");
         console.log("done!");
 
         // Deploy a script without a pranked sender and check the nonce.

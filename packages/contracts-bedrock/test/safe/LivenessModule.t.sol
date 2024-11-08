@@ -488,7 +488,7 @@ contract LivenessModule_RemoveOwnersFuzz_Test is LivenessModule_TestInit {
     }
 
     /// @dev Tests if removing owners works correctly for various safe configurations and numbeers of live owners
-    function testFuzz_removeOwners(
+    function testFuzz_removeOwners_works(
         uint256 _numOwners,
         uint256 _minOwners,
         uint256 _numLiveOwners,

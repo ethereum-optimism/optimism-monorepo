@@ -773,7 +773,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_ether_succeeds() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashEther_succeeds() external {
         uint256 bobBalanceBefore = address(bob).balance;
 
         vm.expectEmit(true, true, true, true);
@@ -789,7 +789,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_nonEther_targetToken_reverts() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashNonEtherTargetToken_reverts() external {
         vm.mockCall(
             address(systemConfig),
             abi.encodeCall(systemConfig.gasPayingToken, ()),
@@ -1483,7 +1483,7 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_nonEther_succeeds() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashNonEther_succeeds() external {
         // Mint the token to the contract and approve the token for the portal
         token.mint(address(this), _defaultTx.value);
         token.approve(address(optimismPortal), _defaultTx.value);
@@ -1562,7 +1562,7 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
     /// forge-config: ciheavy.fuzz.runs = 8192
-    function testFuzz_depositTransaction_customGasToken_noValue_senderIsOrigin_succeeds(
+    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
@@ -1586,7 +1586,7 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
     /// forge-config: ciheavy.fuzz.runs = 8192
-    function testFuzz_depositTransaction_customGasToken_noValue_senderNotOrigin_succeeds(
+    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
@@ -1609,7 +1609,7 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `depositTransaction` fails when a custom gas token is used and msg.value is non-zero.
-    function test_depositTransaction_customGasToken_withValue_reverts() external {
+    function test_depositTransaction_customGasTokenWithValue_reverts() external {
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)

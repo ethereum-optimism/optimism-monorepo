@@ -9,11 +9,8 @@ import { Process } from "scripts/libraries/Process.sol";
 contract SemverLock is Script {
     function run() public {
         // First, find all contracts with a Semver inheritance.
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = "grep -rl '@custom:semver' src | jq -Rs 'split(\"\\n\") | map(select(length > 0))'";
-        string memory rawFiles = string(Process.run(commands));
+        string memory rawFiles =
+            Process.bash("grep -rl '@custom:semver' src | jq -Rs 'split(\"\\n\") | map(select(length > 0))'");
 
         string[] memory files = vm.parseJsonStringArray(rawFiles, "");
         writeSemverLock(files);
@@ -30,22 +27,21 @@ contract SemverLock is Script {
             string memory fileContents = string(Process.run(commands));
 
             // Grab the contract name
-            commands = new string[](3);
-            commands[0] = "bash";
-            commands[1] = "-c";
-            commands[2] = string.concat("echo \"", _files[i], "\"| sed -E \'s|src/.*/(.+)\\.sol|\\1|\'");
-            string memory contractName = string(Process.run(commands));
+            string memory contractName =
+                Process.bash(string.concat("echo \"", _files[i], "\"| sed -E 's|src/.*/(.+)\\.sol|\\1|'"));
 
-            commands[2] = "forge config --json | jq -r .out";
-            string memory artifactsDir = string(Process.run(commands));
+            string memory artifactsDir = Process.bash("forge config --json | jq -r .out");
 
             // Handle the case where there are multiple artifacts for a contract. This happens
             // when the same contract is compiled with multiple compiler versions.
             string memory contractArtifactDir = string.concat(artifactsDir, "/", contractName, ".sol");
-            commands[2] = string.concat(
-                "ls -1 --color=never ", contractArtifactDir, " | jq -R -s -c 'split(\"\n\") | map(select(length > 0))'"
+            string memory artifactFiles = Process.bash(
+                string.concat(
+                    "ls -1 --color=never ",
+                    contractArtifactDir,
+                    " | jq -R -s -c 'split(\"\n\") | map(select(length > 0))'"
+                )
             );
-            string memory artifactFiles = string(Process.run(commands));
 
             string[] memory files = stdJson.readStringArray(artifactFiles, "");
             require(files.length > 0, string.concat("SemverLock: no artifacts found for ", contractName));

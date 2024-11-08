@@ -92,7 +92,8 @@ func TestDriver(t *testing.T) {
 			}
 			count += 1
 		})
-		require.ErrorIs(t, ExhaustErr, d.RunComplete())
+		// No further processing to be done so evaluate if the claims output root is correct.
+		require.NoError(t, d.RunComplete())
 	})
 
 	t.Run("queued events", func(t *testing.T) {
@@ -104,7 +105,7 @@ func TestDriver(t *testing.T) {
 			}
 			count += 1
 		})
-		require.ErrorIs(t, ExhaustErr, d.RunComplete())
+		require.NoError(t, d.RunComplete())
 		// add 1 for initial event that RunComplete fires
 		require.Equal(t, 1+3*2, count, "must have queued up 2 events 3 times")
 	})

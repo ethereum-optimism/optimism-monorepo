@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -33,7 +33,7 @@ contract TestMintableERC721 is OptimismMintableERC721 {
     }
 }
 
-contract L2ERC721Bridge_Test is Bridge_Initializer {
+contract L2ERC721Bridge_Test is CommonTest {
     TestMintableERC721 internal localToken;
     TestERC721 internal remoteToken;
     uint256 internal constant tokenId = 1;

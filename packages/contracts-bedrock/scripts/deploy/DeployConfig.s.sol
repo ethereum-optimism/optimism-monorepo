@@ -4,7 +4,6 @@ pragma solidity 0.8.15;
 import { Script } from "forge-std/Script.sol";
 import { console2 as console } from "forge-std/console2.sol";
 import { stdJson } from "forge-std/StdJson.sol";
-import { Executables } from "scripts/libraries/Executables.sol";
 import { Process } from "scripts/libraries/Process.sol";
 import { Config, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 
@@ -211,12 +210,9 @@ contract DeployConfig is Script {
     function l2OutputOracleStartingTimestamp() public returns (uint256) {
         if (_l2OutputOracleStartingTimestamp < 0) {
             bytes32 tag = l1StartingBlockTag();
-            string[] memory cmd = new string[](3);
-            cmd[0] = Executables.bash;
-            cmd[1] = "-c";
-            cmd[2] = string.concat("cast block ", vm.toString(tag), " --json | ", Executables.jq, " .timestamp");
-            bytes memory res = Process.run(cmd);
-            return stdJson.readUint(string(res), "");
+            string memory cmd = string.concat("cast block ", vm.toString(tag), " --json | jq .timestamp");
+            string memory res = Process.bash(cmd);
+            return stdJson.readUint(res, "");
         }
         return uint256(_l2OutputOracleStartingTimestamp);
     }
@@ -263,11 +259,8 @@ contract DeployConfig is Script {
     }
 
     function _getBlockByTag(string memory _tag) internal returns (bytes32) {
-        string[] memory cmd = new string[](3);
-        cmd[0] = Executables.bash;
-        cmd[1] = "-c";
-        cmd[2] = string.concat("cast block ", _tag, " --json | ", Executables.jq, " -r .hash");
-        bytes memory res = Process.run(cmd);
+        string memory cmd = string.concat("cast block ", _tag, " --json | jq -r .hash");
+        bytes memory res = bytes(Process.bash(cmd));
         return abi.decode(res, (bytes32));
     }
 

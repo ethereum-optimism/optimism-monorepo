@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";
@@ -23,7 +23,7 @@ contract XDomainSetter2 is CrossDomainOwnable2 {
     }
 }
 
-contract CrossDomainOwnable2_Test is Bridge_Initializer {
+contract CrossDomainOwnable2_Test is CommonTest {
     XDomainSetter2 setter;
 
     /// @dev Sets up the test suite.

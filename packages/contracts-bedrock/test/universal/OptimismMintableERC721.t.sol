@@ -5,10 +5,10 @@ import { ERC721, IERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol
 import { IERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { OptimismMintableERC721, IOptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
 
-contract OptimismMintableERC721_Test is Bridge_Initializer {
+contract OptimismMintableERC721_Test is CommonTest {
     ERC721 internal L1NFT;
     OptimismMintableERC721 internal L2NFT;
 

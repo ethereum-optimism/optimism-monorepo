@@ -263,7 +263,7 @@ library DeployUtils {
 
     /// @notice Builds an ERC1967 Proxy with a dummy implementation.
     /// @param _proxyImplName Name of the implementation contract.
-    function buildERC1967ProxyWithImpl(string memory _proxyImplName) public returns (IProxy genericProxy_) {
+    function buildERC1967ProxyWithImpl(string memory _proxyImplName) internal returns (IProxy genericProxy_) {
         genericProxy_ = IProxy(
             create1({
                 _name: "Proxy",

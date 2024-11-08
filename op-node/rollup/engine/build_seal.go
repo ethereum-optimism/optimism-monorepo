@@ -2,8 +2,11 @@ package engine
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
+
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -58,7 +61,8 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	sealingStart := time.Now()
 	envelope, err := eq.ec.engine.GetPayload(ctx, ev.Info)
 	if err != nil {
-		if x, ok := err.(eth.InputError); ok && x.Code == eth.UnknownPayload { //nolint:all
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()) == eth.UnknownPayload {
 			eq.log.Warn("Cannot seal block, payload ID is unknown",
 				"payloadID", ev.Info.ID, "payload_time", ev.Info.Timestamp,
 				"started_time", ev.BuildStarted)

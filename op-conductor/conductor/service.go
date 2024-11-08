@@ -247,6 +247,11 @@ func (oc *OpConductor) initRPCServer(ctx context.Context) error {
 			Namespace: conductorrpc.ExecutionRPCNamespace,
 			Service:   executionProxy,
 		})
+		execMinerProxy := conductorrpc.NewExecutionMinerProxyBackend(oc.log, oc, execClient)
+		server.AddAPI(rpc.API{
+			Namespace: conductorrpc.ExecutionMinerRPCNamespace,
+			Service:   execMinerProxy,
+		})
 
 		nodeClient, err := dial.DialRollupClientWithTimeout(ctx, 1*time.Minute, oc.log, oc.cfg.NodeRPC)
 		if err != nil {

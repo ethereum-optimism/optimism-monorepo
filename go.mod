@@ -28,7 +28,7 @@ require (
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/klauspost/compress v1.17.11
-	github.com/kurtosis-tech/kurtosis/api/golang v1.4.0
+	github.com/kurtosis-tech/kurtosis/api/golang v1.4.1
 	github.com/libp2p/go-libp2p v0.36.2
 	github.com/libp2p/go-libp2p-mplex v0.9.0
 	github.com/libp2p/go-libp2p-pubsub v0.12.0
@@ -110,7 +110,7 @@ require (
 	github.com/godbus/dbus/v5 v5.1.0 // indirect
 	github.com/gofrs/flock v0.8.1 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
-	github.com/golang-jwt/jwt/v4 v4.5.0 // indirect
+	github.com/golang-jwt/jwt/v4 v4.5.1 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/pprof v0.0.0-20241009165004-a3522334989c // indirect
@@ -250,7 +250,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum v1.14.11 => github.com/ethereum-optimism/op-geth v1.101411.1-rc.5
+replace github.com/ethereum/go-ethereum v1.14.11 => github.com/ethereum-optimism/op-geth v1.101411.1-rc.6
 
 //replace github.com/ethereum/go-ethereum => ../go-ethereum
 

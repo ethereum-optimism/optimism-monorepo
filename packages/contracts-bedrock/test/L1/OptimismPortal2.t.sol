@@ -583,7 +583,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `proveWithdrawalTransaction` reverts when the withdrawal has already been proven, and the new
     ///      game has the `CHALLENGER_WINS` status.
-    function test_proveWithdrawalTransaction_replayProve_differentGameChallengerWins_reverts() external {
+    function test_proveWithdrawalTransaction_replayProveDifferentGameChallengerWins_reverts() external {
         vm.expectEmit(address(optimismPortal2));
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(address(optimismPortal2));
@@ -632,7 +632,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `proveWithdrawalTransaction` can be re-executed if the dispute game proven against has been
     ///      blacklisted.
-    function test_proveWithdrawalTransaction_replayProveBlacklisted_suceeds() external {
+    function test_proveWithdrawalTransaction_replayProveBlacklisted_succeeds() external {
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(true, true, true, true);
@@ -670,7 +670,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `proveWithdrawalTransaction` can be re-executed if the dispute game proven against has resolved
     ///      against the favor of the root claim.
-    function test_proveWithdrawalTransaction_replayProveBadProposal_suceeds() external {
+    function test_proveWithdrawalTransaction_replayProveBadProposal_succeeds() external {
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(true, true, true, true);
@@ -704,7 +704,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `proveWithdrawalTransaction` can be re-executed if the dispute game proven against is no longer
     ///      of the respected game type.
-    function test_proveWithdrawalTransaction_replayRespectedGameTypeChanged_suceeds() external {
+    function test_proveWithdrawalTransaction_replayRespectedGameTypeChanged_succeeds() external {
         // Prove the withdrawal against a game with the current respected game type.
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash, alice, bob);
@@ -803,7 +803,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_ether_succeeds() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashEther_succeeds() external {
         uint256 bobBalanceBefore = address(bob).balance;
 
         vm.expectEmit(address(optimismPortal2));
@@ -891,7 +891,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_nonEther_targetToken_reverts() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashNonEtherTargetToken_reverts() external {
         vm.mockCall(
             address(systemConfig),
             abi.encodeCall(systemConfig.gasPayingToken, ()),
@@ -1730,7 +1730,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHash_nonEther_succeeds() external {
+    function test_finalizeWithdrawalTransaction_provenWithdrawalHashWithNonEther_succeeds() external {
         // Mint the token to the contract and approve the token for the portal
         token.mint(address(this), _defaultTx.value);
         token.approve(address(optimismPortal2), _defaultTx.value);
@@ -1818,7 +1818,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
     /// forge-config: ciheavy.fuzz.runs = 8192
-    function testFuzz_depositTransaction_customGasToken_noValue_senderIsOrigin_succeeds(
+    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
@@ -1842,7 +1842,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
     /// forge-config: ciheavy.fuzz.runs = 8192
-    function testFuzz_depositTransaction_customGasToken_noValue_senderNotOrigin_succeeds(
+    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
@@ -1865,7 +1865,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `depositTransaction` fails when a custom gas token is used and msg.value is non-zero.
-    function test_depositTransaction_customGasToken_withValue_reverts() external {
+    function test_depositTransaction_customGasTokenWithValue_reverts() external {
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)

@@ -401,6 +401,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		// Only promote if not already stale.
 		// Resets/overwrites happen through engine-resets, not through promotion.
 		if x.Ref.Number > d.ec.PendingSafeL2Head().Number {
+			d.log.Debug("Updating pending safe", "pending_safe", x.Ref, "local_safe", d.ec.LocalSafeL2Head(), "unsafe", d.ec.UnsafeL2Head(), "concluding", x.Concluding)
 			d.ec.SetPendingSafeL2Head(x.Ref)
 			d.emitter.Emit(PendingSafeUpdateEvent{
 				PendingSafe: d.ec.PendingSafeL2Head(),
@@ -419,6 +420,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			DerivedFrom: x.DerivedFrom,
 		})
 	case PromoteLocalSafeEvent:
+		d.log.Debug("Updating local safe", "local_safe", x.Ref, "safe", d.ec.SafeL2Head(), "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetLocalSafeHead(x.Ref)
 		d.emitter.Emit(LocalSafeUpdateEvent(x))
 	case LocalSafeUpdateEvent:
@@ -427,6 +429,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			d.emitter.Emit(PromoteSafeEvent(x))
 		}
 	case PromoteSafeEvent:
+		d.log.Debug("Updating safe", "safe", x.Ref, "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetSafeHead(x.Ref)
 		// Finalizer can pick up this safe cross-block now
 		d.emitter.Emit(SafeDerivedEvent{Safe: x.Ref, DerivedFrom: x.DerivedFrom})

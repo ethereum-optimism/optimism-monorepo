@@ -66,6 +66,17 @@ rules:
       include:
         - packages/contracts-bedrock/src
 
+  - id: sol-safety-no-public-in-libraries
+    languages: [generic]
+    severity: ERROR
+    message: Public functions in libraries are not allowed
+    patterns:
+      - pattern-inside: |
+          library $LIBRARY {
+              ...
+          }
+      - pattern-regex: function\s+\w+\s*\([^)]*\)\s+(?:.*\s+)?(public|external)\s+.*\{
+
   - id: sol-style-input-arg-fmt
     languages: [solidity]
     severity: ERROR
@@ -164,6 +175,17 @@ rules:
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
         - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
         - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol
+
+  - id: sol-style-enforce-require-msg
+    languages: [solidity]
+    severity: ERROR
+    message: Require statement must have an error message
+    patterns:
+      - pattern: require($ERR);
+      - pattern-not: require($ERR, $MSG);
+    paths:
+      exclude:
+        - packages/contracts-bedrock/
 
   - id: sol-style-no-bare-imports
     languages: [solidity]

@@ -706,6 +706,8 @@ jobs:
           command: size-check
       - run-contracts-check:
           command: unused-imports-check-no-build
+      - run-contracts-check:
+          command: lint-forge-tests-check-no-build
 
   contracts-bedrock-validate-spacers:
     docker:
@@ -897,6 +899,10 @@ jobs:
         description: Machine resource class
         type: string
         default: ethereum-optimism/latitude-1
+      skip_slow_tests:
+        description: Indicates that slow tests should be skipped
+        type: boolean
+        default: false
     machine: true
     resource_class: <<parameters.resource_class>>
     steps:
@@ -925,6 +931,7 @@ jobs:
             # need to explicitly set it here to prevent Cannon from running when we don't
             # want it to.
             export OP_E2E_CANNON_ENABLED="false"
+            export OP_E2E_SKIP_SLOW_TEST=<<parameters.skip_slow_tests>>
             # Note: We don't use circle CI test splits because we need to split by test name, not by package. There is an additional
             # constraint that gotestsum does not currently (nor likely will) accept files from different packages when building.
             JUNIT_FILE=../tmp/test-results/<<parameters.module>>_<<parameters.target>>.xml JSON_LOG_FILE=../tmp/testlogs/test.log make <<parameters.target>>
@@ -1252,7 +1259,7 @@ jobs:
           command: |
             mkdir -p /tmp/goreleaser
             cd /tmp/goreleaser
-            curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.3.2-pro/goreleaser-pro_Linux_x86_64.tar.gz
+            curl -L -o goreleaser.tgz https://github.com/goreleaser/goreleaser-pro/releases/download/v2.4.3-pro/goreleaser-pro_Linux_x86_64.tar.gz
             tar -xzvf goreleaser.tgz
             mv goreleaser /usr/local/bin/goreleaser
       - run:
@@ -1309,10 +1316,10 @@ workflows:
             - contracts-bedrock-build
       - semgrep-scan:
           name: semgrep-scan-local
-          scan_command: semgrep scan --timeout=100 --config=./semgrep --error .
+          scan_command: semgrep scan --timeout=100 --config .semgrep/rules/ --error .
       - semgrep-scan:
           name: semgrep-test
-          scan_command: semgrep scan --test semgrep/
+          scan_command: semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
       - go-lint
       - fuzz-golang:
           name: fuzz-golang-<<matrix.package_name>>
@@ -1362,6 +1369,7 @@ workflows:
           name: op-e2e-fault-proof-tests
           module: op-e2e
           target: test-fault-proofs
+          skip_slow_tests: true
           requires:
             - contracts-bedrock-build
             - cannon-prestate
@@ -1587,6 +1595,7 @@ workflows:
           target: test-cannon
           notify: true
           mentions: "@proofs-team"
+          resource_class: ethereum-optimism/latitude-fps-1
           requires:
             - contracts-bedrock-build
             - cannon-prestate

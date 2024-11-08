@@ -328,7 +328,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function reverts when called with an identifier with a timestamp earlier
     /// than INTEROP_START timestamp
-    function testFuzz_executeMessage_invalidTimestamp_interopStart_reverts(
+    function testFuzz_executeMessage_invalidTimestampInteropStart_reverts(
         Identifier memory _id,
         address _target,
         bytes calldata _message,
@@ -513,7 +513,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp earlier
     /// than INTEROP_START timestamp
-    function testFuzz_validateMessage_invalidTimestamp_interopStart_reverts(
+    function testFuzz_validateMessage_invalidTimestampInteropStart_reverts(
         Identifier memory _id,
         bytes32 _messageHash
     )

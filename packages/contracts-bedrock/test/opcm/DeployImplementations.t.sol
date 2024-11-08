@@ -44,7 +44,7 @@ contract DeployImplementationsInput_Test is Test {
         dii = new DeployImplementationsInput();
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.withdrawalDelaySeconds();
 
@@ -157,7 +157,7 @@ contract DeployImplementationsOutput_Test is Test {
         assertEq(address(disputeGameFactoryImpl), address(dio.disputeGameFactoryImpl()), "950");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         bytes memory expectedErr = "DeployUtils: zero address";
 
         vm.expectRevert(expectedErr);
@@ -335,7 +335,7 @@ contract DeployImplementations_Test is Test {
         assertEq(srDisputeGameFactoryImpl, address(dio.disputeGameFactoryImpl()));
     }
 
-    function test_deployAtNonExistentRelease_reverts() public {
+    function test_deploy_atNonExistentRelease_reverts() public {
         string memory unknownRelease = "op-contracts/v0.0.0";
         dii.set(dii.release.selector, unknownRelease);
 
@@ -390,7 +390,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.deployDisputeGameFactoryImpl(dii, dio);
     }
 
-    function test_noContractExistsAtRelease_reverts() public {
+    function test_deploy_noContractExistsAtRelease_reverts() public {
         string memory unknownRelease = "op-contracts/v1.3.0";
         dii.set(dii.release.selector, unknownRelease);
         bytes memory expectedErr =

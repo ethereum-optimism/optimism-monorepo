@@ -1022,7 +1022,6 @@ func addRequiredCannonArgs(args map[string]string) {
 	args["--cannon-bin"] = cannonBin
 	args["--cannon-server"] = cannonServer
 	args["--cannon-prestate"] = cannonPreState
-	args["--l2-eth-rpc"] = l2EthRpc
 }
 
 func addRequiredAsteriscArgs(args map[string]string) {
@@ -1030,7 +1029,6 @@ func addRequiredAsteriscArgs(args map[string]string) {
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-server"] = asteriscServer
 	args["--asterisc-prestate"] = asteriscPreState
-	args["--l2-eth-rpc"] = l2EthRpc
 }
 
 func addRequiredAsteriscKonaArgs(args map[string]string) {
@@ -1038,7 +1036,6 @@ func addRequiredAsteriscKonaArgs(args map[string]string) {
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-kona-server"] = asteriscServer
 	args["--asterisc-kona-prestate"] = asteriscPreState
-	args["--l2-eth-rpc"] = l2EthRpc
 }
 
 func toArgList(req map[string]string) []string {

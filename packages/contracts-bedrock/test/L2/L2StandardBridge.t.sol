@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 // Testing
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -21,7 +21,7 @@ import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
 import { IL2ToL1MessagePasser } from "src/L2/interfaces/IL2ToL1MessagePasser.sol";
 import { IL2StandardBridge } from "src/L2/interfaces/IL2StandardBridge.sol";
 
-contract L2StandardBridge_Test is Bridge_Initializer {
+contract L2StandardBridge_Test is CommonTest {
     using stdStorage for StdStorage;
 
     /// @dev Test that the bridge's constructor sets the correct values.
@@ -275,7 +275,7 @@ contract L2StandardBridge_Test is Bridge_Initializer {
     }
 }
 
-contract PreBridgeERC20 is Bridge_Initializer {
+contract PreBridgeERC20 is CommonTest {
     /// @dev Sets up expected calls and emits for a successful ERC20 withdrawal.
     function _preBridgeERC20(bool _isLegacy, address _l2Token) internal {
         // Alice has 100 L2Token
@@ -401,7 +401,7 @@ contract L2StandardBridge_BridgeERC20_Test is PreBridgeERC20 {
     }
 }
 
-contract PreBridgeERC20To is Bridge_Initializer {
+contract PreBridgeERC20To is CommonTest {
     // withdrawTo and BridgeERC20To should behave the same when transferring ERC20 tokens
     // so they should share the same setup and expectEmit calls
     function _preBridgeERC20To(bool _isLegacy, address _l2Token) internal {
@@ -501,7 +501,7 @@ contract L2StandardBridge_BridgeERC20To_Test is PreBridgeERC20To {
     }
 }
 
-contract L2StandardBridge_Bridge_Test is Bridge_Initializer {
+contract L2StandardBridge_Bridge_Test is CommonTest {
     /// @dev Tests that `finalizeBridgeETH` reverts if the recipient is the other bridge.
     function test_finalizeBridgeETH_sendToSelf_reverts() external {
         vm.mockCall(
@@ -622,7 +622,7 @@ contract L2StandardBridge_Bridge_Test is Bridge_Initializer {
     }
 }
 
-contract L2StandardBridge_FinalizeBridgeETH_Test is Bridge_Initializer {
+contract L2StandardBridge_FinalizeBridgeETH_Test is CommonTest {
     /// @dev Tests that `finalizeBridgeETH` succeeds.
     function test_finalizeBridgeETH_succeeds() external {
         address messenger = address(l2StandardBridge.messenger());

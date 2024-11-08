@@ -642,11 +642,7 @@ contract L2Genesis is Deployer {
 
     /// @notice Sorts the allocs by address
     function sortJsonByKeys(string memory _path) internal {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path);
-        Process.run(commands);
+        Process.bash(string.concat("cat <<< $(jq -S '.' ", _path, ") > ", _path));
     }
 
     /// @notice Funds the default dev accounts with ether

@@ -224,6 +224,23 @@ func (m *InstrumentedState) handleSyscall() error {
 }
 
 func (m *InstrumentedState) mipsStep() error {
+	err := m.doMipsStep()
+	if err != nil {
+		return err
+	}
+
+	m.assertPostStateChecks()
+	return err
+}
+
+func (m *InstrumentedState) assertPostStateChecks() {
+	activeStack := m.state.getActiveThreadStack()
+	if len(activeStack) == 0 {
+		panic("post-state active thread stack is empty")
+	}
+}
+
+func (m *InstrumentedState) doMipsStep() error {
 	if m.state.Exited {
 		return nil
 	}
@@ -316,19 +333,19 @@ func (m *InstrumentedState) mipsStep() error {
 	}
 
 	// Exec the rest of the step logic
-	memUpdated, memAddr, err := exec.ExecMipsCoreStepLogic(m.state.getCpuRef(), m.state.GetRegistersRef(), m.state.Memory, insn, opcode, fun, m.memoryTracker, m.stackTracker)
+	memUpdated, effMemAddr, err := exec.ExecMipsCoreStepLogic(m.state.getCpuRef(), m.state.GetRegistersRef(), m.state.Memory, insn, opcode, fun, m.memoryTracker, m.stackTracker)
 	if err != nil {
 		return err
 	}
 	if memUpdated {
-		m.handleMemoryUpdate(memAddr)
+		m.handleMemoryUpdate(effMemAddr)
 	}
 
 	return nil
 }
 
-func (m *InstrumentedState) handleMemoryUpdate(memAddr Word) {
-	if memAddr == (arch.AddressMask & m.state.LLAddress) {
+func (m *InstrumentedState) handleMemoryUpdate(effMemAddr Word) {
+	if effMemAddr == (arch.AddressMask & m.state.LLAddress) {
 		// Reserved address was modified, clear the reservation
 		m.clearLLMemoryReservation()
 	}

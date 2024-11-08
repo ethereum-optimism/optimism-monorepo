@@ -9,6 +9,7 @@ interface ISuperchainTokenBridge is ISemver {
     error ZeroAddress();
     error Unauthorized();
     error InvalidCrossDomainSender();
+    error InvalidERC7802();
 
     event SendERC20(
         address indexed token, address indexed from, address indexed to, uint256 amount, uint256 destination

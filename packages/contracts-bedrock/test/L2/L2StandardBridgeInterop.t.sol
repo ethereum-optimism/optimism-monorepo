@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Interfaces
 import { IMintableAndBurnableERC20 } from "src/L2/interfaces/IMintableAndBurnableERC20.sol";
@@ -13,7 +13,7 @@ import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintab
 import { ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 import { IOptimismERC20Factory } from "src/L2/interfaces/IOptimismERC20Factory.sol";
 
-contract L2StandardBridgeInterop_Test is Bridge_Initializer {
+contract L2StandardBridgeInterop_Test is CommonTest {
     /// @notice Emitted when a conversion is made.
     event Converted(address indexed from, address indexed to, address indexed caller, uint256 amount);
 

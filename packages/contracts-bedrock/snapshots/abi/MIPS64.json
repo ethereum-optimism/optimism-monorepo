@@ -45,7 +45,7 @@
     "outputs": [
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "postState_",
         "type": "bytes32"
       }
     ],

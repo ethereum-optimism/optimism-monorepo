@@ -177,6 +177,128 @@ contract SemgrepTest__sol_safety_natspec_semver_match {
     }
 }
 
+library SemgrepTest__sol_safety_no_public_in_libraries {
+    // ok: sol-safety-no-public-in-libraries
+    function test() internal {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() private {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test(uint256 _value, address _addr) internal {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test(uint256 _value, address _addr) private {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() internal pure returns (uint256) {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() private pure returns (uint256) {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() internal view returns (uint256, address) {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() private view returns (uint256, address) {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() internal returns (uint256 amount_, bool success_) {
+        // ...
+    }
+
+    // ok: sol-safety-no-public-in-libraries
+    function test() private returns (uint256 amount_, bool success_) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public pure {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external pure {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public view {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external view {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test(uint256 _value, address _addr) public {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test(uint256 _value, address _addr) external {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public pure returns (uint256) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external pure returns (uint256) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public view returns (uint256, address) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external view returns (uint256, address) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() public returns (uint256 amount_, bool success_) {
+        // ...
+    }
+
+    // ruleid: sol-safety-no-public-in-libraries
+    function test() external returns (uint256 amount_, bool success_) {
+        // ...
+    }
+}
+
 contract SemgrepTest__sol_style_input_arg_fmt {
     // ok: sol-style-input-arg-fmt
     event Test(address indexed src, address indexed guy, uint256 wad);
@@ -385,9 +507,6 @@ contract SemgrepTest__sol_style_malformed_require {
         require(cond, "CHECK-L2OO-140");
 
         // ok: sol-style-malformed-require
-        require(cond);
-
-        // ok: sol-style-malformed-require
         require(bytes(env_).length > 0, "Config: must set DEPLOY_CONFIG_PATH to filesystem path of deploy config");
 
         // ok: sol-style-malformed-require
@@ -450,5 +569,15 @@ contract SemgrepTest__sol_style_malformed_revert {
 
         // ruleid: sol-style-malformed-revert
         revert("test");
+    }
+}
+
+contract SemgrepTest__sol_style_enforce_require_msg {
+    function test() {
+        // ok: sol-style-enforce-require-msg
+        require(cond, "MyContract: test message good");
+
+        // ruleid: sol-style-enforce-require-msg
+        require(cond);
     }
 }

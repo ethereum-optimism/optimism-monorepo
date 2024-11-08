@@ -618,8 +618,8 @@ func TestBackupUnsafeReorgForkChoiceNotInputError(gt *testing.T) {
 	// check pendingSafe is reset
 	require.Equal(t, sequencer.L2PendingSafe().Number, uint64(0))
 	// check backupUnsafe is applied
-	require.Equal(t, sequencer.L2Unsafe().Hash, targetUnsafeHeadHash)
-	require.Equal(t, sequencer.L2Unsafe().Number, uint64(5))
+	require.Equal(t, uint64(5), sequencer.L2Unsafe().Number)
+	require.Equal(t, targetUnsafeHeadHash, sequencer.L2Unsafe().Hash)
 	// safe head cannot be advanced because batch contained invalid blocks
 	require.Equal(t, sequencer.L2Safe().Number, uint64(0))
 }

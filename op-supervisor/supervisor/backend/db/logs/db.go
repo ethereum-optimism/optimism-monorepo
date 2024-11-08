@@ -280,6 +280,11 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 	defer db.rwLock.RUnlock()
 	db.log.Trace("Checking for log", "blockNum", blockNum, "logIdx", logIdx, "hash", logHash)
 
+	// Hot-path: check if we have the block
+	if db.lastEntryContext.hasCompleteBlock() && db.lastEntryContext.blockNum < blockNum {
+		return types.BlockSeal{}, types.ErrFuture
+	}
+
 	evtHash, iter, err := db.findLogInfo(blockNum, logIdx)
 	if err != nil {
 		return types.BlockSeal{}, err // may be ErrConflict if the block does not have as many logs
@@ -305,10 +310,6 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 	})
 	if err == nil {
 		panic("expected iterator to stop with error")
-	}
-	if errors.Is(err, types.ErrFuture) {
-		// Log is known, but as part of an unsealed block.
-		return types.BlockSeal{}, nil
 	}
 	if errors.Is(err, types.ErrStop) {
 		h, n, _ := iter.SealedBlock()

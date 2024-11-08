@@ -107,7 +107,7 @@ func TestLogProcessor(t *testing.T) {
 				},
 			},
 		}
-		execMsg := types.ExecutingMessage{
+		execMsg := &types.ExecutingMessage{
 			Chain:     4, // TODO(#11105): translate chain ID to chain index
 			BlockNum:  6,
 			LogIdx:    8,
@@ -116,10 +116,10 @@ func TestLogProcessor(t *testing.T) {
 		}
 		store := &stubLogStorage{}
 		processor := NewLogProcessor(types.ChainID{4}, store).(*logProcessor)
-		processor.eventDecoder = EventDecoderFn(func(l *ethTypes.Log) (types.ExecutingMessage, error) {
+		processor.eventDecoder = func(l *ethTypes.Log) (*types.ExecutingMessage, error) {
 			require.Equal(t, rcpts[0].Logs[0], l)
 			return execMsg, nil
-		})
+		}
 
 		err := processor.ProcessLogs(ctx, block1, rcpts)
 		require.NoError(t, err)
@@ -128,7 +128,7 @@ func TestLogProcessor(t *testing.T) {
 				parent:  block1.ParentID(),
 				logIdx:  0,
 				logHash: logToLogHash(rcpts[0].Logs[0]),
-				execMsg: &execMsg,
+				execMsg: execMsg,
 			},
 		}
 		require.Equal(t, expected, store.logs)
@@ -241,10 +241,4 @@ type storedLog struct {
 	logIdx  uint32
 	logHash common.Hash
 	execMsg *types.ExecutingMessage
-}
-
-type EventDecoderFn func(*ethTypes.Log) (types.ExecutingMessage, error)
-
-func (f EventDecoderFn) DecodeExecutingMessageLog(log *ethTypes.Log) (types.ExecutingMessage, error) {
-	return f(log)
 }

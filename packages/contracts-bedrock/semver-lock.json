@@ -108,8 +108,8 @@
     "sourceCodeHash": "0xa76133db7f449ae742f9ba988ad86ccb5672475f61298b9fefe411b63b63e9f6"
   },
   "src/L2/OptimismSuperchainERC20.sol": {
-    "initCodeHash": "0x24d85d246858d1aff78ae86c614dd0dc0f63b3326b2b662e3462c3a6f9b7965e",
-    "sourceCodeHash": "0xcb705d26e63e733051c8bd442ea69ce637a00c16d646ccc37b687b20941366fe"
+    "initCodeHash": "0x5bc5824030ecdb531e1f615d207cb73cdaa702e198769445d0ddbe717271eba9",
+    "sourceCodeHash": "0x0819c9411a155dca592d19b60c4176954202e4fe5d632a4ffbf88d465461252c"
   },
   "src/L2/OptimismSuperchainERC20Beacon.sol": {
     "initCodeHash": "0x23dba3ceb9e58646695c306996c9e15251ac79acc6339c1a93d10a4c79da6dab",
@@ -125,15 +125,15 @@
   },
   "src/L2/SuperchainERC20.sol": {
     "initCodeHash": "0xc5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470",
-    "sourceCodeHash": "0xba47f404e66e010ce417410476f26c704f2be4ce584cb79210bc5536a82ddb1f"
+    "sourceCodeHash": "0xcf39c16893cace1e7d61350bfff05a27f3ce8da8eb0ac02cb5ac7bf603f163fa"
   },
   "src/L2/SuperchainTokenBridge.sol": {
-    "initCodeHash": "0xef7590c30630a75f105384e339e52758569c25a5aa0a5934c521e004b8f86220",
-    "sourceCodeHash": "0x4f539e9d9096d31e861982b8f751fa2d7de0849590523375cf92e175294d1036"
+    "initCodeHash": "0x1cd2afdae6dd1b6ebc17f1d529e7d74c9b8b21b02db8589b8e389e2d5523d775",
+    "sourceCodeHash": "0x617aa994f659c5d8ebd54128d994f86f5b175ceca095b024b8524a7898e8ae62"
   },
   "src/L2/SuperchainWETH.sol": {
-    "initCodeHash": "0xc72cb486b815a65daa8bd5d0af8c965b6708cf8caf03de0a18023a63a6e6c604",
-    "sourceCodeHash": "0x39fff1d4702a2fec3dcba29c7f9604eabf20d32e9c5bf4377edeb620624aa467"
+    "initCodeHash": "0x5aef986a7c9c102b1e9b3068e2a2b66adce0a71dd5f39e03694622bf494f8d97",
+    "sourceCodeHash": "0xa62101a23b860e97f393027c898082a1c73d50679eceb6c6793844af29702359"
   },
   "src/L2/WETH.sol": {
     "initCodeHash": "0x17ea1b1c5d5a622d51c2961fde886a5498de63584e654ed1d69ee80dddbe0b17",
@@ -148,8 +148,8 @@
     "sourceCodeHash": "0x9fa2d1297ad1e93b4d3c5c0fed08bedcd8f746807589f0fd3369e79347c6a027"
   },
   "src/cannon/MIPS64.sol": {
-    "initCodeHash": "0x5094e3f488de838cba1422b508a899444ee27905abc9c0b97961d4b8b7392289",
-    "sourceCodeHash": "0xdc2393d2073348218a9c6e169c2e7f687590e237773b8fde53fae9cf84395978"
+    "initCodeHash": "0x93aa8d7f9fd3c22276c0d303a3fefdf8f73cc55807b35e483bba64c92d02aaef",
+    "sourceCodeHash": "0x171d66c651fdad2ac9c287da92689815a5b09589945ada092179508ad2326306"
   },
   "src/cannon/PreimageOracle.sol": {
     "initCodeHash": "0x5d7e8ae64f802bd9d760e3d52c0a620bd02405dc2c8795818db9183792ffe81c",
