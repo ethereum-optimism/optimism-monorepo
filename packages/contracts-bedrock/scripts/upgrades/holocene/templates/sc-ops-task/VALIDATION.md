@@ -27,5 +27,5 @@ For each contract listed in the state diff, please verify that no contracts or s
 
 - **Key**: `0x4d5a9bd2e41301728d41c8e705190becb4e74abe869f75bdb405b63716a35f9e` <br/>
   **Before**: `$OLD_PDG` <br/>
-  **After**: `$FDG_IMPL` <br/>
+  **After**: `$PDG_IMPL` <br/>
   **Meaning**: Updates the PERMISSIONED_CANNON game type implementation. Verify that the new implementation is set using `cast call $DISPUTE_GAME_FACTORY_PROXY_ADDR "gameImpls(uint32)(address)" 1`. Where `1` is the [`PERMISSIONED_CANNON` game type](https://github.com/ethereum-optimism/optimism/blob/op-contracts/v1.4.0/packages/contracts-bedrock/src/dispute/lib/Types.sol#L31).
