@@ -87,7 +87,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @notice The maximum gas limit that can be set for L2 blocks. This limit is used to enforce that the blocks
     ///         on L2 are not too large to process and prove. Over time, this value can be increased as various
     ///         optimizations and improvements are made to the system at large.
-    uint64 internal constant MAX_GAS_LIMIT = 200_000_000;
+    uint64 internal constant MAX_GAS_LIMIT = 400_000_000;
 
     /// @notice Fixed L2 gas overhead. Used as part of the L2 fee calculation.
     uint256 public overhead;
@@ -115,8 +115,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.0
-    string public constant version = "2.2.0";
+    /// @custom:semver 2.2.0+max-gas-limit-400M
+    string public constant version = "2.2.0+max-gas-limit-400M";
 
     /// @notice Constructs the SystemConfig contract. Cannot set
     ///         the owner to `address(0)` due to the Ownable contract's
