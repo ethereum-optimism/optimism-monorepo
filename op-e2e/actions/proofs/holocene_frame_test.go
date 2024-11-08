@@ -13,14 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-type logExcpectations struct {
+type logExpectations struct {
 	role   string
 	filter string
 	num    int
 }
 type expectations struct {
 	safeHead uint64
-	logs     []logExcpectations
+	logs     []logExpectations
 }
 type holoceneExpectations struct {
 	preHolocene, holocene expectations

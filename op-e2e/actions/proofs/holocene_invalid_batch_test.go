@@ -53,6 +53,14 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 		twoThousandBlocks[i] = uint(i) + 1
 	}
 
+	futureLl1OriginLog := logExpectations{filter: "block timestamp is less than L1 origin timestamp", role: "sequencer", num: 1}
+	futureLl1OriginLog2 := logExpectations{filter: "batch timestamp is less than L1 origin timestamp", role: "sequencer", num: 1}
+	driftLog := logExpectations{
+		filter: "batch exceeded sequencer time drift without adopting next origin, and next L1 origin would have been valid",
+		role:   "sequencer",
+		num:    1,
+	}
+
 	// Depending on the blocks list, whether the channel is built as
 	// as span batch channel, and whether the blocks are modified / invalidated
 	// we expect a different progression of the safe head under Holocene
@@ -96,21 +104,9 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			breachMaxSequencerDrift: true,
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 0, // Entire span batch invalidated.
-					logs: []logExcpectations{
-						{
-							filter: "batch exceeded sequencer time drift without adopting next origin, and next L1 origin would have been valid",
-							role:   "sequencer",
-							num:    1,
-						},
-					}},
+					logs: []logExpectations{driftLog}},
 				holocene: expectations{safeHead: 1800, // We expect partial validity until we hit sequencer drift.
-					logs: []logExcpectations{
-						{
-							filter: "batch exceeded sequencer time drift without adopting next origin, and next L1 origin would have been valid",
-							role:   "sequencer",
-							num:    1,
-						},
-					},
+					logs: []logExpectations{driftLog},
 				},
 			},
 		},
@@ -120,8 +116,12 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			useSpanBatch:        true,
 			overAdvanceL1Origin: 3, // this will over-advance the L1 origin of block 3
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 0}, // Entire span batch invalidated.
-				holocene:    expectations{safeHead: 2}, // We expect partial validity, safe head should move to block 2, dropping invalid block 3 and remaining channel.
+				preHolocene: expectations{safeHead: 0, // Entire span batch invalidated.
+					logs: []logExpectations{futureLl1OriginLog},
+				},
+				holocene: expectations{safeHead: 2, // We expect partial validity, safe head should move to block 2, dropping invalid block 3 and remaining channel.
+					logs: []logExpectations{futureLl1OriginLog2},
+				},
 			},
 		},
 	}
