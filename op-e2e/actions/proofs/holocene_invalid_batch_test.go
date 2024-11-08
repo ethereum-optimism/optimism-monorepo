@@ -74,16 +74,25 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			name: "invalid-payload", blocks: []uint{1, 2, 3}, blockModifiers: []actionsHelpers.BlockModifier{nil, invalidPayload, nil},
 			useSpanBatch: false,
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 1}, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
-				holocene:    expectations{safeHead: 2}, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+				preHolocene: expectations{safeHead: 1, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
+					logs: sequencerOnce("could not process payload attributes"),
+				},
+				holocene: expectations{safeHead: 2, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+					logs: sequencerOnce("could not process payload attributes"),
+				},
 			},
 		},
 		{
 			name: "invalid-payload-span", blocks: []uint{1, 2, 3}, blockModifiers: []actionsHelpers.BlockModifier{nil, invalidPayload, nil},
 			useSpanBatch: true,
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 0}, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
-				holocene:    expectations{safeHead: 2}, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+				preHolocene: expectations{safeHead: 0, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
+					logs: sequencerOnce("could not process payload attributes"),
+				},
+
+				holocene: expectations{safeHead: 2, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+					logs: sequencerOnce("could not process payload attributes"),
+				},
 			},
 		},
 
