@@ -12,7 +12,12 @@ ARG TARGET_BASE_IMAGE=alpine:3.20
 # We may be cross-building for another platform. Specify which platform we need as builder.
 FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
 
-RUN apk add --no-cache make gcc musl-dev linux-headers git jq bash
+RUN apk add --no-cache curl tar gzip make gcc musl-dev linux-headers git jq bash
+
+# install versioned toolchain
+COPY ./versions.json .
+RUN curl -L https://github.com/casey/just/releases/download/$(jq -r .just < versions.json)/just-$(jq -r .just < versions.json)-x86_64-unknown-linux-musl.tar.gz | \
+    tar xz -C /usr/local/bin just
 
 # We copy the go.mod/sum first, so the `go mod download` does not have to re-run if dependencies do not change.
 COPY ./go.mod /app/go.mod
