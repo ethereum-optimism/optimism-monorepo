@@ -62,7 +62,7 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 		{
 			name: "valid", blocks: []uint{1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 3, safeHeadHolocene: 3,
+				preHolocene: expectations{safeHead: 3}, holocene: expectations{safeHead: 3},
 			},
 		},
 
@@ -70,24 +70,24 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			name: "invalid-payload", blocks: []uint{1, 2, 3}, blockModifiers: []actionsHelpers.BlockModifier{nil, invalidPayload, nil},
 			useSpanBatch: false,
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 1, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
-				safeHeadHolocene:    2, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+				preHolocene: expectations{safeHead: 1}, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
+				holocene:    expectations{safeHead: 2}, // We expect the safe head to move to 2 due to creation of an deposit-only block.
 			},
 		},
 		{
 			name: "invalid-payload-span", blocks: []uint{1, 2, 3}, blockModifiers: []actionsHelpers.BlockModifier{nil, invalidPayload, nil},
 			useSpanBatch: true,
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 0, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
-				safeHeadHolocene:    2, // We expect the safe head to move to 2 due to creation of an deposit-only block.
+				preHolocene: expectations{safeHead: 0}, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
+				holocene:    expectations{safeHead: 2}, // We expect the safe head to move to 2 due to creation of an deposit-only block.
 			},
 		},
 
 		{
 			name: "invalid-parent-hash", blocks: []uint{1, 2, 3}, blockModifiers: []actionsHelpers.BlockModifier{nil, invalidParentHash, nil},
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 1, // Invalid parentHash in block 2 causes an invalid batch to be dropped.
-				safeHeadHolocene:    1, // Same with Holocene.
+				preHolocene: expectations{safeHead: 1}, // Invalid parentHash in block 2 causes an invalid batch to be dropped.
+				holocene:    expectations{safeHead: 1}, // Same with Holocene.
 			},
 		},
 		{
@@ -95,8 +95,8 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			useSpanBatch:            true,
 			breachMaxSequencerDrift: true,
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 0,    // Entire span batch invalidated.
-				safeHeadHolocene:    1800, // We expect partial validity until we hit sequencer drift.
+				preHolocene: expectations{safeHead: 0},    // Entire span batch invalidated.
+				holocene:    expectations{safeHead: 1800}, // We expect partial validity until we hit sequencer drift.
 			},
 		},
 		{
@@ -105,8 +105,8 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			useSpanBatch:        true,
 			overAdvanceL1Origin: 3, // this will over-advance the L1 origin of block 3
 			holoceneExpectations: holoceneExpectations{
-				safeHeadPreHolocene: 0, // Entire span batch invalidated.
-				safeHeadHolocene:    2, // We expect partial validity, safe head should move to block 2, dropping invalid block 3 and remaining channel.
+				preHolocene: expectations{safeHead: 0}, // Entire span batch invalidated.
+				holocene:    expectations{safeHead: 2}, // We expect partial validity, safe head should move to block 2, dropping invalid block 3 and remaining channel.
 			},
 		},
 	}
@@ -205,7 +205,7 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 		l2SafeHead := env.Sequencer.L2Safe()
 
 		isHolocene := testCfg.Hardfork.Precedence >= helpers.Holocene.Precedence
-		testCfg.Custom.RequireExpectedProgress(t, l2SafeHead, isHolocene, env.Engine)
+		testCfg.Custom.RequireExpectedProgressAndLogs(t, l2SafeHead, isHolocene, env.Engine, env.Logs)
 		t.Log("Safe head progressed as expected", "l2SafeHeadNumber", l2SafeHead.Number)
 
 		if safeHeadNumber := l2SafeHead.Number; safeHeadNumber > 0 {
