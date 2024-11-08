@@ -28,6 +28,8 @@ interface IAnchorStateRegistry {
     function setAnchorState(IFaultDisputeGame _game) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function tryUpdateAnchorState() external;
+    function isGameValid(IFaultDisputeGame _game) external view returns (bool);
+    function isGameInvalid(IFaultDisputeGame _game) external view returns (bool);
     function version() external view returns (string memory);
 
     function __constructor__(IDisputeGameFactory _disputeGameFactory) external;
