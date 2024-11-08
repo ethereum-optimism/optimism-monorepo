@@ -7,6 +7,29 @@
 // Use comments like "ruleid: <rule-id>" to assert that the rule catches the code.
 // Use comments like "ok: <rule-id>" to assert that the rule does not catch the code.
 
+/// begin SemgrepTest__sol-style-no-bare-imports
+// ok: sol-style-no-bare-imports
+import { SomeStruct } from "some-library.sol";
+
+// ok: sol-style-no-bare-imports
+import { SomeStruct, AnotherThing } from "some-library.sol";
+
+// ok: sol-style-no-bare-imports
+import { SomeStruct as SomeOtherStruct } from "some-library.sol";
+
+// ok: sol-style-no-bare-imports
+import { SomeStruct as SomeOtherStruct, AnotherThing as AnotherOtherThing } from "some-library.sol";
+
+// ok: sol-style-no-bare-imports
+import { SomeStruct as SomeOtherStruct, AnotherThing } from "some-library.sol";
+
+// ok: sol-style-no-bare-imports
+import { AnotherThing, SomeStruct as SomeOtherStruct } from "some-library.sol";
+
+// ruleid: sol-style-no-bare-imports
+import "some-library.sol";
+/// end   SemgrepTest__sol-style-no-bare-imports
+
 contract SemgrepTest__sol_safety_deployutils_args {
     function test() {
         // ruleid: sol-safety-deployutils-args

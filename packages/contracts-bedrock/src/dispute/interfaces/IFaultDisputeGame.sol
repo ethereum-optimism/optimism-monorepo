@@ -6,7 +6,7 @@ import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { Types } from "src/libraries/Types.sol";
-import "src/dispute/lib/Types.sol";
+import { GameType, Claim, Position, Clock, Hash, Duration } from "src/dispute/lib/Types.sol";
 
 interface IFaultDisputeGame is IDisputeGame {
     struct ClaimData {

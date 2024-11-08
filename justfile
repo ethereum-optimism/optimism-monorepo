@@ -19,7 +19,7 @@ update-foundry:
   bash ./ops/scripts/install-foundry.sh
 
 check-foundry:
-  bash ./packages/contracts-bedrock/scripts/checks/check-foundry-install.sh
+  bash ./ops/scripts/check-foundry.sh
 
 install-kontrol:
   curl -L https://kframework.org/install | bash && just update-kontrol

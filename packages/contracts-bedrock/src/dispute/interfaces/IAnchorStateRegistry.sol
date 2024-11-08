@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
 import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import "src/dispute/lib/Types.sol";
+import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
 interface IAnchorStateRegistry {
     struct StartingAnchorRoot {

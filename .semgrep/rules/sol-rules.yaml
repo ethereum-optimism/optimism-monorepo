@@ -186,3 +186,12 @@ rules:
     paths:
       exclude:
         - packages/contracts-bedrock/
+
+  - id: sol-style-no-bare-imports
+    languages: [solidity]
+    severity: ERROR
+    message: Import specific components instead of the entire file
+    pattern-regex: import\s+"[^"]+"\s*;
+    paths:
+      exclude:
+        - packages/contracts-bedrock/test
