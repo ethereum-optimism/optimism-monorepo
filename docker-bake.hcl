@@ -214,6 +214,17 @@ target "proofs-tools" {
   tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/proofs-tools:${tag}"]
 }
 
+target "holocene-deployer" {
+  dockerfile = "./packages/contracts-bedrock/scripts/upgrades/holocene/upgrade.dockerfile"
+  context = "./packages/contracts-bedrock/scripts/upgrades/holocene"
+  args = {
+    REV = "cl/holocene-upgrade-package"
+  }
+  target="holocene-deployer"
+  platforms = split(",", PLATFORMS)
+  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/holocene-deployer:${tag}"]
+}
+
 target "ci-builder" {
   dockerfile = "./ops/docker/ci-builder/Dockerfile"
   context = "."
