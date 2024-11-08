@@ -155,6 +155,11 @@
   },
   {
     "inputs": [],
+    "name": "InvalidERC7802",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "Unauthorized",
     "type": "error"
   },

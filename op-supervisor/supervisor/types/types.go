@@ -131,19 +131,27 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 }
 
 // AtLeastAsSafe returns true if the receiver is at least as safe as the other SafetyLevel.
+// Safety levels are assumed to graduate from LocalUnsafe to LocalSafe to CrossUnsafe to CrossSafe, with Finalized as the strongest.
 func (lvl *SafetyLevel) AtLeastAsSafe(min SafetyLevel) bool {
-	switch min {
-	case Invalid:
-		return true
-	case CrossUnsafe:
-		return *lvl != Invalid
-	case CrossSafe:
-		return *lvl == CrossSafe || *lvl == Finalized
-	case Finalized:
-		return *lvl == Finalized
-	default:
+	relativeSafety := map[SafetyLevel]int{
+		Invalid:     0,
+		LocalUnsafe: 1,
+		LocalSafe:   2,
+		CrossUnsafe: 3,
+		CrossSafe:   4,
+		Finalized:   5,
+	}
+	// if either level is not recognized, return false
+	_, ok := relativeSafety[*lvl]
+	if !ok {
 		return false
 	}
+	_, ok = relativeSafety[min]
+	if !ok {
+		return false
+	}
+	// compare the relative safety levels to determine if the receiver is at least as safe as the other
+	return relativeSafety[*lvl] >= relativeSafety[min]
 }
 
 const (
@@ -240,12 +248,29 @@ func (s BlockSeal) ID() eth.BlockID {
 	return eth.BlockID{Hash: s.Hash, Number: s.Number}
 }
 
-func (s BlockSeal) WithParent(parent eth.BlockID) eth.BlockRef {
+func (s BlockSeal) MustWithParent(parent eth.BlockID) eth.BlockRef {
+	ref, err := s.WithParent(parent)
+	if err != nil {
+		panic(err)
+	}
+	return ref
+}
+
+func (s BlockSeal) WithParent(parent eth.BlockID) (eth.BlockRef, error) {
 	// prevent parent attachment if the parent is not the previous block,
 	// and the block is not the genesis block
 	if s.Number != parent.Number+1 && s.Number != 0 {
-		panic(fmt.Errorf("invalid parent block %s to combine with %s", parent, s))
+		return eth.BlockRef{}, fmt.Errorf("invalid parent block %s to combine with %s", parent, s)
 	}
+	return eth.BlockRef{
+		Hash:       s.Hash,
+		Number:     s.Number,
+		ParentHash: parent.Hash,
+		Time:       s.Timestamp,
+	}, nil
+}
+
+func (s BlockSeal) ForceWithParent(parent eth.BlockID) eth.BlockRef {
 	return eth.BlockRef{
 		Hash:       s.Hash,
 		Number:     s.Number,

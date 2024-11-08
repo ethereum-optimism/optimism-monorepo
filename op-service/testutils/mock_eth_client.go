@@ -8,12 +8,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
 type MockEthClient struct {
 	mock.Mock
+}
+
+func (m *MockEthClient) Client() *rpc.Client {
+	out := m.Mock.Called()
+	return out.Get(0).(*rpc.Client)
 }
 
 func (m *MockEthClient) InfoByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, error) {

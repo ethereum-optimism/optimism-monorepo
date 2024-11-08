@@ -71,7 +71,7 @@ func (s *Worker) worker() {
 				return
 			}
 			if errors.Is(err, types.ErrFuture) {
-				s.log.Debug("Worker awaits more data", "err", err)
+				s.log.Debug("Worker awaits additional blocks", "err", err)
 			} else {
 				s.log.Warn("Failed to process work", "err", err)
 			}

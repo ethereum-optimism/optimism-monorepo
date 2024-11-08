@@ -11,7 +11,6 @@ There are five parts to the versioning and release process:
 - [Release Process](#release-process): The process for deploying contracts, creating a governance proposal, and the required associated releases.
   - [Additional Release Candidates](#additional-release-candidates): How to handle additional release candidates after an initial `op-contracts/vX.Y.Z-rc.1` release.
   - [Merging Back to Develop After Governance Approval](#merging-back-to-develop-after-governance-approval): Explains how to choose the resulting contract versions when merging back into `develop`.
-- [Changelog](#changelog): A CHANGELOG for contract releases is maintained.
 
 > [!NOTE]
 > The rules described in this document must be enforced manually.
@@ -119,14 +118,3 @@ Now there are two scenarios for the PR that merges the release branch back into 
     - In practice, this one unlikely to occur when using inheritance for feature development, as specified in [Smart Contract Feature Development](https://github.com/ethereum-optimism/design-docs/blob/main/smart-contract-feature-development.md) architecture. It's more likely that (1) is the case, and we merge the version change into the base contract.
 
 This flow also provides a dedicated branch for each release, making it easy to deploy a patch or bug fix, regardless of other changes that may have occurred on develop since the release.
-
-## Changelog
-
-Lastly, a CHANGELOG for contract releases must be maintained:
-
-- Each upcoming release will have a tracking issue that documents the new versions of each contract that will be included in the release, along with links to the PRs that made the changes.
-- Every contracts PR must have an accompanying changelog entry in a tracking issue once it is merged.
-- Tracking issue titles should be named based on the expected Upgrade number they will go to governance with, e.g. "op-contracts changelog: Upgrade 9".
-  - See [ethereum-optimism/optimism#10592](https://github.com/ethereum-optimism/optimism/issues/10592) for an example of what this tracking issue should look like.
-  - We do not include a version number in the issue because it may be hard to predict the final version number of a release until all PRs are merged.
-  - Using upgrade numbers also acts as a forcing function to ensure upgrade sequencing and the governance process is accounted for early in the development process.

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
@@ -115,11 +116,14 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
-		done, blocks := channel.TxConfirmed(id, inclusionBlock)
+		done, blocksToRequeue := channel.TxConfirmed(id, inclusionBlock)
 		if done {
 			s.removePendingChannel(channel)
-			if len(blocks) > 0 {
-				s.blocks.Prepend(blocks...)
+			if len(blocksToRequeue) > 0 {
+				s.blocks.Prepend(blocksToRequeue...)
+			}
+			for _, b := range blocksToRequeue {
+				s.metr.RecordL2BlockInPendingQueue(b)
 			}
 		}
 	} else {
@@ -505,7 +509,6 @@ func (s *channelManager) Requeue(newCfg ChannelConfig) {
 
 	// We put the blocks back at the front of the queue:
 	s.blocks.Prepend(blocksToRequeue...)
-
 	for _, b := range blocksToRequeue {
 		s.metr.RecordL2BlockInPendingQueue(b)
 	}
@@ -516,4 +519,17 @@ func (s *channelManager) Requeue(newCfg ChannelConfig) {
 	// Setting the defaultCfg will cause new channels
 	// to pick up the new ChannelConfig
 	s.defaultCfg = newCfg
+}
+
+// PendingDABytes returns the current number of bytes pending to be written to the DA layer (from blocks fetched from L2
+// but not yet in a channel).
+func (s *channelManager) PendingDABytes() int64 {
+	f := s.metr.PendingDABytes()
+	if f >= math.MaxInt64 {
+		return math.MaxInt64
+	}
+	if f <= math.MinInt64 {
+		return math.MinInt64
+	}
+	return int64(f)
 }

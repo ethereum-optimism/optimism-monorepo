@@ -64,8 +64,8 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS64 contract.
-    /// @custom:semver 1.0.0-beta.2
-    string public constant version = "1.0.0-beta.2";
+    /// @custom:semver 1.0.0-beta.4
+    string public constant version = "1.0.0-beta.4";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -106,7 +106,39 @@ contract MIPS64 is ISemver {
     /// the current thread stack.
     /// @param _localContext The local key context for the preimage oracle. Optional, can be set as a constant
     ///                      if the caller only requires one set of local keys.
-    function step(bytes calldata _stateData, bytes calldata _proof, bytes32 _localContext) public returns (bytes32) {
+    /// @return postState_ The hash of the post state witness after the state transition.
+    function step(
+        bytes calldata _stateData,
+        bytes calldata _proof,
+        bytes32 _localContext
+    )
+        public
+        returns (bytes32 postState_)
+    {
+        postState_ = doStep(_stateData, _proof, _localContext);
+        assertPostStateChecks();
+    }
+
+    function assertPostStateChecks() internal pure {
+        State memory state;
+        assembly {
+            state := STATE_MEM_OFFSET
+        }
+
+        bytes32 activeStack = state.traverseRight ? state.rightThreadStack : state.leftThreadStack;
+        if (activeStack == EMPTY_THREAD_ROOT) {
+            revert("MIPS64: post-state active thread stack is empty");
+        }
+    }
+
+    function doStep(
+        bytes calldata _stateData,
+        bytes calldata _proof,
+        bytes32 _localContext
+    )
+        internal
+        returns (bytes32)
+    {
         unchecked {
             State memory state;
             ThreadState memory thread;
@@ -272,20 +304,20 @@ contract MIPS64 is ISemver {
                 fun: fun
             });
             bool memUpdated;
-            uint64 memAddr;
-            (state.memRoot, memUpdated, memAddr) = ins.execMipsCoreStepLogic(coreStepArgs);
+            uint64 effMemAddr;
+            (state.memRoot, memUpdated, effMemAddr) = ins.execMipsCoreStepLogic(coreStepArgs);
             setStateCpuScalars(thread, cpu);
             updateCurrentThreadRoot();
             if (memUpdated) {
-                handleMemoryUpdate(state, memAddr);
+                handleMemoryUpdate(state, effMemAddr);
             }
 
             return outputState();
         }
     }
 
-    function handleMemoryUpdate(State memory _state, uint64 _memAddr) internal pure {
-        if (_memAddr == (arch.ADDRESS_MASK & _state.llAddress)) {
+    function handleMemoryUpdate(State memory _state, uint64 _effMemAddr) internal pure {
+        if (_effMemAddr == (arch.ADDRESS_MASK & _state.llAddress)) {
             // Reserved address was modified, clear the reservation
             clearLLMemoryReservation(_state);
         }

@@ -43,7 +43,7 @@ contract OptimismPortalInterop_Test is CommonTest {
     }
 
     /// @dev Tests that setting the gas paying token config as not the system config reverts.
-    function testFuzz_setConfig_gasPayingToken_notSystemConfig_reverts(bytes calldata _value) public {
+    function testFuzz_setConfig_gasPayingTokenButNotSystemConfig_reverts(bytes calldata _value) public {
         vm.expectRevert(Unauthorized.selector);
         _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
@@ -66,7 +66,7 @@ contract OptimismPortalInterop_Test is CommonTest {
     }
 
     /// @dev Tests that setting the add dependency config as not the system config reverts.
-    function testFuzz_setConfig_addDependency_notSystemConfig_reverts(bytes calldata _value) public {
+    function testFuzz_setConfig_addDependencyButNotSystemConfig_reverts(bytes calldata _value) public {
         vm.expectRevert(Unauthorized.selector);
         _optimismPortalInterop().setConfig(ConfigType.ADD_DEPENDENCY, _value);
     }
@@ -89,7 +89,7 @@ contract OptimismPortalInterop_Test is CommonTest {
     }
 
     /// @dev Tests that setting the remove dependency config as not the system config reverts.
-    function testFuzz_setConfig_removeDependency_notSystemConfig_reverts(bytes calldata _value) public {
+    function testFuzz_setConfig_removeDependencyButNotSystemConfig_reverts(bytes calldata _value) public {
         vm.expectRevert(Unauthorized.selector);
         _optimismPortalInterop().setConfig(ConfigType.REMOVE_DEPENDENCY, _value);
     }

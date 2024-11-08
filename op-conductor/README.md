@@ -13,6 +13,8 @@ The design will provide below guarantees:
 2. No unsafe head stall during network partition
 3. 100% uptime with no more than 1 node failure (for a standard 3 node setup)
 
+For configuration and runbook, please refer to [RUNBOOK.md](./RUNBOOK.md)
+
 ## Design
 
 ### Architecture

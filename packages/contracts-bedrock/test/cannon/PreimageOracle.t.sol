@@ -391,7 +391,7 @@ contract PreimageOracle_LargePreimageProposals_Test is Test {
     }
 
     /// @notice Gas snapshot for `addLeaves`
-    function test_addLeaves_gasSnapshot() public {
+    function test_addLeaves_gasSnapshot_benchmark() public {
         // Allocate the preimage data.
         bytes memory data = new bytes(136 * 500);
         for (uint256 i; i < data.length; i++) {

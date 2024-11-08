@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
 import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
-contract OptimismMintableERC20_Test is Bridge_Initializer {
+contract OptimismMintableERC20_Test is CommonTest {
     event Mint(address indexed account, uint256 amount);
     event Burn(address indexed account, uint256 amount);
 
@@ -47,11 +47,11 @@ contract OptimismMintableERC20_Test is Bridge_Initializer {
         assertEq(L2Token.balanceOf(alice), 100);
     }
 
-    function test_allowance_permit2_max() external view {
+    function test_allowance_permit2Max_works() external view {
         assertEq(L2Token.allowance(alice, L2Token.PERMIT2()), type(uint256).max);
     }
 
-    function test_permit2_transferFrom() external {
+    function test_permit2_transferFrom_succeeds() external {
         vm.prank(address(l2StandardBridge));
         L2Token.mint(alice, 100);
 

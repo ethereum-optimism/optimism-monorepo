@@ -102,7 +102,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, chainID, updatingChain)
 		require.Equal(t, newScope, updatingCandidateScope)
-		crossSafeRef := currentCrossSafe.WithParent(parent.ID())
+		crossSafeRef := currentCrossSafe.MustWithParent(parent.ID())
 		require.Equal(t, crossSafeRef, updatingCandidate)
 	})
 	t.Run("NextDerivedFrom returns error", func(t *testing.T) {

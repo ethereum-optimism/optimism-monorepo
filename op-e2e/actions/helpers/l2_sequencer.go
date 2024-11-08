@@ -43,7 +43,8 @@ func (m *MockL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2Bl
 type L2Sequencer struct {
 	*L2Verifier
 
-	sequencer *sequencing.Sequencer
+	sequencer   *sequencing.Sequencer
+	attrBuilder *derive.FetchingAttributesBuilder
 
 	failL2GossipUnsafeBlock error // mock error
 
@@ -85,6 +86,7 @@ func NewL2Sequencer(t Testing, log log.Logger, l1 derive.L1Fetcher, blobSrc deri
 	return &L2Sequencer{
 		L2Verifier:              ver,
 		sequencer:               seq,
+		attrBuilder:             attrBuilder,
 		mockL1OriginSelector:    l1OriginSelector,
 		failL2GossipUnsafeBlock: nil,
 	}
@@ -139,10 +141,21 @@ func (s *L2Sequencer) ActL2EmptyBlock(t Testing) {
 // ActL2KeepL1Origin makes the sequencer use the current L1 origin, even if the next origin is available.
 func (s *L2Sequencer) ActL2KeepL1Origin(t Testing) {
 	parent := s.engine.UnsafeL2Head()
-	// force old origin, for testing purposes
+	// force old origin
 	oldOrigin, err := s.l1.L1BlockRefByHash(t.Ctx(), parent.L1Origin.Hash)
 	require.NoError(t, err, "failed to get current origin: %s", parent.L1Origin)
 	s.mockL1OriginSelector.originOverride = oldOrigin
+}
+
+// ActL2ForceAdvanceL1Origin forces the sequencer to advance the current L1 origin, even if the next origin's timestamp is too new.
+func (s *L2Sequencer) ActL2ForceAdvanceL1Origin(t Testing) {
+	s.attrBuilder.TestSkipL1OriginCheck() // skip check in attributes builder
+	parent := s.engine.UnsafeL2Head()
+	// force next origin
+	nextNum := parent.L1Origin.Number + 1
+	nextOrigin, err := s.l1.L1BlockRefByNumber(t.Ctx(), nextNum)
+	require.NoError(t, err, "failed to get next origin by number: %d", nextNum)
+	s.mockL1OriginSelector.originOverride = nextOrigin
 }
 
 // ActBuildToL1Head builds empty blocks until (incl.) the L1 head becomes the L2 origin

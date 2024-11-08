@@ -175,3 +175,14 @@ rules:
         - packages/contracts-bedrock/src/L1/OPContractsManager.sol
         - packages/contracts-bedrock/src/L1/OPContractsManagerInterop.sol
         - packages/contracts-bedrock/src/legacy/L1ChugSplashProxy.sol
+
+  - id: sol-style-enforce-require-msg
+    languages: [solidity]
+    severity: ERROR
+    message: Require statement must have an error message
+    patterns:
+      - pattern: require($ERR);
+      - pattern-not: require($ERR, $MSG);
+    paths:
+      exclude:
+        - packages/contracts-bedrock/

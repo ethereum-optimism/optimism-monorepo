@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing
 import { stdStorage, StdStorage } from "forge-std/Test.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -19,7 +19,7 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
 
-contract L1StandardBridge_Getter_Test is Bridge_Initializer {
+contract L1StandardBridge_Getter_Test is CommonTest {
     /// @dev Test that the accessors return the correct initialized values.
     function test_getters_succeeds() external view {
         assert(l1StandardBridge.l2TokenBridge() == address(l2StandardBridge));
@@ -31,7 +31,7 @@ contract L1StandardBridge_Getter_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_Initialize_Test is Bridge_Initializer {
+contract L1StandardBridge_Initialize_Test is CommonTest {
     /// @dev Test that the constructor sets the correct values.
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
@@ -58,7 +58,7 @@ contract L1StandardBridge_Initialize_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_Pause_Test is Bridge_Initializer {
+contract L1StandardBridge_Pause_Test is CommonTest {
     /// @dev Verifies that the `paused` accessor returns the same value as the `paused` function of the
     ///      `superchainConfig`.
     function test_paused_succeeds() external view {
@@ -86,7 +86,7 @@ contract L1StandardBridge_Pause_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_Pause_TestFail is Bridge_Initializer {
+contract L1StandardBridge_Pause_TestFail is CommonTest {
     /// @dev Sets up the test by pausing the bridge, giving ether to the bridge and mocking
     ///      the calls to the xDomainMessageSender so that it returns the correct value.
     function setUp() public override {
@@ -157,9 +157,9 @@ contract L1StandardBridge_Pause_TestFail is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_Initialize_TestFail is Bridge_Initializer { }
+contract L1StandardBridge_Initialize_TestFail is CommonTest { }
 
-contract L1StandardBridge_Receive_Test is Bridge_Initializer {
+contract L1StandardBridge_Receive_Test is CommonTest {
     /// @dev Tests receive bridges ETH successfully.
     function test_receive_succeeds() external {
         assertEq(address(optimismPortal).balance, 0);
@@ -190,7 +190,7 @@ contract L1StandardBridge_Receive_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_Receive_TestFail is Bridge_Initializer {
+contract L1StandardBridge_Receive_TestFail is CommonTest {
     /// @dev Tests receive function reverts with custom gas token.
     function testFuzz_receive_customGasToken_reverts(uint256 _value) external {
         vm.prank(alice, alice);
@@ -207,7 +207,7 @@ contract L1StandardBridge_Receive_TestFail is Bridge_Initializer {
     }
 }
 
-contract PreBridgeETH is Bridge_Initializer {
+contract PreBridgeETH is CommonTest {
     /// @dev Asserts the expected calls and events for bridging ETH depending
     ///      on whether the bridge call is legacy or not.
     function _preBridgeETH(bool isLegacy, uint256 value) internal {
@@ -285,7 +285,7 @@ contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
     }
 }
 
-contract L1StandardBridge_DepositETH_TestFail is Bridge_Initializer {
+contract L1StandardBridge_DepositETH_TestFail is CommonTest {
     /// @dev Tests that depositing ETH reverts if the call is not from an EOA.
     function test_depositETH_notEoa_reverts() external {
         vm.etch(alice, address(L1Token).code);
@@ -331,7 +331,7 @@ contract L1StandardBridge_BridgeETH_TestFail is PreBridgeETH {
     }
 }
 
-contract PreBridgeETHTo is Bridge_Initializer {
+contract PreBridgeETHTo is CommonTest {
     /// @dev Asserts the expected calls and events for bridging ETH to a different
     ///      address depending on whether the bridge call is legacy or not.
     function _preBridgeETHTo(bool isLegacy, uint256 value) internal {
@@ -411,7 +411,7 @@ contract L1StandardBridge_DepositETHTo_Test is PreBridgeETHTo {
     }
 }
 
-contract L1StandardBridge_DepositETHTo_TestFail is Bridge_Initializer {
+contract L1StandardBridge_DepositETHTo_TestFail is CommonTest {
     /// @dev Tests that depositETHTo reverts with custom gas token.
     function testFuzz_depositETHTo_customGasToken_reverts(
         uint256 _value,
@@ -463,7 +463,7 @@ contract L1StandardBridge_BridgeETHTo_TestFail is PreBridgeETHTo {
     }
 }
 
-contract L1StandardBridge_DepositERC20_Test is Bridge_Initializer {
+contract L1StandardBridge_DepositERC20_Test is CommonTest {
     using stdStorage for StdStorage;
 
     // depositERC20
@@ -540,7 +540,7 @@ contract L1StandardBridge_DepositERC20_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_DepositERC20_TestFail is Bridge_Initializer {
+contract L1StandardBridge_DepositERC20_TestFail is CommonTest {
     /// @dev Tests that depositing an ERC20 to the bridge reverts
     ///      if the caller is not an EOA.
     function test_depositERC20_notEoa_reverts() external {
@@ -553,7 +553,7 @@ contract L1StandardBridge_DepositERC20_TestFail is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_DepositERC20To_Test is Bridge_Initializer {
+contract L1StandardBridge_DepositERC20To_Test is CommonTest {
     /// @dev Tests that depositing ERC20 to the bridge succeeds when
     ///      sent to a different address.
     ///      Bridge deposits are updated.
@@ -622,7 +622,7 @@ contract L1StandardBridge_DepositERC20To_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_FinalizeETHWithdrawal_Test is Bridge_Initializer {
+contract L1StandardBridge_FinalizeETHWithdrawal_Test is CommonTest {
     using stdStorage for StdStorage;
 
     /// @dev Tests that finalizing an ETH withdrawal succeeds.
@@ -654,7 +654,7 @@ contract L1StandardBridge_FinalizeETHWithdrawal_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_FinalizeETHWithdrawal_TestFail is Bridge_Initializer {
+contract L1StandardBridge_FinalizeETHWithdrawal_TestFail is CommonTest {
     /// @dev Tests that finalizeETHWithdrawal reverts with custom gas token.
     function testFuzz_finalizeETHWithdrawal_customGasToken_reverts(
         uint256 _value,
@@ -678,7 +678,7 @@ contract L1StandardBridge_FinalizeETHWithdrawal_TestFail is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_FinalizeERC20Withdrawal_Test is Bridge_Initializer {
+contract L1StandardBridge_FinalizeERC20Withdrawal_Test is CommonTest {
     using stdStorage for StdStorage;
 
     /// @dev Tests that finalizing an ERC20 withdrawal succeeds.
@@ -717,7 +717,7 @@ contract L1StandardBridge_FinalizeERC20Withdrawal_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_FinalizeERC20Withdrawal_TestFail is Bridge_Initializer {
+contract L1StandardBridge_FinalizeERC20Withdrawal_TestFail is CommonTest {
     /// @dev Tests that finalizing an ERC20 withdrawal reverts if the caller is not the L2 bridge.
     function test_finalizeERC20Withdrawal_notMessenger_reverts() external {
         vm.mockCall(
@@ -743,7 +743,7 @@ contract L1StandardBridge_FinalizeERC20Withdrawal_TestFail is Bridge_Initializer
     }
 }
 
-contract L1StandardBridge_FinalizeBridgeETH_Test is Bridge_Initializer {
+contract L1StandardBridge_FinalizeBridgeETH_Test is CommonTest {
     /// @dev Tests that finalizing bridged ETH succeeds.
     function test_finalizeBridgeETH_succeeds() external {
         address messenger = address(l1StandardBridge.messenger());
@@ -762,7 +762,7 @@ contract L1StandardBridge_FinalizeBridgeETH_Test is Bridge_Initializer {
     }
 }
 
-contract L1StandardBridge_FinalizeBridgeETH_TestFail is Bridge_Initializer {
+contract L1StandardBridge_FinalizeBridgeETH_TestFail is CommonTest {
     /// @dev Tests that finalizing bridged reverts with custom gas token.
     function testFuzz_finalizeBridgeETH_customGasToken_reverts(uint256 _value, bytes calldata _extraData) external {
         vm.mockCall(

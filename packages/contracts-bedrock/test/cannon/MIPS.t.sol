@@ -1509,7 +1509,7 @@ contract MIPS_Test is CommonTest {
         assertEq(postState, outputState(expect), "unexpected post state");
     }
 
-    function test_mmap_succeeds_justWithinMemLimit() external {
+    function test_mmap_justWithinMemLimit_succeeds() external {
         uint32 insn = 0x0000000c; // syscall
         (bytes32 memRoot, bytes memory proof) = ffi.getCannonMemoryProof(0, insn);
 
@@ -1538,7 +1538,7 @@ contract MIPS_Test is CommonTest {
         assertEq(postState, outputState(expect), "unexpected post state");
     }
 
-    function test_mmap_fails() external {
+    function test_step_mmap_fails() external {
         uint32 insn = 0x0000000c; // syscall
         (bytes32 memRoot, bytes memory proof) = ffi.getCannonMemoryProof(0, insn);
 
@@ -1692,7 +1692,7 @@ contract MIPS_Test is CommonTest {
         mips.step(encodedState, proof, 0);
     }
 
-    function test_invalid_root_fails() external {
+    function test_step_invalidRoot_fails() external {
         uint32 insn = 0x0000000c; // syscall
         (IMIPS.State memory state, bytes memory proof) = constructMIPSState(0, insn, 0x4, 0);
         state.registers[2] = 4246; // exit_group syscall
@@ -1706,7 +1706,7 @@ contract MIPS_Test is CommonTest {
         mips.step(encodeState(state), proof, 0);
     }
 
-    function test_invalid_root_different_leaf_fails() external {
+    function test_step_invalidRootDifferentLeaf_fails() external {
         uint32 insn = 0x0000000c; // syscall
 
         // Initialize the state, though for the proof, use valid proofs for the instruction

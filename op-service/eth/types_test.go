@@ -7,6 +7,7 @@ import (
 	"testing"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/stretchr/testify/require"
 )
@@ -21,6 +22,10 @@ func TestInputError(t *testing.T) {
 		t.Fatalf("need InputError to be detected as such")
 	}
 	require.ErrorIs(t, err, InputError{}, "need to detect input error with errors.Is")
+
+	var rpcErr rpc.Error
+	require.ErrorAs(t, err, &rpcErr, "need input error to be rpc.Error with errors.As")
+	require.EqualValues(t, err.Code, rpcErr.ErrorCode())
 }
 
 type scalarTest struct {

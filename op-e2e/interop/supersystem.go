@@ -114,14 +114,18 @@ type SuperSystem interface {
 		msgIdentifier supervisortypes.Identifier,
 		target common.Address,
 		message []byte,
+		expectedError error,
 	) (*types.Receipt, error)
 	// Access a contract on a network by name
 	Contract(network string, contractName string) interface{}
 }
+type SuperSystemConfig struct {
+	mempoolFiltering bool
+}
 
 // NewSuperSystem creates a new SuperSystem from a recipe. It creates an interopE2ESystem.
-func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths) SuperSystem {
-	s2 := &interopE2ESystem{recipe: recipe}
+func NewSuperSystem(t *testing.T, recipe *interopgen.InteropDevRecipe, w worldResourcePaths, config SuperSystemConfig) SuperSystem {
+	s2 := &interopE2ESystem{recipe: recipe, config: &config}
 	s2.prepare(t, w)
 	return s2
 }
@@ -144,6 +148,7 @@ type interopE2ESystem struct {
 	l2GethClients   map[string]*ethclient.Client
 	supervisor      *supervisor.SupervisorService
 	superClient     *sources.SupervisorClient
+	config          *SuperSystemConfig
 }
 
 // l2Set is a set of resources for an L2 chain
@@ -263,6 +268,7 @@ func (s *interopE2ESystem) newGethForL2(id string, l2Out *interopgen.L2Output) *
 	l2Geth, err := geth.InitL2(name, l2Out.Genesis, jwtPath,
 		func(ethCfg *ethconfig.Config, nodeCfg *gn.Config) error {
 			ethCfg.InteropMessageRPC = s.supervisor.RPC()
+			ethCfg.InteropMempoolFiltering = s.config.mempoolFiltering
 			return nil
 		})
 	require.NoError(s.t, err)
@@ -721,6 +727,10 @@ func (s *interopE2ESystem) SendL2Tx(
 		newApply)
 }
 
+// ExecuteMessage calls the CrossL2Inbox executeMessage function
+// it uses the L2's chain ID, username key, and geth client.
+// expectedError represents the error returned by `ExecuteMessage` if it is expected.
+// the returned err is related to `WaitMined`
 func (s *interopE2ESystem) ExecuteMessage(
 	ctx context.Context,
 	id string,
@@ -728,6 +738,7 @@ func (s *interopE2ESystem) ExecuteMessage(
 	msgIdentifier supervisortypes.Identifier,
 	target common.Address,
 	message []byte,
+	expectedError error,
 ) (*types.Receipt, error) {
 	secret := s.UserKey(id, sender)
 	auth, err := bind.NewKeyedTransactorWithChainID(&secret, s.l2s[id].chainID)
@@ -746,7 +757,12 @@ func (s *interopE2ESystem) ExecuteMessage(
 		ChainId:     msgIdentifier.ChainID.ToBig(),
 	}
 	tx, err := contract.InboxTransactor.ExecuteMessage(auth, identifier, target, message)
-	require.NoError(s.t, err)
+	if expectedError != nil {
+		require.ErrorContains(s.t, err, expectedError.Error())
+		return nil, err
+	} else {
+		require.NoError(s.t, err)
+	}
 	s.logger.Info("Executing message", "tx", tx.Hash(), "to", tx.To(), "target", target, "data", hexutil.Bytes(tx.Data()))
 	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
 }

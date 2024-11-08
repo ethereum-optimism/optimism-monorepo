@@ -131,71 +131,92 @@ func toRef(seal types.BlockSeal, parentHash common.Hash) eth.BlockRef {
 }
 
 func TestSingleEntryDB(t *testing.T) {
-	expectedDerivedFrom := mockL1(1)
+	expectedDerivedFrom := mockL1(0)
 	expectedDerived := mockL2(2)
 	runDBTest(t,
 		func(t *testing.T, db *DB, m *stubMetrics) {
 			require.NoError(t, db.AddDerived(toRef(expectedDerivedFrom, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
 		},
 		func(t *testing.T, db *DB, m *stubMetrics) {
-			derivedFrom, derived, err := db.Latest()
+			// First
+			derivedFrom, derived, err := db.First()
 			require.NoError(t, err)
 			require.Equal(t, expectedDerivedFrom, derivedFrom)
 			require.Equal(t, expectedDerived, derived)
 
-			derivedFrom, derived, err = db.First()
+			// Latest
+			derivedFrom, derived, err = db.Latest()
 			require.NoError(t, err)
 			require.Equal(t, expectedDerivedFrom, derivedFrom)
 			require.Equal(t, expectedDerived, derived)
 
+			// FirstAfter Latest
+			_, _, err = db.FirstAfter(derivedFrom.ID(), derived.ID())
+			require.ErrorIs(t, err, types.ErrFuture)
+
+			// LastDerivedAt
 			derived, err = db.LastDerivedAt(expectedDerivedFrom.ID())
 			require.NoError(t, err)
 			require.Equal(t, expectedDerived, derived)
 
+			// LastDerivedAt with a non-existent block
 			_, err = db.LastDerivedAt(eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerivedFrom.Number})
 			require.ErrorIs(t, err, types.ErrConflict)
 
-			// No block known, yet, after the given block pair
-			_, _, err = db.FirstAfter(derivedFrom.ID(), derived.ID())
-			require.ErrorIs(t, err, types.ErrFuture)
-
-			// Not after a non-existent block pair
+			// FirstAfter with a non-existent block (derived and derivedFrom)
 			_, _, err = db.FirstAfter(eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerivedFrom.Number}, expectedDerived.ID())
 			require.ErrorIs(t, err, types.ErrConflict)
 			_, _, err = db.FirstAfter(expectedDerivedFrom.ID(), eth.BlockID{Hash: common.Hash{0xaa}, Number: expectedDerived.Number})
 			require.ErrorIs(t, err, types.ErrConflict)
 
+			// DerivedFrom
 			derivedFrom, err = db.DerivedFrom(expectedDerived.ID())
 			require.NoError(t, err)
 			require.Equal(t, expectedDerivedFrom, derivedFrom)
 
+			// DerivedFrom with a non-existent block
 			_, err = db.DerivedFrom(eth.BlockID{Hash: common.Hash{0xbb}, Number: expectedDerived.Number})
 			require.ErrorIs(t, err, types.ErrConflict)
 
+			// PreviousDerived
 			prev, err := db.PreviousDerived(expectedDerived.ID())
 			require.NoError(t, err)
 			require.Equal(t, types.BlockSeal{}, prev, "zeroed seal before first entry")
 
-			_, _, err = db.NextDerived(expectedDerived.ID())
-			require.ErrorIs(t, err, types.ErrFuture)
-
-			// if 1 was the first inserted entry, then we skipped 0
-			_, _, err = db.NextDerived(mockL2(0).ID())
-			require.ErrorIs(t, err, types.ErrSkipped)
-
+			// PreviousDerivedFrom
 			prev, err = db.PreviousDerivedFrom(expectedDerivedFrom.ID())
 			require.NoError(t, err)
 			require.Equal(t, types.BlockSeal{}, prev, "zeroed seal before first entry")
 
+			// NextDerived
+			_, _, err = db.NextDerived(expectedDerived.ID())
+			require.ErrorIs(t, err, types.ErrFuture)
+
+			// NextDerivedFrom
 			_, err = db.NextDerivedFrom(expectedDerivedFrom.ID())
 			require.ErrorIs(t, err, types.ErrFuture)
 
-			// if 1 was the first inserted entry, then we skipped 0
-			_, err = db.NextDerivedFrom(mockL1(0).ID())
-			require.ErrorIs(t, err, types.ErrSkipped)
-
+			// FirstAfter
 			_, _, err = db.FirstAfter(expectedDerivedFrom.ID(), expectedDerived.ID())
 			require.ErrorIs(t, err, types.ErrFuture)
+		})
+}
+
+func TestGap(t *testing.T) {
+	// mockL1 starts at block 1 to produce a gap
+	expectedDerivedFrom := mockL1(1)
+	// mockL2 starts at block 2 to produce a gap
+	expectedDerived := mockL2(2)
+	runDBTest(t,
+		func(t *testing.T, db *DB, m *stubMetrics) {
+			require.NoError(t, db.AddDerived(toRef(expectedDerivedFrom, mockL1(0).Hash), toRef(expectedDerived, mockL2(0).Hash)))
+		},
+		func(t *testing.T, db *DB, m *stubMetrics) {
+			_, _, err := db.NextDerived(mockL2(0).ID())
+			require.ErrorIs(t, err, types.ErrSkipped)
+
+			_, err = db.NextDerivedFrom(mockL1(0).ID())
+			require.ErrorIs(t, err, types.ErrSkipped)
 		})
 }
 

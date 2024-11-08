@@ -12,7 +12,8 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 import { IETHLiquidity } from "src/L2/interfaces/IETHLiquidity.sol";
-import { ICrosschainERC20 } from "src/L2/interfaces/ICrosschainERC20.sol";
+import { IERC7802, IERC165 } from "src/L2/interfaces/IERC7802.sol";
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErrors.sol";
 
 /// @custom:proxied true
@@ -21,10 +22,10 @@ import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErro
 /// @notice SuperchainWETH is a version of WETH that can be freely transfrered between chains
 ///         within the superchain. SuperchainWETH can be converted into native ETH on chains that
 ///         do not use a custom gas token.
-contract SuperchainWETH is WETH98, ICrosschainERC20, ISemver {
+contract SuperchainWETH is WETH98, IERC7802, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.9
-    string public constant version = "1.0.0-beta.9";
+    /// @custom:semver 1.0.0-beta.10
+    string public constant version = "1.0.0-beta.10";
 
     /// @inheritdoc WETH98
     function deposit() public payable override {
@@ -90,5 +91,11 @@ contract SuperchainWETH is WETH98, ICrosschainERC20, ISemver {
         }
 
         emit CrosschainBurn(_from, _amount);
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 _interfaceId) public view virtual returns (bool) {
+        return _interfaceId == type(IERC7802).interfaceId || _interfaceId == type(IERC20).interfaceId
+            || _interfaceId == type(IERC165).interfaceId;
     }
 }

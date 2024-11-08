@@ -597,18 +597,18 @@ func (d *L2CoreDeployConfig) Check(log log.Logger) error {
 // AltDADeployConfig configures optional AltDA functionality.
 type AltDADeployConfig struct {
 	// UseAltDA is a flag that indicates if the system is using op-alt-da
-	UseAltDA bool `json:"useAltDA"`
+	UseAltDA bool `json:"useAltDA" toml:"useAltDA"`
 	// DACommitmentType specifies the allowed commitment
-	DACommitmentType string `json:"daCommitmentType"`
+	DACommitmentType string `json:"daCommitmentType" toml:"daCommitmentType"`
 	// DAChallengeWindow represents the block interval during which the availability of a data commitment can be challenged.
-	DAChallengeWindow uint64 `json:"daChallengeWindow"`
+	DAChallengeWindow uint64 `json:"daChallengeWindow" toml:"daChallengeWindow"`
 	// DAResolveWindow represents the block interval during which a data availability challenge can be resolved.
-	DAResolveWindow uint64 `json:"daResolveWindow"`
+	DAResolveWindow uint64 `json:"daResolveWindow" toml:"daResolveWindow"`
 	// DABondSize represents the required bond size to initiate a data availability challenge.
-	DABondSize uint64 `json:"daBondSize"`
+	DABondSize uint64 `json:"daBondSize" toml:"daBondSize"`
 	// DAResolverRefundPercentage represents the percentage of the resolving cost to be refunded to the resolver
 	// such as 100 means 100% refund.
-	DAResolverRefundPercentage uint64 `json:"daResolverRefundPercentage"`
+	DAResolverRefundPercentage uint64 `json:"daResolverRefundPercentage" toml:"daResolverRefundPercentage"`
 }
 
 var _ ConfigChecker = (*AltDADeployConfig)(nil)

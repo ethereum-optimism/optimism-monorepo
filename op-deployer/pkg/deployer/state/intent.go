@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
@@ -163,6 +165,8 @@ type ChainIntent struct {
 	Roles ChainRoles `json:"roles" toml:"roles"`
 
 	DeployOverrides map[string]any `json:"deployOverrides" toml:"deployOverrides"`
+
+	DangerousAltDAConfig genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
 }
 
 type ChainRoles struct {
@@ -205,6 +209,10 @@ func (c *ChainIntent) Check() error {
 
 	if c.Roles.Batcher == emptyAddress {
 		return fmt.Errorf("batcher must be set")
+	}
+
+	if c.DangerousAltDAConfig.UseAltDA {
+		return c.DangerousAltDAConfig.Check(nil)
 	}
 
 	return nil

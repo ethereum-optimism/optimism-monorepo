@@ -199,6 +199,9 @@ func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupCli
 		// This only matters if op-node is behind and hasn't processed all finalized L1 blocks yet.
 		l1Head = status.CurrentL1
 	}
+	if l1Head.Number == 0 {
+		return utils.LocalGameInputs{}, errors.New("l1 head is 0")
+	}
 	blockNumber, err := r.findL2BlockNumberToDispute(ctx, client, l1Head.Number, status.FinalizedL2.Number)
 	if err != nil {
 		return utils.LocalGameInputs{}, fmt.Errorf("failed to find l2 block number to dispute: %w", err)

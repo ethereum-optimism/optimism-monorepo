@@ -2,18 +2,16 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Scripts
-import { Executables } from "scripts/libraries/Executables.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import { Process } from "scripts/libraries/Process.sol";
 
 // Libraries
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
-import "src/dispute/lib/Types.sol";
-import "scripts/deploy/Deployer.sol";
+import { GameType } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
@@ -27,7 +25,7 @@ import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistr
 ///      once. This contract inherits from `ERC721Bridge_Initializer` because it is the
 ///      deepest contract in the inheritance chain for setting up the system contracts.
 ///      For each L1 contract both the implementation and the proxy are tested.
-contract Initializer_Test is Bridge_Initializer {
+contract Initializer_Test is CommonTest {
     /// @notice Contains the address of an `Initializable` contract and the calldata
     ///         used to initialize it.
     struct InitializeableContract {
@@ -432,21 +430,14 @@ contract Initializer_Test is Bridge_Initializer {
             }
 
             // Construct the query for the initialize function in the contract's ABI.
-            string[] memory command = new string[](3);
-            command[0] = Executables.bash;
-            command[1] = "-c";
-            command[2] = string.concat(
-                Executables.echo,
-                " '",
+            string memory cmd = string.concat(
+                "echo '",
                 ForgeArtifacts.getAbi(contractName),
-                "'",
-                " | ",
-                Executables.jq,
-                " '.[] | select(.name == \"initialize\" and .type == \"function\")'"
+                "' | jq '.[] | select(.name == \"initialize\" and .type == \"function\")'"
             );
 
             // If the contract does not have an `initialize()` function, skip it.
-            if (Process.run(command).length == 0) {
+            if (bytes(Process.bash(cmd)).length == 0) {
                 continue;
             }
 

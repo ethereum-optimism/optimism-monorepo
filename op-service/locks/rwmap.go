@@ -46,3 +46,10 @@ func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {
 		}
 	}
 }
+
+// Clear removes all key-value pairs from the map.
+func (m *RWMap[K, V]) Clear() {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	clear(m.inner)
+}

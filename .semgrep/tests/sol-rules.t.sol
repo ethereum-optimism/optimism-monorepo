@@ -484,9 +484,6 @@ contract SemgrepTest__sol_style_malformed_require {
         require(cond, "CHECK-L2OO-140");
 
         // ok: sol-style-malformed-require
-        require(cond);
-
-        // ok: sol-style-malformed-require
         require(bytes(env_).length > 0, "Config: must set DEPLOY_CONFIG_PATH to filesystem path of deploy config");
 
         // ok: sol-style-malformed-require
@@ -549,5 +546,15 @@ contract SemgrepTest__sol_style_malformed_revert {
 
         // ruleid: sol-style-malformed-revert
         revert("test");
+    }
+}
+
+contract SemgrepTest__sol_style_enforce_require_msg {
+    function test() {
+        // ok: sol-style-enforce-require-msg
+        require(cond, "MyContract: test message good");
+
+        // ruleid: sol-style-enforce-require-msg
+        require(cond);
     }
 }

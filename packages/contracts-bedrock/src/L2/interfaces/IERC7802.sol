@@ -1,9 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-/// @title ICrosschainERC20
+import { IERC165 } from "@openzeppelin/contracts/interfaces/IERC165.sol";
+
+/// @title IERC7802
 /// @notice Defines the interface for crosschain ERC20 transfers.
-interface ICrosschainERC20 {
+interface IERC7802 is IERC165 {
     /// @notice Emitted when a crosschain transfer mints tokens.
     /// @param to       Address of the account tokens are being minted for.
     /// @param amount   Amount of tokens minted.

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
@@ -25,7 +25,7 @@ contract TestERC721 is ERC721 {
     }
 }
 
-contract L1ERC721Bridge_Test is Bridge_Initializer {
+contract L1ERC721Bridge_Test is CommonTest {
     TestERC721 internal localToken;
     TestERC721 internal remoteToken;
     uint256 internal constant tokenId = 1;
@@ -315,7 +315,7 @@ contract L1ERC721Bridge_Test is Bridge_Initializer {
     }
 }
 
-contract L1ERC721Bridge_Pause_Test is Bridge_Initializer {
+contract L1ERC721Bridge_Pause_Test is CommonTest {
     /// @dev Verifies that the `paused` accessor returns the same value as the `paused` function of the
     ///      `superchainConfig`.
     function test_paused_succeeds() external view {
@@ -343,7 +343,7 @@ contract L1ERC721Bridge_Pause_Test is Bridge_Initializer {
     }
 }
 
-contract L1ERC721Bridge_Pause_TestFail is Bridge_Initializer {
+contract L1ERC721Bridge_Pause_TestFail is CommonTest {
     /// @dev Sets up the test by pausing the bridge, giving ether to the bridge and mocking
     ///      the calls to the xDomainMessageSender so that it returns the correct value.
     function setUp() public override {

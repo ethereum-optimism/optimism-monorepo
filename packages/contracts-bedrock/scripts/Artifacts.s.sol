@@ -67,11 +67,7 @@ abstract contract Artifacts {
     ///         as well as the JSON files that contain addresses in the `superchain-registry`
     ///         repo. The JSON key is the name of the contract and the value is an address.
     function _loadAddresses(string memory _path) internal {
-        string[] memory commands = new string[](3);
-        commands[0] = "bash";
-        commands[1] = "-c";
-        commands[2] = string.concat("jq -cr < ", _path);
-        string memory json = string(Process.run(commands));
+        string memory json = Process.bash(string.concat("jq -cr < ", _path));
         string[] memory keys = vm.parseJsonKeys(json, "");
         for (uint256 i; i < keys.length; i++) {
             string memory key = keys[i];
