@@ -204,8 +204,8 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 
 		l2SafeHead := env.Sequencer.L2Safe()
 
-		testCfg.Custom.RequireExpectedProgress(t, l2SafeHead, testCfg.Hardfork.Precedence < helpers.Holocene.Precedence, env.Engine)
-
+		isHolocene := testCfg.Hardfork.Precedence >= helpers.Holocene.Precedence
+		testCfg.Custom.RequireExpectedProgress(t, l2SafeHead, isHolocene, env.Engine)
 		t.Log("Safe head progressed as expected", "l2SafeHeadNumber", l2SafeHead.Number)
 
 		if safeHeadNumber := l2SafeHead.Number; safeHeadNumber > 0 {

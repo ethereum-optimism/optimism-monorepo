@@ -19,12 +19,12 @@ type holoceneExpectations struct {
 
 func (h holoceneExpectations) RequireExpectedProgress(t actionsHelpers.StatefulTesting, actualSafeHead eth.L2BlockRef, isHolocene bool, engine *actionsHelpers.L2Engine) {
 	if isHolocene {
-		require.Equal(t, h.safeHeadPreHolocene, actualSafeHead.Number)
-		expectedHash := engine.L2Chain().GetBlockByNumber(h.safeHeadPreHolocene).Hash()
-		require.Equal(t, expectedHash, actualSafeHead.Hash)
-	} else {
 		require.Equal(t, h.safeHeadHolocene, actualSafeHead.Number)
 		expectedHash := engine.L2Chain().GetBlockByNumber(h.safeHeadHolocene).Hash()
+		require.Equal(t, expectedHash, actualSafeHead.Hash)
+	} else {
+		require.Equal(t, h.safeHeadPreHolocene, actualSafeHead.Number)
+		expectedHash := engine.L2Chain().GetBlockByNumber(h.safeHeadPreHolocene).Hash()
 		require.Equal(t, expectedHash, actualSafeHead.Hash)
 	}
 }
@@ -126,8 +126,8 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 
 		l2SafeHead := env.Sequencer.L2Safe()
 
-		testCfg.Custom.RequireExpectedProgress(t, l2SafeHead, testCfg.Hardfork.Precedence < helpers.Holocene.Precedence, env.Engine)
-
+		isHolocene := testCfg.Hardfork.Precedence >= helpers.Holocene.Precedence
+		testCfg.Custom.RequireExpectedProgress(t, l2SafeHead, isHolocene, env.Engine)
 		t.Log("Safe head progressed as expected", "l2SafeHeadNumber", l2SafeHead.Number)
 
 		env.RunFaultProofProgram(t, l2SafeHead.Number, testCfg.CheckResult, testCfg.InputParams...)
