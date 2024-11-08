@@ -95,8 +95,23 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 			useSpanBatch:            true,
 			breachMaxSequencerDrift: true,
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 0},    // Entire span batch invalidated.
-				holocene:    expectations{safeHead: 1800}, // We expect partial validity until we hit sequencer drift.
+				preHolocene: expectations{safeHead: 0, // Entire span batch invalidated.
+					logs: []logExcpectations{
+						{
+							filter: "batch exceeded sequencer time drift without adopting next origin, and next L1 origin would have been valid",
+							role:   "sequencer",
+							num:    1,
+						},
+					}},
+				holocene: expectations{safeHead: 1800, // We expect partial validity until we hit sequencer drift.
+					logs: []logExcpectations{
+						{
+							filter: "batch exceeded sequencer time drift without adopting next origin, and next L1 origin would have been valid",
+							role:   "sequencer",
+							num:    1,
+						},
+					},
+				},
 			},
 		},
 		{
