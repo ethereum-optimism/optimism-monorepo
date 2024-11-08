@@ -73,9 +73,13 @@ if ! "$SCRIPT_DIR/deploy.sh" | tee "$DEPLOY_LOG_PATH"; then
 fi
 
 # Extract the addresses from the deployment logs
+# shellcheck disable=2155
 export SYSTEM_CONFIG_IMPL=$(grep "1. SystemConfig:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+# shellcheck disable=2155
 export MIPS_IMPL=$(grep "2. MIPS:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+# shellcheck disable=2155
 export FDG_IMPL=$(grep "3. FaultDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+# shellcheck disable=2155
 export PDG_IMPL=$(grep "4. PermissionedDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
 
 # Ensure that the addresses were extracted properly
