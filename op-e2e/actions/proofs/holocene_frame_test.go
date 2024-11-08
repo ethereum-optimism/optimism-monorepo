@@ -13,13 +13,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type logExcpectations struct {
+	role   string
+	filter string
+	num    int
+}
 type expectations struct {
 	safeHead uint64
-	logs     []struct {
-		role   string
-		filter string
-		num    int
-	}
+	logs     []logExcpectations
 }
 type holoceneExpectations struct {
 	preHolocene, holocene expectations
@@ -40,7 +41,7 @@ func (h holoceneExpectations) RequireExpectedProgressAndLogs(t actionsHelpers.St
 	for _, l := range exp.logs {
 		t.Helper()
 		recs := logs.FindLogs(testlog.NewMessageContainsFilter(l.filter), testlog.NewAttributesFilter("role", l.role))
-		require.Len(t, recs, l.num)
+		require.Len(t, recs, l.num, "searching for %d instances of '%s' in logs from role %s", l.num, l.filter, l.role)
 	}
 
 }
