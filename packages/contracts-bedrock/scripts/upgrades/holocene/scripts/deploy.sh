@@ -16,6 +16,8 @@ reqenv "DEPLOY_CONFIG_PATH"
 reqenv "IMPL_SALT"
 
 # Check required address environment variables
+reqenv "PROXY_ADMIN_ADDR"
+reqenv "SUPERCHAIN_CONFIG_PROXY_ADDR"
 reqenv "PREIMAGE_ORACLE_ADDR"
 reqenv "ANCHOR_STATE_REGISTRY_PROXY_ADDR"
 reqenv "DELAYED_WETH_PROXY_ADDR"
@@ -27,11 +29,13 @@ forge script DeployUpgrade.s.sol \
   --rpc-url "$ETH_RPC_URL" \
   --private-key "$PRIVATE_KEY" \
   --etherscan-api-key "$ETHERSCAN_API_KEY" \
-  --sig "deploy(address,address,address,address,address)" \
+  --sig "deploy(address,address,address,address,address,address,address)" \
+  "$PROXY_ADMIN_ADDR" \
+  "$SUPERCHAIN_CONFIG_PROXY_ADDR" \
   "$SYSTEM_CONFIG_IMPL_ADDR" \
   "$MIPS_IMPL_ADDR" \
+  "$DELAYED_WETH_PROXY_ADDR" \
   "$PREIMAGE_ORACLE_ADDR" \
   "$ANCHOR_STATE_REGISTRY_PROXY_ADDR" \
-  "$DELAYED_WETH_PROXY_ADDR" \
   --broadcast \
   --slow

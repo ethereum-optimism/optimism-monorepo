@@ -13,6 +13,8 @@ import "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
+import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IProxy } from "src/universal/interfaces/IProxy.sol";
 import {
     IFaultDisputeGame,
     IBigStepper,
@@ -27,24 +29,31 @@ import { IMIPS, IPreimageOracle } from "src/cannon/interfaces/IMIPS.sol";
 contract DeployUpgrade is Deployer {
     /// @dev The entrypoint to the deployment script.
     function deploy(
+        address _proxyAdmin,
+        address _superchainConfig,
         address _systemConfigImpl,
         address _mipsImpl,
+        address _delayedWETH,
         address _preimageOracle,
-        address _anchorStateRegistry,
-        address _delayedWETH
+        address _anchorStateRegistry
     )
         public
     {
         // Shim the existing contracts that this upgrade is dependent on.
-        shim(_systemConfigImpl, _mipsImpl, _preimageOracle, _anchorStateRegistry, _delayedWETH);
+        shim({
+            _proxyAdmin: _proxyAdmin,
+            _superchainConfig: _superchainConfig,
+            _systemConfigImpl: _systemConfigImpl,
+            _mipsImpl: _mipsImpl,
+            _delayedWETH: _delayedWETH,
+            _preimageOracle: _preimageOracle,
+            _anchorStateRegistry: _anchorStateRegistry
+        });
 
         // Deploy new implementations.
-        if (_systemConfigImpl == address(0)) {
-            deploySystemConfigImplementation();
-        }
-        if (_mipsImpl == address(0)) {
-            deployMIPSImplementation();
-        }
+        if (_systemConfigImpl == address(0)) deploySystemConfigImplementation();
+        if (_mipsImpl == address(0)) deployMIPSImplementation();
+        if (_delayedWETH == address(0)) deployDelayedWETH();
         deployFaultDisputeGameImplementation();
         deployPermissionedDisputeGameImplementation();
 
@@ -52,6 +61,7 @@ contract DeployUpgrade is Deployer {
         checkMIPS();
         checkFaultDisputeGame();
         checkPermissionedDisputeGame();
+        checkDelayedWETH();
 
         // Print the deployment summary.
         printSummary();
@@ -59,23 +69,23 @@ contract DeployUpgrade is Deployer {
 
     /// @dev Shims the existing contracts that this upgrade is dependent on.
     function shim(
+        address _proxyAdmin,
+        address _superchainConfig,
         address _systemConfigImpl,
         address _mipsImpl,
+        address _delayedWETH,
         address _preimageOracle,
-        address _anchorStateRegistry,
-        address _delayedWETH
+        address _anchorStateRegistry
     )
         public
     {
-        if (_systemConfigImpl != address(0)) {
-            prankDeployment("SystemConfig", _systemConfigImpl);
-        }
-        if (_systemConfigImpl != address(0)) {
-            prankDeployment("MIPS", _mipsImpl);
-        }
+        prankDeployment("ProxyAdmin", _proxyAdmin);
+        prankDeployment("SuperchainConfig", _superchainConfig);
+        if (_systemConfigImpl != address(0)) prankDeployment("SystemConfig", _systemConfigImpl);
+        if (_systemConfigImpl != address(0)) prankDeployment("MIPS", _mipsImpl);
+        if (_delayedWETH != address(0)) prankDeployment("DelayedWETHProxy", _delayedWETH);
         prankDeployment("PreimageOracle", _preimageOracle);
         prankDeployment("AnchorStateRegistry", _anchorStateRegistry);
-        prankDeployment("DelayedWETH", _delayedWETH);
     }
 
     /// @dev Deploys the Holocene `SystemConfig` implementation contract.
@@ -119,7 +129,7 @@ contract DeployUpgrade is Deployer {
                 Duration.wrap(uint64(cfg.faultGameClockExtension())),
                 Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
                 IBigStepper(mustGetAddress("MIPS")),
-                IDelayedWETH(payable(mustGetAddress("DelayedWETH"))),
+                IDelayedWETH(payable(mustGetAddress("DelayedWETHProxy"))),
                 IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
                 cfg.l2ChainID()
             )
@@ -156,7 +166,7 @@ contract DeployUpgrade is Deployer {
         );
         require(address(fdg.vm()) == mustGetAddress("MIPS"), "DeployHoloceneUpgrade: invalid FaultDisputeGame MIPS");
         require(
-            address(fdg.weth()) == mustGetAddress("DelayedWETH"),
+            address(fdg.weth()) == mustGetAddress("DelayedWETHProxy"),
             "DeployHoloceneUpgrade: invalid FaultDisputeGame DelayedWETH"
         );
         require(
@@ -178,7 +188,7 @@ contract DeployUpgrade is Deployer {
                 Duration.wrap(uint64(cfg.faultGameClockExtension())),
                 Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
                 IBigStepper(mustGetAddress("MIPS")),
-                IDelayedWETH(payable(mustGetAddress("DelayedWETH"))),
+                IDelayedWETH(payable(mustGetAddress("DelayedWETHProxy"))),
                 IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
                 cfg.l2ChainID(),
                 cfg.l2OutputOracleProposer(),
@@ -222,7 +232,7 @@ contract DeployUpgrade is Deployer {
             address(pdg.vm()) == mustGetAddress("MIPS"), "DeployHoloceneUpgrade: invalid PermissionedDisputeGame MIPS"
         );
         require(
-            address(pdg.weth()) == mustGetAddress("DelayedWETH"),
+            address(pdg.weth()) == mustGetAddress("DelayedWETHProxy"),
             "DeployHoloceneUpgrade: invalid PermissionedDisputeGame DelayedWETH"
         );
         require(
@@ -240,11 +250,62 @@ contract DeployUpgrade is Deployer {
         );
     }
 
+    /// @dev Deploys a new proxy contract with a new `DelayedWETH` implementation.
+    function deployDelayedWETH() public {
+        uint256 delay = cfg.faultGameWithdrawalDelay();
+        address delayedWethOwner = cfg.finalSystemOwner();
+        address proxyAdmin = mustGetAddress("ProxyAdmin");
+        ISuperchainConfig superchainConfig = ISuperchainConfig(mustGetAddress("SuperchainConfig"));
+
+        // Deploy the implementation and proxy contracts.
+        vm.startBroadcast(msg.sender);
+        address impl = DeployUtils.create1({
+            _name: "DelayedWETH",
+            _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (delay)))
+        });
+        IProxy proxy = IProxy(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (msg.sender)))
+            })
+        );
+        vm.stopBroadcast();
+
+        // Upgrade the proxy to the implementation and initialize it.
+        vm.broadcast(msg.sender);
+        proxy.upgradeToAndCall(impl, abi.encodeCall(IDelayedWETH.initialize, (delayedWethOwner, superchainConfig)));
+
+        // Transfer the admin role of the proxy to the ProxyAdmin, now that we've upgraded
+        // and initialized the proxy.
+        vm.broadcast(msg.sender);
+        proxy.changeAdmin(proxyAdmin);
+
+        // Save the proxy address.
+        save("DelayedWETHProxy", address(proxy));
+    }
+
+    /// @dev Checks if the `DelayedWETH` contract is correctly configured.
+    function checkDelayedWETH() internal {
+        IDelayedWETH delayedWeth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
+        require(
+            delayedWeth.delay() == cfg.faultGameWithdrawalDelay(), "DeployHoloceneUpgrade: invalid DelayedWETH delay"
+        );
+        require(
+            delayedWeth.config() == ISuperchainConfig(mustGetAddress("SuperchainConfig")),
+            "DeployHoloceneUpgrade: invalid DelayedWETH config"
+        );
+
+        vm.prank(mustGetAddress("ProxyAdmin"));
+        address admin = IProxy(mustGetAddress("DelayedWETHProxy")).admin();
+        require(admin == mustGetAddress("ProxyAdmin"), "DeployHoloceneUpgrade: invalid DelayedWETH admin");
+    }
+
     /// @dev Prints a summary of the deployment.
     function printSummary() internal view {
         console.log("1. SystemConfig: %s", mustGetAddress("SystemConfig"));
         console.log("2. MIPS: %s", mustGetAddress("MIPS"));
         console.log("3. FaultDisputeGame: %s", mustGetAddress("FaultDisputeGame"));
         console.log("4. PermissionedDisputeGame: %s", mustGetAddress("PermissionedDisputeGame"));
+        console.log("5. DelayedWETHProxy: %s", mustGetAddress("DelayedWETHProxy"));
     }
 }

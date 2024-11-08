@@ -41,8 +41,9 @@ export SYSTEM_CONFIG_IMPL_ADDR=${SYSTEM_CONFIG_IMPL_ADDR:-$(cast az)}
 export MIPS_IMPL_ADDR=${MIPS_IMPL_ADDR:-$(cast az)}
 export PREIMAGE_ORACLE_ADDR=${PREIMAGE_ORACLE_ADDR:?PREIMAGE_ORACLE_ADDR must be set}
 export ANCHOR_STATE_REGISTRY_PROXY_ADDR=${ANCHOR_STATE_REGISTRY_PROXY_ADDR:?ANCHOR_STATE_REGISTRY_PROXY_ADDR must be set}
-export DELAYED_WETH_PROXY_ADDR=${DELAYED_WETH_PROXY_ADDR:?DELAYED_WETH_PROXY_ADDR must be set}
+export DELAYED_WETH_PROXY_ADDR=${DELAYED_WETH_PROXY_ADDR:-$(cast az)}
 export PROXY_ADMIN_ADDR=${PROXY_ADMIN_ADDR:?PROXY_ADMIN_ADDR must be set}
+export SUPERCHAIN_CONFIG_PROXY_ADDR=${SUPERCHAIN_CONFIG_PROXY_ADDR:?SUPERCHAIN_CONFIG_ADDR must be set}
 export SYSTEM_CONFIG_PROXY_ADDR=${SYSTEM_CONFIG_PROXY_ADDR:?SYSTEM_CONFIG_PROXY_ADDR must be set}
 export DISPUTE_GAME_FACTORY_PROXY_ADDR=${DISPUTE_GAME_FACTORY_PROXY_ADDR:?DISPUTE_GAME_FACTORY_PROXY_ADDR must be set}
 
@@ -83,12 +84,15 @@ export MIPS_IMPL=$(grep "2. MIPS:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
 export FDG_IMPL=$(grep "3. FaultDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
 # shellcheck disable=2155
 export PDG_IMPL=$(grep "4. PermissionedDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+# shellcheck disable=2155
+export DELAYED_WETH_PROXY=$(grep "5. DelayedWETHProxy:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
 
 # Ensure that the addresses were extracted properly
 reqenv "SYSTEM_CONFIG_IMPL"
 reqenv "MIPS_IMPL"
 reqenv "FDG_IMPL"
 reqenv "PDG_IMPL"
+reqenv "DELAYED_WETH_PROXY"
 
 # Generate deployments.json with extracted addresses
 DEPLOYMENTS_JSON_PATH="$OUTPUT_FOLDER_PATH/deployments.json"
@@ -98,6 +102,7 @@ cat << EOF > "$DEPLOYMENTS_JSON_PATH"
   "MIPS": "$MIPS_IMPL",
   "FaultDisputeGame": "$FDG_IMPL",
   "PermissionedDisputeGame": "$PDG_IMPL"
+  "DelayedWETHProxy": "$DELAYED_WETH_PROXY"
 }
 EOF
 
