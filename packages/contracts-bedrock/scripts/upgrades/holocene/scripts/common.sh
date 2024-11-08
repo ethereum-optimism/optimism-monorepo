@@ -89,6 +89,7 @@ fetch_standard_address() {
     # Fetch the TOML file content from the URL if not already cached for this URL
     if [ -z "${CACHED_TOML_CONTENT[$toml_url]:-}" ]; then
         CACHED_TOML_CONTENT[$toml_url]=$(curl -s "$toml_url")
+        # shellcheck disable=SC2181
         if [ $? -ne 0 ]; then
             echo "Error: Failed to fetch TOML file from $toml_url"
             exit 1
@@ -99,6 +100,7 @@ fetch_standard_address() {
     local toml_content="${CACHED_TOML_CONTENT[$toml_url]}"
 
     # Find the section for v1.6.0 release
+    # shellcheck disable=SC2155
     local section_content=$(echo "$toml_content" | awk -v version="$release_version" '
         $0 ~ "^\\[releases.\"op-contracts/v" version "\"\\]" {
             flag=1;
@@ -118,8 +120,8 @@ fetch_standard_address() {
 
     # Extract the implementation address for the specified contract
     local regex="(address|implementation_address) = \"(0x[a-fA-F0-9]{40})\""
+    # shellcheck disable=SC2155
     local data=$(echo "$section_content" | grep "${contract_name}")
-    local address=true
     if [[ $data =~ $regex ]]; then
         echo "${BASH_REMATCH[2]}"
     else
