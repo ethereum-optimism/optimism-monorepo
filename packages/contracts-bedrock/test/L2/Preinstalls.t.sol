@@ -119,7 +119,7 @@ contract PreinstallsTest is CommonTest {
         assertPreinstall(Preinstalls.CreateX, Preinstalls.CreateXCode);
     }
 
-    function test_createX_runtimeBytecodeHash() external view {
+    function test_createX_runtimeBytecodeHash_works() external view {
         bytes memory createXRuntimeBytecode = Preinstalls.CreateX.code;
         bytes32 createXRuntimeBytecodeHash = keccak256(createXRuntimeBytecode);
 

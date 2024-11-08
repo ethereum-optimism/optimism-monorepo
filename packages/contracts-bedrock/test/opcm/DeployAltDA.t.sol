@@ -44,7 +44,7 @@ contract DeployAltDAInput_Test is Test {
         assertEq(resolverRefundPercentage, dai.resolverRefundPercentage(), "700");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         bytes memory expectedErr = "DeployAltDAInput: ";
 
         vm.expectRevert(abi.encodePacked(expectedErr, "salt not set"));
@@ -119,7 +119,7 @@ contract DeployAltDAOutput_Test is Test {
         assertEq(address(dataAvailabilityChallengeImpl), address(dao.dataAvailabilityChallengeImpl()), "200");
     }
 
-    function test_getters_whenNotSet_revert() public {
+    function test_getters_whenNotSet_reverts() public {
         vm.expectRevert("DeployUtils: zero address");
         dao.dataAvailabilityChallengeProxy();
 
@@ -231,7 +231,7 @@ contract DeployAltDA_Test is Test {
         deployer.checkOutput(dai, dao);
     }
 
-    function testFuzz_run_withDifferentParameters(
+    function testFuzz_run_withDifferentParameters_works(
         uint256 _challengeWindow,
         uint256 _resolveWindow,
         uint256 _bondSize,

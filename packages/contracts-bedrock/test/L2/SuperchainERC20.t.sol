@@ -125,7 +125,7 @@ contract SuperchainERC20Test is Test {
 
     /// @notice Tests that the `supportsInterface` function returns false for any other interface than the
     /// `IERC7802` one.
-    function testFuzz_supportInterface_returnFalse(bytes4 _interfaceId) public view {
+    function testFuzz_supportInterface_works(bytes4 _interfaceId) public view {
         vm.assume(_interfaceId != type(IERC165).interfaceId);
         vm.assume(_interfaceId != type(IERC7802).interfaceId);
         vm.assume(_interfaceId != type(IERC20).interfaceId);
