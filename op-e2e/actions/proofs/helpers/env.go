@@ -28,6 +28,7 @@ import (
 // L2FaultProofEnv is a test harness for a fault provable L2 chain.
 type L2FaultProofEnv struct {
 	log       log.Logger
+	Logs      *testlog.CapturingHandler
 	Batcher   *helpers.L2Batcher
 	Sequencer *helpers.L2Sequencer
 	Engine    *helpers.L2Engine
@@ -40,7 +41,8 @@ type L2FaultProofEnv struct {
 }
 
 func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eutils.TestParams, batcherCfg *helpers.BatcherCfg) *L2FaultProofEnv {
-	log := testlog.Logger(t, log.LvlDebug)
+	log, logs := testlog.CaptureLogger(t, log.LevelDebug)
+
 	dp := NewDeployParams(t, tp, func(dp *e2eutils.DeployParams) {
 		genesisBlock := hexutil.Uint64(0)
 
@@ -111,6 +113,7 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 
 	return &L2FaultProofEnv{
 		log:       log,
+		Logs:      logs,
 		Batcher:   batcher,
 		Sequencer: sequencer,
 		Engine:    engine,
