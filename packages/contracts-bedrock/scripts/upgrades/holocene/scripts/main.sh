@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR=$(dirname "$0")
 
 # Load common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 echo "
@@ -44,7 +45,7 @@ export SYSTEM_CONFIG_PROXY_ADDR=${SYSTEM_CONFIG_PROXY_ADDR:?SYSTEM_CONFIG_PROXY_
 export DISPUTE_GAME_FACTORY_PROXY_ADDR=${DISPUTE_GAME_FACTORY_PROXY_ADDR:?DISPUTE_GAME_FACTORY_PROXY_ADDR must be set}
 
 # Make the output folder, if it doesn't exist
-mkdir -p $OUTPUT_FOLDER_PATH
+mkdir -p "$OUTPUT_FOLDER_PATH"
 
 # Find the contracts-bedrock directory
 CONTRACTS_BEDROCK_DIR=$(pwd)
@@ -62,20 +63,20 @@ fi
 export DEPLOY_CONFIG_PATH="$CONTRACTS_BEDROCK_DIR/deploy-config/deploy-config.json"
 
 # Copy the files into the paths so that the script can actually access it
-cp $BASE_DEPLOY_CONFIG_PATH $DEPLOY_CONFIG_PATH
+cp "$BASE_DEPLOY_CONFIG_PATH" "$DEPLOY_CONFIG_PATH"
 
 # Run deploy.sh
 DEPLOY_LOG_PATH="$OUTPUT_FOLDER_PATH/deploy.log"
-if ! "$SCRIPT_DIR/deploy.sh" | tee $DEPLOY_LOG_PATH; then
+if ! "$SCRIPT_DIR/deploy.sh" | tee "$DEPLOY_LOG_PATH"; then
     echo "Error: deploy.sh failed"
     exit 1
 fi
 
 # Extract the addresses from the deployment logs
-export SYSTEM_CONFIG_IMPL=$(grep "1. SystemConfig:" $DEPLOY_LOG_PATH | awk '{print $3}')
-export MIPS_IMPL=$(grep "2. MIPS:" $DEPLOY_LOG_PATH | awk '{print $3}')
-export FDG_IMPL=$(grep "3. FaultDisputeGame:" $DEPLOY_LOG_PATH | awk '{print $3}')
-export PDG_IMPL=$(grep "4. PermissionedDisputeGame:" $DEPLOY_LOG_PATH | awk '{print $3}')
+export SYSTEM_CONFIG_IMPL=$(grep "1. SystemConfig:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+export MIPS_IMPL=$(grep "2. MIPS:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+export FDG_IMPL=$(grep "3. FaultDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
+export PDG_IMPL=$(grep "4. PermissionedDisputeGame:" "$DEPLOY_LOG_PATH" | awk '{print $3}')
 
 # Ensure that the addresses were extracted properly
 reqenv "SYSTEM_CONFIG_IMPL"
@@ -94,10 +95,10 @@ cat << EOF > "$DEPLOYMENTS_JSON_PATH"
 }
 EOF
 
-echo "✨ Deployed contracts and saved addresses to \`$DEPLOYMENTS_JSON_PATH\`"
+echo "✨ Deployed contracts and saved addresses to \"$DEPLOYMENTS_JSON_PATH\""
 
 # Print a message when the script exits
-trap "echo '✨ Done. Artifacts are available in \`$OUTPUT_FOLDER_PATH\`'" EXIT
+trap 'echo "✨ Done. Artifacts are available in \"$OUTPUT_FOLDER_PATH\""' EXIT
 
 prompt "Generate safe upgrade bundle?"
 

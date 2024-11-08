@@ -43,7 +43,7 @@ prompt() {
     read -p "$1 [Y/n] " -n 1 -r
     echo
     if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-        [[ "$0" = "$BASH_SOURCE" ]] && exit 1 || return 1
+        [[ "$0" = "${BASH_SOURCE[0]}" ]] && exit 1 || return 1
         exit 1
     fi
 }

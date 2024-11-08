@@ -5,6 +5,7 @@ set -euo pipefail
 SCRIPT_DIR=$(dirname "$0")
 
 # Load common.sh
+# shellcheck disable=SC1091
 source "$SCRIPT_DIR/common.sh"
 
 # Check required environment variables
@@ -21,35 +22,35 @@ TASK_DIR="$OUTPUT_FOLDER_PATH/sc-ops-task"
 mkdir -p "$TASK_DIR"
 
 # Copy the bundle and task template
-cp $OUTPUT_FOLDER_PATH/bundle.json $TASK_DIR/input.json
-cp $SCRIPT_DIR/../templates/sc-ops-task/** $TASK_DIR/
+cp "$OUTPUT_FOLDER_PATH/bundle.json" "$TASK_DIR/input.json"
+cp -R "$SCRIPT_DIR/../templates/sc-ops-task/." "$TASK_DIR/"
 
 # Generate the task overview
-msup render -i $TASK_DIR/input.json -o $TASK_DIR/OVERVIEW.md
+msup render -i "$TASK_DIR/input.json" -o "$TASK_DIR/OVERVIEW.md"
 
 # Generate the README
-sed -i '' "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" $TASK_DIR/README.md
-sed -i '' "s/\$MIPS_IMPL/$MIPS_IMPL/g" $TASK_DIR/README.md
-sed -i '' "s/\$FDG_IMPL/$FDG_IMPL/g" $TASK_DIR/README.md
-sed -i '' "s/\$PDG_IMPL/$PDG_IMPL/g" $TASK_DIR/README.md
+sed -i '' "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$TASK_DIR/README.md"
+sed -i '' "s/\$MIPS_IMPL/$MIPS_IMPL/g" "$TASK_DIR/README.md"
+sed -i '' "s/\$FDG_IMPL/$FDG_IMPL/g" "$TASK_DIR/README.md"
+sed -i '' "s/\$PDG_IMPL/$PDG_IMPL/g" "$TASK_DIR/README.md"
 
 # Generate the validation doc
-OLD_SYS_CFG=$(cast impl $SYSTEM_CONFIG_PROXY_ADDR)
-OLD_FDG=$(cast call $DISPUTE_GAME_FACTORY_PROXY_ADDR "gameImpls(uint32)" 0)
-OLD_PDG=$(cast call $DISPUTE_GAME_FACTORY_PROXY_ADDR "gameImpls(uint32)" 1)
+OLD_SYS_CFG=$(cast impl "$SYSTEM_CONFIG_PROXY_ADDR")
+OLD_FDG=$(cast call "$DISPUTE_GAME_FACTORY_PROXY_ADDR" "gameImpls(uint32)" 0)
+OLD_PDG=$(cast call "$DISPUTE_GAME_FACTORY_PROXY_ADDR" "gameImpls(uint32)" 1)
 
-PADDED_OLD_SYS_CFG=$(cast 2u $OLD_SYS_CFG)
-PADDED_OLD_FDG=$(cast 2u $OLD_FDG)
-PADDED_OLD_PDG=$(cast 2u $OLD_PDG)
-PADDED_SYS_CFG=$(cast 2u $SYSTEM_CONFIG_IMPL)
-PADDED_FDG_IMPL=$(cast 2u $FDG_IMPL)
-PADDED_PDG_IMPL=$(cast 2u $PDG_IMPL)
+PADDED_OLD_SYS_CFG=$(cast 2u "$OLD_SYS_CFG")
+PADDED_OLD_FDG=$(cast 2u "$OLD_FDG")
+PADDED_OLD_PDG=$(cast 2u "$OLD_PDG")
+PADDED_SYS_CFG=$(cast 2u "$SYSTEM_CONFIG_IMPL")
+PADDED_FDG_IMPL=$(cast 2u "$FDG_IMPL")
+PADDED_PDG_IMPL=$(cast 2u "$PDG_IMPL")
 
-sed -i '' "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$OLD_SYS_CFG/$PADDED_OLD_SYS_CFG/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$SYSTEM_CONFIG_IMPL/$PADDED_SYS_CFG/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$DISPUTE_GAME_FACTORY_PROXY_ADDR/$DISPUTE_GAME_FACTORY_PROXY_ADDR/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$OLD_FDG/$PADDED_OLD_FDG/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$FDG_IMPL/$PADDED_FDG_IMPL/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$PDG_IMPL/$PADDED_PDG_IMPL/g" $TASK_DIR/VALIDATION.md
-sed -i '' "s/\$OLD_PDG/$PADDED_OLD_PDG/g" $TASK_DIR/VALIDATION.md
+sed -i '' "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$OLD_SYS_CFG/$PADDED_OLD_SYS_CFG/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$SYSTEM_CONFIG_IMPL/$PADDED_SYS_CFG/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$DISPUTE_GAME_FACTORY_PROXY_ADDR/$DISPUTE_GAME_FACTORY_PROXY_ADDR/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$OLD_FDG/$PADDED_OLD_FDG/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$FDG_IMPL/$PADDED_FDG_IMPL/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$PDG_IMPL/$PADDED_PDG_IMPL/g" "$TASK_DIR/VALIDATION.md"
+sed -i '' "s/\$OLD_PDG/$PADDED_OLD_PDG/g" "$TASK_DIR/VALIDATION.md"
