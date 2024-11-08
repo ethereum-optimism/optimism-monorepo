@@ -64,6 +64,26 @@ contract DelayedWETH_Unlock_Test is DelayedWETH_Init {
     }
 }
 
+contract DelayedWETH_Transfer_Test is DelayedWETH_Init {
+    function testFuzz_transfer_succeeds(address _to, uint256 _amount) public {
+        vm.assume(_to != alice);
+        uint256 _depositAmount = 1 ether;
+        _amount = bound(_amount, 0, _depositAmount);
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: _depositAmount }();
+        uint256 balance = address(alice).balance;
+
+        // transfer it.
+        vm.prank(alice);
+        delayedWeth.transfer(_to, _amount);
+        assertEq(delayedWeth.balanceOf(_to), _amount);
+    }
+
+    // TODO: transfer fails when pause is active
+    // TODO: same 2 tests for transferFrom
+}
+
 contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
     /// @dev Tests that withdrawing while unlocked and delay has passed is successful.
     function test_withdraw_whileUnlocked_succeeds() public {

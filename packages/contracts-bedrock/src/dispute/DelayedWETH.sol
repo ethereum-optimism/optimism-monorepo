@@ -31,9 +31,9 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param wad The amount of WETH that was unwrapped.
     event Unwrap(address indexed src, uint256 wad);
 
-    /// @notice Emitted when withdrawals are paused or unpaused.
-    /// @param paused True if withdrawals are paused, false otherwise.
-    event WithdrawalsPausedSet(bool paused);
+    /// @notice Emitted when withdrawals and transfers are paused or unpaused.
+    /// @param paused True if paused, false otherwise.
+    event DelayedWethPausedSet(bool paused);
 
     /// @notice Semantic version.
     /// @custom:semver 1.2.0-beta.3
@@ -48,8 +48,8 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public config;
 
-    /// @notice Flag that indicates whether withdrawals are paused.
-    bool public withdrawalsPaused;
+    /// @notice Flag that indicates whether withdrawals and transfers are paused.
+    bool public delayedWethPaused;
 
     /// @param _delay The delay for withdrawals in seconds.
     constructor(uint256 _delay) {
@@ -97,7 +97,7 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param _wad The amount of WETH to withdraw.
     function withdraw(address _guy, uint256 _wad) public {
         require(!config.paused(), "DelayedWETH: system is paused");
-        require(!withdrawalsPaused, "DelayedWETH: withdrawals are paused");
+        require(!delayedWethPaused, "DelayedWETH: withdrawals and transfers are paused");
         WithdrawalRequest storage wd = withdrawals[msg.sender][_guy];
         require(wd.amount >= _wad, "DelayedWETH: insufficient unlocked withdrawal");
         require(wd.timestamp > 0, "DelayedWETH: withdrawal not unlocked");
@@ -106,12 +106,12 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
         super.withdraw(_wad);
     }
 
-    /// @notice Allows the owner to pause or unpause withdrawals.
-    /// @param _paused True if withdrawals should be paused, false otherwise.
-    function setWithdrawalsPaused(bool _paused) external {
+    /// @notice Allows the owner to pause or unpause withdrawals and transfers.
+    /// @param _paused True if withdrawals and transfers should be paused, false otherwise.
+    function setDelayedWethPaused(bool _paused) external {
         require(msg.sender == owner(), "DelayedWETH: not owner");
-        withdrawalsPaused = _paused;
-        emit WithdrawalsPausedSet(_paused);
+        delayedWethPaused = _paused;
+        emit DelayedWethPausedSet(_paused);
     }
 
     /// @notice Allows the owner to recover from error cases by pulling ETH out of the contract.
@@ -131,5 +131,12 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
         _allowance[_guy][msg.sender] = _wad;
         emit Approval(_guy, msg.sender, _wad);
         transferFrom(_guy, msg.sender, _wad);
+    }
+
+    /// @inheritdoc WETH98
+    /// @dev Modified to enforce the delayedWethPaused condition on transfers.
+    function transferFrom(address src, address dst, uint256 wad) public override returns (bool) {
+        require(!delayedWethPaused || msg.sender == owner(), "DelayedWETH: withdrawals and transfers are paused");
+        return super.transferFrom(src, dst, wad);
     }
 }
