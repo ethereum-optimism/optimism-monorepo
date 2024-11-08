@@ -26,13 +26,25 @@ import { IMIPS, IPreimageOracle } from "src/cannon/interfaces/IMIPS.sol";
 /// @notice A deployment script for smart contract upgrades surrounding the Holocene hardfork.
 contract DeployUpgrade is Deployer {
     /// @dev The entrypoint to the deployment script.
-    function deploy(address _preimageOracle, address _anchorStateRegistry, address _delayedWETH) public {
+    function deploy(
+        address _systemConfigImpl,
+        address _mipsImpl,
+        address _preimageOracle,
+        address _anchorStateRegistry,
+        address _delayedWETH
+    )
+        public
+    {
         // Shim the existing contracts that this upgrade is dependent on.
-        shim(_preimageOracle, _anchorStateRegistry, _delayedWETH);
+        shim(_systemConfigImpl, _mipsImpl, _preimageOracle, _anchorStateRegistry, _delayedWETH);
 
         // Deploy new implementations.
-        deploySystemConfigImplementation();
-        deployMIPSImplementation();
+        if (_systemConfigImpl == address(0)) {
+            deploySystemConfigImplementation();
+        }
+        if (_mipsImpl == address(0)) {
+            deployMIPSImplementation();
+        }
         deployFaultDisputeGameImplementation();
         deployPermissionedDisputeGameImplementation();
 
@@ -46,7 +58,21 @@ contract DeployUpgrade is Deployer {
     }
 
     /// @dev Shims the existing contracts that this upgrade is dependent on.
-    function shim(address _preimageOracle, address _anchorStateRegistry, address _delayedWETH) public {
+    function shim(
+        address _systemConfigImpl,
+        address _mipsImpl,
+        address _preimageOracle,
+        address _anchorStateRegistry,
+        address _delayedWETH
+    )
+        public
+    {
+        if (_systemConfigImpl != address(0)) {
+            prankDeployment("SystemConfig", _systemConfigImpl);
+        }
+        if (_systemConfigImpl != address(0)) {
+            prankDeployment("MIPS", _mipsImpl);
+        }
         prankDeployment("PreimageOracle", _preimageOracle);
         prankDeployment("AnchorStateRegistry", _anchorStateRegistry);
         prankDeployment("DelayedWETH", _delayedWETH);
