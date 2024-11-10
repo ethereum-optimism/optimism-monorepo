@@ -108,7 +108,7 @@
     "sourceCodeHash": "0xa76133db7f449ae742f9ba988ad86ccb5672475f61298b9fefe411b63b63e9f6"
   },
   "src/L2/OptimismSuperchainERC20.sol": {
-    "initCodeHash": "0x5bc5824030ecdb531e1f615d207cb73cdaa702e198769445d0ddbe717271eba9",
+    "initCodeHash": "0x24d85d246858d1aff78ae86c614dd0dc0f63b3326b2b662e3462c3a6f9b7965e",
     "sourceCodeHash": "0x0819c9411a155dca592d19b60c4176954202e4fe5d632a4ffbf88d465461252c"
   },
   "src/L2/OptimismSuperchainERC20Beacon.sol": {
@@ -128,11 +128,11 @@
     "sourceCodeHash": "0xcf39c16893cace1e7d61350bfff05a27f3ce8da8eb0ac02cb5ac7bf603f163fa"
   },
   "src/L2/SuperchainTokenBridge.sol": {
-    "initCodeHash": "0x1cd2afdae6dd1b6ebc17f1d529e7d74c9b8b21b02db8589b8e389e2d5523d775",
+    "initCodeHash": "0xef7590c30630a75f105384e339e52758569c25a5aa0a5934c521e004b8f86220",
     "sourceCodeHash": "0x617aa994f659c5d8ebd54128d994f86f5b175ceca095b024b8524a7898e8ae62"
   },
   "src/L2/SuperchainWETH.sol": {
-    "initCodeHash": "0x5aef986a7c9c102b1e9b3068e2a2b66adce0a71dd5f39e03694622bf494f8d97",
+    "initCodeHash": "0xc72cb486b815a65daa8bd5d0af8c965b6708cf8caf03de0a18023a63a6e6c604",
     "sourceCodeHash": "0xa62101a23b860e97f393027c898082a1c73d50679eceb6c6793844af29702359"
   },
   "src/L2/WETH.sol": {
@@ -144,11 +144,11 @@
     "sourceCodeHash": "0xd8467700c80b3e62fa37193dc6513bac35282094b686b50e162e157f704dde00"
   },
   "src/cannon/MIPS2.sol": {
-    "initCodeHash": "0xc38c76ab3aad78c81ca01b3235b402614972d6604b22fda1e870f1bf47be1194",
+    "initCodeHash": "0xaedf0d0b0e94a0c5e7d987331d2fdba84230f5704a6ca33677e70cde7051b17e",
     "sourceCodeHash": "0x3d38b1924669d1bde756f1306601c764a6d31f428ac72667a3dd194b3388210d"
   },
   "src/cannon/MIPS64.sol": {
-    "initCodeHash": "0x93aa8d7f9fd3c22276c0d303a3fefdf8f73cc55807b35e483bba64c92d02aaef",
+    "initCodeHash": "0x5094e3f488de838cba1422b508a899444ee27905abc9c0b97961d4b8b7392289",
     "sourceCodeHash": "0x171d66c651fdad2ac9c287da92689815a5b09589945ada092179508ad2326306"
   },
   "src/cannon/PreimageOracle.sol": {
@@ -168,8 +168,8 @@
     "sourceCodeHash": "0x9cb0851b6e471461f2bb369bd72eef4cffe8a0d1345546608a2aa6795540211d"
   },
   "src/dispute/FaultDisputeGame.sol": {
-    "initCodeHash": "0xa352179f5055232764aac6b66a3ff5a6b3bfae2101d20c077f714b0ed7e40eef",
-    "sourceCodeHash": "0x730eff9147294c115a0a53e7e75771bcc4a517beb48457140ab929a8d1510893"
+    "initCodeHash": "0x1480098a19f71ce6b4f4548880c8794402315ed3efa6793241a3df0fae864205",
+    "sourceCodeHash": "0xb7aa532345354a6349c49eaad6c4bb521843955dd5844fd0db8b12cfa448d560"
   },
   "src/legacy/DeployerWhitelist.sol": {
     "initCodeHash": "0x0b8177ed75b69eddbb9ce6537683f69a9935efed86a1d6faa8feaafbd151c1bd",
