@@ -25,7 +25,7 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 	testCases := []testCase{
 		// Standard channel composition
 		{
-			name: "case-0", blocks: []uint{1, 2, 3},
+			name: "ordered", blocks: []uint{1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3},
 				holocene:    expectations{safeHead: 3},
@@ -34,14 +34,14 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 
 		// Non-standard channel composition
 		{
-			name: "case-2a", blocks: []uint{1, 3, 2},
+			name: "disordered-a", blocks: []uint{1, 3, 2},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // batches are buffered, so the block ordering does not matter
 				holocene:    expectations{safeHead: 1}, // batch for block 3 is considered invalid because it is from the future. This batch + remaining channel is dropped.
 			},
 		},
 		{
-			name: "case-2b", blocks: []uint{2, 1, 3},
+			name: "disordered-b", blocks: []uint{2, 1, 3},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // batches are buffered, so the block ordering does not matter
 				holocene:    expectations{safeHead: 0}, // batch for block 2 is considered invalid because it is from the future. This batch + remaining channel is dropped.
@@ -49,7 +49,7 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 		},
 
 		{
-			name: "case-2c", blocks: []uint{1, 1, 2, 3},
+			name: "duplicates", blocks: []uint{1, 1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // duplicate batches are silently dropped, so this reduceds to case-0
 				holocene:    expectations{safeHead: 3}, // duplicate batches are silently dropped
