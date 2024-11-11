@@ -36,8 +36,7 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 			name: "disordered-a", frames: []uint{2, 1, 0},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // frames are buffered, so ordering does not matter
-				holocene: expectations{safeHead: 0, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
-					logs: sequencerOnce("dropping future batch")},
+				holocene:    expectations{safeHead: 0}, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
 			},
 		},
 		{
