@@ -53,10 +53,6 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 		twoThousandBlocks[i] = uint(i) + 1
 	}
 
-	sequencerOnce := func(filter string) []logExpectations {
-		return []logExpectations{{filter: filter, role: "sequencer", num: 1}}
-	}
-
 	// Depending on the blocks list, whether the channel is built as
 	// as span batch channel, and whether the blocks are modified / invalidated
 	// we expect a different progression of the safe head under Holocene
