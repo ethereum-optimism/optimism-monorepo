@@ -77,8 +77,11 @@ func Test_ProgramAction_HoloceneInvalidBatch(gt *testing.T) {
 				preHolocene: expectations{safeHead: 1, // Invalid signature in block 2 causes an invalid _payload_ in the engine queue. Entire span batch is invalidated.
 					logs: sequencerOnce("could not process payload attributes"),
 				},
-				holocene: expectations{safeHead: 2, // We expect the safe head to move to 2 due to creation of an deposit-only block.
-					logs: sequencerOnce("could not process payload attributes"),
+				holocene: expectations{safeHead: 2, // We expect the safe head to move to 2 due to creation of a deposit-only block.
+					logs: append(
+						sequencerOnce("Holocene active, requesting deposits-only attributes"),
+						sequencerOnce("could not process payload attributes")...,
+					),
 				},
 			},
 		},
