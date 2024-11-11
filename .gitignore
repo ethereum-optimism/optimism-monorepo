@@ -43,6 +43,7 @@ coverage.out
 
 
 __pycache__
+.venv
 
 # Ignore echidna artifacts
 crytic-export
