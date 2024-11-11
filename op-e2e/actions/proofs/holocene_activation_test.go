@@ -114,5 +114,4 @@ func Test_ProgramAction_HoloceneActivation(gt *testing.T) {
 		helpers.ExpectError(claim.ErrClaimNotValid),
 		helpers.WithL2Claim(common.HexToHash("0xdeadbeef")),
 	)
-
 }
