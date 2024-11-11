@@ -59,7 +59,7 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 	testCases := []testCase{
 		// Standard frame submission,
 		{
-			name: "case-0", frames: []uint{0, 1, 2},
+			name: "ordered", frames: []uint{0, 1, 2},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3},
 				holocene:    expectations{safeHead: 3},
@@ -68,21 +68,21 @@ func Test_ProgramAction_HoloceneFrames(gt *testing.T) {
 
 		// Non-standard frame submission
 		{
-			name: "case-1a", frames: []uint{2, 1, 0},
+			name: "disordered-a", frames: []uint{2, 1, 0},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // frames are buffered, so ordering does not matter
 				holocene:    expectations{safeHead: 0}, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
 			},
 		},
 		{
-			name: "case-1b", frames: []uint{0, 1, 0, 2},
+			name: "disordered-b", frames: []uint{0, 1, 0, 2},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // frames are buffered, so ordering does not matter
 				holocene:    expectations{safeHead: 0}, // non-first frames will be dropped b/c it is the first seen with that channel Id. The safe head won't move until the channel is closed/completed.
 			},
 		},
 		{
-			name: "case-1c", frames: []uint{0, 1, 1, 2},
+			name: "duplicates", frames: []uint{0, 1, 1, 2},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // frames are buffered, so ordering does not matter
 				holocene:    expectations{safeHead: 3}, // non-contiguous frames are dropped. So this reduces to case-0.
