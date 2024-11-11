@@ -45,8 +45,9 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 }
 
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
-// in the failed transaction.
-func (c *channel) TxFailed(id string) {
+// in the failed transaction. failoverToEthDA should be set to true when using altDA
+// and altDA is down. This will switch the channel to submit frames to ethDA instead.
+func (c *channel) TxFailed(id string, failoverToEthDA bool) {
 	if data, ok := c.pendingTransactions[id]; ok {
 		c.log.Trace("marked transaction as failed", "id", id)
 		// Rewind to the first frame of the failed tx
@@ -57,7 +58,15 @@ func (c *channel) TxFailed(id string) {
 	} else {
 		c.log.Warn("unknown transaction marked as failed", "id", id)
 	}
-
+	if failoverToEthDA {
+		// We failover to calldata txs because in altda mode the channel and channelManager
+		// are configured to use a calldataConfigManager, as opposed to DynamicEthChannelConfig
+		// which can use both calldata and blobs. Failover should happen extremely rarely,
+		// and is only used while the altDA is down, so we can afford to be inefficient here.
+		// TODO: figure out how to switch to blobs/auto instead. Might need to make
+		// batcherService.initChannelConfig function stateless so that we can reuse it.
+		c.cfg.DaType = DaTypeCalldata
+	}
 	c.metr.RecordBatchTxFailed()
 }
 

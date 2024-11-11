@@ -305,13 +305,13 @@ func TestChannelTxFailed(t *testing.T) {
 
 	// Trying to mark an unknown pending transaction as failed
 	// shouldn't modify state
-	m.TxFailed(zeroFrameTxID(0))
+	m.TxFailed(zeroFrameTxID(0), false)
 	require.Equal(t, 0, m.currentChannel.PendingFrames())
 	require.Equal(t, expectedTxData, m.currentChannel.pendingTransactions[expectedChannelID.String()])
 
 	// Now we still have a pending transaction
 	// Let's mark it as failed
-	m.TxFailed(expectedChannelID)
+	m.TxFailed(expectedChannelID, false)
 	require.Empty(t, m.currentChannel.pendingTransactions)
 	// There should be a frame in the pending channel now
 	require.Equal(t, 1, m.currentChannel.PendingFrames())

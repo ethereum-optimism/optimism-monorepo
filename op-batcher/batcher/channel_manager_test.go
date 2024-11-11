@@ -211,7 +211,7 @@ func ChannelManager_TxResend(t *testing.T, batchType uint) {
 	require.ErrorIs(err, io.EOF)
 
 	// requeue frame
-	m.TxFailed(txdata0.ID())
+	m.TxFailed(txdata0.ID(), false)
 
 	txdata1, err := m.TxData(eth.BlockID{})
 	require.NoError(err)

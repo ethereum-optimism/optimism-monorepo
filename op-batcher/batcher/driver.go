@@ -890,15 +890,16 @@ func (l *BatchSubmitter) recordL1Tip(l1tip eth.L1BlockRef) {
 }
 
 func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
+	failover := errors.Is(err, altda.ErrAltDADown)
 	if err != nil {
-		l.Log.Warn("DA request failed", logFields(id, err)...)
+		l.Log.Warn("DA request failed", append([]interface{}{"failoverToEthDA", failover}, logFields(id, err))...)
 	}
-	l.state.TxFailed(id)
+	l.state.TxFailed(id, failover)
 }
 
 func (l *BatchSubmitter) recordFailedTx(id txID, err error) {
 	l.Log.Warn("Transaction failed to send", logFields(id, err)...)
-	l.state.TxFailed(id)
+	l.state.TxFailed(id, false)
 }
 
 func (l *BatchSubmitter) recordConfirmedTx(id txID, receipt *types.Receipt) {
