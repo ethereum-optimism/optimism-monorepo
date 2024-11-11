@@ -141,7 +141,7 @@ func (s *channelManager) rewindToBlock(block eth.BlockID) {
 
 // handleChannelTimeout rewinds the channelManager's blockCursor
 // to point at the first block added to the provided channel,
-// and clears the channelQueue and currentChannel.
+// and removes any channels which are newer than the provided channel.
 func (s *channelManager) handleChannelTimeout(c *channel) {
 	if len(c.channelBuilder.blocks) > 0 {
 		// This is usually true, but there is an edge case
@@ -153,8 +153,25 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 	} else {
 		s.log.Debug("channelManager.handleChannelTimeout: channel had no blocks")
 	}
-	s.channelQueue = s.channelQueue[:0]
+
+	// Trim back to and including the provided channel.
+	for i := range s.channelQueue {
+		if s.channelQueue[i] == c {
+			if len(s.channelQueue) > i {
+				// keep older channels if there are any,
+				// in case we later learn they also timed out.
+				s.channelQueue = s.channelQueue[i+1:]
+			} else {
+				// if this is the oldest channel, clear the queue
+				s.channelQueue = s.channelQueue[:0]
+			}
+			break
+		}
+	}
+
+	// We want to start writing to a new channel, so reset currentChannel.
 	s.currentChannel = nil
+
 }
 
 // nextTxData dequeues frames from the channel and returns them encoded in a transaction.
