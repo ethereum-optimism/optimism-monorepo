@@ -125,16 +125,18 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	s.log.Debug("marked transaction as confirmed", "id", id, "block", inclusionBlock)
 }
 
-// rewindToBlockWithHash updates the blockCursor to point at
+// rewindToBlock updates the blockCursor to point at
 // the block with the supplied hash, only if that block exists
 // in the block queue and the blockCursor is ahead of it.
-func (s *channelManager) rewindToBlockWithHash(blockHash common.Hash) {
-	for i, b := range s.blocks {
-		if b.Hash() == blockHash && i < s.blockCursor {
-			s.blockCursor = i
-			break
-		}
+// Panics if the block is not in state.
+func (s *channelManager) rewindToBlock(block eth.BlockID) {
+	idx := block.Number - s.blocks[0].Number().Uint64()
+	if s.blocks[idx].Hash() == block.Hash && idx < uint64(s.blockCursor) {
+		s.blockCursor = int(idx)
+	} else {
+		panic("tried to rewind to nonexistent block")
 	}
+
 }
 
 // handleChannelTimeout rewinds the channelManager's blockCursor
@@ -146,8 +148,8 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 		// where a channel timed out before any blocks got added.
 		// In that case we end up with an empty frame (header only),
 		// and there are no blocks to requeue.
-		blockHash := c.channelBuilder.blocks[0].Hash()
-		s.rewindToBlockWithHash(blockHash)
+		blockID := eth.ToBlockID(c.channelBuilder.blocks[0])
+		s.rewindToBlock(blockID)
 	} else {
 		s.log.Debug("channelManager.handleChannelTimeout: channel had no blocks")
 	}
@@ -457,8 +459,8 @@ func (s *channelManager) Requeue(newCfg ChannelConfig) {
 		// where a channel timed out before any blocks got added.
 		// In that case we end up with an empty frame (header only),
 		// and there are no blocks to requeue.
-		blockHash := channelToDiscard.channelBuilder.blocks[0].Hash()
-		s.rewindToBlockWithHash(blockHash)
+		blockID := eth.ToBlockID(channelToDiscard.channelBuilder.blocks[0])
+		s.rewindToBlock(blockID)
 	} else {
 		s.log.Debug("channelManager.Requeue: discarded channel had no blocks")
 	}
