@@ -12,6 +12,8 @@ type VMType string
 
 const (
 	VMTypeAlphabet = "ALPHABET"
+	VMTypeCannon1  = "CANNON1"
+	VMTypeCannon2  = "CANNON2"
 )
 
 type ChainProofParams struct {
@@ -30,6 +32,7 @@ type AdditionalDisputeGame struct {
 	UseCustomOracle              bool
 	OracleMinProposalSize        uint64
 	OracleChallengePeriodSeconds uint64
+	MakeRespected                bool
 }
 
 type ChainIntent struct {

@@ -218,6 +218,7 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 		DisputeSplitDepth:       cfg.DisputeSplitDepth,
 		DisputeClockExtension:   cfg.DisputeClockExtension,
 		DisputeMaxClockDuration: cfg.DisputeMaxClockDuration,
+		StartingAnchorRoots:     opcm.PermissionedGameStartingAnchorRoots,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy L2 OP chain: %w", err)

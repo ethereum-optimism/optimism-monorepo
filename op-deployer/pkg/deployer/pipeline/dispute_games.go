@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -67,8 +66,10 @@ func deployDisputeGame(
 			return fmt.Errorf("failed to deploy preimage oracle: %w", err)
 		}
 		oracleAddr = out.PreimageOracle
+		lgr.Info("oracle deployed", "oracleAddr", oracleAddr)
 	} else {
-		lgr.Debug("using existing preimage oracle")
+		lgr.Info("using existing preimage oracle")
+		oracleAddr = st.ImplementationsDeployment.PreimageOracleSingletonAddress
 	}
 
 	lgr.Info("deploying VM", "vmType", game.VMType)
@@ -77,12 +78,26 @@ func deployDisputeGame(
 	case state.VMTypeAlphabet:
 		out, err := opcm.DeployAlphabetVM(env.L1ScriptHost, opcm.DeployAlphabetVMInput{
 			AbsolutePrestate: game.DisputeAbsolutePrestate,
-			PreimageOracle:   st.ImplementationsDeployment.PreimageOracleSingletonAddress,
+			PreimageOracle:   oracleAddr,
 		})
 		if err != nil {
 			return fmt.Errorf("failed to deploy Alphabet VM: %w", err)
 		}
 		vmAddr = out.AlphabetVM
+	case state.VMTypeCannon1, state.VMTypeCannon2:
+		mipsVersion := 1
+		if game.VMType == state.VMTypeCannon2 {
+			mipsVersion = 2
+		}
+
+		out, err := opcm.DeployMIPS(env.L1ScriptHost, opcm.DeployMIPSInput{
+			MipsVersion:    uint64(mipsVersion),
+			PreimageOracle: oracleAddr,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to deploy MIPS VM: %w", err)
+		}
+		vmAddr = out.MipsSingleton
 	default:
 		return fmt.Errorf("unsupported VM type: %v", game.VMType)
 	}
@@ -94,7 +109,7 @@ func deployDisputeGame(
 		VmAddress:                vmAddr,
 		GameKind:                 "FaultDisputeGame",
 		GameType:                 game.DisputeGameType,
-		AbsolutePrestate:         standard.DisputeAbsolutePrestate,
+		AbsolutePrestate:         game.DisputeAbsolutePrestate,
 		MaxGameDepth:             game.DisputeMaxGameDepth,
 		SplitDepth:               game.DisputeSplitDepth,
 		ClockExtension:           game.DisputeClockExtension,
@@ -110,13 +125,19 @@ func deployDisputeGame(
 	}
 	lgr.Info("dispute game deployed", "impl", out.DisputeGameImpl)
 
-	lgr.Info("setting dispute game impl on factory")
+	lgr.Info("setting dispute game impl on factory", "respected", game.MakeRespected)
+	sdgiInput := opcm.SetDisputeGameImplInput{
+		Factory:             thisState.DisputeGameFactoryProxyAddress,
+		Impl:                out.DisputeGameImpl,
+		GameType:            game.DisputeGameType,
+		AnchorStateRegistry: thisState.AnchorStateRegistryProxyAddress,
+	}
+	if game.MakeRespected {
+		sdgiInput.Portal = thisState.OptimismPortalProxyAddress
+	}
 	if err := opcm.SetDisputeGameImpl(
 		env.L1ScriptHost,
-		opcm.SetDisputeGameImplInput{
-			Factory: thisState.DisputeGameFactoryProxyAddress,
-			Impl:    out.DisputeGameImpl,
-		},
+		sdgiInput,
 	); err != nil {
 		return fmt.Errorf("failed to set dispute game impl: %w", err)
 	}
