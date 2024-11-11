@@ -37,29 +37,42 @@ func Test_ProgramAction_HoloceneBatches(gt *testing.T) {
 			name: "disordered-a", blocks: []uint{1, 3, 2},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // batches are buffered, so the block ordering does not matter
-				holocene:    expectations{safeHead: 1}, // batch for block 3 is considered invalid because it is from the future. This batch + remaining channel is dropped.
+				holocene: expectations{safeHead: 1, // batch for block 3 is considered invalid because it is from the future. This batch + remaining channel is dropped.
+					logs: append(
+						sequencerOnce("dropping future batch"),
+						sequencerOnce("Dropping invalid singular batch, flushing channel")...,
+					)},
 			},
 		},
 		{
 			name: "disordered-b", blocks: []uint{2, 1, 3},
 			holoceneExpectations: holoceneExpectations{
 				preHolocene: expectations{safeHead: 3}, // batches are buffered, so the block ordering does not matter
-				holocene:    expectations{safeHead: 0}, // batch for block 2 is considered invalid because it is from the future. This batch + remaining channel is dropped.
+				holocene: expectations{safeHead: 0, // batch for block 2 is considered invalid because it is from the future. This batch + remaining channel is dropped.
+					logs: append(
+						sequencerOnce("dropping future batch"),
+						sequencerOnce("Dropping invalid singular batch, flushing channel")...,
+					)},
 			},
 		},
 
 		{
-			name: "duplicates", blocks: []uint{1, 1, 2, 3},
+			name: "duplicates-a", blocks: []uint{1, 1, 2, 3},
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 3}, // duplicate batches are silently dropped, so this reduceds to case-0
-				holocene:    expectations{safeHead: 3}, // duplicate batches are silently dropped
+				preHolocene: expectations{safeHead: 3}, // duplicate batches are dropped, so this reduces to the "ordered" case
+				holocene: expectations{safeHead: 3, // duplicate batches are dropped, so this reduces to the "ordered" case
+					logs: sequencerOnce("dropping past batch with old timestamp")},
 			},
 		},
 		{
-			name: "case-2d", blocks: []uint{2, 2, 1, 3},
+			name: "duplicates-b", blocks: []uint{2, 2, 1, 3},
 			holoceneExpectations: holoceneExpectations{
-				preHolocene: expectations{safeHead: 3}, // duplicate batches are silently dropped, so this reduces to case-2b
-				holocene:    expectations{safeHead: 0}, // duplicate batches are silently dropped, so this reduces to case-2b
+				preHolocene: expectations{safeHead: 3}, // duplicate batches are silently dropped, so this reduces to disordered-2b
+				holocene: expectations{safeHead: 0, // duplicate batches are silently dropped, so this reduces to disordered-2b
+					logs: append(
+						sequencerOnce("dropping future batch"),
+						sequencerOnce("Dropping invalid singular batch, flushing channel")...,
+					)},
 			},
 		},
 	}
