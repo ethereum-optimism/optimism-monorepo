@@ -35,7 +35,8 @@ contract DeployUpgrade is Deployer {
         address _mipsImpl,
         address _delayedWETH,
         address _preimageOracle,
-        address _anchorStateRegistry
+        address _anchorStateRegistry,
+        bool _usePermissionlessFaultProofs
     )
         public
     {
@@ -58,17 +59,21 @@ contract DeployUpgrade is Deployer {
         // Deploy:
         // 1. New `DelayedWETH` proxy contracts for the `FaultDisputeGame` and `PermissionedDisputeGame`.
         // 2. New `FaultDisputeGame` and `PermissionedDisputeGame` implementation contracts.
-        deployDelayedWETHProxy("FDG");
         deployDelayedWETHProxy("PDG");
-        deployFaultDisputeGameImplementation();
         deployPermissionedDisputeGameImplementation();
+        if (_usePermissionlessFaultProofs) {
+            deployDelayedWETHProxy("FDG");
+            deployFaultDisputeGameImplementation();
+        }
 
         // Run deployment checks.
         checkMIPS();
-        checkFaultDisputeGame();
         checkPermissionedDisputeGame();
-        checkDelayedWETH("FDG");
         checkDelayedWETH("PDG");
+        if (_usePermissionlessFaultProofs) {
+            checkFaultDisputeGame();
+            checkDelayedWETH("FDG");
+        }
 
         // Print the deployment summary.
         printSummary();
@@ -322,7 +327,7 @@ contract DeployUpgrade is Deployer {
     function printSummary() internal view {
         console.log("1. SystemConfig: %s", mustGetAddress("SystemConfig"));
         console.log("2. MIPS: %s", mustGetAddress("MIPS"));
-        console.log("3. FaultDisputeGame: %s", mustGetAddress("FaultDisputeGame"));
+        console.log("3. FaultDisputeGame: %s", getAddress("FaultDisputeGame"));
         console.log("4. PermissionedDisputeGame: %s", mustGetAddress("PermissionedDisputeGame"));
     }
 }

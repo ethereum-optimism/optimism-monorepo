@@ -23,13 +23,14 @@ reqenv "ANCHOR_STATE_REGISTRY_PROXY_ADDR"
 reqenv "DELAYED_WETH_IMPL_ADDR"
 reqenv "SYSTEM_CONFIG_IMPL_ADDR"
 reqenv "MIPS_IMPL_ADDR"
+reqenv "USE_PERMISSIONLESS_FAULT_PROOFS"
 
 # Run the upgrade script
 forge script DeployUpgrade.s.sol \
   --rpc-url "$ETH_RPC_URL" \
   --private-key "$PRIVATE_KEY" \
   --etherscan-api-key "$ETHERSCAN_API_KEY" \
-  --sig "deploy(address,address,address,address,address,address,address)" \
+  --sig "deploy(address,address,address,address,address,address,address,bool)" \
   "$PROXY_ADMIN_ADDR" \
   "$SUPERCHAIN_CONFIG_PROXY_ADDR" \
   "$SYSTEM_CONFIG_IMPL_ADDR" \
@@ -37,5 +38,6 @@ forge script DeployUpgrade.s.sol \
   "$DELAYED_WETH_IMPL_ADDR" \
   "$PREIMAGE_ORACLE_ADDR" \
   "$ANCHOR_STATE_REGISTRY_PROXY_ADDR" \
+  "$USE_PERMISSIONLESS_FAULT_PROOFS" \
   --broadcast \
   --slow
