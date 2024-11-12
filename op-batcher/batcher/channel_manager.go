@@ -43,7 +43,8 @@ type channelManager struct {
 	// to build a channel with. blockCursor = len(blocks) is reserved for when
 	// there are no blocks ready to build with.
 	blockCursor int
-	// The latest L1 block from all the L2 blocks in the most recently closed channel
+	// The latest L1 block from all the L2 blocks in the most recently closed channel.
+	// Used to track channel duration timeouts.
 	l1OriginLastClosedChannel eth.BlockID
 	// The default ChannelConfig to use for the next channel
 	defaultCfg ChannelConfig
@@ -505,7 +506,7 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 		// This could happen if there was an L1 reorg.
 		// We should restart work from the new safe head,
 		// and therefore prune all the blocks.
-		s.Clear(eth.BlockID{})
+		s.Clear(newSafeHead.L1Origin)
 		return
 	}
 
@@ -525,7 +526,7 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 			"newSafeBlock", newSafeHead)
 		// We should restart work from the new safe head,
 		// and therefore prune all the blocks.
-		s.Clear(eth.BlockID{})
+		s.Clear(newSafeHead.L1Origin)
 		return
 	}
 
