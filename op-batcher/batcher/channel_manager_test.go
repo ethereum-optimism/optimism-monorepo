@@ -528,28 +528,28 @@ func TestChannelManager_PruneChannels(t *testing.T) {
 
 	numTx := 1
 	rng := rand.New(rand.NewSource(123))
-	a := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	a = a.WithSeal(&types.Header{Number: big.NewInt(0)})
-	b := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	b = b.WithSeal(&types.Header{Number: big.NewInt(1)})
-	c := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	c = c.WithSeal(&types.Header{Number: big.NewInt(2)})
-	d := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	d = d.WithSeal(&types.Header{Number: big.NewInt(3)})
-	e := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	e = e.WithSeal(&types.Header{Number: big.NewInt(4)})
+	a0 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(0)})
+	a1 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	a1 = a1.WithSeal(&types.Header{Number: big.NewInt(1)})
+	b2 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	b2 = b2.WithSeal(&types.Header{Number: big.NewInt(2)})
+	b3 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	b3 = b3.WithSeal(&types.Header{Number: big.NewInt(3)})
+	c4 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	c4 = c4.WithSeal(&types.Header{Number: big.NewInt(4)})
 
-	_, err = A.AddBlock(a)
+	_, err = A.AddBlock(a0)
 	require.NoError(t, err)
-	_, err = A.AddBlock(b)
-	require.NoError(t, err)
-
-	_, err = B.AddBlock(c)
-	require.NoError(t, err)
-	_, err = B.AddBlock(d)
+	_, err = A.AddBlock(a1)
 	require.NoError(t, err)
 
-	_, err = C.AddBlock(e)
+	_, err = B.AddBlock(b2)
+	require.NoError(t, err)
+	_, err = B.AddBlock(b3)
+	require.NoError(t, err)
+
+	_, err = C.AddBlock(c4)
 	require.NoError(t, err)
 
 	m.pruneChannels(eth.L2BlockRef{
