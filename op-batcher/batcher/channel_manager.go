@@ -504,6 +504,9 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 
 	if newSafeHead.Number+1 < oldestBlock.NumberU64() {
 		// This could happen if there was an L1 reorg.
+		s.log.Warn("safe head reversed, clearing channel manager state",
+			"oldestBlock", eth.ToBlockID(oldestBlock),
+			"newSafeBlock", newSafeHead)
 		// We should restart work from the new safe head,
 		// and therefore prune all the blocks.
 		s.Clear(newSafeHead.L1Origin)
@@ -516,13 +519,17 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		numBlocksToDequeue = uint64(s.blocks.Len())
+		s.log.Warn("safe head above unsafe head, clearing channel manager state",
+			"unsafeBlock", eth.ToBlockID(s.blocks[s.blocks.Len()-1]),
+			"newSafeBlock", newSafeHead)
+		// We should restart work from the new safe head,
+		// and therefore prune all the blocks.
+		s.Clear(newSafeHead.L1Origin)
 	}
 
 	if s.blocks[numBlocksToDequeue-1].Hash() != newSafeHead.Hash {
-		ref, _ := derive.L2BlockToBlockRef(s.rollupCfg, s.blocks[numBlocksToDequeue-1])
-		s.log.Error("safe chain reorg",
-			"existingBlock", ref,
+		s.log.Warn("safe chain reorg, clearing channel manager state",
+			"existingBlock", eth.ToBlockID(s.blocks[numBlocksToDequeue-1]),
 			"newSafeBlock", newSafeHead)
 		// We should restart work from the new safe head,
 		// and therefore prune all the blocks.
