@@ -5,10 +5,11 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
 	"math/big"
 	"strings"
 	"testing"
+
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	"github.com/stretchr/testify/mock"
