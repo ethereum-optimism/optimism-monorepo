@@ -299,6 +299,7 @@ func TestChannelBuilderBatchType(t *testing.T) {
 		{"ChannelBuilder_PendingFrames_TotalFrames", ChannelBuilder_PendingFrames_TotalFrames},
 		{"ChannelBuilder_InputBytes", ChannelBuilder_InputBytes},
 		{"ChannelBuilder_OutputBytes", ChannelBuilder_OutputBytes},
+		{"ChannelBuilder_OutputWrongFramePanic", ChannelBuilder_OutputWrongFramePanic},
 	}
 	for _, test := range tests {
 		test := test
@@ -355,7 +356,7 @@ func TestChannelBuilder_NextFrame(t *testing.T) {
 	require.PanicsWithValue(t, "no next frame", func() { cb.NextFrame() })
 }
 
-// TestChannelBuilder_OutputWrongFramePanic tests that a panic is thrown when a frame is pushed with an invalid frame id
+// TestChannelBuilder_OutputWrongFramePanic tests that a panic is thrown when we try to rewind the cursor with an invalid frame id
 func ChannelBuilder_OutputWrongFramePanic(t *testing.T, batchType uint) {
 	channelConfig := defaultTestChannelConfig()
 	channelConfig.BatchType = batchType
@@ -377,7 +378,7 @@ func ChannelBuilder_OutputWrongFramePanic(t *testing.T, batchType uint) {
 
 	// The frame push should panic since we constructed a new channel out
 	// so the channel out id won't match
-	require.PanicsWithValue(t, "wrong channel", func() {
+	require.PanicsWithValue(t, "cannot rewind to unknown frame", func() {
 		frame := frameData{
 			id: frameID{
 				chID:        co.ID(),
