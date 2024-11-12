@@ -177,6 +177,7 @@ func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttribut
 			return fmt.Errorf("failed to apply deposit transaction to L2 block (tx %d): %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -338,7 +339,14 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 	// Payload must have eip-1559 params in ExtraData after Holocene
 	if ea.config().IsHolocene(uint64(params.Timestamp)) {
 		if err := eip1559.ValidateHoloceneExtraData(params.ExtraData); err != nil {
-			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holoocene"))
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holocene"))
+		}
+	}
+
+	// Payload must have WithdrawalsRoot after Isthmus
+	if ea.config().IsIsthmus(uint64(params.Timestamp)) {
+		if params.WithdrawalsRoot == nil {
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("nil withdrawalsRoot post-isthmus"))
 		}
 	}
 
