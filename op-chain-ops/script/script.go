@@ -708,10 +708,12 @@ func (h *Host) StateDump() (*foundry.ForgeAllocs, error) {
 	h.baseState = st
 	h.state.SubstituteBaseState(st)
 
-	// we use the new state object for state-dumping & future state-access, wrapped around
+	// We use the new state object for state-dumping & future state-access, wrapped around
 	// the just committed trie that has all changes in it.
+	// I.e. the trie is committed and ready to provide all data,
+	// and the state is new and iterable, prepared specifically for FromState(state).
 	var allocs foundry.ForgeAllocs
-	allocs.FromState(st) // use the old committed-to state (see FromState docs)
+	allocs.FromState(st)
 
 	// Sanity check we have no lingering scripts.
 	for i := uint64(0); i <= allocs.Accounts[addresses.ScriptDeployer].Nonce; i++ {

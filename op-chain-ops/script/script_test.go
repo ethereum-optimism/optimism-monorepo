@@ -60,18 +60,18 @@ func TestScript(t *testing.T) {
 	require.NoError(t, h.cheatcodes.Precompile.DumpState("noop"))
 }
 
+func mustEncodeStringCalldata(t *testing.T, method, input string) []byte {
+	packer, err := abi.JSON(strings.NewReader(fmt.Sprintf(`[{"type":"function","name":"%s","inputs":[{"type":"string","name":"input"}]}]`, method)))
+	require.NoError(t, err)
+
+	data, err := packer.Pack(method, input)
+	require.NoError(t, err)
+	return data
+}
+
 func TestScriptBroadcast(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelDebug)
 	af := foundry.OpenArtifactsDir("./testdata/test-artifacts")
-
-	mustEncodeCalldata := func(method, input string) []byte {
-		packer, err := abi.JSON(strings.NewReader(fmt.Sprintf(`[{"type":"function","name":"%s","inputs":[{"type":"string","name":"input"}]}]`, method)))
-		require.NoError(t, err)
-
-		data, err := packer.Pack(method, input)
-		require.NoError(t, err)
-		return data
-	}
 
 	fooBar, err := af.ReadArtifact("ScriptExample.s.sol", "FooBar")
 	require.NoError(t, err)
@@ -89,7 +89,7 @@ func TestScriptBroadcast(t *testing.T) {
 		{
 			From:    scriptAddr,
 			To:      scriptAddr,
-			Input:   mustEncodeCalldata("call1", "single_call1"),
+			Input:   mustEncodeStringCalldata(t, "call1", "single_call1"),
 			Value:   (*hexutil.U256)(uint256.NewInt(0)),
 			GasUsed: 23421,
 			Type:    BroadcastCall,
@@ -98,7 +98,7 @@ func TestScriptBroadcast(t *testing.T) {
 		{
 			From:    coffeeAddr,
 			To:      scriptAddr,
-			Input:   mustEncodeCalldata("call1", "startstop_call1"),
+			Input:   mustEncodeStringCalldata(t, "call1", "startstop_call1"),
 			Value:   (*hexutil.U256)(uint256.NewInt(0)),
 			GasUsed: 1521,
 			Type:    BroadcastCall,
@@ -107,7 +107,7 @@ func TestScriptBroadcast(t *testing.T) {
 		{
 			From:    coffeeAddr,
 			To:      scriptAddr,
-			Input:   mustEncodeCalldata("call2", "startstop_call2"),
+			Input:   mustEncodeStringCalldata(t, "call2", "startstop_call2"),
 			Value:   (*hexutil.U256)(uint256.NewInt(0)),
 			GasUsed: 1565,
 			Type:    BroadcastCall,
@@ -116,7 +116,7 @@ func TestScriptBroadcast(t *testing.T) {
 		{
 			From:    common.HexToAddress("0x1234"),
 			To:      scriptAddr,
-			Input:   mustEncodeCalldata("nested1", "nested"),
+			Input:   mustEncodeStringCalldata(t, "nested1", "nested"),
 			Value:   (*hexutil.U256)(uint256.NewInt(0)),
 			GasUsed: 2763,
 			Type:    BroadcastCall,
@@ -183,6 +183,43 @@ func TestScriptBroadcast(t *testing.T) {
 	// This is one because we still need to bump the nonce of the
 	// address that will perform the send to the Create2Deployer.
 	require.EqualValues(t, 1, h.GetNonce(cafeAddr))
+}
+
+func TestScriptStateDump(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelDebug)
+	af := foundry.OpenArtifactsDir("./testdata/test-artifacts")
+
+	h := NewHost(logger, af, nil, DefaultContext)
+	require.NoError(t, h.EnableCheats())
+
+	addr, err := h.LoadContract("ScriptExample.s.sol", "ScriptExample")
+	require.NoError(t, err)
+	h.AllowCheatcodes(addr)
+
+	counterStorageSlot := common.Hash{}
+
+	dump, err := h.StateDump()
+	require.NoError(t, err, "dump 1")
+	require.Contains(t, dump.Accounts, addr, "has contract")
+	require.NotContains(t, dump.Accounts[addr].Storage, counterStorageSlot, "not counted yet")
+
+	dat := mustEncodeStringCalldata(t, "call1", "call A")
+	returnData, _, err := h.Call(DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
+	require.NoError(t, err, "call A failed: %x", string(returnData))
+
+	dump, err = h.StateDump()
+	require.NoError(t, err, "dump 2")
+	require.Contains(t, dump.Accounts, addr, "has contract")
+	require.Equal(t, dump.Accounts[addr].Storage[counterStorageSlot], common.Hash{31: 1}, "counted to 1")
+
+	dat = mustEncodeStringCalldata(t, "call1", "call B")
+	returnData, _, err = h.Call(DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
+	require.NoError(t, err, "call B failed: %x", string(returnData))
+
+	dump, err = h.StateDump()
+	require.NoError(t, err, "dump 3")
+	require.Contains(t, dump.Accounts, addr, "has contract")
+	require.Equal(t, dump.Accounts[addr].Storage[counterStorageSlot], common.Hash{31: 2}, "counted to 2")
 }
 
 type forkConfig struct {
