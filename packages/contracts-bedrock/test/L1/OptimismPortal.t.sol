@@ -573,15 +573,15 @@ contract OptimismPortal_Test is CommonTest {
 contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     // Reusable default values for a test withdrawal
     Types.WithdrawalTransaction _defaultTx;
+
+    uint256 _proposedOutputIndex;
+    uint256 _proposedBlockNumber;
     bytes32 _stateRoot;
     bytes32 _storageRoot;
     bytes32 _outputRoot;
     bytes32 _withdrawalHash;
     bytes[] _withdrawalProof;
     Types.OutputRootProof internal _outputRootProof;
-
-    uint256 _proposedOutputIndex;
-    uint256 _proposedBlockNumber;
 
     // Use a constructor to set the storage vars above, so as to minimize the number of ffi calls.
     constructor() {
