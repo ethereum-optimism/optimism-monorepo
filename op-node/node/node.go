@@ -168,6 +168,7 @@ func (n *OpNode) initEventSystem() {
 	executor := event.NewGlobalSynchronous(n.resourcesCtx)
 	sys := event.NewSystem(n.log, executor)
 	sys.AddTracer(event.NewMetricsTracer(n.metrics))
+	sys.AddTracer(event.NewLogTracer(n.log, log.LevelInfo))
 	sys.Register("node", event.DeriverFunc(n.onEvent), event.DefaultRegisterOpts())
 	n.eventSys = sys
 	n.eventDrain = executor
