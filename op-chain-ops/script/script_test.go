@@ -5,6 +5,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
 	"math/big"
 	"strings"
 	"testing"
@@ -204,7 +205,7 @@ func TestScriptStateDump(t *testing.T) {
 	require.NotContains(t, dump.Accounts[addr].Storage, counterStorageSlot, "not counted yet")
 
 	dat := mustEncodeStringCalldata(t, "call1", "call A")
-	returnData, _, err := h.Call(DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
+	returnData, _, err := h.Call(addresses.DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
 	require.NoError(t, err, "call A failed: %x", string(returnData))
 
 	dump, err = h.StateDump()
@@ -213,7 +214,7 @@ func TestScriptStateDump(t *testing.T) {
 	require.Equal(t, dump.Accounts[addr].Storage[counterStorageSlot], common.Hash{31: 1}, "counted to 1")
 
 	dat = mustEncodeStringCalldata(t, "call1", "call B")
-	returnData, _, err = h.Call(DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
+	returnData, _, err = h.Call(addresses.DefaultSenderAddr, addr, dat, DefaultFoundryGasLimit, uint256.NewInt(0))
 	require.NoError(t, err, "call B failed: %x", string(returnData))
 
 	dump, err = h.StateDump()
