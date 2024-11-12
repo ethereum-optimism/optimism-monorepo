@@ -10,7 +10,6 @@ import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { ISystemConfigV160 } from "src/L1/interfaces/ISystemConfigV160.sol";
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 
 import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
@@ -26,7 +25,6 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { ISystemConfigV160 } from "src/L1/interfaces/ISystemConfigV160.sol";
 import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
 import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
