@@ -418,7 +418,7 @@ func (c *ChannelBuilder) TotalFrames() int {
 // Call OutputFrames before to create new frames from the channel out
 // compression pipeline.
 func (c *ChannelBuilder) HasPendingFrame() bool {
-	return c.frames.Len() > 0 && c.frameCursor < c.frames.Len()
+	return c.frameCursor < c.frames.Len()
 }
 
 // PendingFrames returns the number of pending frames in the frames queue.
