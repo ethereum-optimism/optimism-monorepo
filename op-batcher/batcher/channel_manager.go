@@ -174,7 +174,6 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 
 	// We want to start writing to a new channel, so reset currentChannel.
 	s.currentChannel = nil
-
 }
 
 // nextTxData dequeues frames from the channel and returns them encoded in a transaction.

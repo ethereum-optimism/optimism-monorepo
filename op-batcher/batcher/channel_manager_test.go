@@ -394,9 +394,28 @@ func TestChannelManager_TxData(t *testing.T) {
 
 // TestChannelManager_Requeue seeds the channel manager with blocks,
 // takes a state snapshot, triggers the blocks->channels pipeline,
-// and then calls Requeue. Finally, it asserts the channel manager's
-// state is equal to the snapshot.
-func TestChannelManager_Requeue(t *testing.T) {
+// and then calls either m.Requeue or m.handleChannelTimeout.
+// Finally, it asserts the channel manager's
+// state is equal to the snapshot and checks that metrics behave
+// as expected. The expected behaviour is the
+// same for both sub tests.
+func TestChannelManager_RequeueOrTimeout(t *testing.T) {
+	t.Run("Requeue", func(t *testing.T) {
+		testChannelManager_RequeueOrTimeout(t, func(m *channelManager) {
+			m.Requeue(m.defaultCfg)
+		})
+	})
+	t.Run("handleChannelTimeout", func(t *testing.T) {
+		testChannelManager_RequeueOrTimeout(t, func(m *channelManager) {
+			m.handleChannelTimeout(m.currentChannel)
+		})
+	})
+}
+
+// TestChannelManager_Requeue seeds the channel manager with blocks,
+// takes a state snapshot, triggers the blocks->channels pipeline,
+// and then calls handleChannelTimeout.
+func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager)) {
 	l := testlog.Logger(t, log.LevelCrit)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
 	metrics := new(metrics.TestMetrics)
@@ -431,7 +450,7 @@ func TestChannelManager_Requeue(t *testing.T) {
 	require.Negative(t, metricsDelta)
 
 	// Call the function we are testing
-	m.Requeue(m.defaultCfg)
+	fn(m)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
