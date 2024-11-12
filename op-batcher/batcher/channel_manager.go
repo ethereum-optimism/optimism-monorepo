@@ -137,7 +137,6 @@ func (s *channelManager) rewindToBlock(block eth.BlockID) {
 	} else {
 		panic("tried to rewind to nonexistent block")
 	}
-
 }
 
 // handleChannelTimeout rewinds the channelManager's blockCursor
@@ -150,6 +149,9 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 		// In that case we end up with an empty frame (header only),
 		// and there are no blocks to requeue.
 		blockID := eth.ToBlockID(c.channelBuilder.blocks[0])
+		for _, block := range c.channelBuilder.blocks {
+			s.metr.RecordL2BlockInPendingQueue(block)
+		}
 		s.rewindToBlock(blockID)
 	} else {
 		s.log.Debug("channelManager.handleChannelTimeout: channel had no blocks")
@@ -478,6 +480,9 @@ func (s *channelManager) Requeue(newCfg ChannelConfig) {
 		// In that case we end up with an empty frame (header only),
 		// and there are no blocks to requeue.
 		blockID := eth.ToBlockID(channelToDiscard.channelBuilder.blocks[0])
+		for _, block := range channelToDiscard.channelBuilder.blocks {
+			s.metr.RecordL2BlockInPendingQueue(block)
+		}
 		s.rewindToBlock(blockID)
 	} else {
 		s.log.Debug("channelManager.Requeue: discarded channel had no blocks")
