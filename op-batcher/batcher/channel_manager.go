@@ -543,7 +543,7 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 	s.blockCursor -= int(numBlocksToDequeue)
 
 	if s.blockCursor < 0 {
-		panic("blockCursor got into bad state")
+		panic("negative blockCursor")
 	}
 }
 
