@@ -429,7 +429,7 @@ func TestChannelManager_Requeue(t *testing.T) {
 }
 
 func TestChannelManager_PruneBlocks(t *testing.T) {
-	l := testlog.Logger(t, log.LevelCrit)
+	l := testlog.Logger(t, log.LevelDebug)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
 	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 
@@ -494,6 +494,18 @@ func TestChannelManager_PruneBlocks(t *testing.T) {
 	m.pruneSafeBlocks(eth.L2BlockRef{
 		Hash:   a.Hash(),
 		Number: uint64(3),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
+
+	// Put another block in
+	require.NoError(t, m.AddL2Block(d))
+	m.blockCursor += 1
+
+	// Safe chain reversed
+	// state should be cleared
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   a.Hash(), // unused
+		Number: uint64(1),
 	})
 	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
 

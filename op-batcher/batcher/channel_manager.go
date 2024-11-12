@@ -525,6 +525,7 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 		// We should restart work from the new safe head,
 		// and therefore prune all the blocks.
 		s.Clear(newSafeHead.L1Origin)
+		return
 	}
 
 	if s.blocks[numBlocksToDequeue-1].Hash() != newSafeHead.Hash {
