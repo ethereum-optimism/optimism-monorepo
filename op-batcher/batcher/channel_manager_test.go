@@ -399,7 +399,8 @@ func TestChannelManager_TxData(t *testing.T) {
 func TestChannelManager_Requeue(t *testing.T) {
 	l := testlog.Logger(t, log.LevelCrit)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
-	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+	metrics := new(metrics.TestMetrics)
+	m := NewChannelManager(l, metrics, cfg, defaultTestRollupConfig)
 
 	// Seed channel manager with blocks
 	rng := rand.New(rand.NewSource(99))
@@ -412,6 +413,11 @@ func TestChannelManager_Requeue(t *testing.T) {
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
 
+	// Setup initial metrics
+	metrics.RecordL2BlockInPendingQueue(blockA)
+	metrics.RecordL2BlockInPendingQueue(blockB)
+	pendingBytesBefore := metrics.PendingBlocksBytesCurrent
+
 	// Trigger the blocks -> channelQueue data pipelining
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.NotEmpty(t, m.channelQueue)
@@ -420,12 +426,19 @@ func TestChannelManager_Requeue(t *testing.T) {
 	// Assert that at least one block was processed into the channel
 	require.Equal(t, 1, m.blockCursor)
 
+	// Check metric decreased
+	metricsDelta := metrics.PendingBlocksBytesCurrent - pendingBytesBefore
+	require.Negative(t, metricsDelta)
+
 	// Call the function we are testing
 	m.Requeue(m.defaultCfg)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Empty(t, m.channelQueue)
+
+	// Check metric came back up to previous value
+	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
 }
 
 func TestChannelManager_PruneBlocks(t *testing.T) {
