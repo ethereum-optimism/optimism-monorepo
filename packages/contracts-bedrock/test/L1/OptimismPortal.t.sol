@@ -580,14 +580,6 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     bytes[] _withdrawalProof;
     Types.OutputRootProof internal _outputRootProof;
 
-    Types.WithdrawalTransaction _defaultTx_noData;
-    bytes32 _stateRoot_noData;
-    bytes32 _storageRoot_noData;
-    bytes32 _outputRoot_noData;
-    bytes32 _withdrawalHash_noData;
-    bytes[] _withdrawalProof_noData;
-    Types.OutputRootProof internal _outputRootProof_noData;
-
     uint256 _proposedOutputIndex;
     uint256 _proposedBlockNumber;
 
@@ -977,7 +969,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty.
     function test_finalizeWithdrawalTransaction_noTxData_succeeds() external {
-        _defaultTx_noData = Types.WithdrawalTransaction({
+        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
             nonce: 0,
             sender: alice,
             target: bob,
@@ -986,10 +978,15 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
             data: hex""
         });
         // Get withdrawal proof data we can use for testing.
-        (_stateRoot_noData, _storageRoot_noData, _outputRoot_noData, _withdrawalHash_noData, _withdrawalProof_noData) =
-            ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        (
+            bytes32 _stateRoot_noData,
+            bytes32 _storageRoot_noData,
+            bytes32 _outputRoot_noData,
+            bytes32 _withdrawalHash_noData,
+            bytes[] memory _withdrawalProof_noData
+        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
         // Setup a dummy output root proof for reuse.
-        _outputRootProof_noData = Types.OutputRootProof({
+        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
             version: bytes32(uint256(0)),
             stateRoot: _stateRoot_noData,
             messagePasserStorageRoot: _storageRoot_noData,
