@@ -443,73 +443,11 @@ contract DeployImplementations is Script {
 
     // --- OP Contracts Manager ---
 
-    function opcmSystemConfigSetter(
-        DeployImplementationsInput _dii,
-        DeployImplementationsOutput _dio
-    )
-        internal
-        view
-        virtual
-        returns (OPContractsManager.ImplementationSetter memory)
-    {
-        // When configuring OPCM during Solidity tests, we are using the latest SystemConfig.sol
-        // version in this repo, which contains Custom Gas Token (CGT) features. This CGT version
-        // has a different `initialize` signature than the SystemConfig version that was released
-        // as part of `op-contracts/v1.6.0`, which is no longer in the repo. When running this
-        // script's bytecode for a production deploy of OPCM at `op-contracts/v1.6.0`, we need to
-        // use the ISystemConfigV160 interface instead of ISystemConfig. Therefore the selector used
-        // is a function of the `release` passed in by the caller.
-        bytes4 selector = LibString.eq(_dii.l1ContractsReleaseVersion(), "op-contracts/v1.6.0")
-            ? ISystemConfigV160.initialize.selector
-            : ISystemConfig.initialize.selector;
-        return OPContractsManager.ImplementationSetter({
-            name: "SystemConfig",
-            info: OPContractsManager.Implementation(address(_dio.systemConfigImpl()), selector)
-        });
-    }
-
-    function l1CrossDomainMessengerConfigSetter(
-        DeployImplementationsInput _dii,
-        DeployImplementationsOutput _dio
-    )
-        internal
-        view
-        virtual
-        returns (OPContractsManager.ImplementationSetter memory)
-    {
-        bytes4 selector = LibString.eq(_dii.l1ContractsReleaseVersion(), "op-contracts/v1.6.0")
-            ? IL1CrossDomainMessengerV160.initialize.selector
-            : IL1CrossDomainMessenger.initialize.selector;
-        return OPContractsManager.ImplementationSetter({
-            name: "L1CrossDomainMessenger",
-            info: OPContractsManager.Implementation(address(_dio.l1CrossDomainMessengerImpl()), selector)
-        });
-    }
-
-    function l1StandardBridgeConfigSetter(
-        DeployImplementationsInput _dii,
-        DeployImplementationsOutput _dio
-    )
-        internal
-        view
-        virtual
-        returns (OPContractsManager.ImplementationSetter memory)
-    {
-        bytes4 selector = LibString.eq(_dii.l1ContractsReleaseVersion(), "op-contracts/v1.6.0")
-            ? IL1StandardBridgeV160.initialize.selector
-            : IL1StandardBridge.initialize.selector;
-        return OPContractsManager.ImplementationSetter({
-            name: "L1StandardBridge",
-            info: OPContractsManager.Implementation(address(_dio.l1StandardBridgeImpl()), selector)
-        });
-    }
-
-    function createOPCMContractV2(
+    function createOPCMContract(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
         OPContractsManager.Blueprints memory _blueprints,
-        string memory _l1ContractsReleaseVersion,
-        OPContractsManager.ImplementationSetter[] memory _setters
+        string memory _l1ContractsReleaseVersion
     )
         internal
         virtual
@@ -517,8 +455,21 @@ contract DeployImplementations is Script {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+
+        OPContractsManager.ImplementationContracts memory implContracts = OPContractsManager.ImplementationContracts({
+            l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
+            optimismPortalImpl: address(_dio.optimismPortalImpl()),
+            systemConfigImpl: address(_dio.systemConfigImpl()),
+            optimismMintableERC20FactoryImpl: address(_dio.optimismMintableERC20FactoryImpl()),
+            l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
+            l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
+            disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
+            delayedWETHImpl: address(_dio.delayedWETHImpl()),
+            mipsImpl: address(_dio.mipsSingleton())
+        });
+
         OPContractsManager.InputContracts memory inputContracts =
-            OPContractsManager.InputContracts(_blueprints, _setters);
+            OPContractsManager.InputContracts(_blueprints, implContracts);
 
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManager(
@@ -561,47 +512,7 @@ contract DeployImplementations is Script {
             vm.stopBroadcast();
             // forgefmt: disable-end
 
-            OPContractsManager.ImplementationSetter[] memory setters = new OPContractsManager.ImplementationSetter[](9);
-            setters[0] = OPContractsManager.ImplementationSetter({
-                name: "L1ERC721Bridge",
-                info: OPContractsManager.Implementation(
-                    address(_dio.l1ERC721BridgeImpl()), IL1ERC721Bridge.initialize.selector
-                )
-            });
-            setters[1] = OPContractsManager.ImplementationSetter({
-                name: "OptimismPortal",
-                info: OPContractsManager.Implementation(
-                    address(_dio.optimismPortalImpl()), IOptimismPortal2.initialize.selector
-                )
-            });
-            setters[2] = opcmSystemConfigSetter(_dii, _dio);
-            setters[3] = OPContractsManager.ImplementationSetter({
-                name: "OptimismMintableERC20Factory",
-                info: OPContractsManager.Implementation(
-                    address(_dio.optimismMintableERC20FactoryImpl()), IOptimismMintableERC20Factory.initialize.selector
-                )
-            });
-            setters[4] = l1CrossDomainMessengerConfigSetter(_dii, _dio);
-            setters[5] = l1StandardBridgeConfigSetter(_dii, _dio);
-            setters[6] = OPContractsManager.ImplementationSetter({
-                name: "DisputeGameFactory",
-                info: OPContractsManager.Implementation(
-                    address(_dio.disputeGameFactoryImpl()), IDisputeGameFactory.initialize.selector
-                )
-            });
-            setters[7] = OPContractsManager.ImplementationSetter({
-                name: "DelayedWETH",
-                info: OPContractsManager.Implementation(address(_dio.delayedWETHImpl()), IDelayedWETH.initialize.selector)
-            });
-            setters[8] = OPContractsManager.ImplementationSetter({
-                name: "MIPS",
-                // MIPS is a singleton for all chains, so it doesn't need to be initialized, so the
-                // selector is just `bytes4(0)`.
-                info: OPContractsManager.Implementation(address(_dio.mipsSingleton()), bytes4(0))
-            });
-
-            // This call contains a broadcast to deploy OPCM which is proxied.
-            opcm = createOPCMContractV2(_dii, _dio, blueprints, l1ContractsReleaseVersion, setters);
+            opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsReleaseVersion);
         } else {
             revert(string.concat("DeployImplementations: failed to deploy release ", l1ContractsReleaseVersion));
         }
@@ -1061,12 +972,11 @@ contract DeployImplementations is Script {
 // resolve https://github.com/ethereum-optimism/optimism/issues/11783, we just assume this new role
 // is the same as the proxy admin owner.
 contract DeployImplementationsInterop is DeployImplementations {
-    function createOPCMContractV2(
+    function createOPCMContract(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
         OPContractsManager.Blueprints memory _blueprints,
-        string memory _l1ContractsReleaseVersion,
-        OPContractsManager.ImplementationSetter[] memory _setters
+        string memory _l1ContractsReleaseVersion
     )
         internal
         virtual
@@ -1075,8 +985,21 @@ contract DeployImplementationsInterop is DeployImplementations {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+
+        OPContractsManager.ImplementationContracts memory implContracts = OPContractsManager.ImplementationContracts({
+            l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
+            optimismPortalImpl: address(_dio.optimismPortalImpl()),
+            systemConfigImpl: address(_dio.systemConfigImpl()),
+            optimismMintableERC20FactoryImpl: address(_dio.optimismMintableERC20FactoryImpl()),
+            l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
+            l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
+            disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
+            delayedWETHImpl: address(_dio.delayedWETHImpl()),
+            mipsImpl: address(_dio.mipsSingleton())
+        });
+
         OPContractsManager.InputContracts memory inputContracts =
-            OPContractsManager.InputContracts(_blueprints, _setters);
+            OPContractsManager.InputContracts(_blueprints, implContracts);
 
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManagerInterop(
@@ -1155,22 +1078,5 @@ contract DeployImplementationsInterop is DeployImplementations {
 
         vm.label(address(impl), "SystemConfigImpl");
         _dio.set(_dio.systemConfigImpl.selector, address(impl));
-    }
-
-    function opcmSystemConfigSetter(
-        DeployImplementationsInput,
-        DeployImplementationsOutput _dio
-    )
-        internal
-        view
-        override
-        returns (OPContractsManager.ImplementationSetter memory)
-    {
-        return OPContractsManager.ImplementationSetter({
-            name: "SystemConfig",
-            info: OPContractsManager.Implementation(
-                address(_dio.systemConfigImpl()), ISystemConfigInterop.initialize.selector
-            )
-        });
     }
 }
