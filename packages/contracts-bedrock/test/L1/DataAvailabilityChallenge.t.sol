@@ -275,7 +275,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(challengedBlockNumber + 1);
 
         // Challenge the hash
-        // uint256 bondSize = dataAvailabilityChallenge.bondSize();
         vm.deal(challenger, bondSize);
         vm.prank(challenger);
         dataAvailabilityChallenge.challenge{ value: bondSize }(challengedBlockNumber, challengedCommitment);
