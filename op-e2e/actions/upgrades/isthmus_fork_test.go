@@ -45,13 +45,13 @@ func TestIsthmusActivationAtGenesis(gt *testing.T) {
 	env.Seq.ActBuildToL1Head(t)
 
 	block := env.VerifEngine.L2Chain().CurrentBlock()
-	verifyIsthmusHeaderWithdrawalsRoot(gt, block, false)
+	verifyIsthmusHeaderWithdrawalsRoot(gt, env.SeqEngine.RPCClient(), block, true)
 }
 
 // There are 2 stages pre-Isthmus that we need to test:
 // 1. Pre-Canyon: withdrawals root should be nil
 // 2. Post-Canyon: withdrawals root should be EmptyWithdrawalsHash
-func TestWithdrawlsRootPreIsthmus(gt *testing.T) {
+func TestWithdrawlsRootPreCanyonAndIsthmus(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	genesisBlock := hexutil.Uint64(0)
@@ -104,7 +104,34 @@ func TestWithdrawlsRootPreIsthmus(gt *testing.T) {
 	verifyPreIsthmusHeaderWithdrawalsRoot(gt, engine.L2Chain().CurrentBlock())
 }
 
-func TestWithdrawlsRootAtIsthmus(gt *testing.T) {
+// In this section, we will test the following combinations
+// 1. Withdrawals root before isthmus w/ and w/o L2toL1 withdrawal
+// 2. Withdrawals root at isthmus w/ and w/o L2toL1 withdrawal
+// 3. Withdrawals root after isthmus w/ and w/o L2toL1 withdrawal
+func TestWithdrawalsRootBeforeAtAndAfterIsthmus(t *testing.T) {
+	tests := []struct {
+		name              string
+		f                 func(gt *testing.T, withdrawalTx bool, withdrawalTxBlock, totalBlocks int)
+		withdrawalTx      bool
+		withdrawalTxBlock int
+		totalBlocks       int
+	}{
+		{"BeforeIsthmusWithoutWithdrawalTx", testWithdrawlsRootAtIsthmus, false, 0, 1},
+		{"BeforeIsthmusWithWithdrawalTx", testWithdrawlsRootAtIsthmus, true, 1, 1},
+		{"AtIsthmusWithoutWithdrawalTx", testWithdrawlsRootAtIsthmus, false, 0, 2},
+		{"AtIsthmusWithWithdrawalTx", testWithdrawlsRootAtIsthmus, true, 2, 2},
+		{"AfterIsthmusWithoutWithdrawalTx", testWithdrawlsRootAtIsthmus, false, 0, 3},
+		{"AfterIsthmusWithWithdrawalTx", testWithdrawlsRootAtIsthmus, true, 3, 3},
+	}
+	for _, test := range tests {
+		test := test
+		t.Run(test.name, func(t *testing.T) {
+			test.f(t, test.withdrawalTx, test.withdrawalTxBlock, test.totalBlocks)
+		})
+	}
+}
+
+func testWithdrawlsRootAtIsthmus(gt *testing.T, withdrawalTx bool, withdrawalTxBlock, totalBlocks int) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
 	genesisBlock := hexutil.Uint64(0)
@@ -112,17 +139,6 @@ func TestWithdrawlsRootAtIsthmus(gt *testing.T) {
 
 	log := testlog.Logger(t, log.LvlDebug)
 
-	// dp.DeployConfig.L1CancunTimeOffset = &genesisBlock
-
-	// Activate pre-canyon forks at genesis, and schedule Canyon the block after
-	// dummyAddr := common.Address{19: 0x01}
-	// dp.DeployConfig.OutputOracleDeployConfig = genesis.OutputOracleDeployConfig{
-	// 	L2OutputOracleSubmissionInterval:  1,
-	// 	L2OutputOracleStartingTimestamp:   1,
-	// 	L2OutputOracleStartingBlockNumber: 3,
-	// 	L2OutputOracleProposer:            dummyAddr,
-	// 	L2OutputOracleChallenger:          dummyAddr,
-	// }
 	dp.DeployConfig.L2GenesisRegolithTimeOffset = &genesisBlock
 	dp.DeployConfig.L2GenesisCanyonTimeOffset = &genesisBlock
 	dp.DeployConfig.L2GenesisIsthmusTimeOffset = &isthmusOffset
@@ -142,20 +158,73 @@ func TestWithdrawlsRootAtIsthmus(gt *testing.T) {
 
 	verifyPreIsthmusHeaderWithdrawalsRoot(gt, engine.L2Chain().CurrentBlock())
 
-	getStorageRoot := func(rpcCl client.RPC, ctx context.Context, address common.Address, blockTag string) common.Hash {
-		var getProofResponse *eth.AccountResult
-		err := rpcCl.CallContext(ctx, &getProofResponse, "eth_getProof", address, []common.Hash{}, blockTag)
-		assert.Nil(t, err)
-		assert.NotNil(t, getProofResponse)
-		return getProofResponse.StorageHash
+	ethCl := engine.EthClient()
+	for i := 1; i <= totalBlocks; i++ {
+		var tx *types.Transaction
+
+		sequencer.ActL2StartBlock(t)
+
+		if withdrawalTx && withdrawalTxBlock == i {
+			l2withdrawer, err := bindings.NewL2ToL1MessagePasser(predeploys.L2ToL1MessagePasserAddr, ethCl)
+			require.Nil(t, err, "binding withdrawer on L2")
+
+			// Initiate Withdrawal
+			// Bind L2 Withdrawer Contract and invoke the Receive function
+			l2opts, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.Alice, new(big.Int).SetUint64(dp.DeployConfig.L2ChainID))
+			require.Nil(t, err)
+			l2opts.Value = big.NewInt(500)
+			tx, err = l2withdrawer.Receive(l2opts)
+			require.Nil(t, err)
+
+			// include the transaction
+			engine.ActL2IncludeTx(dp.Addresses.Alice)(t)
+		}
+		sequencer.ActL2EndBlock(t)
+
+		if withdrawalTx && withdrawalTxBlock == i {
+			// wait for withdrawal to be included in a block
+			receipt, err := geth.WaitForTransaction(tx.Hash(), ethCl, 10*time.Duration(dp.DeployConfig.L2BlockTime)*time.Second)
+			require.Nil(t, err, "withdrawal initiated on L2 sequencer")
+			require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status, "transaction had incorrect status")
+		}
 	}
+	rpcCl := engine.RPCClient()
+
+	// we set withdrawals root only at or after isthmus
+	if totalBlocks >= 2 {
+		verifyIsthmusHeaderWithdrawalsRoot(gt, rpcCl, engine.L2Chain().CurrentBlock(), true)
+	}
+}
+
+func TestWithdrawlsRootPostIsthmus(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
+	genesisBlock := hexutil.Uint64(0)
+	isthmusOffset := hexutil.Uint64(2)
+
+	log := testlog.Logger(t, log.LvlDebug)
+
+	dp.DeployConfig.L2GenesisRegolithTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisCanyonTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisIsthmusTimeOffset = &isthmusOffset
+	dp.DeployConfig.L2GenesisDeltaTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisEcotoneTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisFjordTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisGraniteTimeOffset = &genesisBlock
+	dp.DeployConfig.L2GenesisHoloceneTimeOffset = &genesisBlock
+	require.NoError(t, dp.DeployConfig.Check(log), "must have valid config")
+
+	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
+	_, _, _, sequencer, engine, verifier, _, _ := helpers.SetupReorgTestActors(t, dp, sd, log)
+
+	// start op-nodes
+	sequencer.ActL2PipelineFull(t)
+	verifier.ActL2PipelineFull(t)
+
+	verifyPreIsthmusHeaderWithdrawalsRoot(gt, engine.L2Chain().CurrentBlock())
 
 	rpcCl := engine.RPCClient()
-	currentBlock := engine.L2Chain().CurrentBlock()
-	t.Log("Current block number: ", currentBlock.Number)
-	storageHash := getStorageRoot(rpcCl, context.Background(), predeploys.L2ToL1MessagePasserAddr, "latest")
-	t.Log("Storage hash: ", storageHash)
-	// require.Equal(t, *currentBlock.WithdrawalsHash, storageHash)
+	verifyIsthmusHeaderWithdrawalsRoot(gt, rpcCl, engine.L2Chain().CurrentBlock(), false)
 
 	// Send withdrawal transaction
 	// Bind L2 Withdrawer Contract
@@ -175,21 +244,17 @@ func TestWithdrawlsRootAtIsthmus(gt *testing.T) {
 	sequencer.ActL2StartBlock(t)
 	sequencer.ActL2EndBlock(t)
 	sequencer.ActL2StartBlock(t)
+	sequencer.ActL2EndBlock(t)
+	sequencer.ActL2StartBlock(t)
 	engine.ActL2IncludeTx(dp.Addresses.Alice)(t)
 	sequencer.ActL2EndBlock(t)
 
+	// wait for withdrawal to be included in a block
 	receipt, err := geth.WaitForTransaction(tx.Hash(), ethCl, 10*time.Duration(dp.DeployConfig.L2BlockTime)*time.Second)
 	require.Nil(t, err, "withdrawal initiated on L2 sequencer")
 	require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status, "transaction had incorrect status")
 
-	sequencer.ActL2StartBlock(t)
-	sequencer.ActL2EndBlock(t)
-
-	currentBlock = engine.L2Chain().CurrentBlock()
-	t.Log("Current block number: ", currentBlock.Number)
-	storageHash = getStorageRoot(rpcCl, context.Background(), predeploys.L2ToL1MessagePasserAddr, "latest")
-	require.Equal(t, *currentBlock.WithdrawalsHash, storageHash)
-	// verifyIsthmusHeaderWithdrawalsRoot(gt, engine.L2Chain().CurrentBlock(), true)
+	verifyIsthmusHeaderWithdrawalsRoot(gt, rpcCl, engine.L2Chain().CurrentBlock(), true)
 }
 
 // Pre-Canyon, the withdrawals root field in the header should be nil
@@ -202,24 +267,19 @@ func verifyPreIsthmusHeaderWithdrawalsRoot(gt *testing.T, header *types.Header) 
 	require.Equal(gt, types.EmptyWithdrawalsHash, *header.WithdrawalsHash)
 }
 
-func verifyIsthmusHeaderWithdrawalsRoot(gt *testing.T, header *types.Header, l2toL1MPPresent bool) {
+func verifyIsthmusHeaderWithdrawalsRoot(gt *testing.T, rpcCl client.RPC, header *types.Header, l2toL1MPPresent bool) {
+	getStorageRoot := func(rpcCl client.RPC, ctx context.Context, address common.Address, blockTag string) common.Hash {
+		var getProofResponse *eth.AccountResult
+		err := rpcCl.CallContext(ctx, &getProofResponse, "eth_getProof", address, []common.Hash{}, blockTag)
+		assert.Nil(gt, err)
+		assert.NotNil(gt, getProofResponse)
+		return getProofResponse.StorageHash
+	}
+
 	if !l2toL1MPPresent {
 		require.Equal(gt, types.EmptyWithdrawalsHash, *header.WithdrawalsHash)
 	} else {
-		require.NotEqual(gt, types.EmptyWithdrawalsHash, *header.WithdrawalsHash)
+		storageHash := getStorageRoot(rpcCl, context.Background(), predeploys.L2ToL1MessagePasserAddr, "latest")
+		require.Equal(gt, *header.WithdrawalsHash, storageHash)
 	}
 }
-
-// func getL2ToL1MP(t *testing.T, engine *e2eutils.Engine) *types.Transaction {
-// 	// Get the L2 to L1 message passing tx
-// 	l2ToL1MP, err := engine.L2Chain().CurrentBlock().GetL2ToL1MessagePassingTx()
-// 	require.NoError(t, err)
-// 	return l2ToL1MP
-// }
-
-// func getL2ToL1MPStorageRoot(t *testing.T, ethCl *ethclient.Client) string {
-// 	proof, err := ethCl.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, blockHash.String())
-// 	rootValue, err := ethCl.StorageAt(context.Background(), predeploys.L2ToL1MessagePasserAddr, rootIdx, nil)
-// 	require.NoError(t, err)
-// 	require.Equal(t, expectedHash, common.BytesToHash(rootValue), msg)
-// }

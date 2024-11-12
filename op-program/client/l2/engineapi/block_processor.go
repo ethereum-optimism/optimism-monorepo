@@ -6,6 +6,7 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
@@ -107,6 +108,12 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 		vmenv := mkEVM()
 		core.ProcessParentBlockHash(header.ParentHash, vmenv, statedb)
 	}
+	if provider.Config().IsIsthmus(header.Time) {
+		// set the header withdrawals root for Isthmus blocks
+		mpHash := statedb.GetStorageRoot(predeploys.L2ToL1MessagePasserAddr)
+		header.WithdrawalsHash = &mpHash
+	}
+
 	return &BlockProcessor{
 		header:       header,
 		state:        statedb,

@@ -177,6 +177,7 @@ func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttribut
 			return fmt.Errorf("failed to apply deposit transaction to L2 block (tx %d): %w", i, err)
 		}
 	}
+
 	return nil
 }
 
@@ -301,7 +302,7 @@ func (ea *L2EngineAPI) NewPayloadV1(ctx context.Context, payload *eth.ExecutionP
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("withdrawals not supported in V1"))
 	}
 
-	return ea.newPayload(ctx, payload, nil, nil, ea.backend.Config())
+	return ea.newPayload(ctx, payload, nil, nil)
 }
 
 func (ea *L2EngineAPI) NewPayloadV2(ctx context.Context, payload *eth.ExecutionPayload) (*eth.PayloadStatusV1, error) {
@@ -313,7 +314,7 @@ func (ea *L2EngineAPI) NewPayloadV2(ctx context.Context, payload *eth.ExecutionP
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("non-nil withdrawals pre-shanghai"))
 	}
 
-	return ea.newPayload(ctx, payload, nil, nil, ea.backend.Config())
+	return ea.newPayload(ctx, payload, nil, nil)
 }
 
 // Ported from: https://github.com/ethereum-optimism/op-geth/blob/c50337a60a1309a0f1dca3bf33ed1bb38c46cdd7/eth/catalyst/api.go#L486C1-L507
@@ -338,11 +339,18 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 	// Payload must have eip-1559 params in ExtraData after Holocene
 	if ea.config().IsHolocene(uint64(params.Timestamp)) {
 		if err := eip1559.ValidateHoloceneExtraData(params.ExtraData); err != nil {
-			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holoocene"))
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holocene"))
 		}
 	}
 
-	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, ea.backend.Config())
+	// Payload must have WithdrawalsRoot after Isthmus
+	if ea.config().IsIsthmus(uint64(params.Timestamp)) {
+		if params.WithdrawalsRoot == nil {
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("nil withdrawalsRoot post-isthmus"))
+		}
+	}
+
+	return ea.newPayload(ctx, params, versionedHashes, beaconRoot)
 }
 
 func (ea *L2EngineAPI) getPayload(_ context.Context, payloadId eth.PayloadID) (*eth.ExecutionPayloadEnvelope, error) {
@@ -479,7 +487,7 @@ func toGethWithdrawals(payload *eth.ExecutionPayload) []*types.Withdrawal {
 	return result
 }
 
-func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPayload, hashes []common.Hash, root *common.Hash, config *params.ChainConfig) (*eth.PayloadStatusV1, error) {
+func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPayload, hashes []common.Hash, root *common.Hash) (*eth.PayloadStatusV1, error) {
 	ea.log.Trace("L2Engine API request received", "method", "ExecutePayload", "number", payload.BlockNumber, "hash", payload.BlockHash)
 	txs := make([][]byte, len(payload.Transactions))
 	for i, tx := range payload.Transactions {
