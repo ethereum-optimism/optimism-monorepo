@@ -125,7 +125,7 @@ contract OPContractsManager_InternalMethods_Test is Test {
         opcmHarness = new OPContractsManager_Harness({
             _superchainConfig: superchainConfigProxy,
             _protocolVersions: protocolVersionsProxy,
-            _l1ContractsReleaseVersion: "dev", // TODO: @blmalone update this to the correct value for this test.
+            _l1ContractsReleaseVersion: "dev",
             _inputContracts: emptyInputContracts
         });
     }

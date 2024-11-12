@@ -172,7 +172,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
 
         // forgefmt: disable-start
-        if (_sel == this.opcm.selector) _opcm = OPContractsManager(payable(_addr)); // TODO: @blmalone does this need to be payable?
+        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
