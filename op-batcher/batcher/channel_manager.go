@@ -514,8 +514,8 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 
 	if numBlocksToDequeue > uint64(s.blocks.Len()) {
 		// This could happen if the batcher restarted.
-		// A previous batcher instance had the blocks in memory
-		// But now they are gone.
+		// The sequencer may have derived the safe chain
+		// from channels sent by a previous batcher instance.
 		numBlocksToDequeue = uint64(s.blocks.Len())
 	}
 
