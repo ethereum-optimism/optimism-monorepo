@@ -443,16 +443,12 @@ func (c *ChannelBuilder) NextFrame() frameData {
 // only if it is ahead of it.
 // Panics if the frame is not in this channel.
 func (c *ChannelBuilder) RewindFrameCursor(frame frameData) {
-	for i, f := range c.frames {
-		if f.id.chID != frame.id.chID {
-			panic("wrong channel")
-		}
-		if f.id.frameNumber == frame.id.frameNumber {
-			if c.frameCursor > i {
-				c.frameCursor = i
-			}
-			return
-		}
+	if c.frames.Len() <= int(frame.id.frameNumber) ||
+		len(c.frames[frame.id.frameNumber].data) != len(frame.data) ||
+		c.frames[frame.id.frameNumber].id.chID != frame.id.chID {
+		panic("cannot rewind to unknown frame")
 	}
-	panic("frame not found")
+	if c.frameCursor > int(frame.id.frameNumber) {
+		c.frameCursor = int(frame.id.frameNumber)
+	}
 }
