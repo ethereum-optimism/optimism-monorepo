@@ -218,7 +218,7 @@ target "holocene-deployer" {
   dockerfile = "./packages/contracts-bedrock/scripts/upgrades/holocene/upgrade.dockerfile"
   context = "./packages/contracts-bedrock/scripts/upgrades/holocene"
   args = {
-    REV = "cl/holocene-upgrade-package"
+    REV = "op-contracts/1.8.0-rc.1"
   }
   target="holocene-deployer"
   platforms = split(",", PLATFORMS)

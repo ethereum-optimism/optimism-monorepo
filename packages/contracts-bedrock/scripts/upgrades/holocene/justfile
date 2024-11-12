@@ -22,5 +22,5 @@ build-image:
   docker build \
   -t op-holocene-upgrade:local \
   -f upgrade.dockerfile \
-  --build-arg REV=cl/holocene-upgrade-package \
+  --build-arg REV=op-contracts/1.8.0-rc.1 \
   .
