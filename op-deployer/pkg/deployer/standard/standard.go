@@ -134,10 +134,11 @@ func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:
 		// Generated using the bootstrap command on 10/18/2024.
-		return common.HexToAddress("0x18cec91779995ad14c880e4095456b9147160790"), nil
+		// TODO: @blmalone this needs re-bootstrapped because it's still proxied
+		return common.HexToAddress(""), nil
 	case 11155111:
-		// Generated using the bootstrap command on 10/18/2024.
-		return common.HexToAddress("0xf564eea7960ea244bfebcbbb17858748606147bf"), nil
+		// Generated using the bootstrap command on 11/15/2024.
+		return common.HexToAddress("0xde9eacb994a6eb12997445f8a63a22772c5c4313"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -172,7 +173,7 @@ func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
 func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	switch tag {
 	case "op-contracts/v1.6.0":
-		return url.Parse(standardArtifactsURL("3a27c6dc0cb61b36feaac26def98c64b4a48ec8f5c5ba6965e8ae3157606043c"))
+		return url.Parse(standardArtifactsURL("e1f0c4020618c4a98972e7124c39686cab2e31d5d7846f9ce5e0d5eed0f5ff32"))
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return url.Parse(standardArtifactsURL("b0fb1f6f674519d637cff39a22187a5993d7f81a6d7b7be6507a0b50a5e38597"))
 	default:

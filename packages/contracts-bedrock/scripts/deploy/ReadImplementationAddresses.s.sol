@@ -146,6 +146,9 @@ contract ReadImplementationAddresses is Script {
         address mipsLogic = _rii.opcm().implementations().mipsImpl;
         _rio.set(_rio.mipsSingleton.selector, mipsLogic);
 
+        address delayedWETH = _rii.opcm().implementations().delayedWETHImpl;
+        _rio.set(_rio.delayedWETH.selector, delayedWETH);
+
         IAddressManager am = _rii.addressManager();
         _rio.set(_rio.l1CrossDomainMessenger.selector, am.getAddress("OVM_L1CrossDomainMessenger"));
 
