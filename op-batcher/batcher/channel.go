@@ -49,9 +49,9 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 func (c *channel) TxFailed(id string) {
 	if data, ok := c.pendingTransactions[id]; ok {
 		c.log.Trace("marked transaction as failed", "id", id)
-		// Note: when the batcher is changed to send multiple frames per tx,
-		// this needs to be changed to iterate over all frames of the tx data
-		// and re-queue them.
+		// Rewind to the first frame of the failed tx
+		// -- the frames are ordered, and we want to send them
+		// all again.
 		c.channelBuilder.RewindFrameCursor(data.Frames()[0])
 		delete(c.pendingTransactions, id)
 	} else {
