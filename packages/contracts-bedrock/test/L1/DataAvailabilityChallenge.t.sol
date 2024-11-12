@@ -10,7 +10,6 @@ import {
 import { computeCommitmentKeccak256 } from "src/L1/DataAvailabilityChallenge.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
-import { console2 } from "forge-std/console2.sol";
 
 contract DataAvailabilityChallengeTest is CommonTest {
     function setUp() public virtual override {
