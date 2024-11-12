@@ -315,22 +315,23 @@ func BlockAsPayload(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayload, e
 	}
 
 	payload := &ExecutionPayload{
-		ParentHash:    bl.ParentHash(),
-		FeeRecipient:  bl.Coinbase(),
-		StateRoot:     Bytes32(bl.Root()),
-		ReceiptsRoot:  Bytes32(bl.ReceiptHash()),
-		LogsBloom:     Bytes256(bl.Bloom()),
-		PrevRandao:    Bytes32(bl.MixDigest()),
-		BlockNumber:   Uint64Quantity(bl.NumberU64()),
-		GasLimit:      Uint64Quantity(bl.GasLimit()),
-		GasUsed:       Uint64Quantity(bl.GasUsed()),
-		Timestamp:     Uint64Quantity(bl.Time()),
-		ExtraData:     bl.Extra(),
-		BaseFeePerGas: Uint256Quantity(*baseFee),
-		BlockHash:     bl.Hash(),
-		Transactions:  opaqueTxs,
-		ExcessBlobGas: (*Uint64Quantity)(bl.ExcessBlobGas()),
-		BlobGasUsed:   (*Uint64Quantity)(bl.BlobGasUsed()),
+		ParentHash:      bl.ParentHash(),
+		FeeRecipient:    bl.Coinbase(),
+		StateRoot:       Bytes32(bl.Root()),
+		ReceiptsRoot:    Bytes32(bl.ReceiptHash()),
+		LogsBloom:       Bytes256(bl.Bloom()),
+		PrevRandao:      Bytes32(bl.MixDigest()),
+		BlockNumber:     Uint64Quantity(bl.NumberU64()),
+		GasLimit:        Uint64Quantity(bl.GasLimit()),
+		GasUsed:         Uint64Quantity(bl.GasUsed()),
+		Timestamp:       Uint64Quantity(bl.Time()),
+		ExtraData:       bl.Extra(),
+		BaseFeePerGas:   Uint256Quantity(*baseFee),
+		BlockHash:       bl.Hash(),
+		Transactions:    opaqueTxs,
+		ExcessBlobGas:   (*Uint64Quantity)(bl.ExcessBlobGas()),
+		BlobGasUsed:     (*Uint64Quantity)(bl.BlobGasUsed()),
+		WithdrawalsRoot: bl.Header().WithdrawalsHash,
 	}
 
 	if shanghaiTime != nil && uint64(payload.Timestamp) >= *shanghaiTime {
@@ -373,8 +374,6 @@ type PayloadAttributes struct {
 	GasLimit *Uint64Quantity `json:"gasLimit,omitempty"`
 	// EIP-1559 parameters, to be specified only post-Holocene
 	EIP1559Params *Bytes8 `json:"eip1559Params,omitempty"`
-	// WithdrawalsRoot, to be specified post Isthmus as the storage root of the L2toL1MessagePasser contract
-	WithdrawalsRoot *common.Hash `json:"withdrawalsRoot,omitempty"`
 }
 
 // IsDepositsOnly returns whether all transactions of the PayloadAttributes are of Deposit
