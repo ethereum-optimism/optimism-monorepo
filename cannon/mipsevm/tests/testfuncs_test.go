@@ -85,17 +85,17 @@ func testOperators(t *testing.T, cases []operatorTestCase, mips32Insn bool) {
 }
 
 type mulDivTestCase struct {
-	name         string
-	rs           Word
-	rt           Word
-	funct        uint32
-	opcode       uint32
-	expectHi     Word
-	expectLo     Word
-	expectRes    Word
-	rdReg        uint32
-	expectRevert string
-	errMsg       string
+	name      string
+	rs        Word
+	rt        Word
+	funct     uint32
+	opcode    uint32
+	expectHi  Word
+	expectLo  Word
+	expectRes Word
+	rdReg     uint32
+	panicMsg  string
+	revertMsg string
 }
 
 func testMulDiv(t *testing.T, cases []mulDivTestCase, mips32Insn bool) {
@@ -123,13 +123,13 @@ func testMulDiv(t *testing.T, cases []mulDivTestCase, mips32Insn bool) {
 				state.GetRegistersRef()[baseReg] = tt.rs
 				testutil.StoreInstruction(state.GetMemory(), 0, insn)
 
-				if tt.expectRevert != "" {
+				if tt.panicMsg != "" {
 					proofData := v.ProofGenerator(t, goVm.GetState())
-					require.PanicsWithValue(t, tt.expectRevert, func() {
+					require.PanicsWithValue(t, tt.panicMsg, func() {
 						_, _ = goVm.Step(
 							false)
 					})
-					testutil.AssertEVMReverts(t, state, v.Contracts, nil, proofData, testutil.CreateErrorStringMatcher(tt.errMsg))
+					testutil.AssertEVMReverts(t, state, v.Contracts, nil, proofData, testutil.CreateErrorStringMatcher(tt.revertMsg))
 					return
 				}
 
@@ -493,8 +493,8 @@ func randomizeUpperWord(w Word) Word {
 	} else {
 		if w>>32 == 0x0 { // nolint:staticcheck
 			rnd := rand.Uint32()
-			mask := (uint64(rnd) << 32) | 0xFF_FF_FF_FF
-			return Word((uint64(w) | (0xFF_FF_FF_FF << 32)) & mask)
+			upper := uint64(rnd) << 32
+			return Word(upper | uint64(uint32(w)))
 		} else {
 			return w
 		}

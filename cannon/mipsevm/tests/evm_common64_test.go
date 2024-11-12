@@ -95,7 +95,6 @@ func TestEVM_SingleStep_Bitwise64(t *testing.T) {
 		{name: "xor", funct: 0x26, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(1370)},                         // xor t0, s1, s2
 		{name: "xori", opcode: 0xe, isImm: true, rs: Word(4), rt: Word(1), imm: uint16(40), expectRes: Word(44)},               // xori t0, s1, 40
 		{name: "nor", funct: 0x27, isImm: false, rs: Word(0x4b0), rt: Word(0x1ea), expectRes: Word(0xFF_FF_FF_FF_FF_FF_FA_05)}, // nor t0, s1, s2
-		{name: "nor", funct: 0x27, isImm: false, rs: Word(0x4b0), rt: Word(0x1ea), expectRes: Word(0xFF_FF_FF_FF_FF_FF_FA_05)}, // nor t0, s1, s2
 		{name: "slt", funct: 0x2a, isImm: false, rs: 0xFF_FF_FF_FE, rt: Word(5), expectRes: Word(0)},                           // slt t0, s1, s2
 		{name: "slt", funct: 0x2a, isImm: false, rs: 0xFF_FF_FF_FF_FF_FF_FF_FE, rt: Word(5), expectRes: Word(1)},               // slt t0, s1, s2
 		{name: "sltu", funct: 0x2b, isImm: false, rs: Word(1200), rt: Word(490), expectRes: Word(0)},                           // sltu t0, s1, s2
@@ -424,9 +423,9 @@ func TestEVM_SingleStep_MulDiv64(t *testing.T) {
 		{name: "dmultu 14", funct: 0x1d, rs: Word(0x7F_FF_FF_FF_FF_FF_FF_FF), rt: Word(0x8F_FF_FF_FF_FF_FF_FF_FF), expectLo: 0xF0_00_00_00_00_00_00_01, expectHi: 0x47_FF_FF_FF_FF_FF_FF_FE},
 
 		// ddiv rs, rt
-		{name: "ddiv", funct: 0x1e, rs: 0, rt: 0, expectRevert: "instruction divide by zero"},
-		{name: "ddiv", funct: 0x1e, rs: 1, rt: 0, expectRevert: "instruction divide by zero"},
-		{name: "ddiv", funct: 0x1e, rs: 0xFF_FF_FF_FF_FF_FF_FF_FF, rt: 0, expectRevert: "instruction divide by zero"},
+		{name: "ddiv", funct: 0x1e, rs: 0, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
+		{name: "ddiv", funct: 0x1e, rs: 1, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
+		{name: "ddiv", funct: 0x1e, rs: 0xFF_FF_FF_FF_FF_FF_FF_FF, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
 		{name: "ddiv", funct: 0x1e, rs: 0, rt: 1, expectLo: 0, expectHi: 0},
 		{name: "ddiv", funct: 0x1e, rs: 1, rt: 1, expectLo: 1, expectHi: 0},
 		{name: "ddiv", funct: 0x1e, rs: 10, rt: 3, expectLo: 3, expectHi: 1},
@@ -437,9 +436,9 @@ func TestEVM_SingleStep_MulDiv64(t *testing.T) {
 		{name: "ddiv", funct: 0x1e, rs: 0x7F_FF_FF_FF_00_00_00_00, rt: ^Word(0), expectLo: 0x80_00_00_01_00_00_00_00, expectHi: 0},
 
 		// ddivu
-		{name: "ddivu", funct: 0x1f, rs: 0, rt: 0, expectRevert: "instruction divide by zero"},
-		{name: "ddivu", funct: 0x1f, rs: 1, rt: 0, expectRevert: "instruction divide by zero"},
-		{name: "ddivu", funct: 0x1f, rs: 0xFF_FF_FF_FF_FF_FF_FF_FF, rt: 0, expectRevert: "instruction divide by zero"},
+		{name: "ddivu", funct: 0x1f, rs: 0, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
+		{name: "ddivu", funct: 0x1f, rs: 1, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
+		{name: "ddivu", funct: 0x1f, rs: 0xFF_FF_FF_FF_FF_FF_FF_FF, rt: 0, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
 		{name: "ddivu", funct: 0x1f, rs: 0, rt: 1, expectLo: 0, expectHi: 0},
 		{name: "ddivu", funct: 0x1f, rs: 1, rt: 1, expectLo: 1, expectHi: 0},
 		{name: "ddivu", funct: 0x1f, rs: 10, rt: 3, expectLo: 3, expectHi: 1},
@@ -450,8 +449,8 @@ func TestEVM_SingleStep_MulDiv64(t *testing.T) {
 		{name: "ddivu", funct: 0x1f, rs: 0x7F_FF_FF_FF_00_00_00_00, rt: ^Word(0), expectLo: 0, expectHi: 0x7F_FF_FF_FF_00_00_00_00},
 
 		// a couple div/divu 64-bit edge cases
-		{name: "div lower word zero", funct: 0x1a, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectRevert: "instruction divide by zero"},
-		{name: "divu lower word zero", funct: 0x1b, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, expectRevert: "instruction divide by zero"},
+		{name: "div lower word zero", funct: 0x1a, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
+		{name: "divu lower word zero", funct: 0x1b, rs: 1, rt: 0xFF_FF_FF_FF_00_00_00_00, panicMsg: "instruction divide by zero", revertMsg: "division by zero"},
 	}
 
 	testMulDiv(t, cases, false)
