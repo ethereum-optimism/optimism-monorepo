@@ -48,7 +48,14 @@ export PROXY_ADMIN_ADDR=${PROXY_ADMIN_ADDR:?PROXY_ADMIN_ADDR must be set}
 export SUPERCHAIN_CONFIG_PROXY_ADDR=${SUPERCHAIN_CONFIG_PROXY_ADDR:?SUPERCHAIN_CONFIG_ADDR must be set}
 export SYSTEM_CONFIG_PROXY_ADDR=${SYSTEM_CONFIG_PROXY_ADDR:?SYSTEM_CONFIG_PROXY_ADDR must be set}
 export DISPUTE_GAME_FACTORY_PROXY_ADDR=${DISPUTE_GAME_FACTORY_PROXY_ADDR:?DISPUTE_GAME_FACTORY_PROXY_ADDR must be set}
+export USE_FAULT_PROOFS=${USE_FAULT_PROOFS:?USE_FAULT_PROOFS must be set}
 export USE_PERMISSIONLESS_FAULT_PROOFS=${USE_PERMISSIONLESS_FAULT_PROOFS:?USE_PERMISSIONLESS_FAULT_PROOFS must be set}
+
+# Sanity check FP configuration.
+if [[ $USE_PERMISSIONLESS_FAULT_PROOFS == true && $USE_FAULT_PROOFS == false ]]; then
+    echo "Error: USE_PERMISSIONLESS_FAULT_PROOFS cannot be true if USE_FAULT_PROOFS is false"
+    exit 1
+fi
 
 # Make the output folder, if it doesn't exist
 mkdir -p "$OUTPUT_FOLDER_PATH"
@@ -126,18 +133,20 @@ if ! "$SCRIPT_DIR/sc-ops-sys-cfg.sh"; then
     exit 1
 fi
 
-prompt "Generate safe upgrade bundle for proofs contracts?"
+if [[ $USE_FAULT_PROOFS == true ]]; then
+  prompt "Generate safe upgrade bundle for proofs contracts?"
 
-# Generate the proofs contracts' upgrade bundle
-if ! "$SCRIPT_DIR/proofs-bundle.sh"; then
-    echo "Error: proofs-bundle.sh failed"
-    exit 1
-fi
+  # Generate the proofs contracts' upgrade bundle
+  if ! "$SCRIPT_DIR/proofs-bundle.sh"; then
+      echo "Error: proofs-bundle.sh failed"
+      exit 1
+  fi
 
-prompt "Generate superchain-ops upgrade task for proofs contracts upgrade bundle?"
+  prompt "Generate superchain-ops upgrade task for proofs contracts upgrade bundle?"
 
-# Generate the superchain-ops upgrade task
-if ! "$SCRIPT_DIR/sc-ops-proofs.sh"; then
-    echo "Error: sc-ops-proofs.sh failed"
-    exit 1
+  # Generate the superchain-ops upgrade task
+  if ! "$SCRIPT_DIR/sc-ops-proofs.sh"; then
+      echo "Error: sc-ops-proofs.sh failed"
+      exit 1
+  fi
 fi

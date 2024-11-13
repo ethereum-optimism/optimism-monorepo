@@ -36,6 +36,7 @@ contract DeployUpgrade is Deployer {
         address _delayedWETH,
         address _preimageOracle,
         address _anchorStateRegistry,
+        bool _useFaultProofs,
         bool _usePermissionlessFaultProofs
     )
         public
@@ -53,26 +54,29 @@ contract DeployUpgrade is Deployer {
 
         // Deploy conditional implementations.
         if (_systemConfigImpl == address(0)) deploySystemConfigImplementation();
-        if (_mipsImpl == address(0)) deployMIPSImplementation();
-        if (_delayedWETH == address(0)) deployDelayedWETH();
 
-        // Deploy:
-        // 1. New `DelayedWETH` proxy contracts for the `FaultDisputeGame` and `PermissionedDisputeGame`.
-        // 2. New `FaultDisputeGame` and `PermissionedDisputeGame` implementation contracts.
-        deployDelayedWETHProxy("PDG");
-        deployPermissionedDisputeGameImplementation();
-        if (_usePermissionlessFaultProofs) {
-            deployDelayedWETHProxy("FDG");
-            deployFaultDisputeGameImplementation();
-        }
+        if (_useFaultProofs) {
+            if (_mipsImpl == address(0)) deployMIPSImplementation();
+            if (_delayedWETH == address(0)) deployDelayedWETH();
 
-        // Run deployment checks.
-        checkMIPS();
-        checkPermissionedDisputeGame();
-        checkDelayedWETH("PDG");
-        if (_usePermissionlessFaultProofs) {
-            checkFaultDisputeGame();
-            checkDelayedWETH("FDG");
+            // Deploy:
+            // 1. New `DelayedWETH` proxy contracts for the `FaultDisputeGame` and `PermissionedDisputeGame`.
+            // 2. New `FaultDisputeGame` and `PermissionedDisputeGame` implementation contracts.
+            deployDelayedWETHProxy("PDG");
+            deployPermissionedDisputeGameImplementation();
+            if (_usePermissionlessFaultProofs) {
+                deployDelayedWETHProxy("FDG");
+                deployFaultDisputeGameImplementation();
+            }
+
+            // Run deployment checks.
+            checkMIPS();
+            checkPermissionedDisputeGame();
+            checkDelayedWETH("PDG");
+            if (_usePermissionlessFaultProofs) {
+                checkFaultDisputeGame();
+                checkDelayedWETH("FDG");
+            }
         }
 
         // Print the deployment summary.
@@ -326,8 +330,8 @@ contract DeployUpgrade is Deployer {
     /// @dev Prints a summary of the deployment.
     function printSummary() internal view {
         console.log("1. SystemConfig: %s", mustGetAddress("SystemConfig"));
-        console.log("2. MIPS: %s", mustGetAddress("MIPS"));
+        console.log("2. MIPS: %s", getAddress("MIPS"));
         console.log("3. FaultDisputeGame: %s", getAddress("FaultDisputeGame"));
-        console.log("4. PermissionedDisputeGame: %s", mustGetAddress("PermissionedDisputeGame"));
+        console.log("4. PermissionedDisputeGame: %s", getAddress("PermissionedDisputeGame"));
     }
 }
