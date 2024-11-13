@@ -379,6 +379,12 @@ contract L2StandardBridge_BridgeERC20_Test is PreBridgeERC20 {
         assertEq(L2Token.balanceOf(alice), 0);
     }
 
+    function test_bridgeERC20_isNotCorrectTokenPair_reverts() external {
+        vm.expectRevert("StandardBridge: wrong remote token for Optimism Mintable ERC20 local token");
+        vm.prank(alice, alice);
+        l2StandardBridge.bridgeERC20(address(L2Token), address(BadL1Token), 100, 1000, hex"");
+    }
+
     function test_withdrawLegacyERC20_succeeds() external {
         _preBridgeERC20({ _isLegacy: true, _l2Token: address(LegacyL2Token) });
         l2StandardBridge.withdraw(address(LegacyL2Token), 100, 1000, hex"");
