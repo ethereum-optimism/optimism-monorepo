@@ -639,12 +639,20 @@ func TestChannelManager_Requeue(t *testing.T) {
 	// Assert that at least one block was processed into the channel
 	require.NotContains(t, m.blocks, blockA)
 
+	l1OriginBeforeRequeue := m.l1OriginLastSubmittedChannel
+
 	// Call the function we are testing
 	m.Requeue(m.defaultCfg)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Empty(t, m.channelQueue)
+
+	// Ensure the l1OridingLastSubmittedChannel was
+	// not changed. This ensures the next channel
+	// has its duration timeout deadline computed
+	// properly.
+	require.Equal(t, l1OriginBeforeRequeue, m.l1OriginLastSubmittedChannel)
 
 	// Trigger the blocks -> channelQueue data pipelining again
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
