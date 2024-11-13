@@ -210,7 +210,6 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that relayMessage reverts if attempting to relay a message
     ///      sent to an L1 system contract.
     function test_relayMessage_toSystemContract_reverts() external {
-        address target = address(l1CrossDomainMessenger);
         address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
         bytes memory message = hex"1111";
 
@@ -219,7 +218,18 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         vm.prank(address(optimismPortal));
         vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
         l1CrossDomainMessenger.relayMessage(
-            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 0, 0, message
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }),
+            sender,
+            address(l1CrossDomainMessenger),
+            0,
+            0,
+            message
+        );
+
+        vm.prank(address(optimismPortal));
+        vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
+        l1CrossDomainMessenger.relayMessage(
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, address(optimismPortal), 0, 0, message
         );
     }
 
