@@ -11,13 +11,6 @@ For each contract listed in the state diff, please verify that no contracts or s
 
 ## State Changes
 
-### `$SYSTEM_CONFIG_PROXY_ADDR` (`SystemConfigProxy`)
-
-- **Key**: `0x360894a13ba1a3210667c828492db98dca3e2076cc3735a920a3ca505d382bbc`
-  **Before**: `$OLD_SYS_CFG`
-  **After**: `$SYSTEM_CONFIG_IMPL`
-  **Meaning**: Updates the `SystemConfig` proxy implementation.
-
 ### `$DISPUTE_GAME_FACTORY_PROXY_ADDR` (`DisputeGameFactoryProxy`)
 
 - **Key**: `0xffdfc1249c027f9191656349feb0761381bb32c9f557e01f419fd08754bf5a1b` <br/>

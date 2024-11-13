@@ -110,18 +110,34 @@ echo "✨ Deployed contracts and saved addresses to \"$DEPLOYMENTS_JSON_PATH\""
 # Print a message when the script exits
 trap 'echo "✨ Done. Artifacts are available in \"$OUTPUT_FOLDER_PATH\""' EXIT
 
-prompt "Generate safe upgrade bundle?"
+prompt "Generate safe upgrade bundle for SystemConfig?"
 
-# Generate the upgrade bundle
-if ! "$SCRIPT_DIR/bundle.sh"; then
-    echo "Error: bundle.sh failed"
+# Generate the system config upgrade bundle
+if ! "$SCRIPT_DIR/sys-cfg-bundle.sh"; then
+    echo "Error: sys-cfg-bundle.sh failed"
     exit 1
 fi
 
-prompt "Generate superchain-ops upgrade task?"
+prompt "Generate superchain-ops upgrade task for SystemConfig upgrade bundle?"
 
 # Generate the superchain-ops upgrade task
-if ! "$SCRIPT_DIR/sc-ops.sh"; then
-    echo "Error: sc-ops.sh failed"
+if ! "$SCRIPT_DIR/sc-ops-sys-cfg.sh"; then
+    echo "Error: sc-ops-sys-cfg.sh failed"
+    exit 1
+fi
+
+prompt "Generate safe upgrade bundle for proofs contracts?"
+
+# Generate the proofs contracts' upgrade bundle
+if ! "$SCRIPT_DIR/proofs-bundle.sh"; then
+    echo "Error: proofs-bundle.sh failed"
+    exit 1
+fi
+
+prompt "Generate superchain-ops upgrade task for proofs contracts upgrade bundle?"
+
+# Generate the superchain-ops upgrade task
+if ! "$SCRIPT_DIR/sc-ops-proofs.sh"; then
+    echo "Error: sc-ops-proofs.sh failed"
     exit 1
 fi

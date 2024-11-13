@@ -1,10 +1,10 @@
-# Holocene Hardfork Upgrade
+# Holocene Hardfork Upgrade - `SystemConfig`
 
 Status: DRAFT, NOT READY TO SIGN
 
 ## Objective
 
-Upgrades the `SystemConfig` and Fault Proof contracts for the Holocene hardfork.
+Upgrades the `SystemConfig` for the Holocene hardfork.
 
 The proposal was:
 
@@ -17,15 +17,12 @@ The governance proposal should be treated as the source of truth and used to ver
 
 Governance post of the upgrade can be found at <placeholder>.
 
-This upgrades the Fault Proof contracts and the `SystemConfig` in the
+This upgrades the `SystemConfig` in the
 [op-contracts/v1.8.0](https://github.com/ethereum-optimism/optimism/tree/op-contracts/v1.8.0-rc.1) release.
 
 ## Pre-deployments
 
 - `SystemConfig` - `$SYSTEM_CONFIG_IMPL`
-- `MIPS` - `$MIPS_IMPL`
-- `FaultDisputeGame` - `$FDG_IMPL`
-- `PermissionedDisputeGame` - `$PDG_IMPL`
 
 ## Simulation
 
@@ -41,7 +38,5 @@ Please see the instructions for [validation](./VALIDATION.md).
 
 This upgrade
 * Changes the implementation of the `SystemConfig` to hold EIP-1559 parameters for the
-* Changes dispute game implementation of the `CANNON` and `PERMISSIONED_CANNON` game types to contain the `op-program` release for the Holocene hardfork.
-* Upgrades `MIPS.sol` to support the `F_GETFD` syscall, required by the golang 1.22+ runtime.
 
 See the [overview](./OVERVIEW.md) and `input.json` bundle for more details.
