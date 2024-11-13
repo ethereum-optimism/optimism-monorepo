@@ -41,6 +41,17 @@ contract OptimismMintableERC721_Test is CommonTest {
         assertEq(L2NFT.REMOTE_CHAIN_ID(), 1);
     }
 
+    function test_constructor_checks_works() external {
+        vm.expectRevert("OptimismMintableERC721: bridge cannot be address(0)");
+        L2NFT = new OptimismMintableERC721(address(0), 1, address(L1NFT), "L2NFT", "L2T");
+
+        vm.expectRevert("OptimismMintableERC721: remote chain id cannot be zero");
+        L2NFT = new OptimismMintableERC721(address(l2ERC721Bridge), 0, address(L1NFT), "L2NFT", "L2T");
+
+        vm.expectRevert("OptimismMintableERC721: remote token cannot be address(0)");
+        L2NFT = new OptimismMintableERC721(address(l2ERC721Bridge), 1, address(0), "L2NFT", "L2T");
+    }
+
     /// @notice Ensure that the contract supports the expected interfaces.
     function test_supportsInterfaces_succeeds() external view {
         // Checks if the contract supports the IOptimismMintableERC721 interface.
