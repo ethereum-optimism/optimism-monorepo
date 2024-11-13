@@ -53,15 +53,7 @@ func (c *CheatCodesPrecompile) CreateSelectFork_84d52b7a(urlOrAlias string, txHa
 // createSelectFork implements vm.createSelectFork:
 // https://book.getfoundry.sh/cheatcodes/create-select-fork
 func (c *CheatCodesPrecompile) createSelectFork(opts ...ForkOption) (*big.Int, error) {
-	src, err := c.h.onFork(opts...)
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup fork source: %w", err)
-	}
-	id, err := c.h.state.CreateSelectFork(src)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create-select fork: %w", err)
-	}
-	return id.U256().ToBig(), nil
+	return c.h.CreateSelectFork(opts...)
 }
 
 // ActiveFork implements vm.activeFork:

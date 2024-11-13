@@ -7,11 +7,15 @@ import (
 	"math/big"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
+	"github.com/ethereum/go-ethereum/rpc"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -104,92 +108,14 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
 
-	var l1Client *ethclient.Client
-	var deployer common.Address
-	var bcaster broadcaster.Broadcaster
-	var startingNonce uint64
-	if intent.DeploymentStrategy == state.DeploymentStrategyLive {
-		if err := cfg.CheckLive(); err != nil {
-			return fmt.Errorf("invalid config for apply: %w", err)
-		}
-
-		l1Client, err = ethclient.Dial(cfg.L1RPCUrl)
-		if err != nil {
-			return fmt.Errorf("failed to connect to L1 RPC: %w", err)
-		}
-
-		chainID, err := l1Client.ChainID(ctx)
-		if err != nil {
-			return fmt.Errorf("failed to get chain ID: %w", err)
-		}
-
-		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
-		deployer = crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
-
-		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
-			Logger:  cfg.Logger,
-			ChainID: new(big.Int).SetUint64(intent.L1ChainID),
-			Client:  l1Client,
-			Signer:  signer,
-			From:    deployer,
-		})
-		if err != nil {
-			return fmt.Errorf("failed to create broadcaster: %w", err)
-		}
-
-		startingNonce, err = l1Client.NonceAt(ctx, deployer, nil)
-		if err != nil {
-			return fmt.Errorf("failed to get starting nonce: %w", err)
-		}
-	} else {
-		deployer = common.Address{0x01}
-		bcaster = broadcaster.NoopBroadcaster()
-	}
-
-	progressor := func(curr, total int64) {
-		cfg.Logger.Info("artifacts download progress", "current", curr, "total", total)
-	}
-
-	l1ArtifactsFS, cleanupL1, err := artifacts.Download(ctx, intent.L1ContractsLocator, progressor)
-	if err != nil {
-		return fmt.Errorf("failed to download L1 artifacts: %w", err)
-	}
-	defer func() {
-		if err := cleanupL1(); err != nil {
-			cfg.Logger.Warn("failed to clean up L1 artifacts", "err", err)
-		}
-	}()
-
-	l2ArtifactsFS, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
-	if err != nil {
-		return fmt.Errorf("failed to download L2 artifacts: %w", err)
-	}
-	defer func() {
-		if err := cleanupL2(); err != nil {
-			cfg.Logger.Warn("failed to clean up L2 artifacts", "err", err)
-		}
-	}()
-
-	bundle := pipeline.ArtifactsBundle{
-		L1: l1ArtifactsFS,
-		L2: l2ArtifactsFS,
-	}
-
-	l1Host, err := env.DefaultScriptHost(bcaster, cfg.Logger, deployer, bundle.L1, startingNonce)
-	if err != nil {
-		return fmt.Errorf("failed to create L1 script host: %w", err)
-	}
-
-	env := &pipeline.Env{
-		StateWriter:  pipeline.WorkdirStateWriter(cfg.Workdir),
-		L1ScriptHost: l1Host,
-		L1Client:     l1Client,
-		Logger:       cfg.Logger,
-		Broadcaster:  bcaster,
-		Deployer:     deployer,
-	}
-
-	if err := ApplyPipeline(ctx, env, bundle, intent, st); err != nil {
+	if err := ApplyPipeline(ctx, ApplyPipelineOpts{
+		L1RPCUrl:           cfg.L1RPCUrl,
+		DeployerPrivateKey: cfg.privateKeyECDSA,
+		Intent:             intent,
+		State:              st,
+		Logger:             cfg.Logger,
+		StateWriter:        pipeline.WorkdirStateWriter(cfg.Workdir),
+	}); err != nil {
 		return err
 	}
 
@@ -201,26 +127,146 @@ type pipelineStage struct {
 	apply func() error
 }
 
+type ApplyPipelineOpts struct {
+	L1RPCUrl           string
+	DeployerPrivateKey *ecdsa.PrivateKey
+	Intent             *state.Intent
+	State              *state.State
+	Logger             log.Logger
+	StateWriter        pipeline.StateWriter
+}
+
 func ApplyPipeline(
 	ctx context.Context,
-	env *pipeline.Env,
-	bundle pipeline.ArtifactsBundle,
-	intent *state.Intent,
-	st *state.State,
+	opts ApplyPipelineOpts,
 ) error {
+	intent := opts.Intent
+	st := opts.State
+
+	progressor := func(curr, total int64) {
+		opts.Logger.Info("artifacts download progress", "current", curr, "total", total)
+	}
+
+	l1ArtifactsFS, cleanupL1, err := artifacts.Download(ctx, intent.L1ContractsLocator, progressor)
+	if err != nil {
+		return fmt.Errorf("failed to download L1 artifacts: %w", err)
+	}
+	defer func() {
+		if err := cleanupL1(); err != nil {
+			opts.Logger.Warn("failed to clean up L1 artifacts", "err", err)
+		}
+	}()
+
+	l2ArtifactsFS, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
+	if err != nil {
+		return fmt.Errorf("failed to download L2 artifacts: %w", err)
+	}
+	defer func() {
+		if err := cleanupL2(); err != nil {
+			opts.Logger.Warn("failed to clean up L2 artifacts", "err", err)
+		}
+	}()
+
+	bundle := pipeline.ArtifactsBundle{
+		L1: l1ArtifactsFS,
+		L2: l2ArtifactsFS,
+	}
+
+	var deployer common.Address
+	var bcaster broadcaster.Broadcaster
+	var l1Client *ethclient.Client
+	var l1Host *script.Host
+	if intent.DeploymentStrategy == state.DeploymentStrategyLive {
+		l1RPC, err := rpc.Dial(opts.L1RPCUrl)
+		if err != nil {
+			return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		}
+
+		l1Client = ethclient.NewClient(l1RPC)
+
+		chainID, err := l1Client.ChainID(ctx)
+		if err != nil {
+			return fmt.Errorf("failed to get chain ID: %w", err)
+		}
+
+		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(opts.DeployerPrivateKey, chainID))
+		deployer = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
+
+		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
+			Logger:  opts.Logger,
+			ChainID: new(big.Int).SetUint64(intent.L1ChainID),
+			Client:  l1Client,
+			Signer:  signer,
+			From:    deployer,
+		})
+		if err != nil {
+			return fmt.Errorf("failed to create broadcaster: %w", err)
+		}
+
+		l1Host, err = env.DefaultScriptHost(
+			bcaster,
+			opts.Logger,
+			deployer,
+			bundle.L1,
+			script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
+				src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
+				if err != nil {
+					return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
+				}
+				return forking.Cache(src), nil
+			}),
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create L1 script host: %w", err)
+		}
+
+		latest, err := l1Client.HeaderByNumber(ctx, nil)
+		if err != nil {
+			return fmt.Errorf("failed to get latest block: %w", err)
+		}
+
+		if _, err := l1Host.CreateSelectFork(
+			script.ForkWithURLOrAlias("main"),
+			script.ForkWithBlockNumberU256(latest.Number),
+		); err != nil {
+			return fmt.Errorf("failed to select fork: %w", err)
+		}
+	} else {
+		deployer = common.Address{0x01}
+		bcaster = broadcaster.NoopBroadcaster()
+		l1Host, err = env.DefaultScriptHost(
+			bcaster,
+			opts.Logger,
+			deployer,
+			bundle.L1,
+		)
+		if err != nil {
+			return fmt.Errorf("failed to create L1 script host: %w", err)
+		}
+	}
+
+	pEnv := &pipeline.Env{
+		StateWriter:  opts.StateWriter,
+		L1ScriptHost: l1Host,
+		L1Client:     l1Client,
+		Logger:       opts.Logger,
+		Broadcaster:  bcaster,
+		Deployer:     deployer,
+	}
+
 	pline := []pipelineStage{
 		{"init", func() error {
 			if intent.DeploymentStrategy == state.DeploymentStrategyLive {
-				return pipeline.InitLiveStrategy(ctx, env, intent, st)
+				return pipeline.InitLiveStrategy(ctx, pEnv, intent, st)
 			} else {
-				return pipeline.InitGenesisStrategy(env, intent, st)
+				return pipeline.InitGenesisStrategy(pEnv, intent, st)
 			}
 		}},
 		{"deploy-superchain", func() error {
-			return pipeline.DeploySuperchain(env, intent, st)
+			return pipeline.DeploySuperchain(pEnv, intent, st)
 		}},
 		{"deploy-implementations", func() error {
-			return pipeline.DeployImplementations(env, intent, st)
+			return pipeline.DeployImplementations(pEnv, intent, st)
 		}},
 	}
 
@@ -230,21 +276,17 @@ func ApplyPipeline(
 		pline = append(pline, pipelineStage{
 			fmt.Sprintf("deploy-opchain-%s", chainID.Hex()),
 			func() error {
-				if intent.DeploymentStrategy == state.DeploymentStrategyLive {
-					return pipeline.DeployOPChainLiveStrategy(ctx, env, bundle, intent, st, chainID)
-				} else {
-					return pipeline.DeployOPChainGenesisStrategy(env, intent, st, chainID)
-				}
+				return pipeline.DeployOPChain(pEnv, intent, st, chainID)
 			},
 		}, pipelineStage{
 			fmt.Sprintf("deploy-alt-da-%s", chainID.Hex()),
 			func() error {
-				return pipeline.DeployAltDA(env, intent, st, chainID)
+				return pipeline.DeployAltDA(pEnv, intent, st, chainID)
 			},
 		}, pipelineStage{
 			fmt.Sprintf("generate-l2-genesis-%s", chainID.Hex()),
 			func() error {
-				return pipeline.GenerateL2Genesis(env, intent, bundle, st, chainID)
+				return pipeline.GenerateL2Genesis(pEnv, intent, bundle, st, chainID)
 			},
 		})
 	}
@@ -257,9 +299,9 @@ func ApplyPipeline(
 			fmt.Sprintf("set-start-block-%s", chainID.Hex()),
 			func() error {
 				if intent.DeploymentStrategy == state.DeploymentStrategyLive {
-					return pipeline.SetStartBlockLiveStrategy(ctx, env, st, chainID)
+					return pipeline.SetStartBlockLiveStrategy(ctx, pEnv, st, chainID)
 				} else {
-					return pipeline.SetStartBlockGenesisStrategy(env, st, chainID)
+					return pipeline.SetStartBlockGenesisStrategy(pEnv, st, chainID)
 				}
 			},
 		})
@@ -271,23 +313,27 @@ func ApplyPipeline(
 		if err := stage.apply(); err != nil {
 			return fmt.Errorf("error in pipeline stage apply: %w", err)
 		}
-		dump, err := env.L1ScriptHost.StateDump()
-		if err != nil {
-			return fmt.Errorf("failed to dump state: %w", err)
+
+		if intent.DeploymentStrategy == state.DeploymentStrategyGenesis {
+			dump, err := pEnv.L1ScriptHost.StateDump()
+			if err != nil {
+				return fmt.Errorf("failed to dump state: %w", err)
+			}
+			st.L1StateDump = &state.GzipData[foundry.ForgeAllocs]{
+				Data: dump,
+			}
 		}
-		st.L1StateDump = &state.GzipData[foundry.ForgeAllocs]{
-			Data: dump,
-		}
-		if _, err := env.Broadcaster.Broadcast(ctx); err != nil {
+
+		if _, err := pEnv.Broadcaster.Broadcast(ctx); err != nil {
 			return fmt.Errorf("failed to broadcast stage %s: %w", stage.name, err)
 		}
-		if err := env.StateWriter.WriteState(st); err != nil {
+		if err := pEnv.StateWriter.WriteState(st); err != nil {
 			return fmt.Errorf("failed to write state: %w", err)
 		}
 	}
 
 	st.AppliedIntent = intent
-	if err := env.StateWriter.WriteState(st); err != nil {
+	if err := pEnv.StateWriter.WriteState(st); err != nil {
 		return fmt.Errorf("failed to write state: %w", err)
 	}
 

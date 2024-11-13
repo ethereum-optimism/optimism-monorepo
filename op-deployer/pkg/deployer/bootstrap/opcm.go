@@ -193,11 +193,11 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		nonce,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
+	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {

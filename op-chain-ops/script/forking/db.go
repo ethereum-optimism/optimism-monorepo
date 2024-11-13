@@ -53,7 +53,9 @@ func NewForkDB(source ForkSource) *ForkDB {
 // fakeRoot is just a marker; every account we load into the fork-db has this storage-root.
 // When opening a storage-trie, we sanity-check we have this root, or an empty trie.
 // And then just return the same global trie view for storage reads/writes.
-var fakeRoot = common.Hash{0: 42}
+// It needs to be set to EmptyRootHash to avoid contract collision errors when
+// deploying contracts, since Geth checks the storage root prior to deployment.
+var fakeRoot = types.EmptyRootHash
 
 func (f *ForkDB) OpenTrie(root common.Hash) (state.Trie, error) {
 	if f.active.stateRoot != root {

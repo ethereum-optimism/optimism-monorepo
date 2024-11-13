@@ -20,7 +20,6 @@ func TestDeployMIPS(t *testing.T) {
 		testlog.Logger(t, log.LevelInfo),
 		common.Address{'D'},
 		artifacts,
-		0,
 	)
 	require.NoError(t, err)
 

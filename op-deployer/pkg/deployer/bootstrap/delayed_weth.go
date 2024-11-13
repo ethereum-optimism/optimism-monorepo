@@ -159,11 +159,11 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		nonce,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
+	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {

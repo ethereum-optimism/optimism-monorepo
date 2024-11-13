@@ -33,8 +33,8 @@ func WithScript[B any](h *Host, name string, contract string) (b *B, cleanup fun
 	// compute address of script contract to be deployed
 	addr := crypto.CreateAddress(deployer, deployNonce)
 	h.Label(addr, contract)
-	h.AllowCheatcodes(addr)      // before constructor execution, give our script cheatcode access
-	h.state.MakePersistent(addr) // scripts are persistent across forks
+	h.AllowCheatcodes(addr)    // before constructor execution, give our script cheatcode access
+	h.state.MakeExcluded(addr) // scripts are persistent across forks
 
 	// init bindings (with ABI check)
 	bindings, err := MakeBindings[B](h.ScriptBackendFn(addr), func(abiDef string) bool {

@@ -58,8 +58,6 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 		return fmt.Errorf("error merging proof params from overrides: %w", err)
 	}
 
-	env.L1ScriptHost.ImportState(st.L1StateDump.Data)
-
 	dio, err := opcm.DeployImplementations(
 		env.L1ScriptHost,
 		opcm.DeployImplementationsInput{

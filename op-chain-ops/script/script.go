@@ -9,7 +9,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
-
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
@@ -849,4 +848,16 @@ func (h *Host) RememberOnLabel(label, srcFile, contract string) error {
 		}
 	})
 	return nil
+}
+
+func (h *Host) CreateSelectFork(opts ...ForkOption) (*big.Int, error) {
+	src, err := h.onFork(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to setup fork source: %w", err)
+	}
+	id, err := h.state.CreateSelectFork(src)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create-select fork: %w", err)
+	}
+	return id.U256().ToBig(), nil
 }

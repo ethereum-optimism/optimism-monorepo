@@ -172,7 +172,7 @@ func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
 func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	switch tag {
 	case "op-contracts/v1.6.0":
-		return url.Parse(standardArtifactsURL("ee07c78c3d8d4cd8f7a933c050f5afeebaa281b57b226cc6f092b19de2a8d61f"))
+		return url.Parse(standardArtifactsURL("3a27c6dc0cb61b36feaac26def98c64b4a48ec8f5c5ba6965e8ae3157606043c"))
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return url.Parse(standardArtifactsURL("b0fb1f6f674519d637cff39a22187a5993d7f81a6d7b7be6507a0b50a5e38597"))
 	default:

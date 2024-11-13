@@ -282,8 +282,8 @@ func TestForkingScript(t *testing.T) {
 	addr, err := h.LoadContract("ScriptExample.s.sol", "ForkTester")
 	require.NoError(t, err)
 	h.AllowCheatcodes(addr)
-	// Make this script persistent so it doesn't call the fork RPC.
-	h.state.MakePersistent(addr)
+	// Make this script excluded so it doesn't call the fork RPC.
+	h.state.MakeExcluded(addr)
 	t.Logf("allowing %s to access cheatcodes", addr)
 
 	input := bytes4("run()")

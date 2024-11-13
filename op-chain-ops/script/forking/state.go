@@ -54,8 +54,6 @@ func NewForkableState(base VMStateDB) *ForkableState {
 			addresses.DefaultSenderAddr: ForkID{},
 			addresses.VMAddr:            ForkID{},
 			addresses.ConsoleAddr:       ForkID{},
-			addresses.ScriptDeployer:    ForkID{},
-			addresses.ForgeDeployer:     ForkID{},
 		},
 		fallback:  base,
 		idCounter: 0,
@@ -194,8 +192,24 @@ func (fst *ForkableState) MakePersistent(addr common.Address) {
 	fst.persistent[addr] = fst.activeFork
 }
 
+// MakeExcluded excludes an account from forking. This is useful for things like scripts, which
+// should always use the fallback state.
+func (fst *ForkableState) MakeExcluded(addr common.Address) {
+	fst.persistent[addr] = ForkID{}
+}
+
 // RevokePersistent is like vm.revokePersistent, it undoes a previous vm.makePersistent.
 func (fst *ForkableState) RevokePersistent(addr common.Address) {
+	delete(fst.persistent, addr)
+}
+
+// RevokeExcluded undoes MakeExcluded. It will panic if the account was marked as
+// persistent in a different fork.
+func (fst *ForkableState) RevokeExcluded(addr common.Address) {
+	forkID, ok := fst.persistent[addr]
+	if ok && forkID != (ForkID{}) {
+		panic(fmt.Sprintf("cannot revoke excluded account %s since it was made persistent in fork %q", addr, forkID))
+	}
 	delete(fst.persistent, addr)
 }
 

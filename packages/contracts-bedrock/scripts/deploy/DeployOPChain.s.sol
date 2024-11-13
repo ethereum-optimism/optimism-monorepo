@@ -235,7 +235,7 @@ contract DeployOPChainOutput is BaseDeployIO {
     IDelayedWETH internal _delayedWETHPermissionedGameProxy;
     IDelayedWETH internal _delayedWETHPermissionlessGameProxy;
 
-    function set(bytes4 _sel, address _addr) public {
+    function set(bytes4 _sel, address _addr) public virtual {
         require(_addr != address(0), "DeployOPChainOutput: cannot set zero address");
         // forgefmt: disable-start
         if (_sel == this.opChainProxyAdmin.selector) _opChainProxyAdmin = IProxyAdmin(_addr) ;
