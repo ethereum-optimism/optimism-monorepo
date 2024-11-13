@@ -4,9 +4,9 @@ This directory contains a repeatable task for upgrading an `op-contracts/v1.6.0`
 
 ## Dependencies
 
-- `docker`
-- `just`
-- `foundry`
+- [`docker`](https://docs.docker.com/engine/install/)
+- [`just`](https://github.com/casey/just)
+- [`foundry`](https://getfoundry.sh/)
 
 ## Usage
 
