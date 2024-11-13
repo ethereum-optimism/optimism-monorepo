@@ -39,8 +39,9 @@ type channelManager struct {
 
 	// All blocks since the last request for new tx data.
 	blocks queue.Queue[*types.Block]
-	// The latest L1 block from all the L2 blocks in the most recently closed channel
-	l1OriginLastClosedChannel eth.BlockID
+	// The latest L1 block from all the L2 blocks in the most recently submitted channel.
+	// Used to track channel duration timeouts.
+	l1OriginLastSubmittedChannel eth.BlockID
 	// The default ChannelConfig to use for the next channel
 	defaultCfg ChannelConfig
 	// last block hash - for reorg detection
@@ -75,12 +76,12 @@ func (s *channelManager) SetChannelOutFactory(outFactory ChannelOutFactory) {
 
 // Clear clears the entire state of the channel manager.
 // It is intended to be used before launching op-batcher and after an L2 reorg.
-func (s *channelManager) Clear(l1OriginLastClosedChannel eth.BlockID) {
+func (s *channelManager) Clear(l1OriginLastSubmittedChannel eth.BlockID) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.log.Trace("clearing channel manager state")
 	s.blocks.Clear()
-	s.l1OriginLastClosedChannel = l1OriginLastClosedChannel
+	s.l1OriginLastSubmittedChannel = l1OriginLastSubmittedChannel
 	s.tip = common.Hash{}
 	s.closed = false
 	s.currentChannel = nil
@@ -160,6 +161,12 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 		return txData{}, io.EOF // TODO: not enough data error instead
 	}
 	tx := channel.NextTxData()
+
+	// update s.l1OriginLastSubmittedChannel so that the next
+	// channel's duration timeout will trigger properly
+	if channel.LatestL1Origin().Number > s.l1OriginLastSubmittedChannel.Number {
+		s.l1OriginLastSubmittedChannel = channel.LatestL1Origin()
+	}
 	s.txChannels[tx.ID().String()] = channel
 	return tx, nil
 }
@@ -284,7 +291,7 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 		return fmt.Errorf("creating channel out: %w", err)
 	}
 
-	pc := newChannel(s.log, s.metr, cfg, s.rollupCfg, s.l1OriginLastClosedChannel.Number, channelOut)
+	pc := newChannel(s.log, s.metr, cfg, s.rollupCfg, s.l1OriginLastSubmittedChannel.Number, channelOut)
 
 	s.currentChannel = pc
 	s.channelQueue = append(s.channelQueue, pc)
@@ -292,7 +299,7 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 	s.log.Info("Created channel",
 		"id", pc.ID(),
 		"l1Head", l1Head,
-		"l1OriginLastClosedChannel", s.l1OriginLastClosedChannel,
+		"l1OriginLastSubmittedChannel", s.l1OriginLastSubmittedChannel,
 		"blocks_pending", s.blocks.Len(),
 		"batch_type", cfg.BatchType,
 		"compression_algo", cfg.CompressorConfig.CompressionAlgo,
@@ -374,11 +381,6 @@ func (s *channelManager) outputFrames() error {
 		return nil
 	}
 
-	lastClosedL1Origin := s.currentChannel.LatestL1Origin()
-	if lastClosedL1Origin.Number > s.l1OriginLastClosedChannel.Number {
-		s.l1OriginLastClosedChannel = lastClosedL1Origin
-	}
-
 	inBytes, outBytes := s.currentChannel.InputBytes(), s.currentChannel.OutputBytes()
 	s.metr.RecordChannelClosed(
 		s.currentChannel.ID(),
@@ -401,12 +403,11 @@ func (s *channelManager) outputFrames() error {
 		"input_bytes", inBytes,
 		"output_bytes", outBytes,
 		"oldest_l1_origin", s.currentChannel.OldestL1Origin(),
-		"l1_origin", lastClosedL1Origin,
+		"l1_origin", s.currentChannel.LatestL1Origin(),
 		"oldest_l2", s.currentChannel.OldestL2(),
 		"latest_l2", s.currentChannel.LatestL2(),
 		"full_reason", s.currentChannel.FullErr(),
 		"compr_ratio", comprRatio,
-		"latest_l1_origin", s.l1OriginLastClosedChannel,
 	)
 	return nil
 }
