@@ -23,10 +23,8 @@ fi
 
 # Get the upstream semver-lock.json.
 if ! git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
-    if ! git show origin/develop:packages/contracts-bedrock/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
-        echo "❌ Error: Could not find semver-lock.json in either snapshots/ or root directory of develop branch"
-        exit 1
-    fi
+      echo "❌ Error: Could not find semver-lock.json in the snapshots/ directory of develop branch"
+      exit 1
 fi
 
 # Copy the local semver-lock.json.
