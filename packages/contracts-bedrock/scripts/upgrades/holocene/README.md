@@ -1,6 +1,8 @@
 # Holocene Upgrade
 
-This directory contains a repeatable task for upgrading an `op-contracts/v1.6.0` deployment to `op-contracts/v1.8.0`.
+This directory contains a repeatable task for:
+* upgrading an `op-contracts/v1.6.0` deployment to `op-contracts/v1.8.0`.
+* upgrading an `op-contracts/v1.3.0` deployment to `op-contracts/v1.8.0`, while retaining the `L2OutputOracle`.
 
 ## Dependencies
 
