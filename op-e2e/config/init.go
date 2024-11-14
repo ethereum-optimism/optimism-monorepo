@@ -192,7 +192,6 @@ func init() {
 
 	configPath := path.Join(root, "op-e2e", "config")
 	forks := []genesis.L2AllocsMode{
-		genesis.L2AllocsIsthmus,
 		genesis.L2AllocsHolocene,
 		genesis.L2AllocsGranite,
 		genesis.L2AllocsFjord,
@@ -245,7 +244,6 @@ func initAllocType(root string, allocType AllocType) {
 	lgr := log.New()
 
 	allocModes := []genesis.L2AllocsMode{
-		genesis.L2AllocsIsthmus,
 		genesis.L2AllocsHolocene,
 		genesis.L2AllocsGranite,
 		genesis.L2AllocsFjord,
@@ -289,7 +287,6 @@ func initAllocType(root string, allocType AllocType) {
 				"l2GenesisFjordTimeOffset":    nil,
 				"l2GenesisGraniteTimeOffset":  nil,
 				"l2GenesisHoloceneTimeOffset": nil,
-				"l2GenesisIsthmusTimeOffset":  nil,
 			}
 
 			upgradeSchedule := new(genesis.UpgradeScheduleDeployConfig)
