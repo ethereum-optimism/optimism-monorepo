@@ -8,30 +8,30 @@
   },
   {
     "bytes": "32",
-    "label": "implementations",
-    "offset": 0,
-    "slot": "1",
-    "type": "mapping(string => struct OPContractsManager.Implementation)"
-  },
-  {
-    "bytes": "32",
     "label": "systemConfigs",
     "offset": 0,
-    "slot": "2",
+    "slot": "1",
     "type": "mapping(uint256 => contract ISystemConfig)"
   },
   {
     "bytes": "256",
     "label": "blueprint",
     "offset": 0,
-    "slot": "3",
+    "slot": "2",
     "type": "struct OPContractsManager.Blueprints"
+  },
+  {
+    "bytes": "288",
+    "label": "implementationContracts",
+    "offset": 0,
+    "slot": "10",
+    "type": "struct OPContractsManager.ImplementationContracts"
   },
   {
     "bytes": "1600",
     "label": "__gap",
     "offset": 0,
-    "slot": "11",
+    "slot": "19",
     "type": "uint256[50]"
   }
 ]

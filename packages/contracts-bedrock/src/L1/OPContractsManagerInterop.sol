@@ -6,8 +6,8 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
+import { ISystemConfigInterop } from "src/L1/interfaces/ISystemConfigInterop.sol";
 
-/// @custom:proxied true
 contract OPContractsManagerInterop is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
@@ -21,7 +21,6 @@ contract OPContractsManagerInterop is OPContractsManager {
     // The `SystemConfigInterop` contract has an extra `address _dependencyManager` argument
     // that we must account for.
     function encodeSystemConfigInitializer(
-        bytes4 _selector,
         DeployInput memory _input,
         DeployOutput memory _output
     )
@@ -31,8 +30,9 @@ contract OPContractsManagerInterop is OPContractsManager {
         override
         returns (bytes memory)
     {
+        bytes4 selector = ISystemConfigInterop.initialize.selector;
         (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
-            defaultSystemConfigParams(_selector, _input, _output);
+            defaultSystemConfigParams(selector, _input, _output);
 
         // TODO For now we assume that the dependency manager is the same as system config owner.
         // This is currently undefined since it's not part of the standard config, so we may need
@@ -42,7 +42,7 @@ contract OPContractsManagerInterop is OPContractsManager {
         address dependencyManager = address(_input.roles.systemConfigOwner);
 
         return abi.encodeWithSelector(
-            _selector,
+            selector,
             _input.roles.systemConfigOwner,
             _input.basefeeScalar,
             _input.blobBasefeeScalar,
