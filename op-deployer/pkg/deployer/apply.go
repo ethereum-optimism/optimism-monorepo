@@ -122,6 +122,9 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		if err != nil {
 			return fmt.Errorf("failed to get chain ID: %w", err)
 		}
+		if chainID.Cmp(new(big.Int).SetUint64(intent.L1ChainID)) != 0 {
+			return fmt.Errorf("inconsistent chain id, intent.L1ChainID:%v, rpc chain id:%v", intent.L1ChainID, chainID)
+		}
 
 		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
 		deployer = crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
