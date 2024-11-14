@@ -432,6 +432,14 @@ func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
 
+	// Place an old channel in the queue
+	// This channel should not be affected by
+	// a requeue or a later channel timing out
+	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
+	oldChannel.Close()
+	m.channelQueue = []*channel{oldChannel}
+	require.Len(t, m.channelQueue, 1)
+
 	// Setup initial metrics
 	metrics.RecordL2BlockInPendingQueue(blockA)
 	metrics.RecordL2BlockInPendingQueue(blockB)
@@ -439,7 +447,7 @@ func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager
 
 	// Trigger the blocks -> channelQueue data pipelining
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
-	require.NotEmpty(t, m.channelQueue)
+	require.Len(t, m.channelQueue, 2)
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
@@ -454,7 +462,7 @@ func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
-	require.Empty(t, m.channelQueue)
+	require.Contains(t, m.channelQueue, oldChannel)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
