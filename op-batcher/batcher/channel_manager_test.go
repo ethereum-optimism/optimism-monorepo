@@ -463,6 +463,7 @@ func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
 	require.Contains(t, m.channelQueue, oldChannel)
+	require.Len(t, m.channelQueue, 1)
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)

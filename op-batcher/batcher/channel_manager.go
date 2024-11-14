@@ -157,11 +157,10 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 		s.log.Debug("channelManager.handleChannelTimeout: channel had no blocks")
 	}
 
-	// Trim back to and including the provided channel.
+	// Trim provided channel and any older channels:
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
-			s.channelQueue = s.channelQueue[:i+1]
-
+			s.channelQueue = s.channelQueue[:i]
 			break
 		}
 	}
