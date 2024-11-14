@@ -117,7 +117,7 @@ func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
 		if timedOut := channel.TxConfirmed(id, inclusionBlock); timedOut {
-			s.handleChannelTimeout(channel)
+			s.handleChannelInvalidated(channel)
 		}
 	} else {
 		s.log.Warn("transaction from unknown channel marked as confirmed", "id", id)
@@ -139,10 +139,11 @@ func (s *channelManager) rewindToBlock(block eth.BlockID) {
 	}
 }
 
-// handleChannelTimeout rewinds the channelManager's blockCursor
+// handleChannelInvalidated rewinds the channelManager's blockCursor
 // to point at the first block added to the provided channel,
-// and removes any channels which are newer than the provided channel.
-func (s *channelManager) handleChannelTimeout(c *channel) {
+// and removes the channel from the channelQueue, along with
+// any channels which are newer than the provided channel.
+func (s *channelManager) handleChannelInvalidated(c *channel) {
 	if len(c.channelBuilder.blocks) > 0 {
 		// This is usually true, but there is an edge case
 		// where a channel timed out before any blocks got added.
@@ -154,7 +155,7 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 		}
 		s.rewindToBlock(blockID)
 	} else {
-		s.log.Debug("channelManager.handleChannelTimeout: channel had no blocks")
+		s.log.Debug("channelManager.handleChanneInvalidated: channel had no blocks")
 	}
 
 	// Trim provided channel and any older channels:
@@ -217,7 +218,16 @@ func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
 	s.log.Info("Recomputing optimal ChannelConfig: changing DA type and requeing blocks...",
 		"useBlobsBefore", s.defaultCfg.UseBlobs,
 		"useBlobsAfter", newCfg.UseBlobs)
-	s.Requeue(newCfg)
+
+	// Invalidate the channel so its blocks
+	// get requeued:
+	s.handleChannelInvalidated(channel)
+
+	// Set the defaultCfg so new channels
+	// pick up the new ChannelConfig
+	s.defaultCfg = newCfg
+
+	// Try again to get data to send on chain.
 	channel, err = s.getReadyChannel(l1Head)
 	if err != nil {
 		return emptyTxData, err
@@ -453,37 +463,6 @@ func l2BlockRefFromBlockAndL1Info(block *types.Block, l1info *derive.L1BlockInfo
 }
 
 var ErrPendingAfterClose = errors.New("pending channels remain after closing channel-manager")
-
-// Requeue rewinds blocks back from the current channel
-// and sets the defaultCfg.
-// Should only be called when the channel in question
-// exists and has not started to submit data.
-func (s *channelManager) Requeue(newCfg ChannelConfig) {
-	// Remove the current channel from the back of the queue
-	channelToDiscard := s.channelQueue[len(s.channelQueue)-1]
-	if channelToDiscard != s.currentChannel {
-		panic("current channel is not at the back of the channel queue")
-	}
-	s.channelQueue = s.channelQueue[:len(s.channelQueue)-1]
-
-	if len(channelToDiscard.channelBuilder.blocks) > 0 {
-		// This is usually true, but there is an edge case
-		// where a channel timed out before any blocks got added.
-		// In that case we end up with an empty frame (header only),
-		// and there are no blocks to requeue.
-		blockID := eth.ToBlockID(channelToDiscard.channelBuilder.blocks[0])
-		for _, block := range channelToDiscard.channelBuilder.blocks {
-			s.metr.RecordL2BlockInPendingQueue(block)
-		}
-		s.rewindToBlock(blockID)
-	} else {
-		s.log.Debug("channelManager.Requeue: discarded channel had no blocks")
-	}
-	s.currentChannel = nil
-	// Setting the defaultCfg will cause new channels
-	// to pick up the new ChannelConfig
-	s.defaultCfg = newCfg
-}
 
 // pruneSafeBlocks dequeues blocks from the internal blocks queue
 // if they have now become safe.
