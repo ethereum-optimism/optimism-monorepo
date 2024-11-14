@@ -6,6 +6,8 @@ import { IDelayedVetoable } from "src/L1/interfaces/IDelayedVetoable.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DelayedVetoable_Init is Test {
+    event DelayActivated(uint256 delay);
+
     error Unauthorized(address expected, address actual);
     error ForwardingEarly();
 
@@ -99,6 +101,64 @@ contract DelayedVetoable_HandleCall_Test is DelayedVetoable_Init {
         assertTrue(success);
     }
 
+    /// @dev Delay can be activated by the initiator or vetoer.
+    function test_handleCall_delayActivation_succeeds() external {
+        vm.store(address(delayedVetoable), bytes32(uint256(0)), bytes32(uint256(0)));
+        // assert delay is 0 before hand
+        assertEq(vm.load(address(delayedVetoable), bytes32(uint256(0))), bytes32(uint256(0)));
+        vm.prank(initiator);
+        vm.expectEmit(true, true, true, true, address(delayedVetoable));
+        emit DelayActivated(operatingDelay);
+        (bool success,) = address(delayedVetoable).call(hex"");
+        assertTrue(success);
+        assertEq(vm.load(address(delayedVetoable), bytes32(uint256(0))), bytes32(uint256(operatingDelay)));
+
+        vm.store(address(delayedVetoable), bytes32(uint256(0)), bytes32(uint256(0)));
+        // assert delay is 0 before hand
+        assertEq(vm.load(address(delayedVetoable), bytes32(uint256(0))), bytes32(uint256(0)));
+        vm.prank(vetoer);
+        vm.expectEmit(true, true, true, true, address(delayedVetoable));
+        emit DelayActivated(operatingDelay);
+        (success,) = address(delayedVetoable).call(hex"");
+        assertTrue(success);
+        assertEq(vm.load(address(delayedVetoable), bytes32(uint256(0))), bytes32(uint256(operatingDelay)));
+    }
+
+    /// @dev Test vetoing a call during the delay period.
+    function test_handleCall_veto_succeeds() external {
+        vm.prank(initiator);
+        (bool success,) = address(delayedVetoable).call(hex"1111");
+        assertTrue(success);
+        vm.prank(address(0));
+        assertEq(delayedVetoable.queuedAt(keccak256(hex"1111")), block.timestamp);
+
+        vm.prank(vetoer);
+        vm.expectEmit(true, true, true, true, address(delayedVetoable));
+        emit Vetoed(keccak256(hex"1111"), hex"1111");
+        (success,) = address(delayedVetoable).call(hex"1111");
+        assertTrue(success);
+        vm.prank(address(0));
+        assertEq(delayedVetoable.queuedAt(keccak256(hex"1111")), 0);
+    }
+
+    /// @dev Test vetoing a call after the delay period.
+    function test_handleCall_vetoAfterDelay_succeeds() external {
+        vm.prank(initiator);
+        (bool success,) = address(delayedVetoable).call(hex"1111");
+        assertTrue(success);
+        vm.prank(address(0));
+        assertEq(delayedVetoable.queuedAt(keccak256(hex"1111")), block.timestamp);
+
+        vm.warp(block.timestamp + operatingDelay + 1);
+        vm.prank(vetoer);
+        vm.expectEmit(true, true, true, true, address(delayedVetoable));
+        emit Vetoed(keccak256(hex"1111"), hex"1111");
+        (success,) = address(delayedVetoable).call(hex"1111");
+        assertTrue(success);
+        vm.prank(address(0));
+        assertEq(delayedVetoable.queuedAt(keccak256(hex"1111")), 0);
+    }
+
     /// @dev The delay is inititially set to zero and the call is immediately forwarded.
     function testFuzz_handleCall_initialForwardingImmediately_succeeds(
         bytes calldata inData,
@@ -151,6 +211,14 @@ contract DelayedVetoable_HandleCall_Test is DelayedVetoable_Init {
 }
 
 contract DelayedVetoable_HandleCall_TestFail is DelayedVetoable_Init {
+    function testFuzz_handleCall_unauthorizedDelayActivation_reverts(address caller) external {
+        vm.assume(caller != initiator && caller != vetoer);
+        vm.expectRevert(abi.encodeWithSelector(IDelayedVetoable.Unauthorized.selector, initiator, caller));
+        vm.prank(caller);
+        (bool revertsAsExpected,) = address(delayedVetoable).call(hex"");
+        assertTrue(revertsAsExpected);
+    }
+
     /// @dev Only the initiator can initiate a call.
     function test_handleCall_unauthorizedInitiation_reverts() external {
         vm.expectRevert(abi.encodeWithSelector(IDelayedVetoable.Unauthorized.selector, initiator, address(this)));
