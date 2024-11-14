@@ -697,12 +697,12 @@ contract Deploy is Deployer {
         addr_ = address(oracle);
     }
 
-    /// @notice Deploy Mips VM. Deploys either MIPS or MIPS2 depending on the environment
+    /// @notice Deploy Mips VM. Deploys either MIPS or MIPS64 depending on the environment
     function deployMips() public broadcast returns (address addr_) {
         addr_ = DeployUtils.create2AndSave({
             _save: this,
             _salt: _implSalt(),
-            _name: Config.useMultithreadedCannon() ? "MIPS2" : "MIPS",
+            _name: Config.useMultithreadedCannon() ? "MIPS64" : "MIPS",
             _args: DeployUtils.encodeConstructor(
                 abi.encodeCall(IMIPS2.__constructor__, (IPreimageOracle(mustGetAddress("PreimageOracle"))))
             )
@@ -1021,7 +1021,7 @@ contract Deploy is Deployer {
         mipsAbsolutePrestate_ =
             Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
         console.log(
-            "[MT-Cannon Dispute Game] Using devnet MIPS2 Absolute prestate: %s",
+            "[MT-Cannon Dispute Game] Using devnet MIPS64 Absolute prestate: %s",
             vm.toString(Claim.unwrap(mipsAbsolutePrestate_))
         );
     }
