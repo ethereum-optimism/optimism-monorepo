@@ -13,7 +13,7 @@ The batcher has a suite of unit test which can be triggered by running
 ```
 go test ./...
 ```
-from this directory.
+from this directory. There are also end-to-end tests in [`op-e2e`](../op-e2e/) which integrate the batcher.
 
 ## Architecture
 
