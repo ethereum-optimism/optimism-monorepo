@@ -432,9 +432,9 @@ func testChannelManager_RequeueOrTimeout(t *testing.T, fn func(m *channelManager
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
 
-	// Place an old channel in the queue
+	// Place an old channel in the queue.
 	// This channel should not be affected by
-	// a requeue or a later channel timing out
+	// a requeue or a later channel timing out.
 	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
 	oldChannel.Close()
 	m.channelQueue = []*channel{oldChannel}

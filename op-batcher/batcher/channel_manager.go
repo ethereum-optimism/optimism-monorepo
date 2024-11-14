@@ -160,14 +160,8 @@ func (s *channelManager) handleChannelTimeout(c *channel) {
 	// Trim back to and including the provided channel.
 	for i := range s.channelQueue {
 		if s.channelQueue[i] == c {
-			if len(s.channelQueue) > i {
-				// keep older channels if there are any,
-				// in case we later learn they also timed out.
-				s.channelQueue = s.channelQueue[i+1:]
-			} else {
-				// if this is the oldest channel, clear the queue
-				s.channelQueue = s.channelQueue[:0]
-			}
+			s.channelQueue = s.channelQueue[:i+1]
+
 			break
 		}
 	}
