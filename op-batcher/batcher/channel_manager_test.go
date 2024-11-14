@@ -392,7 +392,7 @@ func TestChannelManager_TxData(t *testing.T) {
 
 }
 
-// TestChannelManager_Requeue seeds the channel manager with blocks,
+// TestChannelManager_RequeueOrTimeout seeds the channel manager with blocks,
 // takes a state snapshot, triggers the blocks->channels pipeline,
 // and then calls either m.Requeue or m.handleChannelTimeout.
 // Finally, it asserts the channel manager's
