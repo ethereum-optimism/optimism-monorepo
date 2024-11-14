@@ -64,6 +64,6 @@ Some complexity is permitted, however, for handling data availability switching,
 
 Link to [open issues with the `op-batcher` tag](https://github.com/ethereum-optimism/optimism/issues?q=is%3Aopen+is%3Aissue+label%3AA-op-batcher).
 
-The batcher launches L1 transactions in parallel so that it can achieve higher performance, particularly in situations where there is a large backlog of data which needs to be posted. Sometimes, transactions can get stuck in the L1 mempool. The batcher does have functionality to clear these stuck transactions, but it is not completely reliable.
+The batcher launches L1 transactions in parallel so that it can achieve higher throughput, particularly in situations where there is a large backlog of data which needs to be posted. Sometimes, transactions can get stuck in the L1 mempool. The batcher does have functionality to clear these stuck transactions, but it is not completely reliable.
 
 The automatic data availability switching behavior is a somewhat new feature which may still have some bugs in it.
