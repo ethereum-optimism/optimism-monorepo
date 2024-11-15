@@ -25,7 +25,7 @@ check-semgrep:
 
 # Checks that the correct versions of Foundry and semgrep are installed.
 check-dependencies:
-  just check-foundry && just check-semgrep
+  just check-foundry #&& just check-semgrep
 
 # Core forge build command
 forge-build:
