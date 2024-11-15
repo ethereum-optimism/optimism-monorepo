@@ -30,7 +30,8 @@ contract SystemConfigInterop_Test is CommonTest {
     function testFuzz_setGasPayingToken_succeeds(
         address _token,
         string calldata _name,
-        string calldata _symbol
+        string calldata _symbol,
+        uint8 decimals
     )
         public
     {
@@ -41,26 +42,29 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.assume(bytes(_name).length <= 32);
         vm.assume(bytes(_symbol).length <= 32);
 
-        vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(18));
+        vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(decimals));
         vm.mockCall(_token, abi.encodeCall(ERC20.name, ()), abi.encode(_name));
         vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(_symbol));
 
-        vm.expectCall(
-            address(optimismPortal),
-            abi.encodeCall(
-                IOptimismPortalInterop.setConfig,
-                (
-                    ConfigType.SET_GAS_PAYING_TOKEN,
-                    StaticConfig.encodeSetGasPayingToken({
-                        _token: _token,
-                        _decimals: 18,
-                        _name: GasPayingToken.sanitize(_name),
-                        _symbol: GasPayingToken.sanitize(_symbol)
-                    })
+        if (decimals != 18) {
+            vm.expectRevert("SystemConfig: bad decimals of gas paying token");
+        } else {
+            vm.expectCall(
+                address(optimismPortal),
+                abi.encodeCall(
+                    IOptimismPortalInterop.setConfig,
+                    (
+                        ConfigType.SET_GAS_PAYING_TOKEN,
+                        StaticConfig.encodeSetGasPayingToken({
+                            _token: _token,
+                            _decimals: uint8(decimals),
+                            _name: GasPayingToken.sanitize(_name),
+                            _symbol: GasPayingToken.sanitize(_symbol)
+                        })
+                    )
                 )
-            )
-        );
-
+            );
+        }
         _cleanStorageAndInit(_token);
     }
 
