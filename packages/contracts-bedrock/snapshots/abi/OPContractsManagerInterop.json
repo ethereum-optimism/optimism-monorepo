@@ -13,113 +13,106 @@
       },
       {
         "internalType": "string",
-        "name": "_l1ContractsReleaseVersion",
+        "name": "_l1ContractsRelease",
         "type": "string"
       },
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "addressManager",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "proxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "proxyAdmin",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "l1ChugSplashProxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "resolvedDelegateProxy",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "anchorStateRegistry",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "permissionedDisputeGame1",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "permissionedDisputeGame2",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct OPContractsManager.Blueprints",
-            "name": "blueprints",
-            "type": "tuple"
+            "internalType": "address",
+            "name": "addressManager",
+            "type": "address"
           },
           {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "l1ERC721BridgeImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "optimismPortalImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "systemConfigImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "optimismMintableERC20FactoryImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "l1CrossDomainMessengerImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "l1StandardBridgeImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "disputeGameFactoryImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "delayedWETHImpl",
-                "type": "address"
-              },
-              {
-                "internalType": "address",
-                "name": "mipsImpl",
-                "type": "address"
-              }
-            ],
-            "internalType": "struct OPContractsManager.ImplementationContracts",
-            "name": "implementationContracts",
-            "type": "tuple"
+            "internalType": "address",
+            "name": "proxy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "proxyAdmin",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1ChugSplashProxy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "resolvedDelegateProxy",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "anchorStateRegistry",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionedDisputeGame1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionedDisputeGame2",
+            "type": "address"
           }
         ],
-        "internalType": "struct OPContractsManager.InputContracts",
-        "name": "_inputContracts",
+        "internalType": "struct OPContractsManager.Blueprints",
+        "name": "_blueprints",
+        "type": "tuple"
+      },
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1ERC721BridgeImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortalImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "systemConfigImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20FactoryImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessengerImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridgeImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactoryImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delayedWETHImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "mipsImpl",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct OPContractsManager.Implementations",
+        "name": "_implementations",
         "type": "tuple"
       }
     ],
@@ -410,12 +403,59 @@
   },
   {
     "inputs": [],
-    "name": "getDelayedWETHImpl",
+    "name": "implementations",
     "outputs": [
       {
-        "internalType": "address",
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1ERC721BridgeImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortalImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "systemConfigImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20FactoryImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessengerImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridgeImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactoryImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "delayedWETHImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "mipsImpl",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct OPContractsManager.Implementations",
         "name": "",
-        "type": "address"
+        "type": "tuple"
       }
     ],
     "stateMutability": "view",
@@ -423,164 +463,7 @@
   },
   {
     "inputs": [],
-    "name": "getDisputeGameFactoryImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getL1CrossDomainMessengerImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getL1ERC721BridgeImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getL1StandardBridgeImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getMipsImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getOptimismMintableERC20FactoryImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getOptimismPortalImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getSystemConfigImpl",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "implementationContracts",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "l1ERC721BridgeImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "optimismPortalImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "systemConfigImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "optimismMintableERC20FactoryImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "l1CrossDomainMessengerImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "l1StandardBridgeImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "disputeGameFactoryImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "delayedWETHImpl",
-        "type": "address"
-      },
-      {
-        "internalType": "address",
-        "name": "mipsImpl",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "l1ContractsReleaseVersion",
+    "name": "l1ContractsRelease",
     "outputs": [
       {
         "internalType": "string",

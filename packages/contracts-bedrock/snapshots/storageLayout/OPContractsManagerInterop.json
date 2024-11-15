@@ -1,7 +1,7 @@
 [
   {
     "bytes": "32",
-    "label": "l1ContractsReleaseVersion",
+    "label": "l1ContractsRelease",
     "offset": 0,
     "slot": "0",
     "type": "string"
@@ -22,16 +22,9 @@
   },
   {
     "bytes": "288",
-    "label": "implementationContracts",
+    "label": "implementation",
     "offset": 0,
     "slot": "10",
-    "type": "struct OPContractsManager.ImplementationContracts"
-  },
-  {
-    "bytes": "1600",
-    "label": "__gap",
-    "offset": 0,
-    "slot": "19",
-    "type": "uint256[50]"
+    "type": "struct OPContractsManager.Implementations"
   }
 ]
