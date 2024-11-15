@@ -207,6 +207,30 @@ func TestApplyExistingOPCM(t *testing.T) {
 	))
 
 	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent)
+
+	releases := standard.L1VersionsSepolia.Releases["op-contracts/v1.6.0"]
+
+	implTests := []struct {
+		name    string
+		expAddr common.Address
+		actAddr common.Address
+	}{
+		{"OptimismPortal", releases.OptimismPortal.ImplementationAddress, st.ImplementationsDeployment.OptimismPortalImplAddress},
+		{"SystemConfig,", releases.SystemConfig.ImplementationAddress, st.ImplementationsDeployment.SystemConfigImplAddress},
+		{"L1CrossDomainMessenger", releases.L1CrossDomainMessenger.ImplementationAddress, st.ImplementationsDeployment.L1CrossDomainMessengerImplAddress},
+		{"L1ERC721Bridge", releases.L1ERC721Bridge.ImplementationAddress, st.ImplementationsDeployment.L1ERC721BridgeImplAddress},
+		{"L1StandardBridge", releases.L1StandardBridge.ImplementationAddress, st.ImplementationsDeployment.L1StandardBridgeImplAddress},
+		{"OptimismMintableERC20Factory", releases.OptimismMintableERC20Factory.ImplementationAddress, st.ImplementationsDeployment.OptimismMintableERC20FactoryImplAddress},
+		{"DisputeGameFactory", releases.DisputeGameFactory.ImplementationAddress, st.ImplementationsDeployment.DisputeGameFactoryImplAddress},
+		{"MIPS", releases.MIPS.Address, st.ImplementationsDeployment.MipsSingletonAddress},
+		{"PreimageOracle", releases.PreimageOracle.Address, st.ImplementationsDeployment.PreimageOracleSingletonAddress},
+		{"DelayedWETH", releases.DelayedWETH.ImplementationAddress, st.ImplementationsDeployment.DelayedWETHImplAddress},
+	}
+	for _, tt := range implTests {
+		t.Run(tt.name, func(t *testing.T) {
+			require.Equal(t, tt.expAddr, tt.actAddr)
+		})
+	}
 }
 
 func TestL2BlockTimeOverride(t *testing.T) {
@@ -571,7 +595,7 @@ func validateSuperchainDeployment(t *testing.T, st *state.State, cg codeGetter) 
 		{"SuperchainConfigImpl", st.SuperchainDeployment.SuperchainConfigImplAddress},
 		{"ProtocolVersionsProxy", st.SuperchainDeployment.ProtocolVersionsProxyAddress},
 		{"ProtocolVersionsImpl", st.SuperchainDeployment.ProtocolVersionsImplAddress},
-		{"OpcmProxy", st.ImplementationsDeployment.OpcmProxyAddress},
+		{"Opcm", st.ImplementationsDeployment.OpcmAddress},
 		{"PreimageOracleSingleton", st.ImplementationsDeployment.PreimageOracleSingletonAddress},
 		{"MipsSingleton", st.ImplementationsDeployment.MipsSingletonAddress},
 	}
