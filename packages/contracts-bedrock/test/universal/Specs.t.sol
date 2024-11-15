@@ -106,14 +106,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.resolve.selector });
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.unlockBond.selector });
 
-        // DelayedVetoable
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("delay()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("initiator()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("queuedAt(bytes32)") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("target()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("version()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("vetoer()") });
-
         // L1CrossDomainMessenger
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("MESSAGE_VERSION()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("MIN_GAS_CALLDATA_OVERHEAD()") });
