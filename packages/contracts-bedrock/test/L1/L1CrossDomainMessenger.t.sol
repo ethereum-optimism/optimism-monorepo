@@ -176,7 +176,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
 
     /// @dev Tests that relayMessage reverts if caller is optimismPortal and the value sent does not match the amount
     function test_relayMessage_callerIsOptimismPortalAndValueDoesNotMatchAmount_reverts() external {
-        // set the target to be the OptimismPortal
+        // set the target to be the alice
         address target = alice;
         address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
         bytes memory message = hex"1111";
@@ -184,7 +184,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         // set the value of op.l2Sender() to be the L2 Cross Domain Messenger.
         vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
 
-        // cannot send a message as optimism portal but amount does not match msg.value
+        // correctly sending as OptimismPortal but amount does not match msg.value
         vm.deal(address(optimismPortal), 10 ether);
         vm.prank(address(optimismPortal));
         vm.expectRevert(stdError.assertionError);
