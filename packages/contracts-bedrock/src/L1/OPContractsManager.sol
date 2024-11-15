@@ -437,14 +437,13 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        bytes4 selector = ISystemConfig.initialize.selector;
-
         // We inspect the SystemConfig contract and determine it's signature here. This is required
         // because this OPCM contract is being developed in a repository that no longer contains the
         // SystemConfig contract that was released as part of `op-contracts/v1.6.0`, but in production
         // it needs to support that version, in addition to the version currently on develop.
         string memory semver = _output.systemConfigProxy.version();
         if (keccak256(abi.encode(semver)) == keccak256(abi.encode(string("2.2.0")))) {
+            bytes4 selector = ISystemConfigV160.initialize.selector;
             // We are using the op-contracts/v1.6.0 SystemConfig contract.
             (
                 IResourceMetering.ResourceConfig memory referenceResourceConfig,
@@ -464,6 +463,7 @@ contract OPContractsManager is ISemver {
                 opChainAddrs
             );
         } else {
+            bytes4 selector = ISystemConfig.initialize.selector;
             // We are using the latest SystemConfig contract from the repo.
             (
                 IResourceMetering.ResourceConfig memory referenceResourceConfig,
