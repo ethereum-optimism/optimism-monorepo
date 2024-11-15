@@ -9,7 +9,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Utils
-import "src/dispute/lib/Types.sol";
+import { Claim, GameTypes, Duration } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
