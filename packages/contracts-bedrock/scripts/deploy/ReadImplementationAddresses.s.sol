@@ -12,12 +12,12 @@ import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 import { IStaticL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
 
 contract ReadImplementationAddressesInput is DeployOPChainOutput {
-    OPContractsManager internal _opcmProxy;
+    OPContractsManager internal _opcm;
     string internal _release;
 
     function set(bytes4 _sel, address _addr) public override {
         require(_addr != address(0), "ReadImplementationAddressesInput: cannot set zero address");
-        if (_sel == this.opcmProxy.selector) _opcmProxy = OPContractsManager(_addr);
+        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
         else if (_sel == this.addressManager.selector) _addressManager = IAddressManager(_addr);
         else super.set(_sel, _addr);
     }
@@ -27,9 +27,9 @@ contract ReadImplementationAddressesInput is DeployOPChainOutput {
         else revert("ReadImplementationAddressesInput: unknown selector");
     }
 
-    function opcmProxy() public view returns (OPContractsManager) {
-        DeployUtils.assertValidContractAddress(address(_opcmProxy));
-        return _opcmProxy;
+    function opcm() public view returns (OPContractsManager) {
+        DeployUtils.assertValidContractAddress(address(_opcm));
+        return _opcm;
     }
 
     function release() public view returns (string memory) {
@@ -154,7 +154,7 @@ contract ReadImplementationAddresses is Script {
         vm.prank(address(0));
         _rio.set(_rio.l1StandardBridge.selector, l1SBImpl);
 
-        address mipsLogic = _rii.opcmProxy().implementations().mipsImpl;
+        address mipsLogic = _rii.opcm().implementations().mipsImpl;
         _rio.set(_rio.mipsSingleton.selector, mipsLogic);
 
         IAddressManager am = _rii.addressManager();

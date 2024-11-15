@@ -48,7 +48,7 @@ contract DeployImplementationsInput is BaseDeployIO {
 
     // This is used in opcm to signal which version of the L1 smart contracts is deployed.
     // It takes the format of `op-contracts/v*.*.*`.
-    string internal _l1ContractsReleaseVersion;
+    string internal _l1ContractsRelease;
 
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
@@ -79,7 +79,7 @@ contract DeployImplementationsInput is BaseDeployIO {
 
     function set(bytes4 _sel, string memory _value) public {
         require(!LibString.eq(_value, ""), "DeployImplementationsInput: cannot set empty string");
-        if (_sel == this.l1ContractsReleaseVersion.selector) _l1ContractsReleaseVersion = _value;
+        if (_sel == this.l1ContractsRelease.selector) _l1ContractsRelease = _value;
         else if (_sel == this.standardVersionsToml.selector) _standardVersionsToml = _value;
         else revert("DeployImplementationsInput: unknown selector");
     }
@@ -134,9 +134,9 @@ contract DeployImplementationsInput is BaseDeployIO {
         return _mipsVersion;
     }
 
-    function l1ContractsReleaseVersion() public view returns (string memory) {
-        require(!LibString.eq(_l1ContractsReleaseVersion, ""), "DeployImplementationsInput: not set");
-        return _l1ContractsReleaseVersion;
+    function l1ContractsRelease() public view returns (string memory) {
+        require(!LibString.eq(_l1ContractsRelease, ""), "DeployImplementationsInput: not set");
+        return _l1ContractsRelease;
     }
 
     function standardVersionsToml() public view returns (string memory) {
@@ -444,7 +444,7 @@ contract DeployImplementations is Script {
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
         OPContractsManager.Blueprints memory _blueprints,
-        string memory _l1ContractsReleaseVersion
+        string memory _l1ContractsRelease
     )
         internal
         virtual
@@ -467,7 +467,7 @@ contract DeployImplementations is Script {
 
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManager(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, _blueprints, implementations
+            superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
         );
 
         vm.label(address(opcm_), "OPContractsManager");
@@ -481,15 +481,15 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory l1ContractsReleaseVersion = _dii.l1ContractsReleaseVersion();
+        string memory l1ContractsRelease = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "op_contracts_manager";
         OPContractsManager opcm;
 
-        address existingImplementation = getReleaseAddress(l1ContractsReleaseVersion, contractName, stdVerToml);
+        address existingImplementation = getReleaseAddress(l1ContractsRelease, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             opcm = OPContractsManager(existingImplementation);
-        } else if (isDevelopRelease(l1ContractsReleaseVersion)) {
+        } else if (isDevelopRelease(l1ContractsRelease)) {
             // First we deploy the blueprints for the singletons deployed by OPCM.
             // forgefmt: disable-start
             bytes32 salt = _dii.salt();
@@ -506,9 +506,9 @@ contract DeployImplementations is Script {
             vm.stopBroadcast();
             // forgefmt: disable-end
 
-            opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsReleaseVersion);
+            opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
         } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", l1ContractsReleaseVersion));
+            revert(string.concat("DeployImplementations: failed to deploy release ", l1ContractsRelease));
         }
 
         vm.label(address(opcm), "OPContractsManager");
@@ -518,7 +518,7 @@ contract DeployImplementations is Script {
     // --- Core Contracts ---
 
     function deploySystemConfigImpl(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         // Using snake case for contract name to match the TOML file in superchain-registry.
         string memory contractName = "system_config";
@@ -551,7 +551,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "l1_cross_domain_messenger";
         IL1CrossDomainMessenger impl;
@@ -582,7 +582,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "l1_erc721_bridge";
         IL1ERC721Bridge impl;
@@ -613,7 +613,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "l1_standard_bridge";
         IL1StandardBridge impl;
@@ -644,7 +644,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "optimism_mintable_erc20_factory";
         IOptimismMintableERC20Factory impl;
@@ -712,7 +712,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "optimism_portal";
         IOptimismPortal2 impl;
@@ -743,7 +743,7 @@ contract DeployImplementations is Script {
     }
 
     function deployDelayedWETHImpl(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "delayed_weth";
         IDelayedWETH impl;
@@ -777,7 +777,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "preimage_oracle";
         IPreimageOracle singleton;
@@ -806,7 +806,7 @@ contract DeployImplementations is Script {
     }
 
     function deployMipsSingleton(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "mips";
         IMIPS singleton;
@@ -839,7 +839,7 @@ contract DeployImplementations is Script {
         public
         virtual
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "dispute_game_factory";
         IDisputeGameFactory impl;
@@ -970,7 +970,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
         OPContractsManager.Blueprints memory _blueprints,
-        string memory _l1ContractsReleaseVersion
+        string memory _l1ContractsRelease
     )
         internal
         virtual
@@ -994,7 +994,7 @@ contract DeployImplementationsInterop is DeployImplementations {
 
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManagerInterop(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, _blueprints, implementations
+            superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
         );
 
         vm.label(address(opcm_), "OPContractsManager");
@@ -1008,7 +1008,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         public
         override
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "optimism_portal";
         IOptimismPortalInterop impl;
@@ -1046,7 +1046,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         public
         override
     {
-        string memory release = _dii.l1ContractsReleaseVersion();
+        string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
 
         string memory contractName = "system_config";

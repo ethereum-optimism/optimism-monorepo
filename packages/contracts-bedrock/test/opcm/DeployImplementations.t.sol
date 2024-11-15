@@ -61,7 +61,7 @@ contract DeployImplementationsInput_Test is Test {
         dii.disputeGameFinalityDelaySeconds();
 
         vm.expectRevert("DeployImplementationsInput: not set");
-        dii.l1ContractsReleaseVersion();
+        dii.l1ContractsRelease();
 
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.superchainConfigProxy();
@@ -248,7 +248,7 @@ contract DeployImplementations_Test is Test {
 
     function test_deployImplementation_succeeds() public {
         string memory deployContractsRelease = "dev-release";
-        dii.set(dii.l1ContractsReleaseVersion.selector, deployContractsRelease);
+        dii.set(dii.l1ContractsRelease.selector, deployContractsRelease);
         deployImplementations.deploySystemConfigImpl(dii, dio);
         assertTrue(address(0) != address(dio.systemConfigImpl()));
     }
@@ -257,7 +257,7 @@ contract DeployImplementations_Test is Test {
         // All hardcoded addresses below are taken from the superchain-registry config:
         // https://github.com/ethereum-optimism/superchain-registry/blob/be65d22f8128cf0c4e5b4e1f677daf86843426bf/validation/standard/standard-versions.toml#L11
         string memory testRelease = "op-contracts/v1.6.0";
-        dii.set(dii.l1ContractsReleaseVersion.selector, testRelease);
+        dii.set(dii.l1ContractsRelease.selector, testRelease);
 
         deployImplementations.deploySystemConfigImpl(dii, dio);
         address srSystemConfigImpl = address(0xF56D96B2535B932656d3c04Ebf51baBff241D886);
@@ -312,7 +312,7 @@ contract DeployImplementations_Test is Test {
 
     function test_deploy_atNonExistentRelease_reverts() public {
         string memory unknownRelease = "op-contracts/v0.0.0";
-        dii.set(dii.l1ContractsReleaseVersion.selector, unknownRelease);
+        dii.set(dii.l1ContractsRelease.selector, unknownRelease);
 
         bytes memory expectedErr =
             bytes(string.concat("DeployImplementations: failed to deploy release ", unknownRelease));
@@ -394,7 +394,7 @@ contract DeployImplementations_Test is Test {
 
     function test_deploy_noContractExistsAtRelease_reverts() public {
         string memory unknownRelease = "op-contracts/v1.3.0";
-        dii.set(dii.l1ContractsReleaseVersion.selector, unknownRelease);
+        dii.set(dii.l1ContractsRelease.selector, unknownRelease);
         bytes memory expectedErr =
             bytes(string.concat("DeployImplementations: failed to deploy release ", unknownRelease));
 
@@ -441,7 +441,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.proofMaturityDelaySeconds.selector, proofMaturityDelaySeconds);
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, disputeGameFinalityDelaySeconds);
         dii.set(dii.mipsVersion.selector, 1);
-        dii.set(dii.l1ContractsReleaseVersion.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
 
@@ -454,7 +454,7 @@ contract DeployImplementations_Test is Test {
         assertEq(proofMaturityDelaySeconds, dii.proofMaturityDelaySeconds(), "400");
         assertEq(disputeGameFinalityDelaySeconds, dii.disputeGameFinalityDelaySeconds(), "500");
         assertEq(1, dii.mipsVersion(), "512");
-        assertEq(release, dii.l1ContractsReleaseVersion(), "525");
+        assertEq(release, dii.l1ContractsRelease(), "525");
         assertEq(address(superchainConfigProxy), address(dii.superchainConfigProxy()), "550");
         assertEq(address(protocolVersionsProxy), address(dii.protocolVersionsProxy()), "575");
 
@@ -475,7 +475,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, disputeGameFinalityDelaySeconds);
         dii.set(dii.mipsVersion.selector, 1);
         string memory release = "dev-release";
-        dii.set(dii.l1ContractsReleaseVersion.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
 

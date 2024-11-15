@@ -378,7 +378,7 @@ contract Deploy is Deployer {
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, cfg.disputeGameFinalityDelaySeconds());
         dii.set(dii.mipsVersion.selector, Config.useMultithreadedCannon() ? 2 : 1);
         string memory release = "dev";
-        dii.set(dii.l1ContractsReleaseVersion.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(
             dii.standardVersionsToml.selector, string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml")
         );

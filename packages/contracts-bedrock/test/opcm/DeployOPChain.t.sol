@@ -395,7 +395,7 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.proofMaturityDelaySeconds.selector, proofMaturityDelaySeconds);
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, disputeGameFinalityDelaySeconds);
         dii.set(dii.mipsVersion.selector, 1);
-        dii.set(dii.l1ContractsReleaseVersion.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
         // End users of the DeployImplementations contract will need to set the `standardVersionsToml`.
