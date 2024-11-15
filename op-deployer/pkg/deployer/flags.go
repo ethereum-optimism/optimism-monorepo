@@ -20,6 +20,7 @@ const (
 	OutdirFlagName             = "outdir"
 	PrivateKeyFlagName         = "private-key"
 	DeploymentStrategyFlagName = "deployment-strategy"
+	IntentConfigTypeFlagName   = "intent-config-type"
 )
 
 var (
@@ -62,6 +63,17 @@ var (
 		EnvVars: PrefixEnvVar("DEPLOYMENT_STRATEGY"),
 		Value:   string(state.DeploymentStrategyLive),
 	}
+	IntentConfigTypeFlag = &cli.StringFlag{
+		Name: IntentConfigTypeFlagName,
+		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s, %s, %s",
+			state.IntentConfigTypeStandard,
+			state.IntentConfigTypeCustom,
+			state.IntentConfigTypeStrict,
+			state.IntentConfigTypeStandardOverrides,
+			state.IntentConfigTypeStrictOverrides),
+		EnvVars: PrefixEnvVar("INTENT_CONFIG_TYPE"),
+		Value:   string(state.IntentConfigTypeStandard),
+	}
 )
 
 var GlobalFlags = append([]cli.Flag{}, oplog.CLIFlags(EnvVarPrefix)...)
@@ -71,6 +83,7 @@ var InitFlags = []cli.Flag{
 	L2ChainIDsFlag,
 	WorkdirFlag,
 	DeploymentStrategyFlag,
+	IntentConfigTypeFlag,
 }
 
 var ApplyFlags = []cli.Flag{

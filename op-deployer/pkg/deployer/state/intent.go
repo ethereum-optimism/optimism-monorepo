@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
@@ -32,35 +33,132 @@ func (d DeploymentStrategy) Check() error {
 	}
 }
 
+type IntentConfigType string
+
+const (
+	IntentConfigTypeTest              IntentConfigType = "test"
+	IntentConfigTypeStandard          IntentConfigType = "standard"
+	IntentConfigTypeCustom            IntentConfigType = "custom"
+	IntentConfigTypeStrict            IntentConfigType = "strict"
+	IntentConfigTypeStandardOverrides IntentConfigType = "standard-overrides"
+	IntentConfigTypeStrictOverrides   IntentConfigType = "strict-overrides"
+)
+
 var emptyAddress common.Address
 
 type Intent struct {
-	DeploymentStrategy DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
-
-	L1ChainID uint64 `json:"l1ChainID" toml:"l1ChainID"`
-
-	SuperchainRoles *SuperchainRoles `json:"superchainRoles" toml:"superchainRoles,omitempty"`
-
-	FundDevAccounts bool `json:"fundDevAccounts" toml:"fundDevAccounts"`
-
-	UseInterop bool `json:"useInterop" toml:"useInterop"`
-
-	L1ContractsLocator *artifacts.Locator `json:"l1ContractsLocator" toml:"l1ContractsLocator"`
-
-	L2ContractsLocator *artifacts.Locator `json:"l2ContractsLocator" toml:"l2ContractsLocator"`
-
-	Chains []*ChainIntent `json:"chains" toml:"chains"`
-
-	GlobalDeployOverrides map[string]any `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
+	DeploymentStrategy    DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
+	IntentConfigType      IntentConfigType   `json:"intentConfigType" toml:"intentConfigType"`
+	L1ChainID             uint64             `json:"l1ChainID" toml:"l1ChainID"`
+	SuperchainRoles       *SuperchainRoles   `json:"superchainRoles" toml:"superchainRoles,omitempty"`
+	FundDevAccounts       bool               `json:"fundDevAccounts" toml:"fundDevAccounts"`
+	UseInterop            bool               `json:"useInterop" toml:"useInterop"`
+	L1ContractsLocator    *artifacts.Locator `json:"l1ContractsLocator" toml:"l1ContractsLocator"`
+	L2ContractsLocator    *artifacts.Locator `json:"l2ContractsLocator" toml:"l2ContractsLocator"`
+	Chains                []*ChainIntent     `json:"chains" toml:"chains"`
+	GlobalDeployOverrides map[string]any     `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
 }
 
 func (c *Intent) L1ChainIDBig() *big.Int {
 	return big.NewInt(int64(c.L1ChainID))
 }
 
+func (c *Intent) ValidateIntentConfig() error {
+	switch c.IntentConfigType {
+	case IntentConfigTypeStandard:
+		return c.validateStandardConfig()
+
+	case IntentConfigTypeCustom:
+		return c.validateCustomConfig()
+
+	case IntentConfigTypeStrict:
+		return c.validateStrictConfig()
+
+	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
+		return nil
+	default:
+		return fmt.Errorf("intent config type is invalid")
+	}
+}
+
+func (c *Intent) validateStandardConfig() error {
+	if c.SuperchainRoles != nil || c.L1ContractsLocator != nil || c.L2ContractsLocator != nil {
+		return errors.New("standard config: only certain fields should be set")
+	}
+
+	// Block time and gas limit could be validated further if they are part of Intent's parameters.
+
+	return nil
+}
+
+func (c *Intent) validateCustomConfig() error {
+	if c.L1ChainID == 0 || c.L1ContractsLocator == nil || c.L2ContractsLocator == nil || len(c.Chains) == 0 {
+		return errors.New("custom config: all fields must be explicitly specified")
+	}
+	return nil
+}
+
+func (c *Intent) validateStrictConfig() error {
+	for _, chain := range c.Chains {
+		if chain.BaseFeeVaultRecipient != (common.Address{}) {
+			return errors.New("for 'strict' config, opChainProxyAdminOwner and challenger cannot be set")
+		}
+	}
+	return nil
+}
+
+func (c *Intent) SetTestValues(l2ChainIds []common.Hash) error {
+	c.FundDevAccounts = true
+	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
+	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
+
+	l1ChainIDBig := c.L1ChainIDBig()
+
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	if err != nil {
+		return fmt.Errorf("failed to create dev keys: %w", err)
+	}
+
+	addrFor := func(key devkeys.Key) common.Address {
+		// The error below should never happen, so panic if it does.
+		addr, err := dk.Address(key)
+		if err != nil {
+			panic(err)
+		}
+		return addr
+	}
+	c.SuperchainRoles = &SuperchainRoles{
+		ProxyAdminOwner:       addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig)),
+		ProtocolVersionsOwner: addrFor(devkeys.SuperchainProtocolVersionsOwner.Key(l1ChainIDBig)),
+		Guardian:              addrFor(devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig)),
+	}
+
+	for _, l2ChainID := range l2ChainIds {
+		l2ChainIDBig := l2ChainID.Big()
+		c.Chains = append(c.Chains, &ChainIntent{
+			ID:                         l2ChainID,
+			BaseFeeVaultRecipient:      addrFor(devkeys.BaseFeeVaultRecipientRole.Key(l2ChainIDBig)),
+			L1FeeVaultRecipient:        addrFor(devkeys.L1FeeVaultRecipientRole.Key(l2ChainIDBig)),
+			SequencerFeeVaultRecipient: addrFor(devkeys.SequencerFeeVaultRecipientRole.Key(l2ChainIDBig)),
+			Eip1559Denominator:         50,
+			Eip1559Elasticity:          6,
+			Roles: ChainRoles{
+				L1ProxyAdminOwner: addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l2ChainIDBig)),
+				L2ProxyAdminOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
+				SystemConfigOwner: addrFor(devkeys.SystemConfigOwner.Key(l2ChainIDBig)),
+				UnsafeBlockSigner: addrFor(devkeys.SequencerP2PRole.Key(l2ChainIDBig)),
+				Batcher:           addrFor(devkeys.BatcherRole.Key(l2ChainIDBig)),
+				Proposer:          addrFor(devkeys.ProposerRole.Key(l2ChainIDBig)),
+				Challenger:        addrFor(devkeys.ChallengerRole.Key(l2ChainIDBig)),
+			},
+		})
+	}
+	return nil
+}
+
 func (c *Intent) Check() error {
-	if c.DeploymentStrategy != DeploymentStrategyLive && c.DeploymentStrategy != DeploymentStrategyGenesis {
-		return fmt.Errorf("deploymentStrategy must be 'live' or 'local'")
+	if err := c.DeploymentStrategy.Check(); err != nil {
+		return err
 	}
 
 	if c.L1ChainID == 0 {
@@ -151,23 +249,15 @@ type SuperchainRoles struct {
 }
 
 type ChainIntent struct {
-	ID common.Hash `json:"id" toml:"id"`
-
-	BaseFeeVaultRecipient common.Address `json:"baseFeeVaultRecipient" toml:"baseFeeVaultRecipient"`
-
-	L1FeeVaultRecipient common.Address `json:"l1FeeVaultRecipient" toml:"l1FeeVaultRecipient"`
-
-	SequencerFeeVaultRecipient common.Address `json:"sequencerFeeVaultRecipient" toml:"sequencerFeeVaultRecipient"`
-
-	Eip1559Denominator uint64 `json:"eip1559Denominator" toml:"eip1559Denominator"`
-
-	Eip1559Elasticity uint64 `json:"eip1559Elasticity" toml:"eip1559Elasticity"`
-
-	Roles ChainRoles `json:"roles" toml:"roles"`
-
-	DeployOverrides map[string]any `json:"deployOverrides" toml:"deployOverrides"`
-
-	DangerousAltDAConfig genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
+	ID                         common.Hash               `json:"id" toml:"id"`
+	BaseFeeVaultRecipient      common.Address            `json:"baseFeeVaultRecipient" toml:"baseFeeVaultRecipient"`
+	L1FeeVaultRecipient        common.Address            `json:"l1FeeVaultRecipient" toml:"l1FeeVaultRecipient"`
+	SequencerFeeVaultRecipient common.Address            `json:"sequencerFeeVaultRecipient" toml:"sequencerFeeVaultRecipient"`
+	Eip1559Denominator         uint64                    `json:"eip1559Denominator" toml:"eip1559Denominator"`
+	Eip1559Elasticity          uint64                    `json:"eip1559Elasticity" toml:"eip1559Elasticity"`
+	Roles                      ChainRoles                `json:"roles" toml:"roles"`
+	DeployOverrides            map[string]any            `json:"deployOverrides" toml:"deployOverrides"`
+	DangerousAltDAConfig       genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
 }
 
 type ChainRoles struct {

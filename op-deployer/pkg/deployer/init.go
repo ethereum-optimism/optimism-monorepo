@@ -7,19 +7,17 @@ import (
 	"path"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/urfave/cli/v2"
 )
 
 type InitConfig struct {
 	DeploymentStrategy state.DeploymentStrategy
+	IntentConfigType   state.IntentConfigType
 	L1ChainID          uint64
 	Outdir             string
 	L2ChainIDs         []common.Hash
@@ -51,6 +49,7 @@ func InitCLI() func(ctx *cli.Context) error {
 		l1ChainID := ctx.Uint64(L1ChainIDFlagName)
 		outdir := ctx.String(OutdirFlagName)
 		l2ChainIDsRaw := ctx.String(L2ChainIDsFlagName)
+		intentConfigType := ctx.String(IntentConfigTypeFlagName)
 
 		if len(l2ChainIDsRaw) == 0 {
 			return fmt.Errorf("must specify at least one L2 chain ID")
@@ -68,6 +67,7 @@ func InitCLI() func(ctx *cli.Context) error {
 
 		err := Init(InitConfig{
 			DeploymentStrategy: state.DeploymentStrategy(deploymentStrategy),
+			IntentConfigType:   state.IntentConfigType(intentConfigType),
 			L1ChainID:          l1ChainID,
 			Outdir:             outdir,
 			L2ChainIDs:         l2ChainIDs,
@@ -88,52 +88,14 @@ func Init(cfg InitConfig) error {
 
 	intent := &state.Intent{
 		DeploymentStrategy: cfg.DeploymentStrategy,
+		IntentConfigType:   cfg.IntentConfigType,
 		L1ChainID:          cfg.L1ChainID,
-		FundDevAccounts:    true,
-		L1ContractsLocator: artifacts.DefaultL1ContractsLocator,
-		L2ContractsLocator: artifacts.DefaultL2ContractsLocator,
 	}
 
-	l1ChainIDBig := intent.L1ChainIDBig()
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	if err != nil {
-		return fmt.Errorf("failed to create dev keys: %w", err)
-	}
-
-	addrFor := func(key devkeys.Key) common.Address {
-		// The error below should never happen, so panic if it does.
-		addr, err := dk.Address(key)
-		if err != nil {
-			panic(err)
+	if cfg.IntentConfigType == state.IntentConfigTypeTest {
+		if err := intent.SetTestValues(cfg.L2ChainIDs); err != nil {
+			return err
 		}
-		return addr
-	}
-	intent.SuperchainRoles = &state.SuperchainRoles{
-		ProxyAdminOwner:       addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig)),
-		ProtocolVersionsOwner: addrFor(devkeys.SuperchainProtocolVersionsOwner.Key(l1ChainIDBig)),
-		Guardian:              addrFor(devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig)),
-	}
-
-	for _, l2ChainID := range cfg.L2ChainIDs {
-		l2ChainIDBig := l2ChainID.Big()
-		intent.Chains = append(intent.Chains, &state.ChainIntent{
-			ID:                         l2ChainID,
-			BaseFeeVaultRecipient:      addrFor(devkeys.BaseFeeVaultRecipientRole.Key(l2ChainIDBig)),
-			L1FeeVaultRecipient:        addrFor(devkeys.L1FeeVaultRecipientRole.Key(l2ChainIDBig)),
-			SequencerFeeVaultRecipient: addrFor(devkeys.SequencerFeeVaultRecipientRole.Key(l2ChainIDBig)),
-			Eip1559Denominator:         50,
-			Eip1559Elasticity:          6,
-			Roles: state.ChainRoles{
-				L1ProxyAdminOwner: addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				L2ProxyAdminOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				SystemConfigOwner: addrFor(devkeys.SystemConfigOwner.Key(l2ChainIDBig)),
-				UnsafeBlockSigner: addrFor(devkeys.SequencerP2PRole.Key(l2ChainIDBig)),
-				Batcher:           addrFor(devkeys.BatcherRole.Key(l2ChainIDBig)),
-				Proposer:          addrFor(devkeys.ProposerRole.Key(l2ChainIDBig)),
-				Challenger:        addrFor(devkeys.ChallengerRole.Key(l2ChainIDBig)),
-			},
-		})
 	}
 
 	st := &state.State{
