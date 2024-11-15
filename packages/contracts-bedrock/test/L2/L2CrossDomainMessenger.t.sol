@@ -150,9 +150,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     }
 
     /// @dev Tests that relayMessage reverts if caller is optimismPortal and the value sent does not match the amount
-    /// and if a failedMessage is attempted to be replayed via the optimismPortal
-    /// signified.
-    function test_relayMessage_callerIsOptimismPortalChecks_reverts() external {
+    function test_relayMessage_callerIsOptimismPortalAndValueDoesNotMatchAmount_reverts() external {
         // set the target to be the OptimismPortal
         address target = alice;
         address sender = address(l1CrossDomainMessenger);
@@ -166,6 +164,15 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         l2CrossDomainMessenger.relayMessage{ value: 10 ether }(
             Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 9 ether, 0, message
         );
+    }
+
+    /// @dev Tests that relayMessage reverts if a failed message is attempted to be replayed via the optimismPortal
+    function test_relayMessage_callerIsOptimismPortalAndFailedMessageReplay_reverts() external {
+        // set the target to be the OptimismPortal
+        address target = alice;
+        address sender = address(l1CrossDomainMessenger);
+        address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
+        bytes memory message = hex"1111";
 
         // make a failed message
         vm.etch(target, hex"fe");
