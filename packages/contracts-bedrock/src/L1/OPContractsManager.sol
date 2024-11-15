@@ -25,7 +25,6 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { ISystemConfigV160 } from "src/L1/interfaces/ISystemConfigV160.sol";
 import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
 import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
@@ -437,52 +436,22 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        // We inspect the SystemConfig contract and determine it's signature here. This is required
-        // because this OPCM contract is being developed in a repository that no longer contains the
-        // SystemConfig contract that was released as part of `op-contracts/v1.6.0`, but in production
-        // it needs to support that version, in addition to the version currently on develop.
-        string memory semver = _output.systemConfigProxy.version();
-        if (keccak256(abi.encode(semver)) == keccak256(abi.encode(string("2.2.0")))) {
-            bytes4 selector = ISystemConfigV160.initialize.selector;
-            // We are using the op-contracts/v1.6.0 SystemConfig contract.
-            (
-                IResourceMetering.ResourceConfig memory referenceResourceConfig,
-                ISystemConfigV160.Addresses memory opChainAddrs
-            ) = defaultSystemConfigV160Params(selector, _input, _output);
+        bytes4 selector = ISystemConfig.initialize.selector;
+        (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
+            defaultSystemConfigParams(selector, _input, _output);
 
-            return abi.encodeWithSelector(
-                selector,
-                _input.roles.systemConfigOwner,
-                _input.basefeeScalar,
-                _input.blobBasefeeScalar,
-                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-                _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
-                referenceResourceConfig,
-                chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
-            );
-        } else {
-            bytes4 selector = ISystemConfig.initialize.selector;
-            // We are using the latest SystemConfig contract from the repo.
-            (
-                IResourceMetering.ResourceConfig memory referenceResourceConfig,
-                ISystemConfig.Addresses memory opChainAddrs
-            ) = defaultSystemConfigParams(selector, _input, _output);
-
-            return abi.encodeWithSelector(
-                selector,
-                _input.roles.systemConfigOwner,
-                _input.basefeeScalar,
-                _input.blobBasefeeScalar,
-                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-                _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
-                referenceResourceConfig,
-                chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
-            );
-        }
+        return abi.encodeWithSelector(
+            selector,
+            _input.roles.systemConfigOwner,
+            _input.basefeeScalar,
+            _input.blobBasefeeScalar,
+            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
+            _input.gasLimit,
+            _input.roles.unsafeBlockSigner,
+            referenceResourceConfig,
+            chainIdToBatchInboxAddress(_input.l2ChainId),
+            opChainAddrs
+        );
     }
 
     /// @notice Helper method for encoding the OptimismMintableERC20Factory initializer data.
@@ -620,45 +589,6 @@ contract OPContractsManager is ISemver {
             optimismPortal: address(_output.optimismPortalProxy),
             optimismMintableERC20Factory: address(_output.optimismMintableERC20FactoryProxy),
             gasPayingToken: Constants.ETHER
-        });
-
-        assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);
-        assertValidContractAddress(opChainAddrs_.l1ERC721Bridge);
-        assertValidContractAddress(opChainAddrs_.l1StandardBridge);
-        assertValidContractAddress(opChainAddrs_.disputeGameFactory);
-        assertValidContractAddress(opChainAddrs_.optimismPortal);
-        assertValidContractAddress(opChainAddrs_.optimismMintableERC20Factory);
-    }
-
-    /// @notice Returns default, standard config arguments for the SystemConfig initializer.
-    /// This is used by subclasses to reduce code duplication.
-    function defaultSystemConfigV160Params(
-        bytes4, /* selector */
-        DeployInput memory, /* _input */
-        DeployOutput memory _output
-    )
-        internal
-        view
-        virtual
-        returns (
-            IResourceMetering.ResourceConfig memory resourceConfig_,
-            ISystemConfigV160.Addresses memory opChainAddrs_
-        )
-    {
-        // We use assembly to easily convert from IResourceMetering.ResourceConfig to ResourceMetering.ResourceConfig.
-        // This is required because we have not yet fully migrated the codebase to be interface-based.
-        IResourceMetering.ResourceConfig memory resourceConfig = Constants.DEFAULT_RESOURCE_CONFIG();
-        assembly ("memory-safe") {
-            resourceConfig_ := resourceConfig
-        }
-
-        opChainAddrs_ = ISystemConfigV160.Addresses({
-            l1CrossDomainMessenger: address(_output.l1CrossDomainMessengerProxy),
-            l1ERC721Bridge: address(_output.l1ERC721BridgeProxy),
-            l1StandardBridge: address(_output.l1StandardBridgeProxy),
-            disputeGameFactory: address(_output.disputeGameFactoryProxy),
-            optimismPortal: address(_output.optimismPortalProxy),
-            optimismMintableERC20Factory: address(_output.optimismMintableERC20FactoryProxy)
         });
 
         assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);
