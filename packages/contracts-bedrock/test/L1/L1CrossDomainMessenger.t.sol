@@ -175,8 +175,6 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     }
 
     /// @dev Tests that relayMessage reverts if caller is optimismPortal and the value sent does not match the amount
-    /// and if a failedMessage is attempted to be replayed via the optimismPortal
-    /// signified.
     function test_relayMessage_callerIsOptimismPortalAndValueDoesNotMatchAmount_reverts() external {
         // set the target to be the OptimismPortal
         address target = alice;
