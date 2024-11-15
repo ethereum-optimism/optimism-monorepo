@@ -149,15 +149,15 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         assertEq(l2CrossDomainMessenger.failedMessages(hash), false);
     }
 
-    /// @dev Tests that relayMessage reverts if caller is optimismPortal and the value sent does not match the amount
-    function test_relayMessage_callerIsOptimismPortalAndValueDoesNotMatchAmount_reverts() external {
-        // set the target to be the OptimismPortal
+    /// @dev Tests that relayMessage reverts if the value sent does not match the amount
+    function test_relayMessage_valueDoesNotMatchAmount_reverts() external {
+        // set the target to be the alice
         address target = alice;
         address sender = address(l1CrossDomainMessenger);
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
         bytes memory message = hex"1111";
 
-        // cannot send a message as optimism portal but amount does not match msg.value
+        // cannot send a message where the amount inputted does not match the msg.value
         vm.deal(caller, 10 ether);
         vm.prank(caller);
         vm.expectRevert(stdError.assertionError);
@@ -166,9 +166,10 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         );
     }
 
-    /// @dev Tests that relayMessage reverts if a failed message is attempted to be replayed via the optimismPortal
-    function test_relayMessage_callerIsOptimismPortalAndFailedMessageReplay_reverts() external {
-        // set the target to be the OptimismPortal
+    /// @dev Tests that relayMessage reverts if a failed message is attempted to be replayed and the caller is the other
+    /// messenger
+    function test_relayMessage_failedMessageReplay_reverts() external {
+        // set the target to be the alice
         address target = alice;
         address sender = address(l1CrossDomainMessenger);
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
@@ -181,7 +182,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
             Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 0, 0, message
         );
 
-        // cannot replay messages when optimism portal is msg.sender
+        // cannot replay messages when the caller is the other messenger
         vm.prank(caller);
         vm.expectRevert(stdError.assertionError);
         l2CrossDomainMessenger.relayMessage(
