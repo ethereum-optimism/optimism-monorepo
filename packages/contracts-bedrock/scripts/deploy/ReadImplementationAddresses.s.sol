@@ -154,7 +154,7 @@ contract ReadImplementationAddresses is Script {
         vm.prank(address(0));
         _rio.set(_rio.l1StandardBridge.selector, l1SBImpl);
 
-        (address mipsLogic,) = _rii.opcmProxy().implementations(_rii.release(), "MIPS");
+        address mipsLogic = _rii.opcmProxy().implementations().mipsImpl;
         _rio.set(_rio.mipsSingleton.selector, mipsLogic);
 
         IAddressManager am = _rii.addressManager();

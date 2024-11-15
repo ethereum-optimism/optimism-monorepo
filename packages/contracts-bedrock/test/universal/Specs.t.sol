@@ -837,46 +837,25 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("version()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsReleaseVersion()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("implementationContracts()") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("systemConfigs(uint256)") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("OUTPUT_VERSION()") });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getL1ERC721BridgeImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getOptimismPortalImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getSystemConfigImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getOptimismMintableERC20FactoryImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getL1CrossDomainMessengerImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getL1StandardBridgeImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getDisputeGameFactoryImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getDelayedWETHImpl.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.getMipsImpl.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsReleaseVersion()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("implementationContracts()") });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("systemConfigs(uint256)") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("OUTPUT_VERSION()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getL1ERC721BridgeImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getOptimismPortalImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getSystemConfigImpl.selector });
-        _addSpec({
-            _name: "OPContractsManagerInterop",
-            _sel: OPContractsManager.getOptimismMintableERC20FactoryImpl.selector
-        });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getL1CrossDomainMessengerImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getL1StandardBridgeImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getDisputeGameFactoryImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getDelayedWETHImpl.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.getMipsImpl.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
 
         // DeputyGuardianModule
         _addSpec({

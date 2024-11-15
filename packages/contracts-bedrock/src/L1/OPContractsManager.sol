@@ -102,7 +102,7 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice The latest implementation contracts for the OP Stack.
-    struct ImplementationContracts {
+    struct Implementations {
         address l1ERC721BridgeImpl;
         address optimismPortalImpl;
         address systemConfigImpl;
@@ -118,7 +118,7 @@ contract OPContractsManager is ISemver {
     /// all necessary inputs (excluding immutables) for initialization are bundled together in this struct.
     struct InputContracts {
         Blueprints blueprints;
-        ImplementationContracts implementationContracts;
+        Implementations implementations;
     }
 
     // -------- Constants and Variables --------
@@ -137,8 +137,8 @@ contract OPContractsManager is ISemver {
     IProtocolVersions public immutable protocolVersions;
 
     // @notice L1 smart contracts release deployed by this version of OPCM. This is used in opcm to signal which version
-    // of the L1 smart contracts is deployed. It takes the format of `op-contracts/v*.*.*`.
-    string public l1ContractsReleaseVersion;
+    // of the L1 smart contracts is deployed. It takes the format of `op-contracts/vX.Y.Z`.
+    string public l1ContractsRelease;
 
     /// @notice Maps an L2 Chain ID to the SystemConfig for that chain.
     mapping(uint256 => ISystemConfig) public systemConfigs;
@@ -149,11 +149,7 @@ contract OPContractsManager is ISemver {
     Blueprints internal blueprint;
 
     /// @notice Addresses of the latest implementation contracts.
-    ImplementationContracts public implementationContracts;
-
-    /// @notice Storage gap for future modifications, so we can expand the number of blueprints
-    /// without affecting other storage variables.
-    uint256[50] private __gap;
+    Implementations internal implementation;
 
     // -------- Events --------
 
@@ -194,17 +190,18 @@ contract OPContractsManager is ISemver {
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        string memory _l1ContractsReleaseVersion,
-        InputContracts memory _inputContracts
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations
     ) {
         assertValidContractAddress(address(_superchainConfig));
         assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
-        l1ContractsReleaseVersion = _l1ContractsReleaseVersion;
+        l1ContractsRelease = _l1ContractsRelease;
 
-        blueprint = _inputContracts.blueprints;
-        implementationContracts = _inputContracts.implementationContracts;
+        blueprint = _blueprints;
+        implementation = _implementations;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -284,35 +281,27 @@ contract OPContractsManager is ISemver {
 
         data = encodeL1ERC721BridgeInitializer(IL1ERC721Bridge.initialize.selector, output);
         upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.l1ERC721BridgeProxy),
-            implementationContracts.l1ERC721BridgeImpl,
-            data
+            output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), implementation.l1ERC721BridgeImpl, data
         );
 
         data = encodeOptimismPortalInitializer(IOptimismPortal2.initialize.selector, output);
         upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.optimismPortalProxy),
-            implementationContracts.optimismPortalImpl,
-            data
+            output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
 
         // First we upgrade the implementation so it's version can be retrieved, then we initialize
         // it afterwards. See the comments in encodeSystemConfigInitializer to learn more.
-        output.opChainProxyAdmin.upgrade(
-            payable(address(output.systemConfigProxy)), implementationContracts.systemConfigImpl
-        );
+        output.opChainProxyAdmin.upgrade(payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
         data = encodeSystemConfigInitializer(_input, output);
         upgradeAndCall(
-            output.opChainProxyAdmin, address(output.systemConfigProxy), implementationContracts.systemConfigImpl, data
+            output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
         );
 
         data = encodeOptimismMintableERC20FactoryInitializer(IOptimismMintableERC20Factory.initialize.selector, output);
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.optimismMintableERC20FactoryProxy),
-            implementationContracts.optimismMintableERC20FactoryImpl,
+            implementation.optimismMintableERC20FactoryImpl,
             data
         );
 
@@ -320,16 +309,13 @@ contract OPContractsManager is ISemver {
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.l1CrossDomainMessengerProxy),
-            implementationContracts.l1CrossDomainMessengerImpl,
+            implementation.l1CrossDomainMessengerImpl,
             data
         );
 
         data = encodeL1StandardBridgeInitializer(IL1StandardBridge.initialize.selector, output);
         upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.l1StandardBridgeProxy),
-            implementationContracts.l1StandardBridgeImpl,
-            data
+            output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), implementation.l1StandardBridgeImpl, data
         );
 
         data = encodeDelayedWETHInitializer(IDelayedWETH.initialize.selector, _input);
@@ -337,7 +323,7 @@ contract OPContractsManager is ISemver {
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.delayedWETHPermissionedGameProxy),
-            implementationContracts.delayedWETHImpl,
+            implementation.delayedWETHImpl,
             data
         );
 
@@ -346,7 +332,7 @@ contract OPContractsManager is ISemver {
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.disputeGameFactoryProxy),
-            implementationContracts.disputeGameFactoryImpl,
+            implementation.disputeGameFactoryImpl,
             data
         );
         output.disputeGameFactoryProxy.setImplementation(
@@ -605,7 +591,7 @@ contract OPContractsManager is ISemver {
             _input.disputeSplitDepth,
             _input.disputeClockExtension,
             _input.disputeMaxClockDuration,
-            IBigStepper(implementationContracts.mipsImpl),
+            IBigStepper(implementation.mipsImpl),
             IDelayedWETH(payable(address(_output.delayedWETHPermissionedGameProxy))),
             IAnchorStateRegistry(address(_output.anchorStateRegistryProxy)),
             _input.l2ChainId,
@@ -717,48 +703,8 @@ contract OPContractsManager is ISemver {
         return blueprint;
     }
 
-    /// @notice Returns L1ERC721BridgeImpl implementation contract address.
-    function getL1ERC721BridgeImpl() public view returns (address) {
-        return implementationContracts.l1ERC721BridgeImpl;
-    }
-
-    /// @notice Returns OptimismPortalImpl implementation contract address.
-    function getOptimismPortalImpl() public view returns (address) {
-        return implementationContracts.optimismPortalImpl;
-    }
-
-    /// @notice Returns SystemConfigImpl implementation contract address.
-    function getSystemConfigImpl() public view returns (address) {
-        return implementationContracts.systemConfigImpl;
-    }
-
-    /// @notice Returns OptimismMintableERC20FactoryImpl implementation contract address.
-    function getOptimismMintableERC20FactoryImpl() public view returns (address) {
-        return implementationContracts.optimismMintableERC20FactoryImpl;
-    }
-
-    /// @notice Returns L1CrossDomainMessengerImpl implementation contract address.
-    function getL1CrossDomainMessengerImpl() public view returns (address) {
-        return implementationContracts.l1CrossDomainMessengerImpl;
-    }
-
-    /// @notice Returns L1StandardBridgeImpl implementation contract address.
-    function getL1StandardBridgeImpl() public view returns (address) {
-        return implementationContracts.l1StandardBridgeImpl;
-    }
-
-    /// @notice Returns DisputeGameFactoryImpl implementation contract address.
-    function getDisputeGameFactoryImpl() public view returns (address) {
-        return implementationContracts.disputeGameFactoryImpl;
-    }
-
-    /// @notice Returns DelayedWETHImpl implementation contract address.
-    function getDelayedWETHImpl() public view returns (address) {
-        return implementationContracts.delayedWETHImpl;
-    }
-
-    /// @notice Returns MipsImpl implementation contract address.
-    function getMipsImpl() public view returns (address) {
-        return implementationContracts.mipsImpl;
+    /// @notice Returns the implementation contract addresses.
+    function implementations() public view returns (Implementations memory) {
+        return implementation;
     }
 }

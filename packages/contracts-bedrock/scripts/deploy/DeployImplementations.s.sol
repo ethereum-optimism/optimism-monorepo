@@ -453,7 +453,7 @@ contract DeployImplementations is Script {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
 
-        OPContractsManager.ImplementationContracts memory implContracts = OPContractsManager.ImplementationContracts({
+        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -465,12 +465,9 @@ contract DeployImplementations is Script {
             mipsImpl: address(_dio.mipsSingleton())
         });
 
-        OPContractsManager.InputContracts memory inputContracts =
-            OPContractsManager.InputContracts(_blueprints, implContracts);
-
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManager(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, inputContracts
+            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, _blueprints, implementations
         );
 
         vm.label(address(opcm_), "OPContractsManager");
@@ -983,7 +980,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
 
-        OPContractsManager.ImplementationContracts memory implContracts = OPContractsManager.ImplementationContracts({
+        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -995,12 +992,9 @@ contract DeployImplementationsInterop is DeployImplementations {
             mipsImpl: address(_dio.mipsSingleton())
         });
 
-        OPContractsManager.InputContracts memory inputContracts =
-            OPContractsManager.InputContracts(_blueprints, implContracts);
-
         vm.broadcast(msg.sender);
         opcm_ = new OPContractsManagerInterop(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, inputContracts
+            superchainConfigProxy, protocolVersionsProxy, _l1ContractsReleaseVersion, _blueprints, implementations
         );
 
         vm.label(address(opcm_), "OPContractsManager");

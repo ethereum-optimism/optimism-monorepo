@@ -15,10 +15,11 @@ contract OPContractsManager_Harness is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        string memory _l1ContractsReleaseVersion,
-        InputContracts memory _inputContracts
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations
     )
-        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsReleaseVersion, _inputContracts)
+        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
     { }
 
     function chainIdToBatchInboxAddress_exposed(uint256 l2ChainId) public pure returns (address) {
@@ -118,15 +119,17 @@ contract OPContractsManager_InternalMethods_Test is Test {
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
-        OPContractsManager.InputContracts memory emptyInputContracts;
+        OPContractsManager.Blueprints memory emptyBlueprints;
+        OPContractsManager.Implementations memory emptyImpls;
         vm.etch(address(superchainConfigProxy), hex"01");
         vm.etch(address(protocolVersionsProxy), hex"01");
 
         opcmHarness = new OPContractsManager_Harness({
             _superchainConfig: superchainConfigProxy,
             _protocolVersions: protocolVersionsProxy,
-            _l1ContractsReleaseVersion: "dev",
-            _inputContracts: emptyInputContracts
+            _l1ContractsRelease: "dev",
+            _blueprints: emptyBlueprints,
+            _implementations: emptyImpls
         });
     }
 

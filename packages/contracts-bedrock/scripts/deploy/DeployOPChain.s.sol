@@ -480,7 +480,7 @@ contract DeployOPChain is Script {
         );
 
         OPContractsManager opcm = _doi.opcm();
-        address mipsImpl = opcm.getMipsImpl();
+        address mipsImpl = opcm.implementations().mipsImpl;
         require(game.vm() == IBigStepper(mipsImpl), "DPG-30");
 
         require(address(game.weth()) == address(_doo.delayedWETHPermissionedGameProxy()), "DPG-40");

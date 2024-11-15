@@ -12,10 +12,11 @@ contract OPContractsManagerInterop is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        string memory _l1ContractsReleaseVersion,
-        InputContracts memory _inputContracts
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations
     )
-        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsReleaseVersion, _inputContracts)
+        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
     { }
 
     // The `SystemConfigInterop` contract has an extra `address _dependencyManager` argument
