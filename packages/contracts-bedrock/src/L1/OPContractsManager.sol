@@ -114,13 +114,6 @@ contract OPContractsManager is ISemver {
         address mipsImpl;
     }
 
-    /// @notice Inputs required when initializing the OPContractsManager. To avoid 'StackTooDeep' errors,
-    /// all necessary inputs (excluding immutables) for initialization are bundled together in this struct.
-    struct InputContracts {
-        Blueprints blueprints;
-        Implementations implementations;
-    }
-
     // -------- Constants and Variables --------
 
     /// @custom:semver 1.0.0-beta.21
