@@ -34,6 +34,7 @@ contract L2StandardBridge_Test is CommonTest {
         assertEq(address(impl.messenger()), Predeploys.L2_CROSS_DOMAIN_MESSENGER, "constructor zero check messenger");
         assertEq(address(impl.OTHER_BRIDGE()), address(0), "constructor zero check OTHER_BRIDGE");
         assertEq(address(impl.otherBridge()), address(0), "constructor zero check otherBridge");
+        assertEq(address(impl.l1TokenBridge()), address(0), "constructor zero check l1TokenBridge");
     }
 
     /// @dev Tests that the bridge is initialized correctly.
@@ -378,6 +379,12 @@ contract L2StandardBridge_BridgeERC20_Test is PreBridgeERC20 {
         assertEq(L2Token.balanceOf(alice), 0);
     }
 
+    function test_bridgeERC20_isNotCorrectTokenPair_reverts() external {
+        vm.expectRevert("StandardBridge: wrong remote token for Optimism Mintable ERC20 local token");
+        vm.prank(alice, alice);
+        l2StandardBridge.bridgeERC20(address(L2Token), address(BadL1Token), 100, 1000, hex"");
+    }
+
     function test_withdrawLegacyERC20_succeeds() external {
         _preBridgeERC20({ _isLegacy: true, _l2Token: address(LegacyL2Token) });
         l2StandardBridge.withdraw(address(LegacyL2Token), 100, 1000, hex"");
@@ -657,5 +664,45 @@ contract L2StandardBridge_FinalizeBridgeETH_Test is CommonTest {
         vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
 
         l2StandardBridge.finalizeBridgeETH(alice, alice, 1, hex"");
+    }
+}
+
+contract L2StandardBridge_FinalizeBridgeERC20_Test is CommonTest {
+    /// @dev Tests that `finalizeBridgeERC20` succeeds.
+    function test_finalizeBridgeERC20_succeeds() external {
+        address messenger = address(l2StandardBridge.messenger());
+        address localToken = address(L2Token);
+        address remoteToken = address(L1Token);
+        vm.mockCall(
+            messenger,
+            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
+            abi.encode(address(l2StandardBridge.OTHER_BRIDGE()))
+        );
+        deal(localToken, messenger, 100, true);
+        vm.prank(messenger);
+
+        vm.expectEmit(true, true, true, true);
+        emit DepositFinalized(remoteToken, localToken, alice, alice, 100, hex"");
+
+        vm.expectEmit(true, true, true, true);
+        emit ERC20BridgeFinalized(localToken, remoteToken, alice, alice, 100, hex"");
+
+        l2StandardBridge.finalizeBridgeERC20(localToken, remoteToken, alice, alice, 100, hex"");
+    }
+
+    function test_finalizeBridgeERC20_isNotCorrectTokenPair_reverts() external {
+        address messenger = address(l2StandardBridge.messenger());
+        address localToken = address(L2Token);
+        address remoteToken = address(BadL1Token);
+        vm.mockCall(
+            messenger,
+            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
+            abi.encode(address(l2StandardBridge.OTHER_BRIDGE()))
+        );
+        deal(localToken, messenger, 100, true);
+        vm.prank(messenger);
+
+        vm.expectRevert("StandardBridge: wrong remote token for Optimism Mintable ERC20 local token");
+        l2StandardBridge.finalizeBridgeERC20(localToken, remoteToken, alice, alice, 100, hex"");
     }
 }
