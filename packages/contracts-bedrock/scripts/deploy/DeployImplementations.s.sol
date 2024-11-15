@@ -489,7 +489,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(l1ContractsRelease, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             opcm = OPContractsManager(existingImplementation);
-        } else if (isDevelopRelease(l1ContractsRelease)) {
+        } else {
             // First we deploy the blueprints for the singletons deployed by OPCM.
             // forgefmt: disable-start
             bytes32 salt = _dii.salt();
@@ -507,8 +507,6 @@ contract DeployImplementations is Script {
             // forgefmt: disable-end
 
             opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", l1ContractsRelease));
         }
 
         vm.label(address(opcm), "OPContractsManager");
@@ -527,7 +525,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = ISystemConfig(existingImplementation);
-        } else if (isDevelopRelease(release)) {
+        } else {
             // Deploy a new implementation for development builds.
             vm.broadcast(msg.sender);
             impl = ISystemConfig(
@@ -536,8 +534,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "SystemConfigImpl");
@@ -559,7 +555,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IL1CrossDomainMessenger(existingImplementation);
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = IL1CrossDomainMessenger(
                 DeployUtils.create1({
@@ -567,8 +563,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "L1CrossDomainMessengerImpl");
@@ -590,7 +584,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IL1ERC721Bridge(existingImplementation);
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = IL1ERC721Bridge(
                 DeployUtils.create1({
@@ -598,8 +592,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "L1ERC721BridgeImpl");
@@ -621,7 +613,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IL1StandardBridge(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = IL1StandardBridge(
                 DeployUtils.create1({
@@ -629,8 +621,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "L1StandardBridgeImpl");
@@ -652,7 +642,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IOptimismMintableERC20Factory(existingImplementation);
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = IOptimismMintableERC20Factory(
                 DeployUtils.create1({
@@ -660,8 +650,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "OptimismMintableERC20FactoryImpl");
@@ -720,7 +708,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IOptimismPortal2(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
             vm.broadcast(msg.sender);
@@ -734,8 +722,6 @@ contract DeployImplementations is Script {
                     )
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "OptimismPortalImpl");
@@ -751,7 +737,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IDelayedWETH(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             uint256 withdrawalDelaySeconds = _dii.withdrawalDelaySeconds();
             vm.broadcast(msg.sender);
             impl = IDelayedWETH(
@@ -762,8 +748,6 @@ contract DeployImplementations is Script {
                     )
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "DelayedWETHImpl");
@@ -785,7 +769,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             singleton = IPreimageOracle(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             uint256 minProposalSizeBytes = _dii.minProposalSizeBytes();
             uint256 challengePeriodSeconds = _dii.challengePeriodSeconds();
             vm.broadcast(msg.sender);
@@ -797,8 +781,6 @@ contract DeployImplementations is Script {
                     )
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(singleton), "PreimageOracleSingleton");
@@ -814,7 +796,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             singleton = IMIPS(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             uint256 mipsVersion = _dii.mipsVersion();
             IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
             vm.broadcast(msg.sender);
@@ -824,8 +806,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(singleton), "MIPSSingleton");
@@ -847,7 +827,7 @@ contract DeployImplementations is Script {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IDisputeGameFactory(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = IDisputeGameFactory(
                 DeployUtils.create1({
@@ -855,8 +835,6 @@ contract DeployImplementations is Script {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "DisputeGameFactoryImpl");
@@ -925,11 +903,6 @@ contract DeployImplementations is Script {
                 addr_ = address(0);
             }
         }
-    }
-
-    // A release is considered a 'develop' release if it does not start with 'op-contracts'.
-    function isDevelopRelease(string memory _release) internal pure returns (bool) {
-        return !LibString.startsWith(_release, "op-contracts");
     }
 }
 
@@ -1016,7 +989,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = IOptimismPortalInterop(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
+        } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
             vm.broadcast(msg.sender);
@@ -1031,8 +1004,6 @@ contract DeployImplementationsInterop is DeployImplementations {
                     )
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "OptimismPortalImpl");
@@ -1055,7 +1026,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
             impl = ISystemConfigInterop(existingImplementation);
-        } else if (isDevelopRelease(release)) {
+        } else {
             vm.broadcast(msg.sender);
             impl = ISystemConfigInterop(
                 DeployUtils.create1({
@@ -1063,8 +1034,6 @@ contract DeployImplementationsInterop is DeployImplementations {
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ()))
                 })
             );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
         }
 
         vm.label(address(impl), "SystemConfigImpl");

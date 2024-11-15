@@ -13,7 +13,6 @@ import { IStaticL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashPro
 
 contract ReadImplementationAddressesInput is DeployOPChainOutput {
     OPContractsManager internal _opcm;
-    string internal _release;
 
     function set(bytes4 _sel, address _addr) public override {
         require(_addr != address(0), "ReadImplementationAddressesInput: cannot set zero address");
@@ -22,19 +21,9 @@ contract ReadImplementationAddressesInput is DeployOPChainOutput {
         else super.set(_sel, _addr);
     }
 
-    function set(bytes4 _sel, string memory _val) public {
-        if (_sel == this.release.selector) _release = _val;
-        else revert("ReadImplementationAddressesInput: unknown selector");
-    }
-
     function opcm() public view returns (OPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
-    }
-
-    function release() public view returns (string memory) {
-        require(bytes(_release).length != 0, "ReadImplementationAddressesInput: release not set");
-        return _release;
     }
 }
 
