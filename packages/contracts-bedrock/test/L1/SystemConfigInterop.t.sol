@@ -57,7 +57,7 @@ contract SystemConfigInterop_Test is CommonTest {
                         ConfigType.SET_GAS_PAYING_TOKEN,
                         StaticConfig.encodeSetGasPayingToken({
                             _token: _token,
-                            _decimals: uint8(decimals),
+                            _decimals: decimals,
                             _name: GasPayingToken.sanitize(_name),
                             _symbol: GasPayingToken.sanitize(_symbol)
                         })
