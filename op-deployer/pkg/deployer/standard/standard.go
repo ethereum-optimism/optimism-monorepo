@@ -133,9 +133,8 @@ func CommitForDeployTag(tag string) (string, error) {
 func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:
-		// Generated using the bootstrap command on 10/18/2024.
-		// TODO: @blmalone this needs re-bootstrapped because it's still proxied
-		return common.HexToAddress(""), nil
+		// Generated using the bootstrap command on 11/18/2024.
+		return common.HexToAddress("0x9bc0a1ed534bfb31a6be69e5b767cba332f14347"), nil
 	case 11155111:
 		// Generated using the bootstrap command on 11/15/2024.
 		return common.HexToAddress("0xde9eacb994a6eb12997445f8a63a22772c5c4313"), nil
