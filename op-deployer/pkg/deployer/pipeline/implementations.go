@@ -58,8 +58,6 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 		return fmt.Errorf("error merging proof params from overrides: %w", err)
 	}
 
-	env.L1ScriptHost.ImportState(st.L1StateDump.Data)
-
 	dio, err := opcm.DeployImplementations(
 		env.L1ScriptHost,
 		opcm.DeployImplementationsInput{
@@ -70,10 +68,9 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			ProofMaturityDelaySeconds:       new(big.Int).SetUint64(proofParams.ProofMaturityDelaySeconds),
 			DisputeGameFinalityDelaySeconds: new(big.Int).SetUint64(proofParams.DisputeGameFinalityDelaySeconds),
 			MipsVersion:                     new(big.Int).SetUint64(proofParams.MIPSVersion),
-			Release:                         contractsRelease,
+			L1ContractsRelease:              contractsRelease,
 			SuperchainConfigProxy:           st.SuperchainDeployment.SuperchainConfigProxyAddress,
 			ProtocolVersionsProxy:           st.SuperchainDeployment.ProtocolVersionsProxyAddress,
-			OpcmProxyOwner:                  st.SuperchainDeployment.ProxyAdminAddress,
 			StandardVersionsToml:            standardVersionsTOML,
 			UseInterop:                      intent.UseInterop,
 		},
@@ -83,7 +80,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 	}
 
 	st.ImplementationsDeployment = &state.ImplementationsDeployment{
-		OpcmProxyAddress:                        dio.OpcmProxy,
+		OpcmAddress:                             dio.Opcm,
 		DelayedWETHImplAddress:                  dio.DelayedWETHImpl,
 		OptimismPortalImplAddress:               dio.OptimismPortalImpl,
 		PreimageOracleSingletonAddress:          dio.PreimageOracleSingleton,

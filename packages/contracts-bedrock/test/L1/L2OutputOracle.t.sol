@@ -111,6 +111,10 @@ contract L2OutputOracle_getter_Test is L2OutputOracle_TestBase {
         // Querying with exact same block as proposed returns the proposal.
         uint256 index1 = l2OutputOracle.getL2OutputIndexAfter(nextBlockNumber1);
         assertEq(index1, 0);
+        assertEq(
+            keccak256(abi.encode(l2OutputOracle.getL2Output(index1))),
+            keccak256(abi.encode(output1, block.timestamp, nextBlockNumber1))
+        );
     }
 
     /// @dev Tests that `getL2OutputIndexAfter` returns the correct value
@@ -125,6 +129,10 @@ contract L2OutputOracle_getter_Test is L2OutputOracle_TestBase {
         // Querying with previous block returns the proposal too.
         uint256 index1 = l2OutputOracle.getL2OutputIndexAfter(nextBlockNumber1 - 1);
         assertEq(index1, 0);
+        assertEq(
+            keccak256(abi.encode(l2OutputOracle.getL2Output(index1))),
+            keccak256(abi.encode(output1, block.timestamp, nextBlockNumber1))
+        );
     }
 
     /// @dev Tests that `getL2OutputIndexAfter` returns the correct value.
@@ -156,14 +164,26 @@ contract L2OutputOracle_getter_Test is L2OutputOracle_TestBase {
         // Querying with a block number between the first and second proposal
         uint256 index1 = l2OutputOracle.getL2OutputIndexAfter(nextBlockNumber1 + 1);
         assertEq(index1, 1);
+        assertEq(
+            keccak256(abi.encode(l2OutputOracle.getL2Output(index1))),
+            keccak256(abi.encode(output2, l2OutputOracle.computeL2Timestamp(nextBlockNumber2) + 1, nextBlockNumber2))
+        );
 
         // Querying with a block number between the second and third proposal
         uint256 index2 = l2OutputOracle.getL2OutputIndexAfter(nextBlockNumber2 + 1);
         assertEq(index2, 2);
+        assertEq(
+            keccak256(abi.encode(l2OutputOracle.getL2Output(index2))),
+            keccak256(abi.encode(output3, l2OutputOracle.computeL2Timestamp(nextBlockNumber3) + 1, nextBlockNumber3))
+        );
 
         // Querying with a block number between the third and fourth proposal
         uint256 index3 = l2OutputOracle.getL2OutputIndexAfter(nextBlockNumber3 + 1);
         assertEq(index3, 3);
+        assertEq(
+            keccak256(abi.encode(l2OutputOracle.getL2Output(index3))),
+            keccak256(abi.encode(output4, l2OutputOracle.computeL2Timestamp(nextBlockNumber4) + 1, nextBlockNumber4))
+        );
     }
 
     /// @dev Tests that `getL2OutputIndexAfter` reverts when no output exists.

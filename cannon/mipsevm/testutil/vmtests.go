@@ -141,10 +141,3 @@ func RunVMTest_Claim[T mipsevm.FPVMState](t *testing.T, initState program.Create
 	require.Equal(t, expectedStdOut, stdOutBuf.String(), "stdout")
 	require.Equal(t, expectedStdErr, stdErrBuf.String(), "stderr")
 }
-
-func TemporarilySkip64BitTests(t *testing.T) {
-	if !arch.IsMips32 {
-		// TODO(#12598) Update and enable these tests
-		t.Skip("Skipping 64-bit test")
-	}
-}

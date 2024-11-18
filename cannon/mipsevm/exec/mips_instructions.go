@@ -455,10 +455,10 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			assertMips64(insn)
 			return rt
 		default:
-			panic("invalid instruction")
+			panic(fmt.Sprintf("invalid instruction: %x", insn))
 		}
 	}
-	panic("invalid instruction")
+	panic(fmt.Sprintf("invalid instruction: %x", insn))
 }
 
 func SignExtend(dat Word, idx Word) Word {

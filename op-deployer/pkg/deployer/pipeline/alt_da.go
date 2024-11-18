@@ -31,7 +31,7 @@ func DeployAltDA(env *Env, intent *state.Intent, st *state.State, chainID common
 	lgr.Info("deploying alt-da contracts")
 	dao, err = opcm.DeployAltDA(env.L1ScriptHost, opcm.DeployAltDAInput{
 		Salt:                     st.Create2Salt,
-		ProxyAdmin:               st.ImplementationsDeployment.OpcmProxyAddress,
+		ProxyAdmin:               chainState.ProxyAdminAddress,
 		ChallengeContractOwner:   chainIntent.Roles.L1ProxyAdminOwner,
 		ChallengeWindow:          new(big.Int).SetUint64(chainIntent.DangerousAltDAConfig.DAChallengeWindow),
 		ResolveWindow:            new(big.Int).SetUint64(chainIntent.DangerousAltDAConfig.DAResolveWindow),

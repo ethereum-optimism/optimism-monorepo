@@ -1,0 +1,38 @@
+{
+  "chainId": $L1_CHAIN_ID,
+  "metadata": {
+    "name": "Holocene Hardfork - Proof Contract Upgrades",
+    "description": "Upgrades the `MIPS.sol`, `FaultDisputeGame.sol`, and `PermissionedDisputeGame.sol` contracts for Holocene."
+  },
+  "transactions": [
+    {
+      "metadata": {
+        "name": "Upgrade `PERMISSIONED_CANNON` game type in `DisputeGameFactory`",
+        "description": "Upgrades the `PERMISSIONED_CANNON` game type to the new Holocene deployment, with an updated version of `op-program` as the absolute prestate hash."
+      },
+      "to": "$DISPUTE_GAME_FACTORY_PROXY_ADDR",
+      "value": "0x0",
+      "data": "$TX_1_PAYLOAD",
+      "contractMethod": {
+        "type": "function",
+        "name": "setImplementation",
+        "inputs": [
+          {
+            "name": "_gameType",
+            "type": "uint32"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_gameType": "1",
+        "_impl": "$PDG_IMPL"
+      }
+    }
+  ]
+}

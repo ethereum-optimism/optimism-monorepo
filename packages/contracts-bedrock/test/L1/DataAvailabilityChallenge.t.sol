@@ -52,6 +52,26 @@ contract DataAvailabilityChallengeTest is CommonTest {
         assertEq(sender.balance, amount);
     }
 
+    function test_withdraw_fails_reverts(address sender, uint256 amount) public {
+        assumePayable(sender);
+        assumeNotPrecompile(sender);
+        // EntryPoint will revert if using amount > type(uint112).max.
+        vm.assume(sender != Preinstalls.EntryPoint_v060);
+        vm.assume(sender != address(dataAvailabilityChallenge));
+        vm.assume(sender.balance == 0);
+        vm.deal(sender, amount);
+
+        vm.prank(sender);
+        dataAvailabilityChallenge.deposit{ value: amount }();
+
+        assertEq(dataAvailabilityChallenge.balances(sender), amount);
+        assertEq(sender.balance, 0);
+
+        vm.etch(sender, hex"fe");
+        vm.expectRevert(abi.encodeWithSelector(IDataAvailabilityChallenge.WithdrawalFailed.selector));
+        dataAvailabilityChallenge.withdraw();
+    }
+
     function test_challenge_succeeds(
         address challenger,
         uint256 challengedBlockNumber,
@@ -220,6 +240,7 @@ contract DataAvailabilityChallengeTest is CommonTest {
         bytes memory preImage,
         uint256 challengedBlockNumber,
         uint256 resolverRefundPercentage,
+        uint64 bondSize,
         uint128 txGasPrice
     )
         public
@@ -228,6 +249,9 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.assume(challenger != address(0));
         vm.assume(resolver != address(0));
         vm.assume(challenger != resolver);
+
+        vm.prank(dataAvailabilityChallenge.owner());
+        dataAvailabilityChallenge.setBondSize(bondSize);
 
         // Bound the resolver refund percentage to 100
         resolverRefundPercentage = bound(resolverRefundPercentage, 0, 100);
@@ -251,13 +275,32 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.roll(challengedBlockNumber + 1);
 
         // Challenge the hash
-        uint256 bondSize = dataAvailabilityChallenge.bondSize();
         vm.deal(challenger, bondSize);
         vm.prank(challenger);
         dataAvailabilityChallenge.challenge{ value: bondSize }(challengedBlockNumber, challengedCommitment);
 
         // Store the address(0) balance before resolving to assert the burned amount later
         uint256 zeroAddressBalanceBeforeResolve = address(0).balance;
+
+        // Assert challenger balance after bond distribution
+        uint256 resolutionCost = (
+            dataAvailabilityChallenge.fixedResolutionCost()
+                + preImage.length * dataAvailabilityChallenge.variableResolutionCost()
+                    / dataAvailabilityChallenge.variableResolutionCostPrecision()
+        ) * block.basefee;
+        uint256 challengerRefund = bondSize > resolutionCost ? bondSize - resolutionCost : 0;
+        uint256 resolverRefund = resolutionCost * dataAvailabilityChallenge.resolverRefundPercentage() / 100;
+        resolverRefund = resolverRefund > resolutionCost ? resolutionCost : resolverRefund;
+        resolverRefund = resolverRefund > bondSize ? bondSize : resolverRefund;
+
+        if (challengerRefund > 0) {
+            vm.expectEmit(true, true, true, true);
+            emit BalanceChanged(challenger, challengerRefund);
+        }
+        if (resolverRefund > 0) {
+            vm.expectEmit(true, true, true, true);
+            emit BalanceChanged(resolver, resolverRefund);
+        }
 
         // Resolve the challenge
         vm.prank(resolver);
@@ -274,25 +317,70 @@ contract DataAvailabilityChallengeTest is CommonTest {
             uint8(dataAvailabilityChallenge.getChallengeStatus(challengedBlockNumber, challengedCommitment)),
             uint8(ChallengeStatus.Resolved)
         );
-
-        // Assert challenger balance after bond distribution
-        uint256 resolutionCost = (
-            dataAvailabilityChallenge.fixedResolutionCost()
-                + preImage.length * dataAvailabilityChallenge.variableResolutionCost()
-                    / dataAvailabilityChallenge.variableResolutionCostPrecision()
-        ) * block.basefee;
-        uint256 challengerRefund = bondSize > resolutionCost ? bondSize - resolutionCost : 0;
-        assertEq(dataAvailabilityChallenge.balances(challenger), challengerRefund, "challenger refund");
-
-        // Assert resolver balance after bond distribution
-        uint256 resolverRefund = resolutionCost * dataAvailabilityChallenge.resolverRefundPercentage() / 100;
-        resolverRefund = resolverRefund > resolutionCost ? resolutionCost : resolverRefund;
-        resolverRefund = resolverRefund > bondSize ? bondSize : resolverRefund;
-        assertEq(dataAvailabilityChallenge.balances(resolver), resolverRefund, "resolver refund");
+        address _challenger = challenger;
+        address _resolver = resolver;
+        assertEq(dataAvailabilityChallenge.balances(_challenger), challengerRefund, "challenger refund");
+        assertEq(dataAvailabilityChallenge.balances(_resolver), resolverRefund, "resolver refund");
 
         // Assert burned amount after bond distribution
         uint256 burned = bondSize - challengerRefund - resolverRefund;
         assertEq(address(0).balance - zeroAddressBalanceBeforeResolve, burned, "burned bond");
+    }
+
+    function test_resolve_invalidInputData_reverts(
+        address challenger,
+        address resolver,
+        bytes memory preImage,
+        bytes memory wrongPreImage,
+        uint256 challengedBlockNumber,
+        uint256 resolverRefundPercentage,
+        uint128 txGasPrice
+    )
+        public
+    {
+        // Assume neither the challenger nor resolver is address(0) and that they're not the same entity
+        vm.assume(challenger != address(0));
+        vm.assume(resolver != address(0));
+        vm.assume(challenger != resolver);
+        vm.assume(keccak256(preImage) != keccak256(wrongPreImage));
+
+        // Bound the resolver refund percentage to 100
+        resolverRefundPercentage = bound(resolverRefundPercentage, 0, 100);
+
+        // Set the gas price to a fuzzed value to test bond distribution logic
+        vm.txGasPrice(txGasPrice);
+
+        // Change the resolver refund percentage
+        vm.prank(dataAvailabilityChallenge.owner());
+        dataAvailabilityChallenge.setResolverRefundPercentage(resolverRefundPercentage);
+
+        // Assume the block number is not close to the max uint256 value
+        vm.assume(
+            challengedBlockNumber
+                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
+                    - dataAvailabilityChallenge.resolveWindow()
+        );
+        bytes memory challengedCommitment = computeCommitmentKeccak256(wrongPreImage);
+
+        // Move to block after challenged block
+        vm.roll(challengedBlockNumber + 1);
+
+        // Challenge the hash
+        uint256 bondSize = dataAvailabilityChallenge.bondSize();
+        vm.deal(challenger, bondSize);
+        vm.prank(challenger);
+        dataAvailabilityChallenge.challenge{ value: bondSize }(challengedBlockNumber, challengedCommitment);
+
+        // Resolve the challenge
+        vm.prank(resolver);
+        vm.expectRevert(
+            abi.encodeWithSelector(
+                IDataAvailabilityChallenge.InvalidInputData.selector,
+                computeCommitmentKeccak256(preImage),
+                challengedCommitment
+            )
+        );
+        dataAvailabilityChallenge.resolve(challengedBlockNumber, challengedCommitment, preImage);
     }
 
     function test_resolve_nonExistentChallenge_reverts() public {

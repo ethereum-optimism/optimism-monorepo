@@ -35,7 +35,7 @@ type SuperFaultProofConfig struct {
 }
 
 type OPCMImplementationsConfig struct {
-	Release string
+	L1ContractsRelease string
 
 	FaultProof SuperFaultProofConfig
 

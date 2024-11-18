@@ -1,9 +1,12 @@
 package faultproofs
 
 import (
+	"bytes"
 	"context"
+	"encoding/json"
 	"math"
 	"math/big"
+	"os/exec"
 	"path/filepath"
 	"testing"
 
@@ -12,7 +15,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
 
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/versions"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -276,9 +278,29 @@ func runCannon(t *testing.T, ctx context.Context, sys *e2esys.System, inputs uti
 	err := executor.DoGenerateProof(ctx, proofsDir, math.MaxUint, math.MaxUint, extraVmArgs...)
 	require.NoError(t, err, "failed to generate proof")
 
-	state, err := versions.LoadStateFromFile(vm.FinalStatePath(proofsDir, cfg.Cannon.BinarySnapshots))
-	require.NoError(t, err, "failed to parse state")
-	require.True(t, state.GetExited(), "cannon did not exit")
-	require.Zero(t, state.GetExitCode(), "cannon failed with exit code %d", state.GetExitCode())
-	t.Logf("Completed in %d steps", state.GetStep())
+	stdOut, _, err := runCmd(ctx, cfg.Cannon.VmBin, "witness", "--input", vm.FinalStatePath(proofsDir, cfg.Cannon.BinarySnapshots))
+	require.NoError(t, err, "failed to run witness cmd")
+	type stateData struct {
+		Step     uint64 `json:"step"`
+		ExitCode uint8  `json:"exitCode"`
+		Exited   bool   `json:"exited"`
+	}
+	var data stateData
+	err = json.Unmarshal([]byte(stdOut), &data)
+	require.NoError(t, err, "failed to parse state data")
+	require.True(t, data.Exited, "cannon did not exit")
+	require.Zero(t, data.ExitCode, "cannon failed with exit code %d", data.ExitCode)
+	t.Logf("Completed in %d steps", data.Step)
+}
+
+func runCmd(ctx context.Context, binary string, args ...string) (stdOut string, stdErr string, err error) {
+	var outBuf bytes.Buffer
+	var errBuf bytes.Buffer
+	cmd := exec.CommandContext(ctx, binary, args...)
+	cmd.Stdout = &outBuf
+	cmd.Stderr = &errBuf
+	err = cmd.Run()
+	stdOut = outBuf.String()
+	stdErr = errBuf.String()
+	return
 }

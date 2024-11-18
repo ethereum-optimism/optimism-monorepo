@@ -13,3 +13,6 @@ vendor/
 
 # Semgrep-action log folder
 .semgrep_logs/
+
+# Test contracts the scripts folder
+op-chain-ops/script/testdata/scripts/

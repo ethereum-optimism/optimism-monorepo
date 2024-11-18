@@ -23,7 +23,6 @@ type Env struct {
 	L1ScriptHost *script.Host
 	L1Client     *ethclient.Client
 	Broadcaster  broadcaster.Broadcaster
-	Host         *script.Host
 	Deployer     common.Address
 	Logger       log.Logger
 }

@@ -466,8 +466,7 @@ func (l *BatchSubmitter) loop() {
 				l.clearState(l.shutdownCtx)
 				continue
 			}
-			l.publishStateToL1(queue, receiptsCh, daGroup)
-
+			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-l.shutdownCtx.Done():
 			l.Log.Warn("main loop returning")
 			return
@@ -596,9 +595,11 @@ func (l *BatchSubmitter) waitNodeSync() error {
 	return dial.WaitRollupSync(l.shutdownCtx, l.Log, rollupClient, l1TargetBlock, time.Second*12)
 }
 
-// publishStateToL1 queues up all pending TxData to be published to the L1, returning when there is
-// no more data to queue for publishing or if there was an error queing the data.
-func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+// publishStateToL1 queues up all pending TxData to be published to the L1, returning when there is no more data to
+// queue for publishing or if there was an error queing the data.  maxDuration tells this function to return from state
+// publishing after this amount of time has been exceeded even if there is more data remaining.
+func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group, maxDuration time.Duration) {
+	start := time.Now()
 	for {
 		// if the txmgr is closed, we stop the transaction sending
 		if l.Txmgr.IsClosed() {
@@ -614,6 +615,10 @@ func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh 
 			if err != io.EOF {
 				l.Log.Error("Error publishing tx to l1", "err", err)
 			}
+			return
+		}
+		if time.Since(start) > maxDuration {
+			l.Log.Warn("Aborting state publishing, max duration exceeded")
 			return
 		}
 	}

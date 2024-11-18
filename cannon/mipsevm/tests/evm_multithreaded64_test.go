@@ -5,10 +5,13 @@
 package tests
 
 import (
+	"encoding/binary"
 	"fmt"
+	"slices"
 	"testing"
 
 	"github.com/stretchr/testify/require"
+	"golang.org/x/exp/maps"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded"
@@ -359,4 +362,123 @@ func TestEVM_MT64_SCD(t *testing.T) {
 			})
 		}
 	}
+}
+
+func TestEVM_MT_SysRead_Preimage64(t *testing.T) {
+	preimageValue := make([]byte, 0, 8)
+	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x12_34_56_78)
+	preimageValue = binary.BigEndian.AppendUint32(preimageValue, 0x98_76_54_32)
+	prestateMem := Word(0xEE_EE_EE_EE_FF_FF_FF_FF)
+	cases := []testMTSysReadPreimageTestCase{
+		{name: "Aligned addr, write 1 byte", addr: 0x00_00_FF_00, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_EE_EE_EE_FF_FF_FF_FF},
+		{name: "Aligned addr, write 2 byte", addr: 0x00_00_FF_00, count: 2, writeLen: 2, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_EE_EE_FF_FF_FF_FF},
+		{name: "Aligned addr, write 3 byte", addr: 0x00_00_FF_00, count: 3, writeLen: 3, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_EE_FF_FF_FF_FF},
+		{name: "Aligned addr, write 4 byte", addr: 0x00_00_FF_00, count: 4, writeLen: 4, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_FF_FF_FF_FF},
+		{name: "Aligned addr, write 5 byte", addr: 0x00_00_FF_00, count: 5, writeLen: 5, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_98_FF_FF_FF},
+		{name: "Aligned addr, write 6 byte", addr: 0x00_00_FF_00, count: 6, writeLen: 6, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_98_76_FF_FF},
+		{name: "Aligned addr, write 7 byte", addr: 0x00_00_FF_00, count: 7, writeLen: 7, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_98_76_54_FF},
+		{name: "Aligned addr, write 8 byte", addr: 0x00_00_FF_00, count: 8, writeLen: 8, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_98_76_54_32},
+
+		{name: "1-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_01, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_EE_EE_FF_FF_FF_FF},
+		{name: "1-byte misaligned addr, write 2 byte", addr: 0x00_00_FF_01, count: 2, writeLen: 2, preimageOffset: 9, prestateMem: prestateMem, postateMem: 0xEE_34_56_EE_FF_FF_FF_FF},
+		{name: "1-byte misaligned addr, write 3 byte", addr: 0x00_00_FF_01, count: 3, writeLen: 3, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_FF_FF_FF_FF},
+		{name: "1-byte misaligned addr, write 4 byte", addr: 0x00_00_FF_01, count: 4, writeLen: 4, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_78_FF_FF_FF},
+		{name: "1-byte misaligned addr, write 5 byte", addr: 0x00_00_FF_01, count: 5, writeLen: 5, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_78_98_FF_FF},
+		{name: "1-byte misaligned addr, write 6 byte", addr: 0x00_00_FF_01, count: 6, writeLen: 6, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_78_98_76_FF},
+		{name: "1-byte misaligned addr, write 7 byte", addr: 0x00_00_FF_01, count: 7, writeLen: 7, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_78_98_76_54},
+
+		{name: "2-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_02, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_12_EE_FF_FF_FF_FF},
+		{name: "2-byte misaligned addr, write 2 byte", addr: 0x00_00_FF_02, count: 2, writeLen: 2, preimageOffset: 12, prestateMem: prestateMem, postateMem: 0xEE_EE_98_76_FF_FF_FF_FF},
+		{name: "2-byte misaligned addr, write 2 byte", addr: 0x00_00_FF_02, count: 3, writeLen: 3, preimageOffset: 12, prestateMem: prestateMem, postateMem: 0xEE_EE_98_76_54_FF_FF_FF},
+		{name: "2-byte misaligned addr, write 2 byte", addr: 0x00_00_FF_02, count: 4, writeLen: 4, preimageOffset: 12, prestateMem: prestateMem, postateMem: 0xEE_EE_98_76_54_32_FF_FF},
+
+		{name: "3-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_03, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_12_FF_FF_FF_FF},
+		{name: "4-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_04, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_12_FF_FF_FF},
+		{name: "5-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_05, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_12_FF_FF},
+		{name: "6-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_06, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_FF_12_FF},
+		{name: "7-byte misaligned addr, write 1 byte", addr: 0x00_00_FF_07, count: 1, writeLen: 1, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_FF_FF_12},
+
+		{name: "Count of 0", addr: 0x00_00_FF_03, count: 0, writeLen: 0, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_FF_FF_FF},
+		{name: "Count greater than 8", addr: 0x00_00_FF_00, count: 15, writeLen: 8, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0x12_34_56_78_98_76_54_32},
+		{name: "Count greater than 8, unaligned", addr: 0x00_00_FF_01, count: 15, writeLen: 7, preimageOffset: 8, prestateMem: prestateMem, postateMem: 0xEE_12_34_56_78_98_76_54},
+		{name: "Offset at last byte", addr: 0x00_00_FF_00, count: 8, writeLen: 1, preimageOffset: 15, prestateMem: prestateMem, postateMem: 0x32_EE_EE_EE_FF_FF_FF_FF},
+		{name: "Offset just out of bounds", addr: 0x00_00_FF_00, count: 4, writeLen: 0, preimageOffset: 16, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_FF_FF_FF, shouldPanic: true},
+		{name: "Offset out of bounds", addr: 0x00_00_FF_00, count: 4, writeLen: 0, preimageOffset: 17, prestateMem: prestateMem, postateMem: 0xEE_EE_EE_EE_FF_FF_FF_FF, shouldPanic: true},
+	}
+	testMTSysReadPreimage(t, preimageValue, cases)
+}
+
+func TestEVM_MT_StoreOpsClearMemReservation64(t *testing.T) {
+	t.Parallel()
+	cases := []testMTStoreOpsClearMemReservationTestCase{
+		{name: "Store byte", opcode: 0b10_1000, base: 0xFF_00_00_00, offset: 0x10, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0x78_FF_FF_FF_FF_FF_FF_FF},
+		{name: "Store byte lower", opcode: 0b10_1000, base: 0xFF_00_00_00, offset: 0x14, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0xFF_FF_FF_FF_78_FF_FF_FF},
+		{name: "Store halfword", opcode: 0b10_1001, base: 0xFF_00_00_00, offset: 0x10, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0x56_78_FF_FF_FF_FF_FF_FF},
+		{name: "Store halfword lower", opcode: 0b10_1001, base: 0xFF_00_00_00, offset: 0x14, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0xFF_FF_FF_FF_56_78_FF_FF},
+		{name: "Store word left", opcode: 0b10_1010, base: 0xFF_00_00_00, offset: 0x10, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0x12_34_56_78_FF_FF_FF_FF},
+		{name: "Store word left lower", opcode: 0b10_1010, base: 0xFF_00_00_00, offset: 0x14, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0xFF_FF_FF_FF_12_34_56_78},
+		{name: "Store word", opcode: 0b10_1011, base: 0xFF_00_00_00, offset: 0x10, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0x12_34_56_78_FF_FF_FF_FF},
+		{name: "Store word lower", opcode: 0b10_1011, base: 0xFF_00_00_00, offset: 0x14, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0xFF_FF_FF_FF_12_34_56_78},
+		{name: "Store word right", opcode: 0b10_1110, base: 0xFF_00_00_00, offset: 0x10, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0x78_FF_FF_FF_FF_FF_FF_FF},
+		{name: "Store word right lower", opcode: 0b10_1110, base: 0xFF_00_00_00, offset: 0x14, effAddr: 0xFF_00_00_10, preMem: ^Word(0), postMem: 0xFF_FF_FF_FF_78_FF_FF_FF},
+	}
+	testMTStoreOpsClearMemReservation(t, cases)
+}
+
+var NoopSyscalls64 = map[string]uint32{
+	"SysMunmap":        5011,
+	"SysGetAffinity":   5196,
+	"SysMadvise":       5027,
+	"SysRtSigprocmask": 5014,
+	"SysSigaltstack":   5129,
+	"SysRtSigaction":   5013,
+	"SysPrlimit64":     5297,
+	"SysClose":         5003,
+	"SysPread64":       5016,
+	"SysStat":          5004,
+	"SysFstat":         5005,
+	//"SysFstat64":      UndefinedSysNr,
+	"SysOpenAt":       5247,
+	"SysReadlink":     5087,
+	"SysReadlinkAt":   5257,
+	"SysIoctl":        5015,
+	"SysEpollCreate1": 5285,
+	"SysPipe2":        5287,
+	"SysEpollCtl":     5208,
+	"SysEpollPwait":   5272,
+	"SysGetRandom":    5313,
+	"SysUname":        5061,
+	//"SysStat64":       UndefinedSysNr,
+	"SysGetuid": 5100,
+	"SysGetgid": 5102,
+	//"SysLlseek":       UndefinedSysNr,
+	"SysMinCore":      5026,
+	"SysTgkill":       5225,
+	"SysGetRLimit":    5095,
+	"SysLseek":        5008,
+	"SysSetITimer":    5036,
+	"SysTimerCreate":  5216,
+	"SysTimerSetTime": 5217,
+	"SysTimerDelete":  5220,
+}
+
+func TestEVM_NoopSyscall64(t *testing.T) {
+	testNoopSyscall(t, NoopSyscalls64)
+}
+
+func TestEVM_UnsupportedSyscall64(t *testing.T) {
+	t.Parallel()
+
+	var noopSyscallNums = maps.Values(NoopSyscalls64)
+	var SupportedSyscalls = []uint32{arch.SysMmap, arch.SysBrk, arch.SysClone, arch.SysExitGroup, arch.SysRead, arch.SysWrite, arch.SysFcntl, arch.SysExit, arch.SysSchedYield, arch.SysGetTID, arch.SysFutex, arch.SysOpen, arch.SysNanosleep, arch.SysClockGetTime, arch.SysGetpid}
+	unsupportedSyscalls := make([]uint32, 0, 400)
+	for i := 5000; i < 5400; i++ {
+		candidate := uint32(i)
+		if slices.Contains(SupportedSyscalls, candidate) || slices.Contains(noopSyscallNums, candidate) {
+			continue
+		}
+		unsupportedSyscalls = append(unsupportedSyscalls, candidate)
+	}
+
+	testUnsupportedSyscall(t, unsupportedSyscalls)
 }

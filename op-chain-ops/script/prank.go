@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/addresses"
+
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -53,7 +55,7 @@ func (h *Host) handleCaller(caller vm.ContractRef) vm.ContractRef {
 	// apply prank, if top call-frame had set up a prank
 	if len(h.callStack) > 0 {
 		parentCallFrame := h.callStack[len(h.callStack)-1]
-		if parentCallFrame.Prank != nil && caller.Address() != VMAddr { // pranks do not apply to the cheatcode precompile
+		if parentCallFrame.Prank != nil && caller.Address() != addresses.VMAddr { // pranks do not apply to the cheatcode precompile
 			if parentCallFrame.Prank.Broadcast && parentCallFrame.LastOp == vm.CREATE2 && h.useCreate2Deployer {
 				return &prankRef{
 					prank: DeterministicDeployerAddress,

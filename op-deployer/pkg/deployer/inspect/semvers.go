@@ -72,7 +72,6 @@ func L2SemversCLI(cliCtx *cli.Context) error {
 		l,
 		common.Address{19: 0x01},
 		artifactsFS,
-		0,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)

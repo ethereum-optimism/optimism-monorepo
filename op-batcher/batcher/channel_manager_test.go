@@ -126,7 +126,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 
 	// Channel Manager state should be empty by default
 	require.Empty(m.blocks)
-	require.Equal(eth.BlockID{}, m.l1OriginLastClosedChannel)
+	require.Equal(eth.BlockID{}, m.l1OriginLastSubmittedChannel)
 	require.Equal(common.Hash{}, m.tip)
 	require.Nil(m.currentChannel)
 	require.Empty(m.channelQueue)
@@ -156,8 +156,8 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 	require.NoError(m.outputFrames())
 	_, err := m.nextTxData(m.currentChannel)
 	require.NoError(err)
-	require.NotNil(m.l1OriginLastClosedChannel)
 	require.Equal(m.blockCursor, len(m.blocks))
+	require.NotNil(m.l1OriginLastSubmittedChannel)
 	require.Equal(newL1Tip, m.tip)
 	require.Len(m.currentChannel.pendingTransactions, 1)
 
@@ -179,7 +179,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 
 	// Check that the entire channel manager state cleared
 	require.Empty(m.blocks)
-	require.Equal(uint64(123), m.l1OriginLastClosedChannel.Number)
+	require.Equal(uint64(123), m.l1OriginLastSubmittedChannel.Number)
 	require.Equal(common.Hash{}, m.tip)
 	require.Nil(m.currentChannel)
 	require.Empty(m.channelQueue)
@@ -256,7 +256,7 @@ func TestChannelManager_ChannelCreation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 
-			m.l1OriginLastClosedChannel = test.safeL1Block
+			m.l1OriginLastSubmittedChannel = test.safeL1Block
 			require.Nil(t, m.currentChannel)
 
 			require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
@@ -438,6 +438,8 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	metricsDelta := metrics.PendingBlocksBytesCurrent - pendingBytesBefore
 	require.Negative(t, metricsDelta)
 
+	l1OriginBefore := m.l1OriginLastSubmittedChannel
+
 	m.handleChannelInvalidated(m.currentChannel)
 
 	// Ensure we got back to the state above
@@ -447,6 +449,17 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 
 	// Check metric came back up to previous value
 	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
+
+	// Ensure the l1OridingLastSubmittedChannel was
+	// not changed. This ensures the next channel
+	// has its duration timeout deadline computed
+	// properly.
+	require.Equal(t, l1OriginBefore, m.l1OriginLastSubmittedChannel)
+
+	// Trigger the blocks -> channelQueue data pipelining again
+	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
+	require.NotEmpty(t, m.channelQueue)
+	require.NoError(t, m.processBlocks())
 }
 
 func TestChannelManager_PruneBlocks(t *testing.T) {

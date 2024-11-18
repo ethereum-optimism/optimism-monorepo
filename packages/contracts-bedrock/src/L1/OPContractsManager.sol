@@ -4,15 +4,12 @@ pragma solidity 0.8.15;
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { ISystemConfigV160 } from "src/L1/interfaces/ISystemConfigV160.sol";
 import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
 
 import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
@@ -28,14 +25,12 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { ISystemConfigV160 } from "src/L1/interfaces/ISystemConfigV160.sol";
 import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
 import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
 
-/// @custom:proxied true
-contract OPContractsManager is ISemver, Initializable {
+contract OPContractsManager is ISemver {
     // -------- Structs --------
 
     /// @notice Represents the roles that can be set when deploying a standard OP Stack chain.
@@ -89,19 +84,6 @@ contract OPContractsManager is ISemver, Initializable {
         IDelayedWETH delayedWETHPermissionlessGameProxy;
     }
 
-    /// @notice The logic address and initializer selector for an implementation contract.
-    struct Implementation {
-        address logic; // Address containing the deployed logic contract.
-        bytes4 initializer; // Function selector for the initializer.
-    }
-
-    /// @notice Used to set the implementation for a contract by mapping a contract
-    /// name to the implementation data.
-    struct ImplementationSetter {
-        string name; // Contract name.
-        Implementation info; // Implementation to set.
-    }
-
     /// @notice Addresses of ERC-5202 Blueprint contracts. There are used for deploying full size
     /// contracts, to reduce the code size of this factory contract. If it deployed full contracts
     /// using the `new Proxy()` syntax, the code size would get large fast, since this contract would
@@ -118,19 +100,23 @@ contract OPContractsManager is ISemver, Initializable {
         address permissionedDisputeGame2;
     }
 
-    /// @notice Inputs required when initializing the OPContractsManager. To avoid 'StackTooDeep' errors,
-    /// all necessary inputs (excluding immutables) for initialization are bundled together in this struct.
-    struct InitializerInputs {
-        Blueprints blueprints;
-        ImplementationSetter[] setters;
-        string release;
-        bool isLatest;
+    /// @notice The latest implementation contracts for the OP Stack.
+    struct Implementations {
+        address l1ERC721BridgeImpl;
+        address optimismPortalImpl;
+        address systemConfigImpl;
+        address optimismMintableERC20FactoryImpl;
+        address l1CrossDomainMessengerImpl;
+        address l1StandardBridgeImpl;
+        address disputeGameFactoryImpl;
+        address delayedWETHImpl;
+        address mipsImpl;
     }
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.20
-    string public constant version = "1.0.0-beta.20";
+    /// @custom:semver 1.0.0-beta.21
+    string public constant version = "1.0.0-beta.21";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
@@ -142,24 +128,20 @@ contract OPContractsManager is ISemver, Initializable {
     /// @notice Address of the ProtocolVersions contract shared by all chains.
     IProtocolVersions public immutable protocolVersions;
 
-    /// @notice The latest release of the OP Contracts Manager, as a string of the format `op-contracts/vX.Y.Z`.
-    string public latestRelease;
-
-    /// @notice Maps a release version to a contract name to it's implementation data.
-    mapping(string => mapping(string => Implementation)) public implementations;
+    // @notice L1 smart contracts release deployed by this version of OPCM. This is used in opcm to signal which version
+    // of the L1 smart contracts is deployed. It takes the format of `op-contracts/vX.Y.Z`.
+    string public l1ContractsRelease;
 
     /// @notice Maps an L2 Chain ID to the SystemConfig for that chain.
     mapping(uint256 => ISystemConfig) public systemConfigs;
 
     /// @notice Addresses of the Blueprint contracts.
     /// This is internal because if public the autogenerated getter method would return a tuple of
-    /// addresses, but we want it to return a struct. This is also set via `initialize` because
-    /// we can't make this an immutable variable as it is a non-value type.
+    /// addresses, but we want it to return a struct.
     Blueprints internal blueprint;
 
-    /// @notice Storage gap for future modifications, so we can expand the number of blueprints
-    /// without affecting other storage variables.
-    uint256[50] private __gap;
+    /// @notice Addresses of the latest implementation contracts.
+    Implementations internal implementation;
 
     // -------- Events --------
 
@@ -197,37 +179,26 @@ contract OPContractsManager is ISemver, Initializable {
 
     // -------- Methods --------
 
-    /// @notice OPCM is proxied. Therefore the `initialize` function replaces most constructor logic for this contract.
-
-    constructor(ISuperchainConfig _superchainConfig, IProtocolVersions _protocolVersions) {
+    constructor(
+        ISuperchainConfig _superchainConfig,
+        IProtocolVersions _protocolVersions,
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations
+    ) {
         assertValidContractAddress(address(_superchainConfig));
         assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
-        _disableInitializers();
-    }
+        l1ContractsRelease = _l1ContractsRelease;
 
-    function initialize(InitializerInputs memory _initializerInputs) public initializer {
-        if (_initializerInputs.isLatest) latestRelease = _initializerInputs.release;
-        if (keccak256(bytes(latestRelease)) == keccak256("")) revert LatestReleaseNotSet();
-
-        for (uint256 i = 0; i < _initializerInputs.setters.length; i++) {
-            ImplementationSetter memory setter = _initializerInputs.setters[i];
-            Implementation storage impl = implementations[_initializerInputs.release][setter.name];
-            if (impl.logic != address(0)) revert AlreadyReleased();
-
-            impl.initializer = setter.info.initializer;
-            impl.logic = setter.info.logic;
-        }
-
-        blueprint = _initializerInputs.blueprints;
+        blueprint = _blueprints;
+        implementation = _implementations;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
         assertValidInputs(_input);
-
         uint256 l2ChainId = _input.l2ChainId;
-
         // The salt for a non-proxy contract is a function of the chain ID and the salt mixer.
         string memory saltMixer = _input.saltMixer;
         bytes32 salt = keccak256(abi.encode(l2ChainId, saltMixer));
@@ -266,7 +237,6 @@ contract OPContractsManager is ISemver, Initializable {
             payable(Blueprint.deployFrom(blueprint.l1ChugSplashProxy, salt, abi.encode(output.opChainProxyAdmin)))
         );
         output.opChainProxyAdmin.setProxyType(address(output.l1StandardBridgeProxy), IProxyAdmin.ProxyType.CHUGSPLASH);
-
         string memory contractName = "OVM_L1CrossDomainMessenger";
         output.l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(
             Blueprint.deployFrom(blueprint.resolvedDelegateProxy, salt, abi.encode(output.addressManager, contractName))
@@ -275,10 +245,8 @@ contract OPContractsManager is ISemver, Initializable {
             address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
         );
         output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
-
         // Now that all proxies are deployed, we can transfer ownership of the AddressManager to the ProxyAdmin.
         output.addressManager.transferOwnership(address(output.opChainProxyAdmin));
-
         // The AnchorStateRegistry Implementation is not MCP Ready, and therefore requires an implementation per chain.
         // It must be deployed after the DisputeGameFactoryProxy so that it can be provided as a constructor argument.
         output.anchorStateRegistryImpl = IAnchorStateRegistry(
@@ -301,54 +269,76 @@ contract OPContractsManager is ISemver, Initializable {
         );
 
         // -------- Set and Initialize Proxy Implementations --------
-        Implementation memory impl;
         bytes memory data;
 
-        impl = getLatestImplementation("L1ERC721Bridge");
-        data = encodeL1ERC721BridgeInitializer(impl.initializer, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), impl.logic, data);
+        data = encodeL1ERC721BridgeInitializer(IL1ERC721Bridge.initialize.selector, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), implementation.l1ERC721BridgeImpl, data
+        );
 
-        impl = getLatestImplementation("OptimismPortal");
-        data = encodeOptimismPortalInitializer(impl.initializer, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.optimismPortalProxy), impl.logic, data);
+        data = encodeOptimismPortalInitializer(IOptimismPortal2.initialize.selector, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
+        );
 
         // First we upgrade the implementation so it's version can be retrieved, then we initialize
         // it afterwards. See the comments in encodeSystemConfigInitializer to learn more.
-        impl = getLatestImplementation("SystemConfig");
-        output.opChainProxyAdmin.upgrade(payable(address(output.systemConfigProxy)), impl.logic);
-        data = encodeSystemConfigInitializer(impl.initializer, _input, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.systemConfigProxy), impl.logic, data);
+        output.opChainProxyAdmin.upgrade(payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
+        data = encodeSystemConfigInitializer(_input, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
+        );
 
-        impl = getLatestImplementation("OptimismMintableERC20Factory");
-        data = encodeOptimismMintableERC20FactoryInitializer(impl.initializer, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.optimismMintableERC20FactoryProxy), impl.logic, data);
+        data = encodeOptimismMintableERC20FactoryInitializer(IOptimismMintableERC20Factory.initialize.selector, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.optimismMintableERC20FactoryProxy),
+            implementation.optimismMintableERC20FactoryImpl,
+            data
+        );
 
-        impl = getLatestImplementation("L1CrossDomainMessenger");
-        data = encodeL1CrossDomainMessengerInitializer(impl.initializer, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.l1CrossDomainMessengerProxy), impl.logic, data);
+        data = encodeL1CrossDomainMessengerInitializer(IL1CrossDomainMessenger.initialize.selector, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.l1CrossDomainMessengerProxy),
+            implementation.l1CrossDomainMessengerImpl,
+            data
+        );
 
-        impl = getLatestImplementation("L1StandardBridge");
-        data = encodeL1StandardBridgeInitializer(impl.initializer, output);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), impl.logic, data);
+        data = encodeL1StandardBridgeInitializer(IL1StandardBridge.initialize.selector, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), implementation.l1StandardBridgeImpl, data
+        );
 
-        impl = getLatestImplementation("DelayedWETH");
-        data = encodeDelayedWETHInitializer(impl.initializer, _input);
+        data = encodeDelayedWETHInitializer(IDelayedWETH.initialize.selector, _input);
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
-        upgradeAndCall(output.opChainProxyAdmin, address(output.delayedWETHPermissionedGameProxy), impl.logic, data);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.delayedWETHPermissionedGameProxy),
+            implementation.delayedWETHImpl,
+            data
+        );
 
         // We set the initial owner to this contract, set game implementations, then transfer ownership.
-        impl = getLatestImplementation("DisputeGameFactory");
-        data = encodeDisputeGameFactoryInitializer(impl.initializer, _input);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.disputeGameFactoryProxy), impl.logic, data);
+        data = encodeDisputeGameFactoryInitializer(IDisputeGameFactory.initialize.selector, _input);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.disputeGameFactoryProxy),
+            implementation.disputeGameFactoryImpl,
+            data
+        );
         output.disputeGameFactoryProxy.setImplementation(
             GameTypes.PERMISSIONED_CANNON, IDisputeGame(address(output.permissionedDisputeGame))
         );
         output.disputeGameFactoryProxy.transferOwnership(address(_input.roles.opChainProxyAdminOwner));
 
-        impl.logic = address(output.anchorStateRegistryImpl);
-        impl.initializer = IAnchorStateRegistry.initialize.selector;
-        data = encodeAnchorStateRegistryInitializer(impl.initializer, _input);
-        upgradeAndCall(output.opChainProxyAdmin, address(output.anchorStateRegistryProxy), impl.logic, data);
+        data = encodeAnchorStateRegistryInitializer(IAnchorStateRegistry.initialize.selector, _input);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.anchorStateRegistryProxy),
+            address(output.anchorStateRegistryImpl),
+            data
+        );
 
         // -------- Finalize Deployment --------
         // Transfer ownership of the ProxyAdmin from this contract to the specified owner.
@@ -402,13 +392,6 @@ contract OPContractsManager is ISemver, Initializable {
         return Blueprint.deployFrom(blueprint.proxy, salt, abi.encode(_proxyAdmin));
     }
 
-    /// @notice Returns the implementation data for a contract name. Makes a copy of the internal
-    //  Implementation struct in storage to prevent accidental mutation of the internal data.
-    function getLatestImplementation(string memory _name) internal view returns (Implementation memory) {
-        Implementation storage impl = implementations[latestRelease][_name];
-        return Implementation({ logic: impl.logic, initializer: impl.initializer });
-    }
-
     // -------- Initializer Encoding --------
 
     /// @notice Helper method for encoding the L1ERC721Bridge initializer data.
@@ -445,7 +428,6 @@ contract OPContractsManager is ISemver, Initializable {
 
     /// @notice Helper method for encoding the SystemConfig initializer data.
     function encodeSystemConfigInitializer(
-        bytes4 _selector,
         DeployInput memory _input,
         DeployOutput memory _output
     )
@@ -454,50 +436,22 @@ contract OPContractsManager is ISemver, Initializable {
         virtual
         returns (bytes memory)
     {
-        // We inspect the SystemConfig contract and determine it's signature here. This is required
-        // because this OPCM contract is being developed in a repository that no longer contains the
-        // SystemConfig contract that was released as part of `op-contracts/v1.6.0`, but in production
-        // it needs to support that version, in addition to the version currently on develop.
-        string memory semver = _output.systemConfigProxy.version();
-        if (keccak256(abi.encode(semver)) == keccak256(abi.encode(string("2.2.0")))) {
-            // We are using the op-contracts/v1.6.0 SystemConfig contract.
-            (
-                IResourceMetering.ResourceConfig memory referenceResourceConfig,
-                ISystemConfigV160.Addresses memory opChainAddrs
-            ) = defaultSystemConfigV160Params(_selector, _input, _output);
+        bytes4 selector = ISystemConfig.initialize.selector;
+        (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
+            defaultSystemConfigParams(selector, _input, _output);
 
-            return abi.encodeWithSelector(
-                _selector,
-                _input.roles.systemConfigOwner,
-                _input.basefeeScalar,
-                _input.blobBasefeeScalar,
-                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-                _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
-                referenceResourceConfig,
-                chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
-            );
-        } else {
-            // We are using the latest SystemConfig contract from the repo.
-            (
-                IResourceMetering.ResourceConfig memory referenceResourceConfig,
-                ISystemConfig.Addresses memory opChainAddrs
-            ) = defaultSystemConfigParams(_selector, _input, _output);
-
-            return abi.encodeWithSelector(
-                _selector,
-                _input.roles.systemConfigOwner,
-                _input.basefeeScalar,
-                _input.blobBasefeeScalar,
-                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-                _input.gasLimit,
-                _input.roles.unsafeBlockSigner,
-                referenceResourceConfig,
-                chainIdToBatchInboxAddress(_input.l2ChainId),
-                opChainAddrs
-            );
-        }
+        return abi.encodeWithSelector(
+            selector,
+            _input.roles.systemConfigOwner,
+            _input.basefeeScalar,
+            _input.blobBasefeeScalar,
+            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
+            _input.gasLimit,
+            _input.roles.unsafeBlockSigner,
+            referenceResourceConfig,
+            chainIdToBatchInboxAddress(_input.l2ChainId),
+            opChainAddrs
+        );
     }
 
     /// @notice Helper method for encoding the OptimismMintableERC20Factory initializer data.
@@ -599,7 +553,7 @@ contract OPContractsManager is ISemver, Initializable {
             _input.disputeSplitDepth,
             _input.disputeClockExtension,
             _input.disputeMaxClockDuration,
-            IBigStepper(getLatestImplementation("MIPS").logic),
+            IBigStepper(implementation.mipsImpl),
             IDelayedWETH(payable(address(_output.delayedWETHPermissionedGameProxy))),
             IAnchorStateRegistry(address(_output.anchorStateRegistryProxy)),
             _input.l2ChainId,
@@ -645,45 +599,6 @@ contract OPContractsManager is ISemver, Initializable {
         assertValidContractAddress(opChainAddrs_.optimismMintableERC20Factory);
     }
 
-    /// @notice Returns default, standard config arguments for the SystemConfig initializer.
-    /// This is used by subclasses to reduce code duplication.
-    function defaultSystemConfigV160Params(
-        bytes4, /* selector */
-        DeployInput memory, /* _input */
-        DeployOutput memory _output
-    )
-        internal
-        view
-        virtual
-        returns (
-            IResourceMetering.ResourceConfig memory resourceConfig_,
-            ISystemConfigV160.Addresses memory opChainAddrs_
-        )
-    {
-        // We use assembly to easily convert from IResourceMetering.ResourceConfig to ResourceMetering.ResourceConfig.
-        // This is required because we have not yet fully migrated the codebase to be interface-based.
-        IResourceMetering.ResourceConfig memory resourceConfig = Constants.DEFAULT_RESOURCE_CONFIG();
-        assembly ("memory-safe") {
-            resourceConfig_ := resourceConfig
-        }
-
-        opChainAddrs_ = ISystemConfigV160.Addresses({
-            l1CrossDomainMessenger: address(_output.l1CrossDomainMessengerProxy),
-            l1ERC721Bridge: address(_output.l1ERC721BridgeProxy),
-            l1StandardBridge: address(_output.l1StandardBridgeProxy),
-            disputeGameFactory: address(_output.disputeGameFactoryProxy),
-            optimismPortal: address(_output.optimismPortalProxy),
-            optimismMintableERC20Factory: address(_output.optimismMintableERC20FactoryProxy)
-        });
-
-        assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);
-        assertValidContractAddress(opChainAddrs_.l1ERC721Bridge);
-        assertValidContractAddress(opChainAddrs_.l1StandardBridge);
-        assertValidContractAddress(opChainAddrs_.disputeGameFactory);
-        assertValidContractAddress(opChainAddrs_.optimismPortal);
-        assertValidContractAddress(opChainAddrs_.optimismMintableERC20Factory);
-    }
-
     /// @notice Makes an external call to the target to initialize the proxy with the specified data.
     /// First performs safety checks to ensure the target, implementation, and proxy admin are valid.
     function upgradeAndCall(
@@ -709,5 +624,10 @@ contract OPContractsManager is ISemver, Initializable {
     /// @notice Returns the blueprint contract addresses.
     function blueprints() public view returns (Blueprints memory) {
         return blueprint;
+    }
+
+    /// @notice Returns the implementation contract addresses.
+    function implementations() public view returns (Implementations memory) {
+        return implementation;
     }
 }

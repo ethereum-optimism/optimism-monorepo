@@ -598,7 +598,6 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
         // Get withdrawal proof data we can use for testing.
         (_stateRoot, _storageRoot, _outputRoot, _withdrawalHash, _withdrawalProof) =
             ffi.getProveWithdrawalTransactionInputs(_defaultTx);
-
         // Setup a dummy output root proof for reuse.
         _outputRootProof = Types.OutputRootProof({
             version: bytes32(uint256(0)),
@@ -606,6 +605,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
             messagePasserStorageRoot: _storageRoot,
             latestBlockhash: bytes32(uint256(0))
         });
+
         _proposedBlockNumber = l2OutputOracle.nextBlockNumber();
         _proposedOutputIndex = l2OutputOracle.nextOutputIndex();
     }
@@ -934,7 +934,7 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
         assertEq(bobBalanceBefore, address(bob).balance);
     }
 
-    /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the target reverts.
+    /// @dev Tests that `finalizeWithdrawalTransaction` fails if the target reverts.
     function test_finalizeWithdrawalTransaction_targetFails_fails() external {
         uint256 bobBalanceBefore = address(bob).balance;
         vm.etch(bob, hex"fe"); // Contract with just the invalid opcode.
@@ -949,6 +949,77 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
         optimismPortal.finalizeWithdrawalTransaction(_defaultTx);
 
         assert(address(bob).balance == bobBalanceBefore);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the target reverts and caller is the
+    /// ESTIMATION_ADDRESS.
+    function test_finalizeWithdrawalTransaction_targetFailsAndCallerIsEstimationAddress_reverts() external {
+        vm.etch(bob, hex"fe"); // Contract with just the invalid opcode.
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawalProven(_withdrawalHash, alice, bob);
+        optimismPortal.proveWithdrawalTransaction(_defaultTx, _proposedOutputIndex, _outputRootProof, _withdrawalProof);
+
+        vm.warp(block.timestamp + l2OutputOracle.FINALIZATION_PERIOD_SECONDS() + 1);
+
+        vm.startPrank(Constants.ESTIMATION_ADDRESS, Constants.ESTIMATION_ADDRESS);
+        vm.expectRevert(GasEstimation.selector);
+        optimismPortal.finalizeWithdrawalTransaction(_defaultTx);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty.
+    function test_finalizeWithdrawalTransaction_noTxData_succeeds() external {
+        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
+            nonce: 0,
+            sender: alice,
+            target: bob,
+            value: 100,
+            gasLimit: 100_000,
+            data: hex""
+        });
+        // Get withdrawal proof data we can use for testing.
+        (
+            bytes32 _stateRoot_noData,
+            bytes32 _storageRoot_noData,
+            bytes32 _outputRoot_noData,
+            bytes32 _withdrawalHash_noData,
+            bytes[] memory _withdrawalProof_noData
+        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        // Setup a dummy output root proof for reuse.
+        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: _stateRoot_noData,
+            messagePasserStorageRoot: _storageRoot_noData,
+            latestBlockhash: bytes32(uint256(0))
+        });
+
+        // Configure the oracle to return the output root we've prepared.
+        vm.mockCall(
+            address(l2OutputOracle),
+            abi.encodePacked(IL2OutputOracle.getL2Output.selector),
+            abi.encode(
+                Types.OutputProposal(
+                    _outputRoot_noData,
+                    l2OutputOracle.getL2Output(_proposedOutputIndex).timestamp,
+                    uint128(_proposedBlockNumber)
+                )
+            )
+        );
+
+        uint256 bobBalanceBefore = address(bob).balance;
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
+        optimismPortal.proveWithdrawalTransaction(
+            _defaultTx_noData, _proposedOutputIndex, _outputRootProof_noData, _withdrawalProof_noData
+        );
+
+        vm.warp(block.timestamp + l2OutputOracle.FINALIZATION_PERIOD_SECONDS() + 1);
+        vm.expectEmit(true, true, false, true);
+        emit WithdrawalFinalized(_withdrawalHash_noData, true);
+        optimismPortal.finalizeWithdrawalTransaction(_defaultTx_noData);
+
+        assertEq(address(bob).balance, bobBalanceBefore + 100);
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the finalization period

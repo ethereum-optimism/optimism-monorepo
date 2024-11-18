@@ -64,7 +64,7 @@ type SuperchainDeployment struct {
 }
 
 type ImplementationsDeployment struct {
-	OpcmProxyAddress                        common.Address `json:"opcmProxyAddress"`
+	OpcmAddress                             common.Address `json:"opcmAddress"`
 	DelayedWETHImplAddress                  common.Address `json:"delayedWETHImplAddress"`
 	OptimismPortalImplAddress               common.Address `json:"optimismPortalImplAddress"`
 	PreimageOracleSingletonAddress          common.Address `json:"preimageOracleSingletonAddress"`

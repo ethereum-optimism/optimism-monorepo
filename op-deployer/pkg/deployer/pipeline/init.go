@@ -45,12 +45,12 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			SuperchainConfigProxyAddress: common.Address(*superCfg.Config.SuperchainConfigAddr),
 		}
 
-		opcmProxy, err := standard.ManagerImplementationAddrFor(intent.L1ChainID)
+		opcmAddress, err := standard.ManagerImplementationAddrFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting OPCM proxy address: %w", err)
 		}
 		st.ImplementationsDeployment = &state.ImplementationsDeployment{
-			OpcmProxyAddress: opcmProxy,
+			OpcmAddress: opcmAddress,
 		}
 	}
 

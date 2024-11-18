@@ -162,7 +162,7 @@ contract Deploy is Deployer {
             L1ERC721Bridge: getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: getAddress("ProtocolVersionsProxy"),
             SuperchainConfig: getAddress("SuperchainConfigProxy"),
-            OPContractsManager: getAddress("OPContractsManagerProxy")
+            OPContractsManager: getAddress("OPContractsManager")
         });
     }
 
@@ -378,13 +378,12 @@ contract Deploy is Deployer {
         dii.set(dii.disputeGameFinalityDelaySeconds.selector, cfg.disputeGameFinalityDelaySeconds());
         dii.set(dii.mipsVersion.selector, Config.useMultithreadedCannon() ? 2 : 1);
         string memory release = "dev";
-        dii.set(dii.release.selector, release);
+        dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(
             dii.standardVersionsToml.selector, string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml")
         );
         dii.set(dii.superchainConfigProxy.selector, mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, mustGetAddress("ProtocolVersionsProxy"));
-        dii.set(dii.opcmProxyOwner.selector, cfg.finalSystemOwner());
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());
@@ -409,8 +408,7 @@ contract Deploy is Deployer {
         save("DelayedWETH", address(dio.delayedWETHImpl()));
         save("PreimageOracle", address(dio.preimageOracleSingleton()));
         save("Mips", address(dio.mipsSingleton()));
-        save("OPContractsManagerProxy", address(dio.opcmProxy()));
-        save("OPContractsManager", address(dio.opcmImpl()));
+        save("OPContractsManager", address(dio.opcm()));
 
         Types.ContractSet memory contracts = _impls();
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
@@ -446,7 +444,7 @@ contract Deploy is Deployer {
 
         // Ensure that the requisite contracts are deployed
         address superchainConfigProxy = mustGetAddress("SuperchainConfigProxy");
-        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManagerProxy"));
+        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager"));
 
         OPContractsManager.DeployInput memory deployInput = getDeployInput();
         OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
@@ -697,12 +695,12 @@ contract Deploy is Deployer {
         addr_ = address(oracle);
     }
 
-    /// @notice Deploy Mips VM. Deploys either MIPS or MIPS2 depending on the environment
+    /// @notice Deploy Mips VM. Deploys either MIPS or MIPS64 depending on the environment
     function deployMips() public broadcast returns (address addr_) {
         addr_ = DeployUtils.create2AndSave({
             _save: this,
             _salt: _implSalt(),
-            _name: Config.useMultithreadedCannon() ? "MIPS2" : "MIPS",
+            _name: Config.useMultithreadedCannon() ? "MIPS64" : "MIPS",
             _args: DeployUtils.encodeConstructor(
                 abi.encodeCall(IMIPS2.__constructor__, (IPreimageOracle(mustGetAddress("PreimageOracle"))))
             )
@@ -1021,7 +1019,7 @@ contract Deploy is Deployer {
         mipsAbsolutePrestate_ =
             Claim.wrap(abi.decode(bytes(Process.bash(string.concat("cat ", filePath, " | jq -r .pre"))), (bytes32)));
         console.log(
-            "[MT-Cannon Dispute Game] Using devnet MIPS2 Absolute prestate: %s",
+            "[MT-Cannon Dispute Game] Using devnet MIPS64 Absolute prestate: %s",
             vm.toString(Claim.unwrap(mipsAbsolutePrestate_))
         );
     }

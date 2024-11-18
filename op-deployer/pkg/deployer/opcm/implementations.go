@@ -18,12 +18,11 @@ type DeployImplementationsInput struct {
 	DisputeGameFinalityDelaySeconds *big.Int
 	MipsVersion                     *big.Int
 	// Release version to set OPCM implementations for, of the format `op-contracts/vX.Y.Z`.
-	Release               string
+	L1ContractsRelease    string
 	SuperchainConfigProxy common.Address
 	ProtocolVersionsProxy common.Address
 	UseInterop            bool // if true, deploy Interop implementations
 
-	OpcmProxyOwner       common.Address
 	StandardVersionsToml string // contents of 'standard-versions-mainnet.toml' or 'standard-versions-sepolia.toml' file
 }
 
@@ -32,8 +31,7 @@ func (input *DeployImplementationsInput) InputSet() bool {
 }
 
 type DeployImplementationsOutput struct {
-	OpcmProxy                        common.Address
-	OpcmImpl                         common.Address
+	Opcm                             common.Address
 	DelayedWETHImpl                  common.Address
 	OptimismPortalImpl               common.Address
 	PreimageOracleSingleton          common.Address
