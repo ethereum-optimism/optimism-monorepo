@@ -16,7 +16,8 @@ import (
 )
 
 // TestBatcher_FailoverToEthDA_FallbackToAltDA tests that the batcher will failover to ethDA
-// if the da-server returns 503, and then fallback to altDA once altDA is available again
+// if the da-server returns 503. It also tests that the batcher successfully returns to normal
+// behavior of posting batches to altda once it becomes available again
 // (i.e. the da-server doesn't return 503 anymore).
 func TestBatcher_FailoverToEthDA_FallbackToAltDA(t *testing.T) {
 	op_e2e.InitParallel(t)
