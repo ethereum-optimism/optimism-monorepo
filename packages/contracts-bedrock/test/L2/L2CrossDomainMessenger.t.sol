@@ -150,8 +150,8 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     }
 
     /// @dev Tests that relayMessage reverts if the value sent does not match the amount
-    function test_relayMessage_valueDoesNotMatchAmount_reverts() external {
-        // set the target to be the alice
+    function test_relayMessage_fromOtherMessengerValueMismatch_reverts() external {
+        // set the target to be alice
         address target = alice;
         address sender = address(l1CrossDomainMessenger);
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
@@ -168,7 +168,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
 
     /// @dev Tests that relayMessage reverts if a failed message is attempted to be replayed and the caller is the other
     /// messenger
-    function test_relayMessage_failedMessageReplay_reverts() external {
+    function test_relayMessage_fromOtherMessengerFailedMessageReplay_reverts() external {
         // set the target to be the alice
         address target = alice;
         address sender = address(l1CrossDomainMessenger);
@@ -224,7 +224,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
 
     /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal but not a failed
     /// message
-    function test_relayMessage_nonFailedMessageCalledByNonOtherMessenger_reverts() external {
+    function test_relayMessage_relayingNewMessageByExternalUser_reverts() external {
         address target = address(alice);
         address sender = address(l1CrossDomainMessenger);
         bytes memory message = hex"1111";
