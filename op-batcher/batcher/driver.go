@@ -426,31 +426,6 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 	l.txpoolMutex.Unlock()
 }
 
-// processReceiptsLoop handles transaction receipts from the DA layer
-func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef]) {
-	defer l.wg.Done()
-	l.Log.Info("Starting receipts processing loop")
-	for {
-		select {
-		case r := <-receiptsCh:
-			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
-				l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
-				l.Log.Warn("incompatible tx in txpool", "id", r.ID, "is_blob", r.ID.isBlob)
-			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
-				// Set state to TxpoolGood even if the cancellation transaction ended in error
-				// since the stuck transaction could have cleared while we were waiting.
-				l.setTxPoolState(TxpoolGood, l.txpoolBlockedBlob)
-				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
-			}
-			l.Log.Info("Handling receipt", "id", r.ID)
-			l.handleReceipt(r)
-		case <-ctx.Done():
-			l.Log.Info("Receipt processing loop done")
-			return
-		}
-	}
-}
-
 // mainLoop periodically:
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
@@ -510,6 +485,31 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-ctx.Done():
 			l.Log.Warn("main loop returning")
+			return
+		}
+	}
+}
+
+// processReceiptsLoop handles transaction receipts from the DA layer
+func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef]) {
+	defer l.wg.Done()
+	l.Log.Info("Starting receipts processing loop")
+	for {
+		select {
+		case r := <-receiptsCh:
+			if errors.Is(r.Err, txpool.ErrAlreadyReserved) && l.txpoolState == TxpoolGood {
+				l.setTxPoolState(TxpoolBlocked, r.ID.isBlob)
+				l.Log.Warn("incompatible tx in txpool", "id", r.ID, "is_blob", r.ID.isBlob)
+			} else if r.ID.isCancel && l.txpoolState == TxpoolCancelPending {
+				// Set state to TxpoolGood even if the cancellation transaction ended in error
+				// since the stuck transaction could have cleared while we were waiting.
+				l.setTxPoolState(TxpoolGood, l.txpoolBlockedBlob)
+				l.Log.Info("txpool may no longer be blocked", "err", r.Err)
+			}
+			l.Log.Info("Handling receipt", "id", r.ID)
+			l.handleReceipt(r)
+		case <-ctx.Done():
+			l.Log.Info("Receipt processing loop done")
 			return
 		}
 	}
