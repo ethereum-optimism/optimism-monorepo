@@ -474,11 +474,13 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 
 			err = l.checkExpectedProgress(*syncStatus)
 			if err != nil {
+				l.Log.Warn("error checking expected progress, clearing state and waiting for node sync", "err", err)
 				l.waitNodeSyncAndClearState()
 				continue
 			}
 
 			if err := l.loadBlocksIntoState(*syncStatus, l.shutdownCtx); errors.Is(err, ErrReorg) {
+				l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 				l.waitNodeSyncAndClearState()
 				continue
 			}
