@@ -16,7 +16,8 @@ import (
 )
 
 // TestBatcher_FailoverToEthDA_FallbackToAltDA tests that the batcher will failover to ethDA
-// if the da-server returns 503, and then fallback to altDA once altDA is available again
+// if the da-server returns 503. It also tests that the batcher successfully returns to normal
+// behavior of posting batches to altda once it becomes available again
 // (i.e. the da-server doesn't return 503 anymore).
 func TestBatcher_FailoverToEthDA_FallbackToAltDA(t *testing.T) {
 	op_e2e.InitParallel(t)
@@ -50,7 +51,11 @@ func TestBatcher_FailoverToEthDA_FallbackToAltDA(t *testing.T) {
 
 	countEthDACommitment := uint64(0)
 
+	// There is some nondeterministic timing behavior that affects whether the batcher has already
+	// posted batches before seeing the abvoe SetPutFailoverForNRequests behavior change.
 	// Most likely, sequence of blocks will be: altDA, ethDA, ethDA, altDA, altDA, altDA.
+	// 2 ethDA are expected (and checked for) because nChannelsFailover=2, so da-server will return 503 for 2 requests only,
+	// and the batcher always tries altda first for a new channel, and failsover to ethDA only if altda returns 503.
 	for blockNumL1 := startBlockL1.NumberU64(); blockNumL1 < startBlockL1.NumberU64()+6; blockNumL1++ {
 		blockL1, err := geth.WaitForBlock(big.NewInt(0).SetUint64(blockNumL1), l1Client)
 		require.NoError(t, err)
