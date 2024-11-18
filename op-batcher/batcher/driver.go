@@ -520,6 +520,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 // continuously, we ensure the engine currently in use is always going to be reset to the proper throttling settings
 // even in the event of sequencer failover.
 func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
+	defer l.wg.Done()
 	l.Log.Info("Starting DA throttling loop")
 	ticker := time.NewTicker(l.Config.ThrottleInterval)
 	defer ticker.Stop()
