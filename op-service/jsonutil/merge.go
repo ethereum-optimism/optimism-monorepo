@@ -9,7 +9,7 @@ import (
 // must be JSON-serializable for this to work. Overrides are applied in
 // order of precedence - i.e., the last overrides will override keys from
 // all preceding overrides.
-func MergeJSON[T any](in T, disallowUnknownFields bool, overrides ...map[string]any) (T, error) {
+func MergeJSON[T any](in T, overrides ...map[string]any) (T, error) {
 	var out T
 	inJSON, err := json.Marshal(in)
 	if err != nil {
@@ -32,16 +32,10 @@ func MergeJSON[T any](in T, disallowUnknownFields bool, overrides ...map[string]
 		return out, err
 	}
 
-	if disallowUnknownFields {
-		dec := json.NewDecoder(bytes.NewReader(inJSON))
-		dec.DisallowUnknownFields()
-		if err := dec.Decode(&out); err != nil {
-			return out, err
-		}
-	} else {
-		if err := json.Unmarshal(inJSON, &out); err != nil {
-			return out, err
-		}
+	dec := json.NewDecoder(bytes.NewReader(inJSON))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&out); err != nil {
+		return out, err
 	}
 
 	return out, nil

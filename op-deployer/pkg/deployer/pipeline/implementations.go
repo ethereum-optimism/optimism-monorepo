@@ -51,8 +51,8 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			ProofMaturityDelaySeconds:       standard.ProofMaturityDelaySeconds,
 			DisputeGameFinalityDelaySeconds: standard.DisputeGameFinalityDelaySeconds,
 			MIPSVersion:                     standard.MIPSVersion,
-		}, false,
-		intent.GlobalDeployOverrides,
+		},
+		intent.SuperchainProofOverrides,
 	)
 	if err != nil {
 		return fmt.Errorf("error merging proof params from overrides: %w", err)

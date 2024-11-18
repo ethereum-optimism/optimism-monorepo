@@ -145,7 +145,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	// Apply overrides after setting the main values.
 	var err error
 	if len(intent.GlobalDeployOverrides) > 0 {
-		cfg, err = jsonutil.MergeJSON(cfg, true, intent.GlobalDeployOverrides)
+		cfg, err = jsonutil.MergeJSON(cfg, intent.GlobalDeployOverrides)
 		if err != nil {
 			return genesis.DeployConfig{}, fmt.Errorf("error merging global L2 overrides: %w", err)
 
@@ -153,7 +153,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	}
 
 	if len(chainIntent.DeployOverrides) > 0 {
-		cfg, err = jsonutil.MergeJSON(cfg, true, chainIntent.DeployOverrides)
+		cfg, err = jsonutil.MergeJSON(cfg, chainIntent.DeployOverrides)
 		if err != nil {
 			return genesis.DeployConfig{}, fmt.Errorf("error merging chain L2 overrides: %w", err)
 		}

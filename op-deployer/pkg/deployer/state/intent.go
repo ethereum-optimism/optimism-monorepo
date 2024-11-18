@@ -50,7 +50,9 @@ type Intent struct {
 
 	Chains []*ChainIntent `json:"chains" toml:"chains"`
 
-	GlobalDeployOverrides map[string]any `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
+	SuperchainProofOverrides  map[string]any `json:"superchainProofOverrides" toml:"superchainProofOverrides"`
+	GlobalChainProofOverrides map[string]any `json:"globalChainProofOverrides" toml:"globalChainProofOverrides"`
+	GlobalDeployOverrides     map[string]any `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
 }
 
 func (c *Intent) L1ChainIDBig() *big.Int {
@@ -164,7 +166,8 @@ type ChainIntent struct {
 
 	Roles ChainRoles `json:"roles" toml:"roles"`
 
-	DeployOverrides map[string]any `json:"deployOverrides" toml:"deployOverrides"`
+	ChainProofOverrides map[string]any `json:"chainProofOverrides" toml:"chainProofOverrides"`
+	DeployOverrides     map[string]any `json:"deployOverrides" toml:"deployOverrides"`
 
 	DangerousAltDAConfig genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
 }

@@ -18,7 +18,7 @@ func TestMergeJSON(t *testing.T) {
 			"hello",
 			42,
 			true,
-		}, true,
+		},
 		map[string]any{
 			"a": "world",
 			"c": false,
@@ -31,12 +31,8 @@ func TestMergeJSON(t *testing.T) {
 		false,
 	})
 
-	_, err = MergeJSON(out, true, map[string]any{
+	_, err = MergeJSON(out, map[string]any{
 		"d": "shouldn't show up",
 	})
 	require.Error(t, err)
-	_, err = MergeJSON(out, false, map[string]any{
-		"d": "shouldn't show up",
-	})
-	require.NoError(t, err)
 }
