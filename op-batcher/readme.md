@@ -60,6 +60,25 @@ The batcher can almost always recover from unforeseen situations by being restar
 
 Some complexity is permitted, however, for handling data availability switching, so that the batcher is not wasting money for longer periods of time.
 
+### Data Availability Backlog
+
+A chain can potentially experience an influx of large transactions whose data availability requirements exceed the total
+throughput of the data availability layer. While this situation might resolve on its own in the long term through the
+data availability pricing mechanism, in practice this feedback loop is too slow to prevent a very large backlog of data
+from being produced, even at a relatively low cost to whomever is submitting the large transactions. In such
+circumstances, the safe head can fall significantly behind the unsafe head, and the time between seeing a transaction
+(and charging it a given L1 data fee) and actually posting the transaction to the data availability layer grows larger
+and larger. Because DA costs can rise quickly during such an event, the batcher can end up paying far more to post the
+transaction to the DA layer than what can be recovered from the transaction's data fee.
+
+To prevent a significant DA backlog, the batcher can instruct the block builder (via op-geth's miner RPC API) to impose
+thresholds on the total DA requirements of a single block, and/or the maximum DA requirement of any single
+transaction. In the happy case, the batcher instructs the block builder to impose a block-level DA limit of
+OP_BATCHER_THROTTLE_ALWAYS_BLOCK_SIZE, and imposes no additional limit on the DA requirements of a single
+transaction. But in the case of a DA backlog (as defined by OP_BATCHER_THROTTLE_THRESHOLD), the batcher instructs the
+block builder to instead impose a (tighter) block level limit of OP_BATCHER_THROTTLE_BLOCK_SIZE, and a single
+transaction limit of OP_BATCHER_THROTTLE_TRANSACTION_SIZE.
+
 ## Known issues and future work
 
 Link to [open issues with the `op-batcher` tag](https://github.com/ethereum-optimism/optimism/issues?q=is%3Aopen+is%3Aissue+label%3AA-op-batcher).
