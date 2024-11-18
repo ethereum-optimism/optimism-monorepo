@@ -472,7 +472,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			l.state.pruneSafeBlocks(syncStatus.SafeL2)
 			l.state.pruneChannels(syncStatus.SafeL2)
 
-			err = l.checkExpectedProgress(*syncStatus)
+			err = l.state.CheckExpectedProgress(*syncStatus)
 			if err != nil {
 				l.Log.Warn("error checking expected progress, clearing state and waiting for node sync", "err", err)
 				l.waitNodeSyncAndClearState()
@@ -591,23 +591,6 @@ func (l *BatchSubmitter) waitNodeSyncAndClearState() {
 		l.Log.Warn("error waiting for node sync", "err", err)
 	}
 	l.clearState(l.shutdownCtx)
-}
-
-// checkExpectedProgress uses the supplied syncStatus to infer
-// whether the node providing the status has made the expected
-// safe head progress given fully submitted channels held in
-// state.
-func (l *BatchSubmitter) checkExpectedProgress(syncStatus eth.SyncStatus) error {
-	verifierCurrentL1 := syncStatus.CurrentL1
-	for _, ch := range l.state.channelQueue {
-		if ch.isFullySubmitted() && // This implies a number of l1 confirmations has passed, depending on how the txmgr was configured
-			!ch.isTimedOut() &&
-			verifierCurrentL1.Number > ch.maxInclusionBlock &&
-			syncStatus.SafeL2.Number < ch.LatestL2().Number {
-			return errors.New("safe head did not make expected progress")
-		}
-	}
-	return nil
 }
 
 // waitNodeSync Check to see if there was a batcher tx sent recently that

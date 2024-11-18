@@ -627,3 +627,46 @@ func TestChannelManager_ChannelOutFactory(t *testing.T) {
 
 	require.IsType(t, &ChannelOutWrapper{}, m.currentChannel.channelBuilder.co)
 }
+
+func TestChannelManager_CheckExpectedProgress(t *testing.T) {
+	l := testlog.Logger(t, log.LevelCrit)
+	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
+	cfg.InitNoneCompressor()
+	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+
+	// Prepare a (dummy) fully submitted channel
+	// with maxInclusionBlock = 3 and latest safe block number = 3
+	A, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
+	require.NoError(t, err)
+	rng := rand.New(rand.NewSource(123))
+	a0 := derivetest.RandomL2BlockWithChainId(rng, 1, defaultTestRollupConfig.L2ChainID)
+	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(3)})
+	_, err = A.AddBlock(a0)
+	require.NoError(t, err)
+	A.maxInclusionBlock = 3
+	A.Close()
+	A.channelBuilder.frames = nil
+	A.channelBuilder.frameCursor = 0
+	require.True(t, A.isFullySubmitted())
+
+	m.channelQueue = append(m.channelQueue, A)
+
+	// The current L1 number implies that
+	// channel A above should have been derived
+	// from, so we expect safe head to progress to 3.
+	// Since the safe head moved to 4, there is no error:
+	ss := eth.SyncStatus{
+		CurrentL1: eth.L1BlockRef{Number: 4},
+		SafeL2:    eth.L2BlockRef{Number: 4},
+	}
+	err = m.CheckExpectedProgress(ss)
+	require.NoError(t, err)
+
+	// If the safe head is less than 3
+	// the method should return an error:
+	ss.SafeL2 = eth.L2BlockRef{Number: 1}
+
+	err = m.CheckExpectedProgress(ss)
+	require.Error(t, err)
+
+}
