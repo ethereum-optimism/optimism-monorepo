@@ -24,9 +24,10 @@ enum CommitmentType {
 }
 
 /// @dev A struct representing a single DA challenge.
-/// @custom:field status The status of the challenge.
 /// @custom:field challenger The address that initiated the challenge.
+/// @custom:field lockedBond The amount of ETH bond that was locked by the challenger.
 /// @custom:field startBlock The block number at which the challenge was initiated.
+/// @custom:field resolvedBlock The block number at which the challenge was resolved.
 struct Challenge {
     address challenger;
     uint256 lockedBond;
