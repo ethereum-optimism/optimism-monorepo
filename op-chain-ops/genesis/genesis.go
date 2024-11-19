@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 )
 
@@ -146,21 +145,11 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 	}
 
 	extraData := make([]byte, 0)
-	if config.L1UseClique {
-		// warning: clique has an overly strict block header timestamp check against the system wallclock,
-		// causing blocks to get scheduled as "future block" and not get mined instantly when produced.
-		chainConfig.Clique = &params.CliqueConfig{
-			Period: config.L1BlockTime,
-			Epoch:  30000,
-		}
-		extraData = append(append(make([]byte, 32), config.CliqueSignerAddress[:]...), make([]byte, crypto.SignatureLength)...)
-	} else {
-		chainConfig.MergeNetsplitBlock = big.NewInt(0)
-		chainConfig.TerminalTotalDifficulty = big.NewInt(0)
-		chainConfig.TerminalTotalDifficultyPassed = true
-		chainConfig.ShanghaiTime = u64ptr(0)
-		chainConfig.CancunTime = u64ptr(0)
-	}
+	chainConfig.MergeNetsplitBlock = big.NewInt(0)
+	chainConfig.TerminalTotalDifficulty = big.NewInt(0)
+	chainConfig.TerminalTotalDifficultyPassed = true
+	chainConfig.ShanghaiTime = u64ptr(0)
+	chainConfig.CancunTime = u64ptr(0)
 
 	gasLimit := config.L1GenesisBlockGasLimit
 	if gasLimit == 0 {
@@ -178,7 +167,7 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 	if timestamp == 0 {
 		timestamp = hexutil.Uint64(time.Now().Unix())
 	}
-	if !config.L1UseClique && config.L1CancunTimeOffset != nil {
+	if config.L1CancunTimeOffset != nil {
 		cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
 		chainConfig.CancunTime = &cancunTime
 	}
