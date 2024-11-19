@@ -12,7 +12,7 @@ import (
 )
 
 const (
-	BlockGasLimit                   uint64 = 60_000_000
+	GasLimit                        uint64 = 60_000_000
 	BasefeeScalar                   uint32 = 1368
 	BlobBaseFeeScalar               uint32 = 801949
 	WithdrawalDelaySeconds          uint64 = 604800
