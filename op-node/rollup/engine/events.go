@@ -226,30 +226,41 @@ func (ev TryUpdateEngineEvent) triggeredByPayloadSuccess() bool {
 // block build/insert time as a way to measure performance.
 func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
 	fcuFinish := time.Now()
-	logValues := make([]interface{}, 0)
 	payload := ev.Envelope.ExecutionPayload
 
-	logValues = append(logValues, "hash", payload.BlockHash)
-	logValues = append(logValues, "number", uint64(payload.BlockNumber))
-	logValues = append(logValues, "state_root", payload.StateRoot)
-	logValues = append(logValues, "timestamp", uint64(payload.Timestamp))
-	logValues = append(logValues, "parent", payload.ParentHash)
-	logValues = append(logValues, "prev_randao", payload.PrevRandao)
-	logValues = append(logValues, "fee_recipient", payload.FeeRecipient)
-	logValues = append(logValues, "txs", len(payload.Transactions))
-
-	var totalTime time.Duration
-	if !ev.BuildStarted.IsZero() {
-		totalTime = time.Since(ev.BuildStarted)
-		logValues = append(logValues, "build_time", common.PrettyDuration(ev.InsertStarted.Sub(ev.BuildStarted)))
-		logValues = append(logValues, "insert_time", common.PrettyDuration(fcuFinish.Sub(ev.InsertStarted)))
-	} else if !ev.InsertStarted.IsZero() {
-		totalTime = time.Since(ev.InsertStarted)
+	logValues := []interface{}{
+		"hash", payload.BlockHash,
+		"number", uint64(payload.BlockNumber),
+		"state_root", payload.StateRoot,
+		"timestamp", uint64(payload.Timestamp),
+		"parent", payload.ParentHash,
+		"prev_randao", payload.PrevRandao,
+		"fee_recipient", payload.FeeRecipient,
+		"txs", len(payload.Transactions),
 	}
 
-	logValues = append(logValues, "total_time", common.PrettyDuration(totalTime))
-	logValues = append(logValues, "mgas", float64(payload.GasUsed)/1000000)
-	logValues = append(logValues, "mgasps", float64(payload.GasUsed)*1000/float64(totalTime))
+	var totalTime time.Duration
+	var mgasps float64
+	if !ev.BuildStarted.IsZero() {
+		totalTime = fcuFinish.Sub(ev.BuildStarted)
+		logValues = append(logValues,
+			"build_time", common.PrettyDuration(ev.InsertStarted.Sub(ev.BuildStarted)),
+			"insert_time", common.PrettyDuration(fcuFinish.Sub(ev.InsertStarted)),
+		)
+	} else if !ev.InsertStarted.IsZero() {
+		totalTime = fcuFinish.Sub(ev.InsertStarted)
+	}
+
+	// Avoid divide-by-zero for mgasps
+	if totalTime > 0 {
+		mgasps = float64(payload.GasUsed) * 1000 / float64(totalTime)
+	}
+
+	logValues = append(logValues,
+		"total_time", common.PrettyDuration(totalTime),
+		"mgas", float64(payload.GasUsed)/1000000,
+		"mgasps", mgasps,
+	)
 
 	return logValues
 }
