@@ -40,10 +40,6 @@ func TestChannelManagerBatchType(t *testing.T) {
 		{"ChannelManagerReturnsErrReorgWhenDrained", ChannelManagerReturnsErrReorgWhenDrained},
 		{"ChannelManager_Clear", ChannelManager_Clear},
 		{"ChannelManager_TxResend", ChannelManager_TxResend},
-		{"ChannelManagerCloseBeforeFirstUse", ChannelManagerCloseBeforeFirstUse},
-		{"ChannelManagerCloseNoPendingChannel", ChannelManagerCloseNoPendingChannel},
-		{"ChannelManagerClosePendingChannel", ChannelManagerClosePendingChannel},
-		{"ChannelManagerCloseAllTxsFailed", ChannelManagerCloseAllTxsFailed},
 	}
 	for _, test := range tests {
 		test := test
@@ -130,7 +126,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 
 	// Channel Manager state should be empty by default
 	require.Empty(m.blocks)
-	require.Equal(eth.BlockID{}, m.l1OriginLastClosedChannel)
+	require.Equal(eth.BlockID{}, m.l1OriginLastSubmittedChannel)
 	require.Equal(common.Hash{}, m.tip)
 	require.Nil(m.currentChannel)
 	require.Empty(m.channelQueue)
@@ -154,15 +150,14 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 
 	// Process the blocks
 	// We should have a pending channel with 1 frame
-	// and no more blocks since processBlocks consumes
-	// the list
+
 	require.NoError(m.processBlocks())
 	require.NoError(m.currentChannel.channelBuilder.co.Flush())
 	require.NoError(m.outputFrames())
 	_, err := m.nextTxData(m.currentChannel)
 	require.NoError(err)
-	require.NotNil(m.l1OriginLastClosedChannel)
-	require.Len(m.blocks, 0)
+	require.Equal(m.blockCursor, len(m.blocks))
+	require.NotNil(m.l1OriginLastSubmittedChannel)
 	require.Equal(newL1Tip, m.tip)
 	require.Len(m.currentChannel.pendingTransactions, 1)
 
@@ -173,7 +168,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 		ParentHash: a.Hash(),
 	}, nil, nil, nil)
 	require.NoError(m.AddL2Block(b))
-	require.Len(m.blocks, 1)
+	require.Equal(m.blockCursor, len(m.blocks)-1)
 	require.Equal(b.Hash(), m.tip)
 
 	safeL1Origin := eth.BlockID{
@@ -184,7 +179,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 
 	// Check that the entire channel manager state cleared
 	require.Empty(m.blocks)
-	require.Equal(uint64(123), m.l1OriginLastClosedChannel.Number)
+	require.Equal(uint64(123), m.l1OriginLastSubmittedChannel.Number)
 	require.Equal(common.Hash{}, m.tip)
 	require.Nil(m.currentChannel)
 	require.Empty(m.channelQueue)
@@ -228,220 +223,6 @@ func ChannelManager_TxResend(t *testing.T, batchType uint) {
 	require.Len(fs, 1)
 }
 
-// ChannelManagerCloseBeforeFirstUse ensures that the channel manager
-// will not produce any frames if closed immediately.
-func ChannelManagerCloseBeforeFirstUse(t *testing.T, batchType uint) {
-	require := require.New(t)
-	rng := rand.New(rand.NewSource(time.Now().UnixNano()))
-	log := testlog.Logger(t, log.LevelCrit)
-	m := NewChannelManager(log, metrics.NoopMetrics,
-		channelManagerTestConfig(10000, batchType),
-		defaultTestRollupConfig,
-	)
-	m.Clear(eth.BlockID{})
-
-	a := derivetest.RandomL2BlockWithChainId(rng, 4, defaultTestRollupConfig.L2ChainID)
-
-	require.NoError(m.Close(), "Expected to close channel manager gracefully")
-
-	err := m.AddL2Block(a)
-	require.NoError(err, "Failed to add L2 block")
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected closed channel manager to contain no tx data")
-}
-
-// ChannelManagerCloseNoPendingChannel ensures that the channel manager
-// can gracefully close with no pending channels, and will not emit any new
-// channel frames.
-func ChannelManagerCloseNoPendingChannel(t *testing.T, batchType uint) {
-	require := require.New(t)
-	log := testlog.Logger(t, log.LevelCrit)
-	cfg := channelManagerTestConfig(10000, batchType)
-	cfg.CompressorConfig.TargetOutputSize = 1 // full on first block
-	cfg.ChannelTimeout = 1000
-	m := NewChannelManager(log, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-	m.Clear(eth.BlockID{})
-	a := newMiniL2Block(0)
-	b := newMiniL2BlockWithNumberParent(0, big.NewInt(1), a.Hash())
-
-	err := m.AddL2Block(a)
-	require.NoError(err, "Failed to add L2 block")
-
-	txdata, err := m.TxData(eth.BlockID{})
-	require.NoError(err, "Expected channel manager to return valid tx data")
-
-	m.TxConfirmed(txdata.ID(), eth.BlockID{})
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected channel manager to EOF")
-
-	require.NoError(m.Close(), "Expected to close channel manager gracefully")
-
-	err = m.AddL2Block(b)
-	require.NoError(err, "Failed to add L2 block")
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected closed channel manager to return no new tx data")
-}
-
-// ChannelManagerClosePendingChannel ensures that the channel manager
-// can gracefully close with a pending channel, and will not produce any
-// new channel frames after this point.
-func ChannelManagerClosePendingChannel(t *testing.T, batchType uint) {
-	require := require.New(t)
-	// The number of batch txs depends on compression of the random data, hence the static test RNG seed.
-	// Example of different RNG seed that creates less than 2 frames: 1698700588902821588
-	rng := rand.New(rand.NewSource(123))
-	log := testlog.Logger(t, log.LevelError)
-	cfg := channelManagerTestConfig(10_000, batchType)
-	cfg.ChannelTimeout = 1000
-	m := NewChannelManager(log, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-	m.Clear(eth.BlockID{})
-
-	numTx := 20 // Adjust number of txs to make 2 frames
-	a := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-
-	err := m.AddL2Block(a)
-	require.NoError(err, "Failed to add L2 block")
-
-	txdata, err := m.TxData(eth.BlockID{})
-	require.NoError(err, "Expected channel manager to produce valid tx data")
-	log.Info("generated first tx data", "len", txdata.Len())
-
-	m.TxConfirmed(txdata.ID(), eth.BlockID{})
-
-	require.ErrorIs(m.Close(), ErrPendingAfterClose, "Expected channel manager to error on close because of pending tx data")
-
-	txdata, err = m.TxData(eth.BlockID{})
-	require.NoError(err, "Expected channel manager to produce tx data from remaining L2 block data")
-	log.Info("generated more tx data", "len", txdata.Len())
-
-	m.TxConfirmed(txdata.ID(), eth.BlockID{})
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected channel manager to have no more tx data")
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected closed channel manager to produce no more tx data")
-}
-
-// ChannelManager_Close_PartiallyPendingChannel ensures that the channel manager
-// can gracefully close with a pending channel, where a block is still waiting
-// inside the compressor to be flushed.
-//
-// This test runs only for singular batches on purpose.
-// The SpanChannelOut writes full span batches to the compressor for
-// every new block that's added, so NonCompressor cannot be used to
-// set up a scenario where data is only partially flushed.
-// Couldn't get the test to work even with modifying NonCompressor
-// to flush half-way through writing to the compressor...
-func TestChannelManager_Close_PartiallyPendingChannel(t *testing.T) {
-	require := require.New(t)
-	// The number of batch txs depends on compression of the random data, hence the static test RNG seed.
-	// Example of different RNG seed that creates less than 2 frames: 1698700588902821588
-	rng := rand.New(rand.NewSource(123))
-	log := testlog.Logger(t, log.LevelError)
-	cfg := ChannelConfig{
-		MaxFrameSize:    2200,
-		ChannelTimeout:  1000,
-		TargetNumFrames: 100,
-	}
-	cfg.InitNoneCompressor()
-	m := NewChannelManager(log, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-	m.Clear(eth.BlockID{})
-
-	numTx := 3 // Adjust number of txs to make 2 frames
-	a := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	b := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
-	bHeader := b.Header()
-	bHeader.Number = new(big.Int).Add(a.Number(), big.NewInt(1))
-	bHeader.ParentHash = a.Hash()
-	b = b.WithSeal(bHeader)
-
-	require.NoError(m.AddL2Block(a), "adding 1st L2 block")
-	require.NoError(m.AddL2Block(b), "adding 2nd L2 block")
-
-	// Inside TxData, the two blocks queued above are written to the compressor.
-	// The NonCompressor will flush the first, but not the second block, when
-	// adding the second block, setting up the test with a partially flushed
-	// compressor.
-	txdata, err := m.TxData(eth.BlockID{})
-	require.NoError(err, "Expected channel manager to produce valid tx data")
-	log.Info("generated first tx data", "len", txdata.Len())
-
-	m.TxConfirmed(txdata.ID(), eth.BlockID{})
-
-	// ensure no new ready data before closing
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected unclosed channel manager to only return a single frame")
-
-	require.ErrorIs(m.Close(), ErrPendingAfterClose, "Expected channel manager to error on close because of pending tx data")
-	require.NotNil(m.currentChannel)
-	require.ErrorIs(m.currentChannel.FullErr(), ErrTerminated, "Expected current channel to be terminated by Close")
-
-	txdata, err = m.TxData(eth.BlockID{})
-	require.NoError(err, "Expected channel manager to produce tx data from remaining L2 block data")
-	log.Info("generated more tx data", "len", txdata.Len())
-
-	m.TxConfirmed(txdata.ID(), eth.BlockID{})
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected closed channel manager to produce no more tx data")
-}
-
-// ChannelManagerCloseAllTxsFailed ensures that the channel manager
-// can gracefully close after producing transaction frames if none of these
-// have successfully landed on chain.
-func ChannelManagerCloseAllTxsFailed(t *testing.T, batchType uint) {
-	require := require.New(t)
-	rng := rand.New(rand.NewSource(1357))
-	log := testlog.Logger(t, log.LevelCrit)
-	cfg := channelManagerTestConfig(100, batchType)
-	cfg.TargetNumFrames = 1000
-	cfg.InitNoneCompressor()
-	m := NewChannelManager(log, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
-	m.Clear(eth.BlockID{})
-
-	a := derivetest.RandomL2BlockWithChainId(rng, 1000, defaultTestRollupConfig.L2ChainID)
-
-	err := m.AddL2Block(a)
-	require.NoError(err, "Failed to add L2 block")
-
-	drainTxData := func() (txdatas []txData) {
-		for {
-			txdata, err := m.TxData(eth.BlockID{})
-			if err == io.EOF {
-				return
-			}
-			require.NoError(err, "Expected channel manager to produce valid tx data")
-			txdatas = append(txdatas, txdata)
-		}
-	}
-
-	txdatas := drainTxData()
-	require.NotEmpty(txdatas)
-
-	for _, txdata := range txdatas {
-		m.TxFailed(txdata.ID())
-	}
-
-	// Show that this data will continue to be emitted as long as the transaction
-	// fails and the channel manager is not closed
-	txdatas1 := drainTxData()
-	require.NotEmpty(txdatas)
-	require.ElementsMatch(txdatas, txdatas1, "expected same txdatas on re-attempt")
-
-	for _, txdata := range txdatas1 {
-		m.TxFailed(txdata.ID())
-	}
-
-	require.NoError(m.Close(), "Expected to close channel manager gracefully")
-
-	_, err = m.TxData(eth.BlockID{})
-	require.ErrorIs(err, io.EOF, "Expected closed channel manager to produce no more tx data")
-}
-
 func TestChannelManager_ChannelCreation(t *testing.T) {
 	l := testlog.Logger(t, log.LevelCrit)
 	const maxChannelDuration = 15
@@ -475,7 +256,7 @@ func TestChannelManager_ChannelCreation(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 
-			m.l1OriginLastClosedChannel = test.safeL1Block
+			m.l1OriginLastSubmittedChannel = test.safeL1Block
 			require.Nil(t, m.currentChannel)
 
 			require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
@@ -543,10 +324,12 @@ func TestChannelManager_TxData(t *testing.T) {
 
 		// * One when the channelManager was created
 		// * One when the channel is about to be submitted
-		// * Potentially one more if the replacement channel is about to be submitted,
-		//   this only happens when going from calldata->blobs because
-		//   the channel is no longer ready to send until more data
-		//   is added.
+		// * Potentially one more when the replacement channel
+		//   is not immediately ready to be submitted, but later
+		//   becomes ready after more data is added.
+		//   This only happens when going from calldata->blobs because
+		//   the channel is not immediately ready to send until more data
+		//   is added due to blob channels having greater capacity.
 		numExpectedAssessments int
 	}
 
@@ -591,7 +374,7 @@ func TestChannelManager_TxData(t *testing.T) {
 			// we get some data to submit
 			var data txData
 			for {
-				m.blocks = []*types.Block{blockA}
+				m.blocks = append(m.blocks, blockA)
 				data, err = m.TxData(eth.BlockID{})
 				if err == nil && data.Len() > 0 {
 					break
@@ -609,16 +392,15 @@ func TestChannelManager_TxData(t *testing.T) {
 
 }
 
-// TestChannelManager_Requeue seeds the channel manager with blocks,
+// TestChannelManager_handleChannelInvalidated seeds the channel manager with blocks,
 // takes a state snapshot, triggers the blocks->channels pipeline,
-// and then calls Requeue. Finally, it asserts the channel manager's
-// state is equal to the snapshot. It repeats this for a channel
-// which has a pending transaction and verifies that Requeue is then
-// a noop.
-func TestChannelManager_Requeue(t *testing.T) {
+// and then calls handleChannelInvalidated. It asserts on the final state of
+// the channel manager.
+func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	l := testlog.Logger(t, log.LevelCrit)
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
-	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+	metrics := new(metrics.TestMetrics)
+	m := NewChannelManager(l, metrics, cfg, defaultTestRollupConfig)
 
 	// Seed channel manager with blocks
 	rng := rand.New(rand.NewSource(99))
@@ -631,42 +413,197 @@ func TestChannelManager_Requeue(t *testing.T) {
 	m.blocks = stateSnapshot
 	require.Empty(t, m.channelQueue)
 
+	// Place an old channel in the queue.
+	// This channel should not be affected by
+	// a requeue or a later channel timing out.
+	oldChannel := newChannel(l, nil, m.defaultCfg, defaultTestRollupConfig, 0, nil)
+	oldChannel.Close()
+	m.channelQueue = []*channel{oldChannel}
+	require.Len(t, m.channelQueue, 1)
+
+	// Setup initial metrics
+	metrics.RecordL2BlockInPendingQueue(blockA)
+	metrics.RecordL2BlockInPendingQueue(blockB)
+	pendingBytesBefore := metrics.PendingBlocksBytesCurrent
+
 	// Trigger the blocks -> channelQueue data pipelining
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
-	require.NotEmpty(t, m.channelQueue)
+	require.Len(t, m.channelQueue, 2)
 	require.NoError(t, m.processBlocks())
 
 	// Assert that at least one block was processed into the channel
-	require.NotContains(t, m.blocks, blockA)
+	require.Equal(t, 1, m.blockCursor)
 
-	// Call the function we are testing
-	m.Requeue(m.defaultCfg)
+	// Check metric decreased
+	metricsDelta := metrics.PendingBlocksBytesCurrent - pendingBytesBefore
+	require.Negative(t, metricsDelta)
+
+	l1OriginBefore := m.l1OriginLastSubmittedChannel
+
+	m.handleChannelInvalidated(m.currentChannel)
 
 	// Ensure we got back to the state above
 	require.Equal(t, m.blocks, stateSnapshot)
-	require.Empty(t, m.channelQueue)
+	require.Contains(t, m.channelQueue, oldChannel)
+	require.Len(t, m.channelQueue, 1)
+
+	// Check metric came back up to previous value
+	require.Equal(t, pendingBytesBefore, metrics.PendingBlocksBytesCurrent)
+
+	// Ensure the l1OridingLastSubmittedChannel was
+	// not changed. This ensures the next channel
+	// has its duration timeout deadline computed
+	// properly.
+	require.Equal(t, l1OriginBefore, m.l1OriginLastSubmittedChannel)
 
 	// Trigger the blocks -> channelQueue data pipelining again
 	require.NoError(t, m.ensureChannelWithSpace(eth.BlockID{}))
 	require.NotEmpty(t, m.channelQueue)
 	require.NoError(t, m.processBlocks())
+}
 
-	// Assert that at least one block was processed into the channel
-	require.NotContains(t, m.blocks, blockA)
+func TestChannelManager_PruneBlocks(t *testing.T) {
+	l := testlog.Logger(t, log.LevelDebug)
+	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
+	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 
-	// Now mark the 0th channel in the queue as already
-	// starting to send on chain
-	channel0 := m.channelQueue[0]
-	channel0.pendingTransactions["foo"] = txData{}
-	require.False(t, channel0.NoneSubmitted())
+	a := types.NewBlock(&types.Header{
+		Number: big.NewInt(0),
+	}, nil, nil, nil)
+	b := types.NewBlock(&types.Header{ // This will shortly become the safe head
+		Number:     big.NewInt(1),
+		ParentHash: a.Hash(),
+	}, nil, nil, nil)
+	c := types.NewBlock(&types.Header{
+		Number:     big.NewInt(2),
+		ParentHash: b.Hash(),
+	}, nil, nil, nil)
 
-	// Call the function we are testing
-	m.Requeue(m.defaultCfg)
+	require.NoError(t, m.AddL2Block(a))
+	m.blockCursor += 1
+	require.NoError(t, m.AddL2Block(b))
+	m.blockCursor += 1
+	require.NoError(t, m.AddL2Block(c))
+	m.blockCursor += 1
 
-	// The requeue shouldn't affect the pending channel
-	require.Contains(t, m.channelQueue, channel0)
+	// Normal path
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   b.Hash(),
+		Number: b.NumberU64(),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{c}, m.blocks)
 
-	require.NotContains(t, m.blocks, blockA)
+	// Safe chain didn't move, nothing to prune
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   b.Hash(),
+		Number: b.NumberU64(),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{c}, m.blocks)
+
+	// Safe chain moved beyond the blocks we had
+	// state should be cleared
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   c.Hash(),
+		Number: uint64(99),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
+
+	// No blocks to prune, NOOP
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   c.Hash(),
+		Number: c.NumberU64(),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
+
+	// Put another block in
+	d := types.NewBlock(&types.Header{
+		Number:     big.NewInt(3),
+		ParentHash: c.Hash(),
+	}, nil, nil, nil)
+	require.NoError(t, m.AddL2Block(d))
+	m.blockCursor += 1
+
+	// Safe chain reorg
+	// state should be cleared
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   a.Hash(),
+		Number: uint64(3),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
+
+	// Put another block in
+	require.NoError(t, m.AddL2Block(d))
+	m.blockCursor += 1
+
+	// Safe chain reversed
+	// state should be cleared
+	m.pruneSafeBlocks(eth.L2BlockRef{
+		Hash:   a.Hash(), // unused
+		Number: uint64(1),
+	})
+	require.Equal(t, queue.Queue[*types.Block]{}, m.blocks)
+
+}
+
+func TestChannelManager_PruneChannels(t *testing.T) {
+	l := testlog.Logger(t, log.LevelCrit)
+	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
+	cfg.InitNoneCompressor()
+	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+
+	A, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
+	require.NoError(t, err)
+	B, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
+	require.NoError(t, err)
+	C, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
+	require.NoError(t, err)
+
+	m.channelQueue = []*channel{A, B, C}
+
+	numTx := 1
+	rng := rand.New(rand.NewSource(123))
+	a0 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(0)})
+	a1 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	a1 = a1.WithSeal(&types.Header{Number: big.NewInt(1)})
+	b2 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	b2 = b2.WithSeal(&types.Header{Number: big.NewInt(2)})
+	b3 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	b3 = b3.WithSeal(&types.Header{Number: big.NewInt(3)})
+	c4 := derivetest.RandomL2BlockWithChainId(rng, numTx, defaultTestRollupConfig.L2ChainID)
+	c4 = c4.WithSeal(&types.Header{Number: big.NewInt(4)})
+
+	_, err = A.AddBlock(a0)
+	require.NoError(t, err)
+	_, err = A.AddBlock(a1)
+	require.NoError(t, err)
+
+	_, err = B.AddBlock(b2)
+	require.NoError(t, err)
+	_, err = B.AddBlock(b3)
+	require.NoError(t, err)
+
+	_, err = C.AddBlock(c4)
+	require.NoError(t, err)
+
+	m.pruneChannels(eth.L2BlockRef{
+		Number: uint64(3),
+	})
+
+	require.Equal(t, []*channel{C}, m.channelQueue)
+
+	m.pruneChannels(eth.L2BlockRef{
+		Number: uint64(4),
+	})
+
+	require.Equal(t, []*channel{}, m.channelQueue)
+
+	m.pruneChannels(eth.L2BlockRef{
+		Number: uint64(4),
+	})
+
+	require.Equal(t, []*channel{}, m.channelQueue)
+
 }
 func TestChannelManager_ChannelOutFactory(t *testing.T) {
 	type ChannelOutWrapper struct {

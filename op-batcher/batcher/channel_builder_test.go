@@ -299,6 +299,7 @@ func TestChannelBuilderBatchType(t *testing.T) {
 		{"ChannelBuilder_PendingFrames_TotalFrames", ChannelBuilder_PendingFrames_TotalFrames},
 		{"ChannelBuilder_InputBytes", ChannelBuilder_InputBytes},
 		{"ChannelBuilder_OutputBytes", ChannelBuilder_OutputBytes},
+		{"ChannelBuilder_OutputWrongFramePanic", ChannelBuilder_OutputWrongFramePanic},
 	}
 	for _, test := range tests {
 		test := test
@@ -340,7 +341,7 @@ func TestChannelBuilder_NextFrame(t *testing.T) {
 		},
 		data: expectedBytes,
 	}
-	cb.PushFrames(frameData)
+	cb.frames = append(cb.frames, frameData)
 
 	// There should only be 1 frame in the channel builder
 	require.Equal(t, 1, cb.PendingFrames())
@@ -355,7 +356,7 @@ func TestChannelBuilder_NextFrame(t *testing.T) {
 	require.PanicsWithValue(t, "no next frame", func() { cb.NextFrame() })
 }
 
-// TestChannelBuilder_OutputWrongFramePanic tests that a panic is thrown when a frame is pushed with an invalid frame id
+// TestChannelBuilder_OutputWrongFramePanic tests that a panic is thrown when we try to rewind the cursor with an invalid frame id
 func ChannelBuilder_OutputWrongFramePanic(t *testing.T, batchType uint) {
 	channelConfig := defaultTestChannelConfig()
 	channelConfig.BatchType = batchType
@@ -377,7 +378,7 @@ func ChannelBuilder_OutputWrongFramePanic(t *testing.T, batchType uint) {
 
 	// The frame push should panic since we constructed a new channel out
 	// so the channel out id won't match
-	require.PanicsWithValue(t, "wrong channel", func() {
+	require.PanicsWithValue(t, "cannot rewind to unknown frame", func() {
 		frame := frameData{
 			id: frameID{
 				chID:        co.ID(),
@@ -385,7 +386,7 @@ func ChannelBuilder_OutputWrongFramePanic(t *testing.T, batchType uint) {
 			},
 			data: buf.Bytes(),
 		}
-		cb.PushFrames(frame)
+		cb.RewindFrameCursor(frame)
 	})
 }
 
@@ -625,11 +626,11 @@ func TestChannelBuilder_FullShadowCompressor(t *testing.T) {
 
 	require.NoError(cb.OutputFrames())
 
-	require.True(cb.HasFrame())
+	require.True(cb.HasPendingFrame())
 	f := cb.NextFrame()
 	require.Less(len(f.data), int(cfg.MaxFrameSize)) // would fail without fix, full frame
 
-	require.False(cb.HasFrame(), "no leftover frame expected") // would fail without fix
+	require.False(cb.HasPendingFrame(), "no leftover frame expected") // would fail without fix
 }
 
 func ChannelBuilder_AddBlock(t *testing.T, batchType uint) {
@@ -656,8 +657,8 @@ func ChannelBuilder_AddBlock(t *testing.T, batchType uint) {
 		expectedInputBytes = 47
 	}
 	require.Equal(t, expectedInputBytes, cb.co.InputBytes())
-	require.Equal(t, 1, len(cb.blocks))
-	require.Equal(t, 0, len(cb.frames))
+	require.Equal(t, 1, cb.blocks.Len())
+	require.Equal(t, 0, cb.frames.Len())
 	require.True(t, cb.IsFull())
 
 	// Since the channel output is full, the next call to AddBlock
@@ -858,7 +859,7 @@ func ChannelBuilder_PendingFrames_TotalFrames(t *testing.T, batchType uint) {
 
 	// empty queue
 	for pf := nf - 1; pf >= 0; pf-- {
-		require.True(cb.HasFrame())
+		require.True(cb.HasPendingFrame())
 		_ = cb.NextFrame()
 		require.Equal(cb.PendingFrames(), pf)
 		require.Equal(cb.TotalFrames(), nf)
@@ -932,7 +933,7 @@ func ChannelBuilder_OutputBytes(t *testing.T, batchType uint) {
 	require.Greater(cb.PendingFrames(), 1)
 
 	var flen int
-	for cb.HasFrame() {
+	for cb.HasPendingFrame() {
 		f := cb.NextFrame()
 		flen += len(f.data)
 	}

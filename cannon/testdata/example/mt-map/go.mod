@@ -1,4 +1,4 @@
-module multithreaded
+module map
 
 go 1.22
 

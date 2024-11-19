@@ -49,10 +49,10 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 func (c *channel) TxFailed(id string) {
 	if data, ok := c.pendingTransactions[id]; ok {
 		c.log.Trace("marked transaction as failed", "id", id)
-		// Note: when the batcher is changed to send multiple frames per tx,
-		// this needs to be changed to iterate over all frames of the tx data
-		// and re-queue them.
-		c.channelBuilder.PushFrames(data.Frames()...)
+		// Rewind to the first frame of the failed tx
+		// -- the frames are ordered, and we want to send them
+		// all again.
+		c.channelBuilder.RewindFrameCursor(data.Frames()[0])
 		delete(c.pendingTransactions, id)
 	} else {
 		c.log.Warn("unknown transaction marked as failed", "id", id)
@@ -61,18 +61,16 @@ func (c *channel) TxFailed(id string) {
 	c.metr.RecordBatchTxFailed()
 }
 
-// TxConfirmed marks a transaction as confirmed on L1. Unfortunately even if all frames in
-// a channel have been marked as confirmed on L1 the channel may be invalid & need to be
-// resubmitted.
-// This function may reset the pending channel if the pending channel has timed out.
-func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) (bool, []*types.Block) {
+// TxConfirmed marks a transaction as confirmed on L1. Returns a bool indicating
+// whether the channel timed out on chain.
+func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) bool {
 	c.metr.RecordBatchTxSubmitted()
 	c.log.Debug("marked transaction as confirmed", "id", id, "block", inclusionBlock)
 	if _, ok := c.pendingTransactions[id]; !ok {
 		c.log.Warn("unknown transaction marked as confirmed", "id", id, "block", inclusionBlock)
 		// TODO: This can occur if we clear the channel while there are still pending transactions
 		// We need to keep track of stale transactions instead
-		return false, nil
+		return false
 	}
 	delete(c.pendingTransactions, id)
 	c.confirmedTransactions[id] = inclusionBlock
@@ -82,21 +80,20 @@ func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) (bool, []*t
 	c.minInclusionBlock = min(c.minInclusionBlock, inclusionBlock.Number)
 	c.maxInclusionBlock = max(c.maxInclusionBlock, inclusionBlock.Number)
 
+	if c.isFullySubmitted() {
+		c.metr.RecordChannelFullySubmitted(c.ID())
+		c.log.Info("Channel is fully submitted", "id", c.ID(), "min_inclusion_block", c.minInclusionBlock, "max_inclusion_block", c.maxInclusionBlock)
+	}
+
 	// If this channel timed out, put the pending blocks back into the local saved blocks
 	// and then reset this state so it can try to build a new channel.
 	if c.isTimedOut() {
 		c.metr.RecordChannelTimedOut(c.ID())
 		c.log.Warn("Channel timed out", "id", c.ID(), "min_inclusion_block", c.minInclusionBlock, "max_inclusion_block", c.maxInclusionBlock)
-		return true, c.channelBuilder.Blocks()
-	}
-	// If we are done with this channel, record that.
-	if c.isFullySubmitted() {
-		c.metr.RecordChannelFullySubmitted(c.ID())
-		c.log.Info("Channel is fully submitted", "id", c.ID(), "min_inclusion_block", c.minInclusionBlock, "max_inclusion_block", c.maxInclusionBlock)
-		return true, nil
+		return true
 	}
 
-	return false, nil
+	return false
 }
 
 // Timeout returns the channel timeout L1 block number. If there is no timeout set, it returns 0.
@@ -136,7 +133,7 @@ func (c *channel) ID() derive.ChannelID {
 func (c *channel) NextTxData() txData {
 	nf := c.cfg.MaxFramesPerTx()
 	txdata := txData{frames: make([]frameData, 0, nf), asBlob: c.cfg.UseBlobs}
-	for i := 0; i < nf && c.channelBuilder.HasFrame(); i++ {
+	for i := 0; i < nf && c.channelBuilder.HasPendingFrame(); i++ {
 		frame := c.channelBuilder.NextFrame()
 		txdata.frames = append(txdata.frames, frame)
 	}
@@ -151,7 +148,7 @@ func (c *channel) NextTxData() txData {
 func (c *channel) HasTxData() bool {
 	if c.IsFull() || // If the channel is full, we should start to submit it
 		!c.cfg.UseBlobs { // If using calldata, we only send one frame per tx
-		return c.channelBuilder.HasFrame()
+		return c.channelBuilder.HasPendingFrame()
 	}
 	// Collect enough frames if channel is not full yet
 	return c.channelBuilder.PendingFrames() >= int(c.cfg.MaxFramesPerTx())

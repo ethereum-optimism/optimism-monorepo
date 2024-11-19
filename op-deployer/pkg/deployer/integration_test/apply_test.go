@@ -1,12 +1,16 @@
 package integration_test
 
 import (
+	"bufio"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/rand"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"log/slog"
+	"maps"
 	"math/big"
 	"os"
 	"testing"
@@ -182,13 +186,15 @@ func TestApplyExistingOPCM(t *testing.T) {
 
 	l2ChainID := uint256.NewInt(1)
 
+	// Hardcode the below tags to ensure the test is validating the correct
+	// version even if the underlying tag changes
 	intent, st := newIntent(
 		t,
 		l1ChainID,
 		dk,
 		l2ChainID,
-		artifacts.DefaultL1ContractsLocator,
-		artifacts.DefaultL2ContractsLocator,
+		artifacts.MustNewLocatorFromTag("op-contracts/v1.6.0"),
+		artifacts.MustNewLocatorFromTag("op-contracts/v1.7.0-beta.1+l2-contracts"),
 	)
 	// Define a new create2 salt to avoid contract address collisions
 	_, err = rand.Read(st.Create2Salt[:])
@@ -230,6 +236,130 @@ func TestApplyExistingOPCM(t *testing.T) {
 		t.Run(tt.name, func(t *testing.T) {
 			require.Equal(t, tt.expAddr, tt.actAddr)
 		})
+	}
+
+	artifactsFSL2, cleanupL2, err := artifacts.Download(
+		ctx,
+		intent.L2ContractsLocator,
+		artifacts.LogProgressor(lgr),
+	)
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		require.NoError(t, cleanupL2())
+	})
+
+	chainState := st.Chains[0]
+	chainIntent := intent.Chains[0]
+
+	semvers, err := inspect.L2Semvers(inspect.L2SemversConfig{
+		Lgr:        lgr,
+		Artifacts:  artifactsFSL2,
+		ChainState: chainState,
+	})
+	require.NoError(t, err)
+
+	expectedSemversL2 := &inspect.L2PredeploySemvers{
+		L2ToL1MessagePasser:           "1.1.1-beta.1",
+		DeployerWhitelist:             "1.1.1-beta.1",
+		WETH:                          "1.0.0-beta.1",
+		L2CrossDomainMessenger:        "2.1.1-beta.1",
+		L2StandardBridge:              "1.11.1-beta.1",
+		SequencerFeeVault:             "1.5.0-beta.2",
+		OptimismMintableERC20Factory:  "1.10.1-beta.2",
+		L1BlockNumber:                 "1.1.1-beta.1",
+		GasPriceOracle:                "1.3.1-beta.1",
+		L1Block:                       "1.5.1-beta.1",
+		LegacyMessagePasser:           "1.1.1-beta.1",
+		L2ERC721Bridge:                "1.7.1-beta.2",
+		OptimismMintableERC721Factory: "1.4.1-beta.1",
+		BaseFeeVault:                  "1.5.0-beta.2",
+		L1FeeVault:                    "1.5.0-beta.2",
+		SchemaRegistry:                "1.3.1-beta.1",
+		EAS:                           "1.4.1-beta.1",
+		CrossL2Inbox:                  "",
+		L2toL2CrossDomainMessenger:    "",
+		SuperchainWETH:                "",
+		ETHLiquidity:                  "",
+		SuperchainTokenBridge:         "",
+		OptimismMintableERC20:         "1.4.0-beta.1",
+		OptimismMintableERC721:        "1.3.1-beta.1",
+	}
+
+	require.EqualValues(t, expectedSemversL2, semvers)
+
+	f, err := os.Open("./testdata/allocs-l2-v160.json.gz")
+	require.NoError(t, err)
+	defer f.Close()
+	gzr, err := gzip.NewReader(f)
+	require.NoError(t, err)
+	defer gzr.Close()
+	dec := json.NewDecoder(bufio.NewReader(gzr))
+	var expAllocs types.GenesisAlloc
+	require.NoError(t, dec.Decode(&expAllocs))
+
+	type storageCheckerFunc func(addr common.Address, actStorage map[common.Hash]common.Hash)
+
+	storageDiff := func(addr common.Address, expStorage, actStorage map[common.Hash]common.Hash) {
+		require.EqualValues(t, expStorage, actStorage, "storage for %s differs", addr)
+	}
+
+	defaultStorageChecker := func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+		storageDiff(addr, expAllocs[addr].Storage, actStorage)
+	}
+
+	overrideStorageChecker := func(addr common.Address, actStorage, overrides map[common.Hash]common.Hash) {
+		expStorage := make(map[common.Hash]common.Hash)
+		maps.Copy(expStorage, expAllocs[addr].Storage)
+		maps.Copy(expStorage, overrides)
+		storageDiff(addr, expStorage, actStorage)
+	}
+
+	storageCheckers := map[common.Address]storageCheckerFunc{
+		predeploys.L2CrossDomainMessengerAddr: func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+			overrideStorageChecker(addr, actStorage, map[common.Hash]common.Hash{
+				{31: 0xcf}: common.BytesToHash(chainState.L1CrossDomainMessengerProxyAddress.Bytes()),
+			})
+		},
+		predeploys.L2StandardBridgeAddr: func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+			overrideStorageChecker(addr, actStorage, map[common.Hash]common.Hash{
+				{31: 0x04}: common.BytesToHash(chainState.L1StandardBridgeProxyAddress.Bytes()),
+			})
+		},
+		predeploys.L2ERC721BridgeAddr: func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+			overrideStorageChecker(addr, actStorage, map[common.Hash]common.Hash{
+				{31: 0x02}: common.BytesToHash(chainState.L1ERC721BridgeProxyAddress.Bytes()),
+			})
+		},
+		predeploys.ProxyAdminAddr: func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+			overrideStorageChecker(addr, actStorage, map[common.Hash]common.Hash{
+				{}: common.BytesToHash(intent.Chains[0].Roles.L2ProxyAdminOwner.Bytes()),
+			})
+		},
+		// The ProxyAdmin owner is also set on the ProxyAdmin contract's implementation address, see
+		// L2Genesis.s.sol line 292.
+		common.HexToAddress("0xc0d3c0d3c0d3c0d3c0d3c0d3c0d3c0d3c0d30018"): func(addr common.Address, actStorage map[common.Hash]common.Hash) {
+			overrideStorageChecker(addr, actStorage, map[common.Hash]common.Hash{
+				{}: common.BytesToHash(chainIntent.Roles.L2ProxyAdminOwner.Bytes()),
+			})
+		},
+	}
+
+	//Use a custom equality function to compare the genesis allocs
+	//because the reflect-based one is really slow
+	actAllocs := st.Chains[0].Allocs.Data.Accounts
+	require.Equal(t, len(expAllocs), len(actAllocs))
+	for addr, expAcc := range expAllocs {
+		actAcc, ok := actAllocs[addr]
+		require.True(t, ok)
+		require.True(t, expAcc.Balance.Cmp(actAcc.Balance) == 0, "balance for %s differs", addr)
+		require.Equal(t, expAcc.Nonce, actAcc.Nonce, "nonce for %s differs", addr)
+		require.Equal(t, hex.EncodeToString(expAllocs[addr].Code), hex.EncodeToString(actAcc.Code), "code for %s differs", addr)
+
+		storageChecker, ok := storageCheckers[addr]
+		if !ok {
+			storageChecker = defaultStorageChecker
+		}
+		storageChecker(addr, actAcc.Storage)
 	}
 }
 

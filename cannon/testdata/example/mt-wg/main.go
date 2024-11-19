@@ -2,8 +2,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"runtime"
 	"sync"
 	"sync/atomic"
 )
@@ -39,8 +37,4 @@ func main() {
 	a <- 1234
 	out := <-c
 	fmt.Printf("channels result: %d\n", out)
-
-	// try a GC! (the runtime might not have run one yet)
-	runtime.GC()
-	_, _ = os.Stdout.Write([]byte("GC complete!\n"))
 }

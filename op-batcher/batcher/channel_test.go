@@ -113,7 +113,7 @@ func TestChannelManager_NextTxData(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	channel.channelBuilder.PushFrames(frame)
+	channel.channelBuilder.frames = append(channel.channelBuilder.frames, frame)
 	require.Equal(t, 1, channel.PendingFrames())
 
 	// Now the nextTxData function should return the frame
@@ -142,7 +142,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 
 	mockframes := makeMockFrameDatas(chID, n+1)
 	// put multiple frames into channel, but less than target
-	ch.channelBuilder.PushFrames(mockframes[:n-1]...)
+	ch.channelBuilder.frames = mockframes[:n-1]
 
 	requireTxData := func(i int) {
 		require.True(ch.HasTxData(), "expected tx data %d", i)
@@ -160,7 +160,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 	require.False(ch.HasTxData())
 
 	// put in last two
-	ch.channelBuilder.PushFrames(mockframes[n-1 : n+1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[n-1:n+1]...)
 	for i := n - 1; i < n+1; i++ {
 		requireTxData(i)
 	}
@@ -183,11 +183,11 @@ func TestChannel_NextTxData_multiFrameTx(t *testing.T) {
 
 	mockframes := makeMockFrameDatas(chID, n+1)
 	// put multiple frames into channel, but less than target
-	ch.channelBuilder.PushFrames(mockframes[:n-1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[:n-1]...)
 	require.False(ch.HasTxData())
 
 	// put in last two
-	ch.channelBuilder.PushFrames(mockframes[n-1 : n+1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[n-1:n+1]...)
 	require.True(ch.HasTxData())
 	txdata := ch.NextTxData()
 	require.Len(txdata.frames, n)
@@ -240,7 +240,8 @@ func TestChannelTxConfirmed(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	m.currentChannel.channelBuilder.PushFrames(frame)
+	m.currentChannel.channelBuilder.frames = append(m.currentChannel.channelBuilder.frames, frame)
+
 	require.Equal(t, 1, m.currentChannel.PendingFrames())
 	returnedTxData, err := m.nextTxData(m.currentChannel)
 	expectedTxData := singleFrameTxData(frame)
@@ -291,7 +292,7 @@ func TestChannelTxFailed(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	m.currentChannel.channelBuilder.PushFrames(frame)
+	m.currentChannel.channelBuilder.frames = append(m.currentChannel.channelBuilder.frames, frame)
 	require.Equal(t, 1, m.currentChannel.PendingFrames())
 	returnedTxData, err := m.nextTxData(m.currentChannel)
 	expectedTxData := singleFrameTxData(frame)
