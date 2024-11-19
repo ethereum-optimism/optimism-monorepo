@@ -370,7 +370,7 @@ func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus)
 	// Check last stored to see if it needs to be set on startup OR set if is lagged behind.
 	// It lagging implies that the op-node processed some batches that were submitted prior to the current instance of the batcher being alive.
 	if lastStoredBlock == (eth.BlockID{}) {
-		l.Log.Info("Starting batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
+		l.Log.Info("Resuming batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
 		lastStoredBlock = syncStatus.SafeL2.ID()
 	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
 		l.Log.Warn("Last submitted block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", l.lastStoredBlock, "safe", syncStatus.SafeL2)
