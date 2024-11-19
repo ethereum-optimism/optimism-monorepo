@@ -15,8 +15,6 @@
   "l2OutputOracleStartingBlockNumber": 0,
   "l2OutputOracleProposer": "0x95014c45078354ff839f14192228108eac82e00a",
   "l2OutputOracleChallenger": "0x8c20c40180751d93e939dddee3517ae0d1ebead2",
-  "cliqueSignerAddress": "0x0000000000000000000000000000000000000000",
-  "l1UseClique": false,
   "l1BlockTime": 12,
   "l1GenesisBlockTimestamp": "0x0",
   "l1GenesisBlockNonce": "0x0",

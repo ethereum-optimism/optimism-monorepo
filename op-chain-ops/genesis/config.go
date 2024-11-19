@@ -854,12 +854,6 @@ func (d *L1DependenciesConfig) CheckAddresses(dependencyContext DependencyContex
 // The genesis generation may log warnings, do a best-effort support attempt,
 // or ignore these attributes completely.
 type LegacyDeployConfig struct {
-	// CliqueSignerAddress represents the signer address for the clique consensus engine.
-	// It is used in the multi-process devnet to sign blocks.
-	CliqueSignerAddress common.Address `json:"cliqueSignerAddress"`
-	// L1UseClique represents whether or not to use the clique consensus engine.
-	L1UseClique bool `json:"l1UseClique"`
-
 	// DeploymentWaitConfirmations is the number of confirmations to wait during
 	// deployment. This is DEPRECATED and should be removed in a future PR.
 	DeploymentWaitConfirmations int `json:"deploymentWaitConfirmations"`

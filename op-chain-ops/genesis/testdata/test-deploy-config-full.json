@@ -6,8 +6,6 @@
   "maxSequencerDrift": 20,
   "sequencerWindowSize": 100,
   "channelTimeout": 30,
-  "l1UseClique": false,
-  "cliqueSignerAddress": "0x0000000000000000000000000000000000000000",
   "customGasTokenAddress": "0x0000000000000000000000000000000000000000",
   "p2pSequencerAddress": "0x9965507d1a55bcc2695c58ba16fb37d819b0a4dc",
   "batchInboxAddress": "0x42000000000000000000000000000000000000ff",
