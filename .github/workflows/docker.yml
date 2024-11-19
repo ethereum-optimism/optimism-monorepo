@@ -1,4 +1,4 @@
-name: CI
+name: Docker
 
 env:
   FOUNDRY_PROFILE: ci
