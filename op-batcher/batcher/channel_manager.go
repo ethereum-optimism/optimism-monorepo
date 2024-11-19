@@ -565,3 +565,10 @@ func (m *channelManager) CheckExpectedProgress(syncStatus eth.SyncStatus) error 
 	}
 	return nil
 }
+
+func (m *channelManager) LastStoredBlock() eth.BlockID {
+	if m.blocks.Len() == 0 {
+		return eth.BlockID{}
+	}
+	return eth.ToBlockID(m.blocks[m.blocks.Len()-1])
+}

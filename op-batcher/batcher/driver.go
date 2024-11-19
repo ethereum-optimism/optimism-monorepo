@@ -114,10 +114,6 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	// lastStoredBlock is the last block loaded into `state`. If it is empty it should be set to the l2 safe head.
-	lastStoredBlock eth.BlockID
-	lastL1Tip       eth.L1BlockRef
-
 	state *channelManager
 }
 
@@ -147,7 +143,6 @@ func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.shutdownCtx, l.cancelShutdownCtx = context.WithCancel(context.Background())
 	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
 	l.clearState(l.shutdownCtx)
-	l.lastStoredBlock = eth.BlockID{}
 
 	if err := l.waitForL2Genesis(); err != nil {
 		return fmt.Errorf("error waiting for L2 genesis: %w", err)
@@ -271,13 +266,11 @@ func (l *BatchSubmitter) loadBlocksIntoState(syncStatus eth.SyncStatus, ctx cont
 		block, err := l.loadBlockIntoState(ctx, i)
 		if errors.Is(err, ErrReorg) {
 			l.Log.Warn("Found L2 reorg", "block_number", i)
-			l.lastStoredBlock = eth.BlockID{}
 			return err
 		} else if err != nil {
 			l.Log.Warn("Failed to load block into state", "err", err)
 			return err
 		}
-		l.lastStoredBlock = eth.ToBlockID(block)
 		latestBlock = block
 	}
 
@@ -373,14 +366,15 @@ func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus)
 		return eth.BlockID{}, eth.BlockID{}, errors.New("empty sync status")
 	}
 
+	lastStoredBlock := l.state.LastStoredBlock()
 	// Check last stored to see if it needs to be set on startup OR set if is lagged behind.
 	// It lagging implies that the op-node processed some batches that were submitted prior to the current instance of the batcher being alive.
-	if l.lastStoredBlock == (eth.BlockID{}) {
+	if lastStoredBlock == (eth.BlockID{}) {
 		l.Log.Info("Starting batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
-		l.lastStoredBlock = syncStatus.SafeL2.ID()
-	} else if l.lastStoredBlock.Number < syncStatus.SafeL2.Number {
+		lastStoredBlock = syncStatus.SafeL2.ID()
+	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
 		l.Log.Warn("Last submitted block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", l.lastStoredBlock, "safe", syncStatus.SafeL2)
-		l.lastStoredBlock = syncStatus.SafeL2.ID()
+		lastStoredBlock = syncStatus.SafeL2.ID()
 	}
 
 	// Check if we should even attempt to load any blocks. TODO: May not need this check
@@ -388,7 +382,7 @@ func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus)
 		return eth.BlockID{}, eth.BlockID{}, fmt.Errorf("L2 safe head(%d) ahead of L2 unsafe head(%d)", syncStatus.SafeL2.Number, syncStatus.UnsafeL2.Number)
 	}
 
-	return l.lastStoredBlock, syncStatus.UnsafeL2.ID(), nil
+	return lastStoredBlock, syncStatus.UnsafeL2.ID(), nil
 }
 
 // The following things occur:
@@ -880,10 +874,6 @@ func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txRef]) {
 }
 
 func (l *BatchSubmitter) recordL1Tip(l1tip eth.L1BlockRef) {
-	if l.lastL1Tip == l1tip {
-		return
-	}
-	l.lastL1Tip = l1tip
 	l.Metr.RecordLatestL1Block(l1tip)
 }
 
