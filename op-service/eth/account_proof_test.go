@@ -97,7 +97,8 @@ func TestAccountResult_MarshalTruncated(t *testing.T) {
 func FuzzAccountResult_StorageProof(f *testing.F) {
 	f.Fuzz(func(t *testing.T, key []byte, value []byte) {
 		result := makeResult(t)
-		result.StorageProof[0].Key = hexutil.Big(*common.BytesToHash(key).Big())
+
+		result.StorageProof[0].Key = key
 		result.StorageProof[0].Value = hexutil.Big(*(new(big.Int).SetBytes(value)))
 		require.NotNil(t, result.Verify(goodRoot), "does not verify against bad proof")
 	})
