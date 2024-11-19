@@ -68,7 +68,7 @@ timeline and activities were as follows:
 - 2022-02-02 1906: tynes cuts the following builds:
   - Mainnet: `0.5.8_b6f79171`
   - Kovan: `0.5.9_d4c6d824`
-- 2022-02-20 1930: optimisticben deploys to Kovan and mainnet.
+- 2022-02-02 1930: optimisticben deploys to Kovan and mainnet.
 - 2022-02-02 2021: mslipper gives instructions to infra providers on how to upgrade.
 - 2022-02-02 2150: Infura upgrades both Kovan and mainnet.
 - 2022-02-03 0457: Alchemy upgrades both Kovan and mainnet.
