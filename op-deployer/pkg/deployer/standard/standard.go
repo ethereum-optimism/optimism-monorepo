@@ -184,6 +184,17 @@ func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	}
 }
 
+func ArtifactsHashForTag(tag string) (common.Hash, error) {
+	switch tag {
+	case "op-contracts/v1.6.0":
+		return common.HexToHash("d20a930cc0ff204c2d93b7aa60755ec7859ba4f328b881f5090c6a6a2a86dcba"), nil
+	case "op-contracts/v1.7.0-beta.1+l2-contracts":
+		return common.HexToHash("9e3ad322ec9b2775d59143ce6874892f9b04781742c603ad59165159e90b00b9"), nil
+	default:
+		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
+	}
+}
+
 func standardArtifactsURL(checksum string) string {
 	return fmt.Sprintf("https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-%s.tar.gz", checksum)
 }

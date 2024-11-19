@@ -100,21 +100,22 @@ func TestEndToEndApply(t *testing.T) {
 	l1Client, err := ethclient.Dial(rpcURL)
 	require.NoError(t, err)
 
-	depKey := new(deployerKey)
+	pk, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	require.NoError(t, err)
+
 	l1ChainID := new(big.Int).SetUint64(defaultL1ChainID)
 	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	require.NoError(t, err)
-	pk, err := dk.Secret(depKey)
 	require.NoError(t, err)
 
 	l2ChainID1 := uint256.NewInt(1)
 	l2ChainID2 := uint256.NewInt(2)
 
 	loc, _ := testutil.LocalArtifacts(t)
-	intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
-	cg := ethClientCodeGetter(ctx, l1Client)
 
-	t.Run("initial chain", func(t *testing.T) {
+	t.Run("two chains one after another", func(t *testing.T) {
+		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+		cg := ethClientCodeGetter(ctx, l1Client)
+
 		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
@@ -127,11 +128,6 @@ func TestEndToEndApply(t *testing.T) {
 			},
 		))
 
-		validateSuperchainDeployment(t, st, cg)
-		validateOPChainDeployment(t, cg, st, intent)
-	})
-
-	t.Run("subsequent chain", func(t *testing.T) {
 		// create a new environment with wiped state to ensure we can continue using the
 		// state from the previous deployment
 		intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID2))
@@ -148,6 +144,30 @@ func TestEndToEndApply(t *testing.T) {
 			},
 		))
 
+		validateSuperchainDeployment(t, st, cg)
+		validateOPChainDeployment(t, cg, st, intent)
+	})
+
+	t.Run("chain with tagged artifacts", func(t *testing.T) {
+		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+		cg := ethClientCodeGetter(ctx, l1Client)
+
+		intent.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
+		intent.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
+
+		require.NoError(t, deployer.ApplyPipeline(
+			ctx,
+			deployer.ApplyPipelineOpts{
+				L1RPCUrl:           rpcURL,
+				DeployerPrivateKey: pk,
+				Intent:             intent,
+				State:              st,
+				Logger:             lgr,
+				StateWriter:        pipeline.NoopStateWriter(),
+			},
+		))
+
+		validateSuperchainDeployment(t, st, cg)
 		validateOPChainDeployment(t, cg, st, intent)
 	})
 }
@@ -245,9 +265,26 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		{"DelayedWETH", releases.DelayedWETH.ImplementationAddress, st.ImplementationsDeployment.DelayedWETHImplAddress},
 	}
 	for _, tt := range implTests {
-		t.Run(tt.name, func(t *testing.T) {
-			require.Equal(t, tt.expAddr, tt.actAddr)
-		})
+		require.Equal(t, tt.expAddr, tt.actAddr, "unexpected address for %s", tt.name)
+	}
+
+	superchain, err := standard.SuperchainFor(l1ChainIDBig.Uint64())
+	require.NoError(t, err)
+
+	managerOwner, err := standard.ManagerOwnerAddrFor(l1ChainIDBig.Uint64())
+	require.NoError(t, err)
+
+	superchainTests := []struct {
+		name    string
+		expAddr common.Address
+		actAddr common.Address
+	}{
+		{"ProxyAdmin", managerOwner, st.SuperchainDeployment.ProxyAdminAddress},
+		{"SuperchainConfig", common.Address(*superchain.Config.SuperchainConfigAddr), st.SuperchainDeployment.SuperchainConfigProxyAddress},
+		{"ProtocolVersions", common.Address(*superchain.Config.ProtocolVersionsAddr), st.SuperchainDeployment.ProtocolVersionsProxyAddress},
+	}
+	for _, tt := range superchainTests {
+		require.Equal(t, tt.expAddr, tt.actAddr, "unexpected address for %s", tt.name)
 	}
 
 	artifactsFSL2, cleanupL2, err := artifacts.Download(

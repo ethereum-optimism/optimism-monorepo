@@ -63,6 +63,11 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 				EIP1559DenominatorCanyon: 250,
 				EIP1559Elasticity:        chainIntent.Eip1559Elasticity,
 			},
+
+			// STOP! This struct sets the _default_ upgrade schedule for all chains.
+			// Any upgrades you enable here will be enabled for all new deployments.
+			// In-development hardforks should never be activated here. Instead, they
+			// should be specified as overrides.
 			UpgradeScheduleDeployConfig: genesis.UpgradeScheduleDeployConfig{
 				L2GenesisRegolithTimeOffset: u64UtilPtr(0),
 				L2GenesisCanyonTimeOffset:   u64UtilPtr(0),
