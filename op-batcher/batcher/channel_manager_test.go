@@ -634,16 +634,20 @@ func TestChannelManager_CheckExpectedProgress(t *testing.T) {
 	cfg.InitNoneCompressor()
 	m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 
+	channelMaxInclusionBlockNumber := uint64(3)
+	channelLatestSafeBlockNumber := uint64(11)
+
 	// Prepare a (dummy) fully submitted channel
-	// with maxInclusionBlock = 3 and latest safe block number = 3
+	// with
+	// maxInclusionBlock and latest safe block number as above
 	A, err := newChannelWithChannelOut(l, metrics.NoopMetrics, cfg, m.rollupCfg, 0)
 	require.NoError(t, err)
 	rng := rand.New(rand.NewSource(123))
 	a0 := derivetest.RandomL2BlockWithChainId(rng, 1, defaultTestRollupConfig.L2ChainID)
-	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(3)})
+	a0 = a0.WithSeal(&types.Header{Number: big.NewInt(int64(channelLatestSafeBlockNumber))})
 	_, err = A.AddBlock(a0)
 	require.NoError(t, err)
-	A.maxInclusionBlock = 3
+	A.maxInclusionBlock = channelMaxInclusionBlockNumber
 	A.Close()
 	A.channelBuilder.frames = nil
 	A.channelBuilder.frameCursor = 0
@@ -653,20 +657,27 @@ func TestChannelManager_CheckExpectedProgress(t *testing.T) {
 
 	// The current L1 number implies that
 	// channel A above should have been derived
-	// from, so we expect safe head to progress to 3.
-	// Since the safe head moved to 4, there is no error:
+	// from, so we expect safe head to progress to
+	// the channelLatestSafeBlockNumber.
+	// Since the safe head moved to 11, there is no error:
 	ss := eth.SyncStatus{
-		CurrentL1: eth.L1BlockRef{Number: 4},
-		SafeL2:    eth.L2BlockRef{Number: 4},
+		CurrentL1: eth.L1BlockRef{Number: channelMaxInclusionBlockNumber + 1},
+		SafeL2:    eth.L2BlockRef{Number: channelLatestSafeBlockNumber},
 	}
 	err = m.CheckExpectedProgress(ss)
 	require.NoError(t, err)
 
-	// If the safe head is less than 3
+	// If the currentL1 is as above but the
+	// safe head is less than channelLatestSafeBlockNumber,
 	// the method should return an error:
-	ss.SafeL2 = eth.L2BlockRef{Number: 1}
-
+	ss.SafeL2 = eth.L2BlockRef{Number: channelLatestSafeBlockNumber - 1}
 	err = m.CheckExpectedProgress(ss)
 	require.Error(t, err)
 
+	// If the safe head is still less than channelLatestSafeBlockNumber
+	// but the currentL1 is _equal_ to the channelMaxInclusionBlockNumber
+	// there should be no error as that block is still being derived from:
+	ss.CurrentL1 = eth.L1BlockRef{Number: channelMaxInclusionBlockNumber}
+	err = m.CheckExpectedProgress(ss)
+	require.NoError(t, err)
 }
