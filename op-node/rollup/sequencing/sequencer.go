@@ -281,10 +281,11 @@ func (d *Sequencer) onBuildSealed(x engine.BuildSealedEvent) {
 	d.asyncGossip.Gossip(x.Envelope)
 	// Now after having gossiped the block, try to put it in our own canonical chain
 	d.emitter.Emit(engine.PayloadProcessEvent{
-		Concluding:  x.Concluding,
-		DerivedFrom: x.DerivedFrom,
-		Envelope:    x.Envelope,
-		Ref:         x.Ref,
+		Concluding:   x.Concluding,
+		DerivedFrom:  x.DerivedFrom,
+		BuildStarted: x.BuildStarted,
+		Envelope:     x.Envelope,
+		Ref:          x.Ref,
 	})
 	d.latest.Ref = x.Ref
 	d.latestSealed = x.Ref
