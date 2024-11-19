@@ -229,8 +229,8 @@ func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
 	logValues := make([]interface{}, 0)
 	payload := ev.Envelope.ExecutionPayload
 
-	logValues = append(logValues, "hash", uint64(payload.BlockNumber))
-	logValues = append(logValues, "number", payload.BlockHash)
+	logValues = append(logValues, "hash", payload.BlockHash)
+	logValues = append(logValues, "number", uint64(payload.BlockNumber))
 	logValues = append(logValues, "state_root", payload.StateRoot)
 	logValues = append(logValues, "timestamp", uint64(payload.Timestamp))
 	logValues = append(logValues, "parent", payload.ParentHash)
