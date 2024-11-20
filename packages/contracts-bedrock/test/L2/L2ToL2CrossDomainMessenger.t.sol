@@ -196,40 +196,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         assertFalse(success);
     }
 
-    /// @dev Tests that the `sendMessage(uint256,address,bytes,address)` function reverts when sending a ETH
-    function testFuzz_sendMessage_nonPayable_reverts(
-        uint256 _destination,
-        address _target,
-        bytes calldata _message,
-        address _entrypoint,
-        uint256 _value
-    )
-        external
-    {
-        // Ensure the destination is not the same as the source, otherwise the function will revert
-        vm.assume(_destination != block.chainid);
-
-        // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
-        vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
-
-        // Ensure that _value is greater than 0
-        vm.assume(_value > 0);
-
-        // Add sufficient value to the contract to send the message with
-        vm.deal(address(this), _value);
-
-        // Call the sendMessage function with value to provoke revert
-        // NOTE: using encodeWithSignature to target the correct overloaded function signature
-        (bool success,) = address(l2ToL2CrossDomainMessenger).call{ value: _value }(
-            abi.encodeWithSignature(
-                "sendMessage(uint256, address, bytes, address)", _destination, _target, _message, _entrypoint
-            )
-        );
-
-        // Check that the function reverts
-        assertFalse(success);
-    }
-
     /// @dev Tests that the `sendMessage(uint256,address,bytes)` function reverts when destination is the same as the
     /// source chain.
     function testFuzz_sendMessage_destinationSameChain_reverts(address _target, bytes calldata _message) external {
@@ -238,27 +204,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Call `sendMessage` with the current chain as the destination to prevent revert due to invalid destination
         l2ToL2CrossDomainMessenger.sendMessage({ _destination: block.chainid, _target: _target, _message: _message });
-    }
-
-    /// @dev Tests that the `sendMessage(uint256,address,bytes,address)` function reverts when destination is the same
-    /// as the source chain.
-    function testFuzz_sendMessage_destinationSameChain_reverts(
-        address _target,
-        bytes calldata _message,
-        address _entrypoint
-    )
-        external
-    {
-        // Expect a revert with the MessageDestinationSameChain selector
-        vm.expectRevert(MessageDestinationSameChain.selector);
-
-        // Call `sendMessage` with the current chain as the destination to prevent revert due to invalid destination
-        l2ToL2CrossDomainMessenger.sendMessage({
-            _destination: block.chainid,
-            _target: _target,
-            _message: _message,
-            _entrypoint: _entrypoint
-        });
     }
 
     /// @dev Tests that the `sendMessage(uint256,address,bytes)` function reverts when the target is CrossL2Inbox.
@@ -274,30 +219,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             _destination: _destination,
             _target: Predeploys.CROSS_L2_INBOX,
             _message: _message
-        });
-    }
-
-    /// @dev Tests that the `sendMessage(uint256,address,bytes,address)` function reverts when the target is
-    /// CrossL2Inbox.
-    function testFuzz_sendMessage_targetCrossL2Inbox_reverts(
-        uint256 _destination,
-        bytes calldata _message,
-        address _entrypoint
-    )
-        external
-    {
-        // Ensure the destination is not the same as the source, otherwise the function will revert regardless of target
-        vm.assume(_destination != block.chainid);
-
-        // Expect a revert with the MessageTargetCrossL2Inbox selector
-        vm.expectRevert(MessageTargetCrossL2Inbox.selector);
-
-        // Call `senderMessage` with the CrossL2Inbox as the target to provoke revert
-        l2ToL2CrossDomainMessenger.sendMessage({
-            _destination: _destination,
-            _target: Predeploys.CROSS_L2_INBOX,
-            _message: _message,
-            _entrypoint: _entrypoint
         });
     }
 
@@ -320,30 +241,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             _destination: _destination,
             _target: Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             _message: _message
-        });
-    }
-
-    /// @dev Tests that the `sendMessage(uint256,address,bytes,address)` function reverts when the target is
-    /// L2ToL2CrossDomainMessenger.
-    function testFuzz_sendMessage_targetL2ToL2CrossDomainMessenger_reverts(
-        uint256 _destination,
-        bytes calldata _message,
-        address _entrypoint
-    )
-        external
-    {
-        // Ensure the destination is not the same as the source, otherwise the function will revert regardless of target
-        vm.assume(_destination != block.chainid);
-
-        // Expect a revert with the MessageTargetL2ToL2CrossDomainMessenger selector
-        vm.expectRevert(MessageTargetL2ToL2CrossDomainMessenger.selector);
-
-        // Call `senderMessage` with the L2ToL2CrossDomainMessenger as the target to provoke revert
-        l2ToL2CrossDomainMessenger.sendMessage({
-            _destination: _destination,
-            _target: Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            _message: _message,
-            _entrypoint: _entrypoint
         });
     }
 
