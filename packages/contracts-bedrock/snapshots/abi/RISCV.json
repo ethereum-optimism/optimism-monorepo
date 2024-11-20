@@ -16,7 +16,7 @@
     "outputs": [
       {
         "internalType": "contract IPreimageOracle",
-        "name": "oracle_",
+        "name": "",
         "type": "address"
       }
     ],

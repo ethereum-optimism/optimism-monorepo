@@ -239,6 +239,43 @@ jobs:
           command: python3 maketests.py && git diff --exit-code
           working_directory: cannon/mipsevm/tests/open_mips_tests
 
+  diff-asterisc-bytecode:
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
+    resource_class: medium
+    steps:
+      - checkout
+      - check-changed:
+          patterns: packages/contracts-bedrock/src/asterisc
+      - run:
+          name: Check `RISCV.sol` bytecode
+          working_directory: packages/contracts-bedrock
+          command: |
+            # Clone asterisc @ the pinned version to fetch remote `RISCV.sol`
+            ASTERISC_REV="$(cat ../../versions.json | jq -r .asterisc)"
+            REMOTE_ASTERISC_PATH="./src/asterisc/RISCV_Remote.sol"
+            git clone https://github.com/ethereum-optimism/asterisc \
+              -b $ASTERISC_REV && \
+              cp ./asterisc/rvsol/src/RISCV.sol $REMOTE_ASTERISC_PATH
+
+            # Replace import paths
+            sed -i -e 's/@optimism\///' $REMOTE_ASTERISC_PATH
+            # Replace contract name
+            sed -i -e 's/contract RISCV/contract RISCV_Remote/' $REMOTE_ASTERISC_PATH
+
+            # Install deps
+            forge install
+
+            # Diff bytecode, with both contracts compiled in the local environment.
+            REMOTE_ASTERISC_CODE="$(forge inspect RISCV_Remote bytecode | tr -d '\n')"
+            LOCAL_ASTERISC_CODE="$(forge inspect RISCV bytecode | tr -d '\n')"
+            if [ "$REMOTE_ASTERISC_CODE" != "$LOCAL_ASTERISC_CODE" ]; then
+              echo "Asterisc bytecode mismatch. Local version does not represent "
+              diff <(echo "$ASTERISC_CODE") <(echo "$LOCAL_ASTERISC_CODE")
+            else
+              echo "Asterisc version up to date."
+            fi
+
   contracts-bedrock-build:
     machine: true
     resource_class: ethereum-optimism/latitude-1
@@ -1308,6 +1345,8 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
+      - diff-asterisc-bytecode:
+          name: diff-asterisc-bytecode
       - contracts-bedrock-coverage
       - contracts-bedrock-checks:
           requires:

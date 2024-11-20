@@ -13,7 +13,7 @@ import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 ///         https://github.com/ethereum-optimism/asterisc
 contract RISCV is IBigStepper {
     /// @notice The preimage oracle contract.
-    IPreimageOracle internal immutable ORACLE;
+    IPreimageOracle public oracle;
 
     /// @notice The version of the contract.
     /// @custom:semver 1.1.0-rc.1
@@ -21,13 +21,7 @@ contract RISCV is IBigStepper {
 
     /// @param _oracle The preimage oracle contract.
     constructor(IPreimageOracle _oracle) {
-        ORACLE = _oracle;
-    }
-
-    /// @notice Getter for the pre-image oracle contract.
-    /// @return oracle_ The pre-image oracle contract.
-    function oracle() external view returns (IPreimageOracle oracle_) {
-        oracle_ = ORACLE;
+        oracle = _oracle;
     }
 
     /// @inheritdoc IBigStepper
