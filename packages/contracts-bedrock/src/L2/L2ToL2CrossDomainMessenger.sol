@@ -39,6 +39,9 @@ error ReentrantCall();
 /// @notice Thrown when a call to the target contract during message relay fails.
 error TargetCallFailed();
 
+/// @notice Thrown when relaying a message from an address different from the specified entrypoint.
+error InvalidEntrypoint();
+
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000023
 /// @title L2ToL2CrossDomainMessenger
@@ -174,13 +177,17 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         CrossL2Inbox(Predeploys.CROSS_L2_INBOX).validateMessage(_id, keccak256(_sentMessage));
 
         // Decode the payload
-        (uint256 destination, address target, uint256 nonce, address sender, bytes memory message) =
+        (uint256 destination, address target, uint256 nonce, address sender, bytes memory message, address entrypoint) =
             _decodeSentMessagePayload(_sentMessage);
 
         // Assert invariants on the message
         if (destination != block.chainid) revert MessageDestinationNotRelayChain();
         if (target == Predeploys.CROSS_L2_INBOX) revert MessageTargetCrossL2Inbox();
         if (target == Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER) revert MessageTargetL2ToL2CrossDomainMessenger();
+
+        if (entrypoint != address(0) && entrypoint != msg.sender) {
+            revert InvalidEntrypoint();
+        }
 
         uint256 source = _id.chainId;
         bytes32 messageHash = Hashing.hashL2toL2CrossDomainMessage({
@@ -230,7 +237,14 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     function _decodeSentMessagePayload(bytes calldata _payload)
         internal
         pure
-        returns (uint256 destination_, address target_, uint256 nonce_, address sender_, bytes memory message_)
+        returns (
+            uint256 destination_,
+            address target_,
+            uint256 nonce_,
+            address sender_,
+            bytes memory message_,
+            address entrypoint_
+        )
     {
         // Validate Selector (also reverts if LOG0 with no topics)
         bytes32 selector = abi.decode(_payload[:32], (bytes32));
@@ -240,7 +254,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         (destination_, target_, nonce_) = abi.decode(_payload[32:128], (uint256, address, uint256));
 
         // Data
-        (sender_, message_) = abi.decode(_payload[128:], (address, bytes));
+        (sender_, message_, entrypoint_) = abi.decode(_payload[128:], (address, bytes, address));
     }
 
     /// @notice Sends a message to a target address on a destination chain.
