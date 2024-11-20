@@ -228,7 +228,6 @@ contract LivenessGuard_FuzzOwnerManagement_Test is StdCheats, StdUtils, Liveness
     mapping(address => uint256) privateKeys;
 
     /// @dev Tests that the guard correctly manages the lastLive mapping when owners are added, removed, or swapped
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_ownerManagement_works(
         uint256 initialOwners,
         uint256 threshold,

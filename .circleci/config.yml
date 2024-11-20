@@ -615,27 +615,22 @@ jobs:
   contracts-bedrock-tests:
     docker:
       - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
     parameters:
+      test_command:
+        description: Command to run tests
+        type: string
+        default: forge test
       test_parallelism:
         description: Number of test jobs to run in parallel
         type: integer
         default: 4
+      test_resource_class:
+        description: Resource class to use for running tests
+        type: string
+        default: xlarge
       test_list:
         description: List of test files to run
         type: string
-      test_fuzz_runs:
-        description: Number of fuzz runs to apply
-        type: integer
-        default: 512
-      test_invariant_runs:
-        description: Number of invariant runs to apply
-        type: integer
-        default: 32
-      test_invariant_depth:
-        description: Depth of invariant runs
-        type: integer
-        default: 64
       test_timeout:
         description: Timeout for running tests
         type: string
@@ -644,6 +639,7 @@ jobs:
         description: Profile to use for testing
         type: string
         default: ci
+    resource_class: <<parameters.test_resource_class>>
     parallelism: <<parameters.test_parallelism>>
     steps:
       - checkout
@@ -691,7 +687,7 @@ jobs:
             TEST_FILES=$(echo "$TEST_FILES" | circleci tests split --split-by=timings)
             TEST_FILES=$(echo "$TEST_FILES" | sed 's|^test/||')
             MATCH_PATH="./test/{$(echo "$TEST_FILES" | paste -sd "," -)}"
-            forge test --match-path "$MATCH_PATH"
+            <<parameters.test_command>> --match-path "$MATCH_PATH"
           environment:
             FOUNDRY_PROFILE: <<parameters.test_profile>>
           working_directory: packages/contracts-bedrock
@@ -1351,6 +1347,8 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
+          test_resource_class: 2xlarge
+          test_command: go run scripts/checks/hotfuzz/main.go --max-seconds 600 --max-fuzz-runs 20000 --max-invariant-runs 128 --max-invariant-depth 512 --max-concurrency 4
       - contracts-bedrock-coverage
       - contracts-bedrock-checks:
           requires:
