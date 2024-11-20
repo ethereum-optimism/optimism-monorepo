@@ -11,5 +11,5 @@
   "just": "1.34.0",
   "binary_signer": "1.0.4",
   "semgrep": "1.90.0",
-  "asterisc": "cl/contract-updates"
+  "asterisc": "v1.1.1"
 }

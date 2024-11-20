@@ -6,18 +6,17 @@ import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 
 /// @title RISCV
 /// @notice The RISCV contract emulates a single RISCV hart cycle statelessly, using memory proofs to verify the
-///         instruction and optional memory access' inclusion in the memory merkle root provided in the prestate
-///         witness.
-///
+///         instruction and optional memory access' inclusion in the memory merkle root provided in the trusted
+///         prestate witness.
 ///         This contract has been vendorized from the Asterisc project. The original source code can be found at
-///         https://github.com/ethereum-optimism/asterisc
+/// @dev https://github.com/ethereum-optimism/asterisc
 contract RISCV is IBigStepper {
     /// @notice The preimage oracle contract.
     IPreimageOracle public oracle;
 
     /// @notice The version of the contract.
-    /// @custom:semver 1.1.0-rc.1
-    string public constant version = "1.1.0-rc.1";
+    /// @custom:semver 1.1.0-rc.2
+    string public constant version = "1.1.0-rc.2";
 
     /// @param _oracle The preimage oracle contract.
     constructor(IPreimageOracle _oracle) {
@@ -837,13 +836,13 @@ contract RISCV is IBigStepper {
                 // update pre-image reader with updated offset
                 let newOffset := add64(offset, count_)
                 setPreimageOffset(newOffset)
+
                 out := count_
 
                 let node := getMemoryB32(sub64(addr_, alignment), 1)
                 let dat := and(b32asBEWord(node), not(mask)) // keep old bytes outside of mask
                 dat := or(dat, and(pdat, mask)) // fill with bytes from pdat
                 setMemoryB32(sub64(addr_, alignment), beWordAsB32(dat), 1)
-                // out := count_
             }
 
             //
