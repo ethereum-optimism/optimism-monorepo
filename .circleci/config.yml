@@ -26,6 +26,9 @@ parameters:
   reproducibility_dispatch:
     type: boolean
     default: false
+  diff_asterisc_bytecode_dispatch:
+    type: boolean
+    default: false
   kontrol_dispatch:
     type: boolean
     default: false
@@ -270,11 +273,13 @@ jobs:
             REMOTE_ASTERISC_CODE="$(forge inspect RISCV_Remote bytecode | tr -d '\n')"
             LOCAL_ASTERISC_CODE="$(forge inspect RISCV bytecode | tr -d '\n')"
             if [ "$REMOTE_ASTERISC_CODE" != "$LOCAL_ASTERISC_CODE" ]; then
-              echo "Asterisc bytecode mismatch. Local version does not represent "
+              echo "Asterisc bytecode mismatch. Local version does not match remote. Diff:"
               diff <(echo "$ASTERISC_CODE") <(echo "$LOCAL_ASTERISC_CODE")
             else
               echo "Asterisc version up to date."
             fi
+      - notify-failures-on-develop:
+          mentions: "@clabby @proofs-team"
 
   contracts-bedrock-build:
     machine: true
@@ -1345,8 +1350,6 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
-      - diff-asterisc-bytecode:
-          name: diff-asterisc-bytecode
       - contracts-bedrock-coverage
       - contracts-bedrock-checks:
           requires:
@@ -1725,6 +1728,17 @@ workflows:
           publish: true
           context:
             - oplabs-gcr
+            - slack
+
+  scheduled-diff-asterisc-bytecode:
+    when:
+      or:
+        - equal: [build_daily, <<pipeline.schedule.name>>]
+        # Trigger on manual triggers if explicitly requested
+        - equal: [true, <<pipeline.parameters.diff_asterisc_bytecode_dispatch>>]
+    jobs:
+      - diff-asterisc-bytecode:
+          context:
             - slack
 
   scheduled-preimage-reproducibility:
