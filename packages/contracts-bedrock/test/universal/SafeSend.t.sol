@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { console } from "forge-std/console.sol";
 import { SafeSend } from "src/universal/SafeSend.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 
@@ -38,7 +37,6 @@ contract SafeSendTest is CommonTest {
 
         vm.prank(alice);
         SafeSend safeSend = new SafeSend{ value: 100 ether }(payable(bob));
-        console.log(address(safeSend));
 
         assertEq(address(safeSend).code.length, 0);
         assertEq(address(safeSend).balance, 0);
