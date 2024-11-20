@@ -274,7 +274,7 @@ jobs:
             LOCAL_ASTERISC_CODE="$(forge inspect RISCV bytecode | tr -d '\n')"
             if [ "$REMOTE_ASTERISC_CODE" != "$LOCAL_ASTERISC_CODE" ]; then
               echo "Asterisc bytecode mismatch. Local version does not match remote. Diff:"
-              diff <(echo "$ASTERISC_CODE") <(echo "$LOCAL_ASTERISC_CODE")
+              diff <(echo "$REMOTE_ASTERISC_CODE") <(echo "$LOCAL_ASTERISC_CODE")
             else
               echo "Asterisc version up to date."
             fi
