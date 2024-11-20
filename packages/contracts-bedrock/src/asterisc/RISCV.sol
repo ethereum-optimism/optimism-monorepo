@@ -646,16 +646,18 @@ contract RISCV is IBigStepper {
                     rightShamt := sub64(sub64(toU64(64), alignment), size)
                 }
 
+                let addr_ := addr
+                let size_ := size
                 // left: prepare for byte-taking by right-aligning
                 left := shr(u64ToU256(shl64(toU64(3), leftShamt)), left)
                 // right: right-align for byte-taking by right-aligning
                 right := shr(u64ToU256(shl64(toU64(3), rightShamt)), right)
                 // loop:
-                for { let i := 0 } lt(i, size) { i := add(i, 1) } {
+                for { let i := 0 } lt(i, size_) { i := add(i, 1) } {
                     // translate to reverse byte lookup, since we are reading little-endian memory, and need the highest
                     // byte first.
                     // effAddr := (addr + size - 1 - i) &^ 31
-                    let effAddr := and64(sub64(sub64(add64(addr, size), toU64(1)), toU64(i)), not64(toU64(31)))
+                    let effAddr := and64(sub64(sub64(add64(addr_, size_), toU64(1)), toU64(i)), not64(toU64(31)))
                     // take a byte from either left or right, depending on the effective address
                     let b := toU256(0)
                     switch eq64(effAddr, leftAddr)
@@ -672,7 +674,7 @@ contract RISCV is IBigStepper {
                 }
 
                 if signed {
-                    let signBitShift := sub64(shl64(toU64(3), size), toU64(1))
+                    let signBitShift := sub64(shl64(toU64(3), size_), toU64(1))
                     out := signExtend64(out, signBitShift)
                 }
             }
@@ -824,21 +826,24 @@ contract RISCV is IBigStepper {
                     count := pdatlen
                 }
 
-                let bits := shl64(toU64(3), sub64(toU64(32), count)) // 32-count, in bits
+                let addr_ := addr
+                let count_ := count
+                let bits := shl64(toU64(3), sub64(toU64(32), count_)) // 32-count, in bits
                 let mask := not(sub(shl(u64ToU256(bits), toU256(1)), toU256(1))) // left-aligned mask for count bytes
                 let alignmentBits := u64ToU256(shl64(toU64(3), alignment))
                 mask := shr(alignmentBits, mask) // mask of count bytes, shifted by alignment
                 let pdat := shr(alignmentBits, b32asBEWord(pdatB32)) // pdat, shifted by alignment
 
                 // update pre-image reader with updated offset
-                let newOffset := add64(offset, count)
+                let newOffset := add64(offset, count_)
                 setPreimageOffset(newOffset)
+                out := count_
 
-                let node := getMemoryB32(sub64(addr, alignment), 1)
+                let node := getMemoryB32(sub64(addr_, alignment), 1)
                 let dat := and(b32asBEWord(node), not(mask)) // keep old bytes outside of mask
                 dat := or(dat, and(pdat, mask)) // fill with bytes from pdat
-                setMemoryB32(sub64(addr, alignment), beWordAsB32(dat), 1)
-                out := count
+                setMemoryB32(sub64(addr_, alignment), beWordAsB32(dat), 1)
+                // out := count_
             }
 
             //
@@ -1141,6 +1146,7 @@ contract RISCV is IBigStepper {
 
             switch opcode
             case 0x03 {
+                let pc_ := _pc
                 // 000_0011: memory loading
                 // LB, LH, LW, LD, LBU, LHU, LWU
                 let imm := parseImmTypeI(instr)
@@ -1150,9 +1156,10 @@ contract RISCV is IBigStepper {
                 let memIndex := add64(rs1Value, signExtend64(imm, toU64(11)))
                 let rdValue := loadMem(memIndex, size, signed, 1, 2)
                 setRegister(rd, rdValue)
-                setPC(add64(_pc, toU64(4)))
+                setPC(add64(pc_, toU64(4)))
             }
             case 0x23 {
+                let pc_ := _pc
                 // 010_0011: memory storing
                 // SB, SH, SW, SD
                 let imm := parseImmTypeS(instr)
@@ -1161,7 +1168,7 @@ contract RISCV is IBigStepper {
                 let rs1Value := getRegister(rs1)
                 let memIndex := add64(rs1Value, signExtend64(imm, toU64(11)))
                 storeMem(memIndex, size, value, 1, 2)
-                setPC(add64(_pc, toU64(4)))
+                setPC(add64(pc_, toU64(4)))
             }
             case 0x63 {
                 // 110_0011: branching
