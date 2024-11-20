@@ -439,12 +439,6 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     constructor() {
         super.setUp();
 
-        // zero out contracts that should not be used
-        assembly {
-            sstore(l2OutputOracle.slot, 0)
-            sstore(optimismPortal.slot, 0)
-        }
-
         _defaultTx = Types.WithdrawalTransaction({
             nonce: 0,
             sender: alice,
@@ -829,6 +823,75 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty.
+    function test_finalizeWithdrawalTransaction_noTxData_succeeds() external {
+        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
+            nonce: 0,
+            sender: alice,
+            target: bob,
+            value: 100,
+            gasLimit: 100_000,
+            data: hex""
+        });
+        // Get withdrawal proof data we can use for testing.
+        (
+            bytes32 _stateRoot_noData,
+            bytes32 _storageRoot_noData,
+            bytes32 _outputRoot_noData,
+            bytes32 _withdrawalHash_noData,
+            bytes[] memory _withdrawalProof_noData
+        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        // Setup a dummy output root proof for reuse.
+        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: _stateRoot_noData,
+            messagePasserStorageRoot: _storageRoot_noData,
+            latestBlockhash: bytes32(uint256(0))
+        });
+        uint256 _proposedBlockNumber_noData = 0xFF;
+        IFaultDisputeGame game_noData = IFaultDisputeGame(
+            payable(
+                address(
+                    disputeGameFactory.create(
+                        optimismPortal2.respectedGameType(),
+                        Claim.wrap(_outputRoot_noData),
+                        abi.encode(_proposedBlockNumber_noData)
+                    )
+                )
+            )
+        );
+        uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
+        // Warp beyond the chess clocks and finalize the game.
+        vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
+        // Fund the portal so that we can withdraw ETH.
+        vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
+        vm.deal(address(optimismPortal2), 0xFFFFFFFF);
+
+        uint256 bobBalanceBefore = bob.balance;
+
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx_noData,
+            _disputeGameIndex: _proposedGameIndex_noData,
+            _outputRootProof: _outputRootProof_noData,
+            _withdrawalProof: _withdrawalProof_noData
+        });
+
+        // Warp and resolve the dispute game.
+        game_noData.resolveClaim(0, 0);
+        game_noData.resolve();
+        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1 seconds);
+
+        vm.expectEmit(true, true, false, true);
+        emit WithdrawalFinalized(_withdrawalHash_noData, true);
+        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx_noData);
+
+        assert(bob.balance == bobBalanceBefore + 100);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty and with a custom gas token.
     function test_finalizeWithdrawalTransaction_noTxDataNonEtherGasToken_succeeds() external {
         Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
             nonce: 0,
@@ -1499,12 +1562,6 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 contract OptimismPortal2_Upgradeable_Test is CommonTest {
     function setUp() public override {
         super.setUp();
-
-        // zero out contracts that should not be used
-        assembly {
-            sstore(l2OutputOracle.slot, 0)
-            sstore(optimismPortal.slot, 0)
-        }
     }
 
     /// @dev Tests that the proxy is initialized correctly.
@@ -1550,12 +1607,6 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
 
     function setUp() public override {
         super.setUp();
-
-        // zero out contracts that should not be used
-        assembly {
-            sstore(l2OutputOracle.slot, 0)
-            sstore(optimismPortal.slot, 0)
-        }
     }
 
     /// @dev Test that various values of the resource metering config will not break deposits.
@@ -1645,13 +1696,6 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
 
     function setUp() public virtual override {
         super.setUp();
-
-        // zero out contracts that should not be used
-        assembly {
-            sstore(l2OutputOracle.slot, 0)
-            sstore(optimismPortal.slot, 0)
-        }
-
         token = new MockERC20("Test", "TST", 18);
     }
 
