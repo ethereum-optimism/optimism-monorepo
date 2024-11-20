@@ -452,8 +452,12 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// @dev Tests that startingOutputRoot and it's getters are set correctly.
     function test_startingOutputRootGetters_succeeds() public view {
         (Hash root, uint256 l2BlockNumber) = gameProxy.startingOutputRoot();
+        (Hash anchorRoot, uint256 anchorRootBlockNumber) = anchorStateRegistry.anchors(GAME_TYPE);
+
         assertEq(gameProxy.startingBlockNumber(), l2BlockNumber);
+        assertEq(gameProxy.startingBlockNumber(), anchorRootBlockNumber);
         assertEq(Hash.unwrap(gameProxy.startingRootHash()), Hash.unwrap(root));
+        assertEq(Hash.unwrap(gameProxy.startingRootHash()), Hash.unwrap(anchorRoot));
     }
 
     /// @dev Tests that the user cannot control the first 4 bytes of the CWIA data, disallowing them to control the
