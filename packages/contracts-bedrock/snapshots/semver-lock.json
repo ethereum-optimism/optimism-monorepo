@@ -43,6 +43,10 @@
     "initCodeHash": "0xefd4806e8737716d5d2022ca2e9e9fba0a0cb5714b026166b58e472222c7d15f",
     "sourceCodeHash": "0x15205131bf420aa6d03c558bb75dd49cd7439caed7ccdcbfd89c4170a48c94f5"
   },
+  "src/L1/SharedLockbox.sol": {
+    "initCodeHash": "0x284eaf282bfbe4403ec5c692371ad2876ec872851b384e5779e6eae577f1dfbb",
+    "sourceCodeHash": "0x85f55d85d3fed2e5b7ddcd48c5ab8c166abc26e33f38c567baa5f7e31109366a"
+  },
   "src/L1/SuperchainConfig.sol": {
     "initCodeHash": "0xfca12d9016c746e5c275b186e0ca40cfd65cf45a5665aab7589a669fea3abb47",
     "sourceCodeHash": "0x39489a85bc3a5c8560f82d41b31bf7fe22f5b648f4ed538f61695a73092ea9eb"

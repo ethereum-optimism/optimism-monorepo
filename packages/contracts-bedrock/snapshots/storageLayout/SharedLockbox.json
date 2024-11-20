@@ -1,0 +1,9 @@
+[
+  {
+    "bytes": "32",
+    "label": "authorizedPortals",
+    "offset": 0,
+    "slot": "0",
+    "type": "mapping(address => bool)"
+  }
+]
