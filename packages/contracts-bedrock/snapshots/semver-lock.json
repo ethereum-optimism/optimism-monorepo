@@ -136,7 +136,7 @@
     "sourceCodeHash": "0x0fa0633a769e73f5937514c0003ba7947a1c275bbe5b85d78879c42f0ed8895b"
   },
   "src/asterisc/RISCV.sol": {
-    "initCodeHash": "0x069f0c912172e3fe6002773f0489c4c717a0f862dd8ebbd034bbead35c61f379",
+    "initCodeHash": "0xf35505c3ad5549e3f808df97b32c96b148aec54e26bdf2241d0758b752193e35",
     "sourceCodeHash": "0x893e56b278022046e039ecc351d449cb54028384a60274ef37a37f967474a080"
   },
   "src/cannon/MIPS.sol": {
