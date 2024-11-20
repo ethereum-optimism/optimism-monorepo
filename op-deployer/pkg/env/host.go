@@ -16,7 +16,7 @@ func DefaultScriptHost(
 	lgr log.Logger,
 	deployer common.Address,
 	artifacts foundry.StatDirFs,
-	startingNonce uint64,
+	additionalOpts ...script.HostOption,
 ) (*script.Host, error) {
 	scriptCtx := script.DefaultContext
 	scriptCtx.Sender = deployer
@@ -26,16 +26,16 @@ func DefaultScriptHost(
 		&foundry.ArtifactsFS{FS: artifacts},
 		nil,
 		scriptCtx,
-		script.WithBroadcastHook(bcaster.Hook),
-		script.WithIsolatedBroadcasts(),
-		script.WithCreate2Deployer(),
+		append([]script.HostOption{
+			script.WithBroadcastHook(bcaster.Hook),
+			script.WithIsolatedBroadcasts(),
+			script.WithCreate2Deployer(),
+		}, additionalOpts...)...,
 	)
 
 	if err := h.EnableCheats(); err != nil {
 		return nil, fmt.Errorf("failed to enable cheats: %w", err)
 	}
-
-	h.SetNonce(deployer, startingNonce)
 
 	return h, nil
 }

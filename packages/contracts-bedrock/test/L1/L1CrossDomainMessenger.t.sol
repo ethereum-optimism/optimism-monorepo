@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 // Testing utilities
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Reverter } from "test/mocks/Callers.sol";
+import { stdError } from "forge-std/StdError.sol";
 
 // Libraries
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
@@ -173,21 +174,93 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         assertEq(l1CrossDomainMessenger.failedMessages(hash), false);
     }
 
-    /// @dev Tests that relayMessage reverts if attempting to relay a message
-    ///      sent to an L1 system contract.
-    function test_relayMessage_toSystemContract_reverts() external {
-        // set the target to be the OptimismPortal
-        address target = address(optimismPortal);
+    /// @dev Tests that relayMessage reverts if caller is optimismPortal and the value sent does not match the amount
+    function test_relayMessage_fromOtherMessengerValueMismatch_reverts() external {
+        address target = alice;
         address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
         bytes memory message = hex"1111";
 
+        // set the value of op.l2Sender() to be the L2CrossDomainMessenger.
+        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+
+        // correctly sending as OptimismPortal but amount does not match msg.value
+        vm.deal(address(optimismPortal), 10 ether);
         vm.prank(address(optimismPortal));
-        vm.expectRevert("CrossDomainMessenger: message cannot be replayed");
+        vm.expectRevert(stdError.assertionError);
+        l1CrossDomainMessenger.relayMessage{ value: 10 ether }(
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 9 ether, 0, message
+        );
+    }
+
+    /// @dev Tests that relayMessage reverts if a failed message is attempted to be replayed via the optimismPortal
+    function test_relayMessage_fromOtherMessengerFailedMessageReplay_reverts() external {
+        address target = alice;
+        address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
+        bytes memory message = hex"1111";
+
+        // set the value of op.l2Sender() to be the L2 Cross Domain Messenger.
+        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+
+        // make a failed message
+        vm.etch(target, hex"fe");
+        vm.prank(address(optimismPortal));
         l1CrossDomainMessenger.relayMessage(
             Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 0, 0, message
         );
 
-        vm.store(address(optimismPortal), 0, bytes32(abi.encode(sender)));
+        // cannot replay messages when optimism portal is msg.sender
+        vm.prank(address(optimismPortal));
+        vm.expectRevert(stdError.assertionError);
+        l1CrossDomainMessenger.relayMessage(
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 0, 0, message
+        );
+    }
+
+    /// @dev Tests that relayMessage reverts if attempting to relay a message
+    ///      with l1CrossDomainMessenger as the target
+    function test_relayMessage_toSelf_reverts() external {
+        address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
+        bytes memory message = hex"1111";
+
+        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+
+        vm.prank(address(optimismPortal));
+        vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
+        l1CrossDomainMessenger.relayMessage(
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }),
+            sender,
+            address(l1CrossDomainMessenger),
+            0,
+            0,
+            message
+        );
+    }
+
+    /// @dev Tests that relayMessage reverts if attempting to relay a message
+    ///      with optimismPortal as the target
+    function test_relayMessage_toOptimismPortal_reverts() external {
+        address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
+        bytes memory message = hex"1111";
+
+        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+
+        vm.prank(address(optimismPortal));
+        vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
+        l1CrossDomainMessenger.relayMessage(
+            Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, address(optimismPortal), 0, 0, message
+        );
+    }
+
+    /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal but not a failed
+    /// message
+    function test_relayMessage_relayingNewMessageByExternalUser_reverts() external {
+        address target = address(alice);
+        address sender = Predeploys.L2_CROSS_DOMAIN_MESSENGER;
+        bytes memory message = hex"1111";
+
+        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+
+        vm.prank(bob);
         vm.expectRevert("CrossDomainMessenger: message cannot be replayed");
         l1CrossDomainMessenger.relayMessage(
             Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }), sender, target, 0, 0, message

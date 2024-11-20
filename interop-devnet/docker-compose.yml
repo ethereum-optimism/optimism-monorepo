@@ -319,6 +319,7 @@ services:
       OP_BATCHER_METRICS_ENABLED: "true"
       OP_BATCHER_RPC_ENABLE_ADMIN: "true"
       OP_BATCHER_BATCH_TYPE:
+      OP_BATCHER_THROTTLE_INTERVAL: 0
       # uncomment to use blobs
       # OP_BATCHER_DATA_AVAILABILITY_TYPE: blobs
     env_file:
@@ -350,6 +351,7 @@ services:
       OP_BATCHER_METRICS_ENABLED: "true"
       OP_BATCHER_RPC_ENABLE_ADMIN: "true"
       OP_BATCHER_BATCH_TYPE:
+      OP_BATCHER_THROTTLE_INTERVAL: 0
       # uncomment to use blobs
       # OP_BATCHER_DATA_AVAILABILITY_TYPE: blobs
     env_file:

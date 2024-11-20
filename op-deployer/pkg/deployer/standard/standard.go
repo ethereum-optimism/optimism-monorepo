@@ -133,11 +133,15 @@ func CommitForDeployTag(tag string) (string, error) {
 func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:
-		// Generated using the bootstrap command on 10/18/2024.
-		return common.HexToAddress("0x18cec91779995ad14c880e4095456b9147160790"), nil
+		// Generated using the bootstrap command on 11/18/2024.
+		// Verified against compiled bytecode at:
+		// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
+		return common.HexToAddress("0x9BC0A1eD534BFb31a6Be69e5b767Cba332f14347"), nil
 	case 11155111:
-		// Generated using the bootstrap command on 10/18/2024.
-		return common.HexToAddress("0xf564eea7960ea244bfebcbbb17858748606147bf"), nil
+		// Generated using the bootstrap command on 11/18/2024.
+		// Verified against compiled bytecode at:
+		// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
+		return common.HexToAddress("0x760B1d2Dc68DC51fb6E8B2b8722B8ed08903540c"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -172,11 +176,22 @@ func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
 func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	switch tag {
 	case "op-contracts/v1.6.0":
-		return url.Parse(standardArtifactsURL("ee07c78c3d8d4cd8f7a933c050f5afeebaa281b57b226cc6f092b19de2a8d61f"))
+		return url.Parse(standardArtifactsURL("e1f0c4020618c4a98972e7124c39686cab2e31d5d7846f9ce5e0d5eed0f5ff32"))
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return url.Parse(standardArtifactsURL("b0fb1f6f674519d637cff39a22187a5993d7f81a6d7b7be6507a0b50a5e38597"))
 	default:
 		return nil, fmt.Errorf("unsupported tag: %s", tag)
+	}
+}
+
+func ArtifactsHashForTag(tag string) (common.Hash, error) {
+	switch tag {
+	case "op-contracts/v1.6.0":
+		return common.HexToHash("d20a930cc0ff204c2d93b7aa60755ec7859ba4f328b881f5090c6a6a2a86dcba"), nil
+	case "op-contracts/v1.7.0-beta.1+l2-contracts":
+		return common.HexToHash("9e3ad322ec9b2775d59143ce6874892f9b04781742c603ad59165159e90b00b9"), nil
+	default:
+		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
 	}
 }
 

@@ -44,7 +44,11 @@ else
   tar="tar"
 fi
 
-"$tar" -czf "$archive_name" artifacts forge-artifacts cache
+rm -f COMMIT
+commit=$(git rev-parse HEAD)
+echo "$commit" > COMMIT
+
+"$tar" -czf "$archive_name" artifacts forge-artifacts cache COMMIT
 du -sh "$archive_name" | awk '{$1=$1};1' # trim leading whitespace
 echoerr "> Done."
 
@@ -53,3 +57,4 @@ gcloud storage cp "$archive_name" "gs://$DEPLOY_BUCKET/$archive_name"
 echoerr "> Done."
 
 rm "$archive_name"
+rm COMMIT

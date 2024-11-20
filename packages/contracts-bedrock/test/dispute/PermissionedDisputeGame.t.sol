@@ -198,6 +198,61 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
         vm.stopPrank();
     }
 
+    /// @dev Tests that step works properly.
+    function test_step_succeeds() public {
+        // Give the test contract some ether
+        vm.deal(CHALLENGER, 1_000 ether);
+
+        vm.startPrank(CHALLENGER, CHALLENGER);
+
+        // Make claims all the way down the tree.
+        (,,,, Claim disputed,,) = gameProxy.claimData(0);
+        gameProxy.attack{ value: _getRequiredBond(0) }(disputed, 0, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(1);
+        gameProxy.attack{ value: _getRequiredBond(1) }(disputed, 1, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(2);
+        gameProxy.attack{ value: _getRequiredBond(2) }(disputed, 2, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(3);
+        gameProxy.attack{ value: _getRequiredBond(3) }(disputed, 3, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(4);
+        gameProxy.attack{ value: _getRequiredBond(4) }(disputed, 4, _changeClaimStatus(_dummyClaim(), VMStatuses.PANIC));
+        (,,,, disputed,,) = gameProxy.claimData(5);
+        gameProxy.attack{ value: _getRequiredBond(5) }(disputed, 5, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(6);
+        gameProxy.attack{ value: _getRequiredBond(6) }(disputed, 6, _dummyClaim());
+        (,,,, disputed,,) = gameProxy.claimData(7);
+        gameProxy.attack{ value: _getRequiredBond(7) }(disputed, 7, _dummyClaim());
+
+        // Verify game state before step
+        assertEq(uint256(gameProxy.status()), uint256(GameStatus.IN_PROGRESS));
+
+        gameProxy.addLocalData(LocalPreimageKey.DISPUTED_L2_BLOCK_NUMBER, 8, 0);
+        gameProxy.step(8, true, absolutePrestateData, hex"");
+
+        vm.warp(block.timestamp + gameProxy.maxClockDuration().raw() + 1);
+        gameProxy.resolveClaim(8, 0);
+        gameProxy.resolveClaim(7, 0);
+        gameProxy.resolveClaim(6, 0);
+        gameProxy.resolveClaim(5, 0);
+        gameProxy.resolveClaim(4, 0);
+        gameProxy.resolveClaim(3, 0);
+        gameProxy.resolveClaim(2, 0);
+        gameProxy.resolveClaim(1, 0);
+
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        assertEq(uint256(gameProxy.status()), uint256(GameStatus.CHALLENGER_WINS));
+        assertEq(gameProxy.resolvedAt().raw(), block.timestamp);
+        (, address counteredBy,,,,,) = gameProxy.claimData(0);
+        assertEq(counteredBy, CHALLENGER);
+    }
+
+    /// @dev Helper to return a pseudo-random claim
+    function _dummyClaim() internal view returns (Claim) {
+        return Claim.wrap(keccak256(abi.encode(gasleft())));
+    }
+
     /// @dev Helper to get the required bond for the given claim index.
     function _getRequiredBond(uint256 _claimIndex) internal view returns (uint256 bond_) {
         (,,,,, Position parent,) = gameProxy.claimData(_claimIndex);

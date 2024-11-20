@@ -24,6 +24,22 @@ var DefaultL2ContractsLocator = &Locator{
 	Tag: standard.DefaultL2ContractsTag,
 }
 
+func NewLocatorFromTag(tag string) (*Locator, error) {
+	loc := new(Locator)
+	if err := loc.UnmarshalText([]byte("tag://" + tag)); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal tag: %w", err)
+	}
+	return loc, nil
+}
+
+func MustNewLocatorFromTag(tag string) *Locator {
+	loc, err := NewLocatorFromTag(tag)
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}
+
 type Locator struct {
 	URL *url.URL
 	Tag string

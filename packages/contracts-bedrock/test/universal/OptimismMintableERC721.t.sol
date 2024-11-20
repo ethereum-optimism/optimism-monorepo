@@ -30,6 +30,7 @@ contract OptimismMintableERC721_Test is CommonTest {
         vm.label(address(L2NFT), "L2ERC721Token");
     }
 
+    /// @notice Tests that the constructor works as expected.
     function test_constructor_succeeds() external view {
         assertEq(L2NFT.name(), "L2NFT");
         assertEq(L2NFT.symbol(), "L2T");
@@ -39,6 +40,24 @@ contract OptimismMintableERC721_Test is CommonTest {
         assertEq(L2NFT.REMOTE_TOKEN(), address(L1NFT));
         assertEq(L2NFT.BRIDGE(), address(l2ERC721Bridge));
         assertEq(L2NFT.REMOTE_CHAIN_ID(), 1);
+    }
+
+    /// @notice Tests that the bridge cannot be address(0) at construction time.
+    function test_constructor_bridgeAsAddress0_reverts() external {
+        vm.expectRevert("OptimismMintableERC721: bridge cannot be address(0)");
+        L2NFT = new OptimismMintableERC721(address(0), 1, address(L1NFT), "L2NFT", "L2T");
+    }
+
+    /// @notice Tests that the remote chain ID cannot be zero at construction time.
+    function test_constructor_remoteChainId0_reverts() external {
+        vm.expectRevert("OptimismMintableERC721: remote chain id cannot be zero");
+        L2NFT = new OptimismMintableERC721(address(l2ERC721Bridge), 0, address(L1NFT), "L2NFT", "L2T");
+    }
+
+    /// @notice Tests that the remote token cannot be address(0) at construction time.
+    function test_constructor_remoteTokenAsAddress0_reverts() external {
+        vm.expectRevert("OptimismMintableERC721: remote token cannot be address(0)");
+        L2NFT = new OptimismMintableERC721(address(l2ERC721Bridge), 1, address(0), "L2NFT", "L2T");
     }
 
     /// @notice Ensure that the contract supports the expected interfaces.

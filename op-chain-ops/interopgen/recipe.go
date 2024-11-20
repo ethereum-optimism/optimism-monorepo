@@ -69,7 +69,7 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 		ProtocolVersionsOwner: superchainProtocolVersionsOwner,
 		Deployer:              superchainDeployer,
 		Implementations: OPCMImplementationsConfig{
-			Release: "dev",
+			L1ContractsRelease: "dev",
 			FaultProof: SuperFaultProofConfig{
 				WithdrawalDelaySeconds:          big.NewInt(604800),
 				MinProposalSizeBytes:            big.NewInt(10000),

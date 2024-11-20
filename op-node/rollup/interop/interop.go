@@ -3,6 +3,7 @@ package interop
 import (
 	"context"
 	"fmt"
+	"strings"
 	"sync"
 	"time"
 
@@ -139,7 +140,10 @@ func (d *InteropDeriver) onInteropPendingSafeChangedEvent(x engine.InteropPendin
 	defer cancel()
 	if err := d.backend.UpdateLocalSafe(ctx, d.chainID, x.DerivedFrom, x.Ref.BlockRef()); err != nil {
 		d.log.Debug("Failed to signal derived-from update to interop backend", "derivedFrom", x.DerivedFrom, "block", x.Ref)
-		// still continue to try and do a cross-safe update
+		if strings.Contains(err.Error(), "too far behind") {
+			d.log.Error("Supervisor is too far behind, resetting derivation", "err", err)
+			d.emitter.Emit(rollup.ResetEvent{Err: fmt.Errorf("supervisor is too far behind: %w", err)})
+		}
 	}
 	// Now that the op-supervisor is aware of the new local-safe block, we want to check if cross-safe changed.
 	d.emitter.Emit(engine.RequestCrossSafeEvent{})

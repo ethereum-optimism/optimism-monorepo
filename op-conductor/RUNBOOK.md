@@ -28,7 +28,7 @@ OP_CONDUCTOR_NODE_RPC=<node-rpc-endpoint> # for example, http://op-node:8545
 OP_CONDUCTOR_EXECUTION_RPC=<execution-rpc-endpoint> # for example, http://op-geth:8545
 OP_CONDUCTOR_NETWORK=<network-name> # for example, base-mainnet, op-mainnet, etc, should be same as OP_NODE_NETWORK
 OP_CONDUCTOR_HEALTHCHECK_INTERVAL=<healthcheck-interval> # in seconds
-OP_CONDUCTOR_HEALTHCHECK_UNSAFE_INTERVAL=<unsafe-interval> # Interval allowed between unsafe head and now measured in seconds in seconds
+OP_CONDUCTOR_HEALTHCHECK_UNSAFE_INTERVAL=<unsafe-interval> # Interval allowed between unsafe head and now measured in seconds
 OP_CONDUCTOR_HEALTHCHECK_MIN_PEER_COUNT=<min-peer-count> # minimum number of peers required to be considered healthy
 OP_CONDUCTOR_RAFT_BOOTSTRAP=true/false # set to true if you want to bootstrap the raft cluster
 ```

@@ -110,13 +110,11 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	eq.metrics.RecordSequencerBuildingDiffTime(buildTime - time.Duration(eq.cfg.BlockTime)*time.Second)
 
 	txnCount := len(envelope.ExecutionPayload.Transactions)
-	eq.metrics.CountSequencedTxs(txnCount)
+	depositCount, _ := lastDeposit(envelope.ExecutionPayload.Transactions)
+	eq.metrics.CountSequencedTxsInBlock(txnCount, depositCount)
 
 	eq.log.Debug("Built new L2 block", "l2_unsafe", ref, "l1_origin", ref.L1Origin,
-		"txs", txnCount, "time", ref.Time, "seal_time", sealTime, "build_time", buildTime,
-		"mgas", float64(envelope.ExecutionPayload.GasUsed)/1000000,
-		"mgasps", float64(envelope.ExecutionPayload.GasUsed)*1000/float64(buildTime),
-	)
+		"txs", txnCount, "deposits", depositCount, "time", ref.Time, "seal_time", sealTime, "build_time", buildTime)
 
 	eq.emitter.Emit(BuildSealedEvent{
 		Concluding:   ev.Concluding,

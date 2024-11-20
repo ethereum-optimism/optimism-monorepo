@@ -237,6 +237,14 @@ contract L1ERC721Bridge_Test is CommonTest {
         assertEq(localToken.ownerOf(tokenId), alice);
     }
 
+    /// @dev Tests that `bridgeERC721To` reverts if the to address is the zero address.
+    function test_bridgeERC721To_toZeroAddress_reverts() external {
+        // Bridge the token.
+        vm.prank(bob);
+        vm.expectRevert("ERC721Bridge: nft recipient cannot be address(0)");
+        l1ERC721Bridge.bridgeERC721To(address(localToken), address(remoteToken), address(0), tokenId, 1234, hex"5678");
+    }
+
     /// @dev Tests that the ERC721 bridge successfully finalizes a withdrawal.
     function test_finalizeBridgeERC721_succeeds() external {
         // Bridge the token.

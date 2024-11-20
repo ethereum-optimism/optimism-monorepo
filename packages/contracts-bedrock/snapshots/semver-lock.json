@@ -1,11 +1,7 @@
 {
   "src/L1/DataAvailabilityChallenge.sol": {
-    "initCodeHash": "0xbd00d6568abab3e7fc211c40d682862242f25493010a4a097bd1f3b45c8c87c3",
-    "sourceCodeHash": "0x58b587034a67b4bb718abbaded8ac23b082c0971105874bcc42c23f051c67f6e"
-  },
-  "src/L1/DelayedVetoable.sol": {
-    "initCodeHash": "0x9fe8ade6f6332262ff1f3539ac0bf57660edbad3cf4c4cb230c2ddac18aa0a3f",
-    "sourceCodeHash": "0x30e83a535ef27b2e900c831c4e1a4ec2750195350011c4fdacda1da9db2d167b"
+    "initCodeHash": "0x240a9b695e1ab73692672b907c2ae147ee9224e95a03c02d99333afe186c3d2f",
+    "sourceCodeHash": "0xc6ab0e64cfbdcfa6de0a480426263712b3ddbabe56a88ec7c02556cb432e6b02"
   },
   "src/L1/L1CrossDomainMessenger.sol": {
     "initCodeHash": "0x2e9cb3ceb5e55341b311f0666ef7655df4fafae75afdfbcd701cd9c9b2b017d5",
@@ -24,8 +20,8 @@
     "sourceCodeHash": "0x4132ff37d267cb12224b75ea806c0aa7d25407b0d66ce526d7fcda8f7d223882"
   },
   "src/L1/OPContractsManager.sol": {
-    "initCodeHash": "0xd58cb3978affc5c1457cdd498ff8420c90aef804d4c3b62cf42ab2691986d6d2",
-    "sourceCodeHash": "0x7bfa6eff76176649fe600303cd60009a0f6e282cbaec55836b5ea1f8875cbeb5"
+    "initCodeHash": "0xd038cc35325d023499151264232d75fa4ecc81f04a8c8353e6b50c43af224d6e",
+    "sourceCodeHash": "0xa13f3ab2b8744015290dbabe5f20fdd44774607e6a7ad3e5e016303fc4aa8c12"
   },
   "src/L1/OptimismPortal.sol": {
     "initCodeHash": "0x152167cfa18635ae4918a6eb3371a599cfa084418c0a652799cdb48bfc0ee0cc",
@@ -48,12 +44,12 @@
     "sourceCodeHash": "0x39489a85bc3a5c8560f82d41b31bf7fe22f5b648f4ed538f61695a73092ea9eb"
   },
   "src/L1/SystemConfig.sol": {
-    "initCodeHash": "0x429058f75d97fa7a7d0166b59830909bc722324feefc40f2b41419d6335d3f37",
-    "sourceCodeHash": "0x5ca776041a4ddc0d28ec55db7012d669481cd4601b0e71dbd3493a67b8a7e5a5"
+    "initCodeHash": "0x0eda38e2fb2687a324289f04ec8ad0d2afe51f45219d074740fb4a0e24ea6569",
+    "sourceCodeHash": "0x6dbbe8716ca8cd2fba3da8dcae0ca0c4b1f3e9dd04220fb24a15666b23300927"
   },
   "src/L1/SystemConfigInterop.sol": {
-    "initCodeHash": "0x277a61dcabed81a15739a8e9ed50615252bcc687cebea852e00191d0a1fbe11f",
-    "sourceCodeHash": "0x38361a4f70a19e1b7819e933932a0c9fd2bcebaaebcbc7942f5c00dfaa2c28df"
+    "initCodeHash": "0x443fd84f8dbc38f03e59a56b99099b5e4b28de3e860a5d16c1a21101745622a4",
+    "sourceCodeHash": "0x5c2e00cd8939a538eb38580d76e70d27dd1e8e6cd9328e1978468981017736e6"
   },
   "src/L2/BaseFeeVault.sol": {
     "initCodeHash": "0xbf49824cf37e201181484a8a423fcad8f504dc925921a2b28e83398197858dec",
@@ -139,6 +135,10 @@
     "initCodeHash": "0x17ea1b1c5d5a622d51c2961fde886a5498de63584e654ed1d69ee80dddbe0b17",
     "sourceCodeHash": "0x0fa0633a769e73f5937514c0003ba7947a1c275bbe5b85d78879c42f0ed8895b"
   },
+  "src/asterisc/RISCV.sol": {
+    "initCodeHash": "0x6b4323061187f2c8efe8de43bf1ecdc0798e2d95ad69470ed4151dadc094fedf",
+    "sourceCodeHash": "0xd824f1ead87a1214fa8a4b435f493a80b7340ec2c959d2c1e1e9e8c062a42c4a"
+  },
   "src/cannon/MIPS.sol": {
     "initCodeHash": "0xa3cbf121bad13c00227ea4fef128853d9a86b7ec9158de894f99b58d38d7630a",
     "sourceCodeHash": "0xd8467700c80b3e62fa37193dc6513bac35282094b686b50e162e157f704dde00"
@@ -182,22 +182,6 @@
   "src/legacy/LegacyMessagePasser.sol": {
     "initCodeHash": "0xefc6ed9e325c2d614ea0d28c3eabfff1b345f7c6054e90253c6a091c29508267",
     "sourceCodeHash": "0xaa08a61448f485b277af57251d2089cc6a80ce0a763bf7184d48ffed5034ef69"
-  },
-  "src/periphery/op-nft/AttestationStation.sol": {
-    "initCodeHash": "0x2e665d9ee554430980f64bcb6d2611a1cb03dbacfd58bb0d6f5d32951a267bde",
-    "sourceCodeHash": "0xe0bc805b22c7d04b5a9444cddd4c0e1bcb3006c69c03610494277ab2cc83f553"
-  },
-  "src/periphery/op-nft/Optimist.sol": {
-    "initCodeHash": "0x8fccdef5fb6e6d51215b39acc449faad8ba15416699c9b3af77866f4297805a3",
-    "sourceCodeHash": "0xfa9354827b642803e10415ed30ca789be1bd23d88fac14f7adaa65c6eb1c1643"
-  },
-  "src/periphery/op-nft/OptimistAllowlist.sol": {
-    "initCodeHash": "0x166dd3fc18cb238895f2faa7fdd635af48ce2c54e21ed2d6dae857c3731c4d6c",
-    "sourceCodeHash": "0x3a5f61046f729c9a70274b8b2a739382987ec5eb77705b259e8a3210a5f43462"
-  },
-  "src/periphery/op-nft/OptimistInviter.sol": {
-    "initCodeHash": "0x28dfa6676702a7abd19609cc773158d1f958210bc0a38c008d67a002dc1df862",
-    "sourceCodeHash": "0x3a0a294932d6deba043f6a2b46b4e8477ee96e7fb054d7e7229a43ce4352c68d"
   },
   "src/safe/DeputyGuardianModule.sol": {
     "initCodeHash": "0xd95e562f395d4eb6e332f4474dffab660ada9e9da7c79f58fb6052278e0904df",

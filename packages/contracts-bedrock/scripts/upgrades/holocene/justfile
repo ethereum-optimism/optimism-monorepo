@@ -1,0 +1,26 @@
+# Default recipe to list help menu.
+default:
+  @just --list
+
+# Run the deployment / upgrade generation image. If the image is not present locally,
+# it will be built.
+run *args='':
+  #!/bin/bash
+  if [ ! "$(docker images -q op-holocene-upgrade:local 2> /dev/null)" ]; then
+    just build-image
+  fi
+
+  # Run the deployment.
+  docker run \
+    --rm \
+    -v $OUTPUT_FOLDER_PATH/:/output \
+    --env-file=.env \
+    op-holocene-upgrade:local {{args}}
+
+# Build the image locally.
+build-image:
+  docker build \
+  -t op-holocene-upgrade:local \
+  -f upgrade.dockerfile \
+  --build-arg REV=op-contracts/v1.8.0-rc.1 \
+  .

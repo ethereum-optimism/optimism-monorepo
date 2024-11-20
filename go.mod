@@ -14,7 +14,7 @@ require (
 	github.com/crate-crypto/go-kzg-4844 v1.0.0
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0
 	github.com/ethereum-optimism/go-ethereum-hdwallet v0.1.3
-	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20240910145426-b3905c89e8ac
+	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20241119111730-bee358f6d6e6
 	github.com/ethereum/go-ethereum v1.14.11
 	github.com/fsnotify/fsnotify v1.8.0
 	github.com/golang/snappy v0.0.5-0.20220116011046-fa5810519dcb
@@ -28,7 +28,7 @@ require (
 	github.com/ipfs/go-datastore v0.6.0
 	github.com/ipfs/go-ds-leveldb v0.5.0
 	github.com/klauspost/compress v1.17.11
-	github.com/kurtosis-tech/kurtosis/api/golang v1.4.1
+	github.com/kurtosis-tech/kurtosis/api/golang v1.4.2
 	github.com/libp2p/go-libp2p v0.36.2
 	github.com/libp2p/go-libp2p-mplex v0.9.0
 	github.com/libp2p/go-libp2p-pubsub v0.12.0
@@ -48,7 +48,7 @@ require (
 	github.com/urfave/cli/v2 v2.27.5
 	golang.org/x/crypto v0.28.0
 	golang.org/x/exp v0.0.0-20241009180824-f66d83c29e7c
-	golang.org/x/sync v0.8.0
+	golang.org/x/sync v0.9.0
 	golang.org/x/term v0.25.0
 	golang.org/x/time v0.7.0
 )
@@ -250,7 +250,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum v1.14.11 => github.com/ethereum-optimism/op-geth v1.101411.1-rc.6
+replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101411.2-rc.2
 
 //replace github.com/ethereum/go-ethereum => ../go-ethereum
 
