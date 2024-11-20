@@ -248,8 +248,6 @@ jobs:
     resource_class: medium
     steps:
       - checkout
-      - check-changed:
-          patterns: packages/contracts-bedrock/src/asterisc
       - run:
           name: Check `RISCV.sol` bytecode
           working_directory: packages/contracts-bedrock
