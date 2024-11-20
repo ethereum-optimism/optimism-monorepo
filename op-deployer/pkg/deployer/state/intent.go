@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"math/big"
 
@@ -67,11 +68,11 @@ func (c *Intent) Check() error {
 	}
 
 	if c.L1ContractsLocator == nil {
-		c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
+		return errors.New("l1ContractsLocator must be set")
 	}
 
 	if c.L2ContractsLocator == nil {
-		c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
+		return errors.New("l2ContractsLocator must be set")
 	}
 
 	var err error
