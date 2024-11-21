@@ -1,5 +1,9 @@
 [
   {
+    "version": "1.4.0-rc.1",
+    "hash": "0x03925193e3e89f87835bbdf3a813f60b2aa818a36bbe71cd5d8fd7e79f5e8afe"
+  },
+  {
     "version": "1.3.1",
     "hash": "0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c",
     "governanceApproved": true
