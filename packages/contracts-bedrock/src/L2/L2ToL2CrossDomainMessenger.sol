@@ -185,6 +185,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         if (target == Predeploys.CROSS_L2_INBOX) revert MessageTargetCrossL2Inbox();
         if (target == Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER) revert MessageTargetL2ToL2CrossDomainMessenger();
 
+        // Ensure an entrypoint was not specified or that the entrypoint is the msg.sender
         if (entrypoint != address(0) && entrypoint != msg.sender) {
             revert InvalidEntrypoint();
         }
