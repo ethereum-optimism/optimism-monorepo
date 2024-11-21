@@ -31,14 +31,10 @@ contract DeployerWhitelist_Test is Test {
         assertEq(list.owner(), address(0));
     }
 
-    modifier setOwner() {
+    /// @dev Tests that `setOwner` correctly sets the contract owner.
+    function test_setOwner_succeeds(address _owner) external {
         vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
         assertEq(list.owner(), owner);
-        _;
-    }
-
-    /// @dev Tests that `setOwner` correctly sets the contract owner.
-    function test_setOwner_succeeds(address _owner) external setOwner {
         _owner = address(uint160(bound(uint160(_owner), 1, type(uint160).max)));
 
         vm.prank(owner);
@@ -50,7 +46,10 @@ contract DeployerWhitelist_Test is Test {
     }
 
     /// @dev Tests that `setOwner` reverts when the caller is not the owner.
-    function test_setOwner_reverts(address _caller, address _owner) external setOwner {
+    function test_setOwner_reverts(address _caller, address _owner) external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.assume(_caller != owner);
 
         vm.prank(_caller);
@@ -59,14 +58,20 @@ contract DeployerWhitelist_Test is Test {
     }
 
     /// @dev Tests that `setOwner` reverts when the new owner is the zero address.
-    function test_setOwner_reverts_zeroAddress() external setOwner {
+    function test_setOwner_reverts_zeroAddress() external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.prank(owner);
         vm.expectRevert(bytes("DeployerWhitelist: can only be disabled via enableArbitraryContractDeployment"));
         list.setOwner(address(0));
     }
 
     /// @dev Tests that `enableArbitraryContractDeployment` correctly disables the whitelist.
-    function test_enableArbitraryContractDeployment_succeeds() external setOwner {
+    function test_enableArbitraryContractDeployment_succeeds() external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit WhitelistDisabled(owner);
@@ -80,7 +85,10 @@ contract DeployerWhitelist_Test is Test {
     }
 
     /// @dev Tests that `enableArbitraryContractDeployment` reverts when the caller is not the owner.
-    function test_enableArbitraryContractDeployment_reverts(address _caller) external setOwner {
+    function test_enableArbitraryContractDeployment_reverts(address _caller) external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.assume(_caller != owner);
 
         vm.prank(_caller);
@@ -89,7 +97,10 @@ contract DeployerWhitelist_Test is Test {
     }
 
     /// @dev Tests that `setWhitelistedDeployer` correctly sets the whitelist status of a deployer.
-    function test_setWhitelistedDeployer_succeeds(address _deployer, bool _isWhitelisted) external setOwner {
+    function test_setWhitelistedDeployer_succeeds(address _deployer, bool _isWhitelisted) external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.prank(owner);
         vm.expectEmit(true, true, true, true);
         emit WhitelistStatusChanged(_deployer, _isWhitelisted);
@@ -103,14 +114,10 @@ contract DeployerWhitelist_Test is Test {
     }
 
     /// @dev Tests that `setWhitelistedDeployer` reverts when the caller is not the owner.
-    function test_setWhitelistedDeployer_reverts(
-        address _caller,
-        address _deployer,
-        bool _isWhitelisted
-    )
-        external
-        setOwner
-    {
+    function test_setWhitelistedDeployer_reverts(address _caller, address _deployer, bool _isWhitelisted) external {
+        vm.store(address(list), bytes32(uint256(0)), bytes32(uint256(uint160(owner))));
+        assertEq(list.owner(), owner);
+
         vm.assume(_caller != owner);
 
         vm.prank(_caller);
