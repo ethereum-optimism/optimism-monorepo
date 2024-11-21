@@ -49,7 +49,7 @@ contract L1BlockNumberTest is Test {
 
     /// @dev Tests that `fallback` is correctly dispatched.
     function test_fallback_succeeds() external {
-        (bool success, bytes memory ret) = address(bn).call(hex"");
+        (bool success, bytes memory ret) = address(bn).call(hex"11");
         assertEq(success, true);
         assertEq(ret, abi.encode(number));
     }
