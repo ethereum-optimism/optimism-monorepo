@@ -313,9 +313,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
     )
         external
     {
-        // Expect a revert with the InvalidEntrypoint selector
-        vm.expectRevert(InvalidEntrypoint.selector);
-
         address _target = makeAddr("target");
 
         // Ensure entrypoint is not address(0) or Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER
@@ -338,6 +335,9 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
+
+        // Expect a revert with the InvalidEntrypoint selector
+        vm.expectRevert(InvalidEntrypoint.selector);
 
         // Call
         hoax(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _value);
