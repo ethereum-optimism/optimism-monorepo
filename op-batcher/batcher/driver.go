@@ -695,7 +695,7 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 		l.Log.Error("Failed to query L1 tip", "err", err)
 		return err
 	}
-	l.recordL1Tip(l1tip)
+	l.Metr.RecordLatestL1Block(l1tip)
 
 	// Collect next transaction data. This pulls data out of the channel, so we need to make sure
 	// to put it back if ever da or txmgr requests fail, by calling l.recordFailedDARequest/recordFailedTx.
@@ -871,10 +871,6 @@ func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txRef]) {
 	} else {
 		l.recordConfirmedTx(r.ID.id, r.Receipt)
 	}
-}
-
-func (l *BatchSubmitter) recordL1Tip(l1tip eth.L1BlockRef) {
-	l.Metr.RecordLatestL1Block(l1tip)
 }
 
 func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
