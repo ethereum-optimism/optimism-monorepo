@@ -69,7 +69,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.0-beta.10
-    string public constant version = "1.0.0-beta.10";
+    string public constant version = "1.0.0-beta.11";
 
     /// @notice Mapping of message hashes to boolean receipt values. Note that a message will only be present in this
     ///         mapping if it has successfully been relayed on this chain, and can therefore not be relayed again.
@@ -86,7 +86,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     /// @param messageNonce Nonce associated with the messsage sent
     /// @param sender       Address initiating this message call
     /// @param message      Message payload to call target with.
-    /// @param entrypoint   Address of the entrypoint contract on the destination chain.
+    /// @param entrypoint   Address of the entrypoint on the destination chain.
     event SentMessage(
         uint256 indexed destination,
         address indexed target,
@@ -263,7 +263,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     /// @param _destination Chain ID of the destination chain.
     /// @param _target      Target contract or wallet address.
     /// @param _message     Message payload to call target with.
-    /// @param _entrypoint  Address of the entrypoint contract on the destination chain or address(0) if there is none.
+    /// @param _entrypoint  Address of the entrypoint on the destination chain or address(0) if there is none -- meaning
+    ///                     that anyone can relay the message.
     /// @return The hash of the message being sent, used to track whether the message has successfully been relayed.
     function _sendMessage(
         uint256 _destination,
