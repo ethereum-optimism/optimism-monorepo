@@ -92,10 +92,12 @@ func Init(cfg InitConfig) error {
 		L1ChainID:          cfg.L1ChainID,
 	}
 
-	if cfg.IntentConfigType == state.IntentConfigTypeTest {
-		if err := intent.SetTestValues(cfg.L2ChainIDs); err != nil {
-			return err
-		}
+	if err := intent.SetInitValues(cfg.L2ChainIDs); err != nil {
+		return err
+	}
+
+	if err := intent.Check(); err != nil {
+		return err
 	}
 
 	st := &state.State{

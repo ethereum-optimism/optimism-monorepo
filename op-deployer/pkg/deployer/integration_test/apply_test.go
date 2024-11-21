@@ -714,6 +714,7 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
+		IntentConfigType:   state.IntentConfigTypeTest,
 		DeploymentStrategy: state.DeploymentStrategyLive,
 		L1ChainID:          l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{

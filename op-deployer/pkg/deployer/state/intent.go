@@ -6,7 +6,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
@@ -45,6 +44,7 @@ const (
 )
 
 var emptyAddress common.Address
+var emptyHash common.Hash
 
 type Intent struct {
 	DeploymentStrategy    DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
@@ -59,14 +59,20 @@ type Intent struct {
 	GlobalDeployOverrides map[string]any     `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
 }
 
+type SuperchainRoles struct {
+	ProxyAdminOwner       common.Address `json:"proxyAdminOwner" toml:"proxyAdminOwner"`
+	ProtocolVersionsOwner common.Address `json:"protocolVersionsOwner" toml:"protocolVersionsOwner"`
+	Guardian              common.Address `json:"guardian" toml:"guardian"`
+}
+
 func (c *Intent) L1ChainIDBig() *big.Int {
 	return big.NewInt(int64(c.L1ChainID))
 }
 
-func (c *Intent) ValidateIntentConfig() error {
+func (c *Intent) ValidateIntentConfigType() error {
 	switch c.IntentConfigType {
 	case IntentConfigTypeStandard:
-		return c.validateStandardConfig()
+		return c.validateStandardValues()
 
 	case IntentConfigTypeCustom:
 		return c.validateCustomConfig()
@@ -74,21 +80,14 @@ func (c *Intent) ValidateIntentConfig() error {
 	case IntentConfigTypeStrict:
 		return c.validateStrictConfig()
 
+	case IntentConfigTypeTest:
+		return nil
+
 	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
 		return nil
 	default:
 		return fmt.Errorf("intent config type is invalid")
 	}
-}
-
-func (c *Intent) validateStandardConfig() error {
-	if c.SuperchainRoles != nil || c.L1ContractsLocator != nil || c.L2ContractsLocator != nil {
-		return errors.New("standard config: only certain fields should be set")
-	}
-
-	// Block time and gas limit could be validated further if they are part of Intent's parameters.
-
-	return nil
 }
 
 func (c *Intent) validateCustomConfig() error {
@@ -101,13 +100,101 @@ func (c *Intent) validateCustomConfig() error {
 func (c *Intent) validateStrictConfig() error {
 	for _, chain := range c.Chains {
 		if chain.BaseFeeVaultRecipient != (common.Address{}) {
-			return errors.New("for 'strict' config, opChainProxyAdminOwner and challenger cannot be set")
+			return errors.New("strict config: opChainProxyAdminOwner and challenger cannot be set")
 		}
 	}
 	return nil
 }
 
-func (c *Intent) SetTestValues(l2ChainIds []common.Hash) error {
+func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
+	switch c.IntentConfigType {
+	case IntentConfigTypeStandard:
+		return c.setStandardValues(l2ChainIds)
+
+	case IntentConfigTypeTest:
+		return c.setTestValues(l2ChainIds)
+
+	default:
+		return fmt.Errorf("intent config type is invalid")
+	}
+
+}
+
+// Ensures the following:
+//  1. no zero-values for non-standard fields (user should have populated these)
+//  2. no non-standard values for standard fields (user should not have changed these)
+func (c *Intent) validateStandardValues() error {
+	standardSuperchainRoles, err := getStandardSuperchainRoles(c.L1ChainID)
+	if err != nil {
+		return fmt.Errorf("error getting standard superchain roles: %w", err)
+	}
+	if *c.SuperchainRoles != *standardSuperchainRoles {
+		return fmt.Errorf("SuperchainRoles does not match standard value")
+	}
+
+	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
+	for _, chain := range c.Chains {
+		if chain.ID == emptyHash {
+			return fmt.Errorf("missing l2 chain ID")
+		}
+		if err := chain.Roles.CheckNoZeroAddresses(); err != nil {
+			return err
+		}
+		if chain.Eip1559DenominatorCanyon != standard.Eip1559DenominatorCanyon ||
+			chain.Eip1559Denominator != standard.Eip1559Denominator ||
+			chain.Eip1559Elasticity != standard.Eip1559Elasticity ||
+			chain.Roles.Challenger != challenger {
+			return fmt.Errorf("l2 chain has non-standard value")
+		}
+	}
+
+	return nil
+}
+
+func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
+	superCfg, err := standard.SuperchainFor(l1ChainId)
+	if err != nil {
+		return nil, fmt.Errorf("error getting superchain config: %w", err)
+	}
+
+	proxyAdmin, _ := standard.ManagerOwnerAddrFor(l1ChainId)
+	guardian, _ := standard.GuardianAddressFor(l1ChainId)
+
+	superchainRoles := &SuperchainRoles{
+		ProxyAdminOwner:       proxyAdmin,
+		ProtocolVersionsOwner: common.Address(*superCfg.Config.ProtocolVersionsAddr),
+		Guardian:              guardian,
+	}
+
+	return superchainRoles, nil
+}
+
+func (c *Intent) setStandardValues(l2ChainIds []common.Hash) error {
+	superchainRoles, err := getStandardSuperchainRoles(c.L1ChainID)
+	if err != nil {
+		return fmt.Errorf("error getting standard superchain roles: %w", err)
+	}
+	c.SuperchainRoles = superchainRoles
+
+	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
+	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
+
+	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
+	for _, l2ChainID := range l2ChainIds {
+		c.Chains = append(c.Chains, &ChainIntent{
+			ID:                       l2ChainID,
+			Eip1559DenominatorCanyon: standard.Eip1559DenominatorCanyon,
+			Eip1559Denominator:       standard.Eip1559Denominator,
+			Eip1559Elasticity:        standard.Eip1559Elasticity,
+			Roles: ChainRoles{
+				Challenger: challenger,
+			},
+		})
+	}
+	return nil
+}
+
+func (c *Intent) setTestValues(l2ChainIds []common.Hash) error {
 	c.FundDevAccounts = true
 	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
@@ -140,8 +227,9 @@ func (c *Intent) SetTestValues(l2ChainIds []common.Hash) error {
 			BaseFeeVaultRecipient:      addrFor(devkeys.BaseFeeVaultRecipientRole.Key(l2ChainIDBig)),
 			L1FeeVaultRecipient:        addrFor(devkeys.L1FeeVaultRecipientRole.Key(l2ChainIDBig)),
 			SequencerFeeVaultRecipient: addrFor(devkeys.SequencerFeeVaultRecipientRole.Key(l2ChainIDBig)),
-			Eip1559Denominator:         50,
-			Eip1559Elasticity:          6,
+			Eip1559DenominatorCanyon:   standard.Eip1559DenominatorCanyon,
+			Eip1559Denominator:         standard.Eip1559Denominator,
+			Eip1559Elasticity:          standard.Eip1559Elasticity,
 			Roles: ChainRoles{
 				L1ProxyAdminOwner: addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l2ChainIDBig)),
 				L2ProxyAdminOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
@@ -238,73 +326,4 @@ func (c *Intent) checkL1Dev() error {
 func (c *Intent) checkL2Prod() error {
 	_, err := standard.ArtifactsURLForTag(c.L2ContractsLocator.Tag)
 	return err
-}
-
-type SuperchainRoles struct {
-	ProxyAdminOwner common.Address `json:"proxyAdminOwner" toml:"proxyAdminOwner"`
-
-	ProtocolVersionsOwner common.Address `json:"protocolVersionsOwner" toml:"protocolVersionsOwner"`
-
-	Guardian common.Address `json:"guardian" toml:"guardian"`
-}
-
-type ChainIntent struct {
-	ID                         common.Hash               `json:"id" toml:"id"`
-	BaseFeeVaultRecipient      common.Address            `json:"baseFeeVaultRecipient" toml:"baseFeeVaultRecipient"`
-	L1FeeVaultRecipient        common.Address            `json:"l1FeeVaultRecipient" toml:"l1FeeVaultRecipient"`
-	SequencerFeeVaultRecipient common.Address            `json:"sequencerFeeVaultRecipient" toml:"sequencerFeeVaultRecipient"`
-	Eip1559Denominator         uint64                    `json:"eip1559Denominator" toml:"eip1559Denominator"`
-	Eip1559Elasticity          uint64                    `json:"eip1559Elasticity" toml:"eip1559Elasticity"`
-	Roles                      ChainRoles                `json:"roles" toml:"roles"`
-	DeployOverrides            map[string]any            `json:"deployOverrides" toml:"deployOverrides"`
-	DangerousAltDAConfig       genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
-}
-
-type ChainRoles struct {
-	L1ProxyAdminOwner common.Address `json:"l1ProxyAdminOwner" toml:"l1ProxyAdminOwner"`
-
-	L2ProxyAdminOwner common.Address `json:"l2ProxyAdminOwner" toml:"l2ProxyAdminOwner"`
-
-	SystemConfigOwner common.Address `json:"systemConfigOwner" toml:"systemConfigOwner"`
-
-	UnsafeBlockSigner common.Address `json:"unsafeBlockSigner" toml:"unsafeBlockSigner"`
-
-	Batcher common.Address `json:"batcher" toml:"batcher"`
-
-	Proposer common.Address `json:"proposer" toml:"proposer"`
-
-	Challenger common.Address `json:"challenger" toml:"challenger"`
-}
-
-func (c *ChainIntent) Check() error {
-	var emptyHash common.Hash
-	if c.ID == emptyHash {
-		return fmt.Errorf("id must be set")
-	}
-
-	if c.Roles.L1ProxyAdminOwner == emptyAddress {
-		return fmt.Errorf("proxyAdminOwner must be set")
-	}
-
-	if c.Roles.SystemConfigOwner == emptyAddress {
-		c.Roles.SystemConfigOwner = c.Roles.L1ProxyAdminOwner
-	}
-
-	if c.Roles.L2ProxyAdminOwner == emptyAddress {
-		return fmt.Errorf("l2ProxyAdminOwner must be set")
-	}
-
-	if c.Roles.UnsafeBlockSigner == emptyAddress {
-		return fmt.Errorf("unsafeBlockSigner must be set")
-	}
-
-	if c.Roles.Batcher == emptyAddress {
-		return fmt.Errorf("batcher must be set")
-	}
-
-	if c.DangerousAltDAConfig.UseAltDA {
-		return c.DangerousAltDAConfig.Check(nil)
-	}
-
-	return nil
 }

@@ -26,6 +26,9 @@ const (
 	DisputeSplitDepth               uint64 = 30
 	DisputeClockExtension           uint64 = 10800
 	DisputeMaxClockDuration         uint64 = 302400
+	Eip1559DenominatorCanyon        uint64 = 250
+	Eip1559Denominator              uint64 = 50
+	Eip1559Elasticity               uint64 = 6
 
 	ContractsV160Tag        = "op-contracts/v1.6.0"
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
@@ -97,6 +100,28 @@ func L1VersionsFor(chainID uint64) (L1Versions, error) {
 	}
 }
 
+func GuardianAddressFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x09f7150D8c019BeF34450d6920f6B3608ceFdAf2"), nil
+	case 11155111:
+		return common.HexToAddress("0x7a50f00e8D05b95F98fE38d8BeE366a7324dCf7E"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
+func ChallengerAddressFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x9BA6e03D8B90dE867373Db8cF1A58d2F7F006b3A"), nil
+	case 11155111:
+		return common.HexToAddress("0xfd1D2e729aE8eEe2E146c033bf4400fE75284301"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
 	switch chainID {
 	case 1:
@@ -115,7 +140,7 @@ func ChainNameFor(chainID uint64) (string, error) {
 	case 11155111:
 		return "sepolia", nil
 	default:
-		return "", fmt.Errorf("unrecognized chain ID: %d", chainID)
+		return "", fmt.Errorf("unrecognized l1 chain ID: %d", chainID)
 	}
 }
 
