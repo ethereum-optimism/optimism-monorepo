@@ -119,7 +119,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
     }
 
     /// @dev Tests that `sendMessage(uint256,address,bytes,address)` succeeds and emits the correct event.
-    function testFuzz_sendMessage_succeeds(
+    function testFuzz_sendMessage_withCustomEntrypoint_succeeds(
         uint256 _destination,
         address _target,
         bytes calldata _message,
