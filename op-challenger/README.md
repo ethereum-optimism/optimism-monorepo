@@ -1,7 +1,7 @@
 # op-challenger
 
 The `op-challenger` is a modular **op-stack** challenge agent written in
-golang for dispute games including, but not limited to,attestation games,
+golang for dispute games including, but not limited to, attestation games,
 fault games, and validity games. To learn more about dispute games, visit
 the [fault proof specs][proof-specs].
 

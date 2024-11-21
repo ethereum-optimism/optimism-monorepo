@@ -609,7 +609,7 @@ func (h *Host) onOpcode(pc uint64, op byte, gas, cost uint64, scope tracing.OpCo
 		})
 	}
 	// Sanity check that top of the call-stack matches the scope context now
-	if len(h.callStack) == 0 || h.callStack[len(h.callStack)-1].Ctx != scopeCtx {
+	if h.callStack[len(h.callStack)-1].Ctx != scopeCtx {
 		panic("scope context changed without call-frame pop/push")
 	}
 	cf := h.callStack[len(h.callStack)-1]

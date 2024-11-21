@@ -24,9 +24,10 @@ enum CommitmentType {
 }
 
 /// @dev A struct representing a single DA challenge.
-/// @custom:field status The status of the challenge.
 /// @custom:field challenger The address that initiated the challenge.
+/// @custom:field lockedBond The amount of ETH bond that was locked by the challenger.
 /// @custom:field startBlock The block number at which the challenge was initiated.
+/// @custom:field resolvedBlock The block number at which the challenge was resolved.
 struct Challenge {
     address challenger;
     uint256 lockedBond;
@@ -94,8 +95,8 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     event BalanceChanged(address account, uint256 balance);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.2
-    string public constant version = "1.0.1-beta.2";
+    /// @custom:semver 1.0.1-beta.3
+    string public constant version = "1.0.1-beta.3";
 
     /// @notice The fixed cost of resolving a challenge.
     /// @dev The value is estimated by measuring the cost of resolving with `bytes(0)`

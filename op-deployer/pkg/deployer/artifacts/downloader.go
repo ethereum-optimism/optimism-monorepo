@@ -3,8 +3,10 @@ package artifacts
 import (
 	"archive/tar"
 	"bufio"
+	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"errors"
 	"fmt"
 	"io"
@@ -14,6 +16,8 @@ import (
 	"path"
 	"strings"
 	"time"
+
+	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
@@ -41,15 +45,50 @@ func LogProgressor(lgr log.Logger) DownloadProgressor {
 func Download(ctx context.Context, loc *Locator, progress DownloadProgressor) (foundry.StatDirFs, CleanupFunc, error) {
 	var u *url.URL
 	var err error
+	var checker integrityChecker
 	if loc.IsTag() {
 		u, err = standard.ArtifactsURLForTag(loc.Tag)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get standard artifacts URL for tag %s: %w", loc.Tag, err)
 		}
+
+		hash, err := standard.ArtifactsHashForTag(loc.Tag)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to get standard artifacts hash for tag %s: %w", loc.Tag, err)
+		}
+
+		checker = &hashIntegrityChecker{hash: hash}
 	} else {
 		u = loc.URL
+		checker = &noopIntegrityChecker{}
 	}
 
+	return downloadURL(ctx, u, progress, checker)
+}
+
+type integrityChecker interface {
+	CheckIntegrity(data []byte) error
+}
+
+type hashIntegrityChecker struct {
+	hash common.Hash
+}
+
+func (h *hashIntegrityChecker) CheckIntegrity(data []byte) error {
+	hash := sha256.Sum256(data)
+	if hash != h.hash {
+		return fmt.Errorf("integrity check failed - expected: %x, got: %x", h.hash, hash)
+	}
+	return nil
+}
+
+type noopIntegrityChecker struct{}
+
+func (noopIntegrityChecker) CheckIntegrity(data []byte) error {
+	return nil
+}
+
+func downloadURL(ctx context.Context, u *url.URL, progress DownloadProgressor, checker integrityChecker) (foundry.StatDirFs, CleanupFunc, error) {
 	switch u.Scheme {
 	case "http", "https":
 		req, err := http.NewRequestWithContext(ctx, http.MethodGet, u.String(), nil)
@@ -78,7 +117,16 @@ func Download(ctx context.Context, loc *Locator, progress DownloadProgressor) (f
 			total:    resp.ContentLength,
 		}
 
-		gr, err := gzip.NewReader(pr)
+		data, err := io.ReadAll(pr)
+		if err != nil {
+			return nil, nil, fmt.Errorf("failed to read response body: %w", err)
+		}
+
+		if err := checker.CheckIntegrity(data); err != nil {
+			return nil, nil, fmt.Errorf("failed to check integrity: %w", err)
+		}
+
+		gr, err := gzip.NewReader(bytes.NewReader(data))
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to create gzip reader: %w", err)
 		}
@@ -111,7 +159,6 @@ type progressReader struct {
 }
 
 func (pr *progressReader) Read(p []byte) (int, error) {
-
 	n, err := pr.r.Read(p)
 	pr.curr += int64(n)
 	if pr.progress != nil && time.Since(pr.lastPrint) > 1*time.Second {

@@ -60,9 +60,9 @@ import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 // we use variable names that are shorthand for the full contract names, for example:
 //   - `dsi` for DeploySuperchainInput
 //   - `dso` for DeploySuperchainOutput
-//   - `dio` for DeployImplementationsInput
+//   - `dii` for DeployImplementationsInput
 //   - `dio` for DeployImplementationsOutput
-//   - `doo` for DeployOPChainInput
+//   - `doi` for DeployOPChainInput
 //   - `doo` for DeployOPChainOutput
 //   - etc.
 

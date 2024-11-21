@@ -5,7 +5,7 @@ package eth
 type SyncStatus struct {
 	// CurrentL1 is the L1 block that the derivation process is last idled at.
 	// This may not be fully derived into L2 data yet.
-	// The safe L2 blocks were produced/included fully from the L1 chain up to and including this L1 block.
+	// The safe L2 blocks were produced/included fully from the L1 chain up to _but excluding_ this L1 block.
 	// If the node is synced, this matches the HeadL1, minus the verifier confirmation distance.
 	CurrentL1 L1BlockRef `json:"current_l1"`
 	// CurrentL1Finalized is a legacy sync-status attribute. This is deprecated.

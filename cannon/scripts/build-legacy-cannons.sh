@@ -3,7 +3,7 @@ set -euo pipefail
 SCRIPTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 
 # This script builds a version of the cannon executable that includes support for both current and legacy state versions.
-# Each cannon release is built
+# Each cannon release is built separately.
 
 TMP_DIR=$(mktemp -d)
 function cleanup() {

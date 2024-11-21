@@ -28,6 +28,10 @@ func SuperchainRegistryCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to read intent: %w", err)
 	}
 
+	if err := globalIntent.Check(); err != nil {
+		return fmt.Errorf("intent check failed: %w", err)
+	}
+
 	envVars := map[string]string{}
 	envVars["SCR_CHAIN_NAME"] = ""
 	envVars["SCR_CHAIN_SHORT_NAME"] = ""

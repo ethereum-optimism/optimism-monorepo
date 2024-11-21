@@ -96,8 +96,8 @@ Spacers MUST be `private`.
 
 All contracts should be assumed to live behind proxies (except in certain special circumstances).
 This means that new contracts MUST be built under the assumption of upgradeability.
-We use a minimal [`Proxy`](./src/universal/Proxy.sol) contract designed to be owned by a
-corresponding [`ProxyAdmin`](./src/universal/ProxyAdmin.sol) which follow the interfaces
+We use a minimal [`Proxy`](../src/universal/Proxy.sol) contract designed to be owned by a
+corresponding [`ProxyAdmin`](../src/universal/ProxyAdmin.sol) which follow the interfaces
 of OpenZeppelin's `Proxy` and `ProxyAdmin` contracts, respectively.
 
 Unless explicitly discussed otherwise, you MUST include the following basic upgradeability

@@ -15,7 +15,7 @@ import (
 )
 
 type Metrics interface {
-	CountSequencedTxs(count int)
+	CountSequencedTxsInBlock(txns int, deposits int)
 
 	RecordSequencerBuildingDiffTime(duration time.Duration)
 	RecordSequencerSealingTime(duration time.Duration)

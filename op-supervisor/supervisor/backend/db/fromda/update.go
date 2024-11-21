@@ -67,8 +67,10 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 				derived, derived.ParentHash, lastDerived, types.ErrConflict)
 		}
 	} else if lastDerived.Number+1 < derived.Number {
-		return fmt.Errorf("derived block %s (parent: %s) is too new, expected to build on top of %s: %w",
-			derived, derived.ParentHash, lastDerived, types.ErrOutOfOrder)
+		return fmt.Errorf("cannot add block (%s derived from %s), last block (%s derived from %s) is too far behind: (%w)",
+			derived, derivedFrom,
+			lastDerived, lastDerivedFrom,
+			types.ErrOutOfOrder)
 	} else {
 		return fmt.Errorf("derived block %s is older than current derived block %s: %w",
 			derived, lastDerived, types.ErrOutOfOrder)
@@ -89,8 +91,10 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 		}
 	} else if lastDerivedFrom.Number+1 < derivedFrom.Number {
 		// adding block that is derived from something too far into the future
-		return fmt.Errorf("cannot add block %s as derived from %s, still deriving from %s: %w",
-			derived, derivedFrom, lastDerivedFrom, types.ErrOutOfOrder)
+		return fmt.Errorf("cannot add block (%s derived from %s), last block (%s derived from %s) is too far behind: (%w)",
+			derived, derivedFrom,
+			lastDerived, lastDerivedFrom,
+			types.ErrOutOfOrder)
 	} else {
 		// adding block that is derived from something too old
 		return fmt.Errorf("cannot add block %s as derived from %s, deriving already at %s: %w",

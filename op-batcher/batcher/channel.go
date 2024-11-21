@@ -64,7 +64,7 @@ func (c *channel) TxFailed(id string) {
 // TxConfirmed marks a transaction as confirmed on L1. Returns a bool indicating
 // whether the channel timed out on chain.
 func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) bool {
-	c.metr.RecordBatchTxSubmitted()
+	c.metr.RecordBatchTxSuccess()
 	c.log.Debug("marked transaction as confirmed", "id", id, "block", inclusionBlock)
 	if _, ok := c.pendingTransactions[id]; !ok {
 		c.log.Warn("unknown transaction marked as confirmed", "id", id, "block", inclusionBlock)

@@ -71,6 +71,18 @@ contract Encoding_Test is CommonTest {
         assertEq(legacyEncoding, bedrockEncoding);
     }
 
+    /// @dev Tests that encodeCrossDomainMessage reverts if version is greater than 1.
+    function testFuzz_encodeCrossDomainMessage_versionGreaterThanOne_reverts(uint256 nonce) external {
+        // nonce >> 240 must be greater than 1
+        uint256 minInvalidNonce = (uint256(type(uint240).max) + 1) * 2;
+        nonce = bound(nonce, minInvalidNonce, type(uint256).max);
+
+        EncodingContract encoding = new EncodingContract();
+
+        vm.expectRevert(bytes("Encoding: unknown cross domain message version"));
+        encoding.encodeCrossDomainMessage(nonce, address(this), address(this), 1, 100, hex"");
+    }
+
     /// @dev Tests deposit transaction encoding.
     function testDiff_encodeDepositTransaction_succeeds(
         address _from,
@@ -92,5 +104,22 @@ contract Encoding_Test is CommonTest {
         bytes memory _txn = ffi.encodeDepositTransaction(t);
 
         assertEq(txn, _txn);
+    }
+}
+
+contract EncodingContract {
+    function encodeCrossDomainMessage(
+        uint256 nonce,
+        address sender,
+        address target,
+        uint256 value,
+        uint256 gasLimit,
+        bytes memory data
+    )
+        external
+        pure
+        returns (bytes memory)
+    {
+        return Encoding.encodeCrossDomainMessage(nonce, sender, target, value, gasLimit, data);
     }
 }
