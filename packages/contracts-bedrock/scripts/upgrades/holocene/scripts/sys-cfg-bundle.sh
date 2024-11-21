@@ -26,10 +26,10 @@ cp ./templates/sys_cfg_upgrade_bundle_template.json "$BUNDLE_PATH"
 TX_1_PAYLOAD=$(cast calldata "upgrade(address,address)" "$SYSTEM_CONFIG_PROXY_ADDR" "$SYSTEM_CONFIG_IMPL")
 
 # Replace variables
-sed -i '' "s/\$L1_CHAIN_ID/$L1_CHAIN_ID/g" "$BUNDLE_PATH"
-sed -i '' "s/\$PROXY_ADMIN_ADDR/$PROXY_ADMIN_ADDR/g" "$BUNDLE_PATH"
-sed -i '' "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" "$BUNDLE_PATH"
-sed -i '' "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$BUNDLE_PATH"
-sed -i '' "s/\$TX_1_PAYLOAD/$TX_1_PAYLOAD/g" "$BUNDLE_PATH"
+sed -i "s/\$L1_CHAIN_ID/$L1_CHAIN_ID/g" "$BUNDLE_PATH"
+sed -i "s/\$PROXY_ADMIN_ADDR/$PROXY_ADMIN_ADDR/g" "$BUNDLE_PATH"
+sed -i "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" "$BUNDLE_PATH"
+sed -i "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$BUNDLE_PATH"
+sed -i "s/\$TX_1_PAYLOAD/$TX_1_PAYLOAD/g" "$BUNDLE_PATH"
 
 echo "✨ Generated SystemConfig upgrade bundle at \"$BUNDLE_PATH\""
