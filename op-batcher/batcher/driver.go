@@ -249,7 +249,7 @@ func (l *BatchSubmitter) loadBlocksIntoState(start, end uint64, ctx context.Cont
 
 	var latestBlock *types.Block
 	// Add all blocks to "state"
-	for i := start + 1; i < end+1; i++ {
+	for i := start; i <= end; i++ {
 		block, err := l.loadBlockIntoState(ctx, i)
 		if errors.Is(err, ErrReorg) {
 			l.Log.Warn("Found L2 reorg", "block_number", i)
