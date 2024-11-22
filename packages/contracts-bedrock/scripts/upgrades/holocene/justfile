@@ -4,7 +4,7 @@ default:
 
 # Run the deployment / upgrade generation image. If the image is not present locally,
 # it will be built.
-run output-folder-path='output/' *args='':
+run deploy-config-path output-folder-path="$(pwd)/output/" *args='':
   #!/bin/bash
   if [ ! "$(docker images -q op-holocene-upgrade:local 2> /dev/null)" ]; then
     just build-image
@@ -15,7 +15,8 @@ run output-folder-path='output/' *args='':
   # Run the deployment.
   docker run -it \
     --rm \
-    -v $(pwd)/{{output-folder-path}}:/output \
+    -v {{output-folder-path}}:/output \
+    -v {{deploy-config-path}}:/app/packages/contracts-bedrock/deploy-config/deploy-config.json \
     --env-file=.env \
     op-holocene-upgrade:local {{args}}
 
