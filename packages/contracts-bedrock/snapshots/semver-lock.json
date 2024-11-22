@@ -100,8 +100,8 @@
     "sourceCodeHash": "0xd08a2e6514dbd44e16aa312a1b27b2841a9eab5622cbd05a39c30f543fad673c"
   },
   "src/L2/L2ToL2CrossDomainMessenger.sol": {
-    "initCodeHash": "0x2a1a1ee4f47175ce661ee8e4e50cfa879b082dcb5278b1d66ddda00ed77bb744",
-    "sourceCodeHash": "0xa76133db7f449ae742f9ba988ad86ccb5672475f61298b9fefe411b63b63e9f6"
+    "initCodeHash": "0x302e789ec5b1e85b0734b9341b9f6c4b51ecd6727743107df09871d04849ac5a",
+    "sourceCodeHash": "0xe43606596698e6fcc18fd02eaa51277b5c3b648e26a6e12eea93a323af41efb0"
   },
   "src/L2/OptimismSuperchainERC20.sol": {
     "initCodeHash": "0x5bc5824030ecdb531e1f615d207cb73cdaa702e198769445d0ddbe717271eba9",

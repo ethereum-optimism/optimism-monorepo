@@ -130,6 +130,40 @@
         "internalType": "bytes",
         "name": "_message",
         "type": "bytes"
+      },
+      {
+        "internalType": "address",
+        "name": "_entrypoint",
+        "type": "address"
+      }
+    ],
+    "name": "sendMessage",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_destination",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_target",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_message",
+        "type": "bytes"
       }
     ],
     "name": "sendMessage",
@@ -232,6 +266,12 @@
         "internalType": "bytes",
         "name": "message",
         "type": "bytes"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
+        "name": "entrypoint",
+        "type": "address"
       }
     ],
     "name": "SentMessage",
@@ -245,6 +285,11 @@
   {
     "inputs": [],
     "name": "IdOriginNotL2ToL2CrossDomainMessenger",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidEntrypoint",
     "type": "error"
   },
   {
