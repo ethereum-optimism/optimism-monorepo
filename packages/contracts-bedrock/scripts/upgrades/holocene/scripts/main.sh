@@ -37,7 +37,6 @@ export NETWORK="${NETWORK:?NETWORK must be set}"
 export ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:?ETHERSCAN_API_KEY must be set}
 export ETH_RPC_URL=${ETH_RPC_URL:?ETH_RPC_URL must be set}
 export PRIVATE_KEY=${PRIVATE_KEY:?PRIVATE_KEY must be set}
-# export BASE_DEPLOY_CONFIG_PATH=${DEPLOY_CONFIG_PATH:?DEPLOY_CONFIG_PATH must be set}
 export OUTPUT_FOLDER_PATH="/output"
 export SYSTEM_CONFIG_IMPL_ADDR=${SYSTEM_CONFIG_IMPL_ADDR:-$(fetch_standard_address "$NETWORK" "$RELEASE" "system_config")}
 export MIPS_IMPL_ADDR=${MIPS_IMPL_ADDR:-$(fetch_standard_address "$NETWORK" "$RELEASE" "mips")}
@@ -72,12 +71,8 @@ if [[ "$CONTRACTS_BEDROCK_DIR" == "/" ]]; then
   exit 1
 fi
 
-# Set file paths from command-line arguments
+# The deploy config is mounted via Docker to this file
 export DEPLOY_CONFIG_PATH="$CONTRACTS_BEDROCK_DIR/deploy-config/deploy-config.json"
-
-# Copy the files into the paths so that the script can actually access it
-# Mounting it via Docker instead.
-# cp "$BASE_DEPLOY_CONFIG_PATH" "$DEPLOY_CONFIG_PATH"
 
 # Run deploy.sh if deployments.json does not exist
 DEPLOY_LOG_PATH="$OUTPUT_FOLDER_PATH/deploy.log"
