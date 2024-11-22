@@ -424,7 +424,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			}
 
 			// Decide appropriate actions
-			syncActions := computeSyncActions(syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			syncActions := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 			l.prevCurrentL1 = syncStatus.CurrentL1
 
 			// Manage existing state / garbage collection
@@ -932,7 +932,7 @@ func (s SyncActions) String() string {
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely.
-func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) SyncActions {
+func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		s := SyncActions{waitForNodeSync: true}
@@ -947,9 +947,17 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCu
 		return s
 	}
 
-	oldestBlock, ok := blocks.Peek()
+	oldestBlock, hasBlocks := blocks.Peek()
 
-	if ok && oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
+	if !hasBlocks {
+		s := SyncActions{
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+		}
+		l.Info("no blocks in state", "syncActions", s)
+		return s
+	}
+
+	if oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
 		s := SyncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
@@ -958,9 +966,10 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCu
 		return s
 	}
 
+	newestBlock := blocks[blocks.Len()-1]
 	numBlocksToDequeue := newSyncStatus.SafeL2.Number + 1 - oldestBlock.NumberU64()
 
-	if numBlocksToDequeue > uint64(blocks.Len()) && blocks.Len() > 0 {
+	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
@@ -969,14 +978,14 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCu
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Warn("safe head above unsafe head, clearing channel manager state",
-			"unsafeBlock", eth.ToBlockID(blocks[blocks.Len()-1]),
+			"unsafeBlock", eth.ToBlockID(newestBlock),
 			"newSafeBlock", newSyncStatus.SafeL2.Number,
 			"syncActions",
 			s)
 		return s
 	}
 
-	if blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
+	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
 		s := SyncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
@@ -997,7 +1006,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCu
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 
 			s := SyncActions{
-				waitForNodeSync: true, // is this right?
+				waitForNodeSync: true,
 				clearState:      &newSyncStatus.SafeL2.L1Origin,
 				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
@@ -1024,6 +1033,6 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCu
 	return SyncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
-		blocksToLoad:    [2]uint64{oldestBlock.NumberU64() + numBlocksToDequeue, newSyncStatus.UnsafeL2.Number},
+		blocksToLoad:    [2]uint64{newestBlock.Number().Uint64() + 1, newSyncStatus.UnsafeL2.Number},
 	}
 }

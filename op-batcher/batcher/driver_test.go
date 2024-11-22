@@ -157,7 +157,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 	type TestCase struct {
 		name string
 		// inputs
-		newSyncStatus *eth.SyncStatus
+		newSyncStatus eth.SyncStatus
 		prevCurrentL1 eth.L1BlockRef
 		blocks        queue.Queue[*types.Block]
 		channels      []ChannelStatuser
@@ -168,12 +168,12 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 
 	testCases := []TestCase{
 		{name: "empty sync status",
-			newSyncStatus: &eth.SyncStatus{},
+			newSyncStatus: eth.SyncStatus{},
 			expected:      SyncActions{waitForNodeSync: true},
 			expectedLogs:  []string{"empty sync status"},
 		},
 		{name: "sequencer restart",
-			newSyncStatus: &eth.SyncStatus{
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
 			},
@@ -182,7 +182,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedLogs:  []string{"sequencer currentL1 reversed"},
 		},
 		{name: "L1",
-			newSyncStatus: &eth.SyncStatus{
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
 				SafeL2:    eth.L2BlockRef{Number: 100},
@@ -198,7 +198,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedLogs: []string{"new safe head is behind oldest block in state"},
 		},
 		{name: "batcher restart",
-			newSyncStatus: &eth.SyncStatus{
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 104},
@@ -214,7 +214,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedLogs: []string{"safe head above unsafe head"},
 		},
 		{name: "safe chain reorg",
-			newSyncStatus: &eth.SyncStatus{
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block101.Hash()}, // note hash mismatch
@@ -229,8 +229,8 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"safe chain reorg"},
 		},
-		{name: "failed to make progress",
-			newSyncStatus: &eth.SyncStatus{
+		{name: "failed to make expected progress",
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash()},
@@ -246,8 +246,22 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
+		{name: "no progress",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 1},
+				CurrentL1: eth.BlockRef{Number: 1},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
+			channels:      []ChannelStatuser{channel103},
+			expected: SyncActions{
+				blocksToLoad: [2]uint64{104, 109},
+			},
+		},
 		{name: "happy path",
-			newSyncStatus: &eth.SyncStatus{
+			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
