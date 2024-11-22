@@ -136,7 +136,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     /// @param _destination Chain ID of the destination chain.
     /// @param _target      Target contract or wallet address.
     /// @param _message     Message payload to call target with.
-    /// @param _entrypoint  Address of the entrypoint on the destination chain.
+    /// @param _entrypoint  Address of the entrypoint on the destination chain. If it is address(0) then the
+    ///                     message can be relayed by any address on the destination chain.
     /// @return The hash of the message being sent, used to track whether the message has successfully been relayed.
     function sendMessage(
         uint256 _destination,
