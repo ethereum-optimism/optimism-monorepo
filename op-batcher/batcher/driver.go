@@ -423,20 +423,27 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
+			// Decide appropriate actions
 			syncActions := computeSyncActions(syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
-
 			l.prevCurrentL1 = syncStatus.CurrentL1
 
+			// Manage existing state / garbage collection
 			if syncActions.clearState != nil {
 				l.state.Clear(*syncActions.clearState)
 			} else {
 				l.state.pruneSafeBlocks(syncActions.blocksToPrune)
 				l.state.pruneChannels(syncActions.channelsToPrune)
 			}
+
+			// Wait for sequencer to catch up
 			if syncActions.waitForNodeSync {
-				l.waitNodeSync()
+				err = l.waitNodeSync()
+				if err != nil {
+					l.Log.Warn("error waiting for node sync", "err", err)
+				}
 			}
 
+			// Get fresh unsafe blocks
 			if err := l.loadBlocksIntoState(syncActions.blocksToLoad[0], syncActions.blocksToLoad[1], l.shutdownCtx); errors.Is(err, ErrReorg) {
 				l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 				l.waitNodeSyncAndClearState()
