@@ -305,7 +305,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         uint256 _nonce,
         address _sender,
         bytes calldata _message,
-        uint160 _entrypointSeed,
+        address _entrypoint,
         uint256 _value,
         uint256 _blockNum,
         uint256 _logIndex,
@@ -315,11 +315,8 @@ contract L2ToL2CrossDomainMessengerTest is Test {
     {
         address _target = makeAddr("target");
 
-        // Ensure entrypoint is not address(0) or Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER
-        _entrypointSeed = uint160(bound(uint256(_entrypointSeed), 1, type(uint160).max));
-        address _entrypoint = address(uint160(_entrypointSeed));
-
-        vm.assume(_entrypoint != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
+        // Ensure entrypoint is not address(0) or the L2ToL2CrossDomainMessenger contract
+        vm.assume(_entrypoint != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER && _entrypoint != address(0));
 
         // Construct the SentMessage payload & identifier
         Identifier memory id =

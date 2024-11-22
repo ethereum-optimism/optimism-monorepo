@@ -83,7 +83,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     /// @notice Emitted whenever a message is sent to a destination
     /// @param destination  Chain ID of the destination chain.
     /// @param target       Target contract or wallet address.
-    /// @param messageNonce Nonce associated with the messsage sent
+    /// @param messageNonce Nonce associated with the message sent
     /// @param sender       Address initiating this message call
     /// @param message      Message payload to call target with.
     /// @param entrypoint   Address of the entrypoint on the destination chain.
@@ -98,7 +98,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
 
     /// @notice Emitted whenever a message is successfully relayed on this chain.
     /// @param source       Chain ID of the source chain.
-    /// @param messageNonce Nonce associated with the messsage sent
+    /// @param messageNonce Nonce associated with the message sent
     /// @param messageHash  Hash of the message that was relayed.
     event RelayedMessage(uint256 indexed source, uint256 indexed messageNonce, bytes32 indexed messageHash);
 
@@ -128,17 +128,6 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         }
     }
 
-    /// @notice Sends a message to some target address on a destination chain. Note that if the call always reverts,
-    ///         then the message will be unrelayable and any ETH sent will be permanently locked. The same will occur
-    ///         if the target on the other chain is considered unsafe (see the _isUnsafeTarget() function).
-    /// @param _destination Chain ID of the destination chain.
-    /// @param _target      Target contract or wallet address.
-    /// @param _message     Message payload to call target with.
-    /// @return The hash of the message being sent, used to track whether the message has successfully been relayed.
-    function sendMessage(uint256 _destination, address _target, bytes calldata _message) external returns (bytes32) {
-        return _sendMessage(_destination, _target, _message, address(0));
-    }
-
     /// @notice Sends a message to some target address on a destination chain with an entrypoint address as an
     ///         authorized relayer. Note that if the call always reverts, then the message will be unrelayable and any
     ///         ETH sent will be permanently locked. The same will occur if the target on the other chain is considered
@@ -159,6 +148,17 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         returns (bytes32)
     {
         return _sendMessage(_destination, _target, _message, _entrypoint);
+    }
+
+    /// @notice Sends a message to some target address on a destination chain. Note that if the call always reverts,
+    ///         then the message will be unrelayable and any ETH sent will be permanently locked. The same will occur
+    ///         if the target on the other chain is considered unsafe (see the _isUnsafeTarget() function).
+    /// @param _destination Chain ID of the destination chain.
+    /// @param _target      Target contract or wallet address.
+    /// @param _message     Message payload to call target with.
+    /// @return The hash of the message being sent, used to track whether the message has successfully been relayed.
+    function sendMessage(uint256 _destination, address _target, bytes calldata _message) external returns (bytes32) {
+        return _sendMessage(_destination, _target, _message, address(0));
     }
 
     /// @notice Relays a message that was sent by the other L2ToL2CrossDomainMessenger contract. Can only be executed

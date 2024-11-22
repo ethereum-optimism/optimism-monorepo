@@ -123,8 +123,8 @@ contract SuperchainTokenBridgeTest is CommonTest {
             abi.encodeCall(superchainTokenBridge.relayERC20, (address(superchainERC20), _sender, _to, _amount));
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            abi.encodeCall(
-                IL2ToL2CrossDomainMessenger.sendMessage, (_chainId, address(superchainTokenBridge), _message)
+            abi.encodeWithSignature(
+                "sendMessage(uint256,address,bytes)", _chainId, address(superchainTokenBridge), _message
             ),
             abi.encode(_msgHash)
         );
