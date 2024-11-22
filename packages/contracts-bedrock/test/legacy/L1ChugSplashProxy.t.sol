@@ -5,15 +5,8 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 
 // Target contract
-import { L1ChugSplashProxy } from "src/legacy/L1ChugSplashProxy.sol";
-
-contract L1ChugSplashProxyWrapper is L1ChugSplashProxy {
-    constructor(address admin) L1ChugSplashProxy(admin) { }
-
-    function getDeployCodePrefix() public pure returns (bytes13) {
-        return DEPLOY_CODE_PREFIX;
-    }
-}
+import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract Owner {
     bool public isUpgrading;
@@ -46,13 +39,18 @@ contract Implementation {
 }
 
 contract L1ChugSplashProxy_Test is Test {
-    L1ChugSplashProxyWrapper proxy;
+    IL1ChugSplashProxy proxy;
     address impl;
     address owner = makeAddr("owner");
     address alice = makeAddr("alice");
 
     function setUp() public {
-        proxy = new L1ChugSplashProxyWrapper(owner);
+        proxy = IL1ChugSplashProxy(
+            DeployUtils.create1({
+                _name: "L1ChugSplashProxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ChugSplashProxy.__constructor__, (owner)))
+            })
+        );
         vm.prank(owner);
         assertEq(proxy.getOwner(), owner);
 
@@ -61,10 +59,6 @@ contract L1ChugSplashProxy_Test is Test {
 
         vm.prank(owner);
         impl = proxy.getImplementation();
-    }
-
-    function test_getDeployCodePrefix_works() public view {
-        assertTrue(proxy.getDeployCodePrefix() == 0x600D380380600D6000396000f3);
     }
 
     function test_setCode_whenOwner_succeeds() public {
@@ -99,7 +93,12 @@ contract L1ChugSplashProxy_Test is Test {
     }
 
     function test_calls_whenNotOwnerNoImplementation_reverts() public {
-        proxy = new L1ChugSplashProxyWrapper(owner);
+        proxy = IL1ChugSplashProxy(
+            DeployUtils.create1({
+                _name: "L1ChugSplashProxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ChugSplashProxy.__constructor__, (owner)))
+            })
+        );
 
         vm.expectRevert(bytes("L1ChugSplashProxy: implementation is not set yet"));
         Implementation(address(proxy)).setCode(hex"604260005260206000f3");
