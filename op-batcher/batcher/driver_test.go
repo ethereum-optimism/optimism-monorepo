@@ -161,14 +161,43 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		blocks                        queue.Queue[*types.Block]
 		channels                      []ChannelStatuser
 		// expectations
-		expectedSyncActions SyncActions
-		expectedLogs        []string
+		expected     SyncActions
+		expectedLogs []string
 	}
 
 	testCases := []TestCase{
 		{name: "empty sync status",
-			newSyncStatus:       &eth.SyncStatus{},
-			expectedSyncActions: SyncActions{waitForNodeSync: true},
+			newSyncStatus: &eth.SyncStatus{},
+			expected:      SyncActions{waitForNodeSync: true},
+			expectedLogs:  []string{"empty sync status, waiting for node sync"},
+		},
+		{name: "sequencer restart",
+			newSyncStatus: &eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 2},
+				CurrentL1: eth.BlockRef{Number: 1},
+			},
+			prevSyncStatus: &eth.SyncStatus{
+				CurrentL1: eth.BlockRef{Number: 2},
+			},
+			expected:     SyncActions{waitForNodeSync: true},
+			expectedLogs: []string{"sequencer currentL1 reversed, waiting for node sync"},
+		},
+		{name: "L1 reorg",
+			newSyncStatus: &eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 2},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 102, Hash: block102.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 107},
+			},
+			prevSyncStatus: &eth.SyncStatus{
+				CurrentL1: eth.BlockRef{Number: 1},
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
+			},
+			expected: SyncActions{
+				clearState:   &eth.BlockID{},
+				blocksToLoad: [2]uint64{103, 107},
+			},
+			expectedLogs: []string{"sequencer safeL2 reversed while currentL1 did not: clearing state, waiting for node sync and resuming work from new safe head"},
 		},
 		{name: "happy path",
 			newSyncStatus: &eth.SyncStatus{
@@ -183,7 +212,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			blocks:   queue.Queue[*types.Block]{block101, block102, block103},
 			channels: []ChannelStatuser{channel103},
-			expectedSyncActions: SyncActions{
+			expected: SyncActions{
 				blocksToPrune:   3,
 				channelsToPrune: 1,
 				blocksToLoad:    [2]uint64{104, 109},
@@ -194,14 +223,17 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 	for _, tc := range testCases {
 
 		t.Run(tc.name, func(t *testing.T) {
+			l, h := testlog.CaptureLogger(t, log.LevelDebug)
 
-			testLogger := testlog.Logger(t, log.LevelDebug)
 			result := computeSyncActions(
-				tc.newSyncStatus, tc.prevSyncStatus, tc.blocks, tc.channels, testLogger,
+				tc.newSyncStatus, tc.prevSyncStatus, tc.blocks, tc.channels, l,
 			)
 
-			require.Equal(t, tc.expectedSyncActions, result)
-			// TODO log assertions
+			require.Equal(t, tc.expected, result)
+			for _, e := range tc.expectedLogs {
+				r := h.FindLog(testlog.NewMessageContainsFilter(e))
+				require.NotNil(t, r, "could not find log message containing '%s'", e)
+			}
 		})
 	}
 }
