@@ -3,6 +3,7 @@ package batcher
 import (
 	"context"
 	"errors"
+	"math/big"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
@@ -119,14 +120,46 @@ func TestBatchSubmitter_SafeL1Origin_FailsToResolveRollupClient(t *testing.T) {
 	require.Error(t, err)
 }
 
+type testChannelStatuser struct {
+	latestL2                 eth.BlockID
+	inclusionBlock           uint64
+	fullySubmitted, timedOut bool
+}
+
+func (tcs testChannelStatuser) LatestL2() eth.BlockID {
+	return tcs.latestL2
+}
+
+func (tcs testChannelStatuser) maxInclusionBlock() uint64 {
+	return tcs.inclusionBlock
+}
+func (tcs testChannelStatuser) isFullySubmitted() bool {
+	return tcs.fullySubmitted
+}
+
+func (tcs testChannelStatuser) isTimedOut() bool {
+	return tcs.timedOut
+}
+
 func TestBatchSubmitter_computeSyncActions(t *testing.T) {
+
+	block101 := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(101)})
+	block102 := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(102)})
+	block103 := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(103)})
+
+	channel103 := testChannelStatuser{
+		latestL2:       eth.ToBlockID(block103),
+		inclusionBlock: 1,
+		fullySubmitted: true,
+		timedOut:       false,
+	}
 
 	type TestCase struct {
 		name string
 		// inputs
 		newSyncStatus, prevSyncStatus *eth.SyncStatus
 		blocks                        queue.Queue[*types.Block]
-		channels                      []*channel
+		channels                      []ChannelStatuser
 		// expectations
 		expectedSyncActions SyncActions
 		expectedLogs        []string
@@ -135,7 +168,27 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 	testCases := []TestCase{
 		{name: "empty sync status",
 			newSyncStatus:       &eth.SyncStatus{},
-			expectedSyncActions: SyncActions{waitForNodeSync: true}},
+			expectedSyncActions: SyncActions{waitForNodeSync: true},
+		},
+		{name: "happy path",
+			newSyncStatus: &eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 2},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevSyncStatus: &eth.SyncStatus{
+				CurrentL1: eth.BlockRef{Number: 1},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+			},
+			blocks:   queue.Queue[*types.Block]{block101, block102, block103},
+			channels: []ChannelStatuser{channel103},
+			expectedSyncActions: SyncActions{
+				blocksToPrune:   3,
+				channelsToPrune: 1,
+				blocksToLoad:    [2]uint64{104, 109},
+			},
+		},
 	}
 
 	for _, tc := range testCases {
