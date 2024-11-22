@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/queue"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 )
 
@@ -948,4 +949,108 @@ func logFields(xs ...any) (fs []any) {
 		}
 	}
 	return fs
+}
+
+type SyncActions struct {
+	blocksToPrune   int
+	channelsToPrune int
+	waitForNodeSync bool
+	clearState      eth.BlockID
+	blocksToLoad    [2]uint64 // the range (start,end] that should be loaded into the local state.
+}
+
+// One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
+// other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
+// the local state.
+func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []*channel, l log.Logger) SyncActions {
+
+	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
+		// empty sync status
+		return SyncActions{waitForNodeSync: true}
+	}
+
+	if newSyncStatus.CurrentL1.Number < prevSyncStatus.CurrentL1.Number {
+		// This can happen if the sequencer restarts
+		return SyncActions{waitForNodeSync: true}
+	}
+
+	if newSyncStatus.SafeL2.Number < prevSyncStatus.SafeL2.Number {
+		// The currentL1 did not reverse but the safe head did.
+		// This implies an L1 reorg.
+		// Clear out the state and resume work from safe head.
+		return SyncActions{
+			clearState:   eth.BlockID{}, // TODO what should this be?
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+		}
+	}
+
+	oldestBlock, ok := blocks.Peek()
+
+	if ok && oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
+		// The currentL1 did not reverse but the safe head did.
+		// This implies an L1 reorg.
+		// Clear out the state and resume work from safe head.
+		return SyncActions{
+			clearState:   eth.BlockID{}, // TODO what should this be?
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+		}
+	}
+
+	numBlocksToDequeue := newSyncStatus.SafeL2.Number + 1 - oldestBlock.NumberU64()
+
+	if numBlocksToDequeue > uint64(blocks.Len()) {
+		// This could happen if the batcher restarted.
+		// The sequencer may have derived the safe chain
+		// from channels sent by a previous batcher instance.
+		l.Warn("safe head above unsafe head, clearing channel manager state",
+			"unsafeBlock", eth.ToBlockID(blocks[blocks.Len()-1]),
+			"newSafeBlock", newSyncStatus.SafeL2.Number)
+		// We should resume work from the new safe head,
+		// and therefore prune all the blocks.
+		return SyncActions{
+			clearState:   newSyncStatus.SafeL2.L1Origin,
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+		}
+	}
+
+	if blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
+		l.Warn("safe chain reorg, clearing channel manager state",
+			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
+			"newSafeBlock", newSyncStatus.SafeL2)
+		// We should resume work from the new safe head,
+		// and therefore prune all the blocks.
+		return SyncActions{
+			clearState:   newSyncStatus.SafeL2.L1Origin,
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+		}
+	}
+
+	for _, ch := range channels {
+		if ch.isFullySubmitted() &&
+			!ch.isTimedOut() &&
+			newSyncStatus.CurrentL1.Number > ch.maxInclusionBlock &&
+			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
+			// Safe head did not make the expected progress
+			// for a fully submitted channel. We should go back to
+			// the last safe head and resume work from there.
+			return SyncActions{
+				waitForNodeSync: true,          // is this right?
+				clearState:      eth.BlockID{}, // TODO what should this be?
+				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+			}
+		}
+	}
+
+	numChannelsToPrune := 0
+	for _, ch := range channels {
+		if ch.LatestL2().Number > newSyncStatus.SafeL2.Number {
+			break
+		}
+		numChannelsToPrune++
+	}
+
+	return SyncActions{
+		blocksToPrune:   int(numBlocksToDequeue),
+		channelsToPrune: numChannelsToPrune,
+	}
 }

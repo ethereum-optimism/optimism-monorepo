@@ -8,8 +8,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/queue"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -115,4 +117,38 @@ func TestBatchSubmitter_SafeL1Origin_FailsToResolveRollupClient(t *testing.T) {
 
 	_, err := bs.safeL1Origin(context.Background())
 	require.Error(t, err)
+}
+
+func TestBatchSubmitter_computeSyncActions(t *testing.T) {
+
+	type TestCase struct {
+		name string
+		// inputs
+		newSyncStatus, prevSyncStatus *eth.SyncStatus
+		blocks                        queue.Queue[*types.Block]
+		channels                      []*channel
+		// expectations
+		expectedSyncActions SyncActions
+		expectedLogs        []string
+	}
+
+	testCases := []TestCase{
+		{name: "empty sync status",
+			newSyncStatus:       &eth.SyncStatus{},
+			expectedSyncActions: SyncActions{waitForNodeSync: true}},
+	}
+
+	for _, tc := range testCases {
+
+		t.Run(tc.name, func(t *testing.T) {
+
+			testLogger := testlog.Logger(t, log.LevelDebug)
+			result := computeSyncActions(
+				tc.newSyncStatus, tc.prevSyncStatus, tc.blocks, tc.channels, testLogger,
+			)
+
+			require.Equal(t, tc.expectedSyncActions, result)
+			// TODO log assertions
+		})
+	}
 }
