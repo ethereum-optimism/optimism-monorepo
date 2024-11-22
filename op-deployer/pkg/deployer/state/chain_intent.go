@@ -31,6 +31,10 @@ type ChainRoles struct {
 	Challenger        common.Address `json:"challenger" toml:"challenger"`
 }
 
+var ErrChainRoleZeroAddress = fmt.Errorf("ChainRole is set to zero address")
+var ErrFeeVaultZeroAddress = fmt.Errorf("chain has a fee vault set to zero address")
+var ErrNonStandardValue = fmt.Errorf("chain contains non-standard config value")
+
 func (c *ChainIntent) Check() error {
 	var emptyHash common.Hash
 	if c.ID == emptyHash {
@@ -75,7 +79,7 @@ func (cr *ChainRoles) CheckNoZeroAddresses() error {
 		fieldName := typ.Field(i).Name
 
 		if fieldValue.Interface() == (common.Address{}) {
-			return fmt.Errorf("ChainRoles %s contains is set to zero-value address", fieldName)
+			return fmt.Errorf("%w: %s", ErrChainRoleZeroAddress, fieldName)
 		}
 	}
 
