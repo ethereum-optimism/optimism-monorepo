@@ -685,10 +685,6 @@ jobs:
           command: just build-go-ffi
           working_directory: packages/contracts-bedrock
       - run:
-          name: Lint forge test names
-          command: just lint-forge-tests-check-no-build
-          working_directory: packages/contracts-bedrock
-      - run:
           name: Run tests
           command: |
             TEST_FILES=$(<<parameters.test_list>>)
@@ -707,6 +703,10 @@ jobs:
             FOUNDRY_PROFILE: ci
           working_directory: packages/contracts-bedrock
           when: on_fail
+      - run:
+          name: Lint forge test names
+          command: just lint-forge-tests-check-no-build
+          working_directory: packages/contracts-bedrock
       - save_cache:
           name: Save Go build cache
           key: golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
