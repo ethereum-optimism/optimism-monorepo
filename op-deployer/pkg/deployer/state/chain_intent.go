@@ -1,6 +1,7 @@
 package state
 
 import (
+	"errors"
 	"fmt"
 	"reflect"
 
@@ -34,6 +35,7 @@ type ChainRoles struct {
 var ErrChainRoleZeroAddress = fmt.Errorf("ChainRole is set to zero address")
 var ErrFeeVaultZeroAddress = fmt.Errorf("chain has a fee vault set to zero address")
 var ErrNonStandardValue = fmt.Errorf("chain contains non-standard config value")
+var ErrEip1559ZeroValue = fmt.Errorf("eip1559 param is set to zero value")
 
 func (c *ChainIntent) Check() error {
 	var emptyHash common.Hash
@@ -63,6 +65,28 @@ func (c *ChainIntent) Check() error {
 
 	if c.DangerousAltDAConfig.UseAltDA {
 		return c.DangerousAltDAConfig.Check(nil)
+	}
+
+	return nil
+}
+
+func (c *ChainIntent) CheckNoZeroValues() error {
+	if c.ID == emptyHash {
+		return errors.New("missing l2 chain ID")
+	}
+	if err := c.Roles.CheckNoZeroAddresses(); err != nil {
+		return err
+	}
+
+	if c.Eip1559DenominatorCanyon == 0 ||
+		c.Eip1559Denominator == 0 ||
+		c.Eip1559Elasticity == 0 {
+		return fmt.Errorf("%w: chainId=%s", ErrEip1559ZeroValue, c.ID)
+	}
+	if c.BaseFeeVaultRecipient == emptyAddress ||
+		c.L1FeeVaultRecipient == emptyAddress ||
+		c.SequencerFeeVaultRecipient == emptyAddress {
+		return fmt.Errorf("%w: chainId=%s", ErrFeeVaultZeroAddress, c.ID)
 	}
 
 	return nil

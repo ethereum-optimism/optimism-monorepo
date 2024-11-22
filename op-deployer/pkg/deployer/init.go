@@ -96,10 +96,6 @@ func Init(cfg InitConfig) error {
 		return err
 	}
 
-	if err := intent.Check(); err != nil {
-		return err
-	}
-
 	st := &state.State{
 		Version: 1,
 	}

@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"reflect"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 
@@ -65,6 +66,24 @@ type SuperchainRoles struct {
 	Guardian              common.Address `json:"guardian" toml:"guardian"`
 }
 
+var ErrSuperchainRoleZeroAddress = fmt.Errorf("SuperchainRole is set to zero address")
+
+func (s *SuperchainRoles) CheckNoZeroAddresses() error {
+	val := reflect.ValueOf(*s)
+	typ := reflect.TypeOf(*s)
+
+	// Iterate through all the fields
+	for i := 0; i < val.NumField(); i++ {
+		fieldValue := val.Field(i)
+		fieldName := typ.Field(i).Name
+
+		if fieldValue.Interface() == (common.Address{}) {
+			return fmt.Errorf("%w: %s", ErrSuperchainRoleZeroAddress, fieldName)
+		}
+	}
+	return nil
+}
+
 func (c *Intent) L1ChainIDBig() *big.Int {
 	return big.NewInt(int64(c.L1ChainID))
 }
@@ -94,25 +113,32 @@ func (c *Intent) ValidateIntentConfigType() error {
 }
 
 func (c *Intent) validateCustomConfig() error {
+	if c.L1ContractsLocator == nil || c.L1ContractsLocator.Tag == "undefined" {
+		return errors.New("L1ContractsLocator undefined")
+	}
+	if c.L2ContractsLocator == nil || c.L2ContractsLocator.Tag == "undefined" {
+		return errors.New("L2ContractsLocator undefined")
+	}
+
+	if err := c.SuperchainRoles.CheckNoZeroAddresses(); err != nil {
+		return err
+	}
+
+	if len(c.Chains) == 0 {
+		return errors.New("must define at least one l2 chain")
+	}
+
+	for _, chain := range c.Chains {
+		if err := chain.CheckNoZeroValues(); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
 func (c *Intent) validateStrictConfig() error {
 	return nil
-}
-
-func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
-	switch c.IntentConfigType {
-	case IntentConfigTypeStandard:
-		return c.setStandardValues(l2ChainIds)
-
-	case IntentConfigTypeTest:
-		return c.setTestValues(l2ChainIds)
-
-	default:
-		return fmt.Errorf("intent config type not supported")
-	}
-
 }
 
 // Ensures the following:
@@ -167,6 +193,35 @@ func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
 	}
 
 	return superchainRoles, nil
+}
+
+func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
+	switch c.IntentConfigType {
+	case IntentConfigTypeCustom:
+		return c.setCustomValues(l2ChainIds)
+
+	case IntentConfigTypeStandard:
+		return c.setStandardValues(l2ChainIds)
+
+	case IntentConfigTypeTest:
+		return c.setTestValues(l2ChainIds)
+
+	default:
+		return fmt.Errorf("intent config type not supported")
+	}
+}
+
+func (c *Intent) setCustomValues(l2ChainIds []common.Hash) error {
+	c.L1ContractsLocator = &artifacts.Locator{Tag: "undefined"}
+	c.L2ContractsLocator = &artifacts.Locator{Tag: "undefined"}
+
+	c.SuperchainRoles = &SuperchainRoles{}
+	for _, l2ChainID := range l2ChainIds {
+		c.Chains = append(c.Chains, &ChainIntent{
+			ID: l2ChainID,
+		})
+	}
+	return nil
 }
 
 func (c *Intent) setStandardValues(l2ChainIds []common.Hash) error {
