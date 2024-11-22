@@ -951,18 +951,26 @@ func logFields(xs ...any) (fs []any) {
 	return fs
 }
 
+type ChannelStatuser interface {
+	isFullySubmitted() bool
+	isTimedOut() bool
+	LatestL2() eth.BlockID
+	maxInclusionBlock() uint64
+}
+
 type SyncActions struct {
 	blocksToPrune   int
 	channelsToPrune int
 	waitForNodeSync bool
 	clearState      eth.BlockID
-	blocksToLoad    [2]uint64 // the range (start,end] that should be loaded into the local state.
+	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
+	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
 // One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
 // other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
 // the local state.
-func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []*channel, l log.Logger) SyncActions {
+func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		// empty sync status
@@ -992,7 +1000,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// Clear out the state and resume work from safe head.
 		return SyncActions{
 			clearState:   eth.BlockID{}, // TODO what should this be?
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
 
@@ -1009,7 +1017,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// and therefore prune all the blocks.
 		return SyncActions{
 			clearState:   newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
 
@@ -1021,14 +1029,14 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// and therefore prune all the blocks.
 		return SyncActions{
 			clearState:   newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
 
 	for _, ch := range channels {
 		if ch.isFullySubmitted() &&
 			!ch.isTimedOut() &&
-			newSyncStatus.CurrentL1.Number > ch.maxInclusionBlock &&
+			newSyncStatus.CurrentL1.Number > ch.maxInclusionBlock() &&
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. We should go back to
@@ -1036,7 +1044,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 			return SyncActions{
 				waitForNodeSync: true,          // is this right?
 				clearState:      eth.BlockID{}, // TODO what should this be?
-				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
 		}
 	}
@@ -1049,8 +1057,10 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		numChannelsToPrune++
 	}
 
+	// happy path
 	return SyncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
+		blocksToLoad:    [2]uint64{oldestBlock.NumberU64() + numBlocksToDequeue, newSyncStatus.UnsafeL2.Number},
 	}
 }
