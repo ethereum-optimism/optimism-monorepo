@@ -229,6 +229,23 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"safe chain reorg, clearing channel manager state"},
 		},
+		{name: "failed to make progress",
+			newSyncStatus: &eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 2},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
+			channels:      []ChannelStatuser{channel103},
+			expected: SyncActions{
+				waitForNodeSync: true,
+				clearState:      &eth.BlockID{},
+				blocksToLoad:    [2]uint64{102, 109},
+			},
+			expectedLogs: []string{"sequencer did not make expected progress"},
+		},
 		{name: "happy path",
 			newSyncStatus: &eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
