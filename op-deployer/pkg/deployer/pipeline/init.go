@@ -102,7 +102,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 
 func initCommonChecks(st *state.State, intent *state.Intent) error {
 	if err := intent.ValidateIntentConfigType(); err != nil {
-		return fmt.Errorf("failed to validate against intent config type: %w", err)
+		return err
 	}
 
 	// Ensure the state version is supported.
@@ -145,10 +145,10 @@ func displayWarning() error {
 ####################### WARNING! WARNING WARNING! #######################
 
 You are deploying a tagged release to a chain with no pre-deployed OPCM.
-The contracts you are deploying may not be audited, or match a governance 
+The contracts you are deploying may not be audited, or match a governance
 approved release.
 
-USE OF THIS DEPLOYMENT IS NOT RECOMMENDED FOR PRODUCTION. USE AT YOUR OWN 
+USE OF THIS DEPLOYMENT IS NOT RECOMMENDED FOR PRODUCTION. USE AT YOUR OWN
 RISK. BUGS OR LOSS OF FUNDS MAY OCCUR. WE HOPE YOU KNOW WHAT YOU ARE
 DOING.
 

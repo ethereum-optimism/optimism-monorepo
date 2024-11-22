@@ -72,37 +72,32 @@ func (c *Intent) L1ChainIDBig() *big.Int {
 func (c *Intent) ValidateIntentConfigType() error {
 	switch c.IntentConfigType {
 	case IntentConfigTypeStandard:
-		return c.validateStandardValues()
-
+		if err := c.validateStandardValues(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=standard: %w", err)
+		}
 	case IntentConfigTypeCustom:
-		return c.validateCustomConfig()
-
+		if err := c.validateCustomConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=custom: %w", err)
+		}
 	case IntentConfigTypeStrict:
-		return c.validateStrictConfig()
-
+		if err := c.validateStrictConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=strict: %w", err)
+		}
 	case IntentConfigTypeTest:
 		return nil
-
 	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
 		return nil
 	default:
-		return fmt.Errorf("intent config type is invalid")
-	}
-}
-
-func (c *Intent) validateCustomConfig() error {
-	if c.L1ChainID == 0 || c.L1ContractsLocator == nil || c.L2ContractsLocator == nil || len(c.Chains) == 0 {
-		return errors.New("custom config: all fields must be explicitly specified")
+		return fmt.Errorf("intent-config-type unsupported: %s", c.IntentConfigType)
 	}
 	return nil
 }
 
+func (c *Intent) validateCustomConfig() error {
+	return nil
+}
+
 func (c *Intent) validateStrictConfig() error {
-	for _, chain := range c.Chains {
-		if chain.BaseFeeVaultRecipient != (common.Address{}) {
-			return errors.New("strict config: opChainProxyAdminOwner and challenger cannot be set")
-		}
-	}
 	return nil
 }
 
@@ -115,7 +110,7 @@ func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
 		return c.setTestValues(l2ChainIds)
 
 	default:
-		return fmt.Errorf("intent config type is invalid")
+		return fmt.Errorf("intent config type not supported")
 	}
 
 }
@@ -144,7 +139,12 @@ func (c *Intent) validateStandardValues() error {
 			chain.Eip1559Denominator != standard.Eip1559Denominator ||
 			chain.Eip1559Elasticity != standard.Eip1559Elasticity ||
 			chain.Roles.Challenger != challenger {
-			return fmt.Errorf("l2 chain has non-standard value")
+			return fmt.Errorf("%w: chainId=%s", ErrNonStandardValue, chain.ID)
+		}
+		if chain.BaseFeeVaultRecipient == emptyAddress ||
+			chain.L1FeeVaultRecipient == emptyAddress ||
+			chain.SequencerFeeVaultRecipient == emptyAddress {
+			return fmt.Errorf("%w: chainId=%s", ErrFeeVaultZeroAddress, chain.ID)
 		}
 	}
 

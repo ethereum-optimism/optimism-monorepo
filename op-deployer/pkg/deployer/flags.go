@@ -36,7 +36,7 @@ var (
 		Name:    L1ChainIDFlagName,
 		Usage:   "Chain ID of the L1 chain.",
 		EnvVars: PrefixEnvVar("L1_CHAIN_ID"),
-		Value:   900,
+		Value:   11155111,
 	}
 	L2ChainIDsFlag = &cli.StringFlag{
 		Name:    L2ChainIDsFlagName,
