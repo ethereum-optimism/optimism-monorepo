@@ -876,6 +876,7 @@ jobs:
           at: "."
       - run:
           name: run tests
+          no_output_timeout: 5m
           command: |
             mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
 
@@ -936,6 +937,10 @@ jobs:
         description: Indicates that slow tests should be skipped
         type: boolean
         default: false
+      no_output_timeout:
+        description: Timeout for running tests
+        type: string
+        default: 5m
     machine: true
     resource_class: <<parameters.resource_class>>
     steps:
@@ -955,7 +960,7 @@ jobs:
           command: go tool dist list | grep mips
       - run:
           name: run tests
-          no_output_timeout: 20m
+          no_output_timeout: <<parameters.no_output_timeout>>
           command: |
             mkdir -p ./tmp/testlogs
             mkdir -p ./tmp/test-results
@@ -1635,6 +1640,7 @@ workflows:
           module: op-e2e
           target: test-cannon
           notify: true
+          no_output_timeout: 20m
           mentions: "@proofs-team"
           resource_class: ethereum-optimism/latitude-fps-1
           requires:
