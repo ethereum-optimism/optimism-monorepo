@@ -958,9 +958,10 @@ func (s SyncActions) String() string {
 		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, waitForNodeSync: %t, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.waitForNodeSync, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
 }
 
-// One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
-// other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
-// the local state. Perhaps we should _only_ store the previous CurrentL1? This would be a bit of a simplification.
+// computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
+// state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
+// in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
+// range to load into the local state, and whether to clear the state entirely.
 func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
@@ -980,7 +981,7 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 
 	if ok && oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
 		s := SyncActions{
-			clearState:   &eth.BlockID{}, // TODO what should this be?
+			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
@@ -1026,8 +1027,8 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 
 			s := SyncActions{
-				waitForNodeSync: true,           // is this right?
-				clearState:      &eth.BlockID{}, // TODO what should this be?
+				waitForNodeSync: true, // is this right?
+				clearState:      &newSyncStatus.SafeL2.L1Origin,
 				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
 			// Safe head did not make the expected progress
