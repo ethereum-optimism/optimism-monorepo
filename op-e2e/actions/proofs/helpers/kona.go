@@ -16,15 +16,14 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var konaHostPath, konaClientPath string
+var konaHostPath string
 
 func init() {
 	konaHostPath = os.Getenv("KONA_HOST_PATH")
-	konaClientPath = os.Getenv("KONA_CLIENT_PATH")
 }
 
 func IsKonaConfigured() bool {
-	return konaHostPath != "" && konaClientPath != ""
+	return konaHostPath != ""
 }
 
 func RunKonaNative(
@@ -57,7 +56,7 @@ func RunKonaNative(
 		L2Claim:       fixtureInputs.L2Claim,
 		L2BlockNumber: big.NewInt(int64(fixtureInputs.L2BlockNumber)),
 	}
-	hostCmd, err := vm.NewNativeKonaExecutor(konaClientPath).OracleCommand(vmCfg, workDir, inputs)
+	hostCmd, err := vm.NewNativeKonaExecutor().OracleCommand(vmCfg, workDir, inputs)
 	require.NoError(t, err)
 
 	cmd := exec.Command(hostCmd[0], hostCmd[1:]...)
