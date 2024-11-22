@@ -115,7 +115,8 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	state *channelManager
+	state         *channelManager
+	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
@@ -422,9 +423,9 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			prevCurrentL1 := syncStatus.CurrentL1 // TODO this is a temporary hack, we want to cache this
+			syncActions := computeSyncActions(syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 
-			syncActions := computeSyncActions(syncStatus, prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			l.prevCurrentL1 = syncStatus.CurrentL1
 
 			if syncActions.clearState != nil {
 				l.state.Clear(*syncActions.clearState)
@@ -906,12 +907,11 @@ type ChannelStatuser interface {
 	MaxInclusionBlock() uint64
 }
 
-type ChannelStatusers []ChannelStatuser
 type SyncActions struct {
+	clearState      *eth.BlockID
 	blocksToPrune   int
 	channelsToPrune int
 	waitForNodeSync bool
-	clearState      *eth.BlockID
 	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
