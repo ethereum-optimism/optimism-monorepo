@@ -955,7 +955,7 @@ type SyncActions struct {
 
 // One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
 // other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
-// the local state.
+// the local state. Perhaps we should _only_ store the previous CurrentL1? This would be a bit of a simplification.
 func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
@@ -980,9 +980,8 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 	oldestBlock, ok := blocks.Peek()
 
 	if ok && oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
-		// The currentL1 did not reverse but the safe head did.
-		// This implies an L1 reorg.
-		// Clear out the state and resume work from safe head.
+		l.Warn("new safe head is behind oldest block in state, clearing state and resuming work from new safe head")
+		// This implies an L1 reorg and also an incosistency between prevSyncStatus and the local state.
 		return SyncActions{
 			clearState:   &eth.BlockID{}, // TODO what should this be?
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
@@ -991,7 +990,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 
 	numBlocksToDequeue := newSyncStatus.SafeL2.Number + 1 - oldestBlock.NumberU64()
 
-	if numBlocksToDequeue > uint64(blocks.Len()) {
+	if numBlocksToDequeue > uint64(blocks.Len()) && blocks.Len() > 0 {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.

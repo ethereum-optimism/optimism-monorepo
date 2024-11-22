@@ -199,6 +199,25 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"sequencer safeL2 reversed while currentL1 did not: clearing state, waiting for node sync and resuming work from new safe head"},
 		},
+		{name: "L1 reorg alternative case", // This tests the case where the blocks state is inconsistent with the previous sync status
+			newSyncStatus: &eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 2},
+				CurrentL1: eth.BlockRef{Number: 1},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevSyncStatus: &eth.SyncStatus{
+				CurrentL1: eth.BlockRef{Number: 1},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+			},
+			blocks:   queue.Queue[*types.Block]{block102, block103}, // note absence of block101
+			channels: []ChannelStatuser{channel103},
+			expected: SyncActions{
+				clearState:   &eth.BlockID{},
+				blocksToLoad: [2]uint64{101, 109},
+			},
+			expectedLogs: []string{"new safe head is behind oldest block in state, clearing state and resuming work from new safe head"},
+		},
 		{name: "happy path",
 			newSyncStatus: &eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
