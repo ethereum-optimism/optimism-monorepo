@@ -246,7 +246,9 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 // loadBlocksIntoState loads the blocks between start and end (inclusive).
 // If there is a reorg, it will return an error.
 func (l *BatchSubmitter) loadBlocksIntoState(start, end uint64, ctx context.Context) error {
-
+	if end < start {
+		panic(fmt.Sprintf("invalid block range %d,%d", start, end))
+	}
 	var latestBlock *types.Block
 	// Add all blocks to "state"
 	for i := start; i <= end; i++ {
@@ -443,11 +445,13 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				}
 			}
 
-			// Get fresh unsafe blocks
-			if err := l.loadBlocksIntoState(syncActions.blocksToLoad[0], syncActions.blocksToLoad[1], l.shutdownCtx); errors.Is(err, ErrReorg) {
-				l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
-				l.waitNodeSyncAndClearState()
-				continue
+			if syncActions.blocksToLoad != [2]uint64{} {
+				// Get fresh unsafe blocks
+				if err := l.loadBlocksIntoState(syncActions.blocksToLoad[0], syncActions.blocksToLoad[1], l.shutdownCtx); errors.Is(err, ErrReorg) {
+					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
+					l.waitNodeSyncAndClearState()
+					continue
+				}
 			}
 
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
@@ -1029,10 +1033,16 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		numChannelsToPrune++
 	}
 
+	var start uint64
+	if newSyncStatus.UnsafeL2.Number > newestBlock.Number().Uint64() {
+		start = newestBlock.Number().Uint64() + 1
+	}
+	end := newSyncStatus.UnsafeL2.Number
+
 	// happy path
 	return SyncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
-		blocksToLoad:    [2]uint64{newestBlock.Number().Uint64() + 1, newSyncStatus.UnsafeL2.Number},
+		blocksToLoad:    [2]uint64{start, end},
 	}
 }
