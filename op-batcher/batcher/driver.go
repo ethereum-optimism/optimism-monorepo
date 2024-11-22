@@ -948,7 +948,7 @@ type SyncActions struct {
 	blocksToPrune   int
 	channelsToPrune int
 	waitForNodeSync bool
-	clearState      eth.BlockID
+	clearState      *eth.BlockID
 	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
@@ -959,22 +959,21 @@ type SyncActions struct {
 func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		// empty sync status
+		l.Warn("empty sync status, waiting for node sync")
 		return SyncActions{waitForNodeSync: true}
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevSyncStatus.CurrentL1.Number {
+		l.Warn("sequencer currentL1 reversed, waiting for node sync")
 		// This can happen if the sequencer restarts
 		return SyncActions{waitForNodeSync: true}
 	}
 
 	if newSyncStatus.SafeL2.Number < prevSyncStatus.SafeL2.Number {
-		// The currentL1 did not reverse but the safe head did.
-		// This implies an L1 reorg.
-		// Clear out the state and resume work from safe head.
+		l.Warn("sequencer safeL2 reversed while currentL1 did not: clearing state, waiting for node sync and resuming work from new safe head")
 		return SyncActions{
-			clearState:   eth.BlockID{}, // TODO what should this be?
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number, newSyncStatus.UnsafeL2.Number},
+			clearState:   &eth.BlockID{}, // TODO what should this be?
+			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
 
@@ -985,7 +984,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// This implies an L1 reorg.
 		// Clear out the state and resume work from safe head.
 		return SyncActions{
-			clearState:   eth.BlockID{}, // TODO what should this be?
+			clearState:   &eth.BlockID{}, // TODO what should this be?
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
@@ -1002,7 +1001,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// We should resume work from the new safe head,
 		// and therefore prune all the blocks.
 		return SyncActions{
-			clearState:   newSyncStatus.SafeL2.L1Origin,
+			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
@@ -1014,7 +1013,7 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 		// We should resume work from the new safe head,
 		// and therefore prune all the blocks.
 		return SyncActions{
-			clearState:   newSyncStatus.SafeL2.L1Origin,
+			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 	}
@@ -1028,8 +1027,8 @@ func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks qu
 			// for a fully submitted channel. We should go back to
 			// the last safe head and resume work from there.
 			return SyncActions{
-				waitForNodeSync: true,          // is this right?
-				clearState:      eth.BlockID{}, // TODO what should this be?
+				waitForNodeSync: true,           // is this right?
+				clearState:      &eth.BlockID{}, // TODO what should this be?
 				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
 		}
