@@ -103,7 +103,7 @@ contract FaucetTest is Faucet_Initializer {
         assertEq(faucet.ADMIN(), faucetContractAdmin);
     }
 
-    function test_configure_succeeds() external {
+    function test_configure_whenAdmin_succeeds() external {
         vm.startPrank(faucetContractAdmin);
         faucet.configure(optimistNftFam, Faucet.ModuleConfig("OptimistNftModule", true, 1 days, 1 ether));
 
