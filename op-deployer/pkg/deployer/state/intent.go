@@ -138,6 +138,21 @@ func (c *Intent) validateCustomConfig() error {
 }
 
 func (c *Intent) validateStrictConfig() error {
+	if err := c.validateStandardValues(); err != nil {
+		return err
+	}
+
+	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
+	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(c.L1ChainID)
+	for chainIndex := range c.Chains {
+		if c.Chains[chainIndex].Roles.Challenger != challenger {
+			return fmt.Errorf("invalid challenger address for chain: %s", c.Chains[chainIndex].ID)
+		}
+		if c.Chains[chainIndex].Roles.L1ProxyAdminOwner != l1ProxyAdminOwner {
+			return fmt.Errorf("invalid l1ProxyAdminOwner address for chain: %s", c.Chains[chainIndex].ID)
+		}
+	}
+
 	return nil
 }
 
@@ -153,7 +168,6 @@ func (c *Intent) validateStandardValues() error {
 		return fmt.Errorf("SuperchainRoles does not match standard value")
 	}
 
-	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
 	for _, chain := range c.Chains {
 		if chain.ID == emptyHash {
 			return fmt.Errorf("missing l2 chain ID")
@@ -163,8 +177,7 @@ func (c *Intent) validateStandardValues() error {
 		}
 		if chain.Eip1559DenominatorCanyon != standard.Eip1559DenominatorCanyon ||
 			chain.Eip1559Denominator != standard.Eip1559Denominator ||
-			chain.Eip1559Elasticity != standard.Eip1559Elasticity ||
-			chain.Roles.Challenger != challenger {
+			chain.Eip1559Elasticity != standard.Eip1559Elasticity {
 			return fmt.Errorf("%w: chainId=%s", ErrNonStandardValue, chain.ID)
 		}
 		if chain.BaseFeeVaultRecipient == emptyAddress ||
@@ -203,6 +216,9 @@ func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
 	case IntentConfigTypeStandard:
 		return c.setStandardValues(l2ChainIds)
 
+	case IntentConfigTypeStrict:
+		return c.setStrictValues(l2ChainIds)
+
 	case IntentConfigTypeTest:
 		return c.setTestValues(l2ChainIds)
 
@@ -211,6 +227,8 @@ func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
 	}
 }
 
+// Sets all Intent fields to their zero value with the expectation that the
+// user will populate the values before running 'apply'
 func (c *Intent) setCustomValues(l2ChainIds []common.Hash) error {
 	c.L1ContractsLocator = &artifacts.Locator{Tag: "undefined"}
 	c.L2ContractsLocator = &artifacts.Locator{Tag: "undefined"}
@@ -234,17 +252,29 @@ func (c *Intent) setStandardValues(l2ChainIds []common.Hash) error {
 	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
 
-	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
 	for _, l2ChainID := range l2ChainIds {
 		c.Chains = append(c.Chains, &ChainIntent{
 			ID:                       l2ChainID,
 			Eip1559DenominatorCanyon: standard.Eip1559DenominatorCanyon,
 			Eip1559Denominator:       standard.Eip1559Denominator,
 			Eip1559Elasticity:        standard.Eip1559Elasticity,
-			Roles: ChainRoles{
-				Challenger: challenger,
-			},
 		})
+	}
+	return nil
+}
+
+// Same as setStandardValues, but also sets l2 Challenger and L1ProxyAdminOwner
+// addresses to standard values
+func (c *Intent) setStrictValues(l2ChainIds []common.Hash) error {
+	if err := c.setStandardValues(l2ChainIds); err != nil {
+		return err
+	}
+
+	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
+	l1ProxyAdminOwner, _ := standard.ManagerOwnerAddrFor(c.L1ChainID)
+	for chainIndex := range c.Chains {
+		c.Chains[chainIndex].Roles.Challenger = challenger
+		c.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner
 	}
 	return nil
 }

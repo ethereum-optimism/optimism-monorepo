@@ -44,6 +44,7 @@ func setChainRoles(intent *Intent) {
 	intent.Chains[0].Roles.UnsafeBlockSigner = common.HexToAddress("0x04")
 	intent.Chains[0].Roles.Batcher = common.HexToAddress("0x05")
 	intent.Chains[0].Roles.Proposer = common.HexToAddress("0x06")
+	intent.Chains[0].Roles.Challenger = common.HexToAddress("0x07")
 }
 
 func setFeeAddresses(intent *Intent) {
