@@ -116,7 +116,7 @@ contract FaucetTest is Faucet_Initializer {
         assertTrue(faucet.isModuleEnabled(optimistNftFam));
     }
 
-    function test_configure_reverts_when_not_admin() external {
+    function test_configure_whenNotAdmin_reverts() external {
         vm.expectRevert("Faucet: function can only be called by admin");
         faucet.configure(optimistNftFam, Faucet.ModuleConfig("OptimistNftModule", true, 1 days, 1 ether));
     }
