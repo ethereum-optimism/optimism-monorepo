@@ -130,7 +130,7 @@ func (tcs testChannelStatuser) LatestL2() eth.BlockID {
 	return tcs.latestL2
 }
 
-func (tcs testChannelStatuser) maxInclusionBlock() uint64 {
+func (tcs testChannelStatuser) MaxInclusionBlock() uint64 {
 	return tcs.inclusionBlock
 }
 func (tcs testChannelStatuser) isFullySubmitted() bool {

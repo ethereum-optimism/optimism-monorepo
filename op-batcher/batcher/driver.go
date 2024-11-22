@@ -242,28 +242,13 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	return nil
 }
 
-// loadBlocksIntoState loads all blocks since the previous stored block
-// It does the following:
-//  1. Fetch the sync status of the sequencer
-//  2. Check if the sync status is valid or if we are all the way up to date
-//  3. Check if it needs to initialize state OR it is lagging (todo: lagging just means race condition?)
-//  4. Load all new blocks into the local state.
-//  5. Dequeue blocks from local state which are now safe.
-//
-// If there is a reorg, it will reset the last stored block but not clear the internal state so
-// the state can be flushed to L1.
-func (l *BatchSubmitter) loadBlocksIntoState(syncStatus eth.SyncStatus, ctx context.Context) error {
-	start, end, err := l.calculateL2BlockRangeToStore(syncStatus)
-	if err != nil {
-		l.Log.Warn("Error calculating L2 block range", "err", err)
-		return err
-	} else if start.Number >= end.Number {
-		return errors.New("start number is >= end number")
-	}
+// loadBlocksIntoState loads the blocks between start and end (inclusive).
+// If there is a reorg, it will return an error.
+func (l *BatchSubmitter) loadBlocksIntoState(start, end uint64, ctx context.Context) error {
 
 	var latestBlock *types.Block
 	// Add all blocks to "state"
-	for i := start.Number + 1; i < end.Number+1; i++ {
+	for i := start + 1; i < end+1; i++ {
 		block, err := l.loadBlockIntoState(ctx, i)
 		if errors.Is(err, ErrReorg) {
 			l.Log.Warn("Found L2 reorg", "block_number", i)
@@ -359,33 +344,6 @@ func (l *BatchSubmitter) getSyncStatus(ctx context.Context) (*eth.SyncStatus, er
 	return syncStatus, nil
 }
 
-// calculateL2BlockRangeToStore determines the range (start,end] that should be loaded into the local state.
-// It also takes care of initializing some local state (i.e. will modify l.lastStoredBlock in certain conditions
-// as well as garbage collecting blocks which became safe)
-func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus) (eth.BlockID, eth.BlockID, error) {
-	if syncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		return eth.BlockID{}, eth.BlockID{}, errors.New("empty sync status")
-	}
-
-	lastStoredBlock := l.state.LastStoredBlock()
-	// Check last stored to see if it needs to be set on startup OR set if is lagged behind.
-	// It lagging implies that the op-node processed some batches that were submitted prior to the current instance of the batcher being alive.
-	if lastStoredBlock == (eth.BlockID{}) {
-		l.Log.Info("Resuming batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
-		lastStoredBlock = syncStatus.SafeL2.ID()
-	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
-		l.Log.Warn("Last submitted block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", lastStoredBlock, "safe", syncStatus.SafeL2)
-		lastStoredBlock = syncStatus.SafeL2.ID()
-	}
-
-	// Check if we should even attempt to load any blocks. TODO: May not need this check
-	if syncStatus.SafeL2.Number >= syncStatus.UnsafeL2.Number {
-		return eth.BlockID{}, eth.BlockID{}, fmt.Errorf("L2 safe head(%d) ahead of L2 unsafe head(%d)", syncStatus.SafeL2.Number, syncStatus.UnsafeL2.Number)
-	}
-
-	return lastStoredBlock, syncStatus.UnsafeL2.ID(), nil
-}
-
 // The following things occur:
 // New L2 block (reorg or not)
 // L1 transaction is confirmed
@@ -464,17 +422,21 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			l.state.pruneSafeBlocks(syncStatus.SafeL2)
-			l.state.pruneChannels(syncStatus.SafeL2)
+			prevCurrentL1 := syncStatus.CurrentL1 // TODO this is a temporary hack, we want to cache this
 
-			err = l.state.CheckExpectedProgress(*syncStatus)
-			if err != nil {
-				l.Log.Warn("error checking expected progress, clearing state and waiting for node sync", "err", err)
-				l.waitNodeSyncAndClearState()
-				continue
+			syncActions := computeSyncActions(syncStatus, prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+
+			if syncActions.clearState != nil {
+				l.state.Clear(*syncActions.clearState)
+			} else {
+				l.state.pruneSafeBlocks(syncActions.blocksToPrune)
+				l.state.pruneChannels(syncActions.channelsToPrune)
+			}
+			if syncActions.waitForNodeSync {
+				l.waitNodeSync()
 			}
 
-			if err := l.loadBlocksIntoState(*syncStatus, l.shutdownCtx); errors.Is(err, ErrReorg) {
+			if err := l.loadBlocksIntoState(syncActions.blocksToLoad[0], syncActions.blocksToLoad[1], l.shutdownCtx); errors.Is(err, ErrReorg) {
 				l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 				l.waitNodeSyncAndClearState()
 				continue
@@ -941,9 +903,10 @@ type ChannelStatuser interface {
 	isFullySubmitted() bool
 	isTimedOut() bool
 	LatestL2() eth.BlockID
-	maxInclusionBlock() uint64
+	MaxInclusionBlock() uint64
 }
 
+type ChannelStatusers []ChannelStatuser
 type SyncActions struct {
 	blocksToPrune   int
 	channelsToPrune int
@@ -962,7 +925,7 @@ func (s SyncActions) String() string {
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely.
-func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
+func computeSyncActions[T ChannelStatuser](newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		s := SyncActions{waitForNodeSync: true}
@@ -1023,7 +986,7 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 	for _, ch := range channels {
 		if ch.isFullySubmitted() &&
 			!ch.isTimedOut() &&
-			newSyncStatus.CurrentL1.Number > ch.maxInclusionBlock() &&
+			newSyncStatus.CurrentL1.Number > ch.MaxInclusionBlock() &&
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 
 			s := SyncActions{
