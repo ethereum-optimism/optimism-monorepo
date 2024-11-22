@@ -956,25 +956,17 @@ type SyncActions struct {
 // One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
 // other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
 // the local state. Perhaps we should _only_ store the previous CurrentL1? This would be a bit of a simplification.
-func computeSyncActions(newSyncStatus, prevSyncStatus *eth.SyncStatus, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
+func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status, waiting for node sync")
 		return SyncActions{waitForNodeSync: true}
 	}
 
-	if newSyncStatus.CurrentL1.Number < prevSyncStatus.CurrentL1.Number {
+	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		l.Warn("sequencer currentL1 reversed, waiting for node sync")
 		// This can happen if the sequencer restarts
 		return SyncActions{waitForNodeSync: true}
-	}
-
-	if newSyncStatus.SafeL2.Number < prevSyncStatus.SafeL2.Number {
-		l.Warn("sequencer safeL2 reversed while currentL1 did not: clearing state, waiting for node sync and resuming work from new safe head")
-		return SyncActions{
-			clearState:   &eth.BlockID{}, // TODO what should this be?
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
-		}
 	}
 
 	oldestBlock, ok := blocks.Peek()

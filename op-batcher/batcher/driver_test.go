@@ -157,9 +157,10 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 	type TestCase struct {
 		name string
 		// inputs
-		newSyncStatus, prevSyncStatus *eth.SyncStatus
-		blocks                        queue.Queue[*types.Block]
-		channels                      []ChannelStatuser
+		newSyncStatus *eth.SyncStatus
+		prevCurrentL1 eth.L1BlockRef
+		blocks        queue.Queue[*types.Block]
+		channels      []ChannelStatuser
 		// expectations
 		expected     SyncActions
 		expectedLogs []string
@@ -176,42 +177,20 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
 			},
-			prevSyncStatus: &eth.SyncStatus{
-				CurrentL1: eth.BlockRef{Number: 2},
-			},
-			expected:     SyncActions{waitForNodeSync: true},
-			expectedLogs: []string{"sequencer currentL1 reversed, waiting for node sync"},
+			prevCurrentL1: eth.BlockRef{Number: 2},
+			expected:      SyncActions{waitForNodeSync: true},
+			expectedLogs:  []string{"sequencer currentL1 reversed, waiting for node sync"},
 		},
-		{name: "L1 reorg",
-			newSyncStatus: &eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
-				CurrentL1: eth.BlockRef{Number: 2},
-				SafeL2:    eth.L2BlockRef{Number: 102, Hash: block102.Hash()},
-				UnsafeL2:  eth.L2BlockRef{Number: 107},
-			},
-			prevSyncStatus: &eth.SyncStatus{
-				CurrentL1: eth.BlockRef{Number: 1},
-				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
-			},
-			expected: SyncActions{
-				clearState:   &eth.BlockID{},
-				blocksToLoad: [2]uint64{103, 107},
-			},
-			expectedLogs: []string{"sequencer safeL2 reversed while currentL1 did not: clearing state, waiting for node sync and resuming work from new safe head"},
-		},
-		{name: "L1 reorg alternative case", // This tests the case where the blocks state is inconsistent with the previous sync status
+		{name: "L1", // This tests the case where the blocks state is inconsistent with the previous sync status
 			newSyncStatus: &eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
 				SafeL2:    eth.L2BlockRef{Number: 100},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
-			prevSyncStatus: &eth.SyncStatus{
-				CurrentL1: eth.BlockRef{Number: 1},
-				SafeL2:    eth.L2BlockRef{Number: 100},
-			},
-			blocks:   queue.Queue[*types.Block]{block102, block103}, // note absence of block101
-			channels: []ChannelStatuser{channel103},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block102, block103}, // note absence of block101
+			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
 				clearState:   &eth.BlockID{},
 				blocksToLoad: [2]uint64{101, 109},
@@ -225,12 +204,9 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
-			prevSyncStatus: &eth.SyncStatus{
-				CurrentL1: eth.BlockRef{Number: 1},
-				SafeL2:    eth.L2BlockRef{Number: 100},
-			},
-			blocks:   queue.Queue[*types.Block]{block101, block102, block103},
-			channels: []ChannelStatuser{channel103},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
+			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
 				blocksToPrune:   3,
 				channelsToPrune: 1,
@@ -245,7 +221,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)
 
 			result := computeSyncActions(
-				tc.newSyncStatus, tc.prevSyncStatus, tc.blocks, tc.channels, l,
+				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
 			require.Equal(t, tc.expected, result)
