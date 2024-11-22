@@ -113,6 +113,13 @@ func TestBackendLifetime(t *testing.T) {
 
 	src.ExpectL1BlockRefByNumber(2, eth.L1BlockRef{}, ethereum.NotFound)
 
+	// beyond block 2, any block fetch will return not found
+	// because the chain processor creates multiple threads in parallel,
+	// it may attempt to fetch up to 10 blocks beyond the current head
+	for i := 3; i < 13; i++ {
+		src.ExpectL1BlockRefByNumber(uint64(i), eth.L1BlockRef{}, ethereum.NotFound)
+	}
+
 	err = b.UpdateLocalUnsafe(context.Background(), chainA, blockY)
 	require.NoError(t, err)
 	// Make the processing happen, so we can rely on the new chain information,
