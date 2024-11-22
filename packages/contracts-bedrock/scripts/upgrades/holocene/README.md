@@ -39,3 +39,8 @@ cp .env.example .env && vim .env
 #    - Optionally, generate a `superchain-ops` upgrade task.
 just run
 ```
+
+Note that in order to build the Docker image, you have to allow Docker to use at least 16GB of
+memory, or the Solidity compilations may fail. Docker's default is only 8GB.
+
+The `deploy-config.json` that you use for your chain must set the latest `faultGameAbsolutePrestate` value, not the one at deployment. For Holocene, there's currently one available that works for Sepolia Base, OP, Mode and Zora: `0x03925193e3e89f87835bbdf3a813f60b2aa818a36bbe71cd5d8fd7e79f5e8afe`
