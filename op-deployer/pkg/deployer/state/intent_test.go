@@ -22,7 +22,7 @@ func TestValidateStandardValues(t *testing.T) {
 	err = intent.ValidateIntentConfigType()
 	require.NoError(t, err)
 
-	intent.Chains[0].Eip1559Denominator = 3
+	intent.Chains[0].Eip1559Denominator = 3 // set to non-standard value
 	err = intent.ValidateIntentConfigType()
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrNonStandardValue)

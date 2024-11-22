@@ -102,9 +102,11 @@ func (c *Intent) ValidateIntentConfigType() error {
 		if err := c.validateStrictConfig(); err != nil {
 			return fmt.Errorf("failed to validate intent-config-type=strict: %w", err)
 		}
-	case IntentConfigTypeTest:
-		return nil
 	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
+		if err := c.validateCustomConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.IntentConfigType, err)
+		}
+	case IntentConfigTypeTest:
 		return nil
 	default:
 		return fmt.Errorf("intent-config-type unsupported: %s", c.IntentConfigType)
@@ -218,6 +220,12 @@ func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
 
 	case IntentConfigTypeStrict:
 		return c.setStrictValues(l2ChainIds)
+
+	case IntentConfigTypeStrictOverrides:
+		return c.setStrictValues(l2ChainIds)
+
+	case IntentConfigTypeStandardOverrides:
+		return c.setStandardValues(l2ChainIds)
 
 	case IntentConfigTypeTest:
 		return c.setTestValues(l2ChainIds)
