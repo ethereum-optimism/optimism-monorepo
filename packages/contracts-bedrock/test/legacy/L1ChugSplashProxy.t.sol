@@ -61,6 +61,7 @@ contract L1ChugSplashProxy_Test is Test {
         impl = proxy.getImplementation();
     }
 
+    /// @notice Tests that the owner can deploy a new implementation with a given runtime code
     function test_setCode_whenOwner_succeeds() public {
         vm.prank(owner);
         proxy.setCode(hex"604260005260206000f3");
@@ -69,11 +70,14 @@ contract L1ChugSplashProxy_Test is Test {
         assertNotEq(proxy.getImplementation(), impl);
     }
 
+    /// @notice Tests that when not the owner, `setCode` delegatecalls the implementation
     function test_setCode_whenNotOwner_works() public view {
         uint256 ret = Implementation(address(proxy)).setCode(hex"604260005260206000f3");
         assertEq(ret, 1);
     }
 
+    /// @notice Tests that when the owner deploys the same bytecode as the existing implementation,
+    ///         it does not deploy a new implementation
     function test_setCode_whenOwnerSameBytecode_works() public {
         vm.prank(owner);
         proxy.setCode(type(Implementation).runtimeCode);
@@ -83,7 +87,9 @@ contract L1ChugSplashProxy_Test is Test {
         assertEq(proxy.getImplementation(), impl);
     }
 
-    // If this solc version/settings change and modifying this proves time consuming, we can just remove it.
+    /// @notice Tests that when the owner calls `setCode` with insufficient gas to complete the implementation
+    ///         contract's deployment, it reverts.
+    /// @dev    If this solc version/settings change and modifying this proves time consuming, we can just remove it.
     function test_setCode_whenOwnerAndDeployOutOfGas_reverts() public {
         vm.prank(owner);
         vm.expectRevert(bytes("L1ChugSplashProxy: code was not correctly deployed")); // Ran out of gas
@@ -92,6 +98,7 @@ contract L1ChugSplashProxy_Test is Test {
         );
     }
 
+    /// @notice Tests that when the caller is not the owner and the implementation is not set, all calls reverts
     function test_calls_whenNotOwnerNoImplementation_reverts() public {
         proxy = IL1ChugSplashProxy(
             DeployUtils.create1({
@@ -104,6 +111,8 @@ contract L1ChugSplashProxy_Test is Test {
         Implementation(address(proxy)).setCode(hex"604260005260206000f3");
     }
 
+    /// @notice Tests that when the caller is not the owner but the owner has marked `isUpgrading` as true, the call
+    ///         reverts
     function test_calls_whenUpgrading_reverts() public {
         Owner ownerContract = new Owner();
         vm.prank(owner);
@@ -115,18 +124,21 @@ contract L1ChugSplashProxy_Test is Test {
         Implementation(address(proxy)).setCode(hex"604260005260206000f3");
     }
 
+    /// @notice Tests that the owner can set storage of the proxy
     function test_setStorage_whenOwner_works() public {
         vm.prank(owner);
         proxy.setStorage(bytes32(0), bytes32(uint256(42)));
         assertEq(vm.load(address(proxy), bytes32(0)), bytes32(uint256(42)));
     }
 
+    /// @notice Tests that when not the owner, `setStorage` delegatecalls the implementation
     function test_setStorage_whenNotOwner_works() public view {
         uint256 ret = Implementation(address(proxy)).setStorage(bytes32(0), bytes32(uint256(42)));
         assertEq(ret, 2);
         assertEq(vm.load(address(proxy), bytes32(0)), bytes32(uint256(0)));
     }
 
+    /// @notice Tests that the owner can set the owner of the proxy
     function test_setOwner_whenOwner_works() public {
         vm.prank(owner);
         proxy.setOwner(alice);
@@ -135,6 +147,7 @@ contract L1ChugSplashProxy_Test is Test {
         assertEq(proxy.getOwner(), alice);
     }
 
+    /// @notice Tests that when not the owner, `setOwner` delegatecalls the implementation
     function test_setOwner_whenNotOwner_works() public {
         uint256 ret = Implementation(address(proxy)).setOwner(alice);
         assertEq(ret, 3);
@@ -143,21 +156,25 @@ contract L1ChugSplashProxy_Test is Test {
         assertEq(proxy.getOwner(), owner);
     }
 
+    /// @notice Tests that the owner can get the owner of the proxy
     function test_getOwner_whenOwner_works() public {
         vm.prank(owner);
         assertEq(proxy.getOwner(), owner);
     }
 
+    /// @notice Tests that when not the owner, `getOwner` delegatecalls the implementation
     function test_getOwner_whenNotOwner_works() public view {
         uint256 ret = Implementation(address(proxy)).getOwner();
         assertEq(ret, 4);
     }
 
+    /// @notice Tests that the owner can get the implementation of the proxy
     function test_getImplementation_whenOwner_works() public {
         vm.prank(owner);
         assertEq(proxy.getImplementation(), impl);
     }
 
+    /// @notice Tests that when not the owner, `getImplementation` delegatecalls the implementation
     function test_getImplementation_whenNotOwner_works() public view {
         uint256 ret = Implementation(address(proxy)).getImplementation();
         assertEq(ret, 5);
