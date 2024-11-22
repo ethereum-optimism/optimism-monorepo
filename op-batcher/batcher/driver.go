@@ -1017,6 +1017,9 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. We should go back to
 			// the last safe head and resume work from there.
+			l.Warn("sequencer did not make expected progress",
+				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
+				"newSafeBlock", newSyncStatus.SafeL2)
 			return SyncActions{
 				waitForNodeSync: true,           // is this right?
 				clearState:      &eth.BlockID{}, // TODO what should this be?
