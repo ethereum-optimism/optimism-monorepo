@@ -49,6 +49,7 @@ type Metrics interface {
 	RecordUnsafePayloadsBuffer(length uint64, memSize uint64, next eth.BlockID)
 
 	SetDerivationIdle(idle bool)
+	SetSequencerState(active bool)
 
 	RecordL1ReorgDepth(d uint64)
 

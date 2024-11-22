@@ -82,6 +82,110 @@ contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
         vm.expectEmit(true, true, false, false);
         emit Withdrawal(address(alice), 1 ether);
         vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+        assertEq(address(alice).balance, balance + 1 ether);
+    }
+
+    /// @dev Tests that withdrawing when unlock was not called fails.
+    function test_withdraw_whileLocked_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Withdraw fails when unlock not called.
+        vm.expectRevert("DelayedWETH: withdrawal not unlocked");
+        vm.prank(alice);
+        delayedWeth.withdraw(0 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing while locked and delay has not passed fails.
+    function test_withdraw_whileLockedNotLongEnough_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Call unlock.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay, but not long enough.
+        vm.warp(block.timestamp + delayedWeth.delay() - 1);
+
+        // Withdraw fails when delay not met.
+        vm.expectRevert("DelayedWETH: withdrawal delay not met");
+        vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing more than unlocked amount fails.
+    function test_withdraw_tooMuch_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Withdraw too much fails.
+        vm.expectRevert("DelayedWETH: insufficient unlocked withdrawal");
+        vm.prank(alice);
+        delayedWeth.withdraw(2 ether);
+        assertEq(address(alice).balance, balance);
+    }
+
+    /// @dev Tests that withdrawing while paused fails.
+    function test_withdraw_whenPaused_fails() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Pause the contract.
+        address guardian = optimismPortal.guardian();
+        vm.prank(guardian);
+        superchainConfig.pause("identifier");
+
+        // Withdraw fails.
+        vm.expectRevert("DelayedWETH: contract is paused");
+        vm.prank(alice);
+        delayedWeth.withdraw(1 ether);
+    }
+}
+
+contract DelayedWETH_WithdrawFrom_Test is DelayedWETH_Init {
+    /// @dev Tests that withdrawing while unlocked and delay has passed is successful.
+    function test_withdraw_whileUnlocked_succeeds() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+        uint256 balance = address(alice).balance;
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Withdraw the WETH.
+        vm.expectEmit(true, true, false, false);
+        emit Withdrawal(address(alice), 1 ether);
+        vm.prank(alice);
         delayedWeth.withdraw(alice, 1 ether);
         assertEq(address(alice).balance, balance + 1 ether);
     }

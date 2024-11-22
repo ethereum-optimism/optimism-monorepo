@@ -255,6 +255,19 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
         _initializeWithResourceConfig(config, "SystemConfig: gas limit too low");
     }
 
+    /// @dev Tests that `setResourceConfig` reverts if the gas limit is too low.
+    function test_setResourceConfig_elasticityMultiplierIs0_reverts() external {
+        IResourceMetering.ResourceConfig memory config = IResourceMetering.ResourceConfig({
+            maxResourceLimit: 20_000_000,
+            elasticityMultiplier: 0,
+            baseFeeMaxChangeDenominator: 8,
+            systemTxMaxGas: 1_000_000,
+            minimumBaseFee: 1 gwei,
+            maximumBaseFee: 2 gwei
+        });
+        _initializeWithResourceConfig(config, "SystemConfig: elasticity multiplier cannot be 0");
+    }
+
     /// @dev Tests that `setResourceConfig` reverts if the elasticity multiplier
     ///      and max resource limit are configured such that there is a loss of precision.
     function test_setResourceConfig_badPrecision_reverts() external {

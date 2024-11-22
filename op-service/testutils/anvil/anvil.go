@@ -38,6 +38,8 @@ func New(l1RPCURL string, logger log.Logger) (*Runner, error) {
 		"--fork-url", l1RPCURL,
 		"--port",
 		"0",
+		"--base-fee",
+		"1000000000",
 	)
 	stdout, err := proc.StdoutPipe()
 	if err != nil {

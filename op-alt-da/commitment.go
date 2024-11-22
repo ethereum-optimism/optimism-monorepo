@@ -108,7 +108,7 @@ func (c Keccak256Commitment) CommitmentType() CommitmentType {
 	return Keccak256CommitmentType
 }
 
-// Encode adds a commitment type prefix self describing the commitment.
+// Encode adds a commitment type prefix that describes the commitment.
 func (c Keccak256Commitment) Encode() []byte {
 	return append([]byte{byte(Keccak256CommitmentType)}, c...)
 }

@@ -201,9 +201,6 @@ func initAllocType(root string, allocType AllocType) {
 		panic(err)
 	}
 
-	// Do not use clique in the in memory tests. Otherwise block building
-	// would be much more complex.
-	dc.L1UseClique = false
 	// Set the L1 genesis block timestamp to now
 	dc.L1GenesisBlockTimestamp = hexutil.Uint64(time.Now().Unix())
 	dc.FundDevAccounts = true

@@ -169,7 +169,7 @@ func SignExtendImmediate(insn uint32) Word {
 
 func assertMips64(insn uint32) {
 	if arch.IsMips32 {
-		panic(fmt.Sprintf("invalid instruction: %x", insn))
+		panic(fmt.Sprintf("invalid instruction: 0x%08x", insn))
 	}
 }
 
@@ -327,7 +327,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			assertMips64(insn)
 			return Word(int64(rt) >> (((insn >> 6) & 0x1f) + 32))
 		default:
-			panic(fmt.Sprintf("invalid instruction: %x", insn))
+			panic(fmt.Sprintf("invalid instruction: 0x%08x", insn))
 		}
 	} else {
 		switch opcode {

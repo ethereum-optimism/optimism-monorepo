@@ -34,7 +34,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 				return opcm.DeployOPChainOutput{}, fmt.Errorf("error making deploy OP chain input: %w", err)
 			}
 
-			opcmAddr = input.OpcmProxy
+			opcmAddr = input.Opcm
 			return opcm.DeployOPChainV160(env.L1ScriptHost, input)
 		}
 	default:
@@ -44,7 +44,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 				return opcm.DeployOPChainOutput{}, fmt.Errorf("error making deploy OP chain input: %w", err)
 			}
 
-			opcmAddr = input.OpcmProxy
+			opcmAddr = input.Opcm
 			return opcm.DeployOPChainIsthmus(env.L1ScriptHost, input)
 		}
 	}
@@ -67,7 +67,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 
 	readInput := opcm.ReadImplementationAddressesInput{
 		DeployOPChainOutput: dco,
-		OpcmProxy:           opcmAddr,
+		Opcm:                opcmAddr,
 		Release:             release,
 	}
 	impls, err := opcm.ReadImplementationAddresses(env.L1ScriptHost, readInput)
@@ -126,7 +126,7 @@ func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID co
 		BasefeeScalar:                standard.BasefeeScalar,
 		BlobBaseFeeScalar:            standard.BlobBaseFeeScalar,
 		L2ChainId:                    chainID.Big(),
-		OpcmProxy:                    st.ImplementationsDeployment.OpcmProxyAddress,
+		Opcm:                         st.ImplementationsDeployment.OpcmAddress,
 		SaltMixer:                    st.Create2Salt.String(), // passing through salt generated at state initialization
 		GasLimit:                     standard.GasLimit,
 		DisputeGameType:              proofParams.DisputeGameType,

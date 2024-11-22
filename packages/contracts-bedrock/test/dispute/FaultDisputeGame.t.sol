@@ -449,6 +449,17 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy.initialize();
     }
 
+    /// @dev Tests that startingOutputRoot and it's getters are set correctly.
+    function test_startingOutputRootGetters_succeeds() public view {
+        (Hash root, uint256 l2BlockNumber) = gameProxy.startingOutputRoot();
+        (Hash anchorRoot, uint256 anchorRootBlockNumber) = anchorStateRegistry.anchors(GAME_TYPE);
+
+        assertEq(gameProxy.startingBlockNumber(), l2BlockNumber);
+        assertEq(gameProxy.startingBlockNumber(), anchorRootBlockNumber);
+        assertEq(Hash.unwrap(gameProxy.startingRootHash()), Hash.unwrap(root));
+        assertEq(Hash.unwrap(gameProxy.startingRootHash()), Hash.unwrap(anchorRoot));
+    }
+
     /// @dev Tests that the user cannot control the first 4 bytes of the CWIA data, disallowing them to control the
     ///      entrypoint when no calldata is provided to a call.
     function test_cwiaCalldata_userCannotControlSelector_succeeds() public {
@@ -1984,6 +1995,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         (dat, datLen) = oracle.readPreimage(key, 8);
         assertEq(dat, expectedNumber);
         assertEq(datLen, expectedLen);
+    }
+
+    /// @dev Tests that if the game is not in progress, querying of `getChallengerDuration` reverts
+    function test_getChallengerDuration_gameNotInProgress_reverts() public {
+        // resolve the game
+        vm.warp(block.timestamp + gameProxy.maxClockDuration().raw());
+
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        vm.expectRevert(GameNotInProgress.selector);
+        gameProxy.getChallengerDuration(1);
     }
 
     /// @dev Static unit test asserting that resolveClaim isn't possible if there's time

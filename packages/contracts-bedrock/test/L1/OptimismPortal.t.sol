@@ -1006,7 +1006,10 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
             )
         );
 
-        uint256 bobBalanceBefore = address(bob).balance;
+        // Fund the portal so that we can withdraw ETH.
+        vm.store(address(optimismPortal), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
+        vm.deal(address(optimismPortal), 0xFFFFFFFF);
+        uint256 bobBalanceBefore = bob.balance;
 
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
@@ -1019,7 +1022,69 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
         emit WithdrawalFinalized(_withdrawalHash_noData, true);
         optimismPortal.finalizeWithdrawalTransaction(_defaultTx_noData);
 
-        assertEq(address(bob).balance, bobBalanceBefore + 100);
+        assertEq(bob.balance, bobBalanceBefore + 100);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty and with a custom gas token.
+    function test_finalizeWithdrawalTransaction_noTxDataNonEtherGasToken_succeeds() external {
+        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
+            nonce: 0,
+            sender: alice,
+            target: bob,
+            value: 100,
+            gasLimit: 100_000,
+            data: hex""
+        });
+        // Get withdrawal proof data we can use for testing.
+        (
+            bytes32 _stateRoot_noData,
+            bytes32 _storageRoot_noData,
+            bytes32 _outputRoot_noData,
+            bytes32 _withdrawalHash_noData,
+            bytes[] memory _withdrawalProof_noData
+        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        // Setup a dummy output root proof for reuse.
+        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: _stateRoot_noData,
+            messagePasserStorageRoot: _storageRoot_noData,
+            latestBlockhash: bytes32(uint256(0))
+        });
+
+        // Configure the oracle to return the output root we've prepared.
+        vm.mockCall(
+            address(l2OutputOracle),
+            abi.encodePacked(IL2OutputOracle.getL2Output.selector),
+            abi.encode(
+                Types.OutputProposal(
+                    _outputRoot_noData,
+                    l2OutputOracle.getL2Output(_proposedOutputIndex).timestamp,
+                    uint128(_proposedBlockNumber)
+                )
+            )
+        );
+
+        // Fund the portal so that we can withdraw ETH.
+        vm.store(address(optimismPortal), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
+        deal(address(L1Token), address(optimismPortal), 0xFFFFFFFF);
+        // modify the gas token to be non ether
+        vm.mockCall(
+            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
+        );
+        uint256 bobBalanceBefore = L1Token.balanceOf(bob);
+
+        vm.expectEmit(true, true, true, true);
+        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
+        optimismPortal.proveWithdrawalTransaction(
+            _defaultTx_noData, _proposedOutputIndex, _outputRootProof_noData, _withdrawalProof_noData
+        );
+
+        vm.warp(block.timestamp + l2OutputOracle.FINALIZATION_PERIOD_SECONDS() + 1);
+        vm.expectEmit(true, true, false, true);
+        emit WithdrawalFinalized(_withdrawalHash_noData, true);
+        optimismPortal.finalizeWithdrawalTransaction(_defaultTx_noData);
+
+        assertEq(L1Token.balanceOf(bob), bobBalanceBefore + 100);
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the finalization period

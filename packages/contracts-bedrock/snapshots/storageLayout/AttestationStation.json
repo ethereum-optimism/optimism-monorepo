@@ -1,9 +1,0 @@
-[
-  {
-    "bytes": "32",
-    "label": "attestations",
-    "offset": 0,
-    "slot": "0",
-    "type": "mapping(address => mapping(address => mapping(bytes32 => bytes)))"
-  }
-]

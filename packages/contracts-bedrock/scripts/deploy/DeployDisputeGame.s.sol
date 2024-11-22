@@ -376,7 +376,7 @@ contract DeployDisputeGame is Script {
             vm.broadcast(msg.sender);
             singleton = IMIPS(
                 DeployUtils.create1({
-                    _name: mipsVersion == 1 ? "MIPS" : "MIPS2",
+                    _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
                     _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
                 })
             );

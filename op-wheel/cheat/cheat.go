@@ -138,7 +138,7 @@ func (ch *Cheater) RunAndClose(fn HeadFn) error {
 
 	// Geth stores the TD for each block separately from the block itself. We must update this
 	// manually, otherwise Geth thinks we haven't reached TTD yet and tries to build a block
-	// using Clique consensus, which causes a panic.
+	// using pre-merge consensus, which causes a panic.
 	rawdb.WriteTd(batch, blockHash, preID.Number, ch.Blockchain.GetTd(preID.Hash, preID.Number))
 
 	// Need to copy over receipts since they are keyed by block hash.

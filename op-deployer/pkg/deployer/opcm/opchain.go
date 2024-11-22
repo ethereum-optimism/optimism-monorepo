@@ -26,7 +26,7 @@ type DeployOPChainInputV160 struct {
 	BasefeeScalar     uint32
 	BlobBaseFeeScalar uint32
 	L2ChainId         *big.Int
-	OpcmProxy         common.Address
+	Opcm              common.Address
 	SaltMixer         string
 	GasLimit          uint64
 
@@ -122,8 +122,8 @@ func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, erro
 
 type ReadImplementationAddressesInput struct {
 	DeployOPChainOutput
-	OpcmProxy common.Address
-	Release   string
+	Opcm    common.Address
+	Release string
 }
 
 type ReadImplementationAddressesOutput struct {
