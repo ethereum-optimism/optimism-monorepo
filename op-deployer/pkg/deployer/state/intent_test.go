@@ -33,17 +33,17 @@ func initStandardIntent() *Intent {
 		L1ChainID:        1,
 		IntentConfigType: IntentConfigTypeStandard,
 	}
-	intent.setStandardValues([]common.Hash{common.HexToHash("0x336")})
+	_ = intent.setStandardValues([]common.Hash{common.HexToHash("0x336")})
 	return &intent
 }
 
 func setChainRoles(intent *Intent) {
 	intent.Chains[0].Roles.L1ProxyAdminOwner = common.HexToAddress("0x01")
-	intent.Chains[0].Roles.L2ProxyAdminOwner = common.HexToAddress("0x01")
-	intent.Chains[0].Roles.SystemConfigOwner = common.HexToAddress("0x01")
-	intent.Chains[0].Roles.UnsafeBlockSigner = common.HexToAddress("0x01")
-	intent.Chains[0].Roles.Batcher = common.HexToAddress("0x01")
-	intent.Chains[0].Roles.Proposer = common.HexToAddress("0x01")
+	intent.Chains[0].Roles.L2ProxyAdminOwner = common.HexToAddress("0x02")
+	intent.Chains[0].Roles.SystemConfigOwner = common.HexToAddress("0x03")
+	intent.Chains[0].Roles.UnsafeBlockSigner = common.HexToAddress("0x04")
+	intent.Chains[0].Roles.Batcher = common.HexToAddress("0x05")
+	intent.Chains[0].Roles.Proposer = common.HexToAddress("0x06")
 }
 
 func setFeeAddresses(intent *Intent) {
