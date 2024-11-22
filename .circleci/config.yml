@@ -685,6 +685,10 @@ jobs:
           command: just build-go-ffi
           working_directory: packages/contracts-bedrock
       - run:
+          name: Lint forge test names
+          command: just lint-forge-tests-check-no-build
+          working_directory: packages/contracts-bedrock
+      - run:
           name: Run tests
           command: |
             TEST_FILES=$(<<parameters.test_list>>)
@@ -750,22 +754,7 @@ jobs:
       - run-contracts-check:
           command: unused-imports-check-no-build
       - run-contracts-check:
-          command: lint-forge-tests-check-no-build
-
-  contracts-bedrock-validate-spacers:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: medium
-    steps:
-      - checkout
-      - attach_workspace: { at: "." }
-      - install-contracts-dependencies
-      - check-changed:
-          patterns: contracts-bedrock
-      - run:
-          name: validate spacers
-          command: just validate-spacers-no-build
-          working_directory: packages/contracts-bedrock
+          command: validate-spacers-no-build
 
   todo-issues:
     parameters:
@@ -1364,9 +1353,6 @@ workflows:
           test_profile: ciheavy
       - contracts-bedrock-coverage
       - contracts-bedrock-checks:
-          requires:
-            - contracts-bedrock-build
-      - contracts-bedrock-validate-spacers:
           requires:
             - contracts-bedrock-build
       - semgrep-scan:
