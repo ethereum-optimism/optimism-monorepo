@@ -24,3 +24,5 @@ VERSION := shell('if [ -z "$1" ]; then
 else
     echo $1
 fi', _PREFERRED_TAG, _LAST_TAG)
+
+VERSION_META := ""
