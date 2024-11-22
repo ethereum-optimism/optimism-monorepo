@@ -170,7 +170,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		{name: "empty sync status",
 			newSyncStatus: &eth.SyncStatus{},
 			expected:      SyncActions{waitForNodeSync: true},
-			expectedLogs:  []string{"empty sync status, waiting for node sync"},
+			expectedLogs:  []string{"empty sync status"},
 		},
 		{name: "sequencer restart",
 			newSyncStatus: &eth.SyncStatus{
@@ -179,9 +179,9 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 2},
 			expected:      SyncActions{waitForNodeSync: true},
-			expectedLogs:  []string{"sequencer currentL1 reversed, waiting for node sync"},
+			expectedLogs:  []string{"sequencer currentL1 reversed"},
 		},
-		{name: "L1", // This tests the case where the blocks state is inconsistent with the previous sync status
+		{name: "L1",
 			newSyncStatus: &eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
@@ -195,7 +195,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{},
 				blocksToLoad: [2]uint64{101, 109},
 			},
-			expectedLogs: []string{"new safe head is behind oldest block in state, clearing state and resuming work from new safe head"},
+			expectedLogs: []string{"new safe head is behind oldest block in state"},
 		},
 		{name: "batcher restart",
 			newSyncStatus: &eth.SyncStatus{
@@ -211,7 +211,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{},
 				blocksToLoad: [2]uint64{105, 109},
 			},
-			expectedLogs: []string{"safe head above unsafe head, clearing channel manager state"},
+			expectedLogs: []string{"safe head above unsafe head"},
 		},
 		{name: "safe chain reorg",
 			newSyncStatus: &eth.SyncStatus{
@@ -227,7 +227,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{},
 				blocksToLoad: [2]uint64{104, 109},
 			},
-			expectedLogs: []string{"safe chain reorg, clearing channel manager state"},
+			expectedLogs: []string{"safe chain reorg"},
 		},
 		{name: "failed to make progress",
 			newSyncStatus: &eth.SyncStatus{

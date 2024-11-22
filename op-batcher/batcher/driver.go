@@ -953,31 +953,38 @@ type SyncActions struct {
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
+func (s SyncActions) String() string {
+	return fmt.Sprintf(
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, waitForNodeSync: %t, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.waitForNodeSync, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
+}
+
 // One issue here is that we have two things to compare the newSyncStatus with. One is the prevSyncStatus, and the
 // other is the local state. We didn't yet start caching the syncStatus, so perhaps to avoid doing that and just compare to
 // the local state. Perhaps we should _only_ store the previous CurrentL1? This would be a bit of a simplification.
 func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []ChannelStatuser, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		l.Warn("empty sync status, waiting for node sync")
-		return SyncActions{waitForNodeSync: true}
+		s := SyncActions{waitForNodeSync: true}
+		l.Warn("empty sync status", "syncActions", s)
+		return s
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
-		l.Warn("sequencer currentL1 reversed, waiting for node sync")
-		// This can happen if the sequencer restarts
-		return SyncActions{waitForNodeSync: true}
+		// This can happen when the sequencer restarts
+		s := SyncActions{waitForNodeSync: true}
+		l.Warn("sequencer currentL1 reversed", "syncActions", s)
+		return s
 	}
 
 	oldestBlock, ok := blocks.Peek()
 
 	if ok && oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
-		l.Warn("new safe head is behind oldest block in state, clearing state and resuming work from new safe head")
-		// This implies an L1 reorg and also an incosistency between prevSyncStatus and the local state.
-		return SyncActions{
+		s := SyncActions{
 			clearState:   &eth.BlockID{}, // TODO what should this be?
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
+		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
+		return s
 	}
 
 	numBlocksToDequeue := newSyncStatus.SafeL2.Number + 1 - oldestBlock.NumberU64()
@@ -986,27 +993,30 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("safe head above unsafe head, clearing channel manager state",
-			"unsafeBlock", eth.ToBlockID(blocks[blocks.Len()-1]),
-			"newSafeBlock", newSyncStatus.SafeL2.Number)
-		// We should resume work from the new safe head,
-		// and therefore prune all the blocks.
-		return SyncActions{
+		s := SyncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
+		l.Warn("safe head above unsafe head, clearing channel manager state",
+			"unsafeBlock", eth.ToBlockID(blocks[blocks.Len()-1]),
+			"newSafeBlock", newSyncStatus.SafeL2.Number,
+			"syncActions",
+			s)
+		return s
 	}
 
 	if blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
-		l.Warn("safe chain reorg, clearing channel manager state",
-			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-			"newSafeBlock", newSyncStatus.SafeL2)
-		// We should resume work from the new safe head,
-		// and therefore prune all the blocks.
-		return SyncActions{
+		s := SyncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
+		l.Warn("safe chain reorg, clearing channel manager state",
+			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
+			"newSafeBlock", newSyncStatus.SafeL2,
+			"syncActions", s)
+		// We should resume work from the new safe head,
+		// and therefore prune all the blocks.
+		return s
 	}
 
 	for _, ch := range channels {
@@ -1014,17 +1024,20 @@ func computeSyncActions(newSyncStatus *eth.SyncStatus, prevCurrentL1 eth.L1Block
 			!ch.isTimedOut() &&
 			newSyncStatus.CurrentL1.Number > ch.maxInclusionBlock() &&
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
+
+			s := SyncActions{
+				waitForNodeSync: true,           // is this right?
+				clearState:      &eth.BlockID{}, // TODO what should this be?
+				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+			}
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. We should go back to
 			// the last safe head and resume work from there.
 			l.Warn("sequencer did not make expected progress",
 				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-				"newSafeBlock", newSyncStatus.SafeL2)
-			return SyncActions{
-				waitForNodeSync: true,           // is this right?
-				clearState:      &eth.BlockID{}, // TODO what should this be?
-				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
-			}
+				"newSafeBlock", newSyncStatus.SafeL2,
+				"syncActions", s)
+			return s
 		}
 	}
 
