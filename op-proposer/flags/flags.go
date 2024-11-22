@@ -6,6 +6,7 @@ import (
 
 	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
@@ -63,7 +64,7 @@ var (
 	DisputeGameTypeFlag = &cli.UintFlag{
 		Name:    "game-type",
 		Usage:   "Dispute game type to create via the configured DisputeGameFactory",
-		Value:   0,
+		Value:   uint(standard.DisputeGameType),
 		EnvVars: prefixEnvVars("GAME_TYPE"),
 	}
 	ActiveSequencerCheckDurationFlag = &cli.DurationFlag{
