@@ -4,26 +4,16 @@ pragma solidity 0.8.15;
 // Testing utilities
 import { CommonTest } from "test/setup/CommonTest.sol";
 
-import { ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
-import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { LegacyMintableERC20 } from "src/legacy/LegacyMintableERC20.sol";
+import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
 
 contract LegacyMintableERC20_Test is CommonTest {
-    ILegacyMintableERC20 legacyMintableERC20;
+    LegacyMintableERC20 legacyMintableERC20;
 
     function setUp() public override {
         super.setUp();
 
-        legacyMintableERC20 = ILegacyMintableERC20(
-            DeployUtils.create1({
-                _name: "LegacyMintableERC20",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        ILegacyMintableERC20.__constructor__,
-                        (address(l2StandardBridge), address(L1Token), "_L2Token_", "_L2T_")
-                    )
-                )
-            })
-        );
+        legacyMintableERC20 = new LegacyMintableERC20(address(l2StandardBridge), address(L1Token), "_L2Token_", "_L2T_");
     }
 
     /// @notice Tests that the constructor sets the correct values
@@ -48,20 +38,20 @@ contract LegacyMintableERC20_Test is CommonTest {
     }
 
     /// @notice Tests that the mint function works when called by the bridge
-    function test_mint_byBridge_works() public {
+    function test_mint_byBridge_succeeds() public {
         vm.prank(address(l2StandardBridge));
         legacyMintableERC20.mint(address(this), 1000);
         assertEq(legacyMintableERC20.balanceOf(address(this)), 1000);
     }
 
     /// @notice Tests that the mint function fails when called by an address other than the bridge
-    function test_mint_byNonBridge_fails() public {
+    function test_mint_byNonBridge_reverts() public {
         vm.expectRevert(bytes("Only L2 Bridge can mint and burn"));
         legacyMintableERC20.mint(address(this), 1000);
     }
 
     /// @notice Tests that the burn function works when called by the bridge
-    function test_burn_byBridge_works() public {
+    function test_burn_byBridge_succeeds() public {
         vm.prank(address(l2StandardBridge));
         legacyMintableERC20.mint(address(this), 1000);
 
@@ -71,7 +61,7 @@ contract LegacyMintableERC20_Test is CommonTest {
     }
 
     /// @notice Tests that the burn function fails when called by an address other than the bridge
-    function test_burn_byNonBridge_fails() public {
+    function test_burn_byNonBridge_reverts() public {
         vm.expectRevert(bytes("Only L2 Bridge can mint and burn"));
         legacyMintableERC20.burn(address(this), 1000);
     }
