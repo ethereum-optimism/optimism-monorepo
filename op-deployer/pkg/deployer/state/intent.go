@@ -50,8 +50,8 @@ type Intent struct {
 
 	Chains []*ChainIntent `json:"chains" toml:"chains"`
 
-	SuperchainProofOverrides  map[string]any `json:"superchainProofOverrides" toml:"superchainProofOverrides"`
-	GlobalChainProofOverrides map[string]any `json:"globalChainProofOverrides" toml:"globalChainProofOverrides"`
+	SuperchainProofOverrides  map[string]any `json:"dangerousSuperchainProofOverrides" toml:"dangerousSuperchainProofOverrides"`
+	GlobalChainProofOverrides map[string]any `json:"dangerousGlobalChainProofOverrides" toml:"dangerousGlobalChainProofOverrides"`
 	GlobalDeployOverrides     map[string]any `json:"globalDeployOverrides" toml:"globalDeployOverrides"`
 }
 
@@ -166,7 +166,7 @@ type ChainIntent struct {
 
 	Roles ChainRoles `json:"roles" toml:"roles"`
 
-	ChainProofOverrides map[string]any `json:"chainProofOverrides" toml:"chainProofOverrides"`
+	ChainProofOverrides map[string]any `json:"dangerousChainProofOverrides" toml:"dangerousChainProofOverrides"`
 	DeployOverrides     map[string]any `json:"deployOverrides" toml:"deployOverrides"`
 
 	DangerousAltDAConfig genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
