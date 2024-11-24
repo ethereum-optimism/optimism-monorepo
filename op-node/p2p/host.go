@@ -50,6 +50,7 @@ type ExtraHostFeatures interface {
 	ConnectionManager() connmgr.ConnManager
 	IsStatic(peerID peer.ID) bool
 	SyncOnlyReqToStatic() bool
+	SyncStaleThreshold() int
 }
 
 type extraHost struct {
@@ -66,6 +67,7 @@ type extraHost struct {
 	quitC chan struct{}
 
 	syncOnlyReqToStatic bool
+	syncStaleThreshold  int
 }
 
 func (e *extraHost) ConnectionGater() gating.BlockingConnectionGater {
@@ -83,6 +85,10 @@ func (e *extraHost) IsStatic(peerID peer.ID) bool {
 
 func (e *extraHost) SyncOnlyReqToStatic() bool {
 	return e.syncOnlyReqToStatic
+}
+
+func (e *extraHost) SyncStaleThreshold() int {
+	return e.syncStaleThreshold
 }
 
 func (e *extraHost) Close() error {
@@ -277,6 +283,7 @@ func (conf *Config) Host(log log.Logger, reporter metrics.Reporter, metrics Host
 		staticPeerIDs:       staticPeerIDs,
 		quitC:               make(chan struct{}),
 		syncOnlyReqToStatic: conf.SyncOnlyReqToStatic,
+		syncStaleThreshold:  conf.SyncStaleThreshold,
 	}
 
 	if conf.EnablePingService {

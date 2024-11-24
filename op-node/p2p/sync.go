@@ -279,6 +279,7 @@ type SyncClient struct {
 
 	extra               ExtraHostFeatures
 	syncOnlyReqToStatic bool
+	syncStaleThreshold  int
 }
 
 func NewSyncClient(log log.Logger, cfg *rollup.Config, host HostNewStream, rcv receivePayloadFn, metrics SyncClientMetrics, appScorer SyncPeerScorer) *SyncClient {
@@ -304,9 +305,12 @@ func NewSyncClient(log log.Logger, cfg *rollup.Config, host HostNewStream, rcv r
 		resCancel:           cancel,
 		receivePayload:      rcv,
 	}
-	if extra, ok := host.(ExtraHostFeatures); ok && extra.SyncOnlyReqToStatic() {
-		c.extra = extra
-		c.syncOnlyReqToStatic = true
+	if extra, ok := host.(ExtraHostFeatures); ok {
+		if extra.SyncOnlyReqToStatic() {
+			c.extra = extra
+			c.syncOnlyReqToStatic = true
+		}
+		c.syncStaleThreshold = extra.SyncStaleThreshold()
 	}
 
 	// never errors with positive LRU cache size
@@ -366,7 +370,18 @@ func (s *SyncClient) Close() error {
 	return nil
 }
 
+// unixTimeStale returns true if the unix timestamp is before the current time minus the supplied duration.
+func unixTimeStale(timestamp uint64, duration time.Duration) bool {
+	return time.Unix(int64(timestamp), 0).Before(time.Now().Add(-1 * duration))
+}
+
 func (s *SyncClient) RequestL2Range(ctx context.Context, start, end eth.L2BlockRef) (uint64, error) {
+	// syncStaleThreshold is 0 in test, and we want to skip this check for test
+	if s.syncStaleThreshold > 0 && unixTimeStale(start.Time, time.Duration(s.syncStaleThreshold)*time.Hour) {
+		s.log.Debug("ignoring request to sync L2 range, timestamp is too old for p2p", "start", start, "end", end, "start_time", start.Time)
+		return 0, nil
+	}
+
 	if end == (eth.L2BlockRef{}) {
 		s.log.Debug("P2P sync client received range signal, but cannot sync open-ended chain: need sync target to verify blocks through parent-hashes", "start", start)
 		return 0, nil

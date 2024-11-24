@@ -54,6 +54,7 @@ var (
 	GossipFloodPublishName  = "p2p.gossip.mesh.floodpublish"
 	SyncReqRespName         = "p2p.sync.req-resp"
 	SyncOnlyReqToStaticName = "p2p.sync.onlyreqtostatic"
+	SyncStaleThreshold      = "p2p.sync.stalethreshold"
 	P2PPingName             = "p2p.ping"
 )
 
@@ -400,6 +401,14 @@ func P2PFlags(envPrefix string) []cli.Flag {
 			Value:    false,
 			Required: false,
 			EnvVars:  p2pEnv(envPrefix, "SYNC_ONLYREQTOSTATIC"),
+			Category: P2PCategory,
+		},
+		&cli.IntFlag{
+			Name:     SyncStaleThreshold,
+			Usage:    "Configure stale threshold(in hours) for RequestL2Range requests.",
+			Value:    12,
+			Required: false,
+			EnvVars:  p2pEnv(envPrefix, "SYNC_STALETHRESHOLD"),
 			Category: P2PCategory,
 		},
 		&cli.BoolFlag{
