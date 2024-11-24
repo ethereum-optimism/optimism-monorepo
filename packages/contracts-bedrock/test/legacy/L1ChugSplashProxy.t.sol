@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing utilities
 import { Test } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 
 // Target contract
 import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
@@ -91,9 +92,28 @@ contract L1ChugSplashProxy_Test is Test {
     ///         contract's deployment, it reverts.
     /// @dev    If this solc version/settings change and modifying this proves time consuming, we can just remove it.
     function test_setCode_whenOwnerAndDeployOutOfGas_reverts() public {
+        // The values below are best gotten by removing the gas limit parameter from the call and running the test with
+        // a
+        // verbosity of `-vvvv` then setting the value to a few thousand gas lower than the gas used by the call.
+        // A faster way to do this for forge coverage cases, is to comment out the optimizer and optimizer runs in
+        // the foundry.toml file and then run forge test. This is faster because forge test only compiles modified
+        // contracts unlike forge coverage.
+        uint256 gasLimit;
+
+        // Because forge coverage always runs with the optimizer disabled,
+        // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
+        // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
+        if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            gasLimit = 95_000;
+        } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
+            gasLimit = 65_000;
+        } else {
+            revert("SafeCall_Test: unknown context");
+        }
+
         vm.prank(owner);
         vm.expectRevert(bytes("L1ChugSplashProxy: code was not correctly deployed")); // Ran out of gas
-        proxy.setCode{ gas: 65_000 }(
+        proxy.setCode{ gas: gasLimit }(
             hex"fefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefefe"
         );
     }
