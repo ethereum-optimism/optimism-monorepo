@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Interfaces
 import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 
@@ -15,8 +16,8 @@ contract RISCV is IBigStepper {
     IPreimageOracle public oracle;
 
     /// @notice The version of the contract.
-    /// @custom:semver 1.1.0-rc.2
-    string public constant version = "1.1.0-rc.2";
+    /// @custom:semver 1.1.0-rc.3
+    string public constant version = "1.1.0-rc.3";
 
     /// @param _oracle The preimage oracle contract.
     constructor(IPreimageOracle _oracle) {

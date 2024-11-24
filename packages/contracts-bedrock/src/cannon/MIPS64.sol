@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IPreimageOracle } from "./interfaces/IPreimageOracle.sol";
+// Libraries
 import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64Syscalls as sys } from "src/cannon/libraries/MIPS64Syscalls.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
@@ -12,6 +11,10 @@ import { VMStatuses } from "src/dispute/lib/Types.sol";
 import {
     InvalidMemoryProof, InvalidRMWInstruction, InvalidSecondMemoryProof
 } from "src/cannon/libraries/CannonErrors.sol";
+
+// Interfaces
+import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
 
 /// @title MIPS64
 /// @notice The MIPS64 contract emulates a single MIPS instruction.
@@ -64,8 +67,8 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS64 contract.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.0-beta.5
+    string public constant version = "1.0.0-beta.5";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
