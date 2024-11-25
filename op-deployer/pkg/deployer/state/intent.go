@@ -6,8 +6,6 @@ import (
 	"math/big"
 	"reflect"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
-
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
@@ -36,7 +34,6 @@ func (d DeploymentStrategy) Check() error {
 type IntentConfigType string
 
 const (
-	IntentConfigTypeTest              IntentConfigType = "test"
 	IntentConfigTypeStandard          IntentConfigType = "standard"
 	IntentConfigTypeCustom            IntentConfigType = "custom"
 	IntentConfigTypeStrict            IntentConfigType = "strict"
@@ -49,7 +46,7 @@ var emptyHash common.Hash
 
 type Intent struct {
 	DeploymentStrategy    DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
-	IntentConfigType      IntentConfigType   `json:"intentConfigType" toml:"intentConfigType"`
+	ConfigType            IntentConfigType   `json:"configType" toml:"configType"`
 	L1ChainID             uint64             `json:"l1ChainID" toml:"l1ChainID"`
 	SuperchainRoles       *SuperchainRoles   `json:"superchainRoles" toml:"superchainRoles,omitempty"`
 	FundDevAccounts       bool               `json:"fundDevAccounts" toml:"fundDevAccounts"`
@@ -86,32 +83,6 @@ func (s *SuperchainRoles) CheckNoZeroAddresses() error {
 
 func (c *Intent) L1ChainIDBig() *big.Int {
 	return big.NewInt(int64(c.L1ChainID))
-}
-
-func (c *Intent) ValidateIntentConfigType() error {
-	switch c.IntentConfigType {
-	case IntentConfigTypeStandard:
-		if err := c.validateStandardValues(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=standard: %w", err)
-		}
-	case IntentConfigTypeCustom:
-		if err := c.validateCustomConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=custom: %w", err)
-		}
-	case IntentConfigTypeStrict:
-		if err := c.validateStrictConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=strict: %w", err)
-		}
-	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
-		if err := c.validateCustomConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.IntentConfigType, err)
-		}
-	case IntentConfigTypeTest:
-		return nil
-	default:
-		return fmt.Errorf("intent-config-type unsupported: %s", c.IntentConfigType)
-	}
-	return nil
 }
 
 func (c *Intent) validateCustomConfig() error {
@@ -162,6 +133,13 @@ func (c *Intent) validateStrictConfig() error {
 //  1. no zero-values for non-standard fields (user should have populated these)
 //  2. no non-standard values for standard fields (user should not have changed these)
 func (c *Intent) validateStandardValues() error {
+	if c.L1ContractsLocator == nil || c.L1ContractsLocator != artifacts.DefaultL1ContractsLocator {
+		return fmt.Errorf("L1ContractsLocator does not match standard value")
+	}
+	if c.L2ContractsLocator == nil || c.L2ContractsLocator != artifacts.DefaultL2ContractsLocator {
+		return fmt.Errorf("L2ContractsLocator does not match standard value")
+	}
+
 	standardSuperchainRoles, err := getStandardSuperchainRoles(c.L1ChainID)
 	if err != nil {
 		return fmt.Errorf("error getting standard superchain roles: %w", err)
@@ -171,21 +149,13 @@ func (c *Intent) validateStandardValues() error {
 	}
 
 	for _, chain := range c.Chains {
-		if chain.ID == emptyHash {
-			return fmt.Errorf("missing l2 chain ID")
-		}
-		if err := chain.Roles.CheckNoZeroAddresses(); err != nil {
+		if err := chain.CheckNoZeroValues(); err != nil {
 			return err
 		}
 		if chain.Eip1559DenominatorCanyon != standard.Eip1559DenominatorCanyon ||
 			chain.Eip1559Denominator != standard.Eip1559Denominator ||
 			chain.Eip1559Elasticity != standard.Eip1559Elasticity {
 			return fmt.Errorf("%w: chainId=%s", ErrNonStandardValue, chain.ID)
-		}
-		if chain.BaseFeeVaultRecipient == emptyAddress ||
-			chain.L1FeeVaultRecipient == emptyAddress ||
-			chain.SequencerFeeVaultRecipient == emptyAddress {
-			return fmt.Errorf("%w: chainId=%s", ErrFeeVaultZeroAddress, chain.ID)
 		}
 	}
 
@@ -210,140 +180,33 @@ func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
 	return superchainRoles, nil
 }
 
-func (c *Intent) SetInitValues(l2ChainIds []common.Hash) error {
-	switch c.IntentConfigType {
-	case IntentConfigTypeCustom:
-		return c.setCustomValues(l2ChainIds)
-
-	case IntentConfigTypeStandard:
-		return c.setStandardValues(l2ChainIds)
-
-	case IntentConfigTypeStrict:
-		return c.setStrictValues(l2ChainIds)
-
-	case IntentConfigTypeStrictOverrides:
-		return c.setStrictValues(l2ChainIds)
-
-	case IntentConfigTypeStandardOverrides:
-		return c.setStandardValues(l2ChainIds)
-
-	case IntentConfigTypeTest:
-		return c.setTestValues(l2ChainIds)
-
-	default:
-		return fmt.Errorf("intent config type not supported")
-	}
-}
-
-// Sets all Intent fields to their zero value with the expectation that the
-// user will populate the values before running 'apply'
-func (c *Intent) setCustomValues(l2ChainIds []common.Hash) error {
-	c.L1ContractsLocator = &artifacts.Locator{Tag: "undefined"}
-	c.L2ContractsLocator = &artifacts.Locator{Tag: "undefined"}
-
-	c.SuperchainRoles = &SuperchainRoles{}
-	for _, l2ChainID := range l2ChainIds {
-		c.Chains = append(c.Chains, &ChainIntent{
-			ID: l2ChainID,
-		})
-	}
-	return nil
-}
-
-func (c *Intent) setStandardValues(l2ChainIds []common.Hash) error {
-	superchainRoles, err := getStandardSuperchainRoles(c.L1ChainID)
-	if err != nil {
-		return fmt.Errorf("error getting standard superchain roles: %w", err)
-	}
-	c.SuperchainRoles = superchainRoles
-
-	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
-	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
-
-	for _, l2ChainID := range l2ChainIds {
-		c.Chains = append(c.Chains, &ChainIntent{
-			ID:                       l2ChainID,
-			Eip1559DenominatorCanyon: standard.Eip1559DenominatorCanyon,
-			Eip1559Denominator:       standard.Eip1559Denominator,
-			Eip1559Elasticity:        standard.Eip1559Elasticity,
-		})
-	}
-	return nil
-}
-
-// Same as setStandardValues, but also sets l2 Challenger and L1ProxyAdminOwner
-// addresses to standard values
-func (c *Intent) setStrictValues(l2ChainIds []common.Hash) error {
-	if err := c.setStandardValues(l2ChainIds); err != nil {
-		return err
-	}
-
-	challenger, _ := standard.ChallengerAddressFor(c.L1ChainID)
-	l1ProxyAdminOwner, _ := standard.ManagerOwnerAddrFor(c.L1ChainID)
-	for chainIndex := range c.Chains {
-		c.Chains[chainIndex].Roles.Challenger = challenger
-		c.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner
-	}
-	return nil
-}
-
-func (c *Intent) setTestValues(l2ChainIds []common.Hash) error {
-	c.FundDevAccounts = true
-	c.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
-	c.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
-
-	l1ChainIDBig := c.L1ChainIDBig()
-
-	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
-	if err != nil {
-		return fmt.Errorf("failed to create dev keys: %w", err)
-	}
-
-	addrFor := func(key devkeys.Key) common.Address {
-		// The error below should never happen, so panic if it does.
-		addr, err := dk.Address(key)
-		if err != nil {
-			panic(err)
-		}
-		return addr
-	}
-	c.SuperchainRoles = &SuperchainRoles{
-		ProxyAdminOwner:       addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l1ChainIDBig)),
-		ProtocolVersionsOwner: addrFor(devkeys.SuperchainProtocolVersionsOwner.Key(l1ChainIDBig)),
-		Guardian:              addrFor(devkeys.SuperchainConfigGuardianKey.Key(l1ChainIDBig)),
-	}
-
-	for _, l2ChainID := range l2ChainIds {
-		l2ChainIDBig := l2ChainID.Big()
-		c.Chains = append(c.Chains, &ChainIntent{
-			ID:                         l2ChainID,
-			BaseFeeVaultRecipient:      addrFor(devkeys.BaseFeeVaultRecipientRole.Key(l2ChainIDBig)),
-			L1FeeVaultRecipient:        addrFor(devkeys.L1FeeVaultRecipientRole.Key(l2ChainIDBig)),
-			SequencerFeeVaultRecipient: addrFor(devkeys.SequencerFeeVaultRecipientRole.Key(l2ChainIDBig)),
-			Eip1559DenominatorCanyon:   standard.Eip1559DenominatorCanyon,
-			Eip1559Denominator:         standard.Eip1559Denominator,
-			Eip1559Elasticity:          standard.Eip1559Elasticity,
-			Roles: ChainRoles{
-				L1ProxyAdminOwner: addrFor(devkeys.L1ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				L2ProxyAdminOwner: addrFor(devkeys.L2ProxyAdminOwnerRole.Key(l2ChainIDBig)),
-				SystemConfigOwner: addrFor(devkeys.SystemConfigOwner.Key(l2ChainIDBig)),
-				UnsafeBlockSigner: addrFor(devkeys.SequencerP2PRole.Key(l2ChainIDBig)),
-				Batcher:           addrFor(devkeys.BatcherRole.Key(l2ChainIDBig)),
-				Proposer:          addrFor(devkeys.ProposerRole.Key(l2ChainIDBig)),
-				Challenger:        addrFor(devkeys.ChallengerRole.Key(l2ChainIDBig)),
-			},
-		})
-	}
-	return nil
-}
-
 func (c *Intent) Check() error {
+	if c.L1ChainID == 0 {
+		return fmt.Errorf("l1ChainID must be set")
+	}
 	if err := c.DeploymentStrategy.Check(); err != nil {
 		return err
 	}
 
-	if c.L1ChainID == 0 {
-		return fmt.Errorf("l1ChainID must be set")
+	switch c.ConfigType {
+	case IntentConfigTypeStandard:
+		if err := c.validateStandardValues(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=standard: %w", err)
+		}
+	case IntentConfigTypeCustom:
+		if err := c.validateCustomConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=custom: %w", err)
+		}
+	case IntentConfigTypeStrict:
+		if err := c.validateStrictConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=strict: %w", err)
+		}
+	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
+		if err := c.validateCustomConfig(); err != nil {
+			return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.ConfigType, err)
+		}
+	default:
+		return fmt.Errorf("intent-config-type unsupported: %s", c.ConfigType)
 	}
 
 	if c.L1ContractsLocator == nil {
@@ -419,4 +282,110 @@ func (c *Intent) checkL1Dev() error {
 func (c *Intent) checkL2Prod() error {
 	_, err := standard.ArtifactsURLForTag(c.L2ContractsLocator.Tag)
 	return err
+}
+
+func NewIntent(configType IntentConfigType, deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	switch configType {
+	case IntentConfigTypeCustom:
+		return NewIntentCustom(deploymentStrategy, l1ChainId, l2ChainIds)
+
+	case IntentConfigTypeStandard:
+		return NewIntentStandard(deploymentStrategy, l1ChainId, l2ChainIds)
+
+	case IntentConfigTypeStandardOverrides:
+		return NewIntentStandardOverrides(deploymentStrategy, l1ChainId, l2ChainIds)
+
+	case IntentConfigTypeStrict:
+		return NewIntentStrict(deploymentStrategy, l1ChainId, l2ChainIds)
+
+	case IntentConfigTypeStrictOverrides:
+		return NewIntentStrictOverrides(deploymentStrategy, l1ChainId, l2ChainIds)
+
+	default:
+		return Intent{}, fmt.Errorf("intent config type not supported")
+	}
+}
+
+// Sets all Intent fields to their zero value with the expectation that the
+// user will populate the values before running 'apply'
+func NewIntentCustom(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	intent := Intent{
+		DeploymentStrategy: deploymentStrategy,
+		ConfigType:         IntentConfigTypeCustom,
+		L1ChainID:          l1ChainId,
+		L1ContractsLocator: &artifacts.Locator{Tag: ""},
+		L2ContractsLocator: &artifacts.Locator{Tag: ""},
+		SuperchainRoles:    &SuperchainRoles{},
+	}
+
+	for _, l2ChainID := range l2ChainIds {
+		intent.Chains = append(intent.Chains, &ChainIntent{
+			ID: l2ChainID,
+		})
+	}
+	return intent, nil
+}
+
+func NewIntentStandard(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	intent := Intent{
+		DeploymentStrategy: deploymentStrategy,
+		ConfigType:         IntentConfigTypeStandard,
+		L1ChainID:          l1ChainId,
+		L1ContractsLocator: artifacts.DefaultL1ContractsLocator,
+		L2ContractsLocator: artifacts.DefaultL2ContractsLocator,
+	}
+
+	superchainRoles, err := getStandardSuperchainRoles(l1ChainId)
+	if err != nil {
+		return Intent{}, fmt.Errorf("error getting standard superchain roles: %w", err)
+	}
+	intent.SuperchainRoles = superchainRoles
+
+	for _, l2ChainID := range l2ChainIds {
+		intent.Chains = append(intent.Chains, &ChainIntent{
+			ID:                       l2ChainID,
+			Eip1559DenominatorCanyon: standard.Eip1559DenominatorCanyon,
+			Eip1559Denominator:       standard.Eip1559Denominator,
+			Eip1559Elasticity:        standard.Eip1559Elasticity,
+		})
+	}
+	return intent, nil
+}
+
+func NewIntentStandardOverrides(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	intent, err := NewIntentStandard(deploymentStrategy, l1ChainId, l2ChainIds)
+	if err != nil {
+		return Intent{}, err
+	}
+	intent.ConfigType = IntentConfigTypeStandardOverrides
+
+	return intent, nil
+}
+
+// Same as NewIntentStandard, but also sets l2 Challenger and L1ProxyAdminOwner
+// addresses to standard values
+func NewIntentStrict(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	intent, err := NewIntentStandard(deploymentStrategy, l1ChainId, l2ChainIds)
+	if err != nil {
+		return Intent{}, err
+	}
+	intent.ConfigType = IntentConfigTypeStrict
+
+	challenger, _ := standard.ChallengerAddressFor(l1ChainId)
+	l1ProxyAdminOwner, _ := standard.ManagerOwnerAddrFor(l1ChainId)
+	for chainIndex := range intent.Chains {
+		intent.Chains[chainIndex].Roles.Challenger = challenger
+		intent.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner
+	}
+	return intent, nil
+}
+
+func NewIntentStrictOverrides(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error) {
+	intent, err := NewIntentStrict(deploymentStrategy, l1ChainId, l2ChainIds)
+	if err != nil {
+		return Intent{}, err
+	}
+	intent.ConfigType = IntentConfigTypeStrictOverrides
+
+	return intent, nil
 }

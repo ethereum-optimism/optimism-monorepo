@@ -26,7 +26,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 	lgr := env.Logger.New("stage", "init", "strategy", "live")
 	lgr.Info("initializing pipeline")
 
-	if err := initCommonChecks(st, intent); err != nil {
+	if err := initCommonChecks(st); err != nil {
 		return err
 	}
 
@@ -100,11 +100,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 	return nil
 }
 
-func initCommonChecks(st *state.State, intent *state.Intent) error {
-	if err := intent.ValidateIntentConfigType(); err != nil {
-		return err
-	}
-
+func initCommonChecks(st *state.State) error {
 	// Ensure the state version is supported.
 	if !IsSupportedStateVersion(st.Version) {
 		return fmt.Errorf("unsupported state version: %d", st.Version)
@@ -123,7 +119,7 @@ func InitGenesisStrategy(env *Env, intent *state.Intent, st *state.State) error 
 	lgr := env.Logger.New("stage", "init", "strategy", "genesis")
 	lgr.Info("initializing pipeline")
 
-	if err := initCommonChecks(st, intent); err != nil {
+	if err := initCommonChecks(st); err != nil {
 		return err
 	}
 

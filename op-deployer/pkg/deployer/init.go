@@ -86,15 +86,12 @@ func Init(cfg InitConfig) error {
 		return fmt.Errorf("invalid config for init: %w", err)
 	}
 
-	intent := &state.Intent{
-		DeploymentStrategy: cfg.DeploymentStrategy,
-		IntentConfigType:   cfg.IntentConfigType,
-		L1ChainID:          cfg.L1ChainID,
-	}
-
-	if err := intent.SetInitValues(cfg.L2ChainIDs); err != nil {
+	intent, err := state.NewIntent(cfg.IntentConfigType, cfg.DeploymentStrategy, cfg.L1ChainID, cfg.L2ChainIDs)
+	if err != nil {
 		return err
 	}
+	intent.DeploymentStrategy = cfg.DeploymentStrategy
+	intent.ConfigType = cfg.IntentConfigType
 
 	st := &state.State{
 		Version: 1,

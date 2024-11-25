@@ -8,33 +8,26 @@ import (
 )
 
 func TestValidateStandardValues(t *testing.T) {
-	intent := initStandardIntent()
-	err := intent.ValidateIntentConfigType()
+	intent, err := NewIntentStandard(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+	require.NoError(t, err)
+
+	err = intent.Check()
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrChainRoleZeroAddress)
 
-	setChainRoles(intent)
-	err = intent.ValidateIntentConfigType()
+	setChainRoles(&intent)
+	err = intent.Check()
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrFeeVaultZeroAddress)
 
-	setFeeAddresses(intent)
-	err = intent.ValidateIntentConfigType()
+	setFeeAddresses(&intent)
+	err = intent.Check()
 	require.NoError(t, err)
 
 	intent.Chains[0].Eip1559Denominator = 3 // set to non-standard value
-	err = intent.ValidateIntentConfigType()
+	err = intent.Check()
 	require.Error(t, err)
 	require.ErrorIs(t, err, ErrNonStandardValue)
-}
-
-func initStandardIntent() *Intent {
-	intent := Intent{
-		L1ChainID:        1,
-		IntentConfigType: IntentConfigTypeStandard,
-	}
-	_ = intent.setStandardValues([]common.Hash{common.HexToHash("0x336")})
-	return &intent
 }
 
 func setChainRoles(intent *Intent) {
