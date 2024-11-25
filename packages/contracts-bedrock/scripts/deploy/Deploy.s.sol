@@ -456,9 +456,9 @@ contract Deploy is Deployer {
             _data: abi.encodeCall(IDelayedWETH.initialize, (msg.sender, ISuperchainConfig(superchainConfigProxy)))
         });
 
-        setAlphabetFaultGameImplementation({ _allowUpgrade: false });
-        setFastFaultGameImplementation({ _allowUpgrade: false });
-        setCannonFaultGameImplementation({ _allowUpgrade: false });
+        setAlphabetFaultGameImplementation();
+        setFastFaultGameImplementation();
+        setCannonFaultGameImplementation();
 
         transferDisputeGameFactoryOwnership();
         transferDelayedWETHOwnership();
@@ -875,7 +875,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Sets the implementation for the `CANNON` game type in the `DisputeGameFactory`
-    function setCannonFaultGameImplementation(bool _allowUpgrade) public broadcast {
+    function setCannonFaultGameImplementation() public broadcast {
         console.log("Setting Cannon FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -883,7 +883,6 @@ contract Deploy is Deployer {
         // Set the Cannon FaultDisputeGame implementation in the factory.
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -897,7 +896,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Sets the implementation for the `ALPHABET` game type in the `DisputeGameFactory`
-    function setAlphabetFaultGameImplementation(bool _allowUpgrade) public onlyDevnet broadcast {
+    function setAlphabetFaultGameImplementation() public onlyDevnet broadcast {
         console.log("Setting Alphabet FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -905,7 +904,6 @@ contract Deploy is Deployer {
         Claim outputAbsolutePrestate = Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate()));
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -920,7 +918,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Sets the implementation for the `ALPHABET` game type in the `DisputeGameFactory`
-    function setFastFaultGameImplementation(bool _allowUpgrade) public onlyDevnet broadcast {
+    function setFastFaultGameImplementation() public onlyDevnet broadcast {
         console.log("Setting Fast FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -939,7 +937,6 @@ contract Deploy is Deployer {
         );
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -956,12 +953,11 @@ contract Deploy is Deployer {
     /// @notice Sets the implementation for the given fault game type in the `DisputeGameFactory`.
     function _setFaultGameImplementation(
         IDisputeGameFactory _factory,
-        bool _allowUpgrade,
         FaultDisputeGameParams memory _params
     )
         internal
     {
-        if (address(_factory.gameImpls(_params.gameType)) != address(0) && !_allowUpgrade) {
+        if (address(_factory.gameImpls(_params.gameType)) != address(0)) {
             console.log(
                 "[WARN] DisputeGameFactoryProxy: `FaultDisputeGame` implementation already set for game type: %s",
                 vm.toString(GameType.unwrap(_params.gameType))
