@@ -97,18 +97,6 @@ contract Deploy is Deployer {
         }
     }
 
-    /// @notice Modifier that will only allow a function to be called on a public
-    ///         testnet or devnet.
-    modifier onlyTestnetOrDevnet() {
-        uint256 chainid = block.chainid;
-        if (
-            chainid == Chains.Goerli || chainid == Chains.Sepolia || chainid == Chains.LocalDevnet
-                || chainid == Chains.GethDevnet
-        ) {
-            _;
-        }
-    }
-
     /// @notice Modifier that wraps a function with statediff recording.
     ///         The returned AccountAccess[] array is then written to
     ///         the `snapshots/state-diff/<name>.json` output file.
