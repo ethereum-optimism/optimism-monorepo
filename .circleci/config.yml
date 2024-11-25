@@ -928,7 +928,7 @@ jobs:
               --jsonfile=./tmp/testlogs/log.json \
               --rerun-fails=2 \
               --packages="$formatted_packages" \
-              -- -coverprofile=coverage.out
+              -- -coverprofile=coverage.out -timeout=60m
       - store_test_results:
           path: ./tmp/test-results
       - store_artifacts:
