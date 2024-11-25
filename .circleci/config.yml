@@ -867,7 +867,7 @@ jobs:
           path: tmp/testlogs
           when: always
 
-  go-test-all:
+  go-tests:
     parameters:
       notify:
         description: Whether to notify on failure
@@ -892,24 +892,6 @@ jobs:
       packages:
         description: List of packages to test
         type: string
-        default: |
-          op-batcher
-          op-chain-ops
-          op-node
-          op-proposer
-          op-challenger
-          op-dispute-mon
-          op-conductor
-          op-program
-          op-service
-          op-supervisor
-          op-deployer
-          op-e2e/system
-          op-e2e/e2eutils
-          op-e2e/opgeth
-          op-e2e/interop
-          op-e2e/actions
-          op-e2e/faultproofs
     machine: true
     resource_class: <<parameters.resource_class>>
     steps:
@@ -1365,7 +1347,25 @@ workflows:
           test_directory: ./pkg/deployer/integration_test
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
-      - go-test-all:
+      - go-tests:
+          packages: |
+            op-batcher
+            op-chain-ops
+            op-node
+            op-proposer
+            op-challenger
+            op-dispute-mon
+            op-conductor
+            op-program
+            op-service
+            op-supervisor
+            op-deployer
+            op-e2e/system
+            op-e2e/e2eutils
+            op-e2e/opgeth
+            op-e2e/interop
+            op-e2e/actions
+            op-e2e/faultproofs
           requires:
             - contracts-bedrock-build
             - cannon-prestate
@@ -1388,7 +1388,7 @@ workflows:
             - op-program-docker-build
             - op-supervisor-docker-build
             - proofs-tools-docker-build
-            - go-test-all
+            - go-tests
       - docker-build:
           name: <<matrix.docker_name>>-docker-build
           docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
@@ -1582,7 +1582,7 @@ workflows:
           skip_pattern: test
           context:
             - slack
-      - go-test-all:
+      - go-tests:
           name: op-e2e-cannon-tests
           notify: true
           mentions: "@proofs-team"
