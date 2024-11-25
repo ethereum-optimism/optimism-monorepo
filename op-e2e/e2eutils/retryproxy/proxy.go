@@ -30,7 +30,7 @@ type RetryProxy struct {
 type Option func(*RetryProxy)
 
 func New(lgr log.Logger, upstream string, opts ...Option) *RetryProxy {
-	strat := &retry.ExponentialStrategy{
+	strategy := &retry.ExponentialStrategy{
 		Min:       250 * time.Millisecond,
 		Max:       5 * time.Second,
 		MaxJitter: 250 * time.Millisecond,
@@ -40,7 +40,7 @@ func New(lgr log.Logger, upstream string, opts ...Option) *RetryProxy {
 		lgr:        lgr.New("module", "retryproxy"),
 		upstream:   upstream,
 		client:     &http.Client{},
-		strategy:   strat,
+		strategy:   strategy,
 		maxRetries: 5,
 	}
 
