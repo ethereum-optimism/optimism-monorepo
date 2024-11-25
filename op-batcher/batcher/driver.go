@@ -246,8 +246,8 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 // loadBlocksIntoState loads the blocks between start and end (inclusive).
 // If there is a reorg, it will return an error.
 func (l *BatchSubmitter) loadBlocksIntoState(start, end uint64, ctx context.Context) error {
-	if end < start {
-		panic(fmt.Sprintf("invalid block range %d,%d", start, end))
+	if end <= start {
+		return fmt.Errorf("start number is >= end number %d,%d", start, end)
 	}
 	var latestBlock *types.Block
 	// Add all blocks to "state"
@@ -1033,10 +1033,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		numChannelsToPrune++
 	}
 
-	var start uint64
-	if newSyncStatus.UnsafeL2.Number > newestBlock.Number().Uint64() {
-		start = newestBlock.Number().Uint64() + 1
-	}
+	start := newestBlock.Number().Uint64() + 1
 	end := newSyncStatus.UnsafeL2.Number
 
 	// happy path
