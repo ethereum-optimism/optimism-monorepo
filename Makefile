@@ -1,3 +1,6 @@
+# provide JUSTFLAGS for just-backed targets
+include ./just/flags.mk
+
 COMPOSEFLAGS=-d
 ITESTS_L2_HOST=http://localhost:9545
 BEDROCK_TAGS_REMOTE?=origin
@@ -94,7 +97,7 @@ submodules: ## Updates git submodules
 
 
 op-node: ## Builds op-node binary
-	make -C ./op-node op-node
+	just $(JUSTFLAGS) ./op-node/op-node
 .PHONY: op-node
 
 generate-mocks-op-node: ## Generates mocks for op-node
@@ -106,11 +109,11 @@ generate-mocks-op-service: ## Generates mocks for op-service
 .PHONY: generate-mocks-op-service
 
 op-batcher: ## Builds op-batcher binary
-	make -C ./op-batcher op-batcher
+	just $(JUSTFLAGS) ./op-batcher/op-batcher
 .PHONY: op-batcher
 
 op-proposer: ## Builds op-proposer binary
-	make -C ./op-proposer op-proposer
+	just $(JUSTFLAGS) ./op-proposer/op-proposer
 .PHONY: op-proposer
 
 op-challenger: ## Builds op-challenger binary
