@@ -782,7 +782,11 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 		// So we prefer to mimic the behavior of txmgr and cancel all pending DA/txmgr requests when the batcher is stopped.
 		comm, err := l.AltDA.SetInput(l.shutdownCtx, txdata.CallData())
 		if err != nil {
-			l.Log.Error("Failed to post input to Alt DA", "error", err)
+			// Don't log context cancelled events because they are expected,
+			// and can happen after tests complete which causes a panic.
+			if !errors.Is(err, context.Canceled) {
+				l.Log.Error("Failed to post input to Alt DA", "error", err)
+			}
 			// requeue frame if we fail to post to the DA Provider so it can be retried
 			// note: this assumes that the da server caches requests, otherwise it might lead to resubmissions of the blobs
 			l.recordFailedDARequest(txdata.ID(), err)
