@@ -20,8 +20,8 @@ var copyHeaders = []string{
 type RetryProxy struct {
 	lgr        log.Logger
 	upstream   string
-	c          *http.Client
-	strat      retry.Strategy
+	client     *http.Client
+	strategy   retry.Strategy
 	maxRetries int
 	srv        *http.Server
 	listenPort int
@@ -39,8 +39,8 @@ func New(lgr log.Logger, upstream string, opts ...Option) *RetryProxy {
 	prox := &RetryProxy{
 		lgr:        lgr.New("module", "retryproxy"),
 		upstream:   upstream,
-		c:          &http.Client{},
-		strat:      strat,
+		client:     &http.Client{},
+		strategy:   strat,
 		maxRetries: 5,
 	}
 
@@ -97,6 +97,7 @@ func (p *RetryProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	defer r.Body.Close()
 	reqBody, err := io.ReadAll(r.Body)
 	if err != nil {
 		p.lgr.Error("failed to read request body", "err", err)
@@ -104,7 +105,7 @@ func (p *RetryProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	res, resBody, err := retry.Do2(r.Context(), p.maxRetries, p.strat, func() (*http.Response, []byte, error) {
+	res, resBody, err := retry.Do2(r.Context(), p.maxRetries, p.strategy, func() (*http.Response, []byte, error) {
 		ctx, cancel := context.WithTimeout(r.Context(), 5*time.Second)
 		defer cancel()
 		res, err := p.doProxyReq(ctx, reqBody)
@@ -113,6 +114,7 @@ func (p *RetryProxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return nil, nil, err
 		}
 
+		defer res.Body.Close()
 		resBody, err := io.ReadAll(res.Body)
 		if err != nil {
 			p.lgr.Warn("failed to read response body", "err", err)
@@ -143,7 +145,7 @@ func (p *RetryProxy) doProxyReq(ctx context.Context, body []byte) (*http.Respons
 	if err != nil {
 		panic(fmt.Errorf("failed to create request: %w", err))
 	}
-	res, err := p.c.Do(req)
+	res, err := p.client.Do(req)
 	if err != nil {
 		p.lgr.Warn("failed to proxy request", "err", err)
 		return nil, err
