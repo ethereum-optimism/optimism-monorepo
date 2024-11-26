@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"net/url"
 	"reflect"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
@@ -63,7 +64,9 @@ type SuperchainRoles struct {
 	Guardian              common.Address `json:"guardian" toml:"guardian"`
 }
 
-var ErrSuperchainRoleZeroAddress = fmt.Errorf("SuperchainRole is set to zero address")
+var ErrSuperchainRoleZeroAddress = errors.New("SuperchainRole is set to zero address")
+var ErrL1ContractsLocatorUndefined = errors.New("L1ContractsLocator undefined")
+var ErrL2ContractsLocatorUndefined = errors.New("L2ContractsLocator undefined")
 
 func (s *SuperchainRoles) CheckNoZeroAddresses() error {
 	val := reflect.ValueOf(*s)
@@ -86,11 +89,13 @@ func (c *Intent) L1ChainIDBig() *big.Int {
 }
 
 func (c *Intent) validateCustomConfig() error {
-	if c.L1ContractsLocator == nil || c.L1ContractsLocator.Tag == "undefined" {
-		return errors.New("L1ContractsLocator undefined")
+	if c.L1ContractsLocator == nil ||
+		(c.L1ContractsLocator.Tag == "" && c.L1ContractsLocator.URL == &url.URL{}) {
+		return ErrL1ContractsLocatorUndefined
 	}
-	if c.L2ContractsLocator == nil || c.L2ContractsLocator.Tag == "undefined" {
-		return errors.New("L2ContractsLocator undefined")
+	if c.L2ContractsLocator == nil ||
+		(c.L2ContractsLocator.Tag == "" && c.L2ContractsLocator.URL == &url.URL{}) {
+		return ErrL2ContractsLocatorUndefined
 	}
 
 	if err := c.SuperchainRoles.CheckNoZeroAddresses(); err != nil {
@@ -133,11 +138,11 @@ func (c *Intent) validateStrictConfig() error {
 //  1. no zero-values for non-standard fields (user should have populated these)
 //  2. no non-standard values for standard fields (user should not have changed these)
 func (c *Intent) validateStandardValues() error {
-	if c.L1ContractsLocator == nil || c.L1ContractsLocator != artifacts.DefaultL1ContractsLocator {
-		return fmt.Errorf("L1ContractsLocator does not match standard value")
+	if err := c.checkL1Prod(); err != nil {
+		return err
 	}
-	if c.L2ContractsLocator == nil || c.L2ContractsLocator != artifacts.DefaultL2ContractsLocator {
-		return fmt.Errorf("L2ContractsLocator does not match standard value")
+	if err := c.checkL2Prod(); err != nil {
+		return err
 	}
 
 	standardSuperchainRoles, err := getStandardSuperchainRoles(c.L1ChainID)
@@ -182,55 +187,36 @@ func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
 
 func (c *Intent) Check() error {
 	if c.L1ChainID == 0 {
-		return fmt.Errorf("l1ChainID must be set")
+		return fmt.Errorf("l1ChainID cannot be 0")
 	}
+
 	if err := c.DeploymentStrategy.Check(); err != nil {
 		return err
 	}
 
-	switch c.ConfigType {
-	case IntentConfigTypeStandard:
-		if err := c.validateStandardValues(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=standard: %w", err)
-		}
-	case IntentConfigTypeCustom:
-		if err := c.validateCustomConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=custom: %w", err)
-		}
-	case IntentConfigTypeStrict:
-		if err := c.validateStrictConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=strict: %w", err)
-		}
-	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
-		if err := c.validateCustomConfig(); err != nil {
-			return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.ConfigType, err)
-		}
-	default:
-		return fmt.Errorf("intent-config-type unsupported: %s", c.ConfigType)
-	}
-
 	if c.L1ContractsLocator == nil {
-		return errors.New("l1ContractsLocator must be set")
+		return ErrL1ContractsLocatorUndefined
 	}
 
 	if c.L2ContractsLocator == nil {
-		return errors.New("l2ContractsLocator must be set")
+		return ErrL2ContractsLocatorUndefined
 	}
 
 	var err error
-	if c.L1ContractsLocator.IsTag() {
-		err = c.checkL1Prod()
-	} else {
-		err = c.checkL1Dev()
+	switch c.ConfigType {
+	case IntentConfigTypeStandard:
+		err = c.validateStandardValues()
+	case IntentConfigTypeCustom:
+		err = c.validateCustomConfig()
+	case IntentConfigTypeStrict:
+		err = c.validateStrictConfig()
+	case IntentConfigTypeStandardOverrides, IntentConfigTypeStrictOverrides:
+		err = c.validateCustomConfig()
+	default:
+		return fmt.Errorf("intent-config-type unsupported: %s", c.ConfigType)
 	}
 	if err != nil {
-		return err
-	}
-
-	if c.L2ContractsLocator.IsTag() {
-		if err := c.checkL2Prod(); err != nil {
-			return err
-		}
+		return fmt.Errorf("failed to validate intent-config-type=%s: %w", c.ConfigType, err)
 	}
 
 	return nil
@@ -258,22 +244,6 @@ func (c *Intent) checkL1Prod() error {
 
 	if _, ok := versions.Releases[c.L1ContractsLocator.Tag]; !ok {
 		return fmt.Errorf("tag '%s' not found in standard versions", c.L1ContractsLocator.Tag)
-	}
-
-	return nil
-}
-
-func (c *Intent) checkL1Dev() error {
-	if c.SuperchainRoles.ProxyAdminOwner == emptyAddress {
-		return fmt.Errorf("proxyAdminOwner must be set")
-	}
-
-	if c.SuperchainRoles.ProtocolVersionsOwner == emptyAddress {
-		c.SuperchainRoles.ProtocolVersionsOwner = c.SuperchainRoles.ProxyAdminOwner
-	}
-
-	if c.SuperchainRoles.Guardian == emptyAddress {
-		c.SuperchainRoles.Guardian = c.SuperchainRoles.ProxyAdminOwner
 	}
 
 	return nil
@@ -313,8 +283,8 @@ func NewIntentCustom(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2
 		DeploymentStrategy: deploymentStrategy,
 		ConfigType:         IntentConfigTypeCustom,
 		L1ChainID:          l1ChainId,
-		L1ContractsLocator: &artifacts.Locator{Tag: ""},
-		L2ContractsLocator: &artifacts.Locator{Tag: ""},
+		L1ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
+		L2ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
 		SuperchainRoles:    &SuperchainRoles{},
 	}
 
