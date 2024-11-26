@@ -181,14 +181,7 @@ contract Deploy is Deployer {
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
     /// @param _superchainConfigProxy Address of the existing SuperchainConfig proxy
     /// @param _protocolVersionsProxy Address of the existing ProtocolVersions proxy
-    /// @param _includeDump Whether to include a state dump after deployment
-    function runWithSuperchain(
-        address payable _superchainConfigProxy,
-        address payable _protocolVersionsProxy,
-        bool _includeDump
-    )
-        public
-    {
+    function runWithSuperchain(address payable _superchainConfigProxy, address payable _protocolVersionsProxy) public {
         require(_superchainConfigProxy != address(0), "Deploy: must specify address for superchain config proxy");
         require(_protocolVersionsProxy != address(0), "Deploy: must specify address for protocol versions proxy");
 
@@ -205,10 +198,6 @@ contract Deploy is Deployer {
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
         _run(false);
-
-        if (_includeDump) {
-            vm.dumpState(Config.stateDumpPath(""));
-        }
     }
 
     function runWithStateDump() public {
