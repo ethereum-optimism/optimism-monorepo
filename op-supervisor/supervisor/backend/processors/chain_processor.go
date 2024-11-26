@@ -65,7 +65,6 @@ type ChainProcessor struct {
 	wg     sync.WaitGroup
 
 	maxFetcherThreads int
-	fetcherThreads    int
 }
 
 func NewChainProcessor(log log.Logger, chain types.ChainID, processor LogProcessor, rewinder DatabaseRewinder, onIndexed func()) *ChainProcessor {
@@ -81,7 +80,6 @@ func NewChainProcessor(log log.Logger, chain types.ChainID, processor LogProcess
 		ctx:               ctx,
 		cancel:            cancel,
 		maxFetcherThreads: 10,
-		fetcherThreads:    10,
 	}
 	return out
 }
@@ -137,12 +135,8 @@ func (s *ChainProcessor) work() {
 		if s.ctx.Err() != nil { // check if we are closing down
 			return
 		}
+		_, err := s.rangeUpdate()
 		target := s.nextNum()
-		updated, err := s.rangeUpdate(target)
-		// adjust the number of fetcher threads based on the number of blocks we processed
-		s.adjustParallelism(updated)
-		// the target advanced by the number of blocks we processed
-		target += uint64(updated)
 		if err != nil {
 			if errors.Is(err, ethereum.NotFound) {
 				s.log.Debug("Event-indexer cannot find next block yet", "target", target, "err", err)
@@ -161,40 +155,28 @@ func (s *ChainProcessor) work() {
 	}
 }
 
-// adjustParallelism elasticly adjusts the number of fetcher threads to be used based on the number of blocks processed
-func (s *ChainProcessor) adjustParallelism(processed int) {
-	var newThreads int
-	defer func() { s.fetcherThreads = newThreads }()
-	// if we processed as many blocks as we have fetcher threads, add one more
-	if processed >= s.fetcherThreads {
-		newThreads = s.fetcherThreads + 1
-	}
-	// if we processed less than what was possible, reduce the number of threads
-	// to match the number of blocks we processed
-	if processed < s.fetcherThreads {
-		newThreads = processed
-	}
-	// ensure we don't exceed the maximum number of fetcher threads
-	if newThreads > s.maxFetcherThreads {
-		newThreads = s.maxFetcherThreads
-	}
-	// ensure we have at least one fetcher thread
-	if newThreads < 1 {
-		newThreads = 1
-	}
-}
-
-func (s *ChainProcessor) rangeUpdate(startNum uint64) (int, error) {
+func (s *ChainProcessor) rangeUpdate() (int, error) {
 	s.clientLock.Lock()
 	defer s.clientLock.Unlock()
 	if s.client == nil {
 		return 0, types.ErrNoRPCSource
 	}
 
-	// make the range of block numbers to fetch
+	// define the range of blocks to fetch
+	// [next, end] inclusive with a max of s.fetcherThreads blocks
+	next := s.nextNum()
+	end := s.lastHead.Load()
+	// next is already beyond the end, nothing to do
+	if next > end {
+		return 0, nil
+	}
 	nums := make([]uint64, 0)
-	for i := startNum; i <= startNum+uint64(s.fetcherThreads); i++ {
+	for i := next; i <= end; i++ {
 		nums = append(nums, i)
+		// only collect as many blocks as we can fetch in parallel
+		if len(nums) >= s.maxFetcherThreads {
+			break
+		}
 	}
 
 	// make a structure to receive parallel results
