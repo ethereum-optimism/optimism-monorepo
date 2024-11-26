@@ -109,7 +109,7 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Allows the owner to pause or unpause withdrawals and transfers.
     /// @param _paused True if withdrawals and transfers should be paused, false otherwise.
     function setDelayedWethPaused(bool _paused) external {
-        require(msg.sender == owner(), "DelayedWETH: not owner");
+        require(msg.sender == config.guardian(), "DelayedWETH: not guardian");
         delayedWethPaused = _paused;
         emit DelayedWethPausedSet(_paused);
     }

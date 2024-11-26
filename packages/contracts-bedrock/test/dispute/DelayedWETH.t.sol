@@ -16,7 +16,9 @@ contract DelayedWETH_Init is CommonTest {
     event Deposit(address indexed dst, uint256 wad);
     event Withdrawal(address indexed src, uint256 wad);
     event Unwrap(address indexed src, uint256 wad);
-    event WithdrawalsPausedSet(bool paused);
+    event DelayedWethPausedSet(bool paused);
+
+    address guardian;
 
     function setUp() public virtual override {
         super.setUp();
@@ -24,6 +26,7 @@ contract DelayedWETH_Init is CommonTest {
         // Transfer ownership of delayed WETH to the test contract.
         vm.prank(delayedWeth.owner());
         delayedWeth.transferOwnership(address(this));
+        guardian = optimismPortal.guardian();
     }
 }
 
@@ -177,7 +180,6 @@ contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
         vm.warp(block.timestamp + delayedWeth.delay() + 1);
 
         // Pause the contract.
-        address guardian = optimismPortal.guardian();
         vm.prank(guardian);
         superchainConfig.pause("identifier");
 
@@ -200,10 +202,11 @@ contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
         vm.warp(block.timestamp + delayedWeth.delay() + 1);
 
         // Pause the contract.
-        delayedWeth.setWithdrawalsPaused(true);
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(true);
 
         // Withdraw fails.
-        vm.expectRevert("DelayedWETH: withdrawals are paused");
+        vm.expectRevert("DelayedWETH: withdrawals and transfers are paused");
         vm.prank(alice);
         delayedWeth.withdraw(alice, 1 ether);
     }
@@ -289,22 +292,25 @@ contract DelayedWETH_Recover_Test is DelayedWETH_Init {
     }
 }
 
-contract DelayedWETH_SetWithdrawalsPaused_Test is DelayedWETH_Init {
-    function testFuzz_setWithdrawalsPaused_byOwner_succeeds(bool _isPaused) public {
-        delayedWeth.setWithdrawalsPaused(_isPaused);
-        assertEq(_isPaused, delayedWeth.withdrawalsPaused());
+contract DelayedWETH_SetDelayedWethPaused_Test is DelayedWETH_Init {
+    function testFuzz_setDelayedWethPaused_byGuardian_succeeds(bool _isPaused) public {
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(_isPaused);
+        assertEq(_isPaused, delayedWeth.delayedWethPaused());
     }
 
-    function testFuzz_setWithdrawalsPaused_byOwner_emitsEvent(bool _isPaused) public {
+    function testFuzz_setDelayedWethPaused_byGuardian_emitsEvent(bool _isPaused) public {
         vm.expectEmit();
-        emit WithdrawalsPausedSet(_isPaused);
-        delayedWeth.setWithdrawalsPaused(_isPaused);
+        emit DelayedWethPausedSet(_isPaused);
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(_isPaused);
     }
 
-    function testFuzz_setWithdrawalsPaused_byNonOwner_fails(bool _isPaused, address _actor) public {
-        vm.expectRevert("DelayedWETH: not owner");
+    function testFuzz_setDelayedWethPaused_byNonGuardian_fails(bool _isPaused, address _actor) public {
+        vm.assume(_actor != guardian);
+        vm.expectRevert("DelayedWETH: not guardian");
         vm.prank(_actor);
-        delayedWeth.setWithdrawalsPaused(_isPaused);
+        delayedWeth.setDelayedWethPaused(_isPaused);
     }
 }
 
