@@ -163,15 +163,15 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 	}
 
 	// define the range of blocks to fetch
-	// [next, end] inclusive with a max of s.fetcherThreads blocks
+	// [next, last] inclusive with a max of s.fetcherThreads blocks
 	next := s.nextNum()
-	end := s.lastHead.Load()
+	last := s.lastHead.Load()
 	// next is already beyond the end, nothing to do
-	if next > end {
+	if next > last {
 		return 0, nil
 	}
 	nums := make([]uint64, 0)
-	for i := next; i <= end; i++ {
+	for i := next; i <= last; i++ {
 		nums = append(nums, i)
 		// only collect as many blocks as we can fetch in parallel
 		if len(nums) >= s.maxFetcherThreads {
@@ -179,7 +179,7 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 		}
 	}
 
-	s.log.Debug("Fetching blocks", "chain", s.chain.String(), "next", next, "end", end, "count", len(nums))
+	s.log.Debug("Fetching blocks", "chain", s.chain.String(), "next", next, "last", last, "count", len(nums))
 
 	// make a structure to receive parallel results
 	type keyedResult struct {
