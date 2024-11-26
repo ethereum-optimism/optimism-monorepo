@@ -29,19 +29,19 @@ func NewCoverageTracer(artifacts []*foundry.Artifact) *CoverageTracer {
 
 func (s *CoverageTracer) LoadSourceMaps() error {
 	for _, artifact := range s.Artifacts {
-		for contractName := range artifact.Metadata.Settings.CompilationTarget {
-			srcMap, err := s.SourceMapFS.SourceMap(artifact, contractName)
+		for _, name := range artifact.Metadata.Settings.CompilationTarget {
+			srcMap, err := s.SourceMapFS.SourceMap(artifact, name)
 			if err != nil {
-				log.Printf("Failed to load SourceMap for contract %s: %v", contractName, err)
+				log.Printf("Failed to load SourceMap for contract %s: %v", name, err)
 				continue
 			}
 
-			s.SourceMaps[contractName] = srcMap
+			s.SourceMaps[name] = srcMap
 
-			contractAddress := fmt.Sprintf("Artifact-%s", contractName)
-			s.ContractMappings[contractAddress] = contractName
+			contractAddress := fmt.Sprintf("Artifact-%s", name)
+			s.ContractMappings[contractAddress] = name
 
-			log.Printf("Loaded SourceMap for contract %s", contractName)
+			log.Printf("Loaded SourceMap for contract %s", name)
 		}
 	}
 	return nil
