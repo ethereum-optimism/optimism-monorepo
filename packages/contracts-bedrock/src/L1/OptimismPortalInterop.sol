@@ -18,14 +18,15 @@ import { Unauthorized } from "src/libraries/PortalErrors.sol";
 contract OptimismPortalInterop is OptimismPortal2 {
     constructor(
         uint256 _proofMaturityDelaySeconds,
-        uint256 _disputeGameFinalityDelaySeconds
+        uint256 _disputeGameFinalityDelaySeconds,
+        address _sharedLockbox
     )
-        OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
+        OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds, _sharedLockbox)
     { }
 
-    /// @custom:semver +interop-beta.2
+    /// @custom:semver +interop-beta.3
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.2");
+        return string.concat(super.version(), "+interop-beta.3");
     }
 
     /// @notice Sets static configuration options for the L2 system.

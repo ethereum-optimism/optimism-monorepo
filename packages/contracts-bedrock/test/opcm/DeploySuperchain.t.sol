@@ -7,6 +7,7 @@ import { stdToml } from "forge-std/StdToml.sol";
 import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { Proxy } from "src/universal/Proxy.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
+import { SharedLockbox } from "src/L1/SharedLockbox.sol";
 import { IProtocolVersions, ProtocolVersion } from "src/L1/interfaces/IProtocolVersions.sol";
 import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
@@ -60,6 +61,8 @@ contract DeploySuperchainOutput_Test is Test {
         SuperchainConfig superchainConfigProxy = SuperchainConfig(makeAddr("superchainConfigProxy"));
         IProtocolVersions protocolVersionsImpl = IProtocolVersions(makeAddr("protocolVersionsImpl"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+        SharedLockbox sharedLockboxImpl = SharedLockbox(makeAddr("sharedLockboxImpl"));
+        SharedLockbox sharedLockboxProxy = SharedLockbox(makeAddr("sharedLockboxProxy"));
 
         // Ensure each address has code, since these are expected to be contracts.
         vm.etch(address(superchainProxyAdmin), hex"01");
@@ -67,6 +70,8 @@ contract DeploySuperchainOutput_Test is Test {
         vm.etch(address(superchainConfigProxy), hex"01");
         vm.etch(address(protocolVersionsImpl), hex"01");
         vm.etch(address(protocolVersionsProxy), hex"01");
+        vm.etch(address(sharedLockboxImpl), hex"01");
+        vm.etch(address(sharedLockboxProxy), hex"01");
 
         // Set the output data.
         dso.set(dso.superchainProxyAdmin.selector, address(superchainProxyAdmin));
@@ -74,6 +79,8 @@ contract DeploySuperchainOutput_Test is Test {
         dso.set(dso.superchainConfigProxy.selector, address(superchainConfigProxy));
         dso.set(dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
         dso.set(dso.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dso.set(dso.sharedLockboxImpl.selector, address(sharedLockboxImpl));
+        dso.set(dso.sharedLockboxProxy.selector, address(sharedLockboxProxy));
 
         // Compare the test data to the getter methods.
         assertEq(address(superchainProxyAdmin), address(dso.superchainProxyAdmin()), "100");
@@ -81,6 +88,8 @@ contract DeploySuperchainOutput_Test is Test {
         assertEq(address(superchainConfigProxy), address(dso.superchainConfigProxy()), "300");
         assertEq(address(protocolVersionsImpl), address(dso.protocolVersionsImpl()), "400");
         assertEq(address(protocolVersionsProxy), address(dso.protocolVersionsProxy()), "500");
+        assertEq(address(sharedLockboxImpl), address(dso.sharedLockboxImpl()), "600");
+        assertEq(address(sharedLockboxProxy), address(dso.sharedLockboxProxy()), "700");
     }
 
     function test_getters_whenNotSet_reverts() public {
@@ -95,6 +104,12 @@ contract DeploySuperchainOutput_Test is Test {
 
         vm.expectRevert("DeployUtils: zero address");
         dso.protocolVersionsProxy();
+
+        vm.expectRevert("DeployUtils: zero address");
+        dso.sharedLockboxImpl();
+
+        vm.expectRevert("DeployUtils: zero address");
+        dso.sharedLockboxProxy();
     }
 
     function test_getters_whenAddrHasNoCode_reverts() public {
@@ -116,6 +131,14 @@ contract DeploySuperchainOutput_Test is Test {
         dso.set(dso.protocolVersionsProxy.selector, emptyAddr);
         vm.expectRevert(expectedErr);
         dso.protocolVersionsProxy();
+
+        dso.set(dso.sharedLockboxImpl.selector, emptyAddr);
+        vm.expectRevert(expectedErr);
+        dso.sharedLockboxImpl();
+
+        dso.set(dso.sharedLockboxProxy.selector, emptyAddr);
+        vm.expectRevert(expectedErr);
+        dso.sharedLockboxProxy();
     }
 }
 
@@ -176,17 +199,20 @@ contract DeploySuperchain_Test is Test {
         assertEq(dso.superchainConfigProxy().paused(), paused, "400");
         assertEq(unwrap(dso.protocolVersionsProxy().required()), unwrap(requiredProtocolVersion), "500");
         assertEq(unwrap(dso.protocolVersionsProxy().recommended()), unwrap(recommendedProtocolVersion), "600");
+        assertEq(address(dso.sharedLockboxProxy().SUPERCHAIN_CONFIG()), address(dso.superchainConfigProxy()), "700");
 
         // Architecture assertions.
         // We prank as the zero address due to the Proxy's `proxyCallIfNotAdmin` modifier.
         Proxy superchainConfigProxy = Proxy(payable(address(dso.superchainConfigProxy())));
         Proxy protocolVersionsProxy = Proxy(payable(address(dso.protocolVersionsProxy())));
+        Proxy sharedLockboxProxy = Proxy(payable(address(dso.sharedLockboxProxy())));
 
         vm.startPrank(address(0));
         assertEq(superchainConfigProxy.implementation(), address(dso.superchainConfigImpl()), "700");
         assertEq(protocolVersionsProxy.implementation(), address(dso.protocolVersionsImpl()), "800");
         assertEq(superchainConfigProxy.admin(), protocolVersionsProxy.admin(), "900");
         assertEq(superchainConfigProxy.admin(), address(dso.superchainProxyAdmin()), "1000");
+        assertEq(sharedLockboxProxy.implementation(), address(dso.sharedLockboxImpl()), "1100");
         vm.stopPrank();
 
         // Ensure that `checkOutput` passes. This is called by the `run` function during execution,

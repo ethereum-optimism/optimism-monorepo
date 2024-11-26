@@ -19,6 +19,7 @@ import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
 import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
@@ -575,6 +576,21 @@ library ChainAssertions {
         require(address(opcm.protocolVersions()) == address(_contracts.ProtocolVersions), "CHECK-OPCM-40");
 
         // TODO: Add assertions for blueprints and setters?
+    }
+
+    /// @notice Asserts that the SharedLockbox is setup correctly
+    function checkSharedLockbox(Types.ContractSet memory _contracts, bool _isProxy) internal view {
+        ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
+        ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
+
+        console.log(
+            "Running chain assertions on the SharedLockbox %s at %s",
+            _isProxy ? "proxy" : "implementation",
+            address(sharedLockbox)
+        );
+
+        require(address(sharedLockbox) != address(0), "CHECK-SLB-10");
+        require(sharedLockbox.SUPERCHAIN_CONFIG() == address(superchainConfig), "CHECK-SLB-20");
     }
 
     /// @dev Asserts that for a given contract the value of a storage slot at an offset is 1 or 0xff.

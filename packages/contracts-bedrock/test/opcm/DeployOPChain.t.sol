@@ -23,6 +23,7 @@ import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol
 import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
 
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
 import { IProtocolVersions, ProtocolVersion } from "src/L1/interfaces/IProtocolVersions.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { IProxy } from "src/universal/interfaces/IProxy.sol";
@@ -314,7 +315,7 @@ contract DeployOPChain_TestBase is Test {
     ProtocolVersion recommendedProtocolVersion = ProtocolVersion.wrap(2);
 
     // Define default inputs for DeployImplementations.
-    // `superchainConfigProxy` and `protocolVersionsProxy` are set during `setUp` since they are
+    // `superchainConfigProxy`, `protocolVersionsProxy` and `sharedLockboxProxy` are set during `setUp` since they are
     // outputs of the previous step.
     uint256 withdrawalDelaySeconds = 100;
     uint256 minProposalSizeBytes = 200;
@@ -324,6 +325,7 @@ contract DeployOPChain_TestBase is Test {
     string release = "dev-release"; // this means implementation contracts will be deployed
     ISuperchainConfig superchainConfigProxy;
     IProtocolVersions protocolVersionsProxy;
+    ISharedLockbox sharedLockboxProxy;
 
     // Define default inputs for DeployOPChain.
     // `opcm` is set during `setUp` since it is an output of the previous step.
@@ -384,6 +386,7 @@ contract DeployOPChain_TestBase is Test {
         // Populate the inputs for DeployImplementations based on the output of DeploySuperchain.
         superchainConfigProxy = dso.superchainConfigProxy();
         protocolVersionsProxy = dso.protocolVersionsProxy();
+        sharedLockboxProxy = dso.sharedLockboxProxy();
 
         // Configure and deploy Implementation contracts
         DeployImplementations deployImplementations = createDeployImplementationsContract();
@@ -398,6 +401,7 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.sharedLockboxProxy.selector, address(sharedLockboxProxy));
         // End users of the DeployImplementations contract will need to set the `standardVersionsToml`.
         string memory standardVersionsTomlPath =
             string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml");

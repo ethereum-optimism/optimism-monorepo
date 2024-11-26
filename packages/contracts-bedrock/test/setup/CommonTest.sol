@@ -76,6 +76,12 @@ contract CommonTest is Test, Setup, Events {
         // Deploy L2
         Setup.L2();
 
+        // Authorize portals to interact with the SharedLockbox.
+        vm.startPrank(address(superchainConfig));
+        sharedLockbox.authorizePortal(address(optimismPortal));
+        sharedLockbox.authorizePortal(address(optimismPortal2));
+        vm.stopPrank();
+
         // Call bridge initializer setup function
         bridgeInitializerSetUp();
     }

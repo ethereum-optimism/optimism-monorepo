@@ -69,6 +69,7 @@ interface IOptimismPortal2 {
     function disputeGameBlacklist(IDisputeGame) external view returns (bool);
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function disputeGameFinalityDelaySeconds() external view returns (uint256);
+    function sharedLockbox() external view returns (address);
     function donateETH() external payable;
     function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external;
     function finalizeWithdrawalTransactionExternalProof(
@@ -114,5 +115,10 @@ interface IOptimismPortal2 {
     function systemConfig() external view returns (ISystemConfig);
     function version() external pure returns (string memory);
 
-    function __constructor__(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) external;
+    function __constructor__(
+        uint256 _proofMaturityDelaySeconds,
+        uint256 _disputeGameFinalityDelaySeconds,
+        address _sharedLockbox
+    )
+        external;
 }

@@ -10,6 +10,11 @@
         "internalType": "uint256",
         "name": "_disputeGameFinalityDelaySeconds",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_sharedLockbox",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -659,6 +664,19 @@
     "name": "setRespectedGameType",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "sharedLockbox",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

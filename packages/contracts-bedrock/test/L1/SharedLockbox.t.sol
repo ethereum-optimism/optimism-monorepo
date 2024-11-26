@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing utilities
-import { Test } from "forge-std/Test.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 
 // Targent contract
@@ -11,26 +11,12 @@ import { SharedLockbox } from "src/L1/SharedLockbox.sol";
 // Interfaces
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 
-contract SharedLockboxTest is Test {
+contract SharedLockboxTest is CommonTest {
     event ETHLocked(address indexed portal, uint256 amount);
 
     event ETHUnlocked(address indexed portal, uint256 amount);
 
     event AuthorizedPortal(address indexed portal);
-
-    address internal immutable SUPERCHAIN_CONFIG = makeAddr("SuperchainConfig");
-    IOptimismPortal internal immutable PORTAL = IOptimismPortal(payable(makeAddr("OptimismPortal")));
-    SharedLockbox public sharedLockbox;
-
-    // TODO: Update setup to use CommonTest and simulate a real deployment environment
-    function setUp() public {
-        // Deploy the SharedLockbox contract
-        sharedLockbox = new SharedLockbox(SUPERCHAIN_CONFIG);
-
-        // Etch the OptimismPortal contract code into the declared address
-        bytes memory code = vm.getDeployedCode("L1/OptimismPortal.sol:OptimismPortal");
-        vm.etch(address(PORTAL), code);
-    }
 
     /// @notice Tests it reverts when the caller is not an authorized portal.
     function test_lockETH_unauthorizedPortal_reverts(address _caller) public {
@@ -47,7 +33,7 @@ contract SharedLockboxTest is Test {
     /// @notice Tests the ETH is correctly locked when the caller is an authorized portal.
     function test_lockETH_succeeds(address _portal, uint256 _amount) public {
         // Set the caller as an authorized portal
-        vm.prank(SUPERCHAIN_CONFIG);
+        vm.prank(address(superchainConfig));
         sharedLockbox.authorizePortal(_portal);
 
         // Deal the ETH amount to the portal
@@ -85,35 +71,35 @@ contract SharedLockboxTest is Test {
     /// @notice Tests the ETH is correctly unlocked when the caller is an authorized portal.
     function test_unlockETH_succeeds(uint256 _value) public {
         // Set the caller as an authorized portal
-        vm.prank(SUPERCHAIN_CONFIG);
-        sharedLockbox.authorizePortal(address(PORTAL));
+        vm.prank(address(superchainConfig));
+        sharedLockbox.authorizePortal(address(optimismPortal2));
 
         // Deal the ETH amount to the lockbox
         vm.deal(address(sharedLockbox), _value);
 
         // Get the balance of the portal and lockbox before the unlock to compare later on the assertions
-        uint256 _portalBalanceBefore = address(PORTAL).balance;
+        uint256 _portalBalanceBefore = address(optimismPortal2).balance;
         uint256 _lockboxBalanceBefore = address(sharedLockbox).balance;
 
         // Expect `donateETH` function to be called on Portal
-        vm.expectCall(address(PORTAL), abi.encodeWithSelector(IOptimismPortal.donateETH.selector));
+        vm.expectCall(address(optimismPortal2), abi.encodeWithSelector(IOptimismPortal.donateETH.selector));
 
         // Look for the emit of the `ETHUnlocked` event
         vm.expectEmit(address(sharedLockbox));
-        emit ETHUnlocked(address(PORTAL), _value);
+        emit ETHUnlocked(address(optimismPortal2), _value);
 
         // Call the `unlockETH` function with the portal
-        vm.prank(address(PORTAL));
+        vm.prank(address(optimismPortal2));
         sharedLockbox.unlockETH(_value);
 
         // Assert the portal's balance increased and the lockbox's balance decreased by the amount unlocked
-        assertEq(address(PORTAL).balance, _portalBalanceBefore + _value);
+        assertEq(address(optimismPortal2).balance, _portalBalanceBefore + _value);
         assertEq(address(sharedLockbox).balance, _lockboxBalanceBefore - _value);
     }
 
     /// @notice Tests it reverts when the caller is not the SuperchainConfig.
     function test_authorizePortal_notSuperchainConfig_reverts(address _caller) public {
-        vm.assume(_caller != SUPERCHAIN_CONFIG);
+        vm.assume(_caller != address(superchainConfig));
 
         // Expect the revert with `Unauthorized` selector
         vm.expectRevert(Unauthorized.selector);
@@ -134,7 +120,7 @@ contract SharedLockboxTest is Test {
         emit AuthorizedPortal(_portal);
 
         // Call the `authorizePortal` function with the SuperchainConfig
-        vm.prank(SUPERCHAIN_CONFIG);
+        vm.prank(address(superchainConfig));
         sharedLockbox.authorizePortal(_portal);
 
         // Assert the portal's authorized status was updated correctly

@@ -55,6 +55,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(opImpl.superchainConfig()), address(0));
         assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(opImpl.respectedGameType().raw(), deploy.cfg().respectedGameType());
+        assertEq(opImpl.sharedLockbox(), address(sharedLockbox));
     }
 
     /// @dev Tests that the initializer sets the correct values.
@@ -69,6 +70,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(optimismPortal2.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(optimismPortal2.paused(), false);
         assertEq(optimismPortal2.respectedGameType().raw(), deploy.cfg().respectedGameType());
+        assertEq(optimismPortal2.sharedLockbox(), address(sharedLockbox));
     }
 
     /// @dev Tests that `pause` successfully pauses
@@ -145,13 +147,17 @@ contract OptimismPortal2_Test is CommonTest {
             _data: hex""
         });
 
+        // Expect call to the SharedLockbox to lock the funds
+        if (_value > 0) vm.expectCall(address(sharedLockbox), _value, abi.encodeCall(sharedLockbox.lockETH, ()));
+
         // give alice money and send as an eoa
         vm.deal(alice, _value);
         vm.prank(alice, alice);
         (bool s,) = address(optimismPortal2).call{ value: _value }(hex"");
 
         assertTrue(s);
-        assertEq(address(optimismPortal2).balance, _value);
+        assertEq(address(optimismPortal2).balance, 0);
+        assertEq(address(sharedLockbox).balance, _value);
     }
 
     /// @dev Tests that `depositTransaction` reverts when the destination address is non-zero
@@ -243,6 +249,9 @@ contract OptimismPortal2_Test is CommonTest {
             _data: _data
         });
 
+        // Expect call to the SharedLockbox to lock the funds
+        if (_mint > 0) vm.expectCall(address(sharedLockbox), _mint, abi.encodeCall(sharedLockbox.lockETH, ()));
+
         vm.deal(depositor, _mint);
         vm.prank(depositor, depositor);
         optimismPortal2.depositTransaction{ value: _mint }({
@@ -252,7 +261,9 @@ contract OptimismPortal2_Test is CommonTest {
             _isCreation: _isCreation,
             _data: _data
         });
-        assertEq(address(optimismPortal2).balance, _mint);
+
+        assertEq(address(optimismPortal2).balance, 0);
+        assertEq(address(sharedLockbox).balance, _mint);
     }
 
     /// @dev Tests that `depositTransaction` succeeds for a contract.
@@ -287,6 +298,9 @@ contract OptimismPortal2_Test is CommonTest {
             _data: _data
         });
 
+        // Expect call to the SharedLockbox to lock the funds
+        if (_mint > 0) vm.expectCall(address(sharedLockbox), _mint, abi.encodeCall(sharedLockbox.lockETH, ()));
+
         vm.deal(address(this), _mint);
         vm.prank(address(this));
         optimismPortal2.depositTransaction{ value: _mint }({
@@ -296,7 +310,9 @@ contract OptimismPortal2_Test is CommonTest {
             _isCreation: _isCreation,
             _data: _data
         });
-        assertEq(address(optimismPortal2).balance, _mint);
+
+        assertEq(address(optimismPortal2).balance, 0);
+        assertEq(address(sharedLockbox).balance, _mint);
     }
 
     /// @dev Tests that the gas paying token can be set.
@@ -477,8 +493,8 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         // Warp beyond the chess clocks and finalize the game.
         vm.warp(block.timestamp + game.maxClockDuration().raw() + 1 seconds);
 
-        // Fund the portal so that we can withdraw ETH.
-        vm.deal(address(optimismPortal2), 0xFFFFFFFF);
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), 0xFFFFFFFF);
     }
 
     /// @dev Asserts that the reentrant call will revert.
@@ -862,9 +878,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
         // Warp beyond the chess clocks and finalize the game.
         vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
-        // Fund the portal so that we can withdraw ETH.
-        vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
-        vm.deal(address(optimismPortal2), 0xFFFFFFFF);
+
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _defaultTx_noData.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_defaultTx_noData.value)));
 
         uint256 bobBalanceBefore = bob.balance;
 
@@ -969,6 +986,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     function test_finalizeWithdrawalTransaction_provenWithdrawalHashEther_succeeds() external {
         uint256 bobBalanceBefore = address(bob).balance;
 
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _defaultTx.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_defaultTx.value)));
+
         vm.expectEmit(address(optimismPortal2));
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(address(optimismPortal2));
@@ -1004,6 +1025,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
         // Warp 1 second into the future so that the proof is submitted after the timestamp of game creation.
         vm.warp(block.timestamp + 1 seconds);
+
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _defaultTx.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_defaultTx.value)));
 
         // Prove the withdrawal transaction against the invalid dispute game, as 0xb0b.
         vm.expectEmit(true, true, true, true);
@@ -1182,6 +1207,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         uint256 bobBalanceBefore = address(bob).balance;
         vm.etch(bob, hex"fe"); // Contract with just the invalid opcode.
 
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _defaultTx.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_defaultTx.value)));
+
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(true, true, true, true);
@@ -1208,6 +1237,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the withdrawal has already been
     ///      finalized.
     function test_finalizeWithdrawalTransaction_onReplay_reverts() external {
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _defaultTx.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_defaultTx.value)));
+
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(_withdrawalHash, alice, bob);
         vm.expectEmit(true, true, true, true);
@@ -1305,6 +1338,10 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         // Return a mock output root from the game.
         vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(outputRoot));
 
+        // Fund the SharedLockbox so that we can withdraw ETH.
+        vm.deal(address(sharedLockbox), _testTx.value);
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (_testTx.value)));
+
         vm.expectEmit(true, true, true, true);
         emit WithdrawalProven(withdrawalHash, alice, address(this));
         vm.expectEmit(true, true, true, true);
@@ -1345,7 +1382,9 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
         // Total ETH supply is currently about 120M ETH.
         uint256 value = bound(_value, 0, 200_000_000 ether);
-        vm.deal(address(optimismPortal2), value);
+
+        // Add ETH to the SharedLockbox for the portal to withdraw.
+        vm.deal(address(sharedLockbox), value);
 
         uint256 gasLimit = bound(_gasLimit, 0, 50_000_000);
         uint256 nonce = l2ToL1MessagePasser.messageNonce();
@@ -1393,6 +1432,9 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
         // Warp past the finalization period
         vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
+
+        // Expect call to the SharedLockbox to unlock the funds
+        if (value > 0) vm.expectCall(address(sharedLockbox), abi.encodeCall(sharedLockbox.unlockETH, (value)));
 
         // Finalize the withdrawal transaction
         vm.expectCallMinGas(_tx.target, _tx.value, uint64(_tx.gasLimit), _tx.data);

@@ -162,7 +162,8 @@ contract Deploy is Deployer {
             L1ERC721Bridge: getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: getAddress("ProtocolVersionsProxy"),
             SuperchainConfig: getAddress("SuperchainConfigProxy"),
-            OPContractsManager: getAddress("OPContractsManager")
+            OPContractsManager: getAddress("OPContractsManager"),
+            SharedLockbox: getAddress("SharedLockboxProxy")
         });
     }
 
@@ -183,7 +184,8 @@ contract Deploy is Deployer {
             L1ERC721Bridge: getAddress("L1ERC721Bridge"),
             ProtocolVersions: getAddress("ProtocolVersions"),
             SuperchainConfig: getAddress("SuperchainConfig"),
-            OPContractsManager: getAddress("OPContractsManager")
+            OPContractsManager: getAddress("OPContractsManager"),
+            SharedLockbox: getAddress("SharedLockbox")
         });
     }
 
@@ -222,16 +224,19 @@ contract Deploy is Deployer {
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
     /// @param _superchainConfigProxy Address of the existing SuperchainConfig proxy
     /// @param _protocolVersionsProxy Address of the existing ProtocolVersions proxy
+    /// @param _sharedLockboxProxy Address of the existing SharedLockbox proxy
     /// @param _includeDump Whether to include a state dump after deployment
     function runWithSuperchain(
         address payable _superchainConfigProxy,
         address payable _protocolVersionsProxy,
+        address payable _sharedLockboxProxy,
         bool _includeDump
     )
         public
     {
         require(_superchainConfigProxy != address(0), "Deploy: must specify address for superchain config proxy");
         require(_protocolVersionsProxy != address(0), "Deploy: must specify address for protocol versions proxy");
+        require(_sharedLockboxProxy != address(0), "Deploy: must specify address for shared lockbox proxy");
 
         vm.chainId(cfg.l1ChainID());
 
@@ -244,6 +249,10 @@ contract Deploy is Deployer {
         IProxy pvProxy = IProxy(_protocolVersionsProxy);
         save("ProtocolVersions", pvProxy.implementation());
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
+
+        IProxy slProxy = IProxy(_sharedLockboxProxy);
+        save("SharedLockbox", slProxy.implementation());
+        save("SharedLockboxProxy", _sharedLockboxProxy);
 
         _run(false);
 
@@ -324,9 +333,10 @@ contract Deploy is Deployer {
     ////////////////////////////////////////////////////////////////
 
     /// @notice Deploy a full system with a new SuperchainConfig
-    ///         The Superchain system has 2 singleton contracts which lie outside of an OP Chain:
+    ///         The Superchain system has 3 singleton contracts which lie outside of an OP Chain:
     ///         1. The SuperchainConfig contract
     ///         2. The ProtocolVersions contract
+    ///         3. The SharedLockbox contract
     function deploySuperchain() public {
         console.log("Setting up Superchain");
         DeploySuperchain ds = new DeploySuperchain();
@@ -348,11 +358,18 @@ contract Deploy is Deployer {
         save("SuperchainConfig", address(dso.superchainConfigImpl()));
         save("ProtocolVersionsProxy", address(dso.protocolVersionsProxy()));
         save("ProtocolVersions", address(dso.protocolVersionsImpl()));
+        save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
+        save("SharedLockbox", address(dso.sharedLockboxImpl()));
 
-        // First run assertions for the ProtocolVersions and SuperchainConfig proxy contracts.
+        // First run assertions for the ProtocolVersions, SuperchainConfig and SharedLockbox proxy contracts.
         Types.ContractSet memory contracts = _proxies();
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: true });
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isProxy: true, _isPaused: false });
+        ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: true });
+
+        // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
+        contracts.SharedLockbox = mustGetAddress("SharedLockbox");
+        ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: false });
 
         // Then replace the ProtocolVersions proxy with the implementation address and run assertions on it.
         contracts.ProtocolVersions = mustGetAddress("ProtocolVersions");
@@ -384,6 +401,7 @@ contract Deploy is Deployer {
         );
         dii.set(dii.superchainConfigProxy.selector, mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, mustGetAddress("ProtocolVersionsProxy"));
+        dii.set(dii.sharedLockboxProxy.selector, mustGetAddress("SharedLockboxProxy"));
         dii.set(dii.salt.selector, _implSalt());
 
         if (_isInterop) {

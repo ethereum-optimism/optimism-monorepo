@@ -8,6 +8,7 @@ import { LibString } from "@solady/utils/LibString.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
 
 import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -53,6 +54,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
+    ISharedLockbox internal _sharedLockboxProxy;
 
     string internal _standardVersionsToml;
 
@@ -88,6 +90,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
+        else if (_sel == this.sharedLockboxProxy.selector) _sharedLockboxProxy = ISharedLockbox(_addr);
         else revert("DeployImplementationsInput: unknown selector");
     }
 
@@ -152,6 +155,11 @@ contract DeployImplementationsInput is BaseDeployIO {
     function protocolVersionsProxy() public view returns (IProtocolVersions) {
         require(address(_protocolVersionsProxy) != address(0), "DeployImplementationsInput: not set");
         return _protocolVersionsProxy;
+    }
+
+    function sharedLockboxProxy() public view returns (ISharedLockbox) {
+        require(address(_sharedLockboxProxy) != address(0), "DeployImplementationsInput: not set");
+        return _sharedLockboxProxy;
     }
 }
 
@@ -711,13 +719,15 @@ contract DeployImplementations is Script {
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+            address sharedLockbox = address(_dii.sharedLockboxProxy());
             vm.broadcast(msg.sender);
             impl = IOptimismPortal2(
                 DeployUtils.create1({
                     _name: "OptimismPortal2",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(
-                            IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
+                            IOptimismPortal2.__constructor__,
+                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds, sharedLockbox)
                         )
                     )
                 })
@@ -992,6 +1002,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+            address sharedLockbox = address(_dii.sharedLockboxProxy());
             vm.broadcast(msg.sender);
             impl = IOptimismPortalInterop(
                 DeployUtils.create1({
@@ -999,7 +1010,7 @@ contract DeployImplementationsInterop is DeployImplementations {
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(
                             IOptimismPortalInterop.__constructor__,
-                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
+                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds, sharedLockbox)
                         )
                     )
                 })

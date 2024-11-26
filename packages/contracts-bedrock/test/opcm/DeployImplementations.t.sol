@@ -11,6 +11,7 @@ import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.
 
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
@@ -39,6 +40,7 @@ contract DeployImplementationsInput_Test is Test {
     string release = "dev-release"; // this means implementation contracts will be deployed
     ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    ISharedLockbox sharedLockboxProxy = ISharedLockbox(makeAddr("sharedLockboxProxy"));
 
     function setUp() public {
         dii = new DeployImplementationsInput();
@@ -71,6 +73,9 @@ contract DeployImplementationsInput_Test is Test {
 
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.standardVersionsToml();
+
+        vm.expectRevert("DeployImplementationsInput: not set");
+        dii.sharedLockboxProxy();
     }
 }
 
@@ -223,6 +228,7 @@ contract DeployImplementations_Test is Test {
     uint256 disputeGameFinalityDelaySeconds = 500;
     ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    ISharedLockbox sharedLockboxProxy = ISharedLockbox(makeAddr("sharedLockboxProxy"));
 
     function setUp() public virtual {
         deployImplementations = new DeployImplementations();
@@ -342,6 +348,7 @@ contract DeployImplementations_Test is Test {
         vm.etch(address(superchainProxyAdmin), address(superchainProxyAdmin).code);
         vm.etch(address(superchainConfigProxy), address(superchainConfigProxy).code);
         vm.etch(address(protocolVersionsProxy), hex"01");
+        vm.etch(address(sharedLockboxProxy), hex"01");
 
         dii.set(dii.withdrawalDelaySeconds.selector, withdrawalDelaySeconds);
         dii.set(dii.minProposalSizeBytes.selector, minProposalSizeBytes);
@@ -352,6 +359,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.sharedLockboxProxy.selector, address(sharedLockboxProxy));
 
         deployImplementations.run(dii, dio);
 
@@ -365,6 +373,7 @@ contract DeployImplementations_Test is Test {
         assertEq(release, dii.l1ContractsRelease(), "525");
         assertEq(address(superchainConfigProxy), address(dii.superchainConfigProxy()), "550");
         assertEq(address(protocolVersionsProxy), address(dii.protocolVersionsProxy()), "575");
+        assertEq(address(sharedLockboxProxy), address(dii.sharedLockboxProxy()), "577");
 
         // Architecture assertions.
         assertEq(address(dio.mipsSingleton().oracle()), address(dio.preimageOracleSingleton()), "600");
@@ -386,6 +395,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.sharedLockboxProxy.selector, address(sharedLockboxProxy));
 
         // Set the challenge period to a value that is too large, using vm.store because the setter
         // method won't allow it.

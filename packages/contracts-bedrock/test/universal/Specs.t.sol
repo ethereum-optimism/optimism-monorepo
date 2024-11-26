@@ -43,7 +43,9 @@ contract Specification_Test is CommonTest {
         DELAYEDWETHOWNER,
         COUNCILSAFE,
         COUNCILSAFEOWNER,
-        DEPENDENCYMANAGER
+        DEPENDENCYMANAGER,
+        PORTAL,
+        SUPERCHAINCONFIG
     }
 
     /// @notice Represents the specification of a function.
@@ -334,6 +336,7 @@ contract Specification_Test is CommonTest {
             _sel: IOptimismPortalInterop.setConfig.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("sharedLockbox()") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -381,6 +384,7 @@ contract Specification_Test is CommonTest {
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("sharedLockbox()") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -416,6 +420,14 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
+
+        // SharedLockbox
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("SUPERCHAIN_CONFIG()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("authorizedPortals(address)") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("lockETH()"), _auth: Role.PORTAL });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("unlockETH(uint256)"), _auth: Role.PORTAL });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("authorizePortal(address)"), _auth: Role.SUPERCHAINCONFIG });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("version()") });
 
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });

@@ -19,5 +19,6 @@ library Types {
         address ProtocolVersions;
         address SuperchainConfig;
         address OPContractsManager;
+        address SharedLockbox;
     }
 }

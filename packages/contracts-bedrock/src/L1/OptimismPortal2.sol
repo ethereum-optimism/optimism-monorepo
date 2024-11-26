@@ -45,6 +45,7 @@ import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
 import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
 import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
+import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortal2
@@ -69,6 +70,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice The delay between when a dispute game is resolved and when a withdrawal proven against it may be
     ///         finalized.
     uint256 internal immutable DISPUTE_GAME_FINALITY_DELAY_SECONDS;
+
+    /// @notice The Shared Lockbox contract.
+    ISharedLockbox internal immutable SHARED_LOCKBOX;
 
     /// @notice Version of the deposit event.
     uint256 internal constant DEPOSIT_VERSION = 0;
@@ -177,21 +181,21 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     event RespectedGameTypeSet(GameType indexed newGameType, Timestamp indexed updatedAt);
 
     /// @notice Reverts when paused.
-    modifier whenNotPaused() {
+    function _whenNotPaused() internal view {
         if (paused()) revert CallPaused();
-        _;
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.6
+    /// @custom:semver 3.11.0-beta.7
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.6";
+        return "3.11.0-beta.7";
     }
 
     /// @notice Constructs the OptimismPortal contract.
-    constructor(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) {
+    constructor(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds, address _sharedLockbox) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
+        SHARED_LOCKBOX = ISharedLockbox(_sharedLockbox);
 
         initialize({
             _disputeGameFactory: IDisputeGameFactory(address(0)),
@@ -244,6 +248,13 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         }
     }
 
+    /// @notice Returns the `_token` balance of the `_account`.
+    /// @param _token   Address of the token to check the balance of.
+    /// @param _account The address of the account to query the balance for.
+    function _balanceOf(address _token, address _account) internal view returns (uint256) {
+        return IERC20(_token).balanceOf(_account);
+    }
+
     /// @notice Getter function for the address of the guardian.
     ///         Public getter is legacy and will be removed in the future. Use `SuperchainConfig.guardian()` instead.
     /// @return Address of the guardian.
@@ -265,6 +276,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Getter for the dispute game finality delay.
     function disputeGameFinalityDelaySeconds() public view returns (uint256) {
         return DISPUTE_GAME_FINALITY_DELAY_SECONDS;
+    }
+
+    /// @notice Getter for the address of the shared lockbox.
+    function sharedLockbox() public view returns (address) {
+        return address(SHARED_LOCKBOX);
     }
 
     /// @notice Computes the minimum gas limit for a deposit.
@@ -321,8 +337,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         bytes[] calldata _withdrawalProof
     )
         external
-        whenNotPaused
     {
+        _whenNotPaused();
+
         // Prevent users from creating a deposit transaction where this address is the message
         // sender on L2. Because this is checked here, we do not need to check again in
         // `finalizeWithdrawalTransaction`.
@@ -385,7 +402,8 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Finalizes a withdrawal transaction.
     /// @param _tx Withdrawal transaction to finalize.
-    function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external whenNotPaused {
+    function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external {
+        _whenNotPaused();
         finalizeWithdrawalTransactionExternalProof(_tx, msg.sender);
     }
 
@@ -397,8 +415,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         address _proofSubmitter
     )
         public
-        whenNotPaused
     {
+        _whenNotPaused();
+
         // Make sure that the l2Sender has not yet been set. The l2Sender is set to a value other
         // than the default value when a withdrawal transaction is being finalized. This check is
         // a defacto reentrancy guard.
@@ -419,6 +438,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         bool success;
         (address token,) = gasPayingToken();
         if (token == Constants.ETHER) {
+            // Unlock and receive the ETH from the shared lockbox.
+            if (_tx.value != 0) SHARED_LOCKBOX.unlockETH(_tx.value);
+
             // Trigger the call to the target contract. We use a custom low level method
             // SafeCall.callWithMinGas to ensure two key properties
             //   1. Target contracts cannot force this call to run out of gas by returning a very large
@@ -440,7 +462,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
                 // Read the balance of the target contract before the transfer so the consistency
                 // of the transfer can be checked afterwards.
-                uint256 startBalance = IERC20(token).balanceOf(address(this));
+                uint256 startBalance = _balanceOf(token, address(this));
 
                 // Transfer the ERC20 balance to the target, accounting for non standard ERC20
                 // implementations that may not return a boolean. This reverts if the low level
@@ -448,7 +470,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
                 IERC20(token).safeTransfer({ to: _tx.target, value: _tx.value });
 
                 // The balance must be transferred exactly.
-                if (IERC20(token).balanceOf(address(this)) != startBalance - _tx.value) {
+                if (_balanceOf(token, address(this)) != startBalance - _tx.value) {
                     revert TransferFailed();
                 }
             }
@@ -505,13 +527,13 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         _balance += _mint;
 
         // Get the balance of the portal before the transfer.
-        uint256 startBalance = IERC20(token).balanceOf(address(this));
+        uint256 startBalance = _balanceOf(token, address(this));
 
         // Take ownership of the token. It is assumed that the user has given the portal an approval.
         IERC20(token).safeTransferFrom({ from: msg.sender, to: address(this), value: _mint });
 
         // Double check that the portal now has the exact amount of token.
-        if (IERC20(token).balanceOf(address(this)) != startBalance + _mint) {
+        if (_balanceOf(token, address(this)) != startBalance + _mint) {
             revert TransferFailed();
         }
 
@@ -547,6 +569,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     {
         (address token,) = gasPayingToken();
         if (token != Constants.ETHER && msg.value != 0) revert NoValue();
+
+        if (token == Constants.ETHER && msg.value != 0) {
+            // Lock the ETH in the shared lockbox.
+            SHARED_LOCKBOX.lockETH{ value: msg.value }();
+        }
 
         _depositTransaction({
             _to: _to,
