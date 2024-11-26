@@ -179,6 +179,8 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 		}
 	}
 
+	s.log.Debug("Fetching blocks", "chain", s.chain.String(), "next", next, "end", end, "count", len(nums))
+
 	// make a structure to receive parallel results
 	type keyedResult struct {
 		num      uint64
