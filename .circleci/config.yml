@@ -258,7 +258,7 @@ jobs:
           command: |
             # Clone asterisc @ the pinned version to fetch remote `RISCV.sol`
             ASTERISC_REV="$(cat ../../versions.json | jq -r .asterisc)"
-            REMOTE_ASTERISC_PATH="./src/asterisc/RISCV_Remote.sol"
+            REMOTE_ASTERISC_PATH="./src/vendor/asterisc/RISCV_Remote.sol"
             git clone https://github.com/ethereum-optimism/asterisc \
               -b $ASTERISC_REV && \
               cp ./asterisc/rvsol/src/RISCV.sol $REMOTE_ASTERISC_PATH
@@ -1324,6 +1324,7 @@ workflows:
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
+      - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
           scan_command: semgrep scan --timeout=100 --config .semgrep/rules/ --error .
@@ -1691,17 +1692,6 @@ workflows:
           publish: true
           context:
             - oplabs-gcr
-            - slack
-
-  scheduled-diff-asterisc-bytecode:
-    when:
-      or:
-        - equal: [build_daily, <<pipeline.schedule.name>>]
-        # Trigger on manual triggers if explicitly requested
-        - equal: [true, <<pipeline.parameters.diff_asterisc_bytecode_dispatch>>]
-    jobs:
-      - diff-asterisc-bytecode:
-          context:
             - slack
 
   scheduled-preimage-reproducibility:

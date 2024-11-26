@@ -135,10 +135,6 @@
     "initCodeHash": "0x17ea1b1c5d5a622d51c2961fde886a5498de63584e654ed1d69ee80dddbe0b17",
     "sourceCodeHash": "0x0fa0633a769e73f5937514c0003ba7947a1c275bbe5b85d78879c42f0ed8895b"
   },
-  "src/asterisc/RISCV.sol": {
-    "initCodeHash": "0x8d47aa0b81d7fe6bd0aeac18f26d7c0b285f58740bb9d92dac0ddf706c85309f",
-    "sourceCodeHash": "0xaebcda0a16da65fc7833672073ea6872c40d1ba722f0a6515c4a293e380f96c6"
-  },
   "src/cannon/MIPS.sol": {
     "initCodeHash": "0xb4aec227019dacd6194d6aeb9ca68c23c60b95618d18a4ebc09243514aeb1f05",
     "sourceCodeHash": "0x4d43b3f2918486aa76d2d59ac42e4f6aa2f58538c7e95a5cb99b63c9588b5f1c"
@@ -214,6 +210,10 @@
   "src/universal/StorageSetter.sol": {
     "initCodeHash": "0x049f3c86965e575a370b14f7f49f3f15436ffb5ee1059615bb708659d7aae7de",
     "sourceCodeHash": "0x5dc6b0b4ae4ab29085c52f74a4498d8a3d04928b844491749cd7186623e8b967"
+  },
+  "src/vendor/asterisc/RISCV.sol": {
+    "initCodeHash": "0x6b4323061187f2c8efe8de43bf1ecdc0798e2d95ad69470ed4151dadc094fedf",
+    "sourceCodeHash": "0x26cae049cf171efcc84c946a400704c30ebec5dba4f1548d1f1529f68f56c1ec"
   },
   "src/vendor/eas/EAS.sol": {
     "initCodeHash": "0xf96d1ebc530ed95e2dffebcfa2b4a1f18103235e6352d97838b77b7a2c14567b",
