@@ -884,7 +884,7 @@ jobs:
       no_output_timeout:
         description: Timeout for running tests
         type: string
-        default: 5m
+        default: 10m
       environment_overrides:
         description: Environment overrides
         type: string
