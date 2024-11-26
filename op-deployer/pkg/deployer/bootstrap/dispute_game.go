@@ -84,22 +84,46 @@ func DisputeGameCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	cfg, err := NewDisputeGameConfigFromCLI(cliCtx, l)
+	if err != nil {
+		return err
+	}
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
+	return DisputeGame(ctx, cfg)
+}
+
+func NewDisputeGameConfigFromCLI(cliCtx *cli.Context, l log.Logger) (DisputeGameConfig, error) {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
-		return fmt.Errorf("failed to parse artifacts URL: %w", err)
+		return DisputeGameConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
 
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-
-	return DisputeGame(ctx, DisputeGameConfig{
+	cfg := DisputeGameConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
-	})
+
+		MinProposalSizeBytes:     cliCtx.Uint64(MinProposalSizeBytesFlagName),
+		ChallengePeriodSeconds:   cliCtx.Uint64(ChallengePeriodSecondsFlagName),
+		MipsVersion:              cliCtx.Uint64(MIPSVersionFlagName),
+		GameKind:                 cliCtx.String(GameKindFlagName),
+		GameType:                 uint32(cliCtx.Uint64(GameTypeFlagName)),
+		AbsolutePrestate:         common.HexToHash(cliCtx.String(AbsolutePrestateFlagName)),
+		MaxGameDepth:             cliCtx.Uint64(MaxGameDepthFlagName),
+		SplitDepth:               cliCtx.Uint64(SplitDepthFlagName),
+		ClockExtension:           cliCtx.Uint64(ClockExtensionFlagName),
+		MaxClockDuration:         cliCtx.Uint64(MaxClockDurationFlagName),
+		DelayedWethProxy:         common.HexToAddress(cliCtx.String(DelayedWethProxyFlagName)),
+		AnchorStateRegistryProxy: common.HexToAddress(cliCtx.String(AnchorStateRegistryProxyFlagName)),
+		L2ChainId:                cliCtx.Uint64(L2ChainIdFlagName),
+		Proposer:                 common.HexToAddress(cliCtx.String(ProposerFlagName)),
+		Challenger:               common.HexToAddress(cliCtx.String(ChallengerFlagName)),
+	}
+	return cfg, nil
 }
 
 func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
