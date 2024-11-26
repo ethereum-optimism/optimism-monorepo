@@ -140,7 +140,7 @@ func DecodeGenericCommitment(commitment []byte) (GenericCommitment, error) {
 	if len(commitment) == 0 {
 		return nil, ErrInvalidCommitment
 	}
-	return commitment[:], nil
+	return GenericCommitment(commitment), nil
 }
 
 // CommitmentType returns the commitment type of Generic Commitment.
