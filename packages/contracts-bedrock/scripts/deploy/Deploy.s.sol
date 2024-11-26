@@ -161,7 +161,7 @@ contract Deploy is Deployer {
     /// @notice Deploy all of the L1 contracts necessary for a full Superchain with a single Op Chain.
     function run() public {
         console.log("Deploying a fresh OP Stack including SuperchainConfig");
-        _run();
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
@@ -183,27 +183,24 @@ contract Deploy is Deployer {
         save("ProtocolVersions", pvProxy.implementation());
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
-        _run(false);
+        _run({ _needsSuperchain: false });
     }
 
+    /// @notice Used for L1 alloc generation.
     function runWithStateDump() public {
         vm.chainId(cfg.l1ChainID());
-        _run();
+        _run({ _needsSuperchain: true });
         vm.dumpState(Config.stateDumpPath(""));
     }
 
     /// @notice Deploy all L1 contracts and write the state diff to a file.
+    ///         Used to generate kontrol tests.
     function runWithStateDiff() public stateDiff {
-        _run();
-    }
-
-    /// @notice Compatibility function for tests that override _run().
-    function _run() internal virtual {
-        _run(true);
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Internal function containing the deploy logic.
-    function _run(bool _needsSuperchain) internal {
+    function _run(bool _needsSuperchain) internal virtual {
         console.log("start of L1 Deploy!");
 
         // Set up the Superchain if needed.
