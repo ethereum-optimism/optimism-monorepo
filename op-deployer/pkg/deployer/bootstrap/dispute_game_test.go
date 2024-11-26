@@ -23,6 +23,7 @@ func TestNewDisputeGameConfigFromCLI(t *testing.T) {
 		"--l2-chain-id", "901",
 		"--proposer", common.Address{0xcc}.Hex(),
 		"--challenger", common.Address{0xdd}.Hex(),
+		"--vm", common.Address{0xee}.Hex(),
 	)
 	require.NoError(t, err)
 
@@ -33,9 +34,6 @@ func TestNewDisputeGameConfigFromCLI(t *testing.T) {
 	require.Equal(t, "op-contracts/v1.6.0", cfg.ArtifactsLocator.Tag)
 	require.True(t, cfg.ArtifactsLocator.IsTag())
 	require.Equal(t, "0x123456", cfg.PrivateKey)
-	require.Equal(t, standard.MinProposalSizeBytes, cfg.MinProposalSizeBytes)
-	require.Equal(t, standard.ChallengePeriodSeconds, cfg.ChallengePeriodSeconds)
-	require.Equal(t, standard.MIPSVersion, cfg.MipsVersion)
 	require.Equal(t, "FaultDisputeGame", cfg.GameKind)
 	require.Equal(t, uint32(2), cfg.GameType)
 	require.Equal(t, standard.DisputeAbsolutePrestate, cfg.AbsolutePrestate)
@@ -47,6 +45,7 @@ func TestNewDisputeGameConfigFromCLI(t *testing.T) {
 	require.Equal(t, common.Address{0xbb}, cfg.AnchorStateRegistryProxy)
 	require.Equal(t, common.Address{0xcc}, cfg.Proposer)
 	require.Equal(t, common.Address{0xdd}, cfg.Challenger)
+	require.Equal(t, common.Address{0xee}, cfg.Vm)
 	require.Equal(t, uint64(901), cfg.L2ChainId)
 
 	// Check all fields are set to ensure any newly added fields don't get missed.
