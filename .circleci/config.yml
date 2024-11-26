@@ -882,6 +882,10 @@ jobs:
         type: string
         default: ethereum-optimism/latitude-1-go-e2e
       no_output_timeout:
+        description: Timeout for when CircleCI kills the job if there's no output
+        type: string
+        default: 60m
+      test_timeout:
         description: Timeout for running tests
         type: string
         default: 10m
@@ -932,7 +936,7 @@ jobs:
               --jsonfile=./tmp/testlogs/log.json \
               --rerun-fails=2 \
               --packages="$formatted_packages" \
-              -- -coverprofile=coverage.out -timeout=60m
+              -- -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
           disable_search: true
           files: ./coverage.out
@@ -1594,7 +1598,8 @@ workflows:
           name: op-e2e-cannon-tests
           notify: true
           mentions: "@proofs-team"
-          no_output_timeout: 20m
+          no_output_timeout: 60m
+          test_timeout: 59m
           resource_class: ethereum-optimism/latitude-fps-1
           environment_overrides: |
             export OP_E2E_CANNON_ENABLED="true"
