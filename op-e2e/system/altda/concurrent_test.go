@@ -34,7 +34,9 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	cfg.DisableBatcher = true
 	sys, err := cfg.Start(t)
 	require.NoError(t, err, "Error starting up system")
-	defer sys.Close()
+	t.Cleanup(func() {
+		sys.Close()
+	})
 
 	// make every request take 5 seconds, such that only concurrent requests will be able to make progress fast enough
 	sys.FakeAltDAServer.SetPutRequestLatency(5 * time.Second)

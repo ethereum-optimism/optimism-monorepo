@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { AssetReceiver } from "../AssetReceiver.sol";
-import { IDripCheck } from "./IDripCheck.sol";
+// Contracts
+import { AssetReceiver } from "src/periphery/AssetReceiver.sol";
+
+// Interfaces
+import { IDripCheck } from "src/periphery/drippie/IDripCheck.sol";
 
 /// @title Drippie
 /// @notice Drippie is a system for managing automated contract interactions. A specific interaction

@@ -33,6 +33,7 @@ type L1OriginSelectorIface interface {
 }
 
 type Metrics interface {
+	SetSequencerState(active bool)
 	RecordSequencerInconsistentL1Origin(from eth.BlockID, to eth.BlockID)
 	RecordSequencerReset()
 	RecordSequencingError()
@@ -281,10 +282,11 @@ func (d *Sequencer) onBuildSealed(x engine.BuildSealedEvent) {
 	d.asyncGossip.Gossip(x.Envelope)
 	// Now after having gossiped the block, try to put it in our own canonical chain
 	d.emitter.Emit(engine.PayloadProcessEvent{
-		Concluding:  x.Concluding,
-		DerivedFrom: x.DerivedFrom,
-		Envelope:    x.Envelope,
-		Ref:         x.Ref,
+		Concluding:   x.Concluding,
+		DerivedFrom:  x.DerivedFrom,
+		BuildStarted: x.BuildStarted,
+		Envelope:     x.Envelope,
+		Ref:          x.Ref,
 	})
 	d.latest.Ref = x.Ref
 	d.latestSealed = x.Ref
@@ -619,6 +621,7 @@ func (d *Sequencer) Init(ctx context.Context, active bool) error {
 	if active {
 		return d.forceStart()
 	} else {
+		d.metrics.SetSequencerState(false)
 		if err := d.listener.SequencerStopped(); err != nil {
 			return fmt.Errorf("failed to notify sequencer-state listener of initial stopped state: %w", err)
 		}
@@ -652,6 +655,7 @@ func (d *Sequencer) forceStart() error {
 	d.nextActionOK = true
 	d.nextAction = d.timeNow()
 	d.active.Store(true)
+	d.metrics.SetSequencerState(true)
 	d.log.Info("Sequencer has been started", "next action", d.nextAction)
 	return nil
 }
@@ -697,6 +701,7 @@ func (d *Sequencer) Stop(ctx context.Context) (common.Hash, error) {
 
 	d.nextActionOK = false
 	d.active.Store(false)
+	d.metrics.SetSequencerState(false)
 	d.log.Info("Sequencer has been stopped")
 	return d.latestHead.Hash, nil
 }

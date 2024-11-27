@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+
+// Interfaces
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";

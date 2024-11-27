@@ -1,11 +1,15 @@
 package pipeline
 
 import (
+	"bufio"
 	"context"
 	"crypto/rand"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+	"github.com/mattn/go-isatty"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
@@ -26,7 +30,11 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 		return err
 	}
 
-	if intent.L1ContractsLocator.IsTag() {
+	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID)
+	hasPredeployedOPCM := opcmAddrErr == nil
+	isTag := intent.L1ContractsLocator.IsTag()
+
+	if isTag && hasPredeployedOPCM {
 		superCfg, err := standard.SuperchainFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain config: %w", err)
@@ -45,12 +53,12 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			SuperchainConfigProxyAddress: common.Address(*superCfg.Config.SuperchainConfigAddr),
 		}
 
-		opcmAddress, err := standard.ManagerImplementationAddrFor(intent.L1ChainID)
-		if err != nil {
-			return fmt.Errorf("error getting OPCM proxy address: %w", err)
-		}
 		st.ImplementationsDeployment = &state.ImplementationsDeployment{
 			OpcmAddress: opcmAddress,
+		}
+	} else if isTag && !hasPredeployedOPCM {
+		if err := displayWarning(); err != nil {
+			return err
 		}
 	}
 
@@ -126,4 +134,39 @@ func InitGenesisStrategy(env *Env, intent *state.Intent, st *state.State) error 
 
 func immutableErr(field string, was, is any) error {
 	return fmt.Errorf("%s is immutable: was %v, is %v", field, was, is)
+}
+
+func displayWarning() error {
+	warning := strings.TrimPrefix(`
+####################### WARNING! WARNING WARNING! #######################
+
+You are deploying a tagged release to a chain with no pre-deployed OPCM.
+The contracts you are deploying may not be audited, or match a governance
+approved release.
+
+USE OF THIS DEPLOYMENT IS NOT RECOMMENDED FOR PRODUCTION. USE AT YOUR OWN
+RISK. BUGS OR LOSS OF FUNDS MAY OCCUR. WE HOPE YOU KNOW WHAT YOU ARE
+DOING.
+
+####################### WARNING! WARNING WARNING! #######################
+`, "\n")
+
+	_, _ = fmt.Fprint(os.Stderr, warning)
+
+	if isatty.IsTerminal(os.Stdout.Fd()) {
+		_, _ = fmt.Fprintf(os.Stderr, "Please confirm that you have read and understood the warning above [y/n]: ")
+
+		reader := bufio.NewReader(os.Stdin)
+		input, err := reader.ReadString('\n')
+		if err != nil {
+			return fmt.Errorf("failed to read input: %w", err)
+		}
+
+		input = strings.ToLower(strings.TrimSpace(input))
+		if input != "y" && input != "yes" {
+			return fmt.Errorf("aborted")
+		}
+	}
+
+	return nil
 }

@@ -10,7 +10,6 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 
 // Target contract
-import { CrossL2Inbox, Identifier } from "src/L2/CrossL2Inbox.sol";
 import {
     L2ToL2CrossDomainMessenger,
     NotEntered,
@@ -22,8 +21,13 @@ import {
     MessageTargetL2ToL2CrossDomainMessenger,
     MessageAlreadyRelayed,
     ReentrantCall,
-    TargetCallFailed
+    TargetCallFailed,
+    IDependencySet,
+    InvalidChainId
 } from "src/L2/L2ToL2CrossDomainMessenger.sol";
+
+// Interfaces
+import { ICrossL2Inbox, Identifier } from "src/L2/interfaces/ICrossL2Inbox.sol";
 
 /// @title L2ToL2CrossDomainMessengerWithModifiableTransientStorage
 /// @dev L2ToL2CrossDomainMessenger contract with methods to modify the transient storage.
@@ -84,6 +88,13 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
         vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
+
+        // Mock the call over the `isInDependencySet` function to return true
+        vm.mockCall(
+            Predeploys.L1_BLOCK_ATTRIBUTES,
+            abi.encodeCall(IDependencySet.isInDependencySet, (_destination)),
+            abi.encode(true)
+        );
 
         // Get the current message nonce
         uint256 messageNonce = l2ToL2CrossDomainMessenger.messageNonce();
@@ -193,6 +204,34 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         });
     }
 
+    /// @notice Tests the `sendMessage` function reverts when the `destination` is not in the dependency set.
+    function testFuzz_sendMessage_notInDependencySet_reverts(
+        uint256 _destination,
+        address _target,
+        bytes calldata _message
+    )
+        external
+    {
+        // Ensure the destination is not the same as the source, otherwise the function will revert
+        vm.assume(_destination != block.chainid);
+
+        // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
+        vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
+
+        // Mock the call over the `isInDependencySet` function to return false
+        vm.mockCall(
+            Predeploys.L1_BLOCK_ATTRIBUTES,
+            abi.encodeCall(IDependencySet.isInDependencySet, (_destination)),
+            abi.encode(false)
+        );
+
+        // Expect a revert with the InvalidChainId selector
+        vm.expectRevert(InvalidChainId.selector);
+
+        // Call `sendMessage` with a destination that is not in the dependency set to provoke revert
+        l2ToL2CrossDomainMessenger.sendMessage(_destination, _target, _message);
+    }
+
     /// @dev Tests that the `relayMessage` function succeeds and emits the correct RelayedMessage event.
     function testFuzz_relayMessage_succeeds(
         uint256 _source,
@@ -227,7 +266,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -271,7 +310,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -334,7 +373,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -415,7 +454,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -497,7 +536,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -536,7 +575,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -578,7 +617,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -628,7 +667,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 
@@ -678,7 +717,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure the CrossL2Inbox validates this message
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
-            data: abi.encodeCall(CrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
+            data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
             returnData: ""
         });
 

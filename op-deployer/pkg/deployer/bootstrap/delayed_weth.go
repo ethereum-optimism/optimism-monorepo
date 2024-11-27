@@ -69,22 +69,31 @@ func DelayedWETHCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	config, err := NewDelayedWETHConfigFromClI(cliCtx, l)
+	if err != nil {
+		return err
+	}
+
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
+
+	return DelayedWETH(ctx, config)
+}
+
+func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETHConfig, error) {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
-		return fmt.Errorf("failed to parse artifacts URL: %w", err)
+		return DelayedWETHConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
-
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-
-	return DelayedWETH(ctx, DelayedWETHConfig{
+	config := DelayedWETHConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
-	})
+	}
+	return config, nil
 }
 
 func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
