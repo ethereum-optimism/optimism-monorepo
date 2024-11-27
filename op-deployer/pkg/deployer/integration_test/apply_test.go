@@ -714,6 +714,7 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
+		ConfigType:         state.IntentConfigTypeCustom,
 		DeploymentStrategy: state.DeploymentStrategyLive,
 		L1ChainID:          l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
@@ -740,8 +741,9 @@ func newChainIntent(t *testing.T, dk *devkeys.MnemonicDevKeys, l1ChainID *big.In
 		BaseFeeVaultRecipient:      addrFor(t, dk, devkeys.BaseFeeVaultRecipientRole.Key(l1ChainID)),
 		L1FeeVaultRecipient:        addrFor(t, dk, devkeys.L1FeeVaultRecipientRole.Key(l1ChainID)),
 		SequencerFeeVaultRecipient: addrFor(t, dk, devkeys.SequencerFeeVaultRecipientRole.Key(l1ChainID)),
-		Eip1559Denominator:         50,
-		Eip1559Elasticity:          6,
+		Eip1559DenominatorCanyon:   standard.Eip1559DenominatorCanyon,
+		Eip1559Denominator:         standard.Eip1559Denominator,
+		Eip1559Elasticity:          standard.Eip1559Elasticity,
 		Roles: state.ChainRoles{
 			L1ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
 			L2ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
