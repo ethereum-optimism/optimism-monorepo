@@ -6,7 +6,9 @@ import (
 	"fmt"
 	"strings"
 
-	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
@@ -19,6 +21,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
+	"github.com/ethereum/go-ethereum/rpc"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -30,7 +33,7 @@ type AsteriscConfig struct {
 	L1RPCUrl         string
 	PrivateKey       string
 	Logger           log.Logger
-	ArtifactsLocator *artifacts2.Locator
+	ArtifactsLocator *artifacts.Locator
 
 	privateKeyECDSA *ecdsa.PrivateKey
 
@@ -75,7 +78,7 @@ func AsteriscCLI(cliCtx *cli.Context) error {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
-	artifactsLocator := new(artifacts2.Locator)
+	artifactsLocator := new(artifacts.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
@@ -103,7 +106,7 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 		lgr.Info("artifacts download progress", "current", curr, "total", total)
 	}
 
-	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
+	artifactsFS, cleanup, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
 		return fmt.Errorf("failed to download artifacts: %w", err)
 	}
@@ -137,32 +140,26 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
-	host, err := env.DefaultScriptHost(
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
+	l1Host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
+			src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
+			}
+			return forking.Cache(src), nil
+		}),
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
-	var release string
-	if cfg.ArtifactsLocator.IsTag() {
-		release = cfg.ArtifactsLocator.Tag
-	} else {
-		release = "dev"
-	}
-
-	lgr.Info("deploying asterisc VM", "release", release)
 	dgo, err := opcm.DeployAsterisc(
-		host,
+		l1Host,
 		opcm.DeployAsteriscInput{
 			PreimageOracle: cfg.PreimageOracle,
 		},
