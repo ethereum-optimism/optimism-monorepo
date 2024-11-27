@@ -1379,6 +1379,7 @@ workflows:
             op-e2e/interop
             op-e2e/actions
             op-e2e/faultproofs
+            packages/contracts-bedrock/scripts/checks
           requires:
             - contracts-bedrock-build
             - cannon-prestate
