@@ -41,7 +41,7 @@
   },
   "src/L1/SharedLockbox.sol": {
     "initCodeHash": "0x284eaf282bfbe4403ec5c692371ad2876ec872851b384e5779e6eae577f1dfbb",
-    "sourceCodeHash": "0x85f55d85d3fed2e5b7ddcd48c5ab8c166abc26e33f38c567baa5f7e31109366a"
+    "sourceCodeHash": "0x60c8a4ce8f916237ea8af9580f011840f5de3393eee9e53c3c89761e09395e91"
   },
   "src/L1/SuperchainConfig.sol": {
     "initCodeHash": "0xfca12d9016c746e5c275b186e0ca40cfd65cf45a5665aab7589a669fea3abb47",

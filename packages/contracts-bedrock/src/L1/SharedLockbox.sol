@@ -5,6 +5,10 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 
+/// @custom:proxied true
+/// @title SharedLockbox
+/// @notice Manages ETH liquidity locking and unlocking for authorized OptimismPortals, enabling unified ETH liquidity
+///         management across chains in the superchain cluster.
 contract SharedLockbox is ISemver {
     /// @notice Emitted when ETH is locked in the lockbox by an authorized portal.
     /// @param portal The address of the portal that locked the ETH.
@@ -23,7 +27,7 @@ contract SharedLockbox is ISemver {
     /// @notice The address of the SuperchainConfig contract.
     address public immutable SUPERCHAIN_CONFIG;
 
-    /// @notice OptimismPortals that are part of the dependency cluster authorized to interact with the SharedLockbox.
+    /// @notice OptimismPortals that are part of the dependency cluster authorized to interact with the SharedLockbox
     mapping(address => bool) public authorizedPortals;
 
     /// @notice Semantic version.
