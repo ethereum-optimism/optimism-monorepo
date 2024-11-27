@@ -17,10 +17,19 @@ import (
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/triedb"
+	"github.com/holiman/uint256"
 	"log"
 	"math/big"
 	"testing"
 )
+
+type MyContract struct {
+	addr common.Address
+}
+
+func (m MyContract) Address() common.Address {
+	return m.addr
+}
 
 func NewEVMEnv() (*vm.EVM, *state.StateDB) {
 	// Temporary hack until Cancun is activated on mainnet
@@ -77,7 +86,6 @@ func (d *testChain) GetHeader(h common.Hash, n uint64) *types.Header {
 		WithdrawalsHash: &types.EmptyWithdrawalsHash,
 	}
 }
-
 func TestEverything(t *testing.T) {
 	artifactFS := foundry.OpenArtifactsDir("../../packages/contracts-bedrock/forge-artifacts")
 
@@ -88,11 +96,9 @@ func TestEverything(t *testing.T) {
 
 	artifacts := []*foundry.Artifact{artifact1}
 
-	tracer := NewCoverageTracer(artifacts)
-
-	// To be moved in the constructor
-	if err := tracer.LoadSourceMaps(); err != nil {
-		log.Fatalf("Failed to load SourceMaps: %v", err)
+	tracer, err := NewCoverageTracer(artifacts)
+	if err != nil {
+		log.Fatalf("Failed to initialize CoverageTracer: %v", err)
 	}
 
 	env, _ := NewEVMEnv()
@@ -132,8 +138,14 @@ func TestEverything(t *testing.T) {
 	}
 	fmt.Printf("Encoded set data: %s\n", hex.EncodeToString(setData))
 
+	myContract := MyContract{addr: common.Address{0: 0xff, 19: 1}}
+
+	_, _, err = env.Call(myContract, common.Address{0: 0xff, 19: 1}, setData, 90000, uint256.NewInt(0))
+	if err != nil {
+		log.Fatalf("EVM Call failed: %v", err)
+	}
+
 	if err := tracer.GenerateLCOV("coverage.lcov"); err != nil {
 		log.Fatalf("Failed to generate LCOV: %v", err)
 	}
-
 }

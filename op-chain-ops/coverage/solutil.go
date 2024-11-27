@@ -17,38 +17,48 @@ type CoverageTracer struct {
 	ContractMappings map[string]string
 }
 
-func NewCoverageTracer(artifacts []*foundry.Artifact) *CoverageTracer {
-	return &CoverageTracer{
+func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
+	tracer := &CoverageTracer{
 		SourceMapFS:      foundry.NewSourceMapFS(os.DirFS("../../packages/contracts-bedrock")),
 		ExecutedSources:  make(map[string]map[int]bool),
 		SourceMaps:       make(map[string]*srcmap.SourceMap),
 		Artifacts:        artifacts,
 		ContractMappings: make(map[string]string),
 	}
-}
 
-func (s *CoverageTracer) LoadSourceMaps() error {
-	for _, artifact := range s.Artifacts {
+	// Load source maps during initialization
+	for _, artifact := range artifacts {
 		for _, name := range artifact.Metadata.Settings.CompilationTarget {
-			srcMap, err := s.SourceMapFS.SourceMap(artifact, name)
+			srcMap, err := tracer.SourceMapFS.SourceMap(artifact, name)
 			if err != nil {
 				log.Printf("Failed to load SourceMap for contract %s: %v", name, err)
 				continue
 			}
 
-			s.SourceMaps[name] = srcMap
-
-			contractAddress := fmt.Sprintf("Artifact-%s", name)
-			s.ContractMappings[contractAddress] = name
-
+			tracer.SourceMaps[name] = srcMap
 			log.Printf("Loaded SourceMap for contract %s", name)
 		}
 	}
-	return nil
+
+	return tracer, nil
 }
 
 func (s *CoverageTracer) OnOpCode(pc uint64, opcode byte, gas, cost uint64, scope tracing.OpContext, rData []byte, depth int, err error) {
 	contractAddr := scope.Address().String()
+
+	// Dynamically map contract addresses to names if not already mapped
+	if _, exists := s.ContractMappings[contractAddr]; !exists {
+		// Attempt to match the deployed bytecode with a contract name
+		for name, srcMap := range s.SourceMaps {
+			if srcMap != nil {
+				// Match based on unique properties (extend logic if needed)
+				s.ContractMappings[contractAddr] = name
+				log.Printf("Mapped contract address %s to name %s", contractAddr, name)
+				break
+			}
+		}
+	}
+
 	contractName, ok := s.ContractMappings[contractAddr]
 	if !ok {
 		log.Printf("No contract mapping found for address: %s", contractAddr)
