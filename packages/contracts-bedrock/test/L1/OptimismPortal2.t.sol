@@ -23,12 +23,12 @@ import "src/dispute/lib/Types.sol";
 import "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 contract OptimismPortal2_Test is CommonTest {
     address depositor;

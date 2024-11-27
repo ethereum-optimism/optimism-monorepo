@@ -16,7 +16,7 @@ import "src/cannon/libraries/CannonErrors.sol";
 import "src/cannon/libraries/CannonTypes.sol";
 
 // Interfaces
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 contract PreimageOracle_Test is Test {
     IPreimageOracle oracle;

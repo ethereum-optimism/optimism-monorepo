@@ -6,8 +6,8 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismERC20Factory } from "src/L2/interfaces/IOptimismERC20Factory.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismERC20Factory } from "interfaces/L2/IOptimismERC20Factory.sol";
 
 /// @custom:proxied true
 /// @custom:predeployed 0x4200000000000000000000000000000000000012
@@ -51,8 +51,8 @@ contract OptimismMintableERC20Factory is ISemver, Initializable, IOptimismERC20F
     ///         the OptimismMintableERC20 token contract since this contract
     ///         is responsible for deploying OptimismMintableERC20 contracts.
     /// @notice Semantic version.
-    /// @custom:semver 1.10.1-beta.5
-    string public constant version = "1.10.1-beta.5";
+    /// @custom:semver 1.10.1-beta.6
+    string public constant version = "1.10.1-beta.6";
 
     /// @notice Constructs the OptimismMintableERC20Factory contract.
     constructor() {

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:legacy true
 /// @custom:proxied true
@@ -15,8 +15,8 @@ contract LegacyMessagePasser is ISemver {
     mapping(bytes32 => bool) public sentMessages;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.2
-    string public constant version = "1.1.1-beta.2";
+    /// @custom:semver 1.1.1-beta.3
+    string public constant version = "1.1.1-beta.3";
 
     /// @notice Passes a message to L1.
     /// @param _message Message to pass to L1.

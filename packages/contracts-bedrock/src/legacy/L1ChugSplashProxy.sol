@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { IL1ChugSplashDeployer } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
+import { IL1ChugSplashDeployer } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 
 /// @custom:legacy true
 /// @title L1ChugSplashProxy

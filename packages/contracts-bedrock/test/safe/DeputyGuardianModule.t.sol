@@ -8,15 +8,15 @@ import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 // Contracts
-import { IDeputyGuardianModule } from "src/safe/interfaces/IDeputyGuardianModule.sol";
+import { IDeputyGuardianModule } from "interfaces/safe/IDeputyGuardianModule.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
@@ -288,8 +288,8 @@ contract DeputyGuardianModule_NoPortalCollisions_Test is DeputyGuardianModule_Te
         excludes[0] = "src/dispute/lib/*";
         excludes[1] = "src/L1/OptimismPortal2.sol";
         excludes[2] = "src/L1/OptimismPortalInterop.sol";
-        excludes[3] = "src/L1/interfaces/IOptimismPortal2.sol";
-        excludes[4] = "src/L1/interfaces/IOptimismPortalInterop.sol";
+        excludes[3] = "interfaces/L1/IOptimismPortal2.sol";
+        excludes[4] = "interfaces/L1/IOptimismPortalInterop.sol";
         Abi[] memory abis = ForgeArtifacts.getContractFunctionAbis("src/{L1,dispute,universal}", excludes);
         for (uint256 i; i < abis.length; i++) {
             for (uint256 j; j < abis[i].entries.length; j++) {

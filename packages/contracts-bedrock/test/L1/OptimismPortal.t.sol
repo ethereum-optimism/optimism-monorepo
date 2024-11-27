@@ -22,11 +22,11 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 contract OptimismPortal_Test is CommonTest {
     address depositor;

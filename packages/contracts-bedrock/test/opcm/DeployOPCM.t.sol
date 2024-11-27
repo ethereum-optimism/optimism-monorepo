@@ -4,8 +4,8 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 import { DeployOPCM, DeployOPCMInput, DeployOPCMOutput } from "scripts/deploy/DeployOPCM.s.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 contract DeployOPCMInput_Test is Test {
     DeployOPCMInput dii;

@@ -10,11 +10,11 @@ import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/libraries/erro
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 
 // Interfaces
-import { IETHLiquidity } from "src/L2/interfaces/IETHLiquidity.sol";
-import { ISuperchainWETH } from "src/L2/interfaces/ISuperchainWETH.sol";
-import { IERC7802, IERC165 } from "src/L2/interfaces/IERC7802.sol";
+import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
+import { ISuperchainWETH } from "interfaces/L2/ISuperchainWETH.sol";
+import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
+import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
 
 /// @title SuperchainWETH_Test
 /// @notice Contract for testing the SuperchainWETH contract.

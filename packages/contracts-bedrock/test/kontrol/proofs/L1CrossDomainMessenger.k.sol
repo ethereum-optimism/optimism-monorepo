@@ -3,8 +3,8 @@ pragma solidity ^0.8.13;
 
 import { DeploymentSummaryFaultProofs } from "./utils/DeploymentSummaryFaultProofs.sol";
 import { KontrolUtils } from "./utils/KontrolUtils.sol";
-import { IL1CrossDomainMessenger as L1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
-import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IL1CrossDomainMessenger as L1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
+import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 contract L1CrossDomainMessengerKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
     L1CrossDomainMessenger l1CrossDomainMessenger;

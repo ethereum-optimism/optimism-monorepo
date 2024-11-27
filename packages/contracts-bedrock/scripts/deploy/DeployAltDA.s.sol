@@ -2,11 +2,11 @@
 pragma solidity 0.8.15;
 
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
-import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 import { Script } from "forge-std/Script.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 
 contract DeployAltDAInput is BaseDeployIO {

@@ -4,10 +4,10 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Target contract dependencies
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 // Target contract
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
