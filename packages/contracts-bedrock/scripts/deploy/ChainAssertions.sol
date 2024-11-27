@@ -140,6 +140,7 @@ library ChainAssertions {
     /// @notice Asserts that the SystemConfigInterop is setup correctly
     function checkSystemConfigInterop(
         Types.ContractSet memory _contracts,
+        Types.ContractSet memory _proxies,
         DeployConfig _cfg,
         bool _isProxy
     )
@@ -147,6 +148,8 @@ library ChainAssertions {
         view
     {
         ISystemConfigInterop config = ISystemConfigInterop(_contracts.SystemConfig);
+        ISuperchainConfig superchainConfig = ISuperchainConfig(_proxies.SuperchainConfig);
+
         console.log(
             "Running chain assertions on the SystemConfigInterop %s at %s",
             _isProxy ? "proxy" : "implementation",
@@ -154,13 +157,9 @@ library ChainAssertions {
         );
 
         checkSystemConfig(_contracts, _cfg, _isProxy);
-        if (_isProxy) {
-            // TODO: this is not being set in the deployment, nor is a config value.
-            // Update this when it has an entry in hardhat.json
-            require(config.dependencyManager() == address(0), "CHECK-SCFGI-10");
-        } else {
-            require(config.dependencyManager() == address(0), "CHECK-SCFGI-20");
-        }
+
+        require(config.dependencyCounter() == 0, "CHECK-SCFGI-10");
+        require(config.SUPERCHAIN_CONFIG() == address(superchainConfig), "CHECK-SCFGI-20");
     }
 
     /// @notice Asserts that the L1CrossDomainMessenger is setup correctly

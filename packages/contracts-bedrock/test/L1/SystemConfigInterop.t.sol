@@ -26,6 +26,13 @@ contract SystemConfigInterop_Test is CommonTest {
         super.setUp();
     }
 
+    /// @dev Tests that the constructor sets the correct values.
+    function test_constructor_succeeds() external view {
+        ISystemConfigInterop impl = ISystemConfigInterop(payable(deploy.mustGetAddress("SystemConfig")));
+        assertEq(impl.SUPERCHAIN_CONFIG(), address(superchainConfig));
+        assertEq(_systemConfigInterop().SUPERCHAIN_CONFIG(), address(superchainConfig));
+    }
+
     /// @dev Tests that when the decimals is not 18, initialization reverts.
     function test_initialize_decimalsIsNot18_reverts(uint8 decimals) external {
         vm.assume(decimals != 18);
@@ -87,20 +94,27 @@ contract SystemConfigInterop_Test is CommonTest {
             )
         );
 
-        vm.prank(_systemConfigInterop().dependencyManager());
+        vm.prank(address(superchainConfig));
         _systemConfigInterop().addDependency(_chainId);
+
+        assertEq(_systemConfigInterop().dependencyCounter(), 1);
     }
 
-    /// @dev Tests that adding a dependency as not the dependency manager reverts.
-    function testFuzz_addDependency_notDependencyManager_reverts(uint256 _chainId) public {
-        require(alice != _systemConfigInterop().dependencyManager(), "SystemConfigInterop_Test: 100");
-        vm.expectRevert("SystemConfig: caller is not the dependency manager");
+    /// @dev Tests that adding a dependency as not the SuperchainConfig reverts.
+    function testFuzz_addDependency_notSuperchainConfig_reverts(uint256 _chainId) public {
+        require(alice != address(superchainConfig), "SystemConfigInterop_Test: 100");
+        vm.expectRevert("SystemConfig: caller is not the SuperchainConfig");
         vm.prank(alice);
         _systemConfigInterop().addDependency(_chainId);
     }
 
     /// @dev Tests that a dependency can be removed.
     function testFuzz_removeDependency_succeeds(uint256 _chainId) public {
+        // Add the dependency first
+        vm.prank(address(superchainConfig));
+        _systemConfigInterop().addDependency(_chainId);
+        assertEq(_systemConfigInterop().dependencyCounter(), 1);
+
         vm.expectCall(
             address(optimismPortal),
             abi.encodeCall(
@@ -109,16 +123,32 @@ contract SystemConfigInterop_Test is CommonTest {
             )
         );
 
-        vm.prank(_systemConfigInterop().dependencyManager());
+        vm.prank(address(superchainConfig));
+        _systemConfigInterop().removeDependency(_chainId);
+
+        assertEq(_systemConfigInterop().dependencyCounter(), 0);
+    }
+
+    /// @dev Tests that removing a dependency as not the SuperchainConfig reverts.
+    function testFuzz_removeDependency_notSuperchainConfig_reverts(uint256 _chainId) public {
+        require(alice != address(superchainConfig), "SystemConfigInterop_Test: 100");
+        vm.expectRevert("SystemConfig: caller is not the SuperchainConfig");
+        vm.prank(alice);
         _systemConfigInterop().removeDependency(_chainId);
     }
 
-    /// @dev Tests that removing a dependency as not the dependency manager reverts.
-    function testFuzz_removeDependency_notDependencyManager_reverts(uint256 _chainId) public {
-        require(alice != _systemConfigInterop().dependencyManager(), "SystemConfigInterop_Test: 100");
-        vm.expectRevert("SystemConfig: caller is not the dependency manager");
-        vm.prank(alice);
-        _systemConfigInterop().removeDependency(_chainId);
+    function test_dependencyCounter_succeeds() public {
+        assertEq(_systemConfigInterop().dependencyCounter(), 0);
+
+        // Add a dependency
+        vm.prank(address(superchainConfig));
+        _systemConfigInterop().addDependency(1);
+        assertEq(_systemConfigInterop().dependencyCounter(), 1);
+
+        // Remove the dependency
+        vm.prank(address(superchainConfig));
+        _systemConfigInterop().removeDependency(1);
+        assertEq(_systemConfigInterop().dependencyCounter(), 0);
     }
 
     /// @dev Helper to clean storage and then initialize the system config with an arbitrary gas token address.

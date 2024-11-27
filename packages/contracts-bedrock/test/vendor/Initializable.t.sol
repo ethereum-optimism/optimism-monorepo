@@ -409,7 +409,6 @@ contract Initializer_Test is CommonTest {
         excludes[5] = "src/dispute/PermissionedDisputeGame.sol";
         // TODO: Eventually remove this exclusion. Same reason as above dispute contracts.
         excludes[6] = "src/L1/OPContractsManager.sol";
-        excludes[7] = "src/L1/OPContractsManagerInterop.sol";
         // The L2OutputOracle is not always deployed (and is no longer being modified)
         excludes[8] = "src/L1/L2OutputOracle.sol";
 

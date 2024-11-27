@@ -55,7 +55,7 @@ interface ISystemConfigInterop {
 
     function addDependency(uint256 _chainId) external;
     function removeDependency(uint256 _chainId) external;
-    function dependencyManager() external view returns (address);
+    function dependencyCounter() external view returns (uint256);
     function initialize(
         address _owner,
         uint32 _basefeeScalar,
@@ -65,11 +65,11 @@ interface ISystemConfigInterop {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        ISystemConfig.Addresses memory _addresses,
-        address _dependencyManager
+        ISystemConfig.Addresses memory _addresses
     )
         external;
     function version() external pure returns (string memory);
+    function SUPERCHAIN_CONFIG() external view returns (address);
 
-    function __constructor__() external;
+    function __constructor__(address _superchainConfig) external;
 }
