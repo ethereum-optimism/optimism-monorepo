@@ -173,11 +173,11 @@ func getStandardSuperchainRoles(l1ChainId uint64) (*SuperchainRoles, error) {
 		return nil, fmt.Errorf("error getting superchain config: %w", err)
 	}
 
-	proxyAdmin, _ := standard.ManagerOwnerAddrFor(l1ChainId)
+	proxyAdminOwner, _ := standard.L1ProxyAdminOwner(l1ChainId)
 	guardian, _ := standard.GuardianAddressFor(l1ChainId)
 
 	superchainRoles := &SuperchainRoles{
-		ProxyAdminOwner:       proxyAdmin,
+		ProxyAdminOwner:       proxyAdminOwner,
 		ProtocolVersionsOwner: common.Address(*superCfg.Config.ProtocolVersionsAddr),
 		Guardian:              guardian,
 	}
