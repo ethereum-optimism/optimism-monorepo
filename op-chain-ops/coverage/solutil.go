@@ -37,6 +37,23 @@ func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
 
 			tracer.SourceMaps[name] = srcMap
 			log.Printf("Loaded SourceMap for contract %s", name)
+
+			for pc := 0; pc < len(artifact.DeployedBytecode.Object); pc++ {
+				source, line, _, err := srcMap.Info(uint64(pc))
+				if source == "unknown" || line == 0 {
+					continue
+				}
+
+				if err != nil {
+					log.Printf("Error mapping PC to source for contract %s: %v", name, err)
+					break
+				}
+
+				if _, exists := tracer.ExecutedSources[source]; !exists {
+					tracer.ExecutedSources[source] = make(map[int]bool)
+				}
+				tracer.ExecutedSources[source][int(line)] = false
+			}
 		}
 	}
 
@@ -96,8 +113,12 @@ func (s *CoverageTracer) GenerateLCOV(outputPath string) error {
 
 	for filePath, lines := range s.ExecutedSources {
 		fmt.Fprintf(file, "SF:%s\n", filePath)
-		for line := range lines {
-			fmt.Fprintf(file, "DA:%d,1\n", line)
+		for line, executed := range lines {
+			executionStatus := 0
+			if executed {
+				executionStatus = 1
+			}
+			fmt.Fprintf(file, "DA:%d,%d\n", line, executionStatus)
 		}
 		fmt.Fprintln(file, "end_of_record")
 	}
