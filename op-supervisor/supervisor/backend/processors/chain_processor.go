@@ -252,7 +252,6 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 	// and the number of blocks processed successfully by this call
 	for i := range results {
 		if results[i].err != nil {
-			fmt.Println("hit an error at index", i, "err", results[i].err)
 			return i, fmt.Errorf("failed to fetch block %d: %w", results[i].num, results[i].err)
 		}
 		// process the receipts
