@@ -107,16 +107,6 @@ func (q *Queue[T]) TrySend(id T, candidate TxCandidate, receiptCh chan TxReceipt
 	}
 }
 
-func (q *Queue[T]) sendTx(ctx context.Context, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) error {
-	receipt, err := q.txMgr.Send(ctx, candidate)
-	receiptCh <- TxReceipt[T]{
-		ID:      id,
-		Receipt: receipt,
-		Err:     err,
-	}
-	return err
-}
-
 // groupContext returns a Group and a Context to use when sending a tx.
 //
 // If any of the pending transactions returned an error, the queue's shared error Group is
