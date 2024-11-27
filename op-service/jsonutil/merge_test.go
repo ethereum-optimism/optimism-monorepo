@@ -23,9 +23,6 @@ func TestMergeJSON(t *testing.T) {
 			"a": "world",
 			"c": false,
 		},
-		map[string]any{
-			"d": "shouldn't show up",
-		},
 	)
 	require.NoError(t, err)
 	require.EqualValues(t, out, testStruct{
@@ -33,4 +30,9 @@ func TestMergeJSON(t *testing.T) {
 		42,
 		false,
 	})
+
+	_, err = MergeJSON(out, map[string]any{
+		"d": "shouldn't show up",
+	})
+	require.Error(t, err)
 }

@@ -1,6 +1,9 @@
 package jsonutil
 
-import "encoding/json"
+import (
+	"bytes"
+	"encoding/json"
+)
 
 // MergeJSON merges the provided overrides into the input struct. Fields
 // must be JSON-serializable for this to work. Overrides are applied in
@@ -29,7 +32,9 @@ func MergeJSON[T any](in T, overrides ...map[string]any) (T, error) {
 		return out, err
 	}
 
-	if err := json.Unmarshal(inJSON, &out); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(inJSON))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&out); err != nil {
 		return out, err
 	}
 

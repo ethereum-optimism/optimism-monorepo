@@ -109,8 +109,8 @@ func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID co
 			DisputeClockExtension:   standard.DisputeClockExtension,
 			DisputeMaxClockDuration: standard.DisputeMaxClockDuration,
 		},
-		intent.GlobalDeployOverrides,
-		thisIntent.DeployOverrides,
+		intent.GlobalChainProofOverrides,
+		thisIntent.ChainProofOverrides,
 	)
 	if err != nil {
 		return opcm.DeployOPChainInputV160{}, fmt.Errorf("error merging proof params from overrides: %w", err)
