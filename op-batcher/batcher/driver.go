@@ -369,7 +369,7 @@ func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus)
 	}
 
 	lastStoredBlock := l.state.LastStoredBlock()
-	start := l.state.LastStoredBlock()
+	start := lastStoredBlock
 	end := syncStatus.UnsafeL2.ID()
 
 	// Check last stored block to see if it is empty or has lagged behind.
