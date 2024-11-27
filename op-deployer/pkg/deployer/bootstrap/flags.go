@@ -194,13 +194,16 @@ var DisputeGameFlags = []cli.Flag{
 	ChallengerFlag,
 }
 
-var MIPSFlags = []cli.Flag{
+var BaseFPVMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ArtifactsLocatorFlag,
 	PreimageOracleFlag,
-	MIPSVersionFlag,
 }
+
+var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
+
+var AsteriscFlags = BaseFPVMFlags
 
 var Commands = []*cli.Command{
 	{
@@ -226,5 +229,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of MIPS.",
 		Flags:  cliapp.ProtectFlags(MIPSFlags),
 		Action: MIPSCLI,
+	},
+	{
+		Name:   "asterisc",
+		Usage:  "Bootstrap an instance of Asterisc.",
+		Flags:  cliapp.ProtectFlags(AsteriscFlags),
+		Action: AsteriscCLI,
 	},
 }
