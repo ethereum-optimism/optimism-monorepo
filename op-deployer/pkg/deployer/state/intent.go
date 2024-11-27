@@ -107,7 +107,7 @@ func (c *Intent) validateCustomConfig() error {
 	}
 
 	for _, chain := range c.Chains {
-		if err := chain.CheckNoZeroValues(); err != nil {
+		if err := chain.Check(); err != nil {
 			return err
 		}
 	}
@@ -154,7 +154,7 @@ func (c *Intent) validateStandardValues() error {
 	}
 
 	for _, chain := range c.Chains {
-		if err := chain.CheckNoZeroValues(); err != nil {
+		if err := chain.Check(); err != nil {
 			return err
 		}
 		if chain.Eip1559DenominatorCanyon != standard.Eip1559DenominatorCanyon ||

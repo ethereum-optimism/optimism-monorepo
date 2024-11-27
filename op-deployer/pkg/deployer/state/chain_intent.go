@@ -1,7 +1,6 @@
 package state
 
 import (
-	"errors"
 	"fmt"
 	"reflect"
 
@@ -38,42 +37,10 @@ var ErrNonStandardValue = fmt.Errorf("chain contains non-standard config value")
 var ErrEip1559ZeroValue = fmt.Errorf("eip1559 param is set to zero value")
 
 func (c *ChainIntent) Check() error {
-	var emptyHash common.Hash
 	if c.ID == emptyHash {
 		return fmt.Errorf("id must be set")
 	}
 
-	if c.Roles.L1ProxyAdminOwner == emptyAddress {
-		return fmt.Errorf("proxyAdminOwner must be set")
-	}
-
-	if c.Roles.L2ProxyAdminOwner == emptyAddress {
-		return fmt.Errorf("l2ProxyAdminOwner must be set")
-	}
-
-	if c.Roles.SystemConfigOwner == emptyAddress {
-		c.Roles.SystemConfigOwner = c.Roles.L1ProxyAdminOwner
-	}
-
-	if c.Roles.UnsafeBlockSigner == emptyAddress {
-		return fmt.Errorf("unsafeBlockSigner must be set")
-	}
-
-	if c.Roles.Batcher == emptyAddress {
-		return fmt.Errorf("batcher must be set")
-	}
-
-	if c.DangerousAltDAConfig.UseAltDA {
-		return c.DangerousAltDAConfig.Check(nil)
-	}
-
-	return nil
-}
-
-func (c *ChainIntent) CheckNoZeroValues() error {
-	if c.ID == emptyHash {
-		return errors.New("missing l2 chain ID")
-	}
 	if err := c.Roles.CheckNoZeroAddresses(); err != nil {
 		return err
 	}
@@ -87,6 +54,10 @@ func (c *ChainIntent) CheckNoZeroValues() error {
 		c.L1FeeVaultRecipient == emptyAddress ||
 		c.SequencerFeeVaultRecipient == emptyAddress {
 		return fmt.Errorf("%w: chainId=%s", ErrFeeVaultZeroAddress, c.ID)
+	}
+
+	if c.DangerousAltDAConfig.UseAltDA {
+		return c.DangerousAltDAConfig.Check(nil)
 	}
 
 	return nil
