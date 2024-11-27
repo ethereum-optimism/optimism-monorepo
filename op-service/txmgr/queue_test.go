@@ -183,10 +183,11 @@ func TestQueue_Send(t *testing.T) {
 
 			// track the nonces, and return any expected errors from tx sending
 			var (
-				nonces  []uint64
-				txIds   []uint
-				nonceMu sync.Mutex
+				nonces       []uint64
+				nonceForTxId map[uint]uint64 // maps from txid to nonce
+				nonceMu      sync.Mutex
 			)
+			nonceForTxId = make(map[uint]uint64)
 			sendTx := func(ctx context.Context, tx *types.Transaction) error {
 				index := int(tx.Data()[0])
 				nonceMu.Lock()
@@ -203,7 +204,7 @@ func TestQueue_Send(t *testing.T) {
 				txHash := tx.Hash()
 				nonceMu.Lock()
 				backend.mine(&txHash, tx.GasFeeCap(), nil)
-				txIds = append(txIds, uint(index))
+				nonceForTxId[uint(index)] = tx.Nonce()
 				nonceMu.Unlock()
 				return nil
 			}
@@ -237,7 +238,14 @@ func TestQueue_Send(t *testing.T) {
 			// check that the nonces match
 			slices.Sort(nonces)
 			require.Equal(t, test.nonces, nonces, "expected nonces do not match")
-			require.EqualValues(t, test.confirmedIds, txIds, "expected tx Ids list does not match")
+			for i, id := range test.confirmedIds { // iterate over nonces in order
+				require.Equal(t, nonces[i], nonceForTxId[id],
+					"nonce for tx id %d was %d instead of %d", id, nonceForTxId[id], nonces[i])
+			}
+			// NOTE the backend in this test does not order transactions based on the nonce
+			// So what we want to check is that the txs match expectations when they are ordered
+			// in the same way as the nonces.
+			// require.EqualValues(t, test.confirmedIds, txIds, "expected tx Ids list does not match")
 			// check receipts
 			for i, c := range test.calls {
 				if !c.queued {
