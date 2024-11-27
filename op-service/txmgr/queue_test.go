@@ -58,12 +58,15 @@ func (b *mockBackendWithNonce) NonceAt(ctx context.Context, account common.Addre
 
 func TestQueue_Send(t *testing.T) {
 	testCases := []struct {
-		name         string      // name of the test
-		max          uint64      // max concurrency of the queue
-		calls        []queueCall // calls to the queue
-		txs          []testTx    // txs to generate from the factory (and potentially error in send)
-		nonces       []uint64    // expected sent tx nonces after all calls are made
-		confirmedIds []uint      // expected tx Ids after all calls are made
+		name   string      // name of the test
+		max    uint64      // max concurrency of the queue
+		calls  []queueCall // calls to the queue
+		txs    []testTx    // txs to generate from the factory (and potentially error in send)
+		nonces []uint64    // expected sent tx nonces after all calls are made
+		// With Holocene, it is important that transactions are included on chain in the same order as they are sent.
+		// The txmgr.Queue.Send() method should ensure nonces are determined _synchronously_ even if transactions
+		// are otherwise launched asynchronously.
+		confirmedIds []uint // expected tx Ids after all calls are made
 	}{
 		{
 			name: "success",
@@ -235,13 +238,12 @@ func TestQueue_Send(t *testing.T) {
 			}
 			// wait for the queue to drain (all txs complete or failed)
 			_ = queue.Wait()
-			// check that the nonces match
-			slices.Sort(nonces)
-			require.Equal(t, test.nonces, nonces, "expected nonces do not match")
 
 			// NOTE the backend in this test does not order transactions based on the nonce
 			// So what we want to check is that the txs match expectations when they are ordered
 			// in the same way as the nonces.
+			slices.Sort(nonces)
+			require.Equal(t, test.nonces, nonces, "expected nonces do not match")
 			for i, id := range test.confirmedIds {
 				require.Equal(t, nonces[i], nonceForTxId[id],
 					"nonce for tx id %d was %d instead of %d", id, nonceForTxId[id], nonces[i])
