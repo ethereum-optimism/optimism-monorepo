@@ -88,9 +88,25 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 // blocked from completing until the channel is read from.
 func (q *Queue[T]) TrySend(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) bool {
 	group, ctx := q.groupContext()
-	return group.TryGo(func() error {
-		return q.sendTx(ctx, id, candidate, receiptCh)
-	})
+	responseChan := make(chan SendResponse, 1)
+	handleResponse := func() error {
+		// This handler will wait for the response from the txMgr, and then send the receipt
+		select {
+		case response := <-responseChan:
+			receiptCh <- TxReceipt[T]{ID: id, Receipt: response.Receipt, Err: response.Err}
+			return response.Err
+		case <-ctx.Done():
+			receiptCh <- TxReceipt[T]{ID: id, Err: ctx.Err()}
+			return ctx.Err()
+		}
+	}
+	ok := group.TryGo(handleResponse) // This blocks until the number of handlers is below the limit
+	if !ok {
+		return false
+	} else {
+		q.txMgr.SendAsync(ctx, candidate, responseChan)
+		return true
+	}
 }
 
 func (q *Queue[T]) sendTx(ctx context.Context, id T, candidate TxCandidate, receiptCh chan TxReceipt[T]) error {
