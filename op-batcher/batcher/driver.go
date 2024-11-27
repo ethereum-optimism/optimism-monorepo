@@ -8,6 +8,7 @@ import (
 	"math/big"
 	_ "net/http/pprof"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -107,8 +108,7 @@ type BatchSubmitter struct {
 
 	pendingBytesUpdated chan int64 // notifies the throttling with the new pending bytes
 
-	mutex   sync.Mutex
-	running bool
+	running atomic.Bool
 
 	txpoolMutex       sync.Mutex // guards txpoolState and txpoolBlockedBlob
 	txpoolState       TxPoolState
@@ -134,13 +134,9 @@ func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 func (l *BatchSubmitter) StartBatchSubmitting() error {
 	l.Log.Info("Starting Batch Submitter")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if l.running {
+	if !l.running.CompareAndSwap(false, true) {
 		return errors.New("batcher is already running")
 	}
-	l.running = true
 
 	l.shutdownCtx, l.cancelShutdownCtx = context.WithCancel(context.Background())
 	l.killCtx, l.cancelKillCtx = context.WithCancel(context.Background())
@@ -218,13 +214,9 @@ func (l *BatchSubmitter) StopBatchSubmittingIfRunning(ctx context.Context) error
 func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	l.Log.Info("Stopping Batch Submitter")
 
-	l.mutex.Lock()
-	defer l.mutex.Unlock()
-
-	if !l.running {
+	if !l.running.CompareAndSwap(true, false) {
 		return ErrBatcherNotRunning
 	}
-	l.running = false
 
 	// go routine will call cancelKill() if the passed in ctx is ever Done
 	cancelKill := l.cancelKillCtx
