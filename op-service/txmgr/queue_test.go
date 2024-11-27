@@ -238,14 +238,15 @@ func TestQueue_Send(t *testing.T) {
 			// check that the nonces match
 			slices.Sort(nonces)
 			require.Equal(t, test.nonces, nonces, "expected nonces do not match")
-			for i, id := range test.confirmedIds { // iterate over nonces in order
-				require.Equal(t, nonces[i], nonceForTxId[id],
-					"nonce for tx id %d was %d instead of %d", id, nonceForTxId[id], nonces[i])
-			}
+
 			// NOTE the backend in this test does not order transactions based on the nonce
 			// So what we want to check is that the txs match expectations when they are ordered
 			// in the same way as the nonces.
-			// require.EqualValues(t, test.confirmedIds, txIds, "expected tx Ids list does not match")
+			for i, id := range test.confirmedIds {
+				require.Equal(t, nonces[i], nonceForTxId[id],
+					"nonce for tx id %d was %d instead of %d", id, nonceForTxId[id], nonces[i])
+			}
+
 			// check receipts
 			for i, c := range test.calls {
 				if !c.queued {
