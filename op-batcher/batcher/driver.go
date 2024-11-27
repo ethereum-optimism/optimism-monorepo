@@ -359,30 +359,31 @@ func (l *BatchSubmitter) getSyncStatus(ctx context.Context) (*eth.SyncStatus, er
 }
 
 // calculateL2BlockRangeToStore determines the range (start,end] that should be loaded into the local state.
-// It also takes care of initializing some local state (i.e. will modify l.lastStoredBlock in certain conditions
-// as well as garbage collecting blocks which became safe)
 func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus) (eth.BlockID, eth.BlockID, error) {
 	if syncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		return eth.BlockID{}, eth.BlockID{}, errors.New("empty sync status")
 	}
-
-	lastStoredBlock := l.state.LastStoredBlock()
-	// Check last stored to see if it needs to be set on startup OR set if is lagged behind.
-	// It lagging implies that the op-node processed some batches that were submitted prior to the current instance of the batcher being alive.
-	if lastStoredBlock == (eth.BlockID{}) {
-		l.Log.Info("Resuming batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
-		lastStoredBlock = syncStatus.SafeL2.ID()
-	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
-		l.Log.Warn("Last submitted block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", lastStoredBlock, "safe", syncStatus.SafeL2)
-		lastStoredBlock = syncStatus.SafeL2.ID()
-	}
-
 	// Check if we should even attempt to load any blocks. TODO: May not need this check
 	if syncStatus.SafeL2.Number >= syncStatus.UnsafeL2.Number {
-		return eth.BlockID{}, eth.BlockID{}, fmt.Errorf("L2 safe head(%d) ahead of L2 unsafe head(%d)", syncStatus.SafeL2.Number, syncStatus.UnsafeL2.Number)
+		return eth.BlockID{}, eth.BlockID{}, fmt.Errorf("L2 safe head(%d) >= L2 unsafe head(%d)", syncStatus.SafeL2.Number, syncStatus.UnsafeL2.Number)
 	}
 
-	return lastStoredBlock, syncStatus.UnsafeL2.ID(), nil
+	lastStoredBlock := l.state.LastStoredBlock()
+	start := l.state.LastStoredBlock()
+	end := syncStatus.UnsafeL2.ID()
+
+	// Check last stored to see if it is empty or has lagged behind.
+	// It lagging implies that the op-node processed some batches that
+	// were submitted prior to the current instance of the batcher being alive.
+	if lastStoredBlock == (eth.BlockID{}) {
+		l.Log.Info("Resuming batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
+		start = syncStatus.SafeL2.ID()
+	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
+		l.Log.Warn("Last submitted block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", lastStoredBlock, "safe", syncStatus.SafeL2)
+		start = syncStatus.SafeL2.ID()
+	}
+
+	return start, end, nil
 }
 
 // The following things occur:
