@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/snapshots"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 
@@ -36,9 +39,7 @@ type DisputeGameConfig struct {
 
 	privateKeyECDSA *ecdsa.PrivateKey
 
-	MinProposalSizeBytes     uint64
-	ChallengePeriodSeconds   uint64
-	MipsVersion              uint64
+	Vm                       common.Address
 	GameKind                 string
 	GameType                 uint32
 	AbsolutePrestate         common.Hash
@@ -84,22 +85,44 @@ func DisputeGameCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	cfg, err := NewDisputeGameConfigFromCLI(cliCtx, l)
+	if err != nil {
+		return err
+	}
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
+	return DisputeGame(ctx, cfg)
+}
+
+func NewDisputeGameConfigFromCLI(cliCtx *cli.Context, l log.Logger) (DisputeGameConfig, error) {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
-		return fmt.Errorf("failed to parse artifacts URL: %w", err)
+		return DisputeGameConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
 
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-
-	return DisputeGame(ctx, DisputeGameConfig{
+	cfg := DisputeGameConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
-	})
+
+		Vm:                       common.HexToAddress(cliCtx.String(VmFlagName)),
+		GameKind:                 cliCtx.String(GameKindFlagName),
+		GameType:                 uint32(cliCtx.Uint64(GameTypeFlagName)),
+		AbsolutePrestate:         common.HexToHash(cliCtx.String(AbsolutePrestateFlagName)),
+		MaxGameDepth:             cliCtx.Uint64(MaxGameDepthFlagName),
+		SplitDepth:               cliCtx.Uint64(SplitDepthFlagName),
+		ClockExtension:           cliCtx.Uint64(ClockExtensionFlagName),
+		MaxClockDuration:         cliCtx.Uint64(MaxClockDurationFlagName),
+		DelayedWethProxy:         common.HexToAddress(cliCtx.String(DelayedWethProxyFlagName)),
+		AnchorStateRegistryProxy: common.HexToAddress(cliCtx.String(AnchorStateRegistryProxyFlagName)),
+		L2ChainId:                cliCtx.Uint64(L2ChainIdFlagName),
+		Proposer:                 common.HexToAddress(cliCtx.String(ProposerFlagName)),
+		Challenger:               common.HexToAddress(cliCtx.String(ChallengerFlagName)),
+	}
+	return cfg, nil
 }
 
 func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
@@ -175,6 +198,25 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		release = "dev"
 	}
 
+	// We need to etch the VM and PreimageOracle addresses so that they have nonzero code
+	// and the checks in the FaultDisputeGame constructor pass.
+	oracleAddr, err := loadOracleAddr(ctx, l1Client, cfg.Vm)
+	if err != nil {
+		return err
+	}
+	addresses := []common.Address{
+		cfg.Vm,
+		oracleAddr,
+	}
+	for _, addr := range addresses {
+		code, err := l1Client.CodeAt(ctx, addr, nil)
+		if err != nil {
+			return fmt.Errorf("failed to get code for %v: %w", addr, err)
+		}
+		host.ImportAccount(addr, types.Account{
+			Code: code,
+		})
+	}
 	lgr.Info("deploying dispute game", "release", release)
 
 	dgo, err := opcm.DeployDisputeGame(
@@ -182,9 +224,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		opcm.DeployDisputeGameInput{
 			Release:                  release,
 			StandardVersionsToml:     standardVersionsTOML,
-			MipsVersion:              cfg.MipsVersion,
-			MinProposalSizeBytes:     cfg.MinProposalSizeBytes,
-			ChallengePeriodSeconds:   cfg.ChallengePeriodSeconds,
+			VmAddress:                cfg.Vm,
 			GameKind:                 cfg.GameKind,
 			GameType:                 cfg.GameType,
 			AbsolutePrestate:         cfg.AbsolutePrestate,
@@ -213,4 +253,16 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
 	return nil
+}
+
+func loadOracleAddr(ctx context.Context, l1Client *ethclient.Client, vmAddr common.Address) (common.Address, error) {
+	callData, err := snapshots.LoadMIPSABI().Pack("oracle")
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to create vm.oracle() calldata: %w", err)
+	}
+	result, err := l1Client.CallContract(ctx, ethereum.CallMsg{Data: callData, To: &vmAddr}, nil)
+	if err != nil {
+		return common.Address{}, fmt.Errorf("failed to call vm.oracle(): %w", err)
+	}
+	return common.BytesToAddress(result), nil
 }

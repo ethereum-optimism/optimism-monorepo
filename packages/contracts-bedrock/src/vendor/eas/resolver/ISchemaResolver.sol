@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { Attestation } from "../Common.sol";
+import { Attestation } from "src/vendor/eas/Common.sol";
 
 /// @title ISchemaResolver
 /// @notice The interface of an optional schema resolver.
