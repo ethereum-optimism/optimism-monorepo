@@ -173,9 +173,6 @@ nuke: clean devnet-clean ## Completely clean the project directory
 
 ## Prepares for running a local devnet
 pre-devnet: submodules $(DEVNET_CANNON_PRESTATE_FILES)
-	@if ! [ -x "$$(command -v geth)" ]; then \
-		make install-geth; \
-	fi
 	@if ! [ -x "$$(command -v eth2-testnet-genesis)" ]; then \
 		make install-eth2-testnet-genesis; \
 	fi
@@ -246,14 +243,6 @@ tag-bedrock-go-modules: ## Tags Go modules for Bedrock
 update-op-geth: ## Updates the Geth version used in the project
 	./ops/scripts/update-op-geth.py
 .PHONY: update-op-geth
-
-install-geth: ## Installs or updates Geth if versions do not match
-	./ops/scripts/geth-version-checker.sh && \
-	 	(echo "Geth versions match, not installing geth..."; true) || \
- 		(echo "Versions do not match, installing geth!"; \
- 			go install -v github.com/ethereum/go-ethereum/cmd/geth@$(shell jq -r .geth < versions.json); \
- 			echo "Installed geth!"; true)
-.PHONY: install-geth
 
 install-eth2-testnet-genesis:
 	go install -v github.com/protolambda/eth2-testnet-genesis@$(shell jq -r .eth2_testnet_genesis < versions.json)
