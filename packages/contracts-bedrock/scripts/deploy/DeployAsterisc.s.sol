@@ -45,6 +45,11 @@ contract DeployAsteriscOutput is BaseDeployIO {
         }
     }
 
+    function checkOutput(DeployAsteriscInput _mi) public view {
+        DeployUtils.assertValidContractAddress(address(_asteriscSingleton));
+        assertValidDeploy(_mi);
+    }
+
     function asteriscSingleton() public view returns (IRISCV) {
         DeployUtils.assertValidContractAddress(address(_asteriscSingleton));
         return _asteriscSingleton;
@@ -65,9 +70,7 @@ contract DeployAsteriscOutput is BaseDeployIO {
 contract DeployAsterisc is Script {
     function run(DeployAsteriscInput _mi, DeployAsteriscOutput _mo) public {
         DeployAsteriscSingleton(_mi, _mo);
-
-        DeployUtils.assertValidContractAddress(address(_mo.asteriscSingleton()));
-        _mo.assertValidDeploy(_mi);
+        _mo.checkOutput(_mi);
     }
 
     function DeployAsteriscSingleton(DeployAsteriscInput _mi, DeployAsteriscOutput _mo) internal {

@@ -21,11 +21,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
-	"github.com/ethereum/go-ethereum/rpc"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -141,6 +141,10 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 	}
 
 	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+
 	l1Host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
