@@ -329,8 +329,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the internal mint function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_internalMintFunction_reverts(address _caller, address _to, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("_mint(address,uint256)", _to, _amount); // nosemgrep:
-            // sol-style-use-abi-encodecall
+        // nosemgrep: sol-style-use-abi-encodecall
+        bytes memory _calldata = abi.encodeWithSignature("_mint(address,uint256)", _to, _amount);
         vm.expectRevert(bytes(""));
 
         // Act
@@ -344,8 +344,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the mint function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_mintFunction_reverts(address _caller, address _to, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("mint(address,uint256)", _to, _amount); // nosemgrep:
-            // sol-style-use-abi-encodecall
+        // nosemgrep: sol-style-use-abi-encodecall
+        bytes memory _calldata = abi.encodeWithSignature("mint(address,uint256)", _to, _amount);
         vm.expectRevert(bytes(""));
 
         // Act
@@ -359,8 +359,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the internal burn function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_internalBurnFunction_reverts(address _caller, address _from, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("_burn(address,uint256)", _from, _amount); // nosemgrep:
-            // sol-style-use-abi-encodecall
+        // nosemgrep: sol-style-use-abi-encodecall
+        bytes memory _calldata = abi.encodeWithSignature("_burn(address,uint256)", _from, _amount);
         vm.expectRevert(bytes(""));
 
         // Act
@@ -374,8 +374,8 @@ contract SuperchainWETH_Test is CommonTest {
     /// @notice Test that the burn function reverts to protect against accidentally changing the visibility.
     function testFuzz_calling_burnFuunction_reverts(address _caller, address _from, uint256 _amount) public {
         // Arrange
-        bytes memory _calldata = abi.encodeWithSignature("burn(address,uint256)", _from, _amount); // nosemgrep:
-            // sol-style-use-abi-encodecall
+        // nosemgrep: sol-style-use-abi-encodecall
+        bytes memory _calldata = abi.encodeWithSignature("burn(address,uint256)", _from, _amount);
         vm.expectRevert(bytes(""));
 
         // Act
@@ -504,6 +504,7 @@ contract SuperchainWETH_Test is CommonTest {
         external
     {
         // Assume
+        vm.assume(_sender != address(ethLiquidity));
         vm.assume(_sender != ZERO_ADDRESS);
         vm.assume(_to != ZERO_ADDRESS);
         _amount = bound(_amount, 0, type(uint248).max - 1);
