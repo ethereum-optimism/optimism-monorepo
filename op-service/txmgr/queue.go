@@ -51,10 +51,10 @@ func (q *Queue[T]) Wait() error {
 	return q.group.Wait()
 }
 
-// HandleResponse will wait for the response on the first passed channel,
+// handleResponse will wait for the response on the first passed channel,
 // and then forward it on the second passed channel (attaching the id). It returns
 // the response error or the context error if the context is canceled.
-func HandleResponse[T any](ctx context.Context, c chan SendResponse, d chan TxReceipt[T], id T) error {
+func handleResponse[T any](ctx context.Context, c chan SendResponse, d chan TxReceipt[T], id T) error {
 	select {
 	case response := <-c:
 		d <- TxReceipt[T]{ID: id, Receipt: response.Receipt, Err: response.Err}
@@ -77,7 +77,7 @@ func (q *Queue[T]) Send(id T, candidate TxCandidate, receiptCh chan TxReceipt[T]
 	group, ctx := q.groupContext()
 	responseChan := make(chan SendResponse, 1)
 	handleResponse := func() error {
-		return HandleResponse(ctx, responseChan, receiptCh, id)
+		return handleResponse(ctx, responseChan, receiptCh, id)
 	}
 	group.Go(handleResponse)                        // This blocks until the number of handlers is below the limit
 	q.txMgr.SendAsync(ctx, candidate, responseChan) // Nonce management handled synchronously, i.e. before this returns
@@ -96,7 +96,7 @@ func (q *Queue[T]) TrySend(id T, candidate TxCandidate, receiptCh chan TxReceipt
 	group, ctx := q.groupContext()
 	responseChan := make(chan SendResponse, 1)
 	handleResponse := func() error {
-		return HandleResponse(ctx, responseChan, receiptCh, id)
+		return handleResponse(ctx, responseChan, receiptCh, id)
 	}
 	ok := group.TryGo(handleResponse)
 	if !ok {
