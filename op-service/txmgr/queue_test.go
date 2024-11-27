@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"math/big"
-	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -177,11 +176,13 @@ func TestQueue_Send(t *testing.T) {
 			// track the nonces, and return any expected errors from tx sending
 			var (
 				nonces  []uint64
+				txIds   []int
 				nonceMu sync.Mutex
 			)
 			sendTx := func(ctx context.Context, tx *types.Transaction) error {
 				index := int(tx.Data()[0])
 				nonceMu.Lock()
+				txIds = append(txIds, index)
 				nonces = append(nonces, tx.Nonce())
 				nonceMu.Unlock()
 				var testTx *testTx
@@ -216,8 +217,9 @@ func TestQueue_Send(t *testing.T) {
 			// wait for the queue to drain (all txs complete or failed)
 			_ = queue.Wait()
 			// check that the nonces match
-			slices.Sort(nonces)
+			// slices.Sort(nonces) // Don't sort these nonces, as they actually need to be in order.
 			require.Equal(t, test.nonces, nonces, "expected nonces do not match")
+			require.EqualValues(t, test.nonces, txIds, "expected tx Ids list does not match")
 			// check receipts
 			for i, c := range test.calls {
 				if !c.queued {
