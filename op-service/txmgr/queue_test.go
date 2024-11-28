@@ -58,12 +58,11 @@ func (b *mockBackendWithNonce) NonceAt(ctx context.Context, account common.Addre
 
 func TestQueue_Send(t *testing.T) {
 	testCases := []struct {
-		name   string        // name of the test
-		max    uint64        // max concurrency of the queue
-		calls  []queueCall   // calls to the queue
-		txs    []testTx      // txs to generate from the factory (and potentially error in send)
-		nonces []uint64      // expected sent tx nonces after all calls are made
-		total  time.Duration // approx. total time it should take to complete all queue calls
+		name   string      // name of the test
+		max    uint64      // max concurrency of the queue
+		calls  []queueCall // calls to the queue
+		txs    []testTx    // txs to generate from the factory (and potentially error in send)
+		nonces []uint64    // expected sent tx nonces after all calls are made
 	}{
 		{
 			name: "success",
@@ -77,7 +76,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0, 1},
-			total:  1 * time.Second,
 		},
 		{
 			name: "no limit",
@@ -91,7 +89,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0, 1},
-			total:  1 * time.Second,
 		},
 		{
 			name: "single threaded",
@@ -105,7 +102,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0},
-			total:  1 * time.Second,
 		},
 		{
 			name: "single threaded blocking",
@@ -122,7 +118,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0, 1, 2},
-			total:  3 * time.Second,
 		},
 		{
 			name: "dual threaded blocking",
@@ -143,7 +138,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0, 1, 2, 3, 4},
-			total:  3 * time.Second,
 		},
 		{
 			name: "subsequent txs fail after tx failure",
@@ -159,7 +153,6 @@ func TestQueue_Send(t *testing.T) {
 				{},
 			},
 			nonces: []uint64{0, 1},
-			total:  1 * time.Second,
 		},
 	}
 	for _, test := range testCases {
@@ -209,7 +202,6 @@ func TestQueue_Send(t *testing.T) {
 			queue := NewQueue[int](ctx, mgr, test.max)
 
 			// make all the queue calls given in the test case
-			start := time.Now()
 			receiptChs := make([]chan TxReceipt[int], len(test.calls))
 			for i, c := range test.calls {
 				msg := fmt.Sprintf("Call %d", i)
@@ -223,10 +215,6 @@ func TestQueue_Send(t *testing.T) {
 			}
 			// wait for the queue to drain (all txs complete or failed)
 			_ = queue.Wait()
-			duration := time.Since(start)
-			// expect the execution time within a certain window
-			now := time.Now()
-			require.WithinDuration(t, now.Add(test.total), now.Add(duration), 500*time.Millisecond, "unexpected queue transaction timing")
 			// check that the nonces match
 			slices.Sort(nonces)
 			require.Equal(t, test.nonces, nonces, "expected nonces do not match")

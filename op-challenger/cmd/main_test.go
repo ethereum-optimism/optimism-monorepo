@@ -177,6 +177,13 @@ func TestNetwork(t *testing.T) {
 	t.Run("UnknownNetwork", func(t *testing.T) {
 		verifyArgsInvalid(t, "unknown chain: not-a-network", addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--network=not-a-network"))
 	})
+
+	t.Run("ChainIDAllowedWhenGameFactoryAddressSupplied", func(t *testing.T) {
+		addr := common.Address{0xbb, 0xcc, 0xdd}
+		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--network=1234", "--game-factory-address="+addr.Hex()))
+		require.Equal(t, addr, cfg.GameFactoryAddress)
+		require.Equal(t, "1234", cfg.Cannon.Network)
+	})
 }
 
 func TestGameAllowlist(t *testing.T) {

@@ -3,12 +3,14 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
-import { L1BlockInterop, ConfigType } from "src/L2/L1BlockInterop.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
+
+// Interfaces
+import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortalInterop
@@ -24,9 +26,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
         OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds, _sharedLockbox)
     { }
 
-    /// @custom:semver +interop-beta.3
+    /// @custom:semver +interop-beta.4
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.3");
+        return string.concat(super.version(), "+interop-beta.4");
     }
 
     /// @notice Sets static configuration options for the L2 system.
@@ -49,7 +51,7 @@ contract OptimismPortalInterop is OptimismPortal2 {
                 uint256(0), // value
                 uint64(SYSTEM_DEPOSIT_GAS_LIMIT), // gasLimit
                 false, // isCreation,
-                abi.encodeCall(L1BlockInterop.setConfig, (_type, _value))
+                abi.encodeCall(IL1BlockInterop.setConfig, (_type, _value))
             )
         );
     }

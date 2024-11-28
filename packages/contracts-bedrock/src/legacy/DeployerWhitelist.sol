@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Interfaces
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 
 /// @custom:legacy true
@@ -41,8 +42,8 @@ contract DeployerWhitelist is ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.1
-    string public constant version = "1.1.1-beta.1";
+    /// @custom:semver 1.1.1-beta.2
+    string public constant version = "1.1.1-beta.2";
 
     /// @notice Adds or removes an address from the deployment whitelist.
     /// @param _deployer      Address to update permissions for.

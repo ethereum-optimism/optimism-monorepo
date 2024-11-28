@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Libraries
 import { Storage } from "src/libraries/Storage.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { ISystemConfigInterop } from "src/L1/interfaces/ISystemConfigInterop.sol";
 import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
+
+// Interfaces
+import { ISemver } from "src/universal/interfaces/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:audit none This contracts is not yet audited.
@@ -57,8 +62,8 @@ contract SuperchainConfig is Initializable, ISemver {
     error ChainAlreadyAdded();
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.2
-    string public constant version = "1.1.1-beta.2";
+    /// @custom:semver 1.1.1-beta.3
+    string public constant version = "1.1.1-beta.3";
 
     // Mapping from chainId to SystemConfig address
     mapping(uint256 => address) public systemConfigs;

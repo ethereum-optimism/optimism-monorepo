@@ -16,6 +16,7 @@ const (
 	ProofMaturityDelaySecondsFlagName       = "proof-maturity-delay-seconds"
 	DisputeGameFinalityDelaySecondsFlagName = "dispute-game-finality-delay-seconds"
 	MIPSVersionFlagName                     = "mips-version"
+	VmFlagName                              = "vm"
 	GameKindFlagName                        = "game-kind"
 	GameTypeFlagName                        = "game-type"
 	AbsolutePrestateFlagName                = "absolute-prestate"
@@ -72,6 +73,11 @@ var (
 		Usage:   "MIPS version.",
 		EnvVars: deployer.PrefixEnvVar("MIPS_VERSION"),
 		Value:   standard.MIPSVersion,
+	}
+	VmFlag = &cli.StringFlag{
+		Name:    VmFlagName,
+		Usage:   "VM contract address.",
+		EnvVars: deployer.PrefixEnvVar("VM"),
 	}
 	GameKindFlag = &cli.StringFlag{
 		Name:    GameKindFlagName,
@@ -173,7 +179,7 @@ var DisputeGameFlags = []cli.Flag{
 	ArtifactsLocatorFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
-	MIPSVersionFlag,
+	VmFlag,
 	GameKindFlag,
 	GameTypeFlag,
 	AbsolutePrestateFlag,
@@ -188,13 +194,16 @@ var DisputeGameFlags = []cli.Flag{
 	ChallengerFlag,
 }
 
-var MIPSFlags = []cli.Flag{
+var BaseFPVMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ArtifactsLocatorFlag,
 	PreimageOracleFlag,
-	MIPSVersionFlag,
 }
+
+var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
+
+var AsteriscFlags = BaseFPVMFlags
 
 var Commands = []*cli.Command{
 	{
@@ -220,5 +229,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of MIPS.",
 		Flags:  cliapp.ProtectFlags(MIPSFlags),
 		Action: MIPSCLI,
+	},
+	{
+		Name:   "asterisc",
+		Usage:  "Bootstrap an instance of Asterisc.",
+		Flags:  cliapp.ProtectFlags(AsteriscFlags),
+		Action: AsteriscCLI,
 	},
 }

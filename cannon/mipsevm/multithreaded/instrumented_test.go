@@ -157,7 +157,7 @@ func TestInstrumentedState_MultithreadedProgram(t *testing.T) {
 				"Map test passed",
 			},
 			programName: "mt-map",
-			steps:       100_000_000,
+			steps:       150_000_000,
 		},
 		{
 			name: "pool test",

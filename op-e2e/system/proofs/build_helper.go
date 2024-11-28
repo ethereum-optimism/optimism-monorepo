@@ -2,7 +2,9 @@ package proofs
 
 import (
 	"context"
+	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"time"
@@ -12,6 +14,15 @@ import (
 
 // BuildOpProgramClient builds the `op-program` client executable and returns the path to the resulting executable
 func BuildOpProgramClient(t *testing.T) string {
+	clientPath, err := filepath.Abs("../../../op-program/bin/op-program-client")
+	require.NoError(t, err)
+
+	_, err = os.Stat(clientPath)
+	if err == nil {
+		return clientPath
+	}
+	require.ErrorIs(t, err, os.ErrNotExist)
+
 	t.Log("Building op-program-client")
 	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
 	defer cancel()

@@ -62,7 +62,7 @@ contract SuperchainERC20Test is Test {
 
         // Look for the emit of the `CrosschainMint` event
         vm.expectEmit(address(superchainERC20));
-        emit IERC7802.CrosschainMint(_to, _amount);
+        emit IERC7802.CrosschainMint(_to, _amount, SUPERCHAIN_TOKEN_BRIDGE);
 
         // Call the `mint` function with the bridge caller
         vm.prank(SUPERCHAIN_TOKEN_BRIDGE);
@@ -105,7 +105,7 @@ contract SuperchainERC20Test is Test {
 
         // Look for the emit of the `CrosschainBurn` event
         vm.expectEmit(address(superchainERC20));
-        emit IERC7802.CrosschainBurn(_from, _amount);
+        emit IERC7802.CrosschainBurn(_from, _amount, SUPERCHAIN_TOKEN_BRIDGE);
 
         // Call the `burn` function with the bridge caller
         vm.prank(SUPERCHAIN_TOKEN_BRIDGE);

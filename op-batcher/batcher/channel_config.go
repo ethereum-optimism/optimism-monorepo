@@ -104,7 +104,7 @@ func (cc *ChannelConfig) Check() error {
 	// The [ChannelTimeout] must be larger than the [SubSafetyMargin].
 	// Otherwise, new blocks would always be considered timed out.
 	if cc.ChannelTimeout < cc.SubSafetyMargin {
-		return ErrInvalidChannelTimeout
+		return fmt.Errorf("%w: %d < %d", ErrInvalidChannelTimeout, cc.ChannelTimeout, cc.SubSafetyMargin)
 	}
 
 	// The max frame size must at least be able to accommodate the constant

@@ -1,9 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Libraries
 import { Storage } from "src/libraries/Storage.sol";
+
+// Interfaces
+import { ISemver } from "src/universal/interfaces/ISemver.sol";
 
 /// @notice ProtocolVersion is a numeric identifier of the protocol version.
 type ProtocolVersion is uint256;
@@ -36,8 +41,8 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.3
-    string public constant version = "1.0.1-beta.3";
+    /// @custom:semver 1.0.1-beta.4
+    string public constant version = "1.0.1-beta.4";
 
     /// @notice Constructs the ProtocolVersion contract. Cannot set
     ///         the owner to `address(0)` due to the Ownable contract's

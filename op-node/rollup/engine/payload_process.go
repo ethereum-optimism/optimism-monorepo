@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -12,7 +13,8 @@ type PayloadProcessEvent struct {
 	// if payload should be promoted to (local) safe (must also be pending safe, see DerivedFrom)
 	Concluding bool
 	// payload is promoted to pending-safe if non-zero
-	DerivedFrom eth.L1BlockRef
+	DerivedFrom  eth.L1BlockRef
+	BuildStarted time.Time
 
 	Envelope *eth.ExecutionPayloadEnvelope
 	Ref      eth.L2BlockRef
@@ -26,6 +28,7 @@ func (eq *EngDeriver) onPayloadProcess(ev PayloadProcessEvent) {
 	ctx, cancel := context.WithTimeout(eq.ctx, payloadProcessTimeout)
 	defer cancel()
 
+	insertStart := time.Now()
 	status, err := eq.ec.engine.NewPayload(ctx,
 		ev.Envelope.ExecutionPayload, ev.Envelope.ParentBeaconBlockRoot)
 	if err != nil {
@@ -49,7 +52,14 @@ func (eq *EngDeriver) onPayloadProcess(ev PayloadProcessEvent) {
 		})
 		return
 	case eth.ExecutionValid:
-		eq.emitter.Emit(PayloadSuccessEvent(ev))
+		eq.emitter.Emit(PayloadSuccessEvent{
+			Concluding:    ev.Concluding,
+			DerivedFrom:   ev.DerivedFrom,
+			BuildStarted:  ev.BuildStarted,
+			InsertStarted: insertStart,
+			Envelope:      ev.Envelope,
+			Ref:           ev.Ref,
+		})
 		return
 	default:
 		eq.emitter.Emit(rollup.EngineTemporaryErrorEvent{
