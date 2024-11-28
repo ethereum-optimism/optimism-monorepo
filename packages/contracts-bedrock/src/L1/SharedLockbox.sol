@@ -22,7 +22,7 @@ contract SharedLockbox is ISemver {
 
     /// @notice Emitted when a portal is set as authorized to interact with the lockbox.
     /// @param portal The address of the authorized portal.
-    event AuthorizedPortal(address indexed portal);
+    event PortalAuthorized(address indexed portal);
 
     /// @notice The address of the SuperchainConfig contract.
     address public immutable SUPERCHAIN_CONFIG;
@@ -65,6 +65,6 @@ contract SharedLockbox is ISemver {
         if (msg.sender != SUPERCHAIN_CONFIG) revert Unauthorized();
 
         authorizedPortals[_portal] = true;
-        emit AuthorizedPortal(_portal);
+        emit PortalAuthorized(_portal);
     }
 }

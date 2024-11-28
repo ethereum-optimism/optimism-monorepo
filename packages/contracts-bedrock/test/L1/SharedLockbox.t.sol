@@ -16,7 +16,7 @@ contract SharedLockboxTest is CommonTest {
 
     event ETHUnlocked(address indexed portal, uint256 amount);
 
-    event AuthorizedPortal(address indexed portal);
+    event PortalAuthorized(address indexed portal);
 
     /// @notice Tests it reverts when the caller is not an authorized portal.
     function test_lockETH_unauthorizedPortal_reverts(address _caller) public {
@@ -115,9 +115,9 @@ contract SharedLockboxTest is CommonTest {
         // Adding this check to make it more future proof in case something changes on the setup.
         vm.assume(sharedLockbox.authorizedPortals(_portal) == false);
 
-        // Look for the emit of the `AuthorizedPortal` event
+        // Look for the emit of the `PortalAuthorized` event
         vm.expectEmit(address(sharedLockbox));
-        emit AuthorizedPortal(_portal);
+        emit PortalAuthorized(_portal);
 
         // Call the `authorizePortal` function with the SuperchainConfig
         vm.prank(address(superchainConfig));

@@ -96,19 +96,6 @@
         "internalType": "address",
         "name": "portal",
         "type": "address"
-      }
-    ],
-    "name": "AuthorizedPortal",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "portal",
-        "type": "address"
       },
       {
         "indexed": false,
@@ -137,6 +124,19 @@
       }
     ],
     "name": "ETHUnlocked",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "portal",
+        "type": "address"
+      }
+    ],
+    "name": "PortalAuthorized",
     "type": "event"
   },
   {

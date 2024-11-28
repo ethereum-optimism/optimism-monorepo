@@ -324,7 +324,7 @@ contract DeployOwnership is Deploy {
                 _save: this,
                 _salt: _implSalt(),
                 _name: "SuperchainConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, (address(0))))
             })
         );
 

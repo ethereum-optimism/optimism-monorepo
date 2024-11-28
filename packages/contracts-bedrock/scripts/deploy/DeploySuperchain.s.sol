@@ -70,6 +70,7 @@ import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 // All contracts of the form `Deploy<X>Input` should inherit from `BaseDeployIO`, as it provides
 // shared functionality for all deploy scripts, such as access to cheat codes.
 contract DeploySuperchainInput is BaseDeployIO {
+    // We use the `stdToml` library to parse TOML input files. This allows us to easily parse
     using stdToml for string;
 
     // All inputs are set in storage individually. We put any roles first, followed by the remaining
@@ -323,6 +324,13 @@ contract DeploySuperchainOutput is BaseDeployIO {
 // default sender would be the broadcaster during test, but the broadcaster needs to be the deployer
 // since they are set to the initial proxy admin owner.
 contract DeploySuperchain is Script {
+    // The `PrecalculatedAddresses` stores the precalculated addresses so then they can be checked on the actual
+    // deployment.
+    struct PrecalculatedAddresses {
+        address superchainConfigProxy;
+        address sharedLockboxProxy;
+    }
+
     // -------- Core Deployment Methods --------
 
     function run(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
@@ -338,11 +346,8 @@ contract DeploySuperchain is Script {
         // Deploy the proxy admin, with the owner set to the deployer.
         deploySuperchainProxyAdmin(_dsi, _dso);
 
-        // Deploy and initialize the superchain contracts.
-        deploySuperchainImplementationContracts(_dsi, _dso);
-        deployAndInitializeSuperchainConfig(_dsi, _dso);
-        deployAndInitializeProtocolVersions(_dsi, _dso);
-        deploySharedLockbox(_dsi, _dso);
+        // Deploy implementations, proxies and then initialize the superchain contracts.
+        deploySuperchain(_dsi, _dso);
 
         // Transfer ownership of the ProxyAdmin from the deployer to the specified owner.
         transferProxyAdminOwnership(_dsi, _dso);
@@ -370,101 +375,130 @@ contract DeploySuperchain is Script {
         _dso.set(_dso.superchainProxyAdmin.selector, address(superchainProxyAdmin));
     }
 
-    function deploySuperchainImplementationContracts(DeploySuperchainInput, DeploySuperchainOutput _dso) public {
-        // Deploy implementation contracts.
+    function deploySuperchain(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
+        // Precalculate the proxies addresses. Needed since there are circular dependencies between them.
+        PrecalculatedAddresses memory precalculatedAddresses;
+        precalculatedAddresses.superchainConfigProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 3);
+        precalculatedAddresses.sharedLockboxProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 7);
+
+        // Deploy implementation contracts
+        deploySuperchainImplementationContracts(_dsi, _dso, precalculatedAddresses);
+
+        // Deploy proxy contracts
+        deployAndInitializeSuperchainProxyContracts(_dsi, _dso, precalculatedAddresses);
+    }
+
+    function deploySuperchainImplementationContracts(
+        DeploySuperchainInput,
+        DeploySuperchainOutput _dso,
+        PrecalculatedAddresses memory _precalculatedAddresses
+    )
+        internal
+    {
         vm.startBroadcast(msg.sender);
+
+        // Deploy SuperchainConfig implementation
         ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
             DeployUtils.create1({
                 _name: "SuperchainConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(ISuperchainConfig.__constructor__, (_precalculatedAddresses.sharedLockboxProxy))
+                )
             })
         );
+
+        // Deploy ProtocolVersions implementation
         IProtocolVersions protocolVersionsImpl = IProtocolVersions(
             DeployUtils.create1({
                 _name: "ProtocolVersions",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ()))
             })
         );
-        vm.stopBroadcast();
 
-        vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
-        vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");
-
-        _dso.set(_dso.superchainConfigImpl.selector, address(superchainConfigImpl));
-        _dso.set(_dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
-    }
-
-    function deployAndInitializeSuperchainConfig(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
-        address guardian = _dsi.guardian();
-        bool paused = _dsi.paused();
-
-        IProxyAdmin superchainProxyAdmin = _dso.superchainProxyAdmin();
-        ISuperchainConfig superchainConfigImpl = _dso.superchainConfigImpl();
-
-        vm.startBroadcast(msg.sender);
-        ISuperchainConfig superchainConfigProxy = ISuperchainConfig(
-            DeployUtils.create1({
-                _name: "Proxy",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                )
-            })
-        );
-        superchainProxyAdmin.upgradeAndCall(
-            payable(address(superchainConfigProxy)),
-            address(superchainConfigImpl),
-            abi.encodeCall(ISuperchainConfig.initialize, (guardian, paused))
-        );
-        vm.stopBroadcast();
-
-        vm.label(address(superchainConfigProxy), "SuperchainConfigProxy");
-        _dso.set(_dso.superchainConfigProxy.selector, address(superchainConfigProxy));
-    }
-
-    function deployAndInitializeProtocolVersions(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
-        address protocolVersionsOwner = _dsi.protocolVersionsOwner();
-        ProtocolVersion requiredProtocolVersion = _dsi.requiredProtocolVersion();
-        ProtocolVersion recommendedProtocolVersion = _dsi.recommendedProtocolVersion();
-
-        IProxyAdmin superchainProxyAdmin = _dso.superchainProxyAdmin();
-        IProtocolVersions protocolVersionsImpl = _dso.protocolVersionsImpl();
-
-        vm.startBroadcast(msg.sender);
-        IProtocolVersions protocolVersionsProxy = IProtocolVersions(
-            DeployUtils.create1({
-                _name: "Proxy",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
-                )
-            })
-        );
-        superchainProxyAdmin.upgradeAndCall(
-            payable(address(protocolVersionsProxy)),
-            address(protocolVersionsImpl),
-            abi.encodeCall(
-                IProtocolVersions.initialize,
-                (protocolVersionsOwner, requiredProtocolVersion, recommendedProtocolVersion)
-            )
-        );
-        vm.stopBroadcast();
-
-        vm.label(address(protocolVersionsProxy), "ProtocolVersionsProxy");
-        _dso.set(_dso.protocolVersionsProxy.selector, address(protocolVersionsProxy));
-    }
-
-    function deploySharedLockbox(DeploySuperchainInput, DeploySuperchainOutput _dso) public {
-        IProxyAdmin superchainProxyAdmin = _dso.superchainProxyAdmin();
-        ISuperchainConfig superchainConfigProxy = _dso.superchainConfigProxy();
-
-        vm.startBroadcast(msg.sender);
+        // Deploy SharedLockbox implementation
         ISharedLockbox sharedLockboxImpl = ISharedLockbox(
             DeployUtils.create1({
                 _name: "SharedLockbox",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(ISharedLockbox.__constructor__, (address(superchainConfigProxy)))
+                    abi.encodeCall(ISharedLockbox.__constructor__, (_precalculatedAddresses.superchainConfigProxy))
                 )
             })
         );
+
+        vm.stopBroadcast();
+
+        vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
+        vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");
+        vm.label(address(sharedLockboxImpl), "SharedLockboxImpl");
+
+        _dso.set(_dso.superchainConfigImpl.selector, address(superchainConfigImpl));
+        _dso.set(_dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
+        _dso.set(_dso.sharedLockboxImpl.selector, address(sharedLockboxImpl));
+    }
+
+    function deployAndInitializeSuperchainProxyContracts(
+        DeploySuperchainInput _dsi,
+        DeploySuperchainOutput _dso,
+        PrecalculatedAddresses memory _precalculatedAddresses
+    )
+        internal
+    {
+        IProxyAdmin superchainProxyAdmin = _dso.superchainProxyAdmin();
+
+        // Deploy SuperchainConfig proxy
+        ISuperchainConfig superchainConfigProxy;
+        {
+            address guardian = _dsi.guardian();
+            bool paused = _dsi.paused();
+
+            vm.startBroadcast(msg.sender);
+            superchainConfigProxy = ISuperchainConfig(
+                DeployUtils.create1({
+                    _name: "Proxy",
+                    _args: DeployUtils.encodeConstructor(
+                        abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
+                    )
+                })
+            );
+            superchainProxyAdmin.upgradeAndCall(
+                payable(address(superchainConfigProxy)),
+                address(_dso.superchainConfigImpl()),
+                abi.encodeCall(ISuperchainConfig.initialize, (guardian, paused))
+            );
+            vm.stopBroadcast();
+        }
+
+        // Deploy ProtocolVersions proxy
+        IProtocolVersions protocolVersionsProxy;
+        {
+            address protocolVersionsOwner = _dsi.protocolVersionsOwner();
+            ProtocolVersion requiredProtocolVersion = _dsi.requiredProtocolVersion();
+            ProtocolVersion recommendedProtocolVersion = _dsi.recommendedProtocolVersion();
+            IProtocolVersions protocolVersions = _dso.protocolVersionsImpl();
+
+            vm.startBroadcast(msg.sender);
+            // Deploy ProtocolVersion proxy
+            protocolVersionsProxy = IProtocolVersions(
+                DeployUtils.create1({
+                    _name: "Proxy",
+                    _args: DeployUtils.encodeConstructor(
+                        abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
+                    )
+                })
+            );
+            superchainProxyAdmin.upgradeAndCall(
+                payable(address(protocolVersionsProxy)),
+                address(protocolVersions),
+                abi.encodeCall(
+                    IProtocolVersions.initialize,
+                    (protocolVersionsOwner, requiredProtocolVersion, recommendedProtocolVersion)
+                )
+            );
+            vm.stopBroadcast();
+        }
+
+        // Deploy SharedLockbox proxy
+        vm.startBroadcast(msg.sender);
         ISharedLockbox sharedLockboxProxy = ISharedLockbox(
             DeployUtils.create1({
                 _name: "Proxy",
@@ -473,14 +507,27 @@ contract DeploySuperchain is Script {
                 )
             })
         );
-        superchainProxyAdmin.upgrade(payable(address(sharedLockboxProxy)), address(sharedLockboxImpl));
+        superchainProxyAdmin.upgrade(payable(address(sharedLockboxProxy)), address(_dso.sharedLockboxImpl()));
         vm.stopBroadcast();
 
-        vm.label(address(sharedLockboxImpl), "SharedLockboxImpl");
-        vm.label(address(sharedLockboxProxy), "SharedLockboxProxy");
+        vm.label(address(superchainConfigProxy), "SuperchainConfigProxy");
+        _dso.set(_dso.superchainConfigProxy.selector, address(superchainConfigProxy));
+        // To ensure deployments are correct, check that the precalculated address matches the actual address.
+        require(
+            address(superchainConfigProxy) == _precalculatedAddresses.superchainConfigProxy,
+            "superchain config expected address mismatch"
+        );
 
-        _dso.set(_dso.sharedLockboxImpl.selector, address(sharedLockboxImpl));
+        vm.label(address(protocolVersionsProxy), "ProtocolVersionsProxy");
+        _dso.set(_dso.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+
+        vm.label(address(sharedLockboxProxy), "SharedLockboxProxy");
         _dso.set(_dso.sharedLockboxProxy.selector, address(sharedLockboxProxy));
+        // To ensure deployments are correct, check that the precalculated address matches the actual address.
+        require(
+            address(sharedLockboxProxy) == _precalculatedAddresses.sharedLockboxProxy,
+            "shared lockbox expected address mismatch"
+        );
     }
 
     function transferProxyAdminOwnership(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
