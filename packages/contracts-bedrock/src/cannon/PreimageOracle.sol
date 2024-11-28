@@ -51,8 +51,8 @@ contract PreimageOracle is ISemver {
     uint256 public constant PRECOMPILE_CALL_RESERVED_GAS = 100_000;
 
     /// @notice The semantic version of the Preimage Oracle contract.
-    /// @custom:semver 1.1.3-beta.6
-    string public constant version = "1.1.3-beta.6";
+    /// @custom:semver 1.1.3-beta.7
+    string public constant version = "1.1.3-beta.7";
 
     ////////////////////////////////////////////////////////////////
     //                 Authorized Preimage Parts                  //
