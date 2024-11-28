@@ -136,16 +136,16 @@
     "sourceCodeHash": "0x0fa0633a769e73f5937514c0003ba7947a1c275bbe5b85d78879c42f0ed8895b"
   },
   "src/cannon/MIPS.sol": {
-    "initCodeHash": "0xb4aec227019dacd6194d6aeb9ca68c23c60b95618d18a4ebc09243514aeb1f05",
-    "sourceCodeHash": "0x4d43b3f2918486aa76d2d59ac42e4f6aa2f58538c7e95a5cb99b63c9588b5f1c"
+    "initCodeHash": "0x2ad89ddfd9b6091af7fa4f337f6f0134b946838b53a056995eea5982e4b903c3",
+    "sourceCodeHash": "0xcd5f9762e641e4a1f6b07420ea3b2bfcaac5656da10c66a0f367ee4d4af37e9c"
   },
   "src/cannon/MIPS2.sol": {
-    "initCodeHash": "0xe3879b5772820d837bc1c77c32a1200eb26cf901d9302dff9f0e9759331e380e",
-    "sourceCodeHash": "0x1c45a8f4c8c9ded7043d63965cb114d17f801c6cd4d8233cb16838c5f9a02675"
+    "initCodeHash": "0x013e6005f56eae789a48ec9766d17c0be950d765ada3eb936c9a90337567c940",
+    "sourceCodeHash": "0xdd7684d0b8efd0bbee4abae76195c649b325ecd3e09f41b687cf3a091639c887"
   },
   "src/cannon/MIPS64.sol": {
-    "initCodeHash": "0xa4a761f480a26ec1926c5a8b4831440211c0441bd41d503b0aad189e030d35dc",
-    "sourceCodeHash": "0x7ddcf8584f9bd92abd1eb45bc198f5b0ec54acaf292f60e919d674cc56fb8abc"
+    "initCodeHash": "0xa5c2105b0d6f90d6f5ab1782f6d7acda505674a3c11355e0b401d66250406c0c",
+    "sourceCodeHash": "0x7cb189f5081c4aae84a7b23329309d944cb54f075ec18b03240d1725c03adc3b"
   },
   "src/cannon/PreimageOracle.sol": {
     "initCodeHash": "0x2bef439027c37c65dd8e7d9a987ff14e1dba94ee5fe5f316a77ecf46a8db4b3f",
