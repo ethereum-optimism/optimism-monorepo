@@ -103,9 +103,9 @@ type SuperSystem interface {
 	// Deploy the Emitter Contract, which emits Event Logs
 	DeployEmitterContract(network string, username string) common.Address
 	// Use the Emitter Contract to emit an Event Log
-	EmitData(network string, username string, data string) *types.Receipt
+	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
 	// AddDependency adds a dependency (by chain ID) to the given chain
-	AddDependency(network string, dep *big.Int) *types.Receipt
+	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
 	// ExecuteMessage calls the CrossL2Inbox executeMessage function
 	ExecuteMessage(
 		ctx context.Context,
@@ -767,7 +767,7 @@ func (s *interopE2ESystem) ExecuteMessage(
 	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
 }
 
-func (s *interopE2ESystem) AddDependency(id string, dep *big.Int) *types.Receipt {
+func (s *interopE2ESystem) AddDependency(ctx context.Context, id string, dep *big.Int) *types.Receipt {
 	// There is a note in OPContractsManagerInterop that the proxy-admin is used for now,
 	// even though it should be a separate dependency-set-manager address.
 	secret, err := s.hdWallet.Secret(devkeys.ChainOperatorKey{
@@ -779,7 +779,7 @@ func (s *interopE2ESystem) AddDependency(id string, dep *big.Int) *types.Receipt
 	auth, err := bind.NewKeyedTransactorWithChainID(secret, s.worldOutput.L1.Genesis.Config.ChainID)
 	require.NoError(s.t, err)
 
-	balance, err := s.l1GethClient.BalanceAt(context.Background(), crypto.PubkeyToAddress(secret.PublicKey), nil)
+	balance, err := s.l1GethClient.BalanceAt(ctx, crypto.PubkeyToAddress(secret.PublicKey), nil)
 	require.NoError(s.t, err)
 	require.False(s.t, balance.Sign() == 0, "system config owner needs a balance")
 
@@ -790,7 +790,7 @@ func (s *interopE2ESystem) AddDependency(id string, dep *big.Int) *types.Receipt
 	tx, err := contract.SystemconfigTransactor.AddDependency(auth, dep)
 	require.NoError(s.t, err)
 
-	receipt, err := wait.ForReceiptOK(context.Background(), s.L1GethClient(), tx.Hash())
+	receipt, err := wait.ForReceiptOK(ctx, s.L1GethClient(), tx.Hash())
 	require.NoError(s.t, err)
 	return receipt
 }
@@ -813,6 +813,7 @@ func (s *interopE2ESystem) DeployEmitterContract(
 }
 
 func (s *interopE2ESystem) EmitData(
+	ctx context.Context,
 	id string,
 	sender string,
 	data string,
@@ -828,7 +829,7 @@ func (s *interopE2ESystem) EmitData(
 	contract := s.Contract(id, "emitter").(*emit.Emit)
 	tx, err := contract.EmitTransactor.EmitData(auth, []byte(data))
 	require.NoError(s.t, err)
-	receipt, err := bind.WaitMined(context.Background(), s.L2GethClient(id), tx)
+	receipt, err := bind.WaitMined(ctx, s.L2GethClient(id), tx)
 	require.NoError(s.t, err)
 	return receipt
 }
