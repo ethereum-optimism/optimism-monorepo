@@ -789,8 +789,9 @@ contract MIPS2_Test is CommonTest {
             vm.expectRevert(InvalidMemoryProof.selector);
             mips.step(encodeState(state), bytes.concat(threadWitness, invalidInsnAndMemProof, memProof2), 0);
 
-            (, bytes memory invalidMemProof2) =
-                ffi.getCannonMemoryProof2(pc, insn, timespecAddr, secs + 1, timespecAddr + 4);
+            uint32 _secs = secs + 1;
+            uint32 _timespecAddr = timespecAddr + 4;
+            (, bytes memory invalidMemProof2) = ffi.getCannonMemoryProof2(pc, insn, timespecAddr, _secs, _timespecAddr);
             vm.expectRevert(InvalidSecondMemoryProof.selector);
             mips.step(encodeState(state), bytes.concat(threadWitness, insnAndMemProof, invalidMemProof2), 0);
         }
@@ -2766,31 +2767,21 @@ contract MIPS2_Test is CommonTest {
     }
 
     function encodeState(IMIPS2.State memory _state) internal pure returns (bytes memory) {
-        // Split up encoding to get around stack-too-deep error
-        return abi.encodePacked(encodeStateA(_state), encodeStateB(_state));
-    }
-
-    function encodeStateA(IMIPS2.State memory _state) internal pure returns (bytes memory) {
-        return abi.encodePacked(
+        bytes memory a = abi.encodePacked(
             _state.memRoot,
             _state.preimageKey,
             _state.preimageOffset,
             _state.heap,
             _state.llReservationStatus,
-            _state.llAddress,
-            _state.llOwnerThread,
-            _state.exitCode,
-            _state.exited,
-            _state.step,
-            _state.stepsSinceLastContextSwitch,
-            _state.wakeup,
-            _state.traverseRight,
-            _state.leftThreadStack
+            _state.llAddress
         );
-    }
-
-    function encodeStateB(IMIPS2.State memory _state) internal pure returns (bytes memory) {
-        return abi.encodePacked(_state.rightThreadStack, _state.nextThreadID);
+        bytes memory b = abi.encodePacked(
+            _state.llOwnerThread, _state.exitCode, _state.exited, _state.step, _state.stepsSinceLastContextSwitch
+        );
+        bytes memory c = abi.encodePacked(
+            _state.wakeup, _state.traverseRight, _state.leftThreadStack, _state.rightThreadStack, _state.nextThreadID
+        );
+        return abi.encodePacked(a, b, c);
     }
 
     function copyState(IMIPS2.State memory _state) internal pure returns (IMIPS2.State memory out_) {
