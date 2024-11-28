@@ -1,15 +1,22 @@
 ################################################################
-#                   PROFILE: DEFAULT (Local)                   #
+#                   PROFILE: DEFAULT (local)                   #
 ################################################################
 
 [profile.default]
 
-# Compilation settings
 src = 'src'
 out = 'forge-artifacts'
 script = 'scripts'
+build_info_path = 'artifacts/build-info'
+
 optimizer = true
 optimizer_runs = 999999
+
+extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
+bytecode_hash = 'none'
+ast = true
+evm_version = "cancun"
+
 remappings = [
   '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts',
   '@openzeppelin/contracts/=lib/openzeppelin-contracts/contracts',
@@ -24,22 +31,7 @@ remappings = [
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
   'gelato/=lib/automate/contracts'
 ]
-extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
-bytecode_hash = 'none'
-build_info_path = 'artifacts/build-info'
-ast = true
-evm_version = "cancun"
-# 5159 error code is selfdestruct error code
-ignored_error_codes = ["transient-storage", "code-size", "init-code-size", 5159]
 
-# We set the gas limit to max int64 to avoid running out of gas during testing, since the default
-# gas limit is 1B and some of our tests require more gas than that, such as `test_callWithMinGas_noLeakageLow_succeeds`.
-# We use this gas limit since it was the default gas limit prior to https://github.com/foundry-rs/foundry/pull/8274.
-# Due to toml-rs limitations, if you increase the gas limit above this value it must be a string.
-gas_limit = 9223372036854775807
-
-# Test / Script Runner Settings
-ffi = true
 fs_permissions = [
   { access='read-write', path='./.resource-metering.csv' },
   { access='read-write', path='./snapshots/' },
@@ -52,7 +44,17 @@ fs_permissions = [
   { access='read', path='./kout-deployment' },
   { access='read', path='./test/fixtures' },
 ]
-libs = ["node_modules", "lib"]
+
+# 5159 error code is selfdestruct error code
+ignored_error_codes = ["transient-storage", "code-size", "init-code-size", 5159]
+ffi = true
+
+# We set the gas limit to max int64 to avoid running out of gas during testing, since the default
+# gas limit is 1B and some of our tests require more gas than that, such as
+# test_callWithMinGas_noLeakageLow_succeeds. We use this gas limit since it was the default gas
+# limit prior to https://github.com/foundry-rs/foundry/pull/8274. Due to toml-rs limitations, if
+# you increase the gas limit above this value it must be a string.
+gas_limit = 9223372036854775807
 
 [fuzz]
 runs = 64
@@ -67,17 +69,19 @@ wrap_comments=true
 #                         PROFILE: CI                          #
 ################################################################
 
-[profile.ci]
-fuzz = { runs = 512 }
+[profile.ci.fuzz]
+runs = 512
 
 [profile.ci.invariant]
 runs = 256
 depth = 32
 
-[profile.ciheavy]
-# fuzz = { runs = 20000 }
-# temporary reduce fuzz runs to unblock CI
-fuzz = { runs = 200 }
+################################################################
+#                       PROFILE: CIHEAVY                       #
+################################################################
+
+[profile.ciheavy.fuzz]
+runs = 20000
 
 [profile.ciheavy.invariant]
 runs = 128
@@ -93,7 +97,6 @@ optimizer = false
 ################################################################
 #                         PROFILE: KONTROL                     #
 ################################################################
-# See test/kontrol/README.md for an explanation of how the profiles are configured
 
 [profile.kprove]
 src = 'test/kontrol/proofs'

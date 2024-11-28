@@ -2,6 +2,12 @@
 
 set -e
 
+# Check if foundryup exists, if not, install it
+if ! command -v foundryup &> /dev/null; then
+  echo "foundryup not found, installing..."
+  curl -L https://foundry.paradigm.xyz | bash
+fi
+
 SCRIPTS_DIR=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 MONOREPO_DIR=$(cd "$SCRIPTS_DIR/../../" && pwd)
 

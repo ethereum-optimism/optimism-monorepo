@@ -480,6 +480,7 @@ func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
 
 	if newSafeHead.Number+1 < oldestBlock.NumberU64() {
 		// This could happen if there was an L1 reorg.
+		// Or if the sequencer restarted.
 		s.log.Warn("safe head reversed, clearing channel manager state",
 			"oldestBlock", eth.ToBlockID(oldestBlock),
 			"newSafeBlock", newSafeHead)
@@ -564,4 +565,11 @@ func (m *channelManager) CheckExpectedProgress(syncStatus eth.SyncStatus) error 
 		}
 	}
 	return nil
+}
+
+func (m *channelManager) LastStoredBlock() eth.BlockID {
+	if m.blocks.Len() == 0 {
+		return eth.BlockID{}
+	}
+	return eth.ToBlockID(m.blocks[m.blocks.Len()-1])
 }

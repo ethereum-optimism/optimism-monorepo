@@ -25,3 +25,7 @@ go_test SELECTOR *FLAGS:
 
 [private]
 go_fuzz FUZZ TIME='10s' PKG='': (go_test PKG _EXTRALDFLAGS "-fuzztime" TIME "-fuzz" FUZZ "-run" "NOTAREALTEST")
+
+[private]
+go_generate SELECTOR *FLAGS:
+    go generate -v {{FLAGS}} {{SELECTOR}}

@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.8;
 
+// Libraries
 import {
     EmptyItem,
     UnexpectedString,
@@ -8,7 +9,7 @@ import {
     ContentLengthMismatch,
     InvalidHeader,
     UnexpectedList
-} from "./RLPErrors.sol";
+} from "src/libraries/rlp/RLPErrors.sol";
 
 /// @custom:attribution https://github.com/hamdiallam/Solidity-RLP
 /// @title RLPReader

@@ -58,5 +58,8 @@ RUN forge script ./scripts/upgrades/holocene/DeployUpgrade.s.sol || true
 # Set the working directory to where upgrade.sh is located
 WORKDIR /app/packages/contracts-bedrock/scripts/upgrades/holocene
 
+# allows to use modified local scripts
+COPY scripts/*.sh ./scripts/
+
 # Set the entrypoint to the main.sh script
 ENTRYPOINT ["./scripts/main.sh"]

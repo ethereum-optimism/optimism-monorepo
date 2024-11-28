@@ -24,12 +24,13 @@ batcher_fuzz_task FUZZ TIME='10s': (go_fuzz FUZZ TIME "./batcher")
 
 # Run fuzzing tests
 fuzz:
-    #!{{MAP_JUST}} batcher_fuzz_task
-    FuzzChannelConfig_CheckTimeout
-    FuzzDurationZero
-    FuzzDurationTimeoutMaxChannelDuration
-    FuzzDurationTimeoutZeroMaxChannelDuration
-    FuzzChannelCloseTimeout
-    FuzzChannelZeroCloseTimeout
-    FuzzSeqWindowClose
-    FuzzSeqWindowZeroTimeoutClose
+    printf "%s\n" \
+        "FuzzChannelConfig_CheckTimeout" \
+        "FuzzDurationZero" \
+        "FuzzDurationTimeoutMaxChannelDuration" \
+        "FuzzDurationTimeoutZeroMaxChannelDuration" \
+        "FuzzChannelCloseTimeout" \
+        "FuzzChannelZeroCloseTimeout" \
+        "FuzzSeqWindowClose" \
+        "FuzzSeqWindowZeroTimeoutClose" \
+    | parallel -j {{PARALLEL_JOBS}} {{just_executable()}} batcher_fuzz_task {}

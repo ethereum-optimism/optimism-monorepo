@@ -232,6 +232,18 @@ func TestCannonRequiredArgs(t *testing.T) {
 			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkUnknown)
 		})
 
+		t.Run(fmt.Sprintf("TestNetworkMayBeAnyChainID-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(traceType)
+			cfg.Cannon.Network = "467294"
+			require.NoError(t, cfg.Check())
+		})
+
+		t.Run(fmt.Sprintf("TestNetworkInvalidWhenNotEntirelyNumeric-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(traceType)
+			cfg.Cannon.Network = "467294a"
+			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkUnknown)
+		})
+
 		t.Run(fmt.Sprintf("TestDebugInfoEnabled-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(traceType)
 			require.True(t, cfg.Cannon.DebugInfo)

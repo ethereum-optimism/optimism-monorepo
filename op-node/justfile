@@ -1,0 +1,49 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X github.com/ethereum-optimism/optimism/op-node/version.Version=" + VERSION + " " + \
+    "-X github.com/ethereum-optimism/optimism/op-node/version.Meta=" + VERSION_META + " " + \
+    "") + "'"
+
+BINARY := "./bin/op-node"
+
+# Build op-node binary
+op-node: (go_build BINARY "./cmd" "-ldflags" _LDFLAGSSTRING)
+
+# Clean build artifacts
+clean:
+    rm -f {{BINARY}}
+
+# Run tests
+test: (go_test "./...")
+
+# Generate mocks
+generate-mocks: (go_generate "./...")
+
+# Update readme
+readme:
+    doctoc README.md
+
+[private]
+node_fuzz_task FUZZ TIME='10s': (go_fuzz FUZZ TIME "./rollup/derive")
+
+# Run fuzz tests
+fuzz:
+	printf "%s\n" \
+		"FuzzL1InfoBedrockRoundTrip" \
+		"FuzzL1InfoEcotoneRoundTrip" \
+		"FuzzL1InfoAgainstContract" \
+		"FuzzUnmarshallLogEvent" \
+		"FuzzParseFrames" \
+		"FuzzFrameUnmarshalBinary" \
+		"FuzzBatchRoundTrip" \
+		"FuzzDeriveDepositsRoundTrip" \
+		"FuzzDeriveDepositsBadVersion" \
+		"FuzzParseL1InfoDepositTxDataValid" \
+		"FuzzParseL1InfoDepositTxDataBadLength" \
+		"FuzzRejectCreateBlockBadTimestamp" \
+		"FuzzDecodeDepositTxDataToL1Info" \
+	| parallel -j {{PARALLEL_JOBS}} {{just_executable()}} node_fuzz_task {}
