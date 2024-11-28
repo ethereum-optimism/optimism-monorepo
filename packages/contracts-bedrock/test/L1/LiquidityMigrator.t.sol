@@ -10,6 +10,7 @@ contract LiquidityMigratorTest is CommonTest {
     LiquidityMigrator public migrator;
 
     function setUp() public virtual override {
+        super.enableInterop();
         super.setUp();
         migrator = new LiquidityMigrator(address(sharedLockbox));
     }

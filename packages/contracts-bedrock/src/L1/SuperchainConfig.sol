@@ -50,6 +50,9 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @param portal       The address of the OptimismPortal contract.
     event ChainAdded(uint256 indexed chainId, address indexed systemConfig, address indexed portal);
 
+    /// @notice Thrown when the input chain's system config already contains dependencies on its set.
+    error ChainAlreadyHasDependencies();
+
     /// @notice Thrown when the input chain is already added to the dependency set.
     error ChainAlreadyAdded();
 
@@ -122,10 +125,11 @@ contract SuperchainConfig is Initializable, ISemver {
     ///         Adds the new chain as a dependency for all existing chains in the dependency set, and vice versa. It
     ///         also stores the SystemConfig address of it, and authorizes the OptimismPortal on the SharedLockbox.
     /// @param _chainId     The chain ID.
-    /// @param _systemConfig The address of the SystemConfig contract.
+    /// @param _systemConfig The SystemConfig contract address of the chain to add.
     function addChain(uint256 _chainId, address _systemConfig) external {
         // TODO: Updater role TBD, using guardian for now.
         if (msg.sender != guardian()) revert Unauthorized();
+        if (ISystemConfigInterop(_systemConfig).dependencyCounter() != 0) revert ChainAlreadyHasDependencies();
         // Add to the dependency set and check it is not already added (`add()` returns false if it already exists)
         if (!_dependencySet.add(_chainId)) revert ChainAlreadyAdded();
 

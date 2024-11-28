@@ -44,8 +44,8 @@
     "sourceCodeHash": "0x26b7450f991fe197a94861cf618df04feb695dbbba884ffe93f96defa63e5bd7"
   },
   "src/L1/SuperchainConfig.sol": {
-    "initCodeHash": "0x14e3ce78307d6709b29199de4380620003cbfe311a56b201ab2767c17e9e2091",
-    "sourceCodeHash": "0xff091439483e0669cf39c27d16ad0ef6c624d28829d079fe2c5c2c836a2db748"
+    "initCodeHash": "0x5cd6b119f03beea59e2ba29ea92694e6e5cbcbb1a83a02557ffbe332ce687ab6",
+    "sourceCodeHash": "0x1e191c7746b936427b8391c68a42b542eab0821c005a4a6a517bbe855278cced"
   },
   "src/L1/SystemConfig.sol": {
     "initCodeHash": "0x0eda38e2fb2687a324289f04ec8ad0d2afe51f45219d074740fb4a0e24ea6569",

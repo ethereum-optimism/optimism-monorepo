@@ -15,8 +15,9 @@ interface ISuperchainConfig is IDependencySet {
     event Unpaused();
     event ChainAdded(uint256 indexed chainId, address indexed systemConfig, address indexed portal);
 
-    error ChainAlreadyAdded();
     error Unauthorized();
+    error ChainAlreadyHasDependencies();
+    error ChainAlreadyAdded();
 
     function GUARDIAN_SLOT() external view returns (bytes32);
     function PAUSED_SLOT() external view returns (bytes32);

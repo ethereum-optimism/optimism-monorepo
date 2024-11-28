@@ -18,6 +18,11 @@ contract SharedLockboxTest is CommonTest {
 
     event PortalAuthorized(address indexed portal);
 
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+
     /// @notice Tests it reverts when the caller is not an authorized portal.
     function test_lockETH_unauthorizedPortal_reverts(address _caller) public {
         vm.assume(!sharedLockbox.authorizedPortals(_caller));

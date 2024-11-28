@@ -137,6 +137,11 @@ contract SuperchainConfig_Unpause_Test is CommonTest {
 contract SuperchainConfig_AddChain_Test is CommonTest {
     event ChainAdded(uint256 indexed chainId, address indexed systemConfig, address indexed portal);
 
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+
     function _mockAndExpect(address _target, bytes memory _calldata, bytes memory _returnData) internal {
         vm.mockCall(_target, _calldata, _returnData);
         vm.expectCall(_target, _calldata);
@@ -151,10 +156,30 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
         superchainConfig.addChain(_chainId, _systemConfig);
     }
 
+    /// @notice Tests that `addChain` reverts when the input chain already contains dependencies on its set.
+    function test_addChain_alreadyHasDependencies_reverts(uint256 _chainId, address _systemConfig) external {
+        // Mock the number of dependencies to be greater than 0.
+        uint256 numberOfDependencies = 1;
+        _mockAndExpect(
+            _systemConfig,
+            abi.encodeWithSelector(ISystemConfigInterop.dependencyCounter.selector),
+            abi.encode(numberOfDependencies)
+        );
+
+        vm.startPrank(superchainConfig.guardian());
+        vm.expectRevert(ISuperchainConfig.ChainAlreadyHasDependencies.selector);
+        superchainConfig.addChain(_chainId, _systemConfig);
+    }
+
     /// @notice Tests that `addChain` reverts when the chain is already in the dependency set.
     function test_addChain_chainAlreadyExists_reverts(uint256 _chainId, address _systemConfig) external {
         SuperchainConfigForTest superchainConfig = new SuperchainConfigForTest(address(sharedLockbox));
         superchainConfig.forTest_addChainOnDependencySet(_chainId);
+
+        // Mock the call over `dependencyCounter` to return 0 and avoid a previous revert
+        _mockAndExpect(
+            _systemConfig, abi.encodeWithSelector(ISystemConfigInterop.dependencyCounter.selector), abi.encode(0)
+        );
 
         vm.startPrank(superchainConfig.guardian());
         vm.expectRevert(SuperchainConfig.ChainAlreadyAdded.selector);
@@ -175,9 +200,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
         vm.expectCall(address(systemConfig), abi.encodeWithSelector(ISystemConfigInterop.optimismPortal.selector));
 
         // Mock and expect the call to authorize the portal on the SharedLockbox with the `_portal` address
-        _mockAndExpect(
-            address(sharedLockbox), abi.encodeWithSelector(ISharedLockbox.authorizePortal.selector, _portal), ""
-        );
+        vm.expectCall(address(sharedLockbox), abi.encodeWithSelector(ISharedLockbox.authorizePortal.selector, _portal));
 
         // Expect the `addDependency` function call to not be called since the dependency set is empty
         uint64 zeroCalls = 0;
@@ -218,6 +241,13 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
         superchainConfigForTest.forTest_addChainAndSystemConfig(chainIdOne, systemConfigOne);
         superchainConfigForTest.forTest_addChainAndSystemConfig(chainIdTwo, systemConfigTwo);
         superchainConfigForTest.forTest_addChainAndSystemConfig(chainIdThree, systemConfigThree);
+
+        // Mock and expect the call to `dependencyCounter` to return 0 for the new chain
+        _mockAndExpect(
+            address(systemConfig),
+            abi.encodeWithSelector(ISystemConfigInterop.dependencyCounter.selector),
+            abi.encode(0)
+        );
 
         // Mock and expect the calls when looping through the first chain of the dependency set
         _mockAndExpect(

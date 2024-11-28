@@ -278,6 +278,11 @@
   },
   {
     "inputs": [],
+    "name": "ChainAlreadyHasDependencies",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "Unauthorized",
     "type": "error"
   }
