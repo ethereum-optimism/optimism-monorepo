@@ -310,12 +310,12 @@ contract DeploySuperchainOutput is BaseDeployIO {
         vm.startPrank(address(0));
         require(IProxy(payable(address(sl))).implementation() == address(sharedLockboxImpl()), "SLB-10");
         require(IProxy(payable(address(sl))).admin() == address(superchainProxyAdmin()), "SLB-20");
-        require(sl.SUPERCHAIN_CONFIG() == address(superchainConfigProxy()), "SLB-30");
+        require(sl.SUPERCHAIN_CONFIG() == superchainConfigProxy(), "SLB-30");
         vm.stopPrank();
 
         // Implementation checks.
         sl = sharedLockboxImpl();
-        require(sl.SUPERCHAIN_CONFIG() == address(superchainConfigProxy()), "SLB-40");
+        require(sl.SUPERCHAIN_CONFIG() == superchainConfigProxy(), "SLB-40");
     }
 }
 

@@ -135,6 +135,7 @@ contract SuperchainConfig is Initializable, ISemver {
         // TODO: Updater role TBD, using guardian for now.
         if (msg.sender != guardian()) revert Unauthorized();
         if (ISystemConfigInterop(_systemConfig).dependencyCounter() != 0) revert ChainAlreadyHasDependencies();
+
         // Add to the dependency set and check it is not already added (`add()` returns false if it already exists)
         if (!_dependencySet.add(_chainId)) revert ChainAlreadyAdded();
 
@@ -147,6 +148,7 @@ contract SuperchainConfig is Initializable, ISemver {
 
             // Add the new chain as dependency for the current chain on the loop
             ISystemConfigInterop(systemConfigs[currentId]).addDependency(_chainId);
+
             // Add the current chain on the loop as dependency for the new chain
             ISystemConfigInterop(_systemConfig).addDependency(currentId);
         }

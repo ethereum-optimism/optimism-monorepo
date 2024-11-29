@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing utilities
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+import { Unauthorized, Paused as PausedError } from "src/libraries/errors/CommonErrors.sol";
 
 // Targent contract
 import { SharedLockbox } from "src/L1/SharedLockbox.sol";
@@ -61,6 +61,20 @@ contract SharedLockboxTest is CommonTest {
         assertEq(address(sharedLockbox).balance, _lockboxBalanceBefore + _amount);
     }
 
+    /// @notice Tests `unlockETH` reverts when the contract is paused.
+    function test_unlockETH_paused_reverts(address _caller, uint256 _value) public {
+        // Set the paused status to true
+        vm.prank(superchainConfig.guardian());
+        superchainConfig.pause("test");
+
+        // Expect the revert with `Paused` selector
+        vm.expectRevert(PausedError.selector);
+
+        // Call the `unlockETH` function with the caller
+        vm.prank(_caller);
+        sharedLockbox.unlockETH(_value);
+    }
+
     /// @notice Tests it reverts when the caller is not an authorized portal.
     function test_unlockETH_unauthorizedPortal_reverts(address _caller, uint256 _value) public {
         vm.assume(!sharedLockbox.authorizedPortals(_caller));
@@ -102,6 +116,20 @@ contract SharedLockboxTest is CommonTest {
         assertEq(address(sharedLockbox).balance, _lockboxBalanceBefore - _value);
     }
 
+    /// @notice Tests `authorizePortal` reverts when the contract is paused.
+    function test_authorizePortal_paused_reverts(address _caller, address _portal) public {
+        // Set the paused status to true
+        vm.prank(superchainConfig.guardian());
+        superchainConfig.pause("test");
+
+        // Expect the revert with `Paused` selector
+        vm.expectRevert(PausedError.selector);
+
+        // Call the `authorizePortal` function with the caller
+        vm.prank(_caller);
+        sharedLockbox.authorizePortal(_portal);
+    }
+
     /// @notice Tests it reverts when the caller is not the SuperchainConfig.
     function test_authorizePortal_notSuperchainConfig_reverts(address _caller) public {
         vm.assume(_caller != address(superchainConfig));
@@ -130,5 +158,18 @@ contract SharedLockboxTest is CommonTest {
 
         // Assert the portal's authorized status was updated correctly
         assertEq(sharedLockbox.authorizedPortals(_portal), true);
+    }
+
+    /// @notice Tests the paused status is correctly returned.
+    function test_paused_succeeds() public {
+        // Assert the paused status is false
+        assertEq(sharedLockbox.paused(), false);
+
+        // Set the paused status to true
+        vm.prank(superchainConfig.guardian());
+        superchainConfig.pause("test");
+
+        // Assert the paused status is true
+        assertEq(sharedLockbox.paused(), true);
     }
 }

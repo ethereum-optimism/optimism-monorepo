@@ -432,6 +432,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("unlockETH(uint256)"), _auth: Role.PORTAL });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("authorizePortal(address)"), _auth: Role.SUPERCHAINCONFIG });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("version()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("paused()") });
 
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });

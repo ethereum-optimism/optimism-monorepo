@@ -3,7 +3,8 @@ pragma solidity 0.8.15;
 
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { Unauthorized, Paused } from "src/libraries/errors/CommonErrors.sol";
 
 /// @custom:proxied true
 /// @title SharedLockbox
@@ -25,7 +26,7 @@ contract SharedLockbox is ISemver {
     event PortalAuthorized(address indexed portal);
 
     /// @notice The address of the SuperchainConfig contract.
-    address public immutable SUPERCHAIN_CONFIG;
+    ISuperchainConfig public immutable SUPERCHAIN_CONFIG;
 
     /// @notice OptimismPortals that are part of the dependency cluster authorized to interact with the SharedLockbox
     mapping(address => bool) public authorizedPortals;
@@ -39,7 +40,17 @@ contract SharedLockbox is ISemver {
     /// @notice Constructs the SharedLockbox contract.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
     constructor(address _superchainConfig) {
-        SUPERCHAIN_CONFIG = _superchainConfig;
+        SUPERCHAIN_CONFIG = ISuperchainConfig(_superchainConfig);
+    }
+
+    /// @notice Reverts when paused.
+    function _whenNotPaused() internal view {
+        if (paused()) revert Paused();
+    }
+
+    /// @notice Getter for the current paused status.
+    function paused() public view returns (bool) {
+        return SUPERCHAIN_CONFIG.paused();
     }
 
     /// @notice Locks ETH in the lockbox.
@@ -53,6 +64,7 @@ contract SharedLockbox is ISemver {
     /// @notice Unlocks ETH from the lockbox.
     ///         Called by an authorized portal when finalizing a withdrawal that requires ETH.
     function unlockETH(uint256 _value) external {
+        _whenNotPaused();
         if (!authorizedPortals[msg.sender]) revert Unauthorized();
 
         // Using `donateETH` to avoid triggering a deposit
@@ -62,7 +74,8 @@ contract SharedLockbox is ISemver {
 
     /// @notice Authorizes a portal to interact with the lockbox.
     function authorizePortal(address _portal) external {
-        if (msg.sender != SUPERCHAIN_CONFIG) revert Unauthorized();
+        _whenNotPaused();
+        if (msg.sender != address(SUPERCHAIN_CONFIG)) revert Unauthorized();
 
         authorizedPortals[_portal] = true;
         emit PortalAuthorized(_portal);

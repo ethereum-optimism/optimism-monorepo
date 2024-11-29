@@ -589,7 +589,7 @@ library ChainAssertions {
         );
 
         require(address(sharedLockbox) != address(0), "CHECK-SLB-10");
-        require(sharedLockbox.SUPERCHAIN_CONFIG() == address(superchainConfig), "CHECK-SLB-20");
+        require(sharedLockbox.SUPERCHAIN_CONFIG() == superchainConfig, "CHECK-SLB-20");
     }
 
     /// @dev Asserts that for a given contract the value of a storage slot at an offset is 1 or 0xff.
