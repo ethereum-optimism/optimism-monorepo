@@ -254,14 +254,15 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         uint256 _value,
         uint256 _blockNum,
         uint256 _logIndex,
-        uint256 _time
+        uint256 _time,
+        address _caller
     )
         external
     {
         address _target = makeAddr("target");
 
-        // Ensure entrypoint is not address(0) or the L2ToL2CrossDomainMessenger contract
-        vm.assume(_entrypoint != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER && _entrypoint != address(0));
+        // Ensure entrypoint is not address(0) or the caller
+        vm.assume(_entrypoint != _caller && _entrypoint != address(0));
 
         // Construct the SentMessage payload & identifier
         Identifier memory id =
@@ -282,7 +283,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.expectRevert(InvalidEntrypoint.selector);
 
         // Call
-        hoax(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _value);
+        hoax(_caller, _value);
         l2ToL2CrossDomainMessenger.relayMessage{ value: _value }(id, sentMessage);
     }
 
