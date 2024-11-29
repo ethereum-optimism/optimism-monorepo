@@ -1,32 +1,38 @@
 package coverage
 
 import (
+	"encoding/hex"
 	"fmt"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/srcmap"
 	"github.com/ethereum/go-ethereum/core/tracing"
+	"github.com/ethereum/go-ethereum/crypto"
 	"log"
 	"os"
+	"regexp"
 )
 
 type CoverageTracer struct {
-	SourceMapFS      *foundry.SourceMapFS
-	ExecutedSources  map[string]map[int]bool
-	SourceMaps       map[string]*srcmap.SourceMap
-	Artifacts        []*foundry.Artifact
-	ContractMappings map[string]string
+	SourceMapFS        *foundry.SourceMapFS
+	ExecutedSources    map[string]map[int]bool
+	ExecutedFunctions  map[string]map[string]bool
+	FunctionSignatures map[string]map[string]string
+	SourceMaps         map[string]*srcmap.SourceMap
+	Artifacts          []*foundry.Artifact
+	ContractMappings   map[string]string
 }
 
 func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
 	tracer := &CoverageTracer{
-		SourceMapFS:      foundry.NewSourceMapFS(os.DirFS("../../packages/contracts-bedrock")),
-		ExecutedSources:  make(map[string]map[int]bool),
-		SourceMaps:       make(map[string]*srcmap.SourceMap),
-		Artifacts:        artifacts,
-		ContractMappings: make(map[string]string),
+		SourceMapFS:        foundry.NewSourceMapFS(os.DirFS("../../packages/contracts-bedrock")),
+		ExecutedSources:    make(map[string]map[int]bool),
+		ExecutedFunctions:  make(map[string]map[string]bool),
+		FunctionSignatures: make(map[string]map[string]string),
+		SourceMaps:         make(map[string]*srcmap.SourceMap),
+		Artifacts:          artifacts,
+		ContractMappings:   make(map[string]string),
 	}
 
-	// Load source maps during initialization
 	for _, artifact := range artifacts {
 		for _, name := range artifact.Metadata.Settings.CompilationTarget {
 			srcMap, err := tracer.SourceMapFS.SourceMap(artifact, name)
@@ -54,6 +60,16 @@ func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
 				}
 				tracer.ExecutedSources[source][int(line)] = false
 			}
+			contractSignatures := make(map[string]string)
+			executedFunctions := make(map[string]bool)
+
+			for _, method := range artifact.ABI.Methods {
+				selector := fmt.Sprintf("%x", crypto.Keccak256([]byte(method.Sig))[:4]) // Calculate selector
+				contractSignatures[selector] = method.Name
+				executedFunctions[method.Name] = false
+			}
+			tracer.FunctionSignatures[name] = contractSignatures
+			tracer.ExecutedFunctions[name] = executedFunctions
 		}
 	}
 
@@ -63,12 +79,9 @@ func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
 func (s *CoverageTracer) OnOpCode(pc uint64, opcode byte, gas, cost uint64, scope tracing.OpContext, rData []byte, depth int, err error) {
 	contractAddr := scope.Address().String()
 
-	// Dynamically map contract addresses to names if not already mapped
 	if _, exists := s.ContractMappings[contractAddr]; !exists {
-		// Attempt to match the deployed bytecode with a contract name
 		for name, srcMap := range s.SourceMaps {
 			if srcMap != nil {
-				// Match based on unique properties (extend logic if needed)
 				s.ContractMappings[contractAddr] = name
 				log.Printf("Mapped contract address %s to name %s", contractAddr, name)
 				break
@@ -102,6 +115,20 @@ func (s *CoverageTracer) OnOpCode(pc uint64, opcode byte, gas, cost uint64, scop
 		s.ExecutedSources[source] = make(map[int]bool)
 	}
 	s.ExecutedSources[source][int(line)] = true
+	if depth == 1 { // Check for function entry
+		code := scope.CallInput()
+		if len(code) >= 4 {
+			selector := code[:4] // Function selector
+
+			if functionName, exists := s.FunctionSignatures[contractName][hex.EncodeToString(selector)]; exists {
+				if _, exists := s.ExecutedFunctions[contractName]; !exists {
+					s.ExecutedFunctions[contractName] = make(map[string]bool)
+				}
+				s.ExecutedFunctions[contractName][functionName] = true
+			}
+
+		}
+	}
 }
 
 func (s *CoverageTracer) GenerateLCOV(outputPath string) error {
@@ -112,14 +139,30 @@ func (s *CoverageTracer) GenerateLCOV(outputPath string) error {
 	defer file.Close()
 
 	for filePath, lines := range s.ExecutedSources {
+		re := regexp.MustCompile(`([^/]+)\.[^/]+$`)
+		match := re.FindStringSubmatch(filePath)
+
 		fmt.Fprintf(file, "SF:%s\n", filePath)
+
+		if functions, ok := s.ExecutedFunctions[match[1]]; ok {
+			for function, executed := range functions {
+				fmt.Fprintf(file, "FN:0,%s\n", function)
+				executionStatus := 0
+				if executed {
+					executionStatus = 1
+				}
+				fmt.Fprintf(file, "FNDA:%d,%s\n", executionStatus, function)
+			}
+		}
+
 		for line, executed := range lines {
 			executionStatus := 0
 			if executed {
 				executionStatus = 1
 			}
-			fmt.Fprintf(file, "DA:%d,%d\n", line, executionStatus)
+			fmt.Fprintf(file, "DA:%d,%ds\n", line, executionStatus)
 		}
+
 		fmt.Fprintln(file, "end_of_record")
 	}
 

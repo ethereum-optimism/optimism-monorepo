@@ -145,6 +145,18 @@ func TestEverything(t *testing.T) {
 		log.Fatalf("EVM Call failed: %v", err)
 	}
 
+	// Call the `get` function
+	getData, err := contractABI.Pack("get", key)
+	if err != nil {
+		log.Fatalf("Failed to encode set data: %v", err)
+	}
+	fmt.Printf("Encoded get data: %s\n", hex.EncodeToString(setData))
+
+	_, _, err = env.Call(myContract, common.Address{0: 0xff, 19: 1}, getData, 90000, uint256.NewInt(0))
+	if err != nil {
+		log.Fatalf("EVM Call failed: %v", err)
+	}
+
 	if err := tracer.GenerateLCOV("coverage.lcov"); err != nil {
 		log.Fatalf("Failed to generate LCOV: %v", err)
 	}
