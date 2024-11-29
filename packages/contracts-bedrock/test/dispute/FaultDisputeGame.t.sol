@@ -73,16 +73,18 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
                     abi.encodeCall(
                         IFaultDisputeGame.__constructor__,
                         (
-                            GAME_TYPE,
-                            absolutePrestate,
-                            2 ** 3,
-                            2 ** 2,
-                            Duration.wrap(3 hours),
-                            Duration.wrap(3.5 days),
-                            _vm,
-                            delayedWeth,
-                            anchorStateRegistry,
-                            10
+                            IFaultDisputeGame.GameConstructorParams({
+                                gameType: GAME_TYPE,
+                                absolutePrestate: absolutePrestate,
+                                maxGameDepth: 2 ** 3,
+                                splitDepth: 2 ** 2,
+                                clockExtension: Duration.wrap(3 hours),
+                                maxClockDuration: Duration.wrap(3.5 days),
+                                vm: _vm,
+                                weth: delayedWeth,
+                                anchorStateRegistry: anchorStateRegistry,
+                                l2ChainId: 10
+                            })
                         )
                     )
                 )
@@ -154,16 +156,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 abi.encodeCall(
                     IFaultDisputeGame.__constructor__,
                     (
-                        GAME_TYPE,
-                        absolutePrestate,
-                        _maxGameDepth,
-                        _maxGameDepth + 1,
-                        Duration.wrap(3 hours),
-                        Duration.wrap(3.5 days),
-                        alphabetVM,
-                        IDelayedWETH(payable(address(0))),
-                        IAnchorStateRegistry(address(0)),
-                        10
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GAME_TYPE,
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: _maxGameDepth,
+                            splitDepth: _maxGameDepth + 1,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
                     )
                 )
             )
@@ -196,16 +200,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 abi.encodeCall(
                     IFaultDisputeGame.__constructor__,
                     (
-                        GAME_TYPE,
-                        absolutePrestate,
-                        2 ** 3,
-                        2 ** 2,
-                        Duration.wrap(3 hours),
-                        Duration.wrap(3.5 days),
-                        alphabetVM,
-                        IDelayedWETH(payable(address(0))),
-                        IAnchorStateRegistry(address(0)),
-                        10
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GAME_TYPE,
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: 2 ** 3,
+                            splitDepth: 2 ** 2,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
                     )
                 )
             )
@@ -234,16 +240,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 abi.encodeCall(
                     IFaultDisputeGame.__constructor__,
                     (
-                        GAME_TYPE,
-                        absolutePrestate,
-                        maxGameDepth,
-                        _splitDepth,
-                        Duration.wrap(3 hours),
-                        Duration.wrap(3.5 days),
-                        alphabetVM,
-                        IDelayedWETH(payable(address(0))),
-                        IAnchorStateRegistry(address(0)),
-                        10
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GAME_TYPE,
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: maxGameDepth,
+                            splitDepth: _splitDepth,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
                     )
                 )
             )
@@ -272,16 +280,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 abi.encodeCall(
                     IFaultDisputeGame.__constructor__,
                     (
-                        GAME_TYPE,
-                        absolutePrestate,
-                        2 ** 3,
-                        _splitDepth,
-                        Duration.wrap(3 hours),
-                        Duration.wrap(3.5 days),
-                        alphabetVM,
-                        IDelayedWETH(payable(address(0))),
-                        IAnchorStateRegistry(address(0)),
-                        10
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GAME_TYPE,
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: 2 ** 3,
+                            splitDepth: _splitDepth,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
                     )
                 )
             )
@@ -318,16 +328,18 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
                 abi.encodeCall(
                     IFaultDisputeGame.__constructor__,
                     (
-                        GAME_TYPE,
-                        absolutePrestate,
-                        16,
-                        8,
-                        Duration.wrap(_clockExtension),
-                        Duration.wrap(_maxClockDuration),
-                        alphabetVM,
-                        IDelayedWETH(payable(address(0))),
-                        IAnchorStateRegistry(address(0)),
-                        10
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GAME_TYPE,
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: 16,
+                            splitDepth: 8,
+                            clockExtension: Duration.wrap(_clockExtension),
+                            maxClockDuration: Duration.wrap(_maxClockDuration),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
                     )
                 )
             )

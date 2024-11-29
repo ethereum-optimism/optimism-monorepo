@@ -270,19 +270,17 @@ contract DeployDisputeGame is Script {
 
     function deployDisputeGameImpl(DeployDisputeGameInput _dgi, DeployDisputeGameOutput _dgo) internal {
         // Shove the arguments into a struct to avoid stack-too-deep errors.
-        DisputeGameConstructorArgs memory args = DisputeGameConstructorArgs({
+        IFaultDisputeGame.GameConstructorParams memory args = IFaultDisputeGame.GameConstructorParams({
             gameType: GameType.wrap(uint32(_dgi.gameType())),
             absolutePrestate: Claim.wrap(_dgi.absolutePrestate()),
             maxGameDepth: _dgi.maxGameDepth(),
             splitDepth: _dgi.splitDepth(),
             clockExtension: Duration.wrap(uint64(_dgi.clockExtension())),
             maxClockDuration: Duration.wrap(uint64(_dgi.maxClockDuration())),
-            gameVm: IBigStepper(address(_dgi.vmAddress())),
-            delayedWethProxy: _dgi.delayedWethProxy(),
-            anchorStateRegistryProxy: _dgi.anchorStateRegistryProxy(),
-            l2ChainId: _dgi.l2ChainId(),
-            proposer: _dgi.proposer(),
-            challenger: _dgi.challenger()
+            vm: IBigStepper(address(_dgi.vmAddress())),
+            weth: _dgi.delayedWethProxy(),
+            anchorStateRegistry: _dgi.anchorStateRegistryProxy(),
+            l2ChainId: _dgi.l2ChainId()
         });
 
         // PermissionedDisputeGame is used as the type here because it is a superset of
@@ -294,23 +292,7 @@ contract DeployDisputeGame is Script {
             impl = IPermissionedDisputeGame(
                 DeployUtils.create1({
                     _name: "FaultDisputeGame",
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IFaultDisputeGame.__constructor__,
-                            (
-                                args.gameType,
-                                args.absolutePrestate,
-                                args.maxGameDepth,
-                                args.splitDepth,
-                                args.clockExtension,
-                                args.maxClockDuration,
-                                args.gameVm,
-                                args.delayedWethProxy,
-                                args.anchorStateRegistryProxy,
-                                args.l2ChainId
-                            )
-                        )
-                    )
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (args)))
                 })
             );
         } else {
@@ -318,23 +300,7 @@ contract DeployDisputeGame is Script {
                 DeployUtils.create1({
                     _name: "PermissionedDisputeGame",
                     _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IPermissionedDisputeGame.__constructor__,
-                            (
-                                args.gameType,
-                                args.absolutePrestate,
-                                args.maxGameDepth,
-                                args.splitDepth,
-                                args.clockExtension,
-                                args.maxClockDuration,
-                                args.gameVm,
-                                args.delayedWethProxy,
-                                args.anchorStateRegistryProxy,
-                                args.l2ChainId,
-                                args.proposer,
-                                args.challenger
-                            )
-                        )
+                        abi.encodeCall(IPermissionedDisputeGame.__constructor__, (args, _dgi.proposer(), _dgi.challenger()))
                     )
                 })
             );

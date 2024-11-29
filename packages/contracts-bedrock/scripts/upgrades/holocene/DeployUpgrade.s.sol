@@ -138,16 +138,18 @@ contract DeployUpgrade is Deployer {
         bytes memory constructorInput = abi.encodeCall(
             IFaultDisputeGame.__constructor__,
             (
-                GameTypes.CANNON,
-                Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
-                cfg.faultGameMaxDepth(),
-                cfg.faultGameSplitDepth(),
-                Duration.wrap(uint64(cfg.faultGameClockExtension())),
-                Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
-                IBigStepper(mustGetAddress("MIPS")),
-                IDelayedWETH(payable(mustGetAddress("DelayedWETHProxyFDG"))),
-                IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
-                cfg.l2ChainID()
+                IFaultDisputeGame.GameConstructorParams({
+                    gameType: GameTypes.CANNON,
+                    absolutePrestate: Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
+                    maxGameDepth: cfg.faultGameMaxDepth(),
+                    splitDepth: cfg.faultGameSplitDepth(),
+                    clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                    maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                    vm: IBigStepper(mustGetAddress("MIPS")),
+                    weth: IDelayedWETH(payable(mustGetAddress("DelayedWETHProxyFDG"))),
+                    anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
+                    l2ChainId: cfg.l2ChainID()
+                })
             )
         );
 
@@ -197,16 +199,18 @@ contract DeployUpgrade is Deployer {
         bytes memory constructorInput = abi.encodeCall(
             IPermissionedDisputeGame.__constructor__,
             (
-                GameTypes.PERMISSIONED_CANNON,
-                Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
-                cfg.faultGameMaxDepth(),
-                cfg.faultGameSplitDepth(),
-                Duration.wrap(uint64(cfg.faultGameClockExtension())),
-                Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
-                IBigStepper(mustGetAddress("MIPS")),
-                IDelayedWETH(payable(mustGetAddress("DelayedWETHProxyPDG"))),
-                IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
-                cfg.l2ChainID(),
+                IFaultDisputeGame.GameConstructorParams({
+                    gameType: GameTypes.PERMISSIONED_CANNON,
+                    absolutePrestate: Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate())),
+                    maxGameDepth: cfg.faultGameMaxDepth(),
+                    splitDepth: cfg.faultGameSplitDepth(),
+                    clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                    maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                    vm: IBigStepper(mustGetAddress("MIPS")),
+                    weth: IDelayedWETH(payable(mustGetAddress("DelayedWETHProxyPDG"))),
+                    anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistry")),
+                    l2ChainId: cfg.l2ChainID()
+                }),
                 cfg.l2OutputOracleProposer(),
                 cfg.l2OutputOracleChallenger()
             )
