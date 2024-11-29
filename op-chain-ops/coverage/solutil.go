@@ -12,6 +12,8 @@ import (
 	"regexp"
 )
 
+const CONTRACTS_DIR = "../../packages/contracts-bedrock"
+
 type CoverageTracer struct {
 	SourceMapFS        *foundry.SourceMapFS
 	ExecutedSources    map[string]map[int]bool
@@ -24,7 +26,7 @@ type CoverageTracer struct {
 
 func NewCoverageTracer(artifacts []*foundry.Artifact) (*CoverageTracer, error) {
 	tracer := &CoverageTracer{
-		SourceMapFS:        foundry.NewSourceMapFS(os.DirFS("../../packages/contracts-bedrock")),
+		SourceMapFS:        foundry.NewSourceMapFS(os.DirFS(CONTRACTS_DIR)),
 		ExecutedSources:    make(map[string]map[int]bool),
 		ExecutedFunctions:  make(map[string]map[string]bool),
 		FunctionSignatures: make(map[string]map[string]string),
@@ -142,7 +144,7 @@ func (s *CoverageTracer) GenerateLCOV(outputPath string) error {
 		re := regexp.MustCompile(`([^/]+)\.[^/]+$`)
 		match := re.FindStringSubmatch(filePath)
 
-		fmt.Fprintf(file, "SF:%s\n", filePath)
+		fmt.Fprintf(file, "SF:%s/%s\n", CONTRACTS_DIR, filePath)
 
 		if functions, ok := s.ExecutedFunctions[match[1]]; ok {
 			for function, executed := range functions {
