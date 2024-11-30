@@ -27,7 +27,9 @@ make test-http
 ```
 
 ### Troubleshooting
+
 If you encounter errors:
-* ensure you have the latest version of foundry installed: `just update-foundry`
+
+* ensure you have the latest version of foundry installed: `just install-foundry`
 * try deleting the `packages/contracts-bedrock/forge-artifacts` directory
 * try `forge clean && rm -rf lib && forge install` within the `packages/contracts-bedrock` directory

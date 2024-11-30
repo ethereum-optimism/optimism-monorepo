@@ -47,7 +47,7 @@ You can use [`nvm`](https://github.com/nvm-sh/nvm) to manage multiple versions o
 
 `foundry` is updated frequently and occasionally contains breaking changes.
 This repository pins a specific version of `foundry` inside of [`versions.json`](./versions.json).
-Use the command `just update-foundry` at the root of the monorepo to make sure that your version of `foundry` is the same as the one currently being used in CI.
+Use the command `just install-foundry` at the root of the monorepo to make sure that your version of `foundry` is the same as the one currently being used in CI.
 
 #### `direnv`
 
