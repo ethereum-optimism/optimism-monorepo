@@ -17,7 +17,7 @@ dep-status:
 
 # Checks that the correct version of Foundry is installed.
 check-foundry:
-  cd ../../ && ./ops/scripts/check-foundry.sh
+  cd ../../ && just check-foundry
 
 # Checks that semgrep is installed.
 check-semgrep:

@@ -19,10 +19,14 @@ shellcheck:
 ########################################################
 
 # Generic task for checking if a tool version is up to date.
-check-tool-version tool:
+check-tool-version tool cmd="{{tool}}" trim="999":
   #!/usr/bin/env bash
-  EXPECTED=$(jq -r .{{tool}} < versions.json)
-  ACTUAL=$(just print-{{tool}})
+  if ! command -v {{cmd}} >/dev/null 2>&1; then
+    echo "✗ {{tool}} is not installed, run 'just install-{{tool}}' to install"
+    exit 1
+  fi
+  EXPECTED=$(jq -r .{{tool}} < versions.json | cut -c1-{{trim}})
+  ACTUAL=$(just print-{{tool}} | cut -c1-{{trim}})
   if [ "$ACTUAL" = "$EXPECTED" ]; then
     echo "✓ {{tool}} versions match"
   else
@@ -36,11 +40,11 @@ install-foundry:
 
 # Prints current foundry version.
 print-foundry:
-  forge --version
+  forge --version | grep -o '[a-f0-9]\{7\}' | head -n 1
 
 # Checks if installed foundry version is correct.
 check-foundry:
-  bash ./ops/scripts/check-foundry.sh
+  just check-tool-version foundry forge 7
 
 # Installs correct kontrol version.
 install-kontrol:
@@ -84,7 +88,7 @@ install-semgrep:
 
 # Prints current semgrep version.
 print-semgrep:
-  semgrep --version | head -n 1
+  semgrep --version 2>&1 | grep -o '[0-9]\+\.[0-9]\+\.[0-9]\+'
 
 # Checks if installed semgrep version is correct.
 check-semgrep:
