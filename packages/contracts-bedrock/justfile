@@ -54,8 +54,8 @@ clean:
 ########################################################
 
 # Runs standard contract tests.
-test: build-go-ffi
-  forge test
+test *ARGS: build-go-ffi
+  forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
