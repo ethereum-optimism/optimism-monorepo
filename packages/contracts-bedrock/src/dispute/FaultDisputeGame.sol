@@ -291,7 +291,7 @@ contract FaultDisputeGame is Clone, ISemver {
         // - 0x14 creator address
         // - 0x20 root claim
         // - 0x20 l1 head
-        // - 0x20 extraData
+        // - 0x20 extraData (l2 block number)
         // - 0x02 CWIA bytes
         assembly {
             if iszero(eq(calldatasize(), 0x7A)) {
