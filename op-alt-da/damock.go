@@ -111,6 +111,12 @@ type FakeDAServer struct {
 	*DAServer
 	putRequestLatency time.Duration
 	getRequestLatency time.Duration
+	// outOfOrderResponses is a flag that, when set, causes the server to send responses out of order.
+	// It will only respond to pairs of request, returning the second response first, and waiting 1 second before sending the first response.
+	// This is used to test the batcher's ability to handle out of order responses, while still ensuring holocene's strict ordering rules.
+	outOfOrderResponses bool
+	oooMu               sync.Mutex
+	oooWaitChan         chan struct{}
 }
 
 func NewFakeDAServer(host string, port int, log log.Logger) *FakeDAServer {
@@ -130,6 +136,21 @@ func (s *FakeDAServer) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *FakeDAServer) HandlePut(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(s.putRequestLatency)
+	if s.outOfOrderResponses {
+		s.oooMu.Lock()
+		if s.oooWaitChan == nil {
+			s.log.Info("Received put request while in out-of-order mode, waiting for next request")
+			s.oooWaitChan = make(chan struct{})
+			s.oooMu.Unlock()
+			<-s.oooWaitChan
+			time.Sleep(1 * time.Second)
+		} else {
+			s.log.Info("Received second put request in out-of-order mode, responding to this one first, then the first one")
+			close(s.oooWaitChan)
+			s.oooWaitChan = nil
+			s.oooMu.Unlock()
+		}
+	}
 	s.DAServer.HandlePut(w, r)
 }
 
@@ -147,11 +168,21 @@ func (s *FakeDAServer) Start() error {
 }
 
 func (s *FakeDAServer) SetPutRequestLatency(latency time.Duration) {
+	s.log.Info("Setting put request latency", "latency", latency)
 	s.putRequestLatency = latency
 }
 
 func (s *FakeDAServer) SetGetRequestLatency(latency time.Duration) {
+	s.log.Info("Setting get request latency", "latency", latency)
 	s.getRequestLatency = latency
+}
+
+// When ooo=true, causes the server to send responses out of order.
+// It will only respond to pairs of request, returning the second response first, and waiting 1 second before sending the first response.
+// This is used to test the batcher's ability to handle out of order responses, while still ensuring holocene's strict ordering rules.
+func (s *FakeDAServer) SetOutOfOrderResponses(ooo bool) {
+	s.log.Info("Setting out of order responses", "ooo", ooo)
+	s.outOfOrderResponses = ooo
 }
 
 type MemStore struct {

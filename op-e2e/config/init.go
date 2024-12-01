@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	op_service "github.com/ethereum-optimism/optimism/op-service"
@@ -31,10 +32,11 @@ const (
 type AllocType string
 
 const (
-	AllocTypeStandard AllocType = "standard"
-	AllocTypeAltDA    AllocType = "alt-da"
-	AllocTypeL2OO     AllocType = "l2oo"
-	AllocTypeMTCannon AllocType = "mt-cannon"
+	AllocTypeStandard     AllocType = "standard"
+	AllocTypeAltDA        AllocType = "alt-da"
+	AllocTypeAltDAGeneric AllocType = "alt-da-generic"
+	AllocTypeL2OO         AllocType = "l2oo"
+	AllocTypeMTCannon     AllocType = "mt-cannon"
 
 	DefaultAllocType = AllocTypeStandard
 )
@@ -48,14 +50,14 @@ func (a AllocType) Check() error {
 
 func (a AllocType) UsesProofs() bool {
 	switch a {
-	case AllocTypeStandard, AllocTypeMTCannon, AllocTypeAltDA:
+	case AllocTypeStandard, AllocTypeMTCannon, AllocTypeAltDA, AllocTypeAltDAGeneric:
 		return true
 	default:
 		return false
 	}
 }
 
-var allocTypes = []AllocType{AllocTypeStandard, AllocTypeAltDA, AllocTypeL2OO, AllocTypeMTCannon}
+var allocTypes = []AllocType{AllocTypeStandard, AllocTypeAltDA, AllocTypeAltDAGeneric, AllocTypeL2OO, AllocTypeMTCannon}
 
 var (
 	// All of the following variables are set in the init function
@@ -208,5 +210,13 @@ func initAllocType(root string, allocType AllocType) {
 	dc.L1BlockTime = 2
 	dc.L2BlockTime = 1
 	dc.SetDeployments(l1Deployments)
+	if allocType == AllocTypeAltDA {
+		dc.AltDADeployConfig.UseAltDA = true
+		dc.AltDADeployConfig.DACommitmentType = altda.KeccakCommitmentString
+	}
+	if allocType == AllocTypeAltDAGeneric {
+		dc.AltDADeployConfig.UseAltDA = true
+		dc.AltDADeployConfig.DACommitmentType = altda.GenericCommitmentString
+	}
 	deployConfigsByType[allocType] = dc
 }
