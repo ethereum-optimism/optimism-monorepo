@@ -370,10 +370,11 @@ func (bs *BatcherService) initRPCServer(cfg *CLIConfig) error {
 
 func (bs *BatcherService) initAltDA(cfg *CLIConfig) error {
 	config := cfg.AltDA
-	if err := config.Check(); err != nil {
+	daClient, err := config.NewDAClient()
+	if err != nil {
 		return err
 	}
-	bs.AltDA = config.NewDAClient()
+	bs.AltDA = daClient
 	bs.UseAltDA = config.Enabled
 	return nil
 }
