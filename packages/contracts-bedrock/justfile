@@ -15,24 +15,12 @@ dep-status:
 #                         BUILD                        #
 ########################################################
 
-# Checks that the correct version of Foundry is installed.
-check-foundry:
-  cd ../../ && ./ops/scripts/check-foundry.sh
-
-# Checks that semgrep is installed.
-check-semgrep:
-  cd ../../ && just check-semgrep
-
-# Checks that the correct versions of Foundry and semgrep are installed.
-check-dependencies:
-  just check-foundry && just check-semgrep
-
 # Core forge build command
 forge-build:
   forge build
 
 # Builds the contracts.
-build: check-dependencies lint-fix-no-fail forge-build interfaces-check-no-build
+build: lint-fix-no-fail forge-build interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:

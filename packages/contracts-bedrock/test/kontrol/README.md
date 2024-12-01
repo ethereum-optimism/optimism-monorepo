@@ -48,10 +48,9 @@ The directory is structured as follows
 
 ### Installation
 
-1. `cd` to the root of this repo.
-2. Install Foundry by running `just install-foundry`. This installs `foundryup`, the foundry toolchain installer, then installs the required foundry version.
-3. Install Kontrol by running `just install-kontrol`. This installs `kup`, the package manager for RV tools, then installs the required kontrol version.
-4. Install Docker.
+1. Make sure that the dependencies for the Optimism Monorepo are installed with `mise`.
+1. Install [`kup`](https://github.com/runtimeverification/k/releases/tag/v7.1.180).
+1. Use `kup` to [install `kontrol`](https://github.com/runtimeverification/kontrol?tab=readme-ov-file#fast-installation)
 
 ## Usage
 
