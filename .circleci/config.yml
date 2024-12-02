@@ -586,31 +586,31 @@ jobs:
             docker pull $image_name || exit 1
             docker run $image_name <<parameters.op_component>> --version || exit 1
 
-  contracts-bedrock-coverage:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
-    steps:
-      - checkout
-      - install-contracts-dependencies
-      - check-changed:
-          patterns: contracts-bedrock,op-node
-      - run:
-          name: print forge version
-          command: forge --version
-          working_directory: packages/contracts-bedrock
-      # We do not use the pre-built contracts becuase forge coverage uses different optimizer settings
-      - run:
-          name: test and generate coverage
-          command: just coverage-lcov
-          no_output_timeout: 18m
-          environment:
-            FOUNDRY_PROFILE: ci
-          working_directory: packages/contracts-bedrock
-      - codecov/upload:
-          disable_search: true
-          files: ./packages/contracts-bedrock/coverage/lcov.info
-          flags: contracts-bedrock-tests
+  # contracts-bedrock-coverage:
+  #   docker:
+  #     - image: <<pipeline.parameters.ci_builder_image>>
+  #   resource_class: xlarge
+  #   steps:
+  #     - checkout
+  #     - install-contracts-dependencies
+  #     - check-changed:
+  #         patterns: contracts-bedrock,op-node
+  #     - run:
+  #         name: print forge version
+  #         command: forge --version
+  #         working_directory: packages/contracts-bedrock
+  #     # We do not use the pre-built contracts becuase forge coverage uses different optimizer settings
+  #     - run:
+  #         name: test and generate coverage
+  #         command: just coverage-lcov
+  #         no_output_timeout: 18m
+  #         environment:
+  #           FOUNDRY_PROFILE: ci
+  #         working_directory: packages/contracts-bedrock
+  #     - codecov/upload:
+  #         disable_search: true
+  #         files: ./packages/contracts-bedrock/coverage/lcov.info
+  #         flags: contracts-bedrock-tests
 
   contracts-bedrock-tests:
     docker:
