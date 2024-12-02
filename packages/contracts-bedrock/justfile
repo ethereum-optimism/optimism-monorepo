@@ -70,11 +70,11 @@ test-kontrol-no-build:
 
 # Runs contract coverage.
 coverage: build-go-ffi
-  forge coverage || (bash -c "forge coverage 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage
 
 # Runs contract coverage with lcov.
 coverage-lcov: build-go-ffi
-  forge coverage --report lcov || (bash -c "forge coverage --report lcov 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage --report lcov
 
 
 ########################################################
