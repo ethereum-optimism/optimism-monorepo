@@ -181,18 +181,18 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected:      SyncActions{waitForNodeSync: true},
 			expectedLogs:  []string{"sequencer currentL1 reversed"},
 		},
-		{name: "L1",
+		{name: "L1 reorg",
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
-				SafeL2:    eth.L2BlockRef{Number: 100},
+				SafeL2:    eth.L2BlockRef{Number: 100, L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block102, block103}, // note absence of block101
 			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
-				clearState:   &eth.BlockID{},
+				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{101, 109},
 			},
 			expectedLogs: []string{"new safe head is behind oldest block in state"},
@@ -201,14 +201,14 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
-				SafeL2:    eth.L2BlockRef{Number: 104},
+				SafeL2:    eth.L2BlockRef{Number: 104, L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
 			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
-				clearState:   &eth.BlockID{},
+				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{105, 109},
 			},
 			expectedLogs: []string{"safe head above unsafe head"},
@@ -217,14 +217,14 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
-				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block101.Hash()}, // note hash mismatch
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}}, // note hash mismatch
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
 			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
-				clearState:   &eth.BlockID{},
+				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{104, 109},
 			},
 			expectedLogs: []string{"safe chain reorg"},
@@ -233,7 +233,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 2},
-				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash()},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
@@ -241,7 +241,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			channels:      []ChannelStatuser{channel103},
 			expected: SyncActions{
 				waitForNodeSync: true,
-				clearState:      &eth.BlockID{},
+				clearState:      &eth.BlockID{Number: 1},
 				blocksToLoad:    [2]uint64{102, 109},
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
