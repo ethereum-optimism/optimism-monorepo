@@ -1320,10 +1320,10 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
-      - contracts-bedrock-coverage
+      - contracts-bedrock-coverage:
           filters:
-              branches:
-                ignore: /.*/
+            branches:
+              ignore: /.*/
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
