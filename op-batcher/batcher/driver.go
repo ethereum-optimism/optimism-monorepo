@@ -482,6 +482,9 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-ctx.Done():
+			if err := queue.Wait(); err != nil {
+				l.Log.Error("error waiting for transactions to complete", "err", err)
+			}
 			l.Log.Warn("main loop returning")
 			return
 		}
