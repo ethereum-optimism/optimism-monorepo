@@ -438,7 +438,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			}
 
 			// Wait for sequencer to catch up
-			if syncActions.waitForNodeSync {
+			if syncActions.sequencerOutOfSync {
 				err = l.waitNodeSync()
 				if err != nil {
 					l.Log.Warn("error waiting for node sync", "err", err)
@@ -928,17 +928,17 @@ type ChannelStatuser interface {
 }
 
 type SyncActions struct {
-	clearState      *eth.BlockID
-	blocksToPrune   int
-	channelsToPrune int
-	waitForNodeSync bool
-	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
+	clearState         *eth.BlockID
+	blocksToPrune      int
+	channelsToPrune    int
+	sequencerOutOfSync bool
+	blocksToLoad       [2]uint64 // the range [start,end] that should be loaded into the local state.
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
 func (s SyncActions) String() string {
 	return fmt.Sprintf(
-		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, waitForNodeSync: %t, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.waitForNodeSync, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, waitForNodeSync: %t, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.sequencerOutOfSync, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
 }
 
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
@@ -948,14 +948,14 @@ func (s SyncActions) String() string {
 func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) SyncActions {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		s := SyncActions{waitForNodeSync: true}
+		s := SyncActions{sequencerOutOfSync: true}
 		l.Warn("empty sync status", "syncActions", s)
 		return s
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
-		s := SyncActions{waitForNodeSync: true}
+		s := SyncActions{sequencerOutOfSync: true}
 		l.Warn("sequencer currentL1 reversed", "syncActions", s)
 		return s
 	}
@@ -1019,9 +1019,8 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 
 			s := SyncActions{
-				waitForNodeSync: true,
-				clearState:      &newSyncStatus.SafeL2.L1Origin,
-				blocksToLoad:    [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+				clearState:   &newSyncStatus.SafeL2.L1Origin,
+				blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. We should go back to
