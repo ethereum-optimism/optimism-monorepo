@@ -1,4 +1,14 @@
-# op-supervisor
+# `op-supervisor`
+
+Issues: [monorepo](https://github.com/ethereum-optimism/optimism/issues?q=is%3Aissue%20state%3Aopen%20label%3AA-op-supervisor)
+
+Pull requests: [monorepo](https://github.com/ethereum-optimism/optimism/pulls?q=is%3Aopen+is%3Apr+label%3AA-op-supervisor)
+
+User docs:
+- [op-supervisor](https://docs.optimism.io/stack/interop/op-supervisor)
+
+Specs:
+- [interop specs]
 
 `op-supervisor` is a service to monitor chains, and quickly determine
 cross-chain message safety, for native interoperability.
@@ -6,6 +16,47 @@ The `op-supervisor` functions as a [superchain backend], implementing the [inter
 
 [superchain backend]: https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md
 [interop specs]: https://github.com/ethereum-optimism/specs/tree/main/specs/interop
+
+*Warning: this implementation is a work in progress, in active development.*
+
+
+## Quickstart
+
+```bash
+make op-supervisor
+
+# Key configurables:
+# datadir: where to store indexed interop data
+# dependency-set: where to find chain dependencies (this format is changing, and may be fully onchain in a later iteration)
+# l2-rpcs: L2 RPC endpoints to fetch data from (optional, can also be added using the `admin_addL2RPC in the admin-RPC)
+./bin/op-supervisor \
+  --datadir="./op-supervisor-data" \
+  --dependency-set="./my-network-configs/dependency-set.json" \
+  --l2-rpcs="ws://example1:8545,ws://example2:8545" \
+  --rpc.enable-admin \
+  --rpc.port=8545
+```
+
+## Usage
+
+### Build from source
+
+```bash
+# from op-supervisor dir:
+make op-supervisor
+./bin/op-supervisor --help
+```
+
+### Run from source
+
+```bash
+# from op-supervisor dir:
+go run ./cmd --help
+```
+
+### Build docker image
+
+See `op-supervisor` docker-bake target.
 
 ## Overview
 
@@ -45,6 +96,10 @@ flowchart TD
 
 ### Verification flow
 
+Warning: the data flow design is actively changing, see [design-doc 171].
+
+[design-doc 171]: https://github.com/ethereum-optimism/design-docs/pull/171
+
 Op-nodes, or any compatible consensus-layer L2 node, interact with the op-supervisor, to:
 
 - share the "local" data with the supervisor
@@ -70,7 +125,7 @@ opgethA -->> opsup: receipts
 
 opsup ->> opsup: cross-unsafe worker
 
-Note left of opnodeA: TODO: delay unsafeView call
+Note left of opnodeA: (changing; delay unsafeView call)
 
 opnodeA ->> opsup: unsafeView
 opsup -->> opnodeA: cross unsafe
@@ -83,7 +138,7 @@ opnodeA ->> opsup: update Local safe
 opnodeB ->> opsup: update Local safe (maybe)
 opsup ->> opsup: cross-safe worker
 
-Note left of opnodeA: TODO: delay safeView call
+Note left of opnodeA: (changing; delay safeView call)
 
 opnodeA ->> opsup: safeView
 opsup -->> opnodeA: cross safe
@@ -196,3 +251,49 @@ This is where the service differs most from interop development simulations:
 and requires dependencies on DA to be consolidated with the dependencies on cross-chain messaging.
 
 
+## Product
+
+### Optimization target
+
+The `op-supervisor` implementation optimizes safe determination of cross-chain message safety,
+with fast feedback to readers.
+
+Data is indexed fast and optimistically to have a minimum level of feedback about a message or block.
+Indexing changes are then propagated, allowing the safety-checks to quickly
+follow up with asynchronous full verification of the safety.
+
+### Vision
+
+The `op-supervisor` is actively changing.
+The most immediate changes are that to the architecture and data flow, as outlined in [design-doc 171].
+
+Full support for chain reorgs (detecting them, and resolving them) is the
+next priority after the above architecture and data changes.
+
+Further background on the design-choices of op-supervisor can be found in the
+[superchain backend desgin-doc](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md).
+
+## Design principles
+
+- Each indexing or safety kind of change is encapsulated in its own asynchronous job.
+- Increments in indexing and safety are propagated, such that other follow-up work can be triggered without delay.
+- A read-only subset of the API is served, sufficient for nodes to stay in sync, assuming a healthy op-supervisor.
+- Databases are rewound trivially by dropping trailing information.
+- Databases can be copied at any time, for convenient snapshots.
+
+## Failure modes
+
+See [design-doc 171] for discussion of missing data and syncing related failure modes.
+
+Generally the supervisor aims to provide existing static data in the case of disruption of cross-chain verification,
+such that a chain which does not take on new interop dependencies, can continue to be extended with safe blocks.
+
+I.e. safety must be guaranteed at all times,
+but a minimal level of liveness can be maintained by holding off on cross-chain message acceptance
+while allowing regular single-chain functionaltiy to proceed.
+
+## Testing
+
+- `op-e2e/interop`: Go interop system-tests, focused on offchain aspects of services to run end to end.
+- `op-e2e/actions/interop`: Go interop action-tests, focused on onchain aspects such as safety and state-transition.
+- `interop-devnet`: docker-compose to run interoperable chains locally.
