@@ -426,8 +426,17 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			}
 
 			// Decide appropriate actions
-			syncActions := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			syncActions, err := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 			l.prevCurrentL1 = syncStatus.CurrentL1
+			if errors.Is(err, SeqOutOfSyncError) {
+				// If the sequencer is out of sync
+				// do nothing and wait to see if it has
+				// got in sync on the next tick.
+				continue
+			} else if err != nil {
+				l.Log.Warn("error computing sync actions", "err", err)
+				continue
+			}
 
 			// Manage existing state / garbage collection
 			if syncActions.clearState != nil {
@@ -435,14 +444,6 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			} else {
 				l.state.pruneSafeBlocks(syncActions.blocksToPrune)
 				l.state.pruneChannels(syncActions.channelsToPrune)
-			}
-
-			// Wait for sequencer to catch up
-			if syncActions.sequencerOutOfSync {
-				err = l.waitNodeSync()
-				if err != nil {
-					l.Log.Warn("error waiting for node sync", "err", err)
-				}
 			}
 
 			if syncActions.blocksToLoad != [2]uint64{} {
@@ -927,37 +928,36 @@ type ChannelStatuser interface {
 	MaxInclusionBlock() uint64
 }
 
+var SeqOutOfSyncError error = errors.New("sequencer out of sync")
+
 type SyncActions struct {
-	clearState         *eth.BlockID
-	blocksToPrune      int
-	channelsToPrune    int
-	sequencerOutOfSync bool
-	blocksToLoad       [2]uint64 // the range [start,end] that should be loaded into the local state.
+	clearState      *eth.BlockID
+	blocksToPrune   int
+	channelsToPrune int
+	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
 func (s SyncActions) String() string {
 	return fmt.Sprintf(
-		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, waitForNodeSync: %t, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.sequencerOutOfSync, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
 }
 
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
-// range to load into the local state, and whether to clear the state entirely.
-func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) SyncActions {
+// range to load into the local state, and whether to clear the state entirely. Returns an error if the sequencer is out of sync.
+func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, error) {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		s := SyncActions{sequencerOutOfSync: true}
-		l.Warn("empty sync status", "syncActions", s)
-		return s
+		l.Warn("empty sync status")
+		return SyncActions{}, SeqOutOfSyncError
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
-		s := SyncActions{sequencerOutOfSync: true}
-		l.Warn("sequencer currentL1 reversed", "syncActions", s)
-		return s
+		l.Warn("sequencer currentL1 reversed")
+		return SyncActions{}, SeqOutOfSyncError
 	}
 
 	oldestBlock, hasBlocks := blocks.Peek()
@@ -967,7 +967,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Info("no blocks in state", "syncActions", s)
-		return s
+		return s, nil
 	}
 
 	if oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
@@ -976,7 +976,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
-		return s
+		return s, nil
 	}
 
 	newestBlock := blocks[blocks.Len()-1]
@@ -995,7 +995,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			"newSafeBlock", newSyncStatus.SafeL2.Number,
 			"syncActions",
 			s)
-		return s
+		return s, nil
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
@@ -1009,7 +1009,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			"syncActions", s)
 		// We should resume work from the new safe head,
 		// and therefore prune all the blocks.
-		return s
+		return s, nil
 	}
 
 	for _, ch := range channels {
@@ -1029,7 +1029,7 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
 				"newSafeBlock", newSyncStatus.SafeL2,
 				"syncActions", s)
-			return s
+			return s, nil
 		}
 	}
 
@@ -1049,5 +1049,5 @@ func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
 		blocksToLoad:    [2]uint64{start, end},
-	}
+	}, nil
 }
