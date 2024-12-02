@@ -228,9 +228,7 @@ func TestQueue_Send(t *testing.T) {
 				if i == 0 {
 					// Make the first tx much larger to expose
 					// any race conditions in the queue
-					for j := 0; j < 100_000; j++ {
-						candidate.TxData = append(candidate.TxData, 1)
-					}
+					candidate.TxData = make([]byte, 100_000)
 				}
 				receiptChs[i] = make(chan TxReceipt[int], 1)
 				queued := c.call(i, candidate, receiptChs[i], queue)
