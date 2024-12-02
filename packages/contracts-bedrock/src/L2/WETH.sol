@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { WETH98 } from "src/universal/WETH98.sol";
@@ -14,8 +14,8 @@ import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 /// @title WETH contract that reads the name and symbol from the L1Block contract.
 ///        Allows for nice rendering of token names for chains using custom gas token.
 contract WETH is WETH98, ISemver {
-    /// @custom:semver 1.1.0-beta.3
-    string public constant version = "1.1.0-beta.3";
+    /// @custom:semver 1.1.0-beta.4
+    string public constant version = "1.1.0-beta.4";
 
     /// @notice Returns the name of the wrapped native asset. Will be "Wrapped Ether"
     ///         if the native asset is Ether.

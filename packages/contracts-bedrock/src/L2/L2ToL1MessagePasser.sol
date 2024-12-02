@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
@@ -51,8 +51,8 @@ contract L2ToL1MessagePasser is ISemver {
     /// @param amount Amount of ETh that was burned.
     event WithdrawerBalanceBurnt(uint256 indexed amount);
 
-    /// @custom:semver 1.1.1-beta.2
-    string public constant version = "1.1.1-beta.2";
+    /// @custom:semver 1.1.1-beta.3
+    string public constant version = "1.1.1-beta.3";
 
     /// @notice Allows users to withdraw ETH by sending directly to this contract.
     receive() external payable {

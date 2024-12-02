@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { RLPWriter } from "src/libraries/rlp/RLPWriter.sol";
 import { Test } from "forge-std/Test.sol";

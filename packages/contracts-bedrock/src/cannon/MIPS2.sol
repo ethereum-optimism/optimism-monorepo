@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { MIPSMemory } from "src/cannon/libraries/MIPSMemory.sol";
@@ -63,8 +63,8 @@ contract MIPS2 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS2 contract.
-    /// @custom:semver 1.0.0-beta.23
-    string public constant version = "1.0.0-beta.23";
+    /// @custom:semver 1.0.0-beta.24
+    string public constant version = "1.0.0-beta.24";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;

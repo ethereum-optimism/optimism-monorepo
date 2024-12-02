@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -18,8 +18,8 @@ import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
 ///        contract instead.
 contract L1BlockNumber is ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.2
-    string public constant version = "1.1.1-beta.2";
+    /// @custom:semver 1.1.1-beta.3
+    string public constant version = "1.1.1-beta.3";
 
     /// @notice Returns the L1 block number.
     receive() external payable {

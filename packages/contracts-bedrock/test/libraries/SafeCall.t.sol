@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
 // Testing utilities
 import { Test } from "forge-std/Test.sol";
@@ -138,9 +138,9 @@ contract SafeCall_Test is Test {
                 // successfully with the optimizer disabled (ran via forge coverage)
                 expected = 66_290;
             } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
-                // 65_922 is the exact amount of gas required to make the safe call
+                // 65_914 is the exact amount of gas required to make the safe call
                 // successfully with the foundry.toml optimizer settings.
-                expected = 65_922;
+                expected = 65_914;
             } else {
                 revert("SafeCall_Test: unknown context");
             }
@@ -178,9 +178,9 @@ contract SafeCall_Test is Test {
                 // successfully with the optimizer disabled (ran via forge coverage)
                 expected = 15_278_989;
             } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
-                // 15_278_621 is the exact amount of gas required to make the safe call
+                // 15_278_613 is the exact amount of gas required to make the safe call
                 // successfully with the foundry.toml optimizer settings.
-                expected = 15_278_621;
+                expected = 15_278_613;
             } else {
                 revert("SafeCall_Test: unknown context");
             }

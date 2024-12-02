@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
@@ -30,8 +30,8 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.4
-    string public constant version = "2.0.1-beta.4";
+    /// @custom:semver 2.0.1-beta.5
+    string public constant version = "2.0.1-beta.5";
 
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;

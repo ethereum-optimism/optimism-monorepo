@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -146,8 +146,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.7
-    string public constant version = "1.3.1-beta.7";
+    /// @custom:semver 1.3.1-beta.8
+    string public constant version = "1.3.1-beta.8";
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;

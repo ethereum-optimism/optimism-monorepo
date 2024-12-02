@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.25;
 
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
@@ -20,8 +20,8 @@ contract SchemaRegistry is ISchemaRegistry, ISemver {
     uint256[MAX_GAP - 1] private __gap;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.1
-    string public constant version = "1.3.1-beta.1";
+    /// @custom:semver 1.3.1-beta.2
+    string public constant version = "1.3.1-beta.2";
 
     /// @inheritdoc ISchemaRegistry
     function register(string calldata schema, ISchemaResolver resolver, bool revocable) external returns (bytes32) {

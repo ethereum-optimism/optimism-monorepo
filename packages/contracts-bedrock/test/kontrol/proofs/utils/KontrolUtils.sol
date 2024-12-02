@@ -10,7 +10,7 @@
 // need for the `copy_memory_to_memory` function and its summary, and thus this workaround.
 // For more information refer to the `copy_memory_to_memory` summary section of `pausability-lemmas.md`.
 
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { Vm } from "forge-std/Vm.sol";
 import { KontrolCheats } from "kontrol-cheatcodes/KontrolCheats.sol";

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 /// @title PreimageKeyLib
 /// @notice Shared utilities for localizing local keys in the preimage oracle.

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
@@ -53,7 +53,7 @@ contract PredeploysBaseTest is CommonTest {
         uint256 count = 2048;
         uint160 prefix = uint160(0x420) << 148;
 
-        bytes memory proxyCode = vm.getDeployedCode("Proxy.sol:Proxy");
+        bytes memory proxyCode = vm.getDeployedCode("forge-artifacts/Proxy.sol/Proxy.json");
 
         for (uint256 i = 0; i < count; i++) {
             address addr = address(prefix | uint160(i));

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { MIPSInstructions as ins } from "src/cannon/libraries/MIPSInstructions.sol";
@@ -47,8 +47,8 @@ contract MIPS is ISemver {
     }
 
     /// @notice The semantic version of the MIPS contract.
-    /// @custom:semver 1.2.1-beta.8
-    string public constant version = "1.2.1-beta.8";
+    /// @custom:semver 1.2.1-beta.9
+    string public constant version = "1.2.1-beta.9";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;

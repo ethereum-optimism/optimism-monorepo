@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3
-pragma solidity ^0.8.25;
+pragma solidity 0.8.25;
 
 import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
 

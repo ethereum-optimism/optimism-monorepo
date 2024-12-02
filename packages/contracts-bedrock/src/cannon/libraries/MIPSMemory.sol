@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
 // Libraries
 import { InvalidMemoryProof } from "src/cannon/libraries/CannonErrors.sol";

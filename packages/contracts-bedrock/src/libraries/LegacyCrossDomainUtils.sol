@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.9;
+pragma solidity ^0.8.0;
 
 // Importing from the legacy contracts package causes issues with the build of the contract bindings
 // so we just copy the library here from

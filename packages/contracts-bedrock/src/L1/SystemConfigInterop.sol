@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -68,9 +68,9 @@ contract SystemConfigInterop is SystemConfig {
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop-beta.5
+    /// @custom:semver +interop-beta.6
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.5");
+        return string.concat(super.version(), "+interop-beta.6");
     }
 
     /// @notice Internal setter for the gas paying token address, includes validation.

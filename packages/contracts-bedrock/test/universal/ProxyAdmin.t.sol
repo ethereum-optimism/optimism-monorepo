@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Testing
 import { Test } from "forge-std/Test.sol";
@@ -39,7 +39,7 @@ contract ProxyAdmin_Test is Test {
         // Deploy the standard proxy
         proxy = IProxy(
             DeployUtils.create1({
-                _name: "Proxy",
+                _name: "forge-artifacts/Proxy.sol/Proxy.json",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (address(admin))))
             })
         );

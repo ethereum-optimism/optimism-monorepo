@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { ERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
@@ -46,8 +46,8 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.4
-    string public constant version = "1.3.1-beta.4";
+    /// @custom:semver 1.3.1-beta.5
+    string public constant version = "1.3.1-beta.5";
 
     /// @param _bridge        Address of the bridge on this network.
     /// @param _remoteChainId Chain ID where the remote token is deployed.

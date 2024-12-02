@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
@@ -114,8 +114,8 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.22
-    string public constant version = "1.0.0-beta.22";
+    /// @custom:semver 1.0.0-beta.23
+    string public constant version = "1.0.0-beta.23";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.

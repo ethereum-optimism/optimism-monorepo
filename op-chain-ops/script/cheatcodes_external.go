@@ -36,19 +36,28 @@ func (c *CheatCodesPrecompile) ProjectRoot() string {
 }
 
 func (c *CheatCodesPrecompile) getArtifact(input string) (*foundry.Artifact, error) {
-	// fetching by relative file path, or using a contract version, is not supported
-	parts := strings.SplitN(input, ":", 2)
-	name := parts[0] + ".sol"
-	contract := parts[0]
-	if len(parts) == 2 {
-		name = parts[0]
-		contract = parts[1]
+	var name string
+	var contract string
+	if strings.HasSuffix(input, ".json") && !strings.Contains(input, ":") {
+		parts := strings.Split(input, "/")
+		contract = strings.TrimSuffix(parts[len(parts)-1], ".json")
+		name = strings.Join(parts[:len(parts)-1], "/")
+		return c.h.af.ReadArtifact(name, contract)
+	} else {
+		parts := strings.SplitN(input, ":", 2)
+		name = parts[0] + ".sol"
+		contract = parts[0]
+		if len(parts) == 2 {
+			name = parts[0]
+			contract = parts[1]
+		}
 	}
 	return c.h.af.ReadArtifact(name, contract)
 }
 
 // GetCode implements https://book.getfoundry.sh/cheatcodes/get-code
 func (c *CheatCodesPrecompile) GetCode(input string) ([]byte, error) {
+	input = strings.TrimPrefix(input, "forge-artifacts/")
 	artifact, err := c.getArtifact(input)
 	if err != nil {
 		return nil, err
@@ -58,6 +67,7 @@ func (c *CheatCodesPrecompile) GetCode(input string) ([]byte, error) {
 
 // GetDeployedCode implements https://book.getfoundry.sh/cheatcodes/get-deployed-code
 func (c *CheatCodesPrecompile) GetDeployedCode(input string) ([]byte, error) {
+	input = strings.TrimPrefix(input, "forge-artifacts/")
 	artifact, err := c.getArtifact(input)
 	if err != nil {
 		return nil, err

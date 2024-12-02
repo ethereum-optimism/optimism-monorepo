@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
@@ -114,7 +114,7 @@ contract DeployAltDA is Script {
         vm.broadcast(msg.sender);
         IProxy proxy = IProxy(
             DeployUtils.create2({
-                _name: "Proxy",
+                _name: "forge-artifacts/Proxy.sol/Proxy.json",
                 _salt: salt,
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (msg.sender)))
             })

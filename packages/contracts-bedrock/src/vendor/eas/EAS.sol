@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.19;
+pragma solidity 0.8.25;
 
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
@@ -80,8 +80,8 @@ contract EAS is IEAS, ISemver, EIP1271Verifier {
     uint256[MAX_GAP - 3] private __gap;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.1-beta.1
-    string public constant version = "1.4.1-beta.1";
+    /// @custom:semver 1.4.1-beta.2
+    string public constant version = "1.4.1-beta.2";
 
     /// @dev Creates a new EAS instance.
     constructor() EIP1271Verifier("EAS", "1.3.0") { }

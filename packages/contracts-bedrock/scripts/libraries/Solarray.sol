@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.13;
+pragma solidity ^0.8.0;
 
 // A trimmed-down and formatted version of https://github.com/emo-eth/solarray.
 //

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Libraries
 import { LibKeccak } from "@lib-keccak/LibKeccak.sol";
@@ -51,8 +51,8 @@ contract PreimageOracle is ISemver {
     uint256 public constant PRECOMPILE_CALL_RESERVED_GAS = 100_000;
 
     /// @notice The semantic version of the Preimage Oracle contract.
-    /// @custom:semver 1.1.3-beta.7
-    string public constant version = "1.1.3-beta.7";
+    /// @custom:semver 1.1.3-beta.8
+    string public constant version = "1.1.3-beta.8";
 
     ////////////////////////////////////////////////////////////////
     //                 Authorized Preimage Parts                  //

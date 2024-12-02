@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
@@ -58,9 +58,9 @@ contract L2StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.11.1-beta.4
+    /// @custom:semver 1.11.1-beta.5
     function version() public pure virtual returns (string memory) {
-        return "1.11.1-beta.4";
+        return "1.11.1-beta.5";
     }
 
     /// @notice Constructs the L2StandardBridge contract.

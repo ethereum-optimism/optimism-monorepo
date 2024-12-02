@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
@@ -137,9 +137,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.6
+    /// @custom:semver 2.3.0-beta.7
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.6";
+        return "2.3.0-beta.7";
     }
 
     /// @notice Constructs the SystemConfig contract. Cannot set

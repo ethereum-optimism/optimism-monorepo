@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
@@ -28,8 +28,8 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
     ISuperchainConfig public superchainConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.0-beta.1
-    string public constant version = "2.2.0-beta.1";
+    /// @custom:semver 2.2.0-beta.2
+    string public constant version = "2.2.0-beta.2";
 
     /// @notice Constructs the L1ERC721Bridge contract.
     constructor() ERC721Bridge() {

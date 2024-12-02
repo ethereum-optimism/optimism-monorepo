@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { FFIInterface } from "test/setup/FFIInterface.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";

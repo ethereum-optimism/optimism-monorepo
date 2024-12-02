@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { Types } from "src/libraries/Types.sol";
 import { Vm } from "forge-std/Vm.sol";
@@ -8,7 +8,7 @@ import { Process } from "scripts/libraries/Process.sol";
 
 /// @title FFIInterface
 /// @notice This contract is set into state using `etch` and therefore must not have constructor logic.
-///         It also MUST be compiled with `0.8.15` because `vm.getDeployedCode` will break if there
+///         It also MUST be compiled with `0.8.25` because `vm.getDeployedCode` will break if there
 ///         are multiple artifacts for different compiler versions.
 contract FFIInterface {
     Vm internal constant vm = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);

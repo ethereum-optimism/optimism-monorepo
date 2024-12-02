@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { Test } from "forge-std/Test.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
@@ -137,7 +137,7 @@ contract L2GenesisTest is Test {
         genesis.writeGenesisAllocs(_path);
 
         // 2 predeploys do not have proxies
-        assertEq(getCodeCount(_path, "Proxy.sol:Proxy"), Predeploys.PREDEPLOY_COUNT - 2);
+        assertEq(getCodeCount(_path, "forge-artifacts/Proxy.sol/Proxy.json"), Predeploys.PREDEPLOY_COUNT - 2);
 
         // 24 proxies have the implementation set if useInterop is true and 17 if useInterop is false
         assertEq(getPredeployCountWithSlotSet(_path, Constants.PROXY_IMPLEMENTATION_ADDRESS), _useInterop ? 24 : 17);

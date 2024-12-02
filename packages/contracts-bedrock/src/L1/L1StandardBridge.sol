@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
@@ -75,8 +75,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.2
-    string public constant version = "2.2.1-beta.2";
+    /// @custom:semver 2.2.1-beta.3
+    string public constant version = "2.2.1-beta.3";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;

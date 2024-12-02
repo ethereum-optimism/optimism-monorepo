@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Testing
 import { console2 as console } from "forge-std/console2.sol";
@@ -212,7 +212,7 @@ contract L2Genesis is Deployer {
     ///         migrating genesis generation to Solidity.
     function setPredeployProxies() public {
         console.log("Setting Predeploy proxies");
-        bytes memory code = vm.getDeployedCode("Proxy.sol:Proxy");
+        bytes memory code = vm.getDeployedCode("forge-artifacts/Proxy.sol/Proxy.json");
         uint160 prefix = uint160(0x420) << 148;
 
         console.log(

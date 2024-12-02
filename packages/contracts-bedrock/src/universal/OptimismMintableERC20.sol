@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
@@ -47,8 +47,8 @@ contract OptimismMintableERC20 is ERC20Permit, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0-beta.3
-    string public constant version = "1.4.0-beta.3";
+    /// @custom:semver 1.4.0-beta.4
+    string public constant version = "1.4.0-beta.4";
 
     /// @notice Getter function for the permit2 address. It deterministically deployed
     ///         so it will always be at the same address. It is also included as a preinstall,

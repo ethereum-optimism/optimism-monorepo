@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity 0.8.25;
 
 import { Script } from "forge-std/Script.sol";
 import { stdToml } from "forge-std/StdToml.sol";
@@ -367,7 +367,7 @@ contract DeploySuperchain is Script {
         vm.startBroadcast(msg.sender);
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(
             DeployUtils.create1({
-                _name: "Proxy",
+                _name: "forge-artifacts/Proxy.sol/Proxy.json",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
                 )
@@ -395,7 +395,7 @@ contract DeploySuperchain is Script {
         vm.startBroadcast(msg.sender);
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(
             DeployUtils.create1({
-                _name: "Proxy",
+                _name: "forge-artifacts/Proxy.sol/Proxy.json",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(IProxy.__constructor__, (address(superchainProxyAdmin)))
                 )
