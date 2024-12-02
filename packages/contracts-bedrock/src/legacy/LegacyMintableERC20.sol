@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+
+// Interfaces
 import { ILegacyMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 /// @title LegacyMintableERC20

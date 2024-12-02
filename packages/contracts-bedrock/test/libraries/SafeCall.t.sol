@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Testing utilities
 import { Test } from "forge-std/Test.sol";
+import { VmSafe } from "forge-std/Vm.sol";
 import { StdCheatsSafe } from "forge-std/StdCheats.sol";
 
 // Target contract
@@ -122,9 +123,29 @@ contract SafeCall_Test is Test {
         for (uint64 i = 40_000; i < 100_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 65_922 is the exact amount of gas required to make the safe call
-            // successfully.
-            if (i < 65_922) {
+            // The values below are best gotten by setting the value to a high number and running the test with a
+            // verbosity of `-vvv` then setting the value to the value (gas arg) of the failed assertion.
+            // A faster way to do this for forge coverage cases, is to comment out the optimizer and optimizer runs in
+            // the foundry.toml file and then run forge test. This is faster because forge test only compiles modified
+            // contracts unlike forge coverage.
+            uint256 expected;
+
+            // Because forge coverage always runs with the optimizer disabled,
+            // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
+            // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
+            if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+                // 66_290 is the exact amount of gas required to make the safe call
+                // successfully with the optimizer disabled (ran via forge coverage)
+                expected = 66_290;
+            } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
+                // 65_922 is the exact amount of gas required to make the safe call
+                // successfully with the foundry.toml optimizer settings.
+                expected = 65_922;
+            } else {
+                revert("SafeCall_Test: unknown context");
+            }
+
+            if (i < expected) {
                 assertFalse(caller.makeSafeCall(i, 25_000));
             } else {
                 vm.expectCallMinGas(address(caller), 0, 25_000, abi.encodeCall(caller.setA, (1)));
@@ -142,9 +163,29 @@ contract SafeCall_Test is Test {
         for (uint64 i = 15_200_000; i < 15_300_000; i++) {
             uint256 snapshot = vm.snapshot();
 
-            // 15_278_621 is the exact amount of gas required to make the safe call
-            // successfully.
-            if (i < 15_278_621) {
+            // The values below are best gotten by setting the value to a high number and running the test with a
+            // verbosity of `-vvv` then setting the value to the value (gas arg) of the failed assertion.
+            // A faster way to do this for forge coverage cases, is to comment out the optimizer and optimizer runs in
+            // the foundry.toml file and then run forge test. This is faster because forge test only compiles modified
+            // contracts unlike forge coverage.
+            uint256 expected;
+
+            // Because forge coverage always runs with the optimizer disabled,
+            // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
+            // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
+            if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+                // 15_278_989 is the exact amount of gas required to make the safe call
+                // successfully with the optimizer disabled (ran via forge coverage)
+                expected = 15_278_989;
+            } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
+                // 15_278_621 is the exact amount of gas required to make the safe call
+                // successfully with the foundry.toml optimizer settings.
+                expected = 15_278_621;
+            } else {
+                revert("SafeCall_Test: unknown context");
+            }
+
+            if (i < expected) {
                 assertFalse(caller.makeSafeCall(i, 15_000_000));
             } else {
                 vm.expectCallMinGas(address(caller), 0, 15_000_000, abi.encodeCall(caller.setA, (1)));

@@ -526,8 +526,11 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			// We'd probably hit this error right after startup, so a short shutdown duration should suffice.
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 			defer cancel()
-			// Always returns nil. An error is only returned to expose this function as an RPC.
-			_ = l.StopBatchSubmitting(ctx)
+			// Call StopBatchSubmitting in another goroutine to avoid deadlock.
+			go func() {
+				// Always returns nil. An error is only returned to expose this function as an RPC.
+				_ = l.StopBatchSubmitting(ctx)
+			}()
 			return
 		} else if err != nil {
 			l.Log.Error("SetMaxDASize rpc failed, retrying.", "err", err)
@@ -748,10 +751,16 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 		// So we prefer to mimic the behavior of txmgr and cancel all pending DA/txmgr requests when the batcher is stopped.
 		comm, err := l.AltDA.SetInput(l.shutdownCtx, txdata.CallData())
 		if err != nil {
-			l.Log.Error("Failed to post input to Alt DA", "error", err)
-			// requeue frame if we fail to post to the DA Provider so it can be retried
-			// note: this assumes that the da server caches requests, otherwise it might lead to resubmissions of the blobs
-			l.recordFailedDARequest(txdata.ID(), err)
+			// Don't log context cancelled events because they are expected,
+			// and can happen after tests complete which causes a panic.
+			if errors.Is(err, context.Canceled) {
+				l.recordFailedDARequest(txdata.ID(), nil)
+			} else {
+				l.Log.Error("Failed to post input to Alt DA", "error", err)
+				// requeue frame if we fail to post to the DA Provider so it can be retried
+				// note: this assumes that the da server caches requests, otherwise it might lead to resubmissions of the blobs
+				l.recordFailedDARequest(txdata.ID(), err)
+			}
 			return nil
 		}
 		l.Log.Info("Set altda input", "commitment", comm, "tx", txdata.ID())

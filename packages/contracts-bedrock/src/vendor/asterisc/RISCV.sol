@@ -8,7 +8,6 @@ import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 /// @notice The RISCV contract emulates a single RISCV hart cycle statelessly, using memory proofs to verify the
 ///         instruction and optional memory access' inclusion in the memory merkle root provided in the trusted
 ///         prestate witness.
-///         This contract has been vendorized from the Asterisc project. The original source code can be found at
 /// @dev https://github.com/ethereum-optimism/asterisc
 contract RISCV is IBigStepper {
     /// @notice The preimage oracle contract.

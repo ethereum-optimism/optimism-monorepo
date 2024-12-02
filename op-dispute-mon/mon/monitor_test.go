@@ -3,7 +3,6 @@ package mon
 import (
 	"context"
 	"errors"
-	"math/big"
 	"testing"
 	"time"
 
@@ -11,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/metrics"
 	monTypes "github.com/ethereum-optimism/optimism/op-dispute-mon/mon/types"
 	"github.com/ethereum-optimism/optimism/op-service/clock"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -24,21 +24,11 @@ var (
 func TestMonitor_MonitorGames(t *testing.T) {
 	t.Parallel()
 
-	t.Run("FailedFetchBlocknumber", func(t *testing.T) {
+	t.Run("FailedFetchHeadBlock", func(t *testing.T) {
 		monitor, _, _, _ := setupMonitorTest(t)
 		boom := errors.New("boom")
-		monitor.fetchBlockNumber = func(ctx context.Context) (uint64, error) {
-			return 0, boom
-		}
-		err := monitor.monitorGames()
-		require.ErrorIs(t, err, boom)
-	})
-
-	t.Run("FailedFetchBlockHash", func(t *testing.T) {
-		monitor, _, _, _ := setupMonitorTest(t)
-		boom := errors.New("boom")
-		monitor.fetchBlockHash = func(ctx context.Context, number *big.Int) (common.Hash, error) {
-			return common.Hash{}, boom
+		monitor.fetchHeadBlock = func(ctx context.Context) (eth.L1BlockRef, error) {
+			return eth.L1BlockRef{}, boom
 		}
 		err := monitor.monitorGames()
 		require.ErrorIs(t, err, boom)
@@ -108,11 +98,8 @@ func newEnrichedGameData(proxy common.Address, timestamp uint64) *monTypes.Enric
 
 func setupMonitorTest(t *testing.T) (*gameMonitor, *mockExtractor, *mockForecast, []*mockMonitor) {
 	logger := testlog.Logger(t, log.LvlDebug)
-	fetchBlockNum := func(ctx context.Context) (uint64, error) {
-		return 1, nil
-	}
-	fetchBlockHash := func(ctx context.Context, number *big.Int) (common.Hash, error) {
-		return common.Hash{}, nil
+	fetchHeadBlock := func(ctx context.Context) (eth.L1BlockRef, error) {
+		return eth.L1BlockRef{Number: 1, Hash: common.Hash{0xaa}}, nil
 	}
 	monitorInterval := 100 * time.Millisecond
 	cl := clock.NewAdvancingClock(10 * time.Millisecond)
@@ -122,7 +109,7 @@ func setupMonitorTest(t *testing.T) (*gameMonitor, *mockExtractor, *mockForecast
 	monitor1 := &mockMonitor{}
 	monitor2 := &mockMonitor{}
 	monitor3 := &mockMonitor{}
-	monitor := newGameMonitor(context.Background(), logger, cl, metrics.NoopMetrics, monitorInterval, 10*time.Second, fetchBlockHash, fetchBlockNum,
+	monitor := newGameMonitor(context.Background(), logger, cl, metrics.NoopMetrics, monitorInterval, 10*time.Second, fetchHeadBlock,
 		extractor.Extract, forecast.Forecast, monitor1.Check, monitor2.Check, monitor3.Check)
 	return monitor, extractor, forecast, []*mockMonitor{monitor1, monitor2, monitor3}
 }

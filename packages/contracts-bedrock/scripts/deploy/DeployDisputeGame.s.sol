@@ -18,21 +18,12 @@ import { IPermissionedDisputeGame } from "src/dispute/interfaces/IPermissionedDi
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
 
 /// @title DeployDisputeGameInput
 contract DeployDisputeGameInput is BaseDeployIO {
     // Common inputs.
     string internal _release;
     string internal _standardVersionsToml;
-
-    // Specify which MIPS version to use.
-    uint256 internal _mipsVersion;
-
-    // All inputs required to deploy PreimageOracle.
-    uint256 internal _minProposalSizeBytes;
-    uint256 internal _challengePeriodSeconds;
 
     // Specify which game kind is being deployed here.
     string internal _gameKind;
@@ -46,6 +37,7 @@ contract DeployDisputeGameInput is BaseDeployIO {
     uint256 internal _maxClockDuration;
     IDelayedWETH internal _delayedWethProxy;
     IAnchorStateRegistry internal _anchorStateRegistryProxy;
+    IBigStepper internal _vm;
     uint256 internal _l2ChainId;
 
     // Additional inputs required to deploy PermissionedDisputeGame.
@@ -53,16 +45,7 @@ contract DeployDisputeGameInput is BaseDeployIO {
     address internal _challenger;
 
     function set(bytes4 _sel, uint256 _value) public {
-        if (_sel == this.mipsVersion.selector) {
-            require(_value == 1 || _value == 2, "DeployDisputeGame: unknown mips version");
-            _mipsVersion = _value;
-        } else if (_sel == this.minProposalSizeBytes.selector) {
-            require(_value != 0, "DeployDisputeGame: minProposalSizeBytes cannot be zero");
-            _minProposalSizeBytes = _value;
-        } else if (_sel == this.challengePeriodSeconds.selector) {
-            require(_value != 0, "DeployDisputeGame: challengePeriodSeconds cannot be zero");
-            _challengePeriodSeconds = _value;
-        } else if (_sel == this.gameType.selector) {
+        if (_sel == this.gameType.selector) {
             require(_value <= type(uint32).max, "DeployDisputeGame: gameType must fit inside uint32");
             _gameType = _value;
         } else if (_sel == this.maxGameDepth.selector) {
@@ -88,7 +71,9 @@ contract DeployDisputeGameInput is BaseDeployIO {
     }
 
     function set(bytes4 _sel, address _value) public {
-        if (_sel == this.delayedWethProxy.selector) {
+        if (_sel == this.vmAddress.selector) {
+            _vm = IBigStepper(_value);
+        } else if (_sel == this.delayedWethProxy.selector) {
             require(_value != address(0), "DeployDisputeGame: delayedWethProxy cannot be zero address");
             _delayedWethProxy = IDelayedWETH(payable(_value));
         } else if (_sel == this.anchorStateRegistryProxy.selector) {
@@ -133,20 +118,8 @@ contract DeployDisputeGameInput is BaseDeployIO {
         return _standardVersionsToml;
     }
 
-    function mipsVersion() public view returns (uint256) {
-        require(_mipsVersion != 0, "DeployDisputeGame: mipsVersion not set");
-        require(_mipsVersion == 1 || _mipsVersion == 2, "DeployDisputeGame: unknown mips version");
-        return _mipsVersion;
-    }
-
-    function minProposalSizeBytes() public view returns (uint256) {
-        require(_minProposalSizeBytes != 0, "DeployDisputeGame: minProposalSizeBytes not set");
-        return _minProposalSizeBytes;
-    }
-
-    function challengePeriodSeconds() public view returns (uint256) {
-        require(_challengePeriodSeconds != 0, "DeployDisputeGame: challengePeriodSeconds not set");
-        return _challengePeriodSeconds;
+    function vmAddress() public view returns (IBigStepper) {
+        return _vm;
     }
 
     function gameKind() public view returns (string memory) {
@@ -228,39 +201,19 @@ contract DeployDisputeGameOutput is BaseDeployIO {
     // PermissionedDisputeGame is used as the type here because it has all of the same functions as
     // FaultDisputeGame but with the added proposer and challenger fields.
     IPermissionedDisputeGame internal _disputeGameImpl;
-    IMIPS internal _mipsSingleton;
-    IPreimageOracle internal _preimageOracleSingleton;
 
     function set(bytes4 _sel, address _value) public {
         if (_sel == this.disputeGameImpl.selector) {
             require(_value != address(0), "DeployDisputeGame: disputeGameImpl cannot be zero address");
             _disputeGameImpl = IPermissionedDisputeGame(_value);
-        } else if (_sel == this.mipsSingleton.selector) {
-            require(_value != address(0), "DeployDisputeGame: mipsSingleton cannot be zero address");
-            _mipsSingleton = IMIPS(_value);
-        } else if (_sel == this.preimageOracleSingleton.selector) {
-            require(_value != address(0), "DeployDisputeGame: preimageOracleSingleton cannot be zero address");
-            _preimageOracleSingleton = IPreimageOracle(_value);
         } else {
             revert("DeployDisputeGame: unknown selector");
         }
     }
 
     function checkOutput(DeployDisputeGameInput _dgi) public view {
-        DeployUtils.assertValidContractAddress(address(_preimageOracleSingleton));
-        DeployUtils.assertValidContractAddress(address(_mipsSingleton));
         DeployUtils.assertValidContractAddress(address(_disputeGameImpl));
         assertValidDeploy(_dgi);
-    }
-
-    function preimageOracleSingleton() public view returns (IPreimageOracle) {
-        DeployUtils.assertValidContractAddress(address(_preimageOracleSingleton));
-        return _preimageOracleSingleton;
-    }
-
-    function mipsSingleton() public view returns (IMIPS) {
-        DeployUtils.assertValidContractAddress(address(_mipsSingleton));
-        return _mipsSingleton;
     }
 
     function disputeGameImpl() public view returns (IPermissionedDisputeGame) {
@@ -269,22 +222,7 @@ contract DeployDisputeGameOutput is BaseDeployIO {
     }
 
     function assertValidDeploy(DeployDisputeGameInput _dgi) public view {
-        assertValidPreimageOracleSingleton(_dgi);
-        assertValidMipsSingleton(_dgi);
         assertValidDisputeGameImpl(_dgi);
-    }
-
-    function assertValidPreimageOracleSingleton(DeployDisputeGameInput _dgi) internal view {
-        IPreimageOracle oracle = preimageOracleSingleton();
-
-        require(oracle.minProposalSize() == _dgi.minProposalSizeBytes(), "PO-10");
-        require(oracle.challengePeriod() == _dgi.challengePeriodSeconds(), "PO-20");
-    }
-
-    function assertValidMipsSingleton(DeployDisputeGameInput) internal view {
-        IMIPS mips = mipsSingleton();
-
-        require(address(mips.oracle()) == address(preimageOracleSingleton()), "MIPS-10");
     }
 
     function assertValidDisputeGameImpl(DeployDisputeGameInput _dgi) internal view {
@@ -295,7 +233,7 @@ contract DeployDisputeGameOutput is BaseDeployIO {
         require(game.splitDepth() == _dgi.splitDepth(), "DG-30");
         require(game.clockExtension().raw() == uint64(_dgi.clockExtension()), "DG-40");
         require(game.maxClockDuration().raw() == uint64(_dgi.maxClockDuration()), "DG-50");
-        require(game.vm() == IBigStepper(address(mipsSingleton())), "DG-60");
+        require(game.vm() == _dgi.vmAddress(), "DG-60");
         require(game.weth() == _dgi.delayedWethProxy(), "DG-70");
         require(game.anchorStateRegistry() == _dgi.anchorStateRegistryProxy(), "DG-80");
         require(game.l2ChainId() == _dgi.l2ChainId(), "DG-90");
@@ -326,66 +264,8 @@ contract DeployDisputeGame is Script {
     }
 
     function run(DeployDisputeGameInput _dgi, DeployDisputeGameOutput _dgo) public {
-        deployPreimageOracleSingleton(_dgi, _dgo);
-        deployMipsSingleton(_dgi, _dgo);
         deployDisputeGameImpl(_dgi, _dgo);
         _dgo.checkOutput(_dgi);
-    }
-
-    function deployPreimageOracleSingleton(DeployDisputeGameInput _dgi, DeployDisputeGameOutput _dgo) internal {
-        string memory release = _dgi.release();
-        string memory stdVerToml = _dgi.standardVersionsToml();
-        string memory contractName = "preimage_oracle";
-        IPreimageOracle singleton;
-
-        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
-        if (existingImplementation != address(0)) {
-            singleton = IPreimageOracle(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
-            uint256 minProposalSizeBytes = _dgi.minProposalSizeBytes();
-            uint256 challengePeriodSeconds = _dgi.challengePeriodSeconds();
-            vm.broadcast(msg.sender);
-            singleton = IPreimageOracle(
-                DeployUtils.create1({
-                    _name: "PreimageOracle",
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(IPreimageOracle.__constructor__, (minProposalSizeBytes, challengePeriodSeconds))
-                    )
-                })
-            );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
-        }
-
-        vm.label(address(singleton), "PreimageOracleSingleton");
-        _dgo.set(_dgo.preimageOracleSingleton.selector, address(singleton));
-    }
-
-    function deployMipsSingleton(DeployDisputeGameInput _dgi, DeployDisputeGameOutput _dgo) internal {
-        string memory release = _dgi.release();
-        string memory stdVerToml = _dgi.standardVersionsToml();
-        string memory contractName = "mips";
-        IMIPS singleton;
-
-        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
-        if (existingImplementation != address(0)) {
-            singleton = IMIPS(payable(existingImplementation));
-        } else if (isDevelopRelease(release)) {
-            uint256 mipsVersion = _dgi.mipsVersion();
-            IPreimageOracle preimageOracle = IPreimageOracle(address(_dgo.preimageOracleSingleton()));
-            vm.broadcast(msg.sender);
-            singleton = IMIPS(
-                DeployUtils.create1({
-                    _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
-                })
-            );
-        } else {
-            revert(string.concat("DeployImplementations: failed to deploy release ", release));
-        }
-
-        vm.label(address(singleton), "MIPSSingleton");
-        _dgo.set(_dgo.mipsSingleton.selector, address(singleton));
     }
 
     function deployDisputeGameImpl(DeployDisputeGameInput _dgi, DeployDisputeGameOutput _dgo) internal {
@@ -397,7 +277,7 @@ contract DeployDisputeGame is Script {
             splitDepth: _dgi.splitDepth(),
             clockExtension: Duration.wrap(uint64(_dgi.clockExtension())),
             maxClockDuration: Duration.wrap(uint64(_dgi.maxClockDuration())),
-            gameVm: IBigStepper(address(_dgo.mipsSingleton())),
+            gameVm: IBigStepper(address(_dgi.vmAddress())),
             delayedWethProxy: _dgi.delayedWethProxy(),
             anchorStateRegistryProxy: _dgi.anchorStateRegistryProxy(),
             l2ChainId: _dgi.l2ChainId(),

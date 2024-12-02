@@ -346,6 +346,9 @@ func (s *SyncClient) AddPeer(id peer.ID) {
 func (s *SyncClient) RemovePeer(id peer.ID) {
 	s.peersLock.Lock()
 	defer s.peersLock.Unlock()
+	if s.closingPeers {
+		return
+	}
 	cancel, ok := s.peers[id]
 	if !ok {
 		s.log.Warn("cannot remove peer from sync duties, peer was not registered", "peer", id)

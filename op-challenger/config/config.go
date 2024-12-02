@@ -6,6 +6,7 @@ import (
 	"net/url"
 	"runtime"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
@@ -230,7 +231,10 @@ func (c Config) Check() error {
 				return ErrCannonNetworkAndL2Genesis
 			}
 			if ch := chaincfg.ChainByName(c.Cannon.Network); ch == nil {
-				return fmt.Errorf("%w: %v", ErrCannonNetworkUnknown, c.Cannon.Network)
+				// Check if this looks like a chain ID that could be a custom chain configuration.
+				if _, err := strconv.ParseUint(c.Cannon.Network, 10, 32); err != nil {
+					return fmt.Errorf("%w: %v", ErrCannonNetworkUnknown, c.Cannon.Network)
+				}
 			}
 		}
 		if c.CannonAbsolutePreState == "" && c.CannonAbsolutePreStateBaseURL == nil {

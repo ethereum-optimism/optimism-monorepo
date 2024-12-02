@@ -113,14 +113,15 @@ func (eq *EngDeriver) onBuildSeal(ev BuildSealEvent) {
 	depositCount, _ := lastDeposit(envelope.ExecutionPayload.Transactions)
 	eq.metrics.CountSequencedTxsInBlock(txnCount, depositCount)
 
-	eq.log.Debug("Processed new L2 block", "l2_unsafe", ref, "l1_origin", ref.L1Origin,
+	eq.log.Debug("Built new L2 block", "l2_unsafe", ref, "l1_origin", ref.L1Origin,
 		"txs", txnCount, "deposits", depositCount, "time", ref.Time, "seal_time", sealTime, "build_time", buildTime)
 
 	eq.emitter.Emit(BuildSealedEvent{
-		Concluding:  ev.Concluding,
-		DerivedFrom: ev.DerivedFrom,
-		Info:        ev.Info,
-		Envelope:    envelope,
-		Ref:         ref,
+		Concluding:   ev.Concluding,
+		DerivedFrom:  ev.DerivedFrom,
+		BuildStarted: ev.BuildStarted,
+		Info:         ev.Info,
+		Envelope:     envelope,
+		Ref:          ref,
 	})
 }

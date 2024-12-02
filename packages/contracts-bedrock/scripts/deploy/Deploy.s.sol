@@ -25,7 +25,6 @@ import {
 } from "scripts/deploy/DeployImplementations.s.sol";
 
 // Contracts
-import { StorageSetter } from "src/universal/StorageSetter.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 // Libraries
@@ -44,8 +43,6 @@ import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
 import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
 import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
 import { ProtocolVersion } from "src/L1/interfaces/IProtocolVersions.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
@@ -54,11 +51,7 @@ import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol"
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
-import { IMIPS2 } from "src/cannon/interfaces/IMIPS2.sol";
 import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
-import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
-import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
 
 /// @title Deploy
 /// @notice Script used to deploy a bedrock system. The entire system is deployed within the `run` function.
@@ -100,18 +93,6 @@ contract Deploy is Deployer {
     modifier onlyDevnet() {
         uint256 chainid = block.chainid;
         if (chainid == Chains.LocalDevnet || chainid == Chains.GethDevnet) {
-            _;
-        }
-    }
-
-    /// @notice Modifier that will only allow a function to be called on a public
-    ///         testnet or devnet.
-    modifier onlyTestnetOrDevnet() {
-        uint256 chainid = block.chainid;
-        if (
-            chainid == Chains.Goerli || chainid == Chains.Sepolia || chainid == Chains.LocalDevnet
-                || chainid == Chains.GethDevnet
-        ) {
             _;
         }
     }
@@ -185,28 +166,6 @@ contract Deploy is Deployer {
             SuperchainConfig: getAddress("SuperchainConfig"),
             OPContractsManager: getAddress("OPContractsManager")
         });
-    }
-
-    ////////////////////////////////////////////////////////////////
-    //            State Changing Helper Functions                 //
-    ////////////////////////////////////////////////////////////////
-
-    /// @notice Transfer ownership of the ProxyAdmin contract to the final system owner
-    function transferProxyAdminOwnership() public broadcast {
-        // Get the ProxyAdmin contract.
-        IProxyAdmin proxyAdmin = IProxyAdmin(mustGetAddress("ProxyAdmin"));
-
-        // Transfer ownership to the final system owner if necessary.
-        address owner = proxyAdmin.owner();
-        address finalSystemOwner = cfg.finalSystemOwner();
-        if (owner != finalSystemOwner) {
-            proxyAdmin.transferOwnership(finalSystemOwner);
-            console.log("ProxyAdmin ownership transferred to final system owner at: %s", finalSystemOwner);
-        }
-
-        // Make sure the ProxyAdmin owner is set to the final system owner.
-        owner = proxyAdmin.owner();
-        require(owner == finalSystemOwner, "Deploy: ProxyAdmin ownership not transferred to final system owner");
     }
 
     ////////////////////////////////////////////////////////////////
@@ -311,7 +270,7 @@ contract Deploy is Deployer {
             bytes32 typeHash = keccak256(bytes(cfg.daCommitmentType()));
             bytes32 keccakHash = keccak256(bytes("KeccakCommitment"));
             if (typeHash == keccakHash) {
-                setupOpAltDA();
+                deployOpAltDA();
             }
         }
 
@@ -485,9 +444,9 @@ contract Deploy is Deployer {
             _data: abi.encodeCall(IDelayedWETH.initialize, (msg.sender, ISuperchainConfig(superchainConfigProxy)))
         });
 
-        setAlphabetFaultGameImplementation({ _allowUpgrade: false });
-        setFastFaultGameImplementation({ _allowUpgrade: false });
-        setCannonFaultGameImplementation({ _allowUpgrade: false });
+        setAlphabetFaultGameImplementation();
+        setFastFaultGameImplementation();
+        setCannonFaultGameImplementation();
 
         transferDisputeGameFactoryOwnership();
         transferDelayedWETHOwnership();
@@ -495,7 +454,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Add AltDA setup to the OP chain
-    function setupOpAltDA() public {
+    function deployOpAltDA() public {
         console.log("Deploying OP AltDA");
         deployDataAvailabilityChallengeProxy();
         deployDataAvailabilityChallenge();
@@ -503,100 +462,8 @@ contract Deploy is Deployer {
     }
 
     ////////////////////////////////////////////////////////////////
-    //              Non-Proxied Deployment Functions              //
-    ////////////////////////////////////////////////////////////////
-
-    /// @notice Deploy the AddressManager
-    function deployAddressManager() public broadcast returns (address addr_) {
-        // Use create instead of create2 because we need the owner to be set to msg.sender but
-        // forge will automatically use the create2 factory which messes up the sender.
-        IAddressManager manager = IAddressManager(
-            DeployUtils.create1AndSave({
-                _save: this,
-                _name: "AddressManager",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAddressManager.__constructor__, ()))
-            })
-        );
-        require(manager.owner() == msg.sender);
-        addr_ = address(manager);
-    }
-
-    /// @notice Deploys the ProxyAdmin contract. Should NOT be used for the Superchain.
-    function deployProxyAdmin() public broadcast returns (address addr_) {
-        // Deploy the ProxyAdmin contract.
-        IProxyAdmin admin = IProxyAdmin(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "ProxyAdmin",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (msg.sender)))
-            })
-        );
-
-        // Make sure the owner was set to the deployer.
-        require(admin.owner() == msg.sender);
-
-        // Set the address manager if it is not already set.
-        IAddressManager addressManager = IAddressManager(mustGetAddress("AddressManager"));
-        if (admin.addressManager() != addressManager) {
-            admin.setAddressManager(addressManager);
-        }
-
-        // Make sure the address manager is set properly.
-        require(admin.addressManager() == addressManager);
-
-        // Return the address of the deployed contract.
-        addr_ = address(admin);
-    }
-
-    /// @notice Deploy the StorageSetter contract, used for upgrades.
-    function deployStorageSetter() public broadcast returns (address addr_) {
-        console.log("Deploying StorageSetter");
-        StorageSetter setter = new StorageSetter{ salt: _implSalt() }();
-        console.log("StorageSetter deployed at: %s", address(setter));
-        string memory version = setter.version();
-        console.log("StorageSetter version: %s", version);
-        addr_ = address(setter);
-    }
-
-    ////////////////////////////////////////////////////////////////
     //                Proxy Deployment Functions                  //
     ////////////////////////////////////////////////////////////////
-
-    /// @notice Deploy the L1StandardBridgeProxy using a ChugSplashProxy
-    function deployL1StandardBridgeProxy() public broadcast returns (address addr_) {
-        address proxyAdmin = mustGetAddress("ProxyAdmin");
-        IL1ChugSplashProxy proxy = IL1ChugSplashProxy(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "L1ChugSplashProxy",
-                _nick: "L1StandardBridgeProxy",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ChugSplashProxy.__constructor__, (proxyAdmin)))
-            })
-        );
-        require(EIP1967Helper.getAdmin(address(proxy)) == proxyAdmin);
-        addr_ = address(proxy);
-    }
-
-    /// @notice Deploy the L1CrossDomainMessengerProxy using a ResolvedDelegateProxy
-    function deployL1CrossDomainMessengerProxy() public broadcast returns (address addr_) {
-        IResolvedDelegateProxy proxy = IResolvedDelegateProxy(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "ResolvedDelegateProxy",
-                _nick: "L1CrossDomainMessengerProxy",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IResolvedDelegateProxy.__constructor__,
-                        (IAddressManager(mustGetAddress("AddressManager")), "OVM_L1CrossDomainMessenger")
-                    )
-                )
-            })
-        );
-        addr_ = address(proxy);
-    }
 
     /// @notice Deploys an ERC1967Proxy contract with the ProxyAdmin as the owner.
     /// @param _name The name of the proxy contract to be deployed.
@@ -694,95 +561,6 @@ contract Deploy is Deployer {
         });
 
         addr_ = address(oracle);
-    }
-
-    /// @notice Deploy Mips VM. Deploys either MIPS or MIPS64 depending on the environment
-    function deployMips() public broadcast returns (address addr_) {
-        addr_ = DeployUtils.create2AndSave({
-            _save: this,
-            _salt: _implSalt(),
-            _name: Config.useMultithreadedCannon() ? "MIPS64" : "MIPS",
-            _args: DeployUtils.encodeConstructor(
-                abi.encodeCall(IMIPS2.__constructor__, (IPreimageOracle(mustGetAddress("PreimageOracle"))))
-            )
-        });
-        save("Mips", address(addr_));
-    }
-
-    /// @notice Deploy the AnchorStateRegistry
-    function deployAnchorStateRegistry() public broadcast returns (address addr_) {
-        IAnchorStateRegistry anchorStateRegistry = IAnchorStateRegistry(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "AnchorStateRegistry",
-                _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IAnchorStateRegistry.__constructor__,
-                        (IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy")))
-                    )
-                )
-            })
-        );
-
-        addr_ = address(anchorStateRegistry);
-    }
-
-    /// @notice Deploy the L1StandardBridge
-    function deployL1StandardBridge() public broadcast returns (address addr_) {
-        IL1StandardBridge bridge = IL1StandardBridge(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "L1StandardBridge",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
-            })
-        );
-
-        // Override the `L1StandardBridge` contract to the deployed implementation. This is necessary
-        // to check the `L1StandardBridge` implementation alongside dependent contracts, which
-        // are always proxies.
-        Types.ContractSet memory contracts = _proxies();
-        contracts.L1StandardBridge = address(bridge);
-        ChainAssertions.checkL1StandardBridge({ _contracts: contracts, _isProxy: false });
-
-        addr_ = address(bridge);
-    }
-
-    /// @notice Deploy the L1ERC721Bridge
-    function deployL1ERC721Bridge() public broadcast returns (address addr_) {
-        IL1ERC721Bridge bridge = IL1ERC721Bridge(
-            DeployUtils.create2AndSave({
-                _save: this,
-                _salt: _implSalt(),
-                _name: "L1ERC721Bridge",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
-            })
-        );
-
-        // Override the `L1ERC721Bridge` contract to the deployed implementation. This is necessary
-        // to check the `L1ERC721Bridge` implementation alongside dependent contracts, which
-        // are always proxies.
-        Types.ContractSet memory contracts = _proxies();
-        contracts.L1ERC721Bridge = address(bridge);
-
-        ChainAssertions.checkL1ERC721Bridge({ _contracts: contracts, _isProxy: false });
-
-        addr_ = address(bridge);
-    }
-
-    /// @notice Transfer ownership of the address manager to the ProxyAdmin
-    function transferAddressManagerOwnership() public broadcast {
-        console.log("Transferring AddressManager ownership to IProxyAdmin");
-        IAddressManager addressManager = IAddressManager(mustGetAddress("AddressManager"));
-        address owner = addressManager.owner();
-        address proxyAdmin = mustGetAddress("ProxyAdmin");
-        if (owner != proxyAdmin) {
-            addressManager.transferOwnership(proxyAdmin);
-            console.log("AddressManager ownership transferred to %s", proxyAdmin);
-        }
-
-        require(addressManager.owner() == proxyAdmin);
     }
 
     /// @notice Deploy the DataAvailabilityChallenge
@@ -917,6 +695,61 @@ contract Deploy is Deployer {
         ChainAssertions.checkOptimismPortal({ _contracts: _proxies(), _cfg: cfg, _isProxy: true });
     }
 
+    /// @notice Initialize the DataAvailabilityChallenge
+    function initializeDataAvailabilityChallenge() public broadcast {
+        console.log("Upgrading and initializing DataAvailabilityChallenge proxy");
+        address dataAvailabilityChallengeProxy = mustGetAddress("DataAvailabilityChallengeProxy");
+        address dataAvailabilityChallenge = mustGetAddress("DataAvailabilityChallenge");
+
+        address finalSystemOwner = cfg.finalSystemOwner();
+        uint256 daChallengeWindow = cfg.daChallengeWindow();
+        uint256 daResolveWindow = cfg.daResolveWindow();
+        uint256 daBondSize = cfg.daBondSize();
+        uint256 daResolverRefundPercentage = cfg.daResolverRefundPercentage();
+
+        IProxyAdmin proxyAdmin = IProxyAdmin(payable(mustGetAddress("ProxyAdmin")));
+        proxyAdmin.upgradeAndCall({
+            _proxy: payable(dataAvailabilityChallengeProxy),
+            _implementation: dataAvailabilityChallenge,
+            _data: abi.encodeCall(
+                IDataAvailabilityChallenge.initialize,
+                (finalSystemOwner, daChallengeWindow, daResolveWindow, daBondSize, daResolverRefundPercentage)
+            )
+        });
+
+        IDataAvailabilityChallenge dac = IDataAvailabilityChallenge(payable(dataAvailabilityChallengeProxy));
+        string memory version = dac.version();
+        console.log("DataAvailabilityChallenge version: %s", version);
+
+        require(dac.owner() == finalSystemOwner);
+        require(dac.challengeWindow() == daChallengeWindow);
+        require(dac.resolveWindow() == daResolveWindow);
+        require(dac.bondSize() == daBondSize);
+        require(dac.resolverRefundPercentage() == daResolverRefundPercentage);
+    }
+
+    ////////////////////////////////////////////////////////////////
+    //         Ownership Transfer Helper Functions                //
+    ////////////////////////////////////////////////////////////////
+
+    /// @notice Transfer ownership of the ProxyAdmin contract to the final system owner
+    function transferProxyAdminOwnership() public broadcast {
+        // Get the ProxyAdmin contract.
+        IProxyAdmin proxyAdmin = IProxyAdmin(mustGetAddress("ProxyAdmin"));
+
+        // Transfer ownership to the final system owner if necessary.
+        address owner = proxyAdmin.owner();
+        address finalSystemOwner = cfg.finalSystemOwner();
+        if (owner != finalSystemOwner) {
+            proxyAdmin.transferOwnership(finalSystemOwner);
+            console.log("ProxyAdmin ownership transferred to final system owner at: %s", finalSystemOwner);
+        }
+
+        // Make sure the ProxyAdmin owner is set to the final system owner.
+        owner = proxyAdmin.owner();
+        require(owner == finalSystemOwner, "Deploy: ProxyAdmin ownership not transferred to final system owner");
+    }
+
     /// @notice Transfer ownership of the DisputeGameFactory contract to the final system owner
     function transferDisputeGameFactoryOwnership() public broadcast {
         console.log("Transferring DisputeGameFactory ownership to Safe");
@@ -973,6 +806,10 @@ contract Deploy is Deployer {
         });
     }
 
+    ///////////////////////////////////////////////////////////
+    //         Proofs setup helper functions                 //
+    ///////////////////////////////////////////////////////////
+
     /// @notice Load the appropriate mips absolute prestate for devenets depending on config environment.
     function loadMipsAbsolutePrestate() internal returns (Claim mipsAbsolutePrestate_) {
         if (block.chainid == Chains.LocalDevnet || block.chainid == Chains.GethDevnet) {
@@ -1026,7 +863,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Sets the implementation for the `CANNON` game type in the `DisputeGameFactory`
-    function setCannonFaultGameImplementation(bool _allowUpgrade) public broadcast {
+    function setCannonFaultGameImplementation() public broadcast {
         console.log("Setting Cannon FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -1034,7 +871,6 @@ contract Deploy is Deployer {
         // Set the Cannon FaultDisputeGame implementation in the factory.
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -1047,30 +883,8 @@ contract Deploy is Deployer {
         });
     }
 
-    /// @notice Sets the implementation for the `PERMISSIONED_CANNON` game type in the `DisputeGameFactory`
-    function setPermissionedCannonFaultGameImplementation(bool _allowUpgrade) public broadcast {
-        console.log("Setting Cannon PermissionedDisputeGame implementation");
-        IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
-        IDelayedWETH weth = IDelayedWETH(mustGetAddress("PermissionedDelayedWETHProxy"));
-
-        // Deploys and sets the Permissioned FaultDisputeGame implementation in the factory.
-        _setFaultGameImplementation({
-            _factory: factory,
-            _allowUpgrade: _allowUpgrade,
-            _params: FaultDisputeGameParams({
-                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
-                weth: weth,
-                gameType: GameTypes.PERMISSIONED_CANNON,
-                absolutePrestate: loadMipsAbsolutePrestate(),
-                faultVm: IBigStepper(mustGetAddress("Mips")),
-                maxGameDepth: cfg.faultGameMaxDepth(),
-                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration()))
-            })
-        });
-    }
-
     /// @notice Sets the implementation for the `ALPHABET` game type in the `DisputeGameFactory`
-    function setAlphabetFaultGameImplementation(bool _allowUpgrade) public onlyDevnet broadcast {
+    function setAlphabetFaultGameImplementation() public onlyDevnet broadcast {
         console.log("Setting Alphabet FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -1078,7 +892,6 @@ contract Deploy is Deployer {
         Claim outputAbsolutePrestate = Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate()));
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -1093,7 +906,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Sets the implementation for the `ALPHABET` game type in the `DisputeGameFactory`
-    function setFastFaultGameImplementation(bool _allowUpgrade) public onlyDevnet broadcast {
+    function setFastFaultGameImplementation() public onlyDevnet broadcast {
         console.log("Setting Fast FaultDisputeGame implementation");
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         IDelayedWETH weth = IDelayedWETH(mustGetAddress("DelayedWETHProxy"));
@@ -1112,7 +925,6 @@ contract Deploy is Deployer {
         );
         _setFaultGameImplementation({
             _factory: factory,
-            _allowUpgrade: _allowUpgrade,
             _params: FaultDisputeGameParams({
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 weth: weth,
@@ -1129,12 +941,11 @@ contract Deploy is Deployer {
     /// @notice Sets the implementation for the given fault game type in the `DisputeGameFactory`.
     function _setFaultGameImplementation(
         IDisputeGameFactory _factory,
-        bool _allowUpgrade,
         FaultDisputeGameParams memory _params
     )
         internal
     {
-        if (address(_factory.gameImpls(_params.gameType)) != address(0) && !_allowUpgrade) {
+        if (address(_factory.gameImpls(_params.gameType)) != address(0)) {
             console.log(
                 "[WARN] DisputeGameFactoryProxy: `FaultDisputeGame` implementation already set for game type: %s",
                 vm.toString(GameType.unwrap(_params.gameType))
@@ -1194,39 +1005,6 @@ contract Deploy is Deployer {
         );
     }
 
-    /// @notice Initialize the DataAvailabilityChallenge
-    function initializeDataAvailabilityChallenge() public broadcast {
-        console.log("Upgrading and initializing DataAvailabilityChallenge proxy");
-        address dataAvailabilityChallengeProxy = mustGetAddress("DataAvailabilityChallengeProxy");
-        address dataAvailabilityChallenge = mustGetAddress("DataAvailabilityChallenge");
-
-        address finalSystemOwner = cfg.finalSystemOwner();
-        uint256 daChallengeWindow = cfg.daChallengeWindow();
-        uint256 daResolveWindow = cfg.daResolveWindow();
-        uint256 daBondSize = cfg.daBondSize();
-        uint256 daResolverRefundPercentage = cfg.daResolverRefundPercentage();
-
-        IProxyAdmin proxyAdmin = IProxyAdmin(payable(mustGetAddress("ProxyAdmin")));
-        proxyAdmin.upgradeAndCall({
-            _proxy: payable(dataAvailabilityChallengeProxy),
-            _implementation: dataAvailabilityChallenge,
-            _data: abi.encodeCall(
-                IDataAvailabilityChallenge.initialize,
-                (finalSystemOwner, daChallengeWindow, daResolveWindow, daBondSize, daResolverRefundPercentage)
-            )
-        });
-
-        IDataAvailabilityChallenge dac = IDataAvailabilityChallenge(payable(dataAvailabilityChallengeProxy));
-        string memory version = dac.version();
-        console.log("DataAvailabilityChallenge version: %s", version);
-
-        require(dac.owner() == finalSystemOwner);
-        require(dac.challengeWindow() == daChallengeWindow);
-        require(dac.resolveWindow() == daResolveWindow);
-        require(dac.bondSize() == daBondSize);
-        require(dac.resolverRefundPercentage() == daResolverRefundPercentage);
-    }
-
     /// @notice Get the DeployInput struct to use for testing
     function getDeployInput() public view returns (OPContractsManager.DeployInput memory) {
         OutputRoot memory testOutputRoot = OutputRoot({
@@ -1272,6 +1050,7 @@ contract Deploy is Deployer {
         });
     }
 
+    /// @notice Reset the initialized value on a proxy contract so that it can be initialized again
     function resetInitializedProxy(string memory _contractName) internal {
         console.log("resetting initialized value on %s Proxy", _contractName);
         address proxy = mustGetAddress(string.concat(_contractName, "Proxy"));

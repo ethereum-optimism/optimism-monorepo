@@ -37,8 +37,7 @@ export NETWORK="${NETWORK:?NETWORK must be set}"
 export ETHERSCAN_API_KEY=${ETHERSCAN_API_KEY:?ETHERSCAN_API_KEY must be set}
 export ETH_RPC_URL=${ETH_RPC_URL:?ETH_RPC_URL must be set}
 export PRIVATE_KEY=${PRIVATE_KEY:?PRIVATE_KEY must be set}
-export BASE_DEPLOY_CONFIG_PATH=${DEPLOY_CONFIG_PATH:?DEPLOY_CONFIG_PATH must be set}
-export OUTPUT_FOLDER_PATH=${OUTPUT_FOLDER_PATH:?OUTPUT_FOLDER_PATH must be set}
+export OUTPUT_FOLDER_PATH="/output"
 export SYSTEM_CONFIG_IMPL_ADDR=${SYSTEM_CONFIG_IMPL_ADDR:-$(fetch_standard_address "$NETWORK" "$RELEASE" "system_config")}
 export MIPS_IMPL_ADDR=${MIPS_IMPL_ADDR:-$(fetch_standard_address "$NETWORK" "$RELEASE" "mips")}
 export PREIMAGE_ORACLE_ADDR=${PREIMAGE_ORACLE_ADDR:?PREIMAGE_ORACLE_ADDR must be set}
@@ -53,8 +52,8 @@ export USE_PERMISSIONLESS_FAULT_PROOFS=${USE_PERMISSIONLESS_FAULT_PROOFS:?USE_PE
 
 # Sanity check FP configuration.
 if [[ $USE_PERMISSIONLESS_FAULT_PROOFS == true && $USE_FAULT_PROOFS == false ]]; then
-    echo "Error: USE_PERMISSIONLESS_FAULT_PROOFS cannot be true if USE_FAULT_PROOFS is false"
-    exit 1
+  echo "Error: USE_PERMISSIONLESS_FAULT_PROOFS cannot be true if USE_FAULT_PROOFS is false"
+  exit 1
 fi
 
 # Make the output folder, if it doesn't exist
@@ -63,26 +62,28 @@ mkdir -p "$OUTPUT_FOLDER_PATH"
 # Find the contracts-bedrock directory
 CONTRACTS_BEDROCK_DIR=$(pwd)
 while [[ "$CONTRACTS_BEDROCK_DIR" != "/" && "${CONTRACTS_BEDROCK_DIR##*/}" != "contracts-bedrock" ]]; do
-    CONTRACTS_BEDROCK_DIR=$(dirname "$CONTRACTS_BEDROCK_DIR")
+  CONTRACTS_BEDROCK_DIR=$(dirname "$CONTRACTS_BEDROCK_DIR")
 done
 
 # Error out if we couldn't find it for some reason
 if [[ "$CONTRACTS_BEDROCK_DIR" == "/" ]]; then
-    echo "Error: 'contracts-bedrock' directory not found"
-    exit 1
+  echo "Error: 'contracts-bedrock' directory not found"
+  exit 1
 fi
 
-# Set file paths from command-line arguments
+# The deploy config is mounted via Docker to this file
 export DEPLOY_CONFIG_PATH="$CONTRACTS_BEDROCK_DIR/deploy-config/deploy-config.json"
 
-# Copy the files into the paths so that the script can actually access it
-cp "$BASE_DEPLOY_CONFIG_PATH" "$DEPLOY_CONFIG_PATH"
-
-# Run deploy.sh
+# Run deploy.sh if deployments.json does not exist
 DEPLOY_LOG_PATH="$OUTPUT_FOLDER_PATH/deploy.log"
-if ! "$SCRIPT_DIR/deploy.sh" | tee "$DEPLOY_LOG_PATH"; then
+DEPLOYMENTS_JSON_PATH="$OUTPUT_FOLDER_PATH/deployments.json"
+if [[ ! -f "$DEPLOYMENTS_JSON_PATH" ]]; then
+  if ! "$SCRIPT_DIR/deploy.sh" | tee "$DEPLOY_LOG_PATH"; then
     echo "Error: deploy.sh failed"
     exit 1
+  fi
+else
+  prompt "Skipping deployment as $DEPLOYMENTS_JSON_PATH already exists. Continue?"
 fi
 
 # Extract the addresses from the deployment logs
@@ -102,8 +103,7 @@ reqenv "FDG_IMPL"
 reqenv "PDG_IMPL"
 
 # Generate deployments.json with extracted addresses
-DEPLOYMENTS_JSON_PATH="$OUTPUT_FOLDER_PATH/deployments.json"
-cat << EOF > "$DEPLOYMENTS_JSON_PATH"
+cat <<EOF >"$DEPLOYMENTS_JSON_PATH"
 {
   "SystemConfig": "$SYSTEM_CONFIG_IMPL",
   "MIPS": "$MIPS_IMPL",
@@ -121,16 +121,16 @@ prompt "Generate safe upgrade bundle for SystemConfig?"
 
 # Generate the system config upgrade bundle
 if ! "$SCRIPT_DIR/sys-cfg-bundle.sh"; then
-    echo "Error: sys-cfg-bundle.sh failed"
-    exit 1
+  echo "Error: sys-cfg-bundle.sh failed"
+  exit 1
 fi
 
 prompt "Generate superchain-ops upgrade task for SystemConfig upgrade bundle?"
 
 # Generate the superchain-ops upgrade task
 if ! "$SCRIPT_DIR/sc-ops-sys-cfg.sh"; then
-    echo "Error: sc-ops-sys-cfg.sh failed"
-    exit 1
+  echo "Error: sc-ops-sys-cfg.sh failed"
+  exit 1
 fi
 
 if [[ $USE_FAULT_PROOFS == true ]]; then
@@ -138,15 +138,15 @@ if [[ $USE_FAULT_PROOFS == true ]]; then
 
   # Generate the proofs contracts' upgrade bundle
   if ! "$SCRIPT_DIR/proofs-bundle.sh"; then
-      echo "Error: proofs-bundle.sh failed"
-      exit 1
+    echo "Error: proofs-bundle.sh failed"
+    exit 1
   fi
 
   prompt "Generate superchain-ops upgrade task for proofs contracts upgrade bundle?"
 
   # Generate the superchain-ops upgrade task
   if ! "$SCRIPT_DIR/sc-ops-proofs.sh"; then
-      echo "Error: sc-ops-proofs.sh failed"
-      exit 1
+    echo "Error: sc-ops-proofs.sh failed"
+    exit 1
   fi
 fi
