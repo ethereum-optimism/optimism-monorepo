@@ -462,6 +462,161 @@ func TestChannelManager_handleChannelInvalidated(t *testing.T) {
 	require.NoError(t, m.processBlocks())
 }
 
+func TestChannelManager_PruneBlocks(t *testing.T) {
+	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
+	cfg.InitNoneCompressor()
+	a := types.NewBlock(&types.Header{
+		Number: big.NewInt(0),
+	}, nil, nil, nil)
+	b := types.NewBlock(&types.Header{
+		Number:     big.NewInt(1),
+		ParentHash: a.Hash(),
+	}, nil, nil, nil)
+	c := types.NewBlock(&types.Header{
+		Number:     big.NewInt(2),
+		ParentHash: b.Hash(),
+	}, nil, nil, nil)
+
+	type testCase struct {
+		name                string
+		initialQ            queue.Queue[*types.Block]
+		initialBlockCursor  int
+		numChannelsToPrune  int
+		expectedQ           queue.Queue[*types.Block]
+		expectedBlockCursor int
+	}
+
+	for _, tc := range []testCase{
+		{
+			name:                "[A,B,C]*+1->[B,C]*", // * denotes the cursor
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  3,
+			numChannelsToPrune:  1,
+			expectedQ:           queue.Queue[*types.Block]{b, c},
+			expectedBlockCursor: 2,
+		},
+		{
+			name:                "[A,B,C*]+1->[B,C*]",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  2,
+			numChannelsToPrune:  1,
+			expectedQ:           queue.Queue[*types.Block]{b, c},
+			expectedBlockCursor: 1,
+		},
+		{
+			name:                "[A,B,C]*+2->[C]*",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  3,
+			numChannelsToPrune:  2,
+			expectedQ:           queue.Queue[*types.Block]{c},
+			expectedBlockCursor: 1,
+		},
+		{
+			name:                "[A,B,C*]+2->[C*]",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  2,
+			numChannelsToPrune:  2,
+			expectedQ:           queue.Queue[*types.Block]{c},
+			expectedBlockCursor: 0,
+		},
+		{
+			name:                "[A*,B,C]+1->[B*,C]",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  0,
+			numChannelsToPrune:  1,
+			expectedQ:           queue.Queue[*types.Block]{b, c},
+			expectedBlockCursor: 0,
+		},
+		{
+			name:                "[A,B,C]+3->[]",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  3,
+			numChannelsToPrune:  3,
+			expectedQ:           queue.Queue[*types.Block]{},
+			expectedBlockCursor: 0,
+		},
+		{
+			name:                "[A,B,C]*+4->panic",
+			initialQ:            queue.Queue[*types.Block]{a, b, c},
+			initialBlockCursor:  3,
+			numChannelsToPrune:  4,
+			expectedQ:           nil, // declare that the prune method should panic
+			expectedBlockCursor: 0,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			l := testlog.Logger(t, log.LevelCrit)
+			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+			m.blocks = tc.initialQ
+			m.blockCursor = tc.initialBlockCursor
+			if tc.expectedQ != nil {
+				m.pruneSafeBlocks(tc.numChannelsToPrune)
+				require.Equal(t, tc.expectedQ, m.blocks)
+			} else {
+				require.Panics(t, func() { m.pruneSafeBlocks(tc.numChannelsToPrune) })
+			}
+		})
+	}
+
+}
+
+func TestChannelManager_PruneChannels(t *testing.T) {
+	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
+	cfg.InitNoneCompressor()
+	A, err := newChannelWithChannelOut(nil, metrics.NoopMetrics, cfg, defaultTestRollupConfig, 0)
+	require.NoError(t, err)
+	B, err := newChannelWithChannelOut(nil, metrics.NoopMetrics, cfg, defaultTestRollupConfig, 0)
+	require.NoError(t, err)
+	C, err := newChannelWithChannelOut(nil, metrics.NoopMetrics, cfg, defaultTestRollupConfig, 0)
+	require.NoError(t, err)
+
+	type testCase struct {
+		name               string
+		initialQ           []*channel
+		numChannelsToPrune int
+		expectedQ          []*channel
+	}
+
+	for _, tc := range []testCase{
+		{
+			name:               "[A,B,C]+1->[B,C]",
+			initialQ:           []*channel{A, B, C},
+			numChannelsToPrune: 1,
+			expectedQ:          []*channel{B, C},
+		},
+		{
+			name:               "[A,B,C]+2->[C]",
+			initialQ:           []*channel{A, B, C},
+			numChannelsToPrune: 2,
+			expectedQ:          []*channel{C},
+		},
+		{
+			name:               "[A,B,C]+3->[]",
+			initialQ:           []*channel{A, B, C},
+			numChannelsToPrune: 3,
+			expectedQ:          []*channel{},
+		},
+		{
+			name:               "[A,B,C]+4->panic",
+			initialQ:           []*channel{A, B, C},
+			numChannelsToPrune: 4,
+			expectedQ:          nil, // declare that the prune method should panic
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			l := testlog.Logger(t, log.LevelCrit)
+			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
+			m.channelQueue = tc.initialQ
+			if tc.expectedQ != nil {
+				m.pruneChannels(tc.numChannelsToPrune)
+				require.Equal(t, tc.expectedQ, m.channelQueue)
+			} else {
+				require.Panics(t, func() { m.pruneChannels(tc.numChannelsToPrune) })
+			}
+		})
+	}
+}
+
 func TestChannelManager_ChannelOutFactory(t *testing.T) {
 	type ChannelOutWrapper struct {
 		derive.ChannelOut
