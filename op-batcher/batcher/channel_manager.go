@@ -472,7 +472,7 @@ func (s *channelManager) pruneSafeBlocks(num int) {
 	}
 	s.blockCursor -= int(num)
 	if s.blockCursor < 0 {
-		panic("negative blockCursor")
+		s.blockCursor = 0
 	}
 }
 
