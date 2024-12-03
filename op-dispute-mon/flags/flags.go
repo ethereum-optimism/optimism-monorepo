@@ -26,14 +26,16 @@ func prefixEnvVars(name string) []string {
 var (
 	// Required Flags
 	L1EthRpcFlag = &cli.StringFlag{
-		Name:    "l1-eth-rpc",
-		Usage:   "HTTP provider URL for L1.",
-		EnvVars: prefixEnvVars("L1_ETH_RPC"),
+		Name:     "l1-eth-rpc",
+		Usage:    "HTTP provider URL for L1.",
+		EnvVars:  prefixEnvVars("L1_ETH_RPC"),
+		Required: true,
 	}
 	RollupRpcFlag = &cli.StringFlag{
-		Name:    "rollup-rpc",
-		Usage:   "HTTP provider URL for the rollup node",
-		EnvVars: prefixEnvVars("ROLLUP_RPC"),
+		Name:     "rollup-rpc",
+		Usage:    "HTTP provider URL for the rollup node",
+		EnvVars:  prefixEnvVars("ROLLUP_RPC"),
+		Required: true,
 	}
 	// Optional Flags
 	GameFactoryAddressFlag = &cli.StringFlag{
@@ -73,14 +75,10 @@ var (
 	}
 )
 
-// requiredFlags are checked by [CheckRequired]
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	L1EthRpcFlag,
 	RollupRpcFlag,
-}
-
-// optionalFlags is a list of unchecked cli flags
-var optionalFlags = []cli.Flag{
 	GameFactoryAddressFlag,
 	NetworkFlag,
 	HonestActorsFlag,
@@ -91,30 +89,13 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(envVarPrefix)...)
-	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(envVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(envVarPrefix)...)
-
-	Flags = append(requiredFlags, optionalFlags...)
-}
-
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return nil
+	Flags = append(Flags, oplog.CLIFlags(envVarPrefix)...)
+	Flags = append(Flags, opmetrics.CLIFlags(envVarPrefix)...)
+	Flags = append(Flags, oppprof.CLIFlags(envVarPrefix)...)
 }
 
 // NewConfigFromCLI parses the Config from the provided flags or environment variables.
 func NewConfigFromCLI(ctx *cli.Context) (*config.Config, error) {
-	if err := CheckRequired(ctx); err != nil {
-		return nil, err
-	}
 	gameFactoryAddress, err := challengerFlags.FactoryAddress(ctx)
 	if err != nil {
 		return nil, err

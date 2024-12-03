@@ -2,7 +2,6 @@ package main
 
 import (
 	"errors"
-	"fmt"
 
 	"github.com/urfave/cli/v2"
 
@@ -29,16 +28,18 @@ func prefixEnvVars(name string) []string {
 
 var (
 	ListenAddrFlag = &cli.StringFlag{
-		Name:    ListenAddrFlagName,
-		Usage:   "server listening address",
-		Value:   "127.0.0.1",
-		EnvVars: prefixEnvVars("ADDR"),
+		Name:     ListenAddrFlagName,
+		Usage:    "server listening address",
+		Value:    "127.0.0.1",
+		EnvVars:  prefixEnvVars("ADDR"),
+		Required: true,
 	}
 	PortFlag = &cli.IntFlag{
-		Name:    PortFlagName,
-		Usage:   "server listening port",
-		Value:   3100,
-		EnvVars: prefixEnvVars("PORT"),
+		Name:     PortFlagName,
+		Usage:    "server listening port",
+		Value:    3100,
+		EnvVars:  prefixEnvVars("PORT"),
+		Required: true,
 	}
 	FileStorePathFlag = &cli.StringFlag{
 		Name:    FileStorePathFlagName,
@@ -76,12 +77,10 @@ var (
 	}
 )
 
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	ListenAddrFlag,
 	PortFlag,
-}
-
-var optionalFlags = []cli.Flag{
 	FileStorePathFlag,
 	S3BucketFlag,
 	S3EndpointFlag,
@@ -91,12 +90,8 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
-	Flags = append(requiredFlags, optionalFlags...)
+	Flags = append(Flags, oplog.CLIFlags(EnvVarPrefix)...)
 }
-
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
 
 type CLIConfig struct {
 	FileStoreDirPath  string
@@ -146,13 +141,4 @@ func (c CLIConfig) S3Config() S3Config {
 
 func (c CLIConfig) FileStoreEnabled() bool {
 	return c.FileStoreDirPath != ""
-}
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return nil
 }

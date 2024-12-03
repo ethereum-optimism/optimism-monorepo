@@ -31,10 +31,6 @@ import (
 
 // NewConfig creates a Config from the provided flags or environment variables.
 func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
-	if err := flags.CheckRequired(ctx); err != nil {
-		return nil, err
-	}
-
 	rollupConfig, err := NewRollupConfigFromCLI(log, ctx)
 	if err != nil {
 		return nil, err
@@ -210,6 +206,9 @@ func NewDriverConfig(ctx *cli.Context) *driver.Config {
 }
 
 func NewRollupConfigFromCLI(log log.Logger, ctx *cli.Context) (*rollup.Config, error) {
+	if err := opflags.CheckRequiredXor(ctx); err != nil {
+		return nil, err
+	}
 	network := ctx.String(opflags.NetworkFlagName)
 	rollupConfigPath := ctx.String(opflags.RollupConfigFlagName)
 	if ctx.Bool(flags.BetaExtraNetworks.Name) {

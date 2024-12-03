@@ -114,10 +114,6 @@ func (c *Config) Check() error {
 
 // NewConfig parses the Config from the provided flags or environment variables.
 func NewConfig(ctx *cli.Context, log log.Logger) (*Config, error) {
-	if err := flags.CheckRequired(ctx); err != nil {
-		return nil, errors.Wrap(err, "missing required flags")
-	}
-
 	rollupCfg, err := opnode.NewRollupConfigFromCLI(log, ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to load rollup config")

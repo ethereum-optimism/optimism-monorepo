@@ -21,9 +21,6 @@ type MainFn func(ctx context.Context, cfg *config.Config, logger log.Logger) (cl
 // This method returns a cliapp.LifecycleAction, to create an op-service CLI-lifecycle-managed supervisor with.
 func Main(version string, fn MainFn) cliapp.LifecycleAction {
 	return func(cliCtx *cli.Context, closeApp context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-		if err := flags.CheckRequired(cliCtx); err != nil {
-			return nil, err
-		}
 		cfg := flags.ConfigFromCLI(cliCtx, version)
 		if err := cfg.Check(); err != nil {
 			return nil, fmt.Errorf("invalid CLI flags: %w", err)

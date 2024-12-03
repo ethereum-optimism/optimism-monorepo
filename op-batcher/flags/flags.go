@@ -29,19 +29,22 @@ func prefixEnvVars(name string) []string {
 var (
 	// Required flags
 	L1EthRpcFlag = &cli.StringFlag{
-		Name:    "l1-eth-rpc",
-		Usage:   "HTTP provider URL for L1",
-		EnvVars: prefixEnvVars("L1_ETH_RPC"),
+		Name:     "l1-eth-rpc",
+		Usage:    "HTTP provider URL for L1",
+		EnvVars:  prefixEnvVars("L1_ETH_RPC"),
+		Required: true,
 	}
 	L2EthRpcFlag = &cli.StringFlag{
-		Name:    "l2-eth-rpc",
-		Usage:   "HTTP provider URL for L2 execution engine. A comma-separated list enables the active L2 endpoint provider. Such a list needs to match the number of rollup-rpcs provided.",
-		EnvVars: prefixEnvVars("L2_ETH_RPC"),
+		Name:     "l2-eth-rpc",
+		Usage:    "HTTP provider URL for L2 execution engine. A comma-separated list enables the active L2 endpoint provider. Such a list needs to match the number of rollup-rpcs provided.",
+		EnvVars:  prefixEnvVars("L2_ETH_RPC"),
+		Required: true,
 	}
 	RollupRpcFlag = &cli.StringFlag{
-		Name:    "rollup-rpc",
-		Usage:   "HTTP provider URL for Rollup node. A comma-separated list enables the active L2 endpoint provider. Such a list needs to match the number of l2-eth-rpcs provided.",
-		EnvVars: prefixEnvVars("ROLLUP_RPC"),
+		Name:     "rollup-rpc",
+		Usage:    "HTTP provider URL for Rollup node. A comma-separated list enables the active L2 endpoint provider. Such a list needs to match the number of l2-eth-rpcs provided.",
+		EnvVars:  prefixEnvVars("ROLLUP_RPC"),
+		Required: true,
 	}
 	// Optional flags
 	SubSafetyMarginFlag = &cli.Uint64Flag{
@@ -190,13 +193,11 @@ var (
 	SequencerHDPathFlag = txmgr.SequencerHDPathFlag
 )
 
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	L1EthRpcFlag,
 	L2EthRpcFlag,
 	RollupRpcFlag,
-}
-
-var optionalFlags = []cli.Flag{
 	WaitNodeSyncFlag,
 	CheckRecentTxsDepthFlag,
 	SubSafetyMarginFlag,
@@ -222,24 +223,10 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oprpc.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, txmgr.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, altda.CLIFlags(EnvVarPrefix, "")...)
-
-	Flags = append(requiredFlags, optionalFlags...)
-}
-
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return nil
+	Flags = append(Flags, oprpc.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oplog.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, opmetrics.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oppprof.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, txmgr.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, altda.CLIFlags(EnvVarPrefix, "")...)
 }
