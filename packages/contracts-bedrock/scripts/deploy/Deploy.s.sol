@@ -159,7 +159,7 @@ contract Deploy is Deployer {
     ////////////////////////////////////////////////////////////////
 
     /// @notice Deploy all of the L1 contracts necessary for a full Superchain with a single Op Chain.
-    function run() public {
+    function run() public virtual {
         console.log("Deploying a fresh OP Stack including SuperchainConfig");
         _run({ _needsSuperchain: true });
     }
