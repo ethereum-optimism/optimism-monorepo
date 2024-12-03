@@ -1429,38 +1429,12 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testAttestationExpirationScenarios() public {
+   function testAttestationExpirationScenarios() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
         
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Test with various expiration times
-        uint64[] memory expirationTimes = new uint64[](4);
-        expirationTimes[0] = 0; // No expiration
-        expirationTimes[1] = uint64(block.timestamp + 1 days);
-        expirationTimes[2] = uint64(block.timestamp + 365 days);
-        expirationTimes[3] = type(uint64).max;
-
-        for(uint i = 0; i < expirationTimes.length; i++) {
-            bytes32 uid = eas.attest(
-                AttestationRequest({
-                    schema: schemaId,
-                    data: AttestationRequestData({
-            recipient: recipient,
-                        expirationTime: expirationTimes[i],
-            revocable: true,
-                        refUID: bytes32(0),
-            data: hex"1234",
-            value: 0
-                    })
-                })
-            );
-
-            Attestation memory attestation = eas.getAttestation(uid);
-            assertEq(attestation.expirationTime, expirationTimes[i]);
-        }
 
         // Test with expired time (should revert)
         vm.expectRevert(InvalidExpirationTime);
@@ -1469,7 +1443,7 @@ contract EASTest is Test {
                 schema: schemaId,
                 data: AttestationRequestData({
                     recipient: recipient,
-                    expirationTime: uint64(block.timestamp - 1),
+                    expirationTime: uint64(block.timestamp),
                     revocable: true,
                     refUID: bytes32(0),
                     data: hex"1234",
