@@ -257,7 +257,7 @@ jobs:
           working_directory: packages/contracts-bedrock
           command: |
             # Clone asterisc @ the pinned version to fetch remote `RISCV.sol`
-            ASTERISC_REV="$(cat ../../versions.json | jq -r .asterisc)"
+            ASTERISC_REV="v$(yq '.tools.asterisc' ../../mise.toml)"
             REMOTE_ASTERISC_PATH="./src/vendor/asterisc/RISCV_Remote.sol"
             git clone https://github.com/ethereum-optimism/asterisc \
               -b $ASTERISC_REV && \
@@ -526,7 +526,7 @@ jobs:
             - run:
                 name: Sign
                 command: |
-                  VER=$(jq -r .binary_signer < versions.json)
+                  VER=$(yq '.tools.binary_signer' mise.toml)
                   wget -O - "https://github.com/ethereum-optimism/binary_signer/archive/refs/tags/v${VER}.tar.gz" | tar xz
                   cd "binary_signer-${VER}/signer"
 
