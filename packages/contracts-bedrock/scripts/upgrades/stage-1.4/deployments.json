@@ -1,0 +1,8 @@
+{
+  "l2ChainID": "11155420",
+  "contracts": {
+    "RISCV": "0x03021267e939257f8d6ce8c22ef74c3a01a70a22",
+    "DelayedWETHProxy": "0xa89494fba7d1bb5e96aa5c7d7e6d39b5d3973748",
+    "FaultDisputeGame": "0x91ee75c3c0f238652d88b62e29bebddd5a92ed7f"
+  }
+}

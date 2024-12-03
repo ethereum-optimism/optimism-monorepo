@@ -14,8 +14,8 @@ contract RISCV is IBigStepper {
     IPreimageOracle public oracle;
 
     /// @notice The version of the contract.
-    /// @custom:semver 1.2.0-rc.1
-    string public constant version = "1.2.0-rc.1";
+    /// @custom:semver 1.2.0
+    string public constant version = "1.2.0";
 
     /// @param _oracle The preimage oracle contract.
     constructor(IPreimageOracle _oracle) {

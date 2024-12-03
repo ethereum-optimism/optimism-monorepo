@@ -1,0 +1,106 @@
+{
+  "chainId": 11155111,
+  "metadata": {
+    "name": "Sepolia - Stage 1.4 Upgrade",
+    "description": "This upgrade registers a new `FaultDisputeGame` with the `DisputeGameFactory` that is backed by the `asterisc` FPVM and `kona` fault proof program."
+  },
+  "transactions": [
+    {
+      "metadata": {
+        "name": "Upgrade `AnchorStateRegistry` proxy to `StorageSetter`",
+        "description": "Upgrades the `AnchorStateRegistry` proxy to `StorageSetter`, and clears the `initialized` slot in preparation for re-initialization."
+      },
+      "to": "0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc",
+      "value": "0x0",
+      "data": "0x9623609d000000000000000000000000218cd9489199f321e1177b56385d333c5b598629000000000000000000000000d81f43edbcacb4c29a9ba38a13ee5d79278270cc00000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000044e2a4853a0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000",
+      "contractMethod": {
+        "type": "function",
+        "name": "upgradeAndCall",
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          },
+          {
+            "name": "_data",
+            "type": "bytes"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_proxy": "0x218CD9489199F321E1177b56385d333c5B598629",
+        "_impl": "0xd81f43eDBCAcb4c29a9bA38a13Ee5d79278270cC",
+        "_data": "0xe2a4853a00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Set `GAME_TYPE=3` anchor state",
+        "description": "Upgrades the `AnchorStateRegistry` proxy back to its original implementation, and re-initializes to set the anchor state of the new game type prior to registry."
+      },
+      "to": "0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc",
+      "value": "0x0",
+      "data": "0x9623609d000000000000000000000000218cd9489199f321e1177b56385d333c5b598629000000000000000000000000189abaaaa82dfc015a588a7dbad6f13b1d3485bc000000000000000000000000000000000000000000000000000000000000006000000000000000000000000000000000000000000000000000000000000000a458a2aea60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000c2be75506d5724086deb7245bd260cc9753911be00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003bdf43aeb76d543940d6d9a86af7c0735eb425d6758a41c4a47c2aa476c994ee500000000000000000000000000000000000000000000000000000000",
+      "contractMethod": {
+        "type": "function",
+        "name": "upgradeAndCall",
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          },
+          {
+            "name": "_data",
+            "type": "bytes"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_proxy": "0x218CD9489199F321E1177b56385d333c5B598629",
+        "_impl": "0x189abaaaa82dfc015a588a7dbad6f13b1d3485bc",
+        "_data": "0x58a2aea60000000000000000000000000000000000000000000000000000000000000040000000000000000000000000c2be75506d5724086deb7245bd260cc9753911be00000000000000000000000000000000000000000000000000000000000000010000000000000000000000000000000000000000000000000000000000000003bdf43aeb76d543940d6d9a86af7c0735eb425d6758a41c4a47c2aa476c994ee5"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Register `GAME_TYPE=3` in the `DisputeGameFactory`",
+        "description": "Registers the new `FaultDisputeGame` deployment as `GAME_TYPE=3` in the `DisputeGameFactory`."
+      },
+      "to": "0x05F9613aDB30026FFd634f38e5C4dFd30a197Fa1",
+      "value": "0x0",
+      "data": "0x14f6b1a3000000000000000000000000000000000000000000000000000000000000000300000000000000000000000091ee75c3c0f238652d88b62e29bebddd5a92ed7f",
+      "contractMethod": {
+        "type": "function",
+        "name": "setImplementation",
+        "inputs": [
+          {
+            "name": "_gameType",
+            "type": "uint32"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_gameType": "3",
+        "_impl": "0x91ee75c3c0f238652d88b62e29bebddd5a92ed7f"
+      }
+    }
+  ]
+}
