@@ -10,10 +10,11 @@
 ARG TARGET_BASE_IMAGE=alpine:3.20
 
 # The ubuntu target base image is used for the op-challenger build with kona and asterisc.
-ARG UBUNTU_TARGET_BASE_IMAGE=ubuntu:20.04
+ARG UBUNTU_TARGET_BASE_IMAGE=ubuntu:22.04
 
 # The version of kona to use.
-ARG KONA_VERSION
+# The only build that uses this is `op-challenger-target`.
+ARG KONA_VERSION=none
 
 # We may be cross-building for another platform. Specify which platform we need as builder.
 FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
@@ -142,7 +143,7 @@ FROM --platform=$TARGETPLATFORM $TARGET_BASE_IMAGE AS op-node-target
 COPY --from=op-node-builder /app/op-node/bin/op-node /usr/local/bin/
 CMD ["op-node"]
 
-# Copy in kona mimicking how proofs-tools does.
+# Make the kona docker image published by upstream available as a source to copy kona and asterisc from.
 FROM --platform=$BUILDPLATFORM ghcr.io/anton-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
 
 # Also produce an op-challenger loaded with kona and asterisc using ubuntu

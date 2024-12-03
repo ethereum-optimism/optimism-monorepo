@@ -6,10 +6,6 @@ variable "REPOSITORY" {
   default = "oplabs-tools-artifacts/images"
 }
 
-# Proofs tools variables
-variable "PROOFS_CHALLENGER_VERSION" {
-  default = "b46bffed42db3442d7484f089278d59f51503049"
-}
 variable "KONA_VERSION" {
   default = "kona-client-v0.1.0-beta.4"
 }
@@ -88,7 +84,6 @@ target "op-node" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_NODE_VERSION = "${OP_NODE_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-node-target"
   platforms = split(",", PLATFORMS)
@@ -102,7 +97,6 @@ target "op-batcher" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_BATCHER_VERSION = "${OP_BATCHER_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-batcher-target"
   platforms = split(",", PLATFORMS)
@@ -116,7 +110,6 @@ target "op-proposer" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_PROPOSER_VERSION = "${OP_PROPOSER_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-proposer-target"
   platforms = split(",", PLATFORMS)
@@ -144,7 +137,6 @@ target "op-dispute-mon" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_DISPUTE_MON_VERSION = "${OP_DISPUTE_MON_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-dispute-mon-target"
   platforms = split(",", PLATFORMS)
@@ -158,7 +150,6 @@ target "op-conductor" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_CONDUCTOR_VERSION = "${OP_CONDUCTOR_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-conductor-target"
   platforms = split(",", PLATFORMS)
@@ -171,7 +162,6 @@ target "da-server" {
   args = {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "da-server-target"
   platforms = split(",", PLATFORMS)
@@ -185,7 +175,6 @@ target "op-program" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_PROGRAM_VERSION = "${OP_PROGRAM_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-program-target"
   platforms = split(",", PLATFORMS)
@@ -199,7 +188,6 @@ target "op-supervisor" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_SUPERVISOR_VERSION = "${OP_SUPERVISOR_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-supervisor-target"
   platforms = split(",", PLATFORMS)
@@ -213,7 +201,6 @@ target "cannon" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     CANNON_VERSION = "${CANNON_VERSION}"
-    KONA_VERSION="${KONA_VERSION}"
   }
   target = "cannon-target"
   platforms = split(",", PLATFORMS)
@@ -224,7 +211,7 @@ target "proofs-tools" {
   dockerfile = "./ops/docker/proofs-tools/Dockerfile"
   context = "."
   args = {
-    CHALLENGER_VERSION="${PROOFS_CHALLENGER_VERSION}"
+    CHALLENGER_VERSION="b46bffed42db3442d7484f089278d59f51503049"
     KONA_VERSION="${KONA_VERSION}"
   }
   target="proofs-tools"
