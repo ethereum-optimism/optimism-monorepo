@@ -21,6 +21,11 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
+	L1RPCFlag = &cli.StringFlag{
+		Name:    "l1-rpc",
+		Usage:   "L1 RPC source.",
+		EnvVars: prefixEnvVars("L1_RPC"),
+	}
 	L2RPCsFlag = &cli.StringSliceFlag{
 		Name:    "l2-rpcs",
 		Usage:   "L2 RPC sources.",
@@ -46,6 +51,7 @@ var (
 )
 
 var requiredFlags = []cli.Flag{
+	L1RPCFlag,
 	L2RPCsFlag,
 	DataDirFlag,
 	DependencySetFlag,
@@ -86,6 +92,7 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		RPC:                 oprpc.ReadCLIConfig(ctx),
 		DependencySetSource: &depset.JsonDependencySetLoader{Path: ctx.Path(DependencySetFlag.Name)},
 		MockRun:             ctx.Bool(MockRunFlag.Name),
+		L1RPC:               ctx.String(L1RPCFlag.Name),
 		L2RPCs:              ctx.StringSlice(L2RPCsFlag.Name),
 		Datadir:             ctx.Path(DataDirFlag.Name),
 	}

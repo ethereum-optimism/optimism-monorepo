@@ -480,6 +480,7 @@ func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 			EnableAdmin: true,
 		},
 		L2RPCs:  []string{},
+		L1RPC:   s.l1.UserRPC().RPC(),
 		Datadir: path.Join(s.t.TempDir(), "supervisor"),
 	}
 	depSet := make(map[supervisortypes.ChainID]*depset.StaticConfigDependency)
@@ -536,10 +537,11 @@ func (s *interopE2ESystem) prepare(t *testing.T, w worldResourcePaths) {
 	s.hdWallet = s.prepareHDWallet()
 	s.worldDeployment, s.worldOutput = s.prepareWorld(w)
 
-	// the supervisor and client are created first so that the L2s can use the supervisor
+	// L1 first so that the Supervisor and L2s can connect to it
+	s.beacon, s.l1 = s.prepareL1()
+
 	s.supervisor = s.prepareSupervisor()
 
-	s.beacon, s.l1 = s.prepareL1()
 	s.l2s = s.prepareL2s()
 
 	s.prepareContracts()

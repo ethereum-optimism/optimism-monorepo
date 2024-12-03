@@ -36,6 +36,9 @@ type SupervisorBackend struct {
 	// chainDBs holds on to the DB indices for each chain
 	chainDBs *db.ChainsDB
 
+	// l1Processor watches for new L1 blocks, updates the local-safe DB, and kicks off derivation orchestration
+	l1Processor *processors.L1Processor
+
 	// chainProcessors are notified of new unsafe blocks, and add the unsafe log events data into the events DB
 	chainProcessors locks.RWMap[types.ChainID, *processors.ChainProcessor]
 
@@ -124,6 +127,13 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs, su.onIndexedLocalUnsafeData)
 		su.chainProcessors.Set(chainID, chainProcessor)
 	}
+
+	// initialize the L1 processor
+	l1Processor, err := processors.NewL1Processor(su.logger, su.chainDBs, cfg.L1RPC)
+	if err != nil {
+		return fmt.Errorf("failed to create L1 processor: %w", err)
+	}
+	su.l1Processor = l1Processor
 
 	// the config has some RPC connections to attach to the chain-processors
 	for _, rpc := range cfg.L2RPCs {
@@ -254,6 +264,9 @@ func (su *SupervisorBackend) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to resume chains db: %w", err)
 	}
 
+	// start the L1 processor
+	su.l1Processor.Start()
+
 	if !su.synchronousProcessors {
 		// Make all the chain-processors run automatic background processing
 		su.chainProcessors.Range(func(_ types.ChainID, processor *processors.ChainProcessor) bool {
@@ -278,6 +291,10 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 		return errAlreadyStopped
 	}
 	su.logger.Info("Closing supervisor backend")
+
+	// stop the L1 processor
+	su.l1Processor.Stop()
+
 	// close all processors
 	su.chainProcessors.Range(func(id types.ChainID, processor *processors.ChainProcessor) bool {
 		su.logger.Info("stopping chain processor", "chainID", id)
