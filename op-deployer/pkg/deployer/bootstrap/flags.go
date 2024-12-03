@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"errors"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
@@ -30,6 +32,7 @@ const (
 	ProposerFlagName                        = "proposer"
 	ChallengerFlagName                      = "challenger"
 	PreimageOracleFlagName                  = "preimage-oracle"
+	ReleaseFlagName                         = "release"
 )
 
 var (
@@ -153,18 +156,26 @@ var (
 		EnvVars: deployer.PrefixEnvVar("PREIMAGE_ORACLE"),
 		Value:   common.Address{}.Hex(),
 	}
+	ReleaseFlag = &cli.StringFlag{
+		Name:    ReleaseFlagName,
+		Usage:   "Release to deploy.",
+		EnvVars: deployer.PrefixEnvVar("RELEASE"),
+	}
 )
 
 var OPCMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
-	ArtifactsLocatorFlag,
+	ReleaseFlag,
+}
+
+var ImplementationsFlags = []cli.Flag{
+	MIPSVersionFlag,
 	WithdrawalDelaySecondsFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
 	ProofMaturityDelaySecondsFlag,
 	DisputeGameFinalityDelaySecondsFlag,
-	MIPSVersionFlag,
 }
 
 var DelayedWETHFlags = []cli.Flag{
@@ -211,6 +222,15 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of OPCM.",
 		Flags:  cliapp.ProtectFlags(OPCMFlags),
 		Action: OPCMCLI,
+	},
+	{
+		Name:  "implementations",
+		Usage: "Bootstraps implementations.",
+		Flags: cliapp.ProtectFlags(ImplementationsFlags),
+		Action: func(context *cli.Context) error {
+			return errors.New("not implemented yet")
+		},
+		Hidden: true,
 	},
 	{
 		Name:   "delayedweth",
