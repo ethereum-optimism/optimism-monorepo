@@ -276,7 +276,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
 
         // Implementation checks.
         pv = protocolVersionsImpl();
-        require(pv.owner() == address(0xdead), "PV-60");
+        require(pv.owner() == address(0), "PV-60");
         require(ProtocolVersion.unwrap(pv.required()) == 0, "PV-70");
         require(ProtocolVersion.unwrap(pv.recommended()) == 0, "PV-80");
     }

@@ -60,8 +60,8 @@ contract L2OutputOracle is Initializable, ISemver {
     event OutputsDeleted(uint256 indexed prevNextOutputIndex, uint256 indexed newNextOutputIndex);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.8.1-beta.2
-    string public constant version = "1.8.1-beta.2";
+    /// @custom:semver 1.8.1-beta.3
+    string public constant version = "1.8.1-beta.3";
 
     /// @notice Constructs the L2OutputOracle contract. Initializes variables to the same values as
     ///         in the getting-started config.

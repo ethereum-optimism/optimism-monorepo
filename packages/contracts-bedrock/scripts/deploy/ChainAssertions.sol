@@ -109,18 +109,18 @@ library ChainAssertions {
             require(config.optimismPortal() == _contracts.OptimismPortal, "CHECK-SCFG-200");
             require(config.optimismMintableERC20Factory() == _contracts.OptimismMintableERC20Factory, "CHECK-SCFG-210");
         } else {
-            require(config.owner() == address(0xdead), "CHECK-SCFG-220");
+            require(config.owner() == address(0), "CHECK-SCFG-220");
             require(config.overhead() == 0, "CHECK-SCFG-230");
-            require(config.scalar() == uint256(0x01) << 248, "CHECK-SCFG-240"); // version 1
+            require(config.scalar() == 0, "CHECK-SCFG-240"); // version 1
             require(config.basefeeScalar() == 0, "CHECK-SCFG-250");
             require(config.blobbasefeeScalar() == 0, "CHECK-SCFG-260");
             require(config.batcherHash() == bytes32(0), "CHECK-SCFG-270");
-            require(config.gasLimit() == 1, "CHECK-SCFG-280");
+            require(config.gasLimit() == 0, "CHECK-SCFG-280");
             require(config.unsafeBlockSigner() == address(0), "CHECK-SCFG-290");
             // Check _config
-            require(resourceConfig.maxResourceLimit == 1, "CHECK-SCFG-300");
-            require(resourceConfig.elasticityMultiplier == 1, "CHECK-SCFG-310");
-            require(resourceConfig.baseFeeMaxChangeDenominator == 2, "CHECK-SCFG-320");
+            require(resourceConfig.maxResourceLimit == 0, "CHECK-SCFG-300");
+            require(resourceConfig.elasticityMultiplier == 0, "CHECK-SCFG-310");
+            require(resourceConfig.baseFeeMaxChangeDenominator == 0, "CHECK-SCFG-320");
             require(resourceConfig.systemTxMaxGas == 0, "CHECK-SCFG-330");
             require(resourceConfig.minimumBaseFee == 0, "CHECK-SCFG-340");
             require(resourceConfig.maximumBaseFee == 0, "CHECK-SCFG-350");
@@ -175,8 +175,8 @@ library ChainAssertions {
         // Check that the contract is initialized
         assertInitializedSlotIsSet({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
 
-        require(address(messenger.OTHER_MESSENGER()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "CHECK-L1XDM-20");
-        require(address(messenger.otherMessenger()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "CHECK-L1XDM-30");
+        require(address(messenger.OTHER_MESSENGER()) == address(0), "CHECK-L1XDM-20");
+        require(address(messenger.otherMessenger()) == address(0), "CHECK-L1XDM-30");
 
         if (_isProxy) {
             require(address(messenger.PORTAL()) == _contracts.OptimismPortal, "CHECK-L1XDM-40");
@@ -213,8 +213,8 @@ library ChainAssertions {
         } else {
             require(address(bridge.MESSENGER()) == address(0), "CHECK-L1SB-70");
             require(address(bridge.messenger()) == address(0), "CHECK-L1SB-80");
-            require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_STANDARD_BRIDGE, "CHECK-L1SB-90");
-            require(address(bridge.otherBridge()) == Predeploys.L2_STANDARD_BRIDGE, "CHECK-L1SB-100");
+            require(address(bridge.OTHER_BRIDGE()) == address(0), "CHECK-L1SB-90");
+            require(address(bridge.otherBridge()) == address(0), "CHECK-L1SB-100");
             require(address(bridge.superchainConfig()) == address(0), "CHECK-L1SB-110");
         }
     }
@@ -355,10 +355,10 @@ library ChainAssertions {
             require(oracle.startingBlockNumber() == _cfg.l2OutputOracleStartingBlockNumber(), "CHECK-L2OO-120");
             require(oracle.startingTimestamp() == _l2OutputOracleStartingTimestamp, "CHECK-L2OO-130");
         } else {
-            require(oracle.SUBMISSION_INTERVAL() == 1, "CHECK-L2OO-140");
-            require(oracle.submissionInterval() == 1, "CHECK-L2OO-150");
-            require(oracle.L2_BLOCK_TIME() == 1, "CHECK-L2OO-160");
-            require(oracle.l2BlockTime() == 1, "CHECK-L2OO-170");
+            require(oracle.SUBMISSION_INTERVAL() == 0, "CHECK-L2OO-140");
+            require(oracle.submissionInterval() == 0, "CHECK-L2OO-150");
+            require(oracle.L2_BLOCK_TIME() == 0, "CHECK-L2OO-160");
+            require(oracle.l2BlockTime() == 0, "CHECK-L2OO-170");
             require(oracle.PROPOSER() == address(0), "CHECK-L2OO-180");
             require(oracle.proposer() == address(0), "CHECK-L2OO-190");
             require(oracle.CHALLENGER() == address(0), "CHECK-L2OO-200");
@@ -384,8 +384,8 @@ library ChainAssertions {
         assertInitializedSlotIsSet({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
 
         if (_isProxy) {
-            require(factory.BRIDGE() == _contracts.L1StandardBridge, "CHECK-MERC20F-10");
-            require(factory.bridge() == _contracts.L1StandardBridge, "CHECK-MERC20F-20");
+            require(factory.BRIDGE() == address(0), "CHECK-MERC20F-10");
+            require(factory.bridge() == address(0), "CHECK-MERC20F-20");
         } else {
             require(factory.BRIDGE() == address(0), "CHECK-MERC20F-30");
             require(factory.bridge() == address(0), "CHECK-MERC20F-40");
@@ -406,8 +406,8 @@ library ChainAssertions {
         // Check that the contract is initialized
         assertInitializedSlotIsSet({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
 
-        require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "CHECK-L1ERC721B-10");
-        require(address(bridge.otherBridge()) == Predeploys.L2_ERC721_BRIDGE, "CHECK-L1ERC721B-20");
+        require(address(bridge.OTHER_BRIDGE()) == address(0), "CHECK-L1ERC721B-10");
+        require(address(bridge.otherBridge()) == address(0), "CHECK-L1ERC721B-20");
 
         if (_isProxy) {
             require(address(bridge.MESSENGER()) == _contracts.L1CrossDomainMessenger, "CHECK-L1ERC721B-30");
@@ -449,7 +449,7 @@ library ChainAssertions {
             require(address(portal.l2Oracle()) == address(0), "CHECK-OP-80");
             require(address(portal.systemConfig()) == address(0), "CHECK-OP-90");
             require(address(portal.superchainConfig()) == address(0), "CHECK-OP-100");
-            require(portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "CHECK-OP-110");
+            require(portal.l2Sender() == address(0), "CHECK-OP-110");
         }
     }
 
@@ -489,7 +489,7 @@ library ChainAssertions {
             require(address(portal.disputeGameFactory()) == address(0), "CHECK-OP2-80");
             require(address(portal.systemConfig()) == address(0), "CHECK-OP2-90");
             require(address(portal.superchainConfig()) == address(0), "CHECK-OP2-100");
-            require(portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "CHECK-OP2-110");
+            require(portal.l2Sender() == address(0), "CHECK-OP2-110");
         }
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
@@ -521,7 +521,7 @@ library ChainAssertions {
             require(ProtocolVersion.unwrap(versions.required()) == _cfg.requiredProtocolVersion(), "CHECK-PV-30");
             require(ProtocolVersion.unwrap(versions.recommended()) == _cfg.recommendedProtocolVersion(), "CHECK-PV-40");
         } else {
-            require(versions.owner() == address(0xdead), "CHECK-PV-50");
+            require(versions.owner() == address(0), "CHECK-PV-50");
             require(ProtocolVersion.unwrap(versions.required()) == 0, "CHECK-PV-60");
             require(ProtocolVersion.unwrap(versions.recommended()) == 0, "CHECK-PV-70");
         }
