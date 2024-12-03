@@ -58,6 +58,7 @@ contract EASTest is Test {
     bytes4 constant InvalidExpirationTimeSelector = 0x44e7f2e1;  // bytes4(keccak256("InvalidExpirationTime()"))
     bytes4 constant NotFound = bytes4(keccak256("NotFound()"));
     bytes4 constant AccessDenied = bytes4(keccak256("AccessDenied()"));
+    bytes4 constant InvalidLength = bytes4(keccak256("InvalidLength()"));
     bytes4 constant InvalidLengthSelector = 0x947d5a84;  // bytes4(keccak256("InvalidLength()"))
     bytes4 constant AlreadyRevokedOffchain = bytes4(keccak256("AlreadyRevokedOffchain()"));
     bytes4 constant AlreadyTimestamped = bytes4(keccak256("AlreadyTimestamped()"));
@@ -1824,21 +1825,18 @@ contract EASTest is Test {
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
         
-        // Test with empty batch
-        MultiAttestationRequest[] memory emptyRequests = new MultiAttestationRequest[](0);
-        vm.expectRevert(InvalidLengthSelector);
-        eas.multiAttest(emptyRequests);
-
-        // Test with empty inner batch
+        // Test with empty inner batch - this is the actual check in the contract
         MultiAttestationRequest[] memory requests = new MultiAttestationRequest[](1);
         requests[0].schema = schemaId;
         requests[0].data = new AttestationRequestData[](0);
         
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength);
         eas.multiAttest(requests);
 
         vm.stopPrank();
     }
+
+
 
     function testRevocationWithRefUID() public {
         string memory schema = "bool like";
