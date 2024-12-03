@@ -204,6 +204,7 @@ semgrep:
 semgrep-test:
   cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
 
+# Runs all checks.
 check:
   @just gas-snapshot-check-no-build \
   semgrep-test-validity-check \
