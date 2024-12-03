@@ -80,7 +80,7 @@ contract DeployOPCMInput_Test is Test {
 
     // Below setter tests are split into two parts to avoid stack too deep errors
 
-    function test_set_succeeds_part1() public {
+    function test_set_part1_succeeds() public {
         ISuperchainConfig superchainConfig = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersions = IProtocolVersions(makeAddr("protocolVersions"));
         address addressManagerBlueprint = makeAddr("addressManagerBlueprint");
