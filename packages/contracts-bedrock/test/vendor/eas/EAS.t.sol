@@ -1770,7 +1770,7 @@ contract EASTest is Test {
             deadline: uint64(block.timestamp - 1)
         });
 
-        vm.expectRevert("InvalidSignature()");  // Updated error message
+        vm.expectRevert(abi.encodeWithSignature("InvalidSignature()"));
         eas.attestByDelegation(request);
         vm.stopPrank();
     }
