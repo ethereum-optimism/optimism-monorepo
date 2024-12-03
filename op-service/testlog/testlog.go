@@ -171,6 +171,7 @@ func (l *logger) internalFlush(format string, args ...any) {
 		}
 	}()
 
+	l.t.Helper()
 	l.t.Logf(format, args...)
 }
 
