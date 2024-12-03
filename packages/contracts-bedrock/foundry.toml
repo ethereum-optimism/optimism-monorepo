@@ -83,10 +83,12 @@ depth = 32
 
 [profile.ciheavy.fuzz]
 runs = 20000
+timeout = 600
 
 [profile.ciheavy.invariant]
 runs = 128
 depth = 512
+timeout = 600
 
 ################################################################
 #                         PROFILE: LITE                        #

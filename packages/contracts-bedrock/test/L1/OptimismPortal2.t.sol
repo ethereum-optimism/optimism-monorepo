@@ -211,7 +211,6 @@ contract OptimismPortal2_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds for an EOA.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_eoa_succeeds(
         address _to,
         uint64 _gasLimit,
@@ -256,7 +255,6 @@ contract OptimismPortal2_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds for a contract.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_contract_succeeds(
         address _to,
         uint64 _gasLimit,
@@ -1326,7 +1324,6 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testDiff_finalizeWithdrawalTransaction_succeeds(
         address _sender,
         address _target,
@@ -1610,7 +1607,6 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
     }
 
     /// @dev Test that various values of the resource metering config will not break deposits.
-    /// forge-config: ciheavy.fuzz.runs = 10000
     function testFuzz_systemConfigDeposit_succeeds(
         uint32 _maxResourceLimit,
         uint8 _elasticityMultiplier,
@@ -1746,7 +1742,6 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender == tx.origin.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositERC20Transaction_senderIsOrigin_succeeds(
         address _to,
         uint256 _mint,
@@ -1772,7 +1767,6 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender != tx.origin.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositERC20Transaction_senderNotOrigin_succeeds(
         address _to,
         uint256 _mint,
@@ -1980,7 +1974,6 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_succeeds(
         address _to,
         uint256 _value,
@@ -2004,7 +1997,6 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     }
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_succeeds(
         address _to,
         uint256 _value,
