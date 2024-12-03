@@ -1249,10 +1249,11 @@ contract EASTest is Test {
 
     function testMultiAttestationWithValue() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
         
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        registry.register(schema, ISchemaResolver(address(resolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value * 2);
