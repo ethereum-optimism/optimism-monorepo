@@ -35,11 +35,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() CrossDomainMessenger() {
-        initialize({
-            _superchainConfig: ISuperchainConfig(address(0)),
-            _portal: IOptimismPortal(payable(address(0))),
-            _systemConfig: ISystemConfig(address(0))
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
@@ -51,7 +47,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
         IOptimismPortal _portal,
         ISystemConfig _systemConfig
     )
-        public
+        external
         initializer
     {
         superchainConfig = _superchainConfig;

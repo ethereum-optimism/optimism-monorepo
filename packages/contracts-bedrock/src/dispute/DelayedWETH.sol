@@ -47,13 +47,13 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param _delay The delay for withdrawals in seconds.
     constructor(uint256 _delay) {
         DELAY_SECONDS = _delay;
-        initialize({ _owner: address(0), _config: ISuperchainConfig(address(0)) });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _owner The address of the owner.
     /// @param _config Address of the SuperchainConfig contract.
-    function initialize(address _owner, ISuperchainConfig _config) public initializer {
+    function initialize(address _owner, ISuperchainConfig _config) external initializer {
         __Ownable_init();
         _transferOwnership(_owner);
         config = _config;

@@ -193,12 +193,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
 
-        initialize({
-            _disputeGameFactory: IDisputeGameFactory(address(0)),
-            _systemConfig: ISystemConfig(address(0)),
-            _superchainConfig: ISuperchainConfig(address(0)),
-            _initialRespectedGameType: GameType.wrap(0)
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
@@ -211,7 +206,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         ISuperchainConfig _superchainConfig,
         GameType _initialRespectedGameType
     )
-        public
+        external
         initializer
     {
         disputeGameFactory = _disputeGameFactory;

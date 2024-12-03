@@ -56,12 +56,12 @@ contract OptimismMintableERC20Factory is ISemver, Initializable, IOptimismERC20F
 
     /// @notice Constructs the OptimismMintableERC20Factory contract.
     constructor() {
-        initialize({ _bridge: address(0) });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _bridge Address of the StandardBridge on this chain.
-    function initialize(address _bridge) public initializer {
+    function initialize(address _bridge) external initializer {
         bridge = _bridge;
     }
 

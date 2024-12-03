@@ -25,12 +25,12 @@ contract L2CrossDomainMessenger is CrossDomainMessenger, ISemver {
 
     /// @notice Constructs the L2CrossDomainMessenger contract.
     constructor() CrossDomainMessenger() {
-        initialize({ _l1CrossDomainMessenger: CrossDomainMessenger(address(0)) });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _l1CrossDomainMessenger L1CrossDomainMessenger contract on the other network.
-    function initialize(CrossDomainMessenger _l1CrossDomainMessenger) public initializer {
+    function initialize(CrossDomainMessenger _l1CrossDomainMessenger) external initializer {
         __CrossDomainMessenger_init({ _otherMessenger: _l1CrossDomainMessenger });
     }
 

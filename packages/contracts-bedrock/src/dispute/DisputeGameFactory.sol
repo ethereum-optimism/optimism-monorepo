@@ -69,12 +69,12 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
 
     /// @notice Constructs a new DisputeGameFactory contract.
     constructor() OwnableUpgradeable() {
-        initialize(address(0));
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _owner The owner of the contract.
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner) external initializer {
         __Ownable_init();
         _transferOwnership(_owner);
     }

@@ -142,39 +142,12 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         return "2.3.0-beta.6";
     }
 
-    /// @notice Constructs the SystemConfig contract. Cannot set
-    ///         the owner to `address(0)` due to the Ownable contract's
-    ///         implementation, so set it to `address(0xdEaD)`
+    /// @notice Constructs the SystemConfig contract.
     /// @dev    START_BLOCK_SLOT is set to type(uint256).max here so that it will be a dead value
-    ///         in the singleton and is skipped by initialize when setting the start block.
+    ///         in the singleton.
     constructor() {
         Storage.setUint(START_BLOCK_SLOT, type(uint256).max);
-        initialize({
-            _owner: address(0xdEaD),
-            _basefeeScalar: 0,
-            _blobbasefeeScalar: 0,
-            _batcherHash: bytes32(0),
-            _gasLimit: 1,
-            _unsafeBlockSigner: address(0),
-            _config: IResourceMetering.ResourceConfig({
-                maxResourceLimit: 1,
-                elasticityMultiplier: 1,
-                baseFeeMaxChangeDenominator: 2,
-                minimumBaseFee: 0,
-                systemTxMaxGas: 0,
-                maximumBaseFee: 0
-            }),
-            _batchInbox: address(0),
-            _addresses: SystemConfig.Addresses({
-                l1CrossDomainMessenger: address(0),
-                l1ERC721Bridge: address(0),
-                l1StandardBridge: address(0),
-                disputeGameFactory: address(0),
-                optimismPortal: address(0),
-                optimismMintableERC20Factory: address(0),
-                gasPayingToken: address(0)
-            })
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
