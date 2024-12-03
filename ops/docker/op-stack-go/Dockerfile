@@ -9,6 +9,12 @@
 # It will default to the target platform.
 ARG TARGET_BASE_IMAGE=alpine:3.20
 
+# The ubuntu target base image is used for the op-challenger build with kona and asterisc.
+ARG UBUNTU_TARGET_BASE_IMAGE=ubuntu:20.04
+
+# The version of kona to use.
+ARG KONA_VERSION
+
 # We may be cross-building for another platform. Specify which platform we need as builder.
 FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
 
@@ -136,14 +142,23 @@ FROM --platform=$TARGETPLATFORM $TARGET_BASE_IMAGE AS op-node-target
 COPY --from=op-node-builder /app/op-node/bin/op-node /usr/local/bin/
 CMD ["op-node"]
 
-FROM --platform=$TARGETPLATFORM $TARGET_BASE_IMAGE AS op-challenger-target
+# Copy in kona mimicking how proofs-tools does.
+FROM --platform=$BUILDPLATFORM ghcr.io/anton-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
+
+# Also produce an op-challenger loaded with kona and asterisc using ubuntu
+FROM --platform=$TARGETPLATFORM $UBUNTU_TARGET_BASE_IMAGE AS op-challenger-target
+RUN apt-get update && apt-get install -y --no-install-recommends musl openssl ca-certificates
 COPY --from=op-challenger-builder /app/op-challenger/bin/op-challenger /usr/local/bin/
-# Make the bundled op-program the default cannon server
+# Copy in op-program and cannon
 COPY --from=op-program-builder /app/op-program/bin/op-program /usr/local/bin/
 ENV OP_CHALLENGER_CANNON_SERVER /usr/local/bin/op-program
-# Make the bundled cannon the default cannon executable
 COPY --from=cannon-builder /app/cannon/bin/cannon /usr/local/bin/
 ENV OP_CHALLENGER_CANNON_BIN /usr/local/bin/cannon
+# Copy in kona and asterisc
+COPY --from=kona /kona-host /usr/local/bin/
+ENV OP_CHALLENGER_ASTERISC_KONA_SERVER=/usr/local/bin/kona-host
+COPY --from=kona /asterisc /usr/local/bin/
+ENV OP_CHALLENGER_ASTERISC_BIN=/usr/local/bin/asterisc
 CMD ["op-challenger"]
 
 FROM --platform=$TARGETPLATFORM $TARGET_BASE_IMAGE AS op-dispute-mon-target
