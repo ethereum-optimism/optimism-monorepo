@@ -204,8 +204,6 @@ semgrep:
 semgrep-test:
   cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
 
-# TODO: Also run lint-forge-tests-check but we need to fix the test names first.
-# Runs all checks.
 check:
   @just gas-snapshot-check-no-build \
   semgrep-test-validity-check \
