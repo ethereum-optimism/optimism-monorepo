@@ -39,7 +39,7 @@ anvil = "nightly-143abd6a768eeb52a5785240b763d72a56987b4a"
 # Put things here if you need to track versions of tools or projects that can't
 # actually be managed by mise (yet). Make sure that anything you put in here is
 # also found inside of disabled_tools or mise will try to install it.
-asterisc = "1.1.1"
+asterisc = "1.2.0"
 kontrol = "1.0.53"
 binary_signer = "1.0.4"
 
