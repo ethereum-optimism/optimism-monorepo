@@ -2,7 +2,6 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { DeployOPCM, DeployOPCMInput, DeployOPCMOutput } from "scripts/deploy/DeployOPCM.s.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
