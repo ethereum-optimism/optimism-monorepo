@@ -27,10 +27,10 @@ contract L2OutputOracle_TestBase is CommonTest {
     function test_constructor_succeeds() external {
         IL2OutputOracle oracleImpl = IL2OutputOracle(address(new L2OutputOracle()));
 
-        assertEq(oracleImpl.SUBMISSION_INTERVAL(), 1);
-        assertEq(oracleImpl.submissionInterval(), 1);
-        assertEq(oracleImpl.L2_BLOCK_TIME(), 1);
-        assertEq(oracleImpl.l2BlockTime(), 1);
+        assertEq(oracleImpl.SUBMISSION_INTERVAL(), 0);
+        assertEq(oracleImpl.submissionInterval(), 0);
+        assertEq(oracleImpl.L2_BLOCK_TIME(), 0);
+        assertEq(oracleImpl.l2BlockTime(), 0);
         assertEq(oracleImpl.latestBlockNumber(), 0);
         assertEq(oracleImpl.startingBlockNumber(), 0);
         assertEq(oracleImpl.startingTimestamp(), 0);

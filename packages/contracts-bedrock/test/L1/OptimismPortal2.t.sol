@@ -53,7 +53,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(opImpl.disputeGameFactory()), address(0));
         assertEq(address(opImpl.systemConfig()), address(0));
         assertEq(address(opImpl.superchainConfig()), address(0));
-        assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
+        assertEq(opImpl.l2Sender(), address(0));
         assertEq(opImpl.respectedGameType().raw(), deploy.cfg().respectedGameType());
     }
 

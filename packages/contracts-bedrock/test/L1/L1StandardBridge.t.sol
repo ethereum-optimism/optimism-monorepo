@@ -40,8 +40,8 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
         assertEq(address(impl.superchainConfig()), address(0));
         assertEq(address(impl.MESSENGER()), address(0));
         assertEq(address(impl.messenger()), address(0));
-        assertEq(address(impl.OTHER_BRIDGE()), Predeploys.L2_STANDARD_BRIDGE);
-        assertEq(address(impl.otherBridge()), Predeploys.L2_STANDARD_BRIDGE);
+        assertEq(address(impl.OTHER_BRIDGE()), address(0));
+        assertEq(address(impl.otherBridge()), address(0));
         assertEq(address(l2StandardBridge), Predeploys.L2_STANDARD_BRIDGE);
         assertEq(address(impl.systemConfig()), address(0));
     }

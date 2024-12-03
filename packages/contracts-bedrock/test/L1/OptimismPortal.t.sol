@@ -47,11 +47,11 @@ contract OptimismPortal_Test is CommonTest {
         assertEq(address(opImpl.l2Oracle()), address(0));
         assertEq(address(opImpl.systemConfig()), address(0));
         assertEq(address(opImpl.superchainConfig()), address(0));
-        assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
+        assertEq(opImpl.l2Sender(), address(0));
         (uint128 prevBaseFee, uint64 prevBoughtGas, uint64 prevBlockNum) = opImpl.params();
-        assertEq(prevBaseFee, 1 gwei);
+        assertEq(prevBaseFee, 0);
         assertEq(prevBoughtGas, 0);
-        assertEq(prevBlockNum, uint64(block.number));
+        assertEq(prevBlockNum, 0);
     }
 
     /// @dev Tests that the initializer sets the correct values.
