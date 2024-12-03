@@ -1294,10 +1294,11 @@ contract EASTest is Test {
 
     function testMultiRevocationWithValue() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
         
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        registry.register(schema, ISchemaResolver(address(resolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value * 2);
@@ -1362,7 +1363,8 @@ contract EASTest is Test {
         // Test basic registration
         registry.register(schema, ISchemaResolver(address(0)), true);
 
-        // Test registering same schema again (should succeed as per EAS design)
+        // Test registering same schema again (should revert)
+        vm.expectRevert(abi.encodeWithSignature("AlreadyExists()"));
         registry.register(schema, ISchemaResolver(address(0)), true);
         
         // Test different schema types
@@ -1429,12 +1431,38 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-   function testAttestationExpirationScenarios() public {
+    function testAttestationExpirationScenarios() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
         
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
+
+        // Test with various expiration times
+        uint64[] memory expirationTimes = new uint64[](4);
+        expirationTimes[0] = 0; // No expiration
+        expirationTimes[1] = uint64(block.timestamp + 1 days);
+        expirationTimes[2] = uint64(block.timestamp + 365 days);
+        expirationTimes[3] = type(uint64).max;
+
+        for(uint i = 0; i < expirationTimes.length; i++) {
+            bytes32 uid = eas.attest(
+                AttestationRequest({
+                    schema: schemaId,
+                    data: AttestationRequestData({
+            recipient: recipient,
+                        expirationTime: expirationTimes[i],
+            revocable: true,
+                        refUID: bytes32(0),
+            data: hex"1234",
+            value: 0
+                    })
+                })
+            );
+
+            Attestation memory attestation = eas.getAttestation(uid);
+            assertEq(attestation.expirationTime, expirationTimes[i]);
+        }
 
         // Test with expired time (should revert)
         vm.expectRevert(InvalidExpirationTime);
@@ -1443,7 +1471,7 @@ contract EASTest is Test {
                 schema: schemaId,
                 data: AttestationRequestData({
                     recipient: recipient,
-                    expirationTime: uint64(block.timestamp),
+                    expirationTime: uint64(block.timestamp - 1),
                     revocable: true,
                     refUID: bytes32(0),
                     data: hex"1234",
@@ -1746,13 +1774,13 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testSchemaResolverScenarios() public {
+        function testSchemaResolverScenarios() public {
         string memory schema = "bool like";
-        address resolver = address(0x123); // Mock resolver address
-        bytes32 schemaId = getSchemaUID(schema, resolver, true);
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
         
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(resolver), true);
+        registry.register(schema, ISchemaResolver(address(resolver)), true);
 
         // Test attestation with resolver
         bytes32 uid = eas.attest(
