@@ -117,7 +117,7 @@ contract DeployOPCMInput_Test is Test {
         assertEq(dii.permissionedDisputeGame2Blueprint(), permissionedDisputeGame2Blueprint, "550");
     }
 
-    function test_set_succeeds_part2() public {
+    function test_set_part2_succeeds() public {
         address l1ERC721BridgeImpl = makeAddr("l1ERC721BridgeImpl");
         address optimismPortalImpl = makeAddr("optimismPortalImpl");
         address systemConfigImpl = makeAddr("systemConfigImpl");
