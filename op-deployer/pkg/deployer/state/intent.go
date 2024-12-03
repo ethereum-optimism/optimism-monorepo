@@ -98,6 +98,9 @@ func (c *Intent) validateCustomConfig() error {
 		return ErrL2ContractsLocatorUndefined
 	}
 
+	if c.SuperchainRoles == nil {
+		return errors.New("SuperchainRoles is set to nil")
+	}
 	if err := c.SuperchainRoles.CheckNoZeroAddresses(); err != nil {
 		return err
 	}
@@ -149,7 +152,7 @@ func (c *Intent) validateStandardValues() error {
 	if err != nil {
 		return fmt.Errorf("error getting standard superchain roles: %w", err)
 	}
-	if *c.SuperchainRoles != *standardSuperchainRoles {
+	if c.SuperchainRoles == nil || *c.SuperchainRoles != *standardSuperchainRoles {
 		return fmt.Errorf("SuperchainRoles does not match standard value")
 	}
 
