@@ -1573,6 +1573,17 @@ workflows:
     jobs:
       - publish-contract-artifacts
 
+  develop-forge-coverage:
+    when:
+      and:
+        - or:
+            - equal: ["develop", <<pipeline.git.branch>>]
+            - equal: [true, <<pipeline.parameters.contracts_coverage_dispatch>>]
+        - not:
+            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+    jobs:
+      - contracts-bedrock-coverage
+
   develop-fault-proofs:
     when:
       and:
@@ -1638,17 +1649,6 @@ workflows:
           matrix:
             parameters:
               mips_word_size: [32, 64]
-
-  scheduled-forge-coverage:
-    when:
-      and:
-        - or:
-            - equal: ["develop", <<pipeline.git.branch>>]
-            - equal: [true, <<pipeline.parameters.contracts_coverage_dispatch>>]
-        - not:
-            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
-    jobs:
-      - contracts-bedrock-coverage
 
   scheduled-docker-publish:
     when:
