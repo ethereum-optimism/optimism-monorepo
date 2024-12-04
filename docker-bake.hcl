@@ -7,7 +7,7 @@ variable "REPOSITORY" {
 }
 
 variable "KONA_VERSION" {
-  default = "kona-client-v0.1.0-beta.4"
+  default = "kona-client-v0.1.0-beta.5"
 }
 
 variable "GIT_COMMIT" {
