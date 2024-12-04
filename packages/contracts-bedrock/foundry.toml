@@ -8,6 +8,7 @@ src = 'src'
 out = 'forge-artifacts'
 script = 'scripts'
 build_info_path = 'artifacts/build-info'
+snapshots = 'notarealpath' # workaround for foundry#9477
 
 optimizer = true
 optimizer_runs = 999999
@@ -15,7 +16,7 @@ optimizer_runs = 999999
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
 bytecode_hash = 'none'
 ast = true
-evm_version = "cancun"
+evm_version = 'cancun'
 
 remappings = [
   '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts',
