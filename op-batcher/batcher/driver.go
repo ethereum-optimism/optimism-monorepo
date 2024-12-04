@@ -244,7 +244,7 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 
 // loadBlocksIntoState loads the blocks between start and end (inclusive).
 // If there is a reorg, it will return an error.
-func (l *BatchSubmitter) loadBlocksIntoState(start, end uint64, ctx context.Context) error {
+func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uint64) error {
 	if end <= start {
 		return fmt.Errorf("start number is >= end number %d,%d", start, end)
 	}
@@ -447,7 +447,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 
 			if syncActions.blocksToLoad != [2]uint64{} {
 				// Get fresh unsafe blocks
-				if err := l.loadBlocksIntoState(syncActions.blocksToLoad[0], syncActions.blocksToLoad[1], l.shutdownCtx); errors.Is(err, ErrReorg) {
+				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad[0], syncActions.blocksToLoad[1]); errors.Is(err, ErrReorg) {
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
 					continue
