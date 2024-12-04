@@ -503,6 +503,7 @@ contract DeployOPChain is Script {
         // Then we check the proxy as ASR.
         DeployUtils.assertInitialized({
             _contractAddress: address(_doo.anchorStateRegistryProxy()),
+            _isProxy: true,
             _slot: 0,
             _offset: 0
         });
@@ -523,7 +524,7 @@ contract DeployOPChain is Script {
     function assertValidAnchorStateRegistryImpl(DeployOPChainInput, DeployOPChainOutput _doo) internal {
         IAnchorStateRegistry registry = _doo.anchorStateRegistryImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(registry), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(registry), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(registry.disputeGameFactory()) == address(_doo.disputeGameFactoryProxy()), "ANCHORI-10");
     }
@@ -531,7 +532,7 @@ contract DeployOPChain is Script {
     function assertValidSystemConfig(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         ISystemConfig systemConfig = _doo.systemConfigProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _isProxy: true, _slot: 0, _offset: 0 });
 
         require(systemConfig.owner() == _doi.systemConfigOwner(), "SYSCON-10");
         require(systemConfig.basefeeScalar() == _doi.basefeeScalar(), "SYSCON-20");
@@ -569,7 +570,7 @@ contract DeployOPChain is Script {
     function assertValidL1CrossDomainMessenger(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IL1CrossDomainMessenger messenger = _doo.l1CrossDomainMessengerProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
+        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _isProxy: true, _slot: 0, _offset: 20 });
 
         require(address(messenger.OTHER_MESSENGER()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-10");
         require(address(messenger.otherMessenger()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "L1xDM-20");
@@ -586,7 +587,7 @@ contract DeployOPChain is Script {
         IL1StandardBridge bridge = _doo.l1StandardBridgeProxy();
         IL1CrossDomainMessenger messenger = _doo.l1CrossDomainMessengerProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _isProxy: true, _slot: 0, _offset: 0 });
 
         require(address(bridge.MESSENGER()) == address(messenger), "L1SB-10");
         require(address(bridge.messenger()) == address(messenger), "L1SB-20");
@@ -598,7 +599,7 @@ contract DeployOPChain is Script {
     function assertValidOptimismMintableERC20Factory(DeployOPChainInput, DeployOPChainOutput _doo) internal {
         IOptimismMintableERC20Factory factory = _doo.optimismMintableERC20FactoryProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _isProxy: true, _slot: 0, _offset: 0 });
 
         require(factory.BRIDGE() == address(_doo.l1StandardBridgeProxy()), "MERC20F-10");
         require(factory.bridge() == address(_doo.l1StandardBridgeProxy()), "MERC20F-20");
@@ -607,7 +608,7 @@ contract DeployOPChain is Script {
     function assertValidL1ERC721Bridge(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IL1ERC721Bridge bridge = _doo.l1ERC721BridgeProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _isProxy: true, _slot: 0, _offset: 0 });
 
         require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "L721B-10");
         require(address(bridge.otherBridge()) == Predeploys.L2_ERC721_BRIDGE, "L721B-20");
@@ -636,7 +637,7 @@ contract DeployOPChain is Script {
     function assertValidDisputeGameFactory(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
         IDisputeGameFactory factory = _doo.disputeGameFactoryProxy();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _isProxy: true, _slot: 0, _offset: 0 });
 
         require(
             address(factory.gameImpls(GameTypes.PERMISSIONED_CANNON)) == address(_doo.permissionedDisputeGame()),

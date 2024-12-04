@@ -289,7 +289,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidOptimismPortalImpl(DeployImplementationsInput) internal view {
         IOptimismPortal2 portal = optimismPortalImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(portal), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(portal), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(portal.disputeGameFactory()) == address(0), "PORTAL-10");
         require(address(portal.systemConfig()) == address(0), "PORTAL-20");
@@ -304,7 +304,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidDelayedWETHImpl(DeployImplementationsInput _dii) internal view {
         IDelayedWETH delayedWETH = delayedWETHImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(delayedWETH), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(delayedWETH), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(delayedWETH.owner() == address(0), "DW-10");
         require(delayedWETH.delay() == _dii.withdrawalDelaySeconds(), "DW-20");
@@ -326,7 +326,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidSystemConfigImpl(DeployImplementationsInput) internal view {
         ISystemConfig systemConfig = systemConfigImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(systemConfig), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(systemConfig.owner() == address(0), "SYSCON-10");
         require(systemConfig.overhead() == 0, "SYSCON-20");
@@ -358,7 +358,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidL1CrossDomainMessengerImpl(DeployImplementationsInput) internal view {
         IL1CrossDomainMessenger messenger = l1CrossDomainMessengerImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
+        DeployUtils.assertInitialized({ _contractAddress: address(messenger), _isProxy: false, _slot: 0, _offset: 20 });
 
         require(address(messenger.OTHER_MESSENGER()) == address(0), "L1xDM-10");
         require(address(messenger.otherMessenger()) == address(0), "L1xDM-20");
@@ -373,7 +373,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidL1ERC721BridgeImpl(DeployImplementationsInput) internal view {
         IL1ERC721Bridge bridge = l1ERC721BridgeImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(bridge.OTHER_BRIDGE()) == address(0), "L721B-10");
         require(address(bridge.otherBridge()) == address(0), "L721B-20");
@@ -385,7 +385,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidL1StandardBridgeImpl(DeployImplementationsInput) internal view {
         IL1StandardBridge bridge = l1StandardBridgeImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(bridge), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(bridge.MESSENGER()) == address(0), "L1SB-10");
         require(address(bridge.messenger()) == address(0), "L1SB-20");
@@ -397,7 +397,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidOptimismMintableERC20FactoryImpl(DeployImplementationsInput) internal view {
         IOptimismMintableERC20Factory factory = optimismMintableERC20FactoryImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(factory.BRIDGE()) == address(0), "MERC20F-10");
         require(address(factory.bridge()) == address(0), "MERC20F-20");
@@ -406,7 +406,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function assertValidDisputeGameFactoryImpl(DeployImplementationsInput) internal view {
         IDisputeGameFactory factory = disputeGameFactoryImpl();
 
-        DeployUtils.assertInitialized({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(factory), _isProxy: false, _slot: 0, _offset: 0 });
 
         require(address(factory.owner()) == address(0), "DG-10");
     }
