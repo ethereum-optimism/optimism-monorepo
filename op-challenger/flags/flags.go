@@ -115,6 +115,11 @@ var (
 		Usage:   fmt.Sprintf("Deprecated: Use %v instead", flags.NetworkFlagName),
 		EnvVars: prefixEnvVars("CANNON_NETWORK"),
 	}
+	CannonL2ChainIdFlag = &cli.Uint64Flag{
+		Name:    "cannon-l2-chain-id",
+		Usage:   "L2 chain ID for a chain where the configuration is included in the prestate as a custom configuration.",
+		EnvVars: prefixEnvVars("CANNON_L2_CHAIN_ID"),
+	}
 	CannonRollupConfigFlag = &cli.StringFlag{
 		Name:    "cannon-rollup-config",
 		Usage:   "Rollup chain parameters (cannon trace type only)",
@@ -249,6 +254,7 @@ var optionalFlags = []cli.Flag{
 	AdditionalBondClaimants,
 	GameAllowlistFlag,
 	CannonNetworkFlag,
+	CannonL2ChainIdFlag,
 	CannonRollupConfigFlag,
 	CannonL2GenesisFlag,
 	CannonBinFlag,
@@ -296,14 +302,17 @@ func CheckCannonFlags(ctx *cli.Context) error {
 			CannonNetworkFlag.Name, flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
 	}
 	if ctx.IsSet(flags.NetworkFlagName) &&
-		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name)) {
-		return fmt.Errorf("flag %v can not be used with %v and %v",
-			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
+		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name) || ctx.IsSet(CannonL2ChainIdFlag.Name)) {
+		return fmt.Errorf("flag %v can not be used with %v, %v or %v",
+			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2ChainIdFlag.Name)
 	}
 	if ctx.IsSet(CannonNetworkFlag.Name) &&
-		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name)) {
-		return fmt.Errorf("flag %v can not be used with %v and %v",
-			CannonNetworkFlag.Name, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
+		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name) || ctx.IsSet(CannonL2ChainIdFlag.Name)) {
+		return fmt.Errorf("flag %v can not be used with %v, %v or %v",
+			CannonNetworkFlag.Name, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2ChainIdFlag.Name)
+	}
+	if ctx.IsSet(CannonL2ChainIdFlag.Name) && !(ctx.IsSet(CannonRollupConfigFlag.Name) && ctx.IsSet(CannonL2GenesisFlag.Name)) {
+		return fmt.Errorf("flag %v and %v must be set when %v is set", CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2ChainIdFlag.Name)
 	}
 	if !ctx.IsSet(CannonBinFlag.Name) {
 		return fmt.Errorf("flag %s is required", CannonBinFlag.Name)
@@ -563,6 +572,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:            ctx.String(CannonBinFlag.Name),
 			Server:           ctx.String(CannonServerFlag.Name),
 			Network:          cannonNetwork,
+			L2ChainID:        ctx.Uint64(CannonL2ChainIdFlag.Name),
 			RollupConfigPath: ctx.String(CannonRollupConfigFlag.Name),
 			L2GenesisPath:    ctx.String(CannonL2GenesisFlag.Name),
 			SnapshotFreq:     ctx.Uint(CannonSnapshotFreqFlag.Name),

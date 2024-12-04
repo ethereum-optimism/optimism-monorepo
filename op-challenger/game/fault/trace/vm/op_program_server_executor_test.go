@@ -72,6 +72,13 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 		require.Equal(t, "op-test", pairs["--network"])
 	})
 
+	t.Run("WithL2ChainID", func(t *testing.T) {
+		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
+			c.L2ChainID = 68284
+		})
+		require.Equal(t, "68284", pairs["--l2-chain-id"])
+	})
+
 	t.Run("WithRollupConfigPath", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
 			c.RollupConfigPath = "rollup.config.json"

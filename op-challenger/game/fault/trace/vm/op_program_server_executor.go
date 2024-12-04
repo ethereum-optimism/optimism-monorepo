@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"strconv"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum/go-ethereum/log"
@@ -32,6 +33,9 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 	}
 	if cfg.Network != "" {
 		args = append(args, "--network", cfg.Network)
+	}
+	if cfg.L2ChainID != 0 {
+		args = append(args, "--l2-chain-id", strconv.FormatUint(cfg.L2ChainID, 10))
 	}
 	if cfg.RollupConfigPath != "" {
 		args = append(args, "--rollup.config", cfg.RollupConfigPath)
