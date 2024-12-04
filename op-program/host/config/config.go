@@ -216,6 +216,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 
 		l2ChainID = l2ChainConfig.ChainID.Uint64()
 		if ctx.Bool(flags.L2Custom.Name) {
+			log.Warn("Using custom chain configuration via preimage oracle. This is not compatible with on-chain execution.")
 			l2ChainID = client.CustomChainIDIndicator
 		}
 	}

@@ -19,6 +19,12 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 	toPairs := func(args []string) map[string]string {
 		pairs := make(map[string]string, len(args)/2)
 		for i := 0; i < len(args); i += 2 {
+			// l2.custom is a boolean flag so can't accept a value after a space
+			if args[i] == "--l2.custom" {
+				pairs[args[i]] = "true"
+				i--
+				continue
+			}
 			pairs[args[i]] = args[i+1]
 		}
 		return pairs
