@@ -70,6 +70,9 @@ wrap_comments=true
 #                         PROFILE: CI                          #
 ################################################################
 
+[profile.ci-no-optimizer]
+optimizer = false
+
 [profile.ci.fuzz]
 runs = 512
 

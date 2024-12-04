@@ -291,6 +291,10 @@ jobs:
         description: Glob pattern of tests to skip
         type: string
         default: ""
+      profile:
+        description: Profile to use for building
+        type: string
+        default: ci
     steps:
       - checkout
       - install-contracts-dependencies
@@ -305,7 +309,7 @@ jobs:
           name: Build contracts
           command: forge build --deny-warnings --skip <<parameters.skip_pattern>>
           environment:
-            FOUNDRY_PROFILE: ci
+            FOUNDRY_PROFILE: <<parameters.profile>>
           working_directory: packages/contracts-bedrock
       - run:
           name: Generate allocs
@@ -609,7 +613,7 @@ jobs:
           working_directory: packages/contracts-bedrock
       - codecov/upload:
           disable_search: true
-          files: ./packages/contracts-bedrock/coverage/lcov.info
+          files: ./packages/contracts-bedrock/lcov.info
           flags: contracts-bedrock-tests
 
   contracts-bedrock-tests:
@@ -1299,7 +1303,14 @@ workflows:
       - go-mod-download
       - contracts-bedrock-build:
           # Build with just core + script contracts.
+          name: contracts-bedrock-build
           skip_pattern: test
+          profile: ci
+      - contracts-bedrock-build:
+          # Build with just core + script contracts.
+          name: contracts-bedrock-build-no-optimizer
+          skip_pattern: test
+          profile: ci-no-optimizer
       - check-kontrol-build:
           requires:
             - contracts-bedrock-build
@@ -1321,6 +1332,8 @@ workflows:
           test_timeout: 1h
           test_profile: ciheavy
       - contracts-bedrock-coverage:
+          requires:
+            - contracts-bedrock-build-no-optimizer
           filters:
             branches:
               ignore: /.*/
