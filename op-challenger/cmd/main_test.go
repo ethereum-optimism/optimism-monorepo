@@ -90,9 +90,9 @@ func TestL1Beacon(t *testing.T) {
 
 func TestTraceType(t *testing.T) {
 	t.Run("Default", func(t *testing.T) {
-		expectedDefault := types.TraceTypeCannon
-		cfg := configForArgs(t, addRequiredArgsExcept(expectedDefault, "--trace-type"))
-		require.Equal(t, []types.TraceType{expectedDefault}, cfg.TraceTypes)
+		expectedDefault := []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsteriscKona}
+		cfg := configForArgs(t, addRequiredArgsForMultipleTracesExcept(expectedDefault, "--trace-type"))
+		require.Equal(t, expectedDefault, cfg.TraceTypes)
 	})
 
 	for _, traceType := range types.TraceTypes {
@@ -995,12 +995,28 @@ func addRequiredArgsExcept(traceType types.TraceType, name string, optionalArgs 
 	return append(toArgList(req), optionalArgs...)
 }
 
+func addRequiredArgsForMultipleTracesExcept(traceType []types.TraceType, name string, optionalArgs ...string) []string {
+	req := requiredArgsMultiple(traceType)
+	delete(req, name)
+	return append(toArgList(req), optionalArgs...)
+}
+
 func addRequiredArgsExceptArr(traceType types.TraceType, names []string, optionalArgs ...string) []string {
 	req := requiredArgs(traceType)
 	for _, name := range names {
 		delete(req, name)
 	}
 	return append(toArgList(req), optionalArgs...)
+}
+
+func requiredArgsMultiple(traceType []types.TraceType) map[string]string {
+	args := make(map[string]string)
+	for _, t := range traceType {
+		for name, value := range requiredArgs(t) {
+			args[name] = value
+		}
+	}
+	return args
 }
 
 func requiredArgs(traceType types.TraceType) map[string]string {
