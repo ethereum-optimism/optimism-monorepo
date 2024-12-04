@@ -1334,9 +1334,6 @@ workflows:
       - contracts-bedrock-coverage:
           requires:
             - contracts-bedrock-build-no-optimizer
-          filters:
-            branches:
-              ignore: /.*/
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
