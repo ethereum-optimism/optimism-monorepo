@@ -807,63 +807,6 @@ jobs:
             make lint-go
           working_directory: .
 
-  go-test-kurtosis:
-    parameters:
-      module:
-        description: Go Module Name
-        type: string
-      uses_artifacts:
-        description: Uses contract artifacts
-        type: boolean
-        default: false
-      test_directory:
-        description: Test directory
-        type: string
-        default: "./..."
-    machine:
-      image: <<pipeline.parameters.base_image>>
-    resource_class: xlarge
-    steps:
-      - run:
-          name: Install components
-          command: |
-            go version
-            go install gotest.tools/gotestsum@v1.11.0
-      - run:
-          name: Install Kurtosis
-          command: |
-            echo "deb [trusted=yes] https://apt.fury.io/kurtosis-tech/ /" | sudo tee /etc/apt/sources.list.d/kurtosis.list
-            sudo apt update
-            sudo apt install kurtosis-cli=1.4.0
-            kurtosis engine start
-      - checkout
-      - when:
-          condition: <<parameters.uses_artifacts>>
-          steps:
-            - attach_workspace: { at: "." }
-      - run:
-          name: prep results dir
-          command: |
-            # Make sure the workspace is properly owned
-            mkdir -p ./tmp/test-results
-            mkdir -p ./tmp/testlogs
-      - run:
-          name: run tests
-          command: |
-            ENABLE_KURTOSIS=true gotestsum \
-              --format=testname \
-              --junitfile=../tmp/test-results/<<parameters.module>>.xml \
-              --jsonfile=../tmp/testlogs/log.json \
-              -- -parallel=$(nproc) \
-              -coverpkg=github.com/ethereum-optimism/optimism/... \
-              -coverprofile=coverage.out <<parameters.test_directory>>
-          working_directory: <<parameters.module>>
-      - store_test_results:
-          path: tmp/test-results
-      - store_artifacts:
-          path: tmp/testlogs
-          when: always
-
   go-tests:
     parameters:
       notify:
@@ -919,6 +862,7 @@ jobs:
               formatted_packages="$formatted_packages ./$package/..."
             done
 
+            export ENABLE_KURTOSIS=true
             export OP_E2E_CANNON_ENABLED="false"
             export OP_E2E_SKIP_SLOW_TEST=true
             export OP_E2E_USE_HTTP=true
@@ -1349,12 +1293,6 @@ workflows:
           name: op-e2e-fuzz
           package_name: op-e2e
           on_changes: op-e2e,packages/contracts-bedrock/src
-          uses_artifacts: true
-          requires: ["contracts-bedrock-build"]
-      - go-test-kurtosis:
-          name: op-deployer-integration
-          module: op-deployer
-          test_directory: ./pkg/deployer/integration_test
           uses_artifacts: true
           requires: ["contracts-bedrock-build"]
       - go-tests:
