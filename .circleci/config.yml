@@ -1329,7 +1329,6 @@ workflows:
             - check-generated-mocks-op-node
             - check-generated-mocks-op-service
             - go-mod-download
-            - op-deployer-integration
             - op-program-compat
             # Not needed for the devnet but we want to make sure they build successfully
             - cannon-docker-build
