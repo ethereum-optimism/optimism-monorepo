@@ -1,0 +1,8 @@
+# Environment
+.env
+
+# Deployments JSON
+./deployments.json
+
+# Upgrade task
+upgrade-task/
