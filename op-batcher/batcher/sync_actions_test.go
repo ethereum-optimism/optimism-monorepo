@@ -33,27 +33,27 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		blocks        queue.Queue[*types.Block]
 		channels      []channelStatuser
 		// expectations
-		expected     SyncActions
-		expectedErr  error
-		expectedLogs []string
+		expected             SyncActions
+		expectedSeqOutOfSync bool
+		expectedLogs         []string
 	}
 
 	testCases := []TestCase{
 		{name: "empty sync status",
-			newSyncStatus: eth.SyncStatus{},
-			expected:      SyncActions{},
-			expectedErr:   ErrSeqOutOfSync,
-			expectedLogs:  []string{"empty sync status"},
+			newSyncStatus:        eth.SyncStatus{},
+			expected:             SyncActions{},
+			expectedSeqOutOfSync: true,
+			expectedLogs:         []string{"empty sync status"},
 		},
 		{name: "sequencer restart",
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
 			},
-			prevCurrentL1: eth.BlockRef{Number: 2},
-			expected:      SyncActions{},
-			expectedErr:   ErrSeqOutOfSync,
-			expectedLogs:  []string{"sequencer currentL1 reversed"},
+			prevCurrentL1:        eth.BlockRef{Number: 2},
+			expected:             SyncActions{},
+			expectedSeqOutOfSync: true,
+			expectedLogs:         []string{"sequencer currentL1 reversed"},
 		},
 		{name: "L1 reorg",
 			newSyncStatus: eth.SyncStatus{
@@ -156,12 +156,12 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)
 
-			result, err := computeSyncActions(
+			result, outOfSync := computeSyncActions(
 				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
 			require.Equal(t, tc.expected, result)
-			require.Equal(t, tc.expectedErr, err)
+			require.Equal(t, tc.expectedSeqOutOfSync, outOfSync)
 			for _, e := range tc.expectedLogs {
 				r := h.FindLog(testlog.NewMessageContainsFilter(e))
 				require.NotNil(t, r, "could not find log message containing '%s'", e)

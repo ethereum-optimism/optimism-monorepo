@@ -1,7 +1,6 @@
 package batcher
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -16,8 +15,6 @@ type channelStatuser interface {
 	LatestL2() eth.BlockID
 	MaxInclusionBlock() uint64
 }
-
-var ErrSeqOutOfSync error = errors.New("sequencer out of sync")
 
 type SyncActions struct {
 	clearState      *eth.BlockID
@@ -35,18 +32,18 @@ func (s SyncActions) String() string {
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
-// range to load into the local state, and whether to clear the state entirely. Returns an error if the sequencer is out of sync.
-func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, error) {
+// range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
+func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, bool) {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status")
-		return SyncActions{}, ErrSeqOutOfSync
+		return SyncActions{}, true
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
 		l.Warn("sequencer currentL1 reversed")
-		return SyncActions{}, ErrSeqOutOfSync
+		return SyncActions{}, true
 	}
 
 	oldestBlock, hasBlocks := blocks.Peek()
@@ -56,7 +53,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Info("no blocks in state", "syncActions", s)
-		return s, nil
+		return s, false
 	}
 
 	if oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
@@ -65,7 +62,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
-		return s, nil
+		return s, false
 	}
 
 	newestBlock := blocks[blocks.Len()-1]
@@ -84,7 +81,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			"newSafeBlock", newSyncStatus.SafeL2.Number,
 			"syncActions",
 			s)
-		return s, nil
+		return s, false
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
@@ -98,7 +95,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			"syncActions", s)
 		// We should resume work from the new safe head,
 		// and therefore prune all the blocks.
-		return s, nil
+		return s, false
 	}
 
 	for _, ch := range channels {
@@ -118,7 +115,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
 				"newSafeBlock", newSyncStatus.SafeL2,
 				"syncActions", s)
-			return s, nil
+			return s, false
 		}
 	}
 
@@ -138,5 +135,5 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
 		blocksToLoad:    [2]uint64{start, end},
-	}, nil
+	}, false
 }

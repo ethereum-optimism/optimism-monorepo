@@ -425,14 +425,13 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			}
 
 			// Decide appropriate actions
-			syncActions, err := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 
-			if err != nil {
-				// If there is an error, such as if
-				// the sequencer is out of sync
+			if outOfSync {
+				// If the sequencer is out of sync
 				// do nothing and wait to see if it has
 				// got in sync on the next tick.
-				l.Log.Warn("error computing sync actions", "err", err)
+				l.Log.Warn("error computing sync actions, sequencer is out of sync")
 				continue
 			}
 
