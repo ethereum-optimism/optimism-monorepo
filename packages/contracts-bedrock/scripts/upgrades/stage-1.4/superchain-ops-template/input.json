@@ -1,0 +1,106 @@
+{
+  "chainId": 11155111,
+  "metadata": {
+    "name": "Sepolia - Stage 1.4 Upgrade",
+    "description": "This upgrade registers a new `FaultDisputeGame` with the `DisputeGameFactory` that is backed by the `asterisc` FPVM and `kona` fault proof program."
+  },
+  "transactions": [
+    {
+      "metadata": {
+        "name": "Upgrade `AnchorStateRegistry` proxy to `StorageSetter`",
+        "description": "Upgrades the `AnchorStateRegistry` proxy to `StorageSetter`, and clears the `initialized` slot in preparation for re-initialization."
+      },
+      "to": "%%PROXY_ADMIN_ADDR%%",
+      "value": "0x0",
+      "data": "%%TX_1_DATA%%",
+      "contractMethod": {
+        "type": "function",
+        "name": "upgradeAndCall",
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          },
+          {
+            "name": "_data",
+            "type": "bytes"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_proxy": "%%ANCHOR_STATE_REGISTRY_PROXY_ADDR%%",
+        "_impl": "0xd81f43eDBCAcb4c29a9bA38a13Ee5d79278270cC",
+        "_data": "%%TX_1_DATA_INNER%%"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Set `GAME_TYPE=3` anchor state",
+        "description": "Upgrades the `AnchorStateRegistry` proxy back to its original implementation, and re-initializes to set the anchor state of the new game type prior to registry."
+      },
+      "to": "%%PROXY_ADMIN_ADDR%%",
+      "value": "0x0",
+      "data": "%%TX_2_DATA%%",
+      "contractMethod": {
+        "type": "function",
+        "name": "upgradeAndCall",
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          },
+          {
+            "name": "_data",
+            "type": "bytes"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_proxy": "%%ANCHOR_STATE_REGISTRY_PROXY_ADDR%%",
+        "_impl": "%%ANCHOR_STATE_REGISTRY_IMPL_ADDR%%",
+        "_data": "%%TX_2_DATA_INNER%%"
+      }
+    },
+    {
+      "metadata": {
+        "name": "Register `GAME_TYPE=3` in the `DisputeGameFactory`",
+        "description": "Registers the new `FaultDisputeGame` deployment as `GAME_TYPE=3` in the `DisputeGameFactory`."
+      },
+      "to": "%%DISPUTE_GAME_FACTORY_PROXY_ADDR%%",
+      "value": "0x0",
+      "data": "%%TX_3_DATA%%",
+      "contractMethod": {
+        "type": "function",
+        "name": "setImplementation",
+        "inputs": [
+          {
+            "name": "_gameType",
+            "type": "uint32"
+          },
+          {
+            "name": "_impl",
+            "type": "address"
+          }
+        ],
+        "outputs": [],
+        "stateMutability": "nonpayable"
+      },
+      "contractInputsValues": {
+        "_gameType": "3",
+        "_impl": "%%FDG_IMPL%%"
+      }
+    }
+  ]
+}
