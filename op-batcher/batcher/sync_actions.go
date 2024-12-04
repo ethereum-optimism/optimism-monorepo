@@ -17,7 +17,7 @@ type channelStatuser interface {
 	MaxInclusionBlock() uint64
 }
 
-var SeqOutOfSyncError error = errors.New("sequencer out of sync")
+var ErrSeqOutOfSync error = errors.New("sequencer out of sync")
 
 type SyncActions struct {
 	clearState      *eth.BlockID
@@ -40,13 +40,13 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status")
-		return SyncActions{}, SeqOutOfSyncError
+		return SyncActions{}, ErrSeqOutOfSync
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
 		l.Warn("sequencer currentL1 reversed")
-		return SyncActions{}, SeqOutOfSyncError
+		return SyncActions{}, ErrSeqOutOfSync
 	}
 
 	oldestBlock, hasBlocks := blocks.Peek()

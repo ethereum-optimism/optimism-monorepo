@@ -427,7 +427,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			// Decide appropriate actions
 			syncActions, err := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 			l.prevCurrentL1 = syncStatus.CurrentL1
-			if errors.Is(err, SeqOutOfSyncError) {
+			if errors.Is(err, ErrSeqOutOfSync) {
 				// If the sequencer is out of sync
 				// do nothing and wait to see if it has
 				// got in sync on the next tick.
