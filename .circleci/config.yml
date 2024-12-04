@@ -613,14 +613,9 @@ jobs:
           flags: contracts-bedrock-tests
 
   contracts-bedrock-tests:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     parameters:
-      test_parallelism:
-        description: Number of test jobs to run in parallel
-        type: integer
-        default: 4
       test_list:
         description: List of test files to run
         type: string
@@ -644,7 +639,6 @@ jobs:
         description: Profile to use for testing
         type: string
         default: ci
-    parallelism: <<parameters.test_parallelism>>
     steps:
       - checkout
       - attach_workspace: { at: "." }
@@ -660,14 +654,6 @@ jobs:
           working_directory: packages/contracts-bedrock
       - check-changed:
           patterns: contracts-bedrock,op-node
-      - restore_cache:
-          name: Restore Go modules cache
-          key: gomod-{{ checksum "go.sum" }}
-      - restore_cache:
-          name: Restore Go build cache
-          keys:
-            - golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
-            - golang-build-cache-contracts-bedrock-tests-
       - run:
           name: Print dependencies
           command: just dep-status
@@ -715,17 +701,14 @@ jobs:
       - notify-failures-on-develop
 
   contracts-bedrock-checks:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
       - checkout
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
           patterns: contracts-bedrock,op-node
-      - setup_remote_docker:
-          docker_layer_caching: true
       - run:
           name: print forge version
           command: forge --version
@@ -1306,17 +1289,14 @@ workflows:
       - contracts-bedrock-tests:
           # Test everything except PreimageOracle.t.sol since it's slow.
           name: contracts-bedrock-tests
-          test_parallelism: 4
           test_list: find test -name "*.t.sol" -not -name "PreimageOracle.t.sol"
       - contracts-bedrock-tests:
           # PreimageOracle test is slow, run it separately to unblock CI.
           name: contracts-bedrock-tests-preimage-oracle
-          test_parallelism: 1
           test_list: find test -name "PreimageOracle.t.sol"
       - contracts-bedrock-tests:
           # Heavily fuzz any fuzz tests within added or modified test files.
           name: contracts-bedrock-tests-heavy-fuzz-modified
-          test_parallelism: 1
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
@@ -1595,7 +1575,7 @@ workflows:
             - go-mod-download
           context:
             - slack
-      - contracts-bedrock-build:
+      - x
           skip_pattern: test
           context:
             - slack
