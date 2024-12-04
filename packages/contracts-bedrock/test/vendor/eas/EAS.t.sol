@@ -312,11 +312,21 @@ contract EASTest is Test {
         }));
     }
 
-    function testCannotAttestWithExpiredTime() public {
+      function testCannotAttestWithExpiredTime() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         
+        // Set a specific block timestamp first
+        vm.warp(1000000);
+        
         unchecked {
-            uint64 expiredTime = uint64(block.timestamp - 1);
+            uint64 expiredTime = uint64(block.timestamp - 1000);
+            
+            // Add debug logs
+            emit log_string("Testing attestation with expired time");
+            emit log_named_uint("Current block timestamp", block.timestamp);
+            emit log_named_uint("Expired time", expiredTime);
+            emit log_named_bytes32("Schema ID", schemaId);
+            
             AttestationRequest memory request = AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
@@ -329,11 +339,10 @@ contract EASTest is Test {
                 })
             });
             
-            vm.expectRevert(InvalidExpirationTimeSelector);
+            vm.expectRevert(abi.encodeWithSignature("InvalidExpirationTime()"));
             eas.attest(request);
         }
     }
-
     function testCannotAttestToUnregisteredSchema() public {
         bytes32 unregisteredSchemaId = getSchemaUID("unregistered schema", address(0), true);
         
