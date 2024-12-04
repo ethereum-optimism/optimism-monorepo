@@ -609,7 +609,7 @@ jobs:
           command: just coverage-lcov
           no_output_timeout: 18m
           environment:
-            FOUNDRY_PROFILE: ci
+            FOUNDRY_PROFILE: cicoverage
           working_directory: packages/contracts-bedrock
       - codecov/upload:
           disable_search: true
@@ -1308,9 +1308,9 @@ workflows:
           profile: ci
       - contracts-bedrock-build:
           # Build with just core + script contracts.
-          name: contracts-bedrock-build-no-optimizer
+          name: contracts-bedrock-build-coverage
           skip_pattern: test
-          profile: ci-no-optimizer
+          profile: cicoverage
       - check-kontrol-build:
           requires:
             - contracts-bedrock-build
@@ -1333,7 +1333,7 @@ workflows:
           test_profile: ciheavy
       - contracts-bedrock-coverage:
           requires:
-            - contracts-bedrock-build-no-optimizer
+            - contracts-bedrock-build-coverage
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build

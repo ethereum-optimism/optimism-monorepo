@@ -70,7 +70,7 @@ wrap_comments=true
 #                         PROFILE: CI                          #
 ################################################################
 
-[profile.ci-no-optimizer]
+[profile.cicoverage]
 optimizer = false
 
 [profile.ci.fuzz]
