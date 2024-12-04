@@ -307,7 +307,12 @@ jobs:
           working_directory: packages/contracts-bedrock
       - run:
           name: Build contracts
-          command: forge build --deny-warnings --skip <<parameters.skip_pattern>>
+          command: |
+            if [ -z "<<parameters.skip_pattern>>" ]; then
+              forge build --deny-warnings
+            else
+              forge build --deny-warnings --skip <<parameters.skip_pattern>>
+            fi
           environment:
             FOUNDRY_PROFILE: <<parameters.profile>>
           working_directory: packages/contracts-bedrock
