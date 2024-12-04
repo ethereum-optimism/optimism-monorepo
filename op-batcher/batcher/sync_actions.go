@@ -16,7 +16,7 @@ type channelStatuser interface {
 	MaxInclusionBlock() uint64
 }
 
-type SyncActions struct {
+type syncActions struct {
 	clearState      *eth.BlockID
 	blocksToPrune   int
 	channelsToPrune int
@@ -24,7 +24,7 @@ type SyncActions struct {
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
-func (s SyncActions) String() string {
+func (s syncActions) String() string {
 	return fmt.Sprintf(
 		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
 }
@@ -33,23 +33,23 @@ func (s SyncActions) String() string {
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
-func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, bool) {
+func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (syncActions, bool) {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status")
-		return SyncActions{}, true
+		return syncActions{}, true
 	}
 
 	if newSyncStatus.CurrentL1.Number < prevCurrentL1.Number {
 		// This can happen when the sequencer restarts
 		l.Warn("sequencer currentL1 reversed")
-		return SyncActions{}, true
+		return syncActions{}, true
 	}
 
 	oldestBlock, hasBlocks := blocks.Peek()
 
 	if !hasBlocks {
-		s := SyncActions{
+		s := syncActions{
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
 		l.Info("no blocks in state", "syncActions", s)
@@ -57,7 +57,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	if oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
-		s := SyncActions{
+		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
@@ -72,7 +72,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		s := SyncActions{
+		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
@@ -85,7 +85,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
-		s := SyncActions{
+		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 		}
@@ -104,7 +104,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			newSyncStatus.CurrentL1.Number > ch.MaxInclusionBlock() &&
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
 
-			s := SyncActions{
+			s := syncActions{
 				clearState:   &newSyncStatus.SafeL2.L1Origin,
 				blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
 			}
@@ -131,7 +131,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	end := newSyncStatus.UnsafeL2.Number
 
 	// happy path
-	return SyncActions{
+	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
 		blocksToLoad:    [2]uint64{start, end},
