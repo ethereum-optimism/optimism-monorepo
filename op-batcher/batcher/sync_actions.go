@@ -46,27 +46,33 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return syncActions{}, true
 	}
 
-	oldestBlock, hasBlocks := blocks.Peek()
+	oldestBlockInState, hasBlocks := blocks.Peek()
+	oldestBlockInStateNum := oldestBlockInState.NumberU64()
+
+	oldestUnsafeBlockNum := newSyncStatus.SafeL2.Number + 1
+	youngestUnsafeBlockNum := newSyncStatus.UnsafeL2.Number
 
 	if !hasBlocks {
 		s := syncActions{
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
 	}
 
-	if oldestBlock.NumberU64() > newSyncStatus.SafeL2.Number+1 {
+	if oldestUnsafeBlockNum < oldestBlockInStateNum {
 		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
 		return s, false
 	}
 
-	newestBlock := blocks[blocks.Len()-1]
-	numBlocksToDequeue := newSyncStatus.SafeL2.Number + 1 - oldestBlock.NumberU64()
+	newestBlockInState := blocks[blocks.Len()-1]
+	newestBlockInStateNum := newestBlockInState.NumberU64()
+
+	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
 
 	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
@@ -74,10 +80,10 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// from channels sent by a previous batcher instance.
 		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Warn("safe head above unsafe head, clearing channel manager state",
-			"unsafeBlock", eth.ToBlockID(newestBlock),
+			"unsafeBlock", eth.ToBlockID(newestBlockInState),
 			"newSafeBlock", newSyncStatus.SafeL2.Number,
 			"syncActions",
 			s)
@@ -87,7 +93,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
 		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Warn("safe chain reorg, clearing channel manager state",
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
@@ -106,7 +112,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 			s := syncActions{
 				clearState:   &newSyncStatus.SafeL2.L1Origin,
-				blocksToLoad: [2]uint64{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number},
+				blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 			}
 			// Safe head did not make the expected progress
 			// for a fully submitted channel. We should go back to
@@ -127,8 +133,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		numChannelsToPrune++
 	}
 
-	start := newestBlock.Number().Uint64() + 1
-	end := newSyncStatus.UnsafeL2.Number
+	start := newestBlockInStateNum + 1
+	end := youngestUnsafeBlockNum
 
 	// happy path
 	return syncActions{
