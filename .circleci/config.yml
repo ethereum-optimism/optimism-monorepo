@@ -120,7 +120,7 @@ commands:
     description: "Install the dependencies for the smart contracts"
     steps:
       - run:
-          command: just install
+          command: git submodule update --init --recursive --force -j 4
           working_directory: packages/contracts-bedrock
 
   notify-failures-on-develop:
