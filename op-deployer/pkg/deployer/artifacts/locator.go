@@ -70,11 +70,7 @@ func (a *Locator) MarshalText() ([]byte, error) {
 		return []byte(a.URL.String()), nil
 	}
 
-	if a.Tag != "" {
-		return []byte("tag://" + a.Tag), nil
-	}
-
-	return nil, fmt.Errorf("no URL, path or tag set")
+	return []byte("tag://" + a.Tag), nil
 }
 
 func (a *Locator) IsTag() bool {

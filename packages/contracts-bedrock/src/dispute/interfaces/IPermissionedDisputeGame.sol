@@ -2,12 +2,13 @@
 pragma solidity ^0.8.0;
 
 import { Types } from "src/libraries/Types.sol";
-import { GameType, Claim, Position, Clock, Hash, Duration } from "src/dispute/lib/Types.sol";
+import { Claim, Position, Clock, Hash, Duration } from "src/dispute/lib/Types.sol";
 
 import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
 import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
 import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
 import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
 
 interface IPermissionedDisputeGame is IDisputeGame {
     struct ClaimData {
@@ -120,16 +121,7 @@ interface IPermissionedDisputeGame is IDisputeGame {
     function challenger() external view returns (address challenger_);
 
     function __constructor__(
-        GameType _gameType,
-        Claim _absolutePrestate,
-        uint256 _maxGameDepth,
-        uint256 _splitDepth,
-        Duration _clockExtension,
-        Duration _maxClockDuration,
-        IBigStepper _vm,
-        IDelayedWETH _weth,
-        IAnchorStateRegistry _anchorStateRegistry,
-        uint256 _l2ChainId,
+        IFaultDisputeGame.GameConstructorParams memory _params,
         address _proposer,
         address _challenger
     )

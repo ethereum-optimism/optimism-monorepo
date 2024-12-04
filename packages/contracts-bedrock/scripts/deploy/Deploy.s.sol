@@ -64,20 +64,6 @@ import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
 contract Deploy is Deployer {
     using stdJson for string;
 
-    /// @notice FaultDisputeGameParams is a struct that contains the parameters necessary to call
-    ///         the function _setFaultGameImplementation. This struct exists because the EVM needs
-    ///         to finally adopt PUSHN and get rid of stack too deep once and for all.
-    ///         Someday we will look back and laugh about stack too deep, today is not that day.
-    struct FaultDisputeGameParams {
-        IAnchorStateRegistry anchorStateRegistry;
-        IDelayedWETH weth;
-        GameType gameType;
-        Claim absolutePrestate;
-        IBigStepper faultVm;
-        uint256 maxGameDepth;
-        Duration maxClockDuration;
-    }
-
     ////////////////////////////////////////////////////////////////
     //                        Modifiers                           //
     ////////////////////////////////////////////////////////////////
@@ -175,20 +161,13 @@ contract Deploy is Deployer {
     /// @notice Deploy all of the L1 contracts necessary for a full Superchain with a single Op Chain.
     function run() public {
         console.log("Deploying a fresh OP Stack including SuperchainConfig");
-        _run();
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
     /// @param _superchainConfigProxy Address of the existing SuperchainConfig proxy
     /// @param _protocolVersionsProxy Address of the existing ProtocolVersions proxy
-    /// @param _includeDump Whether to include a state dump after deployment
-    function runWithSuperchain(
-        address payable _superchainConfigProxy,
-        address payable _protocolVersionsProxy,
-        bool _includeDump
-    )
-        public
-    {
+    function runWithSuperchain(address payable _superchainConfigProxy, address payable _protocolVersionsProxy) public {
         require(_superchainConfigProxy != address(0), "Deploy: must specify address for superchain config proxy");
         require(_protocolVersionsProxy != address(0), "Deploy: must specify address for protocol versions proxy");
 
@@ -204,31 +183,24 @@ contract Deploy is Deployer {
         save("ProtocolVersions", pvProxy.implementation());
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
-        _run(false);
-
-        if (_includeDump) {
-            vm.dumpState(Config.stateDumpPath(""));
-        }
+        _run({ _needsSuperchain: false });
     }
 
+    /// @notice Used for L1 alloc generation.
     function runWithStateDump() public {
         vm.chainId(cfg.l1ChainID());
-        _run();
+        _run({ _needsSuperchain: true });
         vm.dumpState(Config.stateDumpPath(""));
     }
 
     /// @notice Deploy all L1 contracts and write the state diff to a file.
+    ///         Used to generate kontrol tests.
     function runWithStateDiff() public stateDiff {
-        _run();
-    }
-
-    /// @notice Compatibility function for tests that override _run().
-    function _run() internal virtual {
-        _run(true);
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Internal function containing the deploy logic.
-    function _run(bool _needsSuperchain) internal {
+    function _run(bool _needsSuperchain) internal virtual {
         console.log("start of L1 Deploy!");
 
         // Set up the Superchain if needed.
@@ -871,14 +843,17 @@ contract Deploy is Deployer {
         // Set the Cannon FaultDisputeGame implementation in the factory.
         _setFaultGameImplementation({
             _factory: factory,
-            _params: FaultDisputeGameParams({
-                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
-                weth: weth,
+            _params: IFaultDisputeGame.GameConstructorParams({
                 gameType: GameTypes.CANNON,
                 absolutePrestate: loadMipsAbsolutePrestate(),
-                faultVm: IBigStepper(mustGetAddress("Mips")),
                 maxGameDepth: cfg.faultGameMaxDepth(),
-                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration()))
+                splitDepth: cfg.faultGameSplitDepth(),
+                clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                vm: IBigStepper(mustGetAddress("Mips")),
+                weth: weth,
+                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
+                l2ChainId: cfg.l2ChainID()
             })
         });
     }
@@ -892,15 +867,18 @@ contract Deploy is Deployer {
         Claim outputAbsolutePrestate = Claim.wrap(bytes32(cfg.faultGameAbsolutePrestate()));
         _setFaultGameImplementation({
             _factory: factory,
-            _params: FaultDisputeGameParams({
-                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
-                weth: weth,
+            _params: IFaultDisputeGame.GameConstructorParams({
                 gameType: GameTypes.ALPHABET,
                 absolutePrestate: outputAbsolutePrestate,
-                faultVm: IBigStepper(new AlphabetVM(outputAbsolutePrestate, IPreimageOracle(mustGetAddress("PreimageOracle")))),
                 // The max depth for the alphabet trace is always 3. Add 1 because split depth is fully inclusive.
                 maxGameDepth: cfg.faultGameSplitDepth() + 3 + 1,
-                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration()))
+                splitDepth: cfg.faultGameSplitDepth(),
+                clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
+                vm: IBigStepper(new AlphabetVM(outputAbsolutePrestate, IPreimageOracle(mustGetAddress("PreimageOracle")))),
+                weth: weth,
+                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
+                l2ChainId: cfg.l2ChainID()
             })
         });
     }
@@ -925,23 +903,26 @@ contract Deploy is Deployer {
         );
         _setFaultGameImplementation({
             _factory: factory,
-            _params: FaultDisputeGameParams({
-                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
-                weth: weth,
+            _params: IFaultDisputeGame.GameConstructorParams({
                 gameType: GameTypes.FAST,
                 absolutePrestate: outputAbsolutePrestate,
-                faultVm: IBigStepper(new AlphabetVM(outputAbsolutePrestate, fastOracle)),
                 // The max depth for the alphabet trace is always 3. Add 1 because split depth is fully inclusive.
                 maxGameDepth: cfg.faultGameSplitDepth() + 3 + 1,
-                maxClockDuration: Duration.wrap(0) // Resolvable immediately
-             })
+                splitDepth: cfg.faultGameSplitDepth(),
+                clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
+                maxClockDuration: Duration.wrap(0), // Resolvable immediately
+                vm: IBigStepper(new AlphabetVM(outputAbsolutePrestate, fastOracle)),
+                weth: weth,
+                anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
+                l2ChainId: cfg.l2ChainID()
+            })
         });
     }
 
     /// @notice Sets the implementation for the given fault game type in the `DisputeGameFactory`.
     function _setFaultGameImplementation(
         IDisputeGameFactory _factory,
-        FaultDisputeGameParams memory _params
+        IFaultDisputeGame.GameConstructorParams memory _params
     )
         internal
     {
@@ -954,37 +935,19 @@ contract Deploy is Deployer {
         }
 
         uint32 rawGameType = GameType.unwrap(_params.gameType);
-
-        // Redefine _param variable to avoid stack too deep error during compilation
-        FaultDisputeGameParams memory _params_ = _params;
         require(
             rawGameType != GameTypes.PERMISSIONED_CANNON.raw(), "Deploy: Permissioned Game should be deployed by OPCM"
         );
+
         _factory.setImplementation(
-            _params_.gameType,
+            _params.gameType,
             IDisputeGame(
                 DeployUtils.create2AndSave({
                     _save: this,
                     _salt: _implSalt(),
                     _name: "FaultDisputeGame",
                     _nick: string.concat("FaultDisputeGame_", vm.toString(rawGameType)),
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IFaultDisputeGame.__constructor__,
-                            (
-                                _params_.gameType,
-                                _params_.absolutePrestate,
-                                _params_.maxGameDepth,
-                                cfg.faultGameSplitDepth(),
-                                Duration.wrap(uint64(cfg.faultGameClockExtension())),
-                                _params_.maxClockDuration,
-                                _params_.faultVm,
-                                _params_.weth,
-                                IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
-                                cfg.l2ChainID()
-                            )
-                        )
-                    )
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IFaultDisputeGame.__constructor__, (_params)))
                 })
             )
         );

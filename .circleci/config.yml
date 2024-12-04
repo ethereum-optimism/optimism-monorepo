@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   ci_builder_image:
     type: string
-    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.54.0
+    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.55.0
   ci_builder_rust_image:
     type: string
     default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder-rust:latest
@@ -257,7 +257,7 @@ jobs:
           working_directory: packages/contracts-bedrock
           command: |
             # Clone asterisc @ the pinned version to fetch remote `RISCV.sol`
-            ASTERISC_REV="$(cat ../../versions.json | jq -r .asterisc)"
+            ASTERISC_REV="v$(yq '.tools.asterisc' ../../mise.toml)"
             REMOTE_ASTERISC_PATH="./src/vendor/asterisc/RISCV_Remote.sol"
             git clone https://github.com/ethereum-optimism/asterisc \
               -b $ASTERISC_REV && \
@@ -526,7 +526,7 @@ jobs:
             - run:
                 name: Sign
                 command: |
-                  VER=$(jq -r .binary_signer < versions.json)
+                  VER=$(yq '.tools.binary_signer' mise.toml)
                   wget -O - "https://github.com/ethereum-optimism/binary_signer/archive/refs/tags/v${VER}.tar.gz" | tar xz
                   cd "binary_signer-${VER}/signer"
 
@@ -1320,7 +1320,10 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
-      - contracts-bedrock-coverage
+      - contracts-bedrock-coverage:
+          filters:
+            branches:
+              ignore: /.*/
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
@@ -1379,6 +1382,7 @@ workflows:
             op-e2e/interop
             op-e2e/actions
             op-e2e/faultproofs
+            packages/contracts-bedrock/scripts/checks
           requires:
             - contracts-bedrock-build
             - cannon-prestate
@@ -1684,15 +1688,6 @@ workflows:
           name: <<matrix.op_component>>-cross-platform
           requires:
             - <<matrix.op_component>>-docker-publish
-      - docker-build:
-          name: contracts-bedrock-docker-publish
-          docker_name: contracts-bedrock
-          docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
-          resource_class: xlarge
-          publish: true
-          context:
-            - oplabs-gcr
-            - slack
 
   scheduled-preimage-reproducibility:
     when:
