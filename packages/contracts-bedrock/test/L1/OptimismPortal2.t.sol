@@ -1625,8 +1625,13 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
         uint64 gasLimit = systemConfig.gasLimit();
 
         // Bound resource config
+        _systemTxMaxGas = uint32(bound(_systemTxMaxGas, 0, gasLimit - 21000));
         _maxResourceLimit = uint32(bound(_maxResourceLimit, 21000, MAX_GAS_LIMIT / 8));
+        _maxResourceLimit = uint32(bound(_maxResourceLimit, 21000, gasLimit - _systemTxMaxGas));
+        _maximumBaseFee = uint128(bound(_maximumBaseFee, 1, type(uint128).max));
+        _minimumBaseFee = uint32(bound(_minimumBaseFee, 0, _maximumBaseFee - 1));
         _gasLimit = uint64(bound(_gasLimit, 21000, _maxResourceLimit));
+        _gasLimit = uint64(bound(_gasLimit, 0, gasLimit));
         _prevBaseFee = uint128(bound(_prevBaseFee, 0, 3 gwei));
         _prevBoughtGas = uint64(bound(_prevBoughtGas, 0, _maxResourceLimit - _gasLimit));
         _blockDiff = uint8(bound(_blockDiff, 0, 3));
@@ -1634,11 +1639,15 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
         _elasticityMultiplier = uint8(bound(_elasticityMultiplier, 1, type(uint8).max));
 
         // Prevent values that would cause reverts
-        vm.assume(gasLimit >= _gasLimit);
-        vm.assume(_minimumBaseFee < _maximumBaseFee);
-        vm.assume(_baseFeeMaxChangeDenominator > 1);
         vm.assume(uint256(_maxResourceLimit) + uint256(_systemTxMaxGas) <= gasLimit);
         vm.assume(((_maxResourceLimit / _elasticityMultiplier) * _elasticityMultiplier) == _maxResourceLimit);
+
+        // Although we typically want to limit the usage of vm.assume, we've constructed the above
+        // bounds to satisfy the assumptions listed in this specific section. These assumptions
+        // serve only to act as an additional sanity check on top of the bounds and should not
+        // result in an unnecessary number of test rejections.
+        vm.assume(gasLimit >= _gasLimit);
+        vm.assume(_minimumBaseFee < _maximumBaseFee);
 
         // Base fee can increase quickly and mean that we can't buy the amount of gas we want.
         // Here we add a VM assumption to bound the potential increase.
