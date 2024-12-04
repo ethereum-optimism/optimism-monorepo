@@ -63,6 +63,7 @@ contract EASTest is Test {
     bytes4 constant AlreadyRevokedOffchain = bytes4(keccak256("AlreadyRevokedOffchain()"));
     bytes4 constant AlreadyTimestamped = bytes4(keccak256("AlreadyTimestamped()"));
     bytes4 constant Irrevocable = bytes4(keccak256("Irrevocable()"));
+    bytes4 constant InvalidSignatureSelector = 0x8baa579f;
     
     function setUp() public {
         // Setup accounts
@@ -711,13 +712,66 @@ contract EASTest is Test {
         );
     }
 
-    function testMultiAttestation() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
+     function testMultiAttestationReverts() public {
+        string memory schema = "bool like";
+        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaWithResolverId = getSchemaUID(schema, address(resolver), true);
         
-        MultiAttestationRequest[] memory requests = new MultiAttestationRequest[](0);
+        vm.startPrank(sender);
+        registry.register(schema, ISchemaResolver(address(0)), true);
+        registry.register(schema, ISchemaResolver(address(resolver)), true);
+
+        // Test 1: Empty requests array should return empty array
+        MultiAttestationRequest[] memory requests = 
+            new MultiAttestationRequest[](0);
         
-        vm.expectRevert(InvalidLengthSelector);
+        bytes32[] memory uids = eas.multiAttest(requests);
+        assertEq(uids.length, 0);
+
+        // Test 2: Empty data array in request
+        requests = new MultiAttestationRequest[](1);
+        requests[0] = MultiAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](0)
+        });
+
+        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
         eas.multiAttest(requests);
+
+        // Test 3: Invalid schema
+        requests[0] = MultiAttestationRequest({
+            schema: bytes32(0),
+            data: new AttestationRequestData[](1)
+        });
+        requests[0].data[0] = AttestationRequestData({
+            recipient: recipient,
+            expirationTime: NO_EXPIRATION,
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: 0
+        });
+
+        vm.expectRevert(bytes4(keccak256("InvalidSchema()")));
+        eas.multiAttest(requests);
+
+        // Test 4: Invalid expiration time
+        requests[0].schema = schemaId;
+        requests[0].data[0].expirationTime = uint64(block.timestamp);
+
+        vm.expectRevert(bytes4(keccak256("InvalidExpirationTime()")));
+        eas.multiAttest(requests);
+
+        // Test 5: Insufficient value sent
+        requests[0].schema = schemaWithResolverId;
+        requests[0].data[0].expirationTime = NO_EXPIRATION;
+        requests[0].data[0].value = 1 ether;
+
+        vm.expectRevert();
+        eas.multiAttest(requests);
+
+        vm.stopPrank();
     }
 
     function _registerSchema(string memory schema, bool revocable) internal returns (bytes32) {
@@ -907,36 +961,66 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testDelegatedAttestationReverts() public {
+   function testDelegatedAttestationReverts() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
         
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
+        
+    
 
-        // Test revert with empty requests
+        // Test 1: Empty data arrays
+
         MultiDelegatedAttestationRequest[] memory requests = 
-            new MultiDelegatedAttestationRequest[](0);
-        
-        vm.expectRevert(InvalidLengthSelector);
-        eas.multiAttestByDelegation(requests);
-
-        // Test revert with inconsistent lengths
-        MultiDelegatedAttestationRequest[] memory badRequests = 
             new MultiDelegatedAttestationRequest[](1);
-        badRequests[0].schema = schemaId;
-        badRequests[0].data = new AttestationRequestData[](2);
-        badRequests[0].signatures = new Signature[](1);
         
-        vm.expectRevert(InvalidLengthSelector);
-        eas.multiAttestByDelegation(badRequests);
-
-        // Test revert with empty data but signatures
-        badRequests[0].data = new AttestationRequestData[](0);
-        badRequests[0].signatures = new Signature[](1);
+        requests[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](0),
+            signatures: new Signature[](0),
+            attester: sender,
+            deadline: uint64(block.timestamp + 1)
+        });
         
-        vm.expectRevert(InvalidLengthSelector);
-        eas.multiAttestByDelegation(badRequests);
+        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
+        eas.multiAttestByDelegation(requests);
+        
+        // Test 2: Mismatched lengths
+        requests[0].data = new AttestationRequestData[](2);
+        requests[0].signatures = new Signature[](1);
+        
+        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
+        eas.multiAttestByDelegation(requests);
+        
+        // Test 3: Invalid signature first
+        AttestationRequestData[] memory data = new AttestationRequestData[](1);
+        data[0] = AttestationRequestData({
+            recipient: recipient,
+            expirationTime: NO_EXPIRATION,
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: 0
+        });
+        
+        Signature[] memory sigs = new Signature[](1);
+        sigs[0] = Signature({
+            v: 27,
+            r: bytes32(0),
+            s: bytes32(0)
+        });
+        
+        requests[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: data,
+            signatures: sigs,
+            attester: sender,
+            deadline: uint64(block.timestamp - 1)  // Past deadline
+        });
+        
+        vm.expectRevert(abi.encodeWithSelector(InvalidSignatureSelector));
+        eas.multiAttestByDelegation(requests);
 
         vm.stopPrank();
     }
@@ -1171,13 +1255,43 @@ contract EASTest is Test {
 
         vm.stopPrank();
     }
+   function testMultiAttestationDelegationRevert() public {
+        string memory schema = "bool like";
+        bytes32 schemaId = _registerSchema(schema, true);
+        
+        
+        // Create a single request with valid schema but invalid signature
+        MultiDelegatedAttestationRequest[] memory requests = 
+            new MultiDelegatedAttestationRequest[](1);
+            
+        AttestationRequestData[] memory data = new AttestationRequestData[](1);
+        data[0] = AttestationRequestData({
+            recipient: recipient,
+            expirationTime: NO_EXPIRATION,
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: 0
+        });
 
-    function testMultiAttestationDelegationRevert() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
-        
-        MultiDelegatedAttestationRequest[] memory requests = new MultiDelegatedAttestationRequest[](0);
-        
-        vm.expectRevert(InvalidLengthSelector);
+        Signature[] memory signatures = new Signature[](1);
+        signatures[0] = Signature({
+            v: 27,
+            r: bytes32(0),
+            s: bytes32(0)
+        });
+
+        requests[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: data,
+            signatures: signatures,
+            attester: sender,
+            deadline: uint64(block.timestamp + 1)
+        });
+
+  
+        bytes memory expectedError = abi.encodeWithSignature("InvalidSignature()");
+        vm.expectRevert(expectedError);
         eas.multiAttestByDelegation(requests);
     }
 
