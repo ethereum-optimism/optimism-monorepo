@@ -562,7 +562,6 @@ func TestChannelManager_PruneBlocks(t *testing.T) {
 
 func TestChannelManager_PruneChannels(t *testing.T) {
 	cfg := channelManagerTestConfig(100, derive.SingularBatchType)
-	cfg.InitNoneCompressor()
 	A, err := newChannelWithChannelOut(nil, metrics.NoopMetrics, cfg, defaultTestRollupConfig, 0)
 	require.NoError(t, err)
 	B, err := newChannelWithChannelOut(nil, metrics.NoopMetrics, cfg, defaultTestRollupConfig, 0)
@@ -571,10 +570,12 @@ func TestChannelManager_PruneChannels(t *testing.T) {
 	require.NoError(t, err)
 
 	type testCase struct {
-		name               string
-		initialQ           []*channel
-		numChannelsToPrune int
-		expectedQ          []*channel
+		name                   string
+		initialQ               []*channel
+		initialCurrentChannel  *channel
+		numChannelsToPrune     int
+		expectedQ              []*channel
+		expectedCurrentChannel *channel
 	}
 
 	for _, tc := range []testCase{
@@ -583,6 +584,14 @@ func TestChannelManager_PruneChannels(t *testing.T) {
 			initialQ:           []*channel{A, B, C},
 			numChannelsToPrune: 1,
 			expectedQ:          []*channel{B, C},
+		},
+		{
+			name:                   "[A,B,C]+3->[] + currentChannel=C",
+			initialQ:               []*channel{A, B, C},
+			initialCurrentChannel:  C,
+			numChannelsToPrune:     3,
+			expectedQ:              []*channel{},
+			expectedCurrentChannel: nil,
 		},
 		{
 			name:               "[A,B,C]+2->[C]",
@@ -607,9 +616,11 @@ func TestChannelManager_PruneChannels(t *testing.T) {
 			l := testlog.Logger(t, log.LevelCrit)
 			m := NewChannelManager(l, metrics.NoopMetrics, cfg, defaultTestRollupConfig)
 			m.channelQueue = tc.initialQ
+			m.currentChannel = tc.initialCurrentChannel
 			if tc.expectedQ != nil {
 				m.pruneChannels(tc.numChannelsToPrune)
 				require.Equal(t, tc.expectedQ, m.channelQueue)
+				require.Equal(t, tc.expectedCurrentChannel, m.currentChannel)
 			} else {
 				require.Panics(t, func() { m.pruneChannels(tc.numChannelsToPrune) })
 			}

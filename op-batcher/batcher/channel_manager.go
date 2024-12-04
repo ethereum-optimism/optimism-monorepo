@@ -478,7 +478,16 @@ func (s *channelManager) pruneSafeBlocks(num int) {
 
 // pruneChannels dequeues the provided number of channels from the internal channels queue
 func (s *channelManager) pruneChannels(num int) {
+	clearCurrentChannel := false
+	for i := 0; i < num; i++ {
+		if s.channelQueue[i] == s.currentChannel {
+			clearCurrentChannel = true
+		}
+	}
 	s.channelQueue = s.channelQueue[num:]
+	if clearCurrentChannel {
+		s.currentChannel = nil
+	}
 }
 
 // PendingDABytes returns the current number of bytes pending to be written to the DA layer (from blocks fetched from L2
