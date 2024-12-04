@@ -35,6 +35,7 @@ func (s syncActions) String() string {
 // range to load into the local state, and whether to clear the state entirely. Returns an boolean indicating if the sequencer is out of sync.
 func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (syncActions, bool) {
 
+	// PART 1: Initial checks on the sync status
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status")
 		return syncActions{}, true
@@ -46,6 +47,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return syncActions{}, true
 	}
 
+	// PART 2: checks involving only the oldest block in the state
 	oldestBlockInState, hasBlocks := blocks.Peek()
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
 
@@ -69,62 +71,60 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return s, false
 	}
 
+	// PART 3: checks involving all blocks in state
 	newestBlockInState := blocks[blocks.Len()-1]
 	newestBlockInStateNum := newestBlockInState.NumberU64()
 
 	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
 
+	// These actions apply in multiple unhappy scenarios below, where
+	// we detect that the existing state is invalidated
+	// and we need to start over from the sequencer's oldest
+	// unsafe (and not safe) block.
+	startAfresh := syncActions{
+		clearState:   &newSyncStatus.SafeL2.L1Origin,
+		blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+	}
+
 	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		s := syncActions{
-			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
-		}
 		l.Warn("safe head above unsafe head, clearing channel manager state",
 			"unsafeBlock", eth.ToBlockID(newestBlockInState),
 			"newSafeBlock", newSyncStatus.SafeL2.Number,
 			"syncActions",
-			s)
-		return s, false
+			startAfresh)
+		return startAfresh, false
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
-		s := syncActions{
-			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
-		}
 		l.Warn("safe chain reorg, clearing channel manager state",
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
 			"newSafeBlock", newSyncStatus.SafeL2,
-			"syncActions", s)
-		// We should resume work from the new safe head,
-		// and therefore prune all the blocks.
-		return s, false
+			"syncActions", startAfresh)
+		return startAfresh, false
 	}
 
+	// PART 4: checks involving channels
 	for _, ch := range channels {
 		if ch.isFullySubmitted() &&
 			!ch.isTimedOut() &&
 			newSyncStatus.CurrentL1.Number > ch.MaxInclusionBlock() &&
 			newSyncStatus.SafeL2.Number < ch.LatestL2().Number {
-
-			s := syncActions{
-				clearState:   &newSyncStatus.SafeL2.L1Origin,
-				blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
-			}
 			// Safe head did not make the expected progress
-			// for a fully submitted channel. We should go back to
-			// the last safe head and resume work from there.
+			// for a fully submitted channel. This indicates
+			// that the derivation pipeline may have stalled
+			// e.g. because of Holocene strict ordering rules.
 			l.Warn("sequencer did not make expected progress",
 				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
 				"newSafeBlock", newSyncStatus.SafeL2,
-				"syncActions", s)
-			return s, false
+				"syncActions", startAfresh)
+			return startAfresh, false
 		}
 	}
 
+	// PART 5: happy path
 	numChannelsToPrune := 0
 	for _, ch := range channels {
 		if ch.LatestL2().Number > newSyncStatus.SafeL2.Number {
@@ -136,7 +136,6 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	start := newestBlockInStateNum + 1
 	end := youngestUnsafeBlockNum
 
-	// happy path
 	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
