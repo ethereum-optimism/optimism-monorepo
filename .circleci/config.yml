@@ -1657,13 +1657,13 @@ workflows:
 
   scheduled-forge-coverage:
     when:
-      or:
-        - equal: [build_four_hours, <<pipeline.schedule.name>>]
-        - equal: [true, << pipeline.parameters.contracts_coverage_dispatch >>]
+      and:
+        - or:
+            - equal: ["develop", <<pipeline.git.branch>>]
+            - equal: [true, <<pipeline.parameters.contracts_coverage_dispatch>>]
+        - not:
+            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
-      - contracts-bedrock-build:
-          name: contracts-bedrock-build-coverage
-          profile: cicoverage
       - contracts-bedrock-coverage
 
   scheduled-docker-publish:
