@@ -12,6 +12,27 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type testChannelStatuser struct {
+	latestL2                 eth.BlockID
+	inclusionBlock           uint64
+	fullySubmitted, timedOut bool
+}
+
+func (tcs testChannelStatuser) LatestL2() eth.BlockID {
+	return tcs.latestL2
+}
+
+func (tcs testChannelStatuser) MaxInclusionBlock() uint64 {
+	return tcs.inclusionBlock
+}
+func (tcs testChannelStatuser) isFullySubmitted() bool {
+	return tcs.fullySubmitted
+}
+
+func (tcs testChannelStatuser) isTimedOut() bool {
+	return tcs.timedOut
+}
+
 func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 
 	block101 := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(101)})

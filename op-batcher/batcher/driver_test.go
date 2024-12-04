@@ -116,24 +116,3 @@ func TestBatchSubmitter_SafeL1Origin_FailsToResolveRollupClient(t *testing.T) {
 	_, err := bs.safeL1Origin(context.Background())
 	require.Error(t, err)
 }
-
-type testChannelStatuser struct {
-	latestL2                 eth.BlockID
-	inclusionBlock           uint64
-	fullySubmitted, timedOut bool
-}
-
-func (tcs testChannelStatuser) LatestL2() eth.BlockID {
-	return tcs.latestL2
-}
-
-func (tcs testChannelStatuser) MaxInclusionBlock() uint64 {
-	return tcs.inclusionBlock
-}
-func (tcs testChannelStatuser) isFullySubmitted() bool {
-	return tcs.fullySubmitted
-}
-
-func (tcs testChannelStatuser) isTimedOut() bool {
-	return tcs.timedOut
-}
