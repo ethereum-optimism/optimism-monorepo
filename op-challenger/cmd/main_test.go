@@ -765,7 +765,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestMustNotSpecifyCannonNetworkAndRollup-%v", traceType), func(t *testing.T) {
 			verifyArgsInvalid(
 				t,
-				"flag cannon-network can not be used with cannon-rollup-config, cannon-l2-genesis or cannon-l2-chain-id",
+				"flag cannon-network can not be used with cannon-rollup-config, cannon-l2-genesis or cannon-l2-custom",
 				addRequiredArgsExcept(traceType, "--cannon-network",
 					"--cannon-network", cannonNetwork, "--cannon-rollup-config=rollup.json"))
 		})
@@ -777,10 +777,10 @@ func TestCannonRequiredArgs(t *testing.T) {
 			args["--network"] = cannonNetwork
 			args["--cannon-rollup-config"] = "rollup.json"
 			args["--cannon-l2-genesis"] = "gensis.json"
-			args["--cannon-l2-chain-id"] = "6"
+			args["--cannon-l2-custom"] = "true"
 			verifyArgsInvalid(
 				t,
-				"flag network can not be used with cannon-rollup-config, cannon-l2-genesis or cannon-l2-chain-id",
+				"flag network can not be used with cannon-rollup-config, cannon-l2-genesis or cannon-l2-custom",
 				toArgList(args))
 		})
 
@@ -818,8 +818,8 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--cannon-network",
 				"--cannon-rollup-config=rollup.json",
 				"--cannon-l2-genesis=genesis.json",
-				"--cannon-l2-chain-id=9982"))
-			require.Equal(t, uint64(9982), cfg.Cannon.L2ChainID)
+				"--cannon-l2-custom"))
+			require.True(t, cfg.Cannon.L2Custom)
 		})
 
 		t.Run(fmt.Sprintf("TestCannonRollupConfig-%v", traceType), func(t *testing.T) {

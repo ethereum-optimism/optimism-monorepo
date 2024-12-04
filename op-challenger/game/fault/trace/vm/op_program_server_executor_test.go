@@ -74,9 +74,9 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 
 	t.Run("WithL2ChainID", func(t *testing.T) {
 		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
-			c.L2ChainID = 68284
+			c.L2Custom = true
 		})
-		require.Equal(t, "68284", pairs["--l2-chain-id"])
+		require.Equal(t, "true", pairs["--l2.custom"])
 	})
 
 	t.Run("WithRollupConfigPath", func(t *testing.T) {

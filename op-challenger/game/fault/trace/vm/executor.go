@@ -41,7 +41,7 @@ type Config struct {
 	L2               string
 	Server           string // Path to the executable that provides the pre-image oracle server
 	Network          string
-	L2ChainID        uint64
+	L2Custom         bool
 	RollupConfigPath string
 	L2GenesisPath    string
 }
