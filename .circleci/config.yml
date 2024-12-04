@@ -121,7 +121,10 @@ commands:
     steps:
       - run:
           name: Install dependencies
-          command: git submodule update --init --recursive --force -j 8
+          command: |
+            # Manually craft the submodule update command in order to take advantage
+            # of the -j parameter, which speeds it up a lot.
+            git submodule update --init --recursive --force -j 8
           working_directory: packages/contracts-bedrock
 
   notify-failures-on-develop:
