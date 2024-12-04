@@ -70,13 +70,24 @@ wrap_comments=true
 #                         PROFILE: CI                          #
 ################################################################
 
-[profile.cicoverage]
-optimizer = false
-
 [profile.ci.fuzz]
 runs = 512
 
 [profile.ci.invariant]
+runs = 256
+depth = 32
+
+################################################################
+#                     PROFILE: CICOVERAGE                      #
+################################################################
+
+[profile.cicoverage]
+optimizer = false
+
+[profile.cicoverage.fuzz]
+runs = 512
+
+[profile.cicoverage.invariant]
 runs = 256
 depth = 32
 

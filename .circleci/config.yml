@@ -1305,11 +1305,9 @@ workflows:
           # Build with just core + script contracts.
           name: contracts-bedrock-build
           skip_pattern: test
-          profile: ci
       - contracts-bedrock-build:
           # Build with just core + script contracts.
           name: contracts-bedrock-build-coverage
-          skip_pattern: test
           profile: cicoverage
       - check-kontrol-build:
           requires:
