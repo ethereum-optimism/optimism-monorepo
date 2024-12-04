@@ -67,7 +67,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
 			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
-		l.Warn("new safe head is behind oldest block in state", "syncActions", s)
+		l.Warn("new safe head is behind oldest block in state", "syncActions", s, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
 		return s, false
 	}
 
