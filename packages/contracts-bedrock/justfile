@@ -104,9 +104,12 @@ kontrol-summary-full: kontrol-summary kontrol-summary-fp
 snapshots-abi-storage:
   go run ./scripts/autogen/generate-snapshots .
 
-# Updates the snapshots/semver-lock.json file.
-semver-lock:
+# Updates the snapshots/semver-lock.json file without building contracts.
+semver-lock-no-build:
   go run scripts/autogen/generate-semver-lock/main.go
+
+# Updates the snapshots/semver-lock.json file.
+semver-lock: build semver-lock-no-build
 
 # Generates core snapshots without building contracts. Currently just an alias for
 # snapshots-abi-storage because we no longer run Kontrol snapshots here. Run
