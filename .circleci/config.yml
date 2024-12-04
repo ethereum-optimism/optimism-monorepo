@@ -1575,7 +1575,7 @@ workflows:
             - go-mod-download
           context:
             - slack
-      - x
+      - contracts-bedrock-build:
           skip_pattern: test
           context:
             - slack
