@@ -4,8 +4,6 @@
 
 # This Dockerfile builds all the dependencies needed by the smart-contracts, excluding Go and Python.
 
-FROM --platform=linux/amd64 us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:latest as foundry
-
 FROM --platform=linux/amd64 debian:bookworm-20240812-slim as base
 
 # Base: install deps
@@ -16,11 +14,9 @@ RUN apt-get update && apt-get install -y \
   git \
   make \
   bash \
+  build-essential \
+  clang \
   --no-install-recommends
-
-COPY --from=foundry /usr/local/bin/just /usr/local/bin/just
-COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge
-COPY --from=foundry /usr/local/bin/cast /usr/local/bin/cast
 
 WORKDIR /opt/optimism
 
@@ -29,6 +25,30 @@ COPY ./packages ./packages
 COPY .git/ ./.git
 COPY .gitmodules ./.gitmodules
 
+# Set up mise environment
+ENV PATH="/root/.local/share/mise/shims:$PATH"
+ENV PATH="/root/.local/bin:${PATH}"
+
+# Install mise
+RUN curl https://mise.run | sh
+
+# Trust the mise configuration
+RUN mise trust ./mise.toml
+
+# Install dependencies
+RUN mise install just
+RUN mise install forge
+RUN mise install cast
+RUN mise install rust
+RUN mise install cargo:svm-rs
+
+# Save binaries to /usr/local/bin
+RUN cp $(mise which just) /usr/local/bin/just
+RUN cp $(mise which forge) /usr/local/bin/forge
+RUN cp $(mise which cast) /usr/local/bin/cast
+RUN cp $(mise which svm) /usr/local/bin/svm
+
+# Build the contracts
 RUN git submodule update --init --recursive \
     && cd packages/contracts-bedrock \
     && just forge-build \
@@ -50,10 +70,10 @@ COPY /ops/docker/oplabs.crt /usr/local/share/ca-certificates/oplabs.crt
 RUN chmod 644 /usr/local/share/ca-certificates/oplabs.crt \
   && update-ca-certificates
 
-COPY --from=foundry /usr/local/bin/just /usr/local/bin/just
-COPY --from=foundry /usr/local/bin/forge /usr/local/bin/forge
-COPY --from=foundry /usr/local/bin/cast /usr/local/bin/cast
-COPY --from=foundry /usr/local/bin/svm /usr/local/bin/svm
+COPY --from=base /usr/local/bin/just /usr/local/bin/just
+COPY --from=base /usr/local/bin/forge /usr/local/bin/forge
+COPY --from=base /usr/local/bin/cast /usr/local/bin/cast
+COPY --from=base /usr/local/bin/svm /usr/local/bin/svm
 
 RUN svm install 0.8.25 && \
   svm install 0.8.15 && \

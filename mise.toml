@@ -12,7 +12,6 @@ direnv = "2.35.0"
 just = "1.37.0"
 
 # Cargo dependencies
-"cargo:just" = "1.37.0"
 "cargo:svm-rs" = "0.5.8"
 
 # Go dependencies
