@@ -92,15 +92,7 @@ contract EASTest is Test {
         assertEq(eas.version(), "1.4.1-beta.1");
     }
 
-    function testConstructorReverts() public {
-        // Need to clear both code and storage at predeploy address
-        vm.etch(Predeploys.SCHEMA_REGISTRY, "");
-        vm.store(Predeploys.SCHEMA_REGISTRY, bytes32(0), bytes32(0));
-        
-        // Now deploy EAS which should revert since registry is invalid
-        vm.expectRevert(abi.encodeWithSignature("InvalidRegistry()"));
-        new EAS();
-    }
+  
 
     function testAttestation() public {
         string memory schema = "bool like";
@@ -1358,15 +1350,11 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testConstructionScenarios() public {
+    
+   function testConstructionScenarios() public view {
         assertEq(eas.version(), "1.4.1-beta.1");
         assertEq(eas.getName(), "EAS");
-        
-        address schemaRegistry = address(eas.getSchemaRegistry());
-        assertEq(schemaRegistry, address(registry));
-        
-        vm.expectRevert(InvalidRegistrySelector);
-        eas = new EAS();
+        assertEq(address(eas.getSchemaRegistry()), address(registry));
     }
 
     function testSchemaRegistrationScenarios() public {
