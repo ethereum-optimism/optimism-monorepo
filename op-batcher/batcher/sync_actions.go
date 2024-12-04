@@ -49,8 +49,6 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 	// PART 2: checks involving only the oldest block in the state
 	oldestBlockInState, hasBlocks := blocks.Peek()
-	oldestBlockInStateNum := oldestBlockInState.NumberU64()
-
 	oldestUnsafeBlockNum := newSyncStatus.SafeL2.Number + 1
 	youngestUnsafeBlockNum := newSyncStatus.UnsafeL2.Number
 
@@ -61,6 +59,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
 	}
+
+	oldestBlockInStateNum := oldestBlockInState.NumberU64()
 
 	if oldestUnsafeBlockNum < oldestBlockInStateNum {
 		s := syncActions{
