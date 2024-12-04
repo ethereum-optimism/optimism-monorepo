@@ -287,8 +287,8 @@ jobs:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     parameters:
-      skip_pattern:
-        description: Glob pattern of tests to skip
+      build_args:
+        description: Forge build arguments
         type: string
         default: ""
       profile:
@@ -307,12 +307,7 @@ jobs:
           working_directory: packages/contracts-bedrock
       - run:
           name: Build contracts
-          command: |
-            if [ -z "<<parameters.skip_pattern>>" ]; then
-              forge build --deny-warnings
-            else
-              forge build --deny-warnings --skip <<parameters.skip_pattern>>
-            fi
+          command: forge build <<parameters.build_args>>
           environment:
             FOUNDRY_PROFILE: <<parameters.profile>>
           working_directory: packages/contracts-bedrock
@@ -1307,11 +1302,10 @@ workflows:
     jobs:
       - go-mod-download
       - contracts-bedrock-build:
-          # Build with just core + script contracts.
           name: contracts-bedrock-build
-          skip_pattern: test
-      - contracts-bedrock-build:
           # Build with just core + script contracts.
+          build_args: --deny-warnings --skip test
+      - contracts-bedrock-build:
           name: contracts-bedrock-build-coverage
           profile: cicoverage
       - check-kontrol-build:
@@ -1609,7 +1603,7 @@ workflows:
           context:
             - slack
       - contracts-bedrock-build:
-          skip_pattern: test
+          build_args: --deny-warnings --skip test
           context:
             - slack
       - go-tests:
@@ -1647,7 +1641,7 @@ workflows:
         - equal: [true, << pipeline.parameters.cannon_full_test_dispatch >>]
     jobs:
       - contracts-bedrock-build:
-          skip_pattern: test
+          build_args: --deny-warnings --skip test
       - cannon-go-lint-and-test:
           name: cannon-go-lint-and-test-<<matrix.mips_word_size>>-bit
           requires:
@@ -1657,6 +1651,22 @@ workflows:
           matrix:
             parameters:
               mips_word_size: [32, 64]
+
+  scheduled-forge-coverage:
+    triggers:
+      - schedule:
+          cron: "0 0,4,8,12,16,20 * * *"
+          filters:
+            branches:
+              only:
+                - develop
+    jobs:
+      - contracts-bedrock-build:
+          name: contracts-bedrock-build-coverage
+          profile: cicoverage
+      - contracts-bedrock-coverage:
+          requires:
+            - contracts-bedrock-build-coverage
 
   scheduled-docker-publish:
     when:
