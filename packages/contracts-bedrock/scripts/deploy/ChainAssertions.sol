@@ -175,19 +175,20 @@ library ChainAssertions {
         // Check that the contract is initialized
         assertInitializedSlotIsSet({ _contractAddress: address(messenger), _slot: 0, _offset: 20 });
 
-        require(address(messenger.OTHER_MESSENGER()) == address(0), "CHECK-L1XDM-20");
-        require(address(messenger.otherMessenger()) == address(0), "CHECK-L1XDM-30");
-
         if (_isProxy) {
+            require(address(messenger.OTHER_MESSENGER()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "CHECK-L1XDM-20");
+            require(address(messenger.otherMessenger()) == Predeploys.L2_CROSS_DOMAIN_MESSENGER, "CHECK-L1XDM-30");
             require(address(messenger.PORTAL()) == _contracts.OptimismPortal, "CHECK-L1XDM-40");
             require(address(messenger.portal()) == _contracts.OptimismPortal, "CHECK-L1XDM-50");
             require(address(messenger.superchainConfig()) == _contracts.SuperchainConfig, "CHECK-L1XDM-60");
             bytes32 xdmSenderSlot = _vm.load(address(messenger), bytes32(uint256(204)));
             require(address(uint160(uint256(xdmSenderSlot))) == Constants.DEFAULT_L2_SENDER, "CHECK-L1XDM-70");
         } else {
-            require(address(messenger.PORTAL()) == address(0), "CHECK-L1XDM-80");
-            require(address(messenger.portal()) == address(0), "CHECK-L1XDM-90");
-            require(address(messenger.superchainConfig()) == address(0), "CHECK-L1XDM-100");
+            require(address(messenger.OTHER_MESSENGER()) == address(0), "CHECK-L1XDM-80");
+            require(address(messenger.otherMessenger()) == address(0), "CHECK-L1XDM-90");
+            require(address(messenger.PORTAL()) == address(0), "CHECK-L1XDM-100");
+            require(address(messenger.portal()) == address(0), "CHECK-L1XDM-110");
+            require(address(messenger.superchainConfig()) == address(0), "CHECK-L1XDM-120");
         }
     }
 
@@ -384,8 +385,8 @@ library ChainAssertions {
         assertInitializedSlotIsSet({ _contractAddress: address(factory), _slot: 0, _offset: 0 });
 
         if (_isProxy) {
-            require(factory.BRIDGE() == address(0), "CHECK-MERC20F-10");
-            require(factory.bridge() == address(0), "CHECK-MERC20F-20");
+            require(factory.BRIDGE() == _contracts.L1StandardBridge, "CHECK-MERC20F-10");
+            require(factory.bridge() == _contracts.L1StandardBridge, "CHECK-MERC20F-20");
         } else {
             require(factory.BRIDGE() == address(0), "CHECK-MERC20F-30");
             require(factory.bridge() == address(0), "CHECK-MERC20F-40");
@@ -406,17 +407,18 @@ library ChainAssertions {
         // Check that the contract is initialized
         assertInitializedSlotIsSet({ _contractAddress: address(bridge), _slot: 0, _offset: 0 });
 
-        require(address(bridge.OTHER_BRIDGE()) == address(0), "CHECK-L1ERC721B-10");
-        require(address(bridge.otherBridge()) == address(0), "CHECK-L1ERC721B-20");
-
         if (_isProxy) {
+            require(address(bridge.OTHER_BRIDGE()) == Predeploys.L2_ERC721_BRIDGE, "CHECK-L1ERC721B-10");
+            require(address(bridge.otherBridge()) == Predeploys.L2_ERC721_BRIDGE, "CHECK-L1ERC721B-20");
             require(address(bridge.MESSENGER()) == _contracts.L1CrossDomainMessenger, "CHECK-L1ERC721B-30");
             require(address(bridge.messenger()) == _contracts.L1CrossDomainMessenger, "CHECK-L1ERC721B-40");
             require(address(bridge.superchainConfig()) == _contracts.SuperchainConfig, "CHECK-L1ERC721B-50");
         } else {
-            require(address(bridge.MESSENGER()) == address(0), "CHECK-L1ERC721B-60");
-            require(address(bridge.messenger()) == address(0), "CHECK-L1ERC721B-70");
-            require(address(bridge.superchainConfig()) == address(0), "CHECK-L1ERC721B-80");
+            require(address(bridge.OTHER_BRIDGE()) == address(0), "CHECK-L1ERC721B-60");
+            require(address(bridge.otherBridge()) == address(0), "CHECK-L1ERC721B-70");
+            require(address(bridge.MESSENGER()) == address(0), "CHECK-L1ERC721B-80");
+            require(address(bridge.messenger()) == address(0), "CHECK-L1ERC721B-90");
+            require(address(bridge.superchainConfig()) == address(0), "CHECK-L1ERC721B-100");
         }
     }
 
