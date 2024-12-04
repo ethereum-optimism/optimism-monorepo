@@ -3,6 +3,7 @@ package pipeline
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -14,6 +15,8 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 )
+
+var ErrRefusingToDeployTaggedReleaseWithoutOPCM = errors.New("refusing to deploy tagged release without OPCM")
 
 func IsSupportedStateVersion(version int) bool {
 	return version == 1
@@ -150,5 +153,5 @@ This process will now exit.
 `, "\n")
 
 	_, _ = fmt.Fprint(os.Stderr, warning)
-	return fmt.Errorf("refusing to deploy to chain without existing OPCM")
+	return ErrRefusingToDeployTaggedReleaseWithoutOPCM
 }
