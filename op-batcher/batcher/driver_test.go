@@ -160,7 +160,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		newSyncStatus eth.SyncStatus
 		prevCurrentL1 eth.L1BlockRef
 		blocks        queue.Queue[*types.Block]
-		channels      []ChannelStatuser
+		channels      []channelStatuser
 		// expectations
 		expected     SyncActions
 		expectedErr  error
@@ -193,7 +193,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block102, block103}, // note absence of block101
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{101, 109},
@@ -209,7 +209,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{105, 109},
@@ -225,7 +225,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{104, 109},
@@ -241,7 +241,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: [2]uint64{102, 109},
@@ -257,7 +257,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				blocksToLoad: [2]uint64{104, 109},
 			},
@@ -271,7 +271,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			prevCurrentL1: eth.BlockRef{Number: 1},
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
-			channels:      []ChannelStatuser{channel103},
+			channels:      []channelStatuser{channel103},
 			expected: SyncActions{
 				blocksToPrune:   3,
 				channelsToPrune: 1,

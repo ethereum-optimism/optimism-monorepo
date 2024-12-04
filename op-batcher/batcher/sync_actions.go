@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type ChannelStatuser interface {
+type channelStatuser interface {
 	isFullySubmitted() bool
 	isTimedOut() bool
 	LatestL2() eth.BlockID
@@ -36,7 +36,7 @@ func (s SyncActions) String() string {
 // state of the batcher (blocks and channels), the new sync status, and the previous current L1 block. The actions are returned
 // in a struct specifying the number of blocks to prune, the number of channels to prune, whether to wait for node sync, the block
 // range to load into the local state, and whether to clear the state entirely. Returns an error if the sequencer is out of sync.
-func computeSyncActions[T ChannelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, error) {
+func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCurrentL1 eth.L1BlockRef, blocks queue.Queue[*types.Block], channels []T, l log.Logger) (SyncActions, error) {
 
 	if newSyncStatus.HeadL1 == (eth.L1BlockRef{}) {
 		l.Warn("empty sync status")
