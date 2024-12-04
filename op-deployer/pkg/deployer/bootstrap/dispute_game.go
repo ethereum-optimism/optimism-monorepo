@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
+	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
-	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/snapshots"
-	"github.com/ethereum/go-ethereum"
-	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 
@@ -149,6 +149,10 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
+	l1Rpc, err := rpc.Dial(cfg.L1RPCUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
@@ -175,21 +179,34 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
 	host, err := env.DefaultScriptHost(
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		script.WithForkHook(func(forkCfg *script.ForkConfig) (forking.ForkSource, error) {
+			src, err := forking.RPCSourceByNumber(forkCfg.URLOrAlias, l1Rpc, *forkCfg.BlockNumber)
+			if err != nil {
+				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
+			}
+			return forking.Cache(src), nil
+		}),
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return fmt.Errorf("failed to create L1 script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
+
+	latest, err := l1Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get latest block: %w", err)
+	}
+
+	if _, err := host.CreateSelectFork(
+		script.ForkWithURLOrAlias("main"),
+		script.ForkWithBlockNumberU256(latest.Number),
+	); err != nil {
+		return fmt.Errorf("failed to select fork: %w", err)
+	}
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {
@@ -198,27 +215,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		release = "dev"
 	}
 
-	// We need to etch the VM and PreimageOracle addresses so that they have nonzero code
-	// and the checks in the FaultDisputeGame constructor pass.
-	oracleAddr, err := loadOracleAddr(ctx, l1Client, cfg.Vm)
-	if err != nil {
-		return err
-	}
-	addresses := []common.Address{
-		cfg.Vm,
-		oracleAddr,
-	}
-	for _, addr := range addresses {
-		code, err := l1Client.CodeAt(ctx, addr, nil)
-		if err != nil {
-			return fmt.Errorf("failed to get code for %v: %w", addr, err)
-		}
-		host.ImportAccount(addr, types.Account{
-			Code: code,
-		})
-	}
 	lgr.Info("deploying dispute game", "release", release)
-
 	dgo, err := opcm.DeployDisputeGame(
 		host,
 		opcm.DeployDisputeGameInput{
@@ -253,16 +250,4 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
 	return nil
-}
-
-func loadOracleAddr(ctx context.Context, l1Client *ethclient.Client, vmAddr common.Address) (common.Address, error) {
-	callData, err := snapshots.LoadMIPSABI().Pack("oracle")
-	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to create vm.oracle() calldata: %w", err)
-	}
-	result, err := l1Client.CallContract(ctx, ethereum.CallMsg{Data: callData, To: &vmAddr}, nil)
-	if err != nil {
-		return common.Address{}, fmt.Errorf("failed to call vm.oracle(): %w", err)
-	}
-	return common.BytesToAddress(result), nil
 }

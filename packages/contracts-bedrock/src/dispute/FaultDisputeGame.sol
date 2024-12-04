@@ -55,10 +55,10 @@ import {
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { IBigStepper, IPreimageOracle } from "src/dispute/interfaces/IBigStepper.sol";
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 /// @title FaultDisputeGame
 /// @notice An implementation of the `IFaultDisputeGame` interface.
@@ -161,8 +161,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.8
-    string public constant version = "1.3.1-beta.8";
+    /// @custom:semver 1.3.1-beta.9
+    string public constant version = "1.3.1-beta.9";
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;

@@ -16,7 +16,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
 import { LivenessModule } from "src/safe/LivenessModule.sol";
 import { DeputyGuardianModule } from "src/safe/DeputyGuardianModule.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 import { Deploy } from "./Deploy.s.sol";
 

@@ -14,8 +14,8 @@ import { InvalidExitedValue, InvalidMemoryProof, InvalidSecondMemoryProof } from
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IMIPS2 } from "src/cannon/interfaces/IMIPS2.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IMIPS2 } from "interfaces/cannon/IMIPS2.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 contract ThreadStack {
     bytes32 internal constant EMPTY_THREAD_ROOT = hex"ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";

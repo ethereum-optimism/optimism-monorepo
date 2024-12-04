@@ -11,11 +11,11 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { SafeSend } from "src/universal/SafeSend.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
-import { IETHLiquidity } from "src/L2/interfaces/IETHLiquidity.sol";
-import { IERC7802, IERC165 } from "src/L2/interfaces/IERC7802.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
+import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
+import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @custom:proxied true
@@ -43,8 +43,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     event RelayETH(address indexed from, address indexed to, uint256 amount, uint256 source);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.12
-    string public constant version = "1.0.0-beta.12";
+    /// @custom:semver 1.0.0-beta.13
+    string public constant version = "1.0.0-beta.13";
 
     /// @inheritdoc WETH98
     function deposit() public payable override {

@@ -5,11 +5,11 @@ pragma solidity 0.8.15;
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 // Interfaces
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { ISystemConfigInterop } from "src/L1/interfaces/ISystemConfigInterop.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
 contract OPContractsManagerInterop is OPContractsManager {
     constructor(

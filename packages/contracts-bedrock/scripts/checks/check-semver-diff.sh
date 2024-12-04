@@ -11,6 +11,22 @@ source "$SCRIPT_DIR/utils/semver-utils.sh"
 # Path to semver-lock.json.
 SEMVER_LOCK="snapshots/semver-lock.json"
 
+# Define excluded contracts.
+EXCLUDED_CONTRACTS=(
+    "src/vendor/asterisc/RISCV.sol"
+)
+
+# Helper function to check if a contract is excluded.
+is_excluded() {
+    local contract="$1"
+    for excluded in "${EXCLUDED_CONTRACTS[@]}"; do
+        if [[ "$contract" == "$excluded" ]]; then
+            return 0
+        fi
+    done
+    return 1
+}
+
 # Create a temporary directory.
 temp_dir=$(mktemp -d)
 trap 'rm -rf "$temp_dir"' EXIT
@@ -49,6 +65,11 @@ has_errors=false
 
 # Check each changed contract for a semver version change.
 for contract in $changed_contracts; do
+    # Skip excluded contracts.
+    if is_excluded "$contract"; then
+        continue
+    fi
+
     # Check if the contract file exists.
     if [ ! -f "$contract" ]; then
         echo "❌ Error: Contract file $contract not found"

@@ -12,9 +12,9 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 
 // Interfaces
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @title DeployDelayedWETH
 contract DeployDelayedWETHInput is BaseDeployIO {

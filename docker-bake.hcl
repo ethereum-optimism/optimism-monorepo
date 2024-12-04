@@ -7,7 +7,7 @@ variable "REPOSITORY" {
 }
 
 variable "KONA_VERSION" {
-  default = "kona-client-v0.1.0-beta.4"
+  default = "kona-client-v0.1.0-beta.5"
 }
 
 variable "GIT_COMMIT" {
@@ -244,15 +244,6 @@ target "ci-builder-rust" {
   platforms = split(",", PLATFORMS)
   target="rust-builder"
   tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder-rust:${tag}"]
-}
-
-target "contracts-bedrock" {
-  dockerfile = "./ops/docker/Dockerfile.packages"
-  context = "."
-  target = "contracts-bedrock"
-  # See comment in Dockerfile.packages for why we only build for linux/amd64.
-  platforms = ["linux/amd64"]
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/contracts-bedrock:${tag}"]
 }
 
 target "op-deployer" {

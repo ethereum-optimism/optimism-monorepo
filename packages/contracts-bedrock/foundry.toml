@@ -30,7 +30,8 @@ remappings = [
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
-  'gelato/=lib/automate/contracts'
+  'gelato/=lib/automate/contracts',
+  'interfaces/=interfaces'
 ]
 
 fs_permissions = [
@@ -78,15 +79,31 @@ runs = 256
 depth = 32
 
 ################################################################
+#                     PROFILE: CICOVERAGE                      #
+################################################################
+
+[profile.cicoverage]
+optimizer = false
+
+[profile.cicoverage.fuzz]
+runs = 512
+
+[profile.cicoverage.invariant]
+runs = 256
+depth = 32
+
+################################################################
 #                       PROFILE: CIHEAVY                       #
 ################################################################
 
 [profile.ciheavy.fuzz]
 runs = 20000
+timeout = 600
 
 [profile.ciheavy.invariant]
 runs = 128
 depth = 512
+timeout = 600
 
 ################################################################
 #                         PROFILE: LITE                        #

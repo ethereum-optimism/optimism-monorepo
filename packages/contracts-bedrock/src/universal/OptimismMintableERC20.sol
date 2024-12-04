@@ -10,9 +10,9 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 
 // Interfaces
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
-import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismMintableERC20 } from "interfaces/universal/IOptimismMintableERC20.sol";
+import { ILegacyMintableERC20 } from "interfaces/universal/ILegacyMintableERC20.sol";
 
 /// @title OptimismMintableERC20
 /// @notice OptimismMintableERC20 is a standard extension of the base ERC20 token contract designed
@@ -47,8 +47,8 @@ contract OptimismMintableERC20 is ERC20Permit, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0-beta.3
-    string public constant version = "1.4.0-beta.3";
+    /// @custom:semver 1.4.0-beta.4
+    string public constant version = "1.4.0-beta.4";
 
     /// @notice Getter function for the permit2 address. It deterministically deployed
     ///         so it will always be at the same address. It is also included as a preinstall,

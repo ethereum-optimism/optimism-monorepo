@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
 
 // Interfaces
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.

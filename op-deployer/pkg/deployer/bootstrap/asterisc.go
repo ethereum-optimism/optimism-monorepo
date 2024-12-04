@@ -155,6 +155,18 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
 
+	latest, err := l1Client.HeaderByNumber(ctx, nil)
+	if err != nil {
+		return fmt.Errorf("failed to get latest block: %w", err)
+	}
+
+	if _, err := l1Host.CreateSelectFork(
+		script.ForkWithURLOrAlias("main"),
+		script.ForkWithBlockNumberU256(latest.Number),
+	); err != nil {
+		return fmt.Errorf("failed to select fork: %w", err)
+	}
+
 	dgo, err := opcm.DeployAsterisc(
 		l1Host,
 		opcm.DeployAsteriscInput{

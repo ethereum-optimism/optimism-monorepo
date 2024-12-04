@@ -1,22 +1,22 @@
 package pipeline
 
 import (
-	"bufio"
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
-	"github.com/mattn/go-isatty"
-
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
 
 	"github.com/ethereum/go-ethereum/common"
 )
+
+var ErrRefusingToDeployTaggedReleaseWithoutOPCM = errors.New("refusing to deploy tagged release without OPCM")
 
 func IsSupportedStateVersion(version int) bool {
 	return version == 1
@@ -141,32 +141,17 @@ func displayWarning() error {
 ####################### WARNING! WARNING WARNING! #######################
 
 You are deploying a tagged release to a chain with no pre-deployed OPCM.
-The contracts you are deploying may not be audited, or match a governance
-approved release.
+Due to a quirk of our contract version system, this can lead to deploying
+contracts containing unaudited or untested code. As a result, this 
+functionality is currently disabled.
 
-USE OF THIS DEPLOYMENT IS NOT RECOMMENDED FOR PRODUCTION. USE AT YOUR OWN
-RISK. BUGS OR LOSS OF FUNDS MAY OCCUR. WE HOPE YOU KNOW WHAT YOU ARE
-DOING.
+We will fix this in an upcoming release.
+
+This process will now exit.
 
 ####################### WARNING! WARNING WARNING! #######################
 `, "\n")
 
 	_, _ = fmt.Fprint(os.Stderr, warning)
-
-	if isatty.IsTerminal(os.Stdout.Fd()) {
-		_, _ = fmt.Fprintf(os.Stderr, "Please confirm that you have read and understood the warning above [y/n]: ")
-
-		reader := bufio.NewReader(os.Stdin)
-		input, err := reader.ReadString('\n')
-		if err != nil {
-			return fmt.Errorf("failed to read input: %w", err)
-		}
-
-		input = strings.ToLower(strings.TrimSpace(input))
-		if input != "y" && input != "yes" {
-			return fmt.Errorf("aborted")
-		}
-	}
-
-	return nil
+	return ErrRefusingToDeployTaggedReleaseWithoutOPCM
 }

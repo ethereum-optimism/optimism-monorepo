@@ -5,8 +5,8 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Interfaces
-import { IGovernanceToken } from "src/governance/interfaces/IGovernanceToken.sol";
-import { IMintManager } from "src/governance/interfaces/IMintManager.sol";
+import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
+import { IMintManager } from "interfaces/governance/IMintManager.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract MintManager_Initializer is CommonTest {

@@ -121,8 +121,8 @@ Write your proof in a `.k.sol` file in the [`proofs`](./proofs/) folder, which i
 To reference the correct addresses for writing the tests, first import the signatures as in this example:
 
 ```solidity
-import { IOptimismPortal as OptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IOptimismPortal as OptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ```
 
 Declare the correspondent variables and cast the correct signatures to the correct addresses:

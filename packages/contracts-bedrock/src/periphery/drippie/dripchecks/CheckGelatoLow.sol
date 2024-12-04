@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Interfaces
-import { IGelatoTreasury } from "src/vendor/interfaces/IGelatoTreasury.sol";
+import { IGelatoTreasury } from "interfaces/vendor/IGelatoTreasury.sol";
 import { IDripCheck } from "src/periphery/drippie/IDripCheck.sol";
 
 /// @title CheckGelatoLow
