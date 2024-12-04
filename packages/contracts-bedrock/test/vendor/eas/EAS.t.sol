@@ -52,18 +52,27 @@ contract EASTest is Test {
 
     uint64 constant NO_EXPIRATION = 0;
     bytes32 constant ZERO_BYTES32 = bytes32(0);
-    
-    bytes4 constant InvalidRegistrySelector = 0x3c5e4668;  // bytes4(keccak256("InvalidRegistry()"))
-    bytes4 constant InvalidSchema = bytes4(keccak256("InvalidSchema()"));
-    bytes4 constant InvalidExpirationTimeSelector = 0x44e7f2e1;  // bytes4(keccak256("InvalidExpirationTime()"))
-    bytes4 constant NotFound = bytes4(keccak256("NotFound()"));
-    bytes4 constant AccessDenied = bytes4(keccak256("AccessDenied()"));
-    bytes4 constant InvalidLength = bytes4(keccak256("InvalidLength()"));
-    bytes4 constant InvalidLengthSelector = 0x947d5a84;  // bytes4(keccak256("InvalidLength()"))
-    bytes4 constant AlreadyRevokedOffchain = bytes4(keccak256("AlreadyRevokedOffchain()"));
-    bytes4 constant AlreadyTimestamped = bytes4(keccak256("AlreadyTimestamped()"));
-    bytes4 constant Irrevocable = bytes4(keccak256("Irrevocable()"));
-    bytes4 constant InvalidSignatureSelector = 0x8baa579f;
+    bytes4 constant InvalidRegistrySelector = bytes4(keccak256("InvalidRegistry()"));
+    bytes4 constant InvalidSchemaSelector = bytes4(keccak256("InvalidSchema()"));
+    bytes4 constant InvalidExpirationTimeSelector = bytes4(keccak256("InvalidExpirationTime()"));
+    bytes4 constant NotFoundSelector = bytes4(keccak256("NotFound()"));
+    bytes4 constant AccessDeniedSelector = bytes4(keccak256("AccessDenied()"));
+    bytes4 constant InvalidLengthSelector = bytes4(keccak256("InvalidLength()"));
+    bytes4 constant AlreadyRevokedOffchainSelector = bytes4(keccak256("AlreadyRevokedOffchain()"));
+    bytes4 constant AlreadyTimestampedSelector = bytes4(keccak256("AlreadyTimestamped()"));
+    bytes4 constant IrrevocableSelector = bytes4(keccak256("Irrevocable()"));
+    bytes4 constant InvalidSignatureSelector = bytes4(keccak256("InvalidSignature()"));
+    // bytes4 constant InvalidRegistrySelector = 0x3c5e4668;  // bytes4(keccak256("InvalidRegistry()"))
+    // bytes4 constant InvalidSchema = bytes4(keccak256("InvalidSchema()"));
+    // bytes4 constant InvalidExpirationTimeSelector = 0x44e7f2e1;  // bytes4(keccak256("InvalidExpirationTime()"))
+    // bytes4 constant NotFound = bytes4(keccak256("NotFound()"));
+    // bytes4 constant AccessDenied = bytes4(keccak256("AccessDenied()"));
+    // bytes4 constant InvalidLength = bytes4(keccak256("InvalidLength()"));
+    // bytes4 constant InvalidLengthSelector = 0x947d5a84;  // bytes4(keccak256("InvalidLength()"))
+    // bytes4 constant AlreadyRevokedOffchain = bytes4(keccak256("AlreadyRevokedOffchain()"));
+    // bytes4 constant AlreadyTimestamped = bytes4(keccak256("AlreadyTimestamped()"));
+    // bytes4 constant Irrevocable = bytes4(keccak256("Irrevocable()"));
+    // bytes4 constant InvalidSignatureSelector = 0x8baa579f;
     
     function setUp() public {
         // Setup accounts
@@ -275,7 +284,7 @@ contract EASTest is Test {
         );
         
         vm.prank(sender2);
-        vm.expectRevert(AccessDenied);
+        vm.expectRevert(AccessDeniedSelector);
         eas.revoke(RevocationRequest({
             schema: schemaId,
             data: RevocationRequestData({
@@ -295,7 +304,7 @@ contract EASTest is Test {
         bytes32 nonExistentUid = bytes32(uint256(1));
         
         vm.prank(sender);
-        vm.expectRevert(NotFound);
+        vm.expectRevert(NotFoundSelector);
         eas.revoke(RevocationRequest({
             schema: schemaId,
             data: RevocationRequestData({
@@ -340,7 +349,7 @@ contract EASTest is Test {
         bytes32 unregisteredSchemaId = getSchemaUID("unregistered schema", address(0), true);
         
         vm.prank(sender);
-        vm.expectRevert(InvalidSchema);
+        vm.expectRevert(InvalidSchemaSelector);
         eas.attest(
             AttestationRequest({
                 schema: unregisteredSchemaId,
@@ -373,7 +382,7 @@ contract EASTest is Test {
 
         // Test: revert when attesting to an unregistered schema
         bytes32 badSchemaId = keccak256("BAD");
-        vm.expectRevert(InvalidSchema);
+        vm.expectRevert(InvalidSchemaSelector);
         eas.attest(
             AttestationRequest({
                 schema: badSchemaId,
@@ -455,7 +464,7 @@ contract EASTest is Test {
         eas.timestamp(data);
         
         // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestamped);
+        vm.expectRevert(AlreadyTimestampedSelector);
         eas.timestamp(data);
     }
 
@@ -468,7 +477,7 @@ contract EASTest is Test {
         eas.multiTimestamp(data);
         
         // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestamped);
+        vm.expectRevert(AlreadyTimestampedSelector);
         eas.multiTimestamp(data);
 
         // Should also fail when including timestamped data in a new array
@@ -477,7 +486,7 @@ contract EASTest is Test {
         newData[1] = data[0];
         newData[2] = data[1];
         
-        vm.expectRevert(AlreadyTimestamped);
+        vm.expectRevert(AlreadyTimestampedSelector);
         eas.multiTimestamp(newData);
     }
 
@@ -504,7 +513,7 @@ contract EASTest is Test {
         eas.revokeOffchain(data);
         
         // Second revocation should fail
-        vm.expectRevert(AlreadyRevokedOffchain);
+        vm.expectRevert(AlreadyRevokedOffchainSelector);
         eas.revokeOffchain(data);
         vm.stopPrank();
     }
@@ -536,7 +545,7 @@ contract EASTest is Test {
         eas.multiRevokeOffchain(data);
         
         // Second revocation should fail
-        vm.expectRevert(AlreadyRevokedOffchain);
+        vm.expectRevert(AlreadyRevokedOffchainSelector);
         eas.multiRevokeOffchain(data);
 
         // Should also fail when including revoked data in a new array
@@ -545,7 +554,7 @@ contract EASTest is Test {
         newData[1] = data[0];
         newData[2] = data[1];
         
-        vm.expectRevert(AlreadyRevokedOffchain);
+        vm.expectRevert(AlreadyRevokedOffchainSelector);
         eas.multiRevokeOffchain(newData);
         vm.stopPrank();
     }
@@ -700,7 +709,7 @@ contract EASTest is Test {
 
         // Test: revert when non-attester tries to revoke
         vm.prank(sender2);
-        vm.expectRevert(AccessDenied);
+        vm.expectRevert(AccessDeniedSelector);
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
@@ -753,7 +762,7 @@ contract EASTest is Test {
             value: 0
         });
 
-        vm.expectRevert(bytes4(keccak256("InvalidSchema()")));
+        vm.expectRevert(InvalidSchemaSelector);
         eas.multiAttest(requests);
 
         // Test 4: Invalid expiration time
@@ -870,7 +879,7 @@ contract EASTest is Test {
         eas.multiRevokeOffchain(data);
         
         // Second revocation of same data should fail
-        vm.expectRevert(AlreadyRevokedOffchain);
+        vm.expectRevert(AlreadyRevokedOffchainSelector);
         eas.multiRevokeOffchain(data);
         
         // Should also fail when including revoked data in new array
@@ -879,7 +888,7 @@ contract EASTest is Test {
         newData[1] = data[0];
         newData[2] = data[1];
         
-        vm.expectRevert(AlreadyRevokedOffchain);
+        vm.expectRevert(AlreadyRevokedOffchainSelector);
         eas.multiRevokeOffchain(newData);
         
         vm.stopPrank();
@@ -1129,7 +1138,7 @@ contract EASTest is Test {
         assertFalse(attestation.revocable);
         
         // Should revert when trying to revoke
-        vm.expectRevert(Irrevocable);
+        vm.expectRevert(IrrevocableSelector);
         eas.revoke(
             RevocationRequest({
             schema: schemaId,
@@ -1183,7 +1192,7 @@ contract EASTest is Test {
             });
         }
 
-        vm.expectRevert(Irrevocable);
+        vm.expectRevert(IrrevocableSelector);
         eas.revoke(revocationRequests[0]);
 
         vm.stopPrank();
@@ -1242,7 +1251,7 @@ contract EASTest is Test {
         );
         
         // Should revert when trying to revoke the irrevocable attestation
-        vm.expectRevert(Irrevocable);
+        vm.expectRevert(IrrevocableSelector);
         eas.revoke(
             RevocationRequest({
                 schema: irrevocableSchemaId,
@@ -1941,7 +1950,7 @@ contract EASTest is Test {
         requests[0].schema = schemaId;
         requests[0].data = new AttestationRequestData[](0);
         
-        vm.expectRevert(InvalidLength);
+        vm.expectRevert(InvalidLengthSelector);
         eas.multiAttest(requests);
 
         vm.stopPrank();
