@@ -257,7 +257,13 @@ contract DeputyGuardianModule_setRespectedGameType_Test is DeputyGuardianModule_
 contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianModule_TestInit {
     /// @dev Tests that `setRespectedGameType` when called by a non deputy guardian.
     function testFuzz_setRespectedGameType_notDeputyGuardian_reverts(GameType _gameType) external {
-        vm.assume(GameType.unwrap(optimismPortal2.respectedGameType()) != GameType.unwrap(_gameType));
+        // Change the game type if it's the same to avoid test rejections.
+        if (GameType.unwrap(optimismPortal2.respectedGameType()) == GameType.unwrap(_gameType)) {
+            unchecked {
+                _gameType = GameType.wrap(GameType.unwrap(_gameType) + 1);
+            }
+        }
+
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.setRespectedGameType(optimismPortal2, _gameType);
         assertNotEq(GameType.unwrap(optimismPortal2.respectedGameType()), GameType.unwrap(_gameType));

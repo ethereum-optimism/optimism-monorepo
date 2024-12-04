@@ -385,12 +385,21 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
         // don't use multicall3's address
         vm.assume(_token != MULTICALL3_ADDRESS);
 
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
+        // Using vm.assume() would cause too many test rejections.
+        string memory name = _name;
+        if (bytes(_name).length > 32) {
+            name = _name[:32];
+        }
+
+        // Using vm.assume() would cause too many test rejections.
+        string memory symbol = _symbol;
+        if (bytes(_symbol).length > 32) {
+            symbol = _symbol[:32];
+        }
 
         vm.mockCall(_token, abi.encodeCall(token.decimals, ()), abi.encode(18));
-        vm.mockCall(_token, abi.encodeCall(token.name, ()), abi.encode(_name));
-        vm.mockCall(_token, abi.encodeCall(token.symbol, ()), abi.encode(_symbol));
+        vm.mockCall(_token, abi.encodeCall(token.name, ()), abi.encode(name));
+        vm.mockCall(_token, abi.encodeCall(token.symbol, ()), abi.encode(symbol));
 
         cleanStorageAndInit(_token);
 
@@ -403,8 +412,8 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
             assertEq(systemConfig.gasPayingTokenSymbol(), "ETH");
         } else {
             assertEq(addr, _token);
-            assertEq(systemConfig.gasPayingTokenName(), _name);
-            assertEq(systemConfig.gasPayingTokenSymbol(), _symbol);
+            assertEq(systemConfig.gasPayingTokenName(), name);
+            assertEq(systemConfig.gasPayingTokenSymbol(), symbol);
         }
     }
 
@@ -555,7 +564,7 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
 
     /// @dev Tests that `setEIP1559Params` reverts if the elasticity is zero.
     function test_setEIP1559Params_zeroElasticity_reverts(uint32 _denominator) external {
-        vm.assume(_denominator >= 1);
+        _denominator = uint32(bound(_denominator, 1, type(uint32).max));
         vm.prank(systemConfig.owner());
         vm.expectRevert("SystemConfig: elasticity must be >= 1");
         systemConfig.setEIP1559Params({ _denominator: _denominator, _elasticity: 0 });

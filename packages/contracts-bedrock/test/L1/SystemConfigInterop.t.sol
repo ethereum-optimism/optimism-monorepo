@@ -51,12 +51,21 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);
 
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
+        // Using vm.assume() would cause too many test rejections.
+        string memory name = _name;
+        if (bytes(_name).length > 32) {
+            name = _name[:32];
+        }
+
+        // Using vm.assume() would cause too many test rejections.
+        string memory symbol = _symbol;
+        if (bytes(_symbol).length > 32) {
+            symbol = _symbol[:32];
+        }
 
         vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(18));
-        vm.mockCall(_token, abi.encodeCall(ERC20.name, ()), abi.encode(_name));
-        vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(_symbol));
+        vm.mockCall(_token, abi.encodeCall(ERC20.name, ()), abi.encode(name));
+        vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(symbol));
 
         vm.expectCall(
             address(optimismPortal),
@@ -67,8 +76,8 @@ contract SystemConfigInterop_Test is CommonTest {
                     StaticConfig.encodeSetGasPayingToken({
                         _token: _token,
                         _decimals: 18,
-                        _name: GasPayingToken.sanitize(_name),
-                        _symbol: GasPayingToken.sanitize(_symbol)
+                        _name: GasPayingToken.sanitize(name),
+                        _symbol: GasPayingToken.sanitize(symbol)
                     })
                 )
             )
