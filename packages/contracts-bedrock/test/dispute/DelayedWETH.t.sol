@@ -16,6 +16,9 @@ contract DelayedWETH_Init is CommonTest {
     event Deposit(address indexed dst, uint256 wad);
     event Withdrawal(address indexed src, uint256 wad);
     event Unwrap(address indexed src, uint256 wad);
+    event DelayedWethPausedSet(bool paused);
+
+    address guardian;
 
     function setUp() public virtual override {
         super.setUp();
@@ -23,6 +26,7 @@ contract DelayedWETH_Init is CommonTest {
         // Transfer ownership of delayed WETH to the test contract.
         vm.prank(delayedWeth.owner());
         delayedWeth.transferOwnership(address(this));
+        guardian = optimismPortal.guardian();
     }
 }
 
@@ -61,6 +65,26 @@ contract DelayedWETH_Unlock_Test is DelayedWETH_Init {
         assertEq(amount2, 2 ether);
         assertEq(timestamp2, ts + 1);
     }
+}
+
+contract DelayedWETH_Transfer_Test is DelayedWETH_Init {
+    function testFuzz_transfer_succeeds(address _to, uint256 _amount) public {
+        vm.assume(_to != alice);
+        uint256 _depositAmount = 1 ether;
+        _amount = bound(_amount, 0, _depositAmount);
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: _depositAmount }();
+        uint256 balance = address(alice).balance;
+
+        // transfer it.
+        vm.prank(alice);
+        delayedWeth.transfer(_to, _amount);
+        assertEq(delayedWeth.balanceOf(_to), _amount);
+    }
+
+    // TODO: transfer fails when pause is active
+    // TODO: same 2 tests for transferFrom
 }
 
 contract DelayedWETH_Withdraw_Test is DelayedWETH_Init {
@@ -246,8 +270,8 @@ contract DelayedWETH_WithdrawFrom_Test is DelayedWETH_Init {
         assertEq(address(alice).balance, balance);
     }
 
-    /// @dev Tests that withdrawing while paused fails.
-    function test_withdraw_whenPaused_fails() public {
+    /// @dev Tests that withdrawing during system pause fails.
+    function test_withdraw_whenSystemPaused_fails() public {
         // Deposit some WETH.
         vm.prank(alice);
         delayedWeth.deposit{ value: 1 ether }();
@@ -260,12 +284,33 @@ contract DelayedWETH_WithdrawFrom_Test is DelayedWETH_Init {
         vm.warp(block.timestamp + delayedWeth.delay() + 1);
 
         // Pause the contract.
-        address guardian = optimismPortal.guardian();
         vm.prank(guardian);
         superchainConfig.pause("identifier");
 
         // Withdraw fails.
-        vm.expectRevert("DelayedWETH: contract is paused");
+        vm.expectRevert("DelayedWETH: system is paused");
+        vm.prank(alice);
+        delayedWeth.withdraw(alice, 1 ether);
+    }
+
+    function test_RevertIf_Withdraw_When_WithdrawalsPaused() public {
+        // Deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: 1 ether }();
+
+        // Unlock the withdrawal.
+        vm.prank(alice);
+        delayedWeth.unlock(alice, 1 ether);
+
+        // Wait for the delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1);
+
+        // Pause the contract.
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(true);
+
+        // Withdraw fails.
+        vm.expectRevert("DelayedWETH: withdrawals and transfers are paused");
         vm.prank(alice);
         delayedWeth.withdraw(alice, 1 ether);
     }
@@ -351,6 +396,28 @@ contract DelayedWETH_Recover_Test is DelayedWETH_Init {
     }
 }
 
+contract DelayedWETH_SetDelayedWethPaused_Test is DelayedWETH_Init {
+    function testFuzz_setDelayedWethPaused_byGuardian_succeeds(bool _isPaused) public {
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(_isPaused);
+        assertEq(_isPaused, delayedWeth.delayedWethPaused());
+    }
+
+    function testFuzz_setDelayedWethPaused_byGuardian_emitsEvent(bool _isPaused) public {
+        vm.expectEmit();
+        emit DelayedWethPausedSet(_isPaused);
+        vm.prank(guardian);
+        delayedWeth.setDelayedWethPaused(_isPaused);
+    }
+
+    function testFuzz_setDelayedWethPaused_byNonGuardian_fails(bool _isPaused, address _actor) public {
+        vm.assume(_actor != guardian);
+        vm.expectRevert("DelayedWETH: not guardian");
+        vm.prank(_actor);
+        delayedWeth.setDelayedWethPaused(_isPaused);
+    }
+}
+
 contract DelayedWETH_Hold_Test is DelayedWETH_Init {
     /// @dev Tests that holding WETH succeeds.
     function test_hold_succeeds() public {
@@ -361,17 +428,16 @@ contract DelayedWETH_Hold_Test is DelayedWETH_Init {
         delayedWeth.deposit{ value: amount }();
 
         // Hold some WETH.
-        vm.expectEmit(true, true, true, false);
+        vm.expectEmit();
         emit Approval(alice, address(this), amount);
+        vm.expectEmit();
+        emit Transfer(alice, address(this), amount);
         delayedWeth.hold(alice, amount);
 
-        // Verify the allowance.
-        assertEq(delayedWeth.allowance(alice, address(this)), amount);
+        // Verify there's no lingering allowance.
+        assertEq(delayedWeth.allowance(alice, address(this)), 0);
 
-        // We can transfer.
-        delayedWeth.transferFrom(alice, address(this), amount);
-
-        // Verify the transfer.
+        // Verify a successful transfer of amount.
         assertEq(delayedWeth.balanceOf(address(this)), amount);
     }
 

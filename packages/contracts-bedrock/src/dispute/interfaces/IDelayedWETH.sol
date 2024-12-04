@@ -17,8 +17,10 @@ interface IDelayedWETH {
     receive() external payable;
 
     function config() external view returns (ISuperchainConfig);
+    function delayedWethPaused() external view returns (bool);
     function delay() external view returns (uint256);
     function hold(address _guy, uint256 _wad) external;
+    function setDelayedWethPaused(bool _paused) external;
     function initialize(address _owner, ISuperchainConfig _config) external;
     function owner() external view returns (address);
     function recover(uint256 _wad) external;

@@ -132,7 +132,7 @@ contract WETH98 {
     /// @param dst The address to transfer the WETH to.
     /// @param wad The amount of WETH to transfer.
     /// @return True if the transfer was successful.
-    function transferFrom(address src, address dst, uint256 wad) public returns (bool) {
+    function transferFrom(address src, address dst, uint256 wad) public virtual returns (bool) {
         require(_balanceOf[src] >= wad);
 
         uint256 senderAllowance = allowance(src, msg.sender);
