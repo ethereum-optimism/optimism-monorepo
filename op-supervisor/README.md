@@ -125,7 +125,7 @@ opgethA -->> opsup: receipts
 
 opsup ->> opsup: cross-unsafe worker
 
-Note left of opnodeA: (changing; delay unsafeView call)
+Note left of opnodeA: (changing - delay unsafeView call)
 
 opnodeA ->> opsup: unsafeView
 opsup -->> opnodeA: cross unsafe
@@ -138,7 +138,7 @@ opnodeA ->> opsup: update Local safe
 opnodeB ->> opsup: update Local safe (maybe)
 opsup ->> opsup: cross-safe worker
 
-Note left of opnodeA: (changing; delay safeView call)
+Note left of opnodeA: (changing - delay safeView call)
 
 opnodeA ->> opsup: safeView
 opsup -->> opnodeA: cross safe
