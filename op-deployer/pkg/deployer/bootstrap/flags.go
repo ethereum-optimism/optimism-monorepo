@@ -30,6 +30,7 @@ const (
 	ProposerFlagName                        = "proposer"
 	ChallengerFlagName                      = "challenger"
 	PreimageOracleFlagName                  = "preimage-oracle"
+	ProxyOwnerFlagName                      = "proxy-owner"
 )
 
 var (
@@ -153,6 +154,12 @@ var (
 		EnvVars: deployer.PrefixEnvVar("PREIMAGE_ORACLE"),
 		Value:   common.Address{}.Hex(),
 	}
+	ProxyOwnerFlag = &cli.StringFlag{
+		Name:    ProxyOwnerFlagName,
+		Usage:   "Proxy owner address.",
+		EnvVars: deployer.PrefixEnvVar("PROXY_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
 )
 
 var OPCMFlags = []cli.Flag{
@@ -205,6 +212,13 @@ var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
 
 var AsteriscFlags = BaseFPVMFlags
 
+var ProxyFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	ArtifactsLocatorFlag,
+	ProxyOwnerFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "opcm",
@@ -235,5 +249,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of Asterisc.",
 		Flags:  cliapp.ProtectFlags(AsteriscFlags),
 		Action: AsteriscCLI,
+	},
+	{
+		Name:   "proxy",
+		Usage:  "Bootstrap a ERC-1967 Proxy without an implementation set.",
+		Flags:  cliapp.ProtectFlags(ProxyFlags),
+		Action: ProxyCLI,
 	},
 }
