@@ -14,7 +14,7 @@ contract TestUtils is TestPlus {
     function _isPayable(address addr) private returns (bool) {
         require(
             addr.balance < type(uint256).max,
-            "StdCheats _isPayable(address): Balance equals max uint256, so it cannot receive any more funds"
+            "TestUtils: Balance equals max uint256, so it cannot receive any more funds"
         );
         uint256 origBalanceTest = address(this).balance;
         uint256 origBalanceAddr = address(addr).balance;
@@ -190,17 +190,20 @@ contract TestUtils is TestPlus {
         _conditions[0] = _isNotPrecompile;
         _conditions[1] = _isNotPayable;
         _conditions[2] = _isNotForgeAddress;
+        ForbiddenAddresses forbiddenAddresses = (new ForbiddenAddresses()).forbid(address(123)).forbid(address(456))
+            .forbid(address(789)).forbid(address(101)).forbid(address(112)).forbid(address(133)).forbid(address(144)).forbid(
+            address(155)
+        ).forbid(address(166)).forbid(address(177));
 
         // assume it's a random fuzz input
         address fuzzInput = address(0x1);
-        return _randomAddress(fuzzInput, _conditions, 1_000);
+        return _randomAddress(fuzzInput, _conditions, forbiddenAddresses, 1_000);
     }
 
     // example usage:
     function _randomUint256Forbid0to10(uint256 _min, uint256 _max) private returns (uint256) {
-        ForbiddenUint256 forbiddenUint256 = new ForbiddenUint256();
-        forbiddenUint256.forbid(0).forbid(1).forbid(2).forbid(3).forbid(4).forbid(5).forbid(6).forbid(7).forbid(8)
-            .forbid(9).forbid(10);
+        ForbiddenUint256 forbiddenUint256 = new ForbiddenUint256().forbid(0).forbid(1).forbid(2).forbid(3).forbid(4)
+            .forbid(5).forbid(6).forbid(7).forbid(8).forbid(9).forbid(10);
 
         // assume it's a random fuzz input
         uint256 fuzzInput = 2;
