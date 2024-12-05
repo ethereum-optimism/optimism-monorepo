@@ -126,6 +126,7 @@ func toArgList(req map[string]string) []string {
 
 func requiredArgs() map[string]string {
 	args := map[string]string{
+		"--l1-rpc":         ValidL1RPC,
 		"--l2-rpcs":        ValidL2RPCs[0],
 		"--dependency-set": "test",
 		"--datadir":        ValidDatadir,
