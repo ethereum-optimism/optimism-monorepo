@@ -195,9 +195,9 @@ contract OPContractsManager is ISemver {
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
         assertValidInputs(_input);
         uint256 l2ChainId = _input.l2ChainId;
-        // The salt for a non-proxy contract is a function of the chain ID and the salt mixer.
         string memory saltMixer = _input.saltMixer;
-        bytes32 salt = keccak256(abi.encode(l2ChainId, saltMixer));
+        // The salt for a non-proxy contract is a function of the chain ID and the salt mixer.
+        bytes32 singleContractSalt = computeSingleContractSalt(l2ChainId, saltMixer);
         DeployOutput memory output;
 
         // -------- Deploy Chain Singletons --------
@@ -206,9 +206,9 @@ contract OPContractsManager is ISemver {
         // this contract, and then transfer ownership to the specified owner at the end of deployment.
         // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
         // due to it's usage of the legacy ResolvedDelegateProxy.
-        output.addressManager = IAddressManager(Blueprint.deployFrom(blueprint.addressManager, salt));
+        output.addressManager = IAddressManager(Blueprint.deployFrom(blueprint.addressManager, singleContractSalt));
         output.opChainProxyAdmin =
-            IProxyAdmin(Blueprint.deployFrom(blueprint.proxyAdmin, salt, abi.encode(address(this))));
+            IProxyAdmin(Blueprint.deployFrom(blueprint.proxyAdmin, singleContractSalt, abi.encode(address(this))));
         output.opChainProxyAdmin.setAddressManager(output.addressManager);
 
         // -------- Deploy Proxy Contracts --------
@@ -230,12 +230,18 @@ contract OPContractsManager is ISemver {
 
         // Deploy legacy proxied contracts.
         output.l1StandardBridgeProxy = IL1StandardBridge(
-            payable(Blueprint.deployFrom(blueprint.l1ChugSplashProxy, salt, abi.encode(output.opChainProxyAdmin)))
+            payable(
+                Blueprint.deployFrom(
+                    blueprint.l1ChugSplashProxy, singleContractSalt, abi.encode(output.opChainProxyAdmin)
+                )
+            )
         );
         output.opChainProxyAdmin.setProxyType(address(output.l1StandardBridgeProxy), IProxyAdmin.ProxyType.CHUGSPLASH);
         string memory contractName = "OVM_L1CrossDomainMessenger";
         output.l1CrossDomainMessengerProxy = IL1CrossDomainMessenger(
-            Blueprint.deployFrom(blueprint.resolvedDelegateProxy, salt, abi.encode(output.addressManager, contractName))
+            Blueprint.deployFrom(
+                blueprint.resolvedDelegateProxy, singleContractSalt, abi.encode(output.addressManager, contractName)
+            )
         );
         output.opChainProxyAdmin.setProxyType(
             address(output.l1CrossDomainMessengerProxy), IProxyAdmin.ProxyType.RESOLVED
@@ -246,7 +252,9 @@ contract OPContractsManager is ISemver {
         // The AnchorStateRegistry Implementation is not MCP Ready, and therefore requires an implementation per chain.
         // It must be deployed after the DisputeGameFactoryProxy so that it can be provided as a constructor argument.
         output.anchorStateRegistryImpl = IAnchorStateRegistry(
-            Blueprint.deployFrom(blueprint.anchorStateRegistry, salt, abi.encode(output.disputeGameFactoryProxy))
+            Blueprint.deployFrom(
+                blueprint.anchorStateRegistry, singleContractSalt, abi.encode(output.disputeGameFactoryProxy)
+            )
         );
 
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
@@ -259,7 +267,7 @@ contract OPContractsManager is ISemver {
             Blueprint.deployFrom(
                 blueprint.permissionedDisputeGame1,
                 blueprint.permissionedDisputeGame2,
-                salt,
+                singleContractSalt,
                 encodePermissionedDisputeGameConstructor(_input, output)
             )
         );
@@ -372,6 +380,29 @@ contract OPContractsManager is ISemver {
         return address(uint160(bytes20(bytes.concat(versionByte, first19Bytes))));
     }
 
+    function computeProxyContractSalt(
+        uint256 _l2ChainId,
+        string memory _saltMixer,
+        string memory _contractName
+    )
+        internal
+        pure
+        returns (bytes32 _salt)
+    {
+        return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
+    }
+
+    function computeSingleContractSalt(
+        uint256 _l2ChainId,
+        string memory _saltMixer
+    )
+        internal
+        pure
+        returns (bytes32 _salt)
+    {
+        return keccak256(abi.encode(_l2ChainId, _saltMixer));
+    }
+
     /// @notice Deterministically deploys a new proxy contract owned by the provided ProxyAdmin.
     /// The salt is computed as a function of the L2 chain ID, the salt mixer and the contract name.
     /// This is required because we deploy many identical proxies, so they each require a unique salt for determinism.
@@ -384,7 +415,7 @@ contract OPContractsManager is ISemver {
         internal
         returns (address)
     {
-        bytes32 salt = keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
+        bytes32 salt = computeProxyContractSalt(_l2ChainId, _saltMixer, _contractName);
         return Blueprint.deployFrom(blueprint.proxy, salt, abi.encode(_proxyAdmin));
     }
 
