@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
@@ -165,33 +163,16 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
-			src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
-			}
-			return forking.Cache(src), nil
-		}),
+		l1RPC,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
-	}
-
-	latest, err := l1Client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get latest block: %w", err)
-	}
-
-	if _, err := host.CreateSelectFork(
-		script.ForkWithURLOrAlias("main"),
-		script.ForkWithBlockNumberU256(latest.Number),
-	); err != nil {
-		return fmt.Errorf("failed to select fork: %w", err)
 	}
 
 	var release string

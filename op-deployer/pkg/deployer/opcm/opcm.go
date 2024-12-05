@@ -40,10 +40,7 @@ func DeployOPCM(
 	host *script.Host,
 	input DeployOPCMInput,
 ) (DeployOPCMOutput, error) {
-	scriptFile := "DeployOPCM.s.sol"
-	contractName := "DeployOPCM"
-
-	out, err := RunBasicScript[DeployOPCMInput, DeployOPCMOutput](host, input, scriptFile, contractName)
+	out, err := RunBasicScript[DeployOPCMInput, DeployOPCMOutput](host, input, "DeployOPCM.s.sol", "DeployOPCM")
 	if err != nil {
 		return DeployOPCMOutput{}, fmt.Errorf("failed to deploy OPCM: %w", err)
 	}
