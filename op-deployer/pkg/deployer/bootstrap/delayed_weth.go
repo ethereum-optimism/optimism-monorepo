@@ -37,6 +37,7 @@ type DelayedWETHConfig struct {
 	PrivateKey       string
 	Logger           log.Logger
 	ArtifactsLocator *artifacts2.Locator
+	DelayedWethImpl  common.Address
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -90,11 +91,13 @@ func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETH
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return DelayedWETHConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
+	delayedWethImpl := common.HexToAddress(cliCtx.String(DelayedWethImplFlagName))
 	config := DelayedWETHConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
+		DelayedWethImpl:  delayedWethImpl,
 	}
 	return config, nil
 }
@@ -133,10 +136,6 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 	superCfg, err := standard.SuperchainFor(chainIDU64)
 	if err != nil {
 		return fmt.Errorf("error getting superchain config: %w", err)
-	}
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
 	}
 	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
 	if err != nil {
@@ -210,9 +209,9 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		host,
 		opcm.DeployDelayedWETHInput{
 			Release:               release,
-			StandardVersionsToml:  standardVersionsTOML,
 			ProxyAdmin:            proxyAdmin,
 			SuperchainConfigProxy: superchainConfigAddr,
+			DelayedWethImpl:       cfg.DelayedWethImpl,
 			DelayedWethOwner:      delayedWethOwner,
 			DelayedWethDelay:      big.NewInt(604800),
 		},

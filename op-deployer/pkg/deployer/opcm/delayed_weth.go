@@ -11,9 +11,9 @@ import (
 
 type DeployDelayedWETHInput struct {
 	Release               string
-	StandardVersionsToml  string
 	ProxyAdmin            common.Address
 	SuperchainConfigProxy common.Address
+	DelayedWethImpl       common.Address
 	DelayedWethOwner      common.Address
 	DelayedWethDelay      *big.Int
 }

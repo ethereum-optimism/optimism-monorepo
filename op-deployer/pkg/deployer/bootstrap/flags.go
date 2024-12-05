@@ -26,13 +26,14 @@ const (
 	SplitDepthFlagName                      = "split-depth"
 	ClockExtensionFlagName                  = "clock-extension"
 	MaxClockDurationFlagName                = "max-clock-duration"
-	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	AnchorStateRegistryProxyFlagName        = "anchor-state-registry-proxy"
 	L2ChainIdFlagName                       = "l2-chain-id"
 	ProposerFlagName                        = "proposer"
 	ChallengerFlagName                      = "challenger"
 	PreimageOracleFlagName                  = "preimage-oracle"
 	ReleaseFlagName                         = "release"
+	DelayedWethProxyFlagName                = "delayed-weth-proxy"
+	DelayedWethImplFlagName                 = "delayed-weth-impl"
 )
 
 var (
@@ -128,6 +129,12 @@ var (
 		Usage:   "Delayed WETH proxy.",
 		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_PROXY"),
 	}
+	DelayedWethImplFlag = &cli.StringFlag{
+		Name:    DelayedWethImplFlagName,
+		Usage:   "Delayed WETH implementation.",
+		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_IMPL"),
+		Value:   common.Address{}.Hex(),
+	}
 	AnchorStateRegistryProxyFlag = &cli.StringFlag{
 		Name:    AnchorStateRegistryProxyFlagName,
 		Usage:   "Anchor state registry proxy.",
@@ -182,6 +189,7 @@ var DelayedWETHFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ArtifactsLocatorFlag,
+	DelayedWethImplFlag,
 }
 
 var DisputeGameFlags = []cli.Flag{
