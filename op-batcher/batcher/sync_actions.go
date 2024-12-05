@@ -125,6 +125,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	numChannelsToPrune := 0
 	for _, ch := range channels {
 		if ch.LatestL2().Number > newSyncStatus.SafeL2.Number {
+			// If the channel has blocks which are not yet safe
+			// we do not want to prune it.
 			break
 		}
 		numChannelsToPrune++

@@ -46,6 +46,15 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		timedOut:       false,
 	}
 
+	block104 := types.NewBlockWithHeader(&types.Header{Number: big.NewInt(104)})
+
+	channel104 := testChannelStatuser{
+		latestL2:       eth.ToBlockID(block104),
+		inclusionBlock: 1,
+		fullySubmitted: false,
+		timedOut:       false,
+	}
+
 	type TestCase struct {
 		name string
 		// inputs
@@ -78,7 +87,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "L1 reorg",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
+				HeadL1:    eth.BlockRef{Number: 6},
 				CurrentL1: eth.BlockRef{Number: 1},
 				SafeL2:    eth.L2BlockRef{Number: 100, L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -94,7 +103,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "batcher restart",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
+				HeadL1:    eth.BlockRef{Number: 6},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 104, L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -110,7 +119,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "safe chain reorg",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
+				HeadL1:    eth.BlockRef{Number: 5},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}}, // note hash mismatch
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -126,7 +135,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "failed to make expected progress",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
+				HeadL1:    eth.BlockRef{Number: 3},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -142,7 +151,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "no progress",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 1},
+				HeadL1:    eth.BlockRef{Number: 4},
 				CurrentL1: eth.BlockRef{Number: 1},
 				SafeL2:    eth.L2BlockRef{Number: 100},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -156,7 +165,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		},
 		{name: "happy path",
 			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 2},
+				HeadL1:    eth.BlockRef{Number: 5},
 				CurrentL1: eth.BlockRef{Number: 2},
 				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
 				UnsafeL2:  eth.L2BlockRef{Number: 109},
@@ -168,6 +177,22 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				blocksToPrune:   3,
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{104, 109},
+			},
+		},
+		{name: "happy path + multiple channels",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101, block102, block103, block104},
+			channels:      []channelStatuser{channel103, channel104},
+			expected: syncActions{
+				blocksToPrune:   3,
+				channelsToPrune: 1,
+				blocksToLoad:    &inclusiveBlockRange{105, 109},
 			},
 		},
 	}
