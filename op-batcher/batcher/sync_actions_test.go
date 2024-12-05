@@ -88,7 +88,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
 				clearState:   &eth.BlockID{Number: 1},
-				blocksToLoad: [2]uint64{101, 109},
+				blocksToLoad: &inclusiveBlockRange{101, 109},
 			},
 			expectedLogs: []string{"new safe head is behind oldest block in state"},
 		},
@@ -104,7 +104,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
 				clearState:   &eth.BlockID{Number: 1},
-				blocksToLoad: [2]uint64{105, 109},
+				blocksToLoad: &inclusiveBlockRange{105, 109},
 			},
 			expectedLogs: []string{"safe head above unsafe head"},
 		},
@@ -120,7 +120,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
 				clearState:   &eth.BlockID{Number: 1},
-				blocksToLoad: [2]uint64{104, 109},
+				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
 			expectedLogs: []string{"safe chain reorg"},
 		},
@@ -136,7 +136,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
 				clearState:   &eth.BlockID{Number: 1},
-				blocksToLoad: [2]uint64{102, 109},
+				blocksToLoad: &inclusiveBlockRange{102, 109},
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
@@ -151,7 +151,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			blocks:        queue.Queue[*types.Block]{block101, block102, block103},
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
-				blocksToLoad: [2]uint64{104, 109},
+				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
 		},
 		{name: "happy path",
@@ -167,7 +167,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected: syncActions{
 				blocksToPrune:   3,
 				channelsToPrune: 1,
-				blocksToLoad:    [2]uint64{104, 109},
+				blocksToLoad:    &inclusiveBlockRange{104, 109},
 			},
 		},
 	}

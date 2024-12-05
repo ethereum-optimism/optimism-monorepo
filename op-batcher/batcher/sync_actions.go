@@ -16,17 +16,18 @@ type channelStatuser interface {
 	MaxInclusionBlock() uint64
 }
 
+type inclusiveBlockRange struct{ start, end uint64 }
 type syncActions struct {
 	clearState      *eth.BlockID
 	blocksToPrune   int
 	channelsToPrune int
-	blocksToLoad    [2]uint64 // the range [start,end] that should be loaded into the local state.
+	blocksToLoad    *inclusiveBlockRange // the blocks that should be loaded into the local state.
 	// NOTE this range is inclusive on both ends, which is a change to previous behaviour.
 }
 
 func (s syncActions) String() string {
 	return fmt.Sprintf(
-		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad[0], s.blocksToLoad[1])
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: [%d, %d]}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad.start, s.blocksToLoad.end)
 }
 
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
@@ -54,7 +55,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 	if !hasBlocks {
 		s := syncActions{
-			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+			blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
@@ -65,7 +66,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	if oldestUnsafeBlockNum < oldestBlockInStateNum {
 		s := syncActions{
 			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+			blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 		}
 		l.Warn("new safe head is behind oldest block in state", "syncActions", s, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
 		return s, false
@@ -83,7 +84,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// unsafe (and not safe) block.
 	startAfresh := syncActions{
 		clearState:   &newSyncStatus.SafeL2.L1Origin,
-		blocksToLoad: [2]uint64{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+		blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 	}
 
 	if numBlocksToDequeue > uint64(blocks.Len()) {
@@ -139,6 +140,6 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
-		blocksToLoad:    [2]uint64{start, end},
+		blocksToLoad:    &inclusiveBlockRange{start, end},
 	}, false
 }

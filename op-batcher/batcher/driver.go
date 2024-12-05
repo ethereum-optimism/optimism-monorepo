@@ -445,9 +445,9 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				l.state.pruneChannels(syncActions.channelsToPrune)
 			}
 
-			if syncActions.blocksToLoad != [2]uint64{} {
+			if syncActions.blocksToLoad != nil {
 				// Get fresh unsafe blocks
-				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad[0], syncActions.blocksToLoad[1]); errors.Is(err, ErrReorg) {
+				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
 					continue
