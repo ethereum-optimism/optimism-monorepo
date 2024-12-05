@@ -61,23 +61,6 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return s, false
 	}
 
-	oldestBlockInStateNum := oldestBlockInState.NumberU64()
-
-	if oldestUnsafeBlockNum < oldestBlockInStateNum {
-		s := syncActions{
-			clearState:   &newSyncStatus.SafeL2.L1Origin,
-			blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
-		}
-		l.Warn("new safe head is behind oldest block in state", "syncActions", s, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
-		return s, false
-	}
-
-	// PART 3: checks involving all blocks in state
-	newestBlockInState := blocks[blocks.Len()-1]
-	newestBlockInStateNum := newestBlockInState.NumberU64()
-
-	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
-
 	// These actions apply in multiple unhappy scenarios below, where
 	// we detect that the existing state is invalidated
 	// and we need to start over from the sequencer's oldest
@@ -86,6 +69,19 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		clearState:   &newSyncStatus.SafeL2.L1Origin,
 		blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
 	}
+
+	oldestBlockInStateNum := oldestBlockInState.NumberU64()
+
+	if oldestUnsafeBlockNum < oldestBlockInStateNum {
+		l.Warn("new safe head is behind oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
+		return startAfresh, false
+	}
+
+	// PART 3: checks involving all blocks in state
+	newestBlockInState := blocks[blocks.Len()-1]
+	newestBlockInStateNum := newestBlockInState.NumberU64()
+
+	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
 
 	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
