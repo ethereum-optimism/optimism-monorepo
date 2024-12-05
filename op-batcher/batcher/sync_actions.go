@@ -27,7 +27,7 @@ type syncActions struct {
 
 func (s syncActions) String() string {
 	return fmt.Sprintf(
-		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: [%v]}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad)
+		"SyncActions{blocksToPrune: %d, channelsToPrune: %d, clearState: %v, blocksToLoad: %v}", s.blocksToPrune, s.channelsToPrune, s.clearState, s.blocksToLoad)
 }
 
 // computeSyncActions determines the actions that should be taken based on the inputs provided. The inputs are the current
