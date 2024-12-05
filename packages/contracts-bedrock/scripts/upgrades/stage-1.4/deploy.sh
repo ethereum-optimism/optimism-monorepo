@@ -19,7 +19,6 @@ reqenv "ASTERISC_KONA_GAME_TYPE"
 
 MONOREPO_ROOT="$(git rev-parse --show-toplevel)"
 OP_DEPLOYER="$MONOREPO_ROOT/op-deployer/bin/op-deployer"
-FORGE_ARTIFACTS_PATH="$MONOREPO_ROOT/packages/contracts-bedrock/forge-artifacts"
 L2_CHAIN_ID="$(jq -r '.l2ChainID' "$DEPLOY_CONFIG_PATH")"
 
 # ----------------
@@ -54,7 +53,7 @@ echo "✨ Kona Prestate Hash: $KONA_PRESTATE_HASH"
 # 5. Deploy asterisc VM
 ASTERISC_VM_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap asterisc \
-  --artifacts-locator "file://$FORGE_ARTIFACTS_PATH" \
+  --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
   --l1-rpc-url "$L1_RPC_URL" \
   --preimage-oracle "$PREIMAGE_ORACLE_ADDR" \
   --private-key "$PRIVATE_KEY" | sed -n '/^{/,/^}$/p' | jq -r '.AsteriscSingleton')"
@@ -63,7 +62,7 @@ echo "✨ Deployed Asterisc @ $ASTERISC_VM_ADDR"
 # 6. Deploy new DelayedWETH proxy
 DELAYED_WETH_PROXY_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap delayedweth \
-  --artifacts-locator "file://$FORGE_ARTIFACTS_PATH" \
+  --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
   --l1-rpc-url "$L1_RPC_URL" \
   --private-key "$PRIVATE_KEY" | sed -n '/^{/,/^}$/p' | jq -r '.DelayedWethProxy')"
 echo "✨ Deployed DelayedWETHProxy @ $DELAYED_WETH_PROXY_ADDR"
@@ -71,7 +70,7 @@ echo "✨ Deployed DelayedWETHProxy @ $DELAYED_WETH_PROXY_ADDR"
 # 7. Deploy Fault Dispute Game
 FDG_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap disputegame \
-  --artifacts-locator "file://$FORGE_ARTIFACTS_PATH" \
+  --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
   --l1-rpc-url "$L1_RPC_URL" \
   --game-kind "FaultDisputeGame" \
   --game-type "$ASTERISC_KONA_GAME_TYPE" \

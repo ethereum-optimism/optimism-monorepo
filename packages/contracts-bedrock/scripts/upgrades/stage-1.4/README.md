@@ -26,8 +26,7 @@ cp .env.example .env && vim .env
 #
 # The dispute game will be configured per the deploy config that is configured in `.env`, with some exceptions:
 # 1. The game type is set to `3`, or the `ASTERISC_KONA` game type.
-# 2. The absolute prestate is pulled from the kona release used for `op-contracts/v1.9.0-rc.3`
-#    (`kona-client-v0.1.0-beta.5`)
+# 2. The absolute prestate is pulled from the kona release used for this release.
 ./deploy.sh
 
 # 4. (Optionally) Generate a `superchain-ops` upgrade task.
