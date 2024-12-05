@@ -49,7 +49,7 @@ func TestDefaultConfigIsValid(t *testing.T) {
 
 func TestL1EthRpc(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l1-eth-rpc is required", addRequiredArgsExcept("--l1-eth-rpc"))
+		verifyArgsInvalid(t, "Required flag \"l1-eth-rpc\" not set", addRequiredArgsExcept("--l1-eth-rpc"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -61,7 +61,7 @@ func TestL1EthRpc(t *testing.T) {
 
 func TestRollupRpc(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept("--rollup-rpc"))
+		verifyArgsInvalid(t, "Required flag \"rollup-rpc\" not set", addRequiredArgsExcept("--rollup-rpc"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {

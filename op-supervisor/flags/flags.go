@@ -1,8 +1,6 @@
 package flags
 
 import (
-	"fmt"
-
 	"github.com/urfave/cli/v2"
 
 	opservice "github.com/ethereum-optimism/optimism/op-service"
@@ -22,19 +20,22 @@ func prefixEnvVars(name string) []string {
 
 var (
 	L2RPCsFlag = &cli.StringSliceFlag{
-		Name:    "l2-rpcs",
-		Usage:   "L2 RPC sources.",
-		EnvVars: prefixEnvVars("L2_RPCS"),
+		Name:     "l2-rpcs",
+		Usage:    "L2 RPC sources.",
+		EnvVars:  prefixEnvVars("L2_RPCS"),
+		Required: true,
 	}
 	DataDirFlag = &cli.PathFlag{
-		Name:    "datadir",
-		Usage:   "Directory to store data generated as part of responding to games",
-		EnvVars: prefixEnvVars("DATADIR"),
+		Name:     "datadir",
+		Usage:    "Directory to store data generated as part of responding to games",
+		EnvVars:  prefixEnvVars("DATADIR"),
+		Required: true,
 	}
 	DependencySetFlag = &cli.PathFlag{
 		Name:      "dependency-set",
 		Usage:     "Dependency-set configuration, point at JSON file.",
 		EnvVars:   prefixEnvVars("DEPENDENCY_SET"),
+		Required:  true,
 		TakesFile: true,
 	}
 	MockRunFlag = &cli.BoolFlag{
@@ -45,36 +46,19 @@ var (
 	}
 )
 
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	L2RPCsFlag,
 	DataDirFlag,
 	DependencySetFlag,
-}
-
-var optionalFlags = []cli.Flag{
 	MockRunFlag,
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oprpc.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
-
-	Flags = append(Flags, requiredFlags...)
-	Flags = append(Flags, optionalFlags...)
-}
-
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return nil
+	Flags = append(Flags, oprpc.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oplog.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, opmetrics.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oppprof.CLIFlags(EnvVarPrefix)...)
 }
 
 func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {

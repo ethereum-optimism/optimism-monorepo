@@ -16,9 +16,6 @@ import (
 // This method returns a cliapp.LifecycleAction, to create an op-service CLI-lifecycle-managed batch-submitter with.
 func Main(version string) cliapp.LifecycleAction {
 	return func(cliCtx *cli.Context, closeApp context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-		if err := flags.CheckRequired(cliCtx); err != nil {
-			return nil, err
-		}
 		cfg := NewConfig(cliCtx)
 		if err := cfg.Check(); err != nil {
 			return nil, fmt.Errorf("invalid CLI flags: %w", err)

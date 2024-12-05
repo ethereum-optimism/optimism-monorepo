@@ -65,7 +65,7 @@ func TestDefaultConfigIsValid(t *testing.T) {
 
 func TestL1ETHRPCAddress(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l1-eth-rpc is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--l1-eth-rpc"))
+		verifyArgsInvalid(t, "Required flag \"l1-eth-rpc\" not set", addRequiredArgsExcept(types.TraceTypeAlphabet, "--l1-eth-rpc"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -78,7 +78,7 @@ func TestL1ETHRPCAddress(t *testing.T) {
 
 func TestL1Beacon(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l1-beacon is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--l1-beacon"))
+		verifyArgsInvalid(t, "Required flag \"l1-beacon\" not set", addRequiredArgsExcept(types.TraceTypeAlphabet, "--l1-beacon"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -842,7 +842,7 @@ func TestDataDir(t *testing.T) {
 		traceType := traceType
 
 		t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
-			verifyArgsInvalid(t, "flag datadir is required", addRequiredArgsExcept(traceType, "--datadir"))
+			verifyArgsInvalid(t, "Required flag \"datadir\" not set", addRequiredArgsExcept(traceType, "--datadir"))
 		})
 	}
 
@@ -857,7 +857,7 @@ func TestRollupRpc(t *testing.T) {
 		traceType := traceType
 
 		t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
-			verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept(traceType, "--rollup-rpc"))
+			verifyArgsInvalid(t, "Required flag \"rollup-rpc\" not set", addRequiredArgsExcept(traceType, "--rollup-rpc"))
 		})
 	}
 

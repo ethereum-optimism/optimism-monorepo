@@ -162,7 +162,7 @@ func TestL2Genesis(t *testing.T) {
 
 func TestL2Head(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.head is required", addRequiredArgsExcept("--l2.head"))
+		verifyArgsInvalid(t, "Required flag \"l2.head\" not set", addRequiredArgsExcept("--l2.head"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -177,7 +177,7 @@ func TestL2Head(t *testing.T) {
 
 func TestL2OutputRoot(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.outputroot is required", addRequiredArgsExcept("--l2.outputroot"))
+		verifyArgsInvalid(t, "Required flag \"l2.outputroot\" not set", addRequiredArgsExcept("--l2.outputroot"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -192,7 +192,7 @@ func TestL2OutputRoot(t *testing.T) {
 
 func TestL1Head(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l1.head is required", addRequiredArgsExcept("--l1.head"))
+		verifyArgsInvalid(t, "Required flag \"l1.head\" not set", addRequiredArgsExcept("--l1.head"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -251,7 +251,7 @@ func TestL1RPCKind(t *testing.T) {
 
 func TestL2Claim(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.claim is required", addRequiredArgsExcept("--l2.claim"))
+		verifyArgsInvalid(t, "Required flag \"l2.claim\" not set", addRequiredArgsExcept("--l2.claim"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -289,7 +289,7 @@ func TestL2Experimental(t *testing.T) {
 
 func TestL2BlockNumber(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2.blocknumber is required", addRequiredArgsExcept("--l2.blocknumber"))
+		verifyArgsInvalid(t, "Required flag \"l2.blocknumber\" not set", addRequiredArgsExcept("--l2.blocknumber"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {

@@ -46,7 +46,7 @@ func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 
 func TestL2RPCs(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2-rpcs is required", addRequiredArgsExcept("--l2-rpcs"))
+		verifyArgsInvalid(t, "Required flag \"l2-rpcs\" not set", addRequiredArgsExcept("--l2-rpcs"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {
@@ -59,7 +59,7 @@ func TestL2RPCs(t *testing.T) {
 
 func TestDatadir(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag datadir is required", addRequiredArgsExcept("--datadir"))
+		verifyArgsInvalid(t, "Required flag \"datadir\" not set", addRequiredArgsExcept("--datadir"))
 	})
 
 	t.Run("Valid", func(t *testing.T) {

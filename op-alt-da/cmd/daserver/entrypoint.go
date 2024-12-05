@@ -11,10 +11,6 @@ import (
 )
 
 func StartDAServer(cliCtx *cli.Context) error {
-	if err := CheckRequired(cliCtx); err != nil {
-		return err
-	}
-
 	cfg := ReadCLIConfig(cliCtx)
 	if err := cfg.Check(); err != nil {
 		return err

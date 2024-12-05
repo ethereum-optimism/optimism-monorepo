@@ -16,9 +16,6 @@ import (
 // This method returns a cliapp.LifecycleAction, to create an op-service CLI-lifecycle-managed L2Output-submitter
 func Main(version string) cliapp.LifecycleAction {
 	return func(cliCtx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
-		if err := flags.CheckRequired(cliCtx); err != nil {
-			return nil, err
-		}
 		cfg := NewConfig(cliCtx)
 		if err := cfg.Check(); err != nil {
 			return nil, fmt.Errorf("invalid CLI flags: %w", err)

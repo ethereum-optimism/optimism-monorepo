@@ -35,19 +35,22 @@ var (
 	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona}
 	// Required Flags
 	L1EthRpcFlag = &cli.StringFlag{
-		Name:    "l1-eth-rpc",
-		Usage:   "HTTP provider URL for L1.",
-		EnvVars: prefixEnvVars("L1_ETH_RPC"),
+		Name:     "l1-eth-rpc",
+		Usage:    "HTTP provider URL for L1.",
+		EnvVars:  prefixEnvVars("L1_ETH_RPC"),
+		Required: true,
 	}
 	L1BeaconFlag = &cli.StringFlag{
-		Name:    "l1-beacon",
-		Usage:   "Address of L1 Beacon API endpoint to use",
-		EnvVars: prefixEnvVars("L1_BEACON"),
+		Name:     "l1-beacon",
+		Usage:    "Address of L1 Beacon API endpoint to use",
+		EnvVars:  prefixEnvVars("L1_BEACON"),
+		Required: true,
 	}
 	RollupRpcFlag = &cli.StringFlag{
-		Name:    "rollup-rpc",
-		Usage:   "HTTP provider URL for the rollup node",
-		EnvVars: prefixEnvVars("ROLLUP_RPC"),
+		Name:     "rollup-rpc",
+		Usage:    "HTTP provider URL for the rollup node",
+		EnvVars:  prefixEnvVars("ROLLUP_RPC"),
+		Required: true,
 	}
 	NetworkFlag        = flags.CLINetworkFlag(EnvVarPrefix, "")
 	FactoryAddressFlag = &cli.StringFlag{
@@ -68,9 +71,10 @@ var (
 		Value:   cli.NewStringSlice(types.TraceTypeCannon.String(), types.TraceTypeAsteriscKona.String()),
 	}
 	DatadirFlag = &cli.StringFlag{
-		Name:    "datadir",
-		Usage:   "Directory to store data generated as part of responding to games",
-		EnvVars: prefixEnvVars("DATADIR"),
+		Name:     "datadir",
+		Usage:    "Directory to store data generated as part of responding to games",
+		EnvVars:  prefixEnvVars("DATADIR"),
+		Required: true,
 	}
 	// Optional Flags
 	MaxConcurrencyFlag = &cli.UintFlag{
@@ -229,16 +233,12 @@ var (
 	}
 )
 
-// requiredFlags are checked by [CheckRequired]
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	L1EthRpcFlag,
 	DatadirFlag,
 	RollupRpcFlag,
 	L1BeaconFlag,
-}
-
-// optionalFlags is a list of unchecked cli flags
-var optionalFlags = []cli.Flag{
 	NetworkFlag,
 	FactoryAddressFlag,
 	TraceTypeFlag,
@@ -273,17 +273,12 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, PreStatesURLFlag.Flags()...)
-	optionalFlags = append(optionalFlags, txmgr.CLIFlagsWithDefaults(EnvVarPrefix, txmgr.DefaultChallengerFlagValues)...)
-	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
-
-	Flags = append(requiredFlags, optionalFlags...)
+	Flags = append(Flags, oplog.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, PreStatesURLFlag.Flags()...)
+	Flags = append(Flags, txmgr.CLIFlagsWithDefaults(EnvVarPrefix, txmgr.DefaultChallengerFlagValues)...)
+	Flags = append(Flags, opmetrics.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oppprof.CLIFlags(EnvVarPrefix)...)
 }
-
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
 
 func CheckCannonFlags(ctx *cli.Context) error {
 	if ctx.IsSet(CannonNetworkFlag.Name) && ctx.IsSet(flags.NetworkFlagName) {
@@ -370,11 +365,6 @@ func CheckAsteriscKonaFlags(ctx *cli.Context) error {
 }
 
 func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
 	// CannonL2Flag is checked because it is an alias with L2EthRpcFlag
 	if !ctx.IsSet(CannonL2Flag.Name) && !ctx.IsSet(L2EthRpcFlag.Name) {
 		return fmt.Errorf("flag %s is required", L2EthRpcFlag.Name)

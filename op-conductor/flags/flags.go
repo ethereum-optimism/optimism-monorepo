@@ -1,7 +1,6 @@
 package flags
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/urfave/cli/v2"
@@ -18,16 +17,18 @@ const EnvVarPrefix = "OP_CONDUCTOR"
 
 var (
 	ConsensusAddr = &cli.StringFlag{
-		Name:    "consensus.addr",
-		Usage:   "Address (excluding port) to listen for consensus connections.",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "CONSENSUS_ADDR"),
-		Value:   "127.0.0.1",
+		Name:     "consensus.addr",
+		Usage:    "Address (excluding port) to listen for consensus connections.",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "CONSENSUS_ADDR"),
+		Value:    "127.0.0.1",
+		Required: true,
 	}
 	ConsensusPort = &cli.IntFlag{
-		Name:    "consensus.port",
-		Usage:   "Port to listen for consensus connections. May be 0 to let the system select a port.",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "CONSENSUS_PORT"),
-		Value:   50050,
+		Name:     "consensus.port",
+		Usage:    "Port to listen for consensus connections. May be 0 to let the system select a port.",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "CONSENSUS_PORT"),
+		Value:    50050,
+		Required: true,
 	}
 	AdvertisedFullAddr = &cli.StringFlag{
 		Name:    "consensus.advertised",
@@ -42,14 +43,16 @@ var (
 		Value:   false,
 	}
 	RaftServerID = &cli.StringFlag{
-		Name:    "raft.server.id",
-		Usage:   "Unique ID for this server used by raft consensus",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_SERVER_ID"),
+		Name:     "raft.server.id",
+		Usage:    "Unique ID for this server used by raft consensus",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_SERVER_ID"),
+		Required: true,
 	}
 	RaftStorageDir = &cli.StringFlag{
-		Name:    "raft.storage.dir",
-		Usage:   "Directory to store raft data",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_STORAGE_DIR"),
+		Name:     "raft.storage.dir",
+		Usage:    "Directory to store raft data",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "RAFT_STORAGE_DIR"),
+		Required: true,
 	}
 	RaftSnapshotInterval = &cli.DurationFlag{
 		Name:    "raft.snapshot-interval",
@@ -70,24 +73,28 @@ var (
 		Value:   10240,
 	}
 	NodeRPC = &cli.StringFlag{
-		Name:    "node.rpc",
-		Usage:   "HTTP provider URL for op-node",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "NODE_RPC"),
+		Name:     "node.rpc",
+		Usage:    "HTTP provider URL for op-node",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "NODE_RPC"),
+		Required: true,
 	}
 	ExecutionRPC = &cli.StringFlag{
-		Name:    "execution.rpc",
-		Usage:   "HTTP provider URL for execution layer",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "EXECUTION_RPC"),
+		Name:     "execution.rpc",
+		Usage:    "HTTP provider URL for execution layer",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "EXECUTION_RPC"),
+		Required: true,
 	}
 	HealthCheckInterval = &cli.Uint64Flag{
-		Name:    "healthcheck.interval",
-		Usage:   "Interval between health checks",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_INTERVAL"),
+		Name:     "healthcheck.interval",
+		Usage:    "Interval between health checks",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_INTERVAL"),
+		Required: true,
 	}
 	HealthCheckUnsafeInterval = &cli.Uint64Flag{
-		Name:    "healthcheck.unsafe-interval",
-		Usage:   "Interval allowed between unsafe head and now measured in seconds",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_UNSAFE_INTERVAL"),
+		Name:     "healthcheck.unsafe-interval",
+		Usage:    "Interval allowed between unsafe head and now measured in seconds",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_UNSAFE_INTERVAL"),
+		Required: true,
 	}
 	HealthCheckSafeEnabled = &cli.BoolFlag{
 		Name:    "healthcheck.safe-enabled",
@@ -102,9 +109,10 @@ var (
 		Value:   1200,
 	}
 	HealthCheckMinPeerCount = &cli.Uint64Flag{
-		Name:    "healthcheck.min-peer-count",
-		Usage:   "Minimum number of peers required to be considered healthy",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_MIN_PEER_COUNT"),
+		Name:     "healthcheck.min-peer-count",
+		Usage:    "Minimum number of peers required to be considered healthy",
+		EnvVars:  opservice.PrefixEnvVar(EnvVarPrefix, "HEALTHCHECK_MIN_PEER_COUNT"),
+		Required: true,
 	}
 	Paused = &cli.BoolFlag{
 		Name:    "paused",
@@ -120,7 +128,7 @@ var (
 	}
 )
 
-var requiredFlags = []cli.Flag{
+var Flags = []cli.Flag{
 	ConsensusAddr,
 	ConsensusPort,
 	RaftServerID,
@@ -130,9 +138,6 @@ var requiredFlags = []cli.Flag{
 	HealthCheckInterval,
 	HealthCheckUnsafeInterval,
 	HealthCheckMinPeerCount,
-}
-
-var optionalFlags = []cli.Flag{
 	AdvertisedFullAddr,
 	Paused,
 	RPCEnableProxy,
@@ -145,22 +150,9 @@ var optionalFlags = []cli.Flag{
 }
 
 func init() {
-	optionalFlags = append(optionalFlags, oprpc.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, opflags.CLIFlags(EnvVarPrefix, "")...)
-
-	Flags = append(requiredFlags, optionalFlags...)
-}
-
-var Flags []cli.Flag
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return opflags.CheckRequiredXor(ctx)
+	Flags = append(Flags, oprpc.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oplog.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, opmetrics.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oppprof.CLIFlags(EnvVarPrefix)...)
+	Flags = append(Flags, opflags.CLIFlags(EnvVarPrefix, "")...)
 }

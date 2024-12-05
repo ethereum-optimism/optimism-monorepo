@@ -51,12 +51,14 @@ var (
 		Value:    "http://127.0.0.1:8545",
 		EnvVars:  prefixEnvVars("L1_ETH_RPC"),
 		Category: RollupCategory,
+		Required: true,
 	}
 	L2EngineAddr = &cli.StringFlag{
 		Name:     "l2",
 		Usage:    "Address of L2 Engine JSON-RPC endpoints to use (engine and eth namespace required)",
 		EnvVars:  prefixEnvVars("L2_ENGINE_RPC"),
 		Category: RollupCategory,
+		Required: true,
 	}
 	L2EngineJWTSecret = &cli.StringFlag{
 		Name:        "l2.jwt-secret",
@@ -65,6 +67,7 @@ var (
 		Value:       "",
 		Destination: new(string),
 		Category:    RollupCategory,
+		Required:    true,
 	}
 	BeaconAddr = &cli.StringFlag{
 		Name:     "l1.beacon",
@@ -374,13 +377,11 @@ var (
 	}
 )
 
-var requiredFlags = []cli.Flag{
+// Flags contains the list of configuration options available to the binary.
+var Flags = []cli.Flag{
 	L1NodeAddr,
 	L2EngineAddr,
 	L2EngineJWTSecret,
-}
-
-var optionalFlags = []cli.Flag{
 	SupervisorAddr,
 	BeaconAddr,
 	BeaconHeader,
@@ -430,25 +431,12 @@ var DeprecatedFlags = []cli.Flag{
 	// Deprecated P2P Flags are added at the init step
 }
 
-// Flags contains the list of configuration options available to the binary.
-var Flags []cli.Flag
-
 func init() {
 	DeprecatedFlags = append(DeprecatedFlags, deprecatedP2PFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, P2PFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oplog.CLIFlagsWithCategory(EnvVarPrefix, OperationsCategory)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlagsWithCategory(EnvVarPrefix, OperationsCategory)...)
-	optionalFlags = append(optionalFlags, DeprecatedFlags...)
-	optionalFlags = append(optionalFlags, opflags.CLIFlags(EnvVarPrefix, RollupCategory)...)
-	optionalFlags = append(optionalFlags, altda.CLIFlags(EnvVarPrefix, AltDACategory)...)
-	Flags = append(requiredFlags, optionalFlags...)
-}
-
-func CheckRequired(ctx *cli.Context) error {
-	for _, f := range requiredFlags {
-		if !ctx.IsSet(f.Names()[0]) {
-			return fmt.Errorf("flag %s is required", f.Names()[0])
-		}
-	}
-	return opflags.CheckRequiredXor(ctx)
+	Flags = append(Flags, P2PFlags(EnvVarPrefix)...)
+	Flags = append(Flags, oplog.CLIFlagsWithCategory(EnvVarPrefix, OperationsCategory)...)
+	Flags = append(Flags, oppprof.CLIFlagsWithCategory(EnvVarPrefix, OperationsCategory)...)
+	Flags = append(Flags, DeprecatedFlags...)
+	Flags = append(Flags, opflags.CLIFlags(EnvVarPrefix, RollupCategory)...)
+	Flags = append(Flags, altda.CLIFlags(EnvVarPrefix, AltDACategory)...)
 }
