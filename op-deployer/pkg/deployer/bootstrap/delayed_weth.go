@@ -7,8 +7,6 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
@@ -37,6 +35,7 @@ type DelayedWETHConfig struct {
 	PrivateKey       string
 	Logger           log.Logger
 	ArtifactsLocator *artifacts2.Locator
+	DelayedWethImpl  common.Address
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -90,11 +89,13 @@ func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETH
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return DelayedWETHConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
+	delayedWethImpl := common.HexToAddress(cliCtx.String(DelayedWethImplFlagName))
 	config := DelayedWETHConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
+		DelayedWethImpl:  delayedWethImpl,
 	}
 	return config, nil
 }
@@ -134,10 +135,6 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 	if err != nil {
 		return fmt.Errorf("error getting superchain config: %w", err)
 	}
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
-	}
 	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
 	if err != nil {
 		return fmt.Errorf("error getting superchain proxy admin: %w", err)
@@ -166,33 +163,16 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
-			src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
-			}
-			return forking.Cache(src), nil
-		}),
+		l1RPC,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
-	}
-
-	latest, err := l1Client.HeaderByNumber(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get latest block: %w", err)
-	}
-
-	if _, err := host.CreateSelectFork(
-		script.ForkWithURLOrAlias("main"),
-		script.ForkWithBlockNumberU256(latest.Number),
-	); err != nil {
-		return fmt.Errorf("failed to select fork: %w", err)
 	}
 
 	var release string
@@ -210,9 +190,9 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		host,
 		opcm.DeployDelayedWETHInput{
 			Release:               release,
-			StandardVersionsToml:  standardVersionsTOML,
 			ProxyAdmin:            proxyAdmin,
 			SuperchainConfigProxy: superchainConfigAddr,
+			DelayedWethImpl:       cfg.DelayedWethImpl,
 			DelayedWethOwner:      delayedWethOwner,
 			DelayedWethDelay:      big.NewInt(604800),
 		},

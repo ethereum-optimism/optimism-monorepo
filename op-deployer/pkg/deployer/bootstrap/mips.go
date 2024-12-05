@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -123,10 +125,12 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 		}
 	}()
 
-	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
+
+	l1Client := ethclient.NewClient(l1RPC)
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
@@ -147,21 +151,17 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1RPC,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {

@@ -54,5 +54,8 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 		logLevel = "CRIT"
 	}
 	args = append(args, "--log.level", logLevel)
+	if cfg.L2Custom {
+		args = append(args, "--l2.custom")
+	}
 	return args, nil
 }

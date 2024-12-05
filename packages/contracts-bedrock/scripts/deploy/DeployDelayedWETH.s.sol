@@ -20,9 +20,9 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 contract DeployDelayedWETHInput is BaseDeployIO {
     /// Required inputs.
     string internal _release;
-    string internal _standardVersionsToml;
     address public _proxyAdmin;
     ISuperchainConfig public _superchainConfigProxy;
+    address public _delayedWethImpl;
     address public _delayedWethOwner;
     uint256 public _delayedWethDelay;
 
@@ -45,6 +45,8 @@ contract DeployDelayedWETHInput is BaseDeployIO {
         } else if (_sel == this.delayedWethOwner.selector) {
             require(_value != address(0), "DeployDelayedWETH: delayedWethOwner cannot be zero address");
             _delayedWethOwner = _value;
+        } else if (_sel == this.delayedWethImpl.selector) {
+            _delayedWethImpl = _value;
         } else {
             revert("DeployDelayedWETH: unknown selector");
         }
@@ -54,9 +56,6 @@ contract DeployDelayedWETHInput is BaseDeployIO {
         if (_sel == this.release.selector) {
             require(!LibString.eq(_value, ""), "DeployDelayedWETH: release cannot be empty");
             _release = _value;
-        } else if (_sel == this.standardVersionsToml.selector) {
-            require(!LibString.eq(_value, ""), "DeployDelayedWETH: standardVersionsToml cannot be empty");
-            _standardVersionsToml = _value;
         } else {
             revert("DeployDelayedWETH: unknown selector");
         }
@@ -67,11 +66,6 @@ contract DeployDelayedWETHInput is BaseDeployIO {
         return _release;
     }
 
-    function standardVersionsToml() public view returns (string memory) {
-        require(!LibString.eq(_standardVersionsToml, ""), "DeployDelayedWETH: standardVersionsToml not set");
-        return _standardVersionsToml;
-    }
-
     function proxyAdmin() public view returns (address) {
         require(_proxyAdmin != address(0), "DeployDelayedWETH: proxyAdmin not set");
         return _proxyAdmin;
@@ -80,6 +74,11 @@ contract DeployDelayedWETHInput is BaseDeployIO {
     function superchainConfigProxy() public view returns (ISuperchainConfig) {
         require(address(_superchainConfigProxy) != address(0), "DeployDisputeGame: superchainConfigProxy not set");
         return _superchainConfigProxy;
+    }
+
+    function delayedWethImpl() public view returns (address) {
+        require(_delayedWethImpl != address(0), "DeployDelayedWETH: delayedWethImpl not set");
+        return _delayedWethImpl;
     }
 
     function delayedWethOwner() public view returns (address) {
@@ -166,11 +165,9 @@ contract DeployDelayedWETH is Script {
 
     function deployDelayedWethImpl(DeployDelayedWETHInput _dwi, DeployDelayedWETHOutput _dwo) internal {
         string memory release = _dwi.release();
-        string memory stdVerToml = _dwi.standardVersionsToml();
-        string memory contractName = "delayed_weth";
         IDelayedWETH impl;
 
-        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
+        address existingImplementation = _dwi.delayedWethImpl();
         if (existingImplementation != address(0)) {
             impl = IDelayedWETH(payable(existingImplementation));
         } else if (isDevelopRelease(release)) {
@@ -212,30 +209,6 @@ contract DeployDelayedWETH is Script {
 
         vm.label(address(proxy), "DelayedWETHProxy");
         _dwo.set(_dwo.delayedWethProxy.selector, address(proxy));
-    }
-
-    // Zero address is returned if the address is not found in '_standardVersionsToml'.
-    function getReleaseAddress(
-        string memory _version,
-        string memory _contractName,
-        string memory _standardVersionsToml
-    )
-        internal
-        pure
-        returns (address addr_)
-    {
-        string memory baseKey = string.concat('.releases["', _version, '"].', _contractName);
-        string memory implAddressKey = string.concat(baseKey, ".implementation_address");
-        string memory addressKey = string.concat(baseKey, ".address");
-        try vm.parseTomlAddress(_standardVersionsToml, implAddressKey) returns (address parsedAddr_) {
-            addr_ = parsedAddr_;
-        } catch {
-            try vm.parseTomlAddress(_standardVersionsToml, addressKey) returns (address parsedAddr_) {
-                addr_ = parsedAddr_;
-            } catch {
-                addr_ = address(0);
-            }
-        }
     }
 
     // A release is considered a 'develop' release if it does not start with 'op-contracts'.
