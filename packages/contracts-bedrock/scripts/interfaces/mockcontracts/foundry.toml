@@ -1,0 +1,10 @@
+[profile.default]
+src = "src"
+out = 'forge-artifacts'
+build_info_path = 'artifacts/build-info'
+libs = ["lib"]
+extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
+bytecode_hash = 'none'
+ast = true
+evm_version = 'cancun'
+# See more config options https://github.com/foundry-rs/foundry/blob/master/crates/config/README.md#all-options

@@ -181,6 +181,16 @@ type AstNode struct {
 	Kind     string      `json:"kind,omitempty"`
 	Value    interface{} `json:"value,omitempty"`
 
+	// Type specifics
+	UnderlyingType *AstTypeName `json:"underlyingType,omitempty"`
+
+	// Import specifics
+	File          string       `json:"file,omitempty"`
+	AbsolutePath  string       `json:"absolutePath,omitempty"`
+	SourceUnit    int          `json:"sourceUnit,omitempty"`
+	SymbolAliases []Expression `json:"symbolAliases,omitempty"`
+	UnitAlias     string       `json:"unitAlias,omitempty"`
+
 	// Other fields
 	Arguments []Expression `json:"arguments,omitempty"`
 	Condition *Expression  `json:"condition,omitempty"`
@@ -253,6 +263,12 @@ type AstVariableOrEnumValue struct {
 	TypeName         *AstTypeName         `json:"typeName,omitempty"`
 	Value            *Expression          `json:"value,omitempty"`
 	Visibility       *string              `json:"visibility,omitempty"`
+}
+
+type AstSymbolAlias struct {
+	Foreign      Expression `json:"foreign"`
+	Local        string     `json:"local,omitempty"`
+	NameLocation string     `json:"nameLocation,omitempty"`
 }
 
 type Expression struct {

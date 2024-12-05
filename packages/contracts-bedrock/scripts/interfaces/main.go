@@ -40,9 +40,13 @@ func GenerateSolidityInterface(
 }
 
 func main() {
-	artifact, _ := common.ReadForgeArtifact("packages/contracts-bedrock/forge-artifacts/ProtocolVersions.sol/ProtocolVersions.json")
+	artifact, _ := common.ReadForgeArtifact("packages/contracts-bedrock/scripts/interfaces/mockcontracts/forge-artifacts/A.sol/A.json")
 
 	astData := ExtractASTData(artifact.Ast)
+
+	for i := 0; i < len(astData.Types); i++ {
+		println(GenerateTypeDefinition(astData.Types[i]))
+	}
 
 	for i := 0; i < len(astData.Structs); i++ {
 		println(GenerateStructDefinition(astData.Structs[i]))

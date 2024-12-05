@@ -6,6 +6,10 @@ import (
 	"strings"
 )
 
+func GenerateTypeDefinition(udtype solc.AstNode) string {
+	return fmt.Sprintf("type %s is %s;", udtype.Name, udtype.UnderlyingType.Name)
+}
+
 func GenerateFunctionSignature(fn solc.AstNode) string {
 	if fn.Kind == "constructor" {
 		fn.Name = "__constructor__"
