@@ -44,14 +44,13 @@ func (m *mockL1BlockRefByNumberFetcher) L1BlockRefByNumber(context.Context, uint
 }
 
 func TestL1Processor(t *testing.T) {
-
-	ctx, cancel := context.WithCancel(context.Background())
 	processorForTesting := func() *L1Processor {
+		ctx, cancel := context.WithCancel(context.Background())
 		proc := &L1Processor{
 			log:           testlog.Logger(t, log.LvlInfo),
 			client:        &mockL1BlockRefByNumberFetcher{},
 			currentNumber: 0,
-			tickDuration:  1,
+			tickDuration:  1 * time.Second,
 			db:            &mockChainsDB{},
 			ctx:           ctx,
 			cancel:        cancel,
@@ -84,12 +83,16 @@ func TestL1Processor(t *testing.T) {
 	})
 	t.Run("Records new L1", func(t *testing.T) {
 		proc := processorForTesting()
+		// return a new block number each time
+		num := uint64(0)
 		proc.client.(*mockL1BlockRefByNumberFetcher).l1BlockByNumberFn = func() (eth.L1BlockRef, error) {
-			return eth.L1BlockRef{Number: 0}, nil
+			defer func() { num++ }()
+			return eth.L1BlockRef{Number: num}, nil
 		}
-		called := 0
+		// confirm that recordNewL1 is called for each block number received
+		called := uint64(0)
 		proc.db.(*mockChainsDB).recordNewL1Fn = func(ref eth.BlockRef) error {
-			require.Equal(t, uint64(0), ref.Number)
+			require.Equal(t, called, ref.Number)
 			called++
 			return nil
 		}

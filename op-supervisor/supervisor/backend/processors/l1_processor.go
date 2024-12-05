@@ -79,6 +79,7 @@ func (p *L1Processor) Stop() {
 	p.wg.Wait()
 }
 
+// worker runs a loop that checks for new L1 blocks at a regular interval
 func (p *L1Processor) worker() {
 	defer p.wg.Done()
 	delay := time.NewTicker(p.tickDuration)
@@ -96,6 +97,10 @@ func (p *L1Processor) worker() {
 	}
 }
 
+// work checks for a new L1 block and processes it if found
+// the starting point is set when Start is called, and blocks are processed searched incrementally
+// if a new block is found, it is recorded in the database and the target number is updated
+// in the future it will also kick of derivation management for the sync nodes
 func (p *L1Processor) work() error {
 	nextNumber := p.currentNumber + 1
 	ref, err := p.client.L1BlockRefByNumber(p.ctx, nextNumber)
