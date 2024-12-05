@@ -141,6 +141,9 @@ func ApplyPipeline(
 	opts ApplyPipelineOpts,
 ) error {
 	intent := opts.Intent
+	if err := intent.Check(); err != nil {
+		return err
+	}
 	st := opts.State
 
 	progressor := func(curr, total int64) {

@@ -15,24 +15,12 @@ dep-status:
 #                         BUILD                        #
 ########################################################
 
-# Checks that the correct version of Foundry is installed.
-check-foundry:
-  cd ../../ && ./ops/scripts/check-foundry.sh
-
-# Checks that semgrep is installed.
-check-semgrep:
-  cd ../../ && just check-semgrep
-
-# Checks that the correct versions of Foundry and semgrep are installed.
-check-dependencies:
-  just check-foundry && just check-semgrep
-
 # Core forge build command
 forge-build:
   forge build
 
 # Builds the contracts.
-build: check-dependencies lint-fix-no-fail forge-build interfaces-check-no-build
+build: lint-fix-no-fail forge-build interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
@@ -54,8 +42,8 @@ clean:
 ########################################################
 
 # Runs standard contract tests.
-test: build-go-ffi
-  forge test
+test *ARGS: build-go-ffi
+  forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
@@ -70,11 +58,11 @@ test-kontrol-no-build:
 
 # Runs contract coverage.
 coverage: build-go-ffi
-  forge coverage || (bash -c "forge coverage 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage
 
 # Runs contract coverage with lcov.
 coverage-lcov: build-go-ffi
-  forge coverage --report lcov || (bash -c "forge coverage --report lcov 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage --report lcov
 
 
 ########################################################
@@ -216,7 +204,6 @@ semgrep:
 semgrep-test:
   cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
 
-# TODO: Also run lint-forge-tests-check but we need to fix the test names first.
 # Runs all checks.
 check:
   @just gas-snapshot-check-no-build \

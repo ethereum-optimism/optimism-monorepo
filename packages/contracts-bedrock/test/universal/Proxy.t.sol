@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
 import { Bytes32AddressLib } from "@rari-capital/solmate/src/utils/Bytes32AddressLib.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SimpleStorage {

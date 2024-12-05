@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 
@@ -36,9 +37,7 @@ type DisputeGameConfig struct {
 
 	privateKeyECDSA *ecdsa.PrivateKey
 
-	MinProposalSizeBytes     uint64
-	ChallengePeriodSeconds   uint64
-	MipsVersion              uint64
+	Vm                       common.Address
 	GameKind                 string
 	GameType                 uint32
 	AbsolutePrestate         common.Hash
@@ -84,22 +83,44 @@ func DisputeGameCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	cfg, err := NewDisputeGameConfigFromCLI(cliCtx, l)
+	if err != nil {
+		return err
+	}
+	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
+	return DisputeGame(ctx, cfg)
+}
+
+func NewDisputeGameConfigFromCLI(cliCtx *cli.Context, l log.Logger) (DisputeGameConfig, error) {
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
-		return fmt.Errorf("failed to parse artifacts URL: %w", err)
+		return DisputeGameConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
 
-	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-
-	return DisputeGame(ctx, DisputeGameConfig{
+	cfg := DisputeGameConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
-	})
+
+		Vm:                       common.HexToAddress(cliCtx.String(VmFlagName)),
+		GameKind:                 cliCtx.String(GameKindFlagName),
+		GameType:                 uint32(cliCtx.Uint64(GameTypeFlagName)),
+		AbsolutePrestate:         common.HexToHash(cliCtx.String(AbsolutePrestateFlagName)),
+		MaxGameDepth:             cliCtx.Uint64(MaxGameDepthFlagName),
+		SplitDepth:               cliCtx.Uint64(SplitDepthFlagName),
+		ClockExtension:           cliCtx.Uint64(ClockExtensionFlagName),
+		MaxClockDuration:         cliCtx.Uint64(MaxClockDurationFlagName),
+		DelayedWethProxy:         common.HexToAddress(cliCtx.String(DelayedWethProxyFlagName)),
+		AnchorStateRegistryProxy: common.HexToAddress(cliCtx.String(AnchorStateRegistryProxyFlagName)),
+		L2ChainId:                cliCtx.Uint64(L2ChainIdFlagName),
+		Proposer:                 common.HexToAddress(cliCtx.String(ProposerFlagName)),
+		Challenger:               common.HexToAddress(cliCtx.String(ChallengerFlagName)),
+	}
+	return cfg, nil
 }
 
 func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
@@ -123,6 +144,10 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 	}()
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
+	if err != nil {
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+	l1Rpc, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
@@ -152,21 +177,17 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1Rpc,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return fmt.Errorf("failed to create L1 script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {
@@ -176,15 +197,12 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 	}
 
 	lgr.Info("deploying dispute game", "release", release)
-
 	dgo, err := opcm.DeployDisputeGame(
 		host,
 		opcm.DeployDisputeGameInput{
 			Release:                  release,
 			StandardVersionsToml:     standardVersionsTOML,
-			MipsVersion:              cfg.MipsVersion,
-			MinProposalSizeBytes:     cfg.MinProposalSizeBytes,
-			ChallengePeriodSeconds:   cfg.ChallengePeriodSeconds,
+			VmAddress:                cfg.Vm,
 			GameKind:                 cfg.GameKind,
 			GameType:                 cfg.GameType,
 			AbsolutePrestate:         cfg.AbsolutePrestate,

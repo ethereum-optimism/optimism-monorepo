@@ -3,31 +3,33 @@ package p2p
 import (
 	"bytes"
 	"context"
+	"crypto/ecdsa"
 	"fmt"
 	"io"
 	"math/big"
 	"testing"
 	"time"
 
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
-	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/golang/snappy"
 
-	// "github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
+	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
-
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
 func TestGuardGossipValidator(t *testing.T) {
@@ -62,30 +64,30 @@ func TestVerifyBlockSignature(t *testing.T) {
 		L2ChainID: big.NewInt(100),
 	}
 	peerId := peer.ID("foo")
-	secrets, err := e2eutils.DefaultMnemonicConfig.Secrets()
+	secrets, err := crypto.GenerateKey()
 	require.NoError(t, err)
 	msg := []byte("any msg")
 
 	t.Run("Valid", func(t *testing.T) {
-		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.SequencerP2P.PublicKey)}
-		signer := &PreparedSigner{Signer: NewLocalSigner(secrets.SequencerP2P)}
+		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
+		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
 		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
 		require.NoError(t, err)
-		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:65], msg)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationAccept, result)
 	})
 
 	t.Run("WrongSigner", func(t *testing.T) {
 		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: common.HexToAddress("0x1234")}
-		signer := &PreparedSigner{Signer: NewLocalSigner(secrets.SequencerP2P)}
+		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
 		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
 		require.NoError(t, err)
-		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:65], msg)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationReject, result)
 	})
 
 	t.Run("InvalidSignature", func(t *testing.T) {
-		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.SequencerP2P.PublicKey)}
+		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
 		sig := make([]byte, 65)
 		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig, msg)
 		require.Equal(t, pubsub.ValidationReject, result)
@@ -93,11 +95,127 @@ func TestVerifyBlockSignature(t *testing.T) {
 
 	t.Run("NoSequencer", func(t *testing.T) {
 		runCfg := &testutils.MockRuntimeConfig{}
-		signer := &PreparedSigner{Signer: NewLocalSigner(secrets.SequencerP2P)}
+		signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
 		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
 		require.NoError(t, err)
-		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:65], msg)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
 		require.Equal(t, pubsub.ValidationIgnore, result)
+	})
+}
+
+type mockRemoteSigner struct {
+	priv *ecdsa.PrivateKey
+}
+
+func (t *mockRemoteSigner) SignBlockPayload(args opsigner.BlockPayloadArgs) (hexutil.Bytes, error) {
+	signingHash, err := args.ToSigningHash()
+	if err != nil {
+		return nil, err
+	}
+	signature, err := crypto.Sign(signingHash[:], t.priv)
+	if err != nil {
+		return nil, err
+	}
+	return signature, nil
+}
+
+func TestVerifyBlockSignatureWithRemoteSigner(t *testing.T) {
+	secrets, err := crypto.GenerateKey()
+	require.NoError(t, err)
+
+	remoteSigner := &mockRemoteSigner{secrets}
+	server := oprpc.NewServer(
+		"127.0.0.1",
+		0,
+		"test",
+		oprpc.WithAPIs([]rpc.API{
+			{
+				Namespace: "opsigner",
+				Service:   remoteSigner,
+			},
+		}),
+	)
+
+	require.NoError(t, server.Start())
+	defer func() {
+		_ = server.Stop()
+	}()
+
+	logger := testlog.Logger(t, log.LevelCrit)
+	cfg := &rollup.Config{
+		L2ChainID: big.NewInt(100),
+	}
+
+	peerId := peer.ID("foo")
+	msg := []byte("any msg")
+
+	signerCfg := opsigner.NewCLIConfig()
+	signerCfg.Endpoint = fmt.Sprintf("http://%s", server.Endpoint())
+	signerCfg.TLSConfig.TLSKey = ""
+	signerCfg.TLSConfig.TLSCert = ""
+	signerCfg.TLSConfig.TLSCaCert = ""
+	signerCfg.TLSConfig.Enabled = false
+
+	t.Run("Valid", func(t *testing.T) {
+		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
+		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
+		require.NoError(t, err)
+		signer := &PreparedSigner{Signer: remoteSigner}
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		require.NoError(t, err)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
+		require.Equal(t, pubsub.ValidationAccept, result)
+	})
+
+	t.Run("WrongSigner", func(t *testing.T) {
+		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: common.HexToAddress("0x1234")}
+		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
+		require.NoError(t, err)
+		signer := &PreparedSigner{Signer: remoteSigner}
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		require.NoError(t, err)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
+		require.Equal(t, pubsub.ValidationReject, result)
+	})
+
+	t.Run("InvalidSignature", func(t *testing.T) {
+		runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
+		sig := make([]byte, 65)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig, msg)
+		require.Equal(t, pubsub.ValidationReject, result)
+	})
+
+	t.Run("NoSequencer", func(t *testing.T) {
+		runCfg := &testutils.MockRuntimeConfig{}
+		remoteSigner, err := NewRemoteSigner(logger, signerCfg)
+		require.NoError(t, err)
+		signer := &PreparedSigner{Signer: remoteSigner}
+		sig, err := signer.Sign(context.Background(), SigningDomainBlocksV1, cfg.L2ChainID, msg)
+		require.NoError(t, err)
+		result := verifyBlockSignature(logger, cfg, runCfg, peerId, sig[:], msg)
+		require.Equal(t, pubsub.ValidationIgnore, result)
+	})
+
+	t.Run("RemoteSignerNoTLS", func(t *testing.T) {
+		signerCfg := opsigner.NewCLIConfig()
+		signerCfg.Endpoint = fmt.Sprintf("http://%s", server.Endpoint())
+		signerCfg.TLSConfig.TLSKey = "invalid"
+		signerCfg.TLSConfig.TLSCert = "invalid"
+		signerCfg.TLSConfig.TLSCaCert = "invalid"
+		signerCfg.TLSConfig.Enabled = true
+
+		_, err := NewRemoteSigner(logger, signerCfg)
+		require.Error(t, err)
+	})
+
+	t.Run("RemoteSignerInvalidEndpoint", func(t *testing.T) {
+		signerCfg := opsigner.NewCLIConfig()
+		signerCfg.Endpoint = "Invalid"
+		signerCfg.TLSConfig.TLSKey = ""
+		signerCfg.TLSConfig.TLSCert = ""
+		signerCfg.TLSConfig.TLSCaCert = ""
+		_, err := NewRemoteSigner(logger, signerCfg)
+		require.Error(t, err)
 	})
 }
 
@@ -146,10 +264,10 @@ func TestBlockValidator(t *testing.T) {
 	cfg := &rollup.Config{
 		L2ChainID: big.NewInt(100),
 	}
-	secrets, err := e2eutils.DefaultMnemonicConfig.Secrets()
+	secrets, err := crypto.GenerateKey()
 	require.NoError(t, err)
-	runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.SequencerP2P.PublicKey)}
-	signer := &PreparedSigner{Signer: NewLocalSigner(secrets.SequencerP2P)}
+	runCfg := &testutils.MockRuntimeConfig{P2PSeqAddress: crypto.PubkeyToAddress(secrets.PublicKey)}
+	signer := &PreparedSigner{Signer: NewLocalSigner(secrets)}
 	// Params Set 2: Call the validation function
 	peerID := peer.ID("foo")
 

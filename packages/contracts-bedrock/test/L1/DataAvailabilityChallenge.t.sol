@@ -6,7 +6,7 @@ import {
     ChallengeStatus,
     Challenge,
     CommitmentType
-} from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
+} from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { computeCommitmentKeccak256 } from "src/L1/DataAvailabilityChallenge.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";

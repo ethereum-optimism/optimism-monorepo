@@ -12,13 +12,13 @@ import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 // Interfaces
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { ISystemConfigInterop } from "src/L1/interfaces/ISystemConfigInterop.sol";
-import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
+import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 /// @title Specification_Test
 /// @dev Specifies common security properties of entrypoints to L1 contracts, including authorization and
@@ -940,12 +940,12 @@ contract Specification_Test is CommonTest {
     /// @notice Ensures that there's an auth spec for every L1 contract function.
     function test_contractAuth_works() public {
         string[] memory pathExcludes = new string[](6);
-        pathExcludes[0] = "src/dispute/interfaces/*";
+        pathExcludes[0] = "interfaces/dispute/*";
         pathExcludes[1] = "src/dispute/lib/*";
         pathExcludes[2] = "src/safe/SafeSigners.sol";
-        pathExcludes[3] = "src/L1/interfaces/*";
-        pathExcludes[4] = "src/governance/interfaces/*";
-        pathExcludes[5] = "src/safe/interfaces/*";
+        pathExcludes[3] = "interfaces/L1/*";
+        pathExcludes[4] = "interfaces/governance/*";
+        pathExcludes[5] = "interfaces/safe/*";
         Abi[] memory abis = ForgeArtifacts.getContractFunctionAbis(
             "src/{L1,dispute,governance,safe,universal/ProxyAdmin.sol,universal/WETH98.sol}", pathExcludes
         );

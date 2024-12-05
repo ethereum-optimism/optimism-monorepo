@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 
 // Contracts
-import { IWETH98 } from "src/universal/interfaces/IWETH98.sol";
+import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract WETH98_Test is Test {

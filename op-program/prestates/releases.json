@@ -1,5 +1,8 @@
 [
   {
+    "version": "1.4.0-rc.2",
+    "hash": "0x0364e4e72922e7d649338f558f8a14b50ca31922a1484e73ea03987fb1516095"
+  }, {
     "version": "1.4.0-rc.1",
     "hash": "0x03925193e3e89f87835bbdf3a813f60b2aa818a36bbe71cd5d8fd7e79f5e8afe"
   },

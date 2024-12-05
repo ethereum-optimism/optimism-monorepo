@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -157,6 +158,30 @@ func TestL2Genesis(t *testing.T) {
 	t.Run("NotRequiredForSepolia", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--network", "sepolia"))
 		require.Equal(t, chainconfig.OPSepoliaChainConfig(), cfg.L2ChainConfig)
+	})
+}
+
+func TestL2ChainID(t *testing.T) {
+	t.Run("DefaultToNetworkChainID", func(t *testing.T) {
+		cfg := configForArgs(t, replaceRequiredArg("--network", "op-mainnet"))
+		require.Equal(t, uint64(10), cfg.L2ChainID)
+	})
+
+	t.Run("DefaultToGenesisChainID", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
+		require.Equal(t, l2GenesisConfig.ChainID.Uint64(), cfg.L2ChainID)
+	})
+
+	t.Run("OverrideToCustomIndicator", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network",
+			"--rollup.config", rollupCfgFile,
+			"--l2.genesis", genesisFile,
+			"--l2.custom"))
+		require.Equal(t, client.CustomChainIDIndicator, cfg.L2ChainID)
 	})
 }
 
