@@ -179,6 +179,20 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				blocksToLoad:    &inclusiveBlockRange{104, 109},
 			},
 		},
+		{name: "no blocks",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{},
+			channels:      []channelStatuser{},
+			expected: syncActions{
+				blocksToLoad: &inclusiveBlockRange{104, 109},
+			},
+		},
 		{name: "happy path + multiple channels",
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 5},
