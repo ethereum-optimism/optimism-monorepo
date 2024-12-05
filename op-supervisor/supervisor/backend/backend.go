@@ -128,12 +128,13 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		su.chainProcessors.Set(chainID, chainProcessor)
 	}
 
-	// initialize the L1 processor
-	l1Processor, err := processors.NewL1Processor(su.logger, su.chainDBs, cfg.L1RPC)
-	if err != nil {
-		return fmt.Errorf("failed to create L1 processor: %w", err)
+	if cfg.L1RPC != "" {
+		if err := su.attachL1RPC(ctx, cfg.L1RPC); err != nil {
+			return fmt.Errorf("failed to create L1 processor: %w", err)
+		}
+	} else {
+		su.logger.Warn("No L1 RPC configured, L1 processor will not be started")
 	}
-	su.l1Processor = l1Processor
 
 	// the config has some RPC connections to attach to the chain-processors
 	for _, rpc := range cfg.L2RPCs {
@@ -240,6 +241,38 @@ func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src pr
 	return nil
 }
 
+func (su *SupervisorBackend) attachL1RPC(ctx context.Context, l1RPCAddr string) error {
+	su.logger.Info("attaching L1 RPC to L1 processor", "rpc", l1RPCAddr)
+
+	logger := su.logger.New("l1-rpc", l1RPCAddr)
+	l1RPC, err := client.NewRPC(ctx, logger, l1RPCAddr)
+	if err != nil {
+		return fmt.Errorf("failed to setup L1 RPC: %w", err)
+	}
+	l1Client, err := sources.NewL1Client(
+		l1RPC,
+		su.logger,
+		nil,
+		// placeholder config for the L1
+		sources.L1ClientSimpleConfig(true, sources.RPCKindBasic, 100))
+	if err != nil {
+		return fmt.Errorf("failed to setup L1 Client: %w", err)
+	}
+	su.AttachL1Source(l1Client)
+	return nil
+}
+
+// attachL1Source attaches an L1 source to the L1 processor.
+// If the L1 processor does not exist, it is created and started.
+func (su *SupervisorBackend) AttachL1Source(source processors.L1Source) {
+	if su.l1Processor == nil {
+		su.l1Processor = processors.NewL1Processor(su.logger, su.chainDBs, source)
+		su.l1Processor.Start()
+	} else {
+		su.l1Processor.AttachClient(source)
+	}
+}
+
 func clientForL2(ctx context.Context, logger log.Logger, rpc string) (client.RPC, types.ChainID, error) {
 	ethClient, err := dial.DialEthClientWithTimeout(ctx, 10*time.Second, logger, rpc)
 	if err != nil {
@@ -264,8 +297,10 @@ func (su *SupervisorBackend) Start(ctx context.Context) error {
 		return fmt.Errorf("failed to resume chains db: %w", err)
 	}
 
-	// start the L1 processor
-	su.l1Processor.Start()
+	// start the L1 processor if it exists
+	if su.l1Processor != nil {
+		su.l1Processor.Start()
+	}
 
 	if !su.synchronousProcessors {
 		// Make all the chain-processors run automatic background processing
@@ -293,7 +328,9 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 	su.logger.Info("Closing supervisor backend")
 
 	// stop the L1 processor
-	su.l1Processor.Stop()
+	if su.l1Processor != nil {
+		su.l1Processor.Stop()
+	}
 
 	// close all processors
 	su.chainProcessors.Range(func(id types.ChainID, processor *processors.ChainProcessor) bool {
