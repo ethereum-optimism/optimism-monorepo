@@ -431,7 +431,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				// If the sequencer is out of sync
 				// do nothing and wait to see if it has
 				// got in sync on the next tick.
-				l.Log.Warn("error computing sync actions, sequencer is out of sync")
+				l.Log.Warn("Sequencer is out of sync, retrying next tick.")
 				continue
 			}
 
