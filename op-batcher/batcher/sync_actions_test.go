@@ -70,12 +70,15 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 
 	testCases := []TestCase{
 		{name: "empty sync status",
+			// This can happen when the sequencer recovers from a reorg
 			newSyncStatus:        eth.SyncStatus{},
 			expected:             syncActions{},
 			expectedSeqOutOfSync: true,
 			expectedLogs:         []string{"empty sync status"},
 		},
-		{name: "sequencer restart",
+		{name: "current l1 reversed",
+			// This can happen when the sequencer restarts or is switched
+			// to a backup sequencer:
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 2},
 				CurrentL1: eth.BlockRef{Number: 1},
@@ -85,7 +88,10 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedSeqOutOfSync: true,
 			expectedLogs:         []string{"sequencer currentL1 reversed"},
 		},
-		{name: "L1 reorg",
+		{name: "gap between safe chain and state",
+			// This can happen if there is an L1 reorg:
+			// although the sequencer has derived up the same
+			// L1 block height, it derived fewer safe L2 blocks.
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 6},
 				CurrentL1: eth.BlockRef{Number: 1},
@@ -99,9 +105,11 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: &inclusiveBlockRange{101, 109},
 			},
-			expectedLogs: []string{"new safe head is behind oldest block in state"},
+			expectedLogs: []string{"oldest unsafe block is below oldest block in state"},
 		},
-		{name: "batcher restart",
+		{name: "unexpectedly good progress",
+			// This can happen if another batcher instance got some blocks
+			// included in the safe chain:
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 6},
 				CurrentL1: eth.BlockRef{Number: 2},
@@ -115,9 +123,11 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: &inclusiveBlockRange{105, 109},
 			},
-			expectedLogs: []string{"safe head above unsafe head"},
+			expectedLogs: []string{"oldest unsafe block above newest block in state"},
 		},
 		{name: "safe chain reorg",
+			// This can happen if there is an L1 reorg, the safe chain is at an acceptable
+			// height but it does not descend from the blocks in state:
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 5},
 				CurrentL1: eth.BlockRef{Number: 2},
@@ -134,6 +144,8 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedLogs: []string{"safe chain reorg"},
 		},
 		{name: "failed to make expected progress",
+			// This could happen if the batcher unexpectedly violates the
+			// Holocene derivation rules:
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 3},
 				CurrentL1: eth.BlockRef{Number: 2},
@@ -150,6 +162,9 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
 		{name: "no progress",
+			// This can happen if we have a long channel duration
+			// and we didn't submit or have any txs confirmed since
+			// the last sync.
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 4},
 				CurrentL1: eth.BlockRef{Number: 1},
@@ -163,7 +178,23 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
 		},
+		{name: "no blocks",
+			// This happens when the batcher is starting up for the first time
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 109},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{},
+			channels:      []channelStatuser{},
+			expected: syncActions{
+				blocksToLoad: &inclusiveBlockRange{104, 109},
+			},
+		},
 		{name: "happy path",
+			// This happens when the safe chain is being progressed as expected:
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 5},
 				CurrentL1: eth.BlockRef{Number: 2},
@@ -177,20 +208,6 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				blocksToPrune:   3,
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{104, 109},
-			},
-		},
-		{name: "no blocks",
-			newSyncStatus: eth.SyncStatus{
-				HeadL1:    eth.BlockRef{Number: 5},
-				CurrentL1: eth.BlockRef{Number: 2},
-				SafeL2:    eth.L2BlockRef{Number: 103, Hash: block103.Hash()},
-				UnsafeL2:  eth.L2BlockRef{Number: 109},
-			},
-			prevCurrentL1: eth.BlockRef{Number: 1},
-			blocks:        queue.Queue[*types.Block]{},
-			channels:      []channelStatuser{},
-			expected: syncActions{
-				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
 		},
 		{name: "happy path + multiple channels",

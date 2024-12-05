@@ -73,7 +73,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
 
 	if oldestUnsafeBlockNum < oldestBlockInStateNum {
-		l.Warn("new safe head is behind oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
+		l.Warn("oldest unsafe block is below oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -87,9 +87,9 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("safe head above unsafe head, clearing channel manager state",
-			"unsafeBlock", eth.ToBlockID(newestBlockInState),
-			"newSafeBlock", newSyncStatus.SafeL2.Number,
+		l.Warn("oldest unsafe block above newest block in state, clearing channel manager state",
+			"oldestUnsafeBlockNum", oldestUnsafeBlockNum,
+			"newestBlockInState", eth.ToBlockID(newestBlockInState),
 			"syncActions",
 			startAfresh)
 		return startAfresh, false
