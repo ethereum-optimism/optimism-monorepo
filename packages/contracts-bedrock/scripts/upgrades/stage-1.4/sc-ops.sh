@@ -9,7 +9,6 @@ export $(grep -v '^#' .env | xargs)
 
 reqenv "ETH_RPC_URL"
 reqenv "DEPLOY_CONFIG_PATH"
-reqenv "KONA_RELEASE"
 reqenv "ASTERISC_KONA_GAME_TYPE"
 
 # ----------------

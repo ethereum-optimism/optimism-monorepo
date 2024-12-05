@@ -10,7 +10,7 @@ export $(grep -v '^#' .env | xargs)
 reqenv "ETH_RPC_URL"
 reqenv "DEPLOY_CONFIG_PATH"
 reqenv "PRIVATE_KEY"
-reqenv "KONA_RELEASE"
+reqenv "KONA_PRESTATE"
 reqenv "ASTERISC_KONA_GAME_TYPE"
 
 # ----------------
@@ -39,18 +39,7 @@ echo "  -> PreimageOracle: $PREIMAGE_ORACLE_ADDR"
 # 3. Build contracts
 (cd "$MONOREPO_ROOT/packages/contracts-bedrock" && forge build)
 
-# 4. Download Kona Release Artifacts + Extract Prestate Hash
-echo "📦 Downloading Kona Release Artifacts ($KONA_RELEASE)"
-TEMP_DIR="$(mktemp -d)"
-curl \
-  -L "https://github.com/anton-rs/kona/releases/download/$KONA_RELEASE/prestate-artifacts-asterisc-arm64.tar.zst" \
-  -o "$TEMP_DIR/prestate-artifacts.tar.zst"
-tar --zstd -xf "$TEMP_DIR/prestate-artifacts.tar.zst" -C "$TEMP_DIR"
-KONA_PRESTATE_HASH="$(jq -r '.pre' "$TEMP_DIR/prestate-artifacts-asterisc/prestate-proof.json")"
-rm -rf "$TEMP_DIR"
-echo "✨ Kona Prestate Hash: $KONA_PRESTATE_HASH"
-
-# 5. Deploy asterisc VM
+# 4. Deploy asterisc VM
 ASTERISC_VM_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap asterisc \
   --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
@@ -59,7 +48,7 @@ ASTERISC_VM_ADDR="$(capture_output "$OP_DEPLOYER" \
   --private-key "$PRIVATE_KEY" | sed -n '/^{/,/^}$/p' | jq -r '.AsteriscSingleton')"
 echo "✨ Deployed Asterisc @ $ASTERISC_VM_ADDR"
 
-# 6. Deploy new DelayedWETH proxy
+# 5. Deploy new DelayedWETH proxy
 DELAYED_WETH_PROXY_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap delayedweth \
   --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
@@ -67,14 +56,14 @@ DELAYED_WETH_PROXY_ADDR="$(capture_output "$OP_DEPLOYER" \
   --private-key "$PRIVATE_KEY" | sed -n '/^{/,/^}$/p' | jq -r '.DelayedWethProxy')"
 echo "✨ Deployed DelayedWETHProxy @ $DELAYED_WETH_PROXY_ADDR"
 
-# 7. Deploy Fault Dispute Game
+# 6. Deploy Fault Dispute Game
 FDG_ADDR="$(capture_output "$OP_DEPLOYER" \
   bootstrap disputegame \
   --artifacts-locator "tag://op-contracts/v1.9.0-rc.3" \
   --l1-rpc-url "$L1_RPC_URL" \
   --game-kind "FaultDisputeGame" \
   --game-type "$ASTERISC_KONA_GAME_TYPE" \
-  --absolute-prestate "$KONA_PRESTATE_HASH" \
+  --absolute-prestate "$KONA_PRESTATE" \
   --l2-chain-id "$L2_CHAIN_ID" \
   --max-game-depth "$(jq -r '.faultGameMaxDepth' "$DEPLOY_CONFIG_PATH")" \
   --split-depth "$(jq -r '.faultGameSplitDepth' "$DEPLOY_CONFIG_PATH")" \
@@ -86,7 +75,7 @@ FDG_ADDR="$(capture_output "$OP_DEPLOYER" \
   --private-key "$PRIVATE_KEY" | sed -n '/^{/,/^}$/p' | jq -r '.DisputeGameImpl')"
 echo "✨ Deployed FaultDisputeGame @ $FDG_ADDR"
 
-# 8. Export deployment addresses
+# 7. Export deployment addresses
 printf "\n✅ Deployment complete\n"
 DEPLOYMENTS=$(cat <<EOF
 {
