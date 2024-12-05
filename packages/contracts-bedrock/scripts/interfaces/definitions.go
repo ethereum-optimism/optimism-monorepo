@@ -62,6 +62,30 @@ func GenerateEventDefinition(event solc.AstNode) string {
 	return eventSignature
 }
 
+func GenerateErrorDefinition(errorDef solc.AstNode) string {
+	var builder strings.Builder
+
+	builder.WriteString(fmt.Sprintf("error %s(", errorDef.Name))
+
+	if errorDef.Parameters != nil && len(errorDef.Parameters.Parameters) > 0 {
+		for i, param := range errorDef.Parameters.Parameters {
+			if i > 0 {
+				builder.WriteString(", ")
+			}
+			paramType := param.TypeDescriptions.TypeString
+			paramName := param.Name
+			if paramName == "" {
+				paramName = "_"
+			}
+			builder.WriteString(fmt.Sprintf("%s %s", paramType, paramName))
+		}
+	}
+
+	builder.WriteString(");")
+
+	return builder.String()
+}
+
 func GenerateStructDefinition(structDef StructDefinition) string {
 	var builder strings.Builder
 

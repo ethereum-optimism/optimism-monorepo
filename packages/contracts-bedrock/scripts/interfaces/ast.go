@@ -4,9 +4,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/solc"
 )
 
-type ASTData struct {
+type ContractData struct {
 	Functions []solc.AstNode
 	Events    []solc.AstNode
+	Errors    []solc.AstNode
+	Types     []solc.AstNode
 	Structs   []StructDefinition
 	Enums     []EnumDefinition
 }
@@ -30,8 +32,8 @@ type EnumMember struct {
 	Name string
 }
 
-func ExtractASTData(ast solc.Ast) ASTData {
-	var data ASTData
+func ExtractASTData(ast solc.Ast) ContractData {
+	var data ContractData
 
 	for _, node := range ast.Nodes {
 		if node.NodeType == "ContractDefinition" {
@@ -43,6 +45,8 @@ func ExtractASTData(ast solc.Ast) ASTData {
 					}
 				case "EventDefinition":
 					data.Events = append(data.Events, innerNode)
+				case "ErrorDefinition":
+					data.Errors = append(data.Errors, innerNode)
 				case "StructDefinition":
 					structDef := StructDefinition{
 						Name: innerNode.Name,
@@ -70,6 +74,8 @@ func ExtractASTData(ast solc.Ast) ASTData {
 					}
 
 					data.Enums = append(data.Enums, enumDef)
+				case "UserDefinedValueTypeDefinition":
+					data.Types = append(data.Types, innerNode)
 				}
 			}
 		}

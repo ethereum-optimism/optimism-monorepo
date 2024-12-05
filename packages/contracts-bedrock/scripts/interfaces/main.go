@@ -40,12 +40,16 @@ func GenerateSolidityInterface(
 }
 
 func main() {
-	artifact, _ := common.ReadForgeArtifact("packages/contracts-bedrock/forge-artifacts/SuperchainConfig.sol/SuperchainConfig.json")
+	artifact, _ := common.ReadForgeArtifact("packages/contracts-bedrock/forge-artifacts/ProtocolVersions.sol/ProtocolVersions.json")
 
 	astData := ExtractASTData(artifact.Ast)
 
 	for i := 0; i < len(astData.Structs); i++ {
 		println(GenerateStructDefinition(astData.Structs[i]))
+	}
+
+	for i := 0; i < len(astData.Errors); i++ {
+		println(GenerateErrorDefinition(astData.Errors[i]))
 	}
 
 	for i := 0; i < len(astData.Events); i++ {
