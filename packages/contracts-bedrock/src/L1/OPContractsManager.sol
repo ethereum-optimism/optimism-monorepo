@@ -387,19 +387,12 @@ contract OPContractsManager is ISemver {
     )
         internal
         pure
-        returns (bytes32 _salt)
+        returns (bytes32)
     {
         return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
     }
 
-    function computeSingleContractSalt(
-        uint256 _l2ChainId,
-        string memory _saltMixer
-    )
-        internal
-        pure
-        returns (bytes32 _salt)
-    {
+    function computeSingleContractSalt(uint256 _l2ChainId, string memory _saltMixer) internal pure returns (bytes32) {
         return keccak256(abi.encode(_l2ChainId, _saltMixer));
     }
 
