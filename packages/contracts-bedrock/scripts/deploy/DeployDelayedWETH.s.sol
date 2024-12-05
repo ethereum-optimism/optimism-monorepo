@@ -46,7 +46,6 @@ contract DeployDelayedWETHInput is BaseDeployIO {
             require(_value != address(0), "DeployDelayedWETH: delayedWethOwner cannot be zero address");
             _delayedWethOwner = _value;
         } else if (_sel == this.delayedWethImpl.selector) {
-            require(_value != address(0), "DeployDelayedWETH: delayedWethImpl cannot be zero address");
             _delayedWethImpl = _value;
         } else {
             revert("DeployDelayedWETH: unknown selector");
