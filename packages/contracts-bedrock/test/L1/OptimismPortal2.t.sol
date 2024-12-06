@@ -1650,8 +1650,8 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
         // bounds to satisfy the assumptions listed in this specific section. These assumptions
         // serve only to act as an additional sanity check on top of the bounds and should not
         // result in an unnecessary number of test rejections.
-        _gasLimit = uint64(bound(_gasLimit, 0, gasLimit));
-        _minimumBaseFee = uint32(bound(_minimumBaseFee, 0, _maximumBaseFee - 1));
+        vm.assume(gasLimit >= _gasLimit);
+        vm.assume(_minimumBaseFee < _maximumBaseFee);
 
         // Base fee can increase quickly and mean that we can't buy the amount of gas we want.
         // Here we add a VM assumption to bound the potential increase.
