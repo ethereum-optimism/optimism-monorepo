@@ -161,6 +161,23 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
+		{name: "failed to make expected progress (alt)",
+			// Edge case where unsafe = safe
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 3},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}},
+				UnsafeL2:  eth.L2BlockRef{Number: 101},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block102, block103},
+			channels:      []channelStatuser{channel103},
+			expected: syncActions{
+				clearState:   &eth.BlockID{Number: 1},
+				blocksToLoad: &inclusiveBlockRange{102, 109},
+			},
+			expectedLogs: []string{"sequencer did not make expected progress"},
+		},
 		{name: "no progress",
 			// This can happen if we have a long channel duration
 			// and we didn't submit or have any txs confirmed since
