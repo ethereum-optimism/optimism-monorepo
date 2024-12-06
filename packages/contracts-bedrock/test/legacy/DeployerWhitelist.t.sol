@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 
 // Target contract
-import { IDeployerWhitelist } from "src/legacy/interfaces/IDeployerWhitelist.sol";
+import { IDeployerWhitelist } from "interfaces/legacy/IDeployerWhitelist.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeployerWhitelist_Test is Test {

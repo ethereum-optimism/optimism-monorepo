@@ -152,12 +152,10 @@ func TestEndToEndApply(t *testing.T) {
 
 	t.Run("chain with tagged artifacts", func(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
-		cg := ethClientCodeGetter(ctx, l1Client)
-
 		intent.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 		intent.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
 
-		require.NoError(t, deployer.ApplyPipeline(
+		require.ErrorIs(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
 				L1RPCUrl:           rpcURL,
@@ -167,10 +165,7 @@ func TestEndToEndApply(t *testing.T) {
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
 			},
-		))
-
-		validateSuperchainDeployment(t, st, cg)
-		validateOPChainDeployment(t, cg, st, intent)
+		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
 	})
 }
 

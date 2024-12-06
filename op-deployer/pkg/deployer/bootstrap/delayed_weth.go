@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -34,6 +35,7 @@ type DelayedWETHConfig struct {
 	PrivateKey       string
 	Logger           log.Logger
 	ArtifactsLocator *artifacts2.Locator
+	DelayedWethImpl  common.Address
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -87,11 +89,13 @@ func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETH
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return DelayedWETHConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
+	delayedWethImpl := common.HexToAddress(cliCtx.String(DelayedWethImplFlagName))
 	config := DelayedWETHConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
+		DelayedWethImpl:  delayedWethImpl,
 	}
 	return config, nil
 }
@@ -131,10 +135,6 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 	if err != nil {
 		return fmt.Errorf("error getting superchain config: %w", err)
 	}
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
-	}
 	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
 	if err != nil {
 		return fmt.Errorf("error getting superchain proxy admin: %w", err)
@@ -158,21 +158,22 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		return fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
+		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1RPC,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {
@@ -189,9 +190,9 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		host,
 		opcm.DeployDelayedWETHInput{
 			Release:               release,
-			StandardVersionsToml:  standardVersionsTOML,
 			ProxyAdmin:            proxyAdmin,
 			SuperchainConfigProxy: superchainConfigAddr,
+			DelayedWethImpl:       cfg.DelayedWethImpl,
 			DelayedWethOwner:      delayedWethOwner,
 			DelayedWethDelay:      big.NewInt(604800),
 		},

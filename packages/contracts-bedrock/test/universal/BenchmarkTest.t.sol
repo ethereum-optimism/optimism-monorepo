@@ -9,11 +9,11 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 // Libraries
 import { Types } from "src/libraries/Types.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
-import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop } from "interfaces/L2/IL1BlockInterop.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 
 // Interfaces
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Free function for setting the prevBaseFee param in the OptimismPortal.

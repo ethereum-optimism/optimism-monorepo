@@ -10,7 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import "src/libraries/L1BlockErrors.sol";
 
 // Interfaces
-import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 contract L1BlockInteropTest is CommonTest {
     event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);

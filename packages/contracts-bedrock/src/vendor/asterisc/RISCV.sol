@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 
 /// @title RISCV
 /// @notice The RISCV contract emulates a single RISCV hart cycle statelessly, using memory proofs to verify the

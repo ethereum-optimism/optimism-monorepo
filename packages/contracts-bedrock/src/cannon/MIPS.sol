@@ -9,8 +9,8 @@ import { MIPSMemory } from "src/cannon/libraries/MIPSMemory.sol";
 import { InvalidRMWInstruction } from "src/cannon/libraries/CannonErrors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 /// @title MIPS
 /// @notice The MIPS contract emulates a single MIPS instruction.
@@ -47,8 +47,8 @@ contract MIPS is ISemver {
     }
 
     /// @notice The semantic version of the MIPS contract.
-    /// @custom:semver 1.2.1-beta.9
-    string public constant version = "1.2.1-beta.9";
+    /// @custom:semver 1.2.1-beta.10
+    string public constant version = "1.2.1-beta.10";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;

@@ -4,6 +4,7 @@ import (
 	"context"
 	"sort"
 	"testing"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -28,7 +29,8 @@ func TestSequencerFailover_SetupCluster(t *testing.T) {
 // [Category: conductor rpc]
 // In this test, we test all rpcs exposed by conductor.
 func TestSequencerFailover_ConductorRPC(t *testing.T) {
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	sys, conductors, cleanup := setupSequencerFailoverTest(t)
 	defer cleanup()
 
@@ -176,7 +178,8 @@ func TestSequencerFailover_ActiveSequencerDown(t *testing.T) {
 	sys, conductors, cleanup := setupSequencerFailoverTest(t)
 	defer cleanup()
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	leaderId, leader := findLeader(t, conductors)
 	err := sys.RollupNodes[leaderId].Stop(ctx) // Stop the current leader sequencer
 	require.NoError(t, err)
@@ -205,7 +208,8 @@ func TestSequencerFailover_DisasterRecovery_OverrideLeader(t *testing.T) {
 	defer cleanup()
 
 	// randomly stop 2 nodes in the cluster to simulate a disaster.
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 2*time.Minute)
+	defer cancel()
 	err := conductors[Sequencer1Name].service.Stop(ctx)
 	require.NoError(t, err)
 	err = conductors[Sequencer2Name].service.Stop(ctx)

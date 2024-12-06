@@ -4,22 +4,22 @@ pragma solidity 0.8.15;
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
-import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
-import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IL1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
-import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
-import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 import {
     DeployImplementationsInput,

@@ -8,7 +8,7 @@ import { FeeVault } from "src/L2/FeeVault.sol";
 import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x420000000000000000000000000000000000001A
@@ -16,8 +16,8 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 /// @notice The L1FeeVault accumulates the L1 portion of the transaction fees.
 contract L1FeeVault is FeeVault, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.5.0-beta.4
-    string public constant version = "1.5.0-beta.4";
+    /// @custom:semver 1.5.0-beta.5
+    string public constant version = "1.5.0-beta.5";
 
     /// @notice Constructs the L1FeeVault contract.
     /// @param _recipient           Wallet that will receive the fees.

@@ -13,11 +13,11 @@ import { GameType, Claim, Duration } from "src/dispute/lib/Types.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 
 // Interfaces
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IPermissionedDisputeGame } from "src/dispute/interfaces/IPermissionedDisputeGame.sol";
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 /// @title DeployDisputeGameInput
 contract DeployDisputeGameInput is BaseDeployIO {

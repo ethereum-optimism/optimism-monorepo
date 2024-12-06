@@ -7,7 +7,7 @@ import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 import { NotDepositor } from "src/libraries/L1BlockErrors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000015
@@ -60,9 +60,9 @@ contract L1Block is ISemver, IGasToken {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
-    /// @custom:semver 1.5.1-beta.4
+    /// @custom:semver 1.5.1-beta.5
     function version() public pure virtual returns (string memory) {
-        return "1.5.1-beta.4";
+        return "1.5.1-beta.5";
     }
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.

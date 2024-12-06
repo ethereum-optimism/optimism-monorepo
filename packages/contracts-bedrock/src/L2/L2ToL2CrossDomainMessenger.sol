@@ -9,9 +9,9 @@ import { SafeCall } from "src/libraries/SafeCall.sol";
 import { TransientReentrancyAware } from "src/libraries/TransientContext.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IDependencySet } from "src/L2/interfaces/IDependencySet.sol";
-import { ICrossL2Inbox, Identifier } from "src/L2/interfaces/ICrossL2Inbox.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
+import { ICrossL2Inbox, Identifier } from "interfaces/L2/ICrossL2Inbox.sol";
 
 /// @notice Thrown when a non-written slot in transient storage is attempted to be read from.
 error NotEntered();
@@ -72,8 +72,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     uint16 public constant messageVersion = uint16(0);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.12
-    string public constant version = "1.0.0-beta.12";
+    /// @custom:semver 1.0.0-beta.13
+    string public constant version = "1.0.0-beta.13";
 
     /// @notice Mapping of message hashes to boolean receipt values. Note that a message will only be present in this
     ///         mapping if it has successfully been relayed on this chain, and can therefore not be relayed again.

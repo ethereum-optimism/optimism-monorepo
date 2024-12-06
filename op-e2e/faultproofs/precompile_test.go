@@ -269,6 +269,7 @@ func runCannon(t *testing.T, ctx context.Context, sys *e2esys.System, inputs uti
 	dir := t.TempDir()
 	proofsDir := filepath.Join(dir, "cannon-proofs")
 	cfg := config.NewConfig(common.Address{}, l1Endpoint, l1Beacon, rollupEndpoint, l2Endpoint, dir)
+	cfg.Cannon.L2Custom = true
 	cannonOpts(&cfg)
 
 	logger := testlog.Logger(t, log.LevelInfo).New("role", "cannon")

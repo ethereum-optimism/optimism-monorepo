@@ -9,8 +9,8 @@ import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Interfaces
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IRISCV } from "src/vendor/asterisc/interfaces/IRISCV.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IRISCV } from "interfaces/vendor/asterisc/IRISCV.sol";
 
 /// @title DeployAsteriscInput
 contract DeployAsteriscInput is BaseDeployIO {

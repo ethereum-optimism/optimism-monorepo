@@ -7,7 +7,7 @@ import { Reverter } from "test/mocks/Callers.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Contracts
-import { ISequencerFeeVault } from "src/L2/interfaces/ISequencerFeeVault.sol";
+import { ISequencerFeeVault } from "interfaces/L2/ISequencerFeeVault.sol";
 
 // Libraries
 import { Hashing } from "src/libraries/Hashing.sol";

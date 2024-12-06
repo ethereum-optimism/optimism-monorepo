@@ -2,14 +2,14 @@
 pragma solidity 0.8.15;
 
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 import { Script } from "forge-std/Script.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { DeployOPChainOutput } from "scripts/deploy/DeployOPChain.s.sol";
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
-import { IStaticL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
+import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
+import { IStaticL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 
 contract ReadImplementationAddressesInput is DeployOPChainOutput {
     OPContractsManager internal _opcm;

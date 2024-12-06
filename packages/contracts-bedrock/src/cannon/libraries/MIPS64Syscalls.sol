@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 // Libraries
 import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
 import { MIPS64Arch as arch } from "src/cannon/libraries/MIPS64Arch.sol";
 

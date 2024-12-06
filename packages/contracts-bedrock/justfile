@@ -130,11 +130,10 @@ gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
 
 # Checks if the snapshots are up to date without building.
 snapshots-check-no-build:
-  ./scripts/checks/check-snapshots.sh --no-build
+  just snapshots-no-build && git diff --exit-code snapshots
 
 # Checks if the snapshots are up to date.
-snapshots-check:
-  ./scripts/checks/check-snapshots.sh
+snapshots-check: build snapshots-check-no-build
 
 # Checks interface correctness without building.
 interfaces-check-no-build:

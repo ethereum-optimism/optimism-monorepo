@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { GameTypes, OutputRoot, Hash } from "src/dispute/lib/Types.sol";
 
 /// @title Constants

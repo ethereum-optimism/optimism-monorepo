@@ -10,7 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 
 // CrossDomainMessenger_Test is for testing functionality which is common to both the L1 and L2
 // CrossDomainMessenger contracts. For simplicity, we use the L1 Messenger as the test contract.
