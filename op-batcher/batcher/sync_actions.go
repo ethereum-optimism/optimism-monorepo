@@ -49,13 +49,19 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	// PART 2: checks involving only the oldest block in the state
+
+	// If there are unsafe blocks, we want to load them.
+	// Otherwise we declare nil blocksToLoad
+	var defaultBlocksToLoad *inclusiveBlockRange
+	if newSyncStatus.UnsafeL2.Number > newSyncStatus.SafeL2.Number {
+		defaultBlocksToLoad = &inclusiveBlockRange{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
+	}
+
 	oldestBlockInState, hasBlocks := blocks.Peek()
-	oldestUnsafeBlockNum := newSyncStatus.SafeL2.Number + 1
-	youngestUnsafeBlockNum := newSyncStatus.UnsafeL2.Number
 
 	if !hasBlocks {
 		s := syncActions{
-			blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+			blocksToLoad: defaultBlocksToLoad,
 		}
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
@@ -67,13 +73,14 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	// unsafe (and not safe) block.
 	startAfresh := syncActions{
 		clearState:   &newSyncStatus.SafeL2.L1Origin,
-		blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+		blocksToLoad: defaultBlocksToLoad,
 	}
 
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
+	nextSafeBlockNum := newSyncStatus.SafeL2.Number + 1
 
-	if oldestUnsafeBlockNum < oldestBlockInStateNum {
-		l.Warn("oldest unsafe block is below oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
+	if nextSafeBlockNum < oldestBlockInStateNum {
+		l.Warn("next safe block is below oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "safeBlock", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -81,14 +88,14 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	newestBlockInState := blocks[blocks.Len()-1]
 	newestBlockInStateNum := newestBlockInState.NumberU64()
 
-	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
+	numBlocksToDequeue := nextSafeBlockNum - oldestBlockInStateNum
 
 	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("oldest unsafe block above newest block in state, clearing channel manager state",
-			"oldestUnsafeBlockNum", oldestUnsafeBlockNum,
+		l.Warn("next safe block above newest block in state, clearing channel manager state",
+			"nextSafeBlockNum", nextSafeBlockNum,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
 			"syncActions",
 			startAfresh)
@@ -133,7 +140,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	}
 
 	start := newestBlockInStateNum + 1
-	end := youngestUnsafeBlockNum
+	end := newSyncStatus.UnsafeL2.Number
 
 	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
