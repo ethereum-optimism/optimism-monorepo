@@ -31,9 +31,9 @@ just = "1.37.0"
 # Foundry dependencies
 # Foundry is a special case because it supplies multiple binaries at the same
 # GitHub release, so we need to use the aliasing trick to get mise to not error
-forge = "nightly-e5dbb7a320c2b871c4a4a1006ad3c15a08fcf17b"
-cast = "nightly-e5dbb7a320c2b871c4a4a1006ad3c15a08fcf17b"
-anvil = "nightly-e5dbb7a320c2b871c4a4a1006ad3c15a08fcf17b"
+forge = "nightly-e52076714ace23c7a68e14f0048a40be3c6c8f0b"
+cast = "nightly-e52076714ace23c7a68e14f0048a40be3c6c8f0b"
+anvil = "nightly-e52076714ace23c7a68e14f0048a40be3c6c8f0b"
 
 # Fake dependencies
 # Put things here if you need to track versions of tools or projects that can't
