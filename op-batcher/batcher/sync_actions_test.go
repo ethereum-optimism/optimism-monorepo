@@ -173,8 +173,8 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			blocks:        queue.Queue[*types.Block]{block102, block103},
 			channels:      []channelStatuser{channel103},
 			expected: syncActions{
-				clearState:   &eth.BlockID{Number: 1},
-				blocksToLoad: &inclusiveBlockRange{102, 109},
+				clearState: &eth.BlockID{Number: 1},
+				// no blocks to load since there are no unsafe blocks
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
