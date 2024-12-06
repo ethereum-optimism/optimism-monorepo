@@ -113,6 +113,32 @@ contract EASTest is Test {
         assertEq(eas.getName(), "EAS");
         assertEq(address(eas.getSchemaRegistry()), address(registry));
     }
+    // Core functionality tests section
+function testInvalidSchemaRegistry() public {
+    // Deploy new EAS with invalid registry address
+    EAS invalidEas = new EAS();
+    
+    // Try to use EAS with invalid registry
+    string memory schema = "bool like";
+    bytes32 schemaId = getSchemaUID(schema, address(0), true);
+    
+    vm.startPrank(sender);
+       vm.expectRevert(InvalidSchemaSelector);
+    invalidEas.attest(
+        AttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"1234",
+                value: 0
+            })
+        })
+    );
+    vm.stopPrank();
+}
 
     // Basic Attestation Tests
     // testAttestation()
@@ -471,6 +497,37 @@ contract EASTest is Test {
         // Should return 0 for unregistered revocation
         assertEq(eas.getRevokeOffchain(sender, unregisteredData), 0);
     }
+    // Basic attestation tests section
+function testInvalidAttestationData() public {
+    string memory schema = "bool like";
+    bytes32 schemaId = getSchemaUID(schema, address(0), true);
+    
+    vm.startPrank(sender);
+    registry.register(schema, ISchemaResolver(address(0)), true);
+    
+    // Test with non-existent reference UID
+    bytes32 nonExistentUID = bytes32(uint256(1));
+    
+    vm.expectRevert(NotFoundSelector);
+    eas.attest(
+        AttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: nonExistentUID,  // Reference to non-existent attestation
+                data: hex"1234",
+                value: 0
+            })
+        })
+    );
+    vm.stopPrank();
+}
+
+
+
+
 
     // Multi-attestation Tests
     // testMultiAttestationComprehensive()
@@ -1063,6 +1120,29 @@ contract EASTest is Test {
 
         vm.stopPrank();
     }
+    // Revocation tests section
+function testInvalidRevocationData() public {
+    string memory schema = "bool like";
+    bytes32 schemaId = getSchemaUID(schema, address(0), true);
+    
+    vm.startPrank(sender);
+    registry.register(schema, ISchemaResolver(address(0)), true);
+    
+    // Try to revoke with wrong schema
+    bytes32 wrongSchemaId = getSchemaUID("wrong schema", address(0), true);
+    
+    vm.expectRevert(InvalidSchemaSelector);
+    eas.revoke(
+        RevocationRequest({
+            schema: wrongSchemaId,
+            data: RevocationRequestData({
+                uid: bytes32(0),
+                value: 0
+            })
+        })
+    );
+    vm.stopPrank();
+}
 
  
 
