@@ -208,7 +208,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) (opcm.DeployDispute
 	}
 
 	lgr.Info("deploying dispute game", "release", release)
-	
+
 	dgo, err = opcm.DeployDisputeGame(
 		host,
 		opcm.DeployDisputeGameInput{
