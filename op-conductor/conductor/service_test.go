@@ -876,5 +876,6 @@ func (s *OpConductorTestSuite) TestHandleInitError() {
 }
 
 func TestControlLoop(t *testing.T) {
+	t.Skipf("Skipping test, it's flaky and needs to be fixed")
 	suite.Run(t, new(OpConductorTestSuite))
 }

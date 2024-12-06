@@ -34,6 +34,7 @@ const (
 	ReleaseFlagName                         = "release"
 	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	DelayedWethImplFlagName                 = "delayed-weth-impl"
+	ProxyOwnerFlagName                      = "proxy-owner"
 )
 
 var (
@@ -167,6 +168,13 @@ var (
 		Name:    ReleaseFlagName,
 		Usage:   "Release to deploy.",
 		EnvVars: deployer.PrefixEnvVar("RELEASE"),
+		Value:   common.Address{}.Hex(),
+	}
+	ProxyOwnerFlag = &cli.StringFlag{
+		Name:    ProxyOwnerFlagName,
+		Usage:   "Proxy owner address.",
+		EnvVars: deployer.PrefixEnvVar("PROXY_OWNER"),
+		Value:   common.Address{}.Hex(),
 	}
 )
 
@@ -224,6 +232,13 @@ var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
 
 var AsteriscFlags = BaseFPVMFlags
 
+var ProxyFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	ArtifactsLocatorFlag,
+	ProxyOwnerFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "opcm",
@@ -263,5 +278,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of Asterisc.",
 		Flags:  cliapp.ProtectFlags(AsteriscFlags),
 		Action: AsteriscCLI,
+	},
+	{
+		Name:   "proxy",
+		Usage:  "Bootstrap a ERC-1967 Proxy without an implementation set.",
+		Flags:  cliapp.ProtectFlags(ProxyFlags),
+		Action: ProxyCLI,
 	},
 }

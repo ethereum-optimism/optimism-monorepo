@@ -381,7 +381,9 @@ func (oc *OpConductor) Start(ctx context.Context) error {
 	oc.log.Info("OpConductor started")
 	// queue an action in case sequencer is not in the desired state.
 	oc.prevState = NewState(oc.leader.Load(), oc.healthy.Load(), oc.seqActive.Load())
-	oc.queueAction()
+	// Immediately queue an action. This is made blocking to ensure that start is not
+	// considered complete until the first action is executed.
+	oc.actionCh <- struct{}{}
 
 	return nil
 }

@@ -3,6 +3,7 @@ package common
 import (
 	"os"
 	"path/filepath"
+	"sync"
 	"testing"
 )
 
@@ -79,8 +80,11 @@ func TestProcessFilesGlob(t *testing.T) {
 	excludes := []string{"skip.txt"}
 
 	processedFiles := make(map[string]bool)
+	var mtx sync.Mutex
 	err := ProcessFilesGlob(includes, excludes, func(path string) []error {
+		mtx.Lock()
 		processedFiles[filepath.Base(path)] = true
+		mtx.Unlock()
 		return nil
 	})
 
