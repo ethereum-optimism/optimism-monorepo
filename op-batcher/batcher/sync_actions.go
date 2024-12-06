@@ -48,20 +48,17 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return syncActions{}, true
 	}
 
-	// PART 2: checks involving only the oldest block in the state
-
-	// If there are unsafe blocks, we want to load them.
-	// Otherwise we declare nil blocksToLoad
-	var defaultBlocksToLoad *inclusiveBlockRange
+	var allUnsafeBlocks *inclusiveBlockRange
 	if newSyncStatus.UnsafeL2.Number > newSyncStatus.SafeL2.Number {
-		defaultBlocksToLoad = &inclusiveBlockRange{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
+		allUnsafeBlocks = &inclusiveBlockRange{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
 	}
 
+	// PART 2: checks involving only the oldest block in the state
 	oldestBlockInState, hasBlocks := blocks.Peek()
 
 	if !hasBlocks {
 		s := syncActions{
-			blocksToLoad: defaultBlocksToLoad,
+			blocksToLoad: allUnsafeBlocks,
 		}
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
@@ -69,11 +66,11 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 	// These actions apply in multiple unhappy scenarios below, where
 	// we detect that the existing state is invalidated
-	// and we need to start over from the sequencer's oldest
-	// unsafe (and not safe) block.
+	// and we need to start over, loading all unsafe blocks
+	// from the sequencer.
 	startAfresh := syncActions{
 		clearState:   &newSyncStatus.SafeL2.L1Origin,
-		blocksToLoad: defaultBlocksToLoad,
+		blocksToLoad: allUnsafeBlocks,
 	}
 
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
