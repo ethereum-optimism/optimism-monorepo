@@ -6,8 +6,8 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
-import { Burn } from "src/libraries/Burn.sol";
-import { Arithmetic } from "src/libraries/Arithmetic.sol";
+import { Burn } from "src/universal/libraries/Burn.sol";
+import { Arithmetic } from "src/universal/libraries/Arithmetic.sol";
 
 /// @custom:upgradeable
 /// @title ResourceMetering

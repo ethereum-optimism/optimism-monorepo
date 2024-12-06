@@ -2,13 +2,13 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { WETH98 } from "src/universal/WETH98.sol";
+import { WETH98 } from "src/vendor/WETH98.sol";
 
 // Libraries
-import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
-import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Preinstalls } from "src/libraries/Preinstalls.sol";
-import { SafeSend } from "src/universal/SafeSend.sol";
+import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/universal/libraries/errors/CommonErrors.sol";
+import { Predeploys } from "src/universal/libraries/Predeploys.sol";
+import { Preinstalls } from "src/universal/libraries/Preinstalls.sol";
+import { SafeSend } from "src/universal/utils/SafeSend.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";

@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 
 // Libraries
-import { Storage } from "src/libraries/Storage.sol";
+import { Storage } from "src/universal/libraries/Storage.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";

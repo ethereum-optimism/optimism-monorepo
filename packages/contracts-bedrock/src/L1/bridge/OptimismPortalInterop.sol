@@ -2,12 +2,12 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
+import { OptimismPortal2 } from "src/L1/bridge/OptimismPortal2.sol";
 
 // Libraries
-import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Constants } from "src/libraries/Constants.sol";
-import { Unauthorized } from "src/libraries/PortalErrors.sol";
+import { Predeploys } from "src/universal/libraries/Predeploys.sol";
+import { Constants } from "src/universal/libraries/Constants.sol";
+import { Unauthorized } from "src/universal/libraries/errors/PortalErrors.sol";
 
 // Interfaces
 import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";

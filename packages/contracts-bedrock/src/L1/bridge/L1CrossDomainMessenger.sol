@@ -2,10 +2,10 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+import { CrossDomainMessenger } from "src/universal/bridge/CrossDomainMessenger.sol";
 
 // Libraries
-import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Predeploys } from "src/universal/libraries/Predeploys.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
