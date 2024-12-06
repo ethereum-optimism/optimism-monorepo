@@ -83,12 +83,22 @@ func DisputeGameCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	outfile := cliCtx.String(OutfileFlagName)
 	cfg, err := NewDisputeGameConfigFromCLI(cliCtx, l)
 	if err != nil {
 		return err
 	}
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
-	return DisputeGame(ctx, cfg)
+	dgo, err := DisputeGame(ctx, cfg)
+	if err != nil {
+		return fmt.Errorf("failed to deploy dispute game: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+
+	return nil
 }
 
 func NewDisputeGameConfigFromCLI(cliCtx *cli.Context, l log.Logger) (DisputeGameConfig, error) {
@@ -123,9 +133,10 @@ func NewDisputeGameConfigFromCLI(cliCtx *cli.Context, l log.Logger) (DisputeGame
 	return cfg, nil
 }
 
-func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
+func DisputeGame(ctx context.Context, cfg DisputeGameConfig) (opcm.DeployDisputeGameOutput, error) {
+	var dgo opcm.DeployDisputeGameOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for DisputeGame: %w", err)
+		return dgo, fmt.Errorf("invalid config for DisputeGame: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -135,7 +146,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 
 	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return dgo, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
@@ -145,22 +156,22 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dgo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 	l1Rpc, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dgo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
+		return dgo, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 	chainIDU64 := chainID.Uint64()
 
 	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
 	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
+		return dgo, fmt.Errorf("error getting standard versions TOML: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -174,7 +185,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return dgo, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
 	host, err := env.DefaultForkedScriptHost(
@@ -186,7 +197,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		l1Rpc,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create L1 script host: %w", err)
+		return dgo, fmt.Errorf("failed to create L1 script host: %w", err)
 	}
 
 	var release string
@@ -197,7 +208,8 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 	}
 
 	lgr.Info("deploying dispute game", "release", release)
-	dgo, err := opcm.DeployDisputeGame(
+	
+	dgo, err = opcm.DeployDisputeGame(
 		host,
 		opcm.DeployDisputeGameInput{
 			Release:                  release,
@@ -218,17 +230,13 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying dispute game: %w", err)
+		return dgo, fmt.Errorf("error deploying dispute game: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return dgo, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
 	lgr.Info("deployed dispute game")
-
-	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-	return nil
+	return dgo, nil
 }

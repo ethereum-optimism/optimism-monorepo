@@ -75,6 +75,7 @@ func ProxyCLI(cliCtx *cli.Context) error {
 
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
+	outfile := cliCtx.String(OutfileFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
@@ -85,18 +86,27 @@ func ProxyCLI(cliCtx *cli.Context) error {
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return Proxy(ctx, ProxyConfig{
+	dpo, err := Proxy(ctx, ProxyConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
 		Owner:            owner,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to deploy Proxy: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(dpo, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+	return nil
 }
 
-func Proxy(ctx context.Context, cfg ProxyConfig) error {
+func Proxy(ctx context.Context, cfg ProxyConfig) (opcm.DeployProxyOutput, error) {
+	var dpo opcm.DeployProxyOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for Proxy: %w", err)
+		return dpo, fmt.Errorf("invalid config for Proxy: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -106,7 +116,7 @@ func Proxy(ctx context.Context, cfg ProxyConfig) error {
 
 	artifactsFS, cleanup, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return dpo, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
@@ -116,12 +126,12 @@ func Proxy(ctx context.Context, cfg ProxyConfig) error {
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dpo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
+		return dpo, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -135,12 +145,12 @@ func Proxy(ctx context.Context, cfg ProxyConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return dpo, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
 	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dpo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	l1Host, err := env.DefaultForkedScriptHost(
@@ -152,27 +162,23 @@ func Proxy(ctx context.Context, cfg ProxyConfig) error {
 		l1RPC,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return dpo, fmt.Errorf("failed to create script host: %w", err)
 	}
 
-	dgo, err := opcm.DeployProxy(
+	dpo, err = opcm.DeployProxy(
 		l1Host,
 		opcm.DeployProxyInput{
 			Owner: cfg.Owner,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying proxy: %w", err)
+		return dpo, fmt.Errorf("error deploying proxy: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return dpo, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
 	lgr.Info("deployed new ERC-1967 proxy")
-
-	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-	return nil
+	return dpo, nil
 }

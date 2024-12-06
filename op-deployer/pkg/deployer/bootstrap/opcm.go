@@ -73,6 +73,7 @@ func OPCMCLI(cliCtx *cli.Context) error {
 
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
+	outfile := cliCtx.String(OutfileFlagName)
 	release := cliCtx.String(ReleaseFlagName)
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
@@ -87,7 +88,7 @@ func OPCMCLI(cliCtx *cli.Context) error {
 		return fmt.Errorf("failed to deploy OPCM: %w", err)
 	}
 
-	if err := jsonutil.WriteJSON(out, ioutil.ToStdOut()); err != nil {
+	if err := jsonutil.WriteJSON(out, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
 		return fmt.Errorf("failed to write output: %w", err)
 	}
 	return nil

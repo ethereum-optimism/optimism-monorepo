@@ -11,6 +11,7 @@ import (
 )
 
 const (
+	OutfileFlagName                         = "outfile"
 	ArtifactsLocatorFlagName                = "artifacts-locator"
 	WithdrawalDelaySecondsFlagName          = "withdrawal-delay-seconds"
 	MinProposalSizeBytesFlagName            = "min-proposal-size-bytes"
@@ -44,6 +45,12 @@ const (
 )
 
 var (
+	OutfileFlag = &cli.StringFlag{
+		Name:    OutfileFlagName,
+		Usage:   "Output file. Use - for stdout.",
+		EnvVars: deployer.PrefixEnvVar("OUTFILE"),
+		Value:   "-",
+	}
 	ArtifactsLocatorFlag = &cli.StringFlag{
 		Name:    ArtifactsLocatorFlagName,
 		Usage:   "Locator for artifacts.",
@@ -221,6 +228,7 @@ var OPCMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ReleaseFlag,
+	OutfileFlag,
 }
 
 var ImplementationsFlags = []cli.Flag{
@@ -235,6 +243,7 @@ var ImplementationsFlags = []cli.Flag{
 var DelayedWETHFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	DelayedWethImplFlag,
 }
@@ -242,6 +251,7 @@ var DelayedWETHFlags = []cli.Flag{
 var DisputeGameFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
@@ -263,6 +273,7 @@ var DisputeGameFlags = []cli.Flag{
 var BaseFPVMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	PreimageOracleFlag,
 }
@@ -274,6 +285,7 @@ var AsteriscFlags = BaseFPVMFlags
 var ProxyFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	ProxyOwnerFlag,
 }
@@ -281,6 +293,7 @@ var ProxyFlags = []cli.Flag{
 var SuperchainFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	SuperchainProxyAdminOwnerFlag,
 	ProtocolVersionsOwnerFlag,
