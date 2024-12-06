@@ -26,7 +26,10 @@ contract CheckBalanceLowTest is Test {
     function testFuzz_check_succeeds(address _target, uint256 _threshold) external {
         CheckBalanceLow.Params memory p = CheckBalanceLow.Params({ target: _target, threshold: _threshold });
 
-        if (_target.balance < _threshold) vm.deal(_target, _threshold - 1);
+        if (_target.balance >= p.threshold) {
+            if (_threshold == 0) p.threshold = 1;
+            vm.deal(_target, p.threshold - 1);
+        }
 
         assertEq(c.check(abi.encode(p)), true);
     }

@@ -84,10 +84,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.assume(challenger != address(0));
 
         // Assume the block number is not close to the max uint256 value
-        vm.assume(
-            challengedBlockNumber
-                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
-                    - dataAvailabilityChallenge.resolveWindow()
+        challengedBlockNumber = bound(
+            challengedBlockNumber,
+            0,
+            type(uint256).max - dataAvailabilityChallenge.challengeWindow() - dataAvailabilityChallenge.resolveWindow()
+                - 1
         );
         uint256 requiredBond = dataAvailabilityChallenge.bondSize();
 
@@ -137,10 +138,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.assume(challenger != address(0));
 
         // Assume the block number is not close to the max uint256 value
-        vm.assume(
-            challengedBlockNumber
-                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
-                    - dataAvailabilityChallenge.resolveWindow()
+        challengedBlockNumber = bound(
+            challengedBlockNumber,
+            0,
+            type(uint256).max - dataAvailabilityChallenge.challengeWindow() - dataAvailabilityChallenge.resolveWindow()
+                - 1
         );
         uint256 requiredBond = dataAvailabilityChallenge.bondSize();
 
@@ -263,10 +265,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.setResolverRefundPercentage(resolverRefundPercentage);
 
         // Assume the block number is not close to the max uint256 value
-        vm.assume(
-            challengedBlockNumber
-                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
-                    - dataAvailabilityChallenge.resolveWindow()
+        challengedBlockNumber = bound(
+            challengedBlockNumber,
+            0,
+            type(uint256).max - dataAvailabilityChallenge.challengeWindow() - dataAvailabilityChallenge.resolveWindow()
+                - 1
         );
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
 
@@ -354,10 +357,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
         dataAvailabilityChallenge.setResolverRefundPercentage(resolverRefundPercentage);
 
         // Assume the block number is not close to the max uint256 value
-        vm.assume(
-            challengedBlockNumber
-                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
-                    - dataAvailabilityChallenge.resolveWindow()
+        challengedBlockNumber = bound(
+            challengedBlockNumber,
+            0,
+            type(uint256).max - dataAvailabilityChallenge.challengeWindow() - dataAvailabilityChallenge.resolveWindow()
+                - 1
         );
         bytes memory challengedCommitment = computeCommitmentKeccak256(wrongPreImage);
 
@@ -456,10 +460,11 @@ contract DataAvailabilityChallengeTest is CommonTest {
 
     function test_unlockBond_succeeds(bytes memory preImage, uint256 challengedBlockNumber) public {
         // Assume the block number is not close to the max uint256 value
-        vm.assume(
-            challengedBlockNumber
-                < type(uint256).max - dataAvailabilityChallenge.challengeWindow()
-                    - dataAvailabilityChallenge.resolveWindow()
+        challengedBlockNumber = bound(
+            challengedBlockNumber,
+            0,
+            type(uint256).max - dataAvailabilityChallenge.challengeWindow() - dataAvailabilityChallenge.resolveWindow()
+                - 1
         );
         bytes memory challengedCommitment = computeCommitmentKeccak256(preImage);
 
