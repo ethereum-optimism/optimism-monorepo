@@ -8,39 +8,30 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 )
 
-var networks = []string{"mainnet", "sepolia"}
-
-var versions = []string{"v1.8.0-rc.3", "v1.6.0"}
-
-func TestOPCMLiveChain(t *testing.T) {
+func TestSuperchain(t *testing.T) {
 	for _, network := range networks {
 		for _, version := range versions {
 			t.Run(network+"-"+version, func(t *testing.T) {
-				if version == "v1.8.0-rc.3" && network == "mainnet" {
-					t.Skip("v1.8.0-rc.3 not supported on mainnet yet")
-				}
-
-				if version == "v1.6.0" && network == "sepolia" {
-					t.Skip("v1.6.0 not supported")
-				}
-
 				envVar := strings.ToUpper(network) + "_RPC_URL"
 				rpcURL := os.Getenv(envVar)
 				require.NotEmpty(t, rpcURL, "must specify RPC url via %s env var", envVar)
-				testOPCMLiveChain(t, "op-contracts/"+version, rpcURL)
+				testSuperchain(t, rpcURL, version)
 			})
 		}
 	}
 }
 
-func testOPCMLiveChain(t *testing.T, version string, forkRPCURL string) {
+func testSuperchain(t *testing.T, forkRPCURL string, version string) {
 	t.Parallel()
 
 	if forkRPCURL == "" {
@@ -69,18 +60,36 @@ func testOPCMLiveChain(t *testing.T, version string, forkRPCURL string) {
 		require.NoError(t, runner.Stop())
 	})
 
-	out, err := OPCM(ctx, OPCMConfig{
-		L1RPCUrl:   runner.RPCUrl(),
-		PrivateKey: "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-		Release:    version,
-		Logger:     lgr,
+	out, err := Superchain(ctx, SuperchainConfig{
+		L1RPCUrl:         runner.RPCUrl(),
+		PrivateKey:       "0xac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
+		ArtifactsLocator: artifacts.MustNewLocatorFromTag("op-contracts/" + version),
+		Logger:           lgr,
+
+		SuperchainProxyAdminOwner:  common.Address{'S'},
+		ProtocolVersionsOwner:      common.Address{'P'},
+		Guardian:                   common.Address{'G'},
+		Paused:                     false,
+		RequiredProtocolVersion:    params.ProtocolVersionV0{Major: 1}.Encode(),
+		RecommendedProtocolVersion: params.ProtocolVersionV0{Major: 2}.Encode(),
 	})
 	require.NoError(t, err)
-	require.NotEmpty(t, out.Opcm)
 
 	client, err := ethclient.Dial(runner.RPCUrl())
 	require.NoError(t, err)
-	code, err := client.CodeAt(ctx, out.Opcm, nil)
-	require.NoError(t, err)
-	require.NotEmpty(t, code)
+
+	addresses := []common.Address{
+		out.SuperchainConfigProxy,
+		out.SuperchainConfigImpl,
+		out.SuperchainProxyAdmin,
+		out.ProtocolVersionsImpl,
+		out.ProtocolVersionsProxy,
+	}
+	for _, addr := range addresses {
+		require.NotEmpty(t, addr)
+
+		code, err := client.CodeAt(ctx, addr, nil)
+		require.NoError(t, err)
+		require.NotEmpty(t, code)
+	}
 }

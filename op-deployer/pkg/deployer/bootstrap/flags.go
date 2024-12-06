@@ -35,6 +35,12 @@ const (
 	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	DelayedWethImplFlagName                 = "delayed-weth-impl"
 	ProxyOwnerFlagName                      = "proxy-owner"
+	SuperchainProxyAdminOwnerFlagName       = "superchain-proxy-admin-owner"
+	ProtocolVersionsOwnerFlagName           = "protocol-versions-owner"
+	GuardianFlagName                        = "guardian"
+	PausedFlagName                          = "paused"
+	RequiredProtocolVersionFlagName         = "required-protocol-version"
+	RecommendedProtocolVersionFlagName      = "recommended-protocol-version"
 )
 
 var (
@@ -176,6 +182,39 @@ var (
 		EnvVars: deployer.PrefixEnvVar("PROXY_OWNER"),
 		Value:   common.Address{}.Hex(),
 	}
+	SuperchainProxyAdminOwnerFlag = &cli.StringFlag{
+		Name:    SuperchainProxyAdminOwnerFlagName,
+		Usage:   "Owner address for the superchain proxy admin",
+		EnvVars: deployer.PrefixEnvVar("SUPERCHAIN_PROXY_ADMIN_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
+	ProtocolVersionsOwnerFlag = &cli.StringFlag{
+		Name:    ProtocolVersionsOwnerFlagName,
+		Usage:   "Owner address for protocol versions",
+		EnvVars: deployer.PrefixEnvVar("PROTOCOL_VERSIONS_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
+	GuardianFlag = &cli.StringFlag{
+		Name:    GuardianFlagName,
+		Usage:   "Guardian address",
+		EnvVars: deployer.PrefixEnvVar("GUARDIAN"),
+		Value:   common.Address{}.Hex(),
+	}
+	PausedFlag = &cli.BoolFlag{
+		Name:    PausedFlagName,
+		Usage:   "Initial paused state",
+		EnvVars: deployer.PrefixEnvVar("PAUSED"),
+	}
+	RequiredProtocolVersionFlag = &cli.StringFlag{
+		Name:    RequiredProtocolVersionFlagName,
+		Usage:   "Required protocol version (semver)",
+		EnvVars: deployer.PrefixEnvVar("REQUIRED_PROTOCOL_VERSION"),
+	}
+	RecommendedProtocolVersionFlag = &cli.StringFlag{
+		Name:    RecommendedProtocolVersionFlagName,
+		Usage:   "Recommended protocol version (semver)",
+		EnvVars: deployer.PrefixEnvVar("RECOMMENDED_PROTOCOL_VERSION"),
+	}
 )
 
 var OPCMFlags = []cli.Flag{
@@ -239,6 +278,18 @@ var ProxyFlags = []cli.Flag{
 	ProxyOwnerFlag,
 }
 
+var SuperchainFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	ArtifactsLocatorFlag,
+	SuperchainProxyAdminOwnerFlag,
+	ProtocolVersionsOwnerFlag,
+	GuardianFlag,
+	PausedFlag,
+	RequiredProtocolVersionFlag,
+	RecommendedProtocolVersionFlag,
+}
+
 var Commands = []*cli.Command{
 	{
 		Name:   "opcm",
@@ -284,5 +335,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap a ERC-1967 Proxy without an implementation set.",
 		Flags:  cliapp.ProtectFlags(ProxyFlags),
 		Action: ProxyCLI,
+	},
+	{
+		Name:   "superchain",
+		Usage:  "Bootstrap the Superchain configuration",
+		Flags:  cliapp.ProtectFlags(SuperchainFlags),
+		Action: SuperchainCLI,
 	},
 }
