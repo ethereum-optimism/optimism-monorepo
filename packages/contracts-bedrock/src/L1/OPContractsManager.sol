@@ -197,7 +197,7 @@ contract OPContractsManager is ISemver {
         uint256 l2ChainId = _input.l2ChainId;
         string memory saltMixer = _input.saltMixer;
         // The salt for a non-proxy contract is a function of the chain ID and the salt mixer.
-        bytes32 nonProxiedSalt = computeNonProxiedSalt(l2ChainId, saltMixer);
+        bytes32 nonProxiedSalt = computeNonProxiedContractSalt(l2ChainId, saltMixer);
         DeployOutput memory output;
 
         // -------- Deploy Chain Singletons --------
@@ -378,6 +378,7 @@ contract OPContractsManager is ISemver {
         return address(uint160(bytes20(bytes.concat(versionByte, first19Bytes))));
     }
 
+    // @notice Helper method for computing a salt for deploying proxy contracts.
     function computeProxyContractSalt(
         uint256 _l2ChainId,
         string memory _saltMixer,
@@ -390,7 +391,15 @@ contract OPContractsManager is ISemver {
         return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
     }
 
-    function computeNonProxiedSalt(uint256 _l2ChainId, string memory _saltMixer) internal pure returns (bytes32) {
+    // @notice Helper method for computing a salt for deploying non-proxy contracts.
+    function computeNonProxiedContractSalt(
+        uint256 _l2ChainId,
+        string memory _saltMixer
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
         return keccak256(abi.encode(_l2ChainId, _saltMixer));
     }
 
