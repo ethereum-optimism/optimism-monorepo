@@ -13,6 +13,7 @@ import (
 	"maps"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -415,7 +416,7 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	}
 }
 
-func TestL2BlockTimeOverride(t *testing.T) {
+func TestGlobalOverrides(t *testing.T) {
 	op_e2e.InitParallel(t)
 	kurtosisutil.Test(t)
 
@@ -423,8 +424,28 @@ func TestL2BlockTimeOverride(t *testing.T) {
 	defer cancel()
 
 	opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
+	expectedGasLimit := strings.ToLower("0x1C9C380")
+	expectedBaseFeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000001")
+	expectedL1FeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000002")
+	expectedSequencerFeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000003")
+	expectedBaseFeeVaultMinimumWithdrawalAmount := strings.ToLower("0x1BC16D674EC80000")
+	expectedBaseFeeVaultWithdrawalNetwork := genesis.FromUint8(0)
+	expectedEnableGovernance := false
+	expectedGasPriceOracleBaseFeeScalar := uint32(1300)
+	expectedEIP1559Denominator := uint64(500)
+	expectedUseFaultProofs := false
 	intent.GlobalDeployOverrides = map[string]interface{}{
-		"l2BlockTime": float64(3),
+		"l2BlockTime":                         float64(3),
+		"l2GenesisBlockGasLimit":              expectedGasLimit,
+		"baseFeeVaultRecipient":               expectedBaseFeeVaultRecipient,
+		"l1FeeVaultRecipient":                 expectedL1FeeVaultRecipient,
+		"sequencerFeeVaultRecipient":          expectedSequencerFeeVaultRecipient,
+		"baseFeeVaultMinimumWithdrawalAmount": expectedBaseFeeVaultMinimumWithdrawalAmount,
+		"baseFeeVaultWithdrawalNetwork":       expectedBaseFeeVaultWithdrawalNetwork,
+		"enableGovernance":                    expectedEnableGovernance,
+		"gasPriceOracleBaseFeeScalar":         expectedGasPriceOracleBaseFeeScalar,
+		"eip1559Denominator":                  expectedEIP1559Denominator,
+		"useFaultProofs":                      expectedUseFaultProofs,
 	}
 
 	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
@@ -432,6 +453,16 @@ func TestL2BlockTimeOverride(t *testing.T) {
 	cfg, err := state.CombineDeployConfig(intent, intent.Chains[0], st, st.Chains[0])
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), cfg.L2InitializationConfig.L2CoreDeployConfig.L2BlockTime, "L2 block time should be 3 seconds")
+	require.Equal(t, expectedGasLimit, strings.ToLower(cfg.L2InitializationConfig.L2GenesisBlockDeployConfig.L2GenesisBlockGasLimit.String()), "L2 Genesis Block Gas Limit should be 30_000_000")
+	require.Equal(t, expectedBaseFeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultRecipient, "Base Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedL1FeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.L1FeeVaultRecipient, "L1 Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedSequencerFeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.SequencerFeeVaultRecipient, "Sequencer Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedBaseFeeVaultMinimumWithdrawalAmount, strings.ToLower(cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultMinimumWithdrawalAmount.String()), "Base Fee Vault Minimum Withdrawal Amount should be the expected value")
+	require.Equal(t, expectedBaseFeeVaultWithdrawalNetwork, cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultWithdrawalNetwork, "Base Fee Vault Withdrawal Network should be the expected value")
+	require.Equal(t, expectedEnableGovernance, cfg.L2InitializationConfig.GovernanceDeployConfig.EnableGovernance, "Governance should be disabled")
+	require.Equal(t, expectedGasPriceOracleBaseFeeScalar, cfg.L2InitializationConfig.GasPriceOracleDeployConfig.GasPriceOracleBaseFeeScalar, "Gas Price Oracle Base Fee Scalar should be the expected value")
+	require.Equal(t, expectedEIP1559Denominator, cfg.L2InitializationConfig.EIP1559DeployConfig.EIP1559Denominator, "EIP-1559 Denominator should be the expected value")
+	require.Equal(t, expectedUseFaultProofs, cfg.L2InitializationConfig.UseInterop, "Fault proofs should be enabled")
 }
 
 func TestApplyGenesisStrategy(t *testing.T) {
