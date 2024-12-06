@@ -947,10 +947,11 @@ jobs:
           mentions: "@proofs-team"
 
   cannon-stf-verify:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
     steps:
       - checkout
+      - setup_remote_docker
       - run:
           name: Build cannon
           command: make cannon
