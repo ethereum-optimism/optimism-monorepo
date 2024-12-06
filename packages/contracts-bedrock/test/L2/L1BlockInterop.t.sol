@@ -64,8 +64,6 @@ contract L1BlockInteropTest is CommonTest {
 
     /// @dev Tests that the dependency set size is correct when adding an arbitrary number of chain IDs.
     function testFuzz_dependencySetSize_succeeds(uint8 _dependencySetSize) public prankDepositor {
-        vm.assume(_dependencySetSize <= type(uint8).max);
-
         uint256 uniqueCount = 0;
 
         for (uint256 i = 0; i < _dependencySetSize; i++) {

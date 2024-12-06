@@ -329,13 +329,17 @@ contract OptimismPortal2_Test is CommonTest {
     ///         `depositTransaction` function. This is a simple differential test.
     function test_setGasPayingToken_correctEvent_succeeds(
         address _token,
-        string memory _name,
-        string memory _symbol
+        string calldata _name,
+        string calldata _symbol
     )
         external
     {
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
+        if (bytes(_name).length > 32) {
+            _name = _name[0:32];
+        }
+        if (bytes(_symbol).length > 32) {
+            _symbol = _symbol[0:32];
+        }
 
         bytes32 name = GasPayingToken.sanitize(_name);
         bytes32 symbol = GasPayingToken.sanitize(_symbol);
@@ -1646,8 +1650,8 @@ contract OptimismPortal2_ResourceFuzz_Test is CommonTest {
         // bounds to satisfy the assumptions listed in this specific section. These assumptions
         // serve only to act as an additional sanity check on top of the bounds and should not
         // result in an unnecessary number of test rejections.
-        vm.assume(gasLimit >= _gasLimit);
-        vm.assume(_minimumBaseFee < _maximumBaseFee);
+        _gasLimit = uint64(bound(_gasLimit, 0, gasLimit));
+        _minimumBaseFee = uint32(bound(_minimumBaseFee, 0, _maximumBaseFee - 1));
 
         // Base fee can increase quickly and mean that we can't buy the amount of gas we want.
         // Here we add a VM assumption to bound the potential increase.
@@ -1711,14 +1715,16 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         internal
     {
         if (_isCreation) {
             _to = address(0);
         }
-        vm.assume(_data.length <= 120_000);
+        if (_data.length > 120_000) {
+            _data = _data[0:120_000];
+        }
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
         _gasLimit =
             uint64(bound(_gasLimit, optimismPortal2.minimumGasLimit(uint64(_data.length)), rcfg.maxResourceLimit));
@@ -1757,7 +1763,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -1782,7 +1788,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -1947,14 +1953,17 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         internal
     {
         if (_isCreation) {
             _to = address(0);
         }
-        vm.assume(_data.length <= 120_000);
+        if (_data.length > 120_000) {
+            _data = _data[0:120_000];
+        }
+
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
         _gasLimit =
             uint64(bound(_gasLimit, optimismPortal2.minimumGasLimit(uint64(_data.length)), rcfg.maxResourceLimit));
@@ -1988,7 +1997,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -2011,7 +2020,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {

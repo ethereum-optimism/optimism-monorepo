@@ -57,15 +57,19 @@ contract GasPayingToken_Roundtrip_Test is Test {
     function testFuzz_setGetWithSanitize_succeeds(
         address _token,
         uint8 _decimals,
-        string memory _name,
-        string memory _symbol
+        string calldata _name,
+        string calldata _symbol
     )
         external
     {
         vm.assume(_token != address(0));
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
         vm.assume(_token != Constants.ETHER);
+        if (bytes(_name).length > 32) {
+            _name = string(bytes(_name)[0:32]);
+        }
+        if (bytes(_symbol).length > 32) {
+            _symbol = string(bytes(_symbol)[0:32]);
+        }
 
         GasPayingToken.set(_token, _decimals, GasPayingToken.sanitize(_name), GasPayingToken.sanitize(_symbol));
 

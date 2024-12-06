@@ -1130,7 +1130,7 @@ contract MIPS2_Test is CommonTest {
     )
         public
     {
-        vm.assume(_wakeup != sys.FUTEX_EMPTY_ADDR);
+        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 1));
 
         threading.createThread();
         threading.createThread();
@@ -1178,8 +1178,9 @@ contract MIPS2_Test is CommonTest {
     )
         public
     {
-        vm.assume(_wakeup != sys.FUTEX_EMPTY_ADDR);
-        vm.assume(_wakeup != _futexAddr);
+        // -2 incase _wakeup == _futexAddr and _wakeup needs to be incremented
+        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 2));
+        if (_wakeup == _futexAddr) _wakeup++;
 
         threading.createThread();
         threading.createThread();

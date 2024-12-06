@@ -12,7 +12,7 @@ import { SafeCall } from "src/libraries/SafeCall.sol";
 contract SafeCall_Test is Test {
     /// @notice Helper function to deduplicate code. Makes all assumptions required for these tests.
     function assumeNot(address _addr) internal {
-        vm.assume(_addr.balance == 0);
+        vm.deal(_addr, 0);
         vm.assume(_addr != address(this));
         assumeAddressIsNot(_addr, StdCheatsSafe.AddressType.ForgeAddress, StdCheatsSafe.AddressType.Precompile);
     }

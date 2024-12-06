@@ -298,7 +298,7 @@ contract CrossL2InboxTest is Test {
 
     /// @dev Tests that the `executeMessage` function reverts when called with an identifier with an invalid timestamp.
     function testFuzz_executeMessage_invalidTimestamp_reverts(
-        Identifier calldata _id,
+        Identifier memory _id,
         address _target,
         bytes calldata _message,
         uint256 _value
@@ -307,7 +307,7 @@ contract CrossL2InboxTest is Test {
         setInteropStart
     {
         // Ensure that the id's timestamp is invalid (greater than the current block timestamp)
-        vm.assume(_id.timestamp > block.timestamp);
+        _id.timestamp = bound(_id.timestamp, block.timestamp + 1, type(uint256).max);
 
         // Ensure is not a deposit transaction
         vm.mockCall({
@@ -488,7 +488,7 @@ contract CrossL2InboxTest is Test {
     /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp later
     /// than current block.timestamp.
     function testFuzz_validateMessage_invalidTimestamp_reverts(
-        Identifier calldata _id,
+        Identifier memory _id,
         bytes32 _messageHash
     )
         external
@@ -502,7 +502,7 @@ contract CrossL2InboxTest is Test {
         });
 
         // Ensure that the id's timestamp is invalid (greater than the current block timestamp)
-        vm.assume(_id.timestamp > block.timestamp);
+        _id.timestamp = bound(_id.timestamp, block.timestamp + 1, type(uint256).max);
 
         // Expect a revert with the InvalidTimestamp selector
         vm.expectRevert(InvalidTimestamp.selector);

@@ -140,7 +140,7 @@ contract Bytes_slice_TestFail is Test {
     ///         the `slice` function reverts.
     function testFuzz_slice_lengthOverflows_reverts(bytes memory _input, uint256 _start, uint256 _length) public {
         // Ensure that the `_length` will overflow if a number >= 31 is added to it.
-        vm.assume(_length > type(uint256).max - 31);
+        _length = uint256(bound(_length, type(uint256).max - 30, type(uint256).max));
 
         vm.expectRevert("slice_overflow");
         Bytes.slice(_input, _start, _length);

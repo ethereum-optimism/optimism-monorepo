@@ -144,7 +144,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
 
         // Ensure that _value is greater than 0
-        vm.assume(_value > 0);
+        _value = bound(_value, 1, type(uint256).max);
 
         // Add sufficient value to the contract to send the message with
         vm.deal(address(this), _value);

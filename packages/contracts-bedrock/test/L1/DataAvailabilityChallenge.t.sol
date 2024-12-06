@@ -36,7 +36,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         // EntryPoint will revert if using amount > type(uint112).max.
         vm.assume(sender != Preinstalls.EntryPoint_v060);
         vm.assume(sender != address(dataAvailabilityChallenge));
-        vm.assume(sender.balance == 0);
         vm.deal(sender, amount);
 
         vm.prank(sender);
@@ -59,7 +58,6 @@ contract DataAvailabilityChallengeTest is CommonTest {
         vm.assume(sender != Preinstalls.EntryPoint_v060);
         vm.assume(sender != address(dataAvailabilityChallenge));
         vm.assume(sender != deploy.mustGetAddress("DataAvailabilityChallenge"));
-        vm.assume(sender.balance == 0);
         vm.deal(sender, amount);
 
         vm.prank(sender);

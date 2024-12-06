@@ -639,8 +639,8 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
 
     /// @dev Tests that `setEIP1559Params` updates the EIP1559 parameters successfully.
     function testFuzz_setEIP1559Params_succeeds(uint32 _denominator, uint32 _elasticity) external {
-        vm.assume(_denominator > 1);
-        vm.assume(_elasticity > 1);
+        _denominator = uint32(bound(_denominator, 2, type(uint32).max));
+        _elasticity = uint32(bound(_elasticity, 2, type(uint32).max));
 
         vm.expectEmit(address(systemConfig));
         emit ConfigUpdate(
