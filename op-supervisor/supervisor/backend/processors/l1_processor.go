@@ -3,6 +3,7 @@ package processors
 import (
 	"context"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -23,6 +24,7 @@ type L1Processor struct {
 	log      log.Logger
 	client   L1Source
 	clientMu sync.Mutex
+	running  atomic.Bool
 
 	currentNumber uint64
 	tickDuration  time.Duration
@@ -53,6 +55,11 @@ func (p *L1Processor) AttachClient(client L1Source) {
 }
 
 func (p *L1Processor) Start() {
+	// if already running, do nothing
+	if p.running.Load() {
+		return
+	}
+	p.running.Store(true)
 	p.currentNumber = 0
 	// if there is an issue getting the last common L1, default to starting from 0
 	// consider making this a fatal error in the future once initialization is more robust
@@ -64,8 +71,13 @@ func (p *L1Processor) Start() {
 }
 
 func (p *L1Processor) Stop() {
+	// if not running, do nothing
+	if !p.running.Load() {
+		return
+	}
 	p.cancel()
 	p.wg.Wait()
+	p.running.Store(false)
 }
 
 // worker runs a loop that checks for new L1 blocks at a regular interval
