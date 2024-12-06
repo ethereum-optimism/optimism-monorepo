@@ -394,7 +394,7 @@ contract OPContractsManager is ISemver {
         return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
     }
 
-    // @notice Helper method for computing a salt for deploying non-proxy contracts.
+    /// @notice Helper method for computing a salt for deploying non-proxy contracts.
     function computeNonProxiedContractSalt(
         uint256 _l2ChainId,
         string memory _saltMixer
