@@ -55,8 +55,8 @@ contract Faucet {
     /// @notice Maps from id to nonces to whether or not they have been used.
     mapping(bytes32 => mapping(bytes32 => bool)) public nonces;
 
-    /// @notice Modifier that makes a function admin priviledged.
-    modifier priviledged() {
+    /// @notice Modifier that makes a function admin privileged.
+    modifier privileged() {
         require(msg.sender == ADMIN, "Faucet: function can only be called by admin");
         _;
     }
@@ -74,7 +74,7 @@ contract Faucet {
     /// @notice Allows the admin to withdraw funds.
     /// @param _recipient Address to receive the funds.
     /// @param _amount    Amount of ETH in wei to withdraw.
-    function withdraw(address payable _recipient, uint256 _amount) public priviledged {
+    function withdraw(address payable _recipient, uint256 _amount) public privileged {
         new SafeSend{ value: _amount }(_recipient);
     }
 
