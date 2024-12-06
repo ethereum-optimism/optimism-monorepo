@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test} from "forge-std/Test.sol";
-import {EAS} from "src/vendor/eas/EAS.sol";
-import {SchemaRegistry} from "src/vendor/eas/SchemaRegistry.sol";
-import {Attestation, AttestationRequest, AttestationRequestData, MultiAttestationRequest, RevocationRequest, RevocationRequestData, MultiDelegatedAttestationRequest, MultiDelegatedRevocationRequest, DelegatedAttestationRequest, MultiRevocationRequest, Signature} from "src/vendor/eas/IEAS.sol";
-import {ISchemaResolver} from "src/vendor/eas/resolver/ISchemaResolver.sol";
-import {Predeploys} from "src/libraries/Predeploys.sol";
+import { Test } from "forge-std/Test.sol";
+import { EAS } from "src/vendor/eas/EAS.sol";
+import { SchemaRegistry } from "src/vendor/eas/SchemaRegistry.sol";
+import { Attestation, AttestationRequest, AttestationRequestData, MultiAttestationRequest, RevocationRequest, RevocationRequestData, MultiDelegatedAttestationRequest, MultiDelegatedRevocationRequest, DelegatedAttestationRequest, MultiRevocationRequest, Signature } from "src/vendor/eas/IEAS.sol";
+import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
+import { Predeploys } from "src/libraries/Predeploys.sol";
 
 contract MockPayableResolver is ISchemaResolver {
     function isPayable() external pure override returns (bool) {
@@ -51,16 +51,23 @@ contract EASTest is Test {
 
     uint64 constant NO_EXPIRATION = 0;
     bytes32 constant ZERO_BYTES32 = bytes32(0);
-    bytes4 constant InvalidRegistrySelector = bytes4(keccak256("InvalidRegistry()"));
-    bytes4 constant InvalidSchemaSelector = bytes4(keccak256("InvalidSchema()"));
-    bytes4 constant InvalidExpirationTimeSelector = bytes4(keccak256("InvalidExpirationTime()"));
+    bytes4 constant InvalidRegistrySelector =
+        bytes4(keccak256("InvalidRegistry()"));
+    bytes4 constant InvalidSchemaSelector =
+        bytes4(keccak256("InvalidSchema()"));
+    bytes4 constant InvalidExpirationTimeSelector =
+        bytes4(keccak256("InvalidExpirationTime()"));
     bytes4 constant NotFoundSelector = bytes4(keccak256("NotFound()"));
     bytes4 constant AccessDeniedSelector = bytes4(keccak256("AccessDenied()"));
-    bytes4 constant InvalidLengthSelector = bytes4(keccak256("InvalidLength()"));
-    bytes4 constant AlreadyRevokedOffchainSelector = bytes4(keccak256("AlreadyRevokedOffchain()"));
-    bytes4 constant AlreadyTimestampedSelector = bytes4(keccak256("AlreadyTimestamped()"));
+    bytes4 constant InvalidLengthSelector =
+        bytes4(keccak256("InvalidLength()"));
+    bytes4 constant AlreadyRevokedOffchainSelector =
+        bytes4(keccak256("AlreadyRevokedOffchain()"));
+    bytes4 constant AlreadyTimestampedSelector =
+        bytes4(keccak256("AlreadyTimestamped()"));
     bytes4 constant IrrevocableSelector = bytes4(keccak256("Irrevocable()"));
-    bytes4 constant InvalidSignatureSelector = bytes4(keccak256("InvalidSignature()"));
+    bytes4 constant InvalidSignatureSelector =
+        bytes4(keccak256("InvalidSignature()"));
 
     function setUp() public {
         // Setup accounts
@@ -113,32 +120,33 @@ contract EASTest is Test {
         assertEq(eas.getName(), "EAS");
         assertEq(address(eas.getSchemaRegistry()), address(registry));
     }
+
     // Core functionality tests section
-function testInvalidSchemaRegistry() public {
-    // Deploy new EAS with invalid registry address
-    EAS invalidEas = new EAS();
-    
-    // Try to use EAS with invalid registry
-    string memory schema = "bool like";
-    bytes32 schemaId = getSchemaUID(schema, address(0), true);
-    
-    vm.startPrank(sender);
-       vm.expectRevert(InvalidSchemaSelector);
-    invalidEas.attest(
-        AttestationRequest({
-            schema: schemaId,
-            data: AttestationRequestData({
-                recipient: recipient,
-                expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
-                refUID: ZERO_BYTES32,
-                data: hex"1234",
-                value: 0
+    function testInvalidSchemaRegistry() public {
+        // Deploy new EAS with invalid registry address
+        EAS invalidEas = new EAS();
+
+        // Try to use EAS with invalid registry
+        string memory schema = "bool like";
+        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+
+        vm.startPrank(sender);
+        vm.expectRevert(InvalidSchemaSelector);
+        invalidEas.attest(
+            AttestationRequest({
+                schema: schemaId,
+                data: AttestationRequestData({
+                    recipient: recipient,
+                    expirationTime: uint64(block.timestamp + 30 days),
+                    revocable: true,
+                    refUID: ZERO_BYTES32,
+                    data: hex"1234",
+                    value: 0
+                })
             })
-        })
-    );
-    vm.stopPrank();
-}
+        );
+        vm.stopPrank();
+    }
 
     // Basic Attestation Tests
     // testAttestation()
@@ -298,10 +306,6 @@ function testInvalidSchemaRegistry() public {
         string memory schema2 = "bytes32 proposalId, bool vote";
         string memory schema3 = "bool hasPhoneNumber, bytes32 phoneHash";
 
-        bytes32 schema1Id = getSchemaUID(schema1, address(0), true);
-        bytes32 schema2Id = getSchemaUID(schema2, address(0), true);
-        bytes32 schema3Id = getSchemaUID(schema3, address(0), true);
-
         vm.startPrank(sender);
         registry.register(schema1, ISchemaResolver(address(0)), true);
         registry.register(schema2, ISchemaResolver(address(0)), true);
@@ -365,7 +369,7 @@ function testInvalidSchemaRegistry() public {
         vm.stopPrank();
     }
 
-        function testDetailedAttestationScenarios() public {
+    function testDetailedAttestationScenarios() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
         bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
@@ -392,7 +396,7 @@ function testInvalidSchemaRegistry() public {
         );
 
         // Test attestation with all fields populated
-        bytes32 uid2 = eas.attest{value: value}(
+        bytes32 uid2 = eas.attest{ value: value }(
             AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
@@ -488,7 +492,7 @@ function testInvalidSchemaRegistry() public {
         vm.stopPrank();
     }
 
-       function testUnregisteredDataScenarios() public view {
+    function testUnregisteredDataScenarios() public view {
         bytes32 unregisteredData = keccak256("unregistered");
 
         // Should return 0 for unregistered timestamp
@@ -497,37 +501,34 @@ function testInvalidSchemaRegistry() public {
         // Should return 0 for unregistered revocation
         assertEq(eas.getRevokeOffchain(sender, unregisteredData), 0);
     }
+
     // Basic attestation tests section
-function testInvalidAttestationData() public {
-    string memory schema = "bool like";
-    bytes32 schemaId = getSchemaUID(schema, address(0), true);
-    
-    vm.startPrank(sender);
-    registry.register(schema, ISchemaResolver(address(0)), true);
-    
-    // Test with non-existent reference UID
-    bytes32 nonExistentUID = bytes32(uint256(1));
-    
-    vm.expectRevert(NotFoundSelector);
-    eas.attest(
-        AttestationRequest({
-            schema: schemaId,
-            data: AttestationRequestData({
-                recipient: recipient,
-                expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
-                refUID: nonExistentUID,  // Reference to non-existent attestation
-                data: hex"1234",
-                value: 0
+    function testInvalidAttestationData() public {
+        string memory schema = "bool like";
+        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+
+        vm.startPrank(sender);
+        registry.register(schema, ISchemaResolver(address(0)), true);
+
+        // Test with non-existent reference UID
+        bytes32 nonExistentUID = bytes32(uint256(1));
+
+        vm.expectRevert(NotFoundSelector);
+        eas.attest(
+            AttestationRequest({
+                schema: schemaId,
+                data: AttestationRequestData({
+                    recipient: recipient,
+                    expirationTime: uint64(block.timestamp + 30 days),
+                    revocable: true,
+                    refUID: nonExistentUID, // Reference to non-existent attestation
+                    data: hex"1234",
+                    value: 0
+                })
             })
-        })
-    );
-    vm.stopPrank();
-}
-
-
-
-
+        );
+        vm.stopPrank();
+    }
 
     // Multi-attestation Tests
     // testMultiAttestationComprehensive()
@@ -536,7 +537,6 @@ function testInvalidAttestationData() public {
         string memory schema2 = "uint256 score";
         MockPayableResolver resolver = new MockPayableResolver();
         bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
-        bytes32 schema2Id = getSchemaUID(schema2, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(resolver)), true);
@@ -565,7 +565,7 @@ function testInvalidAttestationData() public {
         }
 
         vm.deal(sender, 1 ether);
-        bytes32[] memory uids = eas.multiAttest{value: 0.3 ether}(requests);
+        bytes32[] memory uids = eas.multiAttest{ value: 0.3 ether }(requests);
         assertEq(uids.length, 3);
 
         // Verify all attestations
@@ -664,7 +664,7 @@ function testInvalidAttestationData() public {
         vm.stopPrank();
     }
 
-        function testMultiAttestationReverts() public {
+    function testMultiAttestationReverts() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
         MockPayableResolver resolver = new MockPayableResolver();
@@ -759,7 +759,7 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
 
@@ -799,7 +799,7 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
     }
@@ -819,11 +819,10 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: nonExistentUid, value: 0})
+                data: RevocationRequestData({ uid: nonExistentUid, value: 0 })
             })
         );
     }
-
 
     // testRevocationWithValue()
     function testRevocationWithRefUID() public {
@@ -867,7 +866,7 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: parentUID, value: 0})
+                data: RevocationRequestData({ uid: parentUID, value: 0 })
             })
         );
 
@@ -893,7 +892,7 @@ function testInvalidAttestationData() public {
         // Create attestations first
         bytes32[] memory uids = new bytes32[](2);
         for (uint i = 0; i < 2; i++) {
-            uids[i] = eas.attest{value: value}(
+            uids[i] = eas.attest{ value: value }(
                 AttestationRequest({
                     schema: schemaId,
                     data: AttestationRequestData({
@@ -914,20 +913,20 @@ function testInvalidAttestationData() public {
         for (uint i = 0; i < 2; i++) {
             requests[i] = RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[i], value: value})
+                data: RevocationRequestData({ uid: uids[i], value: value })
             });
         }
 
         for (uint i = 0; i < 2; i++) {
-            eas.revoke{value: value}(requests[i]);
+            eas.revoke{ value: value }(requests[i]);
             Attestation memory attestation = eas.getAttestation(uids[i]);
             assertTrue(attestation.revocationTime > 0);
         }
 
         vm.stopPrank();
-        }
+    }
 
-        function testDelegatedRevocationRevert() public {
+    function testDelegatedRevocationRevert() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
@@ -956,12 +955,12 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
     }
 
-       function testIrrevocableSchemaScenarios() public {
+    function testIrrevocableSchemaScenarios() public {
         // Register an irrevocable schema
         string memory schema = "bool isFriend";
         bytes32 schemaId = getSchemaUID(schema, address(0), false);
@@ -995,7 +994,7 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
 
@@ -1038,7 +1037,7 @@ function testInvalidAttestationData() public {
         for (uint i = 0; i < 2; i++) {
             revocationRequests[i] = RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[i], value: 0})
+                data: RevocationRequestData({ uid: uids[i], value: 0 })
             });
         }
 
@@ -1048,7 +1047,7 @@ function testInvalidAttestationData() public {
         vm.stopPrank();
     }
 
-        function testMixedRevocabilityScenarios() public {
+    function testMixedRevocabilityScenarios() public {
         // Register both revocable and irrevocable schemas
         string memory revocableSchema = "bool like";
         string memory irrevocableSchema = "bool isFriend";
@@ -1105,7 +1104,7 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: revocableSchemaId,
-                data: RevocationRequestData({uid: revocableUid, value: 0})
+                data: RevocationRequestData({ uid: revocableUid, value: 0 })
             })
         );
 
@@ -1114,37 +1113,32 @@ function testInvalidAttestationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: irrevocableSchemaId,
-                data: RevocationRequestData({uid: irrevocableUid, value: 0})
+                data: RevocationRequestData({ uid: irrevocableUid, value: 0 })
             })
         );
 
         vm.stopPrank();
     }
-    // Revocation tests section
-function testInvalidRevocationData() public {
-    string memory schema = "bool like";
-    bytes32 schemaId = getSchemaUID(schema, address(0), true);
-    
-    vm.startPrank(sender);
-    registry.register(schema, ISchemaResolver(address(0)), true);
-    
-    // Try to revoke with wrong schema
-    bytes32 wrongSchemaId = getSchemaUID("wrong schema", address(0), true);
-    
-    vm.expectRevert(InvalidSchemaSelector);
-    eas.revoke(
-        RevocationRequest({
-            schema: wrongSchemaId,
-            data: RevocationRequestData({
-                uid: bytes32(0),
-                value: 0
-            })
-        })
-    );
-    vm.stopPrank();
-}
 
- 
+    // Revocation tests section
+    function testInvalidRevocationData() public {
+        string memory schema = "bool like";
+
+        vm.startPrank(sender);
+        registry.register(schema, ISchemaResolver(address(0)), true);
+
+        // Try to revoke with wrong schema
+        bytes32 wrongSchemaId = getSchemaUID("wrong schema", address(0), true);
+
+        vm.expectRevert(InvalidSchemaSelector);
+        eas.revoke(
+            RevocationRequest({
+                schema: wrongSchemaId,
+                data: RevocationRequestData({ uid: bytes32(0), value: 0 })
+            })
+        );
+        vm.stopPrank();
+    }
 
     // Timestamp Tests
     // 21. testTimestamping()
@@ -1193,7 +1187,8 @@ function testInvalidRevocationData() public {
         vm.expectRevert(AlreadyTimestampedSelector);
         eas.timestamp(data);
     }
-   function testMultiTimestampingScenarios() public {
+
+    function testMultiTimestampingScenarios() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("0x1234");
         data[1] = keccak256("0x4567");
@@ -1220,7 +1215,6 @@ function testInvalidRevocationData() public {
             assertEq(eas.getTimestamp(data2[i]), timestamp);
         }
     }
-
 
     // testMultiTimestampRevert()
     function testMultiTimestampRevert() public {
@@ -1367,7 +1361,6 @@ function testInvalidRevocationData() public {
         assertEq(eas.getRevokeOffchain(sender, data), 0);
     }
 
-
     function testRevokeOffchainMultipleAccounts() public {
         bytes32 data = keccak256("0x1234");
 
@@ -1386,7 +1379,7 @@ function testInvalidRevocationData() public {
         assertEq(eas.getRevokeOffchain(sender2, data), timestamp2);
     }
 
-       function testMultiRevokeOffchainScenarios() public {
+    function testMultiRevokeOffchainScenarios() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("0x1234");
         data[1] = keccak256("0x4567");
@@ -1417,8 +1410,6 @@ function testInvalidRevocationData() public {
 
         vm.stopPrank();
     }
-
- 
 
     // Delegation Tests
     // testDelegatedAttestation()
@@ -1478,7 +1469,7 @@ function testInvalidRevocationData() public {
                     data: hex"1234",
                     value: 0
                 }),
-                signature: Signature({v: v, r: r, s: s}),
+                signature: Signature({ v: v, r: r, s: s }),
                 attester: sender,
                 deadline: type(uint64).max
             });
@@ -1500,7 +1491,7 @@ function testInvalidRevocationData() public {
             data: hex"1234",
             value: 0
         });
-        requests[0].signatures[0] = Signature({v: v, r: r, s: s});
+        requests[0].signatures[0] = Signature({ v: v, r: r, s: s });
         requests[0].attester = sender;
         requests[0].deadline = type(uint64).max;
 
@@ -1553,7 +1544,6 @@ function testInvalidRevocationData() public {
         vm.stopPrank();
     }
 
-
     function testMultiAttestationDelegation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -1601,7 +1591,6 @@ function testInvalidRevocationData() public {
         vm.stopPrank();
     }
 
-
     function testDelegatedAttestationScenarios() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -1620,7 +1609,7 @@ function testInvalidRevocationData() public {
         });
 
         bytes32 uid = eas.attest(
-            AttestationRequest({schema: schemaId, data: requestData})
+            AttestationRequest({ schema: schemaId, data: requestData })
         );
 
         Attestation memory attestation = eas.getAttestation(uid);
@@ -1708,7 +1697,7 @@ function testInvalidRevocationData() public {
         });
 
         Signature[] memory sigs = new Signature[](1);
-        sigs[0] = Signature({v: 27, r: bytes32(0), s: bytes32(0)});
+        sigs[0] = Signature({ v: 27, r: bytes32(0), s: bytes32(0) });
 
         requests[0] = MultiDelegatedAttestationRequest({
             schema: schemaId,
@@ -1723,7 +1712,8 @@ function testInvalidRevocationData() public {
 
         vm.stopPrank();
     }
-        function testDelegatedRevocation() public {
+
+    function testDelegatedRevocation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
@@ -1749,7 +1739,7 @@ function testInvalidRevocationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
 
@@ -1784,7 +1774,7 @@ function testInvalidRevocationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uid, value: 0})
+                data: RevocationRequestData({ uid: uid, value: 0 })
             })
         );
 
@@ -1815,7 +1805,7 @@ function testInvalidRevocationData() public {
         for (uint i = 0; i < 2; i++) {
             revocationRequests[i] = RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[i], value: 0})
+                data: RevocationRequestData({ uid: uids[i], value: 0 })
             });
         }
 
@@ -1847,7 +1837,7 @@ function testInvalidRevocationData() public {
         });
 
         Signature[] memory signatures = new Signature[](1);
-        signatures[0] = Signature({v: 27, r: bytes32(0), s: bytes32(0)});
+        signatures[0] = Signature({ v: 27, r: bytes32(0), s: bytes32(0) });
 
         requests[0] = MultiDelegatedAttestationRequest({
             schema: schemaId,
@@ -1972,7 +1962,7 @@ function testInvalidRevocationData() public {
             value: value
         });
 
-        bytes32[] memory uids = eas.multiAttest{value: value * 2}(requests);
+        bytes32[] memory uids = eas.multiAttest{ value: value * 2 }(requests);
         assertEq(uids.length, 2);
 
         // Verify attestations
@@ -2010,8 +2000,6 @@ function testInvalidRevocationData() public {
         vm.stopPrank();
     }
 
-
-
     // Schema Tests
     // testSchemaResolverScenarios()
     function testSchemaResolverScenarios() public {
@@ -2046,7 +2034,6 @@ function testInvalidRevocationData() public {
     // testSchemaRegistrationScenarios()
     function testSchemaRegistrationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
 
@@ -2060,7 +2047,6 @@ function testInvalidRevocationData() public {
         // Test different schema types
         string
             memory complexSchema = "uint256 age, string name, address wallet";
-        bytes32 complexSchemaId = getSchemaUID(complexSchema, address(0), true);
         registry.register(complexSchema, ISchemaResolver(address(0)), true);
 
         vm.stopPrank();
@@ -2157,7 +2143,7 @@ function testInvalidRevocationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[0], value: 0})
+                data: RevocationRequestData({ uid: uids[0], value: 0 })
             })
         );
 
@@ -2230,7 +2216,7 @@ function testInvalidRevocationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[0], value: 0})
+                data: RevocationRequestData({ uid: uids[0], value: 0 })
             })
         );
 
@@ -2238,7 +2224,7 @@ function testInvalidRevocationData() public {
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({uid: uids[2], value: 0})
+                data: RevocationRequestData({ uid: uids[2], value: 0 })
             })
         );
 
@@ -2295,7 +2281,4 @@ function testInvalidRevocationData() public {
         eas.attestByDelegation(request);
         vm.stopPrank();
     }
-
-
 }
-
