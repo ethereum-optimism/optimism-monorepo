@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -145,18 +143,13 @@ func Proxy(ctx context.Context, cfg ProxyConfig) error {
 		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	l1Host, err := env.DefaultScriptHost(
+	l1Host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
-			src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
-			}
-			return forking.Cache(src), nil
-		}),
+		l1RPC,
 	)
 	if err != nil {
 		return fmt.Errorf("failed to create script host: %w", err)
