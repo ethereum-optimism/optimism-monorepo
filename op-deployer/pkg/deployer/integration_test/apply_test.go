@@ -91,7 +91,7 @@ func TestEndToEndApply(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package", TestParams)
+	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package@4.4.0", TestParams)
 
 	service, err := enclaveCtx.GetServiceContext("el-1-geth-lighthouse")
 	require.NoError(t, err)
