@@ -123,7 +123,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: &inclusiveBlockRange{105, 109},
 			},
-			expectedLogs: []string{"next safe block above newest block in state"},
+			expectedLogs: []string{"safe head above newest block in state"},
 		},
 		{name: "safe chain reorg",
 			// This can happen if there is an L1 reorg, the safe chain is at an acceptable

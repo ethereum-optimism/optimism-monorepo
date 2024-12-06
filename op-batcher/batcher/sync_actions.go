@@ -94,8 +94,8 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("next safe block above newest block in state, clearing channel manager state",
-			"nextSafeBlockNum", nextSafeBlockNum,
+		l.Warn("safe head above newest block in state, clearing channel manager state",
+			"safe head", newSyncStatus.SafeL2,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
 			"syncActions",
 			startAfresh)
