@@ -34,7 +34,7 @@ const (
 	ReleaseFlagName                         = "release"
 	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	DelayedWethImplFlagName                 = "delayed-weth-impl"
-    ProxyOwnerFlagName                      = "proxy-owner"
+	ProxyOwnerFlagName                      = "proxy-owner"
 )
 
 var (
