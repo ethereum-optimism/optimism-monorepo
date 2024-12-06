@@ -1,0 +1,20 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X main.Version=" + VERSION + " " + \
+    "") + "'"
+
+BINARY := "./bin/da-server"
+
+# Build the da-server binary
+da-server: (go_build BINARY "./cmd/daserver" "-ldflags" _LDFLAGSSTRING)
+
+# Remove build artifacts
+clean:
+    rm -f {{BINARY}}
+
+# Run tests
+test: (go_test "./...")

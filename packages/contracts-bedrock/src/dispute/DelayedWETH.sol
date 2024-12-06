@@ -6,8 +6,8 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { WETH98 } from "src/universal/WETH98.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
 /// @title DelayedWETH
@@ -32,8 +32,8 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     event Unwrap(address indexed src, uint256 wad);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.2.0-beta.3
-    string public constant version = "1.2.0-beta.3";
+    /// @custom:semver 1.2.0-beta.4
+    string public constant version = "1.2.0-beta.4";
 
     /// @notice Returns a withdrawal request for the given address.
     mapping(address => mapping(address => WithdrawalRequest)) public withdrawals;

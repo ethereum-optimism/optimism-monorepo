@@ -21,4 +21,4 @@
 !/go.mod
 !/go.sum
 !/just
-!/versions.json
+!/mise.toml

@@ -57,7 +57,7 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 		uint8(18),
 	}
 
-	setup := func() gasTokenTestOpts {
+	setup := func(t *testing.T) gasTokenTestOpts {
 		cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(allocType))
 		offset := hexutil.Uint64(0)
 		cfg.DeployConfig.L2GenesisRegolithTimeOffset = &offset
@@ -111,7 +111,7 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 
 	t.Run("deposit", func(t *testing.T) {
 		op_e2e.InitParallel(t)
-		gto := setup()
+		gto := setup(t)
 		checkDeposit(t, gto, false)
 		setCustomGasToken(t, gto.cfg, gto.sys, gto.weth9Address)
 		checkDeposit(t, gto, true)
@@ -119,7 +119,7 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 
 	t.Run("withdrawal", func(t *testing.T) {
 		op_e2e.InitParallel(t)
-		gto := setup()
+		gto := setup(t)
 		setCustomGasToken(t, gto.cfg, gto.sys, gto.weth9Address)
 		checkDeposit(t, gto, true)
 		checkWithdrawal(t, gto)
@@ -127,7 +127,7 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 
 	t.Run("fee withdrawal", func(t *testing.T) {
 		op_e2e.InitParallel(t)
-		gto := setup()
+		gto := setup(t)
 		setCustomGasToken(t, gto.cfg, gto.sys, gto.weth9Address)
 		checkDeposit(t, gto, true)
 		checkFeeWithdrawal(t, gto, true)
@@ -135,7 +135,7 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 
 	t.Run("token name and symbol", func(t *testing.T) {
 		op_e2e.InitParallel(t)
-		gto := setup()
+		gto := setup(t)
 		checkL1TokenNameAndSymbol(t, gto, gto.disabledExpectations)
 		checkL2TokenNameAndSymbol(t, gto, gto.disabledExpectations)
 		checkWETHTokenNameAndSymbol(t, gto, gto.disabledExpectations)

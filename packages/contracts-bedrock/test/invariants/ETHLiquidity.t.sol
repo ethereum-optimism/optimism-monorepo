@@ -10,7 +10,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { IETHLiquidity } from "src/L2/interfaces/IETHLiquidity.sol";
+import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
 
 /// @title ETHLiquidity_User
 /// @notice Actor contract that interacts with the ETHLiquidity contract. Always pretends to be the

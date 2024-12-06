@@ -93,7 +93,7 @@ func TestInvalidConfig(t *testing.T) {
 
 func configForArgs(args ...string) CLIConfig {
 	app := cli.NewApp()
-	app.Flags = CLIFlags("TEST_")
+	app.Flags = CLIFlags("TEST_", "")
 	app.Name = "test"
 	var config CLIConfig
 	app.Action = func(ctx *cli.Context) error {

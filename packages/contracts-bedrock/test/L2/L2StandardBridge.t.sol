@@ -16,10 +16,10 @@ import { Hashing } from "src/libraries/Hashing.sol";
 import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
-import { IStandardBridge } from "src/universal/interfaces/IStandardBridge.sol";
-import { IL2ToL1MessagePasser } from "src/L2/interfaces/IL2ToL1MessagePasser.sol";
-import { IL2StandardBridge } from "src/L2/interfaces/IL2StandardBridge.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
+import { IStandardBridge } from "interfaces/universal/IStandardBridge.sol";
+import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
+import { IL2StandardBridge } from "interfaces/L2/IL2StandardBridge.sol";
 
 contract L2StandardBridge_Test is CommonTest {
     using stdStorage for StdStorage;

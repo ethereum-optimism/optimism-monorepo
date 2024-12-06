@@ -26,6 +26,9 @@ const (
 	DisputeSplitDepth               uint64 = 30
 	DisputeClockExtension           uint64 = 10800
 	DisputeMaxClockDuration         uint64 = 302400
+	Eip1559DenominatorCanyon        uint64 = 250
+	Eip1559Denominator              uint64 = 50
+	Eip1559Elasticity               uint64 = 6
 
 	ContractsV160Tag        = "op-contracts/v1.6.0"
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
@@ -75,6 +78,50 @@ type VersionRelease struct {
 
 var _ embed.FS
 
+type OPCMBlueprints struct {
+	AddressManager           common.Address
+	Proxy                    common.Address
+	ProxyAdmin               common.Address
+	L1ChugSplashProxy        common.Address
+	ResolvedDelegateProxy    common.Address
+	AnchorStateRegistry      common.Address
+	PermissionedDisputeGame1 common.Address
+	PermissionedDisputeGame2 common.Address
+}
+
+var sepoliaBlueprints = OPCMBlueprints{
+	AddressManager:           common.HexToAddress("0x3125a4cB2179E04203D3Eb2b5784aaef9FD64216"),
+	Proxy:                    common.HexToAddress("0xe650ADb86a0de96e2c434D0a52E7D5B70980D6f1"),
+	ProxyAdmin:               common.HexToAddress("0x3AC6b88F6bC4A5038DB7718dE47a5ab1a9609319"),
+	L1ChugSplashProxy:        common.HexToAddress("0x58770FC7ed304c43D2B70248914eb34A741cF411"),
+	ResolvedDelegateProxy:    common.HexToAddress("0x0449adB72D489a137d476aB49c6b812161754fD3"),
+	AnchorStateRegistry:      common.HexToAddress("0xB98095199437883b7661E0D58256060f3bc730a4"),
+	PermissionedDisputeGame1: common.HexToAddress("0xf72Ac5f164cC024DE09a2c249441715b69a16eAb"),
+	PermissionedDisputeGame2: common.HexToAddress("0x713dAC5A23728477547b484f9e0D751077E300a2"),
+}
+
+var mainnetBlueprints = OPCMBlueprints{
+	AddressManager:           common.HexToAddress("0x29aA24714c06914d9689e933cae2293C569AfeEa"),
+	Proxy:                    common.HexToAddress("0x3626ebD458c7f34FD98789A373593fF2fc227bA0"),
+	ProxyAdmin:               common.HexToAddress("0x7170678A5CFFb6872606d251B3CcdB27De962631"),
+	L1ChugSplashProxy:        common.HexToAddress("0x538906C8B000D621fd11B7e8642f504dD8730837"),
+	ResolvedDelegateProxy:    common.HexToAddress("0xF12bD34d6a1d26d230240ECEA761f77e2013926E"),
+	AnchorStateRegistry:      common.HexToAddress("0xbA7Be2bEE016568274a4D1E6c852Bb9a99FaAB8B"),
+	PermissionedDisputeGame1: common.HexToAddress("0xb94bF6130Df8BD9a9eA45D8dD8C18957002d1986"),
+	PermissionedDisputeGame2: common.HexToAddress("0xe0a642B249CF6cbF0fF7b4dDf41443Ea7a5C8Cc8"),
+}
+
+func OPCMBlueprintsFor(chainID uint64) (OPCMBlueprints, error) {
+	switch chainID {
+	case 1:
+		return mainnetBlueprints, nil
+	case 11155111:
+		return sepoliaBlueprints, nil
+	default:
+		return OPCMBlueprints{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func L1VersionsDataFor(chainID uint64) (string, error) {
 	switch chainID {
 	case 1:
@@ -97,6 +144,28 @@ func L1VersionsFor(chainID uint64) (L1Versions, error) {
 	}
 }
 
+func GuardianAddressFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x09f7150D8c019BeF34450d6920f6B3608ceFdAf2"), nil
+	case 11155111:
+		return common.HexToAddress("0x7a50f00e8D05b95F98fE38d8BeE366a7324dCf7E"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
+func ChallengerAddressFor(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x9BA6e03D8B90dE867373Db8cF1A58d2F7F006b3A"), nil
+	case 11155111:
+		return common.HexToAddress("0xfd1D2e729aE8eEe2E146c033bf4400fE75284301"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
 	switch chainID {
 	case 1:
@@ -115,7 +184,7 @@ func ChainNameFor(chainID uint64) (string, error) {
 	case 11155111:
 		return "sepolia", nil
 	default:
-		return "", fmt.Errorf("unrecognized chain ID: %d", chainID)
+		return "", fmt.Errorf("unrecognized l1 chain ID: %d", chainID)
 	}
 }
 
@@ -173,12 +242,25 @@ func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
 	}
 }
 
+func L1ProxyAdminOwner(chainID uint64) (common.Address, error) {
+	switch chainID {
+	case 1:
+		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
+	case 11155111:
+		return common.HexToAddress("0x1Eb2fFc903729a0F03966B917003800b145F56E2"), nil
+	default:
+		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
+	}
+}
+
 func ArtifactsURLForTag(tag string) (*url.URL, error) {
 	switch tag {
 	case "op-contracts/v1.6.0":
 		return url.Parse(standardArtifactsURL("e1f0c4020618c4a98972e7124c39686cab2e31d5d7846f9ce5e0d5eed0f5ff32"))
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return url.Parse(standardArtifactsURL("b0fb1f6f674519d637cff39a22187a5993d7f81a6d7b7be6507a0b50a5e38597"))
+	case "op-contracts/v1.8.0-rc.3":
+		return url.Parse(standardArtifactsURL("3bcff2944953862596d5fd0125d166a04af2ba6426dc693983291d3cb86b2e2e"))
 	default:
 		return nil, fmt.Errorf("unsupported tag: %s", tag)
 	}
@@ -190,6 +272,8 @@ func ArtifactsHashForTag(tag string) (common.Hash, error) {
 		return common.HexToHash("d20a930cc0ff204c2d93b7aa60755ec7859ba4f328b881f5090c6a6a2a86dcba"), nil
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return common.HexToHash("9e3ad322ec9b2775d59143ce6874892f9b04781742c603ad59165159e90b00b9"), nil
+	case "op-contracts/v1.8.0-rc.3":
+		return common.HexToHash("7c133142165fbbdba28ced5d9a04af8bea68baf58b19a07cdd8ae531b01fbe9d"), nil
 	default:
 		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
 	}

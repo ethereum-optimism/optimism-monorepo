@@ -191,7 +191,7 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 			Value:   defaults.ReceiptQueryInterval,
 			EnvVars: prefixEnvVars("TXMGR_RECEIPT_QUERY_INTERVAL"),
 		},
-	}, opsigner.CLIFlags(envPrefix)...)
+	}, opsigner.CLIFlags(envPrefix, "")...)
 }
 
 type CLIConfig struct {

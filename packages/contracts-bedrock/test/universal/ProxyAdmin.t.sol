@@ -6,11 +6,11 @@ import { Test } from "forge-std/Test.sol";
 import { SimpleStorage } from "test/universal/Proxy.t.sol";
 
 // Interfaces
-import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
-import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
-import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
+import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
+import { IL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
+import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 

@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"errors"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
@@ -16,6 +18,7 @@ const (
 	ProofMaturityDelaySecondsFlagName       = "proof-maturity-delay-seconds"
 	DisputeGameFinalityDelaySecondsFlagName = "dispute-game-finality-delay-seconds"
 	MIPSVersionFlagName                     = "mips-version"
+	VmFlagName                              = "vm"
 	GameKindFlagName                        = "game-kind"
 	GameTypeFlagName                        = "game-type"
 	AbsolutePrestateFlagName                = "absolute-prestate"
@@ -23,12 +26,14 @@ const (
 	SplitDepthFlagName                      = "split-depth"
 	ClockExtensionFlagName                  = "clock-extension"
 	MaxClockDurationFlagName                = "max-clock-duration"
-	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	AnchorStateRegistryProxyFlagName        = "anchor-state-registry-proxy"
 	L2ChainIdFlagName                       = "l2-chain-id"
 	ProposerFlagName                        = "proposer"
 	ChallengerFlagName                      = "challenger"
 	PreimageOracleFlagName                  = "preimage-oracle"
+	ReleaseFlagName                         = "release"
+	DelayedWethProxyFlagName                = "delayed-weth-proxy"
+	DelayedWethImplFlagName                 = "delayed-weth-impl"
 )
 
 var (
@@ -72,6 +77,11 @@ var (
 		Usage:   "MIPS version.",
 		EnvVars: deployer.PrefixEnvVar("MIPS_VERSION"),
 		Value:   standard.MIPSVersion,
+	}
+	VmFlag = &cli.StringFlag{
+		Name:    VmFlagName,
+		Usage:   "VM contract address.",
+		EnvVars: deployer.PrefixEnvVar("VM"),
 	}
 	GameKindFlag = &cli.StringFlag{
 		Name:    GameKindFlagName,
@@ -119,6 +129,12 @@ var (
 		Usage:   "Delayed WETH proxy.",
 		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_PROXY"),
 	}
+	DelayedWethImplFlag = &cli.StringFlag{
+		Name:    DelayedWethImplFlagName,
+		Usage:   "Delayed WETH implementation.",
+		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_IMPL"),
+		Value:   common.Address{}.Hex(),
+	}
 	AnchorStateRegistryProxyFlag = &cli.StringFlag{
 		Name:    AnchorStateRegistryProxyFlagName,
 		Usage:   "Anchor state registry proxy.",
@@ -147,24 +163,33 @@ var (
 		EnvVars: deployer.PrefixEnvVar("PREIMAGE_ORACLE"),
 		Value:   common.Address{}.Hex(),
 	}
+	ReleaseFlag = &cli.StringFlag{
+		Name:    ReleaseFlagName,
+		Usage:   "Release to deploy.",
+		EnvVars: deployer.PrefixEnvVar("RELEASE"),
+	}
 )
 
 var OPCMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
-	ArtifactsLocatorFlag,
+	ReleaseFlag,
+}
+
+var ImplementationsFlags = []cli.Flag{
+	MIPSVersionFlag,
 	WithdrawalDelaySecondsFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
 	ProofMaturityDelaySecondsFlag,
 	DisputeGameFinalityDelaySecondsFlag,
-	MIPSVersionFlag,
 }
 
 var DelayedWETHFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ArtifactsLocatorFlag,
+	DelayedWethImplFlag,
 }
 
 var DisputeGameFlags = []cli.Flag{
@@ -173,7 +198,7 @@ var DisputeGameFlags = []cli.Flag{
 	ArtifactsLocatorFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
-	MIPSVersionFlag,
+	VmFlag,
 	GameKindFlag,
 	GameTypeFlag,
 	AbsolutePrestateFlag,
@@ -188,13 +213,16 @@ var DisputeGameFlags = []cli.Flag{
 	ChallengerFlag,
 }
 
-var MIPSFlags = []cli.Flag{
+var BaseFPVMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
 	ArtifactsLocatorFlag,
 	PreimageOracleFlag,
-	MIPSVersionFlag,
 }
+
+var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
+
+var AsteriscFlags = BaseFPVMFlags
 
 var Commands = []*cli.Command{
 	{
@@ -202,6 +230,15 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of OPCM.",
 		Flags:  cliapp.ProtectFlags(OPCMFlags),
 		Action: OPCMCLI,
+	},
+	{
+		Name:  "implementations",
+		Usage: "Bootstraps implementations.",
+		Flags: cliapp.ProtectFlags(ImplementationsFlags),
+		Action: func(context *cli.Context) error {
+			return errors.New("not implemented yet")
+		},
+		Hidden: true,
 	},
 	{
 		Name:   "delayedweth",
@@ -220,5 +257,11 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of MIPS.",
 		Flags:  cliapp.ProtectFlags(MIPSFlags),
 		Action: MIPSCLI,
+	},
+	{
+		Name:   "asterisc",
+		Usage:  "Bootstrap an instance of Asterisc.",
+		Flags:  cliapp.ProtectFlags(AsteriscFlags),
+		Action: AsteriscCLI,
 	},
 }

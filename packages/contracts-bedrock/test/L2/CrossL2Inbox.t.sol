@@ -20,7 +20,7 @@ import {
     NotDepositor,
     InteropStartAlreadySet
 } from "src/L2/CrossL2Inbox.sol";
-import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @title CrossL2InboxWithModifiableTransientStorage
 /// @dev CrossL2Inbox contract with methods to modify the transient storage.

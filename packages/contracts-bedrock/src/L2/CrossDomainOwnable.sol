@@ -1,7 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Contracts
 import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+
+// Libraries
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 
 /// @title CrossDomainOwnable

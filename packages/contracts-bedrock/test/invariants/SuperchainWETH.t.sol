@@ -7,7 +7,7 @@ import { Vm } from "forge-std/Vm.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Interfaces
-import { ISuperchainWETH } from "src/L2/interfaces/ISuperchainWETH.sol";
+import { ISuperchainWETH } from "interfaces/L2/ISuperchainWETH.sol";
 
 /// @title SuperchainWETH_User
 /// @notice Actor contract that interacts with the SuperchainWETH contract.

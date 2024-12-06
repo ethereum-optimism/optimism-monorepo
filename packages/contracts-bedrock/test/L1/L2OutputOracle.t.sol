@@ -15,7 +15,7 @@ import { Proxy } from "src/universal/Proxy.sol";
 
 // Target contract
 import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
 
 contract L2OutputOracle_TestBase is CommonTest {
     function setUp() public override {
