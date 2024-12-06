@@ -161,7 +161,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
-		{name: "failed to make expected progress (alt)",
+		{name: "failed to make expected progress (unsafe=safe)",
 			// Edge case where unsafe = safe
 			newSyncStatus: eth.SyncStatus{
 				HeadL1:    eth.BlockRef{Number: 3},
@@ -242,6 +242,18 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{105, 109},
 			},
+		},
+		{name: "no progress + unsafe=safe",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+				UnsafeL2:  eth.L2BlockRef{Number: 100},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{},
+			channels:      []channelStatuser{},
+			expected:      syncActions{},
 		},
 	}
 
