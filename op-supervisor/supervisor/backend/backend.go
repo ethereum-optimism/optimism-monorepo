@@ -5,13 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
-	"time"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
-	"github.com/ethereum-optimism/optimism/op-service/dial"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
@@ -20,6 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -136,11 +135,18 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		su.logger.Warn("No L1 RPC configured, L1 processor will not be started")
 	}
 
-	// the config has some RPC connections to attach to the chain-processors
-	for _, rpc := range cfg.L2RPCs {
-		err := su.attachRPC(ctx, rpc)
+	setups, err := cfg.SyncSources.Load(ctx, su.logger)
+	if err != nil {
+		return fmt.Errorf("failed to load sync-source setups: %w", err)
+	}
+	// the config has some sync sources (RPC connections) to attach to the chain-processors
+	for _, srcSetup := range setups {
+		src, err := srcSetup.Setup(ctx, su.logger)
 		if err != nil {
-			return fmt.Errorf("failed to add chain monitor for rpc %v: %w", rpc, err)
+			return fmt.Errorf("failed to set up sync source: %w", err)
+		}
+		if err := su.attachSyncSource(ctx, src); err != nil {
+			return fmt.Errorf("failed to attach sync source %s: %w", src, err)
 		}
 	}
 	return nil
@@ -201,38 +207,22 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	return nil
 }
 
-func (su *SupervisorBackend) attachRPC(ctx context.Context, rpc string) error {
-	su.logger.Info("attaching RPC to chain processor", "rpc", rpc)
+func (su *SupervisorBackend) attachSyncSource(ctx context.Context, src syncsrc.SyncSource) error {
+	su.logger.Info("attaching sync source to chain processor", "source", src)
 
-	logger := su.logger.New("rpc", rpc)
-	// create the rpc client, which yields the chain id
-	rpcClient, chainID, err := clientForL2(ctx, logger, rpc)
+	chainID, err := src.ChainID(ctx)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to identify chain ID of sync source: %w", err)
 	}
 	if !su.depSet.HasChain(chainID) {
 		return fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
 	}
-	cm, ok := su.chainMetrics.Get(chainID)
-	if !ok {
-		return fmt.Errorf("failed to find metrics for chain %v", chainID)
-	}
-	// create an RPC client that the processor can use
-	cl, err := processors.NewEthClient(
-		ctx,
-		logger.New("chain", chainID),
-		cm,
-		rpc,
-		rpcClient, 2*time.Second,
-		false,
-		sources.RPCKindStandard)
-	if err != nil {
-		return err
-	}
-	return su.AttachProcessorSource(chainID, cl)
+	return su.AttachProcessorSource(chainID, src)
 }
 
 func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src processors.Source) error {
+	// TODO: register sync sources in the backend, to trigger derivation work etc.
+
 	proc, ok := su.chainProcessors.Get(chainID)
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
@@ -271,18 +261,6 @@ func (su *SupervisorBackend) AttachL1Source(source processors.L1Source) {
 	} else {
 		su.l1Processor.AttachClient(source)
 	}
-}
-
-func clientForL2(ctx context.Context, logger log.Logger, rpc string) (client.RPC, types.ChainID, error) {
-	ethClient, err := dial.DialEthClientWithTimeout(ctx, 10*time.Second, logger, rpc)
-	if err != nil {
-		return nil, types.ChainID{}, fmt.Errorf("failed to connect to rpc %v: %w", rpc, err)
-	}
-	chainID, err := ethClient.ChainID(ctx)
-	if err != nil {
-		return nil, types.ChainID{}, fmt.Errorf("failed to load chain id for rpc %v: %w", rpc, err)
-	}
-	return client.NewBaseRPCClient(ethClient.Client()), types.ChainIDFromBig(chainID), nil
 }
 
 func (su *SupervisorBackend) Start(ctx context.Context) error {
@@ -359,8 +337,16 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 }
 
 // AddL2RPC attaches an RPC as the RPC for the given chain, overriding the previous RPC source, if any.
-func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string) error {
-	return su.attachRPC(ctx, rpc)
+func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
+	setupSrc := &syncsrc.RPCDialSetup{
+		JWTSecret: jwtSecret,
+		Endpoint:  rpc,
+	}
+	src, err := setupSrc.Setup(ctx, su.logger)
+	if err != nil {
+		return fmt.Errorf("failed to set up sync source from RPC: %w", err)
+	}
+	return su.attachSyncSource(ctx, src)
 }
 
 // Internal methods, for processors

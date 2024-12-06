@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sequencing"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/status"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
@@ -163,7 +162,7 @@ func NewDriver(
 	cfg *rollup.Config,
 	l2 L2Chain,
 	l1 L1Chain,
-	supervisor interop.InteropBackend, // may be nil pre-interop.
+	interopManager event.Deriver, // may be nil pre-interop.
 	l1Blobs derive.L1BlobsFetcher,
 	altSync AltSync,
 	network Network,
@@ -183,8 +182,7 @@ func NewDriver(
 	// It will then be ready to pick up verification work
 	// as soon as we reach the upgrade time (if the upgrade is not already active).
 	if cfg.InteropTime != nil {
-		interopDeriver := interop.NewInteropDeriver(log, cfg, driverCtx, supervisor, l2)
-		sys.Register("interop", interopDeriver, opts)
+		sys.Register("interop", interopManager, opts)
 	}
 
 	statusTracker := status.NewStatusTracker(log, metrics)

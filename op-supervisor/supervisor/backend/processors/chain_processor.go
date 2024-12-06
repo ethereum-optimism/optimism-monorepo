@@ -19,8 +19,8 @@ import (
 )
 
 type Source interface {
-	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
-	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, gethtypes.Receipts, error)
+	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
+	FetchReceipts(ctx context.Context, blockHash common.Hash) (gethtypes.Receipts, error)
 }
 
 type LogProcessor interface {
@@ -199,7 +199,7 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 
 		// fetch the block ref
 		ctx, cancel := context.WithTimeout(s.ctx, time.Second*10)
-		nextL1, err := s.client.L1BlockRefByNumber(ctx, num)
+		nextL1, err := s.client.BlockRefByNumber(ctx, num)
 		cancel()
 		if err != nil {
 			result.err = err
@@ -215,7 +215,7 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 
 		// fetch receipts
 		ctx, cancel = context.WithTimeout(s.ctx, time.Second*10)
-		_, receipts, err := s.client.FetchReceipts(ctx, next.Hash)
+		receipts, err := s.client.FetchReceipts(ctx, next.Hash)
 		cancel()
 		if err != nil {
 			result.err = err

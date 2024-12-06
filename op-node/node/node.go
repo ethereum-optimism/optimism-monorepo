@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/conductor"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sequencing"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -75,7 +76,7 @@ type OpNode struct {
 
 	beacon *sources.L1BeaconClient
 
-	supervisor *sources.SupervisorClient
+	interopSubSystem interop.SubSystem
 
 	// some resources cannot be stopped directly, like the p2p gossipsub router (not our design),
 	// and depend on this ctx to be closed.
@@ -398,11 +399,11 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.Rollup.InteropTime != nil {
-		cl, err := cfg.Supervisor.SupervisorClient(ctx, n.log)
+		subsystem, err := cfg.InteropConfig.Setup(ctx, n.log)
 		if err != nil {
-			return fmt.Errorf("failed to setup supervisor RPC client: %w", err)
+			return fmt.Errorf("failed to setup interop: %w", err)
 		}
-		n.supervisor = cl
+		n.interopSubSystem = subsystem
 	}
 
 	var sequencerConductor conductor.SequencerConductor = &conductor.NoOpConductor{}
@@ -427,7 +428,7 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
-		n.supervisor, n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
+		n.interopSubSystem, n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
 	return nil
 }
 
@@ -717,6 +718,13 @@ func (n *OpNode) Stop(ctx context.Context) error {
 		}
 	}
 
+	// close the interop sub system
+	if n.interopSubSystem != nil {
+		if err := n.interopSubSystem.Stop(ctx); err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to stop interop sub system: %w", err))
+		}
+	}
+
 	if n.eventSys != nil {
 		n.eventSys.Stop()
 	}
@@ -735,11 +743,6 @@ func (n *OpNode) Stop(ctx context.Context) error {
 	// close L2 engine RPC client
 	if n.l2Source != nil {
 		n.l2Source.Close()
-	}
-
-	// close the supervisor RPC client
-	if n.supervisor != nil {
-		n.supervisor.Close()
 	}
 
 	// close L1 data source

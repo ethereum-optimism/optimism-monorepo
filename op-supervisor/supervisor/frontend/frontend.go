@@ -11,7 +11,7 @@ import (
 type AdminBackend interface {
 	Start(ctx context.Context) error
 	Stop(ctx context.Context) error
-	AddL2RPC(ctx context.Context, rpc string) error
+	AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error
 }
 
 type QueryBackend interface {
@@ -88,8 +88,8 @@ func (a *AdminFrontend) Stop(ctx context.Context) error {
 }
 
 // AddL2RPC adds a new L2 chain to the supervisor backend
-func (a *AdminFrontend) AddL2RPC(ctx context.Context, rpc string) error {
-	return a.Supervisor.AddL2RPC(ctx, rpc)
+func (a *AdminFrontend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
+	return a.Supervisor.AddL2RPC(ctx, rpc, jwtSecret)
 }
 
 type UpdatesFrontend struct {
