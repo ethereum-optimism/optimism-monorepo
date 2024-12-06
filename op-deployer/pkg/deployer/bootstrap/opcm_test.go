@@ -27,7 +27,7 @@ func TestOPCMLiveChain(t *testing.T) {
 					t.Skip("v1.8.0-rc.3 not supported on mainnet yet")
 				}
 
-				if version == "v1.6.0" && network == "sepolia" {
+				if version == "v1.6.0" {
 					t.Skip("v1.6.0 not supported")
 				}
 
