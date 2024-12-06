@@ -114,7 +114,7 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			// that the derivation pipeline may have stalled
 			// e.g. because of Holocene strict ordering rules.
 			l.Warn("sequencer did not make expected progress",
-				"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
+				"existingBlock", ch.LatestL2(),
 				"newSafeBlock", newSyncStatus.SafeL2,
 				"syncActions", startAfresh)
 			return startAfresh, false

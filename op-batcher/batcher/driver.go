@@ -248,6 +248,12 @@ func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uin
 	if end < start {
 		return fmt.Errorf("start number is > end number %d,%d", start, end)
 	}
+
+	// we don't want to print it in the 1-block case as `loadBlockIntoState` already does
+	if end > start {
+		l.Log.Info("Loading range of multiple blocks into state", "start", start, "end", end)
+	}
+
 	var latestBlock *types.Block
 	// Add all blocks to "state"
 	for i := start; i <= end; i++ {
