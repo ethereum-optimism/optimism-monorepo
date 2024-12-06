@@ -379,6 +379,9 @@ contract OPContractsManager is ISemver {
     }
 
     // @notice Helper method for computing a salt for deploying proxy contracts.
+    // Proxy contract salts are computed differently and include the name of the implementation contract.
+    // This ensures that the resultant address from CREATE2 is unique, as multiple proxy contracts are deployed
+    // in a single deployment.
     function computeProxyContractSalt(
         uint256 _l2ChainId,
         string memory _saltMixer,
