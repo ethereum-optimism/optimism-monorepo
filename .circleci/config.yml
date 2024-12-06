@@ -733,7 +733,7 @@ jobs:
       - run-contracts-check:
           command: semgrep
       - run-contracts-check:
-          command: semver-lock
+          command: semver-lock-no-build
       - run-contracts-check:
           command: semver-diff-check-no-build
       - run-contracts-check:
