@@ -77,7 +77,10 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	nextSafeBlockNum := newSyncStatus.SafeL2.Number + 1
 
 	if nextSafeBlockNum < oldestBlockInStateNum {
-		l.Warn("next safe block is below oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "safeBlock", newSyncStatus.SafeL2)
+		l.Warn("next safe block is below oldest block in state",
+			"syncActions", startAfresh,
+			"oldestBlockInState", oldestBlockInState,
+			"safeL2", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -92,18 +95,18 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
 		l.Warn("safe head above newest block in state, clearing channel manager state",
-			"safe head", newSyncStatus.SafeL2,
+			"syncActions", startAfresh,
+			"safeL2", newSyncStatus.SafeL2,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
-			"syncActions",
-			startAfresh)
+		)
 		return startAfresh, false
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
 		l.Warn("safe chain reorg, clearing channel manager state",
+			"syncActions", startAfresh,
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-			"newSafeBlock", newSyncStatus.SafeL2,
-			"syncActions", startAfresh)
+			"safeL2", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -118,9 +121,9 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			// that the derivation pipeline may have stalled
 			// e.g. because of Holocene strict ordering rules.
 			l.Warn("sequencer did not make expected progress",
+				"syncActions", startAfresh,
 				"existingBlock", ch.LatestL2(),
-				"newSafeBlock", newSyncStatus.SafeL2,
-				"syncActions", startAfresh)
+				"safeL2", newSyncStatus.SafeL2)
 			return startAfresh, false
 		}
 	}
