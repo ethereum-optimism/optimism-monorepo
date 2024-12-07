@@ -90,7 +90,7 @@ func (s *SourceMapFS) readBuildCache() (*ForgeBuildCache, error) {
 func (s *SourceMapFS) ReadSourceIDs(path string, contract string, compilerVersion string) (map[srcmap.SourceID]string, error) {
 	buildCache, err := s.readBuildCache()
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to read build cache: %w", err)
 	}
 	artifactBuilds, ok := buildCache.Files[path]
 	if !ok {
@@ -137,7 +137,6 @@ func (s *SourceMapFS) SourceMap(artifact *Artifact, contract string) (*srcmap.So
 	if srcPath == "" {
 		return nil, fmt.Errorf("no known source path for contract %s in artifact", contract)
 	}
-	// The commit suffix is ignored, the core semver part is what is used in the resolution of builds.
 	basicCompilerVersion := strings.SplitN(artifact.Metadata.Compiler.Version, "+", 2)[0]
 	ids, err := s.ReadSourceIDs(srcPath, contract, basicCompilerVersion)
 	if err != nil {
