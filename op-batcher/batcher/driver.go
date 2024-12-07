@@ -69,6 +69,7 @@ func (r txRef) string(txIDStringer func(txID) string) string {
 type L1Client interface {
 	HeaderByNumber(ctx context.Context, number *big.Int) (*types.Header, error)
 	NonceAt(ctx context.Context, account common.Address, blockNumber *big.Int) (uint64, error)
+	BlockByNumber(ctx context.Context, number *big.Int) (*types.Block, error)
 }
 
 type L2Client interface {
@@ -242,9 +243,13 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	return nil
 }
 
+func (l *BatchSubmitter) shouldRecoverFromSeqWindow(syncStatus *eth.SyncStatus) bool {
+	return syncStatus.UnsafeL2.L1Origin.Number >= syncStatus.SafeL2.L1Origin.Number+l.RollupConfig.SeqWindowSize
+}
+
 // loadBlocksIntoState loads the blocks between start and end (inclusive).
 // If there is a reorg, it will return an error.
-func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uint64) error {
+func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uint64, shouldRecover bool) error {
 	if end < start {
 		return fmt.Errorf("start number is > end number %d,%d", start, end)
 	}
@@ -254,6 +259,24 @@ func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uin
 		l.Log.Info("Loading range of multiple blocks into state", "start", start, "end", end)
 	}
 
+	var (
+		remainingTime time.Duration
+		now           time.Time
+	)
+	if shouldRecover {
+		now = time.Now()
+		currentTimestamp := uint64(now.Unix())
+		l1HeadBlock, err := l.L1Client.BlockByNumber(ctx, nil)
+		if err != nil {
+			l.Log.Warn("Error fetching head L1 block", "err", err)
+			return err
+		}
+		if currentTimestamp+l.Config.RecoverSafetyMargin >= l1HeadBlock.Time()+l.Config.L1BlockTime {
+			return fmt.Errorf("remaining time not enough to catch up, now:%d, l1 head time:%d, safety margin:%d, l1 block time:%d", currentTimestamp, l1HeadBlock.Time(), l.Config.RecoverSafetyMargin, l.Config.L1BlockTime)
+		}
+		remainingTime = time.Duration(l1HeadBlock.Time()+l.Config.L1BlockTime-currentTimestamp) * time.Second
+		l.Log.Info("Entered catch-up mode", "remainingTime", remainingTime)
+	}
 	var latestBlock *types.Block
 	// Add all blocks to "state"
 	for i := start; i <= end; i++ {
@@ -266,6 +289,10 @@ func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uin
 			return err
 		}
 		latestBlock = block
+		if shouldRecover && time.Since(now) >= remainingTime && i != end {
+			l.Log.Info("Stopped loading blocks to catch up with sequencing window", "loaded", i-start+1)
+			break
+		}
 	}
 
 	l2ref, err := derive.L2BlockToBlockRef(l.RollupConfig, latestBlock)
@@ -453,7 +480,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 
 			if syncActions.blocksToLoad != nil {
 				// Get fresh unsafe blocks
-				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
+				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end, l.shouldRecoverFromSeqWindow(syncStatus)); errors.Is(err, ErrReorg) {
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
 					continue
