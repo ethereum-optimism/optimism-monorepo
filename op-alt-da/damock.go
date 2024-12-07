@@ -2,7 +2,9 @@ package altda
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -16,22 +18,53 @@ import (
 )
 
 // MockDAClient mocks a DA storage provider to avoid running an HTTP DA server
-// in unit tests.
+// in unit tests. MockDAClient is goroutine-safe.
 type MockDAClient struct {
-	CommitmentType CommitmentType
-	store          ethdb.KeyValueStore
-	log            log.Logger
+	mu                     sync.Mutex
+	CommitmentType         CommitmentType
+	GenericCommitmentCount uint16 // next generic commitment (use counting commitment instead of hash to help with testing)
+	store                  ethdb.KeyValueStore
+	StoreCount             int
+	log                    log.Logger
+	dropEveryNthPut        uint // 0 means nothing gets dropped, 1 means every put errors, etc.
+	setInputRequestCount   uint // number of put requests received, irrespective of whether they were successful
 }
 
 func NewMockDAClient(log log.Logger) *MockDAClient {
 	return &MockDAClient{
 		CommitmentType: Keccak256CommitmentType,
 		store:          memorydb.New(),
+		StoreCount:     0,
 		log:            log,
 	}
 }
 
+// NewCountingGenericCommitmentMockDAClient creates a MockDAClient that uses counting commitments.
+// It's commitments are big-endian encoded uint16s of 0, 1, 2, etc. instead of actual hash or altda-layer related commitments.
+// Used for testing to make sure we receive commitments in order following Holocene strict ordering rules.
+func NewCountingGenericCommitmentMockDAClient(log log.Logger) *MockDAClient {
+	return &MockDAClient{
+		CommitmentType:         GenericCommitmentType,
+		GenericCommitmentCount: 0,
+		store:                  memorydb.New(),
+		StoreCount:             0,
+		log:                    log,
+	}
+}
+
+// Fakes a da server that drops/errors on every Nth put request.
+// Useful for testing the batcher's error handling.
+// 0 means nothing gets dropped, 1 means every put errors, etc.
+func (c *MockDAClient) DropEveryNthPut(n uint) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.dropEveryNthPut = n
+}
+
 func (c *MockDAClient) GetInput(ctx context.Context, key CommitmentData) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log.Debug("Getting input", "key", key)
 	bytes, err := c.store.Get(key.Encode())
 	if err != nil {
 		return nil, ErrNotFound
@@ -40,12 +73,42 @@ func (c *MockDAClient) GetInput(ctx context.Context, key CommitmentData) ([]byte
 }
 
 func (c *MockDAClient) SetInput(ctx context.Context, data []byte) (CommitmentData, error) {
-	key := NewCommitmentData(c.CommitmentType, data)
-	return key, c.store.Put(key.Encode(), data)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.setInputRequestCount++
+	var key CommitmentData
+	if c.CommitmentType == GenericCommitmentType {
+		countCommitment := make([]byte, 2)
+		binary.BigEndian.PutUint16(countCommitment, c.GenericCommitmentCount)
+		key = NewGenericCommitment(countCommitment)
+	} else {
+		key = NewKeccak256Commitment(data)
+	}
+	var action string = "put"
+	if c.dropEveryNthPut > 0 && c.setInputRequestCount%c.dropEveryNthPut == 0 {
+		action = "dropped"
+	}
+	c.log.Debug("Setting input", "action", action, "key", key, "data", fmt.Sprintf("%x", data))
+	if action == "dropped" {
+		return nil, errors.New("put dropped")
+	}
+	err := c.store.Put(key.Encode(), data)
+	if err == nil {
+		c.GenericCommitmentCount++
+		c.StoreCount++
+	}
+	return key, err
 }
 
 func (c *MockDAClient) DeleteData(key []byte) error {
-	return c.store.Delete(key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log.Debug("Deleting data", "key", key)
+	err := c.store.Delete(key)
+	if err == nil {
+		c.StoreCount--
+	}
+	return err
 }
 
 type DAErrFaker struct {

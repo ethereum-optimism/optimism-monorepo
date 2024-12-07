@@ -79,6 +79,10 @@ type RollupClient interface {
 	SyncStatus(ctx context.Context) (*eth.SyncStatus, error)
 }
 
+type AltDAClient interface {
+	SetInput(ctx context.Context, data []byte) (altda.CommitmentData, error)
+}
+
 // DriverSetup is the collection of input/output interfaces and configuration that the driver operates on.
 type DriverSetup struct {
 	Log               log.Logger
@@ -89,7 +93,7 @@ type DriverSetup struct {
 	L1Client          L1Client
 	EndpointProvider  dial.L2EndpointProvider
 	ChannelConfig     ChannelConfigProvider
-	AltDA             *altda.DAClient
+	AltDA             AltDAClient
 	ChannelOutFactory ChannelOutFactory
 }
 

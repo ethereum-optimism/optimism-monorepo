@@ -89,7 +89,16 @@ func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) bool {
 	// and then reset this state so it can try to build a new channel.
 	if c.isTimedOut() {
 		c.metr.RecordChannelTimedOut(c.ID())
-		c.log.Warn("Channel timed out", "id", c.ID(), "min_inclusion_block", c.minInclusionBlock, "max_inclusion_block", c.maxInclusionBlock)
+		var chanFirstL2BlockNum, chanLastL2BlockNum uint64
+		if c.channelBuilder.blocks.Len() > 0 {
+			chanFirstL2Block, _ := c.channelBuilder.blocks.Peek()
+			chanLastL2Block, _ := c.channelBuilder.blocks.PeekN(c.channelBuilder.blocks.Len() - 1)
+			chanFirstL2BlockNum = chanFirstL2Block.NumberU64()
+			chanLastL2BlockNum = chanLastL2Block.NumberU64()
+		}
+		c.log.Warn("Channel timed out", "id", c.ID(),
+			"min_l1_inclusion_block", c.minInclusionBlock, "max_l1_inclusion_block", c.maxInclusionBlock,
+			"first_l2_block", chanFirstL2BlockNum, "last_l2_block", chanLastL2BlockNum)
 		return true
 	}
 

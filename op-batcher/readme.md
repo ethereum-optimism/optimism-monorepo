@@ -38,22 +38,31 @@ In the happy path, the batcher periodically:
 1. Enqueues unsafe blocks and dequeues safe blocks from the sequencer to its internal state.
 2. Enqueues a new channel, if necessary.
 3. Processes some unprocessed blocks into the current channel, triggers the compression of the block data and the creation of frames.
-4. Sends frames from the channel queue to the DA layer as (e.g. to Ethereum L1 as calldata or blob transactions).
+4. Sends frames from the channel queue to the DA layer (e.g. to Ethereum L1 as calldata or blob transactions).
 5. If there is more transaction data to send, go to 2. Else wait for a tick and go to 0.
 
 
 The `blockCursor` state variable tracks the next unprocessed block.
 In each channel, the `frameCursor` tracks the next unsent frame.
 
+### Failure Cases
 
-### Reorgs
-When an L2 unsafe reorg is detected, the batch submitter will reset its state, and wait for any in flight transactions to be ingested by the verifier nodes before starting work again.
+#### Reorgs
+When an L2 reorg (safe or unsafe) is detected, the batch submitter will reset its state, and wait for any in flight transactions to be ingested by the verifier nodes before starting work again.
 
-### Tx Failed
+> TODO: is this true?? `waitNodeSync()` seems to only wait for the node to sync to the L1 tip of the batcher's L1 node, or an older block where the last batcher tx was included, but not wait for inflight txs to be ingested.
+
+#### Tx Failed
 When a Tx fails, an asynchronous receipts handler is triggered. The channel from whence the Tx's frames came has its `frameCursor` rewound, so that all the frames can be resubmitted in order.
 
-### Channel Times Out
+> TODO: there might be an issue with this simple logic. See https://github.com/ethereum-optimism/optimism/issues/13283
+
+#### Channel Times Out
 When a Tx is confirmed, an asynchronous receipts handler is triggered. We only update the batcher's state if the channel timed out on chain. In that case, the `blockCursor` is rewound to the first block added to that channel, and the channel queue is cleared out. This allows the batcher to start fresh building a new channel starting from the same block -- it does not need to refetch blocks from the sequencer.
+
+#### AltDA Submission Fails
+
+> TODO: describe how the batcher handles this.
 
 ## Design Principles and Optimization Targets
 At the current time, the batcher should be optimized for correctness, simplicity and robustness. It is considered preferable to prioritize these properties, even at the expense of other potentially desirable properties such as frugality. For example, it is preferable to have the batcher resubmit some data from time to time ("wasting" money on data availability costs) instead of avoiding that by e.g. adding some persistent state to the batcher.
