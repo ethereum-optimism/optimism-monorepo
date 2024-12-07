@@ -41,16 +41,15 @@ contract MockPayableResolver is ISchemaResolver {
 }
 
 contract EASTest is Test {
-    EAS public eas;
-    SchemaRegistry public registry;
-
-    address sender;
-    address sender2;
-    address recipient;
-    address recipient2;
-
+     // =============================================================
+    //                           CONSTANTS
+    // =============================================================
     uint64 constant NO_EXPIRATION = 0;
     bytes32 constant ZERO_BYTES32 = bytes32(0);
+
+    // =============================================================
+    //                        ERROR SELECTORS
+    // =============================================================
     bytes4 constant InvalidRegistrySelector =
         bytes4(keccak256("InvalidRegistry()"));
     bytes4 constant InvalidSchemaSelector =
@@ -69,6 +68,42 @@ contract EASTest is Test {
     bytes4 constant InvalidSignatureSelector =
         bytes4(keccak256("InvalidSignature()"));
 
+        // =============================================================
+    //                         TEST STORAGE
+    // =============================================================
+    EAS public eas;
+    SchemaRegistry public registry;
+    address sender;
+    address sender2;
+    address recipient;
+    address recipient2;
+
+    // =============================================================
+    //                      HELPER CONTRACTS
+    // =============================================================
+        // Helper function to calculate schema UID
+    function getSchemaUID(
+        string memory schema,
+        address resolver,
+        bool revocable
+    ) internal pure returns (bytes32) {
+        return keccak256(abi.encodePacked(schema, resolver, revocable));
+    }
+
+    // helper function to register a simulated schema
+    function _registerSchema(
+        string memory schema,
+        bool revocable
+    ) internal returns (bytes32) {
+        bytes32 schemaId = getSchemaUID(schema, address(0), revocable);
+        vm.prank(sender);
+        registry.register(schema, ISchemaResolver(address(0)), revocable);
+        return schemaId;
+    }
+
+    // =============================================================
+    //                     SETUP
+    // =============================================================
     function setUp() public {
         // Setup accounts
         sender = makeAddr("sender");
@@ -93,34 +128,16 @@ contract EASTest is Test {
         vm.deal(sender2, 100 ether);
     }
 
-    // Helper function to calculate schema UID
-    function getSchemaUID(
-        string memory schema,
-        address resolver,
-        bool revocable
-    ) internal pure returns (bytes32) {
-        return keccak256(abi.encodePacked(schema, resolver, revocable));
-    }
 
-    // helper function to register a simulated schema
-    function _registerSchema(
-        string memory schema,
-        bool revocable
-    ) internal returns (bytes32) {
-        bytes32 schemaId = getSchemaUID(schema, address(0), revocable);
-        vm.prank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), revocable);
-        return schemaId;
-    }
-
-    // Core Functionality Tests
-    // Version should be equal to the current version of EAS.sol in this repository
+// =============================================================
+    //                    CONSTRUCTION TESTS
+    // =============================================================
     function testConstructionScenarios() public view {
+        // Check contract version and name
         assertEq(eas.version(), "1.4.1-beta.1");
         assertEq(eas.getName(), "EAS");
         assertEq(address(eas.getSchemaRegistry()), address(registry));
     }
-
     // Core functionality tests section
     function testInvalidSchemaRegistry() public {
         // Deploy new EAS with invalid registry address
@@ -148,8 +165,9 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Basic Attestation Tests
-    // testAttestation()
+    // =============================================================
+    //                   BASIC ATTESTATION TESTS
+    // =============================================================
     function testAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -180,7 +198,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testAttestationWithoutSchema()
     function testAttestationWithoutSchema() public {
         bytes32 schemaId = getSchemaUID("", address(0), true);
 
@@ -210,7 +227,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testAttestationWithoutResolver()
     function testAttestationWithoutResolver() public {
         string memory schema = "bool hasPhoneNumber, bytes32 phoneHash";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -241,7 +257,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testCannotAttestWithExpiredTime()
     function testCannotAttestWithExpiredTime() public {
         bytes32 schemaId = _registerSchema("bool like", true);
 
@@ -274,7 +289,6 @@ contract EASTest is Test {
         }
     }
 
-    // testCannotAttestToUnregisteredSchema()
     function testCannotAttestToUnregisteredSchema() public {
         bytes32 unregisteredSchemaId = getSchemaUID(
             "unregistered schema",
@@ -299,7 +313,6 @@ contract EASTest is Test {
         );
     }
 
-    // testAttestationScenarios()
     function testAttestationScenarios() public {
         // Register test schemas first
         string memory schema1 = "bool like";
@@ -530,8 +543,9 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Multi-attestation Tests
-    // testMultiAttestationComprehensive()
+    // =============================================================
+    //                  MULTI ATTESTATION TESTS
+    // =============================================================
     function testMultiAttestationComprehensive() public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
@@ -578,7 +592,7 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testBatchProcessingLimits()
+
     function testBatchProcessingLimits() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -729,9 +743,56 @@ contract EASTest is Test {
 
         vm.stopPrank();
     }
+        function testMultiAttestationWithValue() public {
+        string memory schema = "bool like";
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
 
-    // Revocation Tests
-    // testRevokeAttestation()
+        vm.startPrank(sender);
+        registry.register(schema, ISchemaResolver(address(resolver)), true);
+
+        uint256 value = 1 ether;
+        vm.deal(sender, value * 2);
+
+        MultiAttestationRequest[]
+            memory requests = new MultiAttestationRequest[](2);
+        requests[0].schema = schemaId;
+        requests[0].data = new AttestationRequestData[](1);
+        requests[0].data[0] = AttestationRequestData({
+            recipient: recipient,
+            expirationTime: uint64(block.timestamp + 30 days),
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: value
+        });
+
+        requests[1].schema = schemaId;
+        requests[1].data = new AttestationRequestData[](1);
+        requests[1].data[0] = AttestationRequestData({
+            recipient: recipient2,
+            expirationTime: uint64(block.timestamp + 30 days),
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"5678",
+            value: value
+        });
+
+        bytes32[] memory uids = eas.multiAttest{ value: value * 2 }(requests);
+        assertEq(uids.length, 2);
+
+        // Verify attestations
+        for (uint i = 0; i < uids.length; i++) {
+            Attestation memory attestation = eas.getAttestation(uids[i]);
+            assertEq(attestation.attester, sender);
+        }
+
+        vm.stopPrank();
+    }
+
+    // =============================================================
+    //                     REVOCATION TESTS
+    // =============================================================
     function testRevokeAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -768,7 +829,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testCannotRevokeOthersAttestation()
     function testCannotRevokeOthersAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -804,7 +864,6 @@ contract EASTest is Test {
         );
     }
 
-    // 15. testCannotRevokeNonExistentAttestation()
     function testCannotRevokeNonExistentAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -824,7 +883,6 @@ contract EASTest is Test {
         );
     }
 
-    // testRevocationWithValue()
     function testRevocationWithRefUID() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -877,7 +935,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testMultiRevocationWithValue()
     function testMultiRevocationWithValue() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
@@ -1120,7 +1177,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Revocation tests section
     function testInvalidRevocationData() public {
         string memory schema = "bool like";
 
@@ -1140,149 +1196,10 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Timestamp Tests
-    // 21. testTimestamping()
-    function testTimestamping() public {
-        bytes32 data = keccak256("test data");
-
-        uint256 timestamp = block.timestamp;
-        eas.timestamp(data);
-
-        assertEq(eas.getTimestamp(data), timestamp);
-    }
-
-    function testRevokeOffchain() public {
-        bytes32 data = keccak256("test data");
-
-        vm.prank(sender);
-        uint256 timestamp = block.timestamp;
-        eas.revokeOffchain(data);
-
-        assertEq(eas.getRevokeOffchain(sender, data), timestamp);
-    }
-
-    // testTimestampMultiple()
-    function testTimestampMultiple() public {
-        bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
-        data[2] = bytes32(0);
-
-        uint256 timestamp = block.timestamp;
-        eas.multiTimestamp(data);
-
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getTimestamp(data[i]), timestamp);
-        }
-    }
-
-    // testTimestampRevert()
-    function testTimestampRevert() public {
-        bytes32 data = keccak256("test data");
-
-        // First timestamp should succeed
-        eas.timestamp(data);
-
-        // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestampedSelector);
-        eas.timestamp(data);
-    }
-
-    function testMultiTimestampingScenarios() public {
-        bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("0x1234");
-        data[1] = keccak256("0x4567");
-        data[2] = keccak256("0x6666");
-
-        // Test multiple timestamps in one transaction
-        uint256 timestamp = block.timestamp;
-        eas.multiTimestamp(data);
-
-        // Verify all timestamps
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getTimestamp(data[i]), timestamp);
-        }
-
-        // Test second batch
-        bytes32[] memory data2 = new bytes32[](2);
-        data2[0] = keccak256("Hello World");
-        data2[1] = keccak256("0x8888");
-
-        eas.multiTimestamp(data2);
-
-        // Verify second batch
-        for (uint i = 0; i < data2.length; i++) {
-            assertEq(eas.getTimestamp(data2[i]), timestamp);
-        }
-    }
-
-    // testMultiTimestampRevert()
-    function testMultiTimestampRevert() public {
-        bytes32[] memory data = new bytes32[](2);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
-
-        // First timestamp should succeed
-        eas.multiTimestamp(data);
-
-        // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestampedSelector);
-        eas.multiTimestamp(data);
-
-        // Should also fail when including timestamped data in a new array
-        bytes32[] memory newData = new bytes32[](3);
-        newData[0] = keccak256("data3");
-        newData[1] = data[0];
-        newData[2] = data[1];
-
-        vm.expectRevert(AlreadyTimestampedSelector);
-        eas.multiTimestamp(newData);
-    }
-
-    // testTimestampVerificationScenarios()
-
-    function testTimestampVerificationScenarios() public {
-        bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("First");
-        data[1] = keccak256("Second");
-        data[2] = keccak256("Third");
-
-        // Test initial timestamps
-        uint256 timestamp = block.timestamp;
-        eas.multiTimestamp(data);
-
-        // Verify all timestamps match block timestamp
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getTimestamp(data[i]), timestamp);
-        }
-
-        // Advance time and verify timestamps don't change
-        vm.warp(block.timestamp + 1 days);
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getTimestamp(data[i]), timestamp);
-        }
-
-        // Test timestamp immutability
-        bytes32 newData = keccak256("New");
-        eas.timestamp(newData);
-        assertEq(eas.getTimestamp(newData), block.timestamp);
-
-        // Verify original timestamps remain unchanged
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getTimestamp(data[i]), timestamp);
-        }
-    }
-
-    // testGetUnregisteredTimestamp()
-    function testGetUnregisteredTimestamp() public view {
-        bytes32 data = keccak256("unregistered data");
-        assertEq(eas.getTimestamp(data), 0);
-    }
-
-    // Off-chain Revocation Tests
-    // testRevokeOffchain()
-
-    // testMultiRevokeOffchainRevert()
+    // =============================================================
+    //                     OFF-CHAIN REVOCATION TESTS
+    // =============================================================
+    // Revocation related tests...
     function testRevokeOffchainRevert() public {
         bytes32 data = keccak256("test data");
 
@@ -1411,8 +1328,146 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Delegation Tests
-    // testDelegatedAttestation()
+
+    // =============================================================
+    //                     TIMESTAMP TESTS
+    // =============================================================
+    function testTimestamping() public {
+        bytes32 data = keccak256("test data");
+
+        uint256 timestamp = block.timestamp;
+        eas.timestamp(data);
+
+        assertEq(eas.getTimestamp(data), timestamp);
+    }
+
+    function testRevokeOffchain() public {
+        bytes32 data = keccak256("test data");
+
+        vm.prank(sender);
+        uint256 timestamp = block.timestamp;
+        eas.revokeOffchain(data);
+
+        assertEq(eas.getRevokeOffchain(sender, data), timestamp);
+    }
+
+    // testTimestampMultiple()
+    function testTimestampMultiple() public {
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256("data1");
+        data[1] = keccak256("data2");
+        data[2] = bytes32(0);
+
+        uint256 timestamp = block.timestamp;
+        eas.multiTimestamp(data);
+
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getTimestamp(data[i]), timestamp);
+        }
+    }
+
+    function testTimestampRevert() public {
+        bytes32 data = keccak256("test data");
+
+        // First timestamp should succeed
+        eas.timestamp(data);
+
+        // Second timestamp should fail
+        vm.expectRevert(AlreadyTimestampedSelector);
+        eas.timestamp(data);
+    }
+
+    function testMultiTimestampingScenarios() public {
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256("0x1234");
+        data[1] = keccak256("0x4567");
+        data[2] = keccak256("0x6666");
+
+        // Test multiple timestamps in one transaction
+        uint256 timestamp = block.timestamp;
+        eas.multiTimestamp(data);
+
+        // Verify all timestamps
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getTimestamp(data[i]), timestamp);
+        }
+
+        // Test second batch
+        bytes32[] memory data2 = new bytes32[](2);
+        data2[0] = keccak256("Hello World");
+        data2[1] = keccak256("0x8888");
+
+        eas.multiTimestamp(data2);
+
+        // Verify second batch
+        for (uint i = 0; i < data2.length; i++) {
+            assertEq(eas.getTimestamp(data2[i]), timestamp);
+        }
+    }
+
+    function testMultiTimestampRevert() public {
+        bytes32[] memory data = new bytes32[](2);
+        data[0] = keccak256("data1");
+        data[1] = keccak256("data2");
+
+        // First timestamp should succeed
+        eas.multiTimestamp(data);
+
+        // Second timestamp should fail
+        vm.expectRevert(AlreadyTimestampedSelector);
+        eas.multiTimestamp(data);
+
+        // Should also fail when including timestamped data in a new array
+        bytes32[] memory newData = new bytes32[](3);
+        newData[0] = keccak256("data3");
+        newData[1] = data[0];
+        newData[2] = data[1];
+
+        vm.expectRevert(AlreadyTimestampedSelector);
+        eas.multiTimestamp(newData);
+    }
+
+    function testTimestampVerificationScenarios() public {
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256("First");
+        data[1] = keccak256("Second");
+        data[2] = keccak256("Third");
+
+        // Test initial timestamps
+        uint256 timestamp = block.timestamp;
+        eas.multiTimestamp(data);
+
+        // Verify all timestamps match block timestamp
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getTimestamp(data[i]), timestamp);
+        }
+
+        // Advance time and verify timestamps don't change
+        vm.warp(block.timestamp + 1 days);
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getTimestamp(data[i]), timestamp);
+        }
+
+        // Test timestamp immutability
+        bytes32 newData = keccak256("New");
+        eas.timestamp(newData);
+        assertEq(eas.getTimestamp(newData), block.timestamp);
+
+        // Verify original timestamps remain unchanged
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getTimestamp(data[i]), timestamp);
+        }
+    }
+
+  
+    function testGetUnregisteredTimestamp() public view {
+        bytes32 data = keccak256("unregistered data");
+        assertEq(eas.getTimestamp(data), 0);
+    }
+
+    // =============================================================
+    //                   DELEGATION TESTS
+    // =============================================================
     function testDelegatedAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -1444,7 +1499,7 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testDelegatedAttestationWithSignatures()
+
     function testDelegatedAttestationWithSignatures() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -1927,52 +1982,7 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testMultiAttestationWithValue() public {
-        string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
 
-        vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
-
-        uint256 value = 1 ether;
-        vm.deal(sender, value * 2);
-
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](2);
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](1);
-        requests[0].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: value
-        });
-
-        requests[1].schema = schemaId;
-        requests[1].data = new AttestationRequestData[](1);
-        requests[1].data[0] = AttestationRequestData({
-            recipient: recipient2,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"5678",
-            value: value
-        });
-
-        bytes32[] memory uids = eas.multiAttest{ value: value * 2 }(requests);
-        assertEq(uids.length, 2);
-
-        // Verify attestations
-        for (uint i = 0; i < uids.length; i++) {
-            Attestation memory attestation = eas.getAttestation(uids[i]);
-            assertEq(attestation.attester, sender);
-        }
-
-        vm.stopPrank();
-    }
 
     function testAttestationValueTransferScenarios() public {
         // Remove value transfers, just test basic attestation
@@ -2000,8 +2010,9 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Schema Tests
-    // testSchemaResolverScenarios()
+    // =============================================================
+    //                      SCHEMA TESTS
+    // =============================================================
     function testSchemaResolverScenarios() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
@@ -2031,7 +2042,7 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testSchemaRegistrationScenarios()
+
     function testSchemaRegistrationScenarios() public {
         string memory schema = "bool like";
 
@@ -2052,8 +2063,10 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // Complex Scenarios
-    // testReferenceAttestation()
+    // =============================================================
+    //                      COMPLEX SCENARIOS
+    // =============================================================
+
     function testReferenceAttestation() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
@@ -2249,7 +2262,6 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    // testDeadlineScenarios()
     function testDeadlineScenarios() public {
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
