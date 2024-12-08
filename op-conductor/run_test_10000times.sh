@@ -1,3 +1,5 @@
+#!/bin/bash
+
 set -e
 
 for i in {1..10000}; do
