@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -17,6 +18,9 @@ import (
 type txData struct {
 	frames []frameData
 	asBlob bool // indicates whether this should be sent as blob
+	// altDACommitment is non-nil when the frames have been sent to the alt-da server,
+	// and the received commitment needs to be sent to the L1.
+	altDACommitment altda.CommitmentData
 }
 
 func singleFrameTxData(frame frameData) txData {

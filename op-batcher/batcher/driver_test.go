@@ -291,9 +291,6 @@ func TestBatchSubmitter_AltDA_FailureCase2_FailedL1Tx(t *testing.T) {
 	err = bs.StopBatchSubmitting(context.Background())
 	require.NoError(t, err)
 
-	// FIXME: storeCount=7 with current buggy implementation, because when an L1 tx fails,
-	// we BOTH rewind the altdaChannelCursor (to resubmit the failed tx) AND push back the frames into the channelManager.
-	// A quick fix (?) is to not push back if the failed tx was an altda tx.
 	require.Equal(t, 4, mockAltDAClient.StoreCount)
 	// TODO: we should prob also check that the commitments are in order?
 	require.Equal(t, uint64(4), fakeTxMgr.Nonce)
