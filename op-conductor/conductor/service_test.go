@@ -143,7 +143,6 @@ func (s *OpConductorTestSuite) TearDownTest() {
 	}
 	s.NoError(s.conductor.Stop(s.ctx))
 	s.True(s.conductor.Stopped())
-	s.wg.Wait()
 }
 
 func (s *OpConductorTestSuite) startConductor() {
