@@ -69,15 +69,18 @@ contract EASTest is Test {
         bytes4(keccak256("InvalidSchema()"));
     bytes4 constant InvalidExpirationTimeSelector =
         bytes4(keccak256("InvalidExpirationTime()"));
-    bytes4 constant NotFoundSelector = bytes4(keccak256("NotFound()"));
-    bytes4 constant AccessDeniedSelector = bytes4(keccak256("AccessDenied()"));
+    bytes4 constant NotFoundSelector =
+        bytes4(keccak256("NotFound()"));
+    bytes4 constant AccessDeniedSelector =
+        bytes4(keccak256("AccessDenied()"));
     bytes4 constant InvalidLengthSelector =
         bytes4(keccak256("InvalidLength()"));
     bytes4 constant AlreadyRevokedOffchainSelector =
         bytes4(keccak256("AlreadyRevokedOffchain()"));
     bytes4 constant AlreadyTimestampedSelector =
         bytes4(keccak256("AlreadyTimestamped()"));
-    bytes4 constant IrrevocableSelector = bytes4(keccak256("Irrevocable()"));
+    bytes4 constant IrrevocableSelector =
+        bytes4(keccak256("Irrevocable()"));
     bytes4 constant InvalidSignatureSelector =
         bytes4(keccak256("InvalidSignature()"));
 
