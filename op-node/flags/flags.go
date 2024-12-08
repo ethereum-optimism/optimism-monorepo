@@ -372,6 +372,13 @@ var (
 		Value:    time.Second * 1,
 		Category: SequencerCategory,
 	}
+	BlockBuildingThresholdFlag = &cli.Uint64Flag{
+		Name:     "block-building.threshold",
+		Usage:    "Block building healthcheck threshold (default: 2 seconds)",
+		EnvVars:  prefixEnvVars("BLOCK_BUILDING_THRESHOLD"),
+		Value:    2,
+		Category: RollupCategory,
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -419,6 +426,7 @@ var optionalFlags = []cli.Flag{
 	ConductorRpcTimeoutFlag,
 	SafeDBPath,
 	L2EngineKind,
+	BlockBuildingThresholdFlag,
 }
 
 var DeprecatedFlags = []cli.Flag{

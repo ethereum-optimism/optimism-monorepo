@@ -155,14 +155,16 @@ func BuildBlock(ctx context.Context, client *sources.EngineAPIClient, status *St
 	case <-time.After(settings.BuildTime):
 	}
 
+	// *** STEP1
 	payload, err := client.GetPayload(ctx, eth.PayloadInfo{ID: *pre.PayloadID, Timestamp: timestamp})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get payload %v, %d time after instructing engine to build it: %w", pre.PayloadID, settings.BuildTime, err)
 	}
-
+	// *** STEP2
 	if err := insertBlock(ctx, client, payload); err != nil {
 		return nil, err
 	}
+	// *** STEP3
 	if err := updateForkchoice(ctx, client, payload.ExecutionPayload.BlockHash, status.Safe.Hash, status.Finalized.Hash); err != nil {
 		return nil, err
 	}

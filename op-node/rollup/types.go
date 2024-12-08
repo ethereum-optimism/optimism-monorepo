@@ -139,6 +139,9 @@ type Config struct {
 
 	// AltDAConfig. We are in the process of migrating to the AltDAConfig from these legacy top level values
 	AltDAConfig *AltDAConfig `json:"alt_da,omitempty"`
+
+	// Block building shreshold for block building healthchecks, defaults to 2 seconds
+	BlockBuildingThreshold time.Duration `json:"block_building_threshold,omitempty"`
 }
 
 // ValidateL1Config checks L1 config variables for errors.

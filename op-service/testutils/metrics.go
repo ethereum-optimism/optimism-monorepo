@@ -26,6 +26,9 @@ func (t *TestDerivationMetrics) RecordSequencerBuildingDiffTime(duration time.Du
 func (t *TestDerivationMetrics) RecordSequencerSealingTime(duration time.Duration) {
 }
 
+func (t *TestDerivationMetrics) RecordBlockBuildingHealthCheck(status string) {
+}
+
 func (t *TestDerivationMetrics) RecordL1ReorgDepth(d uint64) {
 	if t.FnRecordL1ReorgDepth != nil {
 		t.FnRecordL1ReorgDepth(d)
