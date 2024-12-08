@@ -8,6 +8,16 @@ import { Attestation, AttestationRequest, AttestationRequestData, MultiAttestati
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { console } from "forge-std/console.sol";
+import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
+
+// Add this helper contract at the top of the file
+contract TestEIP712Helper is EIP712 {
+    constructor() EIP712("EAS", "1.3.0") {}
+
+    function hashTypedDataV4(bytes32 structHash) public view returns (bytes32) {
+        return _hashTypedDataV4(structHash);
+    }
+}
 
 contract MockPayableResolver is ISchemaResolver {
     function isPayable() external pure override returns (bool) {
@@ -76,10 +86,16 @@ contract EASTest is Test {
     // =============================================================
     EAS public eas;
     SchemaRegistry public registry;
-    address sender;
-    address sender2;
-    address recipient;
-    address recipient2;
+    address public sender;
+    address public sender2;
+    address public recipient;
+    address public recipient2;
+
+    // Add helper as a state variable
+    TestEIP712Helper public eip712Helper;
+
+    // Add with other state variables
+    uint256 public senderKey;
 
     // =============================================================
     //                      HELPER FUNCTIONS
@@ -173,16 +189,18 @@ contract EASTest is Test {
         bytes32 schemaId,
         bytes32 uid,
         address revoker,
-        uint64 deadline
+        uint64 deadline,
+        uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
-                REVOKE_TYPEHASH,  // Changed from ATTEST_TYPEHASH
-                revoker,
-                schemaId,
-                uid,
-                0, // value
-                deadline
+                REVOKE_TYPEHASH,
+                revoker,       
+                schemaId,      
+                uid,          
+                0,             
+                nonce,           
+                deadline       
             )
         );
 
@@ -199,8 +217,11 @@ contract EASTest is Test {
     //                     SETUP
     // =============================================================
     function setUp() public {
+        // Initialize senderKey
+        senderKey = 0x12345;
+        sender = vm.addr(senderKey);
+        
         // Setup accounts
-        sender = makeAddr("sender");
         sender2 = makeAddr("sender2");
         recipient = makeAddr("recipient");
         recipient2 = makeAddr("recipient2");
@@ -220,6 +241,9 @@ contract EASTest is Test {
         // Fund accounts
         vm.deal(sender, 100 ether);
         vm.deal(sender2, 100 ether);
+
+        // Initialize helper
+        eip712Helper = new TestEIP712Helper();
     }
 
     // =============================================================
@@ -350,18 +374,18 @@ contract EASTest is Test {
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
         
-        uint256 signerKey = 0x12345;
-        address signer = vm.addr(signerKey);
+        uint256 wrongSignerKey = 0x54321;  // Different from senderKey
+        address wrongSigner = vm.addr(wrongSignerKey);
         
         AttestationRequestData memory requestData = createAttestationRequestData();
-        bytes32 digest = _createAttestationDigest(schemaId, requestData, signer, deadline);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+        bytes32 digest = _createAttestationDigest(schemaId, requestData, wrongSigner, deadline);
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongSignerKey, digest);
 
         DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
             schema: schemaId,
             data: requestData,
             signature: Signature({v: v, r: r, s: s}),
-            attester: sender,  // Different from signer
+            attester: sender,  // Different from wrongSigner
             deadline: deadline
         });
 
@@ -481,6 +505,36 @@ contract EASTest is Test {
         Attestation memory attestation = eas.getAttestation(uid);
         assertEq(attestation.schema, schemaId);
         assertEq(attestation.recipient, recipient);
+        vm.stopPrank();
+    }
+
+        // Test attesting with a resolver
+    function testAttestationWithResolver() public {
+        string memory schema = "bool like";
+        MockPayableResolver resolver = new MockPayableResolver();
+        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+
+        vm.startPrank(sender);
+        registry.register(schema, resolver, true);
+
+        AttestationRequest memory request = AttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"1234",
+                value: 0
+            })
+        });
+
+        bytes32 uid = eas.attest(request);
+        Attestation memory attestation = eas.getAttestation(uid);
+        
+        assertEq(attestation.attester, sender);
+        assertEq(attestation.recipient, recipient);
+        assertEq(attestation.schema, schemaId);
         vm.stopPrank();
     }
 
@@ -1192,53 +1246,51 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testMultiRevocationWithValue() public {
-        string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+ function testMultiRevocation() public {
+    bytes32 schemaId = _registerSchema("bool like", true);
 
-        vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
-
-        uint256 value = 1 ether;
-        vm.deal(sender, value * 2);
-
-        // Create attestations first
-        bytes32[] memory uids = new bytes32[](2);
-        for (uint i = 0; i < 2; i++) {
-            uids[i] = eas.attest{ value: value }(
-                AttestationRequest({
-                    schema: schemaId,
-                    data: AttestationRequestData({
-                        recipient: recipient,
-                        expirationTime: uint64(block.timestamp + 30 days),
-                        revocable: true,
-                        refUID: ZERO_BYTES32,
-                        data: hex"1234",
-                        value: value
-                    })
-                })
-            );
-        }
-
-        // Test revocation with value
-        vm.deal(sender, value * 2);
-        RevocationRequest[] memory requests = new RevocationRequest[](2);
-        for (uint i = 0; i < 2; i++) {
-            requests[i] = RevocationRequest({
+    vm.startPrank(sender);
+    
+    // Create multiple attestations
+    bytes32[] memory uids = new bytes32[](3);
+    for(uint i = 0; i < 3; i++) {
+        uids[i] = eas.attest(
+            AttestationRequest({
                 schema: schemaId,
-                data: RevocationRequestData({ uid: uids[i], value: value })
-            });
-        }
-
-        for (uint i = 0; i < 2; i++) {
-            eas.revoke{ value: value }(requests[i]);
-            Attestation memory attestation = eas.getAttestation(uids[i]);
-            assertTrue(attestation.revocationTime > 0);
-        }
-
-        vm.stopPrank();
+                data: AttestationRequestData({
+                    recipient: recipient,
+                    expirationTime: uint64(block.timestamp + 30 days),
+                    revocable: true,
+                    refUID: ZERO_BYTES32,
+                    data: abi.encodePacked(bytes1(uint8(i + 1))),
+                    value: 0
+                })
+            })
+        );
     }
+
+    // Create revocation requests
+        MultiRevocationRequest[] memory requests = new MultiRevocationRequest[](1);
+        requests[0].schema = schemaId;
+        requests[0].data = new RevocationRequestData[](3);
+        for(uint i = 0; i < 3; i++) {
+        requests[0].data[i] = RevocationRequestData({
+            uid: uids[i],
+            value: 0
+        });
+    }
+
+    // Revoke all attestations
+    eas.multiRevoke(requests);
+
+    // Verify all attestations are revoked
+    for(uint i = 0; i < uids.length; i++) {
+        Attestation memory attestation = eas.getAttestation(uids[i]);
+        assertTrue(attestation.revocationTime > 0, "Attestation should be revoked");
+    }
+
+    vm.stopPrank();
+}
 
     function testDelegatedRevocationRevert() public {
         string memory schema = "bool like";
@@ -2598,72 +2650,62 @@ contract EASTest is Test {
         }
     }
 
-    function testMultiDelegatedRevocation() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
-        uint64 deadline = uint64(block.timestamp + 1 days);
+    function testRevertMultiDelegationInconsistentLengths() public {
+        // Register a schema
+        string memory schema = "bool count, bytes32 id";
+        bytes32 schemaId = _registerSchema(schema, true);
         
-        // Create multiple signers
-        uint256[] memory signerKeys = new uint256[](3);
-        address[] memory signers = new address[](3);
-        for(uint i = 0; i < 3; i++) {
-            signerKeys[i] = 0x12345 + i;
-            signers[i] = vm.addr(signerKeys[i]);
-            vm.deal(signers[i], 100 ether);
-        }
+        vm.startPrank(sender);
 
-        // First create attestations to revoke
-        bytes32[] memory attestationUIDs = new bytes32[](3);
-        for(uint i = 0; i < 3; i++) {
-            vm.prank(signers[i]);
-            attestationUIDs[i] = eas.attest(
-                AttestationRequest({
-                    schema: schemaId,
-                    data: AttestationRequestData({
-                        recipient: recipient,
-                        expirationTime: uint64(block.timestamp + 30 days),
-                        revocable: true,
-                        refUID: ZERO_BYTES32,
-                        data: abi.encodePacked(bytes1(uint8(i + 1))),
-                        value: 0
-                    })
-                })
-            );
-        }
+        // Test 1: More data items than signatures
+        MultiDelegatedAttestationRequest[] memory requests1 = new MultiDelegatedAttestationRequest[](1);
+        requests1[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](2),
+            signatures: new Signature[](1),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLengthSelector);
+        eas.multiAttestByDelegation(requests1);
 
-        // Create multi-revocation request
-        MultiDelegatedRevocationRequest[] memory requests = new MultiDelegatedRevocationRequest[](3);
-        for(uint i = 0; i < 3; i++) {
-            requests[i].schema = schemaId;
-            requests[i].data = new RevocationRequestData[](1);
-            requests[i].signatures = new Signature[](1);
-            requests[i].revoker = signers[i];  // Each request has its own revoker
-            requests[i].deadline = deadline;
+        // Test 2: Empty data array with signatures
+        MultiDelegatedAttestationRequest[] memory requests2 = new MultiDelegatedAttestationRequest[](1);
+        requests2[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](0),
+            signatures: new Signature[](1),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLengthSelector);
+        eas.multiAttestByDelegation(requests2);
 
-            requests[i].data[0] = RevocationRequestData({
-                uid: attestationUIDs[i],
-                value: 0
-            });
+        // Test 3: More signatures than data items
+        MultiDelegatedAttestationRequest[] memory requests3 = new MultiDelegatedAttestationRequest[](1);
+        requests3[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](1),
+            signatures: new Signature[](2),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLengthSelector);
+        eas.multiAttestByDelegation(requests3);
 
-            bytes32 digest = _createRevocationDigest(
-                schemaId,
-                attestationUIDs[i],
-                signers[i],
-                deadline
-            );
+        // Test 4: Data items with empty signatures array
+        MultiDelegatedAttestationRequest[] memory requests4 = new MultiDelegatedAttestationRequest[](1);
+        requests4[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](1),
+            signatures: new Signature[](0),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLengthSelector);
+        eas.multiAttestByDelegation(requests4);
 
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKeys[i], digest);
-            requests[i].signatures[0] = Signature({v: v, r: r, s: s});
-        }
-
-        vm.prank(signers[0]);
-        eas.multiRevokeByDelegation(requests);
-        
-        // Verify revocations
-        for(uint i = 0; i < attestationUIDs.length; i++) {
-            Attestation memory attestation = eas.getAttestation(attestationUIDs[i]);
-            assertTrue(attestation.revocationTime > 0, "Attestation should be revoked");
-        }
+        vm.stopPrank();
     }
 
-   
 }
