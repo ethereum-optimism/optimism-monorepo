@@ -66,10 +66,6 @@ contract Setup {
     ///         mutating any nonces. MUST not have constructor logic.
     Deploy internal constant deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
 
-    /// @notice The address of the Upgrade contract. Set into state with `etch` to avoid
-    ///         mutating any nonces. MUST not have constructor logic.
-    Upgrade internal constant upgrade = Upgrade(address(uint160(uint256(keccak256(abi.encode("optimism.upgrade"))))));
-
     L2Genesis internal constant l2Genesis =
         L2Genesis(address(uint160(uint256(keccak256(abi.encode("optimism.l2genesis"))))));
 
@@ -126,17 +122,14 @@ contract Setup {
     function setUp() public virtual {
         console.log("L1 setup start!");
         if (vm.envOr("UPGRADE_TEST", false)) {
-            vm.createSelectFork("http://127.0.0.1:8545");
-            vm.etch(address(upgrade), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));
-            vm.allowCheatcodes(address(upgrade));
-            upgrade.setUp();
+            string memory forkUrl = vm.envOr("FORK_RPC_URL", string("http://127.0.0.1:8545"));
+            vm.createSelectFork(forkUrl);
+
+            vm.etch(address(deploy), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));
+        } else {
+            vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         }
 
-        // TODO: for now we deploy this anyways as there are
-        // calls to it in CommonTest.sol.
-        // Maybe we should just keep the deploy address, but deploy a different
-        // impl for the upgrade path
-        vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         vm.allowCheatcodes(address(deploy));
         deploy.setUp();
 
@@ -158,16 +151,14 @@ contract Setup {
             hex"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3"
         );
 
-        if (vm.envOr("UPGRADE_TEST", false)) {
-            console.log("UPGRADE_TEST");
-            upgrade.run();
-        } else {
-            deploy.run();
-        }
+        deploy.run();
+
         console.log("Setup: completed L1 deployment, registering addresses now");
 
         optimismPortal = IOptimismPortal(deploy.mustGetAddress("OptimismPortalProxy"));
-        optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
+        // NOTE: For some reason this is causing an infinite loop!? If I uncomment it the node just prints
+        // eth_getStorageAt for 10 minutes straight until I kill the process.
+        // optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
         disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
         systemConfig = ISystemConfig(deploy.mustGetAddress("SystemConfigProxy"));

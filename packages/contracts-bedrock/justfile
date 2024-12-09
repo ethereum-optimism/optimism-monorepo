@@ -57,8 +57,14 @@ test-dev *ARGS: build-go-ffi
   FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
 # Runs upgrade path variant of contract tests.
+# Requires a mainnet fork of anvil listening on :8545 or $FORK_RPC_URL
+#    anvil --fork-url $MAINNET_RPC_URL
+# TODO: Can we start/stop this node programmatically with this test node
 test-upgrade *ARGS: build-go-ffi
-  UPGRADE_TEST=true DEPLOY_CONFIG_PATH=deploy-config/hardhat.json forge test {{ARGS}}
+  UPGRADE_TEST=true \
+    DEPLOY_CONFIG_PATH=deploy-config/hardhat.json \
+    DEPLOYMENT_OUTFILE=deployments/upgrade-test-fork.json \
+    forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
