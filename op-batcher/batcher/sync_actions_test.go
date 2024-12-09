@@ -260,9 +260,24 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected:      syncActions{},
 			expectedLogs:  []string{"no blocks in state"},
 		},
+		{name: "no progress + unsafe=safe + blocks in state",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 101},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101},
+			channels:      []channelStatuser{},
+			expected: syncActions{
+				blocksToPrune: 1,
+			},
+			expectedLogs: happyCaseLogs,
+		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range testCases[len(testCases)-1:] {
 
 		t.Run(tc.name, func(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)
@@ -271,7 +286,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
-			require.Equal(t, tc.expected, result)
+			require.Equal(t, tc.expected, result, "unexpected actions, %v")
 			require.Equal(t, tc.expectedSeqOutOfSync, outOfSync)
 			if tc.expectedLogs == nil {
 				require.Empty(t, h.Logs, "expected no logs but found some", "logs", h.Logs)

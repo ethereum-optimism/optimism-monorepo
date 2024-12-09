@@ -139,12 +139,14 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		numChannelsToPrune++
 	}
 
-	start := newestBlockInStateNum + 1
-	end := newSyncStatus.UnsafeL2.Number
+	var allUnsafeBlocksAboveState *inclusiveBlockRange
+	if newSyncStatus.UnsafeL2.Number > newestBlockInStateNum {
+		allUnsafeBlocksAboveState = &inclusiveBlockRange{newestBlockInStateNum + 1, newSyncStatus.UnsafeL2.Number}
+	}
 
 	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
-		blocksToLoad:    &inclusiveBlockRange{start, end},
+		blocksToLoad:    allUnsafeBlocksAboveState,
 	}, false
 }
