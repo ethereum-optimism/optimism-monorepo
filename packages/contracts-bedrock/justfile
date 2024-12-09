@@ -56,11 +56,18 @@ test *ARGS: build-go-ffi
 test-dev *ARGS: build-go-ffi
   FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
+# Starts a local anvil node with a mainnet fork and sends it to the background
+anvil-fork:
+  anvil --silent --fork-url $MAINNET_RPC_URL --port 8546
+
+# Stops the local anvil node
+anvil-stop:
+  pkill -9 anvil
+
 # Runs upgrade path variant of contract tests.
 # Requires a mainnet fork of anvil listening on :8545 or $FORK_RPC_URL
 #    anvil --fork-url $MAINNET_RPC_URL
-# TODO: Can we start/stop this node programmatically with this test node
-test-upgrade *ARGS: build-go-ffi
+test-upgrade *ARGS: build-go-ffi anvil-fork && anvil-stop
   UPGRADE_TEST=true forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
