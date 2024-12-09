@@ -464,6 +464,10 @@ func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainI
 	return v.ID(), nil
 }
 
+func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
+	return su.chainDBs.FinalizedL1()
+}
+
 func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
 	if err != nil {
@@ -493,7 +497,8 @@ func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.
 }
 
 func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
-	return su.chainDBs.UpdateFinalizedL1(finalized)
+	//return su.chainDBs.UpdateFinalizedL1(finalized)
+	return nil
 }
 
 // Access to synchronous processing for tests
@@ -522,4 +527,8 @@ func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
 		return types.ErrUnknownChain
 	}
 	return ch.ProcessWork()
+}
+
+func (su *SupervisorBackend) SyncFinalizedL1(ref eth.BlockRef) {
+	processors.MaybeUpdateFinalizedL1(context.Background(), su.logger, su.chainDBs, ref)
 }

@@ -14,8 +14,10 @@ import (
 )
 
 type mockChainsDB struct {
-	recordNewL1Fn  func(ref eth.BlockRef) error
-	lastCommonL1Fn func() (types.BlockSeal, error)
+	recordNewL1Fn       func(ref eth.BlockRef) error
+	lastCommonL1Fn      func() (types.BlockSeal, error)
+	finalizedL1Fn       func() eth.BlockRef
+	updateFinalizedL1Fn func(finalized eth.BlockRef) error
 }
 
 func (m *mockChainsDB) RecordNewL1(ref eth.BlockRef) error {
@@ -32,8 +34,26 @@ func (m *mockChainsDB) LastCommonL1() (types.BlockSeal, error) {
 	return types.BlockSeal{}, nil
 }
 
+func (m *mockChainsDB) FinalizedL1() eth.BlockRef {
+	if m.finalizedL1Fn != nil {
+		return m.finalizedL1Fn()
+	}
+	return eth.BlockRef{}
+}
+
+func (m *mockChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
+	if m.updateFinalizedL1Fn != nil {
+		return m.updateFinalizedL1Fn(finalized)
+	}
+	return nil
+}
+
 type mockL1BlockRefByNumberFetcher struct {
 	l1BlockByNumberFn func() (eth.L1BlockRef, error)
+}
+
+func (m *mockL1BlockRefByNumberFetcher) L1BlockRefByLabel(context.Context, eth.BlockLabel) (eth.L1BlockRef, error) {
+	return eth.L1BlockRef{}, nil
 }
 
 func (m *mockL1BlockRefByNumberFetcher) L1BlockRefByNumber(context.Context, uint64) (eth.L1BlockRef, error) {
@@ -103,5 +123,37 @@ func TestL1Processor(t *testing.T) {
 		}, 10*time.Second, 100*time.Millisecond)
 
 	})
-
+	t.Run("Updates L1 Finalized", func(t *testing.T) {
+		proc := processorForTesting()
+		proc.db.(*mockChainsDB).finalizedL1Fn = func() eth.BlockRef {
+			return eth.BlockRef{Number: 0}
+		}
+		proc.db.(*mockChainsDB).updateFinalizedL1Fn = func(finalized eth.BlockRef) error {
+			require.Equal(t, uint64(10), finalized.Number)
+			return nil
+		}
+		proc.handleFinalized(context.Background(), eth.BlockRef{Number: 10})
+	})
+	t.Run("No L1 Finalized Update for Same Number", func(t *testing.T) {
+		proc := processorForTesting()
+		proc.db.(*mockChainsDB).finalizedL1Fn = func() eth.BlockRef {
+			return eth.BlockRef{Number: 10}
+		}
+		proc.db.(*mockChainsDB).updateFinalizedL1Fn = func(finalized eth.BlockRef) error {
+			require.Fail(t, "should not be called")
+			return nil
+		}
+		proc.handleFinalized(context.Background(), eth.BlockRef{Number: 10})
+	})
+	t.Run("No L1 Finalized Update When Behind", func(t *testing.T) {
+		proc := processorForTesting()
+		proc.db.(*mockChainsDB).finalizedL1Fn = func() eth.BlockRef {
+			return eth.BlockRef{Number: 20}
+		}
+		proc.db.(*mockChainsDB).updateFinalizedL1Fn = func(finalized eth.BlockRef) error {
+			require.Fail(t, "should not be called")
+			return nil
+		}
+		proc.handleFinalized(context.Background(), eth.BlockRef{Number: 10})
+	})
 }

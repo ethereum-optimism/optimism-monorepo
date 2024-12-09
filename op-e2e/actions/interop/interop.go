@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
@@ -137,6 +138,11 @@ func (sa *SupervisorActor) SyncCrossUnsafe(t helpers.Testing, chainID types.Chai
 
 func (sa *SupervisorActor) SyncCrossSafe(t helpers.Testing, chainID types.ChainID) {
 	require.NoError(t, sa.backend.SyncCrossSafe(chainID))
+}
+
+func (sa *SupervisorActor) SyncFinalizedL1(t helpers.Testing, ref eth.BlockRef) {
+	sa.backend.SyncFinalizedL1(ref)
+	require.Equal(t, ref, sa.backend.FinalizedL1())
 }
 
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.
