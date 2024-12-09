@@ -31,12 +31,12 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 contract Upgrade is Deployer {
     using stdJson for string;
 
-    string superchainBasePath = "./lib/superchain-registry/superchain/configs/";
-    string forkBaseChain = "mainnet";
-    string forkOpChain = "op";
-
     /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
     function run() public {
+        string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
+        string memory forkBaseChain = "mainnet";
+        string memory forkOpChain = "op";
+
         // Read the superchain config files
         string memory superchainToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/superchain.toml"));
         string memory opToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/", forkOpChain, ".toml"));
