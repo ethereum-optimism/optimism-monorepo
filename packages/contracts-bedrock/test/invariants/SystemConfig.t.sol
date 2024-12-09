@@ -2,8 +2,8 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 

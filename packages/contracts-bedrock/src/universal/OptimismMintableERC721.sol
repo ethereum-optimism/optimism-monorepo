@@ -9,8 +9,8 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismMintableERC721 } from "src/universal/interfaces/IOptimismMintableERC721.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismMintableERC721 } from "interfaces/universal/IOptimismMintableERC721.sol";
 
 /// @title OptimismMintableERC721
 /// @notice This contract is the remote representation for some token that lives on another network,
@@ -46,8 +46,8 @@ contract OptimismMintableERC721 is ERC721Enumerable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.4
-    string public constant version = "1.3.1-beta.4";
+    /// @custom:semver 1.3.1-beta.5
+    string public constant version = "1.3.1-beta.5";
 
     /// @param _bridge        Address of the bridge on this network.
     /// @param _remoteChainId Chain ID where the remote token is deployed.

@@ -13,9 +13,9 @@ import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IOptimismMintableERC20 } from "src/universal/interfaces/IOptimismMintableERC20.sol";
-import { ILegacyMintableERC20 } from "src/universal/interfaces/ILegacyMintableERC20.sol";
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { IOptimismMintableERC20 } from "interfaces/universal/IOptimismMintableERC20.sol";
+import { ILegacyMintableERC20 } from "interfaces/universal/ILegacyMintableERC20.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 
 /// @custom:upgradeable
 /// @title StandardBridge

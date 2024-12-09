@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
-import { IEIP712 } from "src/universal/interfaces/IEIP712.sol";
+import { IEIP712 } from "interfaces/universal/IEIP712.sol";
 
 /// @title PreinstallsTest
 contract PreinstallsTest is CommonTest {

@@ -65,7 +65,7 @@ var (
 		Name:    "trace-type",
 		Usage:   "The trace types to support. Valid options: " + openum.EnumString(types.TraceTypes),
 		EnvVars: prefixEnvVars("TRACE_TYPE"),
-		Value:   cli.NewStringSlice(types.TraceTypeCannon.String()),
+		Value:   cli.NewStringSlice(types.TraceTypeCannon.String(), types.TraceTypeAsteriscKona.String()),
 	}
 	DatadirFlag = &cli.StringFlag{
 		Name:    "datadir",
@@ -114,6 +114,14 @@ var (
 		Name:    "cannon-network",
 		Usage:   fmt.Sprintf("Deprecated: Use %v instead", flags.NetworkFlagName),
 		EnvVars: prefixEnvVars("CANNON_NETWORK"),
+	}
+	CannonL2CustomFlag = &cli.BoolFlag{
+		Name: "cannon-l2-custom",
+		Usage: "Notify the op-program host that the L2 chain uses custom config to be loaded via the preimage oracle. " +
+			"WARNING: This is incompatible with on-chain testing and must only be used for testing purposes.",
+		EnvVars: prefixEnvVars("CANNON_L2_CUSTOM"),
+		Value:   false,
+		Hidden:  true,
 	}
 	CannonRollupConfigFlag = &cli.StringFlag{
 		Name:    "cannon-rollup-config",
@@ -249,6 +257,7 @@ var optionalFlags = []cli.Flag{
 	AdditionalBondClaimants,
 	GameAllowlistFlag,
 	CannonNetworkFlag,
+	CannonL2CustomFlag,
 	CannonRollupConfigFlag,
 	CannonL2GenesisFlag,
 	CannonBinFlag,
@@ -296,14 +305,17 @@ func CheckCannonFlags(ctx *cli.Context) error {
 			CannonNetworkFlag.Name, flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
 	}
 	if ctx.IsSet(flags.NetworkFlagName) &&
-		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name)) {
-		return fmt.Errorf("flag %v can not be used with %v and %v",
-			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
+		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name) || ctx.Bool(CannonL2CustomFlag.Name)) {
+		return fmt.Errorf("flag %v can not be used with %v, %v or %v",
+			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2CustomFlag.Name)
 	}
 	if ctx.IsSet(CannonNetworkFlag.Name) &&
-		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name)) {
-		return fmt.Errorf("flag %v can not be used with %v and %v",
-			CannonNetworkFlag.Name, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
+		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name) || ctx.Bool(CannonL2CustomFlag.Name)) {
+		return fmt.Errorf("flag %v can not be used with %v, %v or %v",
+			CannonNetworkFlag.Name, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2CustomFlag.Name)
+	}
+	if ctx.Bool(CannonL2CustomFlag.Name) && !(ctx.IsSet(CannonRollupConfigFlag.Name) && ctx.IsSet(CannonL2GenesisFlag.Name)) {
+		return fmt.Errorf("flag %v and %v must be set when %v is true", CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2CustomFlag.Name)
 	}
 	if !ctx.IsSet(CannonBinFlag.Name) {
 		return fmt.Errorf("flag %s is required", CannonBinFlag.Name)
@@ -563,6 +575,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:            ctx.String(CannonBinFlag.Name),
 			Server:           ctx.String(CannonServerFlag.Name),
 			Network:          cannonNetwork,
+			L2Custom:         ctx.Bool(CannonL2CustomFlag.Name),
 			RollupConfigPath: ctx.String(CannonRollupConfigFlag.Name),
 			L2GenesisPath:    ctx.String(CannonL2GenesisFlag.Name),
 			SnapshotFreq:     ctx.Uint(CannonSnapshotFreqFlag.Name),

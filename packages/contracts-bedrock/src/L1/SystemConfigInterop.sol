@@ -12,8 +12,8 @@ import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Storage } from "src/libraries/Storage.sol";
 
 // Interfaces
-import { IOptimismPortalInterop as IOptimismPortal } from "src/L1/interfaces/IOptimismPortalInterop.sol";
-import { ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
+import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title SystemConfigInterop

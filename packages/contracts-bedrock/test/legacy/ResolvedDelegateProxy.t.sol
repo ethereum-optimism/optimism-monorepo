@@ -5,10 +5,10 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 
 // Target contract dependencies
-import { IAddressManager } from "src/legacy/interfaces/IAddressManager.sol";
+import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 
 // Target contract
-import { IResolvedDelegateProxy } from "src/legacy/interfaces/IResolvedDelegateProxy.sol";
+import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract ResolvedDelegateProxy_Test is Test {

@@ -2,7 +2,6 @@ package dial
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -72,13 +71,5 @@ func dialRPCClientWithBackoff(ctx context.Context, log log.Logger, addr string) 
 
 // Dials a JSON-RPC endpoint once.
 func dialRPCClient(ctx context.Context, log log.Logger, addr string) (*rpc.Client, error) {
-	if !client.IsURLAvailable(ctx, addr) {
-		log.Warn("failed to dial address, but may connect later", "addr", addr)
-		return nil, fmt.Errorf("address unavailable (%s)", addr)
-	}
-	client, err := rpc.DialOptions(ctx, addr)
-	if err != nil {
-		return nil, fmt.Errorf("failed to dial address (%s): %w", addr, err)
-	}
-	return client, nil
+	return client.CheckAndDial(ctx, log, addr)
 }

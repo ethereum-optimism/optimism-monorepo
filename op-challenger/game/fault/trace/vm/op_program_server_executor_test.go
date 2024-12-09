@@ -19,6 +19,12 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 	toPairs := func(args []string) map[string]string {
 		pairs := make(map[string]string, len(args)/2)
 		for i := 0; i < len(args); i += 2 {
+			// l2.custom is a boolean flag so can't accept a value after a space
+			if args[i] == "--l2.custom" {
+				pairs[args[i]] = "true"
+				i--
+				continue
+			}
 			pairs[args[i]] = args[i+1]
 		}
 		return pairs
@@ -70,6 +76,13 @@ func TestOpProgramFillHostCommand(t *testing.T) {
 			c.Network = "op-test"
 		})
 		require.Equal(t, "op-test", pairs["--network"])
+	})
+
+	t.Run("WithL2ChainID", func(t *testing.T) {
+		pairs := oracleCommand(t, log.LvlInfo, func(c *Config) {
+			c.L2Custom = true
+		})
+		require.Equal(t, "true", pairs["--l2.custom"])
 	})
 
 	t.Run("WithRollupConfigPath", func(t *testing.T) {

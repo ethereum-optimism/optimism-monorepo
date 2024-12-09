@@ -7,6 +7,7 @@ import (
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum-optimism/optimism/op-node/p2p"
+	opsigner "github.com/ethereum-optimism/optimism/op-service/signer"
 )
 
 func p2pEnv(envprefix, v string) []string {
@@ -87,7 +88,7 @@ func deprecatedP2PFlags(envPrefix string) []cli.Flag {
 // None of these flags are strictly required.
 // Some are hidden if they are too technical, or not recommended.
 func P2PFlags(envPrefix string) []cli.Flag {
-	return []cli.Flag{
+	return append([]cli.Flag{
 		&cli.BoolFlag{
 			Name:     DisableP2PName,
 			Usage:    "Completely disable the P2P stack",
@@ -410,5 +411,5 @@ func P2PFlags(envPrefix string) []cli.Flag {
 			Required: false,
 			EnvVars:  p2pEnv(envPrefix, "PING"),
 		},
-	}
+	}, opsigner.CLIFlags(envPrefix, P2PCategory)...)
 }

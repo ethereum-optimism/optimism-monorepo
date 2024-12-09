@@ -8,11 +8,11 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { Storage } from "src/libraries/Storage.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { ISystemConfigInterop } from "src/L1/interfaces/ISystemConfigInterop.sol";
-import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
+import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:audit none This contracts is not yet audited.

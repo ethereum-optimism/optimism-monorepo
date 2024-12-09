@@ -169,31 +169,40 @@ contract L1BlockCustomGasToken_Test is L1BlockTest {
     function testFuzz_setGasPayingToken_succeeds(
         address _token,
         uint8 _decimals,
-        string memory _name,
-        string memory _symbol
+        string calldata _name,
+        string calldata _symbol
     )
         external
     {
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
 
-        bytes32 name = bytes32(abi.encodePacked(_name));
-        bytes32 symbol = bytes32(abi.encodePacked(_symbol));
+        // Using vm.assume() would cause too many test rejections.
+        string memory name = _name;
+        if (bytes(_name).length > 32) {
+            name = _name[:32];
+        }
+        bytes32 b32name = bytes32(abi.encodePacked(name));
+
+        // Using vm.assume() would cause too many test rejections.
+        string memory symbol = _symbol;
+        if (bytes(_symbol).length > 32) {
+            symbol = _symbol[:32];
+        }
+        bytes32 b32symbol = bytes32(abi.encodePacked(symbol));
 
         vm.expectEmit(address(l1Block));
-        emit GasPayingTokenSet({ token: _token, decimals: _decimals, name: name, symbol: symbol });
+        emit GasPayingTokenSet({ token: _token, decimals: _decimals, name: b32name, symbol: b32symbol });
 
         vm.prank(depositor);
-        l1Block.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: name, _symbol: symbol });
+        l1Block.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: b32name, _symbol: b32symbol });
 
         (address token, uint8 decimals) = l1Block.gasPayingToken();
         assertEq(token, _token);
         assertEq(decimals, _decimals);
 
-        assertEq(_name, l1Block.gasPayingTokenName());
-        assertEq(_symbol, l1Block.gasPayingTokenSymbol());
+        assertEq(name, l1Block.gasPayingTokenName());
+        assertEq(symbol, l1Block.gasPayingTokenSymbol());
         assertTrue(l1Block.isCustomGasToken());
     }
 

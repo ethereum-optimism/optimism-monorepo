@@ -14,8 +14,8 @@ import { InvalidExitedValue, InvalidMemoryProof } from "src/cannon/libraries/Can
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 contract MIPS_Test is CommonTest {
     IMIPS internal mips;

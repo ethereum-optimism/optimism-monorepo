@@ -62,6 +62,7 @@ func TestBackendLifetime(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("initialized!")
 
+	l1Src := &testutils.MockL1Source{}
 	src := &testutils.MockL1Source{}
 
 	blockX := eth.BlockRef{
@@ -77,6 +78,7 @@ func TestBackendLifetime(t *testing.T) {
 		Time:       blockX.Time + 2,
 	}
 
+	b.AttachL1Source(l1Src)
 	require.NoError(t, b.AttachProcessorSource(chainA, src))
 
 	require.FileExists(t, filepath.Join(cfg.Datadir, "900", "log.db"), "must have logs DB 900")

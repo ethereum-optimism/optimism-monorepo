@@ -66,7 +66,7 @@ See the [Optimism Developer Docs](https://docs.optimism.io/chain/addresses) for 
 ### Contributing Guide
 
 Contributions to the OP Stack are always welcome.
-Please refer to the [CONTRIBUTING.md](./meta/CONTRIBUTING.md) for more information about how to contribute to the OP Stack smart contracts.
+Please refer to the [CONTRIBUTING.md](../../CONTRIBUTING.md) for more information about how to contribute to the OP Stack smart contracts.
 
 ### Style Guide
 

@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
 
 type Word = arch.Word
@@ -99,12 +100,12 @@ const (
 )
 
 func GetSyscallArgs(registers *[32]Word) (syscallNum, a0, a1, a2, a3 Word) {
-	syscallNum = registers[RegSyscallNum] // v0
+	syscallNum = registers[register.RegSyscallNum] // v0
 
-	a0 = registers[RegSyscallParam1]
-	a1 = registers[RegSyscallParam2]
-	a2 = registers[RegSyscallParam3]
-	a3 = registers[RegSyscallParam4]
+	a0 = registers[register.RegSyscallParam1]
+	a1 = registers[register.RegSyscallParam2]
+	a2 = registers[register.RegSyscallParam3]
+	a3 = registers[register.RegSyscallParam4]
 
 	return syscallNum, a0, a1, a2, a3
 }
@@ -281,8 +282,8 @@ func HandleSysFcntl(a0, a1 Word) (v0, v1 Word) {
 }
 
 func HandleSyscallUpdates(cpu *mipsevm.CpuScalars, registers *[32]Word, v0, v1 Word) {
-	registers[RegSyscallRet1] = v0
-	registers[RegSyscallErrno] = v1
+	registers[register.RegSyscallRet1] = v0
+	registers[register.RegSyscallErrno] = v1
 
 	cpu.PC = cpu.NextPC
 	cpu.NextPC = cpu.NextPC + 4

@@ -10,7 +10,7 @@ import { Constants } from "src/libraries/Constants.sol";
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortalInterop

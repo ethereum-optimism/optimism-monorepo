@@ -165,7 +165,7 @@ func createAddressList(l1Contracts *L1Contracts, appliedIntent *state.Intent, ch
 
 		// Fault proof contracts
 		AnchorStateRegistryProxy: superchain.Address(l1Contracts.OpChainDeployment.AnchorStateRegistryProxyAddress),
-		DelayedWETHProxy:         superchain.Address(l1Contracts.OpChainDeployment.L1CrossDomainMessengerProxyAddress),
+		DelayedWETHProxy:         superchain.Address(l1Contracts.OpChainDeployment.DelayedWETHPermissionedGameProxyAddress),
 		DisputeGameFactoryProxy:  superchain.Address(l1Contracts.OpChainDeployment.DisputeGameFactoryProxyAddress),
 		FaultDisputeGame:         superchain.Address(l1Contracts.OpChainDeployment.FaultDisputeGameAddress),
 		MIPS:                     superchain.Address(l1Contracts.ImplementationsDeployment.MipsSingletonAddress),

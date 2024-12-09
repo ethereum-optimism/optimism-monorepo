@@ -17,18 +17,20 @@ const (
 	HeadersFlagName  = "signer.header"
 )
 
-func CLIFlags(envPrefix string) []cli.Flag {
+func CLIFlags(envPrefix string, category string) []cli.Flag {
 	envPrefix += "_SIGNER"
 	flags := []cli.Flag{
 		&cli.StringFlag{
-			Name:    EndpointFlagName,
-			Usage:   "Signer endpoint the client will connect to",
-			EnvVars: opservice.PrefixEnvVar(envPrefix, "ENDPOINT"),
+			Name:     EndpointFlagName,
+			Usage:    "Signer endpoint the client will connect to",
+			EnvVars:  opservice.PrefixEnvVar(envPrefix, "ENDPOINT"),
+			Category: category,
 		},
 		&cli.StringFlag{
-			Name:    AddressFlagName,
-			Usage:   "Address the signer is signing transactions for",
-			EnvVars: opservice.PrefixEnvVar(envPrefix, "ADDRESS"),
+			Name:     AddressFlagName,
+			Usage:    "Address the signer is signing requests for",
+			EnvVars:  opservice.PrefixEnvVar(envPrefix, "ADDRESS"),
+			Category: category,
 		},
 		&cli.StringSliceFlag{
 			Name:    HeadersFlagName,
@@ -36,7 +38,7 @@ func CLIFlags(envPrefix string) []cli.Flag {
 			EnvVars: opservice.PrefixEnvVar(envPrefix, "HEADER"),
 		},
 	}
-	flags = append(flags, optls.CLIFlagsWithFlagPrefix(envPrefix, "signer")...)
+	flags = append(flags, optls.CLIFlagsWithFlagPrefix(envPrefix, "signer", category)...)
 	return flags
 }
 
@@ -65,10 +67,7 @@ func (c CLIConfig) Check() error {
 }
 
 func (c CLIConfig) Enabled() bool {
-	if c.Endpoint != "" && c.Address != "" {
-		return true
-	}
-	return false
+	return c.Endpoint != "" && c.Address != ""
 }
 
 func ReadCLIConfig(ctx *cli.Context) CLIConfig {
