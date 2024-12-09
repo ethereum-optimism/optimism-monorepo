@@ -55,6 +55,8 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		timedOut:       false,
 	}
 
+	happyCaseLogs := []string{} // in the happy case we expect no logs
+
 	type TestCase struct {
 		name string
 		// inputs
@@ -209,6 +211,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected: syncActions{
 				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
+			expectedLogs: []string{"no blocks in state"},
 		},
 		{name: "happy path",
 			// This happens when the safe chain is being progressed as expected:
@@ -242,6 +245,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{105, 109},
 			},
+			expectedLogs: happyCaseLogs,
 		},
 		{name: "no progress + unsafe=safe",
 			newSyncStatus: eth.SyncStatus{
@@ -254,6 +258,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			blocks:        queue.Queue[*types.Block]{},
 			channels:      []channelStatuser{},
 			expected:      syncActions{},
+			expectedLogs:  []string{"no blocks in state"},
 		},
 	}
 
@@ -268,9 +273,13 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 
 			require.Equal(t, tc.expected, result)
 			require.Equal(t, tc.expectedSeqOutOfSync, outOfSync)
-			for _, e := range tc.expectedLogs {
-				r := h.FindLog(testlog.NewMessageContainsFilter(e))
-				require.NotNil(t, r, "could not find log message containing '%s'", e)
+			if tc.expectedLogs == nil {
+				require.Empty(t, h.Logs, "expected no logs but found some", "logs", h.Logs)
+			} else {
+				for _, e := range tc.expectedLogs {
+					r := h.FindLog(testlog.NewMessageContainsFilter(e))
+					require.NotNil(t, r, "could not find log message containing '%s'", e)
+				}
 			}
 		})
 	}
