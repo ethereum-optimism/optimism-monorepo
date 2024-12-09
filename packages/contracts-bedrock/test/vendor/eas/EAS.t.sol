@@ -3,14 +3,24 @@ pragma solidity ^0.8.19;
 
 import { Test } from "forge-std/Test.sol";
 import { EAS } from "src/vendor/eas/EAS.sol";
+import { IEAS } from "src/vendor/eas/IEAS.sol";
 import { SchemaRegistry } from "src/vendor/eas/SchemaRegistry.sol";
 import { Attestation, AttestationRequest, AttestationRequestData, MultiAttestationRequest, RevocationRequest, RevocationRequestData, MultiDelegatedAttestationRequest, MultiDelegatedRevocationRequest, DelegatedAttestationRequest, MultiRevocationRequest, Signature } from "src/vendor/eas/IEAS.sol";
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { console } from "forge-std/console.sol";
+import { EIP1271Verifier } from "src/vendor/eas/eip1271/EIP1271Verifier.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 
-// Add this helper contract at the top of the file
+contract TestEIP1271Verifier is EIP1271Verifier {
+    constructor(string memory name) EIP1271Verifier(name, "1.0.0") {}
+
+    // Expose internal function for testing
+    function verifyAttest(DelegatedAttestationRequest calldata request) external {
+        _verifyAttest(request);
+    }
+}
+
 contract TestEIP712Helper is EIP712 {
     constructor() EIP712("EAS", "1.3.0") {}
 
@@ -51,16 +61,59 @@ contract MockPayableResolver is ISchemaResolver {
     }
 }
 
+contract TestEIP712Proxy is EIP712 {
+    address public verifyingContract;
+    string private _name;
+    
+    // Change back to original version
+    constructor(address _verifyingContract, string memory name_) EIP712(name_, "1.3.0") {
+        verifyingContract = _verifyingContract;
+        _name = name_;
+    }
+
+    // Add name getter
+    function name() public view returns (string memory) {
+        return _name;
+    }
+
+    function DOMAIN_SEPARATOR() public view returns (bytes32) {
+        return _domainSeparatorV4();
+    }
+
+    function hashTypedDataV4(bytes32 structHash) public view returns (bytes32) {
+        return _hashTypedDataV4(structHash);
+    }
+    
+    function attestByDelegation(DelegatedAttestationRequest calldata request) 
+        external 
+        returns (bytes32) 
+    {
+        return IEAS(verifyingContract).attestByDelegation(request);
+    }
+}
+
 contract EASTest is Test {
+
+    
     // =============================================================
     //                           CONSTANTS
     // =============================================================
-    uint64 constant NO_EXPIRATION = 0;
-    bytes32 constant ZERO_BYTES32 = bytes32(0);
-    bytes32 private constant ATTEST_TYPEHASH =
+    uint64 constant NO_EXPIRATION = 
+        0;
+    bytes32 constant ZERO_BYTES32 = 
+        bytes32(0);
+    bytes32 private constant ATTEST_TYPEHASH = 
         0xfeb2925a02bae3dae48d424a0437a2b6ac939aa9230ddc55a1a76f065d988076;
     bytes32 private constant REVOKE_TYPEHASH =
         0x4e1c85c87bc4c1867b4225cc3fb634a4e0fd8a91feb1ebca195aeaf6611a773b;
+         bytes32 constant ATTEST_PROXY_TYPEHASH = 0xea02ffba7dcb45f6fc649714d23f315eef12e3b27f9a7735d8d8bf41eb2b1af1;
+
+    // Add with other constants at the top
+    enum SignatureType {
+        Direct,
+        Delegated,
+        DelegatedProxy
+    }
 
     // =============================================================
     //                        ERROR SELECTORS
@@ -71,15 +124,18 @@ contract EASTest is Test {
         bytes4(keccak256("InvalidSchema()"));
     bytes4 constant InvalidExpirationTimeSelector =
         bytes4(keccak256("InvalidExpirationTime()"));
-    bytes4 constant NotFoundSelector = bytes4(keccak256("NotFound()"));
-    bytes4 constant AccessDeniedSelector = bytes4(keccak256("AccessDenied()"));
+    bytes4 constant NotFoundSelector = 
+        bytes4(keccak256("NotFound()"));
+    bytes4 constant AccessDeniedSelector =
+        bytes4(keccak256("AccessDenied()"));
     bytes4 constant InvalidLengthSelector =
         bytes4(keccak256("InvalidLength()"));
     bytes4 constant AlreadyRevokedOffchainSelector =
         bytes4(keccak256("AlreadyRevokedOffchain()"));
     bytes4 constant AlreadyTimestampedSelector =
         bytes4(keccak256("AlreadyTimestamped()"));
-    bytes4 constant IrrevocableSelector = bytes4(keccak256("Irrevocable()"));
+    bytes4 constant IrrevocableSelector =
+        bytes4(keccak256("Irrevocable()"));
     bytes4 constant InvalidSignatureSelector =
         bytes4(keccak256("InvalidSignature()"));
 
@@ -98,6 +154,9 @@ contract EASTest is Test {
 
     // Add with other state variables
     uint256 public senderKey;
+
+    // Add with other state variables at the top
+    TestEIP712Proxy public proxy;
 
     // =============================================================
     //                      HELPER FUNCTIONS
@@ -257,6 +316,10 @@ contract EASTest is Test {
 
         // Initialize helper
         eip712Helper = new TestEIP712Helper();
+
+        // Initialize proxy with explicit name and version
+        proxy = new TestEIP712Proxy(address(eas), "EAS-Proxy");
+        
     }
 
     // =============================================================
@@ -357,9 +420,6 @@ contract EASTest is Test {
         // Set a specific timestamp
         vm.warp(1000);
         uint64 expiredDeadline = uint64(block.timestamp - 100); // 900
-
-        console.log("Current timestamp:", block.timestamp); // Should be 1000
-        console.log("Expired deadline:", expiredDeadline); // Should be 900
 
         uint256 signerKey = 0x12345;
         address signer = vm.addr(signerKey);
@@ -482,6 +542,66 @@ contract EASTest is Test {
 
         vm.expectRevert(InvalidSignatureSelector);
         eas.attestByDelegation(request); // Second attempt should fail
+    }
+
+        function testProxyAttestation() public {
+        vm.warp(1000);
+        
+        bytes32 proxySchemaId = _registerSchema("bool like", true);
+        
+        AttestationRequestData memory data = AttestationRequestData({
+            recipient: recipient,
+            expirationTime: NO_EXPIRATION,
+            revocable: true,
+            refUID: bytes32(0),
+            data: hex"1234",
+            value: 0
+        });
+
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: proxySchemaId,
+            data: data,
+            signature: Signature(0, bytes32(0), bytes32(0)),
+            attester: sender,
+            deadline: deadline
+        });
+
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ATTEST_TYPEHASH,
+                request.attester,
+                request.schema,
+                request.data.recipient,
+                request.data.expirationTime,
+                request.data.revocable,
+                request.data.refUID,
+                keccak256(request.data.data),
+                request.data.value,
+                eas.getNonce(request.attester), 
+                request.deadline
+            )
+        );
+
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                eas.getDomainSeparator(), 
+                structHash
+            )
+        );
+
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(senderKey, digest);
+        request.signature = Signature(v, r, s);
+
+        vm.prank(sender);
+        bytes32 uid = proxy.attestByDelegation(request);
+        assertTrue(uid != bytes32(0));
+
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, sender);
+        assertEq(attestation.recipient, recipient);
     }
 
     // =============================================================
@@ -919,10 +1039,10 @@ contract EASTest is Test {
         for (uint i = 0; i < recipients.length; i++) {
             requests[0].data[i] = AttestationRequestData({
                 recipient: recipients[i],
-                expirationTime: uint64(block.timestamp + (i + 1) * 30 days),
+                expirationTime: 0,
                 revocable: true,
                 refUID: bytes32(0),
-                data: abi.encodePacked(bytes1(uint8(i + 1))),
+                data: abi.encodePacked(true),
                 value: i * 0.1 ether
             });
         }
@@ -2755,4 +2875,139 @@ contract EASTest is Test {
 
         vm.stopPrank();
     }
+
+    function testAllSignatureTypes() public {
+        
+        // Register schema once at the start
+        bytes32 schemaId = _registerSchema("bool like", true);
+
+        SignatureType[2] memory sigTypes = [
+            SignatureType.Direct,
+            SignatureType.Delegated
+        ];
+
+        for (uint i = 0; i < sigTypes.length; i++) {
+            SignatureType sigType = sigTypes[i];
+            
+            if (sigType == SignatureType.Direct) {
+                _testDirectSignature(schemaId);
+            } else if (sigType == SignatureType.Delegated) {
+                _testDelegatedSignature(schemaId);
+            }
+        }
+    }
+
+    function _testDirectSignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+
+        // Test direct attestation
+        vm.prank(sender);
+        bytes32 uid = eas.attest(
+            AttestationRequest({
+                schema: schemaId,
+                data: requestData
+            })
+        );
+        assertTrue(uid != bytes32(0), "Direct attestation should succeed");
+
+        // Verify the attestation
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, sender);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+
+    function _testProxySignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        uint256 signerKey = 0x12345;
+        address signer = vm.addr(signerKey);
+        vm.deal(signer, 100 ether);
+
+        // Create signature using proxy's domain separator
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                eas.getDomainSeparator(), // Use proxy's domain separator instead of EAS
+                _getStructHash(schemaId, requestData, signer, deadline)
+            )
+        );
+        
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: requestData,
+            signature: Signature({ v: v, r: r, s: s }),
+            attester: signer,
+            deadline: deadline
+        });
+
+        vm.prank(signer);
+        bytes32 uid = proxy.attestByDelegation(request);
+        assertTrue(uid != bytes32(0), "Proxy attestation should succeed");
+
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, signer);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+
+    function _testDelegatedSignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        uint256 signerKey = 0x12345;
+        address signer = vm.addr(signerKey);
+        vm.deal(signer, 100 ether);
+
+        bytes32 digest = _createAttestationDigest(
+            schemaId,
+            requestData,
+            signer,
+            deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: requestData,
+            signature: Signature({ v: v, r: r, s: s }),
+            attester: signer,
+            deadline: deadline
+        });
+
+        vm.prank(signer);
+        bytes32 uid = eas.attestByDelegation(request);
+        assertTrue(uid != bytes32(0), "Delegated attestation should succeed");
+
+        // Verify the attestation
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, signer);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+
+    function _getStructHash(
+        bytes32 schemaId,
+        AttestationRequestData memory data,
+        address attester,
+        uint64 deadline
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256(
+                    "Attest(bytes32 schema,address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value,address attester,uint64 deadline)"
+                ),
+                schemaId,
+                data.recipient,
+                data.expirationTime,
+                data.revocable,
+                data.refUID,
+                keccak256(data.data),
+                data.value,
+                attester,
+                deadline
+            )
+        );
+    }
+
 }
