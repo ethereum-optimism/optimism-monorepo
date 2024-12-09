@@ -27,7 +27,7 @@ import {
 } from "src/L2/L2ToL2CrossDomainMessenger.sol";
 
 // Interfaces
-import { ICrossL2Inbox, Identifier } from "src/L2/interfaces/ICrossL2Inbox.sol";
+import { ICrossL2Inbox, Identifier } from "interfaces/L2/ICrossL2Inbox.sol";
 
 /// @title L2ToL2CrossDomainMessengerWithModifiableTransientStorage
 /// @dev L2ToL2CrossDomainMessenger contract with methods to modify the transient storage.
@@ -144,7 +144,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
 
         // Ensure that _value is greater than 0
-        vm.assume(_value > 0);
+        _value = bound(_value, 1, type(uint256).max);
 
         // Add sufficient value to the contract to send the message with
         vm.deal(address(this), _value);

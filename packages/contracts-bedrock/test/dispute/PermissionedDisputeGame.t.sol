@@ -14,9 +14,10 @@ import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { IPreimageOracle } from "src/dispute/interfaces/IBigStepper.sol";
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { IPermissionedDisputeGame } from "src/dispute/interfaces/IPermissionedDisputeGame.sol";
+import { IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
     /// @dev The type of the game being tested.
@@ -67,16 +68,18 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
                     abi.encodeCall(
                         IPermissionedDisputeGame.__constructor__,
                         (
-                            GAME_TYPE,
-                            absolutePrestate,
-                            2 ** 3,
-                            2 ** 2,
-                            Duration.wrap(3 hours),
-                            Duration.wrap(3.5 days),
-                            _vm,
-                            _weth,
-                            anchorStateRegistry,
-                            10,
+                            IFaultDisputeGame.GameConstructorParams({
+                                gameType: GAME_TYPE,
+                                absolutePrestate: absolutePrestate,
+                                maxGameDepth: 2 ** 3,
+                                splitDepth: 2 ** 2,
+                                clockExtension: Duration.wrap(3 hours),
+                                maxClockDuration: Duration.wrap(3.5 days),
+                                vm: _vm,
+                                weth: _weth,
+                                anchorStateRegistry: anchorStateRegistry,
+                                l2ChainId: 10
+                            }),
                             PROPOSER,
                             CHALLENGER
                         )

@@ -7,7 +7,7 @@
 #
 # MAKEFLAGS is a string of the form:
 # "abc --foo --bar=baz -- VAR1=val1 VAR2=val2", namely:
-# - abc is the concatnation of all short flags
+# - abc is the concatenation of all short flags
 # - --foo and --bar=baz are long options,
 # - -- is the separator between flags and variable assignments,
 # - VAR1=val1 and VAR2=val2 are variable assignments

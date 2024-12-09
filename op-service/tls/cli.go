@@ -21,7 +21,7 @@ const (
 // CLIFlags returns flags with env var envPrefix
 // This should be used for server TLS configs, or when client and server tls configs are the same
 func CLIFlags(envPrefix string) []cli.Flag {
-	return CLIFlagsWithFlagPrefix(envPrefix, "")
+	return CLIFlagsWithFlagPrefix(envPrefix, "", "")
 }
 
 var (
@@ -33,7 +33,7 @@ var (
 
 // CLIFlagsWithFlagPrefix returns flags with env var and cli flag prefixes
 // Should be used for client TLS configs when different from server on the same process
-func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string) []cli.Flag {
+func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string, category string) []cli.Flag {
 	prefixFunc := func(flagName string) string {
 		return strings.Trim(fmt.Sprintf("%s.%s", flagPrefix, flagName), ".")
 	}
@@ -48,22 +48,25 @@ func CLIFlagsWithFlagPrefix(envPrefix string, flagPrefix string) []cli.Flag {
 			EnvVars: prefixEnvVars("TLS_ENABLED"),
 		},
 		&cli.StringFlag{
-			Name:    prefixFunc(TLSCaCertFlagName),
-			Usage:   "tls ca cert path",
-			Value:   defaultTLSCaCert,
-			EnvVars: prefixEnvVars("TLS_CA"),
+			Name:     prefixFunc(TLSCaCertFlagName),
+			Usage:    "tls ca cert path",
+			Value:    defaultTLSCaCert,
+			EnvVars:  prefixEnvVars("TLS_CA"),
+			Category: category,
 		},
 		&cli.StringFlag{
-			Name:    prefixFunc(TLSCertFlagName),
-			Usage:   "tls cert path",
-			Value:   defaultTLSCert,
-			EnvVars: prefixEnvVars("TLS_CERT"),
+			Name:     prefixFunc(TLSCertFlagName),
+			Usage:    "tls cert path",
+			Value:    defaultTLSCert,
+			EnvVars:  prefixEnvVars("TLS_CERT"),
+			Category: category,
 		},
 		&cli.StringFlag{
-			Name:    prefixFunc(TLSKeyFlagName),
-			Usage:   "tls key",
-			Value:   defaultTLSKey,
-			EnvVars: prefixEnvVars("TLS_KEY"),
+			Name:     prefixFunc(TLSKeyFlagName),
+			Usage:    "tls key",
+			Value:    defaultTLSKey,
+			EnvVars:  prefixEnvVars("TLS_KEY"),
+			Category: category,
 		},
 	}
 }

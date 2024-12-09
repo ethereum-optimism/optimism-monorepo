@@ -10,8 +10,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
-import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
+import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
+import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 
 contract OptimismPortalInterop_Test is CommonTest {
     /// @notice Marked virtual to be overridden in

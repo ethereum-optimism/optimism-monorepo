@@ -67,5 +67,5 @@ func validConfig() *Config {
 		panic(err)
 	}
 	// Should be valid using only the required arguments passed in via the constructor.
-	return NewConfig([]string{"http://localhost:8545"}, depSet, "./supervisor_testdir")
+	return NewConfig("http://localhost:8545", []string{"http://localhost:8545"}, depSet, "./supervisor_testdir")
 }

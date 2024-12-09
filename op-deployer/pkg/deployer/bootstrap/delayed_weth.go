@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/urfave/cli/v2"
 )
 
@@ -34,6 +35,7 @@ type DelayedWETHConfig struct {
 	PrivateKey       string
 	Logger           log.Logger
 	ArtifactsLocator *artifacts2.Locator
+	DelayedWethImpl  common.Address
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -69,6 +71,7 @@ func DelayedWETHCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	outfile := cliCtx.String(OutfileFlagName)
 	config, err := NewDelayedWETHConfigFromClI(cliCtx, l)
 	if err != nil {
 		return err
@@ -76,7 +79,15 @@ func DelayedWETHCLI(cliCtx *cli.Context) error {
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return DelayedWETH(ctx, config)
+	dwo, err := DelayedWETH(ctx, config)
+	if err != nil {
+		return fmt.Errorf("failed to deploy DelayedWETH: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(dwo, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+	return nil
 }
 
 func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETHConfig, error) {
@@ -87,18 +98,21 @@ func NewDelayedWETHConfigFromClI(cliCtx *cli.Context, l log.Logger) (DelayedWETH
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
 		return DelayedWETHConfig{}, fmt.Errorf("failed to parse artifacts URL: %w", err)
 	}
+	delayedWethImpl := common.HexToAddress(cliCtx.String(DelayedWethImplFlagName))
 	config := DelayedWETHConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
+		DelayedWethImpl:  delayedWethImpl,
 	}
 	return config, nil
 }
 
-func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
+func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) (opcm.DeployDelayedWETHOutput, error) {
+	var dwo opcm.DeployDelayedWETHOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for DelayedWETH: %w", err)
+		return dwo, fmt.Errorf("invalid config for DelayedWETH: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -108,7 +122,7 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 
 	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return dwo, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
@@ -118,30 +132,26 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dwo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
+		return dwo, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 	chainIDU64 := chainID.Uint64()
 
 	superCfg, err := standard.SuperchainFor(chainIDU64)
 	if err != nil {
-		return fmt.Errorf("error getting superchain config: %w", err)
-	}
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
+		return dwo, fmt.Errorf("error getting superchain config: %w", err)
 	}
 	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
 	if err != nil {
-		return fmt.Errorf("error getting superchain proxy admin: %w", err)
+		return dwo, fmt.Errorf("error getting superchain proxy admin: %w", err)
 	}
 	delayedWethOwner, err := standard.SystemOwnerAddrFor(chainIDU64)
 	if err != nil {
-		return fmt.Errorf("error getting superchain system owner: %w", err)
+		return dwo, fmt.Errorf("error getting superchain system owner: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -155,24 +165,25 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return dwo, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
+		return dwo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1RPC,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return dwo, fmt.Errorf("failed to create script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {
@@ -185,29 +196,25 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) error {
 
 	superchainConfigAddr := common.Address(*superCfg.Config.SuperchainConfigAddr)
 
-	dwo, err := opcm.DeployDelayedWETH(
+	dwo, err = opcm.DeployDelayedWETH(
 		host,
 		opcm.DeployDelayedWETHInput{
 			Release:               release,
-			StandardVersionsToml:  standardVersionsTOML,
 			ProxyAdmin:            proxyAdmin,
 			SuperchainConfigProxy: superchainConfigAddr,
+			DelayedWethImpl:       cfg.DelayedWethImpl,
 			DelayedWethOwner:      delayedWethOwner,
 			DelayedWethDelay:      big.NewInt(604800),
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying DelayedWETH: %w", err)
+		return dwo, fmt.Errorf("error deploying DelayedWETH: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return dwo, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
 	lgr.Info("deployed DelayedWETH")
-
-	if err := jsonutil.WriteJSON(dwo, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-	return nil
+	return dwo, nil
 }

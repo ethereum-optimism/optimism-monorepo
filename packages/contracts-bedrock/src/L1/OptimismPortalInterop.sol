@@ -10,7 +10,7 @@ import { Constants } from "src/libraries/Constants.sol";
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortalInterop
@@ -26,9 +26,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
         OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds, _sharedLockbox)
     { }
 
-    /// @custom:semver +interop-beta.4
+    /// @custom:semver +interop-beta.5
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.4");
+        return string.concat(super.version(), "+interop-beta.5");
     }
 
     /// @notice Sets static configuration options for the L2 system.

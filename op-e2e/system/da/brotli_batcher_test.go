@@ -43,7 +43,7 @@ func setupAliceAccount(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 	require.NoError(t, err)
 	mintAmount := big.NewInt(1_000_000_000_000)
 	opts.Value = mintAmount
-	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, func(l2Opts *helpers.DepositTxOpts) {})
+	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, nil)
 
 	// Confirm balance
 	ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)

@@ -3,7 +3,7 @@
 set -eu
 
 # Run this with workdir set as root of the repo
-if [ -f "../versions.json" ]; then
+if [ -f "../mise.toml" ]; then
     echo "Running create-chains script."
 else
     echo "Cannot run create-chains script, must be in interop-devnet dir, but currently in:"

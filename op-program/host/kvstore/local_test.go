@@ -7,6 +7,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
@@ -15,6 +16,7 @@ import (
 
 func TestLocalPreimageSource(t *testing.T) {
 	cfg := &config.Config{
+		L2ChainID:          86,
 		Rollup:             chaincfg.OPSepolia(),
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
@@ -32,7 +34,7 @@ func TestLocalPreimageSource(t *testing.T) {
 		{"L2OutputRoot", l2OutputRootKey, cfg.L2OutputRoot.Bytes()},
 		{"L2Claim", l2ClaimKey, cfg.L2Claim.Bytes()},
 		{"L2ClaimBlockNumber", l2ClaimBlockNumberKey, binary.BigEndian.AppendUint64(nil, cfg.L2ClaimBlockNumber)},
-		{"L2ChainID", l2ChainIDKey, binary.BigEndian.AppendUint64(nil, cfg.L2ChainConfig.ChainID.Uint64())},
+		{"L2ChainID", l2ChainIDKey, binary.BigEndian.AppendUint64(nil, 86)},
 		{"Rollup", rollupKey, nil},             // Only available for custom chain configs
 		{"ChainConfig", l2ChainConfigKey, nil}, // Only available for custom chain configs
 		{"Unknown", preimage.LocalIndexKey(1000).PreimageKey(), nil},
@@ -52,13 +54,13 @@ func TestLocalPreimageSource(t *testing.T) {
 
 func TestGetCustomChainConfigPreimages(t *testing.T) {
 	cfg := &config.Config{
-		Rollup:              chaincfg.OPSepolia(),
-		IsCustomChainConfig: true,
-		L1Head:              common.HexToHash("0x1111"),
-		L2OutputRoot:        common.HexToHash("0x2222"),
-		L2Claim:             common.HexToHash("0x3333"),
-		L2ClaimBlockNumber:  1234,
-		L2ChainConfig:       params.SepoliaChainConfig,
+		Rollup:             chaincfg.OPSepolia(),
+		L2ChainID:          client.CustomChainIDIndicator,
+		L1Head:             common.HexToHash("0x1111"),
+		L2OutputRoot:       common.HexToHash("0x2222"),
+		L2Claim:            common.HexToHash("0x3333"),
+		L2ClaimBlockNumber: 1234,
+		L2ChainConfig:      params.SepoliaChainConfig,
 	}
 	source := NewLocalPreimageSource(cfg)
 	actualRollup, err := source.Get(rollupKey)

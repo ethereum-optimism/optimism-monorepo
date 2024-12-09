@@ -8,7 +8,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 import { SafeCall } from "src/libraries/SafeCall.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @dev An enum representing the status of a DA challenge.
 enum ChallengeStatus {
@@ -95,8 +95,8 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     event BalanceChanged(address account, uint256 balance);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.3
-    string public constant version = "1.0.1-beta.3";
+    /// @custom:semver 1.0.1-beta.4
+    string public constant version = "1.0.1-beta.4";
 
     /// @notice The fixed cost of resolving a challenge.
     /// @dev The value is estimated by measuring the cost of resolving with `bytes(0)`

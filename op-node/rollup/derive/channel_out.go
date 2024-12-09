@@ -8,6 +8,7 @@ import (
 	"io"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -275,7 +276,7 @@ func ForceCloseTxData(frames []Frame) ([]byte, error) {
 	}
 
 	var out bytes.Buffer
-	out.WriteByte(DerivationVersion0)
+	out.WriteByte(params.DerivationVersion0)
 
 	if !closed {
 		f := Frame{

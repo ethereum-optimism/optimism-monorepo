@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
@@ -163,15 +164,15 @@ func TestRejectExecAndServerMode(t *testing.T) {
 	require.ErrorIs(t, err, ErrNoExecInServerMode)
 }
 
-func TestIsCustomChainConfig(t *testing.T) {
+func TestCustomL2ChainID(t *testing.T) {
 	t.Run("nonCustom", func(t *testing.T) {
 		cfg := validConfig()
-		require.Equal(t, cfg.IsCustomChainConfig, false)
+		require.Equal(t, cfg.L2ChainID, validL2Genesis.ChainID.Uint64())
 	})
 	t.Run("custom", func(t *testing.T) {
 		customChainConfig := &params.ChainConfig{ChainID: big.NewInt(0x1212121212)}
 		cfg := NewConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
-		require.Equal(t, cfg.IsCustomChainConfig, true)
+		require.Equal(t, cfg.L2ChainID, client.CustomChainIDIndicator)
 	})
 
 }

@@ -12,8 +12,8 @@ import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Storage } from "src/libraries/Storage.sol";
 
 // Interfaces
-import { IOptimismPortalInterop as IOptimismPortal } from "src/L1/interfaces/IOptimismPortalInterop.sol";
-import { ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
+import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title SystemConfigInterop
@@ -29,9 +29,9 @@ contract SystemConfigInterop is SystemConfig {
     /// @notice The address of the SuperchainConfig contract.
     address public immutable SUPERCHAIN_CONFIG;
 
-    /// @custom:semver +interop-beta.6
+    /// @custom:semver +interop-beta.7
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.6");
+        return string.concat(super.version(), "+interop-beta.7");
     }
 
     /// @notice Constructs the SystemConfig contract.

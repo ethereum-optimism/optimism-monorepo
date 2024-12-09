@@ -6,7 +6,7 @@ import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
 // Target contract
-import { IL1ChugSplashProxy } from "src/legacy/interfaces/IL1ChugSplashProxy.sol";
+import { IL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract Owner {

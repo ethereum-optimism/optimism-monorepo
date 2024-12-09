@@ -84,18 +84,18 @@ rules:
     pattern-regex: function\s+\w+\s*\(\s*([^)]*?\b\w+\s+(?!_)(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+\s*(?=,|\)))
     paths:
       exclude:
-        - packages/contracts-bedrock/src/universal/interfaces/IOptimismMintableERC721.sol
-        - packages/contracts-bedrock/src/universal/interfaces/IWETH98.sol
-        - packages/contracts-bedrock/src/dispute/interfaces/IDelayedWETH.sol
+        - packages/contracts-bedrock/interfaces/universal/IOptimismMintableERC721.sol
+        - packages/contracts-bedrock/interfaces/universal/IWETH98.sol
+        - packages/contracts-bedrock/interfaces/dispute/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
         - packages/contracts-bedrock/scripts/interfaces/IGnosisSafe.sol
-        - packages/contracts-bedrock/src/universal/interfaces/IWETH.sol
+        - packages/contracts-bedrock/interfaces/universal/IWETH.sol
         - packages/contracts-bedrock/src/universal/WETH98.sol
-        - packages/contracts-bedrock/src/L2/interfaces/ISuperchainWETH.sol
+        - packages/contracts-bedrock/interfaces/L2/ISuperchainWETH.sol
         - packages/contracts-bedrock/src/L2/SuperchainWETH.sol
-        - packages/contracts-bedrock/src/governance/interfaces/IGovernanceToken.sol
+        - packages/contracts-bedrock/interfaces/governance/IGovernanceToken.sol
         - packages/contracts-bedrock/src/governance/GovernanceToken.sol
 
   - id: sol-style-return-arg-fmt
@@ -105,13 +105,13 @@ rules:
     pattern-regex: returns\s*(\w+\s*)?\(\s*([^)]*?\b\w+\s+(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+(?<!_)\s*(?=,|\)))
     paths:
       exclude:
-        - packages/contracts-bedrock/src/dispute/interfaces/IDelayedWETH.sol
+        - packages/contracts-bedrock/interfaces/dispute/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test/safe-tools
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
         - packages/contracts-bedrock/scripts/interfaces/IGnosisSafe.sol
-        - packages/contracts-bedrock/src/dispute/interfaces/IPermissionedDisputeGame.sol
-        - packages/contracts-bedrock/src/dispute/interfaces/IFaultDisputeGame.sol
+        - packages/contracts-bedrock/interfaces/dispute/IPermissionedDisputeGame.sol
+        - packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
 
   - id: sol-style-doc-comment
     languages: [solidity]

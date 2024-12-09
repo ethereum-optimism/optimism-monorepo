@@ -8,6 +8,7 @@ src = 'src'
 out = 'forge-artifacts'
 script = 'scripts'
 build_info_path = 'artifacts/build-info'
+snapshots = 'notarealpath' # workaround for foundry#9477
 
 optimizer = true
 optimizer_runs = 999999
@@ -15,7 +16,7 @@ optimizer_runs = 999999
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
 bytecode_hash = 'none'
 ast = true
-evm_version = "cancun"
+evm_version = 'cancun'
 
 remappings = [
   '@openzeppelin/contracts-upgradeable/=lib/openzeppelin-contracts-upgradeable/contracts',
@@ -29,7 +30,8 @@ remappings = [
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
-  'gelato/=lib/automate/contracts'
+  'gelato/=lib/automate/contracts',
+  'interfaces/=interfaces'
 ]
 
 fs_permissions = [
@@ -70,9 +72,23 @@ wrap_comments=true
 ################################################################
 
 [profile.ci.fuzz]
-runs = 512
+runs = 128
 
 [profile.ci.invariant]
+runs = 64
+depth = 32
+
+################################################################
+#                     PROFILE: CICOVERAGE                      #
+################################################################
+
+[profile.cicoverage]
+optimizer = false
+
+[profile.cicoverage.fuzz]
+runs = 512
+
+[profile.cicoverage.invariant]
 runs = 256
 depth = 32
 
@@ -82,10 +98,12 @@ depth = 32
 
 [profile.ciheavy.fuzz]
 runs = 20000
+timeout = 300
 
 [profile.ciheavy.invariant]
 runs = 128
 depth = 512
+timeout = 300
 
 ################################################################
 #                         PROFILE: LITE                        #

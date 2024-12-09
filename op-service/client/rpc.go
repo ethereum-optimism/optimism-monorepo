@@ -152,16 +152,20 @@ func dialRPCClientWithBackoff(ctx context.Context, log log.Logger, addr string, 
 		bOff = retry.Fixed(cfg.fixedDialBackoff)
 	}
 	return retry.Do(ctx, cfg.backoffAttempts, bOff, func() (*rpc.Client, error) {
-		if !IsURLAvailable(ctx, addr) {
-			log.Warn("failed to dial address, but may connect later", "addr", addr)
-			return nil, fmt.Errorf("address unavailable (%s)", addr)
-		}
-		client, err := rpc.DialOptions(ctx, addr, cfg.gethRPCOptions...)
-		if err != nil {
-			return nil, fmt.Errorf("failed to dial address (%s): %w", addr, err)
-		}
-		return client, nil
+		return CheckAndDial(ctx, log, addr, cfg.gethRPCOptions...)
 	})
+}
+
+func CheckAndDial(ctx context.Context, log log.Logger, addr string, options ...rpc.ClientOption) (*rpc.Client, error) {
+	if !IsURLAvailable(ctx, addr) {
+		log.Warn("failed to dial address, but may connect later", "addr", addr)
+		return nil, fmt.Errorf("address unavailable (%s)", addr)
+	}
+	client, err := rpc.DialOptions(ctx, addr, options...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial address (%s): %w", addr, err)
+	}
+	return client, nil
 }
 
 func IsURLAvailable(ctx context.Context, address string) bool {

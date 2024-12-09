@@ -7,9 +7,9 @@ import { TransientContext, TransientReentrancyAware } from "src/libraries/Transi
 import { SafeCall } from "src/libraries/SafeCall.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IDependencySet } from "src/L2/interfaces/IDependencySet.sol";
-import { IL1BlockInterop } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
+import { IL1BlockInterop } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @notice Thrown when the caller is not DEPOSITOR_ACCOUNT when calling `setInteropStart()`
 error NotDepositor();
@@ -76,8 +76,8 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     address internal constant DEPOSITOR_ACCOUNT = 0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.10
-    string public constant version = "1.0.0-beta.10";
+    /// @custom:semver 1.0.0-beta.11
+    string public constant version = "1.0.0-beta.11";
 
     /// @notice Emitted when a cross chain message is being executed.
     /// @param msgHash Hash of message payload being executed.

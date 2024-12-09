@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
 library MIPS64Arch {
     uint64 internal constant WORD_SIZE = 64;

@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
-	"github.com/ethereum-optimism/optimism/op-chain-ops/script/forking"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -75,6 +73,7 @@ func AsteriscCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
+	outfile := cliCtx.String(OutfileFlagName)
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
@@ -87,18 +86,27 @@ func AsteriscCLI(cliCtx *cli.Context) error {
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return Asterisc(ctx, AsteriscConfig{
+	dao, err := Asterisc(ctx, AsteriscConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
 		ArtifactsLocator: artifactsLocator,
 		PreimageOracle:   preimageOracle,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to deploy Asterisc: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(dao, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+	return nil
 }
 
-func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
+func Asterisc(ctx context.Context, cfg AsteriscConfig) (opcm.DeployAsteriscOutput, error) {
+	var dao opcm.DeployAsteriscOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for Asterisc: %w", err)
+		return dao, fmt.Errorf("invalid config for Asterisc: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -108,7 +116,7 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 
 	artifactsFS, cleanup, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return dao, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
@@ -118,12 +126,12 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 
 	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dao, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
+		return dao, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -137,49 +145,40 @@ func Asterisc(ctx context.Context, cfg AsteriscConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return dao, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
 	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dao, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
 
-	l1Host, err := env.DefaultScriptHost(
+	l1Host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
-		script.WithForkHook(func(cfg *script.ForkConfig) (forking.ForkSource, error) {
-			src, err := forking.RPCSourceByNumber(cfg.URLOrAlias, l1RPC, *cfg.BlockNumber)
-			if err != nil {
-				return nil, fmt.Errorf("failed to create RPC fork source: %w", err)
-			}
-			return forking.Cache(src), nil
-		}),
+		l1RPC,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return dao, fmt.Errorf("failed to create script host: %w", err)
 	}
 
-	dgo, err := opcm.DeployAsterisc(
+	dao, err = opcm.DeployAsterisc(
 		l1Host,
 		opcm.DeployAsteriscInput{
 			PreimageOracle: cfg.PreimageOracle,
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying asterisc VM: %w", err)
+		return dao, fmt.Errorf("error deploying asterisc VM: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return dao, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
 	lgr.Info("deployed asterisc VM")
-
-	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-	return nil
+	return dao, nil
 }

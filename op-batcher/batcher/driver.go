@@ -114,7 +114,8 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	state *channelManager
+	state         *channelManager
+	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
@@ -241,28 +242,21 @@ func (l *BatchSubmitter) StopBatchSubmitting(ctx context.Context) error {
 	return nil
 }
 
-// loadBlocksIntoState loads all blocks since the previous stored block
-// It does the following:
-//  1. Fetch the sync status of the sequencer
-//  2. Check if the sync status is valid or if we are all the way up to date
-//  3. Check if it needs to initialize state OR it is lagging (todo: lagging just means race condition?)
-//  4. Load all new blocks into the local state.
-//  5. Dequeue blocks from local state which are now safe.
-//
-// If there is a reorg, it will reset the last stored block but not clear the internal state so
-// the state can be flushed to L1.
-func (l *BatchSubmitter) loadBlocksIntoState(syncStatus eth.SyncStatus, ctx context.Context) error {
-	start, end, err := l.calculateL2BlockRangeToStore(syncStatus)
-	if err != nil {
-		l.Log.Warn("Error calculating L2 block range", "err", err)
-		return err
-	} else if start.Number >= end.Number {
-		return errors.New("start number is >= end number")
+// loadBlocksIntoState loads the blocks between start and end (inclusive).
+// If there is a reorg, it will return an error.
+func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uint64) error {
+	if end < start {
+		return fmt.Errorf("start number is > end number %d,%d", start, end)
+	}
+
+	// we don't want to print it in the 1-block case as `loadBlockIntoState` already does
+	if end > start {
+		l.Log.Info("Loading range of multiple blocks into state", "start", start, "end", end)
 	}
 
 	var latestBlock *types.Block
 	// Add all blocks to "state"
-	for i := start.Number + 1; i < end.Number+1; i++ {
+	for i := start; i <= end; i++ {
 		block, err := l.loadBlockIntoState(ctx, i)
 		if errors.Is(err, ErrReorg) {
 			l.Log.Warn("Found L2 reorg", "block_number", i)
@@ -358,34 +352,6 @@ func (l *BatchSubmitter) getSyncStatus(ctx context.Context) (*eth.SyncStatus, er
 	return syncStatus, nil
 }
 
-// calculateL2BlockRangeToStore determines the range (start,end] that should be loaded into the local state.
-func (l *BatchSubmitter) calculateL2BlockRangeToStore(syncStatus eth.SyncStatus) (eth.BlockID, eth.BlockID, error) {
-	if syncStatus.HeadL1 == (eth.L1BlockRef{}) {
-		return eth.BlockID{}, eth.BlockID{}, errors.New("empty sync status")
-	}
-	// Check if we should even attempt to load any blocks. TODO: May not need this check
-	if syncStatus.SafeL2.Number >= syncStatus.UnsafeL2.Number {
-		return eth.BlockID{}, eth.BlockID{}, fmt.Errorf("L2 safe head(%d) >= L2 unsafe head(%d)", syncStatus.SafeL2.Number, syncStatus.UnsafeL2.Number)
-	}
-
-	lastStoredBlock := l.state.LastStoredBlock()
-	start := lastStoredBlock
-	end := syncStatus.UnsafeL2.ID()
-
-	// Check last stored block to see if it is empty or has lagged behind.
-	// It lagging implies that the op-node processed some batches that
-	// were submitted prior to the current instance of the batcher being alive.
-	if lastStoredBlock == (eth.BlockID{}) {
-		l.Log.Info("Resuming batch-submitter work at safe-head", "safe", syncStatus.SafeL2)
-		start = syncStatus.SafeL2.ID()
-	} else if lastStoredBlock.Number < syncStatus.SafeL2.Number {
-		l.Log.Warn("Last stored block lagged behind L2 safe head: batch submission will continue from the safe head now", "last", lastStoredBlock, "safe", syncStatus.SafeL2)
-		start = syncStatus.SafeL2.ID()
-	}
-
-	return start, end, nil
-}
-
 // The following things occur:
 // New L2 block (reorg or not)
 // L1 transaction is confirmed
@@ -464,24 +430,41 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			l.state.pruneSafeBlocks(syncStatus.SafeL2)
-			l.state.pruneChannels(syncStatus.SafeL2)
+			// Decide appropriate actions
+			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
 
-			err = l.state.CheckExpectedProgress(*syncStatus)
-			if err != nil {
-				l.Log.Warn("error checking expected progress, clearing state and waiting for node sync", "err", err)
-				l.waitNodeSyncAndClearState()
+			if outOfSync {
+				// If the sequencer is out of sync
+				// do nothing and wait to see if it has
+				// got in sync on the next tick.
+				l.Log.Warn("Sequencer is out of sync, retrying next tick.")
 				continue
 			}
 
-			if err := l.loadBlocksIntoState(*syncStatus, l.shutdownCtx); errors.Is(err, ErrReorg) {
-				l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
-				l.waitNodeSyncAndClearState()
-				continue
+			l.prevCurrentL1 = syncStatus.CurrentL1
+
+			// Manage existing state / garbage collection
+			if syncActions.clearState != nil {
+				l.state.Clear(*syncActions.clearState)
+			} else {
+				l.state.pruneSafeBlocks(syncActions.blocksToPrune)
+				l.state.pruneChannels(syncActions.channelsToPrune)
+			}
+
+			if syncActions.blocksToLoad != nil {
+				// Get fresh unsafe blocks
+				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
+					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
+					l.waitNodeSyncAndClearState()
+					continue
+				}
 			}
 
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-ctx.Done():
+			if err := queue.Wait(); err != nil {
+				l.Log.Error("error waiting for transactions to complete", "err", err)
+			}
 			l.Log.Warn("main loop returning")
 			return
 		}
@@ -779,12 +762,14 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 		if err != nil {
 			// Don't log context cancelled events because they are expected,
 			// and can happen after tests complete which causes a panic.
-			if !errors.Is(err, context.Canceled) {
+			if errors.Is(err, context.Canceled) {
+				l.recordFailedDARequest(txdata.ID(), nil)
+			} else {
 				l.Log.Error("Failed to post input to Alt DA", "error", err)
+				// requeue frame if we fail to post to the DA Provider so it can be retried
+				// note: this assumes that the da server caches requests, otherwise it might lead to resubmissions of the blobs
+				l.recordFailedDARequest(txdata.ID(), err)
 			}
-			// requeue frame if we fail to post to the DA Provider so it can be retried
-			// note: this assumes that the da server caches requests, otherwise it might lead to resubmissions of the blobs
-			l.recordFailedDARequest(txdata.ID(), err)
 			return nil
 		}
 		l.Log.Info("Set altda input", "commitment", comm, "tx", txdata.ID())

@@ -10,7 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 
 // CrossDomainMessenger_Test is for testing functionality which is common to both the L1 and L2
 // CrossDomainMessenger contracts. For simplicity, we use the L1 Messenger as the test contract.
@@ -30,8 +30,11 @@ contract CrossDomainMessenger_BaseGas_Test is CommonTest {
     ///         or equal to the minimum gas limit value on the OptimismPortal.
     ///         This guarantees that the messengers will always pass sufficient
     ///         gas to the OptimismPortal.
-    function testFuzz_baseGas_portalMinGasLimit_succeeds(bytes memory _data, uint32 _minGasLimit) external view {
-        vm.assume(_data.length <= type(uint64).max);
+    function testFuzz_baseGas_portalMinGasLimit_succeeds(bytes calldata _data, uint32 _minGasLimit) external view {
+        if (_data.length > type(uint64).max) {
+            _data = _data[0:type(uint64).max];
+        }
+
         uint64 baseGas = l1CrossDomainMessenger.baseGas(_data, _minGasLimit);
         uint64 minGasLimit = optimismPortal.minimumGasLimit(uint64(_data.length));
         assertTrue(baseGas >= minGasLimit);

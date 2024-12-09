@@ -26,7 +26,7 @@ contract TransientContextTest is Test {
     /// @notice Tests that `increment()` increments the call depth.
     /// @param _startingCallDepth Starting call depth.
     function testFuzz_increment_succeeds(uint256 _startingCallDepth) public {
-        vm.assume(_startingCallDepth < type(uint256).max);
+        _startingCallDepth = bound(_startingCallDepth, 0, type(uint256).max - 1);
         assembly ("memory-safe") {
             tstore(sload(callDepthSlot.slot), _startingCallDepth)
         }
@@ -39,7 +39,7 @@ contract TransientContextTest is Test {
     /// @notice Tests that `decrement()` decrements the call depth.
     /// @param _startingCallDepth Starting call depth.
     function testFuzz_decrement_succeeds(uint256 _startingCallDepth) public {
-        vm.assume(_startingCallDepth > 0);
+        _startingCallDepth = bound(_startingCallDepth, 1, type(uint256).max);
         assembly ("memory-safe") {
             tstore(sload(callDepthSlot.slot), _startingCallDepth)
         }
@@ -144,7 +144,7 @@ contract TransientReentrancyAwareTest is TransientContextTest, TransientReentran
     /// @param _slot      Slot to test.
     /// @param _value     Value to test.
     function testFuzz_reentrantAware_succeeds(uint256 _callDepth, bytes32 _slot, uint256 _value) public {
-        vm.assume(_callDepth < type(uint256).max);
+        _callDepth = bound(_callDepth, 0, type(uint256).max - 1);
         assembly ("memory-safe") {
             tstore(sload(callDepthSlot.slot), _callDepth)
         }
@@ -172,7 +172,7 @@ contract TransientReentrancyAwareTest is TransientContextTest, TransientReentran
     )
         public
     {
-        vm.assume(_callDepth < type(uint256).max - 1);
+        _callDepth = bound(_callDepth, 0, type(uint256).max - 2);
         assembly ("memory-safe") {
             tstore(sload(callDepthSlot.slot), _callDepth)
         }

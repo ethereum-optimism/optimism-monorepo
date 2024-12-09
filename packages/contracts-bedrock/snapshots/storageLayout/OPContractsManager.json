@@ -7,24 +7,17 @@
     "type": "string"
   },
   {
-    "bytes": "32",
-    "label": "systemConfigs",
-    "offset": 0,
-    "slot": "1",
-    "type": "mapping(uint256 => contract ISystemConfig)"
-  },
-  {
     "bytes": "256",
     "label": "blueprint",
     "offset": 0,
-    "slot": "2",
+    "slot": "1",
     "type": "struct OPContractsManager.Blueprints"
   },
   {
     "bytes": "288",
     "label": "implementation",
     "offset": 0,
-    "slot": "10",
+    "slot": "9",
     "type": "struct OPContractsManager.Implementations"
   }
 ]
