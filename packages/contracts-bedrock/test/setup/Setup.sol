@@ -156,9 +156,7 @@ contract Setup {
         console.log("Setup: completed L1 deployment, registering addresses now");
 
         optimismPortal = IOptimismPortal(deploy.mustGetAddress("OptimismPortalProxy"));
-        // NOTE: For some reason this is causing an infinite loop!? If I uncomment it the node just prints
-        // eth_getStorageAt for 10 minutes straight until I kill the process.
-        // optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
+        optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
         disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
         systemConfig = ISystemConfig(deploy.mustGetAddress("SystemConfigProxy"));
