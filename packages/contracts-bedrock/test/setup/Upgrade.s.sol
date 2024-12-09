@@ -15,7 +15,10 @@ import { Constants } from "src/libraries/Constants.sol";
 import { GameTypes } from "src/dispute/lib/Types.sol";
 
 // Interfaces
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 
 /// @title Upgrade
 /// @notice A script to read superchain configs and save relevant addresses
@@ -30,50 +33,67 @@ contract Upgrade is Deployer {
         string memory superchainToml = vm.readFile(string.concat(superchainPath, "superchain.toml"));
         string memory opToml = vm.readFile(string.concat(superchainPath, "op.toml"));
 
-        // Continue with saving addresses
-        saveProxyAndImpl("SuperchainConfig", vm.parseTomlAddress(superchainToml, ".superchain_config_addr"));
-        saveProxyAndImpl("ProtocolVersions", vm.parseTomlAddress(superchainToml, ".protocol_versions_addr"));
+        // Superchain shared contracts
+        saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
+        saveProxyAndImpl("ProtocolVersions", superchainToml, ".protocol_versions_addr");
+        save("OPContractsManager", vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
 
-        saveProxyAndImpl("OptimismPortal", vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy"));
-        save("OptimismPortal2", vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy"));
+        // Core contracts
+        save("ProxyAdmin", vm.parseTomlAddress(opToml, ".addresses.ProxyAdmin"));
+        saveProxyAndImpl("SystemConfig", opToml, ".addresses.SystemConfigProxy");
 
-        saveProxyAndImpl(
-            "L1CrossDomainMessenger", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy")
+        // Bridge contracts
+        address optimismPortal = vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy");
+        save("OptimismPortalProxy", optimismPortal);
+        save(
+            "OptimismPortal", address(uint160(uint256(vm.load(optimismPortal, Constants.PROXY_IMPLEMENTATION_ADDRESS))))
         );
-        saveProxyAndImpl(
-            "OptimismMintableERC20Factory", vm.parseTomlAddress(opToml, ".addresses.OptimismMintableERC20FactoryProxy")
-        );
-        saveProxyAndImpl("SystemConfig", vm.parseTomlAddress(opToml, ".addresses.SystemConfigProxy"));
-        saveProxyAndImpl("L1StandardBridge", vm.parseTomlAddress(opToml, ".addresses.L1StandardBridgeProxy"));
-        saveProxyAndImpl("L1ERC721Bridge", vm.parseTomlAddress(opToml, ".addresses.L1ERC721BridgeProxy"));
+        save("OptimismPortal2", optimismPortal);
+        address addressManager = vm.parseTomlAddress(opToml, ".addresses.AddressManager");
+        save("AddressManager", addressManager);
+        save("L1CrossDomainMessenger", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger"));
+        save("L1CrossDomainMessengerProxy", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy"));
 
+        saveProxyAndImpl("OptimismMintableERC20Factory", opToml, ".addresses.OptimismMintableERC20FactoryProxy");
+        saveProxyAndImpl("L1StandardBridge", opToml, ".addresses.L1StandardBridgeProxy");
+        saveProxyAndImpl("L1ERC721Bridge", opToml, ".addresses.L1ERC721BridgeProxy");
+
+        // Fault proof non-proxied contracts
         save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
         save("Mips", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
-        save("ProxyAdmin", vm.parseTomlAddress(opToml, ".addresses.ProxyAdmin"));
-        save("AddressManager", vm.parseTomlAddress(opToml, ".addresses.AddressManager"));
 
-        saveProxyAndImpl("AnchorStateRegistryProxy", vm.parseTomlAddress(opToml, ".addresses.AnchorStateRegistryProxy"));
-        saveProxyAndImpl("DisputeGameFactory", vm.parseTomlAddress(opToml, ".addresses.DisputeGameFactoryProxy"));
+        // Fault proof proxied contracts
+        saveProxyAndImpl("AnchorStateRegistry", opToml, ".addresses.AnchorStateRegistryProxy");
+        saveProxyAndImpl("DisputeGameFactory", opToml, ".addresses.DisputeGameFactoryProxy");
+        saveProxyAndImpl("DelayedWETH", opToml, ".addresses.DelayedWETHProxy");
 
-        save(
-            "FaultDisputeGame",
-            address(IDisputeGameFactory(mustGetAddress("DisputeGameFactory")).gameImpls(GameTypes.PERMISSIONED_CANNON))
-        );
-        // TODO: Where do we get the OPContractsManager address from?
-        // save("OPContractsManager", x);
+        // The DisputeGame
+        IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
+        save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
 
-        // TODO: The superchain-registry doesn't seem to differentiate between Permissioned and Permissionless
-        // DelayedWETH. In the case of op mainnet, it's Permissionless.
-        // So we need to determine how to save the PermissionedDelayedWETHProxy and PermissionedDisputeGame
-        // addresses, or if we can skip them.
-        saveProxyAndImpl("DelayedWETH", vm.parseTomlAddress(opToml, ".addresses.DelayedWETHProxy"));
+        // The PermissionedDisputeGame and PermissionedDelayedWETHProxy are not listed in the registry for OP, so we
+        // look it up onchain
+        IFaultDisputeGame permissionedDisputeGame =
+            IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
+        save("PermissionedDisputeGame", address(permissionedDisputeGame));
+        save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
     }
 
-    /// @notice Saves the proxy and implementation addresses for a given proxy contract
-    /// @param implName The name to save the implementation address under
-    /// @param proxyAddr The address of the proxy contract
-    function saveProxyAndImpl(string memory implName, address proxyAddr) internal {
-        save(string.concat(implName, "Proxy"), proxyAddr);
-        save(implName, address(uint160(uint256(vm.load(proxyAddr, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
+    /// @notice Saves the proxy and implementation addresses for a contract name
+    /// @param _contractName The name of the contract to save
+    /// @param _tomlPath The path to the superchain config file
+    /// @param _tomlKey The key in the superchain config file to get the proxy address
+    function saveProxyAndImpl(string memory _contractName, string memory _tomlPath, string memory _tomlKey) internal {
+        address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
+        save(string.concat(_contractName, "Proxy"), proxy);
+        save(_contractName, address(uint160(uint256(vm.load(proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
+    }
+
+    /// @notice Saves the proxy and implementation addresses for a given proxy contract address
+    /// @param _contractName The name of the contract to save
+    /// @param _proxy The proxy contract address
+    function saveProxyAndImpl(string memory _contractName, address _proxy) internal {
+        save(string.concat(_contractName, "Proxy"), _proxy);
+        save(_contractName, address(uint160(uint256(vm.load(_proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
     }
 }
