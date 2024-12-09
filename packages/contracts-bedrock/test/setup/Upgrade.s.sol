@@ -21,17 +21,25 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 
 /// @title Upgrade
-/// @notice A script to read superchain configs and save relevant addresses
-
+/// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
+///         alternative to Deploy.s.sol, when `UPGRADE_TEST=true` is set in the env.
+///         Like Deploy.s.sol this script saves the system addresses to disk so that they can be read into memory later
+///         on, however rather than deploying new contracts from the local source code, it simply reads the addresses
+///         from the superchain-registry.
+///         Therefore this script can only be run against a fork of a production network which is listed in the
+///         superchain-registry.
 contract Upgrade is Deployer {
     using stdJson for string;
 
-    /// @notice Deploy all of the L1 contracts necessary for a full Superchain with a single Op Chain.
+    string superchainBasePath = "./lib/superchain-registry/superchain/configs/";
+    string forkBaseChain = "mainnet";
+    string forkOpChain = "op";
+
+    /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
     function run() public {
         // Read the superchain config files
-        string memory superchainPath = "./lib/superchain-registry/superchain/configs/mainnet/";
-        string memory superchainToml = vm.readFile(string.concat(superchainPath, "superchain.toml"));
-        string memory opToml = vm.readFile(string.concat(superchainPath, "op.toml"));
+        string memory superchainToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/superchain.toml"));
+        string memory opToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/", forkOpChain, ".toml"));
 
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
