@@ -36,6 +36,12 @@ func main() {
 				fmt.Printf("Proxied contract %s has an initializer that was not disabled in the constructor\n", path)
 				os.Exit(1)
 			}
+
+			if !checkIfInitializeHasExternalAndInitializerModifiers(&artifact.Ast) {
+				fmt.Printf("Proxied contract %s has an initialize function that does not have external and/or initializer modifiers\n", path)
+				os.Exit(1)
+			}
+
 			fmt.Println("✅", strings.TrimSuffix(filepath.Base(path), ".json"))
 		}
 	}
@@ -81,4 +87,33 @@ func checkIfInitializerWasDisabledInConstructor(ast *solc.Ast) bool {
 	}
 
 	return false
+}
+
+func checkIfInitializeHasExternalAndInitializerModifiers(ast *solc.Ast) bool {
+	// has external and initializer modifiers and there's only one initialize function
+	var pass bool = false
+	var foundInitialize bool = false
+
+	for _, node := range ast.Nodes {
+		if node.NodeType == "ContractDefinition" {
+			for _, _node_ := range node.Nodes {
+				if _node_.NodeType == "FunctionDefinition" && _node_.Name == "initialize" {
+					if foundInitialize {
+						return false
+					}
+
+					if _node_.Visibility == "external" {
+						for _, modifier := range _node_.Modifiers {
+							if modifier.ModifierName.Name == "initializer" {
+								pass = true
+								foundInitialize = true
+							}
+						}
+					}
+				}
+			}
+		}
+	}
+
+	return pass
 }

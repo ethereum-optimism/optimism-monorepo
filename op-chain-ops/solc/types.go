@@ -158,6 +158,8 @@ type AstNode struct {
 	StateMutability  string            `json:"stateMutability,omitempty"`
 	Virtual          bool              `json:"virtual,omitempty"`
 	Visibility       string            `json:"visibility,omitempty"`
+	Modifiers        []AstNode         `json:"modifiers,omitempty"`
+	ModifierName     *AstNode          `json:"modifierName,omitempty"`
 
 	// Variable specific
 	Constant         bool                 `json:"constant,omitempty"`
