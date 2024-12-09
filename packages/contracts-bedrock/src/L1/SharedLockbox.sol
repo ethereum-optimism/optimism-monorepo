@@ -1,9 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { Unauthorized, Paused } from "src/libraries/errors/CommonErrors.sol";
 
 /// @custom:proxied true

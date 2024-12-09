@@ -9,7 +9,7 @@ import { Unauthorized, Paused as PausedError } from "src/libraries/errors/Common
 import { SharedLockbox } from "src/L1/SharedLockbox.sol";
 
 // Interfaces
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 
 contract SharedLockboxTest is CommonTest {
     event ETHLocked(address indexed portal, uint256 amount);

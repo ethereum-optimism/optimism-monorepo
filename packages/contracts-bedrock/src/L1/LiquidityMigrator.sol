@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { ISharedLockbox } from "./interfaces/ISharedLockbox.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 /// @custom:proxied true
 /// @title LiquidityMigrator

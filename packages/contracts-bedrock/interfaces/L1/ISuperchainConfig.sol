@@ -1,8 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { IDependencySet } from "src/L2/interfaces/IDependencySet.sol";
-import { ISharedLockbox } from "src/L1/interfaces/ISharedLockbox.sol";
+import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 interface ISuperchainConfig is IDependencySet {
     enum UpdateType {

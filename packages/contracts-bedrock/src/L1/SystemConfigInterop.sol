@@ -29,9 +29,9 @@ contract SystemConfigInterop is SystemConfig {
     /// @notice The address of the SuperchainConfig contract.
     address public immutable SUPERCHAIN_CONFIG;
 
-    /// @custom:semver +interop-beta.6
+    /// @custom:semver +interop-beta.7
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.6");
+        return string.concat(super.version(), "+interop-beta.7");
     }
 
     /// @notice Constructs the SystemConfig contract.

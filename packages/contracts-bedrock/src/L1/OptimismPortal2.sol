@@ -186,9 +186,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.7
+    /// @custom:semver 3.11.0-beta.8
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.7";
+        return "3.11.0-beta.8";
     }
 
     /// @notice Constructs the OptimismPortal contract.
