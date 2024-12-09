@@ -28,6 +28,7 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 ///         from the superchain-registry.
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
+///         This contract must not have constructor logic because it is set into state using `etch`.
 contract Upgrade is Deployer {
     using stdJson for string;
 
@@ -61,24 +62,20 @@ contract Upgrade is Deployer {
         save("AddressManager", addressManager);
         save("L1CrossDomainMessenger", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger"));
         save("L1CrossDomainMessengerProxy", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy"));
-
         saveProxyAndImpl("OptimismMintableERC20Factory", opToml, ".addresses.OptimismMintableERC20FactoryProxy");
         saveProxyAndImpl("L1StandardBridge", opToml, ".addresses.L1StandardBridgeProxy");
         saveProxyAndImpl("L1ERC721Bridge", opToml, ".addresses.L1ERC721BridgeProxy");
-
-        // Fault proof non-proxied contracts
-        save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
-        save("Mips", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
 
         // Fault proof proxied contracts
         saveProxyAndImpl("AnchorStateRegistry", opToml, ".addresses.AnchorStateRegistryProxy");
         saveProxyAndImpl("DisputeGameFactory", opToml, ".addresses.DisputeGameFactoryProxy");
         saveProxyAndImpl("DelayedWETH", opToml, ".addresses.DelayedWETHProxy");
 
-        // The DisputeGame
+        // Fault proof non-proxied contracts
+        save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
+        save("Mips", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
         IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
-
         // The PermissionedDisputeGame and PermissionedDelayedWETHProxy are not listed in the registry for OP, so we
         // look it up onchain
         IFaultDisputeGame permissionedDisputeGame =
