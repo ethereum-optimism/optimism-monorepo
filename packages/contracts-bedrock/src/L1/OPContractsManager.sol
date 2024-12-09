@@ -393,8 +393,8 @@ contract OPContractsManager is ISemver {
 
     /// @notice Helper method for computing a salt that's used in CREATE2 deployments.
     /// Including the contract name ensures that the resultant address from CREATE2 is unique
-    /// across out smart conract system. For example, we deploy multiple proxy contracts
-    /// in a single deployment.
+    /// across our smart contract system. For example, we deploy multiple proxy contracts
+    /// with the same bytecode from this contract, so they need different salts to avoid an address collision
     function computeSalt(
         uint256 _l2ChainId,
         string memory _saltMixer,
