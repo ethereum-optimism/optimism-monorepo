@@ -2,13 +2,10 @@
 pragma solidity ^0.8.0;
 
 // Testing
-import { VmSafe } from "forge-std/Vm.sol";
-import { console2 as console } from "forge-std/console2.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
-import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
@@ -92,13 +89,5 @@ contract Upgrade is Deployer {
         address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
         save(string.concat(_contractName, "Proxy"), proxy);
         save(_contractName, address(uint160(uint256(vm.load(proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
-    }
-
-    /// @notice Saves the proxy and implementation addresses for a given proxy contract address
-    /// @param _contractName The name of the contract to save
-    /// @param _proxy The proxy contract address
-    function saveProxyAndImpl(string memory _contractName, address _proxy) internal {
-        save(string.concat(_contractName, "Proxy"), _proxy);
-        save(_contractName, address(uint160(uint256(vm.load(_proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
     }
 }

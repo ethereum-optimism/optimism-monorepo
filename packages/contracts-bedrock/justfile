@@ -65,8 +65,7 @@ anvil-stop:
   pkill -9 anvil
 
 # Runs upgrade path variant of contract tests.
-# Requires a mainnet fork of anvil listening on :8545 or $FORK_RPC_URL
-#    anvil --fork-url $MAINNET_RPC_URL
+# Requires a mainnet fork of anvil listening on :8546
 test-upgrade *ARGS: build-go-ffi anvil-fork && anvil-stop
   UPGRADE_TEST=true forge test {{ARGS}}
 
