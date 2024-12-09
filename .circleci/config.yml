@@ -129,6 +129,14 @@ commands:
             # of the -j parameter, which speeds it up a lot.
             git submodule update --init --recursive --force -j 8
           working_directory: packages/contracts-bedrock
+      - run:
+          name: Verify mise dependencies
+          command: |
+            if command -v mise &> /dev/null; then
+              mise install
+            else
+              echo "mise not found, skipping"
+            fi
 
   notify-failures-on-develop:
     description: "Notify Slack"
