@@ -801,8 +801,18 @@ jobs:
           if: ${{ uses_artifacts }}
       - run:
           name: Fuzz
-          command: make fuzz
+          command: |
+            make fuzz
           working_directory: "<<parameters.package_name>>"
+      - run:
+          name: Copy fuzz artifacts
+          command: |
+            mkdir -p fuzzdata
+            find ./<<parameters.package_name>> -type d -name "fuzz" -exec sh -c 'cp -r "{}"/* fuzzdata/ 2>/dev/null || true' \;
+          when: always
+      - store_artifacts:
+          path: ./fuzzdata
+          when: always
 
   go-lint:
     machine: true
