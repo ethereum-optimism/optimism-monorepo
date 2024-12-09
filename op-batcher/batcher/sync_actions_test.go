@@ -286,7 +286,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
-			require.Equal(t, tc.expected, result, "unexpected actions, %v")
+			require.Equal(t, tc.expected, result, "unexpected actions")
 			require.Equal(t, tc.expectedSeqOutOfSync, outOfSync)
 			if tc.expectedLogs == nil {
 				require.Empty(t, h.Logs, "expected no logs but found some", "logs", h.Logs)
