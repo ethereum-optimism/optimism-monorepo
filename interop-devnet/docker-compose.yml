@@ -162,6 +162,7 @@ services:
       --interop.supervisor=http://op-supervisor:8545
       --interop.rpc.addr=0.0.0.0
       --interop.rpc.port=9645
+      --interop.jwt-secret=/config/jwt-secret.txt
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
@@ -216,6 +217,7 @@ services:
       --interop.supervisor=http://op-supervisor:8545
       --interop.rpc.addr=0.0.0.0
       --interop.rpc.port=9645
+      --interop.jwt-secret=/config/jwt-secret.txt
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
