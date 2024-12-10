@@ -608,32 +608,6 @@ jobs:
             docker pull $image_name || exit 1
             docker run $image_name <<parameters.op_component>> --version || exit 1
 
-  contracts-bedrock-coverage:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
-    steps:
-      - checkout
-      - install-contracts-dependencies
-      - check-changed:
-          patterns: contracts-bedrock,op-node
-      - run:
-          name: print forge version
-          command: forge --version
-          working_directory: packages/contracts-bedrock
-      # We do not use the pre-built contracts becuase forge coverage uses different optimizer settings
-      - run:
-          name: test and generate coverage
-          command: just coverage-lcov
-          no_output_timeout: 18m
-          environment:
-            FOUNDRY_PROFILE: cicoverage
-          working_directory: packages/contracts-bedrock
-      - codecov/upload:
-          disable_search: true
-          files: ./packages/contracts-bedrock/lcov.info
-          flags: contracts-bedrock-tests
-
   contracts-bedrock-tests:
     machine: true
     resource_class: ethereum-optimism/latitude-1
@@ -641,18 +615,14 @@ jobs:
       test_list:
         description: List of test files to run
         type: string
-      test_fuzz_runs:
-        description: Number of fuzz runs to apply
-        type: integer
-        default: 512
-      test_invariant_runs:
-        description: Number of invariant runs to apply
-        type: integer
-        default: 32
-      test_invariant_depth:
-        description: Depth of invariant runs
-        type: integer
-        default: 64
+      test_command:
+        description: Test command to execute (test or coverage)
+        type: string
+        default: test
+      test_flags:
+        description: Additional flags to pass to the test command
+        type: string
+        default: ""
       test_timeout:
         description: Timeout for running tests
         type: string
@@ -699,7 +669,7 @@ jobs:
             TEST_FILES=$(echo "$TEST_FILES" | circleci tests split --split-by=timings)
             TEST_FILES=$(echo "$TEST_FILES" | sed 's|^test/||')
             MATCH_PATH="./test/{$(echo "$TEST_FILES" | paste -sd "," -)}"
-            forge test --match-path "$MATCH_PATH"
+            forge <<parameters.test_command>> <<parameters.test_flags>> --match-path "$MATCH_PATH"
           environment:
             FOUNDRY_PROFILE: <<parameters.test_profile>>
           working_directory: packages/contracts-bedrock
@@ -715,6 +685,14 @@ jobs:
           name: Lint forge test names
           command: just lint-forge-tests-check-no-build
           working_directory: packages/contracts-bedrock
+      - when:
+          condition:
+            equal: ["<<parameters.test_command>>", "coverage"]
+          steps:
+            - codecov/upload:
+                disable_search: true
+                files: ./packages/contracts-bedrock/lcov.info
+                flags: contracts-bedrock-tests
       - save_cache:
           name: Save Go build cache
           key: golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
@@ -1214,9 +1192,6 @@ workflows:
           name: contracts-bedrock-build
           # Build with just core + script contracts.
           build_args: --deny-warnings --skip test
-      - contracts-bedrock-build:
-          name: contracts-bedrock-build-coverage
-          profile: cicoverage
       - check-kontrol-build:
           requires:
             - contracts-bedrock-build
@@ -1234,6 +1209,14 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
+      - contracts-bedrock-tests:
+          # Generate coverage reports.
+          name: contracts-bedrock-coverage
+          test_list: find test -name "*.t.sol"
+          test_command: coverage
+          test_flags: --report lcov
+          test_timeout: 1h
+          test_profile: cicoverage
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
@@ -1479,17 +1462,6 @@ workflows:
             [true, <<pipeline.parameters.publish_contract_artifacts_dispatch>>]
     jobs:
       - publish-contract-artifacts
-
-  develop-forge-coverage:
-    when:
-      and:
-        - or:
-            - equal: ["develop", <<pipeline.git.branch>>]
-            - equal: [true, <<pipeline.parameters.contracts_coverage_dispatch>>]
-        - not:
-            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
-    jobs:
-      - contracts-bedrock-coverage
 
   develop-fault-proofs:
     when:
