@@ -114,8 +114,9 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	channelMgr    *channelManager
-	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
+	channelMgrMutex sync.Mutex
+	channelMgr      *channelManager
+	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
@@ -387,6 +388,48 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 	l.txpoolMutex.Unlock()
 }
 
+// executeSyncActions computes the actions to take based on the current sync status, and then executes
+// them, updating the channel manager state and sending transactions to the DA layer.
+func (l *BatchSubmitter) executeSyncActions(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+	// Lock the state to prevent any changes while we're computing sync actions
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
+
+	blocks := l.channelMgr.blocks
+	channels := l.channelMgr.channelQueue
+	// Decide appropriate actions
+	syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, blocks, channels, l.Log)
+
+	if outOfSync {
+		// If the sequencer is out of sync
+		// do nothing and wait to see if it has
+		// got in sync on the next tick.
+		l.Log.Warn("Sequencer is out of sync, retrying next tick.")
+		return
+	}
+
+	l.prevCurrentL1 = syncStatus.CurrentL1
+
+	// Manage existing state / garbage collection
+	if syncActions.clearState != nil {
+		l.channelMgr.Clear(*syncActions.clearState)
+	} else {
+		l.channelMgr.pruneSafeBlocks(syncActions.blocksToPrune)
+		l.channelMgr.pruneChannels(syncActions.channelsToPrune)
+	}
+
+	if syncActions.blocksToLoad != nil {
+		// Get fresh unsafe blocks
+		if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
+			l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
+			l.waitNodeSyncAndClearState()
+			return
+		}
+	}
+
+	l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
+}
+
 // mainLoop periodically:
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
@@ -430,43 +473,8 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			// Lock the state to prevent any changes while we're computing sync actions
-			l.channelMgr.mu.Lock()
-			blocks := l.channelMgr.blocks
-			channels := l.channelMgr.channelQueue
-			l.channelMgr.mu.Unlock()
+			l.executeSyncActions(syncStatus, queue, receiptsCh, daGroup)
 
-			// Decide appropriate actions
-			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, blocks, channels, l.Log)
-
-			if outOfSync {
-				// If the sequencer is out of sync
-				// do nothing and wait to see if it has
-				// got in sync on the next tick.
-				l.Log.Warn("Sequencer is out of sync, retrying next tick.")
-				continue
-			}
-
-			l.prevCurrentL1 = syncStatus.CurrentL1
-
-			// Manage existing state / garbage collection
-			if syncActions.clearState != nil {
-				l.channelMgr.Clear(*syncActions.clearState)
-			} else {
-				l.channelMgr.pruneSafeBlocks(syncActions.blocksToPrune)
-				l.channelMgr.pruneChannels(syncActions.channelsToPrune)
-			}
-
-			if syncActions.blocksToLoad != nil {
-				// Get fresh unsafe blocks
-				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
-					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
-					l.waitNodeSyncAndClearState()
-					continue
-				}
-			}
-
-			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 		case <-ctx.Done():
 			if err := queue.Wait(); err != nil {
 				l.Log.Error("error waiting for transactions to complete", "err", err)
@@ -880,11 +888,15 @@ func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
 }
 
 func (l *BatchSubmitter) recordFailedTx(id txID, err error) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	l.Log.Warn("Transaction failed to send", logFields(id, err)...)
 	l.channelMgr.TxFailed(id)
 }
 
 func (l *BatchSubmitter) recordConfirmedTx(id txID, receipt *types.Receipt) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	l.Log.Info("Transaction confirmed", logFields(id, receipt)...)
 	l1block := eth.ReceiptBlockID(receipt)
 	l.channelMgr.TxConfirmed(id, l1block)
