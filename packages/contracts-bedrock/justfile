@@ -58,7 +58,7 @@ test-dev *ARGS: build-go-ffi
 
 # Starts a local anvil node with a mainnet fork and sends it to the background
 anvil-fork:
-  anvil --silent --fork-url $MAINNET_RPC_URL --port 8546 &
+  anvil --silent --fork-url $ETH_RPC_URL --port 8546 &
 
 # Stops the local anvil node
 anvil-fork-stop:
