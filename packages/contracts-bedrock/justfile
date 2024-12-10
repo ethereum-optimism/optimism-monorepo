@@ -15,12 +15,19 @@ dep-status:
 #                         BUILD                        #
 ########################################################
 
-# Core forge build command
+# Core forge build command.
 forge-build:
   forge build
 
+# Developer build command (faster).
+forge-build-dev:
+  FOUNDRY_PROFILE=lite forge build
+
 # Builds the contracts.
 build: lint-fix-no-fail forge-build interfaces-check-no-build
+
+# Builds the contracts (developer mode).
+build-dev: lint-fix-no-fail forge-build-dev interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
@@ -45,9 +52,17 @@ clean:
 test *ARGS: build-go-ffi
   forge test {{ARGS}}
 
+# Runs standard contract tests (developer mode).
+test-dev *ARGS: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test {{ARGS}}
+
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
   forge test --rerun -vvv
+
+# Runs standard contract tests with rerun flag (developer mode).
+test-dev-rerun: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test --rerun -vvv
 
 # Run Kontrol tests and build all dependencies.
 test-kontrol: build-go-ffi build kontrol-summary-full test-kontrol-no-build
