@@ -76,7 +76,7 @@ During leadership transfer, we need to determine:
 
 #### Which block hash we want to start sequencing on the sequencer candidate (i.e. what is the canonical chain head?)
 
-To decide the canonical chain head, we will implement a FSM inside raft consensus protocol that stores the head unsafe block payloads.
+To decide the canonical chain head, we will implement an FSM inside raft consensus protocol that stores the head unsafe block payloads.
 
 However, we still need to deal with some edge cases which is illustrated in the diagram below:
 
