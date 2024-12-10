@@ -10,6 +10,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { GameTypes } from "src/dispute/lib/Types.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
@@ -100,7 +101,7 @@ contract Upgrade is Deployer {
     function saveProxyAndImpl(string memory _contractName, string memory _tomlPath, string memory _tomlKey) internal {
         address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
         save(string.concat(_contractName, "Proxy"), proxy);
-        address impl = address(uint160(uint256(vm.load(proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS))));
+        address impl = EIP1967Helper.getImplementation(proxy);
         require(impl != address(0), "Upgrade: Implementation address is zero");
         save(_contractName, impl);
     }
