@@ -40,6 +40,7 @@ type Server struct {
 	tls            *ServerTLSConfig
 	middlewares    []Middleware
 	rpcServer      *rpc.Server
+	handlers       map[string]http.Handler
 }
 
 type ServerTLSConfig struct {
@@ -147,6 +148,7 @@ func NewServer(host string, port int, appVersion string, opts ...ServerOption) *
 		},
 		log:       log.Root(),
 		rpcServer: rpc.NewServer(),
+		handlers:  make(map[string]http.Handler),
 	}
 	for _, opt := range opts {
 		opt(bs)
@@ -170,6 +172,14 @@ func (b *Server) Endpoint() string {
 
 func (b *Server) AddAPI(api rpc.API) {
 	b.apis = append(b.apis, api)
+}
+
+// AddHandler adds a custom http.Handler to the server, mapped to an absolute path
+func (b *Server) AddHandler(path string, handler http.Handler) {
+	if !strings.HasPrefix(path, "/") {
+		path = "/" + path
+	}
+	b.handlers[path] = handler
 }
 
 func (b *Server) Start() error {
@@ -207,6 +217,9 @@ func (b *Server) Start() error {
 	handler = optls.NewPeerTLSMiddleware(handler)
 	handler = opmetrics.NewHTTPRecordingMiddleware(b.httpRecorder, handler)
 	handler = oplog.NewLoggingMiddleware(b.log, handler)
+
+	// Add custom handlers
+	handler = b.newUserHandlersMiddleware(handler)
 
 	b.httpServer.Handler = handler
 
@@ -272,6 +285,18 @@ func (b *Server) newWsMiddleWare(next http.Handler) http.Handler {
 		if isWebsocket(r) && (r.URL.Path == "/" || r.URL.Path == "/ws" || r.URL.Path == "/ws/") {
 			wsHandler.ServeHTTP(w, r)
 			return
+		}
+		next.ServeHTTP(w, r)
+	})
+}
+
+func (b *Server) newUserHandlersMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		for path, handler := range b.handlers {
+			if strings.HasPrefix(r.URL.Path, path) {
+				handler.ServeHTTP(w, r)
+				return
+			}
 		}
 		next.ServeHTTP(w, r)
 	})
