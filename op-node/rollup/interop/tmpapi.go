@@ -2,6 +2,7 @@ package interop
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -40,7 +41,7 @@ func (s *TemporaryInteropServer) Start() error {
 }
 
 func (s *TemporaryInteropServer) Endpoint() string {
-	return s.srv.Endpoint()
+	return fmt.Sprintf("http://%s", s.srv.Endpoint())
 }
 
 func (s *TemporaryInteropServer) Close() error {
