@@ -61,7 +61,7 @@ anvil-fork:
   anvil --silent --fork-url $MAINNET_RPC_URL --port 8546
 
 # Stops the local anvil node
-anvil-stop:
+anvil-fork-stop:
   pkill -9 anvil
 
 # Runs upgrade path variant of contract tests.

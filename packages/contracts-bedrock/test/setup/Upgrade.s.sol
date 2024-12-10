@@ -29,15 +29,27 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 contract Upgrade is Deployer {
     using stdJson for string;
 
+    /// @notice Returns the base chain name to use for forking
+    /// @return The base chain name as a string
+    function upgradeBaseChain() internal view returns (string memory) {
+        return vm.envOr("UPGRADE_BASE_CHAIN", "mainnet");
+    }
+
+    /// @notice Returns the OP chain name to use for forking
+    /// @return The OP chain name as a string
+    function upgradeOpChain() internal view returns (string memory) {
+        return vm.envOr("UPGRADE_OP_CHAIN", "op");
+    }
+
     /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
     function run() public {
         string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
-        string memory forkBaseChain = "mainnet";
-        string memory forkOpChain = "op";
 
         // Read the superchain config files
-        string memory superchainToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/superchain.toml"));
-        string memory opToml = vm.readFile(string.concat(superchainBasePath, forkBaseChain, "/", forkOpChain, ".toml"));
+        string memory superchainToml =
+            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain, "/superchain.toml"));
+        string memory opToml =
+            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain, "/", upgradeOpChain, ".toml"));
 
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
@@ -88,6 +100,8 @@ contract Upgrade is Deployer {
     function saveProxyAndImpl(string memory _contractName, string memory _tomlPath, string memory _tomlKey) internal {
         address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
         save(string.concat(_contractName, "Proxy"), proxy);
-        save(_contractName, address(uint160(uint256(vm.load(proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS)))));
+        address impl = address(uint160(uint256(vm.load(proxy, Constants.PROXY_IMPLEMENTATION_ADDRESS))));
+        require(impl != address(0), "Upgrade: Implementation address is zero");
+        save(_contractName, impl);
     }
 }
