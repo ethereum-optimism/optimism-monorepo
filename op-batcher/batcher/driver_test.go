@@ -2,6 +2,7 @@ package batcher
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
 	"fmt"
 	"math/big"
@@ -20,6 +21,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/pingcap/failpoint"
 	"github.com/stretchr/testify/require"
 )
 
@@ -296,8 +298,67 @@ func TestBatchSubmitter_AltDA_FailureCase2_FailedL1Tx(t *testing.T) {
 	require.Equal(t, uint64(4), fakeTxMgr.Nonce)
 }
 
-func TestBatchSubmitter_AltDA_FailureCase3_ChannelTimeout(t *testing.T) {
-	// TODO: implement this test
+// FailpointTest, which can't be run normally, because it requires failpoint to be enabled.
+// Run it via `just test-failpoint` from the op-batcher directory.
+func TestBatchSubmitter_AltDA_FailureCase3_ChannelTimeout_FailpointTest(t *testing.T) {
+	t.Parallel()
+
+	// // Failpoint injects code in channel.isTimedOut to return true 50% of the time, for up to 4 times.
+	err := failpoint.Enable("github.com/ethereum-optimism/optimism/op-batcher/batcher/channel.isTimedOut", "50%4*return(true)")
+	require.NoError(t, err)
+	t.Cleanup(func() {
+		_ = failpoint.Disable("github.com/ethereum-optimism/optimism/op-batcher/batcher/channel.isTimedOut")
+	})
+
+	log := testlog.Logger(t, log.LevelInfo)
+	bs, ep, mockAltDAClient, fakeTxMgr := altDASetup(t, log)
+	L1Block0 := types.NewBlock(&types.Header{
+		Number: big.NewInt(0),
+	}, nil, nil, nil)
+	L1Block0Ref := eth.L1BlockRef{
+		Hash:   L1Block0.Hash(),
+		Number: L1Block0.NumberU64(),
+	}
+	// We return incremental syncStatuses to force the op-batcher to entirely process each L2 block one by one.
+	// To test multi channel behavior, we could return a sync status that is multiple blocks ahead of the current L2 block.
+	// Removing the first 3 mock calls and only always returning a syncStatus on block 4 makes the batcher load all 4 blocks at once,
+	// and send them in parallel. However, the current channel timeout logic is not robust to this: https://github.com/ethereum-optimism/optimism/issues/13283
+	// TODO: After that issue is fixed, we can remove the first 3 mock calls here to test with more concurrent channels.
+	ep.rollupClient.Mock.On("SyncStatus").Times(10).Return(fakeSyncStatus(1, L1Block0Ref), nil)
+	ep.rollupClient.Mock.On("SyncStatus").Times(10).Return(fakeSyncStatus(2, L1Block0Ref), nil)
+	ep.rollupClient.Mock.On("SyncStatus").Times(10).Return(fakeSyncStatus(3, L1Block0Ref), nil)
+	ep.rollupClient.Mock.On("SyncStatus").Return(fakeSyncStatus(4, L1Block0Ref), nil)
+
+	L2Block0 := newMiniL2BlockWithNumberParent(1, big.NewInt(0), common.HexToHash("0x0"))
+	L2Block1 := newMiniL2BlockWithNumberParent(1, big.NewInt(1), L2Block0.Hash())
+	L2Block2 := newMiniL2BlockWithNumberParent(1, big.NewInt(2), L2Block1.Hash())
+	L2Block3 := newMiniL2BlockWithNumberParent(1, big.NewInt(3), L2Block2.Hash())
+	L2Block4 := newMiniL2BlockWithNumberParent(1, big.NewInt(4), L2Block3.Hash())
+
+	// L2block0 is the genesis block which is considered safe, so never loaded into the state.
+	ep.ethClient.Mock.On("BlockByNumber", big.NewInt(1)).Once().Return(L2Block1, nil)
+	ep.ethClient.Mock.On("BlockByNumber", big.NewInt(2)).Once().Return(L2Block2, nil)
+	ep.ethClient.Mock.On("BlockByNumber", big.NewInt(3)).Once().Return(L2Block3, nil)
+	ep.ethClient.Mock.On("BlockByNumber", big.NewInt(4)).Once().Return(L2Block4, nil)
+
+	err = bs.StartBatchSubmitting()
+	require.NoError(t, err)
+	time.Sleep(1 * time.Second) // 1 second is enough to process all blocks at 10ms poll interval
+	err = bs.StopBatchSubmitting(context.Background())
+	require.NoError(t, err)
+
+	log.Info("Number of commitments stored by the mockAltDAClient", "StoreCount", mockAltDAClient.StoreCount)
+	for i, txData := range fakeTxMgr.SuccessfullySentTxData {
+		// the mockAltDAClient uses counting commitments which take the last 2 bytes (bigEndian uint16),
+		// and the op-batcher adds the first 2 bytes for the version_byte and commitment_type.
+		// See https://specs.optimism.io/experimental/alt-da.html#input-commitment-submission
+		require.Equal(t, 4, len(txData))
+		// This is a very naive test, because we only check that the requests received by the fakeAltDAClient are sent to L1 in order.
+		// But this is neither necessary not sufficient. It works right now because the frames are sent in order to the altDAClient (see TODO above).
+		// But ultimately it is the frames that need to be sent in order, not the random commitment counts generate by the fakeAltDAClient.
+		// TODO: we should prob take the commitment and retrieve the frames from the fakeAltDAClient, and check that those were received in order somehow.
+		require.Equal(t, binary.BigEndian.Uint16(txData[2:4]), uint16(i), "altda commitments should be sent to L1 in order.")
+	}
 }
 
 func TestBatchSubmitter_AltDA_FailureCase4_FailedBlobSubmission(t *testing.T) {

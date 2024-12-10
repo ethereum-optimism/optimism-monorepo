@@ -23,6 +23,7 @@ just = "1.37.0"
 "go:github.com/vektra/mockery/v2" = "2.46.0"
 "go:github.com/golangci/golangci-lint/cmd/golangci-lint" = "1.61.0"
 "go:github.com/mikefarah/yq/v4" = "4.44.3"
+"go:github.com/pingcap/failpoint/failpoint-toolexec" = "v0.0.0-20240528011301-b51a646c7c86"
 
 # Python dependencies
 "pipx:slither-analyzer" = "0.10.2"
