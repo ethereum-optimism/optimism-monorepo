@@ -5,7 +5,6 @@ import (
 	"math/big"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -22,7 +21,7 @@ type TemporaryInteropServer struct {
 }
 
 func NewTemporaryInteropServer(host string, port int, eng Engine) *TemporaryInteropServer {
-	interopAPI := &TemporaryInteropAPI{eng: eng}
+	interopAPI := &TemporaryInteropAPI{Eng: eng}
 
 	srv := rpc.NewServer(host, port, "v0.0.1",
 		rpc.WithAPIs([]gethrpc.API{
@@ -55,20 +54,20 @@ type Engine interface {
 }
 
 type TemporaryInteropAPI struct {
-	eng Engine
+	Eng Engine
 }
 
-func (ib *TemporaryInteropAPI) FetchReceipts(ctx context.Context, id eth.BlockID) (types.Receipts, error) {
-	_, receipts, err := ib.eng.FetchReceipts(ctx, id.Hash)
+func (ib *TemporaryInteropAPI) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
+	_, receipts, err := ib.Eng.FetchReceipts(ctx, blockHash)
 	return receipts, err
 }
 
-func (ib *TemporaryInteropAPI) BlockRefByNumber(ctx context.Context, num hexutil.Uint64) (eth.BlockRef, error) {
-	return ib.eng.BlockRefByNumber(ctx, uint64(num))
+func (ib *TemporaryInteropAPI) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
+	return ib.Eng.BlockRefByNumber(ctx, num)
 }
 
 func (ib *TemporaryInteropAPI) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
-	v, err := ib.eng.ChainID(ctx)
+	v, err := ib.Eng.ChainID(ctx)
 	if err != nil {
 		return supervisortypes.ChainID{}, err
 	}

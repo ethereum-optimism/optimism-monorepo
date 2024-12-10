@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
@@ -109,12 +109,12 @@ func (ib *InteropAPI) TryDeriveNext(ctx context.Context, nextL1 eth.BlockRef) er
 	return nil
 }
 
-func (ib *InteropAPI) FetchReceipts(ctx context.Context, id eth.BlockID) (types.Receipts, error) {
+func (ib *InteropAPI) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
 	// TODO use execution engine to fetch the receipts
 	return nil, nil
 }
 
-func (ib *InteropAPI) BlockRefByNumber(ctx context.Context, num hexutil.Uint64) (eth.BlockRef, error) {
+func (ib *InteropAPI) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
 	return eth.BlockRef{}, nil
 }
 

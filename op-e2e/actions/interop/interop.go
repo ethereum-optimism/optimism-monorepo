@@ -27,6 +27,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -110,7 +111,7 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"], supervisorAPI)
 	// Hook up L2 RPCs to supervisor, to fetch event data from
 	srcA := chainA.Sequencer.InteropSyncSource(is.T)
-	srcB := chainA.Sequencer.InteropSyncSource(is.T)
+	srcB := chainB.Sequencer.InteropSyncSource(is.T)
 	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcA))
 	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcB))
 	return &InteropActors{
@@ -165,6 +166,7 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 		DependencySetSource:   depSet,
 		SynchronousProcessors: true,
 		Datadir:               supervisorDataDir,
+		SyncSources:           &syncsrc.CLISyncSources{}, // sources are added dynamically afterwards
 	}
 	b, err := backend.NewSupervisorBackend(t.Ctx(),
 		logger.New("role", "supervisor"), metrics.NoopMetrics, svCfg)

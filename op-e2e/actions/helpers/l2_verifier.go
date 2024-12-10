@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	gnode "github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -82,6 +84,10 @@ type L2API interface {
 	// GetProof returns a proof of the account, it may return a nil result without error if the address was not found.
 	GetProof(ctx context.Context, address common.Address, storage []common.Hash, blockTag string) (*eth.AccountResult, error)
 	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
+
+	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
+	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
+	ChainID(ctx context.Context) (*big.Int, error)
 }
 
 type safeDB interface {
@@ -186,6 +192,8 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 
 	if cfg.InteropTime != nil {
 		rollupNode.interopRPC = rpc.NewServer()
+		api := &interop.TemporaryInteropAPI{Eng: eng}
+		require.NoError(t, rollupNode.interopRPC.RegisterName("interop", api))
 		t.Cleanup(rollupNode.interopRPC.Stop)
 	}
 
