@@ -430,8 +430,14 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
+			// Lock the state to prevent any changes while we're computing sync actions
+			l.state.mu.Lock()
+			blocks := l.state.blocks
+			channels := l.state.channelQueue
+			l.state.mu.Unlock()
+
 			// Decide appropriate actions
-			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, blocks, channels, l.Log)
 
 			if outOfSync {
 				// If the sequencer is out of sync
