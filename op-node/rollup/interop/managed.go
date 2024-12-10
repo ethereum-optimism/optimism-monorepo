@@ -32,7 +32,7 @@ func (s *ManagedMode) AttachEmitter(em event.Emitter) {
 }
 
 func (s *ManagedMode) OnEvent(ev event.Event) bool {
-	// TODO: let all active subscriptions now
+	// TODO(#13336): let all active subscriptions now
 	return false
 }
 
@@ -51,7 +51,7 @@ func (s *ManagedMode) Start(ctx context.Context) error {
 }
 
 func (s *ManagedMode) Stop(ctx context.Context) error {
-	// TODO toggle closing state
+	// TODO(#13336): toggle closing state
 
 	// stop RPC server
 	if err := s.srv.Stop(); err != nil {
@@ -63,61 +63,63 @@ func (s *ManagedMode) Stop(ctx context.Context) error {
 }
 
 type InteropAPI struct {
-	// TODO event emitter handle
-	// TODO event await util
+	// TODO(#13336): event emitter handle
+	// TODO(#13336): event await util
 }
 
 func (ib *InteropAPI) SubscribeUnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
-	// TODO create subscription, and get new unsafe-block events to feed into it
+	// TODO(#13336): create subscription, and get new unsafe-block events to feed into it
 	return nil, nil
 }
 
 func (ib *InteropAPI) UpdateCrossUnsafe(ctx context.Context, ref eth.BlockRef) error {
-	// TODO cross-unsafe update -> fire event
-	// TODO await engine update or ctx timeout -> error maybe
+	// TODO(#13336): cross-unsafe update -> fire event
+	// TODO(#13336): await engine update or ctx timeout -> error maybe
 	return nil
 }
 
 func (ib *InteropAPI) UpdateCrossSafe(ctx context.Context, ref eth.BlockRef) error {
-	// TODO cross-safe update -> fire event
-	// TODO await forkchoice update or ctx timeout -> error maybe
+	// TODO(#13336): cross-safe update -> fire event
+	// TODO(#13336): await forkchoice update or ctx timeout -> error maybe
 	return nil
 }
 
 func (ib *InteropAPI) UpdateFinalized(ctx context.Context, ref eth.BlockRef) error {
-	// TODO finalized update -> fire event
-	// TODO await forkchoice update or ctx timeout -> error maybe
+	// TODO(#13336): finalized update -> fire event
+	// TODO(#13336): await forkchoice update or ctx timeout -> error maybe
 	return nil
 }
 
 func (ib *InteropAPI) AnchorPoint(ctx context.Context) (l1, l2 eth.BlockRef, err error) {
-	// TODO return genesis anchor point from rollup config
+	// TODO(#13336): return genesis anchor point from rollup config
 	return
 }
 
 func (ib *InteropAPI) Reset(ctx context.Context) error {
-	// TODO fire reset event
-	// TODO await reset-confirmed event or ctx timeout
+	// TODO(#13336): fire reset event
+	// TODO(#13336): await reset-confirmed event or ctx timeout
 	return nil
 }
 
 func (ib *InteropAPI) TryDeriveNext(ctx context.Context, nextL1 eth.BlockRef) error {
-	// TODO fire derivation step event
-	// TODO await deriver progress (L1 or L2 kind of progress) or ctx timeout
-	// TODO need to not auto-derive the next thing until next TryDeriveNext call: need to modify driver
-	// TODO return the L1 or L2 progress
+	// TODO(#13336): fire derivation step event
+	// TODO(#13336): await deriver progress (L1 or L2 kind of progress) or ctx timeout
+	// TODO(#13336): need to not auto-derive the next thing until next TryDeriveNext call: need to modify driver
+	// TODO(#13336): return the L1 or L2 progress
 	return nil
 }
 
 func (ib *InteropAPI) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
-	// TODO use execution engine to fetch the receipts
+	// TODO(#13336): use execution engine to fetch the receipts
 	return nil, nil
 }
 
 func (ib *InteropAPI) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
+	// (#13336): use execution engine to fetch block-ref by number
 	return eth.BlockRef{}, nil
 }
 
 func (ib *InteropAPI) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
+	// (#13336): fetch chain ID
 	return supervisortypes.ChainID{}, nil
 }

@@ -25,7 +25,7 @@ func (s *StandardMode) AttachEmitter(em event.Emitter) {
 }
 
 func (s *StandardMode) OnEvent(ev event.Event) bool {
-	// TODO: hook up to existing interop deriver
+	// TODO(#13337): hook up to existing interop deriver
 	return false
 }
 
@@ -35,7 +35,7 @@ func (s *StandardMode) Start(ctx context.Context) error {
 }
 
 func (s *StandardMode) Stop(ctx context.Context) error {
-	// TODO toggle closing state
+	// TODO(#13337) toggle closing state
 
 	s.log.Info("Interop sub-system stopped")
 	return s.cl.Stop(ctx)

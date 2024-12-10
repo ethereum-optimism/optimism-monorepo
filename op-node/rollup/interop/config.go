@@ -30,7 +30,7 @@ type Config struct {
 }
 
 func (cfg *Config) Check() error {
-	// TODO: temporary workaround needs both to be configured.
+	// TODO(#13338): temporary workaround needs both to be configured.
 	//if (cfg.SupervisorAddr == "") != (cfg.RPCAddr == "") {
 	//	return errors.New("must have either a supervisor RPC endpoint to follow, or interop RPC address to serve from")
 	//}

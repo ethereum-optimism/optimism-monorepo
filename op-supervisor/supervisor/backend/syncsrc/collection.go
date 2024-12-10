@@ -11,6 +11,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
 )
 
+// CLISyncSources is a bundle of CLI-specified (and thus stringified) sync-source options.
+// These sources can be loaded into SyncSourceSetup instances, to retrieve the active sync sources from.
 type CLISyncSources struct {
 	Endpoints      []string
 	JWTSecretPaths []string

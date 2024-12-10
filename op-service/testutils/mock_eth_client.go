@@ -103,15 +103,6 @@ func (m *MockEthClient) ExpectPayloadByLabel(label eth.BlockLabel, payload *eth.
 	m.Mock.On("PayloadByLabel", label).Once().Return(payload, err)
 }
 
-func (m *MockEthClient) FetchReceiptsOnly(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
-	out := m.Mock.Called(blockHash)
-	return out.Get(0).(types.Receipts), out.Error(1)
-}
-
-func (m *MockEthClient) ExpectFetchReceiptsOnly(hash common.Hash, receipts types.Receipts, err error) {
-	m.Mock.On("FetchReceiptsOnly", hash).Once().Return(receipts, err)
-}
-
 func (m *MockEthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
 	out := m.Mock.Called(blockHash)
 	return *out.Get(0).(*eth.BlockInfo), out.Get(1).(types.Receipts), out.Error(2)

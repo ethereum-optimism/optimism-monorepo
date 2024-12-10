@@ -13,6 +13,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
+// RPCDialSetup implements SyncSourceSetup by dialing an RPC
+// and providing an RPC-client binding to sync with.
 type RPCDialSetup struct {
 	JWTSecret eth.Bytes32
 	Endpoint  string

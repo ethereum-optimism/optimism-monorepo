@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
+// RPCSyncSource is an active RPC, wrapped with bindings, implementing the SyncSource interface.
 type RPCSyncSource struct {
 	name string
 	cl   client.RPC

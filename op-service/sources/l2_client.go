@@ -42,13 +42,13 @@ func L2ClientDefaultConfig(config *rollup.Config, trustRPC bool) *L2ClientConfig
 	}
 	return &L2ClientConfig{
 		EthClientConfig: EthClientConfig{
-			MaxRequestsPerBatch:   20, // TODO: tune batch param
-			MaxConcurrentRequests: 10,
 			// receipts and transactions are cached per block
 			ReceiptsCacheSize:     span,
 			TransactionsCacheSize: span,
 			HeadersCacheSize:      span,
 			PayloadsCacheSize:     span,
+			MaxRequestsPerBatch:   20, // TODO: tune batch param
+			MaxConcurrentRequests: 10,
 			BlockRefsCacheSize:    span,
 			TrustRPC:              trustRPC,
 			MustBePostMerge:       true,
