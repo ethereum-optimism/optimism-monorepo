@@ -12,7 +12,9 @@ contract InvariantTest is Test {
     Deploy internal constant deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
 
     function setUp() public virtual {
+        vm.allowCheatcodes(address(ffi));
         excludeContract(address(ffi));
+        vm.allowCheatcodes(address(deploy));
         excludeContract(address(deploy));
     }
 }

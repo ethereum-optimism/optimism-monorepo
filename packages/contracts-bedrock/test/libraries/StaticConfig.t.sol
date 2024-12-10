@@ -14,6 +14,7 @@ contract StaticConfig_Test is Test {
     function setUp() public {
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
         vm.label(address(ffi), "FFIInterface");
+        vm.allowCheatcodes(address(ffi));
     }
 
     /// @dev Tests set gas paying token encoding.

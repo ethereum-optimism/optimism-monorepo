@@ -12,6 +12,7 @@ contract MerkleTrie_get_Test is Test {
 
     function setUp() public {
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
+        vm.allowCheatcodes(address(ffi));
         vm.label(address(ffi), "FFIInterface");
     }
 
