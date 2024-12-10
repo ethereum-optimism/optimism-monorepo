@@ -40,18 +40,15 @@ contract SchemaRegistryTest is CommonTest {
     }
 
     // Basic functionality tests
-    function testRegisterSchema() public {
-        string memory schema = "bool like";
-        address resolver = address(0x123);
-        bool revocable = true;
+    function testRegisterSchema(string memory _schema, address _resolver, bool _revocable) public {
 
-        bytes32 uid = registry.register(schema, ISchemaResolver(resolver), revocable);
+        bytes32 uid = registry.register(_schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = registry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, schema);
-        assertEq(address(record.resolver), resolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.schema, _schema);
+        assertEq(address(record.resolver), _resolver);
+        assertEq(record.revocable, _revocable);
     }
 
     function testGetSchema() public {
