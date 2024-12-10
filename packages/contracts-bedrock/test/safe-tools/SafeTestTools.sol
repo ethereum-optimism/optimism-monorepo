@@ -89,6 +89,7 @@ library SafeTestLib {
         for (uint256 i; i < num; i++) {
             addrs[i] = Vm(VM_ADDR).addr(keys[i]);
             Vm(VM_ADDR).label(getAddr(keys[i]), string.concat(prefix, Vm(VM_ADDR).toString(i)));
+            Vm(VM_ADDR).deal(addrs[i], 100 ether);
         }
     }
 

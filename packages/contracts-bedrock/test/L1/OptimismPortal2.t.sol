@@ -346,6 +346,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         vm.recordLogs();
 
+        vm.deal(address(systemConfig), 100 ether);
         vm.prank(address(systemConfig));
         optimismPortal2.setGasPayingToken({ _token: _token, _decimals: 18, _name: name, _symbol: symbol });
 
@@ -465,10 +466,12 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     /// @dev Setup the system for a ready-to-use state.
     function setUp() public virtual override {
         _proposedBlockNumber = 0xFF;
+        GameType respectedGameType = optimismPortal2.respectedGameType();
+        uint256 bondAmount = disputeGameFactory.initBonds(respectedGameType);
         game = IFaultDisputeGame(
             payable(
                 address(
-                    disputeGameFactory.create(
+                    disputeGameFactory.create{value: bondAmount}(
                         optimismPortal2.respectedGameType(), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
                     )
                 )
