@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/sync"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 )
 
@@ -63,6 +64,9 @@ func (su *SupervisorService) initFromCLIConfig(ctx context.Context, cfg *config.
 	}
 	if err := su.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
+	}
+	if err := su.initDBSync(cfg); err != nil {
+		return fmt.Errorf("failed to start DB sync server: %w", err)
 	}
 	return nil
 }
@@ -132,7 +136,7 @@ func (su *SupervisorService) initRPCServer(cfg *config.Config) error {
 		cfg.RPC.ListenPort,
 		cfg.Version,
 		oprpc.WithLogger(su.log),
-		//oprpc.WithHTTPRecorder(su.metrics), // TODO(protocol-quest#286) hook up metrics to RPC server
+		// oprpc.WithHTTPRecorder(su.metrics), // TODO(protocol-quest#286) hook up metrics to RPC server
 	)
 	if cfg.RPC.EnableAdmin {
 		su.log.Info("Admin RPC enabled")
@@ -152,7 +156,21 @@ func (su *SupervisorService) initRPCServer(cfg *config.Config) error {
 		Service:       &frontend.UpdatesFrontend{Supervisor: su.backend},
 		Authenticated: false,
 	})
+
 	su.rpcServer = server
+	return nil
+}
+
+func (su *SupervisorService) initDBSync(cfg *config.Config) error {
+	syncCfg := sync.Config{
+		DataDir: cfg.Datadir,
+		Logger:  su.log,
+	}
+	handler, err := sync.NewServer(syncCfg)
+	if err != nil {
+		return fmt.Errorf("failed to create db sync handler: %w", err)
+	}
+	su.rpcServer.AddHandler("/dbsync", handler)
 	return nil
 }
 
