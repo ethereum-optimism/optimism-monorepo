@@ -69,7 +69,7 @@ contract Setup {
     L2Genesis internal constant l2Genesis =
         L2Genesis(address(uint160(uint256(keccak256(abi.encode("optimism.l2genesis"))))));
 
-    // @notice Allows users of Setup to override what L2 genesis is being created.
+    /// @notice Allows users of Setup to override what L2 genesis is being created.
     Fork l2Fork = LATEST_FORK;
 
     // L1 contracts
@@ -113,9 +113,10 @@ contract Setup {
     IOptimismSuperchainERC20Factory l2OptimismSuperchainERC20Factory =
         IOptimismSuperchainERC20Factory(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
 
-    /// @dev Deploys the Deploy contract without including its bytecode in the bytecode
-    ///      of this contract by fetching the bytecode dynamically using `vm.getCode()`.
-    ///      If the Deploy bytecode is included in this contract, then it will double
+    /// @dev Deploys either the Deploy.s.sol or Upgrade.s.sol contract, by fetching the bytecode dynamically using
+    ///      `vm.getCode()` and etching it into the state. This enables us to avoid including the bytecode of those
+    ///      contracts in the bytecode of this contract.
+    ///      If the bytecode of those contracts was included in this contract, then it will double
     ///      the compile time and bloat all of the test contract artifacts since they
     ///      will also need to include the bytecode for the Deploy contract.
     ///      This is a hack as we are pushing solidity to the edge.
