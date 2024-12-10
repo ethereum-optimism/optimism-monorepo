@@ -244,7 +244,7 @@ where the execution-engine may perform an optimized long-range sync, such as sna
   e.g. state-transition edge-cases. This applies primarily to the derivation pipeline.
 - `op-e2e` system tests: in-process Go testing, focused on the offchain aspects of the op-node,
   e.g. background work, P2P integration, general service functionality.
-- Local devnet tests: full end to end testing, but set up on minimal resources.
+- Local devnet tests: full end-to-end testing, but set up on minimal resources.
 - Kurtosis tests: new automated devnet-like testing. Work in progress.
 - Long-running devnet: roll-out for experimental features, to ensure sufficient stability for testnet users.
 - Long-running testnet: battle-testing in public environment.
