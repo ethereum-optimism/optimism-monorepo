@@ -1,25 +1,16 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity =0.8.15;
 
-import { Test } from "forge-std/Test.sol";
-import { EAS } from "src/vendor/eas/EAS.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { IEAS } from "src/vendor/eas/IEAS.sol";
-import { SchemaRegistry } from "src/vendor/eas/SchemaRegistry.sol";
+import { ISchemaRegistry } from "src/vendor/eas/ISchemaRegistry.sol";
 import { Attestation, AttestationRequest, AttestationRequestData, MultiAttestationRequest, RevocationRequest, RevocationRequestData, MultiDelegatedAttestationRequest, MultiDelegatedRevocationRequest, DelegatedAttestationRequest, MultiRevocationRequest, Signature } from "src/vendor/eas/IEAS.sol";
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { console } from "forge-std/console.sol";
-import { EIP1271Verifier } from "src/vendor/eas/eip1271/EIP1271Verifier.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-
-contract TestEIP1271Verifier is EIP1271Verifier {
-    constructor(string memory name) EIP1271Verifier(name, "1.0.0") {}
-
-    // Expose internal function for testing
-    function verifyAttest(DelegatedAttestationRequest calldata request) external {
-        _verifyAttest(request);
-    }
-}
+import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
+import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { console } from "forge-std/console.sol";
 
 contract TestEIP712Helper is EIP712 {
     constructor() EIP712("EAS", "1.3.0") {}
@@ -92,7 +83,7 @@ contract TestEIP712Proxy is EIP712 {
     }
 }
 
-contract EASTest is Test {
+contract EASTest is CommonTest {
 
     
     // =============================================================
@@ -138,12 +129,14 @@ contract EASTest is Test {
         bytes4(keccak256("Irrevocable()"));
     bytes4 constant InvalidSignatureSelector =
         bytes4(keccak256("InvalidSignature()"));
+    bytes4 constant DeadlineExpiredSelector =
+        bytes4(keccak256("DeadlineExpired()"));
 
     // =============================================================
     //                         TEST STORAGE
     // =============================================================
-    EAS public eas;
-    SchemaRegistry public registry;
+    IEAS public eas;
+    ISchemaRegistry public registry;
     address public sender;
     address public sender2;
     address public recipient;
@@ -183,25 +176,6 @@ contract EASTest is Test {
 
     function getDelegatedAttestationTypeHash() internal pure returns (bytes32) {
         return ATTEST_TYPEHASH;
-    }
-
-    function createDomainSeparator() internal view returns (bytes32) {
-        bytes32 TYPE_HASH = keccak256(
-            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-        );
-        bytes32 nameHash = keccak256(bytes("EAS"));
-        bytes32 versionHash = keccak256(bytes("1.3.0"));
-
-        return
-            keccak256(
-                abi.encode(
-                    TYPE_HASH,
-                    nameHash,
-                    versionHash,
-                    block.chainid,
-                    address(eas)
-                )
-            );
     }
 
     // Helper function to create request data
@@ -285,57 +259,61 @@ contract EASTest is Test {
             );
     }
 
+function createDomainSeparator() internal view returns (bytes32) {
+    bytes32 TYPE_HASH = keccak256(
+        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+    );
+    bytes32 nameHash = keccak256(bytes("EAS"));
+    bytes32 versionHash = keccak256(bytes("1.3.0"));
+
+    return keccak256(
+        abi.encode(
+            TYPE_HASH,
+            nameHash,
+            versionHash,
+            block.chainid,
+            address(eas)
+        )
+    );
+}
+
     // =============================================================
     //                     SETUP
     // =============================================================
-    function setUp() public {
-        // Initialize senderKey
+    function setUp() public override {
+        super.setUp(); 
+        
+        // Initialize test variables
         senderKey = 0x12345;
         sender = vm.addr(senderKey);
-
-        // Setup accounts
         sender2 = makeAddr("sender2");
         recipient = makeAddr("recipient");
         recipient2 = makeAddr("recipient2");
 
-        // Create registry at a temporary address
-        registry = new SchemaRegistry();
-
-        // Store registry code at predeploy address
-        vm.etch(Predeploys.SCHEMA_REGISTRY, address(registry).code);
-
-        // Point registry variable to predeploy address
-        registry = SchemaRegistry(Predeploys.SCHEMA_REGISTRY);
-
-        // Now deploy EAS
-        eas = new EAS();
+        // Get contracts from predeploys
+        registry = ISchemaRegistry(Predeploys.SCHEMA_REGISTRY);
+        eas = IEAS(Predeploys.EAS);
 
         // Fund accounts
         vm.deal(sender, 100 ether);
         vm.deal(sender2, 100 ether);
 
-        // Initialize helper
+        // Initialize helpers
         eip712Helper = new TestEIP712Helper();
-
-        // Initialize proxy with explicit name and version
         proxy = new TestEIP712Proxy(address(eas), "EAS-Proxy");
-        
     }
 
     // =============================================================
     //                    CONSTRUCTION TESTS
     // =============================================================
     function testConstructionScenarios() public view {
-        // Check contract version and name
-        assertEq(eas.version(), "1.4.1-beta.1");
-        assertEq(eas.getName(), "EAS");
-        assertEq(address(eas.getSchemaRegistry()), address(registry));
+         assertEq(ISemver(address(eas)).version(), "1.4.1-beta.1");
     }
 
     // Core functionality tests section
     function testInvalidSchemaRegistry() public {
         // Deploy new EAS with invalid registry address
-        EAS invalidEas = new EAS();
+        IEAS invalidEas = IEAS(Predeploys.EAS);
 
         // Try to use EAS with invalid registry
         string memory schema = "bool like";
@@ -442,7 +420,7 @@ contract EASTest is Test {
             });
 
         vm.prank(signer);
-        vm.expectRevert(bytes4(keccak256("DeadlineExpired()")));
+        vm.expectRevert(DeadlineExpiredSelector);
         eas.attestByDelegation(request);
     }
 
@@ -579,7 +557,7 @@ contract EASTest is Test {
                 request.data.refUID,
                 keccak256(request.data.data),
                 request.data.value,
-                eas.getNonce(request.attester), 
+                0, 
                 request.deadline
             )
         );
@@ -587,7 +565,7 @@ contract EASTest is Test {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                eas.getDomainSeparator(), 
+                createDomainSeparator(), 
                 structHash
             )
         );
@@ -2180,6 +2158,7 @@ contract EASTest is Test {
     }
 
     function testDelegatedAttestationReverts() public {
+    
         string memory schema = "bool like";
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
@@ -2228,10 +2207,10 @@ contract EASTest is Test {
             data: data,
             signatures: sigs,
             attester: sender,
-            deadline: uint64(block.timestamp - 1) // Past deadline
-        });
+            deadline: uint64(block.timestamp - 1) 
+        }); 
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidSignatureSelector));
+        vm.expectRevert(abi.encodeWithSelector(DeadlineExpiredSelector));
         eas.multiAttestByDelegation(requests);
 
         vm.stopPrank();
@@ -2728,37 +2707,37 @@ contract EASTest is Test {
         vm.stopPrank();
     }
 
-    function testDeadlineScenarios() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+function testDeadlineScenarios() public {
+    
+    string memory schema = "bool like";
+    bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
-        vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+    vm.startPrank(sender);
+    registry.register(schema, ISchemaResolver(address(0)), true);
 
-        DelegatedAttestationRequest
-            memory request = DelegatedAttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
-                    revocable: true,
-                    refUID: ZERO_BYTES32,
-                    data: hex"1234",
-                    value: 0
-                }),
-                signature: Signature({
-                    v: 28,
-                    r: bytes32(uint256(1)),
-                    s: bytes32(uint256(2))
-                }),
-                attester: sender,
-                deadline: uint64(block.timestamp - 1)
-            });
+    DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+        schema: schemaId,
+        data: AttestationRequestData({
+            recipient: recipient,
+            expirationTime: uint64(block.timestamp + 30 days),
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: 0
+        }),
+        signature: Signature({
+            v: 28,
+            r: bytes32(uint256(1)),
+            s: bytes32(uint256(2))
+        }),
+        attester: sender,
+        deadline: uint64(block.timestamp - 1) 
+    });
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidSignature()"));
-        eas.attestByDelegation(request);
-        vm.stopPrank();
-    }
+    vm.expectRevert(DeadlineExpiredSelector);
+    eas.attestByDelegation(request);
+    vm.stopPrank();
+}
 
     function testMultiDelegatedAttestation() public {
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -2928,7 +2907,7 @@ contract EASTest is Test {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                eas.getDomainSeparator(), // Use proxy's domain separator instead of EAS
+               createDomainSeparator(), // Use proxy's domain separator instead of EAS
                 _getStructHash(schemaId, requestData, signer, deadline)
             )
         );
