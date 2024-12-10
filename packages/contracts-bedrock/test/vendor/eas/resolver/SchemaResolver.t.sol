@@ -55,13 +55,11 @@ contract SchemaResolverTest is Test {
     MockEAS public eas;
     address public recipient;
     uint64 constant NO_EXPIRATION = 0;
-    error NonceIncreased();
-    error InvalidNonce();
 
-    bytes4 constant AccessDenied = bytes4(keccak256("AccessDenied()"));
-    bytes4 constant InvalidLength = bytes4(keccak256("InvalidLength()"));
-    bytes4 constant NotPayable = bytes4(keccak256("NotPayable()"));
-    bytes4 constant InsufficientValue = bytes4(keccak256("InsufficientValue()"));
+    error AccessDenied();
+    error InvalidLength();
+    error NotPayable();
+    error InsufficientValue();
 
 
     function setUp() public {
@@ -90,16 +88,16 @@ contract SchemaResolverTest is Test {
         });
 
         // Should revert when called by non-EAS address
-        vm.expectRevert(abi.encodeWithSelector(AccessDenied));
+        vm.expectRevert(AccessDenied.selector);
         resolver.attest(attestation);
 
-        vm.expectRevert(abi.encodeWithSelector(AccessDenied));
+        vm.expectRevert(AccessDenied.selector);
         resolver.revoke(attestation);
     }
 
     function testNonPayableResolver() public {
         // Should revert when sending ETH to non-payable resolver
-        vm.expectRevert(abi.encodeWithSelector(NotPayable));
+        vm.expectRevert(NotPayable.selector);
         payable(address(resolver)).transfer(1 ether);
     }
 
@@ -108,7 +106,7 @@ contract SchemaResolverTest is Test {
         uint256[] memory values = new uint256[](1);
 
         vm.prank(address(eas));
-        vm.expectRevert(abi.encodeWithSelector(InvalidLength));
+        vm.expectRevert(InvalidLength.selector);
         resolver.multiAttest(attestations, values);
     }
 
@@ -117,7 +115,8 @@ contract SchemaResolverTest is Test {
         uint256[] memory values = new uint256[](1);
 
         vm.prank(address(eas));
-        vm.expectRevert(abi.encodeWithSelector(InvalidLength));
+        // Should revert with InvalidLength
+        vm.expectRevert(InvalidLength.selector);
         resolver.multiRevoke(attestations, values);
     }
 
@@ -131,7 +130,8 @@ contract SchemaResolverTest is Test {
         vm.deal(address(eas), 2 ether);
 
         vm.prank(address(eas));
-        vm.expectRevert(bytes4(keccak256("InsufficientValue()")));
+        // Should revert with InsufficientValue
+        vm.expectRevert(InsufficientValue.selector);
         resolver.multiAttest{value: 1 ether}(attestations, values);
     }
 
