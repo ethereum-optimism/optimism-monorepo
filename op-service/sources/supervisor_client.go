@@ -153,15 +153,6 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.C
 		lastDerived)
 }
 
-func (cl *SupervisorClient) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalizedL1 eth.L1BlockRef) error {
-	return cl.client.CallContext(
-		ctx,
-		nil,
-		"supervisor_updateFinalizedL1",
-		chainID,
-		finalizedL1)
-}
-
 func (cl *SupervisorClient) Close() {
 	cl.client.Close()
 }

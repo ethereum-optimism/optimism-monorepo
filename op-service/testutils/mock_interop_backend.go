@@ -94,10 +94,6 @@ func (m *MockInteropBackend) UpdateFinalizedL1(ctx context.Context, chainID type
 	return *result.Get(0).(*error)
 }
 
-func (m *MockInteropBackend) ExpectUpdateFinalizedL1(chainID types.ChainID, finalized eth.L1BlockRef, err error) {
-	m.Mock.On("UpdateFinalizedL1", chainID, finalized).Once().Return(&err)
-}
-
 func (m *MockInteropBackend) AssertExpectations(t mock.TestingT) {
 	m.Mock.AssertExpectations(t)
 }

@@ -496,11 +496,6 @@ func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.
 	return nil
 }
 
-func (su *SupervisorBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
-	//return su.chainDBs.UpdateFinalizedL1(finalized)
-	return nil
-}
-
 // Access to synchronous processing for tests
 // ----------------------------
 

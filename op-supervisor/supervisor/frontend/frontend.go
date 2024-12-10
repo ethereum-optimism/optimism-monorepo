@@ -27,7 +27,6 @@ type QueryBackend interface {
 type UpdatesBackend interface {
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
-	UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error
 }
 
 type Backend interface {
@@ -109,8 +108,4 @@ func (u *UpdatesFrontend) UpdateLocalUnsafe(ctx context.Context, chainID types.C
 
 func (u *UpdatesFrontend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
 	return u.Supervisor.UpdateLocalSafe(ctx, chainID, derivedFrom, lastDerived)
-}
-
-func (u *UpdatesFrontend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
-	return u.Supervisor.UpdateFinalizedL1(ctx, chainID, finalized)
 }
