@@ -72,6 +72,9 @@ contract Setup {
     /// @notice Allows users of Setup to override what L2 genesis is being created.
     Fork l2Fork = LATEST_FORK;
 
+    /// @notice Indicates whether a test is running against a forked production network.
+    bool isForkTest;
+
     // L1 contracts
     IDisputeGameFactory disputeGameFactory;
     IAnchorStateRegistry anchorStateRegistry;
@@ -124,6 +127,7 @@ contract Setup {
         console.log("L1 setup start!");
         if (vm.envOr("UPGRADE_TEST", false)) {
             string memory forkUrl = vm.envOr("FORK_RPC_URL", string("http://127.0.0.1:8546"));
+            isForkTest = true;
             vm.createSelectFork(forkUrl);
 
             vm.etch(address(deploy), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));

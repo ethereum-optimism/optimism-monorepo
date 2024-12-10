@@ -68,6 +68,12 @@ contract CommonTest is Test, Setup, Events {
             deploy.cfg().setUseInterop(true);
         }
 
+        if (
+            isForkTest && (useAltDAOverride || useLegacyContracts || customGasToken != address(0) || useInteropOverride)
+        ) {
+            vm.skip(true);
+        }
+
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
         vm.allowCheatcodes(address(ffi));
         vm.label(address(ffi), "FFIInterface");
