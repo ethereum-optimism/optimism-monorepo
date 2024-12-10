@@ -695,6 +695,47 @@ func TestInvalidL2Genesis(t *testing.T) {
 	}
 }
 
+func TestAdditionalDisputeGames(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
+	(&intent.Chains[0].Roles).L1ProxyAdminOwner = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
+	intent.GlobalDeployOverrides = map[string]any{
+		"challengePeriodSeconds": 1,
+	}
+	intent.Chains[0].AdditionalDisputeGames = []state.AdditionalDisputeGame{
+		{
+			ChainProofParams: state.ChainProofParams{
+				DisputeGameType:                         255,
+				DisputeAbsolutePrestate:                 standard.DisputeAbsolutePrestate,
+				DisputeMaxGameDepth:                     50,
+				DisputeSplitDepth:                       14,
+				DisputeClockExtension:                   0,
+				DisputeMaxClockDuration:                 1200,
+				DangerouslyAllowCustomDisputeParameters: true,
+			},
+			UseCustomOracle:              true,
+			OracleMinProposalSize:        10000,
+			OracleChallengePeriodSeconds: 120,
+			VMType:                       state.VMTypeAlphabet,
+		},
+	}
+
+	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+
+	chainState := st.Chains[0]
+	require.Equal(t, 1, len(chainState.AdditionalDisputeGames))
+
+	gameInfo := chainState.AdditionalDisputeGames[0]
+	require.NotEmpty(t, gameInfo.VMAddress)
+	require.NotEmpty(t, gameInfo.GameAddress)
+	require.NotEmpty(t, gameInfo.OracleAddress)
+	require.NotEqual(t, st.ImplementationsDeployment.PreimageOracleSingletonAddress, gameInfo.OracleAddress)
+}
+
 func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -711,7 +752,6 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 	loc, _ := testutil.LocalArtifacts(t)
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
-	intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainIDBig, l2ChainID1))
 	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 
 	opts := deployer.ApplyPipelineOpts{

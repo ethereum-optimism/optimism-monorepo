@@ -45,6 +45,15 @@ const (
 var emptyAddress common.Address
 var emptyHash common.Hash
 
+type SuperchainProofParams struct {
+	WithdrawalDelaySeconds          uint64 `json:"withdrawalDelaySeconds" toml:"withdrawalDelaySeconds"`
+	MinProposalSizeBytes            uint64 `json:"minProposalSizeBytes" toml:"minProposalSizeBytes"`
+	ChallengePeriodSeconds          uint64 `json:"challengePeriodSeconds" toml:"challengePeriodSeconds"`
+	ProofMaturityDelaySeconds       uint64 `json:"proofMaturityDelaySeconds" toml:"proofMaturityDelaySeconds"`
+	DisputeGameFinalityDelaySeconds uint64 `json:"disputeGameFinalityDelaySeconds" toml:"disputeGameFinalityDelaySeconds"`
+	MIPSVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
+}
+
 type Intent struct {
 	DeploymentStrategy    DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
 	ConfigType            IntentConfigType   `json:"configType" toml:"configType"`
@@ -164,6 +173,9 @@ func (c *Intent) validateStandardValues() error {
 			chain.Eip1559Denominator != standard.Eip1559Denominator ||
 			chain.Eip1559Elasticity != standard.Eip1559Elasticity {
 			return fmt.Errorf("%w: chainId=%s", ErrNonStandardValue, chain.ID)
+		}
+		if len(chain.AdditionalDisputeGames) > 0 {
+			return fmt.Errorf("%w: chainId=%s additionalDisputeGames must be nil", ErrNonStandardValue, chain.ID)
 		}
 	}
 
