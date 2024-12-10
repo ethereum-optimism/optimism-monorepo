@@ -32,13 +32,13 @@ contract Upgrade is Deployer {
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
     function upgradeBaseChain() internal view returns (string memory) {
-        return vm.envOr("UPGRADE_BASE_CHAIN", "mainnet");
+        return vm.envOr("UPGRADE_BASE_CHAIN", string("mainnet"));
     }
 
     /// @notice Returns the OP chain name to use for forking
     /// @return The OP chain name as a string
     function upgradeOpChain() internal view returns (string memory) {
-        return vm.envOr("UPGRADE_OP_CHAIN", "op");
+        return vm.envOr("UPGRADE_OP_CHAIN", string("op"));
     }
 
     /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
@@ -47,9 +47,9 @@ contract Upgrade is Deployer {
 
         // Read the superchain config files
         string memory superchainToml =
-            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain, "/superchain.toml"));
+            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain(), "/superchain.toml"));
         string memory opToml =
-            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain, "/", upgradeOpChain, ".toml"));
+            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain(), "/", upgradeOpChain(), ".toml"));
 
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
