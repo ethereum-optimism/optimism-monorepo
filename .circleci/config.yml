@@ -673,7 +673,11 @@ jobs:
             TEST_FILES=$(echo "$TEST_FILES" | circleci tests split --split-by=timings)
             TEST_FILES=$(echo "$TEST_FILES" | sed 's|^test/||')
             MATCH_PATH="./test/{$(echo "$TEST_FILES" | paste -sd "," -)}"
-            forge <<parameters.test_command>> <<parameters.test_flags>> --match-path "$MATCH_PATH"
+            if [[ -n "$$(<<parameters.upgrade_test>>)" ]]; then
+              just test-upgrade --match-path "$MATCH_PATH"
+            else
+              forge <<parameters.test_command>> <<parameters.test_flags>> --match-path "$MATCH_PATH"
+            fi
           environment:
             FOUNDRY_PROFILE: <<parameters.test_profile>>
             UPGRADE_TEST: <<parameters.upgrade_test>>
