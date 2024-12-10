@@ -318,7 +318,13 @@ func abiItemLess(a, b map[string]interface{}) bool {
 
 	aName := getString(a, "name")
 	bName := getString(b, "name")
-	return aName < bName
+	if aName != bName {
+		return aName < bName
+	}
+
+	aInputs := a["inputs"].([]interface{})
+	bInputs := b["inputs"].([]interface{})
+	return len(aInputs) < len(bInputs)
 }
 
 func getString(m map[string]interface{}, key string) string {
