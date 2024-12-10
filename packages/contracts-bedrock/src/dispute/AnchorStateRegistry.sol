@@ -138,7 +138,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
 
     /// @notice Blacklists a dispute game. Should only be used in the event that a dispute game resolves incorrectly.
     /// @param _disputeGame Dispute game to blacklist.
-    function blacklistDisputeGame(IDisputeGame _disputeGame) external {
+    function setGameBlacklisted(IDisputeGame _disputeGame) external {
         if (msg.sender != _guardian()) revert Unauthorized();
         isBlacklisted[_disputeGame] = true;
         emit DisputeGameBlacklisted(_disputeGame);
@@ -166,7 +166,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         (IDisputeGame _factoryRegisteredGame,) =
             DISPUTE_GAME_FACTORY.games({ _gameType: gameType, _rootClaim: rootClaim, _extraData: extraData });
 
-        // Must be a valid game.
+        // Must be a game created by the factory.
         if (address(_factoryRegisteredGame) != address(_game)) return true;
 
         // Must not be blacklisted.
