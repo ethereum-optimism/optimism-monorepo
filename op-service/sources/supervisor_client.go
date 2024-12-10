@@ -114,6 +114,15 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
+func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockID, error) {
+	var result eth.BlockID
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_finalizedL1")
+	return result, err
+}
+
 func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
 	var result eth.BlockRef
 	err := cl.client.CallContext(

@@ -69,8 +69,8 @@ func (p *L1Processor) AttachClient(client L1Source) {
 		p.client,
 		p.handleFinalized,
 		eth.Finalized,
-		p.tickDuration,
-		p.tickDuration)
+		3*time.Second,
+		10*time.Second)
 }
 
 func (p *L1Processor) Start() {

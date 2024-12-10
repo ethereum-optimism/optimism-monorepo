@@ -21,6 +21,7 @@ type QueryBackend interface {
 	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	FinalizedL1() eth.BlockRef
 }
 
 type UpdatesBackend interface {
@@ -65,6 +66,10 @@ func (q *QueryFrontend) SafeView(ctx context.Context, chainID types.ChainID, saf
 
 func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
 	return q.Supervisor.Finalized(ctx, chainID)
+}
+
+func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
+	return q.Supervisor.FinalizedL1()
 }
 
 func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
