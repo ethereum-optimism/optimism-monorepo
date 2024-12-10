@@ -380,7 +380,7 @@ func (s *channelManager) processBlocks() error {
 
 	s.metr.RecordL2BlocksAdded(latestL2ref,
 		blocksAdded,
-		s.blocks.Len(),
+		s.pendingBlocks(),
 		s.currentChannel.InputBytes(),
 		s.currentChannel.ReadyBytes())
 	s.log.Debug("Added blocks to channel",
