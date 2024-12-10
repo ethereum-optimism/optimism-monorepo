@@ -84,6 +84,7 @@ services:
     volumes:
       - "supervisor_data:/db"
       - "./depset.json:/depset.json"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
     command: >
       op-supervisor
@@ -92,7 +93,9 @@ services:
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
       --rpc.enable-admin
+      --l1-rpc="http://l1:8545"
       --l2-consensus.nodes="http://op-node-a:9645,http://op-node-b:9645"
+      --l2-consensus.jwt-secret=/config/jwt-secret.txt
     environment:
       OP_SUPERVISOR_METRICS_ENABLED: "true"
 
