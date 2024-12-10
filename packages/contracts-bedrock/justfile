@@ -66,7 +66,7 @@ anvil-fork-stop:
 
 # Runs upgrade path variant of contract tests.
 # Requires a mainnet fork of anvil listening on :8546
-test-upgrade *ARGS: build-go-ffi anvil-fork && anvil-stop
+test-upgrade *ARGS: build-go-ffi anvil-fork && anvil-fork-stop
   UPGRADE_TEST=true forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
