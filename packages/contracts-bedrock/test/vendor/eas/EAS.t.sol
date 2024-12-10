@@ -108,28 +108,16 @@ contract EASTest is CommonTest {
     // =============================================================
     //                        ERROR SELECTORS
     // =============================================================
-    bytes4 constant InvalidRegistrySelector =
-        bytes4(keccak256("InvalidRegistry()"));
-    bytes4 constant InvalidSchemaSelector =
-        bytes4(keccak256("InvalidSchema()"));
-    bytes4 constant InvalidExpirationTimeSelector =
-        bytes4(keccak256("InvalidExpirationTime()"));
-    bytes4 constant NotFoundSelector = 
-        bytes4(keccak256("NotFound()"));
-    bytes4 constant AccessDeniedSelector =
-        bytes4(keccak256("AccessDenied()"));
-    bytes4 constant InvalidLengthSelector =
-        bytes4(keccak256("InvalidLength()"));
-    bytes4 constant AlreadyRevokedOffchainSelector =
-        bytes4(keccak256("AlreadyRevokedOffchain()"));
-    bytes4 constant AlreadyTimestampedSelector =
-        bytes4(keccak256("AlreadyTimestamped()"));
-    bytes4 constant IrrevocableSelector =
-        bytes4(keccak256("Irrevocable()"));
-    bytes4 constant InvalidSignatureSelector =
-        bytes4(keccak256("InvalidSignature()"));
-    bytes4 constant DeadlineExpiredSelector =
-        bytes4(keccak256("DeadlineExpired()"));
+    error InvalidSchema();
+    error InvalidExpirationTime();
+    error NotFound();
+    error AccessDenied();
+    error InvalidLength();
+    error AlreadyRevokedOffchain();
+    error AlreadyTimestamped();
+    error Irrevocable();
+    error InvalidSignature();
+    error DeadlineExpired();
 
     // =============================================================
     //                         TEST STORAGE
@@ -319,7 +307,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         bytes32 schemaId = getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        vm.expectRevert(InvalidSchemaSelector);
+        vm.expectRevert(InvalidSchema.selector);
         invalidEas.attest(
             AttestationRequest({
                 schema: schemaId,
@@ -419,7 +407,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             });
 
         vm.prank(signer);
-        vm.expectRevert(DeadlineExpiredSelector);
+        vm.expectRevert(DeadlineExpired.selector);
         eas.attestByDelegation(request);
     }
 
@@ -450,7 +438,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             deadline: deadline
         });
 
-        vm.expectRevert(InvalidSignatureSelector);
+        vm.expectRevert(InvalidSignature.selector);
         eas.attestByDelegation(request);
     }
 
@@ -483,7 +471,7 @@ function createDomainSeparator() internal view returns (bytes32) {
                 deadline: deadline
             });
 
-        vm.expectRevert(InvalidSignatureSelector);
+        vm.expectRevert(InvalidSignature.selector);
         eas.attestByDelegation(request);
     }
 
@@ -517,7 +505,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.prank(signer);
         eas.attestByDelegation(request); // First attempt should succeed
 
-        vm.expectRevert(InvalidSignatureSelector);
+        vm.expectRevert(InvalidSignature.selector);
         eas.attestByDelegation(request); // Second attempt should fail
     }
 
@@ -730,7 +718,7 @@ function createDomainSeparator() internal view returns (bytes32) {
                 })
             });
 
-            vm.expectRevert(abi.encodeWithSignature("InvalidExpirationTime()"));
+            vm.expectRevert(InvalidExpirationTime.selector);
             eas.attest(request);
         }
     }
@@ -743,7 +731,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
 
         vm.prank(sender);
-        vm.expectRevert(InvalidSchemaSelector);
+        vm.expectRevert(InvalidSchema.selector);
         eas.attest(
             AttestationRequest({
                 schema: unregisteredSchemaId,
@@ -772,7 +760,7 @@ function createDomainSeparator() internal view returns (bytes32) {
 
         // Test: revert when attesting to an unregistered schema
         bytes32 badSchemaId = keccak256("BAD");
-        vm.expectRevert(InvalidSchemaSelector);
+        vm.expectRevert(InvalidSchema.selector);
         eas.attest(
             AttestationRequest({
                 schema: badSchemaId,
@@ -933,7 +921,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         emit log_named_uint("Expired time", expiredTime);
         emit log_named_bytes32("Schema ID", schemaId);
 
-        vm.expectRevert(abi.encodeWithSignature("InvalidExpirationTime()"));
+        vm.expectRevert(InvalidExpirationTime.selector);
         eas.attest(
             AttestationRequest({
                 schema: schemaId,
@@ -972,7 +960,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         // Test with non-existent reference UID
         bytes32 nonExistentUID = bytes32(uint256(1));
 
-        vm.expectRevert(NotFoundSelector);
+        vm.expectRevert(NotFound.selector);
         eas.attest(
             AttestationRequest({
                 schema: schemaId,
@@ -1051,7 +1039,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         requests[0].schema = schemaId;
         requests[0].data = new AttestationRequestData[](0);
 
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiAttest(requests);
 
         vm.stopPrank();
@@ -1151,7 +1139,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             data: new AttestationRequestData[](0)
         });
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
+        vm.expectRevert(abi.encodeWithSelector(InvalidLength.selector));
         eas.multiAttest(requests);
 
         // Test 3: Invalid schema
@@ -1168,14 +1156,14 @@ function createDomainSeparator() internal view returns (bytes32) {
             value: 0
         });
 
-        vm.expectRevert(InvalidSchemaSelector);
+        vm.expectRevert(InvalidSchema.selector);
         eas.multiAttest(requests);
 
         // Test 4: Invalid expiration time
         requests[0].schema = schemaId;
         requests[0].data[0].expirationTime = uint64(block.timestamp);
 
-        vm.expectRevert(InvalidExpirationTimeSelector);
+        vm.expectRevert(InvalidExpirationTime.selector);
         eas.multiAttest(requests);
 
         // Test 5: Insufficient value sent
@@ -1301,7 +1289,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
 
         vm.prank(sender2);
-        vm.expectRevert(AccessDeniedSelector);
+        vm.expectRevert(AccessDenied.selector);
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
@@ -1320,7 +1308,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         bytes32 nonExistentUid = bytes32(uint256(1));
 
         vm.prank(sender);
-        vm.expectRevert(NotFoundSelector);
+        vm.expectRevert(NotFound.selector);
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
@@ -1457,7 +1445,7 @@ function createDomainSeparator() internal view returns (bytes32) {
 
         // Test: revert when non-attester tries to revoke
         vm.prank(sender2);
-        vm.expectRevert(AccessDeniedSelector);
+        vm.expectRevert(AccessDenied.selector);
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
@@ -1496,7 +1484,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         assertFalse(attestation.revocable);
 
         // Should revert when trying to revoke
-        vm.expectRevert(IrrevocableSelector);
+        vm.expectRevert(Irrevocable.selector);
         eas.revoke(
             RevocationRequest({
                 schema: schemaId,
@@ -1547,7 +1535,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             });
         }
 
-        vm.expectRevert(IrrevocableSelector);
+        vm.expectRevert(Irrevocable.selector);
         eas.revoke(revocationRequests[0]);
 
         vm.stopPrank();
@@ -1615,7 +1603,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
 
         // Should revert when trying to revoke the irrevocable attestation
-        vm.expectRevert(IrrevocableSelector);
+        vm.expectRevert(Irrevocable.selector);
         eas.revoke(
             RevocationRequest({
                 schema: irrevocableSchemaId,
@@ -1635,7 +1623,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         // Try to revoke with wrong schema
         bytes32 wrongSchemaId = getSchemaUID("wrong schema", address(0), true);
 
-        vm.expectRevert(InvalidSchemaSelector);
+        vm.expectRevert(InvalidSchema.selector);
         eas.revoke(
             RevocationRequest({
                 schema: wrongSchemaId,
@@ -1657,7 +1645,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.revokeOffchain(data);
 
         // Second revocation should fail
-        vm.expectRevert(AlreadyRevokedOffchainSelector);
+        vm.expectRevert(AlreadyRevokedOffchain.selector);
         eas.revokeOffchain(data);
         vm.stopPrank();
     }
@@ -1707,7 +1695,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.multiRevokeOffchain(data);
 
         // Second revocation should fail
-        vm.expectRevert(AlreadyRevokedOffchainSelector);
+        vm.expectRevert(AlreadyRevokedOffchain.selector);
         eas.multiRevokeOffchain(data);
 
         // Should also fail when including revoked data in a new array
@@ -1716,7 +1704,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         newData[1] = data[0];
         newData[2] = data[1];
 
-        vm.expectRevert(AlreadyRevokedOffchainSelector);
+        vm.expectRevert(AlreadyRevokedOffchain.selector);
         eas.multiRevokeOffchain(newData);
         vm.stopPrank();
     }
@@ -1821,7 +1809,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.timestamp(data);
 
         // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestampedSelector);
+        vm.expectRevert(AlreadyTimestamped.selector);
         eas.timestamp(data);
     }
 
@@ -1862,7 +1850,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.multiTimestamp(data);
 
         // Second timestamp should fail
-        vm.expectRevert(AlreadyTimestampedSelector);
+        vm.expectRevert(AlreadyTimestamped.selector);
         eas.multiTimestamp(data);
 
         // Should also fail when including timestamped data in a new array
@@ -1871,7 +1859,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         newData[1] = data[0];
         newData[2] = data[1];
 
-        vm.expectRevert(AlreadyTimestampedSelector);
+        vm.expectRevert(AlreadyTimestamped.selector);
         eas.multiTimestamp(newData);
     }
 
@@ -2177,14 +2165,14 @@ function createDomainSeparator() internal view returns (bytes32) {
             deadline: uint64(block.timestamp + 1)
         });
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
+        vm.expectRevert(abi.encodeWithSelector(InvalidLength.selector));
         eas.multiAttestByDelegation(requests);
 
         // Test 2: Mismatched lengths
         requests[0].data = new AttestationRequestData[](2);
         requests[0].signatures = new Signature[](1);
 
-        vm.expectRevert(abi.encodeWithSelector(InvalidLengthSelector));
+        vm.expectRevert(abi.encodeWithSelector(InvalidLength.selector));
         eas.multiAttestByDelegation(requests);
 
         // Test 3: Invalid signature first
@@ -2209,7 +2197,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             deadline: uint64(block.timestamp - 1) 
         }); 
 
-        vm.expectRevert(abi.encodeWithSelector(DeadlineExpiredSelector));
+        vm.expectRevert(abi.encodeWithSelector(DeadlineExpired.selector));
         eas.multiAttestByDelegation(requests);
 
         vm.stopPrank();
@@ -2411,19 +2399,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         requests[0].revoker = sender;
         requests[0].deadline = type(uint64).max;
 
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiRevokeByDelegation(requests);
 
         // Test revert with empty data
         requests[0].data = new RevocationRequestData[](0);
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiRevokeByDelegation(requests);
 
         // Test revert with empty signatures
         requests[0].data = new RevocationRequestData[](1);
         requests[0].data[0].uid = uid1;
         requests[0].signatures = new Signature[](0);
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiRevokeByDelegation(requests);
 
         vm.stopPrank();
@@ -2733,7 +2721,7 @@ function testDeadlineScenarios() public {
         deadline: uint64(block.timestamp - 1) 
     });
 
-    vm.expectRevert(DeadlineExpiredSelector);
+    vm.expectRevert(DeadlineExpired.selector);
     eas.attestByDelegation(request);
     vm.stopPrank();
 }
@@ -2809,7 +2797,7 @@ function testDeadlineScenarios() public {
             attester: sender,
             deadline: NO_EXPIRATION
         });
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiAttestByDelegation(requests1);
 
         // Test 2: Empty data array with signatures
@@ -2822,7 +2810,7 @@ function testDeadlineScenarios() public {
             attester: sender,
             deadline: NO_EXPIRATION
         });
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiAttestByDelegation(requests2);
 
         // Test 3: More signatures than data items
@@ -2835,7 +2823,7 @@ function testDeadlineScenarios() public {
             attester: sender,
             deadline: NO_EXPIRATION
         });
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiAttestByDelegation(requests3);
 
         // Test 4: Data items with empty signatures array
@@ -2848,7 +2836,7 @@ function testDeadlineScenarios() public {
             attester: sender,
             deadline: NO_EXPIRATION
         });
-        vm.expectRevert(InvalidLengthSelector);
+        vm.expectRevert(InvalidLength.selector);
         eas.multiAttestByDelegation(requests4);
 
         vm.stopPrank();
