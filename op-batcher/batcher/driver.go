@@ -388,9 +388,9 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 	l.txpoolMutex.Unlock()
 }
 
-// executeSyncActions computes the actions to take based on the current sync status, and then executes
-// them, updating the channel manager state and sending transactions to the DA layer.
-func (l *BatchSubmitter) executeSyncActions(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+// syncAndPublish computes actions to take based on the current sync status, and then executes
+// them, updating the channel manager and sending transactions to the DA layer.
+func (l *BatchSubmitter) syncAndPublish(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
 	l.channelMgrMutex.Lock()
 	defer l.channelMgrMutex.Unlock()
 
@@ -472,7 +472,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			l.executeSyncActions(syncStatus, queue, receiptsCh, daGroup)
+			l.syncAndPublish(syncStatus, queue, receiptsCh, daGroup)
 
 		case <-ctx.Done():
 			if err := queue.Wait(); err != nil {
