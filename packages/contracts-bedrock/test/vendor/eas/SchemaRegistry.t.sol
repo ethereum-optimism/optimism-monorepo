@@ -1,14 +1,17 @@
 // SPDX-License-Identifier: MIT
-pragma solidity ^0.8.19;
+pragma solidity ^0.8.15;
 
 import { Test } from "forge-std/Test.sol";
 import { console } from "forge-std/console.sol";
-import { SchemaRegistry, SchemaRecord } from "src/vendor/eas/SchemaRegistry.sol";
+import { ISchemaRegistry, SchemaRecord } from "src/vendor/eas/ISchemaRegistry.sol";
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
+import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { Predeploys } from "src/libraries/Predeploys.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
-contract SchemaRegistryTest is Test {
+contract SchemaRegistryTest is CommonTest {
     // State variables
-    SchemaRegistry registry;
+    ISchemaRegistry registry;
 
     // Events
     event Registered(
@@ -17,8 +20,9 @@ contract SchemaRegistryTest is Test {
         SchemaRecord schema
     );
 
-    function setUp() public {
-        registry = new SchemaRegistry();
+    function setUp() public override {
+        super.setUp();  // Call parent setUp first
+        registry = ISchemaRegistry(Predeploys.SCHEMA_REGISTRY);  // Get registry from predeploy
     }
 
     // Helper functions
@@ -32,7 +36,7 @@ contract SchemaRegistryTest is Test {
 
     // Should be equal to the current version of SchemaRegistry.sol in this repository
     function testVersion() public view {
-        assertEq(registry.version(), "1.3.1-beta.1");
+     assertEq(ISemver(address(registry)).version(), "1.3.1-beta.1");
     }
 
     // Basic functionality tests
@@ -165,11 +169,7 @@ contract SchemaRegistryTest is Test {
         address resolver = address(0x123);
         bool revocable = true;
 
-        uint256 gasBefore = gasleft();
         registry.register(schema, ISchemaResolver(resolver), revocable);
-        uint256 gasUsed = gasBefore - gasleft();
-        
-        console.log("Gas used for schema registration:", gasUsed);
     }
 
     // Advanced scenarios
