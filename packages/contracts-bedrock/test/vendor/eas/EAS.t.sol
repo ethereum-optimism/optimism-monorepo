@@ -10,7 +10,6 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { console } from "forge-std/console.sol";
 
 contract TestEIP712Helper is EIP712 {
     constructor() EIP712("EAS", "1.3.0") {}
