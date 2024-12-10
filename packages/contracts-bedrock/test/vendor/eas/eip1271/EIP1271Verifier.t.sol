@@ -12,25 +12,35 @@ import {
     IEAS 
 } from "src/vendor/eas/IEAS.sol";
 
+// =============================================================
+//                        MOCK CONTRACTS 
+// =============================================================
+
+/// @dev Test implementation of EIP1271Verifier
 contract TestEIP1271Verifier is EIP1271Verifier {
     constructor(string memory name) EIP1271Verifier(name, "1.0.0") {}
 
+    /// @dev Exposes internal verify function for testing
     function verifyAttest(DelegatedAttestationRequest calldata request) external {
         _verifyAttest(request);
     }
 
+    /// @dev Exposes internal time function for testing
     function time() public view returns (uint64) {
         return _time();
     }
 }
 
+/// @dev Mock contract implementing EIP1271 signature verification
 contract MockEIP1271Signer {
     mapping(bytes32 => bytes) public mockSignatures;
 
+    /// @dev Stores a mock signature for a given hash
     function mockSignature(bytes32 hash, bytes memory signature) external {
         mockSignatures[hash] = signature;
     }
 
+    /// @dev Implements EIP1271 signature verification
     function isValidSignature(bytes32 hash, bytes memory signature) external view returns (bytes4) {
         if (keccak256(mockSignatures[hash]) == keccak256(signature)) {
             return 0x1626ba7e; // Magic value for EIP-1271
@@ -39,37 +49,63 @@ contract MockEIP1271Signer {
     }
 }
 
+// =============================================================
+//                        MAIN TEST CONTRACT
+// =============================================================
+
 contract EIP1271VerifierTest is Test {
-    error InvalidNonce();
-    event NonceIncreased(uint256 oldNonce, uint256 newNonce);
-    
+
+    // =============================================================
+    //                           CONSTANTS
+    // =============================================================
+    bytes32 constant ZERO_BYTES32 = bytes32(0);
+    uint64 constant NO_EXPIRATION = 0;
+    bytes32 private constant ATTEST_TYPEHASH = 0xfeb2925a02bae3dae48d424a0437a2b6ac939aa9230ddc55a1a76f065d988076;
+
+    // =============================================================
+    //                          TEST STATE
+    // =============================================================
     TestEIP1271Verifier public verifier;
     MockEIP1271Signer public mockSigner;
     address public recipient;
     uint256 public signerPrivateKey;
     address public signer;
 
-    bytes32 constant ZERO_BYTES32 = bytes32(0);
-    uint64 constant NO_EXPIRATION = 0;
+    // =============================================================
+    //                         ERROR TYPES
+    // =============================================================
+    error InvalidNonce();
+    
+    // =============================================================
+    //                           EVENTS
+    // =============================================================
+    event NonceIncreased(uint256 oldNonce, uint256 newNonce);
 
-    // Match the exact ATTEST_TYPEHASH from the contract
-    bytes32 private constant ATTEST_TYPEHASH = 0xfeb2925a02bae3dae48d424a0437a2b6ac939aa9230ddc55a1a76f065d988076;
-
+    // =============================================================
+    //                           SETUP
+    // =============================================================
+    /// @dev Deploys contracts and initializes test state
     function setUp() public {
         verifier = new TestEIP1271Verifier("EAS");
         mockSigner = new MockEIP1271Signer();
         recipient = makeAddr("recipient");
-        
-        // Create a signer
         signerPrivateKey = 0xA11CE;
         signer = vm.addr(signerPrivateKey);
     }
 
+    // =============================================================
+    //                      BASIC STATE TESTS
+    // =============================================================
+    /// @dev Tests initial verifier configuration
     function testInitialState() public view {
         assertEq(verifier.getName(), "EAS");
         assertEq(verifier.getNonce(signer), 0);
     }
 
+    // =============================================================
+    //                      NONCE TESTS
+    // =============================================================
+    /// @dev Tests nonce increase functionality
     function testIncreaseNonce() public {
         vm.startPrank(signer);
         
@@ -80,18 +116,19 @@ contract EIP1271VerifierTest is Test {
         
         assertEq(verifier.getNonce(signer), newNonce);
         
-        // Should revert when trying to decrease nonce
         vm.expectRevert(abi.encodeWithSelector(InvalidNonce.selector));
         verifier.increaseNonce(newNonce - 1);
         
         vm.stopPrank();
     }
 
+    // =============================================================
+    //                    DEADLINE TESTS
+    // =============================================================
+    /// @dev Tests deadline validation
     function testDeadlineExpired() public {
-        // Set block timestamp
         vm.warp(1000);
         
-        // Create attestation request with expired deadline
         DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
             schema: ZERO_BYTES32,
             data: AttestationRequestData({
@@ -102,7 +139,7 @@ contract EIP1271VerifierTest is Test {
                 data: new bytes(0),
                 value: 1000
             }),
-            deadline: 999, // Expired
+            deadline: 999,
             attester: signer,
             signature: Signature({
                 v: 27,
@@ -115,6 +152,10 @@ contract EIP1271VerifierTest is Test {
         verifier.verifyAttest(request);
     }
 
+    // =============================================================
+    //                    SIGNATURE TESTS
+    // =============================================================
+    /// @dev Tests signature verification logic
     function testSignatureVerification() public {
         bytes32 schemaId = ZERO_BYTES32;
         uint64 deadline = uint64(block.timestamp + 3600);
@@ -138,26 +179,26 @@ contract EIP1271VerifierTest is Test {
             })
         });
 
-        // Should fail with invalid signature
         vm.expectRevert(abi.encodeWithSelector(InvalidSignature.selector));
         verifier.verifyAttest(request);
 
-        // Create valid signature
         bytes32 hash = _hashTypedDataV4(request);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
         request.signature = Signature(v, r, s);
 
-        // Should pass with valid signature
         verifier.verifyAttest(request);
     }
 
+    // =============================================================
+    //                    MULTI-ATTESTATION TESTS
+    // =============================================================
+    /// @dev Tests multiple attestation delegations
     function testMultipleAttestationDelegation() public {
         bytes32 schemaId = ZERO_BYTES32;
         uint64 deadline = uint64(block.timestamp + 3600);
         
         DelegatedAttestationRequest[] memory requests = new DelegatedAttestationRequest[](2);
         
-        // Create valid signatures with incrementing nonces
         for(uint i = 0; i < 2; i++) {
             requests[i] = DelegatedAttestationRequest({
                 schema: schemaId,
@@ -178,21 +219,22 @@ contract EIP1271VerifierTest is Test {
                 })
             });
 
-            // Get hash with current nonce
             bytes32 hash = _hashTypedDataV4(requests[i]);
             (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerPrivateKey, hash);
             requests[i].signature = Signature(v, r, s);
 
-            // Verify and increment nonce
             verifier.verifyAttest(requests[i]);
         }
     }
 
+    // =============================================================
+    //                    COMPLEX NONCE TESTS
+    // =============================================================
+    /// @dev Tests complex nonce scenarios
     function testComplexNonceScenarios() public {
         address user1 = makeAddr("user1");
         address user2 = makeAddr("user2");
 
-        // Test nonce independence between users
         vm.prank(user1);
         verifier.increaseNonce(100);
         
@@ -202,7 +244,6 @@ contract EIP1271VerifierTest is Test {
         assertEq(verifier.getNonce(user1), 100);
         assertEq(verifier.getNonce(user2), 200);
 
-        // Test sequential nonce increases
         vm.startPrank(user1);
         verifier.increaseNonce(101);
         verifier.increaseNonce(102);
@@ -212,6 +253,10 @@ contract EIP1271VerifierTest is Test {
         assertEq(verifier.getNonce(user1), 103);
     }
 
+    // =============================================================
+    //                    EIP1271 TESTS
+    // =============================================================
+    /// @dev Tests EIP1271 signature validation
     function testEIP1271SignatureValidation() public {
         MockEIP1271Signer eip1271Contract = new MockEIP1271Signer();
         
@@ -237,22 +282,23 @@ contract EIP1271VerifierTest is Test {
             })
         });
 
-        // Mock valid signature
         bytes32 hash = _hashTypedDataV4(request);
         bytes memory signature = abi.encodePacked(bytes32(uint256(1)), bytes32(uint256(2)), uint8(27));
         eip1271Contract.mockSignature(hash, signature);
 
-        // Update request with mocked signature
         request.signature = Signature({
             v: 27,
             r: bytes32(uint256(1)),
             s: bytes32(uint256(2))
         });
 
-        // Should pass with valid EIP1271 signature
         verifier.verifyAttest(request);
     }
 
+    // =============================================================
+    //                    INTERNAL HELPERS
+    // =============================================================
+    /// @dev Helper function to hash typed data for EIP712
     function _hashTypedDataV4(DelegatedAttestationRequest memory request) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(

@@ -6,73 +6,115 @@ import { SchemaResolver } from "src/vendor/eas/resolver/SchemaResolver.sol";
 import { IEAS, Attestation } from "src/vendor/eas/IEAS.sol";
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 
+// =============================================================
+//                        MOCK CONTRACTS 
+// =============================================================
+
+/// @dev Test implementation of SchemaResolver that always returns true
 contract TestSchemaResolver is SchemaResolver {
     constructor(IEAS eas) SchemaResolver(eas) {}
 
+    /// @dev Mock attestation validation that always succeeds
     function onAttest(Attestation calldata, uint256) internal pure override returns (bool) {
         return true;
     }
 
+    /// @dev Mock revocation validation that always succeeds
     function onRevoke(Attestation calldata, uint256) internal pure override returns (bool) {
         return true;
     }
 
+    /// @dev Returns fixed version string
     function version() external pure returns (string memory) {
         return "1.3.0";
     }
 }
 
+/// @dev Minimal mock EAS implementation for testing
 contract MockEAS {
+    /// @dev Mock attestation that always succeeds
     function attest(Attestation calldata) external payable returns (bool) {
         return true;
     }
 }
 
+/// @dev Mock resolver that accepts payments for testing fee handling
 contract MockPayableResolver is ISchemaResolver {
+    /// @dev Indicates resolver accepts payments
     function isPayable() external pure override returns (bool) {
         return true;
     }
 
+    /// @dev Mock payable attestation
     function attest(Attestation calldata) external payable override returns (bool) {
         return true;
     }
 
+    /// @dev Mock payable multi-attestation
     function multiAttest(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
         return true;
     }
 
+    /// @dev Mock payable revocation
     function revoke(Attestation calldata) external payable override returns (bool) {
         return true;
     }
 
+    /// @dev Mock payable multi-revocation
     function multiRevoke(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
         return true;
     }
 }
 
+// =============================================================
+//                        MAIN TEST CONTRACT
+// =============================================================
+
 contract SchemaResolverTest is Test {
+
+    // =============================================================
+    //                           CONSTANTS
+    // =============================================================
+    uint64 constant NO_EXPIRATION = 0;
+
+    // =============================================================
+    //                          TEST STATE
+    // =============================================================
     TestSchemaResolver public resolver;
     MockEAS public eas;
     address public recipient;
-    uint64 constant NO_EXPIRATION = 0;
 
+    // =============================================================
+    //                         ERROR TYPES
+    // =============================================================
     error AccessDenied();
     error InvalidLength();
     error NotPayable();
     error InsufficientValue();
 
-
+    // =============================================================
+    //                           SETUP
+    // =============================================================
+    /// @dev Deploys mock contracts and sets up test environment
     function setUp() public {
         eas = new MockEAS();
         resolver = new TestSchemaResolver(IEAS(address(eas)));
         recipient = makeAddr("recipient");
     }
 
+    // =============================================================
+    //                      BASIC STATE TESTS
+    // =============================================================
+    /// @dev Tests initial resolver configuration
     function testInitialState() public view {
         assertEq(resolver.version(), "1.3.0");
         assertEq(resolver.isPayable(), false);
     }
 
+    // =============================================================
+    //                    ACCESS CONTROL TESTS
+    // =============================================================
+    /// @dev Tests that only EAS can call resolver functions
     function testOnlyEASCanCall() public {
         Attestation memory attestation = Attestation({
             uid: bytes32(0),
@@ -95,12 +137,17 @@ contract SchemaResolverTest is Test {
         resolver.revoke(attestation);
     }
 
+    // =============================================================
+    //                     VALIDATION TESTS
+    // =============================================================
+    /// @dev Tests rejection of ETH transfers to non-payable resolver
     function testNonPayableResolver() public {
         // Should revert when sending ETH to non-payable resolver
         vm.expectRevert(NotPayable.selector);
         payable(address(resolver)).transfer(1 ether);
     }
 
+    /// @dev Tests array length validation in multi-attestations
     function testMultiAttestInvalidLength() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](1);
@@ -110,6 +157,7 @@ contract SchemaResolverTest is Test {
         resolver.multiAttest(attestations, values);
     }
 
+    /// @dev Tests array length validation in multi-revocations
     function testMultiRevokeInvalidLength() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](1);
@@ -120,6 +168,7 @@ contract SchemaResolverTest is Test {
         resolver.multiRevoke(attestations, values);
     }
 
+    /// @dev Tests value validation for paid attestations
     function testInsufficientValue() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](2);
@@ -135,6 +184,10 @@ contract SchemaResolverTest is Test {
         resolver.multiAttest{value: 1 ether}(attestations, values);
     }
 
+    // =============================================================
+    //                    ATTESTATION TESTS
+    // =============================================================
+    /// @dev Tests multi-attestation with value transfers
     function testMultiAttestationWithValues() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](2);
@@ -163,6 +216,10 @@ contract SchemaResolverTest is Test {
         resolver.multiAttest{value: 2 ether}(attestations, values);
     }
 
+    // =============================================================
+    //                    REVOCATION TESTS
+    // =============================================================
+    /// @dev Tests various revocation scenarios
     function testRevocationScenarios() public {
         Attestation memory attestation = Attestation({
             uid: bytes32(uint256(1)),
@@ -186,6 +243,10 @@ contract SchemaResolverTest is Test {
         resolver.revoke{value: 1 ether}(attestation);
     }
 
+    // =============================================================
+    //                    INTEGRATION TESTS
+    // =============================================================
+    /// @dev Tests complex attestation scenarios with multiple configurations
     function testComplexResolverScenarios() public {
         Attestation[] memory attestations = new Attestation[](3);
         uint256[] memory values = new uint256[](3);
@@ -214,6 +275,7 @@ contract SchemaResolverTest is Test {
         resolver.multiAttest{value: 1.5 ether}(attestations, values);
     }
 
+    /// @dev Tests interactions with payable resolver implementation
     function testPayableResolverInteractions() public {
         // Create a payable resolver instance
         MockPayableResolver payableResolver = new MockPayableResolver();
