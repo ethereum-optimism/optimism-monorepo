@@ -114,7 +114,7 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	channelMgrMutex sync.Mutex
+	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
 	channelMgr      *channelManager
 	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
@@ -391,7 +391,6 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 // executeSyncActions computes the actions to take based on the current sync status, and then executes
 // them, updating the channel manager state and sending transactions to the DA layer.
 func (l *BatchSubmitter) executeSyncActions(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
-	// Lock the state to prevent any changes while we're computing sync actions
 	l.channelMgrMutex.Lock()
 	defer l.channelMgrMutex.Unlock()
 
