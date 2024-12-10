@@ -31,6 +31,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/safego"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
 )
 
 // L2Verifier is an actor that functions like a rollup node,
@@ -64,6 +65,8 @@ type L2Verifier struct {
 	RollupCfg *rollup.Config
 
 	rpc *rpc.Server
+
+	interopRPC *rpc.Server
 
 	failRPC func(call []rpc.BatchElem) error // mock error
 
@@ -181,6 +184,11 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 
 	t.Cleanup(rollupNode.rpc.Stop)
 
+	if cfg.InteropTime != nil {
+		rollupNode.interopRPC = rpc.NewServer()
+		t.Cleanup(rollupNode.interopRPC.Stop)
+	}
+
 	// setup RPC server for rollup node, hooked to the actor as backend
 	m := &testutils.TestRPCMetrics{}
 	backend := &l2VerifierBackend{verifier: rollupNode}
@@ -201,6 +209,13 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	}
 	require.NoError(t, gnode.RegisterApis(apis, nil, rollupNode.rpc), "failed to set up APIs")
 	return rollupNode
+}
+
+func (v *L2Verifier) InteropSyncSource(t Testing) syncsrc.SyncSource {
+	require.NotNil(t, v.interopRPC, "interop rpc must be running")
+	cl := rpc.DialInProc(v.interopRPC)
+	bCl := client.NewBaseRPCClient(cl)
+	return syncsrc.NewRPCSyncSource("action-tests-l2-verifier", bCl)
 }
 
 type l2VerifierBackend struct {

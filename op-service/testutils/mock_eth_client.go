@@ -103,6 +103,15 @@ func (m *MockEthClient) ExpectPayloadByLabel(label eth.BlockLabel, payload *eth.
 	m.Mock.On("PayloadByLabel", label).Once().Return(payload, err)
 }
 
+func (m *MockEthClient) FetchReceiptsOnly(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
+	out := m.Mock.Called(blockHash)
+	return out.Get(0).(types.Receipts), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectFetchReceiptsOnly(hash common.Hash, receipts types.Receipts, err error) {
+	m.Mock.On("FetchReceiptsOnly", hash).Once().Return(receipts, err)
+}
+
 func (m *MockEthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
 	out := m.Mock.Called(blockHash)
 	return *out.Get(0).(*eth.BlockInfo), out.Get(1).(types.Receipts), out.Error(2)
@@ -146,6 +155,33 @@ func (m *MockEthClient) BlockByNumber(ctx context.Context, number *big.Int) (*ty
 
 func (m *MockEthClient) ExpectBlockByNumber(number *big.Int, block *types.Block, err error) {
 	m.Mock.On("BlockByNumber", number).Once().Return(block, err)
+}
+
+func (m *MockEthClient) BlockRefByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockRef, error) {
+	out := m.Mock.Called(label)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByLabel(label eth.BlockLabel, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByLabel", label).Once().Return(ref, err)
+}
+
+func (m *MockEthClient) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
+	out := m.Mock.Called(num)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByNumber(num uint64, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByNumber", num).Once().Return(ref, err)
+}
+
+func (m *MockEthClient) BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error) {
+	out := m.Mock.Called(hash)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByHash(hash common.Hash, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByHash", hash).Once().Return(ref, err)
 }
 
 func (m *MockEthClient) ExpectClose() {

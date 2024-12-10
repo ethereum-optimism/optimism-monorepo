@@ -19,6 +19,13 @@ type RPCSyncSource struct {
 	cl   client.RPC
 }
 
+func NewRPCSyncSource(name string, cl client.RPC) *RPCSyncSource {
+	return &RPCSyncSource{
+		name: name,
+		cl:   cl,
+	}
+}
+
 var _ SyncSource = (*RPCSyncSource)(nil)
 
 func (rs *RPCSyncSource) BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error) {

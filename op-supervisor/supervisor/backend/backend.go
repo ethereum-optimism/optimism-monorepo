@@ -145,7 +145,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		if err != nil {
 			return fmt.Errorf("failed to set up sync source: %w", err)
 		}
-		if err := su.attachSyncSource(ctx, src); err != nil {
+		if err := su.AttachSyncSource(ctx, src); err != nil {
 			return fmt.Errorf("failed to attach sync source %s: %w", src, err)
 		}
 	}
@@ -207,7 +207,7 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	return nil
 }
 
-func (su *SupervisorBackend) attachSyncSource(ctx context.Context, src syncsrc.SyncSource) error {
+func (su *SupervisorBackend) AttachSyncSource(ctx context.Context, src syncsrc.SyncSource) error {
 	su.logger.Info("attaching sync source to chain processor", "source", src)
 
 	chainID, err := src.ChainID(ctx)
@@ -346,7 +346,7 @@ func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret
 	if err != nil {
 		return fmt.Errorf("failed to set up sync source from RPC: %w", err)
 	}
-	return su.attachSyncSource(ctx, src)
+	return su.AttachSyncSource(ctx, src)
 }
 
 // Internal methods, for processors

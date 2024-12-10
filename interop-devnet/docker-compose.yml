@@ -89,11 +89,10 @@ services:
       op-supervisor
       --datadir="/db"
       --dependency-set="/depset.json"
-      --l2-rpcs=""
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
       --rpc.enable-admin
-      --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
+      --l2-consensus.nodes="ws://op-node-a:8546,ws://op-node-b:8546"
     environment:
       OP_SUPERVISOR_METRICS_ENABLED: "true"
 

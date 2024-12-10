@@ -25,7 +25,7 @@ type Config struct {
 
 	Beacon L1BeaconEndpointSetup
 
-	InteropConfig *interop.Config
+	InteropConfig interop.Setup
 
 	Driver driver.Config
 

@@ -76,7 +76,8 @@ type OpNode struct {
 
 	beacon *sources.L1BeaconClient
 
-	interopSubSystem interop.SubSystem
+	supervisor       *sources.SupervisorClient
+	tmpInteropServer *interop.TemporaryInteropServer
 
 	// some resources cannot be stopped directly, like the p2p gossipsub router (not our design),
 	// and depend on this ctx to be closed.
@@ -399,11 +400,12 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.Rollup.InteropTime != nil {
-		subsystem, err := cfg.InteropConfig.Setup(ctx, n.log)
+		cl, srv, err := cfg.InteropConfig.TemporarySetup(ctx, n.log, n.l2Source)
 		if err != nil {
 			return fmt.Errorf("failed to setup interop: %w", err)
 		}
-		n.interopSubSystem = subsystem
+		n.supervisor = cl
+		n.tmpInteropServer = srv
 	}
 
 	var sequencerConductor conductor.SequencerConductor = &conductor.NoOpConductor{}
@@ -428,7 +430,7 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
-		n.interopSubSystem, n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
+		n.supervisor, n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
 	return nil
 }
 
@@ -719,9 +721,12 @@ func (n *OpNode) Stop(ctx context.Context) error {
 	}
 
 	// close the interop sub system
-	if n.interopSubSystem != nil {
-		if err := n.interopSubSystem.Stop(ctx); err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to stop interop sub system: %w", err))
+	if n.supervisor != nil {
+		n.supervisor.Close()
+	}
+	if n.tmpInteropServer != nil {
+		if err := n.tmpInteropServer.Close(); err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to close interop RPC server: %w", err))
 		}
 	}
 
@@ -789,6 +794,13 @@ func (n *OpNode) HTTPEndpoint() string {
 		return ""
 	}
 	return fmt.Sprintf("http://%s", n.server.Addr().String())
+}
+
+func (n *OpNode) InteropRPC() (rpcEndpoint string, jwtSecret eth.Bytes32) {
+	if n.tmpInteropServer == nil {
+		return "", [32]byte{}
+	}
+	return n.tmpInteropServer.Endpoint(), [32]byte{} // tmp server has no secret
 }
 
 func (n *OpNode) getP2PNodeIfEnabled() *p2p.NodeP2P {

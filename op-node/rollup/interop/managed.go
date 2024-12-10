@@ -37,16 +37,12 @@ func (s *ManagedMode) OnEvent(ev event.Event) bool {
 }
 
 func (s *ManagedMode) Start(ctx context.Context) error {
-
-	// TODO attach backend to server
 	interopAPI := &InteropAPI{}
 	s.srv.AddAPI(gethrpc.API{
 		Namespace:     "interop",
 		Service:       interopAPI,
 		Authenticated: true,
 	})
-
-	// TODO start RPC server, if configured as one
 	if err := s.srv.Start(); err != nil {
 		return fmt.Errorf("failed to start interop RPC server: %w", err)
 	}

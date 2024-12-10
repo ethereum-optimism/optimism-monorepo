@@ -109,8 +109,10 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 	chainA := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900200"], supervisorAPI)
 	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"], supervisorAPI)
 	// Hook up L2 RPCs to supervisor, to fetch event data from
-	require.NoError(is.T, supervisorAPI.AddL2RPC(is.T.Ctx(), chainA.SequencerEngine.HTTPEndpoint()))
-	require.NoError(is.T, supervisorAPI.AddL2RPC(is.T.Ctx(), chainB.SequencerEngine.HTTPEndpoint()))
+	srcA := chainA.Sequencer.InteropSyncSource(is.T)
+	srcB := chainA.Sequencer.InteropSyncSource(is.T)
+	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcA))
+	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcB))
 	return &InteropActors{
 		L1Miner:    l1Miner,
 		Supervisor: supervisorAPI,
