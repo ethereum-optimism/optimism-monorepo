@@ -12,7 +12,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeployMIPS(t *testing.T) {
+func TestDeployAlphabetVM(t *testing.T) {
 	t.Parallel()
 
 	_, artifacts := testutil.LocalArtifacts(t)
@@ -25,13 +25,13 @@ func TestDeployMIPS(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	input := DeployMIPSInput{
-		MipsVersion:    1,
-		PreimageOracle: common.Address{0xab},
+	input := DeployAlphabetVMInput{
+		AbsolutePrestate: common.Hash{'A'},
+		PreimageOracle:   common.Address{'O'},
 	}
 
-	output, err := DeployMIPS(host, input)
+	output, err := DeployAlphabetVM(host, input)
 	require.NoError(t, err)
 
-	require.NotEmpty(t, output.MipsSingleton)
+	require.NotEmpty(t, output.AlphabetVM)
 }

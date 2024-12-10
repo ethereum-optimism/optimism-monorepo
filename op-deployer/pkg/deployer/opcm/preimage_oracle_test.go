@@ -1,6 +1,7 @@
 package opcm
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
@@ -12,7 +13,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestDeployMIPS(t *testing.T) {
+func TestDeployPreimageOracle(t *testing.T) {
 	t.Parallel()
 
 	_, artifacts := testutil.LocalArtifacts(t)
@@ -25,13 +26,13 @@ func TestDeployMIPS(t *testing.T) {
 	)
 	require.NoError(t, err)
 
-	input := DeployMIPSInput{
-		MipsVersion:    1,
-		PreimageOracle: common.Address{0xab},
+	input := DeployPreimageOracleInput{
+		MinProposalSize: big.NewInt(123),
+		ChallengePeriod: big.NewInt(456),
 	}
 
-	output, err := DeployMIPS(host, input)
+	output, err := DeployPreimageOracle(host, input)
 	require.NoError(t, err)
 
-	require.NotEmpty(t, output.MipsSingleton)
+	require.NotEmpty(t, output.PreimageOracle)
 }

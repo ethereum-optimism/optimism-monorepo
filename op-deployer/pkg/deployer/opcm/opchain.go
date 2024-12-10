@@ -88,7 +88,7 @@ func DeployOPChainIsthmus(host *script.Host, input DeployOPChainInputIsthmus) (D
 }
 
 func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, error) {
-	return RunBasicScript[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
+	return RunScriptSingle[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
 }
 
 type ReadImplementationAddressesInput struct {

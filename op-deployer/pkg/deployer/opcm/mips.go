@@ -31,5 +31,5 @@ func DeployMIPS(
 	host *script.Host,
 	input DeployMIPSInput,
 ) (DeployMIPSOutput, error) {
-	return RunBasicScript[DeployMIPSInput, DeployMIPSOutput](host, input, "DeployMIPS.s.sol", "DeployMIPS")
+	return RunScriptSingle[DeployMIPSInput, DeployMIPSOutput](host, input, "DeployMIPS.s.sol", "DeployMIPS")
 }

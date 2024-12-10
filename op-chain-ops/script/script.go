@@ -440,6 +440,10 @@ func (h *Host) ImportAccount(addr common.Address, account types.Account) {
 	}
 }
 
+func (h *Host) SetStorage(addr common.Address, key common.Hash, value common.Hash) {
+	h.state.SetState(addr, key, value)
+}
+
 // getPrecompile overrides any accounts during runtime, to insert special precompiles, if activated.
 func (h *Host) getPrecompile(rules params.Rules, original vm.PrecompiledContract, addr common.Address) vm.PrecompiledContract {
 	if p, ok := h.precompiles[addr]; ok {

@@ -44,5 +44,5 @@ func DeployDisputeGame(
 	host *script.Host,
 	input DeployDisputeGameInput,
 ) (DeployDisputeGameOutput, error) {
-	return RunBasicScript[DeployDisputeGameInput, DeployDisputeGameOutput](host, input, "DeployDisputeGame.s.sol", "DeployDisputeGame")
+	return RunScriptSingle[DeployDisputeGameInput, DeployDisputeGameOutput](host, input, "DeployDisputeGame.s.sol", "DeployDisputeGame")
 }
