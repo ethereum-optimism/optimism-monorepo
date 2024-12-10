@@ -11,14 +11,14 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Initializable } from "@openzeppelin/contracts-v5/proxy/utils/Initializable.sol";
 import { IERC165 } from "@openzeppelin/contracts-v5/utils/introspection/IERC165.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { IERC7802 } from "src/L2/interfaces/IERC7802.sol";
+import { IERC7802 } from "interfaces/L2/IERC7802.sol";
 import { IBeacon } from "@openzeppelin/contracts-v5/proxy/beacon/IBeacon.sol";
 import { BeaconProxy } from "@openzeppelin/contracts-v5/proxy/beacon/BeaconProxy.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 
 // Target contract
-import { IOptimismSuperchainERC20 } from "src/L2/interfaces/IOptimismSuperchainERC20.sol";
+import { IOptimismSuperchainERC20 } from "interfaces/L2/IOptimismSuperchainERC20.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 /// @title OptimismSuperchainERC20Test

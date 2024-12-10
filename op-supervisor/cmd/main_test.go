@@ -16,6 +16,7 @@ import (
 )
 
 var (
+	ValidL1RPC   = "http://localhost:8545"
 	ValidL2RPCs  = []string{"http;//localhost:8545"}
 	ValidDatadir = "./supervisor_test_datadir"
 )
@@ -38,7 +39,7 @@ func TestLogLevel(t *testing.T) {
 func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	cfg := configForArgs(t, addRequiredArgs())
 	depSet := &depset.JsonDependencySetLoader{Path: "test"}
-	defaultCfgTempl := config.NewConfig(ValidL2RPCs, depSet, ValidDatadir)
+	defaultCfgTempl := config.NewConfig(ValidL1RPC, ValidL2RPCs, depSet, ValidDatadir)
 	defaultCfg := *defaultCfgTempl
 	defaultCfg.Version = Version
 	require.Equal(t, defaultCfg, *cfg)
@@ -125,6 +126,7 @@ func toArgList(req map[string]string) []string {
 
 func requiredArgs() map[string]string {
 	args := map[string]string{
+		"--l1-rpc":         ValidL1RPC,
 		"--l2-rpcs":        ValidL2RPCs[0],
 		"--dependency-set": "test",
 		"--datadir":        ValidDatadir,

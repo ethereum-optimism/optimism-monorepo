@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+// Libraries
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { CrossL2Inbox, Identifier } from "src/L2/CrossL2Inbox.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { TransientReentrancyAware } from "src/libraries/TransientContext.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
+import { ICrossL2Inbox, Identifier } from "interfaces/L2/ICrossL2Inbox.sol";
 
 /// @notice Thrown when a non-written slot in transient storage is attempted to be read from.
 error NotEntered();
@@ -39,6 +43,9 @@ error ReentrantCall();
 /// @notice Thrown when a call to the target contract during message relay fails.
 error TargetCallFailed();
 
+/// @notice Thrown when attempting to use a chain ID that is not in the dependency set.
+error InvalidChainId();
+
 /// @notice Thrown when relaying a message from an address different from the specified entrypoint.
 error InvalidEntrypoint();
 
@@ -60,7 +67,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         0x711dfa3259c842fffc17d6e1f1e0fc5927756133a2345ca56b4cb8178589fee7;
 
     /// @notice Event selector for the SentMessage event. Will be removed in favor of reading
-    //          the `selector` property directly once crytic/slithe/#2566 is fixed.
+    //          the `selector` property directly once crytic/slither/#2566 is fixed.
     bytes32 internal constant SENT_MESSAGE_EVENT_SELECTOR =
         0xc3406924bd47cc346b038460ab86a034281a1fa54246e7996ce88ad205efcf4f;
 
@@ -68,8 +75,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     uint16 public constant messageVersion = uint16(0);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.11
-    string public constant version = "1.0.0-beta.11";
+    /// @custom:semver 1.0.0-beta.14
+    string public constant version = "1.0.0-beta.14";
 
     /// @notice Mapping of message hashes to boolean receipt values. Note that a message will only be present in this
     ///         mapping if it has successfully been relayed on this chain, and can therefore not be relayed again.
@@ -176,7 +183,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         }
 
         // Signal that this is a cross chain call that needs to have the identifier validated
-        CrossL2Inbox(Predeploys.CROSS_L2_INBOX).validateMessage(_id, keccak256(_sentMessage));
+        ICrossL2Inbox(Predeploys.CROSS_L2_INBOX).validateMessage(_id, keccak256(_sentMessage));
 
         // Decode the payload
         (uint256 destination, address target, uint256 nonce, address sender, bytes memory message, address entrypoint) =
@@ -286,6 +293,7 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
         if (_destination == block.chainid) revert MessageDestinationSameChain();
         if (_target == Predeploys.CROSS_L2_INBOX) revert MessageTargetCrossL2Inbox();
         if (_target == Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER) revert MessageTargetL2ToL2CrossDomainMessenger();
+        if (!IDependencySet(Predeploys.L1_BLOCK_ATTRIBUTES).isInDependencySet(_destination)) revert InvalidChainId();
 
         uint256 nonce = messageNonce();
         emit SentMessage(_destination, _target, nonce, msg.sender, _message, _entrypoint);

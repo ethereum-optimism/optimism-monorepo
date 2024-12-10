@@ -3,9 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { IOptimismPortalInterop as IOptimismPortal } from "src/L1/interfaces/IOptimismPortalInterop.sol";
 import { SystemConfig } from "src/L1/SystemConfig.sol";
-import { ConfigType } from "src/L2/L1BlockInterop.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
@@ -14,7 +12,9 @@ import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Storage } from "src/libraries/Storage.sol";
 
 // Interfaces
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @custom:proxied true
 /// @title SystemConfigInterop
@@ -68,9 +68,9 @@ contract SystemConfigInterop is SystemConfig {
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop-beta.4
+    /// @custom:semver +interop-beta.6
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.4");
+        return string.concat(super.version(), "+interop-beta.6");
     }
 
     /// @notice Internal setter for the gas paying token address, includes validation.

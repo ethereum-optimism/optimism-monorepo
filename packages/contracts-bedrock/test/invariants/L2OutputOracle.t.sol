@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
 import { Vm } from "forge-std/Vm.sol";
 
 contract L2OutputOracle_Proposer {

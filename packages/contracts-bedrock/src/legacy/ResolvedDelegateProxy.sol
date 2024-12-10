@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { AddressManager } from "src/legacy/AddressManager.sol";
 
 /// @custom:legacy true

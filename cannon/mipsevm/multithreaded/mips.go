@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
 
 type Word = arch.Word
@@ -57,10 +58,10 @@ func (m *InstrumentedState) handleSyscall() error {
 			Registers: thread.Registers,
 		}
 
-		newThread.Registers[29] = a1
+		newThread.Registers[register.RegSP] = a1
 		// the child will perceive a 0 value as returned value instead, and no error
-		newThread.Registers[exec.RegSyscallRet1] = 0
-		newThread.Registers[exec.RegSyscallErrno] = 0
+		newThread.Registers[register.RegSyscallRet1] = 0
+		newThread.Registers[register.RegSyscallErrno] = 0
 		m.state.NextThreadId++
 
 		// Preempt this thread for the new one. But not before updating PCs

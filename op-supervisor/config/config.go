@@ -33,6 +33,8 @@ type Config struct {
 	// requiring manual triggers for the backend to process anything.
 	SynchronousProcessors bool
 
+	L1RPC string
+
 	L2RPCs  []string
 	Datadir string
 }
@@ -56,7 +58,7 @@ func (c *Config) Check() error {
 
 // NewConfig creates a new config using default values whenever possible.
 // Required options with no suitable default are passed as parameters.
-func NewConfig(l2RPCs []string, depSet depset.DependencySetSource, datadir string) *Config {
+func NewConfig(l1RPC string, l2RPCs []string, depSet depset.DependencySetSource, datadir string) *Config {
 	return &Config{
 		LogConfig:           oplog.DefaultCLIConfig(),
 		MetricsConfig:       opmetrics.DefaultCLIConfig(),
@@ -64,6 +66,7 @@ func NewConfig(l2RPCs []string, depSet depset.DependencySetSource, datadir strin
 		RPC:                 oprpc.DefaultCLIConfig(),
 		DependencySetSource: depSet,
 		MockRun:             false,
+		L1RPC:               l1RPC,
 		L2RPCs:              l2RPCs,
 		Datadir:             datadir,
 	}

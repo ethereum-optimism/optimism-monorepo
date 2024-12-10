@@ -408,7 +408,7 @@ func ExtendedTimeWithoutL1Batches(gt *testing.T, deltaTimeOffset *hexutil.Uint64
 //   - Fill 40 L2 blocks to near max-capacity, with txs of 120 KB each
 //   - Buffer the L2 blocks into channels together as much as possible, submit data-txs only when necessary
 //     (just before crossing the max RLP channel size)
-//   - Limit the data-tx size to 40 KB, to force data to be split across multiple datat-txs
+//   - Limit the data-tx size to 40 KB, to force data to be split across multiple data-txs
 //   - Defer all data-tx inclusion till the end
 //   - Fill L1 blocks with data-txs until we have processed them all
 //   - Run the verifier, and check if it derives the same L2 chain as was created by the sequencer.

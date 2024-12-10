@@ -16,7 +16,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
 import { LivenessModule } from "src/safe/LivenessModule.sol";
 import { DeputyGuardianModule } from "src/safe/DeputyGuardianModule.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 import { Deploy } from "./Deploy.s.sol";
 
@@ -59,7 +59,7 @@ struct GuardianConfig {
 ///         be used as an example to guide the setup and configuration of the Safe contracts.
 contract DeployOwnership is Deploy {
     /// @notice Internal function containing the deploy logic.
-    function _run() internal override {
+    function _run(bool) internal override {
         console.log("start of Ownership Deployment");
         // The SuperchainConfig is needed as a constructor argument to the Deputy Guardian Module
         deploySuperchainConfig();

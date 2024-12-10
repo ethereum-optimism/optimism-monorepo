@@ -13,8 +13,11 @@ import (
 	"maps"
 	"math/big"
 	"os"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
@@ -89,7 +92,7 @@ func TestEndToEndApply(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package", TestParams)
+	enclaveCtx := kurtosisutil.StartEnclave(t, ctx, lgr, "github.com/ethpandaops/ethereum-package@4.4.0", TestParams)
 
 	service, err := enclaveCtx.GetServiceContext("el-1-geth-lighthouse")
 	require.NoError(t, err)
@@ -150,12 +153,10 @@ func TestEndToEndApply(t *testing.T) {
 
 	t.Run("chain with tagged artifacts", func(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
-		cg := ethClientCodeGetter(ctx, l1Client)
-
 		intent.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 		intent.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
 
-		require.NoError(t, deployer.ApplyPipeline(
+		require.ErrorIs(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
 				L1RPCUrl:           rpcURL,
@@ -165,10 +166,7 @@ func TestEndToEndApply(t *testing.T) {
 				Logger:             lgr,
 				StateWriter:        pipeline.NoopStateWriter(),
 			},
-		))
-
-		validateSuperchainDeployment(t, st, cg)
-		validateOPChainDeployment(t, cg, st, intent)
+		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
 	})
 }
 
@@ -195,8 +193,14 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 	defer cancel()
 
+	retryProxy := retryproxy.New(lgr, forkRPCUrl)
+	require.NoError(t, retryProxy.Start())
+	t.Cleanup(func() {
+		require.NoError(t, retryProxy.Stop())
+	})
+
 	runner, err := anvil.New(
-		forkRPCUrl,
+		retryProxy.Endpoint(),
 		lgr,
 	)
 	require.NoError(t, err)
@@ -412,7 +416,7 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	}
 }
 
-func TestL2BlockTimeOverride(t *testing.T) {
+func TestGlobalOverrides(t *testing.T) {
 	op_e2e.InitParallel(t)
 	kurtosisutil.Test(t)
 
@@ -420,8 +424,28 @@ func TestL2BlockTimeOverride(t *testing.T) {
 	defer cancel()
 
 	opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
+	expectedGasLimit := strings.ToLower("0x1C9C380")
+	expectedBaseFeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000001")
+	expectedL1FeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000002")
+	expectedSequencerFeeVaultRecipient := common.HexToAddress("0x0000000000000000000000000000000000000003")
+	expectedBaseFeeVaultMinimumWithdrawalAmount := strings.ToLower("0x1BC16D674EC80000")
+	expectedBaseFeeVaultWithdrawalNetwork := genesis.FromUint8(0)
+	expectedEnableGovernance := false
+	expectedGasPriceOracleBaseFeeScalar := uint32(1300)
+	expectedEIP1559Denominator := uint64(500)
+	expectedUseFaultProofs := false
 	intent.GlobalDeployOverrides = map[string]interface{}{
-		"l2BlockTime": float64(3),
+		"l2BlockTime":                         float64(3),
+		"l2GenesisBlockGasLimit":              expectedGasLimit,
+		"baseFeeVaultRecipient":               expectedBaseFeeVaultRecipient,
+		"l1FeeVaultRecipient":                 expectedL1FeeVaultRecipient,
+		"sequencerFeeVaultRecipient":          expectedSequencerFeeVaultRecipient,
+		"baseFeeVaultMinimumWithdrawalAmount": expectedBaseFeeVaultMinimumWithdrawalAmount,
+		"baseFeeVaultWithdrawalNetwork":       expectedBaseFeeVaultWithdrawalNetwork,
+		"enableGovernance":                    expectedEnableGovernance,
+		"gasPriceOracleBaseFeeScalar":         expectedGasPriceOracleBaseFeeScalar,
+		"eip1559Denominator":                  expectedEIP1559Denominator,
+		"useFaultProofs":                      expectedUseFaultProofs,
 	}
 
 	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
@@ -429,6 +453,16 @@ func TestL2BlockTimeOverride(t *testing.T) {
 	cfg, err := state.CombineDeployConfig(intent, intent.Chains[0], st, st.Chains[0])
 	require.NoError(t, err)
 	require.Equal(t, uint64(3), cfg.L2InitializationConfig.L2CoreDeployConfig.L2BlockTime, "L2 block time should be 3 seconds")
+	require.Equal(t, expectedGasLimit, strings.ToLower(cfg.L2InitializationConfig.L2GenesisBlockDeployConfig.L2GenesisBlockGasLimit.String()), "L2 Genesis Block Gas Limit should be 30_000_000")
+	require.Equal(t, expectedBaseFeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultRecipient, "Base Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedL1FeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.L1FeeVaultRecipient, "L1 Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedSequencerFeeVaultRecipient, cfg.L2InitializationConfig.L2VaultsDeployConfig.SequencerFeeVaultRecipient, "Sequencer Fee Vault Recipient should be the expected address")
+	require.Equal(t, expectedBaseFeeVaultMinimumWithdrawalAmount, strings.ToLower(cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultMinimumWithdrawalAmount.String()), "Base Fee Vault Minimum Withdrawal Amount should be the expected value")
+	require.Equal(t, expectedBaseFeeVaultWithdrawalNetwork, cfg.L2InitializationConfig.L2VaultsDeployConfig.BaseFeeVaultWithdrawalNetwork, "Base Fee Vault Withdrawal Network should be the expected value")
+	require.Equal(t, expectedEnableGovernance, cfg.L2InitializationConfig.GovernanceDeployConfig.EnableGovernance, "Governance should be disabled")
+	require.Equal(t, expectedGasPriceOracleBaseFeeScalar, cfg.L2InitializationConfig.GasPriceOracleDeployConfig.GasPriceOracleBaseFeeScalar, "Gas Price Oracle Base Fee Scalar should be the expected value")
+	require.Equal(t, expectedEIP1559Denominator, cfg.L2InitializationConfig.EIP1559DeployConfig.EIP1559Denominator, "EIP-1559 Denominator should be the expected value")
+	require.Equal(t, expectedUseFaultProofs, cfg.L2InitializationConfig.UseInterop, "Fault proofs should be enabled")
 }
 
 func TestApplyGenesisStrategy(t *testing.T) {
@@ -706,6 +740,7 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
+		ConfigType:         state.IntentConfigTypeCustom,
 		DeploymentStrategy: state.DeploymentStrategyLive,
 		L1ChainID:          l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
@@ -732,8 +767,9 @@ func newChainIntent(t *testing.T, dk *devkeys.MnemonicDevKeys, l1ChainID *big.In
 		BaseFeeVaultRecipient:      addrFor(t, dk, devkeys.BaseFeeVaultRecipientRole.Key(l1ChainID)),
 		L1FeeVaultRecipient:        addrFor(t, dk, devkeys.L1FeeVaultRecipientRole.Key(l1ChainID)),
 		SequencerFeeVaultRecipient: addrFor(t, dk, devkeys.SequencerFeeVaultRecipientRole.Key(l1ChainID)),
-		Eip1559Denominator:         50,
-		Eip1559Elasticity:          6,
+		Eip1559DenominatorCanyon:   standard.Eip1559DenominatorCanyon,
+		Eip1559Denominator:         standard.Eip1559Denominator,
+		Eip1559Elasticity:          standard.Eip1559Elasticity,
 		Roles: state.ChainRoles{
 			L1ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),
 			L2ProxyAdminOwner: addrFor(t, dk, devkeys.L2ProxyAdminOwnerRole.Key(l1ChainID)),

@@ -11,9 +11,9 @@ import { Constants } from "src/libraries/Constants.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 /// @custom:proxied true
 /// @title SystemConfig
@@ -137,9 +137,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.6
+    /// @custom:semver 2.3.0-beta.7
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.6";
+        return "2.3.0-beta.7";
     }
 
     /// @notice Constructs the SystemConfig contract. Cannot set

@@ -8,10 +8,10 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 /// @custom:proxied true
 /// @title L1StandardBridge
@@ -75,8 +75,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.2
-    string public constant version = "2.2.1-beta.2";
+    /// @custom:semver 2.2.1-beta.3
+    string public constant version = "2.2.1-beta.3";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;

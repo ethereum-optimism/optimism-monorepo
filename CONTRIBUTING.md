@@ -20,47 +20,6 @@ Interactions within this repository are subject to a [Code of Conduct](https://g
 
 ## Development Quick Start
 
-### Software Dependencies
-
-| Dependency                                                    | Version  | Version Check Command    |
-| ------------------------------------------------------------- | -------- | ------------------------ |
-| [git](https://git-scm.com/)                                   | `^2`     | `git --version`          |
-| [go](https://go.dev/)                                         | `^1.21`  | `go version`             |
-| [node](https://nodejs.org/en/)                                | `^20`    | `node --version`         |
-| [nvm](https://github.com/nvm-sh/nvm)                          | `^0.39`  | `nvm --version`          |
-| [just](https://github.com/casey/just)                         | `^1.34.0`| `just --version`         |
-| [foundry](https://github.com/foundry-rs/foundry#installation) | `^0.2.0` | `forge --version`        |
-| [make](https://linux.die.net/man/1/make)                      | `^3`     | `make --version`         |
-| [jq](https://github.com/jqlang/jq)                            | `^1.6`   | `jq --version`           |
-| [direnv](https://direnv.net)                                  | `^2`     | `direnv --version`       |
-| [docker](https://docs.docker.com/get-docker/)                 | `^24`    | `docker --version`       |
-| [docker compose](https://docs.docker.com/compose/install/)    | `^2.23`  | `docker compose version` |
-
-### Notes on Specific Dependencies
-
-#### `node`
-
-Make sure to use the version of `node` specified within [`.nvmrc`](./.nvmrc).
-You can use [`nvm`](https://github.com/nvm-sh/nvm) to manage multiple versions of Node.js on your machine and automatically switch to the correct version when you enter this repository.
-
-#### `foundry`
-
-`foundry` is updated frequently and occasionally contains breaking changes.
-This repository pins a specific version of `foundry` inside of [`versions.json`](./versions.json).
-Use the command `just update-foundry` at the root of the monorepo to make sure that your version of `foundry` is the same as the one currently being used in CI.
-
-#### `direnv`
-
-[`direnv`](https://direnv.net) is a tool used to load environment variables from [`.envrc`](./.envrc) into your shell so you don't have to manually export variables every time you want to use them.
-`direnv` only has access to files that you explicitly allow it to see.
-After [installing `direnv`](https://direnv.net/docs/installation.html), you will need to **make sure that [`direnv` is hooked into your shell](https://direnv.net/docs/hook.html)**.
-Make sure you've followed [the guide on the `direnv` website](https://direnv.net/docs/hook.html), then **close your terminal and reopen it** so that the changes take effect (or `source` your config file if you know how to do that).
-
-#### `docker compose`
-
-[Docker Desktop](https://docs.docker.com/get-docker/) should come with `docker compose` installed by default.
-You'll have to install the `compose` plugin if you're not using Docker Desktop or you're on linux.
-
 ### Setting Up
 
 Clone the repository and open it:
@@ -70,13 +29,45 @@ git clone git@github.com:ethereum-optimism/optimism.git
 cd optimism
 ```
 
+### Software Dependencies
+
+You will need to install a number of software dependencies to effectively contribute to the
+Optimism Monorepo. We use [`mise`](https://mise.jdx.dev/) as a dependency manager for these tools.
+Once properly installed, `mise` will provide the correct versions for each tool. `mise` does not
+replace any other installations of these binaries and will only serve these binaries when you are
+working inside of the `optimism` directory.
+
+#### Install `mise`
+
+Install `mise` by following the instructions provided on the
+[Getting Started page](https://mise.jdx.dev/getting-started.html#_1-install-mise-cli).
+
+#### Trust the `mise.toml` file
+
+`mise` requires that you explicitly trust the `mise.toml` file which lists the dependencies that
+this repository uses. After you've installed `mise` you'll be able to trust the file via:
+
+```bash
+mise trust mise.toml
+```
+
+#### Install dependencies
+
+Use `mise` to install the correct versions for all of the required tools:
+
+```bash
+mise install
+```
+
+#### Installing updates
+
+`mise` will notify you if any dependencies are outdated. Simply run `mise install` again to install
+the latest versions of the dependencies if you receive these notifications.
+
 ### Building the Monorepo
 
-Make sure that you've installed all of the required [Software Dependencies](#software-dependencies) before you continue.
-You will need [foundry](https://github.com/foundry-rs/foundry) to build the smart contracts found within this repository.
-Refer to the note on [foundry as a dependency](#foundry) for instructions.
-
-Install dependencies and build all packages within the monorepo by running:
+You must install all of the required [Software Dependencies](#software-dependencies) to build the
+Optimism Monorepo. Once you've done so, run the following command to build:
 
 ```bash
 make build
@@ -88,7 +79,7 @@ Use the above command to rebuild the monorepo.
 
 ### Running tests
 
-Before running tests: **follow the above instructions to get everything built.**
+Before running tests: **follow the above instructions to get everything built**.
 
 #### Running unit tests (solidity)
 

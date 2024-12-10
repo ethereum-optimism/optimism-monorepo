@@ -1,6 +1,8 @@
 package bootstrap
 
 import (
+	"errors"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
@@ -9,6 +11,7 @@ import (
 )
 
 const (
+	OutfileFlagName                         = "outfile"
 	ArtifactsLocatorFlagName                = "artifacts-locator"
 	WithdrawalDelaySecondsFlagName          = "withdrawal-delay-seconds"
 	MinProposalSizeBytesFlagName            = "min-proposal-size-bytes"
@@ -16,6 +19,7 @@ const (
 	ProofMaturityDelaySecondsFlagName       = "proof-maturity-delay-seconds"
 	DisputeGameFinalityDelaySecondsFlagName = "dispute-game-finality-delay-seconds"
 	MIPSVersionFlagName                     = "mips-version"
+	VmFlagName                              = "vm"
 	GameKindFlagName                        = "game-kind"
 	GameTypeFlagName                        = "game-type"
 	AbsolutePrestateFlagName                = "absolute-prestate"
@@ -23,15 +27,30 @@ const (
 	SplitDepthFlagName                      = "split-depth"
 	ClockExtensionFlagName                  = "clock-extension"
 	MaxClockDurationFlagName                = "max-clock-duration"
-	DelayedWethProxyFlagName                = "delayed-weth-proxy"
 	AnchorStateRegistryProxyFlagName        = "anchor-state-registry-proxy"
 	L2ChainIdFlagName                       = "l2-chain-id"
 	ProposerFlagName                        = "proposer"
 	ChallengerFlagName                      = "challenger"
 	PreimageOracleFlagName                  = "preimage-oracle"
+	ReleaseFlagName                         = "release"
+	DelayedWethProxyFlagName                = "delayed-weth-proxy"
+	DelayedWethImplFlagName                 = "delayed-weth-impl"
+	ProxyOwnerFlagName                      = "proxy-owner"
+	SuperchainProxyAdminOwnerFlagName       = "superchain-proxy-admin-owner"
+	ProtocolVersionsOwnerFlagName           = "protocol-versions-owner"
+	GuardianFlagName                        = "guardian"
+	PausedFlagName                          = "paused"
+	RequiredProtocolVersionFlagName         = "required-protocol-version"
+	RecommendedProtocolVersionFlagName      = "recommended-protocol-version"
 )
 
 var (
+	OutfileFlag = &cli.StringFlag{
+		Name:    OutfileFlagName,
+		Usage:   "Output file. Use - for stdout.",
+		EnvVars: deployer.PrefixEnvVar("OUTFILE"),
+		Value:   "-",
+	}
 	ArtifactsLocatorFlag = &cli.StringFlag{
 		Name:    ArtifactsLocatorFlagName,
 		Usage:   "Locator for artifacts.",
@@ -72,6 +91,11 @@ var (
 		Usage:   "MIPS version.",
 		EnvVars: deployer.PrefixEnvVar("MIPS_VERSION"),
 		Value:   standard.MIPSVersion,
+	}
+	VmFlag = &cli.StringFlag{
+		Name:    VmFlagName,
+		Usage:   "VM contract address.",
+		EnvVars: deployer.PrefixEnvVar("VM"),
 	}
 	GameKindFlag = &cli.StringFlag{
 		Name:    GameKindFlagName,
@@ -119,6 +143,12 @@ var (
 		Usage:   "Delayed WETH proxy.",
 		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_PROXY"),
 	}
+	DelayedWethImplFlag = &cli.StringFlag{
+		Name:    DelayedWethImplFlagName,
+		Usage:   "Delayed WETH implementation.",
+		EnvVars: deployer.PrefixEnvVar("DELAYED_WETH_IMPL"),
+		Value:   common.Address{}.Hex(),
+	}
 	AnchorStateRegistryProxyFlag = &cli.StringFlag{
 		Name:    AnchorStateRegistryProxyFlagName,
 		Usage:   "Anchor state registry proxy.",
@@ -147,33 +177,85 @@ var (
 		EnvVars: deployer.PrefixEnvVar("PREIMAGE_ORACLE"),
 		Value:   common.Address{}.Hex(),
 	}
+	ReleaseFlag = &cli.StringFlag{
+		Name:    ReleaseFlagName,
+		Usage:   "Release to deploy.",
+		EnvVars: deployer.PrefixEnvVar("RELEASE"),
+		Value:   common.Address{}.Hex(),
+	}
+	ProxyOwnerFlag = &cli.StringFlag{
+		Name:    ProxyOwnerFlagName,
+		Usage:   "Proxy owner address.",
+		EnvVars: deployer.PrefixEnvVar("PROXY_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
+	SuperchainProxyAdminOwnerFlag = &cli.StringFlag{
+		Name:    SuperchainProxyAdminOwnerFlagName,
+		Usage:   "Owner address for the superchain proxy admin",
+		EnvVars: deployer.PrefixEnvVar("SUPERCHAIN_PROXY_ADMIN_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
+	ProtocolVersionsOwnerFlag = &cli.StringFlag{
+		Name:    ProtocolVersionsOwnerFlagName,
+		Usage:   "Owner address for protocol versions",
+		EnvVars: deployer.PrefixEnvVar("PROTOCOL_VERSIONS_OWNER"),
+		Value:   common.Address{}.Hex(),
+	}
+	GuardianFlag = &cli.StringFlag{
+		Name:    GuardianFlagName,
+		Usage:   "Guardian address",
+		EnvVars: deployer.PrefixEnvVar("GUARDIAN"),
+		Value:   common.Address{}.Hex(),
+	}
+	PausedFlag = &cli.BoolFlag{
+		Name:    PausedFlagName,
+		Usage:   "Initial paused state",
+		EnvVars: deployer.PrefixEnvVar("PAUSED"),
+	}
+	RequiredProtocolVersionFlag = &cli.StringFlag{
+		Name:    RequiredProtocolVersionFlagName,
+		Usage:   "Required protocol version (semver)",
+		EnvVars: deployer.PrefixEnvVar("REQUIRED_PROTOCOL_VERSION"),
+	}
+	RecommendedProtocolVersionFlag = &cli.StringFlag{
+		Name:    RecommendedProtocolVersionFlagName,
+		Usage:   "Recommended protocol version (semver)",
+		EnvVars: deployer.PrefixEnvVar("RECOMMENDED_PROTOCOL_VERSION"),
+	}
 )
 
 var OPCMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
-	ArtifactsLocatorFlag,
+	ReleaseFlag,
+	OutfileFlag,
+}
+
+var ImplementationsFlags = []cli.Flag{
+	MIPSVersionFlag,
 	WithdrawalDelaySecondsFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
 	ProofMaturityDelaySecondsFlag,
 	DisputeGameFinalityDelaySecondsFlag,
-	MIPSVersionFlag,
 }
 
 var DelayedWETHFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
+	DelayedWethImplFlag,
 }
 
 var DisputeGameFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	MinProposalSizeBytesFlag,
 	ChallengePeriodSecondsFlag,
-	MIPSVersionFlag,
+	VmFlag,
 	GameKindFlag,
 	GameTypeFlag,
 	AbsolutePrestateFlag,
@@ -188,12 +270,37 @@ var DisputeGameFlags = []cli.Flag{
 	ChallengerFlag,
 }
 
-var MIPSFlags = []cli.Flag{
+var BaseFPVMFlags = []cli.Flag{
 	deployer.L1RPCURLFlag,
 	deployer.PrivateKeyFlag,
+	OutfileFlag,
 	ArtifactsLocatorFlag,
 	PreimageOracleFlag,
-	MIPSVersionFlag,
+}
+
+var MIPSFlags = append(BaseFPVMFlags, MIPSVersionFlag)
+
+var AsteriscFlags = BaseFPVMFlags
+
+var ProxyFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	OutfileFlag,
+	ArtifactsLocatorFlag,
+	ProxyOwnerFlag,
+}
+
+var SuperchainFlags = []cli.Flag{
+	deployer.L1RPCURLFlag,
+	deployer.PrivateKeyFlag,
+	OutfileFlag,
+	ArtifactsLocatorFlag,
+	SuperchainProxyAdminOwnerFlag,
+	ProtocolVersionsOwnerFlag,
+	GuardianFlag,
+	PausedFlag,
+	RequiredProtocolVersionFlag,
+	RecommendedProtocolVersionFlag,
 }
 
 var Commands = []*cli.Command{
@@ -202,6 +309,15 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of OPCM.",
 		Flags:  cliapp.ProtectFlags(OPCMFlags),
 		Action: OPCMCLI,
+	},
+	{
+		Name:  "implementations",
+		Usage: "Bootstraps implementations.",
+		Flags: cliapp.ProtectFlags(ImplementationsFlags),
+		Action: func(context *cli.Context) error {
+			return errors.New("not implemented yet")
+		},
+		Hidden: true,
 	},
 	{
 		Name:   "delayedweth",
@@ -220,5 +336,23 @@ var Commands = []*cli.Command{
 		Usage:  "Bootstrap an instance of MIPS.",
 		Flags:  cliapp.ProtectFlags(MIPSFlags),
 		Action: MIPSCLI,
+	},
+	{
+		Name:   "asterisc",
+		Usage:  "Bootstrap an instance of Asterisc.",
+		Flags:  cliapp.ProtectFlags(AsteriscFlags),
+		Action: AsteriscCLI,
+	},
+	{
+		Name:   "proxy",
+		Usage:  "Bootstrap a ERC-1967 Proxy without an implementation set.",
+		Flags:  cliapp.ProtectFlags(ProxyFlags),
+		Action: ProxyCLI,
+	},
+	{
+		Name:   "superchain",
+		Usage:  "Bootstrap the Superchain configuration",
+		Flags:  cliapp.ProtectFlags(SuperchainFlags),
+		Action: SuperchainCLI,
 	},
 }

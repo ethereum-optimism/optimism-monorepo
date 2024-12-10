@@ -121,7 +121,9 @@ func TestInterop_EmitLogs(t *testing.T) {
 		var emitParallel sync.WaitGroup
 		emitOn := func(chainID string) {
 			for i := 0; i < numEmits; i++ {
-				s2.EmitData(chainID, "Alice", payload1)
+				ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+				s2.EmitData(ctx, chainID, "Alice", payload1)
+				cancel()
 			}
 			emitParallel.Done()
 		}
@@ -218,7 +220,9 @@ func TestInteropBlockBuilding(t *testing.T) {
 
 		// Add chain A as dependency to chain B,
 		// such that we can execute a message on B that was initiated on A.
-		depRec := s2.AddDependency(chainB, s2.ChainID(chainA))
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		depRec := s2.AddDependency(ctx, chainB, s2.ChainID(chainA))
+		cancel()
 		t.Logf("Dependency set in L1 block %d", depRec.BlockNumber)
 
 		rollupClA, err := dial.DialRollupClientWithTimeout(context.Background(), time.Second*15, logger, s2.OpNode(chainA).UserRPC().RPC())
@@ -233,7 +237,9 @@ func TestInteropBlockBuilding(t *testing.T) {
 		t.Log("Dependency information has been processed in L2 block")
 
 		// emit log on chain A
-		emitRec := s2.EmitData(chainA, "Alice", "hello world")
+		ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
+		emitRec := s2.EmitData(ctx, chainA, "Alice", "hello world")
+		cancel()
 		t.Logf("Emitted a log event in block %d", emitRec.BlockNumber.Uint64())
 
 		// Wait for initiating side to become cross-unsafe

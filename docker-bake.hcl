@@ -6,6 +6,10 @@ variable "REPOSITORY" {
   default = "oplabs-tools-artifacts/images"
 }
 
+variable "KONA_VERSION" {
+  default = "kona-client-v0.1.0-beta.5"
+}
+
 variable "GIT_COMMIT" {
   default = "dev"
 }
@@ -119,6 +123,7 @@ target "op-challenger" {
     GIT_COMMIT = "${GIT_COMMIT}"
     GIT_DATE = "${GIT_DATE}"
     OP_CHALLENGER_VERSION = "${OP_CHALLENGER_VERSION}"
+    KONA_VERSION="${KONA_VERSION}"
   }
   target = "op-challenger-target"
   platforms = split(",", PLATFORMS)
@@ -207,7 +212,7 @@ target "proofs-tools" {
   context = "."
   args = {
     CHALLENGER_VERSION="b46bffed42db3442d7484f089278d59f51503049"
-    KONA_VERSION="kona-client-v0.1.0-beta.1"
+    KONA_VERSION="${KONA_VERSION}"
   }
   target="proofs-tools"
   platforms = split(",", PLATFORMS)
@@ -239,15 +244,6 @@ target "ci-builder-rust" {
   platforms = split(",", PLATFORMS)
   target="rust-builder"
   tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/ci-builder-rust:${tag}"]
-}
-
-target "contracts-bedrock" {
-  dockerfile = "./ops/docker/Dockerfile.packages"
-  context = "."
-  target = "contracts-bedrock"
-  # See comment in Dockerfile.packages for why we only build for linux/amd64.
-  platforms = ["linux/amd64"]
-  tags = [for tag in split(",", IMAGE_TAGS) : "${REGISTRY}/${REPOSITORY}/contracts-bedrock:${tag}"]
 }
 
 target "op-deployer" {
