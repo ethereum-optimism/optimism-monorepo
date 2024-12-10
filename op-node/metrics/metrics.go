@@ -53,6 +53,7 @@ type Metricer interface {
 	RecordL1ReorgDepth(d uint64)
 	RecordSequencerInconsistentL1Origin(from eth.BlockID, to eth.BlockID)
 	RecordSequencerReset()
+	RecordSequencerBlockBuildingHealth(status string)
 	RecordGossipEvent(evType int32)
 	IncPeerCount()
 	DecPeerCount()
@@ -117,8 +118,9 @@ type Metrics struct {
 
 	PayloadsQuarantineTotal prometheus.Gauge
 
-	SequencerInconsistentL1Origin *metrics.Event
-	SequencerResets               *metrics.Event
+	SequencerInconsistentL1Origin     *metrics.Event
+	SequencerResets                   *metrics.Event
+	SequencerBlockBuildingHealthCheck *prometheus.CounterVec
 
 	L1RequestDurationSeconds *prometheus.HistogramVec
 
@@ -412,6 +414,11 @@ func NewMetrics(procName string) *Metrics {
 			Name:      "sequencer_sealing_total",
 			Help:      "Number of sequencer block sealing jobs",
 		}),
+		SequencerBlockBuildingHealthCheck: factory.NewCounterVec(prometheus.CounterOpts{
+			Namespace: ns,
+			Name:      "block_building_health_checks",
+			Help:      "Number of sequencer healthy/unhealthy block building",
+		}, []string{"status"}),
 
 		ProtocolVersionDelta: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,
@@ -547,6 +554,10 @@ func (m *Metrics) RecordSequencerInconsistentL1Origin(from eth.BlockID, to eth.B
 
 func (m *Metrics) RecordSequencerReset() {
 	m.SequencerResets.Record()
+}
+
+func (m *Metrics) RecordSequencerBlockBuildingHealth(status string) {
+	m.SequencerBlockBuildingHealthCheck.WithLabelValues(status).Inc()
 }
 
 func (m *Metrics) RecordGossipEvent(evType int32) {
@@ -753,6 +764,9 @@ func (n *noopMetricer) RecordSequencerInconsistentL1Origin(from eth.BlockID, to 
 }
 
 func (n *noopMetricer) RecordSequencerReset() {
+}
+
+func (n *noopMetricer) RecordSequencerBlockBuildingHealth(status string) {
 }
 
 func (n *noopMetricer) RecordGossipEvent(evType int32) {

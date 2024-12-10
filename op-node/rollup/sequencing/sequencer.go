@@ -37,6 +37,7 @@ type Metrics interface {
 	RecordSequencerInconsistentL1Origin(from eth.BlockID, to eth.BlockID)
 	RecordSequencerReset()
 	RecordSequencingError()
+	RecordSequencerBlockBuildingHealth(status string)
 }
 
 type SequencerStateListener interface {
@@ -331,6 +332,33 @@ func (d *Sequencer) onPayloadSuccess(x engine.PayloadSuccessEvent) {
 	d.latest = BuildingState{}
 	d.log.Info("Sequencer inserted block",
 		"block", x.Ref, "parent", x.Envelope.ExecutionPayload.ParentID())
+	// Check if the node is healthy
+	payload := x.Envelope.ExecutionPayload
+	blockBuildingThreshold := d.rollupCfg.BlockBuildingThreshold
+	if payload != nil {
+		latestBlockTimeStamp := uint64(payload.Timestamp)
+		currentTime := uint64(time.Now().Unix())
+
+		if latestBlockTimeStamp <= currentTime+1 { // TODO: Remove the +1 once we have a better way to handle this
+			timeDiff := time.Duration(currentTime-latestBlockTimeStamp) * time.Second
+
+			if timeDiff < blockBuildingThreshold {
+				// Node is healthy
+				d.log.Debug("Node is healthy, time difference within threshold",
+					"time_diff", timeDiff, "threshold", blockBuildingThreshold)
+				d.metrics.RecordSequencerBlockBuildingHealth("healthy")
+			} else {
+				// Node is stale
+				d.log.Warn("Node is stale, time difference exceeds threshold",
+					"time_diff", timeDiff, "threshold", blockBuildingThreshold)
+				d.metrics.RecordSequencerBlockBuildingHealth("stale")
+			}
+		} else {
+			d.log.Debug("Cannot compute time difference, block timestamp is in the future",
+				"current_timestamp", currentTime, "block_timestamp", latestBlockTimeStamp)
+			d.metrics.RecordSequencerBlockBuildingHealth("future_timestamp")
+		}
+	}
 	// The payload was already published upon sealing.
 	// Now that we have processed it ourselves we don't need it anymore.
 	d.asyncGossip.Clear()
