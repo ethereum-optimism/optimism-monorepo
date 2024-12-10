@@ -18,7 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -32,28 +32,28 @@ type SupervisorBackend struct {
 	// depSet is the dependency set that the backend uses to know about the chains it is indexing
 	depSet depset.DependencySet
 
-	// chainDBs holds on to the DB indices for each chain
+	// chainDBs is the primary interface to the databases, including logs, derived-from information and L1 finalization
 	chainDBs *db.ChainsDB
 
-	// l1Processor watches for new L1 blocks, updates the local-safe DB, and kicks off derivation orchestration
+	// l1Processor watches for new data from the L1 chain including new blocks and block finalization
 	l1Processor *processors.L1Processor
 
 	// chainProcessors are notified of new unsafe blocks, and add the unsafe log events data into the events DB
 	chainProcessors locks.RWMap[types.ChainID, *processors.ChainProcessor]
-
-	// crossSafeProcessors take local-safe data and promote it to cross-safe when verified
-	crossSafeProcessors locks.RWMap[types.ChainID, *cross.Worker]
-
-	// crossUnsafeProcessors take local-unsafe data and promote it to cross-unsafe when verified
+	// crossProcessors are used to index cross-chain dependency validity data once the log events are indexed
+	crossSafeProcessors   locks.RWMap[types.ChainID, *cross.Worker]
 	crossUnsafeProcessors locks.RWMap[types.ChainID, *cross.Worker]
+
+	// syncNodesController controls the derivation or reset of the sync nodes
+	syncNodesController *syncnode.SyncNodesController
+
+	// synchronousProcessors disables background-workers,
+	// requiring manual triggers for the backend to process l2 data.
+	synchronousProcessors bool
 
 	// chainMetrics are used to track metrics for each chain
 	// they are reused for processors and databases of the same chain
 	chainMetrics locks.RWMap[types.ChainID, *chainMetrics]
-
-	// synchronousProcessors disables background-workers,
-	// requiring manual triggers for the backend to process anything.
-	synchronousProcessors bool
 }
 
 var _ frontend.Backend = (*SupervisorBackend)(nil)
@@ -75,13 +75,17 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 	// create initial per-chain resources
 	chainsDBs := db.NewChainsDB(logger, depSet)
 
+	// create node controller
+	controllers := syncnode.NewSyncNodesController(logger, depSet)
+
 	// create the supervisor backend
 	super := &SupervisorBackend{
-		logger:   logger,
-		m:        m,
-		dataDir:  cfg.Datadir,
-		depSet:   depSet,
-		chainDBs: chainsDBs,
+		logger:              logger,
+		m:                   m,
+		dataDir:             cfg.Datadir,
+		depSet:              depSet,
+		chainDBs:            chainsDBs,
+		syncNodesController: controllers,
 		// For testing we can avoid running the processors.
 		synchronousProcessors: cfg.SynchronousProcessors,
 	}
@@ -145,7 +149,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		if err != nil {
 			return fmt.Errorf("failed to set up sync source: %w", err)
 		}
-		if err := su.AttachSyncSource(ctx, src); err != nil {
+		if err := su.AttachSyncNode(ctx, src); err != nil {
 			return fmt.Errorf("failed to attach sync source %s: %w", src, err)
 		}
 	}
@@ -207,7 +211,7 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	return nil
 }
 
-func (su *SupervisorBackend) AttachSyncSource(ctx context.Context, src syncsrc.SyncSource) error {
+func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.SyncNode) error {
 	su.logger.Info("attaching sync source to chain processor", "source", src)
 
 	chainID, err := src.ChainID(ctx)
@@ -217,12 +221,14 @@ func (su *SupervisorBackend) AttachSyncSource(ctx context.Context, src syncsrc.S
 	if !su.depSet.HasChain(chainID) {
 		return fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
 	}
-	return su.AttachProcessorSource(chainID, src)
+	err = su.AttachProcessorSource(chainID, src)
+	if err != nil {
+		return fmt.Errorf("failed to attach sync source to processor: %w", err)
+	}
+	return su.syncNodesController.AttachNodeController(chainID, src)
 }
 
 func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src processors.Source) error {
-	// TODO: register sync sources in the backend, to trigger derivation work etc.
-
 	proc, ok := su.chainProcessors.Get(chainID)
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
@@ -256,7 +262,7 @@ func (su *SupervisorBackend) attachL1RPC(ctx context.Context, l1RPCAddr string) 
 // If the L1 processor does not exist, it is created and started.
 func (su *SupervisorBackend) AttachL1Source(source processors.L1Source) {
 	if su.l1Processor == nil {
-		su.l1Processor = processors.NewL1Processor(su.logger, su.chainDBs, source)
+		su.l1Processor = processors.NewL1Processor(su.logger, su.chainDBs, su.syncNodesController, source)
 		su.l1Processor.Start()
 	} else {
 		su.l1Processor.AttachClient(source)
@@ -338,7 +344,7 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 
 // AddL2RPC attaches an RPC as the RPC for the given chain, overriding the previous RPC source, if any.
 func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
-	setupSrc := &syncsrc.RPCDialSetup{
+	setupSrc := &syncnode.RPCDialSetup{
 		JWTSecret: jwtSecret,
 		Endpoint:  rpc,
 	}
@@ -346,7 +352,7 @@ func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret
 	if err != nil {
 		return fmt.Errorf("failed to set up sync source from RPC: %w", err)
 	}
-	return su.AttachSyncSource(ctx, src)
+	return su.AttachSyncNode(ctx, src)
 }
 
 // Internal methods, for processors

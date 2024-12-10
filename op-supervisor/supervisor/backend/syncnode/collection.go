@@ -1,4 +1,4 @@
-package syncsrc
+package syncnode
 
 import (
 	"context"
@@ -11,16 +11,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
 )
 
-// CLISyncSources is a bundle of CLI-specified (and thus stringified) sync-source options.
-// These sources can be loaded into SyncSourceSetup instances, to retrieve the active sync sources from.
-type CLISyncSources struct {
+type CLISyncNodes struct {
 	Endpoints      []string
 	JWTSecretPaths []string
 }
 
-var _ SyncSourceCollection = (*CLISyncSources)(nil)
+var _ SyncNodeCollection = (*CLISyncNodes)(nil)
 
-func (p *CLISyncSources) Load(ctx context.Context, logger log.Logger) ([]SyncSourceSetup, error) {
+func (p *CLISyncNodes) Load(ctx context.Context, logger log.Logger) ([]SyncNodeSetup, error) {
 	if err := p.Check(); err != nil { // sanity-check, in case the caller did not check.
 		return nil, err
 	}
@@ -39,7 +37,7 @@ func (p *CLISyncSources) Load(ctx context.Context, logger log.Logger) ([]SyncSou
 		}
 		secrets = append(secrets, secret)
 	}
-	setups := make([]SyncSourceSetup, 0, len(p.Endpoints))
+	setups := make([]SyncNodeSetup, 0, len(p.Endpoints))
 	for i, endpoint := range p.Endpoints {
 		var secret eth.Bytes32
 		if i >= len(secrets) {
@@ -53,7 +51,7 @@ func (p *CLISyncSources) Load(ctx context.Context, logger log.Logger) ([]SyncSou
 	return setups, nil
 }
 
-func (p *CLISyncSources) Check() error {
+func (p *CLISyncNodes) Check() error {
 	if len(p.Endpoints) == len(p.JWTSecretPaths) {
 		return nil
 	}

@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	"github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -68,5 +68,5 @@ func validConfig() *Config {
 		panic(err)
 	}
 	// Should be valid using only the required arguments passed in via the constructor.
-	return NewConfig("http://localhost:8545", &syncsrc.CLISyncSources{}, depSet, "./supervisor_testdir")
+	return NewConfig("http://localhost:8545", &syncnode.CLISyncNodes{}, depSet, "./supervisor_testdir")
 }

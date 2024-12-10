@@ -13,6 +13,17 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+type mockController struct {
+	deriveFromL1Fn func(ref eth.BlockRef) error
+}
+
+func (m *mockController) DeriveFromL1(ref eth.BlockRef) error {
+	if m.deriveFromL1Fn != nil {
+		return m.deriveFromL1Fn(ref)
+	}
+	return nil
+}
+
 type mockChainsDB struct {
 	recordNewL1Fn  func(ref eth.BlockRef) error
 	lastCommonL1Fn func() (types.BlockSeal, error)
@@ -48,6 +59,7 @@ func TestL1Processor(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		proc := &L1Processor{
 			log:           testlog.Logger(t, log.LvlInfo),
+			snc:           &mockController{},
 			client:        &mockL1BlockRefByNumberFetcher{},
 			currentNumber: 0,
 			tickDuration:  1 * time.Second,

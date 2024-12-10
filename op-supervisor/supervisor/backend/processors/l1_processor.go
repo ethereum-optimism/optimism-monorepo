@@ -16,6 +16,10 @@ type chainsDB interface {
 	LastCommonL1() (types.BlockSeal, error)
 }
 
+type controller interface {
+	DeriveFromL1(eth.BlockRef) error
+}
+
 type L1Source interface {
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
@@ -29,18 +33,20 @@ type L1Processor struct {
 	currentNumber uint64
 	tickDuration  time.Duration
 
-	db chainsDB
+	db  chainsDB
+	snc controller
 
 	ctx    context.Context
 	cancel context.CancelFunc
 	wg     sync.WaitGroup
 }
 
-func NewL1Processor(log log.Logger, cdb chainsDB, client L1Source) *L1Processor {
+func NewL1Processor(log log.Logger, cdb chainsDB, snc controller, client L1Source) *L1Processor {
 	ctx, cancel := context.WithCancel(context.Background())
 	return &L1Processor{
 		client:       client,
 		db:           cdb,
+		snc:          snc,
 		log:          log.New("service", "l1-processor"),
 		tickDuration: 6 * time.Second,
 		ctx:          ctx,
@@ -117,9 +123,10 @@ func (p *L1Processor) work() error {
 		return err
 	}
 
-	// go drive derivation on this new L1 input
-	// only possible once bidirectional RPC and new derivers are in place
-	// could do this as a function callback to a more appropriate driver
+	// send the new L1 block to the sync nodes for derivation
+	if err := p.snc.DeriveFromL1(ref); err != nil {
+		return err
+	}
 
 	// update the target number
 	p.currentNumber = nextNumber
