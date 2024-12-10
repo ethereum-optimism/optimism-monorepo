@@ -1,11 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Safe
 import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import { Enum } from "safe-contracts/common/Enum.sol";
 import { OwnerManager } from "safe-contracts/base/OwnerManager.sol";
+
+// Contracts
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @title LivenessModule
 /// @notice This module is intended to be used in conjunction with the LivenessGuard. In the event
@@ -53,8 +58,8 @@ contract LivenessModule is ISemver {
     uint256 internal constant GUARD_STORAGE_SLOT = 0x4a204f620c8c5ccdca3fd54d003badd85ba500436a431f0cbda4f558c93c34c8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.2.1-beta.1
-    string public constant version = "1.2.1-beta.1";
+    /// @custom:semver 1.2.1-beta.3
+    string public constant version = "1.2.1-beta.3";
 
     // Constructor to initialize the Safe and baseModule instances
     constructor(

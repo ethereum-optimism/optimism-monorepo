@@ -11,8 +11,8 @@ import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 import { OptimismMintableERC20Factory } from "src/universal/OptimismMintableERC20Factory.sol";
 
 // Interfaces
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 
 contract OptimismMintableTokenFactory_Test is CommonTest {
     event StandardL2TokenCreated(address indexed remoteToken, address indexed localToken);

@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded"
 	mttestutil "github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded/testutil"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
 )
 
@@ -327,9 +328,9 @@ func TestEVM_SysClone_Successful(t *testing.T) {
 			expectedNewThread.PC = state.GetCpu().NextPC
 			expectedNewThread.NextPC = state.GetCpu().NextPC + 4
 			expectedNewThread.ThreadId = 1
-			expectedNewThread.Registers[2] = 0
-			expectedNewThread.Registers[7] = 0
-			expectedNewThread.Registers[29] = stackPtr
+			expectedNewThread.Registers[register.RegSyscallRet1] = 0
+			expectedNewThread.Registers[register.RegSyscallErrno] = 0
+			expectedNewThread.Registers[register.RegSP] = stackPtr
 
 			var err error
 			var stepWitness *mipsevm.StepWitness

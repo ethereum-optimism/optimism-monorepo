@@ -1,0 +1,36 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X main.Version=" + VERSION + " " + \
+    "") + "'"
+
+BINARY := "./bin/op-batcher"
+
+# Build op-batcher binary
+op-batcher: (go_build BINARY "./cmd" "-ldflags" _LDFLAGSSTRING)
+
+# Clean build artifacts
+clean:
+    rm -f {{BINARY}}
+
+# Run tests
+test: (go_test "./...")
+
+[private]
+batcher_fuzz_task FUZZ TIME='10s': (go_fuzz FUZZ TIME "./batcher")
+
+# Run fuzzing tests
+fuzz:
+    printf "%s\n" \
+        "FuzzChannelConfig_CheckTimeout" \
+        "FuzzDurationZero" \
+        "FuzzDurationTimeoutMaxChannelDuration" \
+        "FuzzDurationTimeoutZeroMaxChannelDuration" \
+        "FuzzChannelCloseTimeout" \
+        "FuzzChannelZeroCloseTimeout" \
+        "FuzzSeqWindowClose" \
+        "FuzzSeqWindowZeroTimeoutClose" \
+    | parallel -j {{PARALLEL_JOBS}} {{just_executable()}} batcher_fuzz_task {}

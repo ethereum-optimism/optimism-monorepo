@@ -328,7 +328,7 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 		"max_frame_size", cfg.MaxFrameSize,
 		"use_blobs", cfg.UseBlobs,
 	)
-	s.metr.RecordChannelOpened(pc.ID(), s.blocks.Len())
+	s.metr.RecordChannelOpened(pc.ID(), s.pendingBlocks())
 
 	return nil
 }
@@ -380,7 +380,7 @@ func (s *channelManager) processBlocks() error {
 
 	s.metr.RecordL2BlocksAdded(latestL2ref,
 		blocksAdded,
-		s.blocks.Len(),
+		s.pendingBlocks(),
 		s.currentChannel.InputBytes(),
 		s.currentChannel.ReadyBytes())
 	s.log.Debug("Added blocks to channel",
@@ -464,77 +464,30 @@ func l2BlockRefFromBlockAndL1Info(block *types.Block, l1info *derive.L1BlockInfo
 
 var ErrPendingAfterClose = errors.New("pending channels remain after closing channel-manager")
 
-// pruneSafeBlocks dequeues blocks from the internal blocks queue
-// if they have now become safe.
-func (s *channelManager) pruneSafeBlocks(newSafeHead eth.L2BlockRef) {
-	oldestBlock, ok := s.blocks.Peek()
+// pruneSafeBlocks dequeues the provided number of blocks from the internal blocks queue
+func (s *channelManager) pruneSafeBlocks(num int) {
+	_, ok := s.blocks.DequeueN(int(num))
 	if !ok {
-		// no blocks to prune
-		return
+		panic("tried to prune more blocks than available")
 	}
-
-	if newSafeHead.Number+1 == oldestBlock.NumberU64() {
-		// no blocks to prune
-		return
-	}
-
-	if newSafeHead.Number+1 < oldestBlock.NumberU64() {
-		// This could happen if there was an L1 reorg.
-		s.log.Warn("safe head reversed, clearing channel manager state",
-			"oldestBlock", eth.ToBlockID(oldestBlock),
-			"newSafeBlock", newSafeHead)
-		// We should restart work from the new safe head,
-		// and therefore prune all the blocks.
-		s.Clear(newSafeHead.L1Origin)
-		return
-	}
-
-	numBlocksToDequeue := newSafeHead.Number + 1 - oldestBlock.NumberU64()
-
-	if numBlocksToDequeue > uint64(s.blocks.Len()) {
-		// This could happen if the batcher restarted.
-		// The sequencer may have derived the safe chain
-		// from channels sent by a previous batcher instance.
-		s.log.Warn("safe head above unsafe head, clearing channel manager state",
-			"unsafeBlock", eth.ToBlockID(s.blocks[s.blocks.Len()-1]),
-			"newSafeBlock", newSafeHead)
-		// We should restart work from the new safe head,
-		// and therefore prune all the blocks.
-		s.Clear(newSafeHead.L1Origin)
-		return
-	}
-
-	if s.blocks[numBlocksToDequeue-1].Hash() != newSafeHead.Hash {
-		s.log.Warn("safe chain reorg, clearing channel manager state",
-			"existingBlock", eth.ToBlockID(s.blocks[numBlocksToDequeue-1]),
-			"newSafeBlock", newSafeHead)
-		// We should restart work from the new safe head,
-		// and therefore prune all the blocks.
-		s.Clear(newSafeHead.L1Origin)
-		return
-	}
-
-	// This shouldn't return an error because
-	// We already checked numBlocksToDequeue <= s.blocks.Len()
-	_, _ = s.blocks.DequeueN(int(numBlocksToDequeue))
-	s.blockCursor -= int(numBlocksToDequeue)
-
+	s.blockCursor -= int(num)
 	if s.blockCursor < 0 {
-		panic("negative blockCursor")
+		s.blockCursor = 0
 	}
 }
 
-// pruneChannels dequeues channels from the internal channels queue
-// if they were built using blocks which are now safe
-func (s *channelManager) pruneChannels(newSafeHead eth.L2BlockRef) {
-	i := 0
-	for _, ch := range s.channelQueue {
-		if ch.LatestL2().Number > newSafeHead.Number {
-			break
+// pruneChannels dequeues the provided number of channels from the internal channels queue
+func (s *channelManager) pruneChannels(num int) {
+	clearCurrentChannel := false
+	for i := 0; i < num; i++ {
+		if s.channelQueue[i] == s.currentChannel {
+			clearCurrentChannel = true
 		}
-		i++
 	}
-	s.channelQueue = s.channelQueue[i:]
+	s.channelQueue = s.channelQueue[num:]
+	if clearCurrentChannel {
+		s.currentChannel = nil
+	}
 }
 
 // PendingDABytes returns the current number of bytes pending to be written to the DA layer (from blocks fetched from L2
@@ -564,4 +517,11 @@ func (m *channelManager) CheckExpectedProgress(syncStatus eth.SyncStatus) error 
 		}
 	}
 	return nil
+}
+
+func (m *channelManager) LastStoredBlock() eth.BlockID {
+	if m.blocks.Len() == 0 {
+		return eth.BlockID{}
+	}
+	return eth.ToBlockID(m.blocks[m.blocks.Len()-1])
 }

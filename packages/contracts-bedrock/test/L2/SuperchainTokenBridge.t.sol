@@ -6,14 +6,14 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
+import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
 
 // Target contract
-import { ISuperchainTokenBridge } from "src/L2/interfaces/ISuperchainTokenBridge.sol";
-import { ISuperchainERC20 } from "src/L2/interfaces/ISuperchainERC20.sol";
-import { IOptimismSuperchainERC20Factory } from "src/L2/interfaces/IOptimismSuperchainERC20Factory.sol";
+import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { ISuperchainERC20 } from "interfaces/L2/ISuperchainERC20.sol";
+import { IOptimismSuperchainERC20Factory } from "interfaces/L2/IOptimismSuperchainERC20Factory.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
-import { IERC7802 } from "src/L2/interfaces/IERC7802.sol";
+import { IERC7802 } from "interfaces/L2/IERC7802.sol";
 
 /// @title SuperchainTokenBridgeTest
 /// @notice Contract for testing the SuperchainTokenBridge contract.

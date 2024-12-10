@@ -3,12 +3,12 @@ package bootstrap
 import (
 	"context"
 	"crypto/ecdsa"
-	"crypto/rand"
 	"fmt"
-	"math/big"
 	"strings"
 
-	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum/go-ethereum/rpc"
+
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
 
@@ -18,7 +18,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 
 	opcrypto "github.com/ethereum-optimism/optimism/op-service/crypto"
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
@@ -26,7 +25,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
@@ -34,12 +32,10 @@ import (
 )
 
 type OPCMConfig struct {
-	pipeline.SuperchainProofParams
-
-	L1RPCUrl         string
-	PrivateKey       string
-	Logger           log.Logger
-	ArtifactsLocator *artifacts2.Locator
+	L1RPCUrl   string
+	PrivateKey string
+	Release    string
+	Logger     log.Logger
 
 	privateKeyECDSA *ecdsa.PrivateKey
 }
@@ -53,6 +49,10 @@ func (c *OPCMConfig) Check() error {
 		return fmt.Errorf("private key must be specified")
 	}
 
+	if c.Release == "" {
+		return fmt.Errorf("release must be specified")
+	}
+
 	privECDSA, err := crypto.HexToECDSA(strings.TrimPrefix(c.PrivateKey, "0x"))
 	if err != nil {
 		return fmt.Errorf("failed to parse private key: %w", err)
@@ -61,34 +61,6 @@ func (c *OPCMConfig) Check() error {
 
 	if c.Logger == nil {
 		return fmt.Errorf("logger must be specified")
-	}
-
-	if c.ArtifactsLocator == nil {
-		return fmt.Errorf("artifacts locator must be specified")
-	}
-
-	if c.WithdrawalDelaySeconds == 0 {
-		c.WithdrawalDelaySeconds = standard.WithdrawalDelaySeconds
-	}
-
-	if c.MinProposalSizeBytes == 0 {
-		c.MinProposalSizeBytes = standard.MinProposalSizeBytes
-	}
-
-	if c.ChallengePeriodSeconds == 0 {
-		c.ChallengePeriodSeconds = standard.ChallengePeriodSeconds
-	}
-
-	if c.ProofMaturityDelaySeconds == 0 {
-		c.ProofMaturityDelaySeconds = standard.ProofMaturityDelaySeconds
-	}
-
-	if c.DisputeGameFinalityDelaySeconds == 0 {
-		c.DisputeGameFinalityDelaySeconds = standard.DisputeGameFinalityDelaySeconds
-	}
-
-	if c.MIPSVersion == 0 {
-		c.MIPSVersion = standard.MIPSVersion
 	}
 
 	return nil
@@ -101,33 +73,31 @@ func OPCMCLI(cliCtx *cli.Context) error {
 
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
-	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
-	artifactsLocator := new(artifacts2.Locator)
-	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
-		return fmt.Errorf("failed to parse artifacts URL: %w", err)
-	}
+	outfile := cliCtx.String(OutfileFlagName)
+	release := cliCtx.String(ReleaseFlagName)
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return OPCM(ctx, OPCMConfig{
-		L1RPCUrl:         l1RPCUrl,
-		PrivateKey:       privateKey,
-		Logger:           l,
-		ArtifactsLocator: artifactsLocator,
-		SuperchainProofParams: pipeline.SuperchainProofParams{
-			WithdrawalDelaySeconds:          cliCtx.Uint64(WithdrawalDelaySecondsFlagName),
-			MinProposalSizeBytes:            cliCtx.Uint64(MinProposalSizeBytesFlagName),
-			ChallengePeriodSeconds:          cliCtx.Uint64(ChallengePeriodSecondsFlagName),
-			ProofMaturityDelaySeconds:       cliCtx.Uint64(ProofMaturityDelaySecondsFlagName),
-			DisputeGameFinalityDelaySeconds: cliCtx.Uint64(DisputeGameFinalityDelaySecondsFlagName),
-			MIPSVersion:                     cliCtx.Uint64(MIPSVersionFlagName),
-		},
+	out, err := OPCM(ctx, OPCMConfig{
+		L1RPCUrl:   l1RPCUrl,
+		PrivateKey: privateKey,
+		Release:    release,
+		Logger:     l,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to deploy OPCM: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(out, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+	return nil
 }
 
-func OPCM(ctx context.Context, cfg OPCMConfig) error {
+func OPCM(ctx context.Context, cfg OPCMConfig) (opcm.DeployOPCMOutput, error) {
+	var out opcm.DeployOPCMOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for OPCM: %w", err)
+		return out, fmt.Errorf("invalid config for OPCM: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -135,35 +105,33 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 		lgr.Info("artifacts download progress", "current", curr, "total", total)
 	}
 
-	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return out, fmt.Errorf("failed to connect to L1 RPC: %w", err)
+	}
+
+	l1Client := ethclient.NewClient(l1RPC)
+
+	chainID, err := l1Client.ChainID(ctx)
+	if err != nil {
+		return out, fmt.Errorf("failed to get chain ID: %w", err)
+	}
+	chainIDU64 := chainID.Uint64()
+
+	loc, err := artifacts.NewLocatorFromTag(cfg.Release)
+	if err != nil {
+		return out, fmt.Errorf("failed to create artifacts locator: %w", err)
+	}
+
+	artifactsFS, cleanup, err := artifacts.Download(ctx, loc, progressor)
+	if err != nil {
+		return out, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
 			lgr.Warn("failed to clean up artifacts", "err", err)
 		}
 	}()
-
-	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
-	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
-	}
-
-	chainID, err := l1Client.ChainID(ctx)
-	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
-	}
-	chainIDU64 := chainID.Uint64()
-
-	superCfg, err := standard.SuperchainFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting superchain config: %w", err)
-	}
-	standardVersionsTOML, err := standard.L1VersionsDataFor(chainIDU64)
-	if err != nil {
-		return fmt.Errorf("error getting standard versions TOML: %w", err)
-	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
 	chainDeployer := crypto.PubkeyToAddress(cfg.privateKeyECDSA.PublicKey)
@@ -176,83 +144,87 @@ func OPCM(ctx context.Context, cfg OPCMConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return out, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1RPC,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
-	}
-	host.SetNonce(chainDeployer, nonce)
-
-	var l1ContractsRelease string
-	if cfg.ArtifactsLocator.IsTag() {
-		l1ContractsRelease = cfg.ArtifactsLocator.Tag
-	} else {
-		l1ContractsRelease = "dev"
+		return out, fmt.Errorf("failed to create script host: %w", err)
 	}
 
-	lgr.Info("deploying OPCM", "l1ContractsRelease", l1ContractsRelease)
+	lgr.Info("deploying OPCM", "l1ContractsRelease", cfg.Release)
 
-	// We need to etch the Superchain addresses so that they have nonzero code
-	// and the checks in the OPCM constructor pass.
-	superchainConfigAddr := common.Address(*superCfg.Config.SuperchainConfigAddr)
-	protocolVersionsAddr := common.Address(*superCfg.Config.ProtocolVersionsAddr)
-	addresses := []common.Address{
-		superchainConfigAddr,
-		protocolVersionsAddr,
-	}
-	for _, addr := range addresses {
-		host.ImportAccount(addr, types.Account{
-			Code: []byte{0x00},
-		})
-	}
-
-	var salt common.Hash
-	_, err = rand.Read(salt[:])
+	input, err := DeployOPCMInputForChain(cfg.Release, chainIDU64)
 	if err != nil {
-		return fmt.Errorf("failed to generate CREATE2 salt: %w", err)
+		return out, fmt.Errorf("error creating OPCM input: %w", err)
 	}
 
-	dio, err := opcm.DeployImplementations(
+	out, err = opcm.DeployOPCM(
 		host,
-		opcm.DeployImplementationsInput{
-			Salt:                            salt,
-			WithdrawalDelaySeconds:          new(big.Int).SetUint64(cfg.WithdrawalDelaySeconds),
-			MinProposalSizeBytes:            new(big.Int).SetUint64(cfg.MinProposalSizeBytes),
-			ChallengePeriodSeconds:          new(big.Int).SetUint64(cfg.ChallengePeriodSeconds),
-			ProofMaturityDelaySeconds:       new(big.Int).SetUint64(cfg.ProofMaturityDelaySeconds),
-			DisputeGameFinalityDelaySeconds: new(big.Int).SetUint64(cfg.DisputeGameFinalityDelaySeconds),
-			MipsVersion:                     new(big.Int).SetUint64(cfg.MIPSVersion),
-			L1ContractsRelease:              l1ContractsRelease,
-			SuperchainConfigProxy:           superchainConfigAddr,
-			ProtocolVersionsProxy:           protocolVersionsAddr,
-			StandardVersionsToml:            standardVersionsTOML,
-			UseInterop:                      false,
-		},
+		input,
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying implementations: %w", err)
+		return out, fmt.Errorf("error deploying implementations: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return out, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
-	lgr.Info("deployed implementations")
+	lgr.Info("deployed OPCM")
 
-	if err := jsonutil.WriteJSON(dio, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
+	return out, nil
+}
+
+func DeployOPCMInputForChain(release string, chainID uint64) (opcm.DeployOPCMInput, error) {
+	superchain, err := standard.SuperchainFor(chainID)
+	if err != nil {
+		return opcm.DeployOPCMInput{}, fmt.Errorf("error getting superchain config: %w", err)
 	}
-	return nil
+
+	l1VersionsData, err := standard.L1VersionsFor(chainID)
+	if err != nil {
+		return opcm.DeployOPCMInput{}, fmt.Errorf("error getting L1 versions: %w", err)
+	}
+	releases, ok := l1VersionsData.Releases[release]
+	if !ok {
+		return opcm.DeployOPCMInput{}, fmt.Errorf("release not found: %s", release)
+	}
+
+	blueprints, err := standard.OPCMBlueprintsFor(chainID)
+	if err != nil {
+		return opcm.DeployOPCMInput{}, fmt.Errorf("error getting OPCM blueprints: %w", err)
+	}
+
+	return opcm.DeployOPCMInput{
+		SuperchainConfig:   common.Address(*superchain.Config.SuperchainConfigAddr),
+		ProtocolVersions:   common.Address(*superchain.Config.ProtocolVersionsAddr),
+		L1ContractsRelease: strings.TrimPrefix(release, "op-contracts/"),
+
+		AddressManagerBlueprint:           blueprints.AddressManager,
+		ProxyBlueprint:                    blueprints.Proxy,
+		ProxyAdminBlueprint:               blueprints.ProxyAdmin,
+		L1ChugSplashProxyBlueprint:        blueprints.L1ChugSplashProxy,
+		ResolvedDelegateProxyBlueprint:    blueprints.ResolvedDelegateProxy,
+		AnchorStateRegistryBlueprint:      blueprints.AnchorStateRegistry,
+		PermissionedDisputeGame1Blueprint: blueprints.PermissionedDisputeGame1,
+		PermissionedDisputeGame2Blueprint: blueprints.PermissionedDisputeGame2,
+
+		L1ERC721BridgeImpl:               releases.L1ERC721Bridge.ImplementationAddress,
+		OptimismPortalImpl:               releases.OptimismPortal.ImplementationAddress,
+		SystemConfigImpl:                 releases.SystemConfig.ImplementationAddress,
+		OptimismMintableERC20FactoryImpl: releases.OptimismMintableERC20Factory.ImplementationAddress,
+		L1CrossDomainMessengerImpl:       releases.L1CrossDomainMessenger.ImplementationAddress,
+		L1StandardBridgeImpl:             releases.L1StandardBridge.ImplementationAddress,
+		DisputeGameFactoryImpl:           releases.DisputeGameFactory.ImplementationAddress,
+		DelayedWETHImpl:                  releases.DelayedWETH.ImplementationAddress,
+		MipsImpl:                         releases.MIPS.Address,
+	}, nil
 }

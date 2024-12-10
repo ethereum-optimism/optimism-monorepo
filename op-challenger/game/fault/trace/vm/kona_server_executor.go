@@ -9,8 +9,7 @@ import (
 )
 
 type KonaExecutor struct {
-	nativeMode    bool
-	clientBinPath string
+	nativeMode bool
 }
 
 var _ OracleServerExecutor = (*KonaExecutor)(nil)
@@ -19,8 +18,8 @@ func NewKonaExecutor() *KonaExecutor {
 	return &KonaExecutor{nativeMode: false}
 }
 
-func NewNativeKonaExecutor(clientBinPath string) *KonaExecutor {
-	return &KonaExecutor{nativeMode: true, clientBinPath: clientBinPath}
+func NewNativeKonaExecutor() *KonaExecutor {
+	return &KonaExecutor{nativeMode: true}
 }
 
 func (s *KonaExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
@@ -37,7 +36,7 @@ func (s *KonaExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.Lo
 	}
 
 	if s.nativeMode {
-		args = append(args, "--exec", s.clientBinPath)
+		args = append(args, "--native")
 	} else {
 		args = append(args, "--server")
 		args = append(args, "--data-dir", dataDir)

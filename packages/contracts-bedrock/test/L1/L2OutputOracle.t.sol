@@ -15,7 +15,7 @@ import { Proxy } from "src/universal/Proxy.sol";
 
 // Target contract
 import { L2OutputOracle } from "src/L1/L2OutputOracle.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
 
 contract L2OutputOracle_TestBase is CommonTest {
     function setUp() public override {
@@ -97,6 +97,31 @@ contract L2OutputOracle_getter_Test is L2OutputOracle_TestBase {
         // The block number is larger than the latest proposed output:
         vm.expectRevert(stdError.indexOOBError);
         l2OutputOracle.getL2Output(nextOutputIndex + 1);
+    }
+
+    /// @dev Tests that `getL2OutputAfter` of an L2 block number returns the L2 output of the `getL2OutputIndexAfter` of
+    /// that block number.
+    function test_getL2OutputAfter_succeeds() external {
+        uint8 iterations = 5;
+
+        Types.OutputProposal memory output;
+        Types.OutputProposal memory expectedOutput;
+
+        for (uint8 i; i < iterations; i++) {
+            proposeAnotherOutput();
+        }
+
+        uint256 latestBlockNumber = l2OutputOracle.latestBlockNumber();
+        for (uint8 i = iterations - 1; i > 0; i--) {
+            uint256 index = l2OutputOracle.getL2OutputIndexAfter(latestBlockNumber);
+            output = l2OutputOracle.getL2OutputAfter(latestBlockNumber);
+            expectedOutput = l2OutputOracle.getL2Output(index);
+            assertEq(output.outputRoot, expectedOutput.outputRoot);
+            assertEq(output.timestamp, expectedOutput.timestamp);
+            assertEq(output.l2BlockNumber, expectedOutput.l2BlockNumber);
+
+            latestBlockNumber -= l2OutputOracle.SUBMISSION_INTERVAL();
+        }
     }
 
     /// @dev Tests that `getL2OutputIndexAfter` returns the correct value

@@ -21,6 +21,14 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
+	L2Custom = &cli.BoolFlag{
+		Name: "l2.custom",
+		Usage: "Override the L2 chain ID to the custom chain indicator for custom chain configuration not present in the client program. " +
+			"WARNING: This is not compatible with on-chain execution and must only be used for testing.",
+		EnvVars: prefixEnvVars("L2_CHAINID"),
+		Value:   false,
+		Hidden:  true,
+	}
 	RollupConfig = &cli.StringFlag{
 		Name:    "rollup.config",
 		Usage:   "Rollup chain parameters",
@@ -131,6 +139,7 @@ var requiredFlags = []cli.Flag{
 }
 
 var programFlags = []cli.Flag{
+	L2Custom,
 	RollupConfig,
 	Network,
 	DataDir,
@@ -166,6 +175,9 @@ func CheckRequired(ctx *cli.Context) error {
 	}
 	if ctx.String(L2GenesisPath.Name) != "" && network != "" {
 		return fmt.Errorf("cannot specify both %s and %s", L2GenesisPath.Name, Network.Name)
+	}
+	if ctx.Bool(L2Custom.Name) && rollupConfig == "" {
+		return fmt.Errorf("flag %s cannot be used with named networks", L2Custom.Name)
 	}
 	for _, flag := range requiredFlags {
 		if !ctx.IsSet(flag.Names()[0]) {

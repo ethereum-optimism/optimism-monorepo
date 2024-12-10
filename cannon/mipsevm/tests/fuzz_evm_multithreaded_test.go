@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded"
 	mttestutil "github.com/ethereum-optimism/optimism/cannon/mipsevm/multithreaded/testutil"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/testutil"
 )
 
@@ -46,9 +47,9 @@ func FuzzStateSyscallCloneMT(f *testing.F) {
 		epxectedNewThread := expected.ExpectNewThread()
 		epxectedNewThread.PC = state.GetCpu().NextPC
 		epxectedNewThread.NextPC = state.GetCpu().NextPC + 4
-		epxectedNewThread.Registers[2] = 0
-		epxectedNewThread.Registers[7] = 0
-		epxectedNewThread.Registers[29] = stackPtr
+		epxectedNewThread.Registers[register.RegSyscallNum] = 0
+		epxectedNewThread.Registers[register.RegSyscallErrno] = 0
+		epxectedNewThread.Registers[register.RegSP] = stackPtr
 		expected.NextThreadId = nextThreadId + 1
 		expected.StepsSinceLastContextSwitch = 0
 		if state.TraverseRight {

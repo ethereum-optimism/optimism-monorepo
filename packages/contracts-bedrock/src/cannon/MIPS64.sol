@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IPreimageOracle } from "./interfaces/IPreimageOracle.sol";
+// Libraries
 import { MIPS64Memory } from "src/cannon/libraries/MIPS64Memory.sol";
 import { MIPS64Syscalls as sys } from "src/cannon/libraries/MIPS64Syscalls.sol";
 import { MIPS64State as st } from "src/cannon/libraries/MIPS64State.sol";
@@ -12,6 +11,10 @@ import { VMStatuses } from "src/dispute/lib/Types.sol";
 import {
     InvalidMemoryProof, InvalidRMWInstruction, InvalidSecondMemoryProof
 } from "src/cannon/libraries/CannonErrors.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 /// @title MIPS64
 /// @notice The MIPS64 contract emulates a single MIPS instruction.
@@ -64,8 +67,8 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS64 contract.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.0-beta.7
+    string public constant version = "1.0.0-beta.7";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -501,7 +504,7 @@ contract MIPS64 is ISemver {
                 // Encapsulate execution to avoid stack-too-deep error
                 (v0, v1) = execSysRead(state, args);
             } else if (syscall_no == sys.SYS_WRITE) {
-                (v0, v1, state.preimageKey, state.preimageOffset) = sys.handleSysWrite({
+                sys.SysWriteParams memory args = sys.SysWriteParams({
                     _a0: a0,
                     _a1: a1,
                     _a2: a2,
@@ -510,6 +513,7 @@ contract MIPS64 is ISemver {
                     _proofOffset: MIPS64Memory.memoryProofOffset(MEM_PROOF_OFFSET, 1),
                     _memRoot: state.memRoot
                 });
+                (v0, v1, state.preimageKey, state.preimageOffset) = sys.handleSysWrite(args);
             } else if (syscall_no == sys.SYS_FCNTL) {
                 (v0, v1) = sys.handleSysFcntl(a0, a1);
             } else if (syscall_no == sys.SYS_GETTID) {

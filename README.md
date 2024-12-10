@@ -99,7 +99,7 @@ For contract releases, refer to the GitHub release notes for a given release whi
 
 Tags of the form `v<semver>`, such as `v1.1.4`, indicate releases of all Go code only, and **DO NOT** include smart contracts.
 This naming scheme is required by Golang.
-In the above list, this means these `v<semver` releases contain all `op-*` components and exclude all `contracts-*` components.
+In the above list, this means these `v<semver>` releases contain all `op-*` components and exclude all `contracts-*` components.
 
 `op-geth` embeds upstream geth’s version inside its own version as follows: `vMAJOR.GETH_MAJOR GETH_MINOR GETH_PATCH.PATCH`.
 Basically, geth’s version is our minor version.

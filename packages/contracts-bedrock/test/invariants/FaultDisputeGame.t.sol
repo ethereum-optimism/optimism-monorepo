@@ -11,7 +11,7 @@ import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 contract FaultDisputeGame_Solvency_Invariant is FaultDisputeGame_Init {
     Claim internal constant ROOT_CLAIM = Claim.wrap(bytes32(uint256(10)));

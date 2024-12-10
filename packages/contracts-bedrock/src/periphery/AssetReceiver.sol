@@ -1,9 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+// Contracts
 import { ERC20 } from "@rari-capital/solmate/src/tokens/ERC20.sol";
 import { ERC721 } from "@rari-capital/solmate/src/tokens/ERC721.sol";
-import { Transactor } from "./Transactor.sol";
+import { Transactor } from "src/periphery/Transactor.sol";
 
 /// @title AssetReceiver
 /// @notice AssetReceiver is a minimal contract for receiving funds assets in the form of either

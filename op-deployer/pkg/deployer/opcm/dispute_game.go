@@ -1,8 +1,6 @@
 package opcm
 
 import (
-	"fmt"
-
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
@@ -11,9 +9,7 @@ import (
 type DeployDisputeGameInput struct {
 	Release                  string
 	StandardVersionsToml     string
-	MipsVersion              uint64
-	MinProposalSizeBytes     uint64
-	ChallengePeriodSeconds   uint64
+	VmAddress                common.Address
 	GameKind                 string
 	GameType                 uint32
 	AbsolutePrestate         common.Hash
@@ -33,9 +29,7 @@ func (input *DeployDisputeGameInput) InputSet() bool {
 }
 
 type DeployDisputeGameOutput struct {
-	DisputeGameImpl         common.Address
-	MipsSingleton           common.Address
-	PreimageOracleSingleton common.Address
+	DisputeGameImpl common.Address
 }
 
 func (output *DeployDisputeGameOutput) CheckOutput(input common.Address) error {
@@ -50,33 +44,5 @@ func DeployDisputeGame(
 	host *script.Host,
 	input DeployDisputeGameInput,
 ) (DeployDisputeGameOutput, error) {
-	var output DeployDisputeGameOutput
-	inputAddr := host.NewScriptAddress()
-	outputAddr := host.NewScriptAddress()
-
-	cleanupInput, err := script.WithPrecompileAtAddress[*DeployDisputeGameInput](host, inputAddr, &input)
-	if err != nil {
-		return output, fmt.Errorf("failed to insert DeployDisputeGameInput precompile: %w", err)
-	}
-	defer cleanupInput()
-
-	cleanupOutput, err := script.WithPrecompileAtAddress[*DeployDisputeGameOutput](host, outputAddr, &output,
-		script.WithFieldSetter[*DeployDisputeGameOutput])
-	if err != nil {
-		return output, fmt.Errorf("failed to insert DeployDisputeGameOutput precompile: %w", err)
-	}
-	defer cleanupOutput()
-
-	implContract := "DeployDisputeGame"
-	deployScript, cleanupDeploy, err := script.WithScript[DeployDisputeGameScript](host, "DeployDisputeGame.s.sol", implContract)
-	if err != nil {
-		return output, fmt.Errorf("failed to load %s script: %w", implContract, err)
-	}
-	defer cleanupDeploy()
-
-	if err := deployScript.Run(inputAddr, outputAddr); err != nil {
-		return output, fmt.Errorf("failed to run %s script: %w", implContract, err)
-	}
-
-	return output, nil
+	return RunBasicScript[DeployDisputeGameInput, DeployDisputeGameOutput](host, input, "DeployDisputeGame.s.sol", "DeployDisputeGame")
 }

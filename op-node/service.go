@@ -49,7 +49,7 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 
 	driverConfig := NewDriverConfig(ctx)
 
-	p2pSignerSetup, err := p2pcli.LoadSignerSetup(ctx)
+	p2pSignerSetup, err := p2pcli.LoadSignerSetup(ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load p2p signer: %w", err)
 	}

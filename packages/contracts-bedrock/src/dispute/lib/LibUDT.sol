@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.15;
 
+// Libraries
 import { Position } from "src/dispute/lib/LibPosition.sol";
 
 using LibClaim for Claim global;

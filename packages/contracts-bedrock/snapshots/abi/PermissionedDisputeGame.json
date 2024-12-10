@@ -2,54 +2,61 @@
   {
     "inputs": [
       {
-        "internalType": "GameType",
-        "name": "_gameType",
-        "type": "uint32"
-      },
-      {
-        "internalType": "Claim",
-        "name": "_absolutePrestate",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_maxGameDepth",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_splitDepth",
-        "type": "uint256"
-      },
-      {
-        "internalType": "Duration",
-        "name": "_clockExtension",
-        "type": "uint64"
-      },
-      {
-        "internalType": "Duration",
-        "name": "_maxClockDuration",
-        "type": "uint64"
-      },
-      {
-        "internalType": "contract IBigStepper",
-        "name": "_vm",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IDelayedWETH",
-        "name": "_weth",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IAnchorStateRegistry",
-        "name": "_anchorStateRegistry",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_l2ChainId",
-        "type": "uint256"
+        "components": [
+          {
+            "internalType": "GameType",
+            "name": "gameType",
+            "type": "uint32"
+          },
+          {
+            "internalType": "Claim",
+            "name": "absolutePrestate",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "maxGameDepth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "splitDepth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "Duration",
+            "name": "clockExtension",
+            "type": "uint64"
+          },
+          {
+            "internalType": "Duration",
+            "name": "maxClockDuration",
+            "type": "uint64"
+          },
+          {
+            "internalType": "contract IBigStepper",
+            "name": "vm",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IDelayedWETH",
+            "name": "weth",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IAnchorStateRegistry",
+            "name": "anchorStateRegistry",
+            "type": "address"
+          },
+          {
+            "internalType": "uint256",
+            "name": "l2ChainId",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct FaultDisputeGame.GameConstructorParams",
+        "name": "_params",
+        "type": "tuple"
       },
       {
         "internalType": "address",

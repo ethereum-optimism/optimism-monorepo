@@ -6,8 +6,8 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IProtocolVersions, ProtocolVersion } from "src/L1/interfaces/IProtocolVersions.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 
 contract ProtocolVersions_Init is CommonTest {
     event ConfigUpdate(uint256 indexed version, IProtocolVersions.UpdateType indexed updateType, bytes data);

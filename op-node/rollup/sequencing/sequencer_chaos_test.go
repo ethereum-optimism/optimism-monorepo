@@ -216,7 +216,13 @@ func (c *ChaoticEngine) OnEvent(ev event.Event) bool {
 				c.clockRandomIncrement(0, time.Second*3)
 			}
 			c.unsafe = x.Ref
-			c.emitter.Emit(engine.PayloadSuccessEvent(x))
+			c.emitter.Emit(engine.PayloadSuccessEvent{
+				Concluding:   x.Concluding,
+				DerivedFrom:  x.DerivedFrom,
+				BuildStarted: x.BuildStarted,
+				Envelope:     x.Envelope,
+				Ref:          x.Ref,
+			})
 			// With event delay, the engine would update and signal the new forkchoice.
 			c.emitter.Emit(engine.ForkchoiceRequestEvent{})
 		}

@@ -47,7 +47,7 @@ func (q *QueryFrontend) CheckMessage(identifier types.Identifier, payloadHash co
 	return q.Supervisor.CheckMessage(identifier, payloadHash)
 }
 
-// CheckMessage checks the safety-level of a collection of messages,
+// CheckMessages checks the safety-level of a collection of messages,
 // and returns if the minimum safety-level is met for all messages.
 func (q *QueryFrontend) CheckMessages(
 	messages []types.Message,

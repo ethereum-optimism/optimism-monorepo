@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
 import { Test } from "forge-std/Test.sol";
 
 import { DeployAltDAInput, DeployAltDAOutput, DeployAltDA } from "scripts/deploy/DeployAltDA.s.sol";
-import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeployAltDAInput_Test is Test {

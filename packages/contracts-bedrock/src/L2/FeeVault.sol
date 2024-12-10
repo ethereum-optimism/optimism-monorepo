@@ -6,7 +6,7 @@ import { SafeCall } from "src/libraries/SafeCall.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { IL2ToL1MessagePasser } from "src/L2/interfaces/IL2ToL1MessagePasser.sol";
+import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
