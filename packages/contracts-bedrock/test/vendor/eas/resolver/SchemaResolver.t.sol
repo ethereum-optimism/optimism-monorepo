@@ -31,43 +31,6 @@ contract TestSchemaResolver is SchemaResolver {
     }
 }
 
-// /// @dev Minimal mock EAS implementation for testing
-// contract MockEAS {
-//     /// @dev Mock attestation that always succeeds
-//     function attest(Attestation calldata) external payable returns (bool) {
-//         return true;
-//     }
-// }
-
-
-/// @dev Mock resolver that accepts payments for testing fee handling
-contract MockPayableResolver is ISchemaResolver {
-    /// @dev Indicates resolver accepts payments
-    function isPayable() external pure override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock payable attestation
-    function attest(Attestation calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock payable multi-attestation
-    function multiAttest(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock payable revocation
-    function revoke(Attestation calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock payable multi-revocation
-    function multiRevoke(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
-        return true;
-    }
-}
-
 // =============================================================
 //                        MAIN TEST CONTRACT
 // =============================================================
