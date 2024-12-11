@@ -168,10 +168,11 @@ type AstNode struct {
 	TypeName         *AstTypeName         `json:"typeName,omitempty"`
 
 	// Expression specific
-	IsConstant      bool `json:"isConstant,omitempty"`
-	IsLValue        bool `json:"isLValue,omitempty"`
-	IsPure          bool `json:"isPure,omitempty"`
-	LValueRequested bool `json:"lValueRequested,omitempty"`
+	Expression      *Expression `json:"expression,omitempty"`
+	IsConstant      bool        `json:"isConstant,omitempty"`
+	IsLValue        bool        `json:"isLValue,omitempty"`
+	IsPure          bool        `json:"isPure,omitempty"`
+	LValueRequested bool        `json:"lValueRequested,omitempty"`
 
 	// Literal specific
 	HexValue string      `json:"hexValue,omitempty"`
