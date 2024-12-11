@@ -30,13 +30,14 @@ contract TestSchemaResolver is SchemaResolver {
     }
 }
 
-/// @dev Minimal mock EAS implementation for testing
-contract MockEAS {
-    /// @dev Mock attestation that always succeeds
-    function attest(Attestation calldata) external payable returns (bool) {
-        return true;
-    }
-}
+// /// @dev Minimal mock EAS implementation for testing
+// contract MockEAS {
+//     /// @dev Mock attestation that always succeeds
+//     function attest(Attestation calldata) external payable returns (bool) {
+//         return true;
+//     }
+// }
+
 
 /// @dev Mock resolver that accepts payments for testing fee handling
 contract MockPayableResolver is ISchemaResolver {
@@ -71,6 +72,7 @@ contract MockPayableResolver is ISchemaResolver {
 // =============================================================
 
 contract SchemaResolverTest is Test {
+    
 
     // =============================================================
     //                           CONSTANTS
@@ -81,8 +83,8 @@ contract SchemaResolverTest is Test {
     //                          TEST STATE
     // =============================================================
     TestSchemaResolver public resolver;
-    MockEAS public eas;
     address public recipient;
+    IEAS public eas;
 
     // =============================================================
     //                         ERROR TYPES
@@ -97,8 +99,13 @@ contract SchemaResolverTest is Test {
     // =============================================================
     /// @dev Deploys mock contracts and sets up test environment
     function setUp() public {
-        eas = new MockEAS();
-        resolver = new TestSchemaResolver(IEAS(address(eas)));
+        eas = IEAS(makeAddr("eas"));
+        vm.mockCall(
+            address(eas),
+            abi.encodeWithSelector(IEAS.attest.selector),
+            abi.encode(true)
+        );
+        resolver = new TestSchemaResolver(eas);
         recipient = makeAddr("recipient");
     }
 
