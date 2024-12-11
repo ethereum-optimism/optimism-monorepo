@@ -230,7 +230,6 @@ type AstTypeName struct {
 }
 
 type Expression struct {
-	Expression             *Expression           `json:"expression,omitempty"`
 	Id                     int                   `json:"id"`
 	NodeType               string                `json:"nodeType"`
 	Src                    string                `json:"src"`
