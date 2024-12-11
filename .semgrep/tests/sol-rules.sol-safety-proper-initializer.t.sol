@@ -13,12 +13,12 @@
 
 // If no proxied natspec, initialize functions can have no initializer modifier and be public or external
 contract SemgrepTest__sol_safety_proper_initializer {
-    // ok: sol-safety-single-proper-initializer
+    // ok: sol-safety-proper-initializer
     function initialize() external {
         // ...
     }
 
-    // ok: sol-safety-single-proper-initializer
+    // ok: sol-safety-proper-initializer
     function initialize() public {
         // ...
     }
@@ -27,22 +27,22 @@ contract SemgrepTest__sol_safety_proper_initializer {
 /// NOTE: the proxied natspec below is valid for all contracts after this one
 /// @custom:proxied true
 contract SemgrepTest__sol_safety_proper_initializer {
-    // ok: sol-safety-single-proper-initializer
+    // ok: sol-safety-proper-initializer
     function initialize() external initializer {
         // ...
     }
 
-    // ruleid: sol-safety-single-proper-initializer
+    // ruleid: sol-safety-proper-initializer
     function initialize() external {
         // ...
     }
 
-    // ruleid: sol-safety-single-proper-initializer
+    // ruleid: sol-safety-proper-initializer
     function initialize() public initializer {
         // ...
     }
 
-    // ruleid: sol-safety-single-proper-initializer
+    // ruleid: sol-safety-proper-initializer
     function initialize() public {
         // ...
     }
