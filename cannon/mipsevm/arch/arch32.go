@@ -13,17 +13,8 @@ type (
 )
 
 const (
-	IsMips32      = true
-	WordSize      = 32
-	WordSizeBytes = WordSize >> 3
-	PageAddrSize  = 12
-	PageKeySize   = WordSize - PageAddrSize
-
-	MemProofLeafCount = 28
-	MemProofSize      = MemProofLeafCount * 32
-
-	AddressMask = 0xFFffFFfc
-	ExtMask     = 0x3
+	WordSize = 32
+	ExtMask  = 0x3
 
 	HeapStart       = 0x05_00_00_00
 	HeapEnd         = 0x60_00_00_00
