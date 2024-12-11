@@ -68,10 +68,16 @@ contract CommonTest is Test, Setup, Events {
             deploy.cfg().setUseInterop(true);
         }
 
-        if (
-            isForkTest && (useAltDAOverride || useLegacyContracts || customGasToken != address(0) || useInteropOverride)
-        ) {
-            vm.skip(true);
+        if (isForkTest) {
+            // Skip any test suite which uses a nonstandard configuration.
+            if (useAltDAOverride || useLegacyContracts || customGasToken != address(0) || useInteropOverride) {
+                vm.skip(true);
+            }
+
+            // Modifying these values on a fork test causes issues.
+            vm.warp(deploy.cfg().l2OutputOracleStartingTimestamp() + 1);
+            vm.roll(deploy.cfg().l2OutputOracleStartingBlockNumber() + 1);
+            vm.fee(1 gwei);
         }
 
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
@@ -82,13 +88,6 @@ contract CommonTest is Test, Setup, Events {
         excludeContract(address(ffi));
         excludeContract(address(deploy));
         excludeContract(address(deploy.cfg()));
-
-        // Make sure the base fee is non zero
-        vm.fee(1 gwei);
-
-        // Set sane initialize block numbers
-        vm.warp(deploy.cfg().l2OutputOracleStartingTimestamp() + 1);
-        vm.roll(deploy.cfg().l2OutputOracleStartingBlockNumber() + 1);
 
         // Deploy L1
         Setup.L1();
