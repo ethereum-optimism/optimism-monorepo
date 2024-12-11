@@ -582,7 +582,8 @@ contract SemgrepTest__sol_style_enforce_require_msg {
     }
 }
 
-/// NOTE: The order here is important, because the proxied natspec identifier is used below, it is seen as present for other tests after it's declaration and so we test for contracts without this natspec first
+/// NOTE: The order here is important, because the proxied natspec identifier is used below, it is seen as present for
+/// other tests after it's declaration and so we test for contracts without this natspec first
 
 // If no proxied natspec, initialize functions can have no initializer modifier and be public or external
 contract SemgrepTest__sol_safety_single_proper_initializer {
