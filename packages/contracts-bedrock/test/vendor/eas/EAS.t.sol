@@ -122,7 +122,7 @@ contract EASTest is CommonTest {
     ) internal returns (bytes32) {
         bytes32 schemaId = _getSchemaUID(schema, address(0), revocable);
         vm.prank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), revocable);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), revocable);
         return schemaId;
     }
 
@@ -356,9 +356,6 @@ contract EASTest is CommonTest {
         recipient = makeAddr("recipient");
         recipient2 = makeAddr("recipient2");
 
-        // Get contracts from predeploys
-        registry = ISchemaRegistry(Predeploys.SCHEMA_REGISTRY);
-        eas = IEAS(Predeploys.EAS);
         payableResolver = makeAddr("payableResolver");
 
         vm.mockCall(
@@ -775,7 +772,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -816,7 +813,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID("", address(0), true);
 
         vm.startPrank(sender);
-        registry.register("", ISchemaResolver(address(0)), true);
+        schemaRegistry.register("", ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -859,7 +856,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(payableResolver), true);
+        schemaRegistry.register(schema, ISchemaResolver(payableResolver), true);
 
         AttestationRequest memory request = AttestationRequest({
             schema: schemaId,
@@ -900,7 +897,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -1025,9 +1022,9 @@ function testSignatureVerificationTampering() public {
         string memory schema3 = "bool hasPhoneNumber, bytes32 phoneHash";
 
         vm.startPrank(sender);
-        registry.register(schema1, ISchemaResolver(address(0)), true);
-        registry.register(schema2, ISchemaResolver(address(0)), true);
-        registry.register(schema3, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema1, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema2, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema3, ISchemaResolver(address(0)), true);
 
         // Test: revert when attesting to an unregistered schema
         bytes32 badSchemaId = keccak256("BAD");
@@ -1061,7 +1058,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test with different data sizes
         bytes[] memory testData = new bytes[](3);
@@ -1104,7 +1101,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value);
@@ -1175,7 +1172,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Set a specific block timestamp first
         vm.warp(1000000);
@@ -1260,7 +1257,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test with non-existent reference UID
         bytes32 nonExistentUID = bytes32(uint256(1));
@@ -1297,8 +1294,8 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
-        registry.register(schema2, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema2, ISchemaResolver(address(payableResolver)), true);
 
         // Test with multiple recipients and varying data
         address[] memory recipients = new address[](3);
@@ -1352,7 +1349,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test with empty inner batch - this is the actual check in the contract
         MultiAttestationRequest[]
@@ -1380,8 +1377,8 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
-        registry.register(schema2, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema2, ISchemaResolver(address(0)), true);
 
         // Test with multiple schemas in single transaction
         MultiAttestationRequest[]
@@ -1457,8 +1454,8 @@ function testSignatureVerificationTampering() public {
         );
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
-        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         // Test 1: Empty requests array should return empty array
         MultiAttestationRequest[]
@@ -1523,7 +1520,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value * 2);
@@ -1577,7 +1574,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -1618,7 +1615,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -1658,7 +1655,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         bytes32 nonExistentUid = bytes32(uint256(1));
 
@@ -1683,7 +1680,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create parent attestation
         bytes32 parentUID = eas.attest(
@@ -1798,7 +1795,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create attestation
         bytes32 uid = eas.attest(
@@ -1843,7 +1840,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), false);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), false);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), false);
 
         // Create attestation
         bytes32 uid = eas.attest(
@@ -1950,8 +1947,8 @@ function testSignatureVerificationTampering() public {
         );
 
         vm.startPrank(sender);
-        registry.register(revocableSchema, ISchemaResolver(address(0)), true);
-        registry.register(
+        schemaRegistry.register(revocableSchema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(
             irrevocableSchema,
             ISchemaResolver(address(0)),
             false
@@ -2015,7 +2012,7 @@ function testSignatureVerificationTampering() public {
         string memory schema = "bool like";
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Try to revoke with wrong schema
         bytes32 wrongSchemaId = _getSchemaUID("wrong schema", address(0), true);
@@ -2411,7 +2408,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         AttestationRequestData memory requestData = AttestationRequestData({
             recipient: recipient,
@@ -2450,7 +2447,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create signature components
         uint8 v = 28;
@@ -2513,7 +2510,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test with different time scenarios
         uint64[] memory deadlines = new uint64[](3);
@@ -2563,7 +2560,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
@@ -2618,7 +2615,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test single delegated attestation
         AttestationRequestData memory requestData = AttestationRequestData({
@@ -2694,7 +2691,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test 1: Empty data arrays
 
@@ -2758,7 +2755,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create attestation first
         bytes32 uid = eas.attest(
@@ -2803,7 +2800,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create attestation first
         bytes32 uid = eas.attest(
@@ -2884,7 +2881,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create two attestations
         bytes32 uid1 = eas.attest(
@@ -2967,7 +2964,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         AttestationRequest memory request = AttestationRequest({
             schema: schemaId,
@@ -3002,7 +2999,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         // Test attestation with resolver
         bytes32 uid = eas.attest(
@@ -3040,16 +3037,16 @@ function testSignatureVerificationTampering() public {
         vm.startPrank(sender);
 
         // Test basic registration
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test registering same schema again (should revert)
         vm.expectRevert(abi.encodeWithSignature("AlreadyExists()"));
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test different schema types
         string
             memory complexSchema = "uint256 age, string name, address wallet";
-        registry.register(complexSchema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(complexSchema, ISchemaResolver(address(0)), true);
 
         vm.stopPrank();
     }
@@ -3068,7 +3065,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create first attestation
         bytes32 refUid = eas.attest(
@@ -3118,7 +3115,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create chain of attestations
         bytes32[] memory uids = new bytes32[](3);
@@ -3188,7 +3185,7 @@ function testSignatureVerificationTampering() public {
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Create multiple attestations with different configurations
         bytes32[] memory uids = new bytes32[](3);
@@ -3288,7 +3285,7 @@ function testDeadlineScenarios() public {
     bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
     vm.startPrank(sender);
-    registry.register(schema, ISchemaResolver(address(0)), true);
+    schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
     DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
         schema: schemaId,
