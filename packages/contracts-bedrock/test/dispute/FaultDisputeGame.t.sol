@@ -48,7 +48,7 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
 
     function init(Claim rootClaim, Claim absolutePrestate, uint256 l2BlockNumber) public {
         // Set the time to a realistic date.
-        if(!forkBlock) {
+        if(!isForkTest) {
             vm.warp(1690906994);
         }
 
