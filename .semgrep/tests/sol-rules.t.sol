@@ -581,3 +581,89 @@ contract SemgrepTest__sol_style_enforce_require_msg {
         require(cond);
     }
 }
+
+/// NOTE: The order here is important, because the proxied natspec identifier is used below, it is seen as present for other tests after it's declaration and so we test for contracts without this natspec first
+
+// If no proxied natspec, initialize functions can have no initializer modifier and be public or external
+contract SemgrepTest__sol_safety_single_proper_initializer {
+    // ok: sol-safety-single-proper-initializer
+    function initialize() external {
+        // ...
+    }
+
+    // ok: sol-safety-single-proper-initializer
+    function initialize() public {
+        // ...
+    }
+}
+
+// If no predeploy natspec, disableInitializers can or cannot be called in constructor
+contract SemgrepTest__sol_safety_use_disable_initializer {
+    // ok: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+        _disableInitializers();
+        // ...
+    }
+
+    // ok: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+    }
+}
+
+/// NOTE: the proxied natspec below is valid for all contracts after this one
+/// @custom:proxied true
+contract SemgrepTest__sol_safety_single_proper_initializer {
+    // ok: sol-safety-single-proper-initializer
+    function initialize() external initializer {
+        // ...
+    }
+
+    // ruleid: sol-safety-single-proper-initializer
+    function initialize() external {
+        // ...
+    }
+
+    // ruleid: sol-safety-single-proper-initializer
+    function initialize() public initializer {
+        // ...
+    }
+
+    // ruleid: sol-safety-single-proper-initializer
+    function initialize() public {
+        // ...
+    }
+}
+
+// if no predeploy natspec, disableInitializers must be called in constructor
+contract SemgrepTest__sol_safety_use_disable_initializer {
+    // ok: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+        _disableInitializers();
+        // ...
+    }
+
+    // ruleid: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+    }
+}
+
+/// NOTE: the predeploy natspec below is valid for all contracts after this one
+/// @custom:predeploy
+// if predeploy natspec, disableInitializers may or may not be called in constructor
+contract SemgrepTest__sol_safety_use_disable_initializer {
+    // ok: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+    }
+
+    // ok: sol-safety-use-disable-initializer
+    constructor() {
+        // ...
+        _disableInitializers();
+        // ...
+    }
+}
