@@ -126,7 +126,7 @@ contract Setup {
     function setUp() public virtual {
         console.log("L1 setup start!");
         if (vm.envOr("UPGRADE_TEST", false)) {
-            string memory forkUrl = vm.envOr("FORK_RPC_URL", string("http://127.0.0.1:8546"));
+            string memory forkUrl = vm.envString("ETH_RPC_URL");
             isForkTest = true;
             vm.createSelectFork(forkUrl);
 
