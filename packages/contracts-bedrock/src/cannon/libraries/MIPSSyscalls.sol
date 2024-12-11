@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 // Libraries
 import { MIPSMemory } from "src/cannon/libraries/MIPSMemory.sol";
 import { MIPSState as st } from "src/cannon/libraries/MIPSState.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
 
 library MIPSSyscalls {
@@ -156,6 +156,7 @@ library MIPSSyscalls {
     uint32 internal constant REG_A1 = 5;
     uint32 internal constant REG_A2 = 6;
     uint32 internal constant REG_A3 = 7;
+    uint32 internal constant REG_SP = 29;
 
     // FYI: https://web.archive.org/web/20231223163047/https://www.linux-mips.org/wiki/Syscall
     uint32 internal constant REG_SYSCALL_NUM = REG_V0;

@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/ethereum/go-ethereum/rpc"
+
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum/go-ethereum/common"
 
@@ -82,6 +84,7 @@ func MIPSCLI(cliCtx *cli.Context) error {
 
 	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
 	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
+	outfile := cliCtx.String(OutfileFlagName)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts2.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {
@@ -93,7 +96,7 @@ func MIPSCLI(cliCtx *cli.Context) error {
 
 	ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-	return MIPS(ctx, MIPSConfig{
+	dmo, err := MIPS(ctx, MIPSConfig{
 		L1RPCUrl:         l1RPCUrl,
 		PrivateKey:       privateKey,
 		Logger:           l,
@@ -101,11 +104,20 @@ func MIPSCLI(cliCtx *cli.Context) error {
 		MipsVersion:      mipsVersion,
 		PreimageOracle:   preimageOracle,
 	})
+	if err != nil {
+		return fmt.Errorf("failed to deploy MIPS: %w", err)
+	}
+
+	if err := jsonutil.WriteJSON(dmo, ioutil.ToStdOutOrFileOrNoop(outfile, 0o755)); err != nil {
+		return fmt.Errorf("failed to write output: %w", err)
+	}
+	return nil
 }
 
-func MIPS(ctx context.Context, cfg MIPSConfig) error {
+func MIPS(ctx context.Context, cfg MIPSConfig) (opcm.DeployMIPSOutput, error) {
+	var dmo opcm.DeployMIPSOutput
 	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for MIPS: %w", err)
+		return dmo, fmt.Errorf("invalid config for MIPS: %w", err)
 	}
 
 	lgr := cfg.Logger
@@ -115,7 +127,7 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 
 	artifactsFS, cleanup, err := artifacts2.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
-		return fmt.Errorf("failed to download artifacts: %w", err)
+		return dmo, fmt.Errorf("failed to download artifacts: %w", err)
 	}
 	defer func() {
 		if err := cleanup(); err != nil {
@@ -123,14 +135,16 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 		}
 	}()
 
-	l1Client, err := ethclient.Dial(cfg.L1RPCUrl)
+	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {
-		return fmt.Errorf("failed to connect to L1 RPC: %w", err)
+		return dmo, fmt.Errorf("failed to connect to L1 RPC: %w", err)
 	}
+
+	l1Client := ethclient.NewClient(l1RPC)
 
 	chainID, err := l1Client.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to get chain ID: %w", err)
+		return dmo, fmt.Errorf("failed to get chain ID: %w", err)
 	}
 
 	signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(cfg.privateKeyECDSA, chainID))
@@ -144,24 +158,20 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 		From:    chainDeployer,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to create broadcaster: %w", err)
+		return dmo, fmt.Errorf("failed to create broadcaster: %w", err)
 	}
 
-	nonce, err := l1Client.NonceAt(ctx, chainDeployer, nil)
-	if err != nil {
-		return fmt.Errorf("failed to get starting nonce: %w", err)
-	}
-
-	host, err := env.DefaultScriptHost(
+	host, err := env.DefaultForkedScriptHost(
+		ctx,
 		bcaster,
 		lgr,
 		chainDeployer,
 		artifactsFS,
+		l1RPC,
 	)
 	if err != nil {
-		return fmt.Errorf("failed to create script host: %w", err)
+		return dmo, fmt.Errorf("failed to create script host: %w", err)
 	}
-	host.SetNonce(chainDeployer, nonce)
 
 	var release string
 	if cfg.ArtifactsLocator.IsTag() {
@@ -172,7 +182,7 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 
 	lgr.Info("deploying dispute game", "release", release)
 
-	dgo, err := opcm.DeployMIPS(
+	dmo, err = opcm.DeployMIPS(
 		host,
 		opcm.DeployMIPSInput{
 			MipsVersion:    cfg.MipsVersion,
@@ -180,17 +190,14 @@ func MIPS(ctx context.Context, cfg MIPSConfig) error {
 		},
 	)
 	if err != nil {
-		return fmt.Errorf("error deploying dispute game: %w", err)
+		return dmo, fmt.Errorf("error deploying dispute game: %w", err)
 	}
 
 	if _, err := bcaster.Broadcast(ctx); err != nil {
-		return fmt.Errorf("failed to broadcast: %w", err)
+		return dmo, fmt.Errorf("failed to broadcast: %w", err)
 	}
 
 	lgr.Info("deployed dispute game")
 
-	if err := jsonutil.WriteJSON(dgo, ioutil.ToStdOut()); err != nil {
-		return fmt.Errorf("failed to write output: %w", err)
-	}
-	return nil
+	return dmo, nil
 }

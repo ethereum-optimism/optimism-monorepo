@@ -1,7 +1,6 @@
 package opcm
 
 import (
-	"fmt"
 	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
@@ -53,37 +52,5 @@ type DeploySuperchainOpts struct {
 }
 
 func DeploySuperchain(h *script.Host, input DeploySuperchainInput) (DeploySuperchainOutput, error) {
-	var dso DeploySuperchainOutput
-
-	inputAddr := h.NewScriptAddress()
-	outputAddr := h.NewScriptAddress()
-
-	cleanupInput, err := script.WithPrecompileAtAddress[*DeploySuperchainInput](h, inputAddr, &input)
-	if err != nil {
-		return dso, fmt.Errorf("failed to insert DeploySuperchainInput precompile: %w", err)
-	}
-	defer cleanupInput()
-
-	cleanupOutput, err := script.WithPrecompileAtAddress[*DeploySuperchainOutput](
-		h,
-		outputAddr,
-		&dso,
-		script.WithFieldSetter[*DeploySuperchainOutput],
-	)
-	if err != nil {
-		return dso, fmt.Errorf("failed to insert DeploySuperchainOutput precompile: %w", err)
-	}
-	defer cleanupOutput()
-
-	deployScript, cleanupDeploy, err := script.WithScript[DeploySuperchainScript](h, "DeploySuperchain.s.sol", "DeploySuperchain")
-	if err != nil {
-		return dso, fmt.Errorf("failed to load DeploySuperchain script: %w", err)
-	}
-	defer cleanupDeploy()
-
-	if err := deployScript.Run(inputAddr, outputAddr); err != nil {
-		return dso, fmt.Errorf("failed to run DeploySuperchain script: %w", err)
-	}
-
-	return dso, nil
+	return RunScriptSingle[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
 }

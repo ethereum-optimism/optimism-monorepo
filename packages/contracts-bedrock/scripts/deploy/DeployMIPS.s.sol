@@ -9,8 +9,8 @@ import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Interfaces
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 
 /// @title DeployMIPSInput
 contract DeployMIPSInput is BaseDeployIO {

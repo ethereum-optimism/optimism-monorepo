@@ -12,8 +12,8 @@ import {
 } from "src/cannon/libraries/CannonErrors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 /// @title MIPS2
 /// @notice The MIPS2 contract emulates a single MIPS instruction.
@@ -63,8 +63,8 @@ contract MIPS2 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS2 contract.
-    /// @custom:semver 1.0.0-beta.24
-    string public constant version = "1.0.0-beta.24";
+    /// @custom:semver 1.0.0-beta.26
+    string public constant version = "1.0.0-beta.26";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -428,10 +428,10 @@ contract MIPS2 is ISemver {
                 for (uint256 i; i < 32; i++) {
                     newThread.registers[i] = thread.registers[i];
                 }
-                newThread.registers[29] = a1; // set stack pointer
+                newThread.registers[sys.REG_SP] = a1; // set stack pointer
                 // the child will perceive a 0 value as returned value instead, and no error
-                newThread.registers[2] = 0;
-                newThread.registers[7] = 0;
+                newThread.registers[sys.REG_SYSCALL_RET1] = 0;
+                newThread.registers[sys.REG_SYSCALL_ERRNO] = 0;
                 state.nextThreadID++;
 
                 // Preempt this thread for the new one. But not before updating PCs

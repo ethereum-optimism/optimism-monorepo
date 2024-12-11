@@ -33,7 +33,7 @@ contract Burn_EthBurner is StdUtils {
         // execute a burn of _value eth
         Burn.eth(value);
 
-        // check that exactly value eth was transfered from the contract
+        // check that exactly value eth was transferred from the contract
         unchecked {
             if (address(this).balance != preBurnBalance - value) {
                 failedEthBurn = true;

@@ -228,7 +228,7 @@ func (d *InteropDeriver) onCrossSafeUpdateEvent(x engine.CrossSafeUpdateEvent) e
 	}
 	if result.Cross.Number < x.CrossSafe.Number {
 		d.log.Warn("op-supervisor is behind known cross-safe block", "supervisor", result.Cross, "known", x.CrossSafe)
-		// TODO: we may want to force set the cross-safe block in the engine,
+		// TODO(#13337): we may want to force set the cross-safe block in the engine,
 		//  and then reset derivation, so this op-node can help get the supervisor back in sync.
 		return nil
 	}

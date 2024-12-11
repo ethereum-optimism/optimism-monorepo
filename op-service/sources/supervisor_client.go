@@ -44,13 +44,13 @@ func (cl *SupervisorClient) Start(ctx context.Context) error {
 	return result
 }
 
-func (cl *SupervisorClient) AddL2RPC(ctx context.Context, rpc string) error {
+func (cl *SupervisorClient) AddL2RPC(ctx context.Context, rpc string, auth eth.Bytes32) error {
 	var result error
 	err := cl.client.CallContext(
 		ctx,
 		&result,
 		"admin_addL2RPC",
-		rpc)
+		rpc, auth)
 	if err != nil {
 		return fmt.Errorf("failed to Add L2 to Supervisor (rpc: %s): %w", rpc, err)
 	}

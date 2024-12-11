@@ -83,7 +83,7 @@ var (
 		Usage:    "stop at the first preimage request matching this type",
 		Required: false,
 	}
-	RunStopAtPreimageLargerThanFlag = &cli.StringFlag{
+	RunStopAtPreimageLargerThanFlag = &cli.IntFlag{
 		Name:     "stop-at-preimage-larger-than",
 		Usage:    "stop at the first step that requests a preimage larger than the specified size (in bytes)",
 		Required: false,

@@ -9,9 +9,9 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Target contract
 import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
-import { IERC7802, IERC165 } from "src/L2/interfaces/IERC7802.sol";
+import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ISuperchainERC20 } from "src/L2/interfaces/ISuperchainERC20.sol";
+import { ISuperchainERC20 } from "interfaces/L2/ISuperchainERC20.sol";
 import { MockSuperchainERC20Implementation } from "test/mocks/SuperchainERC20Implementation.sol";
 
 /// @title SuperchainERC20Test

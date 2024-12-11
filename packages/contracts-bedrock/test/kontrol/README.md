@@ -90,7 +90,7 @@ Use the [`run-kontrol.sh`](./scripts/run-kontrol.sh) script to runs the proofs i
 The `run-kontrol.sh` script supports three modes of proof execution:
 
 - `container`: Runs the proofs using the same Docker image used in CI. This is the default execution mode—if no arguments are provided, the proofs will be executed in this mode.
-- `local`: Runs the proofs with your local Kontrol install, and enforces that the Kontrol version matches the one used in CI, which is specified in [`versions.json`](../../../../versions.json).
+- `local`: Runs the proofs with your local Kontrol install, and enforces that the Kontrol version matches the one used in CI, which is specified in [`mise.toml`](../../../../mise.toml).
 - `dev`: Run the proofs with your local Kontrol install, without enforcing any version in particular. The intended use case is proof development and related matters.
 
 It also supports two methods for specifying which tests to execute:
@@ -121,8 +121,8 @@ Write your proof in a `.k.sol` file in the [`proofs`](./proofs/) folder, which i
 To reference the correct addresses for writing the tests, first import the signatures as in this example:
 
 ```solidity
-import { IOptimismPortal as OptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IOptimismPortal as OptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ```
 
 Declare the correspondent variables and cast the correct signatures to the correct addresses:

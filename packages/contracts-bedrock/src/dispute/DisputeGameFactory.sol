@@ -10,8 +10,8 @@ import { GameType, Claim, GameId, Timestamp, Hash, LibGameId } from "src/dispute
 import { NoImplementation, IncorrectBondAmount, GameAlreadyExists } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @custom:proxied true
 /// @title DisputeGameFactory

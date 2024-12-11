@@ -3,9 +3,9 @@ pragma solidity ^0.8.13;
 
 import { DeploymentSummaryFaultProofs } from "./utils/DeploymentSummaryFaultProofs.sol";
 import { KontrolUtils } from "./utils/KontrolUtils.sol";
-import { IL1StandardBridge as L1StandardBridge } from "src/L1/interfaces/IL1StandardBridge.sol";
-import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { ICrossDomainMessenger as CrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
+import { IL1StandardBridge as L1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
+import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ICrossDomainMessenger as CrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 
 contract L1StandardBridgeKontrol is DeploymentSummaryFaultProofs, KontrolUtils {
     L1StandardBridge l1standardBridge;

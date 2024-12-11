@@ -258,7 +258,16 @@ func FuzzOBP01(f *testing.F) {
 	require.NoError(f, err)
 	data := buf.Bytes()
 
+	// Represents a weird txOffset that is long enough to seem valid,
+	// but actually doesn't allow transactions to be serialized.
+	f.Add(uint32(508), uint32(514))
+
 	f.Fuzz(func(t *testing.T, edOffset uint32, txOffset uint32) {
+		if edOffset == 508 && txOffset == 540 {
+			// These values are the correct serialization, so don't test them.
+			return
+		}
+
 		clone := make([]byte, len(data))
 		copy(clone, data)
 
@@ -268,7 +277,7 @@ func FuzzOBP01(f *testing.F) {
 		var unmarshalled ExecutionPayload
 		err = unmarshalled.UnmarshalSSZ(BlockV1, uint32(len(clone)), bytes.NewReader(clone))
 		if err == nil {
-			t.Fatalf("expected a failure, but didn't get one")
+			t.Fatalf("expected a failure, but didn't get one. ed: %d, tx: %d", edOffset, txOffset)
 		}
 	})
 }

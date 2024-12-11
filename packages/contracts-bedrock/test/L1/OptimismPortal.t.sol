@@ -22,11 +22,11 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import "src/libraries/PortalErrors.sol";
 
 // Interfaces
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 contract OptimismPortal_Test is CommonTest {
     address depositor;
@@ -162,14 +162,16 @@ contract OptimismPortal_Test is CommonTest {
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         internal
     {
         if (_isCreation) {
             _to = address(0);
         }
-        vm.assume(_data.length <= 120_000);
+        if (_data.length > 120_000) {
+            _data = _data[0:120_000];
+        }
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
         _gasLimit =
             uint64(bound(_gasLimit, optimismPortal.minimumGasLimit(uint64(_data.length)), rcfg.maxResourceLimit));
@@ -201,14 +203,13 @@ contract OptimismPortal_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds when msg.sender == tx.origin and non-custom gas is used.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_senderIsOrigin_succeeds(
         address _to,
         uint256 _mint,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -227,14 +228,13 @@ contract OptimismPortal_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds when msg.sender != tx.origin and non-custom gas is used.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_senderNotOrigin_succeeds(
         address _to,
         uint256 _mint,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -310,7 +310,6 @@ contract OptimismPortal_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds for an EOA.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_eoa_succeeds(
         address _to,
         uint64 _gasLimit,
@@ -355,7 +354,6 @@ contract OptimismPortal_Test is CommonTest {
     }
 
     /// @dev Tests that `depositTransaction` succeeds for a contract.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_contract_succeeds(
         address _to,
         uint64 _gasLimit,
@@ -480,13 +478,17 @@ contract OptimismPortal_Test is CommonTest {
     ///         `depositTransaction` function. This is a simple differential test.
     function test_setGasPayingToken_correctEvent_succeeds(
         address _token,
-        string memory _name,
-        string memory _symbol
+        string calldata _name,
+        string calldata _symbol
     )
         external
     {
-        vm.assume(bytes(_name).length <= 32);
-        vm.assume(bytes(_symbol).length <= 32);
+        if (bytes(_name).length > 32) {
+            _name = _name[0:32];
+        }
+        if (bytes(_symbol).length > 32) {
+            _symbol = _symbol[0:32];
+        }
 
         bytes32 name = GasPayingToken.sanitize(_name);
         bytes32 symbol = GasPayingToken.sanitize(_symbol);
@@ -1214,7 +1216,6 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testDiff_finalizeWithdrawalTransaction_succeeds(
         address _sender,
         address _target,
@@ -1337,7 +1338,6 @@ contract OptimismPortalResourceFuzz_Test is CommonTest {
     uint256 constant MAX_GAS_LIMIT = 30_000_000;
 
     /// @dev Test that various values of the resource metering config will not break deposits.
-    /// forge-config: ciheavy.fuzz.runs = 10000
     function testFuzz_systemConfigDeposit_succeeds(
         uint32 _maxResourceLimit,
         uint8 _elasticityMultiplier,
@@ -1356,8 +1356,13 @@ contract OptimismPortalResourceFuzz_Test is CommonTest {
         uint64 gasLimit = systemConfig.gasLimit();
 
         // Bound resource config
+        _systemTxMaxGas = uint32(bound(_systemTxMaxGas, 0, gasLimit - 21000));
         _maxResourceLimit = uint32(bound(_maxResourceLimit, 21000, MAX_GAS_LIMIT / 8));
+        _maxResourceLimit = uint32(bound(_maxResourceLimit, 21000, gasLimit - _systemTxMaxGas));
+        _maximumBaseFee = uint128(bound(_maximumBaseFee, 1, type(uint128).max));
+        _minimumBaseFee = uint32(bound(_minimumBaseFee, 0, _maximumBaseFee - 1));
         _gasLimit = uint64(bound(_gasLimit, 21000, _maxResourceLimit));
+        _gasLimit = uint64(bound(_gasLimit, 0, gasLimit));
         _prevBaseFee = uint128(bound(_prevBaseFee, 0, 3 gwei));
         _prevBoughtGas = uint64(bound(_prevBoughtGas, 0, _maxResourceLimit - _gasLimit));
         _blockDiff = uint8(bound(_blockDiff, 0, 3));
@@ -1365,10 +1370,15 @@ contract OptimismPortalResourceFuzz_Test is CommonTest {
         _elasticityMultiplier = uint8(bound(_elasticityMultiplier, 1, type(uint8).max));
 
         // Prevent values that would cause reverts
-        vm.assume(gasLimit >= _gasLimit);
-        vm.assume(_minimumBaseFee < _maximumBaseFee);
         vm.assume(uint256(_maxResourceLimit) + uint256(_systemTxMaxGas) <= gasLimit);
         vm.assume(((_maxResourceLimit / _elasticityMultiplier) * _elasticityMultiplier) == _maxResourceLimit);
+
+        // Although we typically want to limit the usage of vm.assume, we've constructed the above
+        // bounds to satisfy the assumptions listed in this specific section. These assumptions
+        // serve only to act as an additional sanity check on top of the bounds and should not
+        // result in an unnecessary number of test rejections.
+        vm.assume(gasLimit >= _gasLimit);
+        vm.assume(_minimumBaseFee < _maximumBaseFee);
 
         // Base fee can increase quickly and mean that we can't buy the amount of gas we want.
         // Here we add a VM assumption to bound the potential increase.
@@ -1432,14 +1442,16 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         internal
     {
         if (_isCreation) {
             _to = address(0);
         }
-        vm.assume(_data.length <= 120_000);
+        if (_data.length > 120_000) {
+            _data = _data[0:120_000];
+        }
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
         _gasLimit =
             uint64(bound(_gasLimit, optimismPortal.minimumGasLimit(uint64(_data.length)), rcfg.maxResourceLimit));
@@ -1472,14 +1484,13 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender == tx.origin.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositERC20Transaction_senderIsOrigin_succeeds(
         address _to,
         uint256 _mint,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -1498,14 +1509,13 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender != tx.origin.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositERC20Transaction_senderNotOrigin_succeeds(
         address _to,
         uint256 _mint,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -1661,14 +1671,16 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         internal
     {
         if (_isCreation) {
             _to = address(0);
         }
-        vm.assume(_data.length <= 120_000);
+        if (_data.length > 120_000) {
+            _data = _data[0:120_000];
+        }
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
         _gasLimit =
             uint64(bound(_gasLimit, optimismPortal.minimumGasLimit(uint64(_data.length)), rcfg.maxResourceLimit));
@@ -1697,13 +1709,12 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {
@@ -1721,13 +1732,12 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     }
 
     /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    /// forge-config: ciheavy.fuzz.runs = 8192
     function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_succeeds(
         address _to,
         uint256 _value,
         uint64 _gasLimit,
         bool _isCreation,
-        bytes memory _data
+        bytes calldata _data
     )
         external
     {

@@ -33,14 +33,21 @@ type Runner struct {
 }
 
 func New(l1RPCURL string, logger log.Logger) (*Runner, error) {
-	proc := exec.Command(
-		"anvil",
-		"--fork-url", l1RPCURL,
-		"--port",
-		"0",
-		"--base-fee",
-		"1000000000",
-	)
+	return NewWithOpts(l1RPCURL, "1000000000", logger)
+}
+
+func NewWithOpts(l1RPCURL string, baseFee string, logger log.Logger) (*Runner, error) {
+	if _, err := exec.LookPath("anvil"); err != nil {
+		return nil, fmt.Errorf("anvil not found in PATH: %w", err)
+	}
+
+	args := []string{"--port", "0", "--base-fee", baseFee}
+	if l1RPCURL != "" {
+		args = append([]string{"--fork-url", l1RPCURL}, args...)
+	}
+
+	proc := exec.Command("anvil", args...)
+
 	stdout, err := proc.StdoutPipe()
 	if err != nil {
 		return nil, err
@@ -106,7 +113,7 @@ func (r *Runner) outputStream(stream io.ReadCloser) {
 			}
 		}
 
-		r.logger.Debug("[ANVIL] " + scanner.Text())
+		r.logger.Debug("[ANVIL] " + line)
 	}
 }
 

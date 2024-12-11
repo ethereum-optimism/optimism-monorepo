@@ -223,7 +223,7 @@ func (v *EvmValidator) ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitnes
 
 // ValidateEVM runs a single evm step and validates against an FPVM poststate
 func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM, hashFn mipsevm.HashFn, contracts *ContractMetadata, opts ...evmOption) {
-	validator := NewEvmValidator(t, hashFn, contracts)
+	validator := NewEvmValidator(t, hashFn, contracts, opts...)
 	validator.ValidateEVM(t, stepWitness, step, goVm)
 }
 

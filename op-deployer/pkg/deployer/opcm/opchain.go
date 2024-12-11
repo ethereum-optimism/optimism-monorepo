@@ -88,36 +88,7 @@ func DeployOPChainIsthmus(host *script.Host, input DeployOPChainInputIsthmus) (D
 }
 
 func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, error) {
-	var dco DeployOPChainOutput
-	inputAddr := host.NewScriptAddress()
-	outputAddr := host.NewScriptAddress()
-
-	cleanupInput, err := script.WithPrecompileAtAddress[*T](host, inputAddr, &input)
-	if err != nil {
-		return dco, fmt.Errorf("failed to insert DeployOPChainInput precompile: %w", err)
-	}
-	defer cleanupInput()
-	host.Label(inputAddr, "DeployOPChainInput")
-
-	cleanupOutput, err := script.WithPrecompileAtAddress[*DeployOPChainOutput](host, outputAddr, &dco,
-		script.WithFieldSetter[*DeployOPChainOutput])
-	if err != nil {
-		return dco, fmt.Errorf("failed to insert DeployOPChainOutput precompile: %w", err)
-	}
-	defer cleanupOutput()
-	host.Label(outputAddr, "DeployOPChainOutput")
-
-	deployScript, cleanupDeploy, err := script.WithScript[DeployOPChainScript](host, "DeployOPChain.s.sol", "DeployOPChain")
-	if err != nil {
-		return dco, fmt.Errorf("failed to load DeployOPChain script: %w", err)
-	}
-	defer cleanupDeploy()
-
-	if err := deployScript.Run(inputAddr, outputAddr); err != nil {
-		return dco, fmt.Errorf("failed to run DeployOPChain script: %w", err)
-	}
-
-	return dco, nil
+	return RunScriptSingle[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
 }
 
 type ReadImplementationAddressesInput struct {

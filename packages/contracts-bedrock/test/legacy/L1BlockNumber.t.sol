@@ -9,8 +9,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Interfaces
-import { IL1BlockNumber } from "src/legacy/interfaces/IL1BlockNumber.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
+import { IL1BlockNumber } from "interfaces/legacy/IL1BlockNumber.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 contract L1BlockNumberTest is Test {
     IL1Block lb;

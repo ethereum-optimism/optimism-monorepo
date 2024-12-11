@@ -49,6 +49,7 @@ func L2ClientDefaultConfig(config *rollup.Config, trustRPC bool) *L2ClientConfig
 			PayloadsCacheSize:     span,
 			MaxRequestsPerBatch:   20, // TODO: tune batch param
 			MaxConcurrentRequests: 10,
+			BlockRefsCacheSize:    span,
 			TrustRPC:              trustRPC,
 			MustBePostMerge:       true,
 			RPCProviderKind:       RPCKindStandard,

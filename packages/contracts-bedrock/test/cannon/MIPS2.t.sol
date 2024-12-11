@@ -14,8 +14,8 @@ import { InvalidExitedValue, InvalidMemoryProof, InvalidSecondMemoryProof } from
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IMIPS2 } from "src/cannon/interfaces/IMIPS2.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IMIPS2 } from "interfaces/cannon/IMIPS2.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 contract ThreadStack {
     bytes32 internal constant EMPTY_THREAD_ROOT = hex"ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
@@ -1130,7 +1130,7 @@ contract MIPS2_Test is CommonTest {
     )
         public
     {
-        vm.assume(_wakeup != sys.FUTEX_EMPTY_ADDR);
+        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 1));
 
         threading.createThread();
         threading.createThread();
@@ -1178,8 +1178,9 @@ contract MIPS2_Test is CommonTest {
     )
         public
     {
-        vm.assume(_wakeup != sys.FUTEX_EMPTY_ADDR);
-        vm.assume(_wakeup != _futexAddr);
+        // -2 incase _wakeup == _futexAddr and _wakeup needs to be incremented
+        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 2));
+        if (_wakeup == _futexAddr) _wakeup++;
 
         threading.createThread();
         threading.createThread();

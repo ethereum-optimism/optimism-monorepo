@@ -248,5 +248,5 @@ update-op-geth: ## Updates the Geth version used in the project
 .PHONY: update-op-geth
 
 install-eth2-testnet-genesis:
-	go install -v github.com/protolambda/eth2-testnet-genesis@$(shell jq -r .eth2_testnet_genesis < versions.json)
+	go install -v github.com/protolambda/eth2-testnet-genesis@v$(shell yq '.tools."go:github.com/protolambda/eth2-testnet-genesis"' mise.toml)
 .PHONY: install-eth2-testnet-genesis

@@ -217,3 +217,7 @@ func (c *channel) OldestL2() eth.BlockID {
 func (c *channel) Close() {
 	c.channelBuilder.Close()
 }
+
+func (c *channel) MaxInclusionBlock() uint64 {
+	return c.maxInclusionBlock
+}

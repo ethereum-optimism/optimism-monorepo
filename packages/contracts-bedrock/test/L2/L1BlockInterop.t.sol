@@ -10,7 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import "src/libraries/L1BlockErrors.sol";
 
 // Interfaces
-import { IL1BlockInterop, ConfigType } from "src/L2/interfaces/IL1BlockInterop.sol";
+import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
 contract L1BlockInteropTest is CommonTest {
     event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);
@@ -64,8 +64,6 @@ contract L1BlockInteropTest is CommonTest {
 
     /// @dev Tests that the dependency set size is correct when adding an arbitrary number of chain IDs.
     function testFuzz_dependencySetSize_succeeds(uint8 _dependencySetSize) public prankDepositor {
-        vm.assume(_dependencySetSize <= type(uint8).max);
-
         uint256 uniqueCount = 0;
 
         for (uint256 i = 0; i < _dependencySetSize; i++) {

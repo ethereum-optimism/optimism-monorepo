@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
 
 const WordSizeBytes = arch.WordSizeBytes
@@ -63,7 +64,7 @@ func PatchStack(st mipsevm.FPVMState) error {
 	if err := st.GetMemory().SetMemoryRange(sp-4*memory.PageSize, bytes.NewReader(make([]byte, 5*memory.PageSize))); err != nil {
 		return errors.New("failed to allocate page for stack content")
 	}
-	st.GetRegistersRef()[29] = sp
+	st.GetRegistersRef()[register.RegSP] = sp
 
 	storeMem := func(addr Word, v Word) {
 		var dat [WordSizeBytes]byte

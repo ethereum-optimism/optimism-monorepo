@@ -35,23 +35,23 @@ import { StorageSlot, ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.so
 import { GameType, Claim, GameTypes, OutputRoot, Hash } from "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IProxyAdmin } from "src/universal/interfaces/IProxyAdmin.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { ProtocolVersion } from "src/L1/interfaces/IProtocolVersions.sol";
-import { IBigStepper } from "src/dispute/interfaces/IBigStepper.sol";
-import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IDelayedWETH } from "src/dispute/interfaces/IDelayedWETH.sol";
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
-import { IMIPS } from "src/cannon/interfaces/IMIPS.sol";
-import { IPreimageOracle } from "src/cannon/interfaces/IPreimageOracle.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
+import { ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
+import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 
 /// @title Deploy
 /// @notice Script used to deploy a bedrock system. The entire system is deployed within the `run` function.
@@ -161,20 +161,13 @@ contract Deploy is Deployer {
     /// @notice Deploy all of the L1 contracts necessary for a full Superchain with a single Op Chain.
     function run() public {
         console.log("Deploying a fresh OP Stack including SuperchainConfig");
-        _run();
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Deploy a new OP Chain using an existing SuperchainConfig and ProtocolVersions
     /// @param _superchainConfigProxy Address of the existing SuperchainConfig proxy
     /// @param _protocolVersionsProxy Address of the existing ProtocolVersions proxy
-    /// @param _includeDump Whether to include a state dump after deployment
-    function runWithSuperchain(
-        address payable _superchainConfigProxy,
-        address payable _protocolVersionsProxy,
-        bool _includeDump
-    )
-        public
-    {
+    function runWithSuperchain(address payable _superchainConfigProxy, address payable _protocolVersionsProxy) public {
         require(_superchainConfigProxy != address(0), "Deploy: must specify address for superchain config proxy");
         require(_protocolVersionsProxy != address(0), "Deploy: must specify address for protocol versions proxy");
 
@@ -190,31 +183,24 @@ contract Deploy is Deployer {
         save("ProtocolVersions", pvProxy.implementation());
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
-        _run(false);
-
-        if (_includeDump) {
-            vm.dumpState(Config.stateDumpPath(""));
-        }
+        _run({ _needsSuperchain: false });
     }
 
+    /// @notice Used for L1 alloc generation.
     function runWithStateDump() public {
         vm.chainId(cfg.l1ChainID());
-        _run();
+        _run({ _needsSuperchain: true });
         vm.dumpState(Config.stateDumpPath(""));
     }
 
     /// @notice Deploy all L1 contracts and write the state diff to a file.
+    ///         Used to generate kontrol tests.
     function runWithStateDiff() public stateDiff {
-        _run();
-    }
-
-    /// @notice Compatibility function for tests that override _run().
-    function _run() internal virtual {
-        _run(true);
+        _run({ _needsSuperchain: true });
     }
 
     /// @notice Internal function containing the deploy logic.
-    function _run(bool _needsSuperchain) internal {
+    function _run(bool _needsSuperchain) internal virtual {
         console.log("start of L1 Deploy!");
 
         // Set up the Superchain if needed.

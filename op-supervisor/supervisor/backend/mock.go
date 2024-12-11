@@ -38,7 +38,7 @@ func (m *MockBackend) Stop(ctx context.Context) error {
 	return nil
 }
 
-func (m *MockBackend) AddL2RPC(ctx context.Context, rpc string) error {
+func (m *MockBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
 	return nil
 }
 

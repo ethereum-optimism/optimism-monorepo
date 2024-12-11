@@ -84,16 +84,18 @@ services:
     volumes:
       - "supervisor_data:/db"
       - "./depset.json:/depset.json"
+      - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
     image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-supervisor:devnet
     command: >
       op-supervisor
       --datadir="/db"
       --dependency-set="/depset.json"
-      --l2-rpcs=""
       --rpc.addr="0.0.0.0"
       --rpc.port=8545
       --rpc.enable-admin
-      --l2-rpcs="ws://l2-a:8546,ws://l2-b:8546"
+      --l1-rpc="http://l1:8545"
+      --l2-consensus.nodes="http://op-node-a:9645,http://op-node-b:9645"
+      --l2-consensus.jwt-secret=/config/jwt-secret.txt
     environment:
       OP_SUPERVISOR_METRICS_ENABLED: "true"
 
@@ -157,7 +159,10 @@ services:
       --l1.http-poll-interval=6s
       --l2=http://l2-a:8551
       --l2.jwt-secret=/config/jwt-secret.txt
-      --supervisor=http://op-supervisor:8545
+      --interop.supervisor=http://op-supervisor:8545
+      --interop.rpc.addr=0.0.0.0
+      --interop.rpc.port=9645
+      --interop.jwt-secret=/config/jwt-secret.txt
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
@@ -180,6 +185,7 @@ services:
       - "9103:9003"
       - "7100:7300"
       - "6160:6060"
+      - "9645:9645"
     volumes:
       - "safedb_a_data:/db"
       - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
@@ -208,7 +214,10 @@ services:
       --l1.http-poll-interval=6s
       --l2=http://l2-b:8551
       --l2.jwt-secret=/config/jwt-secret.txt
-      --supervisor=http://op-supervisor:8545
+      --interop.supervisor=http://op-supervisor:8545
+      --interop.rpc.addr=0.0.0.0
+      --interop.rpc.port=9645
+      --interop.jwt-secret=/config/jwt-secret.txt
       --sequencer.enabled
       --sequencer.l1-confs=0
       --verifier.l1-confs=0
@@ -231,6 +240,7 @@ services:
       - "9203:9003"
       - "7200:7300"
       - "6260:6060"
+      - "9645:9645"
     volumes:
       - "safedb_b_data:/db"
       - "${PWD}/../ops-bedrock/test-jwt-secret.txt:/config/jwt-secret.txt"
