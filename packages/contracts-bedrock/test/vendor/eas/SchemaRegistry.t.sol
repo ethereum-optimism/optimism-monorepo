@@ -263,7 +263,7 @@ contract SchemaRegistryTest is CommonTest {
             revocable: _revocable
         });
 
-        vm.expectEmit(true, true, true, true, address(registry));
+        vm.expectEmit(address(registry));
         emit Registered(
             expectedUID,
             address(this),
