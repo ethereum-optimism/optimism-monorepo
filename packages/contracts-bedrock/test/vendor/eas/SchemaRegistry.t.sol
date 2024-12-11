@@ -28,6 +28,9 @@ contract SchemaRegistryTest is CommonTest {
         SchemaRecord schema
     );
 
+    // ERROR SELECTORS
+    error AlreadyExists();
+
     // =============================================================
     //                           SETUP
     // =============================================================
@@ -86,18 +89,15 @@ contract SchemaRegistryTest is CommonTest {
     }
 
     /// @dev Tests the retrieval of a previously registered schema
-    function testGetSchema() public {
-        string memory schema = "bool isFriend";
-        address resolver = address(0x456);
-        bool revocable = true;
+    function testGetSchema(string memory _schema, address _resolver, bool _revocable) public {
 
-        bytes32 uid = registry.register(schema, ISchemaResolver(resolver), revocable);
+        bytes32 uid = registry.register(_schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = registry.getSchema(uid);
 
         assertEq(record.uid, uid);
-        assertEq(record.schema, schema);
-        assertEq(address(record.resolver), resolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.schema, _schema);
+        assertEq(address(record.resolver), _resolver);
+        assertEq(record.revocable, _revocable);
     }
 
     // =============================================================
@@ -118,18 +118,15 @@ contract SchemaRegistryTest is CommonTest {
     ///         - Verifies revocable setting
     ///      Demonstrates complete flow of schema registration
     ///      and subsequent retrieval
-    function testRegisterSchemaWithoutSchema() public {
-        string memory schema = "";
-        address resolver = address(0x123);
-        bool revocable = true;
-
-        bytes32 uid = registry.register(schema, ISchemaResolver(resolver), revocable);
+    function testRegisterSchemaWithoutSchema(string memory _schema, address _resolver, bool _revocable) public {
+        vm.assume(keccak256(bytes(_schema)) == keccak256(bytes("")));
+        bytes32 uid = registry.register(_schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = registry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, schema);
-        assertEq(address(record.resolver), resolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.schema, _schema);
+        assertEq(address(record.resolver), _resolver);
+        assertEq(record.revocable, _revocable);
     }
 
     /// @dev Tests schema registration without resolver.
@@ -147,18 +144,16 @@ contract SchemaRegistryTest is CommonTest {
     ///         - Checks revocable flag
     ///      Demonstrates schema registration functionality
     ///      for schemas that don't require resolver logic
-    function testRegisterSchemaWithoutResolver() public {
-        string memory schema = "bool hasPhoneNumber, bytes32 phoneHash";
-        address resolver = address(0);
-        bool revocable = true;
+    function testRegisterSchemaWithoutResolver(string memory _schema, address _resolver, bool _revocable) public {
+        vm.assume(_resolver == address(0));
 
-        bytes32 uid = registry.register(schema, ISchemaResolver(resolver), revocable);
+        bytes32 uid = registry.register(_schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = registry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, schema);
-        assertEq(address(record.resolver), resolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.schema, _schema);
+        assertEq(address(record.resolver), _resolver);
+        assertEq(record.revocable, _revocable);
     }
 
 /// @dev Tests schema registration with empty schema and no resolver.
@@ -180,6 +175,7 @@ contract SchemaRegistryTest is CommonTest {
         string memory schema = "";
         address resolver = address(0);
         bool revocable = true;
+  
 
         bytes32 uid = registry.register(schema, ISchemaResolver(resolver), revocable);
         SchemaRecord memory record = registry.getSchema(uid);
@@ -227,15 +223,12 @@ contract SchemaRegistryTest is CommonTest {
     ///         - Verifies revert with AlreadyExists error
     ///      Ensures system properly prevents duplicate
     ///      schema registrations, maintaining schema uniqueness
-    function testCannotRegisterSameSchemaTwice() public {
-        string memory schema = "bool isFriend";
-        address resolver = address(0);
-        bool revocable = true;
+    function testCannotRegisterSameSchemaTwice(string memory _schema, address _resolver, bool _revocable) public {
+   
+        registry.register(_schema, ISchemaResolver(_resolver), _revocable);
 
-        registry.register(schema, ISchemaResolver(resolver), revocable);
-
-        vm.expectRevert(abi.encodeWithSignature("AlreadyExists()"));
-        registry.register(schema, ISchemaResolver(resolver), revocable);
+        vm.expectRevert(AlreadyExists.selector);
+        registry.register(_schema, ISchemaResolver(_resolver), _revocable);
     }
 
     // =============================================================
@@ -260,17 +253,14 @@ contract SchemaRegistryTest is CommonTest {
     ///           * Revocable flag set properly
     ///      Ensures proper event emission and data accuracy
     ///      during schema registration
-    function testRegisterSchemaEvent() public {
-        string memory schema = "bool like";
-        address resolver = address(0x123);
-        bool revocable = true;
+    function testRegisterSchemaEvent(string memory _schema, address _resolver, bool _revocable) public {
 
-        bytes32 expectedUID = _getUID(schema, resolver, revocable);
+        bytes32 expectedUID = _getUID(_schema, _resolver, _revocable);
         SchemaRecord memory expectedSchema = SchemaRecord({
             uid: expectedUID,
-            schema: schema,
-            resolver: ISchemaResolver(resolver),
-            revocable: revocable
+            schema: _schema,
+            resolver: ISchemaResolver(_resolver),
+            revocable: _revocable
         });
 
         vm.expectEmit(true, true, true, true, address(registry));
@@ -280,13 +270,13 @@ contract SchemaRegistryTest is CommonTest {
             expectedSchema
         );
         
-        registry.register(schema, ISchemaResolver(resolver), revocable);
+        registry.register(_schema, ISchemaResolver(_resolver), _revocable);
 
         SchemaRecord memory actualSchema = registry.getSchema(expectedUID);
         assertEq(actualSchema.uid, expectedUID, "UID mismatch");
-        assertEq(actualSchema.schema, schema, "Schema mismatch");
-        assertEq(address(actualSchema.resolver), resolver, "Resolver mismatch");
-        assertEq(actualSchema.revocable, revocable, "Revocable mismatch");
+        assertEq(actualSchema.schema, _schema, "Schema mismatch");
+        assertEq(address(actualSchema.resolver), _resolver, "Resolver mismatch");
+        assertEq(actualSchema.revocable, _revocable, "Revocable mismatch");
     }
 
     // =============================================================
@@ -428,18 +418,16 @@ contract SchemaRegistryTest is CommonTest {
     //                    RESOLVER TESTS
     // =============================================================
     /// @dev Tests registration of a schema with an EOA as resolver
-    function testRegisterSchemaWithInvalidResolver() public {
-        string memory schema = "bool like";
-        address nonContractResolver = address(0x123);  // EOA address
-        bool revocable = true;
+    function testRegisterSchemaWithInvalidResolver(string memory _schema, address _nonContractResolver, bool _revocable) public {
+   
 
-        bytes32 uid = registry.register(schema, ISchemaResolver(nonContractResolver), revocable);
+        bytes32 uid = registry.register(_schema, ISchemaResolver(_nonContractResolver), _revocable);
         SchemaRecord memory record = registry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, schema);
-        assertEq(address(record.resolver), nonContractResolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.schema, _schema);
+        assertEq(address(record.resolver), _nonContractResolver);
+        assertEq(record.revocable, _revocable);
     }
 
     // =============================================================
