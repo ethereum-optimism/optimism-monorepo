@@ -114,8 +114,8 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
-func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockID, error) {
-	var result eth.BlockID
+func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockRef, error) {
+	var result eth.BlockRef
 	err := cl.client.CallContext(
 		ctx,
 		&result,
