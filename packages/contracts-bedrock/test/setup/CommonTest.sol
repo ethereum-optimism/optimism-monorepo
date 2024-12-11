@@ -1,14 +1,26 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
+// Forge
 import { Test } from "forge-std/Test.sol";
+
+// Testing
 import { Setup } from "test/setup/Setup.sol";
 import { Events } from "test/setup/Events.sol";
 import { FFIInterface } from "test/setup/FFIInterface.sol";
-import { Constants } from "src/libraries/Constants.sol";
+
+// Scripts
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+
+// Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
-import { LegacyMintableERC20 } from "src/legacy/LegacyMintableERC20.sol";
+
+// Libraries
+import { Constants } from "src/libraries/Constants.sol";
+
+// Interfaces
+import { IOptimismMintableERC20Full } from "interfaces/universal/IOptimismMintableERC20Full.sol";
+import { ILegacyMintableERC20Full } from "interfaces/legacy/ILegacyMintableERC20Full.sol";
 
 /// @title CommonTest
 /// @dev An extenstion to `Test` that sets up the optimism smart contracts.
@@ -27,11 +39,11 @@ contract CommonTest is Test, Setup, Events {
 
     ERC20 L1Token;
     ERC20 BadL1Token;
-    OptimismMintableERC20 L2Token;
-    LegacyMintableERC20 LegacyL2Token;
+    IOptimismMintableERC20Full L2Token;
+    ILegacyMintableERC20Full LegacyL2Token;
     ERC20 NativeL2Token;
     ERC20 BadL2Token;
-    OptimismMintableERC20 RemoteL1Token;
+    IOptimismMintableERC20Full RemoteL1Token;
 
     function setUp() public virtual override {
         alice = makeAddr("alice");
@@ -83,16 +95,26 @@ contract CommonTest is Test, Setup, Events {
     function bridgeInitializerSetUp() public {
         L1Token = new ERC20("Native L1 Token", "L1T");
 
-        LegacyL2Token = new LegacyMintableERC20({
-            _l2Bridge: address(l2StandardBridge),
-            _l1Token: address(L1Token),
-            _name: string.concat("LegacyL2-", L1Token.name()),
-            _symbol: string.concat("LegacyL2-", L1Token.symbol())
-        });
+        LegacyL2Token = ILegacyMintableERC20Full(
+            DeployUtils.create1({
+                _name: "LegacyMintableERC20",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        ILegacyMintableERC20Full.__constructor__,
+                        (
+                            address(l2StandardBridge),
+                            address(L1Token),
+                            string.concat("LegacyL2-", L1Token.name()),
+                            string.concat("LegacyL2-", L1Token.symbol())
+                        )
+                    )
+                )
+            })
+        );
         vm.label(address(LegacyL2Token), "LegacyMintableERC20");
 
         // Deploy the L2 ERC20 now
-        L2Token = OptimismMintableERC20(
+        L2Token = IOptimismMintableERC20Full(
             l2OptimismMintableERC20Factory.createStandardL2Token(
                 address(L1Token),
                 string(abi.encodePacked("L2-", L1Token.name())),
@@ -100,7 +122,7 @@ contract CommonTest is Test, Setup, Events {
             )
         );
 
-        BadL2Token = OptimismMintableERC20(
+        BadL2Token = ERC20(
             l2OptimismMintableERC20Factory.createStandardL2Token(
                 address(1),
                 string(abi.encodePacked("L2-", L1Token.name())),
@@ -110,7 +132,7 @@ contract CommonTest is Test, Setup, Events {
 
         NativeL2Token = new ERC20("Native L2 Token", "L2T");
 
-        RemoteL1Token = OptimismMintableERC20(
+        RemoteL1Token = IOptimismMintableERC20Full(
             l1OptimismMintableERC20Factory.createStandardL2Token(
                 address(NativeL2Token),
                 string(abi.encodePacked("L1-", NativeL2Token.name())),
@@ -118,7 +140,7 @@ contract CommonTest is Test, Setup, Events {
             )
         );
 
-        BadL1Token = OptimismMintableERC20(
+        BadL1Token = ERC20(
             l1OptimismMintableERC20Factory.createStandardL2Token(
                 address(1),
                 string(abi.encodePacked("L1-", NativeL2Token.name())),
