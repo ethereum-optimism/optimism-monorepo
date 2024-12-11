@@ -219,10 +219,10 @@ rules:
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
         - packages/contracts-bedrock/src/L1/OptimismPortalInterop.sol
 
-  - id: sol-safety-single-proper-initializer
+  - id: sol-safety-proper-initializer
     languages: [solidity]
     severity: ERROR
-    message: Proxied contracts must have a single initializer with external visibility $PROPS
+    message: Proxied contracts must have an initialize function with the initializer modifier and external visibility
     patterns:
       - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
       - focus-metavariable: $CONTRACT
