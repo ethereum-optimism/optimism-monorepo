@@ -25,34 +25,6 @@ contract TestEIP712Helper is EIP712 {
     }
 }
 
-/// @dev Mock resolver contract that accepts payments
-contract MockPayableResolver is ISchemaResolver {
-    /// @dev Returns true to indicate resolver accepts payments
-    function isPayable() external pure override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock attestation function that accepts payment
-    function attest(Attestation calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock multi-attestation function that accepts payment
-    function multiAttest(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock revocation function that accepts payment
-    function revoke(Attestation calldata) external payable override returns (bool) {
-        return true;
-    }
-
-    /// @dev Mock multi-revocation function that accepts payment
-    function multiRevoke(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
-        return true;
-    }
-}
-
 /// @dev Proxy contract for testing EIP712 signature verification
 contract TestEIP712Proxy is EIP712 {
     address public verifyingContract;
@@ -126,6 +98,7 @@ contract EASTest is CommonTest {
     address public sender2;
     address public recipient;
     address public recipient2;
+    address public payableResolver;
     TestEIP712Helper public eip712Helper;
     uint256 public senderKey;
     TestEIP712Proxy public proxy;
@@ -386,6 +359,33 @@ contract EASTest is CommonTest {
         // Get contracts from predeploys
         registry = ISchemaRegistry(Predeploys.SCHEMA_REGISTRY);
         eas = IEAS(Predeploys.EAS);
+        payableResolver = makeAddr("payableResolver");
+
+        vm.mockCall(
+            payableResolver,
+            abi.encodeWithSelector(ISchemaResolver.isPayable.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            payableResolver,
+            abi.encodeWithSelector(ISchemaResolver.attest.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            payableResolver,
+            abi.encodeWithSelector(ISchemaResolver.multiAttest.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            payableResolver,
+            abi.encodeWithSelector(ISchemaResolver.revoke.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            payableResolver,
+            abi.encodeWithSelector(ISchemaResolver.multiRevoke.selector),
+            abi.encode(true)
+        );
 
         // Fund accounts
         vm.deal(sender, 100 ether);
@@ -856,11 +856,10 @@ function testSignatureVerificationTampering() public {
     ///      ensuring resolver-enabled schemas work correctly
     function testAttestationWithResolver() public {
         string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, resolver, true);
+        registry.register(schema, ISchemaResolver(payableResolver), true);
 
         AttestationRequest memory request = AttestationRequest({
             schema: schemaId,
@@ -1102,11 +1101,10 @@ function testSignatureVerificationTampering() public {
     ///      Also tests value transfer functionality with the resolver contract
     function testDetailedAttestationScenarios() public {
         string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
+        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value);
@@ -1296,12 +1294,11 @@ function testSignatureVerificationTampering() public {
     function testMultiAttestationComprehensive() public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
-        registry.register(schema2, ISchemaResolver(address(resolver)), true);
+        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
+        registry.register(schema2, ISchemaResolver(address(payableResolver)), true);
 
         // Test with multiple recipients and varying data
         address[] memory recipients = new address[](3);
@@ -1453,16 +1450,15 @@ function testSignatureVerificationTampering() public {
     function testMultiAttestationReverts() public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-        MockPayableResolver resolver = new MockPayableResolver();
         bytes32 schemaWithResolverId = _getSchemaUID(
             schema,
-            address(resolver),
+            address(payableResolver),
             true
         );
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
+        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         // Test 1: Empty requests array should return empty array
         MultiAttestationRequest[]
@@ -1524,11 +1520,10 @@ function testSignatureVerificationTampering() public {
     ///      Verifies both attestations are created with correct attester
     function testMultiAttestationWithValue() public {
         string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
+        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         uint256 value = 1 ether;
         vm.deal(sender, value * 2);
@@ -3004,11 +2999,10 @@ function testSignatureVerificationTampering() public {
     ///      schema resolvers
     function testSchemaResolverScenarios() public {
         string memory schema = "bool like";
-        MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
-        registry.register(schema, ISchemaResolver(address(resolver)), true);
+        registry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
         // Test attestation with resolver
         bytes32 uid = eas.attest(
