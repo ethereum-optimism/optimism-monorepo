@@ -4,6 +4,7 @@ pragma solidity 0.8.19;
 import { Test } from "forge-std/Test.sol";
 import { SchemaResolver } from "src/vendor/eas/resolver/SchemaResolver.sol";
 import { IEAS, Attestation } from "src/vendor/eas/IEAS.sol";
+import { Vm } from "forge-std/Vm.sol"; 
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 
 // =============================================================
@@ -83,6 +84,7 @@ contract SchemaResolverTest is Test {
     //                          TEST STATE
     // =============================================================
     TestSchemaResolver public resolver;
+     ISchemaResolver public payableResolver;
     address public recipient;
     IEAS public eas;
 
@@ -106,6 +108,34 @@ contract SchemaResolverTest is Test {
             abi.encode(true)
         );
         resolver = new TestSchemaResolver(eas);
+        // Mock PayableResolver
+        payableResolver = ISchemaResolver(makeAddr("payableResolver"));
+        vm.mockCall(
+            address(payableResolver),
+            abi.encodeWithSelector(ISchemaResolver.isPayable.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(payableResolver),
+            abi.encodeWithSelector(ISchemaResolver.attest.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(payableResolver),
+            abi.encodeWithSelector(ISchemaResolver.multiAttest.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(payableResolver),
+            abi.encodeWithSelector(ISchemaResolver.revoke.selector),
+            abi.encode(true)
+        );
+        vm.mockCall(
+            address(payableResolver),
+            abi.encodeWithSelector(ISchemaResolver.multiRevoke.selector),
+            abi.encode(true)
+        );
+
         recipient = makeAddr("recipient");
     }
 
@@ -395,7 +425,6 @@ contract SchemaResolverTest is Test {
     ///         - Value handling in revocations
     ///         - EAS interaction with payable resolver
     function testPayableResolverInteractions() public {
-        MockPayableResolver payableResolver = new MockPayableResolver();
         
         Attestation memory attestation = Attestation({
             uid: bytes32(uint256(1)),
