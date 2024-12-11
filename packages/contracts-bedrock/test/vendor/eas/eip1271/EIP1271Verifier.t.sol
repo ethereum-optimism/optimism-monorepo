@@ -92,7 +92,35 @@ contract EIP1271VerifierTest is Test {
         signerPrivateKey = 0xA11CE;
         signer = vm.addr(signerPrivateKey);
     }
+    // =============================================================
+    //                    INTERNAL HELPERS
+    // =============================================================
+    /// @dev Helper function to hash typed data for EIP712
+    function _hashTypedDataV4(DelegatedAttestationRequest memory request) internal view returns (bytes32) {
+        bytes32 structHash = keccak256(
+            abi.encode(
+                ATTEST_TYPEHASH,
+                request.attester,
+                request.schema,
+                request.data.recipient,
+                request.data.expirationTime,
+                request.data.revocable,
+                request.data.refUID,
+                keccak256(request.data.data),
+                request.data.value,
+                verifier.getNonce(request.attester),
+                request.deadline
+            )
+        );
 
+        return keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                verifier.getDomainSeparator(),
+                structHash
+            )
+        );
+    }
     // =============================================================
     //                      BASIC STATE TESTS
     // =============================================================
@@ -105,7 +133,22 @@ contract EIP1271VerifierTest is Test {
     // =============================================================
     //                      NONCE TESTS
     // =============================================================
-    /// @dev Tests nonce increase functionality
+    /// @dev Tests nonce increase functionality and validation.
+    ///      1. Setup:
+    ///         - Uses signer account
+    ///         - Sets target nonce to 100
+    ///      2. Initial Increase:
+    ///         - Verifies NonceIncreased event emission
+    ///         - Checks event parameters (0 to 100)
+    ///         - Confirms new nonce value stored
+    ///      3. Invalid Attempt:
+    ///         - Tries to decrease nonce (set to 99)
+    ///         - Verifies revert with InvalidNonce
+    ///      Demonstrates:
+    ///         - Proper nonce increment functionality
+    ///         - Event emission accuracy
+    ///         - Prevention of nonce decrease
+    ///         - Access control (signer only)
     function testIncreaseNonce() public {
         vm.startPrank(signer);
         
@@ -125,7 +168,23 @@ contract EIP1271VerifierTest is Test {
     // =============================================================
     //                    DEADLINE TESTS
     // =============================================================
-    /// @dev Tests deadline validation
+    /// @dev Tests attestation request deadline validation.
+    ///      1. Setup:
+    ///         - Sets block timestamp to 1000
+    ///         - Creates attestation request with:
+    ///           * Empty schema and data
+    ///           * No expiration time
+    ///           * Past deadline (999)
+    ///           * Empty signature
+    ///      2. Verification:
+    ///         - Attempts verification of expired request
+    ///         - Confirms revert with DeadlineExpired
+    ///      Demonstrates:
+    ///         - Proper deadline validation
+    ///         - System prevents attestations with expired deadlines
+    ///         - Timestamp-based security checks
+    ///      Note: Uses minimal request data as deadline check
+    ///      occurs before other validations
     function testDeadlineExpired() public {
         vm.warp(1000);
         
@@ -155,7 +214,26 @@ contract EIP1271VerifierTest is Test {
     // =============================================================
     //                    SIGNATURE TESTS
     // =============================================================
-    /// @dev Tests signature verification logic
+    /// @dev Tests EIP-712 signature verification for attestations.
+    ///      1. Setup:
+    ///         - Creates attestation request with:
+    ///           * Zero schema ID
+    ///           * 1-hour deadline
+    ///           * Empty data
+    ///           * Invalid signature (zeros)
+    ///      2. Invalid Signature Test:
+    ///         - Attempts verification with invalid signature
+    ///         - Confirms revert with InvalidSignature
+    ///      3. Valid Signature Test:
+    ///         - Creates EIP-712 typed data hash
+    ///         - Signs hash with signer's private key
+    ///         - Updates request with valid signature
+    ///         - Verifies attestation passes
+    ///      Demonstrates:
+    ///         - Signature validation process
+    ///         - EIP-712 typed data handling
+    ///         - Proper signature verification
+    ///         - Invalid signature rejection
     function testSignatureVerification() public {
         bytes32 schemaId = ZERO_BYTES32;
         uint64 deadline = uint64(block.timestamp + 3600);
@@ -192,7 +270,24 @@ contract EIP1271VerifierTest is Test {
     // =============================================================
     //                    MULTI-ATTESTATION TESTS
     // =============================================================
-    /// @dev Tests multiple attestation delegations
+    /// @dev Tests multiple delegated attestation verifications.
+    ///      1. Setup:
+    ///         - Creates array of two attestation requests
+    ///         - Uses zero schema ID
+    ///         - Sets 1-hour deadline
+    ///      2. Request Processing Loop:
+    ///         - For each request:
+    ///           * Initializes basic attestation data
+    ///           * Creates EIP-712 typed data hash
+    ///           * Signs with signer's private key
+    ///           * Updates request with valid signature
+    ///      3. Verification:
+    ///         - Verifies each attestation individually
+    ///      Demonstrates:
+    ///         - Batch attestation processing
+    ///         - Consistent signature generation
+    ///         - Multiple verification handling
+    ///         - EIP-712 compliance across requests
     function testMultipleAttestationDelegation() public {
         bytes32 schemaId = ZERO_BYTES32;
         uint64 deadline = uint64(block.timestamp + 3600);
@@ -256,7 +351,26 @@ contract EIP1271VerifierTest is Test {
     // =============================================================
     //                    EIP1271 TESTS
     // =============================================================
-    /// @dev Tests EIP1271 signature validation
+    /// @dev Tests complex nonce management scenarios with multiple users.
+    ///      1. Initial Setup:
+    ///         - Creates two test users
+    ///         - Sets different initial nonces:
+    ///           * user1: 100
+    ///           * user2: 200
+    ///      2. Initial Verification:
+    ///         - Confirms correct nonce storage for both users
+    ///      3. Sequential Updates:
+    ///         - Performs multiple nonce increases for user1:
+    ///           * 100 -> 101
+    ///           * 101 -> 102
+    ///           * 102 -> 103
+    ///      4. Final Verification:
+    ///         - Confirms user1's final nonce value
+    ///      Demonstrates:
+    ///         - Multi-user nonce management
+    ///         - Independent nonce tracking
+    ///         - Sequential nonce updates
+    ///         - Nonce isolation between users
     function testEIP1271SignatureValidation() public {
         MockEIP1271Signer eip1271Contract = new MockEIP1271Signer();
         
@@ -293,35 +407,5 @@ contract EIP1271VerifierTest is Test {
         });
 
         verifier.verifyAttest(request);
-    }
-
-    // =============================================================
-    //                    INTERNAL HELPERS
-    // =============================================================
-    /// @dev Helper function to hash typed data for EIP712
-    function _hashTypedDataV4(DelegatedAttestationRequest memory request) internal view returns (bytes32) {
-        bytes32 structHash = keccak256(
-            abi.encode(
-                ATTEST_TYPEHASH,
-                request.attester,
-                request.schema,
-                request.data.recipient,
-                request.data.expirationTime,
-                request.data.revocable,
-                request.data.refUID,
-                keccak256(request.data.data),
-                request.data.value,
-                verifier.getNonce(request.attester),
-                request.deadline
-            )
-        );
-
-        return keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-                verifier.getDomainSeparator(),
-                structHash
-            )
-        );
     }
 }
