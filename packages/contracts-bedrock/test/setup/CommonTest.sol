@@ -170,28 +170,6 @@ contract CommonTest is Test, Setup, Events {
         vm.warp(l2OutputOracle.computeL2Timestamp(_nextBlockNumber) + 1);
     }
 
-    /// @dev Helper function to propose an output.
-    function proposeAnotherOutput() public {
-        bytes32 proposedOutput2 = keccak256(abi.encode());
-        uint256 nextBlockNumber = l2OutputOracle.nextBlockNumber();
-        uint256 nextOutputIndex = l2OutputOracle.nextOutputIndex();
-        warpToProposeTime(nextBlockNumber);
-        uint256 proposedNumber = l2OutputOracle.latestBlockNumber();
-
-        uint256 submissionInterval = deploy.cfg().l2OutputOracleSubmissionInterval();
-        // Ensure the submissionInterval is enforced
-        assertEq(nextBlockNumber, proposedNumber + submissionInterval);
-
-        vm.roll(nextBlockNumber + 1);
-
-        vm.expectEmit(true, true, true, true);
-        emit OutputProposed(proposedOutput2, nextOutputIndex, nextBlockNumber, block.timestamp);
-
-        address proposer = deploy.cfg().l2OutputOracleProposer();
-        vm.prank(proposer);
-        l2OutputOracle.proposeL2Output(proposedOutput2, nextBlockNumber, 0, 0);
-    }
-
     function enableLegacyContracts() public {
         // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
         // set by the `setUp` function yet.
