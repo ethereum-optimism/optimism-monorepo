@@ -114,7 +114,23 @@ contract SchemaResolverTest is Test {
     // =============================================================
     //                    ACCESS CONTROL TESTS
     // =============================================================
-    /// @dev Tests that only EAS can call resolver functions
+    /// @dev Tests resolver access control restrictions.
+    ///      1. Setup:
+    ///         - Creates minimal attestation data
+    ///         - Sets current timestamp
+    ///         - Uses empty data fields
+    ///      2. Attestation Test:
+    ///         - Attempts direct attestation call
+    ///         - Verifies revert with AccessDenied
+    ///      3. Revocation Test:
+    ///         - Attempts direct revocation call
+    ///         - Verifies revert with AccessDenied
+    ///      Demonstrates:
+    ///         - Resolver's EAS-only access control
+    ///         - Protection against unauthorized calls
+    ///         - Both attest and revoke protection
+    ///      Note: Only EAS contract should be able to
+    ///      call resolver functions directly
     function testOnlyEASCanCall() public {
         Attestation memory attestation = Attestation({
             uid: bytes32(0),
@@ -140,14 +156,27 @@ contract SchemaResolverTest is Test {
     // =============================================================
     //                     VALIDATION TESTS
     // =============================================================
-    /// @dev Tests rejection of ETH transfers to non-payable resolver
+    /// @dev Tests ETH transfer rejection by non-payable resolver.
+    ///      1. Attempt:
+    ///         - Tries to transfer 1 ETH to resolver
+    ///      2. Verification:
+    ///         - Confirms revert with NotPayable error
+    ///      Ensures resolver properly rejects direct ETH transfers
     function testNonPayableResolver() public {
-        // Should revert when sending ETH to non-payable resolver
         vm.expectRevert(NotPayable.selector);
         payable(address(resolver)).transfer(1 ether);
     }
 
-    /// @dev Tests array length validation in multi-attestations
+    /// @dev Tests multi-attestation array length validation.
+    ///      1. Setup:
+    ///         - Creates mismatched arrays:
+    ///           * 2 attestations
+    ///           * 1 value
+    ///      2. Verification:
+    ///         - Attempts multi-attest as EAS
+    ///         - Confirms revert with InvalidLength
+    ///      Ensures proper validation of array lengths
+    ///      in multi-attestation operations
     function testMultiAttestInvalidLength() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](1);
@@ -157,29 +186,44 @@ contract SchemaResolverTest is Test {
         resolver.multiAttest(attestations, values);
     }
 
-    /// @dev Tests array length validation in multi-revocations
+    /// @dev Tests multi-revocation array length validation.
+    ///      1. Setup:
+    ///         - Creates mismatched arrays:
+    ///           * 2 attestations
+    ///           * 1 value
+    ///      2. Verification:
+    ///         - Attempts multi-revoke as EAS
+    ///         - Confirms revert with InvalidLength
+    ///      Ensures proper validation of array lengths
+    ///      in multi-revocation operations
     function testMultiRevokeInvalidLength() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](1);
 
         vm.prank(address(eas));
-        // Should revert with InvalidLength
         vm.expectRevert(InvalidLength.selector);
         resolver.multiRevoke(attestations, values);
     }
 
-    /// @dev Tests value validation for paid attestations
+    /// @dev Tests value validation for paid multi-attestations.
+    ///      1. Setup:
+    ///         - Creates 2 attestations requiring 1 ETH each
+    ///         - Funds EAS with 2 ETH
+    ///      2. Attempt:
+    ///         - Tries multi-attest with insufficient value (1 ETH)
+    ///      3. Verification:
+    ///         - Confirms revert with InsufficientValue
+    ///      Ensures proper validation of sent ETH value
+    ///      against required attestation costs
     function testInsufficientValue() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](2);
         values[0] = 1 ether;
         values[1] = 1 ether;
 
-        // Fund the EAS contract with ETH
         vm.deal(address(eas), 2 ether);
 
         vm.prank(address(eas));
-        // Should revert with InsufficientValue
         vm.expectRevert(InsufficientValue.selector);
         resolver.multiAttest{value: 1 ether}(attestations, values);
     }
@@ -187,7 +231,25 @@ contract SchemaResolverTest is Test {
     // =============================================================
     //                    ATTESTATION TESTS
     // =============================================================
-    /// @dev Tests multi-attestation with value transfers
+    /// @dev Tests multi-attestation with ETH value transfers.
+    ///      1. Setup:
+    ///         - Creates two attestations:
+    ///           * Each with unique UID
+    ///           * No expiration time
+    ///           * No reference UID
+    ///           * Empty data
+    ///         - Sets value of 1 ETH per attestation
+    ///      2. Funding:
+    ///         - Provides EAS contract with 2 ETH total
+    ///      3. Execution:
+    ///         - Calls multiAttest as EAS
+    ///         - Transfers full required value (2 ETH)
+    ///      Demonstrates:
+    ///         - Proper handling of multiple paid attestations
+    ///         - Correct value distribution
+    ///         - Batch processing with payments
+    ///      Note: Ensures system correctly processes
+    ///      multiple attestations with associated ETH values
     function testMultiAttestationWithValues() public {
         Attestation[] memory attestations = new Attestation[](2);
         uint256[] memory values = new uint256[](2);
@@ -219,7 +281,25 @@ contract SchemaResolverTest is Test {
     // =============================================================
     //                    REVOCATION TESTS
     // =============================================================
-    /// @dev Tests various revocation scenarios
+    /// @dev Tests revocation functionality with and without value.
+    ///      1. Setup:
+    ///         - Creates basic attestation:
+    ///           * Specific UID (1)
+    ///           * No expiration
+    ///           * Marked as revocable
+    ///           * Empty data
+    ///      2. Free Revocation Test:
+    ///         - Executes revocation as EAS
+    ///         - No value transferred
+    ///      3. Paid Revocation Test:
+    ///         - Funds EAS with 1 ETH
+    ///         - Executes revocation with value
+    ///      Demonstrates:
+    ///         - Basic revocation functionality
+    ///         - Paid revocation handling
+    ///         - EAS permission validation
+    ///      Note: Tests both zero-value and paid revocation
+    ///      scenarios in single attestation context
     function testRevocationScenarios() public {
         Attestation memory attestation = Attestation({
             uid: bytes32(uint256(1)),
@@ -237,7 +317,6 @@ contract SchemaResolverTest is Test {
         vm.prank(address(eas));
         resolver.revoke(attestation);
 
-        // Test revocation with value
         vm.deal(address(eas), 1 ether);
         vm.prank(address(eas));
         resolver.revoke{value: 1 ether}(attestation);
@@ -246,12 +325,31 @@ contract SchemaResolverTest is Test {
     // =============================================================
     //                    INTEGRATION TESTS
     // =============================================================
-    /// @dev Tests complex attestation scenarios with multiple configurations
+    /// @dev Tests complex multi-attestation scenarios with varying configurations.
+    ///      1. Setup:
+    ///         - Creates three attestations with different settings:
+    ///           First Attestation:
+    ///           * 1-day expiration
+    ///           * No reference UID
+    ///           * 0 ETH value
+    ///           Second/Third Attestations:
+    ///           * No expiration
+    ///           * References first attestation
+    ///           * 0.5/1.0 ETH values respectively
+    ///           * Increasing data sizes
+    ///      2. Funding:
+    ///         - Provides EAS with 1.5 ETH total
+    ///      3. Execution:
+    ///         - Processes all attestations in single transaction
+    ///      Demonstrates:
+    ///         - Mixed configuration handling
+    ///         - Reference chaining
+    ///         - Variable payment processing
+    ///         - Batch attestation capabilities
     function testComplexResolverScenarios() public {
         Attestation[] memory attestations = new Attestation[](3);
         uint256[] memory values = new uint256[](3);
         
-        // Setup attestations with different configurations
         for(uint i = 0; i < 3; i++) {
             attestations[i] = Attestation({
                 uid: bytes32(uint256(i + 1)),
@@ -268,16 +366,28 @@ contract SchemaResolverTest is Test {
             values[i] = i * 0.5 ether;
         }
 
-        // Fund the contract
         vm.deal(address(eas), 1.5 ether);
 
         vm.prank(address(eas));
         resolver.multiAttest{value: 1.5 ether}(attestations, values);
     }
 
-    /// @dev Tests interactions with payable resolver implementation
+    /// @dev Tests interactions with payable resolver implementation.
+    ///      1. Setup:
+    ///         - Deploys MockPayableResolver
+    ///         - Creates basic attestation
+    ///      2. Paid Attestation:
+    ///         - Funds EAS with 1 ETH
+    ///         - Executes attestation with value
+    ///      3. Paid Revocation:
+    ///         - Funds EAS with 1 ETH
+    ///         - Executes revocation with value
+    ///      Demonstrates:
+    ///         - Payable resolver functionality
+    ///         - Value handling in attestations
+    ///         - Value handling in revocations
+    ///         - EAS interaction with payable resolver
     function testPayableResolverInteractions() public {
-        // Create a payable resolver instance
         MockPayableResolver payableResolver = new MockPayableResolver();
         
         Attestation memory attestation = Attestation({
@@ -293,12 +403,10 @@ contract SchemaResolverTest is Test {
             data: new bytes(0)
         });
 
-        // Test attestation with value
         vm.deal(address(eas), 1 ether);
         vm.prank(address(eas));
         payableResolver.attest{value: 1 ether}(attestation);
 
-        // Test revocation with value
         vm.deal(address(eas), 1 ether);
         vm.prank(address(eas));
         payableResolver.revoke{value: 1 ether}(attestation);
