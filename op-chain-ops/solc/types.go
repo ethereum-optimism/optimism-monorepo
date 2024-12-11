@@ -158,8 +158,6 @@ type AstNode struct {
 	StateMutability  string            `json:"stateMutability,omitempty"`
 	Virtual          bool              `json:"virtual,omitempty"`
 	Visibility       string            `json:"visibility,omitempty"`
-	Modifiers        []AstNode         `json:"modifiers,omitempty"`
-	ModifierName     *AstNode          `json:"modifierName,omitempty"`
 
 	// Variable specific
 	Constant         bool                 `json:"constant,omitempty"`
@@ -170,11 +168,10 @@ type AstNode struct {
 	TypeName         *AstTypeName         `json:"typeName,omitempty"`
 
 	// Expression specific
-	Expression      *Expression `json:"expression,omitempty"`
-	IsConstant      bool        `json:"isConstant,omitempty"`
-	IsLValue        bool        `json:"isLValue,omitempty"`
-	IsPure          bool        `json:"isPure,omitempty"`
-	LValueRequested bool        `json:"lValueRequested,omitempty"`
+	IsConstant      bool `json:"isConstant,omitempty"`
+	IsLValue        bool `json:"isLValue,omitempty"`
+	IsPure          bool `json:"isPure,omitempty"`
+	LValueRequested bool `json:"lValueRequested,omitempty"`
 
 	// Literal specific
 	HexValue string      `json:"hexValue,omitempty"`

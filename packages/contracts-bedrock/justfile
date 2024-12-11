@@ -206,14 +206,6 @@ semgrep:
 semgrep-test:
   cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
 
-# Runs proxy initialize check without building.
-proxy-initialize-check-no-build:
-  go run ./scripts/checks/proxyInitializeChecks
-
-# Runs proxy initialize check.
-proxy-initialize-check:
-  build proxy-initialize-check-no-build
-
 # Runs all checks.
 check:
   @just gas-snapshot-check-no-build \
