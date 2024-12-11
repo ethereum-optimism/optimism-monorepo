@@ -363,7 +363,7 @@ func NewIntentStrict(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2
 	intent.ConfigType = IntentConfigTypeStrict
 
 	challenger, _ := standard.ChallengerAddressFor(l1ChainId)
-	l1ProxyAdminOwner, _ := standard.ManagerOwnerAddrFor(l1ChainId)
+	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(l1ChainId)
 	for chainIndex := range intent.Chains {
 		intent.Chains[chainIndex].Roles.Challenger = challenger
 		intent.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner

@@ -275,7 +275,7 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	superchain, err := standard.SuperchainFor(l1ChainIDBig.Uint64())
 	require.NoError(t, err)
 
-	managerOwner, err := standard.ManagerOwnerAddrFor(l1ChainIDBig.Uint64())
+	managerOwner, err := standard.SuperchainProxyAdminAddrFor(l1ChainIDBig.Uint64())
 	require.NoError(t, err)
 
 	superchainTests := []struct {

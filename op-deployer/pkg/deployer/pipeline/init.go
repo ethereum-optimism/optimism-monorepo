@@ -40,7 +40,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			return fmt.Errorf("error getting superchain config: %w", err)
 		}
 
-		proxyAdmin, err := standard.ManagerOwnerAddrFor(intent.L1ChainID)
+		proxyAdmin, err := standard.SuperchainProxyAdminAddrFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain proxy admin address: %w", err)
 		}
