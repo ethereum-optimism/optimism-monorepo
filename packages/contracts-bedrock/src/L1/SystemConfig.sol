@@ -173,7 +173,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         address _batchInbox,
         SystemConfig.Addresses memory _addresses
     )
-        public
+        external
         initializer
     {
         __Ownable_init();

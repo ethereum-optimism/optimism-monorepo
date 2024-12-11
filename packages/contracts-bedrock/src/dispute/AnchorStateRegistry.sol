@@ -55,7 +55,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         StartingAnchorRoot[] memory _startingAnchorRoots,
         ISuperchainConfig _superchainConfig
     )
-        public
+        external
         initializer
     {
         for (uint256 i = 0; i < _startingAnchorRoots.length; i++) {
