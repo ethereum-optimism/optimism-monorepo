@@ -48,7 +48,7 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
 
     function init(Claim rootClaim, Claim absolutePrestate, uint256 l2BlockNumber) public {
         // Set the time to a realistic date.
-        if(!isForkTest) {
+        if (!isForkTest) {
             vm.warp(1690906994);
         }
 
@@ -95,8 +95,11 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
 
         // Register the game implementation with the factory.
         disputeGameFactory.setImplementation(GAME_TYPE, gameImpl);
+        uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         // Create a new game.
-        gameProxy = IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, rootClaim, extraData))));
+        gameProxy = IFaultDisputeGame(
+            payable(address(disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, extraData)))
+        );
 
         // Check immutables
         assertEq(gameProxy.gameType().raw(), GAME_TYPE.raw());

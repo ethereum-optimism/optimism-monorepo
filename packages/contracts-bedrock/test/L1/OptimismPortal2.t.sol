@@ -471,7 +471,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         game = IFaultDisputeGame(
             payable(
                 address(
-                    disputeGameFactory.create{value: bondAmount}(
+                    disputeGameFactory.create{ value: bondAmount }(
                         optimismPortal2.respectedGameType(), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
                     )
                 )
