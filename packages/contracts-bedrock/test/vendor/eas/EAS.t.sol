@@ -11,94 +11,93 @@ import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
+// =============================================================
+//                        MOCK CONTRACTS
+// =============================================================
+
+/// @dev Helper contract for testing EIP712 signature verification
 contract TestEIP712Helper is EIP712 {
     constructor() EIP712("EAS", "1.3.0") {}
 
+    /// @dev Exposes internal hash function for testing
     function hashTypedDataV4(bytes32 structHash) public view returns (bytes32) {
         return _hashTypedDataV4(structHash);
     }
 }
 
+/// @dev Mock resolver contract that accepts payments
 contract MockPayableResolver is ISchemaResolver {
+    /// @dev Returns true to indicate resolver accepts payments
     function isPayable() external pure override returns (bool) {
         return true;
     }
 
-    function attest(
-        Attestation calldata
-    ) external payable override returns (bool) {
+    /// @dev Mock attestation function that accepts payment
+    function attest(Attestation calldata) external payable override returns (bool) {
         return true;
     }
 
-    function multiAttest(
-        Attestation[] calldata,
-        uint256[] calldata
-    ) external payable override returns (bool) {
+    /// @dev Mock multi-attestation function that accepts payment
+    function multiAttest(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
         return true;
     }
 
-    function revoke(
-        Attestation calldata
-    ) external payable override returns (bool) {
+    /// @dev Mock revocation function that accepts payment
+    function revoke(Attestation calldata) external payable override returns (bool) {
         return true;
     }
 
-    function multiRevoke(
-        Attestation[] calldata,
-        uint256[] calldata
-    ) external payable override returns (bool) {
+    /// @dev Mock multi-revocation function that accepts payment
+    function multiRevoke(Attestation[] calldata, uint256[] calldata) external payable override returns (bool) {
         return true;
     }
 }
 
+/// @dev Proxy contract for testing EIP712 signature verification
 contract TestEIP712Proxy is EIP712 {
     address public verifyingContract;
     string private _name;
     
-    // Change back to original version
     constructor(address _verifyingContract, string memory name_) EIP712(name_, "1.3.0") {
         verifyingContract = _verifyingContract;
         _name = name_;
     }
 
-    // Add name getter
+    /// @dev Returns the name of the contract
     function name() public view returns (string memory) {
         return _name;
     }
 
+    /// @dev Returns the domain separator for EIP712
     function DOMAIN_SEPARATOR() public view returns (bytes32) {
         return _domainSeparatorV4();
     }
 
+    /// @dev Exposes internal hash function for testing
     function hashTypedDataV4(bytes32 structHash) public view returns (bytes32) {
         return _hashTypedDataV4(structHash);
     }
     
-    function attestByDelegation(DelegatedAttestationRequest calldata request) 
-        external 
-        returns (bytes32) 
-    {
+    /// @dev Forwards attestation request to the verifying contract
+    function attestByDelegation(DelegatedAttestationRequest calldata request) external returns (bytes32) {
         return IEAS(verifyingContract).attestByDelegation(request);
     }
 }
 
-contract EASTest is CommonTest {
+// =============================================================
+//                        MAIN TEST CONTRACT
+// =============================================================
 
-    
+contract EASTest is CommonTest {
     // =============================================================
     //                           CONSTANTS
     // =============================================================
-    uint64 constant NO_EXPIRATION = 
-        0;
-    bytes32 constant ZERO_BYTES32 = 
-        bytes32(0);
-    bytes32 private constant ATTEST_TYPEHASH = 
-        0xfeb2925a02bae3dae48d424a0437a2b6ac939aa9230ddc55a1a76f065d988076;
-    bytes32 private constant REVOKE_TYPEHASH =
-        0x4e1c85c87bc4c1867b4225cc3fb634a4e0fd8a91feb1ebca195aeaf6611a773b;
-         bytes32 constant ATTEST_PROXY_TYPEHASH = 0xea02ffba7dcb45f6fc649714d23f315eef12e3b27f9a7735d8d8bf41eb2b1af1;
+    uint64 constant NO_EXPIRATION = 0;
+    bytes32 constant ZERO_BYTES32 = bytes32(0);
+    bytes32 private constant ATTEST_TYPEHASH = 0xfeb2925a02bae3dae48d424a0437a2b6ac939aa9230ddc55a1a76f065d988076;
+    bytes32 private constant REVOKE_TYPEHASH = 0x4e1c85c87bc4c1867b4225cc3fb634a4e0fd8a91feb1ebca195aeaf6611a773b;
+    bytes32 constant ATTEST_PROXY_TYPEHASH = 0xea02ffba7dcb45f6fc649714d23f315eef12e3b27f9a7735d8d8bf41eb2b1af1;
 
-    // Add with other constants at the top
     enum SignatureType {
         Direct,
         Delegated,
@@ -120,29 +119,22 @@ contract EASTest is CommonTest {
     error DeadlineExpired();
 
     // =============================================================
-    //                         TEST STORAGE
+    //                         TEST STATE
     // =============================================================
-
     ISchemaRegistry public registry;
     address public sender;
     address public sender2;
     address public recipient;
     address public recipient2;
-
-    // Add helper as a state variable
     TestEIP712Helper public eip712Helper;
-
-    // Add with other state variables
     uint256 public senderKey;
-
-    // Add with other state variables at the top
     TestEIP712Proxy public proxy;
 
     // =============================================================
     //                      HELPER FUNCTIONS
     // =============================================================
-    // Helper function to calculate schema UID
-    function getSchemaUID(
+    /// @dev Calculates the unique identifier for a schema based on its parameters
+    function _getSchemaUID(
         string memory schema,
         address resolver,
         bool revocable
@@ -150,51 +142,50 @@ contract EASTest is CommonTest {
         return keccak256(abi.encodePacked(schema, resolver, revocable));
     }
 
-    // helper function to register a simulated schema
+    /// @dev Registers a test schema with specified parameters
     function _registerSchema(
         string memory schema,
         bool revocable
     ) internal returns (bytes32) {
-        bytes32 schemaId = getSchemaUID(schema, address(0), revocable);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), revocable);
         vm.prank(sender);
         registry.register(schema, ISchemaResolver(address(0)), revocable);
         return schemaId;
     }
 
+    /// @dev Returns the type hash for delegated attestations
     function getDelegatedAttestationTypeHash() internal pure returns (bytes32) {
         return ATTEST_TYPEHASH;
     }
 
-    // Helper function to create request data
+    /// @dev Creates standard attestation request data for testing
     function createAttestationRequestData()
         internal
         view
         returns (AttestationRequestData memory)
     {
-        return
-            AttestationRequestData({
-                recipient: recipient,
-                expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
-                refUID: ZERO_BYTES32,
-                data: hex"1234",
-                value: 0
-            });
+        return AttestationRequestData({
+            recipient: recipient,
+            expirationTime: uint64(block.timestamp + 30 days),
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: hex"1234",
+            value: 0
+        });
     }
 
-    // Helper function to create attestation digest
+    /// @dev Creates an attestation digest for signature verification
     function _createAttestationDigest(
         bytes32 schemaId,
         AttestationRequestData memory data,
         address attester,
         uint64 deadline
     ) internal view returns (bytes32) {
-        // Match the exact order from EIP1271Verifier.t.sol
         bytes32 structHash = keccak256(
             abi.encode(
                 getDelegatedAttestationTypeHash(),
-                attester, // attester first
-                schemaId, // then schema
+                attester,
+                schemaId,
                 data.recipient,
                 data.expirationTime,
                 data.revocable,
@@ -206,17 +197,16 @@ contract EASTest is CommonTest {
             )
         );
 
-        return
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    createDomainSeparator(),
-                    structHash
-                )
-            );
+        return keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _createDomainSeparator(),
+                structHash
+            )
+        );
     }
 
-    // Helper function for revocation digests
+    /// @dev Creates a revocation digest for signature verification
     function _createRevocationDigest(
         bytes32 schemaId,
         bytes32 uid,
@@ -236,33 +226,149 @@ contract EASTest is CommonTest {
             )
         );
 
-        return
-            keccak256(
-                abi.encodePacked(
-                    "\x19\x01",
-                    createDomainSeparator(),
-                    structHash
-                )
-            );
+        return keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+                _createDomainSeparator(),
+                structHash
+            )
+        );
     }
 
-function createDomainSeparator() internal view returns (bytes32) {
-    bytes32 TYPE_HASH = keccak256(
-        "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
-    );
-    bytes32 nameHash = keccak256(bytes("EAS"));
-    bytes32 versionHash = keccak256(bytes("1.3.0"));
+    /// @dev Creates the domain separator for EIP712 signatures
+    function _createDomainSeparator() internal view returns (bytes32) {
+        bytes32 TYPE_HASH = keccak256(
+            "EIP712Domain(string name,string version,uint256 chainId,address verifyingContract)"
+        );
+        bytes32 nameHash = keccak256(bytes("EAS"));
+        bytes32 versionHash = keccak256(bytes("1.3.0"));
 
-    return keccak256(
-        abi.encode(
-            TYPE_HASH,
-            nameHash,
-            versionHash,
-            block.chainid,
-            address(eas)
-        )
-    );
-}
+        return keccak256(
+            abi.encode(
+                TYPE_HASH,
+                nameHash,
+                versionHash,
+                block.chainid,
+                address(eas)
+            )
+        );
+    }
+        /// @dev Creates and verifies a direct signature attestation
+    function _testDirectSignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+
+        // Test direct attestation
+        vm.prank(sender);
+        bytes32 uid = eas.attest(
+            AttestationRequest({
+                schema: schemaId,
+                data: requestData
+            })
+        );
+        assertTrue(uid != bytes32(0), "Direct attestation should succeed");
+
+        // Verify the attestation
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, sender);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+
+
+    /// @dev Creates and verifies a proxy-based signature attestation
+    function _testProxySignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        uint256 signerKey = 0x12345;
+        address signer = vm.addr(signerKey);
+        vm.deal(signer, 100 ether);
+
+        // Create signature using proxy's domain separator
+        bytes32 digest = keccak256(
+            abi.encodePacked(
+                "\x19\x01",
+               _createDomainSeparator(), // Use proxy's domain separator instead of EAS
+                _getStructHash(schemaId, requestData, signer, deadline)
+            )
+        );
+        
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: requestData,
+            signature: Signature({ v: v, r: r, s: s }),
+            attester: signer,
+            deadline: deadline
+        });
+
+        vm.prank(signer);
+        bytes32 uid = proxy.attestByDelegation(request);
+        assertTrue(uid != bytes32(0), "Proxy attestation should succeed");
+
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, signer);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+
+    /// @dev Creates and verifies a delegated signature attestation
+    function _testDelegatedSignature(bytes32 schemaId) internal {
+        AttestationRequestData memory requestData = createAttestationRequestData();
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        uint256 signerKey = 0x12345;
+        address signer = vm.addr(signerKey);
+        vm.deal(signer, 100 ether);
+
+        bytes32 digest = _createAttestationDigest(
+            schemaId,
+            requestData,
+            signer,
+            deadline
+        );
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
+
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: requestData,
+            signature: Signature({ v: v, r: r, s: s }),
+            attester: signer,
+            deadline: deadline
+        });
+
+        vm.prank(signer);
+        bytes32 uid = eas.attestByDelegation(request);
+        assertTrue(uid != bytes32(0), "Delegated attestation should succeed");
+
+        // Verify the attestation
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.attester, signer);
+        assertEq(attestation.recipient, requestData.recipient);
+    }
+    /// @dev Generates the EIP-712 struct hash for an attestation request
+    function _getStructHash(
+        bytes32 schemaId,
+        AttestationRequestData memory data,
+        address attester,
+        uint64 deadline
+    ) internal pure returns (bytes32) {
+        return keccak256(
+            abi.encode(
+                keccak256(
+                    "Attest(bytes32 schema,address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value,address attester,uint64 deadline)"
+                ),
+                schemaId,
+                data.recipient,
+                data.expirationTime,
+                data.revocable,
+                data.refUID,
+                keccak256(data.data),
+                data.value,
+                attester,
+                deadline
+            )
+        );
+    }
 
     // =============================================================
     //                     SETUP
@@ -293,18 +399,18 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                    CONSTRUCTION TESTS
     // =============================================================
+    /// @dev Tests the initial construction state of the EAS contract
     function testConstructionScenarios() public view {
          assertEq(ISemver(address(eas)).version(), "1.4.1-beta.1");
     }
 
-    // Core functionality tests section
+    /// @dev Tests behavior when using an invalid schema registry
     function testInvalidSchemaRegistry() public {
         // Deploy new EAS with invalid registry address
         IEAS invalidEas = IEAS(Predeploys.EAS);
 
-        // Try to use EAS with invalid registry
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         vm.expectRevert(InvalidSchema.selector);
@@ -327,6 +433,19 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                   SIGNATURE VERIFICATION TESTS
     // =============================================================
+    /// @dev Tests attestation with valid EIP-712 signature.
+    ///      1. Setup:
+    ///         - Registers schema and creates signer
+    ///         - Prepares attestation request data
+    ///         - Creates domain separator
+    ///      2. Signature Creation:
+    ///         - Generates struct hash with typed data
+    ///         - Creates EIP-712 digest
+    ///         - Signs digest with signer's key
+    ///      3. Attestation:
+    ///         - Submits attestation with valid signature
+    ///         - Verifies successful attestation via UID check
+    ///      Demonstrates complete flow of EIP-712 signed attestation
     function testValidSignatureAttestation() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
@@ -335,23 +454,21 @@ function createDomainSeparator() internal view returns (bytes32) {
         address signer = vm.addr(signerKey);
         vm.deal(signer, 100 ether);
 
-        AttestationRequestData
-            memory requestData = createAttestationRequestData();
-
-        bytes32 DOMAIN_SEPARATOR = createDomainSeparator();
+        AttestationRequestData memory requestData = createAttestationRequestData();
+        bytes32 DOMAIN_SEPARATOR = _createDomainSeparator();
 
         bytes32 structHash = keccak256(
             abi.encode(
                 getDelegatedAttestationTypeHash(),
-                signer, // attester first
-                schemaId, // then schema
+                signer,
+                schemaId,
                 requestData.recipient,
                 requestData.expirationTime,
                 requestData.revocable,
                 requestData.refUID,
                 keccak256(requestData.data),
                 requestData.value,
-                0, // nonce
+                0,
                 deadline
             )
         );
@@ -371,12 +488,24 @@ function createDomainSeparator() internal view returns (bytes32) {
                 deadline: deadline
             });
 
-        // Add this line
         vm.prank(signer);
         bytes32 uid = eas.attestByDelegation(request);
         assertTrue(uid != bytes32(0), "Attestation should succeed");
     }
 
+    /// @dev Tests rejection of attestations with expired signature deadlines.
+    ///      1. Setup:
+    ///         - Registers schema
+    ///         - Sets block timestamp to 1000
+    ///         - Creates deadline in the past (900)
+    ///      2. Signature Creation:
+    ///         - Creates attestation digest with expired deadline
+    ///         - Generates valid signature for expired request
+    ///      3. Verification:
+    ///         - Attempts attestation with expired signature
+    ///         - Confirms transaction reverts with DeadlineExpired
+    ///      Ensures proper enforcement of signature deadlines in
+    ///      delegated attestations
     function testExpiredDeadlineSignature() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         AttestationRequestData
@@ -411,8 +540,18 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.attestByDelegation(request);
     }
 
-    // Additional test functions for wrong signer, modified data, and replay scenarios...
-
+    /// @dev Tests rejection of attestations with mismatched signer and attester.
+    ///      1. Setup:
+    ///         - Registers schema
+    ///         - Creates signature with wrongSigner's key
+    ///      2. Signature Mismatch:
+    ///         - Signs digest with wrongSigner
+    ///         - Sets attester as sender (different from signer)
+    ///      3. Verification:
+    ///         - Attempts attestation with mismatched addresses
+    ///         - Confirms transaction reverts with InvalidSignature
+    ///      Ensures attestations cannot be submitted with signatures
+    ///      from addresses different than the specified attester
     function testWrongSignerAttestation() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
@@ -434,7 +573,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             schema: schemaId,
             data: requestData,
             signature: Signature({ v: v, r: r, s: s }),
-            attester: sender, // Different from wrongSigner
+            attester: sender, 
             deadline: deadline
         });
 
@@ -442,7 +581,23 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.attestByDelegation(request);
     }
 
-    function testModifiedDataAttestation() public {
+    /// @dev Tests signature verification against data tampering in attestations.
+    ///      Part of EIP-712 signature verification test suite.
+    ///      1. Setup:
+    ///         - Registers schema
+    ///         - Creates signer and deadline
+    ///         - Prepares initial attestation data
+    ///      2. Signature Process:
+    ///         - Creates EIP-712 digest for original data
+    ///         - Signs digest with signer's key
+    ///      3. Tampering:
+    ///         - Modifies attestation data after signature creation
+    ///      4. Verification:
+    ///         - Attempts attestation with tampered data
+    ///         - Confirms signature verification fails with InvalidSignature
+    ///      Ensures EIP-712 signature verification properly detects
+    ///      post-signing data modifications
+    function testSignatureVerificationDataTampering() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
@@ -475,7 +630,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.attestByDelegation(request);
     }
 
-    function testReplayAttestation() public {
+    /// @dev Tests signature verification against data tampering.
+    ///      Part of signature verification test suite.
+    ///      1. Setup:
+    ///         - Registers schema
+    ///         - Creates valid signature for original data
+    ///      2. Data Tampering:
+    ///         - Signs original attestation data
+    ///         - Modifies request data after signature creation
+    ///      3. Verification:
+    ///         - Attempts attestation with tampered data
+    ///         - Confirms signature verification fails
+    ///      Demonstrates EIP-712 signature verification prevents
+    ///      data tampering after signing
+function testSignatureVerificationTampering() public {
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
@@ -509,7 +677,25 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.attestByDelegation(request); // Second attempt should fail
     }
 
-        function testProxyAttestation() public {
+    /// @dev Tests attestation through proxy contract with signature verification.
+    ///      Part of proxy attestation test suite.
+    ///      1. Setup:
+    ///         - Sets specific timestamp (1000)
+    ///         - Registers schema for proxy use
+    ///         - Creates attestation request data
+    ///      2. Signature Creation:
+    ///         - Generates EIP-712 struct hash using proxy's domain
+    ///         - Creates digest with proxy's domain separator
+    ///         - Signs digest with sender's key
+    ///      3. Proxy Interaction:
+    ///         - Submits attestation through proxy contract
+    ///         - Verifies attestation recorded correctly:
+    ///           * Confirms valid UID
+    ///           * Verifies attester address
+    ///           * Checks recipient address
+    ///      Demonstrates complete proxy attestation flow with
+    ///      proper signature verification and delegation
+    function testProxyAttestation() public {
         vm.warp(1000);
         
         bytes32 proxySchemaId = _registerSchema("bool like", true);
@@ -552,7 +738,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         bytes32 digest = keccak256(
             abi.encodePacked(
                 "\x19\x01",
-                createDomainSeparator(), 
+                _createDomainSeparator(), 
                 structHash
             )
         );
@@ -572,9 +758,21 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                   BASIC ATTESTATION TESTS
     // =============================================================
+    /// @dev Tests basic attestation functionality.
+    ///      1. Setup:
+    ///         - Creates and registers simple boolean schema
+    ///         - Sets 30-day expiration time
+    ///      2. Attestation:
+    ///         - Creates standard attestation request
+    ///         - Submits attestation through EAS
+    ///      3. Verification:
+    ///         - Confirms schema ID matches
+    ///         - Verifies recipient address
+    ///      Demonstrates core attestation flow with
+    ///      standard schema and parameters
     function testAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -602,8 +800,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests attestation with empty schema registration.
+    ///      1. Setup:
+    ///         - Creates schema ID with empty string
+    ///         - Registers empty schema without resolver
+    ///      2. Attestation:
+    ///         - Creates attestation with 30-day expiration
+    ///         - Uses empty schema ID
+    ///      3. Verification:
+    ///         - Confirms attestation recorded with correct schema ID
+    ///         - Verifies recipient address
+    ///      Demonstrates system handles empty schemas correctly,
+    ///      allowing attestations without schema definitions
     function testAttestationWithoutSchema() public {
-        bytes32 schemaId = getSchemaUID("", address(0), true);
+        bytes32 schemaId = _getSchemaUID("", address(0), true);
 
         vm.startPrank(sender);
         registry.register("", ISchemaResolver(address(0)), true);
@@ -631,11 +841,23 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // Test attesting with a resolver
+    /// @dev Tests attestation with schema resolver integration.
+    ///      1. Setup:
+    ///         - Deploys mock payable resolver
+    ///         - Creates and registers schema with resolver
+    ///      2. Attestation:
+    ///         - Creates attestation request with resolver-enabled schema
+    ///         - Submits through EAS
+    ///      3. Verification:
+    ///         - Confirms attester address
+    ///         - Verifies recipient address
+    ///         - Validates schema ID matches
+    ///      Demonstrates attestation flow with resolver integration,
+    ///      ensuring resolver-enabled schemas work correctly
     function testAttestationWithResolver() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, resolver, true);
@@ -661,9 +883,22 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests attestation with schema that has no resolver.
+    ///      1. Setup:
+    ///         - Creates complex schema (phone number data)
+    ///         - Registers schema without resolver (address(0))
+    ///      2. Attestation:
+    ///         - Creates attestation with 30-day expiration
+    ///         - Uses schema without resolver
+    ///      3. Verification:
+    ///         - Confirms schema ID matches
+    ///         - Verifies recipient address
+    ///      Demonstrates attestation flow for schemas without
+    ///      resolver integration, ensuring basic schema
+    ///      functionality works independently
     function testAttestationWithoutResolver() public {
         string memory schema = "bool hasPhoneNumber, bytes32 phoneHash";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -691,6 +926,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests rejection of attestations with expired timestamps.
+    ///      1. Setup:
+    ///         - Registers basic schema
+    ///         - Sets block timestamp to 1000000
+    ///         - Creates expiration time in the past (current - 1000)
+    ///      2. Debug Logging:
+    ///         - Logs current timestamp
+    ///         - Logs expired time
+    ///         - Logs schema ID
+    ///      3. Verification:
+    ///         - Attempts attestation with expired time
+    ///         - Confirms revert with InvalidExpirationTime
+    ///      Ensures system properly validates attestation
+    ///      expiration times, preventing backdated attestations
     function testCannotAttestWithExpiredTime() public {
         bytes32 schemaId = _registerSchema("bool like", true);
 
@@ -723,8 +972,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         }
     }
 
+    /// @dev Tests rejection of attestations using unregistered schemas.
+    ///      1. Setup:
+    ///         - Creates schema ID without registering schema
+    ///      2. Attestation Attempt:
+    ///         - Tries to attest using unregistered schema
+    ///         - Sets standard parameters (30-day expiration)
+    ///      3. Verification:
+    ///         - Confirms transaction reverts with InvalidSchema
+    ///      Ensures system properly validates schema registration
+    ///      before allowing attestations, preventing use of
+    ///      unregistered or invalid schemas
     function testCannotAttestToUnregisteredSchema() public {
-        bytes32 unregisteredSchemaId = getSchemaUID(
+        bytes32 unregisteredSchemaId = _getSchemaUID(
             "unregistered schema",
             address(0),
             true
@@ -747,6 +1007,18 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
     }
 
+    /// @dev Tests multiple attestation scenarios with various schemas.
+    ///      1. Schema Registration:
+    ///         - Registers three different schemas:
+    ///           * Basic boolean schema
+    ///           * Proposal voting schema
+    ///           * Phone verification schema
+    ///      2. Invalid Schema Test:
+    ///         - Attempts attestation with unregistered schema
+    ///         - Verifies revert with InvalidSchema
+    ///      Note: Despite name suggesting multiple scenarios,
+    ///      currently only tests invalid schema case. Consider
+    ///      expanding to test more scenarios or renaming function
     function testAttestationScenarios() public {
         // Register test schemas first
         string memory schema1 = "bool like";
@@ -778,10 +1050,16 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testAttestationDataScenarios()
+    /// @dev Tests attestations with varying data payload sizes.
+    ///      Registers a simple boolean schema and tests attestations with three different data sizes:
+    ///      1. Empty data (0 bytes)
+    ///      2. Small data (2 bytes)
+    ///      3. Large data (90 bytes)
+    ///      Verifies that the system correctly handles and stores data of different sizes
+    ///      by checking that stored attestation data matches the input data for each case
     function testAttestationDataScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -815,11 +1093,17 @@ function createDomainSeparator() internal view returns (bytes32) {
 
         vm.stopPrank();
     }
-
+    /// @dev Tests comprehensive attestation scenarios with varying parameter combinations.
+    ///      Creates two attestations with a payable resolver:
+    ///      1. Minimal attestation: zero address recipient, no expiration, no value, empty refUID
+    ///      2. Full attestation: specified recipient, 1-year expiration, 1 ETH value, references first attestation
+    ///      Verifies all attestation fields are correctly stored for both cases, including
+    ///      recipients, expiration times, revocability, reference UIDs, and attached data.
+    ///      Also tests value transfer functionality with the resolver contract
     function testDetailedAttestationScenarios() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(resolver)), true);
@@ -879,9 +1163,18 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests attestation behavior with different expiration time scenarios.
+    ///      Sets block timestamp to 1000000 and tests four cases:
+    ///      1. No expiration (0)
+    ///      2. Short expiration (1 day)
+    ///      3. Long expiration (365 days)
+    ///      4. Already expired time (past timestamp)
+    ///      Verifies successful storage for valid expiration times and confirms
+    ///      rejection of expired timestamps. Includes debug logging for timestamp
+    ///      verification and troubleshooting of expiration-related issues
     function testAttestationExpirationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -939,6 +1232,11 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests behavior when querying non-existent (unregistered) data.
+    ///      Verifies two scenarios:
+    ///      1. getTimestamp returns 0 for unregistered attestation data
+    ///      2. getRevokeOffchain returns 0 for unregistered revocation data
+    ///      Ensures system handles queries for non-existent data gracefully
     function testUnregisteredDataScenarios() public view {
         bytes32 unregisteredData = keccak256("unregistered");
 
@@ -949,10 +1247,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         assertEq(eas.getRevokeOffchain(sender, unregisteredData), 0);
     }
 
-    // Basic attestation tests section
+    /// @dev Tests rejection of attestations with invalid reference UIDs.
+    ///      1. Setup:
+    ///         - Registers basic boolean schema
+    ///      2. Invalid Reference:
+    ///         - Creates attestation request with non-existent refUID
+    ///      3. Verification:
+    ///         - Attempts attestation with invalid reference
+    ///         - Confirms revert with NotFound error
+    ///      Ensures system properly validates referenced attestations,
+    ///      preventing attestations that reference non-existent UIDs
     function testInvalidAttestationData() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -980,11 +1287,17 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                  MULTI ATTESTATION TESTS
     // =============================================================
+    /// @dev Tests batch attestation with multiple recipients and varying ETH values.
+    ///      Creates three attestations in a single transaction:
+    ///      - First to recipient: 0 ETH
+    ///      - Second to recipient2: 0.1 ETH
+    ///      - Third to zero address: 0.2 ETH
+    ///      Uses a payable resolver and verifies correct attester and schema assignment
     function testMultiAttestationComprehensive() public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(resolver)), true);
@@ -1026,9 +1339,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests batch processing validation for multi-attestations.
+    ///      1. Setup:
+    ///         - Registers basic boolean schema
+    ///      2. Empty Batch Test:
+    ///         - Creates multi-attestation request
+    ///         - Sets empty inner attestation data array
+    ///      3. Verification:
+    ///         - Attempts multi-attestation with empty batch
+    ///         - Confirms revert with InvalidLength
+    ///      Ensures system properly validates batch sizes,
+    ///      preventing processing of empty attestation batches
     function testBatchProcessingLimits() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1045,11 +1369,18 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testComplexMultiAttestationScenarios()
+    /// @dev Tests complex multi-attestation scenarios across different schemas.
+    ///      Creates a batch of attestations that includes:
+    ///      1. Two attestations for first schema:
+    ///         - To recipient with 30 day expiration
+    ///         - To recipient2 with 60 day expiration
+    ///      2. One attestation for second schema:
+    ///         - To recipient with 90 day expiration
+    ///      Verifies correct schema assignment and attester for all attestations
     function testComplexMultiAttestationScenarios() public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1080,7 +1411,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         });
 
         // Second schema batch
-        requests[1].schema = getSchemaUID(schema2, address(0), true);
+        requests[1].schema = _getSchemaUID(schema2, address(0), true);
         requests[1].data = new AttestationRequestData[](1);
         requests[1].data[0] = AttestationRequestData({
             recipient: recipient,
@@ -1103,7 +1434,7 @@ function createDomainSeparator() internal view returns (bytes32) {
             } else {
                 assertEq(
                     attestation.schema,
-                    getSchemaUID(schema2, address(0), true)
+                    _getSchemaUID(schema2, address(0), true)
                 );
             }
         }
@@ -1111,11 +1442,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests all error conditions for multi-attestation requests:
+    ///      1. Empty requests array (returns empty array, no revert)
+    ///      2. Empty data array in request (reverts with InvalidLength)
+    ///      3. Invalid schema ID (reverts with InvalidSchema)
+    ///      4. Invalid expiration time (reverts with InvalidExpirationTime)
+    ///      5. Insufficient ETH value (reverts with default error)
+    ///      Each test case validates a different aspect of input validation
+    ///      and error handling in the multi-attestation process
     function testMultiAttestationReverts() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaWithResolverId = getSchemaUID(
+        bytes32 schemaWithResolverId = _getSchemaUID(
             schema,
             address(resolver),
             true
@@ -1177,10 +1516,16 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests multi-attestation with ETH value transfers.
+    ///      Creates two attestations using a payable resolver:
+    ///      1. First attestation to recipient with 1 ETH
+    ///      2. Second attestation to recipient2 with 1 ETH
+    ///      Total value of 2 ETH is sent with the transaction.
+    ///      Verifies both attestations are created with correct attester
     function testMultiAttestationWithValue() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(resolver)), true);
@@ -1227,9 +1572,14 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                     REVOCATION TESTS
     // =============================================================
+    /// @dev Tests the attestation revocation process.
+    ///      1. Creates a revocable attestation with 30-day expiration
+    ///      2. Revokes the attestation using its UID
+    ///      3. Verifies the revocation by checking that revocationTime
+    ///         is set to a non-zero value in the attestation data
     function testRevokeAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1263,9 +1613,14 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests that attestations can only be revoked by their original attester.
+    ///      1. Creates an attestation from sender address
+    ///      2. Attempts to revoke it from sender2 address
+    ///      3. Verifies the revocation fails with AccessDenied error
+    ///      Ensures attestation revocation permissions are properly enforced
     function testCannotRevokeOthersAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1298,9 +1653,14 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
     }
 
+    /// @dev Tests revocation attempt of a non-existent attestation.
+    ///      1. Registers a schema but creates no attestations
+    ///      2. Attempts to revoke using a fabricated UID (1)
+    ///      3. Verifies the revocation fails with NotFound error
+    ///      Ensures system properly handles revocation requests for non-existent UIDs
     function testCannotRevokeNonExistentAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1317,9 +1677,15 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
     }
 
+    /// @dev Tests revocation behavior with referenced attestations (parent-child relationship).
+    ///      1. Creates a parent attestation
+    ///      2. Creates a child attestation that references the parent
+    ///      3. Revokes the parent attestation
+    ///      4. Verifies that revoking parent doesn't affect child attestation
+    ///      Ensures that attestation references don't create revocation dependencies
     function testRevocationWithRefUID() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1369,6 +1735,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests batch revocation of multiple attestations.
+    ///      1. Creates three attestations with different data values (1,2,3)
+    ///      2. Revokes all attestations in a single transaction
+    ///      3. Verifies each attestation has a non-zero revocationTime
+    ///      Demonstrates the efficiency of batch revocation for multiple
+    ///      attestations sharing the same schema
     function testMultiRevocation() public {
         bytes32 schemaId = _registerSchema("bool like", true);
 
@@ -1420,9 +1792,15 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests access control for delegated revocations.
+    ///      1. Creates an attestation from sender address
+    ///      2. Attempts unauthorized revocation from sender2 address
+    ///      3. Verifies revocation fails with AccessDenied
+    ///      Ensures that delegated revocation permissions are properly
+    ///      enforced and only the original attester can revoke
     function testDelegatedRevocationRevert() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1454,10 +1832,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         );
     }
 
+    /// @dev Tests comprehensive scenarios for irrevocable schemas.
+    ///      1. Tests single attestation:
+    ///         - Creates attestation with irrevocable schema
+    ///         - Verifies attestation properties
+    ///         - Confirms revocation attempt fails
+    ///      2. Tests batch attestation:
+    ///         - Creates multiple attestations
+    ///         - Verifies all are properly marked irrevocable
+    ///         - Confirms batch revocation attempts fail
+    ///      Ensures irrevocable property is enforced in all scenarios
     function testIrrevocableSchemaScenarios() public {
         // Register an irrevocable schema
         string memory schema = "bool isFriend";
-        bytes32 schemaId = getSchemaUID(schema, address(0), false);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), false);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), false);
@@ -1541,17 +1929,26 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests scenarios mixing revocable and irrevocable schemas.
+    ///      1. Sets up two schemas:
+    ///         - Revocable schema "bool like"
+    ///         - Irrevocable schema "bool isFriend"
+    ///      2. Creates one attestation for each schema
+    ///      3. Verifies:
+    ///         - Revocable attestation can be revoked
+    ///         - Irrevocable attestation cannot be revoked
+    ///      Ensures system correctly handles different revocation rules
     function testMixedRevocabilityScenarios() public {
         // Register both revocable and irrevocable schemas
         string memory revocableSchema = "bool like";
         string memory irrevocableSchema = "bool isFriend";
 
-        bytes32 revocableSchemaId = getSchemaUID(
+        bytes32 revocableSchemaId = _getSchemaUID(
             revocableSchema,
             address(0),
             true
         );
-        bytes32 irrevocableSchemaId = getSchemaUID(
+        bytes32 irrevocableSchemaId = _getSchemaUID(
             irrevocableSchema,
             address(0),
             false
@@ -1614,6 +2011,11 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests revocation with invalid schema data.
+    ///      1. Registers a valid schema "bool like"
+    ///      2. Attempts to revoke using a different, unregistered schema
+    ///      3. Verifies the revocation fails with InvalidSchema error
+    ///      Ensures revocations are properly validated against registered schemas
     function testInvalidRevocationData() public {
         string memory schema = "bool like";
 
@@ -1621,7 +2023,7 @@ function createDomainSeparator() internal view returns (bytes32) {
         registry.register(schema, ISchemaResolver(address(0)), true);
 
         // Try to revoke with wrong schema
-        bytes32 wrongSchemaId = getSchemaUID("wrong schema", address(0), true);
+        bytes32 wrongSchemaId = _getSchemaUID("wrong schema", address(0), true);
 
         vm.expectRevert(InvalidSchema.selector);
         eas.revoke(
@@ -1636,7 +2038,33 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                     OFF-CHAIN REVOCATION TESTS
     // =============================================================
-    // Revocation related tests...
+    /// @dev Tests off-chain revocation functionality.
+    ///      1. Setup:
+    ///         - Creates test data hash
+    ///      2. Revocation:
+    ///         - Executes off-chain revocation as sender
+    ///         - Records current block timestamp
+    ///      3. Verification:
+    ///         - Confirms revocation timestamp matches
+    ///         - Verifies using sender's address and data hash
+    ///      Demonstrates off-chain revocation mechanism,
+    ///      useful for revoking attestations without on-chain
+    ///      transaction for each attestation
+    function testRevokeOffchain() public {
+        bytes32 data = keccak256("test data");
+
+        vm.prank(sender);
+        uint256 timestamp = block.timestamp;
+        eas.revokeOffchain(data);
+
+        assertEq(eas.getRevokeOffchain(sender, data), timestamp);
+    }
+
+    /// @dev Tests off-chain revocation behavior.
+    ///      1. Performs initial off-chain revocation of test data
+    ///      2. Attempts to revoke the same data again
+    ///      3. Verifies second attempt fails with AlreadyRevokedOffchain
+    ///      Ensures off-chain revocations cannot be duplicated
     function testRevokeOffchainRevert() public {
         bytes32 data = keccak256("test data");
 
@@ -1650,7 +2078,14 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testRevokeOffchainMultiple()
+    /// @dev Tests batch off-chain revocation functionality.
+    ///      1. Creates array of three different data hashes:
+    ///         - Hash of "data1"
+    ///         - Hash of "data2"
+    ///         - Zero bytes32
+    ///      2. Revokes all data in single transaction
+    ///      3. Verifies each revocation is recorded with correct timestamp
+    ///      Demonstrates efficient batch processing of off-chain revocations
     function testRevokeOffchainMultiple() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("data1");
@@ -1666,7 +2101,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         }
     }
 
-    // testRevokeOffchainDifferentAccounts()
+    /// @dev Tests off-chain revocation independence between accounts.
+    ///      1. First account (sender) revokes specific data
+    ///      2. Second account (sender2) revokes same data
+    ///      3. Verifies both revocations are recorded separately with
+    ///         their own timestamps, demonstrating that off-chain
+    ///         revocations are account-specific
     function testRevokeOffchainDifferentAccounts() public {
         bytes32 data = keccak256("test data");
 
@@ -1684,7 +2124,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         assertEq(eas.getRevokeOffchain(sender2, data), timestamp2);
     }
 
-    // testRevokeOffchainRevert()
+    /// @dev Tests revert conditions for batch off-chain revocations.
+    ///      1. Successfully revokes initial batch of data
+    ///      2. Attempts to revoke same batch again (fails)
+    ///      3. Attempts to revoke new batch containing previously revoked
+    ///         data (fails). Ensures that batch revocations properly check
+    ///         for already revoked data in all scenarios
     function testMultiRevokeOffchainRevert() public {
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256("data1");
@@ -1709,12 +2154,25 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testGetUnregisteredRevokeOffchain()
+    /// @dev Tests retrieval of unregistered off-chain revocations.
+    ///      1. Setup:
+    ///         - Creates hash of unregistered data
+    ///      2. Verification:
+    ///         - Checks revocation timestamp for unregistered data
+    ///         - Confirms returns zero (default timestamp)
+    ///      Ensures system properly handles queries for
+    ///      non-existent off-chain revocations
     function testGetUnregisteredRevokeOffchain() public view {
         bytes32 data = keccak256("unregistered data");
         assertEq(eas.getRevokeOffchain(sender, data), 0);
     }
 
+    /// @dev Tests multiple account off-chain revocations of the same data.
+    ///      1. First account (sender) revokes specific data
+    ///      2. Second account (sender2) revokes same data
+    ///      3. Verifies each account's revocation is recorded independently
+    ///         with its own timestamp, demonstrating per-account revocation
+    ///         storage
     function testRevokeOffchainMultipleAccounts() public {
         bytes32 data = keccak256("0x1234");
 
@@ -1733,6 +2191,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         assertEq(eas.getRevokeOffchain(sender2, data), timestamp2);
     }
 
+    /// @dev Tests comprehensive scenarios for batch off-chain revocations.
+    ///      1. First batch: Revokes three different data items
+    ///      2. Second batch: Revokes two new data items
+    ///      Verifies all revocations in both batches are recorded with
+    ///      correct timestamps, demonstrating the system's ability to
+    ///      handle multiple batch revocations from the same account
     function testMultiRevokeOffchainScenarios() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("0x1234");
@@ -1768,6 +2232,17 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                     TIMESTAMP TESTS
     // =============================================================
+    /// @dev Tests basic timestamping functionality.
+    ///      1. Setup:
+    ///         - Creates test data hash
+    ///      2. Timestamping:
+    ///         - Records current block timestamp
+    ///         - Timestamps the data hash
+    ///      3. Verification:
+    ///         - Confirms stored timestamp matches
+    ///           block timestamp at recording
+    ///      Demonstrates basic timestamp recording and
+    ///      retrieval functionality
     function testTimestamping() public {
         bytes32 data = keccak256("test data");
 
@@ -1777,17 +2252,13 @@ function createDomainSeparator() internal view returns (bytes32) {
         assertEq(eas.getTimestamp(data), timestamp);
     }
 
-    function testRevokeOffchain() public {
-        bytes32 data = keccak256("test data");
-
-        vm.prank(sender);
-        uint256 timestamp = block.timestamp;
-        eas.revokeOffchain(data);
-
-        assertEq(eas.getRevokeOffchain(sender, data), timestamp);
-    }
-
-    // testTimestampMultiple()
+    /// @dev Tests batch timestamping functionality.
+    ///      Creates array of three different data items:
+    ///      1. Hash of "data1"
+    ///      2. Hash of "data2"
+    ///      3. Zero bytes32
+    ///      Records timestamps for all items in single transaction
+    ///      and verifies each timestamp matches block timestamp
     function testTimestampMultiple() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("data1");
@@ -1802,6 +2273,11 @@ function createDomainSeparator() internal view returns (bytes32) {
         }
     }
 
+    /// @dev Tests timestamp duplication prevention.
+    ///      1. Successfully records initial timestamp
+    ///      2. Attempts to timestamp same data again
+    ///      3. Verifies second attempt reverts with AlreadyTimestamped
+    ///      Ensures data can only be timestamped once
     function testTimestampRevert() public {
         bytes32 data = keccak256("test data");
 
@@ -1813,6 +2289,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.timestamp(data);
     }
 
+    /// @dev Tests comprehensive batch timestamping scenarios.
+    ///      1. First batch: Timestamps three different data items
+    ///      2. Second batch: Timestamps two new data items
+    ///      Verifies all timestamps in both batches match block
+    ///      timestamp, demonstrating efficient batch processing
+    ///      of multiple timestamp records
     function testMultiTimestampingScenarios() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("0x1234");
@@ -1841,6 +2323,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         }
     }
 
+    /// @dev Tests revert conditions for batch timestamping.
+    ///      1. Successfully timestamps initial batch
+    ///      2. Attempts to timestamp same batch again (fails)
+    ///      3. Attempts to timestamp new batch containing previously
+    ///         timestamped data (fails). Ensures proper duplicate
+    ///         detection in all batch scenarios
     function testMultiTimestampRevert() public {
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256("data1");
@@ -1863,6 +2351,12 @@ function createDomainSeparator() internal view returns (bytes32) {
         eas.multiTimestamp(newData);
     }
 
+    /// @dev Tests timestamp immutability and verification.
+    ///      1. Records timestamps for multiple data items
+    ///      2. Advances block time and verifies original timestamps remain unchanged
+    ///      3. Records new timestamp and verifies it doesn't affect existing ones
+    ///      4. Demonstrates timestamp immutability and independence
+    ///      across different time periods and data items
     function testTimestampVerificationScenarios() public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256("First");
@@ -1895,6 +2389,14 @@ function createDomainSeparator() internal view returns (bytes32) {
         }
     }
 
+    /// @dev Tests retrieval of unregistered timestamps.
+    ///      1. Setup:
+    ///         - Creates hash of unregistered data
+    ///      2. Verification:
+    ///         - Checks timestamp for unregistered data
+    ///         - Confirms returns zero (default timestamp)
+    ///      Ensures system properly handles queries for
+    ///      non-existent timestamp records
     function testGetUnregisteredTimestamp() public view {
         bytes32 data = keccak256("unregistered data");
         assertEq(eas.getTimestamp(data), 0);
@@ -1903,9 +2405,15 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                   DELEGATION TESTS
     // =============================================================
+    /// @dev Tests basic delegated attestation functionality.
+    ///      1. Registers a schema and creates an attestation request
+    ///      2. Performs attestation through delegation
+    ///      3. Verifies the attestation is properly recorded with
+    ///         correct attester and recipient addresses
+    ///      Demonstrates standard delegated attestation flow
     function testDelegatedAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1934,9 +2442,17 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests delegated attestations with signatures.
+    ///      1. Tests single attestation with invalid signature:
+    ///         - Creates request with mock signature values
+    ///         - Verifies it reverts with InvalidSignature
+    ///      2. Tests batch attestation with invalid signatures:
+    ///         - Creates multiple requests with mock signatures
+    ///         - Verifies batch also reverts with InvalidSignature
+    ///      Ensures signature validation works for both single and batch cases
     function testDelegatedAttestationWithSignatures() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -1990,10 +2506,16 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testDelegatedAttestationTimeScenarios()
+    /// @dev Tests delegated attestation with various deadline scenarios.
+    ///      Tests three different deadline configurations:
+    ///      1. Short deadline (1 hour)
+    ///      2. Medium deadline (1 day)
+    ///      3. Maximum possible deadline (type(uint64).max)
+    ///      Verifies that while signature validation fails as expected,
+    ///      deadline validation passes in all cases
     function testDelegatedAttestationTimeScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2033,9 +2555,17 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests batch attestation delegation functionality.
+    ///      1. Creates two attestation requests:
+    ///         - First to recipient with specific data
+    ///         - Second to recipient2 with different data
+    ///      2. Processes both attestations in single transaction
+    ///      3. Verifies both attestations are recorded correctly
+    ///         with proper recipient addresses
+    ///      Demonstrates efficient batch processing of delegated attestations
     function testMultiAttestationDelegation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2080,9 +2610,17 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests comprehensive delegated attestation scenarios.
+    ///      1. Tests single delegation:
+    ///         - Creates attestation with 30-day expiration
+    ///         - Verifies correct attester and recipient
+    ///      2. Tests batch delegation:
+    ///         - Creates two attestations to different recipients
+    ///         - Verifies both attestations record correct addresses
+    ///      Demonstrates both single and batch delegation flows
     function testDelegatedAttestationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2144,10 +2682,21 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests error conditions for delegated attestations.
+    ///      1. Tests empty arrays:
+    ///         - Attempts delegation with empty data/signature arrays
+    ///         - Verifies revert with InvalidLength
+    ///      2. Tests mismatched lengths:
+    ///         - Uses different sizes for data and signature arrays
+    ///         - Verifies revert with InvalidLength
+    ///      3. Tests expired deadline:
+    ///         - Attempts delegation with past deadline
+    ///         - Verifies revert with DeadlineExpired
+    ///      Ensures proper validation of delegation parameters
     function testDelegatedAttestationReverts() public {
     
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2203,9 +2752,15 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests delegated revocation functionality.
+    ///      1. Creates a revocable attestation with 30-day expiration
+    ///      2. Revokes the attestation through delegation
+    ///      3. Verifies revocation by checking revocationTime is set
+    ///      Demonstrates complete flow of attestation creation
+    ///      and subsequent delegated revocation
     function testDelegatedRevocation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2238,9 +2793,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests comprehensive delegated revocation scenarios.
+    ///      1. Tests single revocation:
+    ///         - Creates and revokes one attestation
+    ///         - Verifies revocation timestamp
+    ///      2. Tests multiple revocations:
+    ///         - Creates two new attestations
+    ///         - Revokes them individually
+    ///         - Verifies each revocation timestamp
+    ///      Demonstrates both single and multiple revocation patterns
+    ///      through delegation
     function testDelegatedRevocationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2308,45 +2873,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests error conditions for multi-attestation delegation revocation.
+    ///      1. Tests mismatched array lengths:
+    ///         - Two revocation requests with one signature
+    ///         - Verifies revert with InvalidLength
+    ///      2. Tests empty data array:
+    ///         - Zero revocation requests
+    ///         - Verifies revert with InvalidLength
+    ///      3. Tests empty signature array:
+    ///         - One revocation request with no signatures
+    ///         - Verifies revert with InvalidLength
+    ///      Ensures proper validation of batch revocation parameters
     function testMultiAttestationDelegationRevert() public {
         string memory schema = "bool like";
-        bytes32 schemaId = _registerSchema(schema, true);
-
-        // Create a single request with valid schema but invalid signature
-        MultiDelegatedAttestationRequest[]
-            memory requests = new MultiDelegatedAttestationRequest[](1);
-
-        AttestationRequestData[] memory data = new AttestationRequestData[](1);
-        data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: NO_EXPIRATION,
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: 0
-        });
-
-        Signature[] memory signatures = new Signature[](1);
-        signatures[0] = Signature({ v: 27, r: bytes32(0), s: bytes32(0) });
-
-        requests[0] = MultiDelegatedAttestationRequest({
-            schema: schemaId,
-            data: data,
-            signatures: signatures,
-            attester: sender,
-            deadline: uint64(block.timestamp + 1)
-        });
-
-        bytes memory expectedError = abi.encodeWithSignature(
-            "InvalidSignature()"
-        );
-        vm.expectRevert(expectedError);
-        eas.multiAttestByDelegation(requests);
-    }
-
-    function testMultiRevocationDelegationRevert() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2417,10 +2957,19 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests basic attestation without value transfer.
+    ///      Creates a simple attestation with:
+    ///      - 30-day expiration
+    ///      - Revocable flag set
+    ///      - No ETH value
+    ///      Verifies the attestation is properly recorded with
+    ///      correct attester address. Note: Despite function name,
+    ///      this test focuses on basic attestation functionality
+    ///      rather than value transfer scenarios
     function testAttestationValueTransferScenarios() public {
         // Remove value transfers, just test basic attestation
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2446,10 +2995,17 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                      SCHEMA TESTS
     // =============================================================
+    /// @dev Tests attestation scenarios with schema resolvers.
+    ///      1. Creates a payable mock resolver
+    ///      2. Registers schema with resolver
+    ///      3. Creates attestation using resolver-enabled schema
+    ///      4. Verifies attestation is properly recorded
+    ///      Demonstrates integration between attestations and
+    ///      schema resolvers
     function testSchemaResolverScenarios() public {
         string memory schema = "bool like";
         MockPayableResolver resolver = new MockPayableResolver();
-        bytes32 schemaId = getSchemaUID(schema, address(resolver), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(resolver), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(resolver)), true);
@@ -2475,6 +3031,15 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests schema registration scenarios.
+    ///      1. Tests successful registration:
+    ///         - Registers basic boolean schema
+    ///      2. Tests duplicate registration:
+    ///         - Attempts to register same schema again
+    ///         - Verifies revert with AlreadyExists
+    ///      3. Tests complex schema:
+    ///         - Registers schema with multiple fields
+    ///      Ensures proper schema registration and uniqueness
     function testSchemaRegistrationScenarios() public {
         string memory schema = "bool like";
 
@@ -2498,10 +3063,15 @@ function createDomainSeparator() internal view returns (bytes32) {
     // =============================================================
     //                      COMPLEX SCENARIOS
     // =============================================================
-
+    /// @dev Tests attestation referencing functionality.
+    ///      1. Creates initial attestation (parent)
+    ///      2. Creates second attestation referencing the first
+    ///      3. Verifies reference UID is correctly recorded
+    ///      Demonstrates the ability to create linked attestations
+    ///      through reference UIDs
     function testReferenceAttestation() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2541,10 +3111,17 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testCascadingRevocationScenarios()
+    /// @dev Tests revocation behavior in referenced attestations.
+    ///      1. Creates chain of three linked attestations:
+    ///         - Root attestation
+    ///         - Two child attestations each referencing previous
+    ///      2. Revokes root attestation
+    ///      3. Verifies child attestations remain valid
+    ///      Demonstrates that revocation does not cascade through
+    ///      referenced attestations
     function testCascadingRevocationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2601,10 +3178,20 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
-    // testAdvancedRevocationScenarios()
+    /// @dev Tests complex revocation scenarios with multiple attestations.
+    ///      Creates three attestations with different configurations:
+    ///      1. Standard revocable attestation
+    ///      2. Attestation with value
+    ///      3. Attestation referencing first attestation
+    ///      Tests revocation behavior:
+    ///      - Revokes parent attestation
+    ///      - Verifies child can still be revoked after parent
+    ///      - Confirms second attestation remains unaffected
+    ///      Demonstrates independence of revocations and proper
+    ///      handling of referenced attestations in complex scenarios
     function testAdvancedRevocationScenarios() public {
         string memory schema = "bool like";
-        bytes32 schemaId = getSchemaUID(schema, address(0), true);
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2694,10 +3281,17 @@ function createDomainSeparator() internal view returns (bytes32) {
         vm.stopPrank();
     }
 
+    /// @dev Tests deadline validation in delegated attestations.
+    ///      1. Creates attestation request with expired deadline
+    ///         (timestamp set to past)
+    ///      2. Attempts to attest by delegation
+    ///      3. Verifies transaction reverts with DeadlineExpired
+    ///      Ensures proper enforcement of temporal constraints
+    ///      in delegated attestations
 function testDeadlineScenarios() public {
     
     string memory schema = "bool like";
-    bytes32 schemaId = getSchemaUID(schema, address(0), true);
+    bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
     vm.startPrank(sender);
     registry.register(schema, ISchemaResolver(address(0)), true);
@@ -2739,7 +3333,26 @@ function testDeadlineScenarios() public {
             vm.deal(signers[i], 100 ether);
         }
 
-        // Create multi-attestation request
+    /// @dev Creates and verifies multiple delegated attestations.
+    ///      Setup for each request:
+    ///      1. Request Configuration:
+    ///         - Sets schema ID and deadline
+    ///         - Initializes data and signature arrays
+    ///         - Assigns unique attester from signers array
+    ///      2. Attestation Data:
+    ///         - Sets 30-day expiration
+    ///         - Makes revocable
+    ///         - Uses incremental data values
+    ///      3. Signature Creation:
+    ///         - Generates EIP-712 digest
+    ///         - Signs with corresponding signer key
+    ///      4. Verification:
+    ///         - Submits batch through first signer
+    ///         - Verifies each attestation:
+    ///           * Confirms correct attester
+    ///           * Validates recipient
+    ///      Demonstrates complete flow of multiple delegated
+    ///      attestations with different signers
         MultiDelegatedAttestationRequest[]
             memory requests = new MultiDelegatedAttestationRequest[](3);
         for (uint i = 0; i < 3; i++) {
@@ -2780,6 +3393,15 @@ function testDeadlineScenarios() public {
         }
     }
 
+    /// @dev Tests array length validation in multi-delegated attestations.
+    ///      Tests four scenarios with inconsistent array lengths:
+    ///      1. More data items than signatures
+    ///      2. Empty data array with signatures
+    ///      3. More signatures than data items
+    ///      4. Data items with empty signatures array
+    ///      Verifies all cases revert with InvalidLength error,
+    ///      ensuring proper validation of array lengths in
+    ///      multi-delegated attestations
     function testRevertMultiDelegationInconsistentLengths() public {
         // Register a schema
         string memory schema = "bool count, bytes32 id";
@@ -2842,8 +3464,13 @@ function testDeadlineScenarios() public {
         vm.stopPrank();
     }
 
-    function testAllSignatureTypes() public {
-        
+    /// @dev Tests direct and delegated signature types.
+    ///      Registers a schema and tests two signature scenarios:
+    ///      1. Direct signatures
+    ///      2. Delegated signatures
+    ///      Note: This test does not cover EIP712 signatures,
+    ///      despite the original name suggesting all types
+    function testDirectAndDelegatedSignatures() public {
         // Register schema once at the start
         bytes32 schemaId = _registerSchema("bool like", true);
 
@@ -2861,119 +3488,6 @@ function testDeadlineScenarios() public {
                 _testDelegatedSignature(schemaId);
             }
         }
-    }
-
-    function _testDirectSignature(bytes32 schemaId) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
-
-        // Test direct attestation
-        vm.prank(sender);
-        bytes32 uid = eas.attest(
-            AttestationRequest({
-                schema: schemaId,
-                data: requestData
-            })
-        );
-        assertTrue(uid != bytes32(0), "Direct attestation should succeed");
-
-        // Verify the attestation
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, requestData.recipient);
-    }
-
-    function _testProxySignature(bytes32 schemaId) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
-        uint64 deadline = uint64(block.timestamp + 1 days);
-
-        uint256 signerKey = 0x12345;
-        address signer = vm.addr(signerKey);
-        vm.deal(signer, 100 ether);
-
-        // Create signature using proxy's domain separator
-        bytes32 digest = keccak256(
-            abi.encodePacked(
-                "\x19\x01",
-               createDomainSeparator(), // Use proxy's domain separator instead of EAS
-                _getStructHash(schemaId, requestData, signer, deadline)
-            )
-        );
-        
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
-
-        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
-            schema: schemaId,
-            data: requestData,
-            signature: Signature({ v: v, r: r, s: s }),
-            attester: signer,
-            deadline: deadline
-        });
-
-        vm.prank(signer);
-        bytes32 uid = proxy.attestByDelegation(request);
-        assertTrue(uid != bytes32(0), "Proxy attestation should succeed");
-
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, signer);
-        assertEq(attestation.recipient, requestData.recipient);
-    }
-
-    function _testDelegatedSignature(bytes32 schemaId) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
-        uint64 deadline = uint64(block.timestamp + 1 days);
-
-        uint256 signerKey = 0x12345;
-        address signer = vm.addr(signerKey);
-        vm.deal(signer, 100 ether);
-
-        bytes32 digest = _createAttestationDigest(
-            schemaId,
-            requestData,
-            signer,
-            deadline
-        );
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
-
-        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
-            schema: schemaId,
-            data: requestData,
-            signature: Signature({ v: v, r: r, s: s }),
-            attester: signer,
-            deadline: deadline
-        });
-
-        vm.prank(signer);
-        bytes32 uid = eas.attestByDelegation(request);
-        assertTrue(uid != bytes32(0), "Delegated attestation should succeed");
-
-        // Verify the attestation
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, signer);
-        assertEq(attestation.recipient, requestData.recipient);
-    }
-
-    function _getStructHash(
-        bytes32 schemaId,
-        AttestationRequestData memory data,
-        address attester,
-        uint64 deadline
-    ) internal pure returns (bytes32) {
-        return keccak256(
-            abi.encode(
-                keccak256(
-                    "Attest(bytes32 schema,address recipient,uint64 expirationTime,bool revocable,bytes32 refUID,bytes data,uint256 value,address attester,uint64 deadline)"
-                ),
-                schemaId,
-                data.recipient,
-                data.expirationTime,
-                data.revocable,
-                data.refUID,
-                keccak256(data.data),
-                data.value,
-                attester,
-                deadline
-            )
-        );
     }
 
 }
