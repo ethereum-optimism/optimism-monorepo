@@ -57,12 +57,13 @@ test-dev *ARGS: build-go-ffi
   FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
 # Starts a local anvil node with a mainnet fork and sends it to the background
-anvil-fork:
+# Calls anvil-fork-stop first to ensure a clean start.
+anvil-fork: anvil-fork-stop
   anvil --silent --fork-url $ETH_RPC_URL --port 8546 &
 
-# Stops the local anvil node
+# Stops any running anvil nodes. Does not fail if no anvil nodes are running.
 anvil-fork-stop:
-  pkill -9 anvil
+  pkill -9 anvil || true
 
 # Runs upgrade path variant of contract tests.
 test-upgrade *ARGS: build-go-ffi anvil-fork && anvil-fork-stop
