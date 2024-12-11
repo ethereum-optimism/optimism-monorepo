@@ -7,8 +7,10 @@
 // Use comments like "ruleid: <rule-id>" to assert that the rule catches the code.
 // Use comments like "ok: <rule-id>" to assert that the rule does not catch the code.
 
-/// NOTE: The order here is important, because the proxied natspec identifier is used below, it is seen as present for
-/// other tests after it's declaration and so we test for contracts without this natspec first
+/// NOTE: Semgrep limitations mean that the rule for this check is defined as a relatively loose regex that searches the
+/// remainder of the file after the `@custom:proxied` natspec tag is detected.
+/// This means that we must test the case without this natspec tag BEFORE the case with the tag or the rule will apply
+/// to the remainder of the file.
 
 // If no predeploy natspec, disableInitializers can or cannot be called in constructor
 contract SemgrepTest__sol_safety_use_disable_initializer {
