@@ -252,6 +252,9 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         // Ensure that the target call is payable if value is sent
         if (_value > 0) assumePayable(_target);
 
+        // Ensure that the target is not a forge address.
+        assumeNotForgeAddress(_target);
+
         // Ensure that the target contract does not revert
         vm.mockCall({ callee: _target, msgValue: _value, data: _message, returnData: abi.encode(true) });
 
