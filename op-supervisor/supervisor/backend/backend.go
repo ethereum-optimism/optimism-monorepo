@@ -76,7 +76,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 	chainsDBs := db.NewChainsDB(logger, depSet)
 
 	// create node controller
-	controllers := syncnode.NewSyncNodesController(logger, depSet)
+	controllers := syncnode.NewSyncNodesController(logger, depSet, chainsDBs)
 
 	// create the supervisor backend
 	super := &SupervisorBackend{

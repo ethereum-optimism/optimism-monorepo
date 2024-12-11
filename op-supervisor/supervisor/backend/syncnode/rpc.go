@@ -71,5 +71,7 @@ func (rs *RPCSyncNode) String() string {
 }
 
 func (rs *RPCSyncNode) TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-	panic("implement me")
+	err := rs.cl.CallContext(ctx, &ref, "interop_tryDeriveNext")
+	// the node only returns an error currently
+	return eth.BlockRef{}, err
 }

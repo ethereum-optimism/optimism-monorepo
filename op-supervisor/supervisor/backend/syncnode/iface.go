@@ -30,7 +30,6 @@ type SyncSource interface {
 
 type SyncControl interface {
 	TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
-	ChainID(ctx context.Context) (types.ChainID, error)
 }
 
 type SyncNode interface {
