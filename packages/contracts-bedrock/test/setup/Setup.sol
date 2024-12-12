@@ -129,7 +129,7 @@ contract Setup {
         if (vm.envOr("UPGRADE_TEST", false)) {
             string memory forkUrl = vm.envString("FORK_RPC_URL");
             isForkTest = true;
-            vm.createSelectFork(forkUrl);
+            vm.createSelectFork(forkUrl, 21387830);
             require(
                 block.chainid == Chains.Sepolia || block.chainid == Chains.Mainnet,
                 "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
