@@ -396,17 +396,15 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 	l.channelMgrMutex.Lock()
 	defer l.channelMgrMutex.Unlock()
 
-	blocks := l.channelMgr.blocks
-	channels := l.channelMgr.channelQueue
 	// Decide appropriate actions
-	syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, blocks, channels, l.Log)
+	syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.channelMgr.blocks, l.channelMgr.channelQueue, l.Log)
 
 	if outOfSync {
 		// If the sequencer is out of sync
 		// do nothing and wait to see if it has
 		// got in sync on the next tick.
 		l.Log.Warn("Sequencer is out of sync, retrying next tick.")
-		return nil
+		return syncActions.blocksToLoad
 	}
 
 	l.prevCurrentL1 = syncStatus.CurrentL1
