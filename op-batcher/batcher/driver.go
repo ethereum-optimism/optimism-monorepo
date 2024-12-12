@@ -105,7 +105,7 @@ type BatchSubmitter struct {
 	killCtx           context.Context
 	cancelKillCtx     context.CancelFunc
 
-	l2BlockAdded chan struct{} // notifies the throttling loop whenever an l2 block is added
+	pendingBytesUpdated chan int64 // notifies the throttling with the new pending bytes
 
 	mutex   sync.Mutex
 	running bool
@@ -300,7 +300,7 @@ func (l *BatchSubmitter) loadBlockIntoState(ctx context.Context, blockNumber uin
 
 	// notify the throttling loop it may be time to initiate throttling without blocking
 	select {
-	case l.l2BlockAdded <- struct{}{}:
+	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
 	default:
 	}
 
@@ -427,6 +427,11 @@ func (l *BatchSubmitter) syncAndPublish(syncStatus *eth.SyncStatus, queue *txmgr
 	}
 
 	l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
+	// signal (non blocking) to the throttling loop now we have potentially reduced the pending bytes
+	select {
+	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+	default:
+	}
 }
 
 // mainLoop periodically:
@@ -452,8 +457,8 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
 
-	l.l2BlockAdded = make(chan struct{})
-	defer close(l.l2BlockAdded)
+	l.pendingBytesUpdated = make(chan int64)
+	defer close(l.pendingBytesUpdated)
 
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
@@ -519,7 +524,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	ticker := time.NewTicker(l.Config.ThrottleInterval)
 	defer ticker.Stop()
 
-	updateParams := func() {
+	updateParams := func(pendingBytes int64) {
 		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
@@ -527,9 +532,6 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			l.Log.Error("Can't reach sequencer execution RPC", "err", err)
 			return
 		}
-		l.channelMgrMutex.Lock()
-		pendingBytes := l.channelMgr.PendingDABytes()
-		l.channelMgrMutex.Unlock()
 
 		maxTxSize := uint64(0)
 		maxBlockSize := l.Config.ThrottleAlwaysBlockSize
@@ -568,10 +570,8 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 
 	for {
 		select {
-		case <-l.l2BlockAdded:
-			updateParams()
-		case <-ticker.C:
-			updateParams()
+		case pendingBytes := <-l.pendingBytesUpdated:
+			updateParams(pendingBytes)
 		case <-ctx.Done():
 			l.Log.Info("DA throttling loop done")
 			return

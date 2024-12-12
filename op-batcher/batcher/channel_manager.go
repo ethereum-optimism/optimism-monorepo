@@ -148,7 +148,7 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 		}
 		s.rewindToBlock(blockID)
 	} else {
-		s.log.Debug("channelManager.handleChanneInvalidated: channel had no blocks")
+		s.log.Debug("channelManager.handleChannelInvalidated: channel had no blocks")
 	}
 
 	// Trim provided channel and any older channels:
