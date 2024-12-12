@@ -666,6 +666,13 @@ jobs:
           name: Build go-ffi
           command: just build-go-ffi
           working_directory: packages/contracts-bedrock
+      - when:
+          condition:
+            equal: ["<<parameters.test_upgrade>>", "true"]
+          steps:
+            - restore_cache:
+                name: Restore forked state
+                key: forked-state-contracts-bedrock-tests-upgrade
       - run:
           name: Run tests
           command: |
@@ -709,6 +716,15 @@ jobs:
           key: golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
           paths:
             - "/root/.cache/go-build"
+      - when:
+          condition:
+            equal: ["<<parameters.test_upgrade>>", "true"]
+          steps:
+            - save_cache:
+                name: Save forked state
+                key: forked-state-contracts-bedrock-tests-upgrade
+                paths:
+                  - "/root/.foundry/cache"
       - notify-failures-on-develop
 
   contracts-bedrock-checks:
