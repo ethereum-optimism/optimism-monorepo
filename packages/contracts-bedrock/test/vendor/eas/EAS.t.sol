@@ -1102,11 +1102,15 @@ function testSignatureVerificationTampering() public {
     /// @dev Tests attestations with varying data payload sizes.
     ///      Registers a simple boolean schema and tests attestations with three different data sizes:
     ///      1. Empty data (0 bytes)
-    ///      2. Small data (2 bytes)
-    ///      3. Large data (90 bytes)
+    ///      2. Small data (2-32 bytes)
+    ///      3. Large data (34-90 bytes)
     ///      Verifies that the system correctly handles and stores data of different sizes
     ///      by checking that stored attestation data matches the input data for each case
-    function testAttestationDataScenarios() public {
+    function testAttestationDataScenarios(string memory _smallTestData, string memory _mediumTestData) public {
+        vm.assume(bytes(_smallTestData).length > 2);
+        vm.assume(bytes(_smallTestData).length < 32);
+        vm.assume(bytes(_mediumTestData).length > 32);
+        vm.assume(bytes(_mediumTestData).length < 90);
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1115,11 +1119,9 @@ function testSignatureVerificationTampering() public {
 
         // Test with different data sizes
         bytes[] memory testData = new bytes[](3);
-        testData[0] = hex"";
-        testData[1] = hex"1234";
-        testData[
-            2
-        ] = hex"123456789012345678901234567890123456789012345678901234567890123456789012345678901234567890";
+            testData[0] = "";
+            testData[1] = bytes(_smallTestData);
+            testData[2] = bytes(_mediumTestData); 
 
         for (uint i = 0; i < testData.length; i++) {
             bytes32 uid = eas.attest(
