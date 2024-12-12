@@ -264,6 +264,9 @@ func (l *BatchSubmitter) loadBlocksIntoState(ctx context.Context, start, end uin
 		now           time.Time
 	)
 	if shouldRecover {
+		// When the sequencing window is expired, loadBlocksIntoState takes 36s(sees the logs here: https://discord.com/channels/1244729134312198194/1268238544493744210/1312431374442954812)
+		// to finish loading [start, end], we make sure loadBlocksIntoState only takes a fraction(e.g., 2s) of L1 block time(12 seconds),
+		// so that batcher has a chance to publish the batch before it's expired.
 		now = time.Now()
 		currentTimestamp := uint64(now.Unix())
 		l1HeadBlock, err := l.L1Client.BlockByNumber(ctx, nil)
