@@ -17,6 +17,7 @@ import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
+import { console } from "forge-std/console.sol";
 
 // Interfaces
 import { IOptimismMintableERC20Full } from "interfaces/universal/IOptimismMintableERC20Full.sol";
@@ -42,7 +43,6 @@ contract CommonTest is Test, Setup, Events {
     IOptimismMintableERC20Full L2Token;
     ILegacyMintableERC20Full LegacyL2Token;
     ERC20 NativeL2Token;
-    ERC20 BadL2Token;
     IOptimismMintableERC20Full RemoteL1Token;
 
     function setUp() public virtual override {
@@ -124,22 +124,19 @@ contract CommonTest is Test, Setup, Events {
         );
         vm.label(address(LegacyL2Token), "LegacyMintableERC20");
 
-        // Deploy the L2 ERC20 now
-        L2Token = IOptimismMintableERC20Full(
-            l2OptimismMintableERC20Factory.createStandardL2Token(
-                address(L1Token),
-                string(abi.encodePacked("L2-", L1Token.name())),
-                string(abi.encodePacked("L2-", L1Token.symbol()))
-            )
-        );
-
-        BadL2Token = ERC20(
-            l2OptimismMintableERC20Factory.createStandardL2Token(
-                address(1),
-                string(abi.encodePacked("L2-", L1Token.name())),
-                string(abi.encodePacked("L2-", L1Token.symbol()))
-            )
-        );
+        if (!isForkTest) {
+            // Deploy the L2 ERC20 now
+            L2Token = IOptimismMintableERC20Full(
+                l2OptimismMintableERC20Factory.createStandardL2Token(
+                    address(L1Token),
+                    string(abi.encodePacked("L2-", L1Token.name())),
+                    string(abi.encodePacked("L2-", L1Token.symbol()))
+                )
+            );
+        } else {
+            console.log("CommonTest: fork test detected, skipping L2 setup");
+            L2Token = IOptimismMintableERC20Full(makeAddr("L2Token"));
+        }
 
         NativeL2Token = new ERC20("Native L2 Token", "L2T");
 
