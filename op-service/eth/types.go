@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -628,3 +629,42 @@ const (
 	GetPayloadV2 EngineAPIMethod = "engine_getPayloadV2"
 	GetPayloadV3 EngineAPIMethod = "engine_getPayloadV3"
 )
+
+// StorageKey is a marshaling utility for hex-encoded storage keys, which can have leading 0s and are
+// an arbitrary length.
+type StorageKey []byte
+
+func (k *StorageKey) UnmarshalJSON(text []byte) error {
+	// unmarshal string that may have 0x prefix
+	var str string
+	if err := json.Unmarshal(text, &str); err != nil {
+		return err
+	}
+
+	if len(str)%2 != 0 {
+		// add leading 0 if odd length
+		if strings.HasPrefix(str, "0x") {
+			str = str[:2] + "0" + str[2:]
+		} else {
+			str = "0" + str
+		}
+	}
+
+	// decode hex string
+	b, err := hexutil.Decode(str)
+	if err != nil {
+		fmt.Println("here")
+		return err
+	}
+
+	*k = b
+	return nil
+}
+
+func (k StorageKey) MarshalJSON() ([]byte, error) {
+	return json.Marshal(hexutil.Encode(k))
+}
+
+func (k StorageKey) String() string {
+	return hexutil.Encode(k)
+}

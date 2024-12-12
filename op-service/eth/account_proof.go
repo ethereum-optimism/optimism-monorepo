@@ -13,7 +13,7 @@ import (
 )
 
 type StorageProofEntry struct {
-	Key   hexutil.Bytes   `json:"key"`
+	Key   StorageKey      `json:"key"`
 	Value hexutil.Big     `json:"value"`
 	Proof []hexutil.Bytes `json:"proof"`
 }
