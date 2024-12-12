@@ -132,7 +132,7 @@ contract Setup {
             vm.createSelectFork(forkUrl);
             require(
                 block.chainid == Chains.Sepolia || block.chainid == Chains.Mainnet,
-                "ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
+                "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
             );
 
             vm.etch(address(deploy), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));
