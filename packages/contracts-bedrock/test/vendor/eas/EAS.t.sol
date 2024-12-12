@@ -125,6 +125,17 @@ contract EASTest is CommonTest {
         schemaRegistry.register(schema, ISchemaResolver(address(0)), revocable);
         return schemaId;
     }
+       /// @dev Registers a test schema with specified parameters
+    function _registerFuzzSchema(
+        string memory schema,
+        address resolver,
+        bool revocable
+    ) internal returns (bytes32) {
+        bytes32 schemaId = _getSchemaUID(schema, resolver, revocable);
+        vm.prank(sender);
+        schemaRegistry.register(schema, ISchemaResolver(resolver), revocable);
+        return schemaId;
+    }
 
     /// @dev Returns the type hash for delegated attestations
     function getDelegatedAttestationTypeHash() internal pure returns (bytes32) {
@@ -342,7 +353,26 @@ contract EASTest is CommonTest {
             )
         );
     }
-
+    function _hasSpace(string memory str) internal pure returns (bool) {
+        bytes memory strBytes = bytes(str);
+        for (uint i = 0; i < strBytes.length; i++) {
+            if (strBytes[i] == 0x20)  // ASCII space
+                return true;
+        }
+        return false;
+}
+    function _isAlphanumeric(string memory str) internal pure returns (bool) {
+        bytes memory strBytes = bytes(str);
+        for (uint i = 0; i < strBytes.length; i++) {
+            bytes1 char = strBytes[i];
+            if (!(
+                (char >= 0x30 && char <= 0x39) || // 0-9
+                (char >= 0x41 && char <= 0x5A) || // A-Z
+                (char >= 0x61 && char <= 0x7A)    // a-z
+            )) return false;
+        }
+        return true;
+    }
     // =============================================================
     //                     SETUP
     // =============================================================
@@ -767,23 +797,73 @@ function testSignatureVerificationTampering() public {
     ///         - Verifies recipient address
     ///      Demonstrates core attestation flow with
     ///      standard schema and parameters
-    function testAttestation() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+    function testAttestation(
+        string memory _property1, 
+        uint256 _property2, 
+        bool _property3, 
+        address _resolver, 
+        bool _revocable
+    ) public {
+        // Input validation
+        vm.assume(bytes(_property1).length > 0);  // Not empty
+        vm.assume(bytes(_property1).length < 32);  // Not too long
+        vm.assume(!_hasSpace(_property1));         // No spaces
+        vm.assume(_isAlphanumeric(_property1));    // Only letters and numbers
+        emit log_string("=== Data Debug ===");
+        emit log_string(_property1);  // string value
+        emit log_named_uint("Age", _property2);  // uint256 value
+        emit log_string(_property3 ? "isStudent: true" : "isStudent: false");  // bool value
+
+                
+        // Number validation - keep it reasonable
+        vm.assume(_property2 < 1000000);  // Limit the size of uint256
+
+        // Create schema string using valid types from docs
+        string memory schema = 
+        "string name, uint256 age, bool isStudent";
+        // string.concat( 
+
+        //     "string ", 
+        //     _property1, 
+        //     ", uint256 ", // Changed from uint256 to uints per docs
+        //     vm.toString(_property2),  
+        //     ", bool ", 
+        //     _property3 ? "true" : "false"  
+        // );
+        // Basic string log
+
+        bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
+        emit log_string("=== Schema Debug ===");
+        emit log_string(schema);  // Schema string
+        emit log_named_address("Resolver", _resolver);
+        // For bool we need to convert to string
+        emit log_string(_revocable ? "Revocable: true" : "Revocable: false");
+        emit log_named_bytes32("Schema ID", schemaId);
+
+        vm.mockCall(
+            _resolver,
+            abi.encodeWithSelector(ISchemaResolver.attest.selector),
+            abi.encode(true)
+        );
+
 
         vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
 
-        uint64 expirationTime = uint64(block.timestamp + 30 days);
-        bytes memory data = hex"1234";
+        // Encode data according to schema
+        bytes memory data = abi.encode(
+            _property1,    // string
+            _property2,    // uint
+            _property3     // bool
+        );
 
         bytes32 uid = eas.attest(
             AttestationRequest({
                 schema: schemaId,
-                data: AttestationRequestData({
+                data: AttestationRequestData({  
                     recipient: recipient,
-                    expirationTime: expirationTime,
-                    revocable: true,
+                    expirationTime: uint64(block.timestamp + 30 days),
+                    revocable: _revocable,
                     refUID: ZERO_BYTES32,
                     data: data,
                     value: 0
