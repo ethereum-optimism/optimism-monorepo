@@ -813,24 +813,12 @@ function testSignatureVerificationTampering() public {
         emit log_string(_property1);  // string value
         emit log_named_uint("Age", _property2);  // uint256 value
         emit log_string(_property3 ? "isStudent: true" : "isStudent: false");  // bool value
-
-                
         // Number validation - keep it reasonable
         vm.assume(_property2 < 1000000);  // Limit the size of uint256
 
         // Create schema string using valid types from docs
         string memory schema = 
         "string name, uint256 age, bool isStudent";
-        // string.concat( 
-
-        //     "string ", 
-        //     _property1, 
-        //     ", uint256 ", // Changed from uint256 to uints per docs
-        //     vm.toString(_property2),  
-        //     ", bool ", 
-        //     _property3 ? "true" : "false"  
-        // );
-        // Basic string log
 
         bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
         emit log_string("=== Schema Debug ===");
@@ -880,7 +868,7 @@ function testSignatureVerificationTampering() public {
     /// @dev Tests attestation with empty schema registration.
     ///      1. Setup:
     ///         - Creates schema ID with empty string
-    ///         - Registers empty schema without resolver
+    ///         - Registers empty schema with resolver
     ///      2. Attestation:
     ///         - Creates attestation with 30-day expiration
     ///         - Uses empty schema ID
@@ -889,14 +877,19 @@ function testSignatureVerificationTampering() public {
     ///         - Verifies recipient address
     ///      Demonstrates system handles empty schemas correctly,
     ///      allowing attestations without schema definitions
-    function testAttestationWithoutSchema() public {
-        bytes32 schemaId = _getSchemaUID("", address(0), true);
+    function testAttestationWithoutSchema(address _resolver, bool _revocable) public {
+        bytes32 schemaId = _getSchemaUID("", _resolver, _revocable);
 
         vm.startPrank(sender);
-        schemaRegistry.register("", ISchemaResolver(address(0)), true);
+        schemaRegistry.register("", ISchemaResolver(_resolver), _revocable);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
+         vm.mockCall(
+            _resolver,
+            abi.encodeWithSelector(ISchemaResolver.attest.selector),
+            abi.encode(true)
+        );
 
         bytes32 uid = eas.attest(
             AttestationRequest({
@@ -904,7 +897,7 @@ function testSignatureVerificationTampering() public {
                 data: AttestationRequestData({
                     recipient: recipient,
                     expirationTime: expirationTime,
-                    revocable: true,
+                    revocable: _revocable,
                     refUID: ZERO_BYTES32,
                     data: data,
                     value: 0
@@ -931,21 +924,30 @@ function testSignatureVerificationTampering() public {
     ///         - Validates schema ID matches
     ///      Demonstrates attestation flow with resolver integration,
     ///      ensuring resolver-enabled schemas work correctly
-    function testAttestationWithResolver() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
+    function testAttestationWithResolver(        
+        string memory _property1, 
+        uint256 _property2, 
+        bool _property3,  
+        bool _revocable) public {
+        string memory schema = "string name, uint256 age, bool isStudent";
+        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), _revocable);
 
         vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(payableResolver), true);
-
+        schemaRegistry.register(schema, ISchemaResolver(payableResolver), _revocable);
+        // Encode data according to schema
+            bytes memory data = abi.encode(
+                _property1,    // string
+                _property2,    // uint
+                _property3     // bool
+            );
         AttestationRequest memory request = AttestationRequest({
             schema: schemaId,
             data: AttestationRequestData({
                 recipient: recipient,
                 expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
+                revocable: _revocable,
                 refUID: ZERO_BYTES32,
-                data: hex"1234",
+                data: data,
                 value: 0
             })
         });
@@ -972,15 +974,24 @@ function testSignatureVerificationTampering() public {
     ///      Demonstrates attestation flow for schemas without
     ///      resolver integration, ensuring basic schema
     ///      functionality works independently
-    function testAttestationWithoutResolver() public {
-        string memory schema = "bool hasPhoneNumber, bytes32 phoneHash";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+    function testAttestationWithoutResolver(        
+        string memory _property1, 
+        uint256 _property2, 
+        bool _property3, 
+        bool _revocable) public {
+       string memory schema = 
+        "string name, uint256 age, bool isStudent";
 
+        bytes32 schemaId = _getSchemaUID(schema, address(0), _revocable);
         vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), _revocable);
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
-        bytes memory data = hex"1234";
+            bytes memory data = abi.encode(
+            _property1, 
+            _property2, 
+            _property3  
+        );
 
         bytes32 uid = eas.attest(
             AttestationRequest({
@@ -988,7 +999,7 @@ function testSignatureVerificationTampering() public {
                 data: AttestationRequestData({
                     recipient: recipient,
                     expirationTime: expirationTime,
-                    revocable: true,
+                    revocable: _revocable,
                     refUID: ZERO_BYTES32,
                     data: data,
                     value: 0
