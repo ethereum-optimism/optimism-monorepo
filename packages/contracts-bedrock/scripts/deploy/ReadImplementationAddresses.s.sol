@@ -7,21 +7,21 @@ import { Script } from "forge-std/Script.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { DeployOPChainOutput } from "scripts/deploy/DeployOPChain.s.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { IStaticL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 
 contract ReadImplementationAddressesInput is DeployOPChainOutput {
-    OPContractsManager internal _opcm;
+    IOPContractsManager internal _opcm;
 
     function set(bytes4 _sel, address _addr) public override {
         require(_addr != address(0), "ReadImplementationAddressesInput: cannot set zero address");
-        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
+        if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
         else if (_sel == this.addressManager.selector) _addressManager = IAddressManager(_addr);
         else super.set(_sel, _addr);
     }
 
-    function opcm() public view returns (OPContractsManager) {
+    function opcm() public view returns (IOPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
     }

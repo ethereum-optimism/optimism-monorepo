@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
 import { Script } from "forge-std/Script.sol";
 
@@ -18,7 +18,7 @@ import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -26,7 +26,6 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 
-import { OPContractsManagerInterop } from "src/L1/OPContractsManagerInterop.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
@@ -156,7 +155,7 @@ contract DeployImplementationsInput is BaseDeployIO {
 }
 
 contract DeployImplementationsOutput is BaseDeployIO {
-    OPContractsManager internal _opcm;
+    IOPContractsManager internal _opcm;
     IDelayedWETH internal _delayedWETHImpl;
     IOptimismPortal2 internal _optimismPortalImpl;
     IPreimageOracle internal _preimageOracleSingleton;
@@ -172,7 +171,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
 
         // forgefmt: disable-start
-        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
+        if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
@@ -212,7 +211,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         assertValidDeploy(_dii);
     }
 
-    function opcm() public view returns (OPContractsManager) {
+    function opcm() public view returns (IOPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
     }
@@ -283,7 +282,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     }
 
     function assertValidOpcm(DeployImplementationsInput _dii) internal view {
-        OPContractsManager impl = OPContractsManager(address(opcm()));
+        IOPContractsManager impl = IOPContractsManager(address(opcm()));
         require(address(impl.superchainConfig()) == address(_dii.superchainConfigProxy()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_dii.protocolVersionsProxy()), "OPCMI-20");
     }
@@ -443,17 +442,17 @@ contract DeployImplementations is Script {
     function createOPCMContract(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
-        OPContractsManager.Blueprints memory _blueprints,
+        IOPContractsManager.Blueprints memory _blueprints,
         string memory _l1ContractsRelease
     )
         internal
         virtual
-        returns (OPContractsManager opcm_)
+        returns (IOPContractsManager opcm_)
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
 
-        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
+        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -466,10 +465,17 @@ contract DeployImplementations is Script {
         });
 
         vm.broadcast(msg.sender);
-        opcm_ = new OPContractsManager(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
+        opcm_ = IOPContractsManager(
+            DeployUtils.create1({
+                _name: "OPContractsManager",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOPContractsManager.__constructor__,
+                        (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                    )
+                )
+            })
         );
-
         vm.label(address(opcm_), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm_));
     }
@@ -484,16 +490,16 @@ contract DeployImplementations is Script {
         string memory l1ContractsRelease = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "op_contracts_manager";
-        OPContractsManager opcm;
+        IOPContractsManager opcm;
 
         address existingImplementation = getReleaseAddress(l1ContractsRelease, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
-            opcm = OPContractsManager(existingImplementation);
+            opcm = IOPContractsManager(existingImplementation);
         } else {
             // First we deploy the blueprints for the singletons deployed by OPCM.
             // forgefmt: disable-start
             bytes32 salt = _dii.salt();
-            OPContractsManager.Blueprints memory blueprints;
+            IOPContractsManager.Blueprints memory blueprints;
 
             vm.startBroadcast(msg.sender);
             blueprints.addressManager = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("AddressManager")), salt);
@@ -942,18 +948,18 @@ contract DeployImplementationsInterop is DeployImplementations {
     function createOPCMContract(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
-        OPContractsManager.Blueprints memory _blueprints,
+        IOPContractsManager.Blueprints memory _blueprints,
         string memory _l1ContractsRelease
     )
         internal
         virtual
         override
-        returns (OPContractsManager opcm_)
+        returns (IOPContractsManager opcm_)
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
 
-        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
+        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -966,10 +972,17 @@ contract DeployImplementationsInterop is DeployImplementations {
         });
 
         vm.broadcast(msg.sender);
-        opcm_ = new OPContractsManagerInterop(
-            superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
+        opcm_ = IOPContractsManager(
+            DeployUtils.create1({
+                _name: "OPContractsManagerInterop",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOPContractsManager.__constructor__,
+                        (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                    )
+                )
+            })
         );
-
         vm.label(address(opcm_), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm_));
     }

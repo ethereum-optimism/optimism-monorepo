@@ -8,9 +8,6 @@ import { console2 as console } from "forge-std/console2.sol";
 // Scripts
 import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Interfaces
 import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
@@ -19,6 +16,7 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 /// @title Specification_Test
 /// @dev Specifies common security properties of entrypoints to L1 contracts, including authorization and
@@ -839,10 +837,10 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("OUTPUT_VERSION()") });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.implementations.selector });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
@@ -850,10 +848,10 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("OUTPUT_VERSION()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.implementations.selector });
 
         // DeputyGuardianModule
         _addSpec({

@@ -30,7 +30,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 library ChainAssertions {
     Vm internal constant vm = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
@@ -559,7 +559,7 @@ library ChainAssertions {
 
     /// @notice Asserts that the SuperchainConfig is setup correctly
     function checkOPContractsManager(Types.ContractSet memory _contracts, bool _isProxy) internal view {
-        OPContractsManager opcm = OPContractsManager(_contracts.OPContractsManager);
+        IOPContractsManager opcm = IOPContractsManager(_contracts.OPContractsManager);
         console.log(
             "Running chain assertions on the OPContractsManager %s at %s",
             _isProxy ? "proxy" : "implementation",

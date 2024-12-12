@@ -1,10 +1,13 @@
 // SPDX-License-Identifier: MIT
-pragma solidity 0.8.15;
+pragma solidity ^0.8.0;
 
-import { Types } from "src/libraries/Types.sol";
+// Forge
 import { Vm } from "forge-std/Vm.sol";
+
+// Libraries
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { Process } from "scripts/libraries/Process.sol";
+import { Types } from "src/libraries/Types.sol";
 
 /// @title FFIInterface
 /// @notice This contract is set into state using `etch` and therefore must not have constructor logic.

@@ -24,9 +24,6 @@ import {
     DeployImplementationsOutput
 } from "scripts/deploy/DeployImplementations.s.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { Types } from "scripts/libraries/Types.sol";
@@ -52,6 +49,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 /// @title Deploy
 /// @notice Script used to deploy a bedrock system. The entire system is deployed within the `run` function.
@@ -376,10 +374,10 @@ contract Deploy is Deployer {
 
         // Ensure that the requisite contracts are deployed
         address superchainConfigProxy = mustGetAddress("SuperchainConfigProxy");
-        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager"));
+        IOPContractsManager opcm = IOPContractsManager(mustGetAddress("OPContractsManager"));
 
-        OPContractsManager.DeployInput memory deployInput = getDeployInput();
-        OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
+        IOPContractsManager.DeployInput memory deployInput = getDeployInput();
+        IOPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
 
         // Save all deploy outputs from the OPCM, in the order they are declared in the DeployOutput struct
         save("ProxyAdmin", address(deployOutput.opChainProxyAdmin));
@@ -969,7 +967,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Get the DeployInput struct to use for testing
-    function getDeployInput() public view returns (OPContractsManager.DeployInput memory) {
+    function getDeployInput() public view returns (IOPContractsManager.DeployInput memory) {
         OutputRoot memory testOutputRoot = OutputRoot({
             root: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
             l2BlockNumber: cfg.faultGameGenesisBlock()
@@ -989,8 +987,8 @@ contract Deploy is Deployer {
         startingAnchorRoots[4] =
             IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.ALPHABET, outputRoot: testOutputRoot });
         string memory saltMixer = "salt mixer";
-        return OPContractsManager.DeployInput({
-            roles: OPContractsManager.Roles({
+        return IOPContractsManager.DeployInput({
+            roles: IOPContractsManager.Roles({
                 opChainProxyAdminOwner: msg.sender,
                 systemConfigOwner: cfg.finalSystemOwner(),
                 batcher: cfg.batchSenderAddress(),

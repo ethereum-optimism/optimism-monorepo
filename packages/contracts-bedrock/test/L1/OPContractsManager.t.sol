@@ -9,6 +9,7 @@ import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 // Exposes internal functions for testing.
 contract OPContractsManager_Harness is OPContractsManager {
@@ -65,9 +66,13 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
 
     // This helper function is used to convert the input struct type defined in DeployOPChain.s.sol
     // to the input struct type defined in OPContractsManager.sol.
-    function toOPCMDeployInput(DeployOPChainInput _doi) internal view returns (OPContractsManager.DeployInput memory) {
-        return OPContractsManager.DeployInput({
-            roles: OPContractsManager.Roles({
+    function toOPCMDeployInput(DeployOPChainInput _doi)
+        internal
+        view
+        returns (IOPContractsManager.DeployInput memory)
+    {
+        return IOPContractsManager.DeployInput({
+            roles: IOPContractsManager.Roles({
                 opChainProxyAdminOwner: _doi.opChainProxyAdminOwner(),
                 systemConfigOwner: _doi.systemConfigOwner(),
                 batcher: _doi.batcher(),
@@ -91,14 +96,14 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
     }
 
     function test_deploy_l2ChainIdEqualsZero_reverts() public {
-        OPContractsManager.DeployInput memory deployInput = toOPCMDeployInput(doi);
+        IOPContractsManager.DeployInput memory deployInput = toOPCMDeployInput(doi);
         deployInput.l2ChainId = 0;
         vm.expectRevert(OPContractsManager.InvalidChainId.selector);
         opcm.deploy(deployInput);
     }
 
     function test_deploy_l2ChainIdEqualsCurrentChainId_reverts() public {
-        OPContractsManager.DeployInput memory deployInput = toOPCMDeployInput(doi);
+        IOPContractsManager.DeployInput memory deployInput = toOPCMDeployInput(doi);
         deployInput.l2ChainId = block.chainid;
 
         vm.expectRevert(OPContractsManager.InvalidChainId.selector);

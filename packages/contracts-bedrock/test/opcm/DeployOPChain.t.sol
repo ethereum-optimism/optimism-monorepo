@@ -24,7 +24,7 @@ import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
 
 import { Claim, Duration, GameType, GameTypes, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
@@ -337,7 +337,7 @@ contract DeployOPChain_TestBase is Test {
     uint32 blobBaseFeeScalar = 200;
     uint256 l2ChainId = 300;
     IAnchorStateRegistry.StartingAnchorRoot[] startingAnchorRoots;
-    OPContractsManager opcm = OPContractsManager(address(0));
+    IOPContractsManager opcm = IOPContractsManager(address(0));
     string saltMixer = "defaultSaltMixer";
     uint64 gasLimit = 60_000_000;
     // Configurable dispute game parameters.
