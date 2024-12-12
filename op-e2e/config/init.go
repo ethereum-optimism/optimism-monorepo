@@ -519,7 +519,7 @@ func cannonPrestate(monorepoRoot string) common.Hash {
 	if cannonVMType() == state.VMTypeCannon1 {
 		filename = "prestate-proof-st.json"
 	} else {
-		filename = "prestate-proof-st.json"
+		filename = "prestate-proof-mt.json"
 	}
 
 	f, err := os.Open(path.Join(monorepoRoot, "op-program", "bin", filename))
