@@ -521,8 +521,6 @@ func (l *BatchSubmitter) processReceiptsLoop(ctx context.Context, receiptsCh cha
 func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	defer l.wg.Done()
 	l.Log.Info("Starting DA throttling loop")
-	ticker := time.NewTicker(l.Config.ThrottleInterval)
-	defer ticker.Stop()
 
 	updateParams := func(pendingBytes int64) {
 		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
