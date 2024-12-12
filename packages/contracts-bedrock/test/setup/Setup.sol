@@ -125,7 +125,7 @@ contract Setup {
     ///      will also need to include the bytecode for the Deploy contract.
     ///      This is a hack as we are pushing solidity to the edge.
     function setUp() public virtual {
-        console.log("L1 setup start!");
+        console.log("Setup: L1 setup start!");
         if (vm.envOr("UPGRADE_TEST", false)) {
             string memory forkUrl = vm.envString("FORK_RPC_URL");
             isForkTest = true;
@@ -143,13 +143,17 @@ contract Setup {
         vm.allowCheatcodes(address(deploy));
         deploy.setUp();
 
-        console.log("L1 setup done!");
+        console.log("Setup: L1 setup done!");
 
-        console.log("L2 setup start!");
-        vm.etch(address(l2Genesis), vm.getDeployedCode("L2Genesis.s.sol:L2Genesis"));
-        vm.allowCheatcodes(address(l2Genesis));
-        l2Genesis.setUp();
-        console.log("L2 setup done!");
+        if (isForkTest) {
+            console.log("Setup: fork test detected, skipping L2 setup");
+        } else {
+            console.log("Setup: L2 setup start!");
+            vm.etch(address(l2Genesis), vm.getDeployedCode("L2Genesis.s.sol:L2Genesis"));
+            vm.allowCheatcodes(address(l2Genesis));
+            l2Genesis.setUp();
+            console.log("Setup: L2 setup done!");
+        }
     }
 
     /// @dev Sets up the L1 contracts.

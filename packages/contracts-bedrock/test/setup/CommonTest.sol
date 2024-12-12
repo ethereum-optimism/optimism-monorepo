@@ -91,8 +91,13 @@ contract CommonTest is Test, Setup, Events {
 
         // Deploy L1
         Setup.L1();
-        // Deploy L2
-        Setup.L2();
+        if (isForkTest) {
+            console.log("CommonTest: fork test detected, skipping L2 setup");
+        } else {
+            console.log("CommonTest: L2 setup start!");
+            // Deploy L2
+            Setup.L2();
+        }
 
         // Call bridge initializer setup function
         bridgeInitializerSetUp();
