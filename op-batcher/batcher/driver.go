@@ -568,9 +568,13 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 		}
 	}
 
+	cachedPendingBytes := int64(0)
 	for {
 		select {
+		case <-ticker.C:
+			updateParams(int64(cachedPendingBytes))
 		case pendingBytes := <-l.pendingBytesUpdated:
+			cachedPendingBytes = pendingBytes
 			updateParams(pendingBytes)
 		case <-ctx.Done():
 			l.Log.Info("DA throttling loop done")
