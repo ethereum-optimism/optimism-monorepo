@@ -1151,10 +1151,21 @@ function testSignatureVerificationTampering() public {
     ///      Verifies all attestation fields are correctly stored for both cases, including
     ///      recipients, expiration times, revocability, reference UIDs, and attached data.
     ///      Also tests value transfer functionality with the resolver contract
-    function testDetailedAttestationScenarios() public {
+    function testDetailedAttestationScenarios(
+        address _recipient,
+        uint256 _expirationOffset,
+        bytes memory _data1,
+        bytes memory _data2
+    ) public {
+        // Fixed schema
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
+        // Fuzzing input validation
+        vm.assume(_recipient != address(0)); // Ensure recipient is not the zero address
+        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
+        vm.assume(_data1.length > 0 && _data1.length <= 32); 
+        vm.assume(_data2.length > 0 && _data2.length <= 32);
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
@@ -1167,10 +1178,10 @@ function testSignatureVerificationTampering() public {
                 schema: schemaId,
                 data: AttestationRequestData({
                     recipient: address(0),
-                    expirationTime: 0,
+                    expirationTime: 0, // This may need to be adjusted if zero is invalid
                     revocable: true,
                     refUID: bytes32(0),
-                    data: hex"1234",
+                    data: _data1, // Use fuzzed data
                     value: 0
                 })
             })
@@ -1181,11 +1192,11 @@ function testSignatureVerificationTampering() public {
             AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 365 days),
+                    recipient: _recipient, // Use fuzzed recipient
+                    expirationTime: uint64(block.timestamp + _expirationOffset), // Ensure this is a future time
                     revocable: true,
                     refUID: uid1,
-                    data: hex"5678",
+                    data: _data2, // Use fuzzed data
                     value: value
                 })
             })
@@ -1194,34 +1205,29 @@ function testSignatureVerificationTampering() public {
         // Verify first attestation
         Attestation memory attestation1 = eas.getAttestation(uid1);
         assertEq(attestation1.recipient, address(0));
-        assertEq(attestation1.expirationTime, 0);
+        assertEq(attestation1.expirationTime, 0); // Check if this is valid
         assertTrue(attestation1.revocable);
         assertEq(attestation1.refUID, bytes32(0));
-        assertEq(attestation1.data, hex"1234");
+        assertEq(attestation1.data, _data1);
 
         // Verify second attestation
         Attestation memory attestation2 = eas.getAttestation(uid2);
-        assertEq(attestation2.recipient, recipient);
+        assertEq(attestation2.recipient, _recipient);
         assertEq(
             attestation2.expirationTime,
-            uint64(block.timestamp + 365 days)
+            uint64(block.timestamp + _expirationOffset)
         );
         assertTrue(attestation2.revocable);
         assertEq(attestation2.refUID, uid1);
-        assertEq(attestation2.data, hex"5678");
+        assertEq(attestation2.data, _data2);
 
         vm.stopPrank();
     }
 
-    /// @dev Tests attestation behavior with different expiration time scenarios.
-    ///      Sets block timestamp to 1000000 and tests four cases:
-    ///      1. No expiration (0)
-    ///      2. Short expiration (1 day)
-    ///      3. Long expiration (365 days)
-    ///      4. Already expired time (past timestamp)
-    ///      Verifies successful storage for valid expiration times and confirms
-    ///      rejection of expired timestamps. Includes debug logging for timestamp
-    ///      verification and troubleshooting of expiration-related issues
+    /// @dev Tests the behavior of the attestation system with respect to detailed scenarios.
+    ///      1. Registers a fixed schema for attestations.
+    ///      2. Creates two attestations with varying parameters.
+    ///      3. Verifies the properties of both attestations to ensure correctness.
     function testAttestationExpirationScenarios() public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -1287,8 +1293,8 @@ function testSignatureVerificationTampering() public {
     ///      1. getTimestamp returns 0 for unregistered attestation data
     ///      2. getRevokeOffchain returns 0 for unregistered revocation data
     ///      Ensures system handles queries for non-existent data gracefully
-    function testUnregisteredDataScenarios() public view {
-        bytes32 unregisteredData = keccak256("unregistered");
+    function testUnregisteredDataScenarios(string memory _unregisteredData) public view {
+        bytes32 unregisteredData = keccak256(abi.encodePacked(_unregisteredData));
 
         // Should return 0 for unregistered timestamp
         assertEq(eas.getTimestamp(unregisteredData), 0);
