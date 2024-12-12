@@ -64,16 +64,12 @@ test-upgrade *ARGS: build-go-ffi
     forge test {{ARGS}}
 
 # Starts a local anvil node with a mainnet fork and sends it to the background
-# Calls anvil-fork-stop first to ensure a clean start.
 # Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
-anvil-fork: anvil-fork-stop
+anvil-fork:
   anvil --silent --fork-url $ETH_RPC_URL --port 8546 &
 
-# Stops any running anvil nodes. Does not fail if no anvil nodes are running.
-anvil-fork-stop:
-  pkill -9 anvil || true
-
-test-upgrade-against-anvil *ARGS: build-go-ffi anvil-fork && anvil-fork-stop
+# Use anvil-fork in a separate terminal before running this command.
+test-upgrade-against-anvil *ARGS: build-go-ffi
   FORK_RPC_URL=http://127.0.0.1:8546 \
     UPGRADE_TEST=true \
     forge test {{ARGS}}
