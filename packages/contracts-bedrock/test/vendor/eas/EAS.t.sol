@@ -1228,55 +1228,39 @@ function testSignatureVerificationTampering() public {
     ///      1. Registers a fixed schema for attestations.
     ///      2. Creates two attestations with varying parameters.
     ///      3. Verifies the properties of both attestations to ensure correctness.
-    function testAttestationExpirationScenarios() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+function testAttestationExpirationScenarios(
+    address _recipient,          // Fuzzed recipient address
+    uint256 _validExpirationOffset, // Fuzzed valid expiration offset (in seconds)
+    uint256 _invalidExpirationOffset // Fuzzed invalid expiration offset (to test reverts)
+) public {
+    // Fixed schema
+    string memory schema = "bool like";
+    bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+    // Fuzzing input validation
+    vm.assume(_recipient != address(0)); // Ensure recipient is not the zero address
+    vm.assume(_validExpirationOffset > 0 && _validExpirationOffset <= 365 days); // Ensure valid expiration offset
+    vm.assume(_invalidExpirationOffset > 365 days); // Ensure invalid expiration offset is greater than 1 year
 
-        // Set a specific block timestamp first
-        vm.warp(1000000);
+    vm.startPrank(sender);
+    schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
-        uint64[] memory expirationTimes = new uint64[](4);
-        expirationTimes[0] = 0; // No expiration
-        expirationTimes[1] = uint64(block.timestamp + 1 days);
-        expirationTimes[2] = uint64(block.timestamp + 365 days);
+    // Set a specific block timestamp first
+    vm.warp(1000000);
 
-        for (uint i = 0; i < expirationTimes.length; i++) {
-            bytes32 uid = eas.attest(
-                AttestationRequest({
-                    schema: schemaId,
-                    data: AttestationRequestData({
-                        recipient: recipient,
-                        expirationTime: expirationTimes[i],
-                        revocable: true,
-                        refUID: bytes32(0),
-                        data: hex"1234",
-                        value: 0
-                    })
-                })
-            );
+    // Test with valid expiration times
+    uint64[] memory expirationTimes = new uint64[](3);
+    expirationTimes[0] = 0; // No expiration
+    expirationTimes[1] = uint64(block.timestamp + _validExpirationOffset); // Valid future expiration
+    expirationTimes[2] = uint64(block.timestamp + 365 days); // Valid future expiration
 
-            Attestation memory attestation = eas.getAttestation(uid);
-            assertEq(attestation.expirationTime, expirationTimes[i]);
-        }
-
-        // Test with an expired time (should revert)
-        uint64 expiredTime = uint64(block.timestamp - 100); // Make sure it's definitely expired
-
-        // Add debug logs
-        emit log_named_uint("Current block timestamp", block.timestamp);
-        emit log_named_uint("Expired time", expiredTime);
-        emit log_named_bytes32("Schema ID", schemaId);
-
-        vm.expectRevert(InvalidExpirationTime.selector);
-        eas.attest(
+    for (uint i = 0; i < expirationTimes.length; i++) {
+        bytes32 uid = eas.attest(
             AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: expiredTime,
+                    recipient: _recipient, // Use fuzzed recipient
+                    expirationTime: expirationTimes[i], // Use valid expiration times
                     revocable: true,
                     refUID: bytes32(0),
                     data: hex"1234",
@@ -1285,8 +1269,34 @@ function testSignatureVerificationTampering() public {
             })
         );
 
-        vm.stopPrank();
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertEq(attestation.expirationTime, expirationTimes[i]); // Verify expiration time matches
     }
+
+    // Test with an expired time (should revert)
+    uint64 expiredTime = uint64(block.timestamp - 100); // Make sure it's definitely expired
+
+    // Add debug logs
+    emit log_named_uint("Current block timestamp", block.timestamp);
+    emit log_named_uint("Expired time", expiredTime);
+    emit log_named_bytes32("Schema ID", schemaId);
+
+    vm.expectRevert(InvalidExpirationTime.selector);
+    eas.attest(
+        AttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: _recipient, // Use fuzzed recipient
+                expirationTime: expiredTime, // Use expired time
+                revocable: true,
+                refUID: bytes32(0),
+                data: hex"1234",
+                value: 0
+            })
+        })
+    );
+    vm.stopPrank();
+}
 
     /// @dev Tests behavior when querying non-existent (unregistered) data.
     ///      Verifies two scenarios:
@@ -1313,7 +1323,8 @@ function testSignatureVerificationTampering() public {
     ///         - Confirms revert with NotFound error
     ///      Ensures system properly validates referenced attestations,
     ///      preventing attestations that reference non-existent UIDs
-    function testInvalidAttestationData() public {
+    function testInvalidAttestationData(uint256 _nonExistentUID) public {
+        vm.assume(_nonExistentUID > 0);
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1321,7 +1332,7 @@ function testSignatureVerificationTampering() public {
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Test with non-existent reference UID
-        bytes32 nonExistentUID = bytes32(uint256(1));
+        bytes32 nonExistentUID = bytes32(_nonExistentUID);
 
         vm.expectRevert(NotFound.selector);
         eas.attest(
