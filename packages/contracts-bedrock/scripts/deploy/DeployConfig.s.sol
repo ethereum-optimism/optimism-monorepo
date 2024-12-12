@@ -141,7 +141,7 @@ contract DeployConfig is Script {
         basefeeScalar = uint32(_readOr(_json, "$.gasPriceOracleBaseFeeScalar", 1368));
         blobbasefeeScalar = uint32(_readOr(_json, "$.gasPriceOracleBlobBaseFeeScalar", 810949));
 
-        enableGovernance = stdJson.readBool(_json, "$.enableGovernance");
+        enableGovernance = _readOr(_json, "$.enableGovernance", false);
         eip1559Denominator = stdJson.readUint(_json, "$.eip1559Denominator");
         eip1559Elasticity = stdJson.readUint(_json, "$.eip1559Elasticity");
         systemConfigStartBlock = stdJson.readUint(_json, "$.systemConfigStartBlock");
