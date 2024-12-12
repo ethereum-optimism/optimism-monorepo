@@ -28,7 +28,7 @@ func TestMain(m *testing.M) {
 	op_e2e.RunMain(m)
 }
 
-// TestERC20BridgeDeposits tests the the L1StandardBridge bridge ERC20
+// TestERC20BridgeDeposits tests the L1StandardBridge bridge ERC20
 // functionality.
 func TestERC20BridgeDeposits(t *testing.T) {
 	op_e2e.InitParallel(t)

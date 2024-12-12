@@ -394,7 +394,7 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice Loads a subword of byteLength size contained from memory based on the low-order bits of vaddr
-    /// @param _vaddr The virtual address of the the subword.
+    /// @param _vaddr The virtual address of the subword.
     /// @param _byteLength The size of the subword.
     /// @param _signExtend Whether to sign extend the selected subwrod.
     function loadSubWord(

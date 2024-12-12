@@ -855,7 +855,7 @@ library MIPS64Instructions {
     }
 
     /// @notice Selects a subword of byteLength size contained in memWord based on the low-order bits of vaddr
-    /// @param _vaddr The virtual address of the the subword.
+    /// @param _vaddr The virtual address of the subword.
     /// @param _memWord The full word to select a subword from.
     /// @param _byteLength The size of the subword.
     /// @param _signExtend Whether to sign extend the selected subwrod.
