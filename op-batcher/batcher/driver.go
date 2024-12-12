@@ -392,7 +392,7 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 
 // syncAndPrune computes actions to take based on the current sync status, prunes the channel manager state
 // and returns blocks to load.
-func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) *inclusiveBlockRange {
+func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBlockRange {
 	l.channelMgrMutex.Lock()
 	defer l.channelMgrMutex.Unlock()
 
@@ -464,7 +464,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			blocksToLoad := l.syncAndPrune(syncStatus, queue, receiptsCh, daGroup)
+			blocksToLoad := l.syncAndPrune(syncStatus)
 
 			if blocksToLoad != nil {
 				// Get fresh unsafe blocks
