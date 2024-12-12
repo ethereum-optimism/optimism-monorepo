@@ -631,7 +631,7 @@ jobs:
         description: Profile to use for testing
         type: string
         default: ci
-      upgrade_test:
+      test_upgrade:
         description: Whether to run upgrade tests
         type: string
         default: ""
@@ -682,7 +682,7 @@ jobs:
             fi
           environment:
             FOUNDRY_PROFILE: <<parameters.test_profile>>
-            UPGRADE_TEST: <<parameters.upgrade_test>>
+            UPGRADE_TEST: <<parameters.test_upgrade>>
           working_directory: packages/contracts-bedrock
           no_output_timeout: <<parameters.test_timeout>>
       - run:
@@ -1214,7 +1214,7 @@ workflows:
           # Test everything except PreimageOracle.t.sol since it's slow.
           name: contracts-bedrock-tests-upgrade
           test_list: find test -name "*.t.sol" -not -name "PreimageOracle.t.sol"
-          upgrade_test: "true"
+          test_upgrade: "true"
       - contracts-bedrock-tests:
           # PreimageOracle test is slow, run it separately to unblock CI.
           name: contracts-bedrock-tests-preimage-oracle
