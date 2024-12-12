@@ -57,9 +57,26 @@ test-dev *ARGS: build-go-ffi
   FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
 # Runs upgrade path variant of contract tests.
-# Requires ETH_RPC_URL to be set a production (Sepolia or Mainnet) RPC URL.
+# Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
 test-upgrade *ARGS: build-go-ffi
-  UPGRADE_TEST=true forge test {{ARGS}}
+  FORK_RPC_URL=$ETH_RPC_URL \
+    UPGRADE_TEST=true \
+    forge test {{ARGS}}
+
+# Starts a local anvil node with a mainnet fork and sends it to the background
+# Calls anvil-fork-stop first to ensure a clean start.
+# Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
+anvil-fork: anvil-fork-stop
+  anvil --silent --fork-url $ETH_RPC_URL --port 8546 &
+
+# Stops any running anvil nodes. Does not fail if no anvil nodes are running.
+anvil-fork-stop:
+  pkill -9 anvil || true
+
+test-upgrade-against-anvil *ARGS: build-go-ffi anvil-fork && anvil-fork-stop
+  FORK_RPC_URL=http://127.0.0.1:8546 \
+    UPGRADE_TEST=true \
+    forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
