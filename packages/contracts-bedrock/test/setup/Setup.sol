@@ -16,6 +16,7 @@ import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+import { Chains } from "scripts/libraries/Chains.sol";
 
 // Interfaces
 import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
@@ -129,6 +130,10 @@ contract Setup {
             string memory forkUrl = vm.envString("ETH_RPC_URL");
             isForkTest = true;
             vm.createSelectFork(forkUrl);
+            require(
+                block.chainid == Chains.Sepolia || block.chainid == Chains.Mainnet,
+                "ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
+            );
 
             vm.etch(address(deploy), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));
         } else {
