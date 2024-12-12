@@ -396,7 +396,6 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	//Use a custom equality function to compare the genesis allocs
 	//because the reflect-based one is really slow
 	actAllocs := st.Chains[0].Allocs.Data.Accounts
-	//require.Equal(t, len(expAllocs), len(actAllocs))
 	for addr, expAcc := range expAllocs {
 		actAcc, ok := actAllocs[addr]
 		require.True(t, ok)
