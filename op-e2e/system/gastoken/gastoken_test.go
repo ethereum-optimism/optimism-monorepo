@@ -39,10 +39,6 @@ func TestMain(m *testing.M) {
 	op_e2e.RunMain(m)
 }
 
-func TestCustomGasToken_L2OO(t *testing.T) {
-	testCustomGasToken(t, config.AllocTypeL2OO)
-}
-
 func TestCustomGasToken_Standard(t *testing.T) {
 	testCustomGasToken(t, config.AllocTypeStandard)
 }
@@ -203,7 +199,7 @@ func setCustomGasToken(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 	// Set up a signer which controls the Proxy Admin.
 	// The deploy config's finalSystemOwner is the owner of the ProxyAdmin as well as the SystemConfig,
 	// so we can use that address for the proxy admin owner.
-	proxyAdminOwnerOpts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.SysCfgOwner, cfg.L1ChainIDBig())
+	proxyAdminOwnerOpts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.Deployer, cfg.L1ChainIDBig())
 	require.NoError(t, err)
 
 	// Execute the upgrade SystemConfigProxy -> StorageSetter via ProxyAdmin

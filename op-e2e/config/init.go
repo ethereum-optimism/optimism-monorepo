@@ -257,7 +257,8 @@ func initAllocType(root string, allocType AllocType) {
 	l2Alloc := make(map[genesis.L2AllocsMode]*foundry.ForgeAllocs)
 	var wg sync.WaitGroup
 
-	pk, err := crypto.HexToECDSA("ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80")
+	// Corresponds with the Deployer address in cfg.secrets
+	pk, err := crypto.HexToECDSA("7c852118294e51e653712a81e05800f419141751be58f605c371e15141b007a6")
 	if err != nil {
 		panic(fmt.Errorf("failed to parse private key: %w", err))
 	}
@@ -420,7 +421,7 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 					// Use deployer as L1PAO to deploy additional dispute impls
 					L1ProxyAdminOwner: deployer,
 					L2ProxyAdminOwner: deployer,
-					SystemConfigOwner: common.HexToAddress("0xa0Ee7A142d267C1f36714E4a8F75612F20a79720"),
+					SystemConfigOwner: deployer,
 					UnsafeBlockSigner: common.HexToAddress("0x9965507D1a55bcC2695C58ba16FB37d819B0A4dc"),
 					Batcher:           common.HexToAddress("0x3C44CdDdB6a900fa2b585dd299e03d12FA4293BC"),
 					Proposer:          common.HexToAddress("0x70997970C51812dc3A010C7d01b50e0d17dc79C8"),
