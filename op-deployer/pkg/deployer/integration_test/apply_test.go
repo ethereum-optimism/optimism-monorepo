@@ -119,9 +119,9 @@ func TestEndToEndApply(t *testing.T) {
 		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
 		cg := ethClientCodeGetter(ctx, l1Client)
 
-		require.NoError(t, deployer.ApplyPipeline(
+		require.NoError(t, deployer.DeployPipeline(
 			ctx,
-			deployer.ApplyPipelineOpts{
+			deployer.DeployPipelineOpts{
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -135,9 +135,9 @@ func TestEndToEndApply(t *testing.T) {
 		// state from the previous deployment
 		intent.Chains = append(intent.Chains, newChainIntent(t, dk, l1ChainID, l2ChainID2))
 
-		require.NoError(t, deployer.ApplyPipeline(
+		require.NoError(t, deployer.DeployPipeline(
 			ctx,
-			deployer.ApplyPipelineOpts{
+			deployer.DeployPipelineOpts{
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -156,9 +156,9 @@ func TestEndToEndApply(t *testing.T) {
 		intent.L1ContractsLocator = artifacts.DefaultL1ContractsLocator
 		intent.L2ContractsLocator = artifacts.DefaultL2ContractsLocator
 
-		require.ErrorIs(t, deployer.ApplyPipeline(
+		require.ErrorIs(t, deployer.DeployPipeline(
 			ctx,
-			deployer.ApplyPipelineOpts{
+			deployer.DeployPipelineOpts{
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -236,9 +236,9 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	_, err = rand.Read(st.Create2Salt[:])
 	require.NoError(t, err)
 
-	require.NoError(t, deployer.ApplyPipeline(
+	require.NoError(t, deployer.DeployPipeline(
 		ctx,
-		deployer.ApplyPipelineOpts{
+		deployer.DeployPipelineOpts{
 			L1RPCUrl:           runner.RPCUrl(),
 			DeployerPrivateKey: pk,
 			Intent:             intent,
@@ -448,7 +448,7 @@ func TestGlobalOverrides(t *testing.T) {
 		"useFaultProofs":                      expectedUseFaultProofs,
 	}
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	cfg, err := state.CombineDeployConfig(intent, intent.Chains[0], st, st.Chains[0])
 	require.NoError(t, err)
@@ -473,7 +473,7 @@ func TestApplyGenesisStrategy(t *testing.T) {
 
 	opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	cg := stateDumpCodeGetter(st)
 	validateSuperchainDeployment(t, st, cg)
@@ -508,7 +508,7 @@ func TestProofParamOverrides(t *testing.T) {
 		"dangerouslyAllowCustomDisputeParameters": true,
 	}
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	allocs := st.L1StateDump.Data.Accounts
 	chainState := st.Chains[0]
@@ -591,7 +591,7 @@ func TestInteropDeployment(t *testing.T) {
 	opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
 	intent.UseInterop = true
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	chainState := st.Chains[0]
 	depManagerSlot := common.HexToHash("0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c")
@@ -617,7 +617,7 @@ func TestAltDADeployment(t *testing.T) {
 	}
 	intent.Chains[0].DangerousAltDAConfig = altDACfg
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	chainState := st.Chains[0]
 	require.NotEmpty(t, chainState.DataAvailabilityChallengeProxyAddress)
@@ -688,7 +688,7 @@ func TestInvalidL2Genesis(t *testing.T) {
 			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 			intent.GlobalDeployOverrides = tt.overrides
 
-			err := deployer.ApplyPipeline(ctx, opts)
+			err := deployer.DeployPipeline(ctx, opts)
 			require.Error(t, err)
 			require.ErrorContains(t, err, "failed to combine L2 init config")
 		})
@@ -724,7 +724,7 @@ func TestAdditionalDisputeGames(t *testing.T) {
 		},
 	}
 
-	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+	require.NoError(t, deployer.DeployPipeline(ctx, opts))
 
 	chainState := st.Chains[0]
 	require.Equal(t, 1, len(chainState.AdditionalDisputeGames))
@@ -736,7 +736,7 @@ func TestAdditionalDisputeGames(t *testing.T) {
 	require.NotEqual(t, st.ImplementationsDeployment.PreimageOracleSingletonAddress, gameInfo.OracleAddress)
 }
 
-func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
+func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.DeployPipelineOpts, *state.Intent, *state.State) {
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
 	depKey := new(deployerKey)
@@ -754,7 +754,7 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
 	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 
-	opts := deployer.ApplyPipelineOpts{
+	opts := deployer.DeployPipelineOpts{
 		DeployerPrivateKey: priv,
 		Intent:             intent,
 		State:              st,

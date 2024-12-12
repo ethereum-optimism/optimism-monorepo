@@ -31,7 +31,7 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-type ApplyConfig struct {
+type DeployConfig struct {
 	L1RPCUrl   string
 	Workdir    string
 	PrivateKey string
@@ -40,7 +40,7 @@ type ApplyConfig struct {
 	privateKeyECDSA *ecdsa.PrivateKey
 }
 
-func (a *ApplyConfig) Check() error {
+func (a *DeployConfig) Check() error {
 	if a.Workdir == "" {
 		return fmt.Errorf("workdir must be specified")
 	}
@@ -60,7 +60,7 @@ func (a *ApplyConfig) Check() error {
 	return nil
 }
 
-func (a *ApplyConfig) CheckLive() error {
+func (a *DeployConfig) CheckLive() error {
 	if a.privateKeyECDSA == nil {
 		return fmt.Errorf("private key must be specified")
 	}
@@ -72,7 +72,7 @@ func (a *ApplyConfig) CheckLive() error {
 	return nil
 }
 
-func ApplyCLI() func(cliCtx *cli.Context) error {
+func DeployCLI() func(cliCtx *cli.Context) error {
 	return func(cliCtx *cli.Context) error {
 		logCfg := oplog.ReadCLIConfig(cliCtx)
 		l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
@@ -84,7 +84,7 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 
 		ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 
-		return Apply(ctx, ApplyConfig{
+		return Deploy(ctx, DeployConfig{
 			L1RPCUrl:   l1RPCUrl,
 			Workdir:    workdir,
 			PrivateKey: privateKey,
@@ -93,7 +93,7 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 	}
 }
 
-func Apply(ctx context.Context, cfg ApplyConfig) error {
+func Deploy(ctx context.Context, cfg DeployConfig) error {
 	if err := cfg.Check(); err != nil {
 		return fmt.Errorf("invalid config for apply: %w", err)
 	}
@@ -108,7 +108,7 @@ func Apply(ctx context.Context, cfg ApplyConfig) error {
 		return fmt.Errorf("failed to read state: %w", err)
 	}
 
-	if err := ApplyPipeline(ctx, ApplyPipelineOpts{
+	if err := DeployPipeline(ctx, DeployPipelineOpts{
 		L1RPCUrl:           cfg.L1RPCUrl,
 		DeployerPrivateKey: cfg.privateKeyECDSA,
 		Intent:             intent,
@@ -127,7 +127,7 @@ type pipelineStage struct {
 	apply func() error
 }
 
-type ApplyPipelineOpts struct {
+type DeployPipelineOpts struct {
 	L1RPCUrl           string
 	DeployerPrivateKey *ecdsa.PrivateKey
 	Intent             *state.Intent
@@ -136,9 +136,9 @@ type ApplyPipelineOpts struct {
 	StateWriter        pipeline.StateWriter
 }
 
-func ApplyPipeline(
+func DeployPipeline(
 	ctx context.Context,
-	opts ApplyPipelineOpts,
+	opts DeployPipelineOpts,
 ) error {
 	intent := opts.Intent
 	if err := intent.Check(); err != nil {
