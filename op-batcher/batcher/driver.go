@@ -294,6 +294,8 @@ func (l *BatchSubmitter) loadBlockIntoState(ctx context.Context, blockNumber uin
 		return nil, fmt.Errorf("getting L2 block: %w", err)
 	}
 
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	if err := l.channelMgr.AddL2Block(block); err != nil {
 		return nil, fmt.Errorf("adding L2 block to state: %w", err)
 	}
@@ -388,9 +390,9 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 	l.txpoolMutex.Unlock()
 }
 
-// syncAndPublish computes actions to take based on the current sync status, and then executes
-// them, updating the channel manager and sending transactions to the DA layer.
-func (l *BatchSubmitter) syncAndPublish(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+// syncAndPrune computes actions to take based on the current sync status, prunes the channel manager state
+// and returns blocks to load.
+func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) *inclusiveBlockRange {
 	l.channelMgrMutex.Lock()
 	defer l.channelMgrMutex.Unlock()
 
@@ -404,7 +406,7 @@ func (l *BatchSubmitter) syncAndPublish(syncStatus *eth.SyncStatus, queue *txmgr
 		// do nothing and wait to see if it has
 		// got in sync on the next tick.
 		l.Log.Warn("Sequencer is out of sync, retrying next tick.")
-		return
+		return nil
 	}
 
 	l.prevCurrentL1 = syncStatus.CurrentL1
@@ -416,22 +418,7 @@ func (l *BatchSubmitter) syncAndPublish(syncStatus *eth.SyncStatus, queue *txmgr
 		l.channelMgr.pruneSafeBlocks(syncActions.blocksToPrune)
 		l.channelMgr.pruneChannels(syncActions.channelsToPrune)
 	}
-
-	if syncActions.blocksToLoad != nil {
-		// Get fresh unsafe blocks
-		if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
-			l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
-			l.waitNodeSyncAndClearState()
-			return
-		}
-	}
-
-	l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
-	// signal (non blocking) to the throttling loop now we have potentially reduced the pending bytes
-	select {
-	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
-	default:
-	}
+	return syncActions.blocksToLoad
 }
 
 // mainLoop periodically:
@@ -477,7 +464,18 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			l.syncAndPublish(syncStatus, queue, receiptsCh, daGroup)
+			blocksToLoad := l.syncAndPrune(syncStatus, queue, receiptsCh, daGroup)
+
+			if blocksToLoad != nil {
+				// Get fresh unsafe blocks
+				if err := l.loadBlocksIntoState(l.shutdownCtx, blocksToLoad.start, blocksToLoad.end); errors.Is(err, ErrReorg) {
+					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
+					l.waitNodeSyncAndClearState()
+					continue
+				}
+			}
+
+			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 
 		case <-ctx.Done():
 			if err := queue.Wait(); err != nil {
@@ -641,7 +639,17 @@ func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh 
 			l.Log.Info("txpool state is not good, aborting state publishing")
 			return
 		}
+
+		l.channelMgrMutex.Lock()
 		err := l.publishTxToL1(l.killCtx, queue, receiptsCh, daGroup)
+
+		// signal (non blocking) to the throttling loop now we have potentially reduced the pending bytes
+		select {
+		case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
+		default:
+		}
+		l.channelMgrMutex.Unlock()
+
 		if err != nil {
 			if err != io.EOF {
 				l.Log.Error("Error publishing tx to l1", "err", err)
