@@ -21,7 +21,14 @@ function setPrevBaseFee(Vm _vm, address _op, uint128 _prevBaseFee) {
     _vm.store(address(_op), bytes32(uint256(1)), bytes32((block.number << 192) | _prevBaseFee));
 }
 
-contract SetPrevBaseFee_Test is CommonTest {
+contract BenchmarkTest is CommonTest {
+    function setUp() public virtual override {
+        super.setUp();
+        skipIfForkTest();
+    }
+}
+
+contract SetPrevBaseFee_Test is BenchmarkTest {
     function test_setPrevBaseFee_succeeds() external {
         setPrevBaseFee(vm, address(optimismPortal), 100 gwei);
         (uint128 prevBaseFee,, uint64 prevBlockNum) = optimismPortal.params();
@@ -35,7 +42,7 @@ contract SetPrevBaseFee_Test is CommonTest {
 // so that they are nothing more than the call we want measure the gas cost of.
 // In order to achieve this we make no assertions, and handle everything else in the setUp()
 // function.
-contract GasBenchMark_OptimismPortal is CommonTest {
+contract GasBenchMark_OptimismPortal is BenchmarkTest {
     // Reusable default values for a test withdrawal
     Types.WithdrawalTransaction _defaultTx;
 
@@ -109,7 +116,7 @@ contract GasBenchMark_OptimismPortal is CommonTest {
     }
 }
 
-contract GasBenchMark_L1CrossDomainMessenger is CommonTest {
+contract GasBenchMark_L1CrossDomainMessenger is BenchmarkTest {
     function test_sendMessage_benchmark_0() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal), 1 gwei);
@@ -131,7 +138,7 @@ contract GasBenchMark_L1CrossDomainMessenger is CommonTest {
     }
 }
 
-contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
+contract GasBenchMark_L1StandardBridge_Deposit is BenchmarkTest {
     function setUp() public virtual override {
         super.setUp();
         deal(address(L1Token), alice, 100000, true);
@@ -180,7 +187,7 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
     }
 }
 
-contract GasBenchMark_L1StandardBridge_Finalize is CommonTest {
+contract GasBenchMark_L1StandardBridge_Finalize is BenchmarkTest {
     function setUp() public virtual override {
         super.setUp();
         deal(address(L1Token), address(l1StandardBridge), 100, true);
@@ -201,7 +208,7 @@ contract GasBenchMark_L1StandardBridge_Finalize is CommonTest {
     }
 }
 
-contract GasBenchMark_L2OutputOracle is CommonTest {
+contract GasBenchMark_L2OutputOracle is BenchmarkTest {
     uint256 nextBlockNumber;
 
     function setUp() public override {
@@ -218,7 +225,7 @@ contract GasBenchMark_L2OutputOracle is CommonTest {
     }
 }
 
-contract GasBenchMark_L1Block is CommonTest {
+contract GasBenchMark_L1Block is BenchmarkTest {
     address depositor;
     bytes setValuesCalldata;
 
