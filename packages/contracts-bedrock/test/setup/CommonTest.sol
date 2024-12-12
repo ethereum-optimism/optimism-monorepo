@@ -218,4 +218,11 @@ contract CommonTest is Test, Setup, Events {
 
         useInteropOverride = true;
     }
+
+    function skipIfForkTest() public {
+        if (isForkTest) {
+            vm.skip(true);
+            console.log("CommonTest: fork test detected, skipping setup");
+        }
+    }
 }
