@@ -804,17 +804,6 @@ function testSignatureVerificationTampering() public {
         address _resolver, 
         bool _revocable
     ) public {
-        // Input validation
-        vm.assume(bytes(_property1).length > 0);  // Not empty
-        vm.assume(bytes(_property1).length < 32);  // Not too long
-        vm.assume(!_hasSpace(_property1));         // No spaces
-        vm.assume(_isAlphanumeric(_property1));    // Only letters and numbers
-        emit log_string("=== Data Debug ===");
-        emit log_string(_property1);  // string value
-        emit log_named_uint("Age", _property2);  // uint256 value
-        emit log_string(_property3 ? "isStudent: true" : "isStudent: false");  // bool value
-        // Number validation - keep it reasonable
-        vm.assume(_property2 < 1000000);  // Limit the size of uint256
 
         // Create schema string using valid types from docs
         string memory schema = 
@@ -1027,14 +1016,26 @@ function testSignatureVerificationTampering() public {
     ///         - Confirms revert with InvalidExpirationTime
     ///      Ensures system properly validates attestation
     ///      expiration times, preventing backdated attestations
-    function testCannotAttestWithExpiredTime() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
+    function testCannotAttestWithExpiredTime(       
+        string memory _property1, 
+        uint256 _property2, 
+        bool _property3,  
+        address _resolver,
+        bool _revocable) public {
+        string memory schema = "string name, uint256 age, bool isStudent";
+        schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
+        bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
 
         // Set a specific block timestamp first
         vm.warp(1000000);
 
         unchecked {
             uint64 expiredTime = uint64(block.timestamp - 1000);
+            bytes memory data = abi.encode(
+                _property1,    // string
+                _property2,    // uint
+                _property3     // bool
+            );
 
             // Add debug logs
             emit log_string("Testing attestation with expired time");
@@ -1047,9 +1048,9 @@ function testSignatureVerificationTampering() public {
                 data: AttestationRequestData({
                     recipient: recipient,
                     expirationTime: expiredTime,
-                    revocable: true,
+                    revocable: _revocable,
                     refUID: ZERO_BYTES32,
-                    data: hex"1234",
+                    data: data,
                     value: 0
                 })
             });
@@ -1059,54 +1060,16 @@ function testSignatureVerificationTampering() public {
         }
     }
 
-    /// @dev Tests rejection of attestations using unregistered schemas.
-    ///      1. Setup:
-    ///         - Creates schema ID without registering schema
-    ///      2. Attestation Attempt:
-    ///         - Tries to attest using unregistered schema
-    ///         - Sets standard parameters (30-day expiration)
-    ///      3. Verification:
-    ///         - Confirms transaction reverts with InvalidSchema
-    ///      Ensures system properly validates schema registration
-    ///      before allowing attestations, preventing use of
-    ///      unregistered or invalid schemas
-    function testCannotAttestToUnregisteredSchema() public {
-        bytes32 unregisteredSchemaId = _getSchemaUID(
-            "unregistered schema",
-            address(0),
-            true
-        );
-
-        vm.prank(sender);
-        vm.expectRevert(InvalidSchema.selector);
-        eas.attest(
-            AttestationRequest({
-                schema: unregisteredSchemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
-                    revocable: true,
-                    refUID: ZERO_BYTES32,
-                    data: hex"1234",
-                    value: 0
-                })
-            })
-        );
-    }
-
-    /// @dev Tests multiple attestation scenarios with various schemas.
-    ///      1. Schema Registration:
-    ///         - Registers three different schemas:
-    ///           * Basic boolean schema
-    ///           * Proposal voting schema
-    ///           * Phone verification schema
-    ///      2. Invalid Schema Test:
-    ///         - Attempts attestation with unregistered schema
-    ///         - Verifies revert with InvalidSchema
-    ///      Note: Despite name suggesting multiple scenarios,
-    ///      currently only tests invalid schema case. Consider
-    ///      expanding to test more scenarios or renaming function
-    function testAttestationScenarios() public {
+    /// @dev Tests the behavior of the attestation system with respect to schema registration and validation.
+    ///      1. Registers three different schemas:
+    ///         - Basic boolean schema
+    ///         - Proposal voting schema
+    ///         - Phone verification schema
+    ///      2. Attempts to attest with an unregistered schema (BAD).
+    ///      3. Verifies that the transaction reverts with the InvalidSchema error.
+    ///      This function serves to ensure that the system correctly handles
+    ///      both valid and invalid schema scenarios.
+    function testUnregisteredSchemaAttestationRevert() public {
         // Register test schemas first
         string memory schema1 = "bool like";
         string memory schema2 = "bytes32 proposalId, bool vote";
@@ -1136,7 +1099,6 @@ function testSignatureVerificationTampering() public {
 
         vm.stopPrank();
     }
-
     /// @dev Tests attestations with varying data payload sizes.
     ///      Registers a simple boolean schema and tests attestations with three different data sizes:
     ///      1. Empty data (0 bytes)
