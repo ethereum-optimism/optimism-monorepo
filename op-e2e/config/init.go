@@ -18,7 +18,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/inspect"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum/go-ethereum/common"
@@ -430,8 +429,9 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 				AdditionalDisputeGames: []state.AdditionalDisputeGame{
 					{
 						ChainProofParams: state.ChainProofParams{
+							// Fast game
 							DisputeGameType:         254,
-							DisputeAbsolutePrestate: standard.DisputeAbsolutePrestate,
+							DisputeAbsolutePrestate: common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98"),
 							DisputeMaxGameDepth:     14 + 3 + 1,
 							DisputeSplitDepth:       14,
 							DisputeClockExtension:   0,
@@ -445,8 +445,9 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 					},
 					{
 						ChainProofParams: state.ChainProofParams{
+							// Alphabet game
 							DisputeGameType:         255,
-							DisputeAbsolutePrestate: standard.DisputeAbsolutePrestate,
+							DisputeAbsolutePrestate: common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98"),
 							DisputeMaxGameDepth:     14 + 3 + 1,
 							DisputeSplitDepth:       14,
 							DisputeClockExtension:   0,
