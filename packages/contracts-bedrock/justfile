@@ -58,7 +58,9 @@ test-dev *ARGS: build-go-ffi
 
 # Runs upgrade path variant of contract tests.
 # Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
-test-upgrade *ARGS: build-go-ffi
+test-upgrade *ARGS:
+  # just build-go-ffi
+  FOUNDRY_PROFILE=lite \
   FORK_RPC_URL=$ETH_RPC_URL \
     UPGRADE_TEST=true \
     forge test {{ARGS}}
