@@ -527,7 +527,10 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			l.Log.Error("Can't reach sequencer execution RPC", "err", err)
 			return
 		}
+		l.channelMgrMutex.Lock()
 		pendingBytes := l.channelMgr.PendingDABytes()
+		l.channelMgrMutex.Unlock()
+
 		maxTxSize := uint64(0)
 		maxBlockSize := l.Config.ThrottleAlwaysBlockSize
 		if pendingBytes > int64(l.Config.ThrottleThreshold) {
