@@ -698,8 +698,7 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 
 // publishTxToL1 submits a single state tx to the L1
 func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) error {
-	l.channelMgrMutex.Lock()
-	defer l.channelMgrMutex.Unlock()
+
 	// send all available transactions
 	l1tip, err := l.l1Tip(ctx)
 	if err != nil {
@@ -710,7 +709,9 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 
 	// Collect next transaction data. This pulls data out of the channel, so we need to make sure
 	// to put it back if ever da or txmgr requests fail, by calling l.recordFailedDARequest/recordFailedTx.
+	l.channelMgrMutex.Lock()
 	txdata, err := l.channelMgr.TxData(l1tip.ID())
+	l.channelMgrMutex.Unlock()
 
 	if err == io.EOF {
 		l.Log.Trace("No transaction data available")
@@ -722,11 +723,6 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 
 	if err = l.sendTransaction(txdata, queue, receiptsCh, daGroup); err != nil {
 		return fmt.Errorf("BatchSubmitter.sendTransaction failed: %w", err)
-	}
-	// signal (non blocking) to the throttling loop now we have potentially reduced the pending bytes
-	select {
-	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
-	default:
 	}
 	return nil
 }
