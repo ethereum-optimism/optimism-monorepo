@@ -148,7 +148,7 @@ func TestEndToEndApply(t *testing.T) {
 		))
 
 		validateSuperchainDeployment(t, st, cg)
-		validateOPChainDeployment(t, cg, st, intent)
+		validateOPChainDeployment(t, cg, st, intent, false)
 	})
 
 	t.Run("chain with tagged artifacts", func(t *testing.T) {
@@ -232,6 +232,12 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		artifacts.MustNewLocatorFromTag("op-contracts/v1.6.0"),
 		artifacts.MustNewLocatorFromTag("op-contracts/v1.7.0-beta.1+l2-contracts"),
 	)
+	// NOTE: the reference allocs for version 1.6 contain the gov token, so we need to enable it
+	// via override here.
+	intent.GlobalDeployOverrides = map[string]any{
+		"enableGovernance": true,
+	}
+
 	// Define a new create2 salt to avoid contract address collisions
 	_, err = rand.Read(st.Create2Salt[:])
 	require.NoError(t, err)
@@ -248,7 +254,7 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		},
 	))
 
-	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent)
+	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent, true)
 
 	releases := versions.Releases["op-contracts/v1.6.0"]
 
@@ -480,7 +486,7 @@ func TestApplyGenesisStrategy(t *testing.T) {
 
 	for i := range intent.Chains {
 		t.Run(fmt.Sprintf("chain-%d", i), func(t *testing.T) {
-			validateOPChainDeployment(t, cg, st, intent)
+			validateOPChainDeployment(t, cg, st, intent, false)
 		})
 	}
 }
@@ -736,6 +742,60 @@ func TestAdditionalDisputeGames(t *testing.T) {
 	require.NotEqual(t, st.ImplementationsDeployment.PreimageOracleSingletonAddress, gameInfo.OracleAddress)
 }
 
+func TestIntentConfiguration(t *testing.T) {
+	op_e2e.InitParallel(t)
+
+	tests := []struct {
+		name       string
+		mutator    func(*state.Intent)
+		assertions func(t *testing.T, st *state.State)
+	}{
+		{
+			"governance token disabled by default",
+			func(intent *state.Intent) {},
+			func(t *testing.T, st *state.State) {
+				l2Genesis := st.Chains[0].Allocs.Data
+				_, ok := l2Genesis.Accounts[predeploys.GovernanceTokenAddr]
+				require.False(t, ok)
+			},
+		},
+		{
+			"governance token enabled via override",
+			func(intent *state.Intent) {
+				intent.GlobalDeployOverrides = map[string]any{
+					"enableGovernance":     true,
+					"governanceTokenOwner": common.Address{'O'}.Hex(),
+				}
+			},
+			func(t *testing.T, st *state.State) {
+				l2Genesis := st.Chains[0].Allocs.Data
+				_, ok := l2Genesis.Accounts[predeploys.GovernanceTokenAddr]
+				require.True(t, ok)
+				checkStorageSlot(
+					t,
+					l2Genesis.Accounts,
+					predeploys.GovernanceTokenAddr,
+					common.Hash{31: 0x0a},
+					common.BytesToHash(common.Address{'O'}.Bytes()),
+				)
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			opts, intent, st := setupGenesisChain(t, defaultL1ChainID)
+			tt.mutator(intent)
+			require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+			tt.assertions(t, st)
+		})
+	}
+}
+
 func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -862,7 +922,7 @@ func validateSuperchainDeployment(t *testing.T, st *state.State, cg codeGetter) 
 	}
 }
 
-func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, intent *state.Intent) {
+func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, intent *state.Intent, govEnabled bool) {
 	// Validate that the implementation addresses are always set, even in subsequent deployments
 	// that pull from an existing OPCM deployment.
 	implAddrs := []struct {
@@ -929,9 +989,15 @@ func validateOPChainDeployment(t *testing.T, cg codeGetter, st *state.State, int
 		// slot 0
 		ownerSlot := common.Hash{}
 		checkStorageSlot(t, alloc, predeploys.ProxyAdminAddr, ownerSlot, addrAsSlot)
-		var defaultGovOwner common.Hash
-		defaultGovOwner.SetBytes(common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad").Bytes())
-		checkStorageSlot(t, alloc, predeploys.GovernanceTokenAddr, common.Hash{31: 0x0a}, defaultGovOwner)
+
+		if govEnabled {
+			var defaultGovOwner common.Hash
+			defaultGovOwner.SetBytes(common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad").Bytes())
+			checkStorageSlot(t, alloc, predeploys.GovernanceTokenAddr, common.Hash{31: 0x0a}, defaultGovOwner)
+		} else {
+			_, ok := alloc[predeploys.GovernanceTokenAddr]
+			require.False(t, ok, "governance token should not be deployed by default")
+		}
 
 		require.Equal(t, int(chainIntent.Eip1559Denominator), 50, "EIP1559Denominator should be set")
 		require.Equal(t, int(chainIntent.Eip1559Elasticity), 6, "EIP1559Elasticity should be set")

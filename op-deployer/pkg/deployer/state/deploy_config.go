@@ -49,7 +49,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 				SequencerFeeVaultRecipient:               chainIntent.SequencerFeeVaultRecipient,
 			},
 			GovernanceDeployConfig: genesis.GovernanceDeployConfig{
-				EnableGovernance:      true,
+				EnableGovernance:      false,
 				GovernanceTokenSymbol: "OP",
 				GovernanceTokenName:   "Optimism",
 				GovernanceTokenOwner:  common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad"),
