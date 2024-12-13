@@ -666,8 +666,8 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 		} else {
 			l.Log.Info("Clearing state with safe L1 origin", "origin", l1SafeOrigin)
 			l.channelMgrMutex.Lock()
+			defer l.channelMgrMutex.Unlock()
 			l.channelMgr.Clear(l1SafeOrigin)
-			l.channelMgrMutex.Unlock()
 			return true
 		}
 	}
@@ -689,8 +689,8 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 		case <-ctx.Done():
 			l.Log.Warn("Clearing state cancelled")
 			l.channelMgrMutex.Lock()
+			defer l.channelMgrMutex.Unlock()
 			l.channelMgr.Clear(eth.BlockID{})
-			l.channelMgrMutex.Unlock()
 			return
 		}
 	}
