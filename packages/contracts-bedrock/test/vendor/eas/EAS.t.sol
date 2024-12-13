@@ -2182,14 +2182,15 @@ function testAttestationExpirationScenarios(
     ///      2. Attempts to revoke using a different, unregistered schema
     ///      3. Verifies the revocation fails with InvalidSchema error
     ///      Ensures revocations are properly validated against registered schemas
-    function testInvalidRevocationData() public {
-        string memory schema = "bool like";
+    function testInvalidRevocationData(string memory _stringName, string memory _invalidSchema) public {
+        vm.assume(bytes(_stringName).length > 0 && bytes(_invalidSchema).length < 32);
+        string memory schema = string.concat("string ", _stringName);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         // Try to revoke with wrong schema
-        bytes32 wrongSchemaId = _getSchemaUID("wrong schema", address(0), true);
+        bytes32 wrongSchemaId = _getSchemaUID(_invalidSchema, address(0), true);
 
         vm.expectRevert(InvalidSchema.selector);
         eas.revoke(
