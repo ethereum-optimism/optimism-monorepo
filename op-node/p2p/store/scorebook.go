@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -72,7 +73,7 @@ func (d *scoreBook) GetPeerScores(id peer.ID) (PeerScores, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	record, err := d.book.getRecord(id)
-	if err == errUnknownRecord {
+	if errors.Is(err, errUnknownRecord) {
 		return PeerScores{}, nil // return zeroed scores by default
 	}
 	if err != nil {

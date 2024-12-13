@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"net"
 	"sync"
 	"time"
@@ -71,7 +72,7 @@ func (d *ipBanBook) GetIPBanExpiration(ip net.IP) (time.Time, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	rec, err := d.book.getRecord(ip.To16().String())
-	if err == errUnknownRecord {
+	if errors.Is(err, errUnknownRecord) {
 		return time.Time{}, ErrUnknownBan
 	}
 	if err != nil {

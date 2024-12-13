@@ -130,7 +130,7 @@ func (d *recordsBook[K, V]) getRecord(key K) (v V, err error) {
 // of the returned value.
 func (d *recordsBook[K, V]) setRecord(key K, diff recordDiff[V]) (V, error) {
 	rec, err := d.getRecord(key)
-	if err == errUnknownRecord { // instantiate new record if it does not exist yet
+	if errors.Is(err, errUnknownRecord) { // instantiate new record if it does not exist yet
 		rec = d.newRecord()
 	} else if err != nil {
 		return d.newRecord(), err

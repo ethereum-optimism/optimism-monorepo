@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"time"
 
@@ -67,7 +68,7 @@ func (d *peerBanBook) GetPeerBanExpiration(id peer.ID) (time.Time, error) {
 	d.mu.RLock()
 	defer d.mu.RUnlock()
 	rec, err := d.book.getRecord(id)
-	if err == errUnknownRecord {
+	if errors.Is(err, errUnknownRecord) {
 		return time.Time{}, ErrUnknownBan
 	}
 	if err != nil {

@@ -3,6 +3,7 @@ package store
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -73,7 +74,7 @@ func (m *metadataBook) GetPeerMetadata(id peer.ID) (PeerMetadata, error) {
 	defer m.mu.RUnlock()
 	record, err := m.book.getRecord(id)
 	// If the record is not found, return an empty PeerMetadata
-	if err == errUnknownRecord {
+	if errors.Is(err, errUnknownRecord) {
 		return PeerMetadata{}, nil
 	}
 	if err != nil {
