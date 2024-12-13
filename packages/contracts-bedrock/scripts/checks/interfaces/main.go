@@ -69,7 +69,6 @@ func processFile(artifactPath string) []error {
 
 	contractName := strings.Split(filepath.Base(artifactPath), ".")[0]
 
-	fmt.Printf("processing artifact: %s\n", contractName)
 	if isExcluded(contractName) {
 		return nil
 	}
