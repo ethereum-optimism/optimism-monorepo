@@ -1981,24 +1981,48 @@ function testAttestationExpirationScenarios(
     ///         - Verifies all are properly marked irrevocable
     ///         - Confirms batch revocation attempts fail
     ///      Ensures irrevocable property is enforced in all scenarios
-    function testIrrevocableSchemaScenarios() public {
-        // Register an irrevocable schema
-        string memory schema = "bool isFriend";
+    function testIrrevocableSchemaScenarios(
+        address _userAddress, 
+        string memory _userName, 
+        bool _isActive, 
+        address _userAddress2, 
+        string memory _userName2, 
+        bool _isActive2,
+        address _recipient,
+        address _recipient2,
+        uint64 _expirationOffset
+    ) public {
+        // Ensure the fuzzed expiration offset is within a reasonable range
+        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
+        vm.assume(_recipient != address(0)); // Ensure recipient is not zero address
+        vm.assume(_recipient2 != address(0)); // Ensure second recipient is not zero address
+
+        string memory schema = "address userAddress, string userName, bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), false);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), false);
+        bytes memory data = abi.encode(
+            _userAddress,
+            _userName,
+            _isActive 
+        );
+        bytes memory data2 = abi.encode(
+            _userAddress2,
+            _userName2,
+            _isActive2 
+        );
 
         // Create attestation
         bytes32 uid = eas.attest(
             AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    recipient: _recipient, 
+                    expirationTime: uint64(block.timestamp + _expirationOffset),
                     revocable: false,
                     refUID: ZERO_BYTES32,
-                    data: hex"1234",
+                    data: data,
                     value: 0
                 })
             })
@@ -2007,7 +2031,7 @@ function testAttestationExpirationScenarios(
         // Verify attestation
         Attestation memory attestation = eas.getAttestation(uid);
         assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, recipient);
+        assertEq(attestation.recipient, _recipient);
         assertFalse(attestation.revocable);
 
         // Should revert when trying to revoke
@@ -2020,24 +2044,23 @@ function testAttestationExpirationScenarios(
         );
 
         // Test multi-attestation with irrevocable schema
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](1);
+        MultiAttestationRequest[] memory requests = new MultiAttestationRequest[](1);
         requests[0].schema = schemaId;
         requests[0].data = new AttestationRequestData[](2);
         requests[0].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
+            recipient: _recipient, // Use fuzzed recipient
+            expirationTime: uint64(block.timestamp + _expirationOffset),
             revocable: false,
             refUID: ZERO_BYTES32,
             data: hex"1234",
             value: 0
         });
         requests[0].data[1] = AttestationRequestData({
-            recipient: recipient2,
-            expirationTime: uint64(block.timestamp + 30 days),
+            recipient: _recipient2, 
+            expirationTime: uint64(block.timestamp + _expirationOffset),
             revocable: false,
             refUID: ZERO_BYTES32,
-            data: hex"5678",
+            data: data2,
             value: 0
         });
 
@@ -2052,9 +2075,7 @@ function testAttestationExpirationScenarios(
         }
 
         // Should revert when trying to revoke multiple attestations
-        RevocationRequest[] memory revocationRequests = new RevocationRequest[](
-            2
-        );
+        RevocationRequest[] memory revocationRequests = new RevocationRequest[](2);
         for (uint i = 0; i < 2; i++) {
             revocationRequests[i] = RevocationRequest({
                 schema: schemaId,
@@ -2077,40 +2098,46 @@ function testAttestationExpirationScenarios(
     ///         - Revocable attestation can be revoked
     ///         - Irrevocable attestation cannot be revoked
     ///      Ensures system correctly handles different revocation rules
-    function testMixedRevocabilityScenarios() public {
-        // Register both revocable and irrevocable schemas
-        string memory revocableSchema = "bool like";
-        string memory irrevocableSchema = "bool isFriend";
 
-        bytes32 revocableSchemaId = _getSchemaUID(
-            revocableSchema,
-            address(0),
-            true
+    function testMixedRevocabilityScenarios(
+        string memory _revocableSchemaProperty,
+        string memory _irrevocableSchemaProperty,
+        string memory _revocableSchemaValue,
+        string memory _irrevocableSchemaValue,
+        address _recipient,
+        uint64 _expirationOffset
+    ) public {
+        // Ensure the fuzzed expiration offset is within a reasonable range
+        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
+        vm.assume(_recipient != address(0)); // Ensure recipient is not zero address
+
+        string memory revocableSchema = string.concat("string ", _revocableSchemaProperty);
+        string memory irrevocableSchema = string.concat("string ", _irrevocableSchemaProperty);
+
+        bytes32 revocableSchemaId = _getSchemaUID(revocableSchema, address(0), true);
+        bytes32 irrevocableSchemaId = _getSchemaUID(irrevocableSchema, address(0), false);
+
+        bytes memory data = abi.encode(
+            _revocableSchemaValue
         );
-        bytes32 irrevocableSchemaId = _getSchemaUID(
-            irrevocableSchema,
-            address(0),
-            false
+        bytes memory data2 = abi.encode(
+            _irrevocableSchemaValue
         );
 
         vm.startPrank(sender);
         schemaRegistry.register(revocableSchema, ISchemaResolver(address(0)), true);
-        schemaRegistry.register(
-            irrevocableSchema,
-            ISchemaResolver(address(0)),
-            false
-        );
+        schemaRegistry.register(irrevocableSchema, ISchemaResolver(address(0)), false);
 
         // Create attestations with both schemas
         bytes32 revocableUid = eas.attest(
             AttestationRequest({
                 schema: revocableSchemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    recipient: _recipient, // Use fuzzed recipient
+                    expirationTime: uint64(block.timestamp + _expirationOffset),
                     revocable: true,
                     refUID: ZERO_BYTES32,
-                    data: hex"1234",
+                    data: data,
                     value: 0
                 })
             })
@@ -2120,11 +2147,11 @@ function testAttestationExpirationScenarios(
             AttestationRequest({
                 schema: irrevocableSchemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    recipient: _recipient, // Use fuzzed recipient
+                    expirationTime: uint64(block.timestamp + _expirationOffset),
                     revocable: false,
                     refUID: ZERO_BYTES32,
-                    data: hex"5678",
+                    data: data2,
                     value: 0
                 })
             })
