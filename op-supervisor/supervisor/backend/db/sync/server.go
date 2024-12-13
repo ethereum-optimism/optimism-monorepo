@@ -69,7 +69,7 @@ func parsePath(path string) (types.ChainID, string, error) {
 // ServeHTTP implements http.Handler.
 func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Parse and validate the path
-	chainID, fileAlias, err := parsePath(r.URL.Path)
+	chainID, dbName, err := parsePath(r.URL.Path)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -80,8 +80,9 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Get the path to the file based on the alias
-	fileName, exists := FileAliases[fileAlias]
+	// Get the path to the file based on the database name
+	db := Database(dbName)
+	fileName, exists := Databases[db]
 	if !exists {
 		http.Error(w, "file not found", http.StatusNotFound)
 		return
@@ -91,20 +92,20 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	// Open the file for reading
 	file, err := os.Open(filePath)
 	if err != nil {
-		s.logError("error opening file", err, fileAlias)
+		s.logError("error opening file", err, dbName)
 		http.Error(w, "file not found", http.StatusNotFound)
 		return
 	}
 	defer func(file *os.File) {
 		if file.Close() != nil {
-			s.logError("error closing file", err, fileAlias)
+			s.logError("error closing file", err, dbName)
 		}
 	}(file)
 
 	// Get file info and set the headers
 	fileInfo, err := file.Stat()
 	if err != nil {
-		s.logError("error stating file", err, fileAlias)
+		s.logError("error stating file", err, dbName)
 		http.Error(w, "internal server error", http.StatusInternalServerError)
 		return
 	}
@@ -119,7 +120,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	case http.MethodGet:
 		// Stream the file contents, including handling range requests
-		http.ServeContent(w, r, fileAlias, fileInfo.ModTime(), file)
+		http.ServeContent(w, r, dbName, fileInfo.ModTime(), file)
 	default:
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
 	}

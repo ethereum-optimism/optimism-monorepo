@@ -43,7 +43,7 @@ func NewClient(config Config, serverURL string, httpClient *http.Client) (*Clien
 	}
 
 	if httpClient == nil {
-		httpClient = http.DefaultClient
+		httpClient = DefaultHTTPClient
 	}
 
 	return &Client{
@@ -54,13 +54,25 @@ func NewClient(config Config, serverURL string, httpClient *http.Client) (*Clien
 	}, nil
 }
 
-// SyncFile downloads the named file from the server.
-// If the local file exists, it will attempt to resume the download.
-func (c *Client) SyncFile(ctx context.Context, chainID types.ChainID, fileAlias string, resume bool) error {
+// SyncAll syncs all known databases for the given chains.
+func (c *Client) SyncAll(ctx context.Context, chains []types.ChainID, resume bool) error {
+	for _, chain := range chains {
+		for fileAlias := range Databases {
+			if err := c.SyncDatabase(ctx, chain, fileAlias, resume); err != nil {
+				return fmt.Errorf("failed to sync %s for chain %s: %w", fileAlias, chain, err)
+			}
+		}
+	}
+	return nil
+}
+
+// SyncDatabase downloads the named file from the server.
+// If the local file exists, it will attempt to resume the download if resume is true.
+func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, database Database, resume bool) error {
 	// Validate file alias
-	filePath, exists := FileAliases[fileAlias]
+	filePath, exists := Databases[database]
 	if !exists {
-		return fmt.Errorf("unknown file alias: %s", fileAlias)
+		return fmt.Errorf("unknown file alias: %s", database)
 	}
 
 	// Ensure the chain directory exists
@@ -71,23 +83,23 @@ func (c *Client) SyncFile(ctx context.Context, chainID types.ChainID, fileAlias 
 
 	filePath = filepath.Join(chainDir, filePath)
 
-	// Get initial file size
+	// Ensure the database file exists and get initial size
+	filePath = filepath.Join(chainDir, filePath)
 	var initialSize int64
 	if stat, err := os.Stat(filePath); err == nil {
 		initialSize = stat.Size()
 	}
 
-	// If we have some data already and don't want to resume then stop now
+	// If we have data already and don't want to resume then stop now
 	if initialSize > 0 && !resume {
 		return nil
 	}
 
 	// Keep track of the current retry delay
 	currentDelay := c.retryDelay
-
 	for {
 		// Try to sync and return if successful
-		err := c.attemptSync(ctx, chainID, fileAlias, filePath, initialSize)
+		err := c.attemptSync(ctx, chainID, database, filePath, initialSize)
 		if err == nil {
 			return nil
 		}
@@ -96,7 +108,7 @@ func (c *Client) SyncFile(ctx context.Context, chainID types.ChainID, fileAlias 
 		if ctx.Err() != nil {
 			return ctx.Err()
 		}
-		c.logError("sync attempt failed", err, fileAlias)
+		c.logError("sync attempt failed", err, database)
 
 		// Wait before retrying
 		select {
@@ -113,9 +125,9 @@ func (c *Client) SyncFile(ctx context.Context, chainID types.ChainID, fileAlias 
 }
 
 // attemptSync makes a single attempt to sync the file
-func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, name, absPath string, initialSize int64) error {
+func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, database Database, absPath string, initialSize int64) error {
 	// First do a HEAD request to get the file size
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.buildURL(chainID, name), nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.buildURL(chainID, database), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create HEAD request: %w", err)
 	}
@@ -140,7 +152,7 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, name, a
 	}
 
 	// Create the GET request
-	req, err = http.NewRequestWithContext(ctx, http.MethodGet, c.buildURL(chainID, name), nil)
+	req, err = http.NewRequestWithContext(ctx, http.MethodGet, c.buildURL(chainID, database), nil)
 	if err != nil {
 		return fmt.Errorf("failed to create GET request: %w", err)
 	}
@@ -156,7 +168,7 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, name, a
 	}
 	defer func(Body io.ReadCloser) {
 		if err := Body.Close(); err != nil {
-			c.logError("failed to close response body", err, name)
+			c.logError("failed to close response body", err, database)
 		}
 	}(resp.Body)
 
@@ -176,22 +188,22 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, name, a
 	}
 	defer func(f *os.File) {
 		if err := f.Close(); err != nil {
-			c.logError("failed to close output file", err, name)
+			c.logError("failed to close output file", err, database)
 		}
 	}(f)
 
 	// Copy the data to disk
 	_, err = io.Copy(f, resp.Body)
 	if err != nil {
-		return fmt.Errorf("failed to copy data: %w", err)
+		return fmt.Errorf("failed to copy data: %s", database)
 	}
 
 	return nil
 }
 
-// buildURL creates the full URL for a file request
-func (c *Client) buildURL(chainID types.ChainID, fileAlias string) string {
-	return fmt.Sprintf("%s/dbsync/%s/%s", c.baseURL, chainID.String(), fileAlias)
+// buildURL creates the full URL for a database download request
+func (c *Client) buildURL(chainID types.ChainID, database Database) string {
+	return fmt.Sprintf("%s/dbsync/%s/%s", c.baseURL, chainID.String(), database)
 }
 
 // parseContentLength parses the Content-Length header
@@ -204,11 +216,11 @@ func parseContentLength(h http.Header) (int64, error) {
 }
 
 // logError logs an error if a logger is configured
-func (c *Client) logError(msg string, err error, fileName string) {
+func (c *Client) logError(msg string, err error, database Database) {
 	if c.config.Logger != nil {
 		c.config.Logger.Error(msg,
 			"error", err,
-			"file", fileName,
+			"database", database,
 		)
 	}
 }

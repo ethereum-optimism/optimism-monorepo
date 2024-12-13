@@ -19,7 +19,7 @@ func TestSyncBasic(t *testing.T) {
 	chainID := types.ChainID{1}
 
 	// Create a test file on the server
-	serverFile := filepath.Join(serverRoot, chainID.String(), FileAliases["localsafe"])
+	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
 	createTestFile(t, serverFile, 1024)
 
 	// Setup server
@@ -41,9 +41,9 @@ func TestSyncBasic(t *testing.T) {
 	require.NoError(t, err)
 
 	// Perform sync
-	err = client.SyncFile(context.Background(), chainID, "localsafe", false)
+	err = client.SyncDatabase(context.Background(), chainID, DBLocalSafe, false)
 	require.NoError(t, err)
-	compareFiles(t, serverFile, filepath.Join(clientRoot, chainID.String(), FileAliases["localsafe"]))
+	compareFiles(t, serverFile, filepath.Join(clientRoot, chainID.String(), DBLocalSafe.File()))
 }
 
 func TestSyncResume(t *testing.T) {
@@ -51,10 +51,10 @@ func TestSyncResume(t *testing.T) {
 	chainID := types.ChainID{1} // Use chain ID 1 for testing
 
 	// Create a test file on the server and partial file on the client
-	serverFile := filepath.Join(serverRoot, chainID.String(), FileAliases["localsafe"])
+	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
 	createTestFile(t, serverFile, 2*1024) // 2KB file
 
-	clientFile := filepath.Join(clientRoot, chainID.String(), FileAliases["localsafe"])
+	clientFile := filepath.Join(clientRoot, chainID.String(), DBLocalSafe.File())
 	createTestFile(t, clientFile, 1024) // 1KB partial file
 
 	// Setup server and client
@@ -75,7 +75,7 @@ func TestSyncResume(t *testing.T) {
 	require.NoError(t, err)
 
 	// Perform sync
-	err = client.SyncFile(context.Background(), chainID, "localsafe", false)
+	err = client.SyncDatabase(context.Background(), chainID, DBLocalSafe, false)
 	require.NoError(t, err)
 	compareFiles(t, serverFile, clientFile)
 }
@@ -85,7 +85,7 @@ func TestSyncRetry(t *testing.T) {
 	chainID := types.ChainID{1}
 
 	// Create a test file
-	serverFile := filepath.Join(serverRoot, chainID.String(), FileAliases["localsafe"])
+	serverFile := filepath.Join(serverRoot, chainID.String(), DBLocalSafe.File())
 	createTestFile(t, serverFile, 1024)
 
 	// Setup server with flaky handler that fails twice before succeeding
@@ -116,10 +116,10 @@ func TestSyncRetry(t *testing.T) {
 	require.NoError(t, err)
 
 	// Perform sync
-	err = client.SyncFile(context.Background(), chainID, "localsafe", false)
+	err = client.SyncDatabase(context.Background(), chainID, DBLocalSafe, false)
 	require.NoError(t, err)
 	require.Equal(t, 2, failureCount, "expected exactly 2 failures")
-	compareFiles(t, serverFile, filepath.Join(clientRoot, chainID.String(), FileAliases["localsafe"]))
+	compareFiles(t, serverFile, filepath.Join(clientRoot, chainID.String(), DBLocalSafe.File()))
 }
 
 func TestSyncErrors(t *testing.T) {
@@ -144,14 +144,14 @@ func TestSyncErrors(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("NonexistentFile", func(t *testing.T) {
-		err := client.SyncFile(context.Background(), chainID, "nonexistent", false)
+		err := client.SyncDatabase(context.Background(), chainID, "nonexistent", false)
 		require.Error(t, err)
 	})
 
 	t.Run("CancelledContext", func(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
-		err := client.SyncFile(ctx, chainID, "localsafe", false)
+		err := client.SyncDatabase(ctx, chainID, DBLocalSafe, false)
 		require.Error(t, err)
 		require.Equal(t, context.Canceled, err)
 	})
