@@ -1600,22 +1600,39 @@ function testAttestationExpirationScenarios(
 
         vm.stopPrank();
     }
-
-    /// @dev Tests multi-attestation with ETH value transfers.
-    ///      Creates two attestations using a payable resolver:
-    ///      1. First attestation to recipient with 1 ETH
-    ///      2. Second attestation to recipient2 with 1 ETH
-    ///      Total value of 2 ETH is sent with the transaction.
-    ///      Verifies both attestations are created with correct attester
-    function testMultiAttestationWithValue() public {
-        string memory schema = "bool like";
+    /// @dev Tests the multi-attestation functionality with value transfers.
+    ///      This function creates two attestations for two different users,
+    ///      each with a specified amount of ether attached. It verifies that
+    ///      the attestations are correctly recorded and that the sender's
+    ///      balance is appropriately managed.
+    /// 
+    ///      1. Assumes the input value is less than or equal to 10.
+    ///      2. Registers a schema for the attestations.
+    ///      3. Allocates double the specified value to the sender's balance.
+    ///      4. Encodes data for two users to be included in the attestations.
+    ///      5. Creates and submits multi-attestation requests with the encoded data.
+    ///      6. Verifies that the correct number of attestations were created
+    ///         and checks that the attester is the expected sender.
+    function testMultiAttestationWithValue(uint256 _value, address _userAddress, string memory _userName, bool _isActive, address _userAddress2, string memory _userName2, bool _isActive2) public {
+        string memory schema = "address userAddress, string userName, bool isActive, address userAddress2, string userName2, bool isActive2";
+        vm.assume(_value <= 10);
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
 
-        uint256 value = 1 ether;
+        uint256 value = _value * 1 ether;
         vm.deal(sender, value * 2);
+        bytes memory data = abi.encode(
+            _userAddress,    // address
+            _userName,    // string
+            _isActive    // bool
+        );
+        bytes memory data2 = abi.encode(
+            _userAddress2,    // address
+            _userName2,    // string
+            _isActive2    // bool
+        );
 
         MultiAttestationRequest[]
             memory requests = new MultiAttestationRequest[](2);
@@ -1626,7 +1643,7 @@ function testAttestationExpirationScenarios(
             expirationTime: uint64(block.timestamp + 30 days),
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: hex"1234",
+            data: data,
             value: value
         });
 
@@ -1637,7 +1654,7 @@ function testAttestationExpirationScenarios(
             expirationTime: uint64(block.timestamp + 30 days),
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: hex"5678",
+            data: data2,
             value: value
         });
 
