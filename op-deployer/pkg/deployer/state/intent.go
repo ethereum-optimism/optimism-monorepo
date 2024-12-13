@@ -46,9 +46,9 @@ var emptyAddress common.Address
 var emptyHash common.Hash
 
 type SuperchainProofParams struct {
-	WithdrawalDelaySeconds          uint64 `json:"faultGameWithdrawalDelay" toml:"withdrawalDelaySeconds"`
-	MinProposalSizeBytes            uint64 `json:"preimageOracleMinProposalSize" toml:"minProposalSizeBytes"`
-	ChallengePeriodSeconds          uint64 `json:"preimageOracleChallengePeriod" toml:"challengePeriodSeconds"`
+	WithdrawalDelaySeconds          uint64 `json:"faultGameWithdrawalDelay" toml:"faultGameWithdrawalDelay"`
+	MinProposalSizeBytes            uint64 `json:"preimageOracleMinProposalSize" toml:"preimageOracleMinProposalSize"`
+	ChallengePeriodSeconds          uint64 `json:"preimageOracleChallengePeriod" toml:"preimageOracleChallengePeriod"`
 	ProofMaturityDelaySeconds       uint64 `json:"proofMaturityDelaySeconds" toml:"proofMaturityDelaySeconds"`
 	DisputeGameFinalityDelaySeconds uint64 `json:"disputeGameFinalityDelaySeconds" toml:"disputeGameFinalityDelaySeconds"`
 	MIPSVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
