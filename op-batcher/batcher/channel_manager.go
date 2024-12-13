@@ -95,14 +95,15 @@ func (s *channelManager) pendingBlocks() int {
 }
 
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
-// in the failed transaction.
-func (s *channelManager) TxFailed(_id txID) {
+// in the failed transaction. failoverToEthDA should be set to true when using altDA
+// and altDA is down. This will switch the channel to submit frames to ethDA instead.
+func (s *channelManager) TxFailed(_id txID, failoverToEthDA bool) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
-		channel.TxFailed(id)
+		channel.TxFailed(id, failoverToEthDA)
 	} else {
 		s.log.Warn("transaction from unknown channel marked as failed", "id", id)
 	}
@@ -214,16 +215,16 @@ func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
 	newCfg := s.cfgProvider.ChannelConfig()
 
 	// No change:
-	if newCfg.UseBlobs == s.defaultCfg.UseBlobs {
+	if newCfg.UseBlobs() == s.defaultCfg.UseBlobs() {
 		s.log.Debug("Recomputing optimal ChannelConfig: no need to switch DA type",
-			"useBlobs", s.defaultCfg.UseBlobs)
+			"useBlobs", s.defaultCfg.UseBlobs())
 		return s.nextTxData(channel)
 	}
 
 	// Change:
 	s.log.Info("Recomputing optimal ChannelConfig: changing DA type and requeing blocks...",
-		"useBlobsBefore", s.defaultCfg.UseBlobs,
-		"useBlobsAfter", newCfg.UseBlobs)
+		"useBlobsBefore", s.defaultCfg.UseBlobs(),
+		"useBlobsAfter", newCfg.UseBlobs())
 
 	// Invalidate the channel so its blocks
 	// get requeued:
@@ -326,7 +327,7 @@ func (s *channelManager) ensureChannelWithSpace(l1Head eth.BlockID) error {
 		"compression_algo", cfg.CompressorConfig.CompressionAlgo,
 		"target_num_frames", cfg.TargetNumFrames,
 		"max_frame_size", cfg.MaxFrameSize,
-		"use_blobs", cfg.UseBlobs,
+		"da_type", cfg.DaType,
 	)
 	s.metr.RecordChannelOpened(pc.ID(), s.pendingBlocks())
 

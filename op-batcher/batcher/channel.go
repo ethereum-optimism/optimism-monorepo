@@ -45,8 +45,9 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 }
 
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
-// in the failed transaction.
-func (c *channel) TxFailed(id string) {
+// in the failed transaction. failoverToEthDA should be set to true when using altDA
+// and altDA is down. This will switch the channel to submit frames to ethDA instead.
+func (c *channel) TxFailed(id string, failoverToEthDA bool) {
 	if data, ok := c.pendingTransactions[id]; ok {
 		c.log.Trace("marked transaction as failed", "id", id)
 		// Rewind to the first frame of the failed tx
@@ -57,7 +58,15 @@ func (c *channel) TxFailed(id string) {
 	} else {
 		c.log.Warn("unknown transaction marked as failed", "id", id)
 	}
-
+	if failoverToEthDA {
+		// We failover to calldata txs because in altda mode the channel and channelManager
+		// are configured to use a calldataConfigManager, as opposed to DynamicEthChannelConfig
+		// which can use both calldata and blobs. Failover should happen extremely rarely,
+		// and is only used while the altDA is down, so we can afford to be inefficient here.
+		// TODO: figure out how to switch to blobs/auto instead. Might need to make
+		// batcherService.initChannelConfig function stateless so that we can reuse it.
+		c.cfg.DaType = DaTypeCalldata
+	}
 	c.metr.RecordBatchTxFailed()
 }
 
@@ -132,14 +141,14 @@ func (c *channel) ID() derive.ChannelID {
 // NextTxData should only be called after HasTxData returned true.
 func (c *channel) NextTxData() txData {
 	nf := c.cfg.MaxFramesPerTx()
-	txdata := txData{frames: make([]frameData, 0, nf), asBlob: c.cfg.UseBlobs}
+	txdata := txData{frames: make([]frameData, 0, nf), daType: c.cfg.DaType}
 	for i := 0; i < nf && c.channelBuilder.HasPendingFrame(); i++ {
 		frame := c.channelBuilder.NextFrame()
 		txdata.frames = append(txdata.frames, frame)
 	}
 
 	id := txdata.ID().String()
-	c.log.Debug("returning next tx data", "id", id, "num_frames", len(txdata.frames), "as_blob", txdata.asBlob)
+	c.log.Debug("returning next tx data", "id", id, "num_frames", len(txdata.frames), "da_type", txdata.daType)
 	c.pendingTransactions[id] = txdata
 
 	return txdata
@@ -147,7 +156,7 @@ func (c *channel) NextTxData() txData {
 
 func (c *channel) HasTxData() bool {
 	if c.IsFull() || // If the channel is full, we should start to submit it
-		!c.cfg.UseBlobs { // If using calldata, we only send one frame per tx
+		c.cfg.DaType == DaTypeCalldata { // If using calldata, we only send one frame per tx
 		return c.channelBuilder.HasPendingFrame()
 	}
 	// Collect enough frames if channel is not full yet

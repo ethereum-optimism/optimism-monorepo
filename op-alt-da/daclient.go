@@ -16,6 +16,11 @@ var ErrNotFound = errors.New("not found")
 // ErrInvalidInput is returned when the input is not valid for posting to the DA storage.
 var ErrInvalidInput = errors.New("invalid input")
 
+// ErrAltDADown is returned when the alt DA returns a 503 status code.
+// It is used to signify that the alt DA is down and the client should failover to the eth DA.
+// See https://github.com/ethereum-optimism/specs/issues/434
+var ErrAltDADown = errors.New("alt DA is down: failover to eth DA")
+
 // DAClient is an HTTP client to communicate with a DA storage service.
 // It creates commitments and retrieves input data + verifies if needed.
 type DAClient struct {
@@ -131,6 +136,9 @@ func (c *DAClient) setInput(ctx context.Context, img []byte) (CommitmentData, er
 		return nil, err
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode == http.StatusServiceUnavailable {
+		return nil, ErrAltDADown
+	}
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("failed to store data: %v", resp.StatusCode)
 	}

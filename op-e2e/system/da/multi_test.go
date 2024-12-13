@@ -52,7 +52,7 @@ func TestBatcherMultiTx(t *testing.T) {
 			block, err := l1Client.BlockByNumber(ctx, big.NewInt(int64(i)))
 			require.NoError(t, err)
 
-			batcherTxCount, err := transactions.TransactionsBySender(block, cfg.DeployConfig.BatchSenderAddress)
+			batcherTxCount, err := transactions.TransactionsBySenderCount(block, cfg.DeployConfig.BatchSenderAddress)
 			require.NoError(t, err)
 			totalBatcherTxsCount += batcherTxCount
 
