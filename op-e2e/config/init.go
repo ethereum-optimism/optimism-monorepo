@@ -5,7 +5,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io"
 	"log/slog"
 	"math/big"
 	"os"
@@ -200,18 +199,12 @@ func init() {
 		genesis.L2AllocsDelta,
 	}
 
-	l2OOAllocsL1B := decompressGzipFile(path.Join(configPath, "allocs-l1.json.gz"))
 	var l2OOAllocsL1 foundry.ForgeAllocs
-	if err := json.Unmarshal(l2OOAllocsL1B, &l2OOAllocsL1); err != nil {
-		panic(fmt.Errorf("failed to unmarshal L2OO L1 allocs: %w", err))
-	}
+	decompressGzipJSON(path.Join(configPath, "allocs-l1.json.gz"), &l2OOAllocsL1)
 	l1AllocsByType[AllocTypeL2OO] = &l2OOAllocsL1
 
-	l2OOAddressesB := decompressGzipFile(path.Join(configPath, "addresses.json.gz"))
 	var l2OOAddresses genesis.L1Deployments
-	if err := json.Unmarshal(l2OOAddressesB, &l2OOAddresses); err != nil {
-		panic(fmt.Errorf("failed to unmarshal L2OO addresses: %w", err))
-	}
+	decompressGzipJSON(path.Join(configPath, "addresses.json.gz"), &l2OOAddresses)
 	l1DeploymentsByType[AllocTypeL2OO] = &l2OOAddresses
 
 	l2OODC := DeployConfig(AllocTypeStandard)
@@ -219,14 +212,19 @@ func init() {
 	deployConfigsByType[AllocTypeL2OO] = l2OODC
 
 	l2AllocsByType[AllocTypeL2OO] = genesis.L2AllocsModeMap{}
+	var wg sync.WaitGroup
 	for _, fork := range forks {
-		l2OOAllocsL2B := decompressGzipFile(path.Join(configPath, fmt.Sprintf("allocs-l2-%s.json.gz", fork)))
-		var l2OOAllocsL2 foundry.ForgeAllocs
-		if err := json.Unmarshal(l2OOAllocsL2B, &l2OOAllocsL2); err != nil {
-			panic(fmt.Errorf("failed to unmarshal L2OO L2 allocs: %w", err))
-		}
-		l2AllocsByType[AllocTypeL2OO][fork] = &l2OOAllocsL2
+		wg.Add(1)
+		go func(fork genesis.L2AllocsMode) {
+			defer wg.Done()
+			var l2OOAllocsL2 foundry.ForgeAllocs
+			decompressGzipJSON(path.Join(configPath, fmt.Sprintf("allocs-l2-%s.json.gz", fork)), &l2OOAllocsL2)
+			mtx.Lock()
+			l2AllocsByType[AllocTypeL2OO][fork] = &l2OOAllocsL2
+			mtx.Unlock()
+		}(fork)
 	}
+	wg.Wait()
 
 	// Use regular level going forward.
 	oplog.SetGlobalLogHandler(handler)
@@ -483,7 +481,7 @@ func ensureDir(dirPath string) error {
 	return nil
 }
 
-func decompressGzipFile(p string) []byte {
+func decompressGzipJSON(p string, thing any) {
 	f, err := os.Open(p)
 	if err != nil {
 		panic(fmt.Errorf("failed to open file: %w", err))
@@ -495,11 +493,9 @@ func decompressGzipFile(p string) []byte {
 		panic(fmt.Errorf("failed to create gzip reader: %w", err))
 	}
 	defer gzr.Close()
-	out, err := io.ReadAll(gzr)
-	if err != nil {
+	if err := json.NewDecoder(gzr).Decode(thing); err != nil {
 		panic(fmt.Errorf("failed to read gzip data: %w", err))
 	}
-	return out
 }
 
 func cannonVMType() state.VMType {
@@ -513,6 +509,9 @@ type prestateFile struct {
 	Pre string `json:"pre"`
 }
 
+var cannonPrestateCache common.Hash
+var cannonPrestateOnce sync.Once
+
 func cannonPrestate(monorepoRoot string) common.Hash {
 	var filename string
 
@@ -522,19 +521,23 @@ func cannonPrestate(monorepoRoot string) common.Hash {
 		filename = "prestate-proof-mt.json"
 	}
 
-	f, err := os.Open(path.Join(monorepoRoot, "op-program", "bin", filename))
-	if err != nil {
-		log.Warn("error opening prestate file", "err", err)
-		return common.Hash{}
-	}
-	defer f.Close()
+	cannonPrestateOnce.Do(func() {
+		f, err := os.Open(path.Join(monorepoRoot, "op-program", "bin", filename))
+		if err != nil {
+			log.Warn("error opening prestate file", "err", err)
+			return
+		}
+		defer f.Close()
 
-	var prestate prestateFile
-	dec := json.NewDecoder(f)
-	if err := dec.Decode(&prestate); err != nil {
-		log.Warn("error decoding prestate file", "err", err)
-		return common.Hash{}
-	}
+		var prestate prestateFile
+		dec := json.NewDecoder(f)
+		if err := dec.Decode(&prestate); err != nil {
+			log.Warn("error decoding prestate file", "err", err)
+			return
+		}
 
-	return common.HexToHash(prestate.Pre)
+		cannonPrestateCache = common.HexToHash(prestate.Pre)
+	})
+
+	return cannonPrestateCache
 }
