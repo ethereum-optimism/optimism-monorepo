@@ -7,12 +7,10 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
-	"sync"
-	"sync/atomic"
 
+	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
 	"github.com/google/go-cmp/cmp"
 )
 
@@ -52,75 +50,39 @@ type Artifact struct {
 }
 
 func main() {
-	if err := run(); err != nil {
-		writeStderr("an error occurred: %v", err)
+	if err := common.ProcessFilesGlob(
+		[]string{"forge-artifacts/**/*.json"},
+		[]string{},
+		processFile,
+	); err != nil {
+		fmt.Printf("error: %v\n", err)
 		os.Exit(1)
 	}
+}
+
+func processFile(path string) []error {
+	cwd, err := os.Getwd()
+	if err != nil {
+		return []error{fmt.Errorf("failed to get current working directory: %w", err)}
+	}
+	artifactsDir := filepath.Join(cwd, "forge-artifacts")
+
+	contractName := strings.Split(filepath.Base(path), ".")[0]
+	if err := processArtifact(contractName, path, artifactsDir, func(msg string, args ...any) {
+		writeStderr(msg, args...)
+	}); err != nil {
+		return []error{fmt.Errorf("%s: %w", contractName, err)}
+	}
+
+	return nil
 }
 
 func writeStderr(msg string, args ...any) {
 	_, _ = fmt.Fprintf(os.Stderr, msg+"\n", args...)
 }
 
-func run() error {
-	cwd, err := os.Getwd()
-	if err != nil {
-		return fmt.Errorf("failed to get current working directory: %w", err)
-	}
-
-	artifactsDir := filepath.Join(cwd, "forge-artifacts")
-
-	artifactFiles, err := glob(artifactsDir, ".json")
-	if err != nil {
-		return fmt.Errorf("failed to get artifact files: %w", err)
-	}
-
-	// Remove duplicates from artifactFiles
-	uniqueArtifacts := make(map[string]string)
-	for contractName, artifactPath := range artifactFiles {
-		baseName := strings.Split(contractName, ".")[0]
-		uniqueArtifacts[baseName] = artifactPath
-	}
-
-	var hasErr int32
-	var outMtx sync.Mutex
-	fail := func(msg string, args ...any) {
-		outMtx.Lock()
-		writeStderr("❌  "+msg, args...)
-		outMtx.Unlock()
-		atomic.StoreInt32(&hasErr, 1)
-	}
-
-	sem := make(chan struct{}, runtime.NumCPU())
-	for contractName, artifactPath := range uniqueArtifacts {
-		contractName := contractName
-		artifactPath := artifactPath
-
-		sem <- struct{}{}
-
-		go func() {
-			defer func() {
-				<-sem
-			}()
-
-			if err := processArtifact(contractName, artifactPath, artifactsDir, fail); err != nil {
-				fail("%s: %v", contractName, err)
-			}
-		}()
-	}
-
-	for i := 0; i < cap(sem); i++ {
-		sem <- struct{}{}
-	}
-
-	if atomic.LoadInt32(&hasErr) == 1 {
-		return errors.New("interface check failed, see logs above")
-	}
-
-	return nil
-}
-
 func processArtifact(contractName, artifactPath, artifactsDir string, fail func(string, ...any)) error {
+	fmt.Printf("processing artifact: %s\n", contractName)
 	if isExcluded(contractName) {
 		return nil
 	}
@@ -337,18 +299,4 @@ func isExcluded(contractName string) bool {
 		}
 	}
 	return false
-}
-
-func glob(dir string, ext string) (map[string]string, error) {
-	out := make(map[string]string)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && filepath.Ext(path) == ext {
-			out[strings.TrimSuffix(filepath.Base(path), ext)] = path
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
-	}
-	return out, nil
 }
