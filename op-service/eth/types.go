@@ -653,7 +653,6 @@ func (k *StorageKey) UnmarshalJSON(text []byte) error {
 	// decode hex string
 	b, err := hexutil.Decode(str)
 	if err != nil {
-		fmt.Println("here")
 		return err
 	}
 
