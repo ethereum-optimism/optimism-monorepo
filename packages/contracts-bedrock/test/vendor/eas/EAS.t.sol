@@ -1777,7 +1777,7 @@ function testAttestationExpirationScenarios(
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         bytes32 nonExistentUid = _nonExistentUid;
-        
+
         vm.prank(sender);
         vm.expectRevert(NotFound.selector);
         eas.revoke(
@@ -1794,12 +1794,31 @@ function testAttestationExpirationScenarios(
     ///      3. Revokes the parent attestation
     ///      4. Verifies that revoking parent doesn't affect child attestation
     ///      Ensures that attestation references don't create revocation dependencies
-    function testRevocationWithRefUID() public {
-        string memory schema = "bool like";
+    function testRevocationWithRefUID( 
+        address _userAddress, 
+        string memory _userName, 
+        bool _isActive, 
+        address _userAddress2, 
+        string memory _userName2, 
+        bool _isActive2, 
+        uint64 _expirationOffset
+        ) public {
+        vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
+        string memory schema = "address userAddress, string userName, bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        bytes memory data = abi.encode(
+            _userAddress,
+            _userName,
+            _isActive 
+        );
+        bytes memory data2 = abi.encode(
+            _userAddress2,
+            _userName2,
+            _isActive2 
+        );
 
         // Create parent attestation
         bytes32 parentUID = eas.attest(
@@ -1807,10 +1826,10 @@ function testAttestationExpirationScenarios(
                 schema: schemaId,
                 data: AttestationRequestData({
                     recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    expirationTime: uint64(block.timestamp + _expirationOffset),
                     revocable: true,
                     refUID: ZERO_BYTES32,
-                    data: hex"1234",
+                    data: data,
                     value: 0
                 })
             })
@@ -1822,10 +1841,10 @@ function testAttestationExpirationScenarios(
                 schema: schemaId,
                 data: AttestationRequestData({
                     recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    expirationTime: uint64(block.timestamp + _expirationOffset),
                     revocable: true,
                     refUID: parentUID,
-                    data: hex"5678",
+                    data: data2,
                     value: 0
                 })
             })
@@ -1852,20 +1871,22 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies each attestation has a non-zero revocationTime
     ///      Demonstrates the efficiency of batch revocation for multiple
     ///      attestations sharing the same schema
-    function testMultiRevocation() public {
+    function testMultiRevocation(uint256 _count, uint64 _expirationOffset) public {
+        vm.assume(_count > 0 && _count <=10);
+        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
         bytes32 schemaId = _registerSchema("bool like", true);
 
         vm.startPrank(sender);
 
         // Create multiple attestations
-        bytes32[] memory uids = new bytes32[](3);
-        for (uint i = 0; i < 3; i++) {
+        bytes32[] memory uids = new bytes32[](_count);
+        for (uint i = 0; i < _count; i++) {
             uids[i] = eas.attest(
                 AttestationRequest({
                     schema: schemaId,
                     data: AttestationRequestData({
                         recipient: recipient,
-                        expirationTime: uint64(block.timestamp + 30 days),
+                        expirationTime: uint64(block.timestamp + _expirationOffset),
                         revocable: true,
                         refUID: ZERO_BYTES32,
                         data: abi.encodePacked(bytes1(uint8(i + 1))),
@@ -1880,8 +1901,8 @@ function testAttestationExpirationScenarios(
             1
         );
         requests[0].schema = schemaId;
-        requests[0].data = new RevocationRequestData[](3);
-        for (uint i = 0; i < 3; i++) {
+        requests[0].data = new RevocationRequestData[](_count);
+        for (uint i = 0; i < _count; i++) {
             requests[0].data[i] = RevocationRequestData({
                 uid: uids[i],
                 value: 0
@@ -1909,8 +1930,15 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies revocation fails with AccessDenied
     ///      Ensures that delegated revocation permissions are properly
     ///      enforced and only the original attester can revoke
-    function testDelegatedRevocationRevert() public {
-        string memory schema = "bool like";
+    function testDelegatedRevocationRevert(
+        address _recipient,
+        uint64 _expirationOffset,
+        address _sender2
+    ) public {
+        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
+        vm.assume(_recipient != address(0)); 
+
+        string memory schema = "address userAddress, string userName, bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
@@ -1921,8 +1949,8 @@ function testAttestationExpirationScenarios(
             AttestationRequest({
                 schema: schemaId,
                 data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
+                    recipient: _recipient, 
+                    expirationTime: uint64(block.timestamp + _expirationOffset), // Fuzzed expiration time
                     revocable: true,
                     refUID: ZERO_BYTES32,
                     data: hex"1234",
@@ -1933,7 +1961,7 @@ function testAttestationExpirationScenarios(
         vm.stopPrank();
 
         // Test: revert when non-attester tries to revoke
-        vm.prank(sender2);
+        vm.prank(_sender2); 
         vm.expectRevert(AccessDenied.selector);
         eas.revoke(
             RevocationRequest({
