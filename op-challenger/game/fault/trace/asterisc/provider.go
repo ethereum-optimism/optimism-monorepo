@@ -168,7 +168,7 @@ func NewTraceProviderForTest(logger log.Logger, m vm.Metricer, cfg *config.Confi
 		logger:    logger,
 		dir:       dir,
 		prestate:  cfg.AsteriscAbsolutePreState,
-		generator: vm.NewExecutor(logger, m, cfg.Asterisc, vm.NewOpProgramServerExecutor(), cfg.AsteriscAbsolutePreState, localInputs),
+		generator: vm.NewExecutor(logger, m, cfg.Asterisc, vm.NewOpProgramServerExecutor(logger), cfg.AsteriscAbsolutePreState, localInputs),
 		gameDepth: gameDepth,
 		preimageLoader: utils.NewPreimageLoader(func() (utils.PreimageSource, error) {
 			return kvstore.NewDiskKV(logger, vm.PreimageDir(dir), kvtypes.DataFormatFile)

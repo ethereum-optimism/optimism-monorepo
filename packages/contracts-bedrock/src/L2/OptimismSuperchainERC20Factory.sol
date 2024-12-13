@@ -1,25 +1,25 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { IOptimismERC20Factory } from "src/L2/interfaces/IOptimismERC20Factory.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
-import { Predeploys } from "src/libraries/Predeploys.sol";
+// Contracts
 import { BeaconProxy } from "@openzeppelin/contracts-v5/proxy/beacon/BeaconProxy.sol";
+import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
+
+// Libraries
 import { CREATE3 } from "@rari-capital/solmate/src/utils/CREATE3.sol";
+import { Predeploys } from "src/libraries/Predeploys.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied
 /// @custom:predeployed 0x4200000000000000000000000000000000000026
 /// @title OptimismSuperchainERC20Factory
 /// @notice OptimismSuperchainERC20Factory is a factory contract that deploys OptimismSuperchainERC20 Beacon Proxies
 ///         using CREATE3.
-contract OptimismSuperchainERC20Factory is IOptimismERC20Factory, ISemver {
-    /// @notice Mapping of the deployed OptimismSuperchainERC20 to the remote token address.
-    ///         This is used to keep track of the token deployments.
-    mapping(address superchainToken => address remoteToken) public deployments;
-
+contract OptimismSuperchainERC20Factory is ISemver {
     /// @notice Emitted when an OptimismSuperchainERC20 is deployed.
-    /// @param superchainToken  Address of the SuperchainERC20 deployment.
+    /// @param superchainToken  Address of the OptimismSuperchainERC20 deployment.
     /// @param remoteToken      Address of the corresponding token on the remote chain.
     /// @param deployer         Address of the account that deployed the token.
     event OptimismSuperchainERC20Created(
@@ -27,8 +27,12 @@ contract OptimismSuperchainERC20Factory is IOptimismERC20Factory, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.2
-    string public constant version = "1.0.0-beta.2";
+    /// @custom:semver 1.0.0-beta.6
+    string public constant version = "1.0.0-beta.6";
+
+    /// @notice Mapping of the deployed OptimismSuperchainERC20 to the remote token address.
+    ///         This is used to keep track of the token deployments.
+    mapping(address _localToken => address remoteToken_) public deployments;
 
     /// @notice Deploys a OptimismSuperchainERC20 Beacon Proxy using CREATE3.
     /// @param _remoteToken      Address of the remote token.

@@ -11,34 +11,36 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/pkg/profile"
+	"github.com/urfave/cli/v2"
+
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
+	mipsexec "github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/versions"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 	"github.com/ethereum-optimism/optimism/op-service/serialize"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/pkg/profile"
-	"github.com/urfave/cli/v2"
 )
 
 var (
 	RunInputFlag = &cli.PathFlag{
 		Name:      "input",
-		Usage:     "path of input JSON state. Stdin if left empty.",
+		Usage:     "path of input binary state. Stdin if left empty.",
 		TakesFile: true,
-		Value:     "state.json",
+		Value:     "state.bin.gz",
 		Required:  true,
 	}
 	RunOutputFlag = &cli.PathFlag{
 		Name:      "output",
-		Usage:     "path of output JSON state. Not written if empty, use - to write to Stdout.",
+		Usage:     "path of output binary state. Not written if empty, use - to write to Stdout.",
 		TakesFile: true,
-		Value:     "out.json",
+		Value:     "out.bin.gz",
 		Required:  false,
 	}
 	patternHelp    = "'never' (default), 'always', '=123' at exactly step 123, '%123' for every 123 steps"
@@ -63,7 +65,7 @@ var (
 	RunSnapshotFmtFlag = &cli.StringFlag{
 		Name:     "snapshot-fmt",
 		Usage:    "format for snapshot output file names.",
-		Value:    "state-%d.json",
+		Value:    "state-%d.bin.gz",
 		Required: false,
 	}
 	RunStopAtFlag = &cli.GenericFlag{
@@ -82,7 +84,7 @@ var (
 		Usage:    "stop at the first preimage request matching this type",
 		Required: false,
 	}
-	RunStopAtPreimageLargerThanFlag = &cli.StringFlag{
+	RunStopAtPreimageLargerThanFlag = &cli.IntFlag{
 		Name:     "stop-at-preimage-larger-than",
 		Usage:    "stop at the first step that requests a preimage larger than the specified size (in bytes)",
 		Required: false,
@@ -279,6 +281,9 @@ func Run(ctx *cli.Context) error {
 	if ctx.Bool(RunPProfCPU.Name) {
 		defer profile.Start(profile.NoShutdownHook, profile.ProfilePath("."), profile.CPUProfile).Stop()
 	}
+	if err := checkFlags(ctx); err != nil {
+		return err
+	}
 
 	guestLogger := Logger(os.Stderr, log.LevelInfo)
 	outLog := &mipsevm.LoggingWriter{Log: guestLogger.With("module", "guest", "stream", "stdout")}
@@ -375,6 +380,8 @@ func Run(ctx *cli.Context) error {
 	}
 	l.Info("Loaded input state", "version", state.Version)
 	vm := state.CreateVM(l, po, outLog, errLog, meta)
+
+	// Enable debug/stats tracking as requested
 	debugProgram := ctx.Bool(RunDebugFlag.Name)
 	if debugProgram {
 		if metaPath := ctx.Path(RunMetaFlag.Name); metaPath == "" {
@@ -383,6 +390,9 @@ func Run(ctx *cli.Context) error {
 		if err := vm.InitDebug(); err != nil {
 			return fmt.Errorf("failed to initialize debug mode: %w", err)
 		}
+	}
+	if debugInfoFile := ctx.Path(RunDebugInfoFlag.Name); debugInfoFile != "" {
+		vm.EnableStats()
 	}
 
 	proofFmt := ctx.String(RunProofFmtFlag.Name)
@@ -407,14 +417,16 @@ func Run(ctx *cli.Context) error {
 
 		if infoAt(state) {
 			delta := time.Since(start)
+			pc := state.GetPC()
+			insn := mipsexec.LoadSubWord(state.GetMemory(), pc, 4, false, new(mipsexec.NoopMemoryTracker))
 			l.Info("processing",
 				"step", step,
 				"pc", mipsevm.HexU32(state.GetPC()),
-				"insn", mipsevm.HexU32(state.GetMemory().GetUint32(state.GetPC())),
+				"insn", mipsevm.HexU32(insn),
 				"ips", float64(step-startStep)/(float64(delta)/float64(time.Second)),
 				"pages", state.GetMemory().PageCount(),
 				"mem", state.GetMemory().Usage(),
-				"name", meta.LookupSymbol(state.GetPC()),
+				"name", meta.LookupSymbol(pc),
 			)
 		}
 
@@ -524,3 +536,17 @@ func CreateRunCommand(action cli.ActionFunc) *cli.Command {
 }
 
 var RunCommand = CreateRunCommand(Run)
+
+func checkFlags(ctx *cli.Context) error {
+	if output := ctx.Path(RunOutputFlag.Name); output != "" {
+		if !serialize.IsBinaryFile(output) {
+			return errors.New("invalid --output file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+		}
+	}
+	if snapshotFmt := ctx.String(RunSnapshotFmtFlag.Name); snapshotFmt != "" {
+		if !serialize.IsBinaryFile(fmt.Sprintf(snapshotFmt, 0)) {
+			return errors.New("invalid --snapshot-fmt file format. Only binary file formats (ending in .bin or bin.gz) are supported")
+		}
+	}
+	return nil
+}

@@ -52,7 +52,7 @@ The OP Stack is a collaborative project. By collaborating on free, open software
 
 [CONTRIBUTING.md](./CONTRIBUTING.md) contains a detailed explanation of the contributing process for this repository. Make sure to use the [Developer Quick Start](./CONTRIBUTING.md#development-quick-start) to properly set up your development environment.
 
-[Good First Issues](https://github.com/ethereum-optimism/optimism/issues?q=is:open+is:issue+label:D-good-first-issue) are a great place to look for tasks to tackle if you're not sure where to start.
+[Good First Issues](https://github.com/ethereum-optimism/optimism/issues?q=is:open+is:issue+label:D-good-first-issue) are a great place to look for tasks to tackle if you're not sure where to start, and see [CONTRIBUTING.md](./CONTRIBUTING.md) for info on larger projects.
 
 ## Security Policy and Vulnerability Reporting
 
@@ -65,7 +65,6 @@ The Optimism Immunefi program offers up to $2,000,042 for in-scope critical vuln
 <pre>
 ├── <a href="./docs">docs</a>: A collection of documents including audits and post-mortems
 ├── <a href="./op-batcher">op-batcher</a>: L2-Batch Submitter, submits bundles of batches to L1
-├── <a href="./op-bootnode">op-bootnode</a>: Standalone op-node discovery bootnode
 ├── <a href="./op-chain-ops">op-chain-ops</a>: State surgery utilities
 ├── <a href="./op-challenger">op-challenger</a>: Dispute game challenge agent
 ├── <a href="./op-e2e">op-e2e</a>: End-to-End testing of all bedrock components in Go
@@ -80,8 +79,7 @@ The Optimism Immunefi program offers up to $2,000,042 for in-scope critical vuln
 ├── <a href="./ops-bedrock">ops-bedrock</a>: Bedrock devnet work
 ├── <a href="./packages">packages</a>
 │   ├── <a href="./packages/contracts-bedrock">contracts-bedrock</a>: OP Stack smart contracts
-├── <a href="./proxyd">proxyd</a>: Configurable RPC request router and proxy
-├── <a href="./specs">specs</a>: Specs of the rollup starting at the Bedrock upgrade
+├── <a href="./semgrep">semgrep</a>: Semgrep rules and tests
 </pre>
 
 ## Development and Release Process
@@ -101,7 +99,7 @@ For contract releases, refer to the GitHub release notes for a given release whi
 
 Tags of the form `v<semver>`, such as `v1.1.4`, indicate releases of all Go code only, and **DO NOT** include smart contracts.
 This naming scheme is required by Golang.
-In the above list, this means these `v<semver` releases contain all `op-*` components and exclude all `contracts-*` components.
+In the above list, this means these `v<semver>` releases contain all `op-*` components and exclude all `contracts-*` components.
 
 `op-geth` embeds upstream geth’s version inside its own version as follows: `vMAJOR.GETH_MAJOR GETH_MINOR GETH_PATCH.PATCH`.
 Basically, geth’s version is our minor version.
@@ -125,7 +123,7 @@ All other components and packages should be considered development components on
 ### Development branch
 
 The primary development branch is [`develop`](https://github.com/ethereum-optimism/optimism/tree/develop/).
-`develop` contains the most up-to-date software that remains backwards compatible with the latest experimental [network deployments](https://community.optimism.io/docs/useful-tools/networks/).
+`develop` contains the most up-to-date software that remains backwards compatible with the latest experimental [network deployments](https://docs.optimism.io/chain/networks).
 If you're making a backwards compatible change, please direct your pull request towards `develop`.
 
 **Changes to contracts within `packages/contracts-bedrock/src` are usually NOT considered backwards compatible.**

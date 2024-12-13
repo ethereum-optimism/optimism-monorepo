@@ -1,10 +1,10 @@
 package metrics
 
 import (
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/prometheus/client_golang/prometheus"
 
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 const Namespace = "op_supervisor"
@@ -18,7 +18,7 @@ type Metricer interface {
 	CacheAdd(chainID types.ChainID, label string, cacheSize int, evicted bool)
 	CacheGet(chainID types.ChainID, label string, hit bool)
 
-	RecordDBEntryCount(chainID types.ChainID, count int64)
+	RecordDBEntryCount(chainID types.ChainID, kind string, count int64)
 	RecordDBSearchEntriesRead(chainID types.ChainID, count int64)
 
 	Document() []opmetrics.DocumentedMetric
@@ -106,9 +106,10 @@ func NewMetrics(procName string) *Metrics {
 		DBEntryCountVec: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: ns,
 			Name:      "logdb_entries_current",
-			Help:      "Current number of entries in the log database by chain ID",
+			Help:      "Current number of entries in the database of specified kind and chain ID",
 		}, []string{
 			"chain",
+			"kind",
 		}),
 		DBSearchEntriesReadVec: factory.NewHistogramVec(prometheus.HistogramOpts{
 			Namespace: ns,
@@ -159,8 +160,8 @@ func (m *Metrics) CacheGet(chainID types.ChainID, label string, hit bool) {
 	}
 }
 
-func (m *Metrics) RecordDBEntryCount(chainID types.ChainID, count int64) {
-	m.DBEntryCountVec.WithLabelValues(chainIDLabel(chainID)).Set(float64(count))
+func (m *Metrics) RecordDBEntryCount(chainID types.ChainID, kind string, count int64) {
+	m.DBEntryCountVec.WithLabelValues(chainIDLabel(chainID), kind).Set(float64(count))
 }
 
 func (m *Metrics) RecordDBSearchEntriesRead(chainID types.ChainID, count int64) {

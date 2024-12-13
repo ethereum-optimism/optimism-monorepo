@@ -11,12 +11,12 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "owner",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "",
+        "name": "spender",
         "type": "address"
       }
     ],
@@ -59,7 +59,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "src",
         "type": "address"
       }
     ],
@@ -72,6 +72,42 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_from",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "crosschainBurn",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_to",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "_amount",
+        "type": "uint256"
+      }
+    ],
+    "name": "crosschainMint",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -111,21 +147,21 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "from",
+        "name": "_from",
         "type": "address"
       },
       {
         "internalType": "address",
-        "name": "dst",
+        "name": "_to",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "wad",
+        "name": "_amount",
         "type": "uint256"
       }
     ],
-    "name": "relayERC20",
+    "name": "relayETH",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -134,23 +170,43 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "dst",
+        "name": "_to",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "wad",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "chainId",
+        "name": "_chainId",
         "type": "uint256"
       }
     ],
-    "name": "sendERC20",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "name": "sendETH",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "msgHash_",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes4",
+        "name": "_interfaceId",
+        "type": "bytes4"
+      }
+    ],
+    "name": "supportsInterface",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -249,7 +305,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "wad",
+        "name": "_amount",
         "type": "uint256"
       }
     ],
@@ -281,6 +337,56 @@
       }
     ],
     "name": "Approval",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "from",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "CrosschainBurn",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "to",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "amount",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      }
+    ],
+    "name": "CrosschainMint",
     "type": "event"
   },
   {
@@ -330,7 +436,7 @@
         "type": "uint256"
       }
     ],
-    "name": "RelayERC20",
+    "name": "RelayETH",
     "type": "event"
   },
   {
@@ -361,7 +467,7 @@
         "type": "uint256"
       }
     ],
-    "name": "SendERC20",
+    "name": "SendETH",
     "type": "event"
   },
   {
@@ -410,12 +516,22 @@
   },
   {
     "inputs": [],
+    "name": "InvalidCrossDomainSender",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NotCustomGasToken",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ZeroAddress",
     "type": "error"
   }
 ]

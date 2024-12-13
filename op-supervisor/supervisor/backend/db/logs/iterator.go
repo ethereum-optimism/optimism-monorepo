@@ -8,14 +8,13 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/entrydb"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/heads"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 type IteratorState interface {
 	NextIndex() entrydb.EntryIdx
-	HeadPointer() (heads.HeadPointer, error)
 	SealedBlock() (hash common.Hash, num uint64, ok bool)
+	SealedTimestamp() (timestamp uint64, ok bool)
 	InitMessage() (hash common.Hash, logIndex uint32, ok bool)
 	ExecMessage() *types.ExecutingMessage
 }
@@ -42,7 +41,7 @@ type traverseConditionalFn func(state IteratorState) error
 func (i *iterator) End() error {
 	for {
 		_, err := i.next()
-		if errors.Is(err, ErrFuture) {
+		if errors.Is(err, types.ErrFuture) {
 			return nil
 		} else if err != nil {
 			return err
@@ -50,7 +49,7 @@ func (i *iterator) End() error {
 	}
 }
 
-// NextInitMsg returns the next initiating message in the iterator.
+// NextInitMsg advances the iterator until it reads the next Initiating Message into the current state.
 // It scans forward until it finds and fully reads an initiating event, skipping any blocks.
 func (i *iterator) NextInitMsg() error {
 	seenLog := false
@@ -59,7 +58,7 @@ func (i *iterator) NextInitMsg() error {
 		if err != nil {
 			return err
 		}
-		if typ == entrydb.TypeInitiatingEvent {
+		if typ == TypeInitiatingEvent {
 			seenLog = true
 		}
 		if !i.current.hasCompleteBlock() {
@@ -74,9 +73,8 @@ func (i *iterator) NextInitMsg() error {
 	}
 }
 
-// NextExecMsg returns the next executing message in the iterator.
+// NextExecMsg advances the iterator until it reads the next Executing Message into the current state.
 // It scans forward until it finds and fully reads an initiating event, skipping any blocks.
-// This does not stay at the executing message of the current initiating message, if there is any.
 func (i *iterator) NextExecMsg() error {
 	for {
 		err := i.NextInitMsg()
@@ -89,7 +87,7 @@ func (i *iterator) NextExecMsg() error {
 	}
 }
 
-// NextBlock returns the next block in the iterator.
+// NextBlock advances the iterator until it reads the next block into the current state.
 // It scans forward until it finds and fully reads a block, skipping any events.
 func (i *iterator) NextBlock() error {
 	seenBlock := false
@@ -98,7 +96,7 @@ func (i *iterator) NextBlock() error {
 		if err != nil {
 			return err
 		}
-		if typ == entrydb.TypeSearchCheckpoint {
+		if typ == TypeSearchCheckpoint {
 			seenBlock = true
 		}
 		if !i.current.hasCompleteBlock() {
@@ -130,12 +128,12 @@ func (i *iterator) TraverseConditional(fn traverseConditionalFn) error {
 }
 
 // Read and apply the next entry.
-func (i *iterator) next() (entrydb.EntryType, error) {
+func (i *iterator) next() (EntryType, error) {
 	index := i.current.nextEntryIndex
 	entry, err := i.db.store.Read(index)
 	if err != nil {
 		if errors.Is(err, io.EOF) {
-			return 0, ErrFuture
+			return 0, types.ErrFuture
 		}
 		return 0, fmt.Errorf("failed to read entry %d: %w", index, err)
 	}
@@ -157,6 +155,11 @@ func (i *iterator) SealedBlock() (hash common.Hash, num uint64, ok bool) {
 	return i.current.SealedBlock()
 }
 
+// SealedTimestamp returns the timestamp of SealedBlock
+func (i *iterator) SealedTimestamp() (timestamp uint64, ok bool) {
+	return i.current.SealedTimestamp()
+}
+
 // InitMessage returns the current initiating message, if any is available.
 func (i *iterator) InitMessage() (hash common.Hash, logIndex uint32, ok bool) {
 	return i.current.InitMessage()
@@ -165,8 +168,4 @@ func (i *iterator) InitMessage() (hash common.Hash, logIndex uint32, ok bool) {
 // ExecMessage returns the current executing message, if any is available.
 func (i *iterator) ExecMessage() *types.ExecutingMessage {
 	return i.current.ExecMessage()
-}
-
-func (i *iterator) HeadPointer() (heads.HeadPointer, error) {
-	return i.current.HeadPointer()
 }

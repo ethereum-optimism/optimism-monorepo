@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
@@ -86,7 +87,8 @@ type EngineController struct {
 }
 
 func NewEngineController(engine ExecEngine, log log.Logger, metrics derive.Metrics,
-	rollupCfg *rollup.Config, syncCfg *sync.Config, emitter event.Emitter) *EngineController {
+	rollupCfg *rollup.Config, syncCfg *sync.Config, emitter event.Emitter,
+) *EngineController {
 	syncStatus := syncStatusCL
 	if syncCfg.SyncMode == sync.ELSync {
 		syncStatus = syncStatusWillStartEL
@@ -283,11 +285,11 @@ func (e *EngineController) TryUpdateEngine(ctx context.Context) error {
 	defer logFn()
 	fcRes, err := e.engine.ForkchoiceUpdate(ctx, &fc, nil)
 	if err != nil {
-		var inputErr eth.InputError
-		if errors.As(err, &inputErr) {
-			switch inputErr.Code {
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) {
+			switch eth.ErrorCode(rpcErr.ErrorCode()) {
 			case eth.InvalidForkchoiceState:
-				return derive.NewResetError(fmt.Errorf("forkchoice update was inconsistent with engine, need reset to resolve: %w", inputErr.Unwrap()))
+				return derive.NewResetError(fmt.Errorf("forkchoice update was inconsistent with engine, need reset to resolve: %w", rpcErr))
 			default:
 				return derive.NewTemporaryError(fmt.Errorf("unexpected error code in forkchoice-updated response: %w", err))
 			}
@@ -328,6 +330,7 @@ func (e *EngineController) InsertUnsafePayload(ctx context.Context, envelope *et
 		}
 	}
 	// Insert the payload & then call FCU
+	newPayloadStart := time.Now()
 	status, err := e.engine.NewPayload(ctx, envelope.ExecutionPayload, envelope.ParentBeaconBlockRoot)
 	if err != nil {
 		return derive.NewTemporaryError(fmt.Errorf("failed to update insert payload: %w", err))
@@ -340,6 +343,7 @@ func (e *EngineController) InsertUnsafePayload(ctx context.Context, envelope *et
 		return derive.NewTemporaryError(fmt.Errorf("cannot process unsafe payload: new - %v; parent: %v; err: %w",
 			payload.ID(), payload.ParentID(), eth.NewPayloadErr(payload, status)))
 	}
+	newPayloadFinish := time.Now()
 
 	// Mark the new payload as valid
 	fc := eth.ForkchoiceState{
@@ -359,13 +363,14 @@ func (e *EngineController) InsertUnsafePayload(ctx context.Context, envelope *et
 	}
 	logFn := e.logSyncProgressMaybe()
 	defer logFn()
+	fcu2Start := time.Now()
 	fcRes, err := e.engine.ForkchoiceUpdate(ctx, &fc, nil)
 	if err != nil {
-		var inputErr eth.InputError
-		if errors.As(err, &inputErr) {
-			switch inputErr.Code {
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) {
+			switch eth.ErrorCode(rpcErr.ErrorCode()) {
 			case eth.InvalidForkchoiceState:
-				return derive.NewResetError(fmt.Errorf("pre-unsafe-block forkchoice update was inconsistent with engine, need reset to resolve: %w", inputErr.Unwrap()))
+				return derive.NewResetError(fmt.Errorf("pre-unsafe-block forkchoice update was inconsistent with engine, need reset to resolve: %w", rpcErr))
 			default:
 				return derive.NewTemporaryError(fmt.Errorf("unexpected error code in forkchoice-updated response: %w", err))
 			}
@@ -378,6 +383,7 @@ func (e *EngineController) InsertUnsafePayload(ctx context.Context, envelope *et
 		return derive.NewTemporaryError(fmt.Errorf("cannot prepare unsafe chain for new payload: new - %v; parent: %v; err: %w",
 			payload.ID(), payload.ParentID(), eth.ForkchoiceUpdateErr(fcRes.PayloadStatus)))
 	}
+	fcu2Finish := time.Now()
 	e.SetUnsafeHead(ref)
 	e.needFCUCall = false
 	e.emitter.Emit(UnsafeUpdateEvent{Ref: ref})
@@ -394,6 +400,16 @@ func (e *EngineController) InsertUnsafePayload(ctx context.Context, envelope *et
 			FinalizedL2Head: e.finalizedHead,
 		})
 	}
+
+	totalTime := fcu2Finish.Sub(newPayloadStart)
+	e.log.Info("Inserted new L2 unsafe block (synchronous)",
+		"hash", envelope.ExecutionPayload.BlockHash,
+		"number", uint64(envelope.ExecutionPayload.BlockNumber),
+		"newpayload_time", common.PrettyDuration(newPayloadFinish.Sub(newPayloadStart)),
+		"fcu2_time", common.PrettyDuration(fcu2Finish.Sub(fcu2Start)),
+		"total_time", common.PrettyDuration(totalTime),
+		"mgas", float64(envelope.ExecutionPayload.GasUsed)/1000000,
+		"mgasps", float64(envelope.ExecutionPayload.GasUsed)*1000/float64(totalTime))
 
 	return nil
 }
@@ -439,13 +455,16 @@ func (e *EngineController) TryBackupUnsafeReorg(ctx context.Context) (bool, erro
 	defer logFn()
 	fcRes, err := e.engine.ForkchoiceUpdate(ctx, &fc, nil)
 	if err != nil {
-		var inputErr eth.InputError
-		if errors.As(err, &inputErr) {
-			e.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
-			switch inputErr.Code {
+		var rpcErr rpc.Error
+		if errors.As(err, &rpcErr) {
+			switch eth.ErrorCode(rpcErr.ErrorCode()) {
 			case eth.InvalidForkchoiceState:
-				return true, derive.NewResetError(fmt.Errorf("forkchoice update was inconsistent with engine, need reset to resolve: %w", inputErr.Unwrap()))
+				e.SetBackupUnsafeL2Head(eth.L2BlockRef{}, false)
+				return true, derive.NewResetError(fmt.Errorf("forkchoice update was inconsistent with engine, need reset to resolve: %w", rpcErr))
 			default:
+				// Retry when forkChoiceUpdate returns non-input error.
+				// Do not reset backupUnsafeHead because it will be used again.
+				e.needFCUCallForBackupUnsafeReorg = true
 				return true, derive.NewTemporaryError(fmt.Errorf("unexpected error code in forkchoice-updated response: %w", err))
 			}
 		} else {

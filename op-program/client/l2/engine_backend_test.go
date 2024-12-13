@@ -271,9 +271,9 @@ func TestPrecompileOracle(t *testing.T) {
 }
 
 func assertBlockDataAvailable(t *testing.T, chain *OracleBackedL2Chain, block *types.Block, blockNumber uint64) {
-	require.Equal(t, block, chain.GetBlockByHash(block.Hash()), "get block %v by hash", blockNumber)
+	require.Equal(t, block.Hash(), chain.GetBlockByHash(block.Hash()).Hash(), "get block %v by hash", blockNumber)
 	require.Equal(t, block.Header(), chain.GetHeaderByHash(block.Hash()), "get header %v by hash", blockNumber)
-	require.Equal(t, block, chain.GetBlock(block.Hash(), blockNumber), "get block %v by hash and number", blockNumber)
+	require.Equal(t, block.Hash(), chain.GetBlock(block.Hash(), blockNumber).Hash(), "get block %v by hash and number", blockNumber)
 	require.Equal(t, block.Header(), chain.GetHeader(block.Hash(), blockNumber), "get header %v by hash and number", blockNumber)
 	require.True(t, chain.HasBlockAndState(block.Hash(), blockNumber), "has block and state for block %v", blockNumber)
 }

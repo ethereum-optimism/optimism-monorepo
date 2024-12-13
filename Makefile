@@ -1,3 +1,6 @@
+# provide JUSTFLAGS for just-backed targets
+include ./just/flags.mk
+
 COMPOSEFLAGS=-d
 ITESTS_L2_HOST=http://localhost:9545
 BEDROCK_TAGS_REMOTE?=origin
@@ -94,7 +97,7 @@ submodules: ## Updates git submodules
 
 
 op-node: ## Builds op-node binary
-	make -C ./op-node op-node
+	just $(JUSTFLAGS) ./op-node/op-node
 .PHONY: op-node
 
 generate-mocks-op-node: ## Generates mocks for op-node
@@ -106,11 +109,11 @@ generate-mocks-op-service: ## Generates mocks for op-service
 .PHONY: generate-mocks-op-service
 
 op-batcher: ## Builds op-batcher binary
-	make -C ./op-batcher op-batcher
+	just $(JUSTFLAGS) ./op-batcher/op-batcher
 .PHONY: op-batcher
 
 op-proposer: ## Builds op-proposer binary
-	make -C ./op-proposer op-proposer
+	just $(JUSTFLAGS) ./op-proposer/op-proposer
 .PHONY: op-proposer
 
 op-challenger: ## Builds op-challenger binary
@@ -147,8 +150,8 @@ cannon-prestate: op-program cannon ## Generates prestate using cannon and op-pro
 	mv op-program/bin/0.json op-program/bin/prestate-proof.json
 .PHONY: cannon-prestate
 
-cannon-prestate-mt: op-program cannon ## Generates prestate using cannon and op-program in the multithreaded cannon format
-	./cannon/bin/cannon load-elf --type multithreaded --path op-program/bin/op-program-client.elf --out op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json
+cannon-prestate-mt: op-program cannon ## Generates prestate using cannon and op-program in the multithreaded64 cannon format
+	./cannon/bin/cannon load-elf --type multithreaded64 --path op-program/bin/op-program-client64.elf --out op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json
 	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json --proof-fmt 'op-program/bin/%d-mt.json' --output ""
 	mv op-program/bin/0-mt.json op-program/bin/prestate-proof-mt.json
 .PHONY: cannon-prestate-mt
@@ -164,6 +167,7 @@ mod-tidy: ## Cleans up unused dependencies in Go modules
 
 clean: ## Removes all generated files under bin/
 	rm -rf ./bin
+	cd packages/contracts-bedrock/ && forge clean
 .PHONY: clean
 
 nuke: clean devnet-clean ## Completely clean the project directory
@@ -172,23 +176,16 @@ nuke: clean devnet-clean ## Completely clean the project directory
 
 ## Prepares for running a local devnet
 pre-devnet: submodules $(DEVNET_CANNON_PRESTATE_FILES)
-	@if ! [ -x "$(command -v geth)" ]; then \
-		make install-geth; \
-	fi
-	@if ! [ -x "$(command -v eth2-testnet-genesis)" ]; then \
+	@if ! [ -x "$$(command -v eth2-testnet-genesis)" ]; then \
 		make install-eth2-testnet-genesis; \
 	fi
 .PHONY: pre-devnet
 
 devnet-up: pre-devnet ## Starts the local devnet
 	./ops/scripts/newer-file.sh .devnet/allocs-l1.json ./packages/contracts-bedrock \
-		|| make devnet-allocs
+		|| make devnet-allocs-single
 	PYTHONPATH=./bedrock-devnet $(PYTHON) ./bedrock-devnet/main.py --monorepo-dir=.
 .PHONY: devnet-up
-
-devnet-test: pre-devnet ## Runs tests on the local devnet
-	make -C op-e2e test-devnet
-.PHONY: devnet-test
 
 devnet-down: ## Stops the local devnet
 	@(cd ./ops-bedrock && GENESIS_TIMESTAMP=$(shell date +%s) docker compose stop)
@@ -202,22 +199,22 @@ devnet-clean: ## Cleans up local devnet environment
 	docker volume ls --filter name=ops-bedrock --format='{{.Name}}' | xargs -r docker volume rm
 .PHONY: devnet-clean
 
-devnet-allocs: pre-devnet ## Generates allocations for the local devnet
+devnet-allocs-single: pre-devnet ## Generates allocations for the local devnet
 	PYTHONPATH=./bedrock-devnet $(PYTHON) ./bedrock-devnet/main.py --monorepo-dir=. --allocs
-.PHONY: devnet-allocs
+.PHONY: devnet-allocs-single
 
-devnet-allocs-tests:
-	DEVNET_L2OO=true make devnet-allocs
+devnet-allocs:
+	DEVNET_L2OO=true make devnet-allocs-single
 	cp -r .devnet/ .devnet-l2oo/
-	DEVNET_ALTDA=true make devnet-allocs
+	DEVNET_ALTDA=true make devnet-allocs-single
 	cp -r .devnet/ .devnet-alt-da/
-	DEVNET_ALTDA=false GENERIC_ALTDA=true make devnet-allocs
+	DEVNET_ALTDA=false GENERIC_ALTDA=true make devnet-allocs-single
 	cp -r .devnet/ .devnet-alt-da-generic/
-	USE_MT_CANNON=true make devnet-allocs
+	USE_MT_CANNON=true make devnet-allocs-single
 	cp -r .devnet/ .devnet-mt-cannon
-	make devnet-allocs
+	make devnet-allocs-single
 	cp -r .devnet/ .devnet-standard/
-.PHONY: devnet-allocs-tests
+.PHONY: devnet-allocs
 
 devnet-logs: ## Displays logs for the local devnet
 	@(cd ./ops-bedrock && docker compose logs -f)
@@ -250,14 +247,6 @@ update-op-geth: ## Updates the Geth version used in the project
 	./ops/scripts/update-op-geth.py
 .PHONY: update-op-geth
 
-install-geth: ## Installs or updates Geth if versions do not match
-	./ops/scripts/geth-version-checker.sh && \
-	 	(echo "Geth versions match, not installing geth..."; true) || \
- 		(echo "Versions do not match, installing geth!"; \
- 			go install -v github.com/ethereum/go-ethereum/cmd/geth@$(shell jq -r .geth < versions.json); \
- 			echo "Installed geth!"; true)
-.PHONY: install-geth
-
 install-eth2-testnet-genesis:
-	go install -v github.com/protolambda/eth2-testnet-genesis@$(shell jq -r .eth2_testnet_genesis < versions.json)
+	go install -v github.com/protolambda/eth2-testnet-genesis@v$(shell yq '.tools."go:github.com/protolambda/eth2-testnet-genesis"' mise.toml)
 .PHONY: install-eth2-testnet-genesis

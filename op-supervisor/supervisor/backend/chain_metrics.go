@@ -10,7 +10,7 @@ type Metrics interface {
 	CacheAdd(chainID types.ChainID, label string, cacheSize int, evicted bool)
 	CacheGet(chainID types.ChainID, label string, hit bool)
 
-	RecordDBEntryCount(chainID types.ChainID, count int64)
+	RecordDBEntryCount(chainID types.ChainID, kind string, count int64)
 	RecordDBSearchEntriesRead(chainID types.ChainID, count int64)
 }
 
@@ -36,8 +36,8 @@ func (c *chainMetrics) CacheGet(label string, hit bool) {
 	c.delegate.CacheGet(c.chainID, label, hit)
 }
 
-func (c *chainMetrics) RecordDBEntryCount(count int64) {
-	c.delegate.RecordDBEntryCount(c.chainID, count)
+func (c *chainMetrics) RecordDBEntryCount(kind string, count int64) {
+	c.delegate.RecordDBEntryCount(c.chainID, kind, count)
 }
 
 func (c *chainMetrics) RecordDBSearchEntriesRead(count int64) {

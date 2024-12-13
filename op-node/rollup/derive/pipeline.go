@@ -38,6 +38,17 @@ type ResettableStage interface {
 	Reset(ctx context.Context, base eth.L1BlockRef, baseCfg eth.SystemConfig) error
 }
 
+// A ChannelFlusher flushes all internal state related to the current channel and then
+// calls FlushChannel on the stage it owns. Note that this is in contrast to Reset, which
+// is called by the owning Pipeline in a loop over all stages.
+type ChannelFlusher interface {
+	FlushChannel()
+}
+
+type ForkTransformer interface {
+	Transform(rollup.ForkName)
+}
+
 type L2Source interface {
 	PayloadByHash(context.Context, common.Hash) (*eth.ExecutionPayloadEnvelope, error)
 	PayloadByNumber(context.Context, uint64) (*eth.ExecutionPayloadEnvelope, error)
@@ -79,21 +90,22 @@ type DerivationPipeline struct {
 func NewDerivationPipeline(log log.Logger, rollupCfg *rollup.Config, l1Fetcher L1Fetcher, l1Blobs L1BlobsFetcher,
 	altDA AltDAInputFetcher, l2Source L2Source, metrics Metrics,
 ) *DerivationPipeline {
+	spec := rollup.NewChainSpec(rollupCfg)
 	// Pull stages
 	l1Traversal := NewL1Traversal(log, rollupCfg, l1Fetcher)
 	dataSrc := NewDataSourceFactory(log, rollupCfg, l1Fetcher, l1Blobs, altDA) // auxiliary stage for L1Retrieval
 	l1Src := NewL1Retrieval(log, dataSrc, l1Traversal)
 	frameQueue := NewFrameQueue(log, rollupCfg, l1Src)
-	bank := NewChannelBank(log, rollupCfg, frameQueue, metrics)
-	chInReader := NewChannelInReader(rollupCfg, log, bank, metrics)
-	batchQueue := NewBatchQueue(log, rollupCfg, chInReader, l2Source)
+	channelMux := NewChannelMux(log, spec, frameQueue, metrics)
+	chInReader := NewChannelInReader(rollupCfg, log, channelMux, metrics)
+	batchMux := NewBatchMux(log, rollupCfg, chInReader, l2Source)
 	attrBuilder := NewFetchingAttributesBuilder(rollupCfg, l1Fetcher, l2Source)
-	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchQueue)
+	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchMux)
 
 	// Reset from ResetEngine then up from L1 Traversal. The stages do not talk to each other during
 	// the ResetEngine, but after the ResetEngine, this is the order in which the stages could talk to each other.
 	// Note: The ResetEngine is the only reset that can fail.
-	stages := []ResettableStage{l1Traversal, l1Src, altDA, frameQueue, bank, chInReader, batchQueue, attributesQueue}
+	stages := []ResettableStage{l1Traversal, l1Src, altDA, frameQueue, channelMux, chInReader, batchMux, attributesQueue}
 
 	return &DerivationPipeline{
 		log:       log,
@@ -120,6 +132,10 @@ func (dp *DerivationPipeline) Reset() {
 	dp.resetSysConfig = eth.SystemConfig{}
 	dp.resetL2Safe = eth.L2BlockRef{}
 	dp.engineIsReset = false
+}
+
+func (dp *DerivationPipeline) DepositsOnlyAttributes(parent eth.BlockID, derivedFrom eth.L1BlockRef) (*AttributesWithParent, error) {
+	return dp.attrib.DepositsOnlyAttributes(parent, derivedFrom)
 }
 
 // Origin is the L1 block of the inner-most stage of the derivation pipeline,
@@ -177,6 +193,7 @@ func (dp *DerivationPipeline) Step(ctx context.Context, pendingSafeHead eth.L2Bl
 		if err := VerifyNewL1Origin(ctx, prevOrigin, dp.l1Fetcher, newOrigin); err != nil {
 			return nil, fmt.Errorf("failed to verify L1 origin transition: %w", err)
 		}
+		dp.transformStages(prevOrigin, newOrigin)
 		dp.origin = newOrigin
 	}
 
@@ -236,6 +253,20 @@ func (dp *DerivationPipeline) initialReset(ctx context.Context, resetL2Safe eth.
 	dp.resetSysConfig = sysCfg
 	dp.resetL2Safe = resetL2Safe
 	return nil
+}
+
+func (db *DerivationPipeline) transformStages(oldOrigin, newOrigin eth.L1BlockRef) {
+	fork := db.rollupCfg.IsActivationBlock(oldOrigin.Time, newOrigin.Time)
+	if fork == "" {
+		return
+	}
+
+	db.log.Info("Transforming stages", "fork", fork)
+	for _, stage := range db.stages {
+		if tf, ok := stage.(ForkTransformer); ok {
+			tf.Transform(fork)
+		}
+	}
 }
 
 func (dp *DerivationPipeline) ConfirmEngineReset() {

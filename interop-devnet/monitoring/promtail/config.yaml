@@ -1,0 +1,32 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3200/loki/api/v1/push
+
+scrape_configs:
+  # Uncomment to scrape system logs
+  # - job_name: system
+  #   static_configs:
+  #     - targets:
+  #         - localhost
+  #       labels:
+  #         job: varlogs
+  #         __path__: /var/log/*log
+  # This scrapes docker container logs
+  # copied from https://stackoverflow.com/questions/74776432/with-promtail-how-do-i-only-keep-log-messages-for-specified-docker-containers
+  - job_name: docker
+    docker_sd_configs:
+      - host: unix:///var/run/docker.sock
+        filters:
+          - name: name
+            # Filter logging to just our containers
+            values: ["op-batcher-*", "op-proposer-*", "op-node-*", "op-supervisor-*", "l1-*", "l1-bn-*", "l1-vc-*", "l2-a-*", "l2-b-*"]
+    relabel_configs:
+      - source_labels: ["__meta_docker_container_name"]
+        regex: "/(.*)"
+        target_label: "container"

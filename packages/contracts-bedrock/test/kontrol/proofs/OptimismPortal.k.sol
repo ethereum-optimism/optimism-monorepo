@@ -4,8 +4,8 @@ pragma solidity ^0.8.13;
 import { DeploymentSummary } from "./utils/DeploymentSummary.sol";
 import { KontrolUtils } from "./utils/KontrolUtils.sol";
 import { Types } from "src/libraries/Types.sol";
-import { IOptimismPortal as OptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { ISuperchainConfig as SuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { IOptimismPortal as OptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import "src/libraries/PortalErrors.sol";
 
 contract OptimismPortalKontrol is DeploymentSummary, KontrolUtils {

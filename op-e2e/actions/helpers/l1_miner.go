@@ -203,10 +203,10 @@ func (s *L1Miner) ActL1SetFeeRecipient(coinbase common.Address) {
 }
 
 // ActL1EndBlock finishes the new L1 block, and applies it to the chain as unsafe block
-func (s *L1Miner) ActL1EndBlock(t Testing) {
+func (s *L1Miner) ActL1EndBlock(t Testing) *types.Block {
 	if !s.l1Building {
 		t.InvalidAction("cannot end L1 block when not building block")
-		return
+		return nil
 	}
 
 	s.l1Building = false
@@ -253,11 +253,12 @@ func (s *L1Miner) ActL1EndBlock(t Testing) {
 	if err != nil {
 		t.Fatalf("failed to insert block into l1 chain")
 	}
+	return block
 }
 
-func (s *L1Miner) ActEmptyBlock(t Testing) {
+func (s *L1Miner) ActEmptyBlock(t Testing) *types.Block {
 	s.ActL1StartBlock(12)(t)
-	s.ActL1EndBlock(t)
+	return s.ActL1EndBlock(t)
 }
 
 func (s *L1Miner) Close() error {

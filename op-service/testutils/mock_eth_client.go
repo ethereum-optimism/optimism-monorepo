@@ -8,12 +8,18 @@ import (
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
 type MockEthClient struct {
 	mock.Mock
+}
+
+func (m *MockEthClient) Client() *rpc.Client {
+	out := m.Mock.Called()
+	return out.Get(0).(*rpc.Client)
 }
 
 func (m *MockEthClient) InfoByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, error) {
@@ -140,6 +146,33 @@ func (m *MockEthClient) BlockByNumber(ctx context.Context, number *big.Int) (*ty
 
 func (m *MockEthClient) ExpectBlockByNumber(number *big.Int, block *types.Block, err error) {
 	m.Mock.On("BlockByNumber", number).Once().Return(block, err)
+}
+
+func (m *MockEthClient) BlockRefByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockRef, error) {
+	out := m.Mock.Called(label)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByLabel(label eth.BlockLabel, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByLabel", label).Once().Return(ref, err)
+}
+
+func (m *MockEthClient) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
+	out := m.Mock.Called(num)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByNumber(num uint64, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByNumber", num).Once().Return(ref, err)
+}
+
+func (m *MockEthClient) BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error) {
+	out := m.Mock.Called(hash)
+	return out.Get(0).(eth.BlockRef), out.Error(1)
+}
+
+func (m *MockEthClient) ExpectBlockRefByHash(hash common.Hash, ref eth.BlockRef, err error) {
+	m.Mock.On("BlockRefByHash", hash).Once().Return(ref, err)
 }
 
 func (m *MockEthClient) ExpectClose() {

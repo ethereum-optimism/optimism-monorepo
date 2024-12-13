@@ -11,7 +11,7 @@ import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 contract MeterUser is ResourceMetering {
     ResourceMetering.ResourceConfig public innerConfig;
@@ -201,20 +201,21 @@ contract ResourceMetering_Test is Test {
     function testFuzz_meter_largeBlockDiff_succeeds(uint64 _amount, uint256 _blockDiff) external {
         // This test fails if the following line is commented out.
         // At 12 seconds per block, this number is effectively unreachable.
-        vm.assume(_blockDiff < 433576281058164217753225238677900874458691);
+        _blockDiff = uint256(bound(_blockDiff, 0, 433576281058164217753225238677900874458690));
 
         ResourceMetering.ResourceConfig memory rcfg = meter.resourceConfig();
         uint64 target = uint64(rcfg.maxResourceLimit) / uint64(rcfg.elasticityMultiplier);
         uint64 elasticityMultiplier = uint64(rcfg.elasticityMultiplier);
 
-        vm.assume(_amount < target * elasticityMultiplier);
+        _amount = uint64(bound(_amount, 0, target * elasticityMultiplier));
+
         vm.roll(initialBlockNum + _blockDiff);
         meter.use(_amount);
     }
 
     function testFuzz_meter_useGas_succeeds(uint64 _amount) external {
         (, uint64 prevBoughtGas,) = meter.params();
-        vm.assume(prevBoughtGas + _amount <= meter.resourceConfig().maxResourceLimit);
+        _amount = uint64(bound(_amount, 0, meter.resourceConfig().maxResourceLimit - prevBoughtGas));
 
         meter.use(_amount);
 
@@ -374,8 +375,8 @@ contract ArtifactResourceMetering_Test is Test {
                                 // Call the metering code and catch the various
                                 // types of errors.
                                 uint256 gasConsumed = 0;
-                                try meter.use{ gas: 30_000_000 }(requestedGas) returns (uint256 _gasConsumed) {
-                                    gasConsumed = _gasConsumed;
+                                try meter.use{ gas: 30_000_000 }(requestedGas) returns (uint256 gasConsumed_) {
+                                    gasConsumed = gasConsumed_;
                                 } catch (bytes memory err) {
                                     bytes32 hash = keccak256(err);
                                     if (hash == cannotBuyMoreGas) {

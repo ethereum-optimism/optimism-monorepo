@@ -29,12 +29,30 @@ type RaftConsensus struct {
 	serverID raft.ServerID
 	r        *raft.Raft
 
+	transport *raft.NetworkTransport
+	// advertisedAddr is the host & port to contact this server.
+	// If empty, the address of the transport should be used instead.
+	advertisedAddr string
+
 	unsafeTracker *unsafeHeadTracker
 }
 
 type RaftConsensusConfig struct {
-	ServerID          string
-	ServerAddr        string
+	ServerID string
+
+	// AdvertisedAddr is the address to advertise,
+	// i.e. the address external raft peers use to contact us.
+	// If left empty, it defaults to the resulting
+	// local address that we bind the underlying transport to.
+	AdvertisedAddr raft.ServerAddress
+
+	// ListenPort is the port to bind the server to.
+	// This may be 0, an available port will then be selected by the system.
+	ListenPort int
+	// ListenAddr is the address to bind the server to.
+	// E.g. use 0.0.0.0 to bind to an external-facing network.
+	ListenAddr string
+
 	StorageDir        string
 	Bootstrap         bool
 	RollupCfg         *rollup.Config
@@ -86,18 +104,31 @@ func NewRaftConsensus(log log.Logger, cfg *RaftConsensusConfig) (*RaftConsensus,
 		return nil, fmt.Errorf(`raft.NewFileSnapshotStore(%q): %w`, baseDir, err)
 	}
 
-	addr, err := net.ResolveTCPAddr("tcp", cfg.ServerAddr)
-	if err != nil {
-		return nil, errors.Wrap(err, "failed to resolve tcp address")
+	var advertiseAddr net.Addr
+	if cfg.AdvertisedAddr == "" {
+		log.Warn("No advertised address specified. Advertising local address.")
+	} else {
+		x, err := net.ResolveTCPAddr("tcp", string(cfg.AdvertisedAddr))
+		if err != nil {
+			return nil, fmt.Errorf("failed to resolve advertised TCP address %q: %w", string(cfg.AdvertisedAddr), err)
+		}
+		advertiseAddr = x
+		log.Info("Resolved advertising address", "adAddr", cfg.AdvertisedAddr,
+			"adIP", x.IP, "adPort", x.Port, "adZone", x.Zone)
 	}
+
+	bindAddr := fmt.Sprintf("%s:%d", cfg.ListenAddr, cfg.ListenPort)
+	log.Info("Binding raft server to network transport", "listenAddr", bindAddr)
 
 	maxConnPool := 10
 	timeout := 5 * time.Second
-	bindAddr := fmt.Sprintf("0.0.0.0:%d", addr.Port)
-	transport, err := raft.NewTCPTransportWithLogger(bindAddr, addr, maxConnPool, timeout, rc.Logger)
+
+	// When advertiseAddr == nil, the transport will use the local address that it is bound to.
+	transport, err := raft.NewTCPTransportWithLogger(bindAddr, advertiseAddr, maxConnPool, timeout, rc.Logger)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to create raft tcp transport")
 	}
+	log.Info("Raft server network transport is up", "addr", transport.LocalAddr())
 
 	fsm := NewUnsafeHeadTracker(log)
 
@@ -110,11 +141,19 @@ func NewRaftConsensus(log log.Logger, cfg *RaftConsensusConfig) (*RaftConsensus,
 	// If bootstrap = true, start raft in bootstrap mode, this will allow the current node to elect itself as leader when there's no other participants
 	// and allow other nodes to join the cluster.
 	if cfg.Bootstrap {
+		var advertisedAddr raft.ServerAddress
+		if cfg.AdvertisedAddr == "" {
+			advertisedAddr = transport.LocalAddr()
+		} else {
+			advertisedAddr = cfg.AdvertisedAddr
+		}
+		log.Info("Bootstrapping raft consensus cluster with self", "addr", advertisedAddr)
+
 		raftCfg := raft.Configuration{
 			Servers: []raft.Server{
 				{
 					ID:       rc.LocalID,
-					Address:  raft.ServerAddress(cfg.ServerAddr),
+					Address:  advertisedAddr,
 					Suffrage: raft.Voter,
 				},
 			},
@@ -132,7 +171,18 @@ func NewRaftConsensus(log log.Logger, cfg *RaftConsensusConfig) (*RaftConsensus,
 		serverID:      raft.ServerID(cfg.ServerID),
 		unsafeTracker: fsm,
 		rollupCfg:     cfg.RollupCfg,
+		transport:     transport,
 	}, nil
+}
+
+// Addr returns the address to contact this raft consensus server.
+// If no explicit address to advertise was configured,
+// the local network address that the raft-consensus server is listening on will be used.
+func (rc *RaftConsensus) Addr() string {
+	if rc.advertisedAddr != "" {
+		return rc.advertisedAddr
+	}
+	return string(rc.transport.LocalAddr())
 }
 
 // AddNonVoter implements Consensus, it tries to add a non-voting member into the cluster.

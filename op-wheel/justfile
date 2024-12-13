@@ -1,0 +1,13 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X main.Version=" + VERSION + " " + \
+    "") + "'"
+
+BINARY := "./bin/op-wheel"
+
+# Build op-wheel binary
+op-wheel: (go_build BINARY "./cmd" "-ldflags" _LDFLAGSSTRING)

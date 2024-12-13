@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -15,7 +16,7 @@ import (
 )
 
 type Metrics interface {
-	CountSequencedTxs(count int)
+	CountSequencedTxsInBlock(txns int, deposits int)
 
 	RecordSequencerBuildingDiffTime(duration time.Duration)
 	RecordSequencerSealingTime(duration time.Duration)
@@ -25,8 +26,7 @@ type Metrics interface {
 // forkchoice-update event, to signal the latest forkchoice to other derivers.
 // This helps decouple derivers from the actual engine state,
 // while also not making the derivers wait for a forkchoice update at random.
-type ForkchoiceRequestEvent struct {
-}
+type ForkchoiceRequestEvent struct{}
 
 func (ev ForkchoiceRequestEvent) String() string {
 	return "forkchoice-request"
@@ -98,10 +98,19 @@ func (ev PendingSafeUpdateEvent) String() string {
 	return "pending-safe-update"
 }
 
+type InteropPendingSafeChangedEvent struct {
+	Ref         eth.L2BlockRef
+	DerivedFrom eth.L1BlockRef
+}
+
+func (ev InteropPendingSafeChangedEvent) String() string {
+	return "interop-pending-safe-changed"
+}
+
 // PromotePendingSafeEvent signals that a block can be marked as pending-safe, and/or safe.
 type PromotePendingSafeEvent struct {
 	Ref         eth.L2BlockRef
-	Safe        bool
+	Concluding  bool // Concludes the pending phase, so can be promoted to (local) safe
 	DerivedFrom eth.L1BlockRef
 }
 
@@ -175,8 +184,7 @@ func (ev ProcessAttributesEvent) String() string {
 	return "process-attributes"
 }
 
-type PendingSafeRequestEvent struct {
-}
+type PendingSafeRequestEvent struct{}
 
 func (ev PendingSafeRequestEvent) String() string {
 	return "pending-safe-request"
@@ -190,18 +198,71 @@ func (ev ProcessUnsafePayloadEvent) String() string {
 	return "process-unsafe-payload"
 }
 
-type TryBackupUnsafeReorgEvent struct {
-}
+type TryBackupUnsafeReorgEvent struct{}
 
 func (ev TryBackupUnsafeReorgEvent) String() string {
 	return "try-backup-unsafe-reorg"
 }
 
 type TryUpdateEngineEvent struct {
+	// These fields will be zero-value (BuildStarted,InsertStarted=time.Time{}, Envelope=nil) if
+	// this event is emitted outside of engineDeriver.onPayloadSuccess
+	BuildStarted  time.Time
+	InsertStarted time.Time
+	Envelope      *eth.ExecutionPayloadEnvelope
 }
 
 func (ev TryUpdateEngineEvent) String() string {
 	return "try-update-engine"
+}
+
+// Checks for the existence of the Envelope field, which is only
+// added by the PayloadSuccessEvent
+func (ev TryUpdateEngineEvent) triggeredByPayloadSuccess() bool {
+	return ev.Envelope != nil
+}
+
+// Returns key/value pairs that can be logged and are useful for plotting
+// block build/insert time as a way to measure performance.
+func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
+	fcuFinish := time.Now()
+	payload := ev.Envelope.ExecutionPayload
+
+	logValues := []interface{}{
+		"hash", payload.BlockHash,
+		"number", uint64(payload.BlockNumber),
+		"state_root", payload.StateRoot,
+		"timestamp", uint64(payload.Timestamp),
+		"parent", payload.ParentHash,
+		"prev_randao", payload.PrevRandao,
+		"fee_recipient", payload.FeeRecipient,
+		"txs", len(payload.Transactions),
+	}
+
+	var totalTime time.Duration
+	var mgasps float64
+	if !ev.BuildStarted.IsZero() {
+		totalTime = fcuFinish.Sub(ev.BuildStarted)
+		logValues = append(logValues,
+			"build_time", common.PrettyDuration(ev.InsertStarted.Sub(ev.BuildStarted)),
+			"insert_time", common.PrettyDuration(fcuFinish.Sub(ev.InsertStarted)),
+		)
+	} else if !ev.InsertStarted.IsZero() {
+		totalTime = fcuFinish.Sub(ev.InsertStarted)
+	}
+
+	// Avoid divide-by-zero for mgasps
+	if totalTime > 0 {
+		mgasps = float64(payload.GasUsed) * 1000 / float64(totalTime)
+	}
+
+	logValues = append(logValues,
+		"total_time", common.PrettyDuration(totalTime),
+		"mgas", float64(payload.GasUsed)/1000000,
+		"mgasps", mgasps,
+	)
+
+	return logValues
 }
 
 type ForceEngineResetEvent struct {
@@ -229,6 +290,22 @@ func (ev PromoteFinalizedEvent) String() string {
 	return "promote-finalized"
 }
 
+// FinalizedUpdateEvent signals that a block has been marked as finalized.
+type FinalizedUpdateEvent struct {
+	Ref eth.L2BlockRef
+}
+
+func (ev FinalizedUpdateEvent) String() string {
+	return "finalized-update"
+}
+
+// RequestFinalizedUpdateEvent signals that a FinalizedUpdateEvent is needed.
+type RequestFinalizedUpdateEvent struct{}
+
+func (ev RequestFinalizedUpdateEvent) String() string {
+	return "request-finalized-update"
+}
+
 // CrossUpdateRequestEvent triggers update events to be emitted, repeating the current state.
 type CrossUpdateRequestEvent struct {
 	CrossUnsafe bool
@@ -252,7 +329,8 @@ type EngDeriver struct {
 var _ event.Deriver = (*EngDeriver)(nil)
 
 func NewEngDeriver(log log.Logger, ctx context.Context, cfg *rollup.Config,
-	metrics Metrics, ec *EngineController) *EngDeriver {
+	metrics Metrics, ec *EngineController,
+) *EngDeriver {
 	return &EngDeriver{
 		log:     log,
 		cfg:     cfg,
@@ -300,6 +378,9 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			} else {
 				d.emitter.Emit(rollup.CriticalErrorEvent{Err: fmt.Errorf("unexpected TryUpdateEngine error type: %w", err)})
 			}
+		} else if x.triggeredByPayloadSuccess() {
+			logValues := x.getBlockProcessingMetrics()
+			d.log.Info("Inserted new L2 unsafe block", logValues...)
 		}
 	case ProcessUnsafePayloadEvent:
 		ref, err := derive.PayloadToBlockRef(d.cfg, x.Envelope.ExecutionPayload)
@@ -379,19 +460,26 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		// Only promote if not already stale.
 		// Resets/overwrites happen through engine-resets, not through promotion.
 		if x.Ref.Number > d.ec.PendingSafeL2Head().Number {
+			d.log.Debug("Updating pending safe", "pending_safe", x.Ref, "local_safe", d.ec.LocalSafeL2Head(), "unsafe", d.ec.UnsafeL2Head(), "concluding", x.Concluding)
 			d.ec.SetPendingSafeL2Head(x.Ref)
 			d.emitter.Emit(PendingSafeUpdateEvent{
 				PendingSafe: d.ec.PendingSafeL2Head(),
 				Unsafe:      d.ec.UnsafeL2Head(),
 			})
 		}
-		if x.Safe && x.Ref.Number > d.ec.LocalSafeL2Head().Number {
+		if x.Concluding && x.Ref.Number > d.ec.LocalSafeL2Head().Number {
 			d.emitter.Emit(PromoteLocalSafeEvent{
 				Ref:         x.Ref,
 				DerivedFrom: x.DerivedFrom,
 			})
 		}
+		// TODO(#12646): temporary interop work-around, assumes Holocene local-safe progression behavior.
+		d.emitter.Emit(InteropPendingSafeChangedEvent{
+			Ref:         x.Ref,
+			DerivedFrom: x.DerivedFrom,
+		})
 	case PromoteLocalSafeEvent:
+		d.log.Debug("Updating local safe", "local_safe", x.Ref, "safe", d.ec.SafeL2Head(), "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetLocalSafeHead(x.Ref)
 		d.emitter.Emit(LocalSafeUpdateEvent(x))
 	case LocalSafeUpdateEvent:
@@ -400,6 +488,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			d.emitter.Emit(PromoteSafeEvent(x))
 		}
 	case PromoteSafeEvent:
+		d.log.Debug("Updating safe", "safe", x.Ref, "unsafe", d.ec.UnsafeL2Head())
 		d.ec.SetSafeHead(x.Ref)
 		// Finalizer can pick up this safe cross-block now
 		d.emitter.Emit(SafeDerivedEvent{Safe: x.Ref, DerivedFrom: x.DerivedFrom})
@@ -419,8 +508,11 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			return true
 		}
 		d.ec.SetFinalizedHead(x.Ref)
+		d.emitter.Emit(FinalizedUpdateEvent(x))
 		// Try to apply the forkchoice changes
 		d.emitter.Emit(TryUpdateEngineEvent{})
+	case RequestFinalizedUpdateEvent:
+		d.emitter.Emit(FinalizedUpdateEvent{Ref: d.ec.Finalized()})
 	case CrossUpdateRequestEvent:
 		if x.CrossUnsafe {
 			d.emitter.Emit(CrossUnsafeUpdateEvent{
@@ -438,10 +530,10 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 		d.onBuildStart(x)
 	case BuildStartedEvent:
 		d.onBuildStarted(x)
-	case BuildSealedEvent:
-		d.onBuildSealed(x)
 	case BuildSealEvent:
 		d.onBuildSeal(x)
+	case BuildSealedEvent:
+		d.onBuildSealed(x)
 	case BuildInvalidEvent:
 		d.onBuildInvalid(x)
 	case BuildCancelEvent:

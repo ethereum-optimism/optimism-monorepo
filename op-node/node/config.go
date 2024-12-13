@@ -7,14 +7,16 @@ import (
 	"math"
 	"time"
 
+	"github.com/ethereum/go-ethereum/log"
+
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/flags"
 	"github.com/ethereum-optimism/optimism/op-node/p2p"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 type Config struct {
@@ -23,7 +25,7 @@ type Config struct {
 
 	Beacon L1BeaconEndpointSetup
 
-	Supervisor SupervisorEndpointSetup
+	InteropConfig interop.Setup
 
 	Driver driver.Config
 
@@ -69,12 +71,15 @@ type Config struct {
 
 	// Conductor is used to determine this node is the leader sequencer.
 	ConductorEnabled    bool
-	ConductorRpc        string
+	ConductorRpc        ConductorRPCFunc
 	ConductorRpcTimeout time.Duration
 
 	// AltDA config
 	AltDA altda.CLIConfig
 }
+
+// ConductorRPCFunc retrieves the endpoint. The RPC may not immediately be available.
+type ConductorRPCFunc func(ctx context.Context) (string, error)
 
 type RPCConfig struct {
 	ListenAddr  string
@@ -139,11 +144,11 @@ func (cfg *Config) Check() error {
 		}
 	}
 	if cfg.Rollup.InteropTime != nil {
-		if cfg.Supervisor == nil {
-			return fmt.Errorf("the Interop upgrade is scheduled (timestamp = %d) but no supervisor RPC endpoint is configured", *cfg.Rollup.InteropTime)
+		if cfg.InteropConfig == nil {
+			return fmt.Errorf("the Interop upgrade is scheduled (timestamp = %d) but no interop node config is set", *cfg.Rollup.InteropTime)
 		}
-		if err := cfg.Supervisor.Check(); err != nil {
-			return fmt.Errorf("misconfigured supervisor RPC endpoint: %w", err)
+		if err := cfg.InteropConfig.Check(); err != nil {
+			return fmt.Errorf("misconfigured interop: %w", err)
 		}
 	}
 	if err := cfg.Rollup.Check(); err != nil {

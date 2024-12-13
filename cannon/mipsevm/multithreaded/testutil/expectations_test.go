@@ -29,7 +29,7 @@ func TestValidate_shouldCatchMutations(t *testing.T) {
 		{name: "PreimageKey", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.PreimageKey = emptyHash }},
 		{name: "PreimageOffset", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.PreimageOffset += 1 }},
 		{name: "Heap", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.Heap += 1 }},
-		{name: "LLReservationActive", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LLReservationActive = !e.LLReservationActive }},
+		{name: "LLReservationStatus", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LLReservationStatus = e.LLReservationStatus + 1 }},
 		{name: "LLAddress", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LLAddress += 1 }},
 		{name: "LLOwnerThread", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LLOwnerThread += 1 }},
 		{name: "ExitCode", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.ExitCode += 1 }},

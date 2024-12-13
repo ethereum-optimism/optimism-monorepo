@@ -24,7 +24,7 @@ parser.add_argument('--allocs', help='Only create the allocs and exit', type=boo
 log = logging.getLogger()
 
 # Global constants
-FORKS = ["delta", "ecotone", "fjord", "granite"]
+FORKS = ["delta", "ecotone", "fjord", "granite", "holocene"]
 
 # Global environment variables
 DEVNET_NO_BUILD = os.getenv('DEVNET_NO_BUILD') == "true"
@@ -247,11 +247,7 @@ def devnet_deploy(paths):
     wait_for_rpc_server('127.0.0.1:9545')
 
     # Print out the addresses being used for easier debugging.
-    l2_output_oracle = addresses['L2OutputOracleProxy']
-    dispute_game_factory = addresses['DisputeGameFactoryProxy']
     batch_inbox_address = rollup_config['batch_inbox_address']
-    log.info(f'Using L2OutputOracle {l2_output_oracle}')
-    log.info(f'Using DisputeGameFactory {dispute_game_factory}')
     log.info(f'Using batch inbox {batch_inbox_address}')
 
     # Set up the base docker environment.
@@ -263,8 +259,12 @@ def devnet_deploy(paths):
     # Selectively set the L2OO_ADDRESS or DGF_ADDRESS if using L2OO.
     # Must be done selectively because op-proposer throws if both are set.
     if DEVNET_L2OO:
+        l2_output_oracle = addresses['L2OutputOracleProxy']
         docker_env['L2OO_ADDRESS'] = l2_output_oracle
+        log.info(f'Using L2OutputOracle {l2_output_oracle}')
     else:
+        dispute_game_factory = addresses['DisputeGameFactoryProxy']
+        log.info(f'Using DisputeGameFactory {dispute_game_factory}')
         docker_env['DGF_ADDRESS'] = dispute_game_factory
         docker_env['DG_TYPE'] = '254'
         docker_env['PROPOSAL_INTERVAL'] = '12s'

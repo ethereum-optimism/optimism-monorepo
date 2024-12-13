@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
-import "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+// Contracts
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import { ERC20Burnable } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Burnable.sol";
+import { ERC20Votes, ERC20Permit } from "@openzeppelin/contracts/token/ERC20/extensions/ERC20Votes.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 /// @custom:predeploy 0x4200000000000000000000000000000000000042
 /// @title GovernanceToken
@@ -26,7 +27,7 @@ contract GovernanceToken is ERC20Burnable, ERC20Votes, Ownable {
     /// @notice Callback called after a token transfer.
     /// @param from   The account sending tokens.
     /// @param to     The account receiving tokens.
-    /// @param amount The amount of tokens being transfered.
+    /// @param amount The amount of tokens being transferred.
     function _afterTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._afterTokenTransfer(from, to, amount);
     }

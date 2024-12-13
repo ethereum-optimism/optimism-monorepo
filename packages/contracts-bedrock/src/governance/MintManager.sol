@@ -2,10 +2,10 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import "@openzeppelin/contracts/access/Ownable.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
 
 // Interfaces
-import { IGovernanceToken } from "src/governance/interfaces/IGovernanceToken.sol";
+import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 
 /// @title MintManager
 /// @notice Set as `owner` of the governance token and responsible for the token inflation

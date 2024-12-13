@@ -22,10 +22,11 @@ type L2AllocsMode string
 type L2AllocsModeMap map[L2AllocsMode]*foundry.ForgeAllocs
 
 const (
-	L2AllocsDelta   L2AllocsMode = "delta"
-	L2AllocsEcotone L2AllocsMode = "ecotone"
-	L2AllocsFjord   L2AllocsMode = "fjord"
-	L2AllocsGranite L2AllocsMode = "granite"
+	L2AllocsDelta    L2AllocsMode = "delta"
+	L2AllocsEcotone  L2AllocsMode = "ecotone"
+	L2AllocsFjord    L2AllocsMode = "fjord"
+	L2AllocsGranite  L2AllocsMode = "granite"
+	L2AllocsHolocene L2AllocsMode = "holocene"
 )
 
 var (

@@ -1,15 +1,20 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
 import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+
+// Interfaces
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @title OptimismMintableERC721Factory
 /// @notice Factory contract for creating OptimismMintableERC721 contracts.
 contract OptimismMintableERC721Factory is ISemver {
+    /// @custom:legacy true
     /// @notice Address of the ERC721 bridge on this network.
     address public immutable BRIDGE;
 
+    /// @custom:legacy true
     /// @notice Chain ID for the remote network.
     uint256 public immutable REMOTE_CHAIN_ID;
 
@@ -23,8 +28,8 @@ contract OptimismMintableERC721Factory is ISemver {
     event OptimismMintableERC721Created(address indexed localToken, address indexed remoteToken, address deployer);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.1-beta.2
-    string public constant version = "1.4.1-beta.2";
+    /// @custom:semver 1.4.1-beta.6
+    string public constant version = "1.4.1-beta.6";
 
     /// @notice The semver MUST be bumped any time that there is a change in
     ///         the OptimismMintableERC721 token contract since this contract
@@ -34,6 +39,16 @@ contract OptimismMintableERC721Factory is ISemver {
     constructor(address _bridge, uint256 _remoteChainId) {
         BRIDGE = _bridge;
         REMOTE_CHAIN_ID = _remoteChainId;
+    }
+
+    /// @notice Address of the ERC721 bridge on this network.
+    function bridge() external view returns (address) {
+        return BRIDGE;
+    }
+
+    /// @notice Chain ID for the remote network.
+    function remoteChainID() external view returns (uint256) {
+        return REMOTE_CHAIN_ID;
     }
 
     /// @notice Creates an instance of the standard ERC721.

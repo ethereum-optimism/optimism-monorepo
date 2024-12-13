@@ -24,11 +24,6 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type L2Source struct {
-	*L2Client
-	*sources.DebugClient
-}
-
 type Prefetcher interface {
 	Hint(hint string) error
 	GetPreimage(ctx context.Context, key common.Hash) ([]byte, error)
@@ -230,31 +225,28 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 		return nil, nil
 	}
 	logger.Info("Connecting to L1 node", "l1", cfg.L1URL)
-	l1RPC, err := client.NewRPC(ctx, logger, cfg.L1URL, client.WithDialBackoff(10))
+	l1RPC, err := client.NewRPC(ctx, logger, cfg.L1URL, client.WithDialAttempts(10))
 	if err != nil {
 		return nil, fmt.Errorf("failed to setup L1 RPC: %w", err)
 	}
 
-	logger.Info("Connecting to L2 node", "l2", cfg.L2URL)
-	l2RPC, err := client.NewRPC(ctx, logger, cfg.L2URL, client.WithDialBackoff(10))
-	if err != nil {
-		return nil, fmt.Errorf("failed to setup L2 RPC: %w", err)
-	}
-
 	l1ClCfg := sources.L1ClientDefaultConfig(cfg.Rollup, cfg.L1TrustRPC, cfg.L1RPCKind)
-	l2ClCfg := sources.L2ClientDefaultConfig(cfg.Rollup, true)
 	l1Cl, err := sources.NewL1Client(l1RPC, logger, nil, l1ClCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create L1 client: %w", err)
 	}
+
+	logger.Info("Connecting to L1 beacon", "l1", cfg.L1BeaconURL)
 	l1Beacon := sources.NewBeaconHTTPClient(client.NewBasicHTTPClient(cfg.L1BeaconURL, logger))
 	l1BlobFetcher := sources.NewL1BeaconClient(l1Beacon, sources.L1BeaconClientConfig{FetchAllSidecars: false})
-	l2Cl, err := NewL2Client(l2RPC, logger, nil, &L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
+
+	logger.Info("Initializing L2 clients")
+	l2Client, err := NewL2Source(ctx, logger, cfg)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create L2 client: %w", err)
+		return nil, fmt.Errorf("failed to create L2 source: %w", err)
 	}
-	l2DebugCl := &L2Source{L2Client: l2Cl, DebugClient: sources.NewDebugClient(l2RPC.CallContext)}
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv), nil
+
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv), nil
 }
 
 func routeHints(logger log.Logger, hHostRW io.ReadWriter, hinter preimage.HintHandler) chan error {

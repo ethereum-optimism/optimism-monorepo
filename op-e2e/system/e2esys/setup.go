@@ -16,6 +16,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
+
 	"github.com/stretchr/testify/require"
 	"golang.org/x/exp/maps"
 
@@ -193,6 +195,7 @@ func RegolithSystemConfig(t *testing.T, regolithTimeOffset *hexutil.Uint64, opts
 	cfg.DeployConfig.L2GenesisEcotoneTimeOffset = nil
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = nil
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = nil
 	// ADD NEW FORKS HERE!
 	return cfg
 }
@@ -226,6 +229,12 @@ func FjordSystemConfig(t *testing.T, fjordTimeOffset *hexutil.Uint64, opts ...Sy
 func GraniteSystemConfig(t *testing.T, graniteTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
 	cfg := FjordSystemConfig(t, &genesisTime, opts...)
 	cfg.DeployConfig.L2GenesisGraniteTimeOffset = graniteTimeOffset
+	return cfg
+}
+
+func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := GraniteSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = holoceneTimeOffset
 	return cfg
 }
 
@@ -464,6 +473,9 @@ type StartOption struct {
 	Key    string
 	Role   string
 	Action SystemConfigHook
+
+	// Batcher CLIConfig modifications to apply before starting the batcher.
+	BatcherMod func(*bss.CLIConfig)
 }
 
 type startOptions struct {
@@ -482,6 +494,25 @@ func parseStartOptions(_opts []StartOption) (startOptions, error) {
 	return startOptions{
 		opts: opts,
 	}, nil
+}
+
+func WithBatcherCompressionAlgo(ca derive.CompressionAlgo) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.CompressionAlgo = ca
+		},
+	}
+}
+
+func WithBatcherThrottling(interval time.Duration, threshold, txSize, blockSize uint64) StartOption {
+	return StartOption{
+		BatcherMod: func(cfg *bss.CLIConfig) {
+			cfg.ThrottleInterval = interval
+			cfg.ThrottleThreshold = threshold
+			cfg.ThrottleTxSize = txSize
+			cfg.ThrottleBlockSize = blockSize
+		},
+	}
 }
 
 func (s *startOptions) Get(key, role string) (SystemConfigHook, bool) {
@@ -606,6 +637,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 			EcotoneTime:             cfg.DeployConfig.EcotoneTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			FjordTime:               cfg.DeployConfig.FjordTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			GraniteTime:             cfg.DeployConfig.GraniteTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
+			HoloceneTime:            cfg.DeployConfig.HoloceneTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			InteropTime:             cfg.DeployConfig.InteropTime(uint64(cfg.DeployConfig.L1GenesisBlockTimestamp)),
 			ProtocolVersionsAddress: cfg.L1Deployments.ProtocolVersionsProxy,
 			AltDAConfig:             rollupAltDAConfig,
@@ -639,6 +671,14 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	err = l1Geth.Node.Start()
 	if err != nil {
 		return nil, err
+	}
+
+	sysLogger := testlog.Logger(t, log.LevelInfo).New("role", "system")
+
+	l1UpCtx, l1UpCancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer l1UpCancel()
+	if err := wait.ForNodeUp(l1UpCtx, sys.NodeClient(RoleL1), sysLogger); err != nil {
+		return nil, fmt.Errorf("l1 never came up: %w", err)
 	}
 
 	// Ordered such that the Sequencer is initialized first. Setup this way so that
@@ -682,7 +722,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	}
 
 	l1Client := sys.NodeClient(RoleL1)
-	_, err = geth.WaitForBlock(big.NewInt(2), l1Client, 6*time.Second*time.Duration(cfg.DeployConfig.L1BlockTime))
+	_, err = geth.WaitForBlock(big.NewInt(2), l1Client)
 	if err != nil {
 		return nil, fmt.Errorf("waiting for blocks: %w", err)
 	}
@@ -851,12 +891,6 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		batcherTargetNumFrames = 1
 	}
 
-	var compressionAlgo derive.CompressionAlgo = derive.Zlib
-	// if opt has brotli key, set the compression algo as brotli
-	if _, ok := parsedStartOpts.Get("compressionAlgo", "brotli"); ok {
-		compressionAlgo = derive.Brotli10
-	}
-
 	var batcherAltDACLIConfig altda.CLIConfig
 	if cfg.DeployConfig.UseAltDA {
 		fakeAltDAServer := altda.NewFakeDAServer("127.0.0.1", 0, sys.Cfg.Loggers["da-server"])
@@ -894,9 +928,17 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 		BatchType:             cfg.BatcherBatchType,
 		MaxBlocksPerSpanBatch: cfg.BatcherMaxBlocksPerSpanBatch,
 		DataAvailabilityType:  sys.Cfg.DataAvailabilityType,
-		CompressionAlgo:       compressionAlgo,
+		CompressionAlgo:       derive.Zlib,
 		AltDA:                 batcherAltDACLIConfig,
 	}
+
+	// Apply batcher cli modifications
+	for _, opt := range startOpts {
+		if opt.BatcherMod != nil {
+			opt.BatcherMod(batcherCLIConfig)
+		}
+	}
+
 	// Batch Submitter
 	batcher, err := bss.BatcherServiceFromCLIConfig(context.Background(), "0.0.1", batcherCLIConfig, sys.Cfg.Loggers["batcher"])
 	if err != nil {
@@ -1015,7 +1057,10 @@ func (sys *System) RollupClient(name string) *sources.RollupClient {
 		require.NoError(sys.t, err, "failed to dial rollup instance %s", name)
 		return cl
 	})
-	rollupClient = sources.NewRollupClient(client.NewBaseRPCClient(rpcClient))
+	rollupClient = sources.NewRollupClient(client.NewBaseRPCClient(rpcClient,
+		// Increase timeouts because CI servers can be under a lot of load
+		client.WithCallTimeout(30*time.Second),
+		client.WithBatchCallTimeout(30*time.Second)))
 	sys.rollupClients[name] = rollupClient
 	return rollupClient
 }

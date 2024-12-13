@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { NextImpl } from "test/mocks/NextImpl.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
@@ -11,10 +11,10 @@ import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 import { OptimismMintableERC20Factory } from "src/universal/OptimismMintableERC20Factory.sol";
 
 // Interfaces
-import { IProxy } from "src/universal/interfaces/IProxy.sol";
-import { IOptimismMintableERC20Factory } from "src/universal/interfaces/IOptimismMintableERC20Factory.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 
-contract OptimismMintableTokenFactory_Test is Bridge_Initializer {
+contract OptimismMintableTokenFactory_Test is CommonTest {
     event StandardL2TokenCreated(address indexed remoteToken, address indexed localToken);
     event OptimismMintableERC20Created(address indexed localToken, address indexed remoteToken, address deployer);
 
@@ -42,7 +42,7 @@ contract OptimismMintableTokenFactory_Test is Bridge_Initializer {
         vm.startPrank(EIP1967Helper.getAdmin(address(proxy)));
         // Reviewer note: the NextImpl() still uses reinitializer. If we want to remove that, we'll need to use a
         //   two step upgrade with the Storage lib.
-        proxy.upgradeToAndCall(address(nextImpl), abi.encodeWithSelector(NextImpl.initialize.selector, 2));
+        proxy.upgradeToAndCall(address(nextImpl), abi.encodeCall(NextImpl.initialize, (2)));
         assertEq(proxy.implementation(), address(nextImpl));
 
         // Verify that the NextImpl contract initialized its values according as expected

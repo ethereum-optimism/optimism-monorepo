@@ -126,6 +126,7 @@ func TestDencunL2ForkAfterGenesis(gt *testing.T) {
 	dp.DeployConfig.L2GenesisEcotoneTimeOffset = &offset
 	dp.DeployConfig.L2GenesisFjordTimeOffset = nil
 	dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	dp.DeployConfig.L2GenesisHoloceneTimeOffset = nil
 	// New forks have to be added here, after changing the default deploy config!
 
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -189,7 +190,7 @@ func aliceSimpleBlobTx(t helpers.Testing, dp *e2eutils.DeployParams) *types.Tran
 
 func newEngine(t helpers.Testing, sd *e2eutils.SetupData, log log.Logger) *helpers.L2Engine {
 	jwtPath := e2eutils.WriteDefaultJWT(t)
-	return helpers.NewL2Engine(t, log, sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath)
+	return helpers.NewL2Engine(t, log, sd.L2Cfg, jwtPath)
 }
 
 // TestDencunBlobTxRPC tries to send a Blob tx to the L2 engine via RPC, it should not be accepted.

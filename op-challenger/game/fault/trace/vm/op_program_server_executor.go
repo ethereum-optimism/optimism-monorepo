@@ -1,16 +1,20 @@
 package vm
 
 import (
+	"context"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type OpProgramServerExecutor struct {
+	logger log.Logger
 }
 
 var _ OracleServerExecutor = (*OpProgramServerExecutor)(nil)
 
-func NewOpProgramServerExecutor() *OpProgramServerExecutor {
-	return &OpProgramServerExecutor{}
+func NewOpProgramServerExecutor(logger log.Logger) *OpProgramServerExecutor {
+	return &OpProgramServerExecutor{logger: logger}
 }
 
 func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
@@ -34,6 +38,24 @@ func (s *OpProgramServerExecutor) OracleCommand(cfg Config, dataDir string, inpu
 	}
 	if cfg.L2GenesisPath != "" {
 		args = append(args, "--l2.genesis", cfg.L2GenesisPath)
+	}
+	var logLevel string
+	if s.logger.Enabled(context.Background(), log.LevelTrace) {
+		logLevel = "TRACE"
+	} else if s.logger.Enabled(context.Background(), log.LevelDebug) {
+		logLevel = "DEBUG"
+	} else if s.logger.Enabled(context.Background(), log.LevelInfo) {
+		logLevel = "INFO"
+	} else if s.logger.Enabled(context.Background(), log.LevelWarn) {
+		logLevel = "WARN"
+	} else if s.logger.Enabled(context.Background(), log.LevelError) {
+		logLevel = "ERROR"
+	} else {
+		logLevel = "CRIT"
+	}
+	args = append(args, "--log.level", logLevel)
+	if cfg.L2Custom {
+		args = append(args, "--l2.custom")
 	}
 	return args, nil
 }

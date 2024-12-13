@@ -2,24 +2,23 @@ package genesis
 
 import (
 	"errors"
-	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 )
 
 // defaultGasLimit represents the default gas limit for a genesis block.
 const defaultGasLimit = 30_000_000
 
-// BedrockTransitionBlockExtraData represents the default extra data for the bedrock transition block.
-var BedrockTransitionBlockExtraData = []byte("BEDROCK")
+// HoloceneExtraData represents the default extra data for Holocene-genesis chains.
+var HoloceneExtraData = eip1559.EncodeHoloceneExtraData(250, 6)
 
 // NewL2Genesis will create a new L2 genesis
 func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Genesis, error) {
@@ -70,6 +69,7 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 		EcotoneTime:                   config.EcotoneTime(l1StartTime),
 		FjordTime:                     config.FjordTime(l1StartTime),
 		GraniteTime:                   config.GraniteTime(l1StartTime),
+		HoloceneTime:                  config.HoloceneTime(l1StartTime),
 		InteropTime:                   config.InteropTime(l1StartTime),
 		Optimism: &params.OptimismConfig{
 			EIP1559Denominator:       eip1559Denom,
@@ -91,21 +91,10 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 		difficulty = newHexBig(0)
 	}
 
-	extraData := config.L2GenesisBlockExtraData
-	if extraData == nil {
-		// L2GenesisBlockExtraData is optional, so use a default value when nil
-		extraData = BedrockTransitionBlockExtraData
-	}
-	// Ensure that the extradata is valid
-	if size := len(extraData); size > 32 {
-		return nil, fmt.Errorf("transition block extradata too long: %d", size)
-	}
-
 	genesis := &core.Genesis{
 		Config:     &optimismChainConfig,
 		Nonce:      uint64(config.L2GenesisBlockNonce),
 		Timestamp:  l1StartTime,
-		ExtraData:  extraData,
 		GasLimit:   uint64(gasLimit),
 		Difficulty: difficulty.ToInt(),
 		Mixhash:    config.L2GenesisBlockMixHash,
@@ -120,6 +109,9 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 	if optimismChainConfig.IsEcotone(genesis.Timestamp) {
 		genesis.BlobGasUsed = u64ptr(0)
 		genesis.ExcessBlobGas = u64ptr(0)
+	}
+	if optimismChainConfig.IsHolocene(genesis.Timestamp) {
+		genesis.ExtraData = HoloceneExtraData
 	}
 
 	return genesis, nil
@@ -148,25 +140,12 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		LondonBlock:         big.NewInt(0),
 		ArrowGlacierBlock:   big.NewInt(0),
 		GrayGlacierBlock:    big.NewInt(0),
-		ShanghaiTime:        nil,
-		CancunTime:          nil,
-	}
-
-	extraData := make([]byte, 0)
-	if config.L1UseClique {
-		// warning: clique has an overly strict block header timestamp check against the system wallclock,
-		// causing blocks to get scheduled as "future block" and not get mined instantly when produced.
-		chainConfig.Clique = &params.CliqueConfig{
-			Period: config.L1BlockTime,
-			Epoch:  30000,
-		}
-		extraData = append(append(make([]byte, 32), config.CliqueSignerAddress[:]...), make([]byte, crypto.SignatureLength)...)
-	} else {
-		chainConfig.MergeNetsplitBlock = big.NewInt(0)
-		chainConfig.TerminalTotalDifficulty = big.NewInt(0)
-		chainConfig.TerminalTotalDifficultyPassed = true
-		chainConfig.ShanghaiTime = u64ptr(0)
-		chainConfig.CancunTime = u64ptr(0)
+		ShanghaiTime:        u64ptr(0),
+		CancunTime:          u64ptr(0),
+		// To enable post-Merge consensus at genesis
+		MergeNetsplitBlock:            big.NewInt(0),
+		TerminalTotalDifficulty:       big.NewInt(0),
+		TerminalTotalDifficultyPassed: true,
 	}
 
 	gasLimit := config.L1GenesisBlockGasLimit
@@ -185,7 +164,7 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 	if timestamp == 0 {
 		timestamp = hexutil.Uint64(time.Now().Unix())
 	}
-	if !config.L1UseClique && config.L1CancunTimeOffset != nil {
+	if config.L1CancunTimeOffset != nil {
 		cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
 		chainConfig.CancunTime = &cancunTime
 	}
@@ -194,7 +173,7 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		Config:        &chainConfig,
 		Nonce:         uint64(config.L1GenesisBlockNonce),
 		Timestamp:     uint64(timestamp),
-		ExtraData:     extraData,
+		ExtraData:     make([]byte, 0),
 		GasLimit:      uint64(gasLimit),
 		Difficulty:    difficulty.ToInt(),
 		Mixhash:       config.L1GenesisBlockMixHash,

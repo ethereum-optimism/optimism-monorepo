@@ -1,0 +1,43 @@
+global:
+  scrape_interval: 4s
+  evaluation_interval: 15s
+
+scrape_configs:
+  - job_name: "l1-geth"
+    static_configs:
+      - targets: ["l1:6060"]
+    metrics_path: /debug/metrics/prometheus
+
+  - job_name: "l2-a-geth"
+    static_configs:
+      - targets: ["l2-a:6060"]
+    metrics_path: /debug/metrics/prometheus
+  - job_name: "l2-b-geth"
+    static_configs:
+      - targets: ["l2-b:6060"]
+    metrics_path: /debug/metrics/prometheus
+
+  - job_name: "op-node-a"
+    static_configs:
+      - targets: ["op-node-a:7300"]
+  - job_name: "op-node-b"
+    static_configs:
+      - targets: ["op-node-b:7300"]
+
+  - job_name: "op-batcher-a"
+    static_configs:
+      - targets: ["op-batcher-a:7300"]
+  - job_name: "op-batcher-b"
+    static_configs:
+      - targets: ["op-batcher-b:7300"]
+
+  - job_name: "op-proposer-a"
+    static_configs:
+      - targets: ["op-proposer-a:7300"]
+  - job_name: "op-proposer-b"
+    static_configs:
+      - targets: ["op-proposer-b:7300"]
+
+  - job_name: "op-supervisor"
+    static_configs:
+      - targets: ["op-supervisor:7300"]

@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum-optimism/superchain-registry/superchain"
 )
 
-var OPStackSupport = params.ProtocolVersionV0{Build: [8]byte{}, Major: 8, Minor: 0, Patch: 0, PreRelease: 0}.Encode()
+var OPStackSupport = params.ProtocolVersionV0{Build: [8]byte{}, Major: 9, Minor: 0, Patch: 0, PreRelease: 0}.Encode()
 
 // LoadOPStackRollupConfig loads the rollup configuration of the requested chain ID from the superchain-registry.
 // Some chains may require a SystemConfigProvider to retrieve any values not part of the registry.
@@ -91,6 +91,7 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 		EcotoneTime:            chConfig.EcotoneTime,
 		FjordTime:              chConfig.FjordTime,
 		GraniteTime:            chConfig.GraniteTime,
+		HoloceneTime:           chConfig.HoloceneTime,
 		BatchInboxAddress:      common.Address(chConfig.BatchInboxAddr),
 		DepositContractAddress: common.Address(addrs.OptimismPortalProxy),
 		L1SystemConfigAddress:  common.Address(addrs.SystemConfigProxy),

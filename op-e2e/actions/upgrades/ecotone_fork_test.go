@@ -52,6 +52,7 @@ func TestEcotoneNetworkUpgradeTransactions(gt *testing.T) {
 	dp.DeployConfig.L2GenesisEcotoneTimeOffset = &ecotoneOffset
 	dp.DeployConfig.L2GenesisFjordTimeOffset = nil
 	dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
+	dp.DeployConfig.L2GenesisHoloceneTimeOffset = nil
 	// New forks have to be added here...
 	require.NoError(t, dp.DeployConfig.Check(log), "must have valid config")
 

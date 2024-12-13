@@ -38,18 +38,16 @@ func (s *LocalPreimageSource) Get(key common.Hash) ([]byte, error) {
 	case l2ClaimBlockNumberKey:
 		return binary.BigEndian.AppendUint64(nil, s.config.L2ClaimBlockNumber), nil
 	case l2ChainIDKey:
-		// The CustomChainIDIndicator informs the client to rely on the L2ChainConfigKey to
-		// read the chain config. Otherwise, it'll attempt to read a non-existent hardcoded chain config
-		var chainID uint64
-		if s.config.IsCustomChainConfig {
-			chainID = client.CustomChainIDIndicator
-		} else {
-			chainID = s.config.L2ChainConfig.ChainID.Uint64()
-		}
-		return binary.BigEndian.AppendUint64(nil, chainID), nil
+		return binary.BigEndian.AppendUint64(nil, s.config.L2ChainID), nil
 	case l2ChainConfigKey:
+		if s.config.L2ChainID != client.CustomChainIDIndicator {
+			return nil, ErrNotFound
+		}
 		return json.Marshal(s.config.L2ChainConfig)
 	case rollupKey:
+		if s.config.L2ChainID != client.CustomChainIDIndicator {
+			return nil, ErrNotFound
+		}
 		return json.Marshal(s.config.Rollup)
 	default:
 		return nil, ErrNotFound

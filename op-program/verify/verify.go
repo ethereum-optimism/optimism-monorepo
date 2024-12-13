@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/host"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -27,23 +28,22 @@ import (
 	"github.com/ethereum/go-ethereum/rpc"
 )
 
-const runInProcess = false
-
 type Runner struct {
-	l1RpcUrl    string
-	l1RpcKind   string
-	l1BeaconUrl string
-	l2RpcUrl    string
-	dataDir     string
-	network     string
-	chainCfg    *params.ChainConfig
-	l2Client    *sources.L2Client
-	logCfg      oplog.CLIConfig
-	setupLog    log.Logger
-	rollupCfg   *rollup.Config
+	l1RpcUrl     string
+	l1RpcKind    string
+	l1BeaconUrl  string
+	l2RpcUrl     string
+	dataDir      string
+	network      string
+	chainCfg     *params.ChainConfig
+	l2Client     *sources.L2Client
+	logCfg       oplog.CLIConfig
+	setupLog     log.Logger
+	rollupCfg    *rollup.Config
+	runInProcess bool
 }
 
-func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl string, dataDir string, network string, chainCfg *params.ChainConfig) (*Runner, error) {
+func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl string, dataDir string, network string, chainID uint64, runInProcess bool) (*Runner, error) {
 	ctx := context.Background()
 	logCfg := oplog.DefaultCLIConfig()
 	logCfg.Level = log.LevelDebug
@@ -55,9 +55,14 @@ func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl s
 		return nil, fmt.Errorf("dial L2 client: %w", err)
 	}
 
-	rollupCfg, err := rollup.LoadOPStackRollupConfig(chainCfg.ChainID.Uint64())
+	rollupCfg, err := chainconfig.RollupConfigByChainID(chainID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load rollup config: %w", err)
+	}
+
+	chainCfg, err := chainconfig.ChainConfigByChainID(chainID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to load chain config: %w", err)
 	}
 
 	l2ClientCfg := sources.L2ClientDefaultConfig(rollupCfg, false)
@@ -68,17 +73,18 @@ func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl s
 	}
 
 	return &Runner{
-		l1RpcUrl:    l1RpcUrl,
-		l1RpcKind:   l1RpcKind,
-		l1BeaconUrl: l1BeaconUrl,
-		l2RpcUrl:    l2RpcUrl,
-		dataDir:     dataDir,
-		network:     network,
-		chainCfg:    chainCfg,
-		logCfg:      logCfg,
-		setupLog:    setupLog,
-		l2Client:    l2Client,
-		rollupCfg:   rollupCfg,
+		l1RpcUrl:     l1RpcUrl,
+		l1RpcKind:    l1RpcKind,
+		l1BeaconUrl:  l1BeaconUrl,
+		l2RpcUrl:     l2RpcUrl,
+		dataDir:      dataDir,
+		network:      network,
+		chainCfg:     chainCfg,
+		logCfg:       logCfg,
+		setupLog:     setupLog,
+		l2Client:     l2Client,
+		rollupCfg:    rollupCfg,
+		runInProcess: runInProcess,
 	}, nil
 }
 
@@ -202,7 +208,7 @@ func (r *Runner) run(ctx context.Context, l1Head common.Hash, agreedBlockInfo et
 	}
 	fmt.Printf("Configuration: %s\n", argsStr)
 
-	if runInProcess {
+	if r.runInProcess {
 		offlineCfg := config.NewConfig(
 			r.rollupCfg, r.chainCfg, l1Head, agreedBlockInfo.Hash(), agreedOutputRoot, claimedOutputRoot, claimedBlockInfo.NumberU64())
 		offlineCfg.DataDir = r.dataDir

@@ -8,11 +8,13 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/state"
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/core/vm"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
@@ -20,6 +22,9 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 )
+
+// maxStepGas should be less than the L1 gas limit
+const maxStepGas = 20_000_000
 
 type MIPSEVM struct {
 	sender      vm.AccountRef
@@ -35,11 +40,35 @@ type MIPSEVM struct {
 	lastPreimageOracleInput []byte
 }
 
-func NewMIPSEVM(contracts *ContractMetadata) *MIPSEVM {
+func newMIPSEVM(contracts *ContractMetadata, opts ...evmOption) *MIPSEVM {
 	env, evmState := NewEVMEnv(contracts)
 	sender := vm.AccountRef{0x13, 0x37}
-	startingGas := uint64(30_000_000)
-	return &MIPSEVM{sender, startingGas, env, evmState, contracts.Addresses, nil, contracts.Artifacts, math.MaxUint64, nil, nil}
+	startingGas := uint64(maxStepGas)
+	evm := &MIPSEVM{sender, startingGas, env, evmState, contracts.Addresses, nil, contracts.Artifacts, math.MaxUint64, nil, nil}
+	for _, opt := range opts {
+		opt(evm)
+	}
+	return evm
+}
+
+type evmOption func(c *MIPSEVM)
+
+func WithSourceMapTracer(t *testing.T, ver MipsVersion) evmOption {
+	return func(evm *MIPSEVM) {
+		evm.SetSourceMapTracer(t, ver)
+	}
+}
+
+func WithTracingHooks(tracer *tracing.Hooks) evmOption {
+	return func(evm *MIPSEVM) {
+		evm.SetTracer(tracer)
+	}
+}
+
+func WithLocalOracle(oracle mipsevm.PreimageOracle) evmOption {
+	return func(evm *MIPSEVM) {
+		evm.SetLocalOracle(oracle)
+	}
 }
 
 func (m *MIPSEVM) SetTracer(tracer *tracing.Hooks) {
@@ -169,41 +198,83 @@ func LogStepFailureAtCleanup(t *testing.T, mipsEvm *MIPSEVM) {
 	})
 }
 
-// ValidateEVM runs a single evm step and validates against an FPVM poststate
-func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM, hashFn mipsevm.HashFn, contracts *ContractMetadata, tracer *tracing.Hooks) {
-	evm := NewMIPSEVM(contracts)
-	evm.SetTracer(tracer)
+type EvmValidator struct {
+	evm    *MIPSEVM
+	hashFn mipsevm.HashFn
+}
+
+// NewEvmValidator creates a validator that can be run repeatedly across multiple steps
+func NewEvmValidator(t *testing.T, hashFn mipsevm.HashFn, contracts *ContractMetadata, opts ...evmOption) *EvmValidator {
+	evm := newMIPSEVM(contracts, opts...)
 	LogStepFailureAtCleanup(t, evm)
 
-	evmPost := evm.Step(t, stepWitness, step, hashFn)
+	return &EvmValidator{
+		evm:    evm,
+		hashFn: hashFn,
+	}
+}
+
+func (v *EvmValidator) ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM) {
+	evmPost := v.evm.Step(t, stepWitness, step, v.hashFn)
 	goPost, _ := goVm.GetState().EncodeWitness()
 	require.Equal(t, hexutil.Bytes(goPost).String(), hexutil.Bytes(evmPost).String(),
 		"mipsevm produced different state than EVM")
 }
 
+// ValidateEVM runs a single evm step and validates against an FPVM poststate
+func ValidateEVM(t *testing.T, stepWitness *mipsevm.StepWitness, step uint64, goVm mipsevm.FPVM, hashFn mipsevm.HashFn, contracts *ContractMetadata, opts ...evmOption) {
+	validator := NewEvmValidator(t, hashFn, contracts, opts...)
+	validator.ValidateEVM(t, stepWitness, step, goVm)
+}
+
+type ErrMatcher func(*testing.T, []byte)
+
+func CreateNoopErrorMatcher() ErrMatcher {
+	return func(t *testing.T, ret []byte) {}
+}
+
+// CreateErrorStringMatcher matches an Error(string)
+func CreateErrorStringMatcher(expect string) ErrMatcher {
+	return func(t *testing.T, ret []byte) {
+		require.Greaterf(t, len(ret), 4, "Return data length should be greater than 4 bytes: %x", ret)
+		unpacked, decodeErr := abi.UnpackRevert(ret)
+		require.NoError(t, decodeErr, "Failed to unpack revert reason")
+		require.Contains(t, unpacked, expect, "Revert reason mismatch")
+	}
+}
+
+// CreateCustomErrorMatcher matches a custom error given the error signature
+func CreateCustomErrorMatcher(sig string) ErrMatcher {
+	return func(t *testing.T, ret []byte) {
+		expect := crypto.Keccak256([]byte(sig))[:4]
+		require.EqualValuesf(t, expect, ret, "return value is %x", ret)
+	}
+}
+
 // AssertEVMReverts runs a single evm step from an FPVM prestate and asserts that the VM panics
-func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *ContractMetadata, tracer *tracing.Hooks) {
-	insnProof := state.GetMemory().MerkleProof(state.GetPC())
+func AssertEVMReverts(t *testing.T, state mipsevm.FPVMState, contracts *ContractMetadata, tracer *tracing.Hooks, ProofData []byte, matcher ErrMatcher) {
 	encodedWitness, _ := state.EncodeWitness()
 	stepWitness := &mipsevm.StepWitness{
 		State:     encodedWitness,
-		ProofData: insnProof[:],
+		ProofData: ProofData,
 	}
 	input := EncodeStepInput(t, stepWitness, mipsevm.LocalContext{}, contracts.Artifacts.MIPS)
-	startingGas := uint64(30_000_000)
+	startingGas := uint64(maxStepGas)
 
 	env, evmState := NewEVMEnv(contracts)
 	env.Config.Tracer = tracer
 	sender := common.Address{0x13, 0x37}
-	_, _, err := env.Call(vm.AccountRef(sender), contracts.Addresses.MIPS, input, startingGas, common.U2560)
+	ret, _, err := env.Call(vm.AccountRef(sender), contracts.Addresses.MIPS, input, startingGas, common.U2560)
+
 	require.EqualValues(t, err, vm.ErrExecutionReverted)
+	matcher(t, ret)
+
 	logs := evmState.Logs()
 	require.Equal(t, 0, len(logs))
 }
 
-func AssertPreimageOracleReverts(t *testing.T, preimageKey [32]byte, preimageValue []byte, preimageOffset arch.Word, contracts *ContractMetadata, tracer *tracing.Hooks) {
-	evm := NewMIPSEVM(contracts)
-	evm.SetTracer(tracer)
+func AssertPreimageOracleReverts(t *testing.T, preimageKey [32]byte, preimageValue []byte, preimageOffset arch.Word, contracts *ContractMetadata, opts ...evmOption) {
+	evm := newMIPSEVM(contracts, opts...)
 	LogStepFailureAtCleanup(t, evm)
 
 	evm.assertPreimageOracleReverts(t, preimageKey, preimageValue, preimageOffset)

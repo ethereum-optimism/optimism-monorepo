@@ -2,16 +2,15 @@
 pragma solidity 0.8.15;
 
 // Testing
-import { console } from "forge-std/console.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
 
 // Interfaces
-import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IL2ERC721Bridge } from "src/L2/interfaces/IL2ERC721Bridge.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IL2ERC721Bridge } from "interfaces/L2/IL2ERC721Bridge.sol";
 
 contract TestERC721 is ERC721 {
     constructor() ERC721("Test", "TST") { }
@@ -34,7 +33,7 @@ contract TestMintableERC721 is OptimismMintableERC721 {
     }
 }
 
-contract L2ERC721Bridge_Test is Bridge_Initializer {
+contract L2ERC721Bridge_Test is CommonTest {
     TestMintableERC721 internal localToken;
     TestERC721 internal remoteToken;
     uint256 internal constant tokenId = 1;
@@ -228,6 +227,14 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         assertEq(localToken.ownerOf(tokenId), alice);
     }
 
+    /// @dev Tests that `bridgeERC721To` reverts if the to address is the zero address.
+    function test_bridgeERC721To_toZeroAddress_reverts() external {
+        // Bridge the token.
+        vm.prank(bob);
+        vm.expectRevert("ERC721Bridge: nft recipient cannot be address(0)");
+        l2ERC721Bridge.bridgeERC721To(address(localToken), address(remoteToken), address(0), tokenId, 1234, hex"5678");
+    }
+
     /// @dev Tests that `finalizeBridgeERC721` correctly finalizes a bridged token.
     function test_finalizeBridgeERC721_succeeds() external {
         // Bridge the token.
@@ -241,7 +248,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l2CrossDomainMessenger),
-            abi.encodeWithSelector(l2CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l2CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(l1ERC721Bridge)
         );
         vm.prank(address(l2CrossDomainMessenger));
@@ -265,7 +272,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         // to be compliant with the `IOptimismMintableERC721` interface.
         vm.mockCall(
             address(l2CrossDomainMessenger),
-            abi.encodeWithSelector(l2CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l2CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(l1ERC721Bridge)
         );
         vm.prank(address(l2CrossDomainMessenger));
@@ -288,7 +295,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l2CrossDomainMessenger),
-            abi.encodeWithSelector(l2CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l2CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(alice)
         );
         vm.prank(address(l2CrossDomainMessenger));
@@ -302,7 +309,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l2CrossDomainMessenger),
-            abi.encodeWithSelector(l2CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l2CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1ERC721Bridge))
         );
         vm.prank(address(l2CrossDomainMessenger));
@@ -317,7 +324,7 @@ contract L2ERC721Bridge_Test is Bridge_Initializer {
         // Finalize a withdrawal.
         vm.mockCall(
             address(l2CrossDomainMessenger),
-            abi.encodeWithSelector(l2CrossDomainMessenger.xDomainMessageSender.selector),
+            abi.encodeCall(l2CrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1ERC721Bridge))
         );
         vm.prank(address(l2CrossDomainMessenger));

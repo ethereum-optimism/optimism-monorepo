@@ -11,9 +11,9 @@ import { Constants } from "src/libraries/Constants.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 /// @custom:proxied true
 /// @title SystemConfig
@@ -23,15 +23,16 @@ import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
 contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @notice Enum representing different types of updates.
     /// @custom:value BATCHER              Represents an update to the batcher hash.
-    /// @custom:value GAS_CONFIG           Represents an update to txn fee config on L2.
+    /// @custom:value FEE_SCALARS          Represents an update to l1 data fee scalars.
     /// @custom:value GAS_LIMIT            Represents an update to gas limit on L2.
     /// @custom:value UNSAFE_BLOCK_SIGNER  Represents an update to the signer key for unsafe
     ///                                    block distrubution.
     enum UpdateType {
         BATCHER,
-        GAS_CONFIG,
+        FEE_SCALARS,
         GAS_LIMIT,
-        UNSAFE_BLOCK_SIGNER
+        UNSAFE_BLOCK_SIGNER,
+        EIP_1559_PARAMS
     }
 
     /// @notice Struct representing the addresses of L1 system contracts. These should be the
@@ -123,6 +124,12 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     ///         Set as internal with a getter so that the struct is returned instead of a tuple.
     IResourceMetering.ResourceConfig internal _resourceConfig;
 
+    /// @notice The EIP-1559 base fee max change denominator.
+    uint32 public eip1559Denominator;
+
+    /// @notice The EIP-1559 elasticity multiplier.
+    uint32 public eip1559Elasticity;
+
     /// @notice Emitted when configuration is updated.
     /// @param version    SystemConfig version.
     /// @param updateType Type of update.
@@ -130,9 +137,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.3
+    /// @custom:semver 2.3.0-beta.7
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.3";
+        return "2.3.0-beta.7";
     }
 
     /// @notice Constructs the SystemConfig contract. Cannot set
@@ -217,7 +224,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         _setGasPayingToken(_addresses.gasPayingToken);
 
         _setResourceConfig(_config);
-        require(_gasLimit >= minimumGasLimit(), "SystemConfig: gas limit too low");
     }
 
     /// @notice Returns the minimum L2 gas limit that can be safely set for the system to
@@ -380,7 +386,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         scalar = _scalar;
 
         bytes memory data = abi.encode(_overhead, _scalar);
-        emit ConfigUpdate(VERSION, UpdateType.GAS_CONFIG, data);
+        emit ConfigUpdate(VERSION, UpdateType.FEE_SCALARS, data);
     }
 
     /// @notice Updates gas config as of the Ecotone upgrade. Can only be called by the owner.
@@ -400,7 +406,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         scalar = (uint256(0x01) << 248) | (uint256(_blobbasefeeScalar) << 32) | _basefeeScalar;
 
         bytes memory data = abi.encode(overhead, scalar);
-        emit ConfigUpdate(VERSION, UpdateType.GAS_CONFIG, data);
+        emit ConfigUpdate(VERSION, UpdateType.FEE_SCALARS, data);
     }
 
     /// @notice Updates the L2 gas limit. Can only be called by the owner.
@@ -418,6 +424,25 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
 
         bytes memory data = abi.encode(_gasLimit);
         emit ConfigUpdate(VERSION, UpdateType.GAS_LIMIT, data);
+    }
+
+    /// @notice Updates the EIP-1559 parameters of the chain. Can only be called by the owner.
+    /// @param _denominator EIP-1559 base fee max change denominator.
+    /// @param _elasticity  EIP-1559 elasticity multiplier.
+    function setEIP1559Params(uint32 _denominator, uint32 _elasticity) external onlyOwner {
+        _setEIP1559Params(_denominator, _elasticity);
+    }
+
+    /// @notice Internal function for updating the EIP-1559 parameters.
+    function _setEIP1559Params(uint32 _denominator, uint32 _elasticity) internal {
+        // require the parameters have sane values:
+        require(_denominator >= 1, "SystemConfig: denominator must be >= 1");
+        require(_elasticity >= 1, "SystemConfig: elasticity must be >= 1");
+        eip1559Denominator = _denominator;
+        eip1559Elasticity = _elasticity;
+
+        bytes memory data = abi.encode(uint256(_denominator) << 32 | uint64(_elasticity));
+        emit ConfigUpdate(VERSION, UpdateType.EIP_1559_PARAMS, data);
     }
 
     /// @notice Sets the start block in a backwards compatible way. Proxies

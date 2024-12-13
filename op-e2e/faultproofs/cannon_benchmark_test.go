@@ -49,9 +49,6 @@ func testBenchmarkCannonFPP(t *testing.T, allocType config.AllocType) {
 	cfg := e2esys.DefaultSystemConfig(t, e2esys.WithAllocType(allocType))
 	// We don't need a verifier - just the sequencer is enough
 	delete(cfg.Nodes, "verifier")
-	// Use a small sequencer window size to avoid test timeout while waiting for empty blocks
-	// But not too small to ensure that our claim and subsequent state change is published
-	cfg.DeployConfig.SequencerWindowSize = 16
 	minTs := hexutil.Uint64(0)
 	cfg.DeployConfig.L2GenesisDeltaTimeOffset = &minTs
 	cfg.DeployConfig.L2GenesisEcotoneTimeOffset = &minTs

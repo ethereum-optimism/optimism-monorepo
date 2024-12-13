@@ -68,13 +68,13 @@ func RegisterGameTypes(
 
 	var registerTasks []*RegisterTask
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypeCannon) {
-		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.CannonGameType, cfg, m, vm.NewOpProgramServerExecutor()))
+		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.CannonGameType, cfg, m, vm.NewOpProgramServerExecutor(logger)))
 	}
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypePermissioned) {
-		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.PermissionedGameType, cfg, m, vm.NewOpProgramServerExecutor()))
+		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.PermissionedGameType, cfg, m, vm.NewOpProgramServerExecutor(logger)))
 	}
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypeAsterisc) {
-		registerTasks = append(registerTasks, NewAsteriscRegisterTask(faultTypes.AsteriscGameType, cfg, m, vm.NewOpProgramServerExecutor()))
+		registerTasks = append(registerTasks, NewAsteriscRegisterTask(faultTypes.AsteriscGameType, cfg, m, vm.NewOpProgramServerExecutor(logger)))
 	}
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypeAsteriscKona) {
 		registerTasks = append(registerTasks, NewAsteriscKonaRegisterTask(faultTypes.AsteriscKonaGameType, cfg, m, vm.NewKonaExecutor()))

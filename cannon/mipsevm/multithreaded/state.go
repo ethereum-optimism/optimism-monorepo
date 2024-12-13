@@ -40,16 +40,24 @@ const (
 	STATE_WITNESS_SIZE = THREAD_ID_WITNESS_OFFSET + arch.WordSizeBytes
 )
 
+type LLReservationStatus uint8
+
+const (
+	LLStatusNone        LLReservationStatus = 0x0
+	LLStatusActive32bit LLReservationStatus = 0x1
+	LLStatusActive64bit LLReservationStatus = 0x2
+)
+
 type State struct {
 	Memory *memory.Memory
 
 	PreimageKey    common.Hash
 	PreimageOffset Word // note that the offset includes the 8-byte length prefix
 
-	Heap                Word // to handle mmap growth
-	LLReservationActive bool // Whether there is an active memory reservation initiated via the LL (load linked) op
-	LLAddress           Word // The "linked" memory address reserved via the LL (load linked) op
-	LLOwnerThread       Word // The id of the thread that holds the reservation on LLAddress
+	Heap                Word                // to handle mmap growth
+	LLReservationStatus LLReservationStatus // Determines whether there is an active memory reservation, and what type
+	LLAddress           Word                // The "linked" memory address reserved via the LL (load linked) op
+	LLOwnerThread       Word                // The id of the thread that holds the reservation on LLAddress
 
 	ExitCode uint8
 	Exited   bool
@@ -75,7 +83,7 @@ func CreateEmptyState() *State {
 	return &State{
 		Memory:              memory.NewMemory(),
 		Heap:                0,
-		LLReservationActive: false,
+		LLReservationStatus: LLStatusNone,
 		LLAddress:           0,
 		LLOwnerThread:       0,
 		ExitCode:            0,
@@ -199,7 +207,7 @@ func (s *State) EncodeWitness() ([]byte, common.Hash) {
 	out = append(out, s.PreimageKey[:]...)
 	out = arch.ByteOrderWord.AppendWord(out, s.PreimageOffset)
 	out = arch.ByteOrderWord.AppendWord(out, s.Heap)
-	out = mipsevm.AppendBoolToWitness(out, s.LLReservationActive)
+	out = append(out, byte(s.LLReservationStatus))
 	out = arch.ByteOrderWord.AppendWord(out, s.LLAddress)
 	out = arch.ByteOrderWord.AppendWord(out, s.LLOwnerThread)
 	out = append(out, s.ExitCode)
@@ -234,7 +242,6 @@ func (s *State) EncodeThreadProof() []byte {
 	out := make([]byte, 0, THREAD_WITNESS_SIZE)
 	out = append(out, threadBytes[:]...)
 	out = append(out, otherThreadsWitness[:]...)
-
 	return out
 }
 
@@ -279,7 +286,7 @@ func (s *State) Serialize(out io.Writer) error {
 	if err := bout.WriteUInt(s.Heap); err != nil {
 		return err
 	}
-	if err := bout.WriteBool(s.LLReservationActive); err != nil {
+	if err := bout.WriteUInt(s.LLReservationStatus); err != nil {
 		return err
 	}
 	if err := bout.WriteUInt(s.LLAddress); err != nil {
@@ -348,7 +355,7 @@ func (s *State) Deserialize(in io.Reader) error {
 	if err := bin.ReadUInt(&s.Heap); err != nil {
 		return err
 	}
-	if err := bin.ReadBool(&s.LLReservationActive); err != nil {
+	if err := bin.ReadUInt(&s.LLReservationStatus); err != nil {
 		return err
 	}
 	if err := bin.ReadUInt(&s.LLAddress); err != nil {

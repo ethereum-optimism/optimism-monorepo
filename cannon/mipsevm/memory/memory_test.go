@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/stretchr/testify/require"
 )
 
@@ -125,7 +126,6 @@ func TestMemoryReadWrite(t *testing.T) {
 			v := m.GetWord(i)
 			expected := binary.BigEndian.Uint32(data[i : i+4])
 			require.Equalf(t, expected, v, "read at %d", i)
-			require.Equalf(t, expected, m.GetUint32(i), "read at %d", i)
 		}
 	})
 
@@ -140,14 +140,56 @@ func TestMemoryReadWrite(t *testing.T) {
 		require.Equal(t, make([]byte, 10), res[len(res)-10:], "empty end")
 	})
 
+	t.Run("empty range", func(t *testing.T) {
+		m := NewMemory()
+		addr := Word(0xAABBCC00)
+		r := bytes.NewReader(nil)
+		pre := m.MerkleRoot()
+		preJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		var preSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&preSerialized))
+
+		require.NoError(t, m.SetMemoryRange(addr, r))
+		v := m.GetWord(0)
+		require.Equal(t, Word(0), v)
+		post := m.MerkleRoot()
+		require.Equal(t, pre, post)
+
+		// Assert that there are no extra zero pages in serialization
+		postJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, preJSON, postJSON)
+
+		var postSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&postSerialized))
+		require.Equal(t, preSerialized.Bytes(), postSerialized.Bytes())
+	})
+
+	t.Run("range page overlap", func(t *testing.T) {
+		m := NewMemory()
+		data := bytes.Repeat([]byte{0xAA}, PageAddrSize)
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		for i := 0; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA), m.GetWord(addr))
+		}
+
+		data = []byte{0x11, 0x22}
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		require.Equal(t, Word(0x1122_AAAA), m.GetWord(0))
+		for i := 1; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA), m.GetWord(addr))
+		}
+	})
+
 	t.Run("read-write", func(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(12, 0xAABBCCDD)
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 		m.SetWord(12, 0xAABB1CDD)
 		require.Equal(t, uint32(0xAABB1CDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(12))
 	})
 
 	t.Run("unaligned read", func(t *testing.T) {
@@ -156,22 +198,16 @@ func TestMemoryReadWrite(t *testing.T) {
 		m.SetWord(16, 0x11223344)
 		require.Panics(t, func() {
 			m.GetWord(13)
-			m.GetUint32(13)
 		})
 		require.Panics(t, func() {
 			m.GetWord(14)
-			m.GetUint32(14)
 		})
 		require.Panics(t, func() {
 			m.GetWord(15)
-			m.GetUint32(15)
 		})
 		require.Equal(t, uint32(0x11223344), m.GetWord(16))
-		require.Equal(t, uint32(0x11223344), m.GetUint32(16))
 		require.Equal(t, uint32(0), m.GetWord(20))
-		require.Equal(t, uint32(0), m.GetUint32(20))
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 	})
 
 	t.Run("unaligned write", func(t *testing.T) {
@@ -187,7 +223,6 @@ func TestMemoryReadWrite(t *testing.T) {
 			m.SetWord(15, 0x11223344)
 		})
 		require.Equal(t, uint32(0xAABBCCDD), m.GetWord(12))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(12))
 	})
 }
 
@@ -199,7 +234,6 @@ func TestMemoryJSON(t *testing.T) {
 	var res Memory
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, uint32(0xAABBCCDD), res.GetWord(8))
-	require.Equal(t, uint32(0xAABBCCDD), res.GetUint32(8))
 }
 
 func TestMemoryCopy(t *testing.T) {
@@ -207,6 +241,5 @@ func TestMemoryCopy(t *testing.T) {
 	m.SetWord(0x8000, 123)
 	mcpy := m.Copy()
 	require.Equal(t, Word(123), mcpy.GetWord(0x8000))
-	require.Equal(t, Word(123), mcpy.GetUint32(0x8000))
 	require.Equal(t, m.MerkleRoot(), mcpy.MerkleRoot())
 }

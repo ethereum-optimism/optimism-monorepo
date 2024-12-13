@@ -4,18 +4,24 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
+	"github.com/ethereum-optimism/optimism/op-supervisor/config"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 var (
-	ValidL2RPCs  = []string{"http;//localhost:8545"}
+	ValidL1RPC  = "http://localhost:8545"
+	ValidL2RPCs = &syncnode.CLISyncNodes{
+		JWTSecretPaths: []string{"./jwt_secret.txt"},
+	}
 	ValidDatadir = "./supervisor_test_datadir"
 )
 
@@ -36,22 +42,23 @@ func TestLogLevel(t *testing.T) {
 
 func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	cfg := configForArgs(t, addRequiredArgs())
-	defaultCfgTempl := config.NewConfig(ValidL2RPCs, ValidDatadir)
+	depSet := &depset.JsonDependencySetLoader{Path: "test"}
+	defaultCfgTempl := config.NewConfig(ValidL1RPC, ValidL2RPCs, depSet, ValidDatadir)
 	defaultCfg := *defaultCfgTempl
 	defaultCfg.Version = Version
+	// Sync sources may be attached later via RPC. These are thus not strictly required.
+	defaultCfg.SyncSources = nil
+	cfg.SyncSources = nil
 	require.Equal(t, defaultCfg, *cfg)
 }
 
-func TestL2RPCs(t *testing.T) {
-	t.Run("Required", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag l2-rpcs is required", addRequiredArgsExcept("--l2-rpcs"))
-	})
-
+func TestL2ConsensusNodes(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
 		url1 := "http://example.com:1234"
 		url2 := "http://foobar.com:1234"
-		cfg := configForArgs(t, addRequiredArgsExcept("--l2-rpcs", "--l2-rpcs="+url1+","+url2))
-		require.Equal(t, []string{url1, url2}, cfg.L2RPCs)
+		cfg := configForArgs(t, addRequiredArgsExcept(
+			"--l2-consensus-nodes", "--l2-consensus.nodes="+url1+","+url2))
+		require.Equal(t, []string{url1, url2}, cfg.SyncSources.(*syncnode.CLISyncNodes).Endpoints)
 	})
 }
 
@@ -123,8 +130,11 @@ func toArgList(req map[string]string) []string {
 
 func requiredArgs() map[string]string {
 	args := map[string]string{
-		"--l2-rpcs": ValidL2RPCs[0],
-		"--datadir": ValidDatadir,
+		"--l1-rpc":                  ValidL1RPC,
+		"--l2-consensus.nodes":      strings.Join(ValidL2RPCs.Endpoints, ","),
+		"--l2-consensus.jwt-secret": strings.Join(ValidL2RPCs.JWTSecretPaths, ","),
+		"--dependency-set":          "test",
+		"--datadir":                 ValidDatadir,
 	}
 	return args
 }

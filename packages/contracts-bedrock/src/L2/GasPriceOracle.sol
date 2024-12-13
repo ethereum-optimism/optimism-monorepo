@@ -7,8 +7,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x420000000000000000000000000000000000000F
@@ -29,8 +29,8 @@ contract GasPriceOracle is ISemver {
     uint256 public constant DECIMALS = 6;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.2
-    string public constant version = "1.3.1-beta.2";
+    /// @custom:semver 1.3.1-beta.4
+    string public constant version = "1.3.1-beta.4";
 
     /// @notice This is the intercept value for the linear regression used to estimate the final size of the
     ///         compressed transaction.
@@ -74,7 +74,7 @@ contract GasPriceOracle is ISemver {
 
         // Add 68 to the size to account for unsigned tx:
         uint256 txSize = _unsignedTxSize + 68;
-        // txSize / 255 + 16 is the pratical fastlz upper-bound covers %99.99 txs.
+        // txSize / 255 + 16 is the practical fastlz upper-bound covers %99.99 txs.
         uint256 flzUpperBound = txSize + txSize / 255 + 16;
 
         return _fjordL1Cost(flzUpperBound);

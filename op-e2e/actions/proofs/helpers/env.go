@@ -4,6 +4,7 @@ import (
 	"context"
 	"math/rand"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	e2ecfg "github.com/ethereum-optimism/optimism/op-e2e/config"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -28,6 +29,7 @@ import (
 // L2FaultProofEnv is a test harness for a fault provable L2 chain.
 type L2FaultProofEnv struct {
 	log       log.Logger
+	Logs      *testlog.CapturingHandler
 	Batcher   *helpers.L2Batcher
 	Sequencer *helpers.L2Sequencer
 	Engine    *helpers.L2Engine
@@ -39,8 +41,11 @@ type L2FaultProofEnv struct {
 	Bob       *helpers.CrossLayerUser
 }
 
-func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eutils.TestParams, batcherCfg *helpers.BatcherCfg) *L2FaultProofEnv {
-	log := testlog.Logger(t, log.LvlDebug)
+type deployConfigOverride func(*genesis.DeployConfig)
+
+func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eutils.TestParams, batcherCfg *helpers.BatcherCfg, deployConfigOverrides ...deployConfigOverride) *L2FaultProofEnv {
+	log, logs := testlog.CaptureLogger(t, log.LevelDebug)
+
 	dp := NewDeployParams(t, tp, func(dp *e2eutils.DeployParams) {
 		genesisBlock := hexutil.Uint64(0)
 
@@ -61,6 +66,12 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 			dp.DeployConfig.L2GenesisFjordTimeOffset = &genesisBlock
 		case Granite:
 			dp.DeployConfig.L2GenesisGraniteTimeOffset = &genesisBlock
+		case Holocene:
+			dp.DeployConfig.L2GenesisHoloceneTimeOffset = &genesisBlock
+		}
+
+		for _, override := range deployConfigOverrides {
+			override(dp.DeployConfig)
 		}
 	})
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
@@ -72,7 +83,7 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 
 	l1Cl, err := sources.NewL1Client(miner.RPCClient(), log, nil, sources.L1ClientDefaultConfig(sd.RollupCfg, false, sources.RPCKindStandard))
 	require.NoError(t, err)
-	engine := helpers.NewL2Engine(t, log.New("role", "sequencer-engine"), sd.L2Cfg, sd.RollupCfg.Genesis.L1, jwtPath, helpers.EngineWithP2P())
+	engine := helpers.NewL2Engine(t, log.New("role", "sequencer-engine"), sd.L2Cfg, jwtPath, helpers.EngineWithP2P())
 	l2EngineCl, err := sources.NewEngineClient(engine.RPCClient(), log, nil, sources.EngineClientDefaultConfig(sd.RollupCfg))
 	require.NoError(t, err)
 
@@ -109,6 +120,7 @@ func NewL2FaultProofEnv[c any](t helpers.Testing, testCfg *TestCfg[c], tp *e2eut
 
 	return &L2FaultProofEnv{
 		log:       log,
+		Logs:      logs,
 		Batcher:   batcher,
 		Sequencer: sequencer,
 		Engine:    engine,
@@ -143,9 +155,20 @@ func WithL2Claim(claim common.Hash) FixtureInputParam {
 	}
 }
 
+func WithL2BlockNumber(num uint64) FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.L2BlockNumber = num
+	}
+}
+
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
 	// Fetch the pre and post output roots for the fault proof.
-	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum-1)
+	l2PreBlockNum := l2ClaimBlockNum - 1
+	if l2ClaimBlockNum == 0 {
+		// If we are at genesis, we assert that we don't move the chain at all.
+		l2PreBlockNum = 0
+	}
+	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2PreBlockNum)
 	require.NoError(t, err)
 	claimRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum)
 	require.NoError(t, err)
@@ -193,7 +216,7 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			l2RPC := env.Engine.RPCClient()
 			l2Client, err := host.NewL2Client(l2RPC, env.log, nil, &host.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
 			require.NoError(t, err, "failed to create L2 client")
-			l2DebugCl := &host.L2Source{L2Client: l2Client, DebugClient: sources.NewDebugClient(l2RPC.CallContext)}
+			l2DebugCl := host.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
 			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv), nil
 		})

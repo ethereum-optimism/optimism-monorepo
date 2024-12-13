@@ -8,15 +8,16 @@ import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 // Contracts
-import { DeputyGuardianModule } from "src/safe/DeputyGuardianModule.sol";
+import { IDeputyGuardianModule } from "interfaces/safe/IDeputyGuardianModule.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IAnchorStateRegistry } from "src/dispute/interfaces/IAnchorStateRegistry.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
     using SafeTestLib for SafeInstance;
@@ -26,13 +27,12 @@ contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
 
     event ExecutionFromModuleSuccess(address indexed);
 
-    DeputyGuardianModule deputyGuardianModule;
+    IDeputyGuardianModule deputyGuardianModule;
     SafeInstance safeInstance;
     address deputyGuardian;
 
     /// @dev Sets up the test environment
     function setUp() public virtual override {
-        super.enableFaultProofs();
         super.setUp();
 
         // Create a Safe with 10 owners
@@ -48,11 +48,16 @@ contract DeputyGuardianModule_TestInit is CommonTest, SafeTestTools {
 
         deputyGuardian = makeAddr("deputyGuardian");
 
-        deputyGuardianModule = new DeputyGuardianModule({
-            _safe: safeInstance.safe,
-            _superchainConfig: superchainConfig,
-            _deputyGuardian: deputyGuardian
-        });
+        deputyGuardianModule = IDeputyGuardianModule(
+            DeployUtils.create1({
+                _name: "DeputyGuardianModule",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IDeputyGuardianModule.__constructor__, (safeInstance.safe, superchainConfig, deputyGuardian)
+                    )
+                )
+            })
+        );
         safeInstance.enableModule(address(deputyGuardianModule));
     }
 }
@@ -95,7 +100,7 @@ contract DeputyGuardianModule_Pause_TestFail is DeputyGuardianModule_TestInit {
     function test_pause_targetReverts_reverts() external {
         vm.mockCallRevert(
             address(superchainConfig),
-            abi.encodeWithSelector(superchainConfig.pause.selector),
+            abi.encodePacked(superchainConfig.pause.selector),
             "SuperchainConfig: pause() reverted"
         );
 
@@ -145,7 +150,7 @@ contract DeputyGuardianModule_Unpause_TestFail is DeputyGuardianModule_Unpause_T
     function test_unpause_targetReverts_reverts() external {
         vm.mockCallRevert(
             address(superchainConfig),
-            abi.encodeWithSelector(superchainConfig.unpause.selector),
+            abi.encodePacked(superchainConfig.unpause.selector),
             "SuperchainConfig: unpause reverted"
         );
 
@@ -165,9 +170,7 @@ contract DeputyGuardianModule_SetAnchorState_TestFail is DeputyGuardianModule_Te
     function test_setAnchorState_targetReverts_reverts() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
         vm.mockCallRevert(
-            address(asr),
-            abi.encodeWithSelector(asr.setAnchorState.selector),
-            "AnchorStateRegistry: setAnchorState reverted"
+            address(asr), abi.encodePacked(asr.setAnchorState.selector), "AnchorStateRegistry: setAnchorState reverted"
         );
         vm.prank(address(deputyGuardian));
         vm.expectRevert(
@@ -181,9 +184,7 @@ contract DeputyGuardianModule_SetAnchorState_Test is DeputyGuardianModule_TestIn
     function test_setAnchorState_succeeds() external {
         IAnchorStateRegistry asr = IAnchorStateRegistry(makeAddr("asr"));
         vm.mockCall(
-            address(asr),
-            abi.encodeWithSelector(IAnchorStateRegistry.setAnchorState.selector, IFaultDisputeGame(address(0))),
-            ""
+            address(asr), abi.encodeCall(IAnchorStateRegistry.setAnchorState, (IFaultDisputeGame(address(0)))), ""
         );
         vm.expectEmit(address(safeInstance.safe));
         emit ExecutionFromModuleSuccess(address(deputyGuardianModule));
@@ -223,7 +224,7 @@ contract DeputyGuardianModule_BlacklistDisputeGame_TestFail is DeputyGuardianMod
     function test_blacklistDisputeGame_targetReverts_reverts() external {
         vm.mockCallRevert(
             address(optimismPortal2),
-            abi.encodeWithSelector(optimismPortal2.blacklistDisputeGame.selector),
+            abi.encodePacked(optimismPortal2.blacklistDisputeGame.selector),
             "OptimismPortal2: blacklistDisputeGame reverted"
         );
 
@@ -256,7 +257,13 @@ contract DeputyGuardianModule_setRespectedGameType_Test is DeputyGuardianModule_
 contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianModule_TestInit {
     /// @dev Tests that `setRespectedGameType` when called by a non deputy guardian.
     function testFuzz_setRespectedGameType_notDeputyGuardian_reverts(GameType _gameType) external {
-        vm.assume(GameType.unwrap(optimismPortal2.respectedGameType()) != GameType.unwrap(_gameType));
+        // Change the game type if it's the same to avoid test rejections.
+        if (GameType.unwrap(optimismPortal2.respectedGameType()) == GameType.unwrap(_gameType)) {
+            unchecked {
+                _gameType = GameType.wrap(GameType.unwrap(_gameType) + 1);
+            }
+        }
+
         vm.expectRevert(abi.encodeWithSelector(Unauthorized.selector));
         deputyGuardianModule.setRespectedGameType(optimismPortal2, _gameType);
         assertNotEq(GameType.unwrap(optimismPortal2.respectedGameType()), GameType.unwrap(_gameType));
@@ -266,7 +273,7 @@ contract DeputyGuardianModule_setRespectedGameType_TestFail is DeputyGuardianMod
     function test_setRespectedGameType_targetReverts_reverts() external {
         vm.mockCallRevert(
             address(optimismPortal2),
-            abi.encodeWithSelector(optimismPortal2.setRespectedGameType.selector),
+            abi.encodePacked(optimismPortal2.setRespectedGameType.selector),
             "OptimismPortal2: setRespectedGameType reverted"
         );
 
@@ -287,8 +294,8 @@ contract DeputyGuardianModule_NoPortalCollisions_Test is DeputyGuardianModule_Te
         excludes[0] = "src/dispute/lib/*";
         excludes[1] = "src/L1/OptimismPortal2.sol";
         excludes[2] = "src/L1/OptimismPortalInterop.sol";
-        excludes[3] = "src/L1/interfaces/IOptimismPortal2.sol";
-        excludes[4] = "src/L1/interfaces/IOptimismPortalInterop.sol";
+        excludes[3] = "interfaces/L1/IOptimismPortal2.sol";
+        excludes[4] = "interfaces/L1/IOptimismPortalInterop.sol";
         Abi[] memory abis = ForgeArtifacts.getContractFunctionAbis("src/{L1,dispute,universal}", excludes);
         for (uint256 i; i < abis.length; i++) {
             for (uint256 j; j < abis[i].entries.length; j++) {

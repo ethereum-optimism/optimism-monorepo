@@ -8,6 +8,7 @@ import (
 	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
@@ -42,7 +43,7 @@ func setupAliceAccount(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 	require.NoError(t, err)
 	mintAmount := big.NewInt(1_000_000_000_000)
 	opts.Value = mintAmount
-	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, func(l2Opts *helpers.DepositTxOpts) {})
+	helpers.SendDepositTx(t, cfg, l1Client, l2Verif, opts, nil)
 
 	// Confirm balance
 	ctx, cancel = context.WithTimeout(context.Background(), 15*time.Second)
@@ -67,7 +68,7 @@ func TestBrotliBatcherFjord(t *testing.T) {
 	cfg.DeployConfig.L2GenesisFjordTimeOffset = &genesisActivation
 
 	// set up batcher to use brotli
-	sys, err := cfg.Start(t, e2esys.StartOption{Key: "compressionAlgo", Role: "brotli", Action: nil})
+	sys, err := cfg.Start(t, e2esys.WithBatcherCompressionAlgo(derive.Brotli))
 	require.Nil(t, err, "Error starting up system")
 
 	log := testlog.Logger(t, log.LevelInfo)

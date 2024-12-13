@@ -90,6 +90,9 @@ type FPVM interface {
 	// InitDebug initializes the debug mode of the VM
 	InitDebug() error
 
+	// EnableStats if supported by the VM, enables some additional statistics that can be retrieved via GetDebugInfo()
+	EnableStats()
+
 	// LookupSymbol returns the symbol located at the specified address.
 	// May return an empty string if there's no symbol table available.
 	LookupSymbol(addr arch.Word) string

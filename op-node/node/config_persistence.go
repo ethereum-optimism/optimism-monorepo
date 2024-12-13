@@ -55,6 +55,7 @@ func (p *ActiveConfigPersistence) SequencerStopped() error {
 func (p *ActiveConfigPersistence) persist(sequencerStarted bool) error {
 	p.lock.Lock()
 	defer p.lock.Unlock()
+
 	data, err := json.Marshal(persistedState{SequencerStarted: &sequencerStarted})
 	if err != nil {
 		return fmt.Errorf("marshall new config: %w", err)

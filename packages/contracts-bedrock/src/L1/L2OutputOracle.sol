@@ -6,10 +6,9 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { Types } from "src/libraries/Types.sol";
-import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @title L2OutputOracle
@@ -61,8 +60,8 @@ contract L2OutputOracle is Initializable, ISemver {
     event OutputsDeleted(uint256 indexed prevNextOutputIndex, uint256 indexed newNextOutputIndex);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.8.1-beta.1
-    string public constant version = "1.8.1-beta.1";
+    /// @custom:semver 1.8.1-beta.3
+    string public constant version = "1.8.1-beta.3";
 
     /// @notice Constructs the L2OutputOracle contract. Initializes variables to the same values as
     ///         in the getting-started config.

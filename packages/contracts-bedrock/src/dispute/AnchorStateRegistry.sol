@@ -5,16 +5,16 @@ pragma solidity 0.8.15;
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libraries
-import "src/dispute/lib/Types.sol";
+import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { UnregisteredGame, InvalidGameStatus } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IFaultDisputeGame } from "src/dispute/interfaces/IFaultDisputeGame.sol";
-import { IDisputeGame } from "src/dispute/interfaces/IDisputeGame.sol";
-import { IDisputeGameFactory } from "src/dispute/interfaces/IDisputeGameFactory.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
 /// @title AnchorStateRegistry
@@ -30,8 +30,8 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.3
-    string public constant version = "2.0.1-beta.3";
+    /// @custom:semver 2.0.1-beta.5
+    string public constant version = "2.0.1-beta.5";
 
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;

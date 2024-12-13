@@ -242,6 +242,15 @@ func TestActivations(t *testing.T) {
 			},
 		},
 		{
+			name: "Holocene",
+			setUpgradeTime: func(t *uint64, c *Config) {
+				c.HoloceneTime = t
+			},
+			checkEnabled: func(t uint64, c *Config) bool {
+				return c.IsHolocene(t)
+			},
+		},
+		{
 			name: "Interop",
 			setUpgradeTime: func(t *uint64, c *Config) {
 				c.InteropTime = t
@@ -690,5 +699,21 @@ func TestGetPayloadVersion(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
 			assert.Equal(t, config.GetPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
+	}
+}
+
+func TestConfig_IsActivationBlock(t *testing.T) {
+	ts := uint64(42)
+	// TODO(12490): Currently only supports Holocene. Will be modularized in a follow-up.
+	for _, fork := range []ForkName{Holocene} {
+		cfg := &Config{
+			HoloceneTime: &ts,
+		}
+		require.Equal(t, fork, cfg.IsActivationBlock(0, ts))
+		require.Equal(t, fork, cfg.IsActivationBlock(0, ts+64))
+		require.Equal(t, fork, cfg.IsActivationBlock(ts-1, ts))
+		require.Equal(t, fork, cfg.IsActivationBlock(ts-1, ts+1))
+		require.Zero(t, cfg.IsActivationBlock(0, ts-1))
+		require.Zero(t, cfg.IsActivationBlock(ts, ts+1))
 	}
 }

@@ -1,31 +1,31 @@
 package opnode
 
 import (
-	"crypto/rand"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"os"
 	"strings"
 
-	altda "github.com/ethereum-optimism/optimism/op-alt-da"
-	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
-	"github.com/ethereum-optimism/optimism/op-service/oppprof"
-	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/urfave/cli/v2"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
+	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/flags"
 	"github.com/ethereum-optimism/optimism/op-node/node"
 	p2pcli "github.com/ethereum-optimism/optimism/op-node/p2p/cli"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	opflags "github.com/ethereum-optimism/optimism/op-service/flags"
+	"github.com/ethereum-optimism/optimism/op-service/oppprof"
+	"github.com/ethereum-optimism/optimism/op-service/rpc"
+	"github.com/ethereum-optimism/optimism/op-service/sources"
 )
 
 // NewConfig creates a Config from the provided flags or environment variables.
@@ -48,7 +48,7 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 
 	driverConfig := NewDriverConfig(ctx)
 
-	p2pSignerSetup, err := p2pcli.LoadSignerSetup(ctx)
+	p2pSignerSetup, err := p2pcli.LoadSignerSetup(ctx, log)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load p2p signer: %w", err)
 	}
@@ -80,14 +80,14 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		ctx.IsSet(flags.HeartbeatURLFlag.Name) {
 		log.Warn("Heartbeat functionality is not supported anymore, CLI flags will be removed in following release.")
 	}
-
+	conductorRPCEndpoint := ctx.String(flags.ConductorRpcFlag.Name)
 	cfg := &node.Config{
-		L1:         l1Endpoint,
-		L2:         l2Endpoint,
-		Rollup:     *rollupConfig,
-		Driver:     *driverConfig,
-		Beacon:     NewBeaconEndpointConfig(ctx),
-		Supervisor: NewSupervisorEndpointConfig(ctx),
+		L1:            l1Endpoint,
+		L2:            l2Endpoint,
+		Rollup:        *rollupConfig,
+		Driver:        *driverConfig,
+		Beacon:        NewBeaconEndpointConfig(ctx),
+		InteropConfig: NewSupervisorEndpointConfig(ctx),
 		RPC: node.RPCConfig{
 			ListenAddr:  ctx.String(flags.RPCListenAddr.Name),
 			ListenPort:  ctx.Int(flags.RPCListenPort.Name),
@@ -108,8 +108,10 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 		Sync:                        *syncConfig,
 		RollupHalt:                  haltOption,
 
-		ConductorEnabled:    ctx.Bool(flags.ConductorEnabledFlag.Name),
-		ConductorRpc:        ctx.String(flags.ConductorRpcFlag.Name),
+		ConductorEnabled: ctx.Bool(flags.ConductorEnabledFlag.Name),
+		ConductorRpc: func(context.Context) (string, error) {
+			return conductorRPCEndpoint, nil
+		},
 		ConductorRpcTimeout: ctx.Duration(flags.ConductorRpcTimeoutFlag.Name),
 
 		AltDA: altda.ReadCLIConfig(ctx),
@@ -130,9 +132,12 @@ func NewConfig(ctx *cli.Context, log log.Logger) (*node.Config, error) {
 	return cfg, nil
 }
 
-func NewSupervisorEndpointConfig(ctx *cli.Context) node.SupervisorEndpointSetup {
-	return &node.SupervisorEndpointConfig{
-		SupervisorAddr: ctx.String(flags.SupervisorAddr.Name),
+func NewSupervisorEndpointConfig(ctx *cli.Context) *interop.Config {
+	return &interop.Config{
+		SupervisorAddr:   ctx.String(flags.InteropSupervisor.Name),
+		RPCAddr:          ctx.String(flags.InteropRPCAddr.Name),
+		RPCPort:          ctx.Int(flags.InteropRPCPort.Name),
+		RPCJwtSecretPath: ctx.String(flags.InteropJWTSecret.Name),
 	}
 }
 
@@ -158,30 +163,13 @@ func NewL1EndpointConfig(ctx *cli.Context) *node.L1EndpointConfig {
 	}
 }
 
-func NewL2EndpointConfig(ctx *cli.Context, log log.Logger) (*node.L2EndpointConfig, error) {
+func NewL2EndpointConfig(ctx *cli.Context, logger log.Logger) (*node.L2EndpointConfig, error) {
 	l2Addr := ctx.String(flags.L2EngineAddr.Name)
 	fileName := ctx.String(flags.L2EngineJWTSecret.Name)
-	var secret [32]byte
-	fileName = strings.TrimSpace(fileName)
-	if fileName == "" {
-		return nil, fmt.Errorf("file-name of jwt secret is empty")
+	secret, err := rpc.ObtainJWTSecret(logger, fileName, true)
+	if err != nil {
+		return nil, err
 	}
-	if data, err := os.ReadFile(fileName); err == nil {
-		jwtSecret := common.FromHex(strings.TrimSpace(string(data)))
-		if len(jwtSecret) != 32 {
-			return nil, fmt.Errorf("invalid jwt secret in path %s, not 32 hex-formatted bytes", fileName)
-		}
-		copy(secret[:], jwtSecret)
-	} else {
-		log.Warn("Failed to read JWT secret from file, generating a new one now. Configure L2 geth with --authrpc.jwt-secret=" + fmt.Sprintf("%q", fileName))
-		if _, err := io.ReadFull(rand.Reader, secret[:]); err != nil {
-			return nil, fmt.Errorf("failed to generate jwt secret: %w", err)
-		}
-		if err := os.WriteFile(fileName, []byte(hexutil.Encode(secret[:])), 0o600); err != nil {
-			return nil, err
-		}
-	}
-
 	return &node.L2EndpointConfig{
 		L2EngineAddr:      l2Addr,
 		L2EngineJWTSecret: secret,

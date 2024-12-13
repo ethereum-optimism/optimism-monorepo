@@ -1,0 +1,40 @@
+
+devnet-setup:
+  bash create-chains.sh
+
+devnet-build-images:
+  PWD="$(pwd)" DOCKER_BUILDKIT=1 COMPOSE_DOCKER_CLI_BUILD=1 \
+    docker compose build --progress plain \
+       --build-arg GIT_COMMIT={git_commit} \
+       --build-arg GIT_DATE={git_date}
+
+devnet-up:
+  docker compose up -d l1 l1-bn l1-vc
+
+  docker compose up -d \
+    op-supervisor \
+    op-node-a op-batcher-a op-proposer-a \
+    op-node-b op-batcher-b op-proposer-b
+
+devnet-down:
+  # stops services, does not remove containers/networks
+  docker compose stop
+
+devnet-metrics-up:
+  docker compose up -d prometheus grafana loki promtail
+
+devnet-metrics-down:
+  docker compose down -d prometheus grafana loki promtail
+
+devnet-clean:
+  # Stops services, and removes containers/networks
+  docker compose down
+  # Now manually clean up the related images and volumes
+  # Note: `justfile` interprets the curly brackets. So we escape them, by wrapping it with more, as a string, like Jinja2.
+  docker image ls 'interop-devnet*' --format='{{ '{{.Repository}}' }}' | xargs -r docker rmi
+  docker volume ls --filter name=interop-devnet --format='{{ '{{.Name}}' }}' | xargs -r docker volume rm
+  # docker compose down needs the env files before being able to shut down, so remove the devnet config resources last
+  rm -rf ../.devnet-interop
+
+devnet-logs:
+  docker compose logs -f

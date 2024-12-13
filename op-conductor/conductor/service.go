@@ -78,9 +78,10 @@ func NewOpConductor(
 	oc.loopActionFn = oc.loopAction
 
 	// explicitly set all atomic.Bool values
-	oc.leader.Store(false)    // upon start, it should not be the leader unless specified otherwise by raft bootstrap, in that case, it'll receive a leadership update from consensus.
-	oc.healthy.Store(true)    // default to healthy unless reported otherwise by health monitor.
-	oc.seqActive.Store(false) // explicitly set to false by default, the real value will be reported after sequencer control initialization.
+	oc.leader.Store(false)         // upon start, it should not be the leader unless specified otherwise by raft bootstrap, in that case, it'll receive a leadership update from consensus.
+	oc.leaderOverride.Store(false) // default to no override.
+	oc.healthy.Store(true)         // default to healthy unless reported otherwise by health monitor.
+	oc.seqActive.Store(false)      // explicitly set to false by default, the real value will be reported after sequencer control initialization.
 	oc.paused.Store(cfg.Paused)
 	oc.stopped.Store(false)
 
@@ -168,10 +169,12 @@ func (c *OpConductor) initConsensus(ctx context.Context) error {
 		return nil
 	}
 
-	serverAddr := fmt.Sprintf("%s:%d", c.cfg.ConsensusAddr, c.cfg.ConsensusPort)
 	raftConsensusConfig := &consensus.RaftConsensusConfig{
-		ServerID:          c.cfg.RaftServerID,
-		ServerAddr:        serverAddr,
+		ServerID: c.cfg.RaftServerID,
+		// AdvertisedAddr may be empty: the server will then default to what it binds to.
+		AdvertisedAddr:    raft.ServerAddress(c.cfg.ConsensusAdvertisedAddr),
+		ListenAddr:        c.cfg.ConsensusAddr,
+		ListenPort:        c.cfg.ConsensusPort,
 		StorageDir:        c.cfg.RaftStorageDir,
 		Bootstrap:         c.cfg.RaftBootstrap,
 		RollupCfg:         &c.cfg.RollupCfg,
@@ -246,6 +249,11 @@ func (oc *OpConductor) initRPCServer(ctx context.Context) error {
 			Namespace: conductorrpc.ExecutionRPCNamespace,
 			Service:   executionProxy,
 		})
+		execMinerProxy := conductorrpc.NewExecutionMinerProxyBackend(oc.log, oc, execClient)
+		server.AddAPI(rpc.API{
+			Namespace: conductorrpc.ExecutionMinerRPCNamespace,
+			Service:   execMinerProxy,
+		})
 
 		nodeClient, err := dial.DialRollupClientWithTimeout(ctx, 1*time.Minute, oc.log, oc.cfg.NodeRPC)
 		if err != nil {
@@ -287,11 +295,12 @@ type OpConductor struct {
 	cons consensus.Consensus
 	hmon health.HealthMonitor
 
-	leader    atomic.Bool
-	seqActive atomic.Bool
-	healthy   atomic.Bool
-	hcerr     error // error from health check
-	prevState *state
+	leader         atomic.Bool
+	leaderOverride atomic.Bool
+	seqActive      atomic.Bool
+	healthy        atomic.Bool
+	hcerr          error // error from health check
+	prevState      *state
 
 	healthUpdateCh <-chan error
 	leaderUpdateCh <-chan bool
@@ -465,6 +474,12 @@ func (oc *OpConductor) Paused() bool {
 	return oc.paused.Load()
 }
 
+// ConsensusEndpoint returns the raft consensus server address to connect to.
+func (oc *OpConductor) ConsensusEndpoint() string {
+	return oc.cons.Addr()
+}
+
+// HTTPEndpoint returns the HTTP RPC endpoint
 func (oc *OpConductor) HTTPEndpoint() string {
 	if oc.rpcServer == nil {
 		return ""
@@ -472,13 +487,29 @@ func (oc *OpConductor) HTTPEndpoint() string {
 	return fmt.Sprintf("http://%s", oc.rpcServer.Endpoint())
 }
 
+func (oc *OpConductor) OverrideLeader(override bool) {
+	oc.leaderOverride.Store(override)
+}
+
+func (oc *OpConductor) LeaderOverridden() bool {
+	return oc.leaderOverride.Load()
+}
+
 // Leader returns true if OpConductor is the leader.
-func (oc *OpConductor) Leader(_ context.Context) bool {
-	return oc.cons.Leader()
+func (oc *OpConductor) Leader(ctx context.Context) bool {
+	return oc.LeaderOverridden() || oc.cons.Leader()
 }
 
 // LeaderWithID returns the current leader's server ID and address.
-func (oc *OpConductor) LeaderWithID(_ context.Context) *consensus.ServerInfo {
+func (oc *OpConductor) LeaderWithID(ctx context.Context) *consensus.ServerInfo {
+	if oc.LeaderOverridden() {
+		return &consensus.ServerInfo{
+			ID:       "N/A (Leader overridden)",
+			Addr:     "N/A",
+			Suffrage: 0,
+		}
+	}
+
 	return oc.cons.LeaderWithID()
 }
 
@@ -590,7 +621,8 @@ func (oc *OpConductor) handleHealthUpdate(hcerr error) {
 		oc.queueAction()
 	}
 
-	if oc.healthy.Swap(healthy) != healthy {
+	if old := oc.healthy.Swap(healthy); old != healthy {
+		oc.log.Info("Health state changed", "old", old, "new", healthy)
 		// queue an action if health status changed.
 		oc.queueAction()
 	}

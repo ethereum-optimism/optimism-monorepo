@@ -82,5 +82,19 @@
     "offset": 0,
     "slot": "105",
     "type": "struct IResourceMetering.ResourceConfig"
+  },
+  {
+    "bytes": "4",
+    "label": "eip1559Denominator",
+    "offset": 0,
+    "slot": "106",
+    "type": "uint32"
+  },
+  {
+    "bytes": "4",
+    "label": "eip1559Elasticity",
+    "offset": 4,
+    "slot": "106",
+    "type": "uint32"
   }
 ]

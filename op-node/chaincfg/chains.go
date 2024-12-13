@@ -2,6 +2,7 @@ package chaincfg
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 
 	"github.com/ethereum-optimism/superchain-registry/superchain"
@@ -9,18 +10,17 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 )
 
-var Mainnet, Sepolia *rollup.Config
+// OPSepolia loads the op-sepolia rollup config. This is intended for tests that need an arbitrary, valid rollup config.
+func OPSepolia() *rollup.Config {
+	return mustLoadRollupConfig("op-sepolia")
+}
 
-func init() {
-	mustCfg := func(name string) *rollup.Config {
-		cfg, err := GetRollupConfig(name)
-		if err != nil {
-			panic(fmt.Errorf("failed to load rollup config %q: %w", name, err))
-		}
-		return cfg
+func mustLoadRollupConfig(name string) *rollup.Config {
+	cfg, err := GetRollupConfig(name)
+	if err != nil {
+		panic(fmt.Errorf("failed to load rollup config %q: %w", name, err))
 	}
-	Mainnet = mustCfg("op-mainnet")
-	Sepolia = mustCfg("op-sepolia")
+	return cfg
 }
 
 var L2ChainIDToNetworkDisplayName = func() map[string]string {
@@ -37,6 +37,7 @@ func AvailableNetworks() []string {
 	for _, cfg := range superchain.OPChains {
 		networks = append(networks, cfg.Chain+"-"+cfg.Superchain)
 	}
+	sort.Strings(networks)
 	return networks
 }
 

@@ -25,6 +25,10 @@ func setWitnessField(witness StateWitness, fieldOffset int, fieldData []byte) {
 	copy(witness[start:end], fieldData)
 }
 
+func setWitnessWord(witness StateWitness, fieldOffset int, value arch.Word) {
+	arch.ByteOrderWord.PutWord(witness[fieldOffset:], value)
+}
+
 // Run through all permutations of `exited` / `exitCode` and ensure that the
 // correct witness, state hash, and VM Status is produced.
 func TestState_EncodeWitness(t *testing.T) {
@@ -56,7 +60,7 @@ func TestState_EncodeWitness(t *testing.T) {
 		state.PreimageKey = preimageKey
 		state.PreimageOffset = preimageOffset
 		state.Heap = heap
-		state.LLReservationActive = true
+		state.LLReservationStatus = LLStatusActive32bit
 		state.LLAddress = llAddress
 		state.LLOwnerThread = llThreadOwner
 		state.Step = step
@@ -70,27 +74,27 @@ func TestState_EncodeWitness(t *testing.T) {
 		expectedWitness := make(StateWitness, STATE_WITNESS_SIZE)
 		setWitnessField(expectedWitness, MEMROOT_WITNESS_OFFSET, memRoot[:])
 		setWitnessField(expectedWitness, PREIMAGE_KEY_WITNESS_OFFSET, preimageKey[:])
-		setWitnessField(expectedWitness, PREIMAGE_OFFSET_WITNESS_OFFSET, []byte{0, 0, 0, byte(preimageOffset)})
-		setWitnessField(expectedWitness, HEAP_WITNESS_OFFSET, []byte{0, 0, 0, byte(heap)})
+		setWitnessWord(expectedWitness, PREIMAGE_OFFSET_WITNESS_OFFSET, preimageOffset)
+		setWitnessWord(expectedWitness, HEAP_WITNESS_OFFSET, heap)
 		setWitnessField(expectedWitness, LL_RESERVATION_ACTIVE_OFFSET, []byte{1})
-		setWitnessField(expectedWitness, LL_ADDRESS_OFFSET, []byte{0, 0, 0, byte(llAddress)})
-		setWitnessField(expectedWitness, LL_OWNER_THREAD_OFFSET, []byte{0, 0, 0, byte(llThreadOwner)})
+		setWitnessWord(expectedWitness, LL_ADDRESS_OFFSET, llAddress)
+		setWitnessWord(expectedWitness, LL_OWNER_THREAD_OFFSET, llThreadOwner)
 		setWitnessField(expectedWitness, EXITCODE_WITNESS_OFFSET, []byte{c.exitCode})
 		if c.exited {
 			setWitnessField(expectedWitness, EXITED_WITNESS_OFFSET, []byte{1})
 		}
 		setWitnessField(expectedWitness, STEP_WITNESS_OFFSET, []byte{0, 0, 0, 0, 0, 0, 0, byte(step)})
 		setWitnessField(expectedWitness, STEPS_SINCE_CONTEXT_SWITCH_WITNESS_OFFSET, []byte{0, 0, 0, 0, 0, 0, 0, byte(stepsSinceContextSwitch)})
-		setWitnessField(expectedWitness, WAKEUP_WITNESS_OFFSET, []byte{0xFF, 0xFF, 0xFF, 0xFF})
+		setWitnessWord(expectedWitness, WAKEUP_WITNESS_OFFSET, ^arch.Word(0))
 		setWitnessField(expectedWitness, TRAVERSE_RIGHT_WITNESS_OFFSET, []byte{0})
 		setWitnessField(expectedWitness, LEFT_THREADS_ROOT_WITNESS_OFFSET, leftStackRoot[:])
 		setWitnessField(expectedWitness, RIGHT_THREADS_ROOT_WITNESS_OFFSET, rightStackRoot[:])
-		setWitnessField(expectedWitness, THREAD_ID_WITNESS_OFFSET, []byte{0, 0, 0, 1})
+		setWitnessWord(expectedWitness, THREAD_ID_WITNESS_OFFSET, 1)
 
 		// Validate witness
 		actualWitness, actualStateHash := state.EncodeWitness()
 		require.Equal(t, len(actualWitness), STATE_WITNESS_SIZE, "Incorrect witness size")
-		require.EqualValues(t, expectedWitness[:], actualWitness[:], "Incorrect witness")
+		require.EqualValues(t, expectedWitness[:], actualWitness[:], "Incorrect witness: \n\tactual = \t0x%x \n\texpected = \t0x%x", actualWitness, expectedWitness)
 		// Validate witness hash
 		expectedStateHash := crypto.Keccak256Hash(actualWitness)
 		expectedStateHash[0] = mipsevm.VmStatus(c.exited, c.exitCode)
@@ -185,7 +189,7 @@ func TestSerializeStateRoundTrip(t *testing.T) {
 		PreimageKey:                 common.Hash{0xFF},
 		PreimageOffset:              5,
 		Heap:                        0xc0ffee,
-		LLReservationActive:         true,
+		LLReservationStatus:         LLStatusActive64bit,
 		LLAddress:                   0x12345678,
 		LLOwnerThread:               0x02,
 		ExitCode:                    1,

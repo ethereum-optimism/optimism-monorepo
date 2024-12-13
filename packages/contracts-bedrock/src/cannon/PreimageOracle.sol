@@ -4,11 +4,29 @@ pragma solidity 0.8.15;
 // Libraries
 import { LibKeccak } from "@lib-keccak/LibKeccak.sol";
 import { PreimageKeyLib } from "src/cannon/PreimageKeyLib.sol";
-import "src/cannon/libraries/CannonErrors.sol";
-import "src/cannon/libraries/CannonTypes.sol";
+import {
+    PartOffsetOOB,
+    NotEnoughGas,
+    InvalidProof,
+    InvalidPreimage,
+    InvalidInputSize,
+    WrongStartingBlock,
+    StatesNotContiguous,
+    PostStateMatches,
+    TreeSizeOverflow,
+    AlreadyFinalized,
+    ActiveProposal,
+    BadProposal,
+    NotInitialized,
+    AlreadyInitialized,
+    NotEOA,
+    InsufficientBond,
+    BondTransferFailed
+} from "src/cannon/libraries/CannonErrors.sol";
+import { LPPMetaData } from "src/cannon/libraries/CannonTypes.sol";
 
 // Interfaces
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @title PreimageOracle
 /// @notice A contract for storing permissioned pre-images.
@@ -33,8 +51,8 @@ contract PreimageOracle is ISemver {
     uint256 public constant PRECOMPILE_CALL_RESERVED_GAS = 100_000;
 
     /// @notice The semantic version of the Preimage Oracle contract.
-    /// @custom:semver 1.1.3-beta.4
-    string public constant version = "1.1.3-beta.4";
+    /// @custom:semver 1.1.3-beta.8
+    string public constant version = "1.1.3-beta.8";
 
     ////////////////////////////////////////////////////////////////
     //                 Authorized Preimage Parts                  //
@@ -97,7 +115,7 @@ contract PreimageOracle is ISemver {
         // Make sure challenge period fits within uint64 so that it can safely be used within the
         // FaultDisputeGame contract to compute clock extensions. Adding this check is simpler than
         // changing the existing contract ABI.
-        require(_challengePeriod <= type(uint64).max, "challenge period too large");
+        require(_challengePeriod <= type(uint64).max, "PreimageOracle: challenge period too large");
 
         // Compute hashes in empty sparse Merkle tree. The first hash is not set, and kept as zero as the identity.
         for (uint256 height = 0; height < KECCAK_TREE_DEPTH - 1; height++) {

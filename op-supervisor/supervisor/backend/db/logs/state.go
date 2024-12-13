@@ -9,7 +9,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/entrydb"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/heads"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -73,18 +72,14 @@ type logContext struct {
 	// then we know an executing message is still coming.
 	execMsg *types.ExecutingMessage
 
-	need entrydb.EntryTypeFlag
+	need EntryTypeFlag
 
 	// buffer of entries not yet in the DB.
 	// This is generated as objects are applied.
 	// E.g. you can build multiple hypothetical blocks with log events on top of the state,
 	// before flushing the entries to a DB.
 	// However, no entries can be read from the DB while objects are being applied.
-	out []entrydb.Entry
-}
-
-type EntryObj interface {
-	encode() entrydb.Entry
+	out []Entry
 }
 
 func (l *logContext) NextIndex() entrydb.EntryIdx {
@@ -99,12 +94,19 @@ func (l *logContext) SealedBlock() (hash common.Hash, num uint64, ok bool) {
 	return l.blockHash, l.blockNum, true
 }
 
+func (l *logContext) SealedTimestamp() (timestamp uint64, ok bool) {
+	if !l.hasCompleteBlock() {
+		return 0, false
+	}
+	return l.timestamp, true
+}
+
 func (l *logContext) hasCompleteBlock() bool {
-	return !l.need.Any(entrydb.FlagCanonicalHash)
+	return !l.need.Any(FlagCanonicalHash)
 }
 
 func (l *logContext) hasIncompleteLog() bool {
-	return l.need.Any(entrydb.FlagInitiatingEvent | entrydb.FlagExecutingLink | entrydb.FlagExecutingCheck)
+	return l.need.Any(FlagInitiatingEvent | FlagExecutingLink | FlagExecutingCheck)
 }
 
 func (l *logContext) hasReadableLog() bool {
@@ -127,20 +129,8 @@ func (l *logContext) ExecMessage() *types.ExecutingMessage {
 	return nil
 }
 
-func (l *logContext) HeadPointer() (heads.HeadPointer, error) {
-	if l.need != 0 {
-		return heads.HeadPointer{}, errors.New("cannot provide head pointer while state is incomplete")
-	}
-	return heads.HeadPointer{
-		LastSealedBlockHash: l.blockHash,
-		LastSealedBlockNum:  l.blockNum,
-		LastSealedTimestamp: l.timestamp,
-		LogsSince:           l.logsSince,
-	}, nil
-}
-
 // ApplyEntry applies an entry on top of the current state.
-func (l *logContext) ApplyEntry(entry entrydb.Entry) error {
+func (l *logContext) ApplyEntry(entry Entry) error {
 	// Wrap processEntry to add common useful error message info
 	err := l.processEntry(entry)
 	if err != nil {
@@ -152,28 +142,28 @@ func (l *logContext) ApplyEntry(entry entrydb.Entry) error {
 // processEntry decodes and applies an entry to the state.
 // Entries may not be applied if we are in the process of generating entries from objects.
 // These outputs need to be flushed before inputs can be accepted.
-func (l *logContext) processEntry(entry entrydb.Entry) error {
+func (l *logContext) processEntry(entry Entry) error {
 	if len(l.out) != 0 {
 		panic("can only apply without appending if the state is still empty")
 	}
 	switch entry.Type() {
-	case entrydb.TypeSearchCheckpoint:
+	case TypeSearchCheckpoint:
 		current, err := newSearchCheckpointFromEntry(entry)
 		if err != nil {
 			return err
 		}
 		l.blockNum = current.blockNum
 		l.blockHash = common.Hash{}
-		l.logsSince = current.logsSince // TODO this is bumping the logsSince?
+		l.logsSince = current.logsSince
 		l.timestamp = current.timestamp
-		l.need.Add(entrydb.FlagCanonicalHash)
+		l.need.Add(FlagCanonicalHash)
 		// Log data after the block we are sealing remains to be seen
 		if l.logsSince == 0 {
 			l.logHash = common.Hash{}
 			l.execMsg = nil
 		}
-	case entrydb.TypeCanonicalHash:
-		if !l.need.Any(entrydb.FlagCanonicalHash) {
+	case TypeCanonicalHash:
+		if !l.need.Any(FlagCanonicalHash) {
 			return errors.New("not ready for canonical hash entry, already sealed the last block")
 		}
 		canonHash, err := newCanonicalHashFromEntry(entry)
@@ -181,8 +171,8 @@ func (l *logContext) processEntry(entry entrydb.Entry) error {
 			return err
 		}
 		l.blockHash = canonHash.hash
-		l.need.Remove(entrydb.FlagCanonicalHash)
-	case entrydb.TypeInitiatingEvent:
+		l.need.Remove(FlagCanonicalHash)
+	case TypeInitiatingEvent:
 		if !l.hasCompleteBlock() {
 			return errors.New("did not complete block seal, cannot add log")
 		}
@@ -196,13 +186,13 @@ func (l *logContext) processEntry(entry entrydb.Entry) error {
 		l.execMsg = nil // clear the old state
 		l.logHash = evt.logHash
 		if evt.hasExecMsg {
-			l.need.Add(entrydb.FlagExecutingLink | entrydb.FlagExecutingCheck)
+			l.need.Add(FlagExecutingLink | FlagExecutingCheck)
 		} else {
 			l.logsSince += 1
 		}
-		l.need.Remove(entrydb.FlagInitiatingEvent)
-	case entrydb.TypeExecutingLink:
-		if !l.need.Any(entrydb.FlagExecutingLink) {
+		l.need.Remove(FlagInitiatingEvent)
+	case TypeExecutingLink:
+		if !l.need.Any(FlagExecutingLink) {
 			return errors.New("unexpected executing-link")
 		}
 		link, err := newExecutingLinkFromEntry(entry)
@@ -210,19 +200,19 @@ func (l *logContext) processEntry(entry entrydb.Entry) error {
 			return err
 		}
 		l.execMsg = &types.ExecutingMessage{
-			Chain:     link.chain,
+			Chain:     types.ChainIndex(link.chain), // TODO(#11105): translate chain ID to chain index
 			BlockNum:  link.blockNum,
 			LogIdx:    link.logIdx,
 			Timestamp: link.timestamp,
 			Hash:      common.Hash{}, // not known yet
 		}
-		l.need.Remove(entrydb.FlagExecutingLink)
-		l.need.Add(entrydb.FlagExecutingCheck)
-	case entrydb.TypeExecutingCheck:
-		if l.need.Any(entrydb.FlagExecutingLink) {
+		l.need.Remove(FlagExecutingLink)
+		l.need.Add(FlagExecutingCheck)
+	case TypeExecutingCheck:
+		if l.need.Any(FlagExecutingLink) {
 			return errors.New("need executing link to be applied before the check part")
 		}
-		if !l.need.Any(entrydb.FlagExecutingCheck) {
+		if !l.need.Any(FlagExecutingCheck) {
 			return errors.New("unexpected executing check")
 		}
 		link, err := newExecutingCheckFromEntry(entry)
@@ -230,13 +220,13 @@ func (l *logContext) processEntry(entry entrydb.Entry) error {
 			return err
 		}
 		l.execMsg.Hash = link.hash
-		l.need.Remove(entrydb.FlagExecutingCheck)
+		l.need.Remove(FlagExecutingCheck)
 		l.logsSince += 1
-	case entrydb.TypePadding:
-		if l.need.Any(entrydb.FlagPadding) {
-			l.need.Remove(entrydb.FlagPadding)
+	case TypePadding:
+		if l.need.Any(FlagPadding) {
+			l.need.Remove(FlagPadding)
 		} else {
-			l.need.Remove(entrydb.FlagPadding2)
+			l.need.Remove(FlagPadding2)
 		}
 	default:
 		return fmt.Errorf("unknown entry type: %s", entry.Type())
@@ -253,77 +243,75 @@ func (l *logContext) appendEntry(obj EntryObj) {
 	l.nextEntryIndex += 1
 }
 
-// infer advances the logContext in cases where multiple entries are to be appended implicitly
-// depending on the last type of entry, a new entry is appended,
-// or when the searchCheckpoint should be inserted.
-// This can be done repeatedly until there is no more implied data to extend.
+// infer advances the logContext in cases where complex entries contain multiple implied entries
+// eg. a SearchCheckpoint implies a CannonicalHash will follow
+// this also handles inserting the searchCheckpoint at the set frequency, and padding entries
 func (l *logContext) infer() error {
 	// We force-insert a checkpoint whenever we hit the known fixed interval.
 	if l.nextEntryIndex%searchCheckpointFrequency == 0 {
-		l.need.Add(entrydb.FlagSearchCheckpoint)
+		l.need.Add(FlagSearchCheckpoint)
 	}
-	if l.need.Any(entrydb.FlagSearchCheckpoint) {
+	if l.need.Any(FlagSearchCheckpoint) {
 		l.appendEntry(newSearchCheckpoint(l.blockNum, l.logsSince, l.timestamp))
-		l.need.Add(entrydb.FlagCanonicalHash) // always follow with a canonical hash
-		l.need.Remove(entrydb.FlagSearchCheckpoint)
+		l.need.Add(FlagCanonicalHash) // always follow with a canonical hash
+		l.need.Remove(FlagSearchCheckpoint)
 		return nil
 	}
-	if l.need.Any(entrydb.FlagCanonicalHash) {
+	if l.need.Any(FlagCanonicalHash) {
 		l.appendEntry(newCanonicalHash(l.blockHash))
-		l.need.Remove(entrydb.FlagCanonicalHash)
+		l.need.Remove(FlagCanonicalHash)
 		return nil
 	}
-	if l.need.Any(entrydb.FlagPadding) {
+	if l.need.Any(FlagPadding) {
 		l.appendEntry(paddingEntry{})
-		l.need.Remove(entrydb.FlagPadding)
+		l.need.Remove(FlagPadding)
 		return nil
 	}
-	if l.need.Any(entrydb.FlagPadding2) {
+	if l.need.Any(FlagPadding2) {
 		l.appendEntry(paddingEntry{})
-		l.need.Remove(entrydb.FlagPadding2)
+		l.need.Remove(FlagPadding2)
 		return nil
 	}
-	if l.need.Any(entrydb.FlagInitiatingEvent) {
+	if l.need.Any(FlagInitiatingEvent) {
 		// If we are running out of space for log-event data,
 		// write some checkpoints as padding, to pass the checkpoint.
 		if l.execMsg != nil { // takes 3 total. Need to avoid the checkpoint.
 			switch l.nextEntryIndex % searchCheckpointFrequency {
 			case searchCheckpointFrequency - 1:
-				l.need.Add(entrydb.FlagPadding)
+				l.need.Add(FlagPadding)
 				return nil
 			case searchCheckpointFrequency - 2:
-				l.need.Add(entrydb.FlagPadding | entrydb.FlagPadding2)
+				l.need.Add(FlagPadding | FlagPadding2)
 				return nil
 			}
 		}
 		evt := newInitiatingEvent(l.logHash, l.execMsg != nil)
 		l.appendEntry(evt)
-		l.need.Remove(entrydb.FlagInitiatingEvent)
+		l.need.Remove(FlagInitiatingEvent)
 		if l.execMsg == nil {
 			l.logsSince += 1
 		}
 		return nil
 	}
-	if l.need.Any(entrydb.FlagExecutingLink) {
+	if l.need.Any(FlagExecutingLink) {
 		link, err := newExecutingLink(*l.execMsg)
 		if err != nil {
 			return fmt.Errorf("failed to create executing link: %w", err)
 		}
 		l.appendEntry(link)
-		l.need.Remove(entrydb.FlagExecutingLink)
+		l.need.Remove(FlagExecutingLink)
 		return nil
 	}
-	if l.need.Any(entrydb.FlagExecutingCheck) {
+	if l.need.Any(FlagExecutingCheck) {
 		l.appendEntry(newExecutingCheck(l.execMsg.Hash))
-		l.need.Remove(entrydb.FlagExecutingCheck)
+		l.need.Remove(FlagExecutingCheck)
 		l.logsSince += 1
 		return nil
 	}
 	return io.EOF
 }
 
-// inferFull advances the queued entries held by the log context repeatedly
-// until no more implied entries can be added
+// inferFull advances the logContext until it cannot infer any more entries.
 func (l *logContext) inferFull() error {
 	for i := 0; i < 10; i++ {
 		err := l.infer()
@@ -364,13 +352,13 @@ func (l *logContext) SealBlock(parent common.Hash, upd eth.BlockID, timestamp ui
 			return err
 		}
 		if l.blockHash != parent {
-			return fmt.Errorf("%w: cannot apply block %s (parent %s) on top of %s", ErrConflict, upd, parent, l.blockHash)
+			return fmt.Errorf("%w: cannot apply block %s (parent %s) on top of %s", types.ErrConflict, upd, parent, l.blockHash)
 		}
 		if l.blockHash != (common.Hash{}) && l.blockNum+1 != upd.Number {
-			return fmt.Errorf("%w: cannot apply block %d on top of %d", ErrConflict, upd.Number, l.blockNum)
+			return fmt.Errorf("%w: cannot apply block %d on top of %d", types.ErrConflict, upd.Number, l.blockNum)
 		}
 		if l.timestamp > timestamp {
-			return fmt.Errorf("%w: block timestamp %d must be equal or larger than current timestamp %d", ErrConflict, timestamp, l.timestamp)
+			return fmt.Errorf("%w: block timestamp %d must be equal or larger than current timestamp %d", types.ErrConflict, timestamp, l.timestamp)
 		}
 	}
 	l.blockHash = upd.Hash
@@ -379,7 +367,7 @@ func (l *logContext) SealBlock(parent common.Hash, upd eth.BlockID, timestamp ui
 	l.logsSince = 0
 	l.execMsg = nil
 	l.logHash = common.Hash{}
-	l.need.Add(entrydb.FlagSearchCheckpoint)
+	l.need.Add(FlagSearchCheckpoint)
 	return l.inferFull() // apply to the state as much as possible
 }
 
@@ -387,34 +375,34 @@ func (l *logContext) SealBlock(parent common.Hash, upd eth.BlockID, timestamp ui
 // The parent-block that the log comes after must be applied with ApplyBlock first.
 func (l *logContext) ApplyLog(parentBlock eth.BlockID, logIdx uint32, logHash common.Hash, execMsg *types.ExecutingMessage) error {
 	if parentBlock == (eth.BlockID{}) {
-		return fmt.Errorf("genesis does not have logs: %w", ErrLogOutOfOrder)
+		return fmt.Errorf("genesis does not have logs: %w", types.ErrOutOfOrder)
 	}
 	if err := l.inferFull(); err != nil { // ensure we can start applying
 		return err
 	}
 	if !l.hasCompleteBlock() {
 		if l.blockNum == 0 {
-			return fmt.Errorf("%w: should not have logs in block 0", ErrLogOutOfOrder)
+			return fmt.Errorf("%w: should not have logs in block 0", types.ErrOutOfOrder)
 		} else {
 			return errors.New("cannot append log before last known block is sealed")
 		}
 	}
 	// check parent block
 	if l.blockHash != parentBlock.Hash {
-		return fmt.Errorf("%w: log builds on top of block %s, but have block %s", ErrLogOutOfOrder, parentBlock, l.blockHash)
+		return fmt.Errorf("%w: log builds on top of block %s, but have block %s", types.ErrOutOfOrder, parentBlock, l.blockHash)
 	}
 	if l.blockNum != parentBlock.Number {
-		return fmt.Errorf("%w: log builds on top of block %d, but have block %d", ErrLogOutOfOrder, parentBlock.Number, l.blockNum)
+		return fmt.Errorf("%w: log builds on top of block %d, but have block %d", types.ErrOutOfOrder, parentBlock.Number, l.blockNum)
 	}
 	// check if log fits on top. The length so far == the index of the next log.
 	if logIdx != l.logsSince {
-		return fmt.Errorf("%w: expected event index %d, cannot append %d", ErrLogOutOfOrder, l.logsSince, logIdx)
+		return fmt.Errorf("%w: expected event index %d, cannot append %d", types.ErrOutOfOrder, l.logsSince, logIdx)
 	}
 	l.logHash = logHash
 	l.execMsg = execMsg
-	l.need.Add(entrydb.FlagInitiatingEvent)
+	l.need.Add(FlagInitiatingEvent)
 	if execMsg != nil {
-		l.need.Add(entrydb.FlagExecutingLink | entrydb.FlagExecutingCheck)
+		l.need.Add(FlagExecutingLink | FlagExecutingCheck)
 	}
 	return l.inferFull() // apply to the state as much as possible
 }

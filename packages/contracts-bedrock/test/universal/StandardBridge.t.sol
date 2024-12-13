@@ -30,7 +30,7 @@ contract StandardBridgeTester is StandardBridge {
 
 /// @title LegacyMintable
 /// @notice Simple implementation of the legacy OptimismMintableERC20.
-contract LegacyMintable is ERC20, ILegacyMintableERC20 {
+contract LegacyMintable is ERC20 {
     constructor(string memory _name, string memory _ticker) ERC20(_name, _ticker) { }
 
     function l1Token() external pure returns (address) {

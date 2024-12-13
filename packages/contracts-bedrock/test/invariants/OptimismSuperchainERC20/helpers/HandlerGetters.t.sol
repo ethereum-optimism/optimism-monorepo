@@ -7,16 +7,16 @@ import { EnumerableMap } from "@openzeppelin/contracts/utils/structs/EnumerableM
 contract HandlerGetters is ProtocolHandler {
     using EnumerableMap for EnumerableMap.Bytes32ToUintMap;
 
-    function deploySaltsLength() external view returns (uint256 length) {
+    function deploySaltsLength() external view returns (uint256 length_) {
         return ghost_totalSupplyAcrossChains.length();
     }
 
-    function totalSupplyAcrossChainsAtIndex(uint256 index) external view returns (bytes32 salt, uint256 supply) {
-        return ghost_totalSupplyAcrossChains.at(index);
+    function totalSupplyAcrossChainsAtIndex(uint256 _index) external view returns (bytes32 salt_, uint256 supply_) {
+        return ghost_totalSupplyAcrossChains.at(_index);
     }
 
-    function tokensInTransitForDeploySalt(bytes32 salt) external view returns (uint256 amount) {
-        (, amount) = ghost_tokensInTransit.tryGet(salt);
-        return amount;
+    function tokensInTransitForDeploySalt(bytes32 _salt) external view returns (uint256 amount_) {
+        (, amount_) = ghost_tokensInTransit.tryGet(_salt);
+        return amount_;
     }
 }

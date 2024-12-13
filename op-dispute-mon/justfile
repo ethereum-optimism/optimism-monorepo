@@ -1,0 +1,21 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X github.com/ethereum-optimism/optimism/op-dispute-mon/version.Version=" + VERSION + " " + \
+    "-X github.com/ethereum-optimism/optimism/op-dispute-mon/version.Meta=" + VERSION_META + " " + \
+    "") + "'"
+
+BINARY := "./bin/op-dispute-mon"
+
+# Build op-dispute-mon binary
+op-dispute-mon: (go_build BINARY "./cmd" "-ldflags" _LDFLAGSSTRING)
+
+# Clean build artifacts
+clean:
+    rm -f {{BINARY}}
+
+# Run tests
+test: (go_test "./...")

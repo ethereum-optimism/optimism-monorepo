@@ -66,7 +66,7 @@ func (cfg *L2EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCf
 	auth := rpc.WithHTTPAuth(gn.NewJWTAuth(cfg.L2EngineJWTSecret))
 	opts := []client.RPCOption{
 		client.WithGethRPCOptions(auth),
-		client.WithDialBackoff(10),
+		client.WithDialAttempts(10),
 	}
 	l2Node, err := client.NewRPC(ctx, log, cfg.L2EngineAddr, opts...)
 	if err != nil {
@@ -140,7 +140,7 @@ func (cfg *L1EndpointConfig) Check() error {
 func (cfg *L1EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCfg *rollup.Config) (client.RPC, *sources.L1ClientConfig, error) {
 	opts := []client.RPCOption{
 		client.WithHttpPollInterval(cfg.HttpPollInterval),
-		client.WithDialBackoff(10),
+		client.WithDialAttempts(10),
 	}
 	if cfg.RateLimit != 0 {
 		opts = append(opts, client.WithRateLimit(cfg.RateLimit, cfg.BatchSize))
@@ -229,30 +229,4 @@ func parseHTTPHeader(headerStr string) (http.Header, error) {
 	}
 	h.Add(s[0], s[1])
 	return h, nil
-}
-
-type SupervisorEndpointSetup interface {
-	SupervisorClient(ctx context.Context, log log.Logger) (*sources.SupervisorClient, error)
-	Check() error
-}
-
-type SupervisorEndpointConfig struct {
-	SupervisorAddr string
-}
-
-var _ SupervisorEndpointSetup = (*SupervisorEndpointConfig)(nil)
-
-func (cfg *SupervisorEndpointConfig) Check() error {
-	if cfg.SupervisorAddr == "" {
-		return errors.New("supervisor RPC address is not set")
-	}
-	return nil
-}
-
-func (cfg *SupervisorEndpointConfig) SupervisorClient(ctx context.Context, log log.Logger) (*sources.SupervisorClient, error) {
-	cl, err := client.NewRPC(ctx, log, cfg.SupervisorAddr, client.WithLazyDial())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create supervisor RPC: %w", err)
-	}
-	return sources.NewSupervisorClient(cl), nil
 }

@@ -3,15 +3,50 @@ package entrydb
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
+
+type TestEntryType uint8
+
+func (typ TestEntryType) String() string {
+	return fmt.Sprintf("%d", uint8(typ))
+}
+
+const TestEntrySize = 34
+
+type TestEntry [TestEntrySize]byte
+
+func (t TestEntry) Type() TestEntryType {
+	return TestEntryType(t[0])
+}
+
+type TestEntryBinary struct{}
+
+func (TestEntryBinary) Append(dest []byte, e *TestEntry) []byte {
+	return append(dest, e[:]...)
+}
+
+func (TestEntryBinary) ReadAt(dest *TestEntry, r io.ReaderAt, at int64) (n int, err error) {
+	return r.ReadAt(dest[:], at)
+}
+
+func (TestEntryBinary) EntrySize() int {
+	return TestEntrySize
+}
+
+var _ Binary[TestEntryType, TestEntry] = TestEntryBinary{}
+
+type TestEntryDB = EntryDB[TestEntryType, TestEntry, TestEntryBinary]
 
 func TestReadWrite(t *testing.T) {
 	t.Run("BasicReadWrite", func(t *testing.T) {
@@ -111,10 +146,10 @@ func TestTruncateTrailingPartialEntries(t *testing.T) {
 	entry2 := createEntry(2)
 	invalidData := make([]byte, len(entry1)+len(entry2)+4)
 	copy(invalidData, entry1[:])
-	copy(invalidData[EntrySize:], entry2[:])
+	copy(invalidData[TestEntrySize:], entry2[:])
 	invalidData[len(invalidData)-1] = 3 // Some invalid trailing data
 	require.NoError(t, os.WriteFile(file, invalidData, 0o644))
-	db, err := NewEntryDB(logger, file)
+	db, err := NewEntryDB[TestEntryType, TestEntry, TestEntryBinary](logger, file)
 	require.NoError(t, err)
 	defer db.Close()
 
@@ -122,7 +157,7 @@ func TestTruncateTrailingPartialEntries(t *testing.T) {
 	require.EqualValues(t, 2, db.Size())
 	stat, err := os.Stat(file)
 	require.NoError(t, err)
-	require.EqualValues(t, 2*EntrySize, stat.Size())
+	require.EqualValues(t, 2*TestEntrySize, stat.Size())
 }
 
 func TestWriteErrors(t *testing.T) {
@@ -153,7 +188,7 @@ func TestWriteErrors(t *testing.T) {
 	t.Run("PartialWriteAndTruncateFails", func(t *testing.T) {
 		db, stubData := createEntryDBWithStubData()
 		stubData.writeErr = expectedErr
-		stubData.writeErrAfterBytes = EntrySize + 2
+		stubData.writeErrAfterBytes = TestEntrySize + 2
 		stubData.truncateErr = errors.New("boom")
 		err := db.Append(createEntry(1), createEntry(2))
 		require.ErrorIs(t, err, expectedErr)
@@ -177,19 +212,19 @@ func TestWriteErrors(t *testing.T) {
 	})
 }
 
-func requireRead(t *testing.T, db *EntryDB, idx EntryIdx, expected Entry) {
+func requireRead(t *testing.T, db *TestEntryDB, idx EntryIdx, expected TestEntry) {
 	actual, err := db.Read(idx)
 	require.NoError(t, err)
 	require.Equal(t, expected, actual)
 }
 
-func createEntry(i byte) Entry {
-	return Entry(bytes.Repeat([]byte{i}, EntrySize))
+func createEntry(i byte) TestEntry {
+	return TestEntry(bytes.Repeat([]byte{i}, TestEntrySize))
 }
 
-func createEntryDB(t *testing.T) *EntryDB {
+func createEntryDB(t *testing.T) *TestEntryDB {
 	logger := testlog.Logger(t, log.LvlInfo)
-	db, err := NewEntryDB(logger, filepath.Join(t.TempDir(), "entries.db"))
+	db, err := NewEntryDB[TestEntryType, TestEntry, TestEntryBinary](logger, filepath.Join(t.TempDir(), "entries.db"))
 	require.NoError(t, err)
 	t.Cleanup(func() {
 		require.NoError(t, db.Close())
@@ -197,9 +232,9 @@ func createEntryDB(t *testing.T) *EntryDB {
 	return db
 }
 
-func createEntryDBWithStubData() (*EntryDB, *stubDataAccess) {
+func createEntryDBWithStubData() (*TestEntryDB, *stubDataAccess) {
 	stubData := &stubDataAccess{}
-	db := &EntryDB{data: stubData, lastEntryIdx: -1}
+	db := &EntryDB[TestEntryType, TestEntry, TestEntryBinary]{data: stubData, lastEntryIdx: -1}
 	return db, stubData
 }
 

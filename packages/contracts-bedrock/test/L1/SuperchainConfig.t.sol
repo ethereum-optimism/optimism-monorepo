@@ -3,16 +3,13 @@ pragma solidity 0.8.15;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
 
-// Libraries
-import { Types } from "src/libraries/Types.sol";
-import { Hashing } from "src/libraries/Hashing.sol";
-
 // Target contract dependencies
-import { Proxy } from "src/universal/Proxy.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
 
 // Target contract
-import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SuperchainConfig_Init_Test is CommonTest {
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
@@ -23,13 +20,23 @@ contract SuperchainConfig_Init_Test is CommonTest {
 
     /// @dev Tests that it can be intialized as paused.
     function test_initialize_paused_succeeds() external {
-        Proxy newProxy = new Proxy(alice);
-        ISuperchainConfig newImpl = ISuperchainConfig(address(new SuperchainConfig()));
+        IProxy newProxy = IProxy(
+            DeployUtils.create1({
+                _name: "Proxy",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxy.__constructor__, (alice)))
+            })
+        );
+        ISuperchainConfig newImpl = ISuperchainConfig(
+            DeployUtils.create1({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+            })
+        );
 
         vm.startPrank(alice);
         newProxy.upgradeToAndCall(
             address(newImpl),
-            abi.encodeWithSelector(ISuperchainConfig.initialize.selector, deploy.cfg().superchainConfigGuardian(), true)
+            abi.encodeCall(ISuperchainConfig.initialize, (deploy.cfg().superchainConfigGuardian(), true))
         );
 
         assertTrue(ISuperchainConfig(address(newProxy)).paused());

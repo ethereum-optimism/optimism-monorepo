@@ -1,0 +1,21 @@
+import '../just/go.just'
+
+# Build ldflags string
+_LDFLAGSSTRING := "'" + trim(
+    "-X main.GitCommit=" + GITCOMMIT + " " + \
+    "-X main.GitDate=" + GITDATE + " " + \
+    "-X main.Version=" + VERSION + " " + \
+    "-X main.Meta=" + VERSION_META + " " + \
+    "") + "'"
+
+BINARY := "./bin/op-supervisor"
+
+# Build op-supervisor binary
+op-supervisor: (go_build BINARY "./cmd" "-ldflags" _LDFLAGSSTRING)
+
+# Clean build artifacts
+clean:
+    rm -f {{BINARY}}
+
+# Run tests
+test: (go_test "./...")

@@ -14,16 +14,28 @@ import { Hashing } from "src/libraries/Hashing.sol";
 import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
-import "src/libraries/PortalErrors.sol";
+import {
+    BadTarget,
+    LargeCalldata,
+    SmallGasLimit,
+    TransferFailed,
+    OnlyCustomGasToken,
+    NoValue,
+    Unauthorized,
+    CallPaused,
+    GasEstimation,
+    NonReentrant,
+    Unproven
+} from "src/libraries/PortalErrors.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
-import { IL2OutputOracle } from "src/L1/interfaces/IL2OutputOracle.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IL1Block } from "src/L2/interfaces/IL1Block.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortal
@@ -134,9 +146,9 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.8.1-beta.3
+    /// @custom:semver 2.8.1-beta.5
     function version() public pure virtual returns (string memory) {
-        return "2.8.1-beta.3";
+        return "2.8.1-beta.5";
     }
 
     /// @notice Constructs the OptimismPortal contract.

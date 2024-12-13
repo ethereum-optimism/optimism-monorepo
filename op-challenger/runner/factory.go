@@ -30,7 +30,7 @@ func createTraceProvider(
 ) (types.TraceProvider, error) {
 	switch traceType {
 	case types.TraceTypeCannon:
-		serverExecutor := vm.NewOpProgramServerExecutor()
+		serverExecutor := vm.NewOpProgramServerExecutor(logger)
 		stateConverter := cannon.NewStateConverter(cfg.Cannon)
 		prestate, err := getPrestate(ctx, prestateHash, cfg.CannonAbsolutePreStateBaseURL, cfg.CannonAbsolutePreState, dir, stateConverter)
 		if err != nil {
@@ -39,7 +39,7 @@ func createTraceProvider(
 		prestateProvider := vm.NewPrestateProvider(prestate, stateConverter)
 		return cannon.NewTraceProvider(logger, m, cfg.Cannon, serverExecutor, prestateProvider, prestate, localInputs, dir, 42), nil
 	case types.TraceTypeAsterisc:
-		serverExecutor := vm.NewOpProgramServerExecutor()
+		serverExecutor := vm.NewOpProgramServerExecutor(logger)
 		stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
 		prestate, err := getPrestate(ctx, prestateHash, cfg.AsteriscAbsolutePreStateBaseURL, cfg.AsteriscAbsolutePreState, dir, stateConverter)
 		if err != nil {
@@ -58,28 +58,6 @@ func createTraceProvider(
 		return asterisc.NewTraceProvider(logger, m, cfg.AsteriscKona, serverExecutor, prestateProvider, prestate, localInputs, dir, 42), nil
 	}
 	return nil, errors.New("invalid trace type")
-}
-
-func createMTTraceProvider(
-	ctx context.Context,
-	logger log.Logger,
-	m vm.Metricer,
-	vmConfig vm.Config,
-	prestateHash common.Hash,
-	absolutePrestateBaseURL *url.URL,
-	localInputs utils.LocalGameInputs,
-	dir string,
-) (types.TraceProvider, error) {
-	executor := vm.NewOpProgramServerExecutor()
-	stateConverter := cannon.NewStateConverter(vmConfig)
-
-	prestateSource := prestates.NewMultiPrestateProvider(absolutePrestateBaseURL, filepath.Join(dir, "prestates"), stateConverter)
-	prestatePath, err := prestateSource.PrestatePath(ctx, prestateHash)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get prestate %v: %w", prestateHash, err)
-	}
-	prestateProvider := vm.NewPrestateProvider(prestatePath, stateConverter)
-	return cannon.NewTraceProvider(logger, m, vmConfig, executor, prestateProvider, prestatePath, localInputs, dir, 42), nil
 }
 
 func getPrestate(ctx context.Context, prestateHash common.Hash, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error) {

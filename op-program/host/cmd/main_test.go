@@ -9,6 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -73,7 +74,7 @@ func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	require.NoError(t, err)
 	defaultCfg := config.NewConfig(
 		rollupCfg,
-		chainconfig.OPSepoliaChainConfig,
+		chainconfig.OPSepoliaChainConfig(),
 		common.HexToHash(l1HeadValue),
 		common.HexToHash(l2HeadValue),
 		common.HexToHash(l2OutputRoot),
@@ -100,7 +101,7 @@ func TestNetwork(t *testing.T) {
 		genesisFile := writeValidGenesis(t)
 
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", configFile, "--l2.genesis", genesisFile))
-		require.Equal(t, *chaincfg.Sepolia, *cfg.Rollup)
+		require.Equal(t, *chaincfg.OPSepolia(), *cfg.Rollup)
 	})
 
 	for _, name := range chaincfg.AvailableNetworks() {
@@ -154,9 +155,33 @@ func TestL2Genesis(t *testing.T) {
 		require.Equal(t, l2GenesisConfig, cfg.L2ChainConfig)
 	})
 
-	t.Run("NotRequiredForGoerli", func(t *testing.T) {
+	t.Run("NotRequiredForSepolia", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--network", "sepolia"))
-		require.Equal(t, chainconfig.OPSepoliaChainConfig, cfg.L2ChainConfig)
+		require.Equal(t, chainconfig.OPSepoliaChainConfig(), cfg.L2ChainConfig)
+	})
+}
+
+func TestL2ChainID(t *testing.T) {
+	t.Run("DefaultToNetworkChainID", func(t *testing.T) {
+		cfg := configForArgs(t, replaceRequiredArg("--network", "op-mainnet"))
+		require.Equal(t, uint64(10), cfg.L2ChainID)
+	})
+
+	t.Run("DefaultToGenesisChainID", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
+		require.Equal(t, l2GenesisConfig.ChainID.Uint64(), cfg.L2ChainID)
+	})
+
+	t.Run("OverrideToCustomIndicator", func(t *testing.T) {
+		rollupCfgFile := writeValidRollupConfig(t)
+		genesisFile := writeValidGenesis(t)
+		cfg := configForArgs(t, addRequiredArgsExcept("--network",
+			"--rollup.config", rollupCfgFile,
+			"--l2.genesis", genesisFile,
+			"--l2.custom"))
+		require.Equal(t, client.CustomChainIDIndicator, cfg.L2ChainID)
 	})
 }
 
@@ -274,6 +299,19 @@ func TestL2Claim(t *testing.T) {
 	})
 }
 
+func TestL2Experimental(t *testing.T) {
+	t.Run("DefaultEmpty", func(t *testing.T) {
+		cfg := configForArgs(t, addRequiredArgs())
+		require.Equal(t, cfg.L2ExperimentalURL, "")
+	})
+
+	t.Run("Valid", func(t *testing.T) {
+		expected := "https://example.com:8545"
+		cfg := configForArgs(t, replaceRequiredArg("--l2.experimental", expected))
+		require.EqualValues(t, expected, cfg.L2ExperimentalURL)
+	})
+}
+
 func TestL2BlockNumber(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
 		verifyArgsInvalid(t, "flag l2.blocknumber is required", addRequiredArgsExcept("--l2.blocknumber"))
@@ -388,7 +426,7 @@ func writeValidGenesis(t *testing.T) string {
 
 func writeValidRollupConfig(t *testing.T) string {
 	dir := t.TempDir()
-	j, err := json.Marshal(chaincfg.Sepolia)
+	j, err := json.Marshal(chaincfg.OPSepolia())
 	require.NoError(t, err)
 	cfgFile := dir + "/rollup.json"
 	require.NoError(t, os.WriteFile(cfgFile, j, 0666))

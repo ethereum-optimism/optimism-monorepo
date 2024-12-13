@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
 
 type Word = arch.Word
@@ -57,10 +58,10 @@ func (m *InstrumentedState) handleSyscall() error {
 			Registers: thread.Registers,
 		}
 
-		newThread.Registers[29] = a1
+		newThread.Registers[register.RegSP] = a1
 		// the child will perceive a 0 value as returned value instead, and no error
-		newThread.Registers[2] = 0
-		newThread.Registers[7] = 0
+		newThread.Registers[register.RegSyscallRet1] = 0
+		newThread.Registers[register.RegSyscallErrno] = 0
 		m.state.NextThreadId++
 
 		// Preempt this thread for the new one. But not before updating PCs
@@ -128,8 +129,7 @@ func (m *InstrumentedState) handleSyscall() error {
 				return nil
 			}
 		case exec.FutexWakePrivate:
-			// Trigger thread traversal starting from the left stack until we find one waiting on the wakeup
-			// address
+			// Trigger a wakeup traversal
 			m.state.Wakeup = effAddr
 			// Don't indicate to the program that we've woken up a waiting thread, as there are no guarantees.
 			// The woken up thread should indicate this in userspace.
@@ -138,6 +138,7 @@ func (m *InstrumentedState) handleSyscall() error {
 			exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
 			m.preemptThread(thread)
 			m.state.TraverseRight = len(m.state.LeftThreadStack) == 0
+			m.statsTracker.trackWakeupTraversalStart()
 			return nil
 		default:
 			v0 = exec.SysErrorSignal
@@ -168,9 +169,9 @@ func (m *InstrumentedState) handleSyscall() error {
 			m.memoryTracker.TrackMemAccess(effAddr)
 			m.state.Memory.SetWord(effAddr, secs)
 			m.handleMemoryUpdate(effAddr)
-			m.memoryTracker.TrackMemAccess2(effAddr + 4)
-			m.state.Memory.SetWord(effAddr+4, nsecs)
-			m.handleMemoryUpdate(effAddr + 4)
+			m.memoryTracker.TrackMemAccess2(effAddr + arch.WordSizeBytes)
+			m.state.Memory.SetWord(effAddr+arch.WordSizeBytes, nsecs)
+			m.handleMemoryUpdate(effAddr + arch.WordSizeBytes)
 		default:
 			v0 = exec.SysErrorSignal
 			v1 = exec.MipsEINVAL
@@ -187,6 +188,7 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysPrlimit64:
 	case arch.SysClose:
 	case arch.SysPread64:
+	case arch.SysStat:
 	case arch.SysFstat:
 	case arch.SysOpenAt:
 	case arch.SysReadlink:
@@ -206,6 +208,8 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysTimerCreate:
 	case arch.SysTimerSetTime:
 	case arch.SysTimerDelete:
+	case arch.SysGetRLimit:
+	case arch.SysLseek:
 	default:
 		// These syscalls have the same values on 64-bit. So we use if-stmts here to avoid "duplicate case" compiler error for the cannon64 build
 		if arch.IsMips32 && syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek {
@@ -221,6 +225,23 @@ func (m *InstrumentedState) handleSyscall() error {
 }
 
 func (m *InstrumentedState) mipsStep() error {
+	err := m.doMipsStep()
+	if err != nil {
+		return err
+	}
+
+	m.assertPostStateChecks()
+	return err
+}
+
+func (m *InstrumentedState) assertPostStateChecks() {
+	activeStack := m.state.getActiveThreadStack()
+	if len(activeStack) == 0 {
+		panic("post-state active thread stack is empty")
+	}
+}
+
+func (m *InstrumentedState) doMipsStep() error {
 	if m.state.Exited {
 		return nil
 	}
@@ -268,6 +289,7 @@ func (m *InstrumentedState) mipsStep() error {
 			if thread.FutexVal == mem {
 				// still got expected value, continue sleeping, try next thread.
 				m.preemptThread(thread)
+				m.statsTracker.trackWakeupFail()
 				return nil
 			} else {
 				// wake thread up, the value at its address changed!
@@ -288,6 +310,7 @@ func (m *InstrumentedState) mipsStep() error {
 			}
 		}
 		m.preemptThread(thread)
+		m.statsTracker.trackForcedPreemption()
 		return nil
 	}
 	m.state.StepsSinceLastContextSwitch += 1
@@ -313,26 +336,27 @@ func (m *InstrumentedState) mipsStep() error {
 	}
 
 	// Exec the rest of the step logic
-	memUpdated, memAddr, err := exec.ExecMipsCoreStepLogic(m.state.getCpuRef(), m.state.GetRegistersRef(), m.state.Memory, insn, opcode, fun, m.memoryTracker, m.stackTracker)
+	memUpdated, effMemAddr, err := exec.ExecMipsCoreStepLogic(m.state.getCpuRef(), m.state.GetRegistersRef(), m.state.Memory, insn, opcode, fun, m.memoryTracker, m.stackTracker)
 	if err != nil {
 		return err
 	}
 	if memUpdated {
-		m.handleMemoryUpdate(memAddr)
+		m.handleMemoryUpdate(effMemAddr)
 	}
 
 	return nil
 }
 
-func (m *InstrumentedState) handleMemoryUpdate(memAddr Word) {
-	if memAddr == m.state.LLAddress {
+func (m *InstrumentedState) handleMemoryUpdate(effMemAddr Word) {
+	if effMemAddr == (arch.AddressMask & m.state.LLAddress) {
 		// Reserved address was modified, clear the reservation
 		m.clearLLMemoryReservation()
+		m.statsTracker.trackReservationInvalidation()
 	}
 }
 
 func (m *InstrumentedState) clearLLMemoryReservation() {
-	m.state.LLReservationActive = false
+	m.state.LLReservationStatus = LLStatusNone
 	m.state.LLAddress = 0
 	m.state.LLOwnerThread = 0
 }
@@ -343,36 +367,46 @@ func (m *InstrumentedState) handleRMWOps(insn, opcode uint32) error {
 	base := m.state.GetRegistersRef()[baseReg]
 	rtReg := Word((insn >> 16) & 0x1F)
 	offset := exec.SignExtendImmediate(insn)
+	addr := base + offset
 
-	effAddr := (base + offset) & arch.AddressMask
-	m.memoryTracker.TrackMemAccess(effAddr)
-	mem := m.state.Memory.GetWord(effAddr)
+	// Determine some opcode-specific parameters
+	targetStatus := LLStatusActive32bit
+	byteLength := Word(4)
+	if opcode == exec.OpLoadLinked64 || opcode == exec.OpStoreConditional64 {
+		// Use 64-bit params
+		targetStatus = LLStatusActive64bit
+		byteLength = Word(8)
+	}
 
 	var retVal Word
 	threadId := m.state.GetCurrentThread().ThreadId
-	if opcode == exec.OpLoadLinked || opcode == exec.OpLoadLinked64 {
-		retVal = mem
-		m.state.LLReservationActive = true
-		m.state.LLAddress = effAddr
+	switch opcode {
+	case exec.OpLoadLinked, exec.OpLoadLinked64:
+		retVal = exec.LoadSubWord(m.state.GetMemory(), addr, byteLength, true, m.memoryTracker)
+
+		m.state.LLReservationStatus = targetStatus
+		m.state.LLAddress = addr
 		m.state.LLOwnerThread = threadId
-	} else if opcode == exec.OpStoreConditional || opcode == exec.OpStoreConditional64 {
-		// TODO(#12205): Determine bits affected by coherence stores on 64-bits
-		// Check if our memory reservation is still intact
-		if m.state.LLReservationActive && m.state.LLOwnerThread == threadId && m.state.LLAddress == effAddr {
+
+		m.statsTracker.trackLL(threadId, m.GetState().GetStep())
+	case exec.OpStoreConditional, exec.OpStoreConditional64:
+		if m.state.LLReservationStatus == targetStatus && m.state.LLOwnerThread == threadId && m.state.LLAddress == addr {
 			// Complete atomic update: set memory and return 1 for success
 			m.clearLLMemoryReservation()
-			rt := m.state.GetRegistersRef()[rtReg]
-			if opcode == exec.OpStoreConditional {
-				m.state.Memory.SetUint32(effAddr, uint32(rt))
-			} else {
-				m.state.Memory.SetWord(effAddr, rt)
-			}
+
+			val := m.state.GetRegistersRef()[rtReg]
+			exec.StoreSubWord(m.state.GetMemory(), addr, byteLength, val, m.memoryTracker)
+
 			retVal = 1
+
+			m.statsTracker.trackSCSuccess(threadId, m.GetState().GetStep())
 		} else {
 			// Atomic update failed, return 0 for failure
 			retVal = 0
+
+			m.statsTracker.trackSCFailure(threadId, m.GetState().GetStep())
 		}
-	} else {
+	default:
 		panic(fmt.Sprintf("Invalid instruction passed to handleRMWOps (opcode %08x)", opcode))
 	}
 
@@ -394,6 +428,7 @@ func (m *InstrumentedState) onWaitComplete(thread *ThreadState, isTimedOut bool)
 		v1 = exec.MipsETIMEDOUT
 	}
 	exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
+	m.statsTracker.trackWakeup()
 }
 
 func (m *InstrumentedState) preemptThread(thread *ThreadState) bool {
@@ -422,6 +457,8 @@ func (m *InstrumentedState) preemptThread(thread *ThreadState) bool {
 	}
 
 	m.state.StepsSinceLastContextSwitch = 0
+
+	m.statsTracker.trackThreadActivated(m.state.GetCurrentThread().ThreadId, m.state.GetStep())
 	return changeDirections
 }
 

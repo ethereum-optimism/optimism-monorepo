@@ -6,19 +6,19 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { console2 as console } from "forge-std/console2.sol";
 
 // Scripts
-import { Executables } from "scripts/libraries/Executables.sol";
 import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 // Interfaces
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IOptimismPortal2 } from "src/L1/interfaces/IOptimismPortal2.sol";
-import { IOptimismPortalInterop } from "src/L1/interfaces/IOptimismPortalInterop.sol";
-import { ISystemConfig } from "src/L1/interfaces/ISystemConfig.sol";
-import { IDataAvailabilityChallenge } from "src/L1/interfaces/IDataAvailabilityChallenge.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
+import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 /// @title Specification_Test
 /// @dev Specifies common security properties of entrypoints to L1 contracts, including authorization and
@@ -106,14 +106,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.challenge.selector });
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.resolve.selector });
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.unlockBond.selector });
-
-        // DelayedVetoable
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("delay()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("initiator()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("queuedAt(bytes32)") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("target()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("version()") });
-        _addSpec({ _name: "DelayedVetoable", _sel: _getSel("vetoer()") });
 
         // L1CrossDomainMessenger
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("MESSAGE_VERSION()") });
@@ -431,6 +423,8 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("VERSION()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("batcherHash()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("gasLimit()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("eip1559Denominator()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("eip1559Elasticity()") });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.initialize.selector });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.minimumGasLimit.selector });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("overhead()") });
@@ -441,6 +435,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setBatcherHash.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setGasConfig.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setGasLimit.selector, _auth: Role.SYSTEMCONFIGOWNER });
+        _addSpec({ _name: "SystemConfig", _sel: ISystemConfig.setEIP1559Params.selector, _auth: Role.SYSTEMCONFIGOWNER });
         _addSpec({
             _name: "SystemConfig",
             _sel: ISystemConfig.setUnsafeBlockSigner.selector,
@@ -483,31 +478,39 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("VERSION()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("batcherHash()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasLimit()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Denominator()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("eip1559Elasticity()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.initialize.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.initialize.selector });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.minimumGasLimit.selector });
+        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.minimumGasLimit.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("overhead()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("owner()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("renounceOwnership()"), _auth: Role.SYSTEMCONFIGOWNER });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.resourceConfig.selector });
+        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.resourceConfig.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("scalar()") });
         _addSpec({
             _name: "SystemConfigInterop",
-            _sel: ISystemConfig.setBatcherHash.selector,
+            _sel: ISystemConfigInterop.setBatcherHash.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({
             _name: "SystemConfigInterop",
-            _sel: ISystemConfig.setGasConfig.selector,
+            _sel: ISystemConfigInterop.setGasConfig.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({
             _name: "SystemConfigInterop",
-            _sel: ISystemConfig.setGasLimit.selector,
+            _sel: ISystemConfigInterop.setGasLimit.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({
             _name: "SystemConfigInterop",
-            _sel: ISystemConfig.setUnsafeBlockSigner.selector,
+            _sel: ISystemConfigInterop.setEIP1559Params.selector,
+            _auth: Role.SYSTEMCONFIGOWNER
+        });
+        _addSpec({
+            _name: "SystemConfigInterop",
+            _sel: ISystemConfigInterop.setUnsafeBlockSigner.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({
@@ -515,7 +518,7 @@ contract Specification_Test is CommonTest {
             _sel: _getSel("transferOwnership(address)"),
             _auth: Role.SYSTEMCONFIGOWNER
         });
-        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfig.unsafeBlockSigner.selector });
+        _addSpec({ _name: "SystemConfigInterop", _sel: ISystemConfigInterop.unsafeBlockSigner.selector });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("version()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("l1CrossDomainMessenger()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("l1ERC721Bridge()") });
@@ -551,12 +554,6 @@ contract Specification_Test is CommonTest {
             _auth: Role.DEPENDENCYMANAGER
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel(
-                "initialize(address,uint32,uint32,bytes32,uint64,address,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address),address)"
-            )
-        });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });
@@ -840,27 +837,23 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("version()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("latestRelease()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("implementations(string,string)") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("systemConfigs(uint256)") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("OUTPUT_VERSION()") });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.initialize.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("latestRelease()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("implementations(string,string)") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("systemConfigs(uint256)") });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("OUTPUT_VERSION()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.initialize.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
 
         // DeputyGuardianModule
         _addSpec({
@@ -943,13 +936,14 @@ contract Specification_Test is CommonTest {
     }
 
     /// @notice Ensures that there's an auth spec for every L1 contract function.
-    function testContractAuth() public {
-        string[] memory pathExcludes = new string[](5);
-        pathExcludes[0] = "src/dispute/interfaces/*";
+    function test_contractAuth_works() public {
+        string[] memory pathExcludes = new string[](6);
+        pathExcludes[0] = "interfaces/dispute/*";
         pathExcludes[1] = "src/dispute/lib/*";
         pathExcludes[2] = "src/safe/SafeSigners.sol";
-        pathExcludes[3] = "src/L1/interfaces/*";
-        pathExcludes[4] = "src/governance/interfaces/*";
+        pathExcludes[3] = "interfaces/L1/*";
+        pathExcludes[4] = "interfaces/governance/*";
+        pathExcludes[5] = "interfaces/safe/*";
         Abi[] memory abis = ForgeArtifacts.getContractFunctionAbis(
             "src/{L1,dispute,governance,safe,universal/ProxyAdmin.sol,universal/WETH98.sol}", pathExcludes
         );
@@ -992,7 +986,7 @@ contract Specification_Test is CommonTest {
     }
 
     /// @notice Ensures that the DeputyGuardian is authorized to take all Guardian actions.
-    function testDeputyGuardianAuth() public view {
+    function test_deputyGuardianAuth_works() public view {
         assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length);
         assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, 5);
 

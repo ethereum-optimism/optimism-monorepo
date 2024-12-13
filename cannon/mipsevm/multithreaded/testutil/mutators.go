@@ -36,8 +36,8 @@ func (m *StateMutatorMultiThreaded) Randomize(randSeed int64) {
 	// Randomize memory-related fields
 	halfMemory := math.MaxUint32 / 2
 	m.state.Heap = arch.Word(r.Intn(halfMemory) + halfMemory)
-	m.state.LLReservationActive = r.Intn(2) == 1
-	if m.state.LLReservationActive {
+	m.state.LLReservationStatus = multithreaded.LLReservationStatus(r.Intn(3))
+	if m.state.LLReservationStatus != multithreaded.LLStatusNone {
 		m.state.LLAddress = arch.Word(r.Intn(halfMemory))
 		m.state.LLOwnerThread = arch.Word(r.Intn(10))
 	}

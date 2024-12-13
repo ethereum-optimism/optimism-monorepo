@@ -61,6 +61,7 @@ const (
 	SysPrlimit64     = 4338
 	SysClose         = 4006
 	SysPread64       = 4200
+	SysStat          = 4106
 	SysFstat         = 4108
 	SysFstat64       = 4215
 	SysOpenAt        = 4288
@@ -79,6 +80,8 @@ const (
 	SysLlseek        = 4140
 	SysMinCore       = 4217
 	SysTgkill        = 4266
+	SysGetRLimit     = 4076
+	SysLseek         = 4019
 	// Profiling-related syscalls
 	SysSetITimer    = 4104
 	SysTimerCreate  = 4257

@@ -51,7 +51,7 @@ func TestChannelConfig_Check(t *testing.T) {
 	}
 	for i := 0; i < derive.FrameV0OverHeadSize; i++ {
 		expectedErr := fmt.Sprintf("max frame size %d is less than the minimum 23", i)
-		i := i // need to udpate Go version...
+		i := i // need to update Go version...
 		tests = append(tests, test{
 			input: func() ChannelConfig {
 				cfg := defaultTestChannelConfig()

@@ -42,7 +42,7 @@ func TestL2OutputSubmitter(t *testing.T) {
 	// for that block and subsequently reorgs to match what the verifier derives when running the
 	// reconcillation process.
 	l2Verif := sys.NodeClient("verifier")
-	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif, 10*time.Duration(cfg.DeployConfig.L2BlockTime)*time.Second)
+	_, err = geth.WaitForBlock(big.NewInt(6), l2Verif)
 	require.Nil(t, err)
 
 	// Wait for batch submitter to update L2 output oracle.

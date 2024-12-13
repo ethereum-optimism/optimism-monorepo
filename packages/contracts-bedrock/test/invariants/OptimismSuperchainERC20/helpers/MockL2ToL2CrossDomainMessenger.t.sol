@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.25;
 
-import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
+import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 
 contract MockL2ToL2CrossDomainMessenger {
@@ -41,9 +41,9 @@ contract MockL2ToL2CrossDomainMessenger {
     )
         external
         view
-        returns (OptimismSuperchainERC20)
+        returns (SuperchainERC20)
     {
-        return OptimismSuperchainERC20(superTokenAddresses[destinationChainId][superTokenInitDeploySalts[sender]]);
+        return SuperchainERC20(superTokenAddresses[destinationChainId][superTokenInitDeploySalts[sender]]);
     }
 
     function setCrossDomainMessageSender(address sender) external {
@@ -89,7 +89,7 @@ contract MockL2ToL2CrossDomainMessenger {
     function sendMessage(uint256 chainId, address, /*recipient*/ bytes calldata data) external {
         address crossChainRecipient = superTokenAddresses[chainId][superTokenInitDeploySalts[msg.sender]];
         if (crossChainRecipient == msg.sender) {
-            require(false, "same chain");
+            require(false, "MockL2ToL2CrossDomainMessenger: same chain");
         }
         (address recipient, uint256 amount) = _decodePayload(data);
 
@@ -112,7 +112,7 @@ contract MockL2ToL2CrossDomainMessenger {
     //  Internal helpers  //
     ////////////////////////
 
-    function _decodePayload(bytes calldata payload) internal pure returns (address recipient, uint256 amount) {
-        (, recipient, amount) = abi.decode(payload[4:], (address, address, uint256));
+    function _decodePayload(bytes calldata payload) internal pure returns (address recipient_, uint256 amount_) {
+        (, recipient_, amount_) = abi.decode(payload[4:], (address, address, uint256));
     }
 }

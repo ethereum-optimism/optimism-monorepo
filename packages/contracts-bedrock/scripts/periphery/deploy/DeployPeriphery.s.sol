@@ -277,7 +277,7 @@ contract DeployPeriphery is Script, Artifacts {
             assembly {
                 addr_ := create2(0, add(initCode, 0x20), mload(initCode), salt)
             }
-            require(addr_ != address(0), "deployment failed");
+            require(addr_ != address(0), "DeployPeriphery: deployment failed");
             save(_name, addr_);
             console.log("%s deployed at %s", _name, addr_);
         }

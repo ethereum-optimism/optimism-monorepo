@@ -185,6 +185,7 @@ func initAllocType(root string, allocType AllocType) {
 		}
 		l2Alloc[mode] = allocs
 	}
+	mustL2Allocs(genesis.L2AllocsHolocene)
 	mustL2Allocs(genesis.L2AllocsGranite)
 	mustL2Allocs(genesis.L2AllocsFjord)
 	mustL2Allocs(genesis.L2AllocsEcotone)
@@ -200,9 +201,6 @@ func initAllocType(root string, allocType AllocType) {
 		panic(err)
 	}
 
-	// Do not use clique in the in memory tests. Otherwise block building
-	// would be much more complex.
-	dc.L1UseClique = false
 	// Set the L1 genesis block timestamp to now
 	dc.L1GenesisBlockTimestamp = hexutil.Uint64(time.Now().Unix())
 	dc.FundDevAccounts = true

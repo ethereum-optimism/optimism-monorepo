@@ -18,13 +18,15 @@ const (
 )
 
 // A Channel is a set of batches that are split into at least one, but possibly multiple frames.
-// Frames are allowed to be ingested out of order.
+// Frames are allowed to be ingested out of order, unless the channel is set to follow Holocene
+// rules.
 // Each frame is ingested one by one. Once a frame with `closed` is added to the channel, the
 // channel may mark itself as ready for reading once all intervening frames have been added
 type Channel struct {
 	// id of the channel
-	id        ChannelID
-	openBlock eth.L1BlockRef
+	id             ChannelID
+	openBlock      eth.L1BlockRef
+	requireInOrder bool
 
 	// estimated memory size, used to drop the channel if we have too much data
 	size uint64
@@ -45,11 +47,14 @@ type Channel struct {
 	highestL1InclusionBlock eth.L1BlockRef
 }
 
-func NewChannel(id ChannelID, openBlock eth.L1BlockRef) *Channel {
+// NewChannel creates a new channel with the given id and openening block. If requireInOrder is
+// true, frames must be added in order.
+func NewChannel(id ChannelID, openBlock eth.L1BlockRef, requireInOrder bool) *Channel {
 	return &Channel{
-		id:        id,
-		inputs:    make(map[uint64]Frame),
-		openBlock: openBlock,
+		id:             id,
+		inputs:         make(map[uint64]Frame),
+		openBlock:      openBlock,
+		requireInOrder: requireInOrder,
 	}
 }
 
@@ -70,18 +75,22 @@ func (ch *Channel) AddFrame(frame Frame, l1InclusionBlock eth.L1BlockRef) error 
 	if ch.closed && frame.FrameNumber >= ch.endFrameNumber {
 		return fmt.Errorf("frame number (%d) is greater than or equal to end frame number (%d) of a closed channel", frame.FrameNumber, ch.endFrameNumber)
 	}
+	if ch.requireInOrder && int(frame.FrameNumber) != len(ch.inputs) {
+		return fmt.Errorf("frame out of order, expected %d, got %d", len(ch.inputs), frame.FrameNumber)
+	}
 
 	// Guaranteed to succeed. Now update internal state
 	if frame.IsLast {
 		ch.endFrameNumber = frame.FrameNumber
 		ch.closed = true
 	}
-	// Prune frames with a number higher than the closing frame number when we receive a closing frame
+	// Prune frames with a number higher than the closing frame number when we receive a closing frame.
+	// Note that the following condition is guaranteed to never be true with strict Holocene ordering.
 	if frame.IsLast && ch.endFrameNumber < ch.highestFrameNumber {
 		// Do a linear scan over saved inputs instead of ranging over ID numbers
-		for id, prunedFrame := range ch.inputs {
-			if id >= uint64(ch.endFrameNumber) {
-				delete(ch.inputs, id)
+		for idx, prunedFrame := range ch.inputs {
+			if idx >= uint64(ch.endFrameNumber) {
+				delete(ch.inputs, idx)
 			}
 			ch.size -= frameSize(prunedFrame)
 		}
@@ -117,6 +126,10 @@ func (ch *Channel) HighestBlock() eth.L1BlockRef {
 // on uncompressed data while this size is over compressed data.
 func (ch *Channel) Size() uint64 {
 	return ch.size
+}
+
+func (ch *Channel) ID() ChannelID {
+	return ch.id
 }
 
 // IsReady returns true iff the channel is ready to be read.

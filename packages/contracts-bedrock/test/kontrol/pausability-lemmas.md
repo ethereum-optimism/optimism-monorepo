@@ -202,17 +202,17 @@ The summary lemma is as follows, with commentary inlined:
        // Various well-formedness constraints. In particular, the maxBytesLength-related ones are present to
        // remove various chops that would otherwise creep into the execution, and are reasonable since byte
        // arrays in actual programs would never reach that size.
-       andThenBool 0 <=Int PCOUNT
-       andThenBool 0 <=Int LENGTH andThenBool LENGTH <Int maxBytesLength
-       andThenBool 0 <=Int SRC    andThenBool SRC    <Int maxBytesLength
-       andThenBool 0 <=Int DEST   andThenBool DEST   <Int maxBytesLength
-       andThenBool #sizeWordStack(WS) <=Int 1015
-       andThenBool SRC +Int LENGTH <=Int DEST // No overlap between source and destination
-       andThenBool DEST <=Int lengthBytes(LM) // Destination starts within current memory
-       andThenBool PCOUNT +Int 51 <Int lengthBytes(JUMPDESTS) // We're not look outside of the JUMPDESTs bytearray
+       andBool 0 <=Int PCOUNT
+       andBool 0 <=Int LENGTH andBool LENGTH <Int maxBytesLength
+       andBool 0 <=Int SRC    andBool SRC    <Int maxBytesLength
+       andBool 0 <=Int DEST   andBool DEST   <Int maxBytesLength
+       andBool #sizeWordStack(WS) <=Int 1015
+       andBool SRC +Int LENGTH <=Int DEST // No overlap between source and destination
+       andBool DEST <=Int lengthBytes(LM) // Destination starts within current memory
+       andBool PCOUNT +Int 51 <Int lengthBytes(JUMPDESTS) // We are not looking outside of the JUMPDESTs bytearray
        // All JUMPDESTs in the program are valid
-       andThenBool JUMPDESTS[PCOUNT +Int 2] ==Int 1 andThenBool JUMPDESTS[PCOUNT +Int 32] ==Int 1 andThenBool JUMPDESTS[PCOUNT +Int 51] ==Int 1
-       andThenBool PCOUNT +Int 51 <Int 2 ^Int 16  // and fit into two bytes
+       andBool JUMPDESTS[PCOUNT +Int 2] ==Int 1 andBool JUMPDESTS[PCOUNT +Int 32] ==Int 1 andBool JUMPDESTS[PCOUNT +Int 51] ==Int 1
+       andBool PCOUNT +Int 51 <Int 2 ^Int 24  // and fit into three bytes
       [priority(30), concrete(JUMPDESTS, PROGRAM, PCOUNT), preserves-definedness]
 
 endmodule

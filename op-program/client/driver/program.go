@@ -63,9 +63,9 @@ func (d *ProgramDeriver) OnEvent(ev event.Event) bool {
 			d.closing = true
 		}
 	case derive.DeriverIdleEvent:
-		// Not enough data to reach target
-		d.closing = true
-		d.logger.Info("Derivation complete: no further data to process")
+		// We dont't close the deriver yet, as the engine may still be processing events to reach
+		// the target. A ForkchoiceUpdateEvent will close the deriver when the target is reached.
+		d.logger.Info("Derivation complete: no further L1 data to process")
 	case rollup.ResetEvent:
 		d.closing = true
 		d.result = fmt.Errorf("unexpected reset error: %w", x.Err)

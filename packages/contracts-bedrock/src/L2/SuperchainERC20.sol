@@ -1,49 +1,53 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
-import { ISuperchainERC20Extensions, ISuperchainERC20Errors } from "src/L2/interfaces/ISuperchainERC20.sol";
-import { ERC20 } from "@solady/tokens/ERC20.sol";
-import { IL2ToL2CrossDomainMessenger } from "src/L2/interfaces/IL2ToL2CrossDomainMessenger.sol";
+// Contracts
+import { ERC20 } from "@solady-v0.0.245/tokens/ERC20.sol";
+
+// Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+
+// Interfaces
+import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 
 /// @title SuperchainERC20
-/// @notice SuperchainERC20 is a standard extension of the base ERC20 token contract that unifies ERC20 token
-///         bridging to make it fungible across the Superchain. It builds on top of the L2ToL2CrossDomainMessenger for
-///         both replay protection and domain binding.
-abstract contract SuperchainERC20 is ISuperchainERC20Extensions, ISuperchainERC20Errors, ERC20 {
-    /// @notice Address of the L2ToL2CrossDomainMessenger Predeploy.
-    address internal constant MESSENGER = Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER;
-
-    /// @notice Sends tokens to some target address on another chain.
-    /// @param _to      Address to send tokens to.
-    /// @param _amount  Amount of tokens to send.
-    /// @param _chainId Chain ID of the destination chain.
-    function sendERC20(address _to, uint256 _amount, uint256 _chainId) external virtual {
-        if (_to == address(0)) revert ZeroAddress();
-
-        _burn(msg.sender, _amount);
-
-        bytes memory _message = abi.encodeCall(this.relayERC20, (msg.sender, _to, _amount));
-        IL2ToL2CrossDomainMessenger(MESSENGER).sendMessage(_chainId, address(this), _message);
-
-        emit SendERC20(msg.sender, _to, _amount, _chainId);
+/// @notice A standard ERC20 extension implementing IERC7802 for unified cross-chain fungibility across
+///         the Superchain. Allows the SuperchainTokenBridge to mint and burn tokens as needed.
+abstract contract SuperchainERC20 is ERC20, IERC7802, ISemver {
+    /// @notice Semantic version.
+    /// @custom:semver 1.0.0-beta.8
+    function version() external view virtual returns (string memory) {
+        return "1.0.0-beta.8";
     }
 
-    /// @notice Relays tokens received from another chain.
-    /// @param _from   Address of the msg.sender of sendERC20 on the source chain.
-    /// @param _to     Address to relay tokens to.
-    /// @param _amount Amount of tokens to relay.
-    function relayERC20(address _from, address _to, uint256 _amount) external virtual {
-        if (msg.sender != MESSENGER) revert CallerNotL2ToL2CrossDomainMessenger();
-
-        if (IL2ToL2CrossDomainMessenger(MESSENGER).crossDomainMessageSender() != address(this)) {
-            revert InvalidCrossDomainSender();
-        }
-
-        uint256 source = IL2ToL2CrossDomainMessenger(MESSENGER).crossDomainMessageSource();
+    /// @notice Allows the SuperchainTokenBridge to mint tokens.
+    /// @param _to     Address to mint tokens to.
+    /// @param _amount Amount of tokens to mint.
+    function crosschainMint(address _to, uint256 _amount) external {
+        if (msg.sender != Predeploys.SUPERCHAIN_TOKEN_BRIDGE) revert Unauthorized();
 
         _mint(_to, _amount);
 
-        emit RelayERC20(_from, _to, _amount, source);
+        emit CrosschainMint(_to, _amount, msg.sender);
+    }
+
+    /// @notice Allows the SuperchainTokenBridge to burn tokens.
+    /// @param _from   Address to burn tokens from.
+    /// @param _amount Amount of tokens to burn.
+    function crosschainBurn(address _from, uint256 _amount) external {
+        if (msg.sender != Predeploys.SUPERCHAIN_TOKEN_BRIDGE) revert Unauthorized();
+
+        _burn(_from, _amount);
+
+        emit CrosschainBurn(_from, _amount, msg.sender);
+    }
+
+    /// @inheritdoc IERC165
+    function supportsInterface(bytes4 _interfaceId) public view virtual returns (bool) {
+        return _interfaceId == type(IERC7802).interfaceId || _interfaceId == type(IERC20).interfaceId
+            || _interfaceId == type(IERC165).interfaceId;
     }
 }

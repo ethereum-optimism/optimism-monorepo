@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -108,14 +109,14 @@ func (c Keccak256Commitment) CommitmentType() CommitmentType {
 	return Keccak256CommitmentType
 }
 
-// Encode adds a commitment type prefix self describing the commitment.
+// Encode adds a commitment type prefix that describes the commitment.
 func (c Keccak256Commitment) Encode() []byte {
 	return append([]byte{byte(Keccak256CommitmentType)}, c...)
 }
 
 // TxData adds an extra version byte to signal it's a commitment.
 func (c Keccak256Commitment) TxData() []byte {
-	return append([]byte{TxDataVersion1}, c.Encode()...)
+	return append([]byte{params.DerivationVersion1}, c.Encode()...)
 }
 
 // Verify checks if the commitment matches the given input.
@@ -155,7 +156,7 @@ func (c GenericCommitment) Encode() []byte {
 
 // TxData adds an extra version byte to signal it's a commitment.
 func (c GenericCommitment) TxData() []byte {
-	return append([]byte{TxDataVersion1}, c.Encode()...)
+	return append([]byte{params.DerivationVersion1}, c.Encode()...)
 }
 
 // Verify always returns true for GenericCommitment because the DA Server must validate the data before returning it to the op-node.

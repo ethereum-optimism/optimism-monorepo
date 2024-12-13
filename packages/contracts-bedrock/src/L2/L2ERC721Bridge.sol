@@ -6,14 +6,13 @@ import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
 
 // Libraries
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
-import { Constants } from "src/libraries/Constants.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { IL1ERC721Bridge } from "src/L1/interfaces/IL1ERC721Bridge.sol";
-import { IOptimismMintableERC721 } from "src/universal/interfaces/IOptimismMintableERC721.sol";
-import { ICrossDomainMessenger } from "src/universal/interfaces/ICrossDomainMessenger.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
+import { IOptimismMintableERC721 } from "interfaces/universal/IOptimismMintableERC721.sol";
+import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000014
@@ -27,8 +26,8 @@ import { ISemver } from "src/universal/interfaces/ISemver.sol";
 ///         wait for the one-week challenge period to elapse before their Optimism-native NFT
 ///         can be refunded on L2.
 contract L2ERC721Bridge is ERC721Bridge, ISemver {
-    /// @custom:semver 1.7.1-beta.2
-    string public constant version = "1.7.1-beta.2";
+    /// @custom:semver 1.8.0-beta.3
+    string public constant version = "1.8.0-beta.3";
 
     /// @notice Constructs the L2ERC721Bridge contract.
     constructor() ERC721Bridge() {
@@ -118,8 +117,8 @@ contract L2ERC721Bridge is ERC721Bridge, ISemver {
         // slither-disable-next-line reentrancy-events
         IOptimismMintableERC721(_localToken).burn(_from, _tokenId);
 
-        bytes memory message = abi.encodeWithSelector(
-            IL1ERC721Bridge.finalizeBridgeERC721.selector, remoteToken, _localToken, _from, _to, _tokenId, _extraData
+        bytes memory message = abi.encodeCall(
+            IL1ERC721Bridge.finalizeBridgeERC721, (remoteToken, _localToken, _from, _to, _tokenId, _extraData)
         );
 
         // Send message to L1 bridge

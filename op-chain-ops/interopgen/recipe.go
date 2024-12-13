@@ -4,11 +4,12 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/params"
 
-	"github.com/ethereum-optimism/optimism/op-chain-ops/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 )
@@ -68,16 +69,17 @@ func (r *InteropDevRecipe) Build(addrs devkeys.Addresses) (*WorldConfig, error) 
 		ProtocolVersionsOwner: superchainProtocolVersionsOwner,
 		Deployer:              superchainDeployer,
 		Implementations: OPCMImplementationsConfig{
-			Release: "dev",
+			L1ContractsRelease: "dev",
 			FaultProof: SuperFaultProofConfig{
 				WithdrawalDelaySeconds:          big.NewInt(604800),
 				MinProposalSizeBytes:            big.NewInt(10000),
 				ChallengePeriodSeconds:          big.NewInt(120),
 				ProofMaturityDelaySeconds:       big.NewInt(12),
 				DisputeGameFinalityDelaySeconds: big.NewInt(6),
+				MipsVersion:                     big.NewInt(1),
 			},
 			UseInterop:           true,
-			StandardVersionsToml: opcm.StandardVersionsMainnetData,
+			StandardVersionsToml: standard.VersionsMainnetData,
 		},
 		SuperchainL1DeployConfig: genesis.SuperchainL1DeployConfig{
 			RequiredProtocolVersion:    params.OPStackSupport,
@@ -107,6 +109,7 @@ func prefundL2Accounts(l1Cfg *L1Config, l2Cfg *L2Config, addrs devkeys.Addresses
 	l1Cfg.Prefund[l2Cfg.BatchSenderAddress] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.Deployer] = Ether(10_000_000)
 	l1Cfg.Prefund[l2Cfg.FinalSystemOwner] = Ether(10_000_000)
+	l1Cfg.Prefund[l2Cfg.SystemConfigOwner] = Ether(10_000_000)
 	proposer, err := addrs.Address(devkeys.ChainOperatorKey{
 		ChainID: new(big.Int).SetUint64(l2Cfg.L2ChainID),
 		Role:    devkeys.ProposerRole,
@@ -186,7 +189,7 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 				FundDevAccounts: true,
 			},
 			L2GenesisBlockDeployConfig: genesis.L2GenesisBlockDeployConfig{
-				L2GenesisBlockGasLimit:      30_000_000,
+				L2GenesisBlockGasLimit:      60_000_000,
 				L2GenesisBlockBaseFeePerGas: (*hexutil.Big)(big.NewInt(params.InitialBaseFee)),
 			},
 			OwnershipDeployConfig: genesis.OwnershipDeployConfig{
@@ -230,6 +233,7 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 				L2GenesisEcotoneTimeOffset:  new(hexutil.Uint64),
 				L2GenesisFjordTimeOffset:    new(hexutil.Uint64),
 				L2GenesisGraniteTimeOffset:  new(hexutil.Uint64),
+				L2GenesisHoloceneTimeOffset: new(hexutil.Uint64),
 				L2GenesisInteropTimeOffset:  new(hexutil.Uint64),
 				L1CancunTimeOffset:          new(hexutil.Uint64),
 				UseInterop:                  true,
@@ -251,7 +255,7 @@ func InteropL2DevConfig(l1ChainID, l2ChainID uint64, addrs devkeys.Addresses) (*
 		},
 		Prefund:                 make(map[common.Address]*big.Int),
 		SaltMixer:               "",
-		GasLimit:                30_000_000,
+		GasLimit:                60_000_000,
 		DisputeGameType:         1, // PERMISSIONED_CANNON Game Type
 		DisputeAbsolutePrestate: common.HexToHash("0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c"),
 		DisputeMaxGameDepth:     73,

@@ -13,7 +13,6 @@ import { Test } from "forge-std/Test.sol";
 
 import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import { ModuleManager } from "safe-contracts/base/ModuleManager.sol";
-import { GuardManager } from "safe-contracts/base/GuardManager.sol";
 
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
 import { LivenessModule } from "src/safe/LivenessModule.sol";
@@ -43,7 +42,7 @@ contract DeployOwnershipTest is Test, DeployOwnership {
 
     /// @dev Test the example Foundation Safe configurations, against the expected configuration, and
     ///     check that they both have the same configuration.
-    function test_exampleFoundationSafes() public {
+    function test_exampleFoundationSafes_configuration_succeeds() public {
         Safe upgradeSafe = Safe(payable(mustGetAddress("FoundationUpgradeSafe")));
         Safe operationsSafe = Safe(payable(mustGetAddress("FoundationOperationsSafe")));
         SafeConfig memory exampleFoundationConfig = _getExampleFoundationConfig();
@@ -58,7 +57,7 @@ contract DeployOwnershipTest is Test, DeployOwnership {
     }
 
     /// @dev Test the example Security Council Safe configuration.
-    function test_exampleSecurityCouncilSafe() public {
+    function test_exampleSecurityCouncilSafe_configuration_succeeds() public {
         Safe securityCouncilSafe = Safe(payable(mustGetAddress("SecurityCouncilSafe")));
         SecurityCouncilConfig memory exampleSecurityCouncilConfig = _getExampleCouncilConfig();
 
@@ -97,7 +96,7 @@ contract DeployOwnershipTest is Test, DeployOwnership {
     }
 
     /// @dev Test the example Guardian Safe configuration.
-    function test_exampleGuardianSafe() public view {
+    function test_exampleGuardianSafe_configuration_succeeds() public view {
         Safe guardianSafe = Safe(payable(mustGetAddress("GuardianSafe")));
         address[] memory owners = new address[](1);
         owners[0] = mustGetAddress("SecurityCouncilSafe");

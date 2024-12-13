@@ -58,7 +58,7 @@ timeline and activities were as follows:
 (Using github handles as identifiers)
 
 - 2022-02-02 1625: smartcontracts receives an e-mail from saurik claiming to have found a critical
-  issue in L2Geth. E-mail was sent to securityoptimism.io.
+  issue in L2Geth. E-mail was sent to security@optimism.io.
 - 2022-02-02 X: saurik messaged smartcontracts on Discord to make sure we checked the e-mail since
   he knew we had a prior problem where security advisories went to spam.
 - 2022-02-02 1650: Huddle begins in #security on Slack.

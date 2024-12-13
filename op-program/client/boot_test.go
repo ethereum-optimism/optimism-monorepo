@@ -14,14 +14,15 @@ import (
 )
 
 func TestBootstrapClient(t *testing.T) {
+	rollupCfg := chaincfg.OPSepolia()
 	bootInfo := &BootInfo{
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1,
-		L2ChainID:          chaincfg.Sepolia.L2ChainID.Uint64(),
-		L2ChainConfig:      chainconfig.OPSepoliaChainConfig,
-		RollupConfig:       chaincfg.Sepolia,
+		L2ChainID:          rollupCfg.L2ChainID.Uint64(),
+		L2ChainConfig:      chainconfig.OPSepoliaChainConfig(),
+		RollupConfig:       rollupCfg,
 	}
 	mockOracle := &mockBoostrapOracle{bootInfo, false}
 	readBootInfo := NewBootstrapClient(mockOracle).BootInfo()
@@ -35,8 +36,8 @@ func TestBootstrapClient_CustomChain(t *testing.T) {
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1,
 		L2ChainID:          CustomChainIDIndicator,
-		L2ChainConfig:      chainconfig.OPSepoliaChainConfig,
-		RollupConfig:       chaincfg.Sepolia,
+		L2ChainConfig:      chainconfig.OPSepoliaChainConfig(),
+		RollupConfig:       chaincfg.OPSepolia(),
 	}
 	mockOracle := &mockBoostrapOracle{bootInfo, true}
 	readBootInfo := NewBootstrapClient(mockOracle).BootInfo()

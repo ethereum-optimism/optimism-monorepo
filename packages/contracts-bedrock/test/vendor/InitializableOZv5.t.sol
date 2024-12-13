@@ -2,12 +2,13 @@
 pragma solidity 0.8.25;
 
 import { Test } from "forge-std/Test.sol";
-import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
+import { IOptimismSuperchainERC20 } from "interfaces/L2/IOptimismSuperchainERC20.sol";
 import { Initializable } from "@openzeppelin/contracts-v5/proxy/utils/Initializable.sol";
-
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 /// @title InitializerOZv5_Test
 /// @dev Ensures that the `initialize()` function on contracts cannot be called more than
 ///      once. Tests the contracts inheriting from `Initializable` from OpenZeppelin Contracts v5.
+
 contract InitializerOZv5_Test is Test {
     /// @notice The storage slot of the `initialized` flag in the `Initializable` contract from OZ v5.
     /// keccak256(abi.encode(uint256(keccak256("openzeppelin.storage.Initializable")) - 1)) & ~bytes32(uint256(0xff))
@@ -31,8 +32,13 @@ contract InitializerOZv5_Test is Test {
         // OptimismSuperchainERC20
         contracts.push(
             InitializeableContract({
-                target: address(new OptimismSuperchainERC20()),
-                initCalldata: abi.encodeCall(OptimismSuperchainERC20.initialize, (address(0), "", "", 18))
+                target: address(
+                    DeployUtils.create1({
+                        _name: "OptimismSuperchainERC20",
+                        _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismSuperchainERC20.__constructor__, ()))
+                    })
+                ),
+                initCalldata: abi.encodeCall(IOptimismSuperchainERC20.initialize, (address(0), "", "", 18))
             })
         );
     }

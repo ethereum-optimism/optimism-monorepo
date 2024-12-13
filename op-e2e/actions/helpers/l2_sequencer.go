@@ -43,7 +43,8 @@ func (m *MockL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2Bl
 type L2Sequencer struct {
 	*L2Verifier
 
-	sequencer *sequencing.Sequencer
+	sequencer   *sequencing.Sequencer
+	attrBuilder *derive.FetchingAttributesBuilder
 
 	failL2GossipUnsafeBlock error // mock error
 
@@ -52,7 +53,8 @@ type L2Sequencer struct {
 
 func NewL2Sequencer(t Testing, log log.Logger, l1 derive.L1Fetcher, blobSrc derive.L1BlobsFetcher,
 	altDASrc driver.AltDAIface, eng L2API, cfg *rollup.Config, seqConfDepth uint64,
-	interopBackend interop.InteropBackend) *L2Sequencer {
+	interopBackend interop.InteropBackend,
+) *L2Sequencer {
 	ver := NewL2Verifier(t, log, l1, blobSrc, altDASrc, eng, cfg, &sync.Config{}, safedb.Disabled, interopBackend)
 	attrBuilder := derive.NewFetchingAttributesBuilder(cfg, l1, eng)
 	seqConfDepthL1 := confdepth.NewConfDepth(seqConfDepth, ver.syncStatus.L1Head, l1)
@@ -84,6 +86,7 @@ func NewL2Sequencer(t Testing, log log.Logger, l1 derive.L1Fetcher, blobSrc deri
 	return &L2Sequencer{
 		L2Verifier:              ver,
 		sequencer:               seq,
+		attrBuilder:             attrBuilder,
 		mockL1OriginSelector:    l1OriginSelector,
 		failL2GossipUnsafeBlock: nil,
 	}
@@ -130,21 +133,36 @@ func (s *L2Sequencer) ActL2EndBlock(t Testing) {
 		"sync status must be accurate after block building")
 }
 
+func (s *L2Sequencer) ActL2EmptyBlock(t Testing) {
+	s.ActL2StartBlock(t)
+	s.ActL2EndBlock(t)
+}
+
 // ActL2KeepL1Origin makes the sequencer use the current L1 origin, even if the next origin is available.
 func (s *L2Sequencer) ActL2KeepL1Origin(t Testing) {
 	parent := s.engine.UnsafeL2Head()
-	// force old origin, for testing purposes
+	// force old origin
 	oldOrigin, err := s.l1.L1BlockRefByHash(t.Ctx(), parent.L1Origin.Hash)
 	require.NoError(t, err, "failed to get current origin: %s", parent.L1Origin)
 	s.mockL1OriginSelector.originOverride = oldOrigin
+}
+
+// ActL2ForceAdvanceL1Origin forces the sequencer to advance the current L1 origin, even if the next origin's timestamp is too new.
+func (s *L2Sequencer) ActL2ForceAdvanceL1Origin(t Testing) {
+	s.attrBuilder.TestSkipL1OriginCheck() // skip check in attributes builder
+	parent := s.engine.UnsafeL2Head()
+	// force next origin
+	nextNum := parent.L1Origin.Number + 1
+	nextOrigin, err := s.l1.L1BlockRefByNumber(t.Ctx(), nextNum)
+	require.NoError(t, err, "failed to get next origin by number: %d", nextNum)
+	s.mockL1OriginSelector.originOverride = nextOrigin
 }
 
 // ActBuildToL1Head builds empty blocks until (incl.) the L1 head becomes the L2 origin
 func (s *L2Sequencer) ActBuildToL1Head(t Testing) {
 	for s.engine.UnsafeL2Head().L1Origin.Number < s.syncStatus.L1Head().Number {
 		s.ActL2PipelineFull(t)
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
 
@@ -152,8 +170,7 @@ func (s *L2Sequencer) ActBuildToL1Head(t Testing) {
 func (s *L2Sequencer) ActBuildToL1HeadUnsafe(t Testing) {
 	for s.engine.UnsafeL2Head().L1Origin.Number < s.syncStatus.L1Head().Number {
 		// Note: the derivation pipeline does not run, we are just sequencing a block on top of the existing L2 chain.
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
 
@@ -166,8 +183,7 @@ func (s *L2Sequencer) ActBuildToL1HeadExcl(t Testing) {
 		if nextOrigin.Number >= s.syncStatus.L1Head().Number {
 			break
 		}
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
 
@@ -180,36 +196,40 @@ func (s *L2Sequencer) ActBuildToL1HeadExclUnsafe(t Testing) {
 		if nextOrigin.Number >= s.syncStatus.L1Head().Number {
 			break
 		}
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
 
 func (s *L2Sequencer) ActBuildL2ToTime(t Testing, target uint64) {
 	for s.L2Unsafe().Time < target {
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
 
 func (s *L2Sequencer) ActBuildL2ToEcotone(t Testing) {
 	require.NotNil(t, s.RollupCfg.EcotoneTime, "cannot activate Ecotone when it is not scheduled")
 	for s.L2Unsafe().Time < *s.RollupCfg.EcotoneTime {
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
+
 func (s *L2Sequencer) ActBuildL2ToFjord(t Testing) {
 	require.NotNil(t, s.RollupCfg.FjordTime, "cannot activate FjordTime when it is not scheduled")
 	for s.L2Unsafe().Time < *s.RollupCfg.FjordTime {
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
 	}
 }
+
 func (s *L2Sequencer) ActBuildL2ToGranite(t Testing) {
 	require.NotNil(t, s.RollupCfg.GraniteTime, "cannot activate GraniteTime when it is not scheduled")
 	for s.L2Unsafe().Time < *s.RollupCfg.GraniteTime {
-		s.ActL2StartBlock(t)
-		s.ActL2EndBlock(t)
+		s.ActL2EmptyBlock(t)
+	}
+}
+
+func (s *L2Sequencer) ActBuildL2ToHolocene(t Testing) {
+	require.NotNil(t, s.RollupCfg.HoloceneTime, "cannot activate HoloceneTime when it is not scheduled")
+	for s.L2Unsafe().Time < *s.RollupCfg.HoloceneTime {
+		s.ActL2EmptyBlock(t)
 	}
 }

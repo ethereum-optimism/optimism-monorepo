@@ -28,6 +28,8 @@ type FetchingAttributesBuilder struct {
 	rollupCfg *rollup.Config
 	l1        L1ReceiptsFetcher
 	l2        SystemConfigL2Fetcher
+	// whether to skip the L1 origin timestamp check - only for testing purposes
+	testSkipL1OriginCheck bool
 }
 
 func NewFetchingAttributesBuilder(rollupCfg *rollup.Config, l1 L1ReceiptsFetcher, l2 SystemConfigL2Fetcher) *FetchingAttributesBuilder {
@@ -36,6 +38,12 @@ func NewFetchingAttributesBuilder(rollupCfg *rollup.Config, l1 L1ReceiptsFetcher
 		l1:        l1,
 		l2:        l2,
 	}
+}
+
+// TestSkipL1OriginCheck skips the L1 origin timestamp check for testing purposes.
+// Must not be used in production!
+func (ba *FetchingAttributesBuilder) TestSkipL1OriginCheck() {
+	ba.testSkipL1OriginCheck = true
 }
 
 // PreparePayloadAttributes prepares a PayloadAttributes template that is ready to build a L2 block with deposits only, on top of the given l2Parent, with the given epoch as L1 origin.
@@ -93,9 +101,9 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		seqNumber = l2Parent.SequenceNumber + 1
 	}
 
-	// Sanity check the L1 origin was correctly selected to maintain the time invariant between L1 and L2
 	nextL2Time := l2Parent.Time + ba.rollupCfg.BlockTime
-	if nextL2Time < l1Info.Time() {
+	// Sanity check the L1 origin was correctly selected to maintain the time invariant between L1 and L2
+	if !ba.testSkipL1OriginCheck && nextL2Time < l1Info.Time() {
 		return nil, NewResetError(fmt.Errorf("cannot build L2 block on top %s for time %d before L1 origin %s at time %d",
 			l2Parent, nextL2Time, eth.ToBlockID(l1Info), l1Info.Time()))
 	}
@@ -149,7 +157,7 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		}
 	}
 
-	return &eth.PayloadAttributes{
+	r := &eth.PayloadAttributes{
 		Timestamp:             hexutil.Uint64(nextL2Time),
 		PrevRandao:            eth.Bytes32(l1Info.MixDigest()),
 		SuggestedFeeRecipient: predeploys.SequencerFeeVaultAddr,
@@ -158,5 +166,11 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		GasLimit:              (*eth.Uint64Quantity)(&sysConfig.GasLimit),
 		Withdrawals:           withdrawals,
 		ParentBeaconBlockRoot: parentBeaconRoot,
-	}, nil
+	}
+	if ba.rollupCfg.IsHolocene(nextL2Time) {
+		r.EIP1559Params = new(eth.Bytes8)
+		*r.EIP1559Params = sysConfig.EIP1559Params
+	}
+
+	return r, nil
 }

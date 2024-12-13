@@ -4,8 +4,8 @@
 
 !/cannon
 !/op-batcher
-!/op-bootnode
 !/op-chain-ops
+!/op-deployer
 !/op-challenger
 !/packages/contracts-bedrock/snapshots
 !/op-dispute-mon
@@ -20,3 +20,5 @@
 !/op-alt-da
 !/go.mod
 !/go.sum
+!/just
+!/mise.toml

@@ -45,6 +45,7 @@ After running `make reproducible-prestate`, the following files can be found in
 [./bin/](./bin/):
 - [`op-program`](./bin/op-program)
 - [`op-program-client.elf`](./bin/op-program-client.elf)
+- [`op-program-client64.elf`](./bin/op-program-client64.elf)
 - [`prestate.bin.gz`](./bin/prestate.bin.gz)
 - [`prestate-proof.json`](./bin/prestate-proof.json)
 

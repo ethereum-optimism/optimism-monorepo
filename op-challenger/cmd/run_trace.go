@@ -4,11 +4,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"net/url"
+	"slices"
+	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-challenger/config"
 	"github.com/ethereum-optimism/optimism/op-challenger/flags"
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-challenger/runner"
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
@@ -16,8 +16,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-func RunTrace(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
+var (
+	ErrUnknownTraceType    = errors.New("unknown trace type")
+	ErrInvalidPrestateHash = errors.New("invalid prestate hash")
+)
 
+func RunTrace(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, error) {
 	logger, err := setupLogging(ctx)
 	if err != nil {
 		return nil, err
@@ -31,36 +35,21 @@ func RunTrace(ctx *cli.Context, _ context.CancelCauseFunc) (cliapp.Lifecycle, er
 	if err := cfg.Check(); err != nil {
 		return nil, err
 	}
-	if err := checkMTCannonFlags(ctx, cfg); err != nil {
+	runConfigs, err := parseRunArgs(ctx.StringSlice(RunTraceRunFlag.Name))
+	if err != nil {
 		return nil, err
 	}
-
-	var mtPrestate common.Hash
-	var mtPrestateURL *url.URL
-	if ctx.IsSet(addMTCannonPrestateFlag.Name) {
-		mtPrestate = common.HexToHash(ctx.String(addMTCannonPrestateFlag.Name))
-		mtPrestateURL, err = url.Parse(ctx.String(addMTCannonPrestateURLFlag.Name))
-		if err != nil {
-			return nil, fmt.Errorf("invalid mt-cannon prestate url (%v): %w", ctx.String(addMTCannonPrestateFlag.Name), err)
+	if len(runConfigs) == 0 {
+		// Default to running on-chain version of each enabled trace type
+		for _, traceType := range cfg.TraceTypes {
+			runConfigs = append(runConfigs, runner.RunConfig{TraceType: traceType})
 		}
 	}
-	return runner.NewRunner(logger, cfg, mtPrestate, mtPrestateURL), nil
-}
-
-func checkMTCannonFlags(ctx *cli.Context, cfg *config.Config) error {
-	if ctx.IsSet(addMTCannonPrestateFlag.Name) || ctx.IsSet(addMTCannonPrestateURLFlag.Name) {
-		if ctx.IsSet(addMTCannonPrestateFlag.Name) != ctx.IsSet(addMTCannonPrestateURLFlag.Name) {
-			return fmt.Errorf("both flag %v and %v must be set when running MT-Cannon traces", addMTCannonPrestateURLFlag.Name, addMTCannonPrestateFlag.Name)
-		}
-		if cfg.Cannon == (vm.Config{}) {
-			return errors.New("required Cannon vm configuration for mt-cannon traces is missing")
-		}
-	}
-	return nil
+	return runner.NewRunner(logger, cfg, runConfigs), nil
 }
 
 func runTraceFlags() []cli.Flag {
-	return append(flags.Flags, addMTCannonPrestateFlag, addMTCannonPrestateURLFlag)
+	return append(flags.Flags, RunTraceRunFlag)
 }
 
 var RunTraceCommand = &cli.Command{
@@ -72,14 +61,50 @@ var RunTraceCommand = &cli.Command{
 }
 
 var (
-	addMTCannonPrestateFlag = &cli.StringFlag{
-		Name:    "add-mt-cannon-prestate",
-		Usage:   "Use this prestate to run MT-Cannon compatibility tests",
-		EnvVars: opservice.PrefixEnvVar(flags.EnvVarPrefix, "ADD_MT_CANNON_PRESTATE"),
-	}
-	addMTCannonPrestateURLFlag = &cli.StringFlag{
-		Name:    "add-mt-cannon-prestate-url",
-		Usage:   "Use this prestate URL to run MT-Cannon compatibility tests",
-		EnvVars: opservice.PrefixEnvVar(flags.EnvVarPrefix, "ADD_MT_CANNON_PRESTATE_URL"),
+	RunTraceRunFlag = &cli.StringSliceFlag{
+		Name: "run",
+		Usage: "Specify a trace to run. Format is traceType/name/prestateHash where " +
+			"traceType is the trace type to use with the prestate (e.g cannon or asterisc-kona), " +
+			"name is an arbitrary name for the prestate to use when reporting metrics and" +
+			"prestateHash is the hex encoded absolute prestate commitment to use. " +
+			"If name is omitted the trace type name is used." +
+			"If the prestateHash is omitted, the absolute prestate hash used for new games on-chain.",
+		EnvVars: opservice.PrefixEnvVar(flags.EnvVarPrefix, "RUN"),
 	}
 )
+
+func parseRunArgs(args []string) ([]runner.RunConfig, error) {
+	cfgs := make([]runner.RunConfig, len(args))
+	for i, arg := range args {
+		cfg, err := parseRunArg(arg)
+		if err != nil {
+			return nil, err
+		}
+		cfgs[i] = cfg
+	}
+	return cfgs, nil
+}
+
+func parseRunArg(arg string) (runner.RunConfig, error) {
+	cfg := runner.RunConfig{}
+	opts := strings.SplitN(arg, "/", 3)
+	if len(opts) == 0 {
+		return runner.RunConfig{}, fmt.Errorf("invalid run config %q", arg)
+	}
+	cfg.TraceType = types.TraceType(opts[0])
+	if !slices.Contains(types.TraceTypes, cfg.TraceType) {
+		return runner.RunConfig{}, fmt.Errorf("%w %q for run config %q", ErrUnknownTraceType, opts[0], arg)
+	}
+	if len(opts) > 1 {
+		cfg.Name = opts[1]
+	} else {
+		cfg.Name = cfg.TraceType.String()
+	}
+	if len(opts) > 2 {
+		cfg.Prestate = common.HexToHash(opts[2])
+		if cfg.Prestate == (common.Hash{}) {
+			return runner.RunConfig{}, fmt.Errorf("%w %q for run config %q", ErrInvalidPrestateHash, opts[2], arg)
+		}
+	}
+	return cfg, nil
+}

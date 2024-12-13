@@ -1,0 +1,23 @@
+import '../just/go.just'
+
+# Run tests
+test: (go_test "./...")
+
+# Generate mocks
+generate-mocks: (go_generate "./...")
+
+[private]
+service_fuzz_task FUZZ TIME='10s': (go_fuzz FUZZ TIME "./eth")
+
+# Run fuzzing tests
+fuzz:
+    printf "%s\n" \
+        "FuzzExecutionPayloadUnmarshal" \
+        "FuzzExecutionPayloadMarshalUnmarshalV1" \
+        "FuzzExecutionPayloadMarshalUnmarshalV2" \
+        "FuzzExecutionPayloadMarshalUnmarshalV3" \
+        "FuzzOBP01" \
+        "FuzzEncodeDecodeBlob" \
+        "FuzzDetectNonBijectivity" \
+        "FuzzEncodeScalar" \
+    | parallel -j {{PARALLEL_JOBS}} {{just_executable()}} service_fuzz_task {}

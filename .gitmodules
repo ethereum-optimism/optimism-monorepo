@@ -29,3 +29,6 @@
 [submodule "packages/contracts-bedrock/lib/openzeppelin-contracts-v5"]
 	path = packages/contracts-bedrock/lib/openzeppelin-contracts-v5
 	url = https://github.com/OpenZeppelin/openzeppelin-contracts
+[submodule "packages/contracts-bedrock/lib/solady-v0.0.245"]
+	path = packages/contracts-bedrock/lib/solady-v0.0.245
+	url = https://github.com/vectorized/solady

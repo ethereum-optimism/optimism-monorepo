@@ -15,17 +15,29 @@ dep-status:
 #                         BUILD                        #
 ########################################################
 
-# Checks that the correct version of Foundry is installed.
-prebuild:
-  ./scripts/checks/check-foundry-install.sh
-
-# Builds the contracts.
-build: prebuild
+# Core forge build command.
+forge-build:
   forge build
 
+# Developer build command (faster).
+forge-build-dev:
+  FOUNDRY_PROFILE=lite forge build
+
+# Builds the contracts.
+build: lint-fix-no-fail forge-build interfaces-check-no-build
+
+# Builds the contracts (developer mode).
+build-dev: lint-fix-no-fail forge-build-dev interfaces-check-no-build
+
 # Builds the go-ffi tool for contract tests.
-build-go-ffi:
-  cd scripts/go-ffi && go build
+build-go-ffi-default:
+  cd ./scripts/go-ffi && go build
+
+# Builds the go-ffi tool for MIPS64 contract tests.
+build-go-ffi-cannon64:
+  cd ./scripts/go-ffi && go build -tags=cannon64 -o ./go-ffi-cannon64
+
+build-go-ffi: build-go-ffi-default build-go-ffi-cannon64
 
 # Cleans build artifacts and deployments.
 clean:
@@ -37,12 +49,20 @@ clean:
 ########################################################
 
 # Runs standard contract tests.
-test: build-go-ffi
-  forge test
+test *ARGS: build-go-ffi
+  forge test {{ARGS}}
+
+# Runs standard contract tests (developer mode).
+test-dev *ARGS: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
   forge test --rerun -vvv
+
+# Runs standard contract tests with rerun flag (developer mode).
+test-dev-rerun: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test --rerun -vvv
 
 # Run Kontrol tests and build all dependencies.
 test-kontrol: build-go-ffi build kontrol-summary-full test-kontrol-no-build
@@ -53,11 +73,11 @@ test-kontrol-no-build:
 
 # Runs contract coverage.
 coverage: build-go-ffi
-  forge coverage || (bash -c "forge coverage 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage
 
 # Runs contract coverage with lcov.
 coverage-lcov: build-go-ffi
-  forge coverage --report lcov || (bash -c "forge coverage --report lcov 2>&1 | grep -q 'Stack too deep' && echo -e '\\033[1;33mWARNING\\033[0m: Coverage failed with stack too deep, so overriding and exiting successfully' && exit 0 || exit 1")
+  forge coverage --report lcov
 
 
 ########################################################
@@ -79,14 +99,10 @@ deploy:
 
 # Generates a gas snapshot without building.
 gas-snapshot-no-build:
-  forge snapshot --match-contract GasBenchMark
+  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot
 
 # Generates a gas snapshot.
 gas-snapshot: build-go-ffi gas-snapshot-no-build
-
-# Checks that the state diff is up to date.
-statediff:
-  ./scripts/utils/statediff.sh && git diff --exit-code
 
 # Generates default Kontrol summary.
 kontrol-summary:
@@ -103,9 +119,12 @@ kontrol-summary-full: kontrol-summary kontrol-summary-fp
 snapshots-abi-storage:
   go run ./scripts/autogen/generate-snapshots .
 
-# Updates the semver-lock.json file.
-semver-lock:
-  forge script scripts/autogen/SemverLock.s.sol
+# Updates the snapshots/semver-lock.json file without building contracts.
+semver-lock-no-build:
+  go run scripts/autogen/generate-semver-lock/main.go
+
+# Updates the snapshots/semver-lock.json file.
+semver-lock: build semver-lock-no-build
 
 # Generates core snapshots without building contracts. Currently just an alias for
 # snapshots-abi-storage because we no longer run Kontrol snapshots here. Run
@@ -122,26 +141,21 @@ snapshots: build snapshots-no-build
 
 # Checks that the gas snapshot is up to date without building.
 gas-snapshot-check-no-build:
-  forge snapshot --match-contract GasBenchMark --check
+  forge snapshot --match-contract GasBenchMark --snap snapshots/.gas-snapshot --check
 
 # Checks that the gas snapshot is up to date.
 gas-snapshot-check: build-go-ffi gas-snapshot-check-no-build
 
-# Checks that the Kontrol deployment script has not changed.
-kontrol-deployment-check:
-  ./scripts/checks/check-kontrol-deployment.sh
-
 # Checks if the snapshots are up to date without building.
 snapshots-check-no-build:
-  ./scripts/checks/check-snapshots.sh --no-build
+  just snapshots-no-build && git diff --exit-code snapshots
 
 # Checks if the snapshots are up to date.
-snapshots-check:
-  ./scripts/checks/check-snapshots.sh
+snapshots-check: build snapshots-check-no-build
 
 # Checks interface correctness without building.
 interfaces-check-no-build:
-  ./scripts/checks/check-interfaces.sh
+  go run ./scripts/checks/interfaces
 
 # Checks that all interfaces are appropriately named and accurately reflect the corresponding
 # contract that they're meant to represent. We run "clean" before building because leftover
@@ -160,21 +174,27 @@ semver-diff-check-no-build:
 # Checks that any contracts with a modified semver lock also have a modified semver version.
 semver-diff-check: build semver-diff-check-no-build
 
-# Checks that semver natspec is equal to the actual semver version.
-# Does not build contracts.
-semver-natspec-check-no-build:
-    go run ./scripts/checks/semver-natspec
+# Checks that the semgrep tests are valid.
+semgrep-test-validity-check:
+  forge fmt ../../.semgrep/tests/sol-rules.t.sol --check
 
-# Checks that semver natspec is equal to the actual semver version.
-semver-natspec-check: build semver-natspec-check-no-build
+# Checks that forge test names are correctly formatted. Does not build contracts.
+lint-forge-tests-check-no-build:
+  go run ./scripts/checks/test-names
 
 # Checks that forge test names are correctly formatted.
-lint-forge-tests-check:
-  go run ./scripts/checks/names
+lint-forge-tests-check: build lint-forge-tests-check-no-build
 
 # Checks that contracts are properly linted.
 lint-check:
   forge fmt --check
+
+# Checks for unused imports in Solidity contracts. Does not build contracts.
+unused-imports-check-no-build:
+  go run ./scripts/checks/unused-imports
+
+# Checks for unused imports in Solidity contracts.
+unused-imports-check: build unused-imports-check-no-build
 
 # Checks that the deploy configs are valid.
 validate-deploy-configs:
@@ -187,10 +207,32 @@ validate-spacers-no-build:
 # Checks that spacer variables are correctly inserted.
 validate-spacers: build validate-spacers-no-build
 
-# TODO: Also run lint-forge-tests-check but we need to fix the test names first.
-# Runs all checks.
-check: gas-snapshot-check-no-build kontrol-deployment-check snapshots-check-no-build lint-check semver-diff-check-no-build semver-natspec-check-no-build validate-deploy-configs validate-spacers-no-build interfaces-check-no-build
+# Checks that the Kontrol summary dummy files have not been modified.
+# If you have changed the summary files deliberately, update the hashes in the script.
+# Use `openssl dgst -sha256` to generate the hash for a file.
+check-kontrol-summaries-unchanged:
+  ./scripts/checks/check-kontrol-summaries-unchanged.sh
 
+# Runs semgrep on the contracts.
+semgrep:
+  cd ../../ && semgrep scan --config .semgrep/rules/ ./packages/contracts-bedrock
+
+# Runs semgrep tests.
+semgrep-test:
+  cd ../../ && semgrep scan --test --config .semgrep/rules/ .semgrep/tests/
+
+# Runs all checks.
+check:
+  @just gas-snapshot-check-no-build \
+  semgrep-test-validity-check \
+  unused-imports-check-no-build \
+  snapshots-check-no-build \
+  lint-check \
+  semver-diff-check-no-build \
+  validate-deploy-configs \
+  validate-spacers-no-build \
+  interfaces-check-no-build \
+  lint-forge-tests-check-no-build
 
 ########################################################
 #                      DEV TOOLS                       #
@@ -206,6 +248,12 @@ pre-pr-no-build: build-go-ffi build lint gas-snapshot-no-build snapshots-no-buil
 # Fixes linting errors.
 lint-fix:
   forge fmt
+
+# Fixes linting errors but doesn't fail if there are syntax errors. Useful for build command
+# because the output of forge fmt can sometimes be difficult to understand but if there's a syntax
+# error the build will fail anyway and provide more context about what's wrong.
+lint-fix-no-fail:
+  forge fmt || true
 
 # Fixes linting errors and checks that the code is correctly formatted.
 lint: lint-fix lint-check

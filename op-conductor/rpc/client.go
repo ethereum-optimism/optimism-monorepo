@@ -28,8 +28,15 @@ func prefixRPC(method string) string {
 }
 
 // OverrideLeader implements API.
-func (c *APIClient) OverrideLeader(ctx context.Context) error {
-	return c.c.CallContext(ctx, nil, prefixRPC("overrideLeader"))
+func (c *APIClient) OverrideLeader(ctx context.Context, override bool) error {
+	return c.c.CallContext(ctx, nil, prefixRPC("overrideLeader"), override)
+}
+
+// LeaderOverridden implements API.
+func (c *APIClient) LeaderOverridden(ctx context.Context) (bool, error) {
+	var overridden bool
+	err := c.c.CallContext(ctx, &overridden, prefixRPC("leaderOverridden"))
+	return overridden, err
 }
 
 // Paused implements API.

@@ -72,7 +72,7 @@ func testStartStopBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
 
 	// wait until the block the tx was first included in shows up in the safe chain on the verifier
 	safeBlockInclusionDuration := time.Duration(6*cfg.DeployConfig.L1BlockTime) * time.Second
-	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif, safeBlockInclusionDuration)
+	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif)
 	require.NoError(t, err, "Waiting for block on verifier")
 	require.NoError(t, wait.ForProcessingFullBatch(context.Background(), rollupClient))
 
@@ -111,7 +111,7 @@ func testStartStopBatcher(t *testing.T, cfgMod func(*e2esys.SystemConfig)) {
 	receipt = sendTx()
 
 	// wait until the block the tx was first included in shows up in the safe chain on the verifier
-	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif, safeBlockInclusionDuration)
+	_, err = geth.WaitForBlock(receipt.BlockNumber, l2Verif)
 	require.NoError(t, err, "Waiting for block on verifier")
 	require.NoError(t, wait.ForProcessingFullBatch(context.Background(), rollupClient))
 

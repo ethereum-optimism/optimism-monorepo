@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	derive_params "github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 )
@@ -146,11 +147,52 @@ func (s *L2Batcher) Reset() {
 
 // ActL2BatchBuffer adds the next L2 block to the batch buffer.
 // If the buffer is being submitted, the buffer is wiped.
-func (s *L2Batcher) ActL2BatchBuffer(t Testing) {
-	require.NoError(t, s.Buffer(t), "failed to add block to channel")
+func (s *L2Batcher) ActL2BatchBuffer(t Testing, opts ...BlockModifier) {
+	require.NoError(t, s.Buffer(t, opts...), "failed to add block to channel")
 }
 
-type BlockModifier = func(block *types.Block)
+// ActCreateChannel creates a channel if we don't have one yet.
+func (s *L2Batcher) ActCreateChannel(t Testing, useSpanChannelOut bool) {
+	var err error
+	if s.L2ChannelOut == nil {
+		var ch ChannelOutIface
+		if s.l2BatcherCfg.GarbageCfg != nil {
+			ch, err = NewGarbageChannelOut(s.l2BatcherCfg.GarbageCfg)
+		} else {
+			target := batcher.MaxDataSize(1, s.l2BatcherCfg.MaxL1TxSize)
+			c, e := compressor.NewShadowCompressor(compressor.Config{
+				TargetOutputSize: target,
+				CompressionAlgo:  derive.Zlib,
+			})
+			require.NoError(t, e, "failed to create compressor")
+
+			if s.l2BatcherCfg.ForceSubmitSingularBatch && s.l2BatcherCfg.ForceSubmitSpanBatch {
+				t.Fatalf("ForceSubmitSingularBatch and ForceSubmitSpanBatch cannot be set to true at the same time")
+			} else {
+				chainSpec := rollup.NewChainSpec(s.rollupCfg)
+				// use span batch if we're forcing it or if we're at/beyond delta
+				if s.l2BatcherCfg.ForceSubmitSpanBatch || useSpanChannelOut {
+					ch, err = derive.NewSpanChannelOut(target, derive.Zlib, chainSpec)
+					// use singular batches in all other cases
+				} else {
+					ch, err = derive.NewSingularChannelOut(c, chainSpec)
+				}
+			}
+		}
+		require.NoError(t, err, "failed to create channel")
+		s.L2ChannelOut = ch
+	}
+}
+
+type BlockModifier = func(block *types.Block) *types.Block
+
+func BlockLogger(t e2eutils.TestingBase) BlockModifier {
+	f := func(block *types.Block) *types.Block {
+		t.Log("added block", "num", block.Number(), "txs", block.Transactions(), "time", block.Time())
+		return block
+	}
+	return f
+}
 
 func (s *L2Batcher) Buffer(t Testing, opts ...BlockModifier) error {
 	if s.l2Submitting { // break ongoing submitting work if necessary
@@ -197,45 +239,44 @@ func (s *L2Batcher) Buffer(t Testing, opts ...BlockModifier) error {
 
 	// Apply modifications to the block
 	for _, f := range opts {
-		f(block)
-	}
-
-	// Create channel if we don't have one yet
-	if s.L2ChannelOut == nil {
-		var ch ChannelOutIface
-		if s.l2BatcherCfg.GarbageCfg != nil {
-			ch, err = NewGarbageChannelOut(s.l2BatcherCfg.GarbageCfg)
-		} else {
-			target := batcher.MaxDataSize(1, s.l2BatcherCfg.MaxL1TxSize)
-			c, e := compressor.NewShadowCompressor(compressor.Config{
-				TargetOutputSize: target,
-				CompressionAlgo:  derive.Zlib,
-			})
-			require.NoError(t, e, "failed to create compressor")
-
-			if s.l2BatcherCfg.ForceSubmitSingularBatch && s.l2BatcherCfg.ForceSubmitSpanBatch {
-				t.Fatalf("ForceSubmitSingularBatch and ForceSubmitSpanBatch cannot be set to true at the same time")
-			} else {
-				chainSpec := rollup.NewChainSpec(s.rollupCfg)
-				// use span batch if we're forcing it or if we're at/beyond delta
-				if s.l2BatcherCfg.ForceSubmitSpanBatch || s.rollupCfg.IsDelta(block.Time()) {
-					ch, err = derive.NewSpanChannelOut(target, derive.Zlib, chainSpec)
-					// use singular batches in all other cases
-				} else {
-					ch, err = derive.NewSingularChannelOut(c, chainSpec)
-				}
-			}
+		if f != nil {
+			block = f(block)
 		}
-		require.NoError(t, err, "failed to create channel")
-		s.L2ChannelOut = ch
 	}
-	if err := s.L2ChannelOut.AddBlock(s.rollupCfg, block); err != nil {
+
+	s.ActCreateChannel(t, s.rollupCfg.IsDelta(block.Time()))
+
+	if _, err := s.L2ChannelOut.AddBlock(s.rollupCfg, block); err != nil {
 		return err
 	}
 	ref, err := s.engCl.L2BlockRefByHash(t.Ctx(), block.Hash())
 	require.NoError(t, err, "failed to get L2BlockRef")
 	s.L2BufferedBlock = ref
 	return nil
+}
+
+// ActAddBlockByNumber causes the batcher to pull the block with the provided
+// number, and add it to its ChannelOut.
+func (s *L2Batcher) ActAddBlockByNumber(t Testing, blockNumber int64, opts ...BlockModifier) {
+	block, err := s.l2.BlockByNumber(t.Ctx(), big.NewInt(blockNumber))
+	require.NoError(t, err)
+	require.NotNil(t, block)
+
+	// cache block hash before we modify the block
+	blockHash := block.Hash()
+
+	// Apply modifications to the block
+	for _, f := range opts {
+		if f != nil {
+			block = f(block)
+		}
+	}
+
+	_, err = s.L2ChannelOut.AddBlock(s.rollupCfg, block)
+	require.NoError(t, err)
+	ref, err := s.engCl.L2BlockRefByHash(t.Ctx(), blockHash)
+	require.NoError(t, err, "failed to get L2BlockRef")
+	s.L2BufferedBlock = ref
 }
 
 func (s *L2Batcher) ActL2ChannelClose(t Testing) {
@@ -255,7 +296,7 @@ func (s *L2Batcher) ReadNextOutputFrame(t Testing) []byte {
 	}
 	// Collect the output frame
 	data := new(bytes.Buffer)
-	data.WriteByte(derive.DerivationVersion0)
+	data.WriteByte(derive_params.DerivationVersion0)
 	// subtract one, to account for the version byte
 	if _, err := s.L2ChannelOut.OutputFrame(data, s.l2BatcherCfg.MaxL1TxSize-1); err == io.EOF {
 		s.L2ChannelOut = nil
@@ -360,7 +401,7 @@ func (s *L2Batcher) ActL2BatchSubmitMultiBlob(t Testing, numBlobs int) {
 	blobs := make([]*eth.Blob, numBlobs)
 	for i := 0; i < numBlobs; i++ {
 		data := new(bytes.Buffer)
-		data.WriteByte(derive.DerivationVersion0)
+		data.WriteByte(derive_params.DerivationVersion0)
 		// write only a few bytes to all but the last blob
 		l := uint64(derive.FrameV0OverHeadSize + 4) // 4 bytes content
 		if i == numBlobs-1 {

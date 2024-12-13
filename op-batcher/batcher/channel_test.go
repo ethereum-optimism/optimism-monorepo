@@ -1,6 +1,7 @@
 package batcher
 
 import (
+	"fmt"
 	"io"
 	"testing"
 
@@ -21,6 +22,14 @@ func singleFrameTxID(cid derive.ChannelID, fn uint16) txID {
 
 func zeroFrameTxID(fn uint16) txID {
 	return txID{frameID{frameNumber: fn}}
+}
+
+func newChannelWithChannelOut(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollupCfg *rollup.Config, latestL1OriginBlockNum uint64) (*channel, error) {
+	channelOut, err := NewChannelOut(cfg, rollupCfg)
+	if err != nil {
+		return nil, fmt.Errorf("creating channel out: %w", err)
+	}
+	return newChannel(log, metr, cfg, rollupCfg, latestL1OriginBlockNum, channelOut), nil
 }
 
 // TestChannelTimeout tests that the channel manager
@@ -44,16 +53,19 @@ func TestChannelTimeout(t *testing.T) {
 	channel := m.currentChannel
 	require.NotNil(t, channel)
 
+	// add some pending txs, to be confirmed below
+	channel.pendingTransactions[zeroFrameTxID(0).String()] = txData{}
+	channel.pendingTransactions[zeroFrameTxID(1).String()] = txData{}
+	channel.pendingTransactions[zeroFrameTxID(2).String()] = txData{}
+
 	// There are no confirmed transactions so
 	// the pending channel cannot be timed out
 	timeout := channel.isTimedOut()
 	require.False(t, timeout)
 
-	// Manually set a confirmed transactions
-	// To avoid other methods clearing state
-	channel.confirmedTransactions[zeroFrameTxID(0).String()] = eth.BlockID{Number: 0}
-	channel.confirmedTransactions[zeroFrameTxID(1).String()] = eth.BlockID{Number: 99}
-	channel.confirmedTxUpdated = true
+	// Manually confirm transactions
+	channel.TxConfirmed(zeroFrameTxID(0).String(), eth.BlockID{Number: 0})
+	channel.TxConfirmed(zeroFrameTxID(1).String(), eth.BlockID{Number: 99})
 
 	// Since the ChannelTimeout is 100, the
 	// pending channel should not be timed out
@@ -62,10 +74,7 @@ func TestChannelTimeout(t *testing.T) {
 
 	// Add a confirmed transaction with a higher number
 	// than the ChannelTimeout
-	channel.confirmedTransactions[zeroFrameTxID(2).String()] = eth.BlockID{
-		Number: 101,
-	}
-	channel.confirmedTxUpdated = true
+	channel.TxConfirmed(zeroFrameTxID(2).String(), eth.BlockID{Number: 101})
 
 	// Now the pending channel should be timed out
 	timeout = channel.isTimedOut()
@@ -104,7 +113,7 @@ func TestChannelManager_NextTxData(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	channel.channelBuilder.PushFrames(frame)
+	channel.channelBuilder.frames = append(channel.channelBuilder.frames, frame)
 	require.Equal(t, 1, channel.PendingFrames())
 
 	// Now the nextTxData function should return the frame
@@ -121,7 +130,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 	require := require.New(t)
 	const n = 6
 	lgr := testlog.Logger(t, log.LevelWarn)
-	ch, err := newChannel(lgr, metrics.NoopMetrics, ChannelConfig{
+	ch, err := newChannelWithChannelOut(lgr, metrics.NoopMetrics, ChannelConfig{
 		UseBlobs:        false,
 		TargetNumFrames: n,
 		CompressorConfig: compressor.Config{
@@ -133,7 +142,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 
 	mockframes := makeMockFrameDatas(chID, n+1)
 	// put multiple frames into channel, but less than target
-	ch.channelBuilder.PushFrames(mockframes[:n-1]...)
+	ch.channelBuilder.frames = mockframes[:n-1]
 
 	requireTxData := func(i int) {
 		require.True(ch.HasTxData(), "expected tx data %d", i)
@@ -151,7 +160,7 @@ func TestChannel_NextTxData_singleFrameTx(t *testing.T) {
 	require.False(ch.HasTxData())
 
 	// put in last two
-	ch.channelBuilder.PushFrames(mockframes[n-1 : n+1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[n-1:n+1]...)
 	for i := n - 1; i < n+1; i++ {
 		requireTxData(i)
 	}
@@ -162,7 +171,7 @@ func TestChannel_NextTxData_multiFrameTx(t *testing.T) {
 	require := require.New(t)
 	const n = eth.MaxBlobsPerBlobTx
 	lgr := testlog.Logger(t, log.LevelWarn)
-	ch, err := newChannel(lgr, metrics.NoopMetrics, ChannelConfig{
+	ch, err := newChannelWithChannelOut(lgr, metrics.NoopMetrics, ChannelConfig{
 		UseBlobs:        true,
 		TargetNumFrames: n,
 		CompressorConfig: compressor.Config{
@@ -174,11 +183,11 @@ func TestChannel_NextTxData_multiFrameTx(t *testing.T) {
 
 	mockframes := makeMockFrameDatas(chID, n+1)
 	// put multiple frames into channel, but less than target
-	ch.channelBuilder.PushFrames(mockframes[:n-1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[:n-1]...)
 	require.False(ch.HasTxData())
 
 	// put in last two
-	ch.channelBuilder.PushFrames(mockframes[n-1 : n+1]...)
+	ch.channelBuilder.frames = append(ch.channelBuilder.frames, mockframes[n-1:n+1]...)
 	require.True(ch.HasTxData())
 	txdata := ch.NextTxData()
 	require.Len(txdata.frames, n)
@@ -231,7 +240,8 @@ func TestChannelTxConfirmed(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	m.currentChannel.channelBuilder.PushFrames(frame)
+	m.currentChannel.channelBuilder.frames = append(m.currentChannel.channelBuilder.frames, frame)
+
 	require.Equal(t, 1, m.currentChannel.PendingFrames())
 	returnedTxData, err := m.nextTxData(m.currentChannel)
 	expectedTxData := singleFrameTxData(frame)
@@ -282,7 +292,7 @@ func TestChannelTxFailed(t *testing.T) {
 			frameNumber: uint16(0),
 		},
 	}
-	m.currentChannel.channelBuilder.PushFrames(frame)
+	m.currentChannel.channelBuilder.frames = append(m.currentChannel.channelBuilder.frames, frame)
 	require.Equal(t, 1, m.currentChannel.PendingFrames())
 	returnedTxData, err := m.nextTxData(m.currentChannel)
 	expectedTxData := singleFrameTxData(frame)

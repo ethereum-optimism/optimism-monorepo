@@ -3,20 +3,23 @@ pragma solidity 0.8.15;
 
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 
-import { DeployOPChainInput } from "scripts/DeployOPChain.s.sol";
+import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-import { ISuperchainConfig } from "src/L1/interfaces/ISuperchainConfig.sol";
-import { IProtocolVersions } from "src/L1/interfaces/IProtocolVersions.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
 // Exposes internal functions for testing.
 contract OPContractsManager_Harness is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
-        IProtocolVersions _protocolVersions
+        IProtocolVersions _protocolVersions,
+        string memory _l1ContractsRelease,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations
     )
-        OPContractsManager(_superchainConfig, _protocolVersions)
+        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
     { }
 
     function chainIdToBatchInboxAddress_exposed(uint256 l2ChainId) public pure returns (address) {
@@ -49,7 +52,7 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
         doi.set(doi.basefeeScalar.selector, basefeeScalar);
         doi.set(doi.blobBaseFeeScalar.selector, blobBaseFeeScalar);
         doi.set(doi.l2ChainId.selector, l2ChainId);
-        doi.set(doi.opcmProxy.selector, address(opcm));
+        doi.set(doi.opcm.selector, address(opcm));
         doi.set(doi.gasLimit.selector, gasLimit);
 
         doi.set(doi.disputeGameType.selector, disputeGameType);
@@ -116,12 +119,17 @@ contract OPContractsManager_InternalMethods_Test is Test {
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
+        OPContractsManager.Blueprints memory emptyBlueprints;
+        OPContractsManager.Implementations memory emptyImpls;
         vm.etch(address(superchainConfigProxy), hex"01");
         vm.etch(address(protocolVersionsProxy), hex"01");
 
         opcmHarness = new OPContractsManager_Harness({
             _superchainConfig: superchainConfigProxy,
-            _protocolVersions: protocolVersionsProxy
+            _protocolVersions: protocolVersionsProxy,
+            _l1ContractsRelease: "dev",
+            _blueprints: emptyBlueprints,
+            _implementations: emptyImpls
         });
     }
 

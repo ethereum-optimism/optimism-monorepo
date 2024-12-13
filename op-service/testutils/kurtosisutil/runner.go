@@ -17,18 +17,9 @@ func StartEnclave(t *testing.T, ctx context.Context, lgr log.Logger, pkg string,
 	kurtosisCtx, err := kurtosis_context.NewKurtosisContextFromLocalEngine()
 	require.NoError(t, err)
 
-	enclaveID := fmt.Sprintf("kurtosis-%s", t.Name())
+	enclaveID := fmt.Sprintf("kurtosis-%s-%d", t.Name(), time.Now().UnixNano())
 	enclaveCtx, err := kurtosisCtx.CreateEnclave(ctx, enclaveID)
 	require.NoError(t, err)
-
-	t.Cleanup(func() {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-		defer cancel()
-		err = kurtosisCtx.DestroyEnclave(ctx, enclaveID)
-		if err != nil {
-			lgr.Error("Error destroying enclave", "err", err)
-		}
-	})
 
 	stream, _, err := enclaveCtx.RunStarlarkRemotePackage(
 		ctx,
@@ -38,6 +29,17 @@ func StartEnclave(t *testing.T, ctx context.Context, lgr log.Logger, pkg string,
 		},
 	)
 	require.NoError(t, err)
+
+	t.Cleanup(func() {
+		cancelCtx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+		defer cancel()
+		err = kurtosisCtx.DestroyEnclave(cancelCtx, enclaveID)
+		if err != nil {
+			lgr.Error("Error destroying enclave", "err", err, "id", enclaveID)
+			return
+		}
+		lgr.Info("Enclave destroyed", "enclave", enclaveID)
+	})
 
 	logKurtosisOutput := func(msg string) {
 		lgr.Info(fmt.Sprintf("[KURTOSIS] %s", msg))

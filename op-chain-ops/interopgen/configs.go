@@ -31,10 +31,11 @@ type SuperFaultProofConfig struct {
 	ChallengePeriodSeconds          *big.Int
 	ProofMaturityDelaySeconds       *big.Int
 	DisputeGameFinalityDelaySeconds *big.Int
+	MipsVersion                     *big.Int
 }
 
 type OPCMImplementationsConfig struct {
-	Release string
+	L1ContractsRelease string
 
 	FaultProof SuperFaultProofConfig
 

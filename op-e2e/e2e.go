@@ -52,6 +52,13 @@ func UsesCannon(t e2eutils.TestingBase) {
 	}
 }
 
+// IsSlow indicates that the test is too expensive to run on the main CI workflow
+func IsSlow(t e2eutils.TestingBase) {
+	if os.Getenv("OP_E2E_SKIP_SLOW_TEST") == "true" {
+		t.Skip("Skipping slow test")
+	}
+}
+
 type executorInfo struct {
 	total      uint64
 	idx        uint64

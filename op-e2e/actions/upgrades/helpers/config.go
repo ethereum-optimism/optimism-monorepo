@@ -16,12 +16,31 @@ func ApplyDeltaTimeOffset(dp *e2eutils.DeployParams, deltaTimeOffset *hexutil.Ui
 			dp.DeployConfig.L2GenesisEcotoneTimeOffset = deltaTimeOffset
 		}
 	}
+
 	// configure Fjord to not be before Delta accidentally
 	if dp.DeployConfig.L2GenesisFjordTimeOffset != nil {
 		if deltaTimeOffset == nil {
 			dp.DeployConfig.L2GenesisFjordTimeOffset = nil
 		} else if *dp.DeployConfig.L2GenesisFjordTimeOffset < *deltaTimeOffset {
 			dp.DeployConfig.L2GenesisFjordTimeOffset = deltaTimeOffset
+		}
+	}
+
+	// configure Granite to not be before Delta accidentally
+	if dp.DeployConfig.L2GenesisGraniteTimeOffset != nil {
+		if deltaTimeOffset == nil {
+			dp.DeployConfig.L2GenesisGraniteTimeOffset = nil
+		} else if *dp.DeployConfig.L2GenesisGraniteTimeOffset < *deltaTimeOffset {
+			dp.DeployConfig.L2GenesisGraniteTimeOffset = deltaTimeOffset
+		}
+	}
+
+	// configure Holocene to not be before Delta accidentally
+	if dp.DeployConfig.L2GenesisHoloceneTimeOffset != nil {
+		if deltaTimeOffset == nil {
+			dp.DeployConfig.L2GenesisHoloceneTimeOffset = nil
+		} else if *dp.DeployConfig.L2GenesisHoloceneTimeOffset < *deltaTimeOffset {
+			dp.DeployConfig.L2GenesisHoloceneTimeOffset = deltaTimeOffset
 		}
 	}
 }

@@ -3,14 +3,13 @@ pragma solidity 0.8.15;
 
 import { StdUtils } from "forge-std/StdUtils.sol";
 import { Vm } from "forge-std/Vm.sol";
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
-import { IL1CrossDomainMessenger } from "src/L1/interfaces/IL1CrossDomainMessenger.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
-import { Bridge_Initializer } from "test/setup/Bridge_Initializer.sol";
 
 contract RelayActor is StdUtils {
     // Storage slot of the l2Sender
@@ -88,7 +87,7 @@ contract RelayActor is StdUtils {
     }
 }
 
-contract XDM_MinGasLimits is Bridge_Initializer {
+contract XDM_MinGasLimits is CommonTest {
     RelayActor actor;
 
     function init(bool doFail) public virtual {

@@ -60,7 +60,7 @@ func StartFaultDisputeSystem(t *testing.T, opts ...faultDisputeConfigOpts) (*e2e
 	cfg := e2esys.DefaultSystemConfig(t)
 	delete(cfg.Nodes, "verifier")
 	cfg.Nodes["sequencer"].SafeDBPath = t.TempDir()
-	cfg.DeployConfig.SequencerWindowSize = 4
+	cfg.DeployConfig.SequencerWindowSize = 30
 	cfg.DeployConfig.FinalizationPeriodSeconds = 2
 	cfg.SupportL1TimeTravel = true
 	// Disable proposer creating fast games automatically - required games are manually created

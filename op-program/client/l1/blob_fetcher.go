@@ -16,7 +16,7 @@ type BlobFetcher struct {
 	oracle Oracle
 }
 
-var _ = (*derive.L1BlobsFetcher)(nil)
+var _ derive.L1BlobsFetcher = (*BlobFetcher)(nil)
 
 func NewBlobFetcher(logger log.Logger, oracle Oracle) *BlobFetcher {
 	return &BlobFetcher{

@@ -233,6 +233,17 @@ func (c *CheatCodesPrecompile) ParseTomlAddress_65e7c844(tomlStr string, key str
 	panic("should never get here")
 }
 
+func (c *CheatCodesPrecompile) ComputeCreate2Address_890c283b(salt, codeHash [32]byte) (common.Address, error) {
+	data := make([]byte, 1+20+32+32)
+	data[0] = 0xff
+	copy(data[1:], DeterministicDeployerAddress.Bytes())
+	copy(data[1+20:], salt[:])
+	copy(data[1+20+32:], codeHash[:])
+	finalHash := crypto.Keccak256(data)
+	// Take the last 20 bytes of the hash to get the address
+	return common.BytesToAddress(finalHash[12:]), nil
+}
+
 // unsupported
 //func (c *CheatCodesPrecompile) CreateWallet() {}
 

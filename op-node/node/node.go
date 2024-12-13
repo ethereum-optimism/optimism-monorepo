@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	gosync "sync"
 	"sync/atomic"
 	"time"
 
@@ -23,6 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/conductor"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sequencing"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -60,6 +62,7 @@ type OpNode struct {
 	l2Source  *sources.EngineClient // L2 Execution Engine RPC bindings
 	server    *rpcServer            // RPC server hosting the rollup-node API
 	p2pNode   *p2p.NodeP2P          // P2P node functionality
+	p2pMu     gosync.Mutex          // protects p2pNode
 	p2pSigner p2p.Signer            // p2p gossip application messages will be signed with this signer
 	tracer    Tracer                // tracer to get events for testing/debugging
 	runCfg    *RuntimeConfig        // runtime configurables
@@ -73,7 +76,8 @@ type OpNode struct {
 
 	beacon *sources.L1BeaconClient
 
-	supervisor *sources.SupervisorClient
+	supervisor       *sources.SupervisorClient
+	tmpInteropServer *interop.TemporaryInteropServer
 
 	// some resources cannot be stopped directly, like the p2p gossipsub router (not our design),
 	// and depend on this ctx to be closed.
@@ -396,11 +400,12 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.Rollup.InteropTime != nil {
-		cl, err := cfg.Supervisor.SupervisorClient(ctx, n.log)
+		cl, srv, err := cfg.InteropConfig.TemporarySetup(ctx, n.log, n.l2Source)
 		if err != nil {
-			return fmt.Errorf("failed to setup supervisor RPC client: %w", err)
+			return fmt.Errorf("failed to setup interop: %w", err)
 		}
 		n.supervisor = cl
+		n.tmpInteropServer = srv
 	}
 
 	var sequencerConductor conductor.SequencerConductor = &conductor.NoOpConductor{}
@@ -434,8 +439,9 @@ func (n *OpNode) initRPCServer(cfg *Config) error {
 	if err != nil {
 		return err
 	}
-	if n.p2pEnabled() {
-		server.EnableP2P(p2p.NewP2PAPIBackend(n.p2pNode, n.log, n.metrics))
+
+	if p2pNode := n.getP2PNodeIfEnabled(); p2pNode != nil {
+		server.EnableP2P(p2p.NewP2PAPIBackend(p2pNode, n.log, n.metrics))
 	}
 	if cfg.RPC.EnableAdmin {
 		server.EnableAdminAPI(NewAdminAPI(n.l2Driver, n.metrics, n.log))
@@ -445,6 +451,7 @@ func (n *OpNode) initRPCServer(cfg *Config) error {
 	if err := server.Start(); err != nil {
 		return fmt.Errorf("unable to start RPC server: %w", err)
 	}
+	n.log.Info("Started JSON-RPC server", "addr", server.Addr())
 	n.server = server
 	return nil
 }
@@ -486,6 +493,8 @@ func (n *OpNode) p2pEnabled() bool {
 }
 
 func (n *OpNode) initP2P(cfg *Config) (err error) {
+	n.p2pMu.Lock()
+	defer n.p2pMu.Unlock()
 	if n.p2pNode != nil {
 		panic("p2p node already initialized")
 	}
@@ -579,13 +588,13 @@ func (n *OpNode) PublishL2Payload(ctx context.Context, envelope *eth.ExecutionPa
 	n.tracer.OnPublishL2Payload(ctx, envelope)
 
 	// publish to p2p, if we are running p2p at all
-	if n.p2pEnabled() {
+	if p2pNode := n.getP2PNodeIfEnabled(); p2pNode != nil {
 		payload := envelope.ExecutionPayload
 		if n.p2pSigner == nil {
 			return fmt.Errorf("node has no p2p signer, payload %s cannot be published", payload.ID())
 		}
 		n.log.Info("Publishing signed execution payload on p2p", "id", payload.ID())
-		return n.p2pNode.GossipOut().PublishL2Payload(ctx, envelope, n.p2pSigner)
+		return p2pNode.GossipOut().PublishL2Payload(ctx, envelope, n.p2pSigner)
 	}
 	// if p2p is not enabled then we just don't publish the payload
 	return nil
@@ -593,7 +602,7 @@ func (n *OpNode) PublishL2Payload(ctx context.Context, envelope *eth.ExecutionPa
 
 func (n *OpNode) OnUnsafeL2Payload(ctx context.Context, from peer.ID, envelope *eth.ExecutionPayloadEnvelope) error {
 	// ignore if it's from ourselves
-	if n.p2pEnabled() && from == n.p2pNode.Host().ID() {
+	if p2pNode := n.getP2PNodeIfEnabled(); p2pNode != nil && from == p2pNode.Host().ID() {
 		return nil
 	}
 
@@ -614,7 +623,7 @@ func (n *OpNode) OnUnsafeL2Payload(ctx context.Context, from peer.ID, envelope *
 }
 
 func (n *OpNode) RequestL2Range(ctx context.Context, start, end eth.L2BlockRef) error {
-	if n.p2pEnabled() && n.p2pNode.AltSyncEnabled() {
+	if p2pNode := n.getP2PNodeIfEnabled(); p2pNode != nil && p2pNode.AltSyncEnabled() {
 		if unixTimeStale(start.Time, 12*time.Hour) {
 			n.log.Debug(
 				"ignoring request to sync L2 range, timestamp is too old for p2p",
@@ -623,7 +632,7 @@ func (n *OpNode) RequestL2Range(ctx context.Context, start, end eth.L2BlockRef) 
 				"start_time", start.Time)
 			return nil
 		}
-		return n.p2pNode.RequestL2Range(ctx, start, end)
+		return p2pNode.RequestL2Range(ctx, start, end)
 	}
 	n.log.Debug("ignoring request to sync L2 range, no sync method available", "start", start, "end", end)
 	return nil
@@ -635,7 +644,7 @@ func unixTimeStale(timestamp uint64, duration time.Duration) bool {
 }
 
 func (n *OpNode) P2P() p2p.Node {
-	return n.p2pNode
+	return n.getP2PNodeIfEnabled()
 }
 
 func (n *OpNode) RuntimeConfig() ReadonlyRuntimeConfig {
@@ -670,6 +679,8 @@ func (n *OpNode) Stop(ctx context.Context) error {
 			result = multierror.Append(result, fmt.Errorf("error stopping sequencer: %w", err))
 		}
 	}
+
+	n.p2pMu.Lock()
 	if n.p2pNode != nil {
 		if err := n.p2pNode.Close(); err != nil {
 			result = multierror.Append(result, fmt.Errorf("failed to close p2p node: %w", err))
@@ -677,6 +688,8 @@ func (n *OpNode) Stop(ctx context.Context) error {
 		// Prevent further use of p2p.
 		n.p2pNode = nil
 	}
+	n.p2pMu.Unlock()
+
 	if n.p2pSigner != nil {
 		if err := n.p2pSigner.Close(); err != nil {
 			result = multierror.Append(result, fmt.Errorf("failed to close p2p signer: %w", err))
@@ -707,6 +720,16 @@ func (n *OpNode) Stop(ctx context.Context) error {
 		}
 	}
 
+	// close the interop sub system
+	if n.supervisor != nil {
+		n.supervisor.Close()
+	}
+	if n.tmpInteropServer != nil {
+		if err := n.tmpInteropServer.Close(); err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to close interop RPC server: %w", err))
+		}
+	}
+
 	if n.eventSys != nil {
 		n.eventSys.Stop()
 	}
@@ -725,11 +748,6 @@ func (n *OpNode) Stop(ctx context.Context) error {
 	// close L2 engine RPC client
 	if n.l2Source != nil {
 		n.l2Source.Close()
-	}
-
-	// close the supervisor RPC client
-	if n.supervisor != nil {
-		n.supervisor.Close()
 	}
 
 	// close L1 data source
@@ -776,4 +794,21 @@ func (n *OpNode) HTTPEndpoint() string {
 		return ""
 	}
 	return fmt.Sprintf("http://%s", n.server.Addr().String())
+}
+
+func (n *OpNode) InteropRPC() (rpcEndpoint string, jwtSecret eth.Bytes32) {
+	if n.tmpInteropServer == nil {
+		return "", [32]byte{}
+	}
+	return n.tmpInteropServer.Endpoint(), [32]byte{} // tmp server has no secret
+}
+
+func (n *OpNode) getP2PNodeIfEnabled() *p2p.NodeP2P {
+	if !n.p2pEnabled() {
+		return nil
+	}
+
+	n.p2pMu.Lock()
+	defer n.p2pMu.Unlock()
+	return n.p2pNode
 }

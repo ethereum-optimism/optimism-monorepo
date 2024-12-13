@@ -12,6 +12,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/stretchr/testify/require"
 )
 
@@ -140,45 +141,72 @@ func TestMemory64ReadWrite(t *testing.T) {
 		require.Equal(t, make([]byte, 10), res[len(res)-10:], "empty end")
 	})
 
+	t.Run("empty range", func(t *testing.T) {
+		m := NewMemory()
+		addr := Word(0xAABBCC00)
+		r := bytes.NewReader(nil)
+		pre := m.MerkleRoot()
+		preJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		var preSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&preSerialized))
+
+		require.NoError(t, m.SetMemoryRange(addr, r))
+		v := m.GetWord(0)
+		require.Equal(t, Word(0), v)
+		post := m.MerkleRoot()
+		require.Equal(t, pre, post)
+
+		// Assert that there are no extra zero pages in serialization
+		postJSON, err := m.MarshalJSON()
+		require.NoError(t, err)
+		require.Equal(t, preJSON, postJSON)
+
+		var postSerialized bytes.Buffer
+		require.NoError(t, m.Serialize(&postSerialized))
+		require.Equal(t, preSerialized.Bytes(), postSerialized.Bytes())
+	})
+
+	t.Run("range page overlap", func(t *testing.T) {
+		m := NewMemory()
+		data := bytes.Repeat([]byte{0xAA}, PageAddrSize)
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		for i := 0; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA_AAAAAAAA), m.GetWord(addr))
+		}
+
+		data = []byte{0x11, 0x22, 0x33, 0x44}
+		require.NoError(t, m.SetMemoryRange(0, bytes.NewReader(data)))
+		require.Equal(t, Word(0x11223344_AAAAAAAA), m.GetWord(0))
+		for i := 1; i < PageAddrSize/arch.WordSizeBytes; i++ {
+			addr := Word(i * arch.WordSizeBytes)
+			require.Equal(t, Word(0xAAAAAAAA_AAAAAAAA), m.GetWord(addr))
+		}
+	})
+
 	t.Run("read-write", func(t *testing.T) {
 		m := NewMemory()
 		m.SetWord(16, 0xAABBCCDD_EEFF1122)
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
 		m.SetWord(16, 0xAABB1CDD_EEFF1122)
 		require.Equal(t, Word(0xAABB1CDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
 		m.SetWord(16, 0xAABB1CDD_EEFF1123)
 		require.Equal(t, Word(0xAABB1CDD_EEFF1123), m.GetWord(16))
-		require.Equal(t, uint32(0xAABB1CDD), m.GetUint32(16))
-		require.Equal(t, uint32(0xEEFF1123), m.GetUint32(20))
 	})
 
 	t.Run("unaligned read", func(t *testing.T) {
 		m := NewMemory()
-		m.SetWord(16, 0xAABBCCDD_EEFF1122)
+		m.SetWord(16, Word(0xAABBCCDD_EEFF1122))
 		m.SetWord(24, 0x11223344_55667788)
 		for i := Word(17); i < 24; i++ {
 			require.Panics(t, func() {
 				m.GetWord(i)
 			})
-			if i != 20 {
-				require.Panics(t, func() {
-					m.GetUint32(i)
-				})
-			}
 		}
 		require.Equal(t, Word(0x11223344_55667788), m.GetWord(24))
-		require.Equal(t, uint32(0x11223344), m.GetUint32(24))
 		require.Equal(t, Word(0), m.GetWord(32))
-		require.Equal(t, uint32(0), m.GetUint32(32))
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
-
-		require.Equal(t, uint32(0xEEFF1122), m.GetUint32(20))
-		require.Equal(t, uint32(0x55667788), m.GetUint32(28))
 	})
 
 	t.Run("unaligned write", func(t *testing.T) {
@@ -206,7 +234,6 @@ func TestMemory64ReadWrite(t *testing.T) {
 			m.SetWord(23, 0x11223344)
 		})
 		require.Equal(t, Word(0xAABBCCDD_EEFF1122), m.GetWord(16))
-		require.Equal(t, uint32(0xAABBCCDD), m.GetUint32(16))
 	})
 }
 
@@ -218,7 +245,6 @@ func TestMemory64JSON(t *testing.T) {
 	var res Memory
 	require.NoError(t, json.Unmarshal(dat, &res))
 	require.Equal(t, Word(0xAABBCCDD_EEFF1122), res.GetWord(8))
-	require.Equal(t, uint32(0xAABBCCDD), res.GetUint32(8))
 }
 
 func TestMemory64Copy(t *testing.T) {
@@ -226,6 +252,5 @@ func TestMemory64Copy(t *testing.T) {
 	m.SetWord(0xAABBCCDD_8000, 0x000000_AABB)
 	mcpy := m.Copy()
 	require.Equal(t, Word(0xAABB), mcpy.GetWord(0xAABBCCDD_8000))
-	require.Equal(t, uint32(0), mcpy.GetUint32(0xAABBCCDD_8000))
 	require.Equal(t, m.MerkleRoot(), mcpy.MerkleRoot())
 }

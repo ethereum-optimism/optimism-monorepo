@@ -21,7 +21,7 @@ func RandomThread(randSeed int64) *multithreaded.ThreadState {
 	return thread
 }
 
-func InitializeSingleThread(randSeed int, state *multithreaded.State, traverseRight bool) {
+func InitializeSingleThread(randSeed int, state *multithreaded.State, traverseRight bool, opts ...testutil.StateOption) {
 	singleThread := RandomThread(int64(randSeed))
 
 	state.NextThreadId = singleThread.ThreadId + 1
@@ -32,6 +32,11 @@ func InitializeSingleThread(randSeed int, state *multithreaded.State, traverseRi
 	} else {
 		state.RightThreadStack = []*multithreaded.ThreadState{}
 		state.LeftThreadStack = []*multithreaded.ThreadState{singleThread}
+	}
+
+	mutator := NewStateMutatorMultiThreaded(state)
+	for _, opt := range opts {
+		opt(mutator)
 	}
 }
 

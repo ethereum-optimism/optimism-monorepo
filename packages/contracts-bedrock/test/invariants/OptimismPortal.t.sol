@@ -4,9 +4,9 @@ pragma solidity 0.8.15;
 import { StdUtils } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 
-import { IOptimismPortal } from "src/L1/interfaces/IOptimismPortal.sol";
+import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
-import { IResourceMetering } from "src/L1/interfaces/IResourceMetering.sol";
+import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 import { CommonTest } from "test/setup/CommonTest.sol";
@@ -88,6 +88,7 @@ contract OptimismPortal_Invariant_Harness is CommonTest {
     Types.OutputRootProof internal _outputRootProof;
 
     function setUp() public virtual override {
+        super.enableLegacyContracts();
         super.setUp();
 
         _defaultTx = Types.WithdrawalTransaction({

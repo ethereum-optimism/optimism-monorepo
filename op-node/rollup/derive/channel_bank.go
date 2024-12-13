@@ -40,13 +40,13 @@ type ChannelBank struct {
 	prev NextFrameProvider
 }
 
-var _ ResettableStage = (*ChannelBank)(nil)
+var _ RawChannelProvider = (*ChannelBank)(nil)
 
 // NewChannelBank creates a ChannelBank, which should be Reset(origin) before use.
-func NewChannelBank(log log.Logger, cfg *rollup.Config, prev NextFrameProvider, m Metrics) *ChannelBank {
+func NewChannelBank(log log.Logger, spec *rollup.ChainSpec, prev NextFrameProvider, m Metrics) *ChannelBank {
 	return &ChannelBank{
 		log:          log,
-		spec:         rollup.NewChainSpec(cfg),
+		spec:         spec,
 		metrics:      m,
 		channels:     make(map[ChannelID]*Channel),
 		channelQueue: make([]ChannelID, 0, 10),
@@ -89,7 +89,7 @@ func (cb *ChannelBank) IngestFrame(f Frame) {
 			cb.metrics.RecordHeadChannelOpened()
 		}
 		// create new channel if it doesn't exist yet
-		currentCh = NewChannel(f.ID, origin)
+		currentCh = NewChannel(f.ID, origin, false)
 		cb.channels[f.ID] = currentCh
 		cb.channelQueue = append(cb.channelQueue, f.ID)
 		log.Info("created new channel")
@@ -170,12 +170,12 @@ func (cb *ChannelBank) tryReadChannelAtIndex(i int) (data []byte, err error) {
 	return data, nil
 }
 
-// NextData pulls the next piece of data from the channel bank.
+// NextRawChannel pulls the next piece of data from the channel bank.
 // Note that it attempts to pull data out of the channel bank prior to
 // loading data in (unlike most other stages). This is to ensure maintain
 // consistency around channel bank pruning which depends upon the order
 // of operations.
-func (cb *ChannelBank) NextData(ctx context.Context) ([]byte, error) {
+func (cb *ChannelBank) NextRawChannel(ctx context.Context) ([]byte, error) {
 	// Do the read from the channel bank first
 	data, err := cb.Read()
 	if err == io.EOF {
@@ -201,6 +201,12 @@ func (cb *ChannelBank) Reset(ctx context.Context, base eth.L1BlockRef, _ eth.Sys
 	cb.channels = make(map[ChannelID]*Channel)
 	cb.channelQueue = make([]ChannelID, 0, 10)
 	return io.EOF
+}
+
+func (bq *ChannelBank) FlushChannel() {
+	// We need to implement the ChannelFlusher interface with the ChannelBank but it's never called
+	// of which the ChannelMux takes care.
+	panic("ChannelBank: invalid FlushChannel call")
 }
 
 type L1BlockRefByHashFetcher interface {

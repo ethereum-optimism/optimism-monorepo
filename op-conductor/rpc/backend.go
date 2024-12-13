@@ -2,7 +2,6 @@ package rpc
 
 import (
 	"context"
-	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/log"
 
@@ -11,6 +10,8 @@ import (
 )
 
 type conductor interface {
+	OverrideLeader(override bool)
+	LeaderOverridden() bool
 	Pause(ctx context.Context) error
 	Resume(ctx context.Context) error
 	Stop(ctx context.Context) error
@@ -32,9 +33,8 @@ type conductor interface {
 // APIBackend is the backend implementation of the API.
 // TODO: (https://github.com/ethereum-optimism/protocol-quest/issues/45) Add metrics tracer here.
 type APIBackend struct {
-	log            log.Logger
-	con            conductor
-	leaderOverride atomic.Bool
+	log log.Logger
+	con conductor
 }
 
 // NewAPIBackend creates a new APIBackend instance.
@@ -48,9 +48,14 @@ func NewAPIBackend(log log.Logger, con conductor) *APIBackend {
 var _ API = (*APIBackend)(nil)
 
 // OverrideLeader implements API.
-func (api *APIBackend) OverrideLeader(ctx context.Context) error {
-	api.leaderOverride.Store(true)
+func (api *APIBackend) OverrideLeader(_ context.Context, override bool) error {
+	api.con.OverrideLeader(override)
 	return nil
+}
+
+// LeaderOverridden implements API.
+func (api *APIBackend) LeaderOverridden(_ context.Context) (bool, error) {
+	return api.con.LeaderOverridden(), nil
 }
 
 // Paused implements API.
@@ -90,19 +95,11 @@ func (api *APIBackend) CommitUnsafePayload(ctx context.Context, payload *eth.Exe
 
 // Leader implements API, returns true if current conductor is leader of the cluster.
 func (api *APIBackend) Leader(ctx context.Context) (bool, error) {
-	return api.leaderOverride.Load() || api.con.Leader(ctx), nil
+	return api.con.Leader(ctx), nil
 }
 
 // LeaderWithID implements API, returns the leader's server ID and address (not necessarily the current conductor).
 func (api *APIBackend) LeaderWithID(ctx context.Context) (*consensus.ServerInfo, error) {
-	if api.leaderOverride.Load() {
-		return &consensus.ServerInfo{
-			ID:       "N/A (Leader overridden)",
-			Addr:     "N/A",
-			Suffrage: 0,
-		}, nil
-	}
-
 	return api.con.LeaderWithID(ctx), nil
 }
 
