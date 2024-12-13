@@ -10,6 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
+import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 
 // =============================================================
 //                        MOCK CONTRACTS
@@ -1360,10 +1361,17 @@ function testAttestationExpirationScenarios(
     ///      - Second to recipient2: 0.1 ETH
     ///      - Third to zero address: 0.2 ETH
     ///      Uses a payable resolver and verifies correct attester and schema assignment
-    function testMultiAttestationComprehensive() public {
+    function testMultiAttestationComprehensive(
+        address _recipient,
+        address _recipient2,
+        bool _like,
+        uint256 _score
+    ) public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
+        bytes32 schemaId2 = _getSchemaUID(schema2, address(payableResolver), true);
+        vm.assume(_like == true);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
@@ -1371,142 +1379,172 @@ function testAttestationExpirationScenarios(
 
         // Test with multiple recipients and varying data
         address[] memory recipients = new address[](3);
-        recipients[0] = recipient;
-        recipients[1] = recipient2;
-        recipients[2] = address(0);
+        recipients[0] = _recipient;
+        recipients[1] = _recipient2;
+        recipients[2] = address(0); // Testing with zero address as well
 
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](1);
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](3);
+        // Create a multi-attestation request array
+        MultiAttestationRequest[] memory requests = new MultiAttestationRequest[](recipients.length * 2); // 2 requests per recipient
 
         for (uint i = 0; i < recipients.length; i++) {
-            requests[0].data[i] = AttestationRequestData({
+            emit log_named_string("Like Value", _like ? "true" : "false");
+            emit log_named_uint("Score Value", _score);
+
+            // Create attestation for the "like" schema
+            requests[i * 2] = MultiAttestationRequest({
+                schema: schemaId,
+                data: new AttestationRequestData[](1) // One data entry for "like"
+            });
+            requests[i * 2].data[0] = AttestationRequestData({
                 recipient: recipients[i],
-                expirationTime: 0,
+                expirationTime: 0, // Set expiration time as needed
                 revocable: true,
                 refUID: bytes32(0),
-                data: abi.encodePacked(true),
-                value: i * 0.1 ether
+                data: abi.encode(_like), // Encode the like value
+                value: 0.1 ether // Ensure value is non-zero
+            });
+
+            // Create attestation for the "score" schema
+            requests[i * 2 + 1] = MultiAttestationRequest({
+                schema: schemaId2,
+                data: new AttestationRequestData[](1) // One data entry for "score"
+            });
+            requests[i * 2 + 1].data[0] = AttestationRequestData({
+                recipient: recipients[i],
+                expirationTime: 0, // Set expiration time as needed
+                revocable: true,
+                refUID: bytes32(0),
+                data: abi.encode(_score), // Encode the score value
+                value: 0.1 ether // Ensure value is non-zero
             });
         }
 
-        vm.deal(sender, 1 ether);
-        bytes32[] memory uids = eas.multiAttest{ value: 0.3 ether }(requests);
-        assertEq(uids.length, 3);
+        // Calculate total value required for the transaction
+        uint256 totalValue = 0.2 ether * recipients.length; // 0.2 ether for each recipient (0.1 ether for like + 0.1 ether for score)
+        vm.deal(sender, totalValue); // Ensure sender has enough Ether
+        bytes32[] memory uids = eas.multiAttest{ value: totalValue }(requests);
+        assertEq(uids.length, 6); // Expecting 2 attestations per recipient
 
         // Verify all attestations
         for (uint i = 0; i < uids.length; i++) {
             Attestation memory attestation = eas.getAttestation(uids[i]);
+
             assertEq(attestation.attester, sender);
-            assertEq(attestation.schema, schemaId);
-        }
-
-        vm.stopPrank();
-    }
-
-    /// @dev Tests batch processing validation for multi-attestations.
-    ///      1. Setup:
-    ///         - Registers basic boolean schema
-    ///      2. Empty Batch Test:
-    ///         - Creates multi-attestation request
-    ///         - Sets empty inner attestation data array
-    ///      3. Verification:
-    ///         - Attempts multi-attestation with empty batch
-    ///         - Confirms revert with InvalidLength
-    ///      Ensures system properly validates batch sizes,
-    ///      preventing processing of empty attestation batches
-    function testBatchProcessingLimits() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Test with empty inner batch - this is the actual check in the contract
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](1);
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](0);
-
-        vm.expectRevert(InvalidLength.selector);
-        eas.multiAttest(requests);
-
-        vm.stopPrank();
-    }
-
-    /// @dev Tests complex multi-attestation scenarios across different schemas.
-    ///      Creates a batch of attestations that includes:
-    ///      1. Two attestations for first schema:
-    ///         - To recipient with 30 day expiration
-    ///         - To recipient2 with 60 day expiration
-    ///      2. One attestation for second schema:
-    ///         - To recipient with 90 day expiration
-    ///      Verifies correct schema assignment and attester for all attestations
-    function testComplexMultiAttestationScenarios() public {
-        string memory schema = "bool like";
-        string memory schema2 = "uint256 score";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-        schemaRegistry.register(schema2, ISchemaResolver(address(0)), true);
-
-        // Test with multiple schemas in single transaction
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](2);
-
-        // First schema batch
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](2);
-        requests[0].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: 0
-        });
-        requests[0].data[1] = AttestationRequestData({
-            recipient: recipient2,
-            expirationTime: uint64(block.timestamp + 60 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"5678",
-            value: 0
-        });
-
-        // Second schema batch
-        requests[1].schema = _getSchemaUID(schema2, address(0), true);
-        requests[1].data = new AttestationRequestData[](1);
-        requests[1].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 90 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"9012",
-            value: 0
-        });
-
-        bytes32[] memory uids = eas.multiAttest(requests);
-        assertEq(uids.length, 3);
-
-        // Verify all attestations
-        for (uint i = 0; i < uids.length; i++) {
-            Attestation memory attestation = eas.getAttestation(uids[i]);
-            assertEq(attestation.attester, sender);
-            if (i < 2) {
+            if (i % 2 == 0) {
                 assertEq(attestation.schema, schemaId);
+                (bool like) = abi.decode(attestation.data, (bool));
+                assertEq(like, _like);
             } else {
-                assertEq(
-                    attestation.schema,
-                    _getSchemaUID(schema2, address(0), true)
-                );
+                assertEq(attestation.schema, schemaId2);
+                (uint256 score) = abi.decode(attestation.data, (uint256));
+                assertEq(score, _score);
             }
         }
 
         vm.stopPrank();
     }
+        /// @dev Tests batch processing validation for multi-attestations.
+        ///      1. Setup:
+        ///         - Registers basic boolean schema
+        ///      2. Empty Batch Test:
+        ///         - Creates multi-attestation request
+        ///         - Sets empty inner attestation data array
+        ///      3. Verification:
+        ///         - Attempts multi-attestation with empty batch
+        ///         - Confirms revert with InvalidLength
+        ///      Ensures system properly validates batch sizes,
+        ///      preventing processing of empty attestation batches
+        function testBatchProcessingLimits() public {
+            string memory schema = "bool like";
+            bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+
+            vm.startPrank(sender);
+            schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+
+            // Test with empty inner batch - this is the actual check in the contract
+            MultiAttestationRequest[]
+                memory requests = new MultiAttestationRequest[](1);
+            requests[0].schema = schemaId;
+            requests[0].data = new AttestationRequestData[](0);
+
+            vm.expectRevert(InvalidLength.selector);
+            eas.multiAttest(requests);
+
+            vm.stopPrank();
+        }
+
+        /// @dev Tests complex multi-attestation scenarios across different schemas.
+        ///      Creates a batch of attestations that includes:
+        ///      1. Two attestations for first schema:
+        ///         - To recipient with 30 day expiration
+        ///         - To recipient2 with 60 day expiration
+        ///      2. One attestation for second schema:
+        ///         - To recipient with 90 day expiration
+        ///      Verifies correct schema assignment and attester for all attestations
+        function testComplexMultiAttestationScenarios() public {
+            string memory schema = "bool like";
+            string memory schema2 = "uint256 score";
+            bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+
+            vm.startPrank(sender);
+            schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+            schemaRegistry.register(schema2, ISchemaResolver(address(0)), true);
+
+            // Test with multiple schemas in single transaction
+            MultiAttestationRequest[]
+                memory requests = new MultiAttestationRequest[](2);
+
+            // First schema batch
+            requests[0].schema = schemaId;
+            requests[0].data = new AttestationRequestData[](2);
+            requests[0].data[0] = AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"1234",
+                value: 0
+            });
+            requests[0].data[1] = AttestationRequestData({
+                recipient: recipient2,
+                expirationTime: uint64(block.timestamp + 60 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"5678",
+                value: 0
+            });
+
+            // Second schema batch
+            requests[1].schema = _getSchemaUID(schema2, address(0), true);
+            requests[1].data = new AttestationRequestData[](1);
+            requests[1].data[0] = AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 90 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"9012",
+                value: 0
+            });
+
+            bytes32[] memory uids = eas.multiAttest(requests);
+            assertEq(uids.length, 3);
+
+            // Verify all attestations
+            for (uint i = 0; i < uids.length; i++) {
+                Attestation memory attestation = eas.getAttestation(uids[i]);
+                assertEq(attestation.attester, sender);
+                if (i < 2) {
+                    assertEq(attestation.schema, schemaId);
+                } else {
+                    assertEq(
+                        attestation.schema,
+                        _getSchemaUID(schema2, address(0), true)
+                    );
+                }
+            }
+
+            vm.stopPrank();
+        }
 
     /// @dev Tests all error conditions for multi-attestation requests:
     ///      1. Empty requests array (returns empty array, no revert)
