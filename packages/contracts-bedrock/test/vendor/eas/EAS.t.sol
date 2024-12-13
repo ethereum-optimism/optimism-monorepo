@@ -1678,16 +1678,20 @@ function testAttestationExpirationScenarios(
     ///      2. Revokes the attestation using its UID
     ///      3. Verifies the revocation by checking that revocationTime
     ///         is set to a non-zero value in the attestation data
-    function testRevokeAttestation(uint64 _expirationOffset) public {
+    function testRevokeAttestation(address _userAddress, string memory _userName, bool _isActive, uint64 _expirationOffset) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
-        string memory schema = "bool like";
+        string memory schema = "address userAddress, string userName, bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         uint64 expirationTime = uint64(block.timestamp + _expirationOffset);
-        bytes memory data = hex"1234";
+        bytes memory data = abi.encode(
+            _userAddress,
+            _userName,
+            _isActive 
+        );
 
         bytes32 uid = eas.attest(
             AttestationRequest({
@@ -1720,15 +1724,20 @@ function testAttestationExpirationScenarios(
     ///      2. Attempts to revoke it from sender2 address
     ///      3. Verifies the revocation fails with AccessDenied error
     ///      Ensures attestation revocation permissions are properly enforced
-    function testCannotRevokeOthersAttestation() public {
-        string memory schema = "bool like";
+    function testCannotRevokeOthersAttestation(address _userAddress, string memory _userName, bool _isActive, uint64 _expirationOffset) public {
+        vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
+         string memory schema = "address userAddress, string userName, bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
-        uint64 expirationTime = uint64(block.timestamp + 30 days);
-        bytes memory data = hex"1234";
+        uint64 expirationTime = uint64(block.timestamp + _expirationOffset);
+        bytes memory data = abi.encode(
+            _userAddress,
+            _userName,
+            _isActive 
+        );
 
         vm.prank(sender);
         bytes32 uid = eas.attest(
@@ -1760,15 +1769,15 @@ function testAttestationExpirationScenarios(
     ///      2. Attempts to revoke using a fabricated UID (1)
     ///      3. Verifies the revocation fails with NotFound error
     ///      Ensures system properly handles revocation requests for non-existent UIDs
-    function testCannotRevokeNonExistentAttestation() public {
+    function testCannotRevokeNonExistentAttestation(bytes32 _nonExistentUid) public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
-        bytes32 nonExistentUid = bytes32(uint256(1));
-
+        bytes32 nonExistentUid = _nonExistentUid;
+        
         vm.prank(sender);
         vm.expectRevert(NotFound.selector);
         eas.revoke(
