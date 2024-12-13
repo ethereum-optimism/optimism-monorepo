@@ -37,10 +37,10 @@ func main() {
 			Action: deployer.InitCLI(),
 		},
 		{
-			Name:   "apply",
-			Usage:  "applies a chain intent to the chain",
+			Name:   "deploy",
+			Usage:  "deploys a chain intent to the chain",
 			Flags:  cliapp.ProtectFlags(deployer.ApplyFlags),
-			Action: deployer.ApplyCLI(),
+			Action: deployer.DeployCLI(),
 		},
 		{
 			Name:        "bootstrap",
