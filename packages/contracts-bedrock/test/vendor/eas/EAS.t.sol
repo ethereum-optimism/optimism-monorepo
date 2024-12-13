@@ -1674,18 +1674,19 @@ function testAttestationExpirationScenarios(
     //                     REVOCATION TESTS
     // =============================================================
     /// @dev Tests the attestation revocation process.
-    ///      1. Creates a revocable attestation with 30-day expiration
+    ///      1. Creates a revocable attestation with a fuzz expiration time
     ///      2. Revokes the attestation using its UID
     ///      3. Verifies the revocation by checking that revocationTime
     ///         is set to a non-zero value in the attestation data
-    function testRevokeAttestation() public {
+    function testRevokeAttestation(uint64 _expirationOffset) public {
+        vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
-        uint64 expirationTime = uint64(block.timestamp + 30 days);
+        uint64 expirationTime = uint64(block.timestamp + _expirationOffset);
         bytes memory data = hex"1234";
 
         bytes32 uid = eas.attest(
