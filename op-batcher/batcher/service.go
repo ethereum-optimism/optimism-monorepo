@@ -49,6 +49,9 @@ type BatcherConfig struct {
 	ThrottleThreshold, ThrottleTxSize          uint64
 	ThrottleBlockSize, ThrottleAlwaysBlockSize uint64
 	ThrottleInterval                           time.Duration
+
+	L1BlockTime         uint64
+	RecoverSafetyMargin uint64
 }
 
 // BatcherService represents a full batch-submitter instance and its resources,
@@ -112,6 +115,9 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
 	bs.ThrottleInterval = cfg.ThrottleInterval
+
+	bs.L1BlockTime = cfg.L1BlockTime
+	bs.RecoverSafetyMargin = cfg.RecoverSafetyMargin
 
 	if err := bs.initRPCClients(ctx, cfg); err != nil {
 		return err

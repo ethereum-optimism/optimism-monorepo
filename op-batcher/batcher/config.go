@@ -113,6 +113,9 @@ type CLIConfig struct {
 	// Should only be used for testing purposes.
 	TestUseMaxTxSizeForBlobs bool
 
+	L1BlockTime         uint64
+	RecoverSafetyMargin uint64
+
 	TxMgrConfig   txmgr.CLIConfig
 	LogConfig     oplog.CLIConfig
 	MetricsConfig opmetrics.CLIConfig
@@ -213,5 +216,7 @@ func NewConfig(ctx *cli.Context) *CLIConfig {
 		ThrottleTxSize:               ctx.Uint64(flags.ThrottleTxSizeFlag.Name),
 		ThrottleBlockSize:            ctx.Uint64(flags.ThrottleBlockSizeFlag.Name),
 		ThrottleAlwaysBlockSize:      ctx.Uint64(flags.ThrottleAlwaysBlockSizeFlag.Name),
+		L1BlockTime:                  ctx.Uint64(flags.L1BlockTimeFlag.Name),
+		RecoverSafetyMargin:          ctx.Uint64(flags.RecoverSafetyMarginFlag.Name),
 	}
 }
