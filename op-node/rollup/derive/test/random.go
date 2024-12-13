@@ -17,7 +17,7 @@ import (
 // L1 Info Deposit transaction.
 func RandomL2Block(rng *rand.Rand, txCount int, t time.Time) (*types.Block, []*types.Receipt) {
 	body := types.Body{}
-	l1Block := types.NewBlock(testutils.RandomHeader(rng), &body, nil, trie.NewStackTrie(nil))
+	l1Block := types.NewBlock(testutils.RandomHeader(rng), &body, nil, trie.NewStackTrie(nil), types.DefaultBlockConfig)
 	rollupCfg := rollup.Config{}
 	if testutils.RandomBool(rng) {
 		t := uint64(0)
