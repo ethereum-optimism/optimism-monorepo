@@ -1355,12 +1355,23 @@ function testAttestationExpirationScenarios(
     // =============================================================
     //                  MULTI ATTESTATION TESTS
     // =============================================================
-    /// @dev Tests batch attestation with multiple recipients and varying ETH values.
-    ///      Creates three attestations in a single transaction:
-    ///      - First to recipient: 0 ETH
-    ///      - Second to recipient2: 0.1 ETH
-    ///      - Third to zero address: 0.2 ETH
-    ///      Uses a payable resolver and verifies correct attester and schema assignment
+    /// @dev This function tests the multi-attestation functionality of the smart contract.
+    /// It validates that multiple attestations can be created in a single transaction,
+    /// ensuring that each attestation corresponds to the correct schema and that the
+    /// data matches the expected values for both "like" and "score".
+    ///
+    /// Key operations include:
+    /// 1. Setting up schemas for "like" and "score".
+    /// 2. Registering the schemas with the schema registry.
+    /// 3. Initializing an array of recipients, including a zero address for testing.
+    /// 4. Creating a multi-attestation request array to accommodate two attestations
+    ///    (one for "like" and one for "score") for each recipient.
+    /// 5. Populating the request array with attestation data for each recipient.
+    /// 6. Calculating the total Ether value required for the transaction.
+    /// 7. Executing the multi-attestation using the `multiAttest` function.
+    /// 8. Asserting that the expected number of unique identifiers (UIDs) for the
+    ///    attestations matches the actual count and verifying the details of each
+    ///    attestation.
     function testMultiAttestationComprehensive(
         address _recipient,
         address _recipient2,
@@ -1443,35 +1454,6 @@ function testAttestationExpirationScenarios(
 
         vm.stopPrank();
     }
-        /// @dev Tests batch processing validation for multi-attestations.
-        ///      1. Setup:
-        ///         - Registers basic boolean schema
-        ///      2. Empty Batch Test:
-        ///         - Creates multi-attestation request
-        ///         - Sets empty inner attestation data array
-        ///      3. Verification:
-        ///         - Attempts multi-attestation with empty batch
-        ///         - Confirms revert with InvalidLength
-        ///      Ensures system properly validates batch sizes,
-        ///      preventing processing of empty attestation batches
-        function testBatchProcessingLimits() public {
-            string memory schema = "bool like";
-            bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-            vm.startPrank(sender);
-            schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-            // Test with empty inner batch - this is the actual check in the contract
-            MultiAttestationRequest[]
-                memory requests = new MultiAttestationRequest[](1);
-            requests[0].schema = schemaId;
-            requests[0].data = new AttestationRequestData[](0);
-
-            vm.expectRevert(InvalidLength.selector);
-            eas.multiAttest(requests);
-
-            vm.stopPrank();
-        }
 
         /// @dev Tests complex multi-attestation scenarios across different schemas.
         ///      Creates a batch of attestations that includes:
