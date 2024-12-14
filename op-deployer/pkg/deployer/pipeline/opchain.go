@@ -115,7 +115,7 @@ func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID co
 		for _, game := range thisIntent.AdditionalDisputeGames {
 			anchorRoots = append(anchorRoots, opcm.StartingAnchorRoot{
 				GameType:      game.DisputeGameType,
-				Root:          game.DisputeAbsolutePrestate,
+				Root:          game.StartingAnchorRoot,
 				L2BlockNumber: common.Big0,
 			})
 		}

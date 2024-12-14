@@ -267,7 +267,7 @@ func initAllocType(root string, allocType AllocType) {
 		go func(mode genesis.L2AllocsMode) {
 			defer wg.Done()
 
-			intent := defaultIntent(root, loc, deployerAddr)
+			intent := defaultIntent(root, loc, deployerAddr, allocType)
 			if allocType == AllocTypeAltDA {
 				intent.Chains[0].DangerousAltDAConfig = genesis.AltDADeployConfig{
 					UseAltDA:                   true,
@@ -356,7 +356,9 @@ func initAllocType(root string, allocType AllocType) {
 	l2AllocsByType[allocType] = l2Alloc
 }
 
-func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address) *state.Intent {
+func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address, allocType AllocType) *state.Intent {
+	defaultPrestate := common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98")
+	genesisOutputRoot := common.HexToHash("0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 	return &state.Intent{
 		ConfigType:         state.IntentConfigTypeCustom,
 		DeploymentStrategy: state.DeploymentStrategyGenesis,
@@ -392,12 +394,12 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 			"gasPriceOracleBaseFeeScalar":              1368,
 			"gasPriceOracleBlobBaseFeeScalar":          810949,
 			"l1CancunTimeOffset":                       "0x0",
-			"faultGameAbsolutePrestate":                "0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98",
+			"faultGameAbsolutePrestate":                defaultPrestate.Hex(),
 			"faultGameMaxDepth":                        50,
 			"faultGameClockExtension":                  0,
 			"faultGameMaxClockDuration":                1200,
 			"faultGameGenesisBlock":                    0,
-			"faultGameGenesisOutputRoot":               "0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF",
+			"faultGameGenesisOutputRoot":               genesisOutputRoot.Hex(),
 			"faultGameSplitDepth":                      14,
 			"faultGameWithdrawalDelay":                 604800,
 			"preimageOracleMinProposalSize":            10000,
@@ -429,7 +431,7 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 						ChainProofParams: state.ChainProofParams{
 							// Fast game
 							DisputeGameType:         254,
-							DisputeAbsolutePrestate: common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98"),
+							DisputeAbsolutePrestate: defaultPrestate,
 							DisputeMaxGameDepth:     14 + 3 + 1,
 							DisputeSplitDepth:       14,
 							DisputeClockExtension:   0,
@@ -440,29 +442,32 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address)
 						OracleMinProposalSize:        10000,
 						OracleChallengePeriodSeconds: 0,
 						MakeRespected:                true,
+						StartingAnchorRoot:           genesisOutputRoot,
 					},
 					{
 						ChainProofParams: state.ChainProofParams{
 							// Alphabet game
 							DisputeGameType:         255,
-							DisputeAbsolutePrestate: common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98"),
+							DisputeAbsolutePrestate: defaultPrestate,
 							DisputeMaxGameDepth:     14 + 3 + 1,
 							DisputeSplitDepth:       14,
 							DisputeClockExtension:   0,
 							DisputeMaxClockDuration: 1200,
 						},
-						VMType: state.VMTypeAlphabet,
+						VMType:             state.VMTypeAlphabet,
+						StartingAnchorRoot: genesisOutputRoot,
 					},
 					{
 						ChainProofParams: state.ChainProofParams{
 							DisputeGameType:         0,
-							DisputeAbsolutePrestate: cannonPrestate(root),
+							DisputeAbsolutePrestate: cannonPrestate(root, allocType),
 							DisputeMaxGameDepth:     50,
 							DisputeSplitDepth:       14,
 							DisputeClockExtension:   0,
 							DisputeMaxClockDuration: 1200,
 						},
-						VMType: cannonVMType(),
+						VMType:             cannonVMType(allocType),
+						StartingAnchorRoot: genesisOutputRoot,
 					},
 				},
 			},
@@ -498,8 +503,8 @@ func decompressGzipJSON(p string, thing any) {
 	}
 }
 
-func cannonVMType() state.VMType {
-	if os.Getenv("USE_MT_CANNON") == "true" {
+func cannonVMType(allocType AllocType) state.VMType {
+	if allocType == AllocTypeMTCannon {
 		return state.VMTypeCannon2
 	}
 	return state.VMTypeCannon1
@@ -509,19 +514,27 @@ type prestateFile struct {
 	Pre string `json:"pre"`
 }
 
-var cannonPrestateCache common.Hash
-var cannonPrestateOnce sync.Once
+var cannonPrestateMT common.Hash
+var cannonPrestateST common.Hash
+var cannonPrestateMTOnce sync.Once
+var cannonPrestateSTOnce sync.Once
 
-func cannonPrestate(monorepoRoot string) common.Hash {
+func cannonPrestate(monorepoRoot string, allocType AllocType) common.Hash {
 	var filename string
 
-	if cannonVMType() == state.VMTypeCannon1 {
+	var once *sync.Once
+	var cacheVar *common.Hash
+	if cannonVMType(allocType) == state.VMTypeCannon1 {
 		filename = "prestate-proof-st.json"
+		once = &cannonPrestateSTOnce
+		cacheVar = &cannonPrestateST
 	} else {
 		filename = "prestate-proof-mt.json"
+		once = &cannonPrestateMTOnce
+		cacheVar = &cannonPrestateMT
 	}
 
-	cannonPrestateOnce.Do(func() {
+	once.Do(func() {
 		f, err := os.Open(path.Join(monorepoRoot, "op-program", "bin", filename))
 		if err != nil {
 			log.Warn("error opening prestate file", "err", err)
@@ -536,8 +549,8 @@ func cannonPrestate(monorepoRoot string) common.Hash {
 			return
 		}
 
-		cannonPrestateCache = common.HexToHash(prestate.Pre)
+		*cacheVar = common.HexToHash(prestate.Pre)
 	})
 
-	return cannonPrestateCache
+	return *cacheVar
 }

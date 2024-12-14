@@ -329,10 +329,6 @@ jobs:
           environment:
             FOUNDRY_PROFILE: <<parameters.profile>>
           working_directory: packages/contracts-bedrock
-      - run:
-          name: Generate allocs
-          command: |
-            make devnet-allocs
       - persist_to_workspace:
           root: "."
           paths:
@@ -341,12 +337,6 @@ jobs:
             - "packages/contracts-bedrock/forge-artifacts"
             - "packages/contracts-bedrock/deploy-config/devnetL1.json"
             - "packages/contracts-bedrock/deployments/devnetL1"
-            - ".devnet"
-            - ".devnet-standard"
-            - ".devnet-l2oo"
-            - ".devnet-alt-da"
-            - ".devnet-alt-da-generic"
-            - ".devnet-mt-cannon"
       - notify-failures-on-develop
 
   check-kontrol-build:
@@ -928,9 +918,8 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - "op-program/bin/prestate.bin.gz"
-            - "op-program/bin/meta.json"
-            - "op-program/bin/prestate-proof.json"
+            - "op-program/bin"
+            - "cannon/bin"
 
   preimage-reproducibility:
     docker:
@@ -1464,13 +1453,13 @@ workflows:
       - publish-contract-artifacts
 
   develop-fault-proofs:
-    when:
-      and:
-        - or:
-            - equal: ["develop", <<pipeline.git.branch>>]
-            - equal: [true, <<pipeline.parameters.fault_proofs_dispatch>>]
-        - not:
-            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
+#    when:
+#      and:
+#        - or:
+#            - equal: ["develop", <<pipeline.git.branch>>]
+#            - equal: [true, <<pipeline.parameters.fault_proofs_dispatch>>]
+#        - not:
+#            equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
       - cannon-prestate
       - cannon-stf-verify:
@@ -1493,6 +1482,9 @@ workflows:
             op-e2e/faultproofs
           context:
             - slack
+          requires:
+            - contracts-bedrock-build
+            - cannon-prestate
 
   develop-kontrol-tests:
     when:

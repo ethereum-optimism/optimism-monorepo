@@ -48,7 +48,7 @@ devnet-allocs: pre-test-cannon
 	make -C .. devnet-allocs
 .PHONY: devnet-allocs
 
-pre-test: pre-test-cannon pre-test-allocs
+pre-test: pre-test-cannon
 .PHONY: pre-test
 
 pre-test-cannon:

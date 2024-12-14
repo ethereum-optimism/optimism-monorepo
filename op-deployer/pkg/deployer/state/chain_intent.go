@@ -33,6 +33,7 @@ type AdditionalDisputeGame struct {
 	OracleMinProposalSize        uint64
 	OracleChallengePeriodSeconds uint64
 	MakeRespected                bool
+	StartingAnchorRoot           common.Hash
 }
 
 type ChainIntent struct {
