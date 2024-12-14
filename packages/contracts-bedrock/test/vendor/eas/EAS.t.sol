@@ -95,6 +95,7 @@ contract EASTest is CommonTest {
     //                         TEST STATE
     // =============================================================
     ISchemaRegistry public registry;
+    address public attester;
     address public sender;
     address public sender2;
     address public recipient;
@@ -102,6 +103,7 @@ contract EASTest is CommonTest {
     address public payableResolver;
     TestEIP712Helper public eip712Helper;
     uint256 public senderKey;
+    uint256 public attesterKey;
     TestEIP712Proxy public proxy;
 
     // =============================================================
@@ -163,13 +165,13 @@ contract EASTest is CommonTest {
     function _createAttestationDigest(
         bytes32 schemaId,
         AttestationRequestData memory data,
-        address attester,
+        address attesterAddress,
         uint64 deadline
     ) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
                 getDelegatedAttestationTypeHash(),
-                attester,
+                attesterAddress,
                 schemaId,
                 data.recipient,
                 data.expirationTime,
@@ -334,7 +336,7 @@ contract EASTest is CommonTest {
     function _getStructHash(
         bytes32 schemaId,
         AttestationRequestData memory data,
-        address attester,
+        address attesterAddress,
         uint64 deadline
     ) internal pure returns (bytes32) {
         return keccak256(
@@ -349,7 +351,7 @@ contract EASTest is CommonTest {
                 data.refUID,
                 keccak256(data.data),
                 data.value,
-                attester,
+                attesterAddress,
                 deadline
             )
         );
@@ -381,7 +383,9 @@ contract EASTest is CommonTest {
         super.setUp(); 
         
         // Initialize test variables
+        attesterKey = 0x54321;
         senderKey = 0x12345;
+        attester = vm.addr(attesterKey);
         sender = vm.addr(senderKey);
         sender2 = makeAddr("sender2");
         recipient = makeAddr("recipient");
@@ -969,8 +973,7 @@ function testSignatureVerificationTampering() public {
         uint256 _property2, 
         bool _property3, 
         bool _revocable) public {
-       string memory schema = 
-        "string name, uint256 age, bool isStudent";
+        string memory schema = "string name, uint256 age, bool isStudent";
 
         bytes32 schemaId = _getSchemaUID(schema, address(0), _revocable);
         vm.startPrank(sender);
@@ -2624,34 +2627,60 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies the attestation is properly recorded with
     ///         correct attester and recipient addresses
     ///      Demonstrates standard delegated attestation flow
-    function testDelegatedAttestation() public {
-        string memory schema = "bool like";
+    function testDelegatedAttestation(string memory _name, uint256 _age, bool _isStudent, uint256 _expirationTimeOffset, uint256 _deadlineOffset) public {
+        vm.assume(_expirationTimeOffset > 0 && _deadlineOffset > 0);
+        vm.assume(_expirationTimeOffset < 365 && _deadlineOffset < 365);
+        string memory schema = "string name, uint256 age, bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
-        vm.startPrank(sender);
+        vm.startPrank(attester);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        vm.stopPrank();
 
+        bytes memory data = abi.encode(_name, _age, _isStudent);
+
+        // Create attestation request data
         AttestationRequestData memory requestData = AttestationRequestData({
             recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
+            expirationTime: uint64(block.timestamp + _expirationTimeOffset * 1 days),
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: hex"1234",
+            data: data,
             value: 0
         });
 
-        // Create attestation request
-        AttestationRequest memory request = AttestationRequest({
-            schema: schemaId,
-            data: requestData
+        uint64 deadline = uint64(block.timestamp + _deadlineOffset * 1 days);
+        bytes32 requestHash = _createAttestationDigest(schemaId, requestData, attester, deadline);
+
+
+    vm.startPrank(attester); 
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(attesterKey, requestHash); 
+        vm.stopPrank();
+
+        // Create the signature
+        Signature memory signature = Signature({
+            v: v,
+            r: r,
+            s: s
         });
 
-        // Test delegated attestation
-        bytes32 uid = eas.attest(request);
+        // Create the delegated attestation request
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: requestData,
+            signature: signature,
+            attester: attester, // The original attester who delegated authority
+            deadline: deadline
+        });
 
+        // Test delegated attestation by the sender
+        vm.startPrank(sender); // Switch to the sender who is performing the attestation
+        bytes32 uid = eas.attestByDelegation(request);
+
+        // Retrieve the attestation
         Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, recipient);
+        assertEq(attestation.attester, attester); // Check that the attester is the original attester
+        assertEq(attestation.recipient, recipient); // Check that the recipient is correct
         vm.stopPrank();
     }
 
@@ -2663,17 +2692,14 @@ function testAttestationExpirationScenarios(
     ///         - Creates multiple requests with mock signatures
     ///         - Verifies batch also reverts with InvalidSignature
     ///      Ensures signature validation works for both single and batch cases
-    function testDelegatedAttestationWithSignatures() public {
-        string memory schema = "bool like";
+    function testDelegatedAttestationInvalidSignatureReverts(uint8 _v, bytes32 _r, bytes32 _s, string memory _name, uint256 _age, bool _isStudent) public {
+        string memory schema = "string name, uint256 age, bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+
+        bytes memory data = abi.encode(_name, _age, _isStudent);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Create signature components
-        uint8 v = 28;
-        bytes32 r = bytes32(uint256(1));
-        bytes32 s = bytes32(uint256(2));
 
         // Test single delegated attestation with signature
         DelegatedAttestationRequest
@@ -2684,10 +2710,14 @@ function testAttestationExpirationScenarios(
                     expirationTime: uint64(block.timestamp + 30 days),
                     revocable: true,
                     refUID: ZERO_BYTES32,
-                    data: hex"1234",
+                    data: data,
                     value: 0
                 }),
-                signature: Signature({ v: v, r: r, s: s }),
+                signature: Signature({ 
+                    v: _v, 
+                    r: _r, 
+                    s: _s 
+                }),
                 attester: sender,
                 deadline: type(uint64).max
             });
@@ -2706,10 +2736,14 @@ function testAttestationExpirationScenarios(
             expirationTime: uint64(block.timestamp + 30 days),
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: hex"1234",
+            data: data,
             value: 0
         });
-        requests[0].signatures[0] = Signature({ v: v, r: r, s: s });
+        requests[0].signatures[0] = Signature({ 
+            v: _v, 
+            r: _r, 
+            s: _s 
+        });
         requests[0].attester = sender;
         requests[0].deadline = type(uint64).max;
 
