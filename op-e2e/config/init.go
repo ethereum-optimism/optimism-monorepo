@@ -525,7 +525,7 @@ func cannonPrestate(monorepoRoot string, allocType AllocType) common.Hash {
 	var once *sync.Once
 	var cacheVar *common.Hash
 	if cannonVMType(allocType) == state.VMTypeCannon1 {
-		filename = "prestate-proof-st.json"
+		filename = "prestate-proof.json"
 		once = &cannonPrestateSTOnce
 		cacheVar = &cannonPrestateST
 	} else {
