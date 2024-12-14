@@ -2217,8 +2217,8 @@ function testAttestationExpirationScenarios(
     ///      Demonstrates off-chain revocation mechanism,
     ///      useful for revoking attestations without on-chain
     ///      transaction for each attestation
-    function testRevokeOffchain() public {
-        bytes32 data = keccak256("test data");
+    function testRevokeOffchain(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         vm.prank(sender);
         uint256 timestamp = block.timestamp;
@@ -2232,8 +2232,8 @@ function testAttestationExpirationScenarios(
     ///      2. Attempts to revoke the same data again
     ///      3. Verifies second attempt fails with AlreadyRevokedOffchain
     ///      Ensures off-chain revocations cannot be duplicated
-    function testRevokeOffchainRevert() public {
-        bytes32 data = keccak256("test data");
+    function testRevokeOffchainRevert(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         vm.startPrank(sender);
         // First revocation should succeed
@@ -2253,10 +2253,10 @@ function testAttestationExpirationScenarios(
     ///      2. Revokes all data in single transaction
     ///      3. Verifies each revocation is recorded with correct timestamp
     ///      Demonstrates efficient batch processing of off-chain revocations
-    function testRevokeOffchainMultiple() public {
+    function testRevokeOffchainMultiple(bytes memory _randomData, bytes memory _randomData2) public {
         bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
+        data[0] = keccak256(_randomData);
+        data[1] = keccak256(_randomData2);
         data[2] = bytes32(0);
 
         vm.prank(sender);
