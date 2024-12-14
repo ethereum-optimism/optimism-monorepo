@@ -2467,8 +2467,8 @@ function testAttestationExpirationScenarios(
     ///      2. Attempts to timestamp same data again
     ///      3. Verifies second attempt reverts with AlreadyTimestamped
     ///      Ensures data can only be timestamped once
-    function testTimestampRevert() public {
-        bytes32 data = keccak256("test data");
+    function testTimestampRevert(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         // First timestamp should succeed
         eas.timestamp(data);
@@ -2484,11 +2484,29 @@ function testAttestationExpirationScenarios(
     ///      Verifies all timestamps in both batches match block
     ///      timestamp, demonstrating efficient batch processing
     ///      of multiple timestamp records
-    function testMultiTimestampingScenarios() public {
+    function testMultiTimestampingScenarios(uint256 _randomData1,
+        uint256 _randomData2,
+        uint256 _randomData3,
+        uint256 _randomData4,
+        uint256 _randomData5
+    ) public {
+        // Ensure that all random data inputs are unique
+        vm.assume(
+            _randomData1 != _randomData2 &&
+            _randomData1 != _randomData3 &&
+            _randomData1 != _randomData4 &&
+            _randomData1 != _randomData5 &&
+            _randomData2 != _randomData3 &&
+            _randomData2 != _randomData4 &&
+            _randomData2 != _randomData5 &&
+            _randomData3 != _randomData4 &&
+            _randomData3 != _randomData5 &&
+            _randomData4 != _randomData5
+        );
         bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("0x1234");
-        data[1] = keccak256("0x4567");
-        data[2] = keccak256("0x6666");
+        data[0] = keccak256(abi.encodePacked(_randomData1));
+        data[1] = keccak256(abi.encodePacked(_randomData2));
+        data[2] = keccak256(abi.encodePacked(_randomData3));
 
         // Test multiple timestamps in one transaction
         uint256 timestamp = block.timestamp;
@@ -2501,8 +2519,8 @@ function testAttestationExpirationScenarios(
 
         // Test second batch
         bytes32[] memory data2 = new bytes32[](2);
-        data2[0] = keccak256("Hello World");
-        data2[1] = keccak256("0x8888");
+        data2[0] = keccak256(abi.encodePacked(_randomData4));
+        data2[1] = keccak256(abi.encodePacked(_randomData5));
 
         eas.multiTimestamp(data2);
 
@@ -2518,10 +2536,10 @@ function testAttestationExpirationScenarios(
     ///      3. Attempts to timestamp new batch containing previously
     ///         timestamped data (fails). Ensures proper duplicate
     ///         detection in all batch scenarios
-    function testMultiTimestampRevert() public {
+    function testMultiTimestampRevert(uint256 _randomData1, uint256 _randomData2, uint256 _randomData3) public {
         bytes32[] memory data = new bytes32[](2);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
+        data[0] = keccak256(abi.encodePacked(_randomData1));
+        data[1] = keccak256(abi.encodePacked(_randomData2));
 
         // First timestamp should succeed
         eas.multiTimestamp(data);
@@ -2532,7 +2550,7 @@ function testAttestationExpirationScenarios(
 
         // Should also fail when including timestamped data in a new array
         bytes32[] memory newData = new bytes32[](3);
-        newData[0] = keccak256("data3");
+        newData[0] = keccak256(abi.encodePacked(_randomData3));
         newData[1] = data[0];
         newData[2] = data[1];
 
@@ -2546,11 +2564,17 @@ function testAttestationExpirationScenarios(
     ///      3. Records new timestamp and verifies it doesn't affect existing ones
     ///      4. Demonstrates timestamp immutability and independence
     ///      across different time periods and data items
-    function testTimestampVerificationScenarios() public {
+    function testTimestampVerificationScenarios(uint256 _randomData1, uint256 _randomData2, uint256 _randomData3, uint256 _randomData4) public {
+        vm.assume(_randomData1 != _randomData2 && 
+        _randomData1 != _randomData3 && 
+        _randomData1 != _randomData4 &&
+        _randomData2 != _randomData3 &&
+        _randomData2 != _randomData4 &&
+        _randomData3 != _randomData4);
         bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("First");
-        data[1] = keccak256("Second");
-        data[2] = keccak256("Third");
+        data[0] = keccak256(abi.encodePacked(_randomData1));
+        data[1] = keccak256(abi.encodePacked(_randomData2));
+        data[2] = keccak256(abi.encodePacked(_randomData3));
 
         // Test initial timestamps
         uint256 timestamp = block.timestamp;
@@ -2568,7 +2592,7 @@ function testAttestationExpirationScenarios(
         }
 
         // Test timestamp immutability
-        bytes32 newData = keccak256("New");
+        bytes32 newData = keccak256(abi.encodePacked(_randomData4));
         eas.timestamp(newData);
         assertEq(eas.getTimestamp(newData), block.timestamp);
 
