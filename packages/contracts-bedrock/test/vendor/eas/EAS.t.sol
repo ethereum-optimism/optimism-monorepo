@@ -166,7 +166,8 @@ contract EASTest is CommonTest {
         bytes32 schemaId,
         AttestationRequestData memory data,
         address attesterAddress,
-        uint64 deadline
+        uint64 deadline,
+        uint256 nonce
     ) internal view returns (bytes32) {
         bytes32 structHash = keccak256(
             abi.encode(
@@ -179,7 +180,7 @@ contract EASTest is CommonTest {
                 data.refUID,
                 keccak256(data.data),
                 data.value,
-                0, // nonce
+                nonce,
                 deadline
             )
         );
@@ -311,7 +312,8 @@ contract EASTest is CommonTest {
             schemaId,
             requestData,
             signer,
-            deadline
+            deadline,
+            0
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
@@ -554,7 +556,8 @@ contract EASTest is CommonTest {
             schemaId,
             requestData,
             signer,
-            expiredDeadline
+            expiredDeadline,
+            0
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
@@ -597,7 +600,8 @@ contract EASTest is CommonTest {
             schemaId,
             requestData,
             wrongSigner,
-            deadline
+            deadline,
+            0
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongSignerKey, digest);
 
@@ -642,7 +646,8 @@ contract EASTest is CommonTest {
             schemaId,
             requestData,
             signer,
-            deadline
+            deadline,
+            0
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
@@ -689,7 +694,8 @@ function testSignatureVerificationTampering() public {
             schemaId,
             requestData,
             signer,
-            deadline
+            deadline,
+            0
         );
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
@@ -812,7 +818,7 @@ function testSignatureVerificationTampering() public {
 
         // Create schema string using valid types from docs
         string memory schema = 
-        "string name, uint256 age, bool isStudent";
+        "string name,uint256 age,bool isStudent";
 
         bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
         emit log_string("=== Schema Debug ===");
@@ -923,7 +929,7 @@ function testSignatureVerificationTampering() public {
         uint256 _property2, 
         bool _property3,  
         bool _revocable) public {
-        string memory schema = "string name, uint256 age, bool isStudent";
+        string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), _revocable);
 
         vm.startPrank(sender);
@@ -973,7 +979,7 @@ function testSignatureVerificationTampering() public {
         uint256 _property2, 
         bool _property3, 
         bool _revocable) public {
-        string memory schema = "string name, uint256 age, bool isStudent";
+        string memory schema = "string name,uint256 age,bool isStudent";
 
         bytes32 schemaId = _getSchemaUID(schema, address(0), _revocable);
         vm.startPrank(sender);
@@ -1026,7 +1032,7 @@ function testSignatureVerificationTampering() public {
         bool _property3,  
         address _resolver,
         bool _revocable) public {
-        string memory schema = "string name, uint256 age, bool isStudent";
+        string memory schema = "string name,uint256 age,bool isStudent";
         schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
         bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
 
@@ -1617,7 +1623,7 @@ function testAttestationExpirationScenarios(
     ///      6. Verifies that the correct number of attestations were created
     ///         and checks that the attester is the expected sender.
     function testMultiAttestationWithValue(uint256 _value, address _userAddress, string memory _userName, bool _isActive, address _userAddress2, string memory _userName2, bool _isActive2) public {
-        string memory schema = "address userAddress, string userName, bool isActive, address userAddress2, string userName2, bool isActive2";
+        string memory schema = "address userAddress,string userName,bool isActive,address userAddress2,string userName2,bool isActive2";
         vm.assume(_value <= 10);
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
@@ -1683,7 +1689,7 @@ function testAttestationExpirationScenarios(
     ///         is set to a non-zero value in the attestation data
     function testRevokeAttestation(address _userAddress, string memory _userName, bool _isActive, uint64 _expirationOffset) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
-        string memory schema = "address userAddress, string userName, bool isActive";
+        string memory schema = "address userAddress,string userName,bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
@@ -1729,7 +1735,7 @@ function testAttestationExpirationScenarios(
     ///      Ensures attestation revocation permissions are properly enforced
     function testCannotRevokeOthersAttestation(address _userAddress, string memory _userName, bool _isActive, uint64 _expirationOffset) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
-         string memory schema = "address userAddress, string userName, bool isActive";
+         string memory schema = "address userAddress,string userName,bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.prank(sender);
@@ -1807,7 +1813,7 @@ function testAttestationExpirationScenarios(
         uint64 _expirationOffset
         ) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset < 366 days);
-        string memory schema = "address userAddress, string userName, bool isActive";
+        string memory schema = "address userAddress,string userName,bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
@@ -1941,7 +1947,7 @@ function testAttestationExpirationScenarios(
         vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
         vm.assume(_recipient != address(0)); 
 
-        string memory schema = "address userAddress, string userName, bool isActive";
+        string memory schema = "address userAddress,string userName,bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
@@ -2000,7 +2006,7 @@ function testAttestationExpirationScenarios(
         vm.assume(_recipient != address(0)); // Ensure recipient is not zero address
         vm.assume(_recipient2 != address(0)); // Ensure second recipient is not zero address
 
-        string memory schema = "address userAddress, string userName, bool isActive";
+        string memory schema = "address userAddress,string userName,bool isActive";
         bytes32 schemaId = _getSchemaUID(schema, address(0), false);
 
         vm.startPrank(sender);
@@ -2630,7 +2636,7 @@ function testAttestationExpirationScenarios(
     function testDelegatedAttestation(string memory _name, uint256 _age, bool _isStudent, uint256 _expirationTimeOffset, uint256 _deadlineOffset) public {
         vm.assume(_expirationTimeOffset > 0 && _deadlineOffset > 0);
         vm.assume(_expirationTimeOffset < 365 && _deadlineOffset < 365);
-        string memory schema = "string name, uint256 age, bool isStudent";
+        string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(attester);
@@ -2650,10 +2656,10 @@ function testAttestationExpirationScenarios(
         });
 
         uint64 deadline = uint64(block.timestamp + _deadlineOffset * 1 days);
-        bytes32 requestHash = _createAttestationDigest(schemaId, requestData, attester, deadline);
+        bytes32 requestHash = _createAttestationDigest(schemaId, requestData, attester, deadline, 0);
 
 
-    vm.startPrank(attester); 
+        vm.startPrank(attester); 
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(attesterKey, requestHash); 
         vm.stopPrank();
 
@@ -2692,8 +2698,15 @@ function testAttestationExpirationScenarios(
     ///         - Creates multiple requests with mock signatures
     ///         - Verifies batch also reverts with InvalidSignature
     ///      Ensures signature validation works for both single and batch cases
-    function testDelegatedAttestationInvalidSignatureReverts(uint8 _v, bytes32 _r, bytes32 _s, string memory _name, uint256 _age, bool _isStudent) public {
-        string memory schema = "string name, uint256 age, bool isStudent";
+    function testDelegatedAttestationInvalidSignatureReverts(
+        uint8 _v, 
+        bytes32 _r, 
+        bytes32 _s, 
+        string memory _name, 
+        uint256 _age, 
+        bool _isStudent
+    ) public {
+        string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         bytes memory data = abi.encode(_name, _age, _isStudent);
@@ -2760,9 +2773,18 @@ function testAttestationExpirationScenarios(
     ///      3. Maximum possible deadline (type(uint64).max)
     ///      Verifies that while signature validation fails as expected,
     ///      deadline validation passes in all cases
-    function testDelegatedAttestationTimeScenarios() public {
-        string memory schema = "bool like";
+    function testDelegatedAttestationTimeScenarios(
+        string memory _name, 
+        uint256 _age, 
+        bool _isStudent, 
+        uint256 _expirationTimeOffset, 
+        uint256 _deadlineOffset
+    ) public {
+        vm.assume(_expirationTimeOffset > 0 && _deadlineOffset > 0);
+        vm.assume(_expirationTimeOffset < 365 && _deadlineOffset < 365);
+        string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+        bytes memory data = abi.encode(_name, _age, _isStudent);
 
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
@@ -2774,6 +2796,21 @@ function testAttestationExpirationScenarios(
         deadlines[2] = type(uint64).max;
 
         for (uint i = 0; i < deadlines.length; i++) {
+                   // Test single delegated attestation
+            AttestationRequestData memory requestData = AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: data,
+                value: 0
+            });
+            vm.startPrank(attester); 
+             bytes32 requestHash = _createAttestationDigest(schemaId, requestData, attester, deadlines[i], i);
+             emit log_named_bytes32("requestHash", requestHash);
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(attesterKey, requestHash); 
+            vm.stopPrank();
+            
             DelegatedAttestationRequest
                 memory request = DelegatedAttestationRequest({
                     schema: schemaId,
@@ -2782,21 +2819,24 @@ function testAttestationExpirationScenarios(
                         expirationTime: uint64(block.timestamp + 30 days),
                         revocable: true,
                         refUID: ZERO_BYTES32,
-                        data: hex"1234",
+                        data: data,
                         value: 0
                     }),
                     signature: Signature({
-                        v: 28,
-                        r: bytes32(uint256(1)),
-                        s: bytes32(uint256(2))
+                        v: v,
+                        r: r,
+                        s: s
                     }),
-                    attester: sender,
+                    attester: attester,
                     deadline: deadlines[i]
                 });
 
-            // Should revert with invalid signature, but deadline check should pass
-            vm.expectRevert(abi.encodeWithSignature("InvalidSignature()"));
-            eas.attestByDelegation(request);
+            bytes32 uid = eas.attestByDelegation(request);
+           
+            Attestation memory attestation = eas.getAttestation(uid);
+            assertEq(attestation.attester, attester); // Check that the attester is the original attester
+            assertEq(attestation.recipient, recipient); // Check that the recipient is correct
+           
         }
 
         vm.stopPrank();
@@ -3621,7 +3661,8 @@ function testDeadlineScenarios() public {
                 schemaId,
                 requests[i].data[0],
                 signers[i],
-                deadline
+                deadline,
+                0
             );
 
             (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKeys[i], digest);
@@ -3650,7 +3691,7 @@ function testDeadlineScenarios() public {
     ///      multi-delegated attestations
     function testRevertMultiDelegationInconsistentLengths() public {
         // Register a schema
-        string memory schema = "bool count, bytes32 id";
+        string memory schema = "bool count,bytes32 id";
         bytes32 schemaId = _registerSchema(schema, true);
 
         vm.startPrank(sender);
