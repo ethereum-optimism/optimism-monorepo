@@ -2274,8 +2274,8 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies both revocations are recorded separately with
     ///         their own timestamps, demonstrating that off-chain
     ///         revocations are account-specific
-    function testRevokeOffchainDifferentAccounts() public {
-        bytes32 data = keccak256("test data");
+    function testRevokeOffchainDifferentAccounts(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         // First account revokes
         vm.prank(sender);
@@ -2297,10 +2297,10 @@ function testAttestationExpirationScenarios(
     ///      3. Attempts to revoke new batch containing previously revoked
     ///         data (fails). Ensures that batch revocations properly check
     ///         for already revoked data in all scenarios
-    function testMultiRevokeOffchainRevert() public {
+    function testMultiRevokeOffchainRevert(bytes memory _randomData, bytes memory _randomData2, bytes memory _randomData3) public {
         bytes32[] memory data = new bytes32[](2);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
+        data[0] = keccak256(_randomData);
+        data[1] = keccak256(_randomData2);
 
         vm.startPrank(sender);
         // First revocation should succeed
@@ -2312,7 +2312,7 @@ function testAttestationExpirationScenarios(
 
         // Should also fail when including revoked data in a new array
         bytes32[] memory newData = new bytes32[](3);
-        newData[0] = keccak256("data3");
+        newData[0] = keccak256(_randomData3);
         newData[1] = data[0];
         newData[2] = data[1];
 
@@ -2329,8 +2329,8 @@ function testAttestationExpirationScenarios(
     ///         - Confirms returns zero (default timestamp)
     ///      Ensures system properly handles queries for
     ///      non-existent off-chain revocations
-    function testGetUnregisteredRevokeOffchain() public view {
-        bytes32 data = keccak256("unregistered data");
+    function testGetUnregisteredRevokeOffchain(bytes memory _randomData) public view {
+        bytes32 data = keccak256(_randomData);
         assertEq(eas.getRevokeOffchain(sender, data), 0);
     }
 
@@ -2340,8 +2340,8 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies each account's revocation is recorded independently
     ///         with its own timestamp, demonstrating per-account revocation
     ///         storage
-    function testRevokeOffchainMultipleAccounts() public {
-        bytes32 data = keccak256("0x1234");
+    function testRevokeOffchainMultipleAccounts(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         // First account revokes
         vm.prank(sender);
@@ -2364,37 +2364,58 @@ function testAttestationExpirationScenarios(
     ///      Verifies all revocations in both batches are recorded with
     ///      correct timestamps, demonstrating the system's ability to
     ///      handle multiple batch revocations from the same account
-    function testMultiRevokeOffchainScenarios() public {
-        bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("0x1234");
-        data[1] = keccak256("0x4567");
-        data[2] = keccak256("0x6666");
+function testMultiRevokeOffchainScenarios(
+    uint256 _randomData1,
+    uint256 _randomData2,
+    uint256 _randomData3,
+    uint256 _randomData4,
+    uint256 _randomData5
+) public {
+    // Ensure that all random data inputs are unique
+    vm.assume(
+        _randomData1 != _randomData2 &&
+        _randomData1 != _randomData3 &&
+        _randomData1 != _randomData4 &&
+        _randomData1 != _randomData5 &&
+        _randomData2 != _randomData3 &&
+        _randomData2 != _randomData4 &&
+        _randomData2 != _randomData5 &&
+        _randomData3 != _randomData4 &&
+        _randomData3 != _randomData5 &&
+        _randomData4 != _randomData5
+    );
 
-        vm.startPrank(sender);
+    // Create the first batch of data to revoke
+    bytes32[] memory data = new bytes32[](3);
+    data[0] = keccak256(abi.encodePacked(_randomData1));
+    data[1] = keccak256(abi.encodePacked(_randomData2));
+    data[2] = keccak256(abi.encodePacked(_randomData3));
 
-        // Test multiple revocations in one transaction
-        uint256 timestamp = block.timestamp;
-        eas.multiRevokeOffchain(data);
+    vm.startPrank(sender);
 
-        // Verify all revocations
-        for (uint i = 0; i < data.length; i++) {
-            assertEq(eas.getRevokeOffchain(sender, data[i]), timestamp);
-        }
+    // Test multiple revocations in one transaction
+    uint256 timestamp = block.timestamp;
+    eas.multiRevokeOffchain(data);
 
-        // Test second batch
-        bytes32[] memory data2 = new bytes32[](2);
-        data2[0] = keccak256("Hello World");
-        data2[1] = keccak256("0x8888");
-
-        eas.multiRevokeOffchain(data2);
-
-        // Verify second batch
-        for (uint i = 0; i < data2.length; i++) {
-            assertEq(eas.getRevokeOffchain(sender, data2[i]), timestamp);
-        }
-
-        vm.stopPrank();
+    // Verify all revocations
+    for (uint i = 0; i < data.length; i++) {
+        assertEq(eas.getRevokeOffchain(sender, data[i]), timestamp);
     }
+
+    // Create the second batch of data to revoke
+    bytes32[] memory data2 = new bytes32[](2);
+    data2[0] = keccak256(abi.encodePacked(_randomData4));
+    data2[1] = keccak256(abi.encodePacked(_randomData5));
+
+    eas.multiRevokeOffchain(data2);
+
+    // Verify second batch
+    for (uint i = 0; i < data2.length; i++) {
+        assertEq(eas.getRevokeOffchain(sender, data2[i]), timestamp);
+    }
+
+    vm.stopPrank();
+}
 
     // =============================================================
     //                     TIMESTAMP TESTS
