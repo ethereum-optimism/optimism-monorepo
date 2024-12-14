@@ -17,6 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
+
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -794,6 +798,47 @@ func TestIntentConfiguration(t *testing.T) {
 			tt.assertions(t, st)
 		})
 	}
+}
+
+func TestManageDependencies(t *testing.T) {
+	t.Parallel()
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	l1ChainID := uint64(999)
+	l1ChainIDBig := new(big.Int).SetUint64(l1ChainID)
+
+	opts, intent, st := setupGenesisChain(t, l1ChainID)
+	intent.UseInterop = true
+	require.NoError(t, deployer.ApplyPipeline(ctx, opts))
+
+	dk, err := devkeys.NewMnemonicDevKeys(devkeys.TestMnemonic)
+	require.NoError(t, err)
+	sysConfigOwner, err := dk.Address(devkeys.SystemConfigOwner.Key(l1ChainIDBig))
+	require.NoError(t, err)
+
+	// Have to recreate the host again since deployer.ApplyPipeline
+	// doesn't expose the host directly.
+
+	loc, _ := testutil.LocalArtifacts(t)
+	afacts, _, err := artifacts.Download(ctx, loc, artifacts.NoopDownloadProgressor)
+	require.NoError(t, err)
+
+	host, err := env.DefaultScriptHost(
+		broadcaster.NoopBroadcaster(),
+		opts.Logger,
+		sysConfigOwner,
+		afacts,
+	)
+	require.NoError(t, err)
+	host.ImportState(st.L1StateDump.Data)
+
+	require.NoError(t, opcm.ManageDependencies(host, opcm.ManageDependenciesInput{
+		ChainId:      big.NewInt(1234),
+		SystemConfig: st.Chains[0].SystemConfigProxyAddress,
+		Remove:       false,
+	}))
 }
 
 func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOpts, *state.Intent, *state.State) {
