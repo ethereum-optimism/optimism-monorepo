@@ -2610,8 +2610,8 @@ function testAttestationExpirationScenarios(
     ///         - Confirms returns zero (default timestamp)
     ///      Ensures system properly handles queries for
     ///      non-existent timestamp records
-    function testGetUnregisteredTimestamp() public view {
-        bytes32 data = keccak256("unregistered data");
+    function testGetUnregisteredTimestamp(uint256 _randomData) public view {
+        bytes32 data = keccak256(abi.encodePacked(_randomData));
         assertEq(eas.getTimestamp(data), 0);
     }
 
