@@ -29,7 +29,7 @@ contract ManageDependencies_Test is Test {
         input.set(input.remove.selector, false);
 
         // Expect the addDependency call
-        vm.mockCall(mockSystemConfig, abi.encodeWithSignature("addDependency(uint256)", testChainId), bytes(""));
+        vm.mockCall(mockSystemConfig, abi.encodeCall(ISystemConfigInterop.addDependency, testChainId), bytes(""));
         script.run(input);
     }
 
@@ -38,7 +38,7 @@ contract ManageDependencies_Test is Test {
         input.set(input.chainId.selector, testChainId);
         input.set(input.remove.selector, true);
 
-        vm.mockCall(mockSystemConfig, abi.encodeWithSignature("removeDependency(uint256)", testChainId), bytes(""));
+        vm.mockCall(mockSystemConfig, abi.encodeCall(ISystemConfigInterop.removeDependency, testChainId), bytes(""));
         script.run(input);
     }
 }

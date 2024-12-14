@@ -5,10 +5,6 @@ import { Script } from "forge-std/Script.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
-/**
- * @title ManageDependenciesInput
- * @notice Input contract for managing dependencies
- */
 contract ManageDependenciesInput is BaseDeployIO {
     uint256 internal _chainId;
     ISystemConfigInterop _systemConfig;
@@ -50,10 +46,6 @@ contract ManageDependenciesInput is BaseDeployIO {
     }
 }
 
-/**
- * @title ManageDependencies
- * @notice Script to manage dependencies in the SystemConfig
- */
 contract ManageDependencies is Script {
     function run(ManageDependenciesInput _input) public {
         bool remove = _input.remove();
