@@ -2364,58 +2364,58 @@ function testAttestationExpirationScenarios(
     ///      Verifies all revocations in both batches are recorded with
     ///      correct timestamps, demonstrating the system's ability to
     ///      handle multiple batch revocations from the same account
-function testMultiRevokeOffchainScenarios(
-    uint256 _randomData1,
-    uint256 _randomData2,
-    uint256 _randomData3,
-    uint256 _randomData4,
-    uint256 _randomData5
-) public {
-    // Ensure that all random data inputs are unique
-    vm.assume(
-        _randomData1 != _randomData2 &&
-        _randomData1 != _randomData3 &&
-        _randomData1 != _randomData4 &&
-        _randomData1 != _randomData5 &&
-        _randomData2 != _randomData3 &&
-        _randomData2 != _randomData4 &&
-        _randomData2 != _randomData5 &&
-        _randomData3 != _randomData4 &&
-        _randomData3 != _randomData5 &&
-        _randomData4 != _randomData5
-    );
+    function testMultiRevokeOffchainScenarios(
+        uint256 _randomData1,
+        uint256 _randomData2,
+        uint256 _randomData3,
+        uint256 _randomData4,
+        uint256 _randomData5
+    ) public {
+        // Ensure that all random data inputs are unique
+        vm.assume(
+            _randomData1 != _randomData2 &&
+            _randomData1 != _randomData3 &&
+            _randomData1 != _randomData4 &&
+            _randomData1 != _randomData5 &&
+            _randomData2 != _randomData3 &&
+            _randomData2 != _randomData4 &&
+            _randomData2 != _randomData5 &&
+            _randomData3 != _randomData4 &&
+            _randomData3 != _randomData5 &&
+            _randomData4 != _randomData5
+        );
 
-    // Create the first batch of data to revoke
-    bytes32[] memory data = new bytes32[](3);
-    data[0] = keccak256(abi.encodePacked(_randomData1));
-    data[1] = keccak256(abi.encodePacked(_randomData2));
-    data[2] = keccak256(abi.encodePacked(_randomData3));
+        // Create the first batch of data to revoke
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256(abi.encodePacked(_randomData1));
+        data[1] = keccak256(abi.encodePacked(_randomData2));
+        data[2] = keccak256(abi.encodePacked(_randomData3));
 
-    vm.startPrank(sender);
+        vm.startPrank(sender);
 
-    // Test multiple revocations in one transaction
-    uint256 timestamp = block.timestamp;
-    eas.multiRevokeOffchain(data);
+        // Test multiple revocations in one transaction
+        uint256 timestamp = block.timestamp;
+        eas.multiRevokeOffchain(data);
 
-    // Verify all revocations
-    for (uint i = 0; i < data.length; i++) {
-        assertEq(eas.getRevokeOffchain(sender, data[i]), timestamp);
+        // Verify all revocations
+        for (uint i = 0; i < data.length; i++) {
+            assertEq(eas.getRevokeOffchain(sender, data[i]), timestamp);
+        }
+
+        // Create the second batch of data to revoke
+        bytes32[] memory data2 = new bytes32[](2);
+        data2[0] = keccak256(abi.encodePacked(_randomData4));
+        data2[1] = keccak256(abi.encodePacked(_randomData5));
+
+        eas.multiRevokeOffchain(data2);
+
+        // Verify second batch
+        for (uint i = 0; i < data2.length; i++) {
+            assertEq(eas.getRevokeOffchain(sender, data2[i]), timestamp);
+        }
+
+        vm.stopPrank();
     }
-
-    // Create the second batch of data to revoke
-    bytes32[] memory data2 = new bytes32[](2);
-    data2[0] = keccak256(abi.encodePacked(_randomData4));
-    data2[1] = keccak256(abi.encodePacked(_randomData5));
-
-    eas.multiRevokeOffchain(data2);
-
-    // Verify second batch
-    for (uint i = 0; i < data2.length; i++) {
-        assertEq(eas.getRevokeOffchain(sender, data2[i]), timestamp);
-    }
-
-    vm.stopPrank();
-}
 
     // =============================================================
     //                     TIMESTAMP TESTS
@@ -2431,8 +2431,8 @@ function testMultiRevokeOffchainScenarios(
     ///           block timestamp at recording
     ///      Demonstrates basic timestamp recording and
     ///      retrieval functionality
-    function testTimestamping() public {
-        bytes32 data = keccak256("test data");
+    function testTimestamping(bytes memory _randomData) public {
+        bytes32 data = keccak256(_randomData);
 
         uint256 timestamp = block.timestamp;
         eas.timestamp(data);
@@ -2447,10 +2447,11 @@ function testMultiRevokeOffchainScenarios(
     ///      3. Zero bytes32
     ///      Records timestamps for all items in single transaction
     ///      and verifies each timestamp matches block timestamp
-    function testTimestampMultiple() public {
+    function testTimestampMultiple(bytes memory _randomData, bytes memory _randomData2) public {
+        vm.assume(bytes(_randomData).length > 0 && bytes(_randomData2).length > 0);
         bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256("data1");
-        data[1] = keccak256("data2");
+        data[0] = keccak256(_randomData);
+        data[1] = keccak256(_randomData2);
         data[2] = bytes32(0);
 
         uint256 timestamp = block.timestamp;
