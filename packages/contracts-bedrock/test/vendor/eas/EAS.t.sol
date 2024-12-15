@@ -675,6 +675,32 @@ contract EASTest is CommonTest {
         eas.attestByDelegation(request);
     }
 
+        /// @dev Tests direct and delegated signature types.
+    ///      Registers a schema and tests two signature scenarios:
+    ///      1. Direct signatures
+    ///      2. Delegated signatures
+    ///      Note: This test does not cover EIP712 signatures,
+    ///      despite the original name suggesting all types
+    function testDirectAndDelegatedSignatures() public {
+        // Register schema once at the start
+        bytes32 schemaId = _registerSchema("bool like", true);
+
+        SignatureType[2] memory sigTypes = [
+            SignatureType.Direct,
+            SignatureType.Delegated
+        ];
+
+        for (uint i = 0; i < sigTypes.length; i++) {
+            SignatureType sigType = sigTypes[i];
+            
+            if (sigType == SignatureType.Direct) {
+                _testDirectSignature(schemaId);
+            } else if (sigType == SignatureType.Delegated) {
+                _testDelegatedSignature(schemaId);
+            }
+        }
+    }
+
     /// @dev Tests signature verification against data tampering.
     ///      Part of signature verification test suite.
     ///      1. Setup:
@@ -2935,77 +2961,81 @@ function testAttestationExpirationScenarios(
         vm.stopPrank();
     }
 
-    /// @dev Tests comprehensive delegated attestation scenarios.
-    ///      1. Tests single delegation:
-    ///         - Creates attestation with 30-day expiration
-    ///         - Verifies correct attester and recipient
-    ///      2. Tests batch delegation:
-    ///         - Creates two attestations to different recipients
-    ///         - Verifies both attestations record correct addresses
-    ///      Demonstrates both single and batch delegation flows
-    function testDelegatedAttestationScenarios() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+        /// @dev Creates and verifies multiple delegated attestations.
+    ///      Setup for each request:
+    ///      1. Request Configuration:
+    ///         - Sets schema ID and deadline
+    ///         - Initializes data and signature arrays
+    ///         - Assigns unique attester from signers array
+    ///      2. Attestation Data:
+    ///         - Sets 30-day expiration
+    ///         - Makes revocable
+    ///         - Uses incremental data values
+    ///      3. Signature Creation:
+    ///         - Generates EIP-712 digest
+    ///         - Signs with corresponding signer key
+    ///      4. Verification:
+    ///         - Submits batch through first signer
+    ///         - Verifies each attestation:
+    ///           * Confirms correct attester
+    ///           * Validates recipient
+    ///      Demonstrates complete flow of multiple delegated
+    ///      attestations with different signers
 
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+    function testMultiAttestationDelegationWithUniqueSigners() public {
+        bytes32 schemaId = _registerSchema("bool like", true);
+        uint64 deadline = uint64(block.timestamp + 1 days);
 
-        // Test single delegated attestation
-        AttestationRequestData memory requestData = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: 0
-        });
+        // Create multiple signers
+        uint256[] memory signerKeys = new uint256[](3);
+        address[] memory signers = new address[](3);
+        for (uint i = 0; i < 3; i++) {
+            signerKeys[i] = 0x12345 + i;
+            signers[i] = vm.addr(signerKeys[i]);
+            vm.deal(signers[i], 100 ether);
+        }
 
-        bytes32 uid = eas.attest(
-            AttestationRequest({ schema: schemaId, data: requestData })
-        );
+        MultiDelegatedAttestationRequest[]
+            memory requests = new MultiDelegatedAttestationRequest[](3);
+        for (uint i = 0; i < 3; i++) {
+            requests[i].schema = schemaId;
+            requests[i].data = new AttestationRequestData[](1);
+            requests[i].signatures = new Signature[](1);
+            requests[i].attester = signers[i]; // Each request has its own attester
+            requests[i].deadline = deadline;
 
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, recipient);
+            requests[i].data[0] = AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: abi.encodePacked(bytes1(uint8(i + 1))),
+                value: 0
+            });
 
-        // Test multi-attestation delegation
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](2);
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](1);
-        requests[0].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: 0
-        });
+            bytes32 digest = _createAttestationDigest(
+                schemaId,
+                requests[i].data[0],
+                signers[i],
+                deadline,
+                0
+            );
 
-        requests[1].schema = schemaId;
-        requests[1].data = new AttestationRequestData[](1);
-        requests[1].data[0] = AttestationRequestData({
-            recipient: recipient2,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"5678",
-            value: 0
-        });
+            (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKeys[i], digest);
+            requests[i].signatures[0] = Signature({ v: v, r: r, s: s });
+        }
 
-        bytes32[] memory uids = eas.multiAttest(requests);
-        assertEq(uids.length, 2);
+        vm.prank(signers[0]);
+        bytes32[] memory uids = eas.multiAttestByDelegation(requests);
 
         // Verify attestations
-        attestation = eas.getAttestation(uids[0]);
-        assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, recipient);
-
-        attestation = eas.getAttestation(uids[1]);
-        assertEq(attestation.attester, sender);
-        assertEq(attestation.recipient, recipient2);
-        vm.stopPrank();
+        for (uint i = 0; i < uids.length; i++) {
+            Attestation memory attestation = eas.getAttestation(uids[i]);
+            assertEq(attestation.attester, signers[i]);
+            assertEq(attestation.recipient, recipient);
+        }
     }
+
 
     /// @dev Tests error conditions for delegated attestations.
     ///      1. Tests empty arrays:
@@ -3316,6 +3346,79 @@ function testAttestationExpirationScenarios(
         assertEq(attestation.attester, sender);
         vm.stopPrank();
     }
+
+
+    /// @dev Tests array length validation in multi-delegated attestations.
+    ///      Tests four scenarios with inconsistent array lengths:
+    ///      1. More data items than signatures
+    ///      2. Empty data array with signatures
+    ///      3. More signatures than data items
+    ///      4. Data items with empty signatures array
+    ///      Verifies all cases revert with InvalidLength error,
+    ///      ensuring proper validation of array lengths in
+    ///      multi-delegated attestations
+    function testRevertMultiDelegationInconsistentLengths() public {
+        // Register a schema
+        string memory schema = "bool count,bytes32 id";
+        bytes32 schemaId = _registerSchema(schema, true);
+
+        vm.startPrank(sender);
+
+        // Test 1: More data items than signatures
+        MultiDelegatedAttestationRequest[]
+            memory requests1 = new MultiDelegatedAttestationRequest[](1);
+        requests1[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](2),
+            signatures: new Signature[](1),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLength.selector);
+        eas.multiAttestByDelegation(requests1);
+
+        // Test 2: Empty data array with signatures
+        MultiDelegatedAttestationRequest[]
+            memory requests2 = new MultiDelegatedAttestationRequest[](1);
+        requests2[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](0),
+            signatures: new Signature[](1),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLength.selector);
+        eas.multiAttestByDelegation(requests2);
+
+        // Test 3: More signatures than data items
+        MultiDelegatedAttestationRequest[]
+            memory requests3 = new MultiDelegatedAttestationRequest[](1);
+        requests3[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](1),
+            signatures: new Signature[](2),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLength.selector);
+        eas.multiAttestByDelegation(requests3);
+
+        // Test 4: Data items with empty signatures array
+        MultiDelegatedAttestationRequest[]
+            memory requests4 = new MultiDelegatedAttestationRequest[](1);
+        requests4[0] = MultiDelegatedAttestationRequest({
+            schema: schemaId,
+            data: new AttestationRequestData[](1),
+            signatures: new Signature[](0),
+            attester: sender,
+            deadline: NO_EXPIRATION
+        });
+        vm.expectRevert(InvalidLength.selector);
+        eas.multiAttestByDelegation(requests4);
+
+        vm.stopPrank();
+    }
+
 
     // =============================================================
     //                      SCHEMA TESTS
@@ -3642,177 +3745,6 @@ function testAttestationExpirationScenarios(
         vm.expectRevert(DeadlineExpired.selector);
         eas.attestByDelegation(request);
         vm.stopPrank();
-    }
-    /// @dev Creates and verifies multiple delegated attestations.
-    ///      Setup for each request:
-    ///      1. Request Configuration:
-    ///         - Sets schema ID and deadline
-    ///         - Initializes data and signature arrays
-    ///         - Assigns unique attester from signers array
-    ///      2. Attestation Data:
-    ///         - Sets 30-day expiration
-    ///         - Makes revocable
-    ///         - Uses incremental data values
-    ///      3. Signature Creation:
-    ///         - Generates EIP-712 digest
-    ///         - Signs with corresponding signer key
-    ///      4. Verification:
-    ///         - Submits batch through first signer
-    ///         - Verifies each attestation:
-    ///           * Confirms correct attester
-    ///           * Validates recipient
-    ///      Demonstrates complete flow of multiple delegated
-    ///      attestations with different signers
-
-    function testMultiDelegatedAttestation() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
-        uint64 deadline = uint64(block.timestamp + 1 days);
-
-        // Create multiple signers
-        uint256[] memory signerKeys = new uint256[](3);
-        address[] memory signers = new address[](3);
-        for (uint i = 0; i < 3; i++) {
-            signerKeys[i] = 0x12345 + i;
-            signers[i] = vm.addr(signerKeys[i]);
-            vm.deal(signers[i], 100 ether);
-        }
-
-        MultiDelegatedAttestationRequest[]
-            memory requests = new MultiDelegatedAttestationRequest[](3);
-        for (uint i = 0; i < 3; i++) {
-            requests[i].schema = schemaId;
-            requests[i].data = new AttestationRequestData[](1);
-            requests[i].signatures = new Signature[](1);
-            requests[i].attester = signers[i]; // Each request has its own attester
-            requests[i].deadline = deadline;
-
-            requests[i].data[0] = AttestationRequestData({
-                recipient: recipient,
-                expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
-                refUID: ZERO_BYTES32,
-                data: abi.encodePacked(bytes1(uint8(i + 1))),
-                value: 0
-            });
-
-            bytes32 digest = _createAttestationDigest(
-                schemaId,
-                requests[i].data[0],
-                signers[i],
-                deadline,
-                0
-            );
-
-            (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKeys[i], digest);
-            requests[i].signatures[0] = Signature({ v: v, r: r, s: s });
-        }
-
-        vm.prank(signers[0]);
-        bytes32[] memory uids = eas.multiAttestByDelegation(requests);
-
-        // Verify attestations
-        for (uint i = 0; i < uids.length; i++) {
-            Attestation memory attestation = eas.getAttestation(uids[i]);
-            assertEq(attestation.attester, signers[i]);
-            assertEq(attestation.recipient, recipient);
-        }
-    }
-
-    /// @dev Tests array length validation in multi-delegated attestations.
-    ///      Tests four scenarios with inconsistent array lengths:
-    ///      1. More data items than signatures
-    ///      2. Empty data array with signatures
-    ///      3. More signatures than data items
-    ///      4. Data items with empty signatures array
-    ///      Verifies all cases revert with InvalidLength error,
-    ///      ensuring proper validation of array lengths in
-    ///      multi-delegated attestations
-    function testRevertMultiDelegationInconsistentLengths() public {
-        // Register a schema
-        string memory schema = "bool count,bytes32 id";
-        bytes32 schemaId = _registerSchema(schema, true);
-
-        vm.startPrank(sender);
-
-        // Test 1: More data items than signatures
-        MultiDelegatedAttestationRequest[]
-            memory requests1 = new MultiDelegatedAttestationRequest[](1);
-        requests1[0] = MultiDelegatedAttestationRequest({
-            schema: schemaId,
-            data: new AttestationRequestData[](2),
-            signatures: new Signature[](1),
-            attester: sender,
-            deadline: NO_EXPIRATION
-        });
-        vm.expectRevert(InvalidLength.selector);
-        eas.multiAttestByDelegation(requests1);
-
-        // Test 2: Empty data array with signatures
-        MultiDelegatedAttestationRequest[]
-            memory requests2 = new MultiDelegatedAttestationRequest[](1);
-        requests2[0] = MultiDelegatedAttestationRequest({
-            schema: schemaId,
-            data: new AttestationRequestData[](0),
-            signatures: new Signature[](1),
-            attester: sender,
-            deadline: NO_EXPIRATION
-        });
-        vm.expectRevert(InvalidLength.selector);
-        eas.multiAttestByDelegation(requests2);
-
-        // Test 3: More signatures than data items
-        MultiDelegatedAttestationRequest[]
-            memory requests3 = new MultiDelegatedAttestationRequest[](1);
-        requests3[0] = MultiDelegatedAttestationRequest({
-            schema: schemaId,
-            data: new AttestationRequestData[](1),
-            signatures: new Signature[](2),
-            attester: sender,
-            deadline: NO_EXPIRATION
-        });
-        vm.expectRevert(InvalidLength.selector);
-        eas.multiAttestByDelegation(requests3);
-
-        // Test 4: Data items with empty signatures array
-        MultiDelegatedAttestationRequest[]
-            memory requests4 = new MultiDelegatedAttestationRequest[](1);
-        requests4[0] = MultiDelegatedAttestationRequest({
-            schema: schemaId,
-            data: new AttestationRequestData[](1),
-            signatures: new Signature[](0),
-            attester: sender,
-            deadline: NO_EXPIRATION
-        });
-        vm.expectRevert(InvalidLength.selector);
-        eas.multiAttestByDelegation(requests4);
-
-        vm.stopPrank();
-    }
-
-    /// @dev Tests direct and delegated signature types.
-    ///      Registers a schema and tests two signature scenarios:
-    ///      1. Direct signatures
-    ///      2. Delegated signatures
-    ///      Note: This test does not cover EIP712 signatures,
-    ///      despite the original name suggesting all types
-    function testDirectAndDelegatedSignatures() public {
-        // Register schema once at the start
-        bytes32 schemaId = _registerSchema("bool like", true);
-
-        SignatureType[2] memory sigTypes = [
-            SignatureType.Direct,
-            SignatureType.Delegated
-        ];
-
-        for (uint i = 0; i < sigTypes.length; i++) {
-            SignatureType sigType = sigTypes[i];
-            
-            if (sigType == SignatureType.Direct) {
-                _testDirectSignature(schemaId);
-            } else if (sigType == SignatureType.Delegated) {
-                _testDelegatedSignature(schemaId);
-            }
-        }
     }
 
 }
