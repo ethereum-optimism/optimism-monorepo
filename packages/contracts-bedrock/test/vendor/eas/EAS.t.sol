@@ -77,6 +77,14 @@ contract EASTest is CommonTest {
         DelegatedProxy
     }
 
+    /// @dev A struct representing the full arguments of the delegated multi attestation request.
+    struct SignatureComponents {
+        uint8 v;
+        bytes32 r;
+        bytes32 s;
+    }
+
+
     // =============================================================
     //                        ERROR SELECTORS
     // =============================================================
@@ -2807,7 +2815,6 @@ function testAttestationExpirationScenarios(
             });
             vm.startPrank(attester); 
              bytes32 requestHash = _createAttestationDigest(schemaId, requestData, attester, deadlines[i], i);
-             emit log_named_bytes32("requestHash", requestHash);
             (uint8 v, bytes32 r, bytes32 s) = vm.sign(attesterKey, requestHash); 
             vm.stopPrank();
             
@@ -2850,50 +2857,81 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies both attestations are recorded correctly
     ///         with proper recipient addresses
     ///      Demonstrates efficient batch processing of delegated attestations
-    function testMultiAttestationDelegation() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+
+
+    function testMultiAttestationDelegation(    
+        address _recipient,
+        address _recipient2
+    ) public {
+        bytes32 schemaId = _getSchemaUID("bool like", address(0), true);
 
         vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register("bool like", ISchemaResolver(address(0)), true);
 
-        uint64 expirationTime = uint64(block.timestamp + 30 days);
-        bytes memory data = hex"1234";
+        bytes[] memory dataArray = new bytes[](2);
+        dataArray[0] = hex"1234"; 
+        dataArray[1] = hex"5678";
 
-        // Create multiple attestation requests
-        MultiAttestationRequest[]
-            memory requests = new MultiAttestationRequest[](2);
-        requests[0].schema = schemaId;
-        requests[0].data = new AttestationRequestData[](1);
-        requests[0].data[0] = AttestationRequestData({
-            recipient: recipient,
-            expirationTime: expirationTime,
+        AttestationRequestData[] memory requestDataArray = new AttestationRequestData[](2);
+        requestDataArray[0] = AttestationRequestData({
+            recipient: _recipient,
+            expirationTime: uint64(block.timestamp + 30 days),
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: data,
+                data: dataArray[0],
+                value: 0
+            });
+        requestDataArray[1] = AttestationRequestData({
+            recipient: _recipient2,
+            expirationTime: uint64(block.timestamp + 30 days),
+            revocable: true,
+            refUID: ZERO_BYTES32,
+            data: dataArray[1],
             value: 0
+            });
+
+        uint64 deadline = uint64(block.timestamp + 1 days);
+        bytes32[] memory requestHashes = new bytes32[](2);
+        requestHashes[0] = _createAttestationDigest(schemaId, requestDataArray[0], attester, deadline, 0);
+        requestHashes[1] = _createAttestationDigest(schemaId, requestDataArray[1], attester, deadline, 1);
+
+  // Loop through the request hashes to sign them
+    SignatureComponents[2] memory signatures;
+    for (uint256 i = 0; i < requestHashes.length; i++) {
+        (signatures[i].v, signatures[i].r, signatures[i].s) = vm.sign(attesterKey, requestHashes[i]);
+    }
+
+        MultiDelegatedAttestationRequest[] memory multiRequest = new MultiDelegatedAttestationRequest[](1);
+        multiRequest[0].schema = schemaId;
+        multiRequest[0].data = new AttestationRequestData[](2);
+        multiRequest[0].signatures = new Signature[](2);
+        multiRequest[0].attester = attester;
+        multiRequest[0].deadline = deadline;
+
+        multiRequest[0].data[0] = requestDataArray[0];
+        multiRequest[0].data[1] = requestDataArray[1];
+        multiRequest[0].signatures[0] = Signature({
+            v: signatures[0].v, 
+            r: signatures[0].r,
+            s: signatures[0].s
         });
-        requests[1].schema = schemaId;
-        requests[1].data = new AttestationRequestData[](1);
-        requests[1].data[0] = AttestationRequestData({
-            recipient: recipient2,
-            expirationTime: expirationTime,
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"5678",
-            value: 0
+        multiRequest[0].signatures[1] = Signature({
+            v: signatures[1].v,
+            r: signatures[1].r,
+            s: signatures[1].s
         });
 
         // Test multi-attestation
-        bytes32[] memory uids = eas.multiAttest(requests);
+        bytes32[] memory uids = eas.multiAttestByDelegation(multiRequest);
         assertEq(uids.length, 2);
 
         // Verify attestations
-        Attestation memory attestation1 = eas.getAttestation(uids[0]);
-        Attestation memory attestation2 = eas.getAttestation(uids[1]);
+        Attestation[] memory attestations = new Attestation[](2);
+        attestations[0] = eas.getAttestation(uids[0]);
+        attestations[1] = eas.getAttestation(uids[1]);
 
-        assertEq(attestation1.recipient, recipient);
-        assertEq(attestation2.recipient, recipient2);
+        assertEq(attestations[0].recipient, _recipient);
+        assertEq(attestations[1].recipient, _recipient2);
         vm.stopPrank();
     }
 
@@ -3574,51 +3612,37 @@ function testAttestationExpirationScenarios(
     ///      3. Verifies transaction reverts with DeadlineExpired
     ///      Ensures proper enforcement of temporal constraints
     ///      in delegated attestations
-function testDeadlineScenarios() public {
-    
-    string memory schema = "bool like";
-    bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+    function testDeadlineScenarios() public {
+        
+        string memory schema = "bool like";
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
-    vm.startPrank(sender);
-    schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        vm.startPrank(sender);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
-    DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
-        schema: schemaId,
-        data: AttestationRequestData({
-            recipient: recipient,
-            expirationTime: uint64(block.timestamp + 30 days),
-            revocable: true,
-            refUID: ZERO_BYTES32,
-            data: hex"1234",
-            value: 0
-        }),
-        signature: Signature({
-            v: 28,
-            r: bytes32(uint256(1)),
-            s: bytes32(uint256(2))
-        }),
-        attester: sender,
-        deadline: uint64(block.timestamp - 1) 
-    });
+        DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: recipient,
+                expirationTime: uint64(block.timestamp + 30 days),
+                revocable: true,
+                refUID: ZERO_BYTES32,
+                data: hex"1234",
+                value: 0
+            }),
+            signature: Signature({
+                v: 28,
+                r: bytes32(uint256(1)),
+                s: bytes32(uint256(2))
+            }),
+            attester: sender,
+            deadline: uint64(block.timestamp - 1) 
+        });
 
-    vm.expectRevert(DeadlineExpired.selector);
-    eas.attestByDelegation(request);
-    vm.stopPrank();
-}
-
-    function testMultiDelegatedAttestation() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
-        uint64 deadline = uint64(block.timestamp + 1 days);
-
-        // Create multiple signers
-        uint256[] memory signerKeys = new uint256[](3);
-        address[] memory signers = new address[](3);
-        for (uint i = 0; i < 3; i++) {
-            signerKeys[i] = 0x12345 + i;
-            signers[i] = vm.addr(signerKeys[i]);
-            vm.deal(signers[i], 100 ether);
-        }
-
+        vm.expectRevert(DeadlineExpired.selector);
+        eas.attestByDelegation(request);
+        vm.stopPrank();
+    }
     /// @dev Creates and verifies multiple delegated attestations.
     ///      Setup for each request:
     ///      1. Request Configuration:
@@ -3639,6 +3663,20 @@ function testDeadlineScenarios() public {
     ///           * Validates recipient
     ///      Demonstrates complete flow of multiple delegated
     ///      attestations with different signers
+
+    function testMultiDelegatedAttestation() public {
+        bytes32 schemaId = _registerSchema("bool like", true);
+        uint64 deadline = uint64(block.timestamp + 1 days);
+
+        // Create multiple signers
+        uint256[] memory signerKeys = new uint256[](3);
+        address[] memory signers = new address[](3);
+        for (uint i = 0; i < 3; i++) {
+            signerKeys[i] = 0x12345 + i;
+            signers[i] = vm.addr(signerKeys[i]);
+            vm.deal(signers[i], 100 ether);
+        }
+
         MultiDelegatedAttestationRequest[]
             memory requests = new MultiDelegatedAttestationRequest[](3);
         for (uint i = 0; i < 3; i++) {
