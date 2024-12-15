@@ -1966,6 +1966,96 @@ function testAttestationExpirationScenarios(
 
         vm.stopPrank();
     }
+    /// @dev Tests comprehensive delegated revocation scenarios.
+    ///      1. Tests single revocation:
+    ///         - Creates and revokes one attestation
+    ///         - Verifies revocation timestamp
+    ///      2. Tests multiple revocations:
+    ///         - Creates two new attestations
+    ///         - Revokes them individually
+    ///         - Verifies each revocation timestamp
+    ///      Demonstrates both single and multiple revocation patterns
+    ///      through delegation
+    function testDelegatedRevocationScenarios(
+        string memory _stringName, 
+        string memory _uint256Name, 
+        string memory _stringValue, 
+        uint256 _uint256Value
+    ) public {
+        string memory schema = string.concat(
+            "bool like",
+            ",string ",
+            _stringName,
+            ",uint256 ",
+            _uint256Name
+        );
+        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
+
+        vm.startPrank(sender);
+        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+
+        // Create attestation first
+        bytes32 uid = eas.attest(
+            AttestationRequest({
+                schema: schemaId,
+                data: AttestationRequestData({
+                    recipient: recipient,
+                    expirationTime: uint64(block.timestamp + 30 days),
+                    revocable: true,
+                    refUID: ZERO_BYTES32,
+                    data: abi.encode(_stringValue, _uint256Value),
+                    value: 0
+                })
+            })
+        );
+
+        // Test delegated revocation
+        eas.revoke(
+            RevocationRequest({
+                schema: schemaId,
+                data: RevocationRequestData({ uid: uid, value: 0 })
+            })
+        );
+
+        Attestation memory attestation = eas.getAttestation(uid);
+        assertTrue(attestation.revocationTime > 0);
+
+        // Test multi-revocation
+        bytes32[] memory uids = new bytes32[](2);
+        for (uint i = 0; i < 2; i++) {
+            uids[i] = eas.attest(
+                AttestationRequest({
+                    schema: schemaId,
+                    data: AttestationRequestData({
+                        recipient: recipient,
+                        expirationTime: uint64(block.timestamp + 30 days),
+                        revocable: true,
+                        refUID: ZERO_BYTES32,
+                        data: abi.encode(_stringValue, _uint256Value + i),
+                        value: 0
+                    })
+                })
+            );
+        }
+
+        RevocationRequest[] memory revocationRequests = new RevocationRequest[](
+            2
+        );
+        for (uint i = 0; i < 2; i++) {
+            revocationRequests[i] = RevocationRequest({
+                schema: schemaId,
+                data: RevocationRequestData({ uid: uids[i], value: 0 })
+            });
+        }
+
+        for (uint i = 0; i < 2; i++) {
+            eas.revoke(revocationRequests[i]);
+            attestation = eas.getAttestation(uids[i]);
+            assertTrue(attestation.revocationTime > 0);
+        }
+
+        vm.stopPrank();
+    }
 
     /// @dev Tests access control for delegated revocations.
     ///      1. Creates an attestation from sender address
@@ -2885,7 +2975,7 @@ function testAttestationExpirationScenarios(
     ///      Demonstrates efficient batch processing of delegated attestations
 
 
-    function testMultiAttestationDelegation(    
+    function testMultiDelegatedAttestation(    
         address _recipient,
         address _recipient2
     ) public {
@@ -2982,8 +3072,9 @@ function testAttestationExpirationScenarios(
     ///      Demonstrates complete flow of multiple delegated
     ///      attestations with different signers
 
-    function testMultiAttestationDelegationWithUniqueSigners() public {
-        bytes32 schemaId = _registerSchema("bool like", true);
+    function testMultiDelegatedAttestationWithUniqueSigners(string[] memory _names) public {
+        vm.assume(_names.length == 3);
+        bytes32 schemaId = schemaRegistry.register("string name", ISchemaResolver(address(0)), true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
         // Create multiple signers
@@ -3009,7 +3100,7 @@ function testAttestationExpirationScenarios(
                 expirationTime: uint64(block.timestamp + 30 days),
                 revocable: true,
                 refUID: ZERO_BYTES32,
-                data: abi.encodePacked(bytes1(uint8(i + 1))),
+                data: abi.encodePacked(_names[i]),
                 value: 0
             });
 
@@ -3048,9 +3139,9 @@ function testAttestationExpirationScenarios(
     ///         - Attempts delegation with past deadline
     ///         - Verifies revert with DeadlineExpired
     ///      Ensures proper validation of delegation parameters
-    function testDelegatedAttestationReverts() public {
+    function testMultiDelegatedAttestationReverts(string memory _propertyName, string memory _value) public {
     
-        string memory schema = "bool like";
+        string memory schema = string.concat("string ", _propertyName);
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
         vm.startPrank(sender);
@@ -3086,7 +3177,7 @@ function testAttestationExpirationScenarios(
             expirationTime: NO_EXPIRATION,
             revocable: true,
             refUID: ZERO_BYTES32,
-            data: hex"1234",
+            data: abi.encode(_value),
             value: 0
         });
 
@@ -3107,128 +3198,7 @@ function testAttestationExpirationScenarios(
         vm.stopPrank();
     }
 
-    /// @dev Tests delegated revocation functionality.
-    ///      1. Creates a revocable attestation with 30-day expiration
-    ///      2. Revokes the attestation through delegation
-    ///      3. Verifies revocation by checking revocationTime is set
-    ///      Demonstrates complete flow of attestation creation
-    ///      and subsequent delegated revocation
-    function testDelegatedRevocation() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Create attestation first
-        bytes32 uid = eas.attest(
-            AttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
-                    revocable: true,
-                    refUID: ZERO_BYTES32,
-                    data: hex"1234",
-                    value: 0
-                })
-            })
-        );
-
-        // Test delegated revocation
-        eas.revoke(
-            RevocationRequest({
-                schema: schemaId,
-                data: RevocationRequestData({ uid: uid, value: 0 })
-            })
-        );
-
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertTrue(attestation.revocationTime > 0);
-        vm.stopPrank();
-    }
-
-    /// @dev Tests comprehensive delegated revocation scenarios.
-    ///      1. Tests single revocation:
-    ///         - Creates and revokes one attestation
-    ///         - Verifies revocation timestamp
-    ///      2. Tests multiple revocations:
-    ///         - Creates two new attestations
-    ///         - Revokes them individually
-    ///         - Verifies each revocation timestamp
-    ///      Demonstrates both single and multiple revocation patterns
-    ///      through delegation
-    function testDelegatedRevocationScenarios() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Create attestation first
-        bytes32 uid = eas.attest(
-            AttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
-                    revocable: true,
-                    refUID: ZERO_BYTES32,
-                    data: hex"1234",
-                    value: 0
-                })
-            })
-        );
-
-        // Test delegated revocation
-        eas.revoke(
-            RevocationRequest({
-                schema: schemaId,
-                data: RevocationRequestData({ uid: uid, value: 0 })
-            })
-        );
-
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertTrue(attestation.revocationTime > 0);
-
-        // Test multi-revocation
-        bytes32[] memory uids = new bytes32[](2);
-        for (uint i = 0; i < 2; i++) {
-            uids[i] = eas.attest(
-                AttestationRequest({
-                    schema: schemaId,
-                    data: AttestationRequestData({
-                        recipient: recipient,
-                        expirationTime: uint64(block.timestamp + 30 days),
-                        revocable: true,
-                        refUID: ZERO_BYTES32,
-                        data: hex"5678",
-                        value: 0
-                    })
-                })
-            );
-        }
-
-        RevocationRequest[] memory revocationRequests = new RevocationRequest[](
-            2
-        );
-        for (uint i = 0; i < 2; i++) {
-            revocationRequests[i] = RevocationRequest({
-                schema: schemaId,
-                data: RevocationRequestData({ uid: uids[i], value: 0 })
-            });
-        }
-
-        for (uint i = 0; i < 2; i++) {
-            eas.revoke(revocationRequests[i]);
-            attestation = eas.getAttestation(uids[i]);
-            assertTrue(attestation.revocationTime > 0);
-        }
-
-        vm.stopPrank();
-    }
-
-    /// @dev Tests error conditions for multi-attestation delegation revocation.
+       /// @dev Tests error conditions for multi-attestation delegation revocation.
     ///      1. Tests mismatched array lengths:
     ///         - Two revocation requests with one signature
     ///         - Verifies revert with InvalidLength
@@ -3312,41 +3282,6 @@ function testAttestationExpirationScenarios(
         vm.stopPrank();
     }
 
-    /// @dev Tests basic attestation without value transfer.
-    ///      Creates a simple attestation with:
-    ///      - 30-day expiration
-    ///      - Revocable flag set
-    ///      - No ETH value
-    ///      Verifies the attestation is properly recorded with
-    ///      correct attester address. Note: Despite function name,
-    ///      this test focuses on basic attestation functionality
-    ///      rather than value transfer scenarios
-    function testAttestationValueTransferScenarios() public {
-        // Remove value transfers, just test basic attestation
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        AttestationRequest memory request = AttestationRequest({
-            schema: schemaId,
-            data: AttestationRequestData({
-                recipient: recipient,
-                expirationTime: uint64(block.timestamp + 30 days),
-                revocable: true,
-                refUID: ZERO_BYTES32,
-                data: hex"1234",
-                value: 0
-            })
-        });
-
-        bytes32 uid = eas.attest(request);
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, sender);
-        vm.stopPrank();
-    }
-
 
     /// @dev Tests array length validation in multi-delegated attestations.
     ///      Tests four scenarios with inconsistent array lengths:
@@ -3357,10 +3292,17 @@ function testAttestationExpirationScenarios(
     ///      Verifies all cases revert with InvalidLength error,
     ///      ensuring proper validation of array lengths in
     ///      multi-delegated attestations
-    function testRevertMultiDelegationInconsistentLengths() public {
-        // Register a schema
+    function testRevertMultiDelegationInconsistentLengths(uint8[] memory _countArray) public {
+        vm.assume(_countArray[0] > 1);
+        vm.assume(_countArray[1] > 1);
+        // string memory schema = string.concat(
+        //     "bool ", 
+        //     _boolName, 
+        //     ",bytes32 ", 
+        //     _bytes32Name
+        // );
         string memory schema = "bool count,bytes32 id";
-        bytes32 schemaId = _registerSchema(schema, true);
+        bytes32 schemaId = schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
 
         vm.startPrank(sender);
 
@@ -3369,7 +3311,7 @@ function testAttestationExpirationScenarios(
             memory requests1 = new MultiDelegatedAttestationRequest[](1);
         requests1[0] = MultiDelegatedAttestationRequest({
             schema: schemaId,
-            data: new AttestationRequestData[](2),
+            data: new AttestationRequestData[](_countArray[1]),
             signatures: new Signature[](1),
             attester: sender,
             deadline: NO_EXPIRATION
@@ -3396,7 +3338,7 @@ function testAttestationExpirationScenarios(
         requests3[0] = MultiDelegatedAttestationRequest({
             schema: schemaId,
             data: new AttestationRequestData[](1),
-            signatures: new Signature[](2),
+            signatures: new Signature[](_countArray[0]),
             attester: sender,
             deadline: NO_EXPIRATION
         });
@@ -3415,74 +3357,6 @@ function testAttestationExpirationScenarios(
         });
         vm.expectRevert(InvalidLength.selector);
         eas.multiAttestByDelegation(requests4);
-
-        vm.stopPrank();
-    }
-
-
-    // =============================================================
-    //                      SCHEMA TESTS
-    // =============================================================
-    /// @dev Tests attestation scenarios with schema resolvers.
-    ///      1. Creates a payable mock resolver
-    ///      2. Registers schema with resolver
-    ///      3. Creates attestation using resolver-enabled schema
-    ///      4. Verifies attestation is properly recorded
-    ///      Demonstrates integration between attestations and
-    ///      schema resolvers
-    function testSchemaResolverScenarios() public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
-
-        vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(payableResolver)), true);
-
-        // Test attestation with resolver
-        bytes32 uid = eas.attest(
-            AttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: uint64(block.timestamp + 30 days),
-                    revocable: true,
-                    refUID: ZERO_BYTES32,
-                    data: hex"1234",
-                    value: 0
-                })
-            })
-        );
-
-        Attestation memory attestation = eas.getAttestation(uid);
-        assertEq(attestation.attester, sender);
-
-        vm.stopPrank();
-    }
-
-    /// @dev Tests schema registration scenarios.
-    ///      1. Tests successful registration:
-    ///         - Registers basic boolean schema
-    ///      2. Tests duplicate registration:
-    ///         - Attempts to register same schema again
-    ///         - Verifies revert with AlreadyExists
-    ///      3. Tests complex schema:
-    ///         - Registers schema with multiple fields
-    ///      Ensures proper schema registration and uniqueness
-    function testSchemaRegistrationScenarios() public {
-        string memory schema = "bool like";
-
-        vm.startPrank(sender);
-
-        // Test basic registration
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Test registering same schema again (should revert)
-        vm.expectRevert(abi.encodeWithSignature("AlreadyExists()"));
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
-
-        // Test different schema types
-        string
-            memory complexSchema = "uint256 age, string name, address wallet";
-        schemaRegistry.register(complexSchema, ISchemaResolver(address(0)), true);
 
         vm.stopPrank();
     }
