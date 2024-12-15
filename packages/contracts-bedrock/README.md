@@ -190,7 +190,7 @@ CI will fail if there are any new findings of medium or higher severity, as conf
 There are two corresponding jobs in CI: one calls "Slither Analysis" and one called "Code scanning results / Slither".
 The former will always pass if Slither runs successfully, and the latter will fail if there are any new findings of medium or higher severity.
 
-Existing findings can be found in the repo's Security tab > [Code Scanning](https://github.com/ethereum-optimism/optimism/security/code-scanning) section.
+Existing findings can be found in the repo's Security tab > [Code Scanning]() section.
 You can view findings for a specific PR using the `pr:{number}` filter, such [`pr:9405`](https://github.com/ethereum-optimism/optimism/security/code-scanning?query=is:open+pr:9405).
 
 For each finding, either fix it locally and push a new commit, or dismiss it through the PR comment's UI.
