@@ -49,4 +49,15 @@ func TestRWMap(t *testing.T) {
 		return false
 	})
 	require.Len(t, got, 1, "stop early")
+
+	// remove a value
+	require.True(t, m.Has(10))
+	m.Delete(10)
+	require.False(t, m.Has(10))
+	// and add it back, sanity check
+	m.Set(10, 123)
+	require.True(t, m.Has(10))
+
+	// remove a non-existent value
+	m.Delete(132983213)
 }
