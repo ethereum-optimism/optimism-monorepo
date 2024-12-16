@@ -57,6 +57,8 @@ RUN forge build
 # Deliberately run the upgrade script with invalid args to trigger a build
 RUN forge script ./scripts/upgrades/holocene/DeployUpgrade.s.sol || true
 
+RUN go get github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar
+
 # Set the working directory to where upgrade.sh is located
 WORKDIR /app/packages/contracts-bedrock/scripts/upgrades/holocene
 
