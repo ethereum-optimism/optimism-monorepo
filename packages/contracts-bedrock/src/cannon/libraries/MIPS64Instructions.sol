@@ -644,6 +644,11 @@ library MIPS64Instructions {
                 if (rtv == 0) {
                     shouldBranch = int64(_rs) < 0;
                 }
+                // bltzal
+                if (rtv == 0x10) {
+                    shouldBranch = int64(_rs) < 0;
+                    _registers[REG_RA] = _cpu.pc + 8; // always set regardless of branch taken
+                }
                 if (rtv == 1) {
                     shouldBranch = int64(_rs) >= 0;
                 }
