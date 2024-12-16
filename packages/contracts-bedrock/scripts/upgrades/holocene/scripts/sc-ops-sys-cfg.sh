@@ -26,6 +26,7 @@ msup render -i "$TASK_DIR/input.json" -o "$TASK_DIR/OVERVIEW.md"
 
 # Generate the README
 sed -i "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$TASK_DIR/README.md"
+sed -i "s/\$OP_CONTRACTS_RELEASE/$OP_CONTRACTS_RELEASE/g" "$TASK_DIR/README.md"
 
 # Generate the validation doc
 OLD_SYS_CFG=$(cast impl "$SYSTEM_CONFIG_PROXY_ADDR")
