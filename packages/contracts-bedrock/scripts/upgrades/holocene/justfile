@@ -22,6 +22,40 @@ run deploy-config-path output-folder-path="$(pwd)/output/" *args='':
     --env-file=.env \
     op-holocene-upgrade:local {{args}}
 
+sys-cfg-bundle output-folder-path="$(pwd)/output/" *args='':
+  #!/bin/bash
+  if [ ! "$(docker images -q op-holocene-upgrade:local 2> /dev/null)" ]; then
+    just build-image
+  fi
+
+  mkdir -p {{output-folder-path}}
+
+  # Run the deployment.
+  docker run -it \
+    --rm \
+    -v {{output-folder-path}}:/output \
+    -e OUTPUT_FOLDER_PATH=/output \
+    --env-file=.env \
+    --entrypoint=./scripts/sys-cfg-bundle.sh \
+    op-holocene-upgrade:local {{args}}
+
+sys-cfg-task output-folder-path="$(pwd)/output/" *args='':
+  #!/bin/bash
+  if [ ! "$(docker images -q op-holocene-upgrade:local 2> /dev/null)" ]; then
+    just build-image
+  fi
+
+  mkdir -p {{output-folder-path}}
+
+  # Run the deployment.
+  docker run -it \
+    --rm \
+    -v {{output-folder-path}}:/output \
+    -e OUTPUT_FOLDER_PATH=/output \
+    --env-file=.env \
+    --entrypoint=./scripts/sc-ops-sys-cfg.sh \
+    op-holocene-upgrade:local {{args}}
+
 # Build the image locally.
 build-image:
   docker build \
