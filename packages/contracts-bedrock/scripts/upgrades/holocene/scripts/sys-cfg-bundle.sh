@@ -25,18 +25,18 @@ cp ./templates/sys_cfg_upgrade_bundle_template.json "$BUNDLE_PATH"
 # We need to re-generate the SystemConfig initialization call
 # We want to use the exact same values that the SystemConfig is already using, apart from baseFeeScalar and blobBaseFeeScalar.
 # Start with values we can just read off:
-SYSTEM_CONFIG_OWNER=$(cast call "$SYSTEM_CONFIG_PROXY" "owner()")
-SYSTEM_CONFIG_SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY" "scalar()")
-SYSTEM_CONFIG_BATCHER_HASH=$(cast call "$SYSTEM_CONFIG_PROXY" "batcherHash()")
-SYSTEM_CONFIG_GAS_LIMIT=$(cast call "$SYSTEM_CONFIG_PROXY" "gasLimit()")
-SYSTEM_CONFIG_UNSAFE_BLOCK_SIGNER=$(cast call "$SYSTEM_CONFIG_PROXY" "unsafeBlockSigner()")
-SYSTEM_CONFIG_RESOURCE_CONFIG=$(cast call "$SYSTEM_CONFIG_PROXY" "resourceConfig()")
-SYSTEM_CONFIG_BATCH_INBOX=$(cast call "$SYSTEM_CONFIG_PROXY" "batchInbox()")
-SYSTEM_CONFIG_GAS_PAYING_TOKEN=$(cast call "$SYSTEM_CONFIG_PROXY" "gasPayingToken()(address)")
+SYSTEM_CONFIG_OWNER=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "owner()")
+SYSTEM_CONFIG_SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "scalar()")
+SYSTEM_CONFIG_BATCHER_HASH=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "batcherHash()")
+SYSTEM_CONFIG_GAS_LIMIT=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "gasLimit()")
+SYSTEM_CONFIG_UNSAFE_BLOCK_SIGNER=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "unsafeBlockSigner()")
+SYSTEM_CONFIG_RESOURCE_CONFIG=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "resourceConfig()")
+SYSTEM_CONFIG_BATCH_INBOX=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "batchInbox()")
+SYSTEM_CONFIG_GAS_PAYING_TOKEN=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "gasPayingToken()(address)")
 
 # Decode base fee scalar and blob base fee scalar from scalar value:
-SYSTEM_CONFIG_BASE_FEE_SCALAE=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SYSTEM_CONFIG_SCALAR" | awk '/^# base fee scalar[[:space:]]*:/{print $NF}')
-SYSTEM_CONFIG_BLOB_BASE_FEE_SCALAE=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SYSTEM_CONFIG_SCALAR" | awk '/^# blob base fee scalar[[:space:]]*:/{print $NF}')
+SYSTEM_CONFIG_BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SYSTEM_CONFIG_SCALAR" | awk '/^# base fee scalar[[:space:]]*:/{print $NF}')
+SYSTEM_CONFIG_BLOB_BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SYSTEM_CONFIG_SCALAR" | awk '/^# blob base fee scalar[[:space:]]*:/{print $NF}')
 
 # Now we generate the initialization calldata
 SYSTEM_CONFIG_INITIALIZE_CALLDATA=$(cast calldata \
@@ -56,7 +56,7 @@ SYSTEM_CONFIG_INITIALIZE_CALLDATA=$(cast calldata \
 # Replace variables
 sed -i "s/\$L1_CHAIN_ID/$L1_CHAIN_ID/g" "$BUNDLE_PATH"
 sed -i "s/\$PROXY_ADMIN_ADDR/$PROXY_ADMIN_ADDR/g" "$BUNDLE_PATH"
-sed -i "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" "$BUNDLE_PATH"
+sed -i "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR_ADDR/g" "$BUNDLE_PATH"
 sed -i "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$BUNDLE_PATH"
 sed -i "s/\$SYSTEM_CONFIG_INITIALIZE_CALLDATA/$SYSTEM_CONFIG_INITIALIZE_CALLDATA/g" "$BUNDLE_PATH"
 
