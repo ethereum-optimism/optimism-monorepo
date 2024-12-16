@@ -10,7 +10,7 @@
         "name": "ProxyAdmin.upgrade(SystemConfigProxy, StorageSetter)",
         "description": "Upgrades the `SystemConfigProxy`to the StorageSetter."
       },
-      "to": "$PROXY_ADMIN",
+      "to": "$PROXY_ADMIN_ADDR",
       "value": "0",
       "data": null,
       "contractMethod": {
@@ -30,7 +30,7 @@
         "payable": false
       },
       "contractInputsValues": {
-        "_proxy": "$SYSTEM_CONFIG_PROXY",
+        "_proxy": "$SYSTEM_CONFIG_PROXY_ADDR",
         "_implementation": "$STORAGE_SETTER"
       }
     },
@@ -39,7 +39,7 @@
         "name": "SystemConfigProxy.setBytes32(0,0)",
         "description": "Zeroes out the initialized state variable to allow reinitialization."
       },
-      "to": "$SYSTEM_CONFIG_PROXY",
+      "to": "$SYSTEM_CONFIG_PROXY_ADDR",
       "value": "0",
       "data": null,
       "contractMethod": {
@@ -68,7 +68,7 @@
         "name": "ProxyAdmin.upgrade(SystemConfigProxy, SystemConfigImplementation, Initialize())",
         "description": "TODO"
       },
-      "to": "$PROXY_ADMIN",
+      "to": "$PROXY_ADMIN_ADDR",
       "value": "0",
       "data": null,
       "contractMethod": {
@@ -94,7 +94,7 @@
       },
       "contractInputsValues": {
         "_data": "$SYSTEM_CONFIG_INITIALIZE_CALLDATA",
-        "_proxy": "$SYSTEM_CONFIG_PROXY",
+        "_proxy": "$SYSTEM_CONFIG_PROXY_ADDR",
         "_implementation": "$SYSTEM_CONFIG_IMPL"
       }
     }
