@@ -22,14 +22,39 @@ L1_CHAIN_ID=$(cast chain-id)
 # Copy the bundle template
 cp ./templates/sys_cfg_upgrade_bundle_template.json "$BUNDLE_PATH"
 
-# Tx 1: Upgrade SystemConfigProxy implementation
-TX_1_PAYLOAD=$(cast calldata "upgrade(address,address)" "$SYSTEM_CONFIG_PROXY_ADDR" "$SYSTEM_CONFIG_IMPL")
+# We need to re-generate the SystemConfig initialization call
+# We want to use the exact same values that the SystemConfig is already using, apart from baseFeeScalar and blobBaseFeeScalar
+SYSTEM_CONFIG_OWNER=$(cast call "$SYSTEM_CONFIG_PROXY" "owner()")
+SYSTEM_CONFIG_SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY" "scalar()")
+# SYSTEM_CONFIG_BASE_FEE_SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY" "basefeeScalar()") // TODO compute this from the scalar() value above
+# SYSTEM_CONFIG_BLOB_BASE_FEE_SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY" "blobbasefeeScalar()") // TODO compute this from the scalar() value above
+SYSTEM_CONFIG_BATCHER_HASH=$(cast call "$SYSTEM_CONFIG_PROXY" "batcherHash()")
+SYSTEM_CONFIG_GAS_LIMIT=$(cast call "$SYSTEM_CONFIG_PROXY" "gasLimit()")
+SYSTEM_CONFIG_UNSAFE_BLOCK_SIGNER=$(cast call "$SYSTEM_CONFIG_PROXY" "unsafeBlockSigner()")
+SYSTEM_CONFIG_RESOURCE_CONFIG=$(cast call "$SYSTEM_CONFIG_PROXY" "resourceConfig()")
+SYSTEM_CONFIG_BATCH_INBOX=$(cast call "$SYSTEM_CONFIG_PROXY" "batchInbox()")
+SYSTEM_CONFIG_GAS_PAYING_TOKEN=$(cast call "$SYSTEM_CONFIG_PROXY" "gasPayingToken()(address)")
+
+# Now we generate the initialization calldata
+SYSTEM_CONFIG_INITIALIZE_CALLDATA=$(cast calldata \
+  "initialize(address,uint32,uint32,bytes32,uint64,address,(uint32,uint8,uint8,uint32,uint32,uint128),address,(address,address,address,address,address,address,address))" \
+  "$(cast parse-bytes32-address "$SYSTEM_CONFIG_OWNER")" \
+  "$SYSTEM_CONFIG_BASE_FEE_SCALAR" \
+  "$SYSTEM_CONFIG_BLOB_BASE_FEE_SCALAR" \
+  "$SYSTEM_CONFIG_BATCHER_HASH" \
+  "$SYSTEM_CONFIG_GAS_LIMIT" \
+  "$(cast parse-bytes32-address "$SYSTEM_CONFIG_UNSAFE_BLOCK_SIGNER")" \
+  "($(cast abi-decode "null()(uint32,uint8,uint8,uint32,uint32,uint128)" "$SYSTEM_CONFIG_RESOURCE_CONFIG" --json | jq -r 'join(",")'))" \
+  "$(cast parse-bytes32-address "$SYSTEM_CONFIG_BATCH_INBOX")" \
+  "($L1_CROSS_DOMAIN_MESSENGER_PROXY,$L1_ERC721_BRIDGE_PROXY,$L1_STANDARD_BRIDGE_PROXY,$DISPUTE_GAME_FACTORY_PROXY,$OPTIMISM_PORTAL_PROXY,$OPTIMISM_MINTABLE_ERC20_FACTORY_PROXY,$SYSTEM_CONFIG_GAS_PAYING_TOKEN)"
+)
+
 
 # Replace variables
 sed -i "s/\$L1_CHAIN_ID/$L1_CHAIN_ID/g" "$BUNDLE_PATH"
 sed -i "s/\$PROXY_ADMIN_ADDR/$PROXY_ADMIN_ADDR/g" "$BUNDLE_PATH"
 sed -i "s/\$SYSTEM_CONFIG_PROXY_ADDR/$SYSTEM_CONFIG_PROXY_ADDR/g" "$BUNDLE_PATH"
 sed -i "s/\$SYSTEM_CONFIG_IMPL/$SYSTEM_CONFIG_IMPL/g" "$BUNDLE_PATH"
-sed -i "s/\$TX_1_PAYLOAD/$TX_1_PAYLOAD/g" "$BUNDLE_PATH"
+sed -i "s/\$SYSTEM_CONFIG_INITIALIZE_CALLDATA/$SYSTEM_CONFIG_INITIALIZE_CALLDATA/g" "$BUNDLE_PATH"
 
 echo "✨ Generated SystemConfig upgrade bundle at \"$BUNDLE_PATH\""

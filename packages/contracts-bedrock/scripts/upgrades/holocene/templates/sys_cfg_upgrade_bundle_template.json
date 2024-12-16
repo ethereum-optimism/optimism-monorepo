@@ -7,30 +7,94 @@
   "transactions": [
     {
       "metadata": {
-        "name": "Upgrade `SystemConfig` proxy",
-        "description": "Upgrades the `SystemConfig` proxy to the new implementation, featuring configurable EIP-1559 parameters."
+        "name": "ProxyAdmin.upgrade(SystemConfigProxy, StorageSetter)",
+        "description": "Upgrades the `SystemConfigProxy`to the StorageSetter."
       },
-      "to": "$PROXY_ADMIN_ADDR",
-      "value": "0x0",
-      "data": "$TX_1_PAYLOAD",
+      "to": "$PROXY_ADMIN",
+      "value": "0",
+      "data": null,
       "contractMethod": {
-        "type": "function",
-        "name": "upgrade",
         "inputs": [
           {
             "name": "_proxy",
-            "type": "address"
+            "type": "address",
+            "internalType": "address payable"
           },
           {
             "name": "_implementation",
-            "type": "address"
+            "type": "address",
+            "internalType": "address"
           }
         ],
-        "outputs": [],
-        "stateMutability": "nonpayable"
+        "name": "upgrade",
+        "payable": false
       },
       "contractInputsValues": {
-        "_proxy": "$SYSTEM_CONFIG_PROXY_ADDR",
+        "_proxy": "$SYSTEM_CONFIG_PROXY",
+        "_implementation": "$STORAGE_SETTER"
+      }
+    },
+    {
+      "metadata": {
+        "name": "SystemConfigProxy.setBytes32(0,0)",
+        "description": "Zeroes out the initialized state variable to allow reinitialization."
+      },
+      "to": "$SYSTEM_CONFIG_PROXY",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          {
+            "name": "_slot",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          },
+          {
+            "name": "_value",
+            "type": "bytes32",
+            "internalType": "bytes32"
+          }
+        ],
+        "name": "setBytes32",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "_slot": "0x0000000000000000000000000000000000000000000000000000000000000000",
+        "_value": "0x0000000000000000000000000000000000000000000000000000000000000000"
+      }
+    },
+    {
+      "metadata": {
+        "name": "ProxyAdmin.upgrade(SystemConfigProxy, SystemConfigImplementation, Initialize())",
+        "description": "TODO"
+      },
+      "to": "$PROXY_ADMIN",
+      "value": "0",
+      "data": null,
+      "contractMethod": {
+        "inputs": [
+          {
+            "name": "_proxy",
+            "type": "address",
+            "internalType": "address payable"
+          },
+          {
+            "name": "_implementation",
+            "type": "address",
+            "internalType": "address"
+          },
+          {
+            "internalType": "bytes",
+            "name": "_data",
+            "type": "bytes"
+          }
+        ],
+        "name": "upgradeAndCall",
+        "payable": false
+      },
+      "contractInputsValues": {
+        "_data": "$SYSTEM_CONFIG_INITIALIZE_CALLDATA",
+        "_proxy": "$SYSTEM_CONFIG_PROXY",
         "_implementation": "$SYSTEM_CONFIG_IMPL"
       }
     }
