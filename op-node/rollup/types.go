@@ -336,6 +336,10 @@ func (cfg *Config) Check() error {
 	return nil
 }
 
+func (cfg *Config) HasOptimismWithdrawalsRoot(timestamp uint64) bool {
+	return cfg.IsIsthmus(timestamp)
+}
+
 // validateAltDAConfig checks the two approaches to configuring alt-da mode.
 // If the legacy values are set, they are copied to the new location. If both are set, they are check for consistency.
 func validateAltDAConfig(cfg *Config) error {

@@ -767,3 +767,37 @@ func TestConfig_IsActivationBlock(t *testing.T) {
 		require.Zero(t, cfg.IsActivationBlock(ts, ts+1))
 	}
 }
+
+func TestConfigImplementsBlockType(t *testing.T) {
+	config := randConfig()
+	isthmusTime := uint64(100)
+	config.IsthmusTime = &isthmusTime
+	tests := []struct {
+		name                       string
+		blockTime                  uint64
+		hasOptimismWithdrawalsRoot bool
+	}{
+		{
+			name:                       "BeforeIsthmus",
+			blockTime:                  uint64(99),
+			hasOptimismWithdrawalsRoot: false,
+		},
+		{
+			name:                       "AtIsthmus",
+			blockTime:                  uint64(100),
+			hasOptimismWithdrawalsRoot: true,
+		},
+		{
+			name:                       "AfterIsthmus",
+			blockTime:                  uint64(200),
+			hasOptimismWithdrawalsRoot: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("TestHasOptimismWithdrawalsRoot_%s", test.name), func(t *testing.T) {
+			assert.Equal(t, config.HasOptimismWithdrawalsRoot(test.blockTime), test.hasOptimismWithdrawalsRoot)
+		})
+	}
+}
