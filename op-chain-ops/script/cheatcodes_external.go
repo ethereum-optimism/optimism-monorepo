@@ -221,69 +221,69 @@ func envList[E any](key string,
 
 // EnvBool implements https://book.getfoundry.sh/cheatcodes/env-bool
 func (c *CheatCodesPrecompile) EnvBool_7ed1ec7d(key string) (bool, error) {
-	return envSingular[bool](key, c.h.GetEnvVar, c.ParseBool)
+	return envSingular(key, c.h.GetEnvVar, c.ParseBool)
 }
 
 func (c *CheatCodesPrecompile) EnvBool_aaaddeaf(key string, delimiter string) ([]bool, error) {
-	return envList[bool](key, c.h.GetEnvVar, delimiter, c.ParseBool)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseBool)
 }
 
 // EnvUint implements https://book.getfoundry.sh/cheatcodes/env-uint
 func (c *CheatCodesPrecompile) EnvUint_c1978d1f(key string) (*big.Int, error) {
-	return envSingular[*big.Int](key, c.h.GetEnvVar, c.ParseUint)
+	return envSingular(key, c.h.GetEnvVar, c.ParseUint)
 }
 
 func (c *CheatCodesPrecompile) EnvUint_f3dec099(key string, delimiter string) ([]*big.Int, error) {
-	return envList[*big.Int](key, c.h.GetEnvVar, delimiter, c.ParseUint)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseUint)
 }
 
 // EnvInt implements https://book.getfoundry.sh/cheatcodes/env-int
 func (c *CheatCodesPrecompile) EnvInt_892a0c61(key string) (*ABIInt256, error) {
-	return envSingular[*ABIInt256](key, c.h.GetEnvVar, c.ParseInt)
+	return envSingular(key, c.h.GetEnvVar, c.ParseInt)
 }
 
 func (c *CheatCodesPrecompile) EnvInt_42181150(key string, delimiter string) ([]*ABIInt256, error) {
-	return envList[*ABIInt256](key, c.h.GetEnvVar, delimiter, c.ParseInt)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseInt)
 }
 
 // EnvAddress implements https://book.getfoundry.sh/cheatcodes/env-address
 func (c *CheatCodesPrecompile) EnvAddress_350d56bf(key string) (common.Address, error) {
-	return envSingular[common.Address](key, c.h.GetEnvVar, c.ParseAddress)
+	return envSingular(key, c.h.GetEnvVar, c.ParseAddress)
 }
 
 func (c *CheatCodesPrecompile) EnvAddress_ad31b9fa(key string, delimiter string) ([]common.Address, error) {
-	return envList[common.Address](key, c.h.GetEnvVar, delimiter, c.ParseAddress)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseAddress)
 }
 
 // EnvBytes32 implements https://book.getfoundry.sh/cheatcodes/env-bytes32
 func (c *CheatCodesPrecompile) EnvBytes32_97949042(key string) ([32]byte, error) {
-	return envSingular[[32]byte](key, c.h.GetEnvVar, c.ParseBytes32)
+	return envSingular(key, c.h.GetEnvVar, c.ParseBytes32)
 }
 
 func (c *CheatCodesPrecompile) EnvBytes32_5af231c1(key string, delimiter string) ([][32]byte, error) {
-	return envList[[32]byte](key, c.h.GetEnvVar, delimiter, c.ParseBytes32)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseBytes32)
 }
 
 // EnvString implements https://book.getfoundry.sh/cheatcodes/env-string
 func (c *CheatCodesPrecompile) EnvString_f877cb19(key string) (string, error) {
-	return envSingular[string](key, c.h.GetEnvVar, func(v string) (string, error) {
+	return envSingular(key, c.h.GetEnvVar, func(v string) (string, error) {
 		return v, nil
 	})
 }
 
 func (c *CheatCodesPrecompile) EnvString_14b02bc9(key string, delimiter string) ([]string, error) {
-	return envList[string](key, c.h.GetEnvVar, delimiter, func(v string) (string, error) {
+	return envList(key, c.h.GetEnvVar, delimiter, func(v string) (string, error) {
 		return v, nil
 	})
 }
 
 // EnvBytes implements https://book.getfoundry.sh/cheatcodes/env-bytes
 func (c *CheatCodesPrecompile) EnvBytes_4d7baf06(key string) ([]byte, error) {
-	return envSingular[[]byte](key, c.h.GetEnvVar, c.ParseBytes)
+	return envSingular(key, c.h.GetEnvVar, c.ParseBytes)
 }
 
 func (c *CheatCodesPrecompile) EnvBytes_ddc2651b(key string, delimiter string) ([][]byte, error) {
-	return envList[[]byte](key, c.h.GetEnvVar, delimiter, c.ParseBytes)
+	return envList(key, c.h.GetEnvVar, delimiter, c.ParseBytes)
 }
 
 // KeyExists implements https://book.getfoundry.sh/cheatcodes/key-exists
