@@ -1,16 +1,17 @@
 # Use a base image with necessary tools
 FROM ubuntu:20.04
+FROM golang:1.22
 
 ARG REV
 
 # Install required packages
 RUN apt-get update && apt-get install -y \
-    git \
-    bash \
-    curl \
-    build-essential \
-    jq \
-    && rm -rf /var/lib/apt/lists/*
+  git \
+  bash \
+  curl \
+  build-essential \
+  jq \
+  && rm -rf /var/lib/apt/lists/*
 
 # Install Rust
 RUN curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y
