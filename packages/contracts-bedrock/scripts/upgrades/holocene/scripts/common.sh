@@ -91,7 +91,7 @@ fetch_standard_address() {
     fi
   fi
 
-  local contract_path=".releases.\"op-contracts/${release_version}\".$contract_name"
+  local contract_path=".[\"op-contracts/${release_version}\"].$contract_name"
   local contract_address
   contract_address=$(yq "${contract_path}.address // ${contract_path}.implementation_address // \"\"" "${toml_path}")
   if [[ -z "$contract_address" ]]; then
