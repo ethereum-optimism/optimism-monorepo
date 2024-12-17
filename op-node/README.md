@@ -62,7 +62,6 @@ make op-node
   --p2p.priv.path=opnode_p2p_priv.txt \
   --p2p.peerstore.path=opnode_peerstore_db \
   --p2p.discovery.path=opnode_discovery_db \
-  --p2p.priv.path=opnode_p2p_priv.txt
 ```
 
 ## Usage
