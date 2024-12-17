@@ -30,7 +30,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 		return err
 	}
 
-	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID)
+	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID, intent.L1ContractsLocator.Tag)
 	hasPredeployedOPCM := opcmAddrErr == nil
 	isTag := intent.L1ContractsLocator.IsTag()
 
