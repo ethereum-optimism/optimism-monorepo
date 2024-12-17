@@ -20,7 +20,7 @@ The `cheat` sub-command has sub-commands for interacting with the DB, making pat
 
 Note that the validity of state-changes, as applied through patches,
 does not get checked until the block is re-processed.
-This can be used ot trick the node into things like hypothetical
+This can be used to trick the node into things like hypothetical
 test-states or shadow-forks without diverging the block-hashes.
 
 To run:
