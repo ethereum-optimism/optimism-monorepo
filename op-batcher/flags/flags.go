@@ -186,6 +186,12 @@ var (
 		Value:   130_000, // should be larger than the builder's max-l2-tx-size to prevent endlessly throttling some txs
 		EnvVars: prefixEnvVars("THROTTLE_ALWAYS_BLOCK_SIZE"),
 	}
+	EspressoUrlFlag = &cli.StringFlag{
+		Name:    "espresso-url",
+		Usage:   "",
+		Value:   "", // should be larger than the builder's max-l2-tx-size to prevent endlessly throttling some txs
+		EnvVars: prefixEnvVars("ESPRESSO_URL"),
+	}
 	// Legacy Flags
 	SequencerHDPathFlag = txmgr.SequencerHDPathFlag
 )
@@ -219,6 +225,7 @@ var optionalFlags = []cli.Flag{
 	ThrottleTxSizeFlag,
 	ThrottleBlockSizeFlag,
 	ThrottleAlwaysBlockSizeFlag,
+	EspressoUrlFlag,
 }
 
 func init() {

@@ -7,14 +7,13 @@ volumes:
   l1_bn_data:
   l1_vc_data:
   l2_data:
+  espresso_data:
   safedb_data:
   challenger_data:
   da_data:
   op_log:
 
-
 services:
-
   l1:
     build:
       context: .
@@ -34,8 +33,8 @@ services:
     depends_on:
       - l1
     build:
-        context: .
-        dockerfile: l1-lighthouse.Dockerfile
+      context: .
+      dockerfile: l1-lighthouse.Dockerfile
     ports:
       - "9000:9000"
       - "5052:5052"
@@ -56,8 +55,8 @@ services:
       - l1
       - l1-bn
     build:
-        context: .
-        dockerfile: l1-lighthouse.Dockerfile
+      context: .
+      dockerfile: l1-lighthouse.Dockerfile
     volumes:
       - "l1_vc_data:/db"
       - "${PWD}/beacon-data/data/keys:/validator_setup/validators"
@@ -82,7 +81,7 @@ services:
       - "l2_data:/db"
       - "${PWD}/../.devnet/genesis-l2.json:/genesis.json"
       - "${PWD}/test-jwt-secret.txt:/config/jwt-secret.txt"
-    entrypoint:  # pass the L2 specific flags by overriding the entry-point and adding extra arguments
+    entrypoint: # pass the L2 specific flags by overriding the entry-point and adding extra arguments
       - "/bin/sh"
       - "/entrypoint.sh"
     environment:
@@ -204,6 +203,7 @@ services:
       OP_BATCHER_ALTDA_DA_SERVICE: "${ALTDA_SERVICE}"
       OP_BATCHER_ALTDA_DA_SERVER: "http://da-server:3100"
       OP_BATCHER_DATA_AVAILABILITY_TYPE: "${DA_TYPE}"
+      OP_BATCHER_ESPRESSO_URL: "http://espresso-dev-node:24000"
 
   op-challenger:
     depends_on:
@@ -247,7 +247,7 @@ services:
       target: da-server-target
     command: >
       da-server
-      --file.path=/data
+      --espresso.url=http://espresso-dev-node:24000
       --addr=0.0.0.0
       --port=3100
       --log.level=debug
@@ -258,7 +258,7 @@ services:
       - "da_data:/data"
 
   sentinel:
-    image: quarry/sentinel # TODO(10141): We need a public image for this (sentinel is out of repo)
+    image: ghcr.io/latticexyz/sentinel:tc-build-workflow # TODO(10141): We need a public image for this (sentinel is out of repo)
     volumes:
       - "${PWD}/../.devnet/rollup.json:/rollup.json"
     # private-key is mnemonic index 5 of the test mnemonic.
@@ -281,3 +281,24 @@ services:
       - "${PWD}/../.devnet/:/usr/share/nginx/html/:ro"
     security_opt:
       - "no-new-privileges:true"
+
+  espresso-dev-node:
+    image: ghcr.io/espressosystems/espresso-sequencer/espresso-dev-node:main
+    ports:
+      - "24000:24000"
+      - "31003:31003"
+      - "24002:24002"
+    environment:
+      ESPRESSO_BUILDER_PORT: 31003
+      ESPRESSO_SEQUENCER_API_PORT: 24000
+      ESPRESSO_DEPLOYER_ACCOUNT_INDEX: 9
+      ESPRESSO_DEV_NODE_PORT: 24001
+      ESPRESSO_SEQUENCER_ETH_MNEMONIC: "test test test test test test test test test test test junk"
+      ESPRESSO_SEQUENCER_L1_PROVIDER: http://l1:8545
+      ESPRESSO_SEQUENCER_DATABASE_MAX_CONNECTIONS: 25
+      ESPRESSO_SEQUENCER_STORAGE_PATH: /data/espresso
+      RUST_LOG: info
+    volumes:
+      - espresso_data:/data/espresso
+    extra_hosts:
+      - "host.docker.internal:host-gateway"

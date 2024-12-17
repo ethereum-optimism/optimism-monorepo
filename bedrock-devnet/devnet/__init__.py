@@ -29,8 +29,9 @@ FORKS = ["delta", "ecotone", "fjord", "granite", "holocene"]
 # Global environment variables
 DEVNET_NO_BUILD = os.getenv('DEVNET_NO_BUILD') == "true"
 DEVNET_L2OO = os.getenv('DEVNET_L2OO') == "true"
-DEVNET_ALTDA = os.getenv('DEVNET_ALTDA') == "true"
-GENERIC_ALTDA = os.getenv('GENERIC_ALTDA') == "true"
+DEVNET_ESPRESSO = os.getenv('DEVNET_ESPRESSO') == "true"
+DEVNET_ALTDA = os.getenv('DEVNET_ALTDA') == "true" or DEVNET_ESPRESSO
+GENERIC_ALTDA = os.getenv('GENERIC_ALTDA') == "true" or DEVNET_ESPRESSO
 
 class Bunch:
     def __init__(self, **kwds):
@@ -236,6 +237,13 @@ def devnet_deploy(paths):
     rollup_config = read_json(paths.rollup_config_path)
     addresses = read_json(paths.addresses_json_path)
 
+    if DEVNET_ESPRESSO:
+      # Start the espresso DA.
+      log.info('Bringing up Espresso dev node.')
+      run_command(['docker', 'compose', 'up', '-d', 'espresso-dev-node'], cwd=paths.ops_bedrock_dir, env={
+        'PWD': paths.ops_bedrock_dir
+      })
+
     # Start the L2.
     log.info('Bringing up L2.')
     run_command(['docker', 'compose', 'up', '-d', 'l2'], cwd=paths.ops_bedrock_dir, env={
@@ -253,7 +261,8 @@ def devnet_deploy(paths):
     # Set up the base docker environment.
     docker_env = {
         'PWD': paths.ops_bedrock_dir,
-        'SEQUENCER_BATCH_INBOX_ADDRESS': batch_inbox_address
+        'SEQUENCER_BATCH_INBOX_ADDRESS': batch_inbox_address,
+        'LOG_LEVEL': 'DEBUG'
     }
 
     # Selectively set the L2OO_ADDRESS or DGF_ADDRESS if using L2OO.

@@ -13,6 +13,7 @@ import (
 const (
 	ListenAddrFlagName        = "addr"
 	PortFlagName              = "port"
+	EspressoBaseUrlFlagName   = "espresso.url"
 	S3BucketFlagName          = "s3.bucket"
 	S3EndpointFlagName        = "s3.endpoint"
 	S3AccessKeyIDFlagName     = "s3.access-key-id"
@@ -74,6 +75,12 @@ var (
 		Value:   "",
 		EnvVars: prefixEnvVars("S3_ACCESS_KEY_SECRET"),
 	}
+	EspressoBaseUrlFlag = &cli.StringFlag{
+		Name:    EspressoBaseUrlFlagName,
+		Usage:   "espresso network base url",
+		Value:   "",
+		EnvVars: prefixEnvVars("ESPRESSO_BASE_URL"),
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -87,6 +94,7 @@ var optionalFlags = []cli.Flag{
 	S3EndpointFlag,
 	S3AccessKeyIDFlag,
 	S3AccessKeySecretFlag,
+	EspressoBaseUrlFlag,
 	GenericCommFlag,
 }
 
@@ -104,6 +112,7 @@ type CLIConfig struct {
 	S3Endpoint        string
 	S3AccessKeyID     string
 	S3AccessKeySecret string
+	EspressoBaseUrl   string
 	UseGenericComm    bool
 }
 
@@ -114,21 +123,36 @@ func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 		S3Endpoint:        ctx.String(S3EndpointFlagName),
 		S3AccessKeyID:     ctx.String(S3AccessKeyIDFlagName),
 		S3AccessKeySecret: ctx.String(S3AccessKeySecretFlagName),
+		EspressoBaseUrl:   ctx.String(EspressoBaseUrlFlagName),
 		UseGenericComm:    ctx.Bool(GenericCommFlagName),
 	}
 }
 
 func (c CLIConfig) Check() error {
-	if !c.S3Enabled() && !c.FileStoreEnabled() {
+	enabledCount := 0
+	if c.S3Enabled() {
+		enabledCount++
+		if c.S3Bucket == "" || c.S3Endpoint == "" || c.S3AccessKeyID == "" || c.S3AccessKeySecret == "" {
+			return errors.New("all S3 flags must be set")
+		}
+	}
+	if c.FileStoreEnabled() {
+		enabledCount++
+	}
+	if c.EspressoEnabled() {
+		enabledCount++
+	}
+	if enabledCount == 0 {
 		return errors.New("at least one storage backend must be enabled")
 	}
-	if c.S3Enabled() && c.FileStoreEnabled() {
-		return errors.New("only one storage backend can be enabled")
-	}
-	if c.S3Enabled() && (c.S3Bucket == "" || c.S3Endpoint == "" || c.S3AccessKeyID == "" || c.S3AccessKeySecret == "") {
-		return errors.New("all S3 flags must be set")
+	if enabledCount > 1 {
+		return errors.New("only one storage backend must be enabled")
 	}
 	return nil
+}
+
+func (c CLIConfig) EspressoEnabled() bool {
+	return !(c.EspressoBaseUrl == "")
 }
 
 func (c CLIConfig) S3Enabled() bool {

@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	espresso "github.com/EspressoSystems/espresso-sequencer-go/client"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -38,7 +39,8 @@ type BatcherConfig struct {
 
 	// UseAltDA is true if the rollup config has a DA challenge address so the batcher
 	// will post inputs to the DA server and post commitments to blobs or calldata.
-	UseAltDA bool
+	UseAltDA    bool
+	UseEspresso bool
 	// maximum number of concurrent blob put requests to the DA server
 	MaxConcurrentDARequests uint64
 
@@ -60,6 +62,7 @@ type BatcherService struct {
 	EndpointProvider dial.L2EndpointProvider
 	TxManager        txmgr.TxManager
 	AltDA            *altda.DAClient
+	Espresso         *espresso.Client
 
 	BatcherConfig
 
@@ -112,6 +115,11 @@ func (bs *BatcherService) initFromCLIConfig(ctx context.Context, version string,
 	bs.ThrottleBlockSize = cfg.ThrottleBlockSize
 	bs.ThrottleAlwaysBlockSize = cfg.ThrottleAlwaysBlockSize
 	bs.ThrottleInterval = cfg.ThrottleInterval
+	if cfg.EspressoUrl != "" {
+		bs.Espresso = espresso.NewClient(cfg.EspressoUrl)
+		bs.UseEspresso = true
+		bs.UseAltDA = true
+	}
 
 	if err := bs.initRPCClients(ctx, cfg); err != nil {
 		return err
@@ -340,6 +348,7 @@ func (bs *BatcherService) initDriver(opts ...DriverSetupOption) {
 		EndpointProvider: bs.EndpointProvider,
 		ChannelConfig:    bs.ChannelConfig,
 		AltDA:            bs.AltDA,
+		Espresso:         bs.Espresso,
 	}
 	for _, opt := range opts {
 		opt(&ds)

@@ -29,10 +29,10 @@ packages/contracts-bedrock/deployments/anvil
 
 .secrets
 .env
-.env*
 !.env.example
 !.envrc.example
 *.log
+.direnv/
 
 .devnet*
 

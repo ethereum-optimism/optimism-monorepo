@@ -39,6 +39,9 @@ func StartDAServer(cliCtx *cli.Context) error {
 			return fmt.Errorf("failed to create S3 store: %w", err)
 		}
 		store = s3
+	} else if cfg.EspressoEnabled() {
+		l.Info("Using Espresso DA", "url", cfg.EspressoBaseUrl)
+		store = NewEspressoStore(cfg.EspressoBaseUrl, l)
 	}
 
 	server := altda.NewDAServer(cliCtx.String(ListenAddrFlagName), cliCtx.Int(PortFlagName), store, l, cfg.UseGenericComm)

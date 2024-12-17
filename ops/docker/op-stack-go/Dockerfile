@@ -14,7 +14,7 @@ ARG UBUNTU_TARGET_BASE_IMAGE=ubuntu:22.04
 
 # The version of kona to use.
 # The only build that uses this is `op-challenger-target`.
-ARG KONA_VERSION=none
+ARG KONA_VERSION="kona-client-v0.1.0-beta.5"
 
 # We may be cross-building for another platform. Specify which platform we need as builder.
 FROM --platform=$BUILDPLATFORM golang:1.22.7-alpine3.20 AS builder
@@ -23,12 +23,12 @@ RUN apk add --no-cache curl tar gzip make gcc musl-dev linux-headers git jq bash
 
 # install yq
 RUN wget https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64 -O /usr/local/bin/yq && \
-    chmod +x /usr/local/bin/yq
+  chmod +x /usr/local/bin/yq
 
 # install versioned toolchain
 COPY ./mise.toml .
 RUN curl -L https://github.com/casey/just/releases/download/$(yq '.tools.just' mise.toml)/just-$(yq '.tools.just' mise.toml)-x86_64-unknown-linux-musl.tar.gz | \
-    tar xz -C /usr/local/bin just
+  tar xz -C /usr/local/bin just
 
 # We copy the go.mod/sum first, so the `go mod download` does not have to re-run if dependencies do not change.
 COPY ./go.mod /app/go.mod

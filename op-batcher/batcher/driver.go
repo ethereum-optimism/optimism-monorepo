@@ -20,6 +20,8 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 
+	espressoClient "github.com/EspressoSystems/espresso-sequencer-go/client"
+	espressoCommon "github.com/EspressoSystems/espresso-sequencer-go/types"
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -90,6 +92,7 @@ type DriverSetup struct {
 	EndpointProvider  dial.L2EndpointProvider
 	ChannelConfig     ChannelConfigProvider
 	AltDA             *altda.DAClient
+	Espresso          *espressoClient.Client
 	ChannelOutFactory ChannelOutFactory
 }
 
@@ -741,6 +744,83 @@ func (l *BatchSubmitter) cancelBlockingTx(queue *txmgr.Queue[txRef], receiptsCh 
 	l.sendTx(txData{}, true, candidate, queue, receiptsCh)
 }
 
+type EspressoCommitment struct {
+	TeeAttestation []byte
+	TxHash         []byte
+}
+
+func (c EspressoCommitment) toGeneric() altda.GenericCommitment {
+	return c.TxHash
+}
+
+func (l *BatchSubmitter) publishToEspressoAndL1(txdata txData, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+	// sanity checks
+	if nf := len(txdata.frames); nf != 1 {
+		l.Log.Crit("Unexpected number of frames in calldata tx", "num_frames", nf)
+	}
+	if txdata.asBlob {
+		l.Log.Crit("Unexpected blob txdata with AltDA enabled")
+	}
+
+	// when posting txdata to an external DA Provider, we use a goroutine to avoid blocking the main loop
+	// since it may take a while for the request to return.
+	goroutineSpawned := daGroup.TryGo(func() error {
+		transaction := espressoCommon.Transaction{
+			Namespace: 42,
+			Payload:   txdata.CallData(),
+		}
+		txHash, err := l.Espresso.SubmitTransaction(l.shutdownCtx, transaction)
+		if err != nil {
+			l.Log.Error("Failed to submit transaction", "transaction", transaction, "error", err)
+			l.recordFailedDARequest(txdata.ID(), err)
+			return fmt.Errorf("failed to submit transaction: %w", err)
+		}
+
+		timer := time.NewTimer(2 * time.Minute)
+		defer timer.Stop()
+
+		ticker := time.NewTicker(100 * time.Millisecond)
+		defer ticker.Stop()
+
+		var txQueryData espressoCommon.TransactionQueryData
+	Loop:
+		for {
+			select {
+			case <-ticker.C:
+				txQueryData, err = l.Espresso.FetchTransactionByHash(l.shutdownCtx, txHash)
+				if err == nil {
+					break Loop
+				}
+				l.Log.Warn("Retry fetching transaction by hash", "txHash", txHash, "error", err)
+			case <-timer.C:
+				l.Log.Error("Failed to fetch transaction by hash after multiple attempts", "txHash", txHash)
+				return fmt.Errorf("failed to fetch transaction by hash: %w", err)
+			}
+		}
+
+		// TODO: Fetch and verify proofs here
+		// ...
+
+		// TODO: Generate a real attestation
+		teeAttestation := []byte{}
+
+		espComm := EspressoCommitment{
+			TeeAttestation: teeAttestation,
+			TxHash:         txQueryData.Hash.Value(),
+		}
+
+		candidate := l.calldataTxCandidate(espComm.toGeneric().TxData())
+		l.sendTx(txdata, false, candidate, queue, receiptsCh)
+		return nil
+	})
+	if !goroutineSpawned {
+		// We couldn't start the goroutine because the errgroup.Group limit
+		// is already reached. Since we can't send the txdata, we have to
+		// return it for later processing. We use nil error to skip error logging.
+		l.recordFailedDARequest(txdata.ID(), nil)
+	}
+}
+
 // publishToAltDAAndL1 posts the txdata to the DA Provider and then sends the commitment to L1.
 func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
 	// sanity checks
@@ -793,9 +873,15 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txRef
 
 	// if Alt DA is enabled we post the txdata to the DA Provider and replace it with the commitment.
 	if l.Config.UseAltDA {
-		l.publishToAltDAAndL1(txdata, queue, receiptsCh, daGroup)
-		// we return nil to allow publishStateToL1 to keep processing the next txdata
-		return nil
+		if l.Config.UseEspresso {
+			l.publishToEspressoAndL1(txdata, queue, receiptsCh, daGroup)
+			// we return nil to allow publishStateToL1 to keep processing the next txdata
+			return nil
+		} else {
+			l.publishToAltDAAndL1(txdata, queue, receiptsCh, daGroup)
+			// we return nil to allow publishStateToL1 to keep processing the next txdata
+			return nil
+		}
 	}
 
 	var candidate *txmgr.TxCandidate
