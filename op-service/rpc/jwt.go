@@ -25,28 +25,24 @@ func ObtainJWTSecret(logger log.Logger, jwtSecretPath string, generateMissing bo
 	if jwtSecretPath == "" {
 		return eth.Bytes32{}, fmt.Errorf("file-name of jwt secret is empty")
 	}
-	// Check if the file exists
-	_, err := os.Stat(jwtSecretPath)
-	exists := !errors.Is(err, fs.ErrNotExist)
-	if exists {
-		// If the file exists, read the JWT secret from it
-		jwtSecret, err := readJWTSecret(jwtSecretPath)
-		if err != nil {
-			return eth.Bytes32{}, fmt.Errorf("failed to read JWT secret from file path %q: %w", jwtSecretPath, err)
+	data, err := os.ReadFile(jwtSecretPath)
+	if err != nil {
+		if errors.Is(err, fs.ErrNotExist) {
+			if !generateMissing {
+				return eth.Bytes32{}, fmt.Errorf("JWT-secret in path %q does not exist: %w", jwtSecretPath, err)
+			}
+			logger.Warn("Failed to read JWT secret from file, generating a new one now.", "path", jwtSecretPath)
+			return generateJWTSecret(jwtSecretPath)
+		} else {
+			return eth.Bytes32{}, fmt.Errorf("failed to read JWT secret from file path %q", jwtSecretPath)
 		}
-		return jwtSecret, nil
-	} else if generateMissing {
-		// if the file does not exist, and generation is enabled, generate a new JWT secret
-		logger.Warn("JWT secret file not found, generating a new one now.", "path ", jwtSecretPath)
-		jwtSecret, err := generateJWTSecret(jwtSecretPath)
-		if err != nil {
-			return eth.Bytes32{}, fmt.Errorf("failed to generate JWT secret in path %q: %w", jwtSecretPath, err)
-		}
-		return jwtSecret, nil
-	} else {
-		// if the file does not exist, and generation is disabled, return an error
-		return eth.Bytes32{}, fmt.Errorf("jwt secret file not found at path %q", jwtSecretPath)
 	}
+	// Parse the JWT secret data we just read
+	jwtSecret := common.FromHex(strings.TrimSpace(string(data))) // FromHex handles optional '0x' prefix
+	if len(jwtSecret) != 32 {
+		return eth.Bytes32{}, fmt.Errorf("invalid jwt secret in path %q, not 32 hex-formatted bytes", jwtSecretPath)
+	}
+	return eth.Bytes32(jwtSecret), nil
 }
 
 // generateJWTSecret generates a new JWT secret and writes it to the file at the given path.
@@ -61,21 +57,4 @@ func generateJWTSecret(path string) (eth.Bytes32, error) {
 		return eth.Bytes32{}, err
 	}
 	return secret, nil
-}
-
-// readJWTSecret reads a JWT secret from the file at the given path.
-// Prior status of the file is not checked, and the file is always read.
-// Callers should ensure the file exists
-func readJWTSecret(path string) (eth.Bytes32, error) {
-	// Read the JWT secret from the file
-	data, err := os.ReadFile(path)
-	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to read JWT secret from file path %q: %w", path, err)
-	}
-	// Parse the JWT secret from the file
-	jwtSecret := common.FromHex(strings.TrimSpace(string(data))) // FromHex handles optional '0x' prefix
-	if len(jwtSecret) != 32 {
-		return eth.Bytes32{}, fmt.Errorf("invalid jwt secret in path %q, not 32 hex-formatted bytes", path)
-	}
-	return eth.Bytes32(jwtSecret), nil
 }
