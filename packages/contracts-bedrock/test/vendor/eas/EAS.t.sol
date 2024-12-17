@@ -918,6 +918,13 @@ contract EASTest is CommonTest {
         uint256 _randomData2,
         uint256 _randomData3
     ) public {
+        vm.assume(_randomData1 < type(uint128).max);
+        vm.assume(_randomData2 < type(uint128).max);
+        vm.assume(_randomData3 < type(uint128).max);
+        vm.assume(_randomData1 != _randomData2);
+        vm.assume(_randomData1 != _randomData3);
+        vm.assume(_randomData2 != _randomData3);
+
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256(abi.encodePacked(_randomData1));
         data[1] = keccak256(abi.encodePacked(_randomData2));
