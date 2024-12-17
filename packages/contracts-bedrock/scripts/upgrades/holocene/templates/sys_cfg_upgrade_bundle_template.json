@@ -11,6 +11,7 @@
         "description": "Upgrades the `SystemConfigProxy`to the StorageSetter."
       },
       "to": "$PROXY_ADMIN_ADDR",
+      "data": "$UPGRADE_PAYLOAD",
       "value": "0",
       "contractMethod": {
         "inputs": [
@@ -40,6 +41,7 @@
         "description": "Zeroes out the initialized state variable to allow reinitialization."
       },
       "to": "$SYSTEM_CONFIG_PROXY_ADDR",
+      "data": "$SETBYTES32_PAYLOAD",
       "value": "0",
       "contractMethod": {
         "inputs": [
@@ -65,10 +67,11 @@
     },
     {
       "metadata": {
-        "name": "ProxyAdmin.upgrade(SystemConfigProxy, SystemConfigImplementation, Initialize())",
+        "name": "ProxyAdmin.upgradeAndCall(SystemConfigProxy, SystemConfigImplementation, Initialize())",
         "description": "Upgrades the SystemConfig to a new implementation and initializes it."
       },
       "to": "$PROXY_ADMIN_ADDR",
+      "data": "$UPGRADEANDCALL_PAYLOAD",
       "value": "0",
       "contractMethod": {
         "inputs": [
