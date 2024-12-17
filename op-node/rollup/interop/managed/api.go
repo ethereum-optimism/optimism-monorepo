@@ -31,7 +31,7 @@ func (ib *InteropAPI) UpdateFinalized(ctx context.Context, ref eth.BlockRef) err
 	return ib.backend.UpdateFinalized(ctx, ref)
 }
 
-func (ib *InteropAPI) AnchorPoint(ctx context.Context) (l1, l2 eth.BlockRef, err error) {
+func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedPair, error) {
 	return ib.backend.AnchorPoint(ctx)
 }
 

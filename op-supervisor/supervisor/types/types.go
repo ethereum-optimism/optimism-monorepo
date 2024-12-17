@@ -310,3 +310,8 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 	msg = append(msg, l.Data...)
 	return msg
 }
+
+type DerivedPair struct {
+	DerivedFrom eth.BlockRef
+	Derived     eth.BlockRef
+}

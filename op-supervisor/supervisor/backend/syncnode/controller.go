@@ -2,6 +2,7 @@ package syncnode
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"sync"
 
@@ -13,7 +14,9 @@ import (
 )
 
 type chainsDB interface {
+	LocalSafe(types.ChainID) (types.BlockSeal, types.BlockSeal, error)
 	UpdateLocalSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
+	UpdateCrossSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
 }
 
 // SyncNodeController handles the sync node operations across multiple sync nodes
@@ -40,7 +43,36 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 		return fmt.Errorf("chain %v not in dependency set", id)
 	}
 	snc.controllers.Set(id, ctrl)
+	snc.maybeInit(id)
 	return nil
+}
+
+// maybeInit initializes the chain database if it is not already initialized
+// it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
+func (snc *SyncNodesController) maybeInit(id types.ChainID) {
+	_, _, err := snc.db.LocalSafe(id)
+	if errors.Is(err, types.ErrFuture) {
+		snc.logger.Debug("initializing chain database", "chain", id)
+		ctrl, ok := snc.controllers.Get(id)
+		if !ok {
+			snc.logger.Warn("missing controller for chain. Not initializing", "chain", id)
+			return
+		}
+		pair, err := ctrl.AnchorPoint(context.Background())
+		if err != nil {
+			snc.logger.Warn("failed to get anchor point", "chain", id, "error", err)
+			return
+		}
+		if err := snc.db.UpdateCrossSafe(id, pair.Derived, pair.Derived); err != nil {
+			snc.logger.Warn("failed to initialize cross safe", "chain", id, "error", err)
+		}
+		if err := snc.db.UpdateLocalSafe(id, pair.DerivedFrom, pair.Derived); err != nil {
+			snc.logger.Warn("failed to initialize local safe", "chain", id, "error", err)
+		}
+		snc.logger.Debug("initialized chain database", "chain", id, "anchor", pair)
+	} else {
+		snc.logger.Debug("chain database already initialized", "chain", id)
+	}
 }
 
 // DeriveFromL1 derives the L2 blocks from the L1 block reference for all the chains
