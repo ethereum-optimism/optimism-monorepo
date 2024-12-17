@@ -159,7 +159,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     ///         currently being replayed.
     /// @param _id          Identifier of the SentMessage event to be relayed
     /// @param _sentMessage Message payload of the `SentMessage` event
-    function relayMessage(Identifier calldata _id, bytes calldata _sentMessage) external payable nonReentrant {
+    /// @return returnData_ Return data from the target contract call.
+    function relayMessage(Identifier calldata _id, bytes calldata _sentMessage) external payable nonReentrant returns (bytes memory returnData_) {
         // Ensure the log came from the messenger. Since the log origin is the CDM, there isn't a scenario where
         // this can be invoked from the CrossL2Inbox as the SentMessage log is not calldata for this function
         if (_id.origin != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER) {
@@ -194,7 +195,8 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
 
         _storeMessageMetadata(source, sender);
 
-        bool success = SafeCall.call(target, msg.value, message);
+        bool success;
+        (success, returnData_) = target.call{value: msg.value}(message);
 
         if (!success) {
             revert TargetCallFailed();
