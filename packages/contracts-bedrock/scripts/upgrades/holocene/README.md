@@ -18,7 +18,7 @@ This script has several different modes of operation. Namely:
   - FP options:
     - With permissionless fault proofs enabled (incl. `FaultDisputeGame`)
     - With permissioned fault proofs enabled (excl. `FaultDisputeGame`)
-1. Deploy and upgrade `op-contracts/v1.3.0` -> `op-contracts/v1.8.0`, with the `L2OutputOracle` still active.
+2. Deploy and upgrade `op-contracts/v1.3.0` -> `op-contracts/v1.8.0`, with the `L2OutputOracle` still active.
   - Only upgrade the `SystemConfig`
 
 ```sh
@@ -60,3 +60,12 @@ You can use `0x03f89406817db1ed7fd8b31e13300444652cdb0b9c509a674de43483b2f83568`
 
 If you want to make local modifications to the scripts in `scripts/`, you need to build the Docker
 image again with `just build-image` before running `just run`.
+
+### Upgrading `SystemConfig` only
+There is a more direct route available for those wanting to focus on generating the bundle and task for upgrading the `SystemConfig`. This route does not require a deploy config file. Instead of using `just run` as above you can do:
+```sh
+# You can optionally specify an output folder path different from the default `output/` as a
+# second argument to these commands, also as an absolute path. You should use the same path for both commands.
+just sys-cfg-bundle
+just sys-cfg-task
+```
