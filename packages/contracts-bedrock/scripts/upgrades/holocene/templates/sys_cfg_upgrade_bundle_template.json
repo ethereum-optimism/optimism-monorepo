@@ -26,7 +26,8 @@
           }
         ],
         "name": "upgrade",
-        "payable": false
+        "payable": false,
+        "outputs": []
       },
       "contractInputsValues": {
         "_proxy": "$SYSTEM_CONFIG_PROXY_ADDR",
@@ -54,7 +55,8 @@
           }
         ],
         "name": "setBytes32",
-        "payable": false
+        "payable": false,
+        "outputs": []
       },
       "contractInputsValues": {
         "_slot": "0x0000000000000000000000000000000000000000000000000000000000000000",
@@ -87,7 +89,8 @@
           }
         ],
         "name": "upgradeAndCall",
-        "payable": false
+        "payable": false,
+        "outputs": []
       },
       "contractInputsValues": {
         "_data": "$SYSTEM_CONFIG_INITIALIZE_CALLDATA",
