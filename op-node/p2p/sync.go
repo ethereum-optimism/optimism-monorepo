@@ -310,7 +310,7 @@ func NewSyncClient(log log.Logger, cfg *rollup.Config, host HostNewStream, rcv r
 	}
 
 	// never errors with positive LRU cache size
-	// TODO: if we had an LRU based on on total payloads size, instead of payload count,
+	// TODO: if we had an LRU based on total payloads size, instead of payload count,
 	//  we can safely buffer more data in the happy case.
 	q, _ := simplelru.NewLRU[common.Hash, syncResult](100, c.onQuarantineEvict)
 	c.quarantine = q

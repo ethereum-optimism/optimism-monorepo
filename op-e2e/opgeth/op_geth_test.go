@@ -1038,7 +1038,7 @@ func TestPreFjord(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, []byte{}, response, "should return empty response pre-fjord for valid signature")
 
-			// invalid request returns returns empty response
+			// invalid request returns empty response
 			response, err = opGeth.L2Client.CallContract(ctx, ethereum.CallMsg{
 				To:   &rip7212Precompile,
 				Data: invalid7212Data,
