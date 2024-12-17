@@ -48,24 +48,25 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests schema registration with various parameters.
     ///      Ensures schema registration properly stores all
     ///      parameters and generates correct UIDs
-    function testRegisterSchema(string memory _schema, address _resolver, bool _revocable) public {
-        bytes32 uid = schemaRegistry.register(_schema, ISchemaResolver(_resolver), _revocable);
+    function testRegisterSchema(string memory _string, address _resolver, bool _revocable) public {
+        string memory schema = string.concat("string ", _string);
+        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = schemaRegistry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, _schema);
+        assertEq(record.schema, schema);
         assertEq(address(record.resolver), _resolver);
         assertEq(record.revocable, _revocable);
     }
 
     /// @dev Tests the retrieval of a previously registered schema
-    function testGetSchema(string memory _schema, address _resolver, bool _revocable) public {
-
-        bytes32 uid = schemaRegistry.register(_schema, ISchemaResolver(_resolver), _revocable);
+    function testGetSchema(string memory _string, address _resolver, bool _revocable) public {
+        string memory schema = string.concat("string ", _string);
+        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = schemaRegistry.getSchema(uid);
 
         assertEq(record.uid, uid);
-        assertEq(record.schema, _schema);
+        assertEq(record.schema, schema);
         assertEq(address(record.resolver), _resolver);
         assertEq(record.revocable, _revocable);
     }
@@ -74,13 +75,12 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests schema retrieval functionality.
     ///      Demonstrates complete flow of schema registration
     ///      and subsequent retrieval
-    function testRegisterSchemaWithoutSchema(string memory _schema, address _resolver, bool _revocable) public {
-        vm.assume(keccak256(bytes(_schema)) == keccak256(bytes("")));
-        bytes32 uid = schemaRegistry.register(_schema, ISchemaResolver(_resolver), _revocable);
+    function testRegisterSchemaWithoutSchema( address _resolver, bool _revocable) public {
+        bytes32 uid = schemaRegistry.register("", ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = schemaRegistry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, _schema);
+        assertEq(record.schema, "");
         assertEq(address(record.resolver), _resolver);
         assertEq(record.revocable, _revocable);
     }
@@ -88,14 +88,14 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests schema registration without resolver.
     ///      Demonstrates schema registration functionality
     ///      for schemas that don't require resolver logic
-    function testRegisterSchemaWithoutResolver(string memory _schema, address _resolver, bool _revocable) public {
+    function testRegisterSchemaWithoutResolver(string memory _string, address _resolver, bool _revocable) public {
         vm.assume(_resolver == address(0));
-
-        bytes32 uid = schemaRegistry.register(_schema, ISchemaResolver(_resolver), _revocable);
+        string memory schema = string.concat("string ", _string);
+        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
         SchemaRecord memory record = schemaRegistry.getSchema(uid);
         
         assertEq(record.uid, uid);
-        assertEq(record.schema, _schema);
+        assertEq(record.schema, schema);
         assertEq(address(record.resolver), _resolver);
         assertEq(record.revocable, _revocable);
     }
@@ -103,26 +103,24 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests schema registration with empty schema and no resolver.
     ///      Demonstrates system handles edge case of
     ///      minimal schema registration correctly
-    function testRegisterSchemaWithoutSchemaOrResolver() public {
+    function testRegisterSchemaWithoutSchemaOrResolver(bool _revocable) public {
         string memory schema = "";
         address resolver = address(0);
-        bool revocable = true;
   
-
-        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(resolver), revocable);
+        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(resolver), _revocable);
         SchemaRecord memory record = schemaRegistry.getSchema(uid);
         
         assertEq(record.uid, uid);
         assertEq(record.schema, schema);
         assertEq(address(record.resolver), resolver);
-        assertEq(record.revocable, revocable);
+        assertEq(record.revocable, _revocable);
     }
 
     /// @dev Tests retrieval of a non-existent schema.
     ///      Ensures system returns empty/default values
     ///      when querying non-existent schemas
-    function testGetNonExistingSchema() public view {
-        bytes32 badUid = keccak256(abi.encodePacked("BAD"));
+    function testGetNonExistingSchema(string memory _bad) public view {
+        bytes32 badUid = keccak256(abi.encodePacked(_bad));
         SchemaRecord memory record = schemaRegistry.getSchema(badUid);
 
         assertEq(record.uid, bytes32(0));
@@ -177,8 +175,31 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests schema registration with extended schema string.
     ///      Demonstrates system handles large schema definitions
     ///      without truncation or modification
-    function testRegisterLongSchema() public {
-        string memory longSchema = "string reallyLongFieldName1, uint256 reallyLongFieldName2, address reallyLongFieldName3, bytes32 reallyLongFieldName4, bool reallyLongFieldName5";
+    function testRegisterLongSchema(
+        string memory _fieldName, 
+        string memory _fieldName2, 
+        string memory _fieldName3, 
+        string memory _fieldName4, 
+        string memory _fieldName5
+    ) public {
+        vm.assume(bytes(_fieldName).length > 32);
+        vm.assume(bytes(_fieldName2).length > 32);
+        vm.assume(bytes(_fieldName3).length > 32);
+        vm.assume(bytes(_fieldName4).length > 32);
+        vm.assume(bytes(_fieldName5).length > 32);
+        string memory longSchema = string.concat(
+        "string ", 
+        _fieldName, 
+        "uint256 ", 
+        _fieldName2, 
+        "address ",
+        _fieldName3, 
+        "bytes32 ",
+        _fieldName4, 
+        "bool ",
+        _fieldName5
+        );
+
         address resolver = address(0x123);
         bool revocable = true;
 
@@ -190,11 +211,14 @@ contract SchemaRegistryTest is CommonTest {
     /// @dev Tests batch schema registration in single transaction.
     ///      Demonstrates system handles multiple registrations
     ///      within single transaction correctly
-    function testMultipleRegistrationsInSameTx() public {
+    function testMultipleRegistrationsInSameTx(string memory _bool1, string memory _bool2, string memory _bool3) public {
+        vm.assume(keccak256(bytes(_bool1)) != keccak256(bytes(_bool2)));
+        vm.assume(keccak256(bytes(_bool2)) != keccak256(bytes(_bool3)));
+        vm.assume(keccak256(bytes(_bool3)) != keccak256(bytes(_bool1)));
         string[] memory schemas = new string[](3);
-        schemas[0] = "bool flag1";
-        schemas[1] = "bool flag2";
-        schemas[2] = "bool flag3";
+        schemas[0] = string.concat("bool ", _bool1);
+        schemas[1] = string.concat("bool ", _bool2);
+        schemas[2] = string.concat("bool ", _bool3);
         
         bytes32[] memory uids = new bytes32[](3);
         
@@ -208,26 +232,13 @@ contract SchemaRegistryTest is CommonTest {
         }
     }
 
-    /// @dev Tests schema registration with special characters.
-    ///      Ensures system properly handles and stores schemas
-    ///      containing non-standard characters without modification
-    function testRegisterSchemaWithSpecialChars() public {
-        string memory schema = "string name_with_underscore, uint256 amount$, bool is@Valid";
-        address resolver = address(0x123);
-        bool revocable = true;
-
-        bytes32 uid = schemaRegistry.register(schema, ISchemaResolver(resolver), revocable);
-        SchemaRecord memory record = schemaRegistry.getSchema(uid);
-        assertEq(record.schema, schema);
-    }
-
     // Schema Uniqueness Tests
     /// @dev Tests UID uniqueness for identical schemas with different resolvers.
     ///      Demonstrates resolver address affects UID generation,
     ///      ensuring unique identification even with identical schemas
-    function testSchemaUIDUniqueness() public {
-        string memory schema1 = "bool flag";
-        string memory schema2 = "bool flag";
+    function testSchemaUIDUniqueness(string memory _name) public {
+        string memory schema1 = string.concat("bool ", _name);
+        string memory schema2 = string.concat("bool ", _name);
         address resolver1 = address(0x123);
         address resolver2 = address(0x456);
         
@@ -295,8 +306,8 @@ contract SchemaRegistryTest is CommonTest {
     ///         - System handles both revocable and non-revocable schemas
     ///         - Revocability affects UID generation
     ///         - Proper storage of revocability setting
-    function testSchemaRevocability() public {
-        string memory schema = "bool like";
+    function testSchemaRevocability(string memory _name) public {
+        string memory schema = string.concat("bool ", _name);
         
         bytes32 revocableUid = schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
         SchemaRecord memory revocableRecord = schemaRegistry.getSchema(revocableUid);
