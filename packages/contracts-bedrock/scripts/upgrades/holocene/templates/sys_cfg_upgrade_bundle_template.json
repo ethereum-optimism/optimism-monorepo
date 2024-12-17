@@ -12,7 +12,6 @@
       },
       "to": "$PROXY_ADMIN_ADDR",
       "value": "0",
-      "data": null,
       "contractMethod": {
         "inputs": [
           {
@@ -41,7 +40,6 @@
       },
       "to": "$SYSTEM_CONFIG_PROXY_ADDR",
       "value": "0",
-      "data": null,
       "contractMethod": {
         "inputs": [
           {
@@ -70,7 +68,6 @@
       },
       "to": "$PROXY_ADMIN_ADDR",
       "value": "0",
-      "data": null,
       "contractMethod": {
         "inputs": [
           {
