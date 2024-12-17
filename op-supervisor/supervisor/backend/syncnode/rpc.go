@@ -75,3 +75,9 @@ func (rs *RPCSyncNode) TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth
 	// the node only returns an error currently
 	return eth.BlockRef{}, err
 }
+
+func (rs *RPCSyncNode) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {
+	var out types.DerivedPair
+	err := rs.cl.CallContext(ctx, &out, "interop_anchorPoint")
+	return out, err
+}

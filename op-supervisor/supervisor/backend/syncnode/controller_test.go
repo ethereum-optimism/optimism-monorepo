@@ -14,7 +14,9 @@ import (
 )
 
 type mockChainsDB struct {
+	localSafeFn       func(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error)
 	updateLocalSafeFn func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error
+	updateCrossSafeFn func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error
 }
 
 func (m *mockChainsDB) UpdateLocalSafe(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
@@ -24,16 +26,39 @@ func (m *mockChainsDB) UpdateLocalSafe(chainID types.ChainID, ref eth.BlockRef, 
 	return nil
 }
 
+func (m *mockChainsDB) LocalSafe(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error) {
+	if m.localSafeFn != nil {
+		return m.localSafeFn(chainID)
+	}
+	return types.BlockSeal{}, types.BlockSeal{}, nil
+}
+
+func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
+	if m.updateCrossSafeFn != nil {
+		return m.updateCrossSafeFn(chainID, ref, derived)
+	}
+	return nil
+}
+
 type mockSyncControl struct {
-	TryDeriveNextFn func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
+	tryDeriveNextFn func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
+	anchorPointFn   func(ctx context.Context) (types.DerivedPair, error)
 }
 
 func (m *mockSyncControl) TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-	if m.TryDeriveNextFn != nil {
-		return m.TryDeriveNextFn(ctx, ref)
+	if m.tryDeriveNextFn != nil {
+		return m.tryDeriveNextFn(ctx, ref)
 	}
 	return eth.BlockRef{}, nil
 }
+
+func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {
+	if m.anchorPointFn != nil {
+		return m.anchorPointFn(ctx)
+	}
+	return types.DerivedPair{}, nil
+}
+
 func sampleDepSet(t *testing.T) depset.DependencySet {
 	depSet, err := depset.NewStaticConfigDependencySet(
 		map[types.ChainID]*depset.StaticConfigDependency{
@@ -52,12 +77,64 @@ func sampleDepSet(t *testing.T) depset.DependencySet {
 	return depSet
 }
 
+// TestInitFromAnchorPoint tests that the SyncNodesController uses the Anchor Point to initialize databases
+func TestInitFromAnchorPoint(t *testing.T) {
+	logger := log.New()
+	depSet := sampleDepSet(t)
+	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{})
+
+	require.Zero(t, controller.controllers.Len(), "controllers should be empty to start")
+
+	// Attach a controller for chain 900
+	// make the controller return an anchor point
+	ctrl := mockSyncControl{}
+	ctrl.anchorPointFn = func(ctx context.Context) (types.DerivedPair, error) {
+		return types.DerivedPair{
+			Derived:     eth.BlockRef{Number: 1},
+			DerivedFrom: eth.BlockRef{Number: 0},
+		}, nil
+	}
+
+	// have the local safe return an error to trigger the initialization
+	controller.db.(*mockChainsDB).localSafeFn = func(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error) {
+		return types.BlockSeal{}, types.BlockSeal{}, types.ErrFuture
+	}
+	// record when the updateLocalSafe function is called
+	localCalled := 0
+	controller.db.(*mockChainsDB).updateLocalSafeFn = func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
+		localCalled++
+		return nil
+	}
+	// record when the updateCrossSafe function is called
+	crossCalled := 0
+	controller.db.(*mockChainsDB).updateCrossSafeFn = func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
+		crossCalled++
+		return nil
+	}
+
+	// after the first attach, both databases are called for update
+	err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl)
+	require.NoError(t, err)
+	require.Equal(t, 1, localCalled, "local safe should have been updated once")
+	require.Equal(t, 1, crossCalled, "cross safe should have been updated twice")
+
+	// reset the local safe function to return no error
+	controller.db.(*mockChainsDB).localSafeFn = nil
+
+	// after the second attach, there are no additional updates (no empty signal from the DB)
+	ctrl2 := mockSyncControl{}
+	err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2)
+	require.NoError(t, err)
+	require.Equal(t, 1, localCalled, "local safe should have been updated once")
+	require.Equal(t, 1, crossCalled, "cross safe should have been updated twice")
+}
+
 // TestAttachNodeController tests the AttachNodeController function of the SyncNodesController.
 // Only controllers for chains in the dependency set can be attached.
 func TestAttachNodeController(t *testing.T) {
 	logger := log.New()
 	depSet := sampleDepSet(t)
-	controller := NewSyncNodesController(logger, depSet, nil)
+	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{})
 
 	require.Zero(t, controller.controllers.Len(), "controllers should be empty to start")
 
@@ -108,7 +185,7 @@ func TestDeriveFromL1(t *testing.T) {
 	ctrl1 := mockSyncControl{}
 	ctrl1i := 0
 	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl1.TryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
+	ctrl1.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
 		defer func() { ctrl1i++ }()
 		if ctrl1i >= len(derived) {
 			return eth.BlockRef{}, nil
@@ -122,7 +199,7 @@ func TestDeriveFromL1(t *testing.T) {
 	ctrl2 := mockSyncControl{}
 	ctrl2i := 0
 	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl2.TryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
+	ctrl2.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
 		defer func() { ctrl2i++ }()
 		if ctrl2i >= len(derived) {
 			return eth.BlockRef{}, nil
@@ -169,7 +246,7 @@ func TestDeriveFromL1Error(t *testing.T) {
 	ctrl1 := mockSyncControl{}
 	ctrl1i := 0
 	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl1.TryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
+	ctrl1.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
 		defer func() { ctrl1i++ }()
 		if ctrl1i >= len(derived) {
 			return eth.BlockRef{}, nil
@@ -183,7 +260,7 @@ func TestDeriveFromL1Error(t *testing.T) {
 	ctrl2 := mockSyncControl{}
 	ctrl2i := 0
 	// this controller will error on the last derived block
-	ctrl2.TryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
+	ctrl2.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
 		defer func() { ctrl2i++ }()
 		if ctrl2i >= len(derived)-1 {
 			return eth.BlockRef{}, fmt.Errorf("error")

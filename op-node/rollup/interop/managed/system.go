@@ -178,16 +178,19 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, ref eth.BlockRef) err
 	return nil
 }
 
-func (m *ManagedMode) AnchorPoint(ctx context.Context) (l1, l2 eth.BlockRef, err error) {
+func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedPair, error) {
 	l1Ref, err := m.l1.L1BlockRefByHash(ctx, m.cfg.Genesis.L1.Hash)
 	if err != nil {
-		return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to fetch L1 block ref: %w", err)
+		return supervisortypes.DerivedPair{}, fmt.Errorf("failed to fetch L1 block ref: %w", err)
 	}
 	l2Ref, err := m.l2.L2BlockRefByHash(ctx, m.cfg.Genesis.L2.Hash)
 	if err != nil {
-		return eth.BlockRef{}, eth.BlockRef{}, fmt.Errorf("failed to fetch L2 block ref: %w", err)
+		return supervisortypes.DerivedPair{}, fmt.Errorf("failed to fetch L2 block ref: %w", err)
 	}
-	return l1Ref, l2Ref.BlockRef(), nil
+	return supervisortypes.DerivedPair{
+		DerivedFrom: l1Ref,
+		Derived:     l2Ref.BlockRef(),
+	}, nil
 }
 
 func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockRef) error {
