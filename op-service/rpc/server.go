@@ -166,8 +166,12 @@ func (b *Server) AddAPI(api rpc.API) {
 
 func (b *Server) Start() error {
 	srv := rpc.NewServer()
-	if err := node.RegisterApis(b.apis, nil, srv); err != nil {
-		return fmt.Errorf("error registering APIs: %w", err)
+
+	for _, api := range b.apis {
+		if err := srv.RegisterName(api.Namespace, api.Service); err != nil {
+			return fmt.Errorf("failed to register API %s: %w", api.Namespace, err)
+		}
+		b.log.Info("registered API", "namespace", api.Namespace)
 	}
 
 	// rpc middleware
