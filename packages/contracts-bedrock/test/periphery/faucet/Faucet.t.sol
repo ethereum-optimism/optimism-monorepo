@@ -5,6 +5,18 @@ import { Test } from "forge-std/Test.sol";
 import { Faucet } from "src/periphery/faucet/Faucet.sol";
 import { AdminFaucetAuthModule } from "src/periphery/faucet/authmodules/AdminFaucetAuthModule.sol";
 import { FaucetHelper } from "test/mocks/FaucetHelper.sol";
+import { console } from "forge-std/console.sol";
+
+/// @notice A contract that always reverts.
+contract RevertingContract {
+    fallback() external payable {
+        revert("Always reverts");
+    }
+
+    receive() external payable {
+        revert("Always reverts");
+    }
+}
 
 contract Faucet_Initializer is Test {
     event Drip(string indexed authModule, bytes32 indexed userId, uint256 amount, address indexed recipient);
@@ -418,5 +430,67 @@ contract FaucetTest is Faucet_Initializer {
 
         uint256 faucetBalanceAfter = address(faucet).balance;
         assertEq(faucetBalanceAfter - faucetBalanceBefore, 1 ether, "expect increase of 1 ether");
+    }
+
+    function test_drip_withSuccessfulMulticall_succeeds() external {
+        _enableFaucetAuthModules();
+        bytes32 nonce0 = faucetHelper.consumeNonce();
+        bytes memory validData = "";
+        uint32 gasLimit = 200000;
+        bytes memory signature0 = issueProofWithEIP712Domain(
+            faucetAuthAdminKey,
+            bytes(githubFamName),
+            bytes(githubFamVersion),
+            block.chainid,
+            address(githubFam),
+            fundsReceiver,
+            keccak256(abi.encodePacked(fundsReceiver)),
+            nonce0
+        );
+        uint256 balanceBefore = address(fundsReceiver).balance;
+
+        vm.prank(nonAdmin);
+        faucet.drip(
+            Faucet.DripParameters(payable(fundsReceiver), validData, nonce0, gasLimit),
+            Faucet.AuthParameters(githubFam, keccak256(abi.encodePacked(fundsReceiver)), signature0)
+        );
+
+        assertEq(
+            address(fundsReceiver).balance - balanceBefore,
+            0.05 ether,
+            "Balance should increase by 0.05 ETH"
+        );
+    }
+
+    function test_drip_withFailedCall_reverts() external {
+        _enableFaucetAuthModules();
+        RevertingContract reverting = new RevertingContract();
+        bytes32 nonce0 = faucetHelper.consumeNonce();
+        bytes memory data = hex"deadbeef";
+        uint32 gasLimit = 200000;
+        bytes memory signature0 = issueProofWithEIP712Domain(
+            faucetAuthAdminKey,
+            bytes(githubFamName),
+            bytes(githubFamVersion),
+            block.chainid,
+            address(githubFam),
+            address(reverting),
+            keccak256(abi.encodePacked(address(reverting))),
+            nonce0
+        );
+        uint256 balanceBefore = address(reverting).balance;
+
+        vm.prank(nonAdmin);
+        vm.expectRevert("Failed to execute SafeCall during drip to recipient");
+        faucet.drip(
+            Faucet.DripParameters(payable(address(reverting)), data, nonce0, gasLimit),
+            Faucet.AuthParameters(githubFam, keccak256(abi.encodePacked(address(reverting))), signature0)
+        );
+
+        assertEq(
+            address(reverting).balance,
+            balanceBefore,
+            "Balance should not change"
+        );
     }
 }
