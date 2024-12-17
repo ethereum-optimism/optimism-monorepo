@@ -27,3 +27,14 @@ func TestGetCustomChainConfig(t *testing.T) {
 	_, err = chainConfigByChainID(900, test.TestCustomChainConfigFS)
 	require.Error(t, err)
 }
+
+// TestGetUnichainMainnetConfig ensures that the configs are properly loaded from embed FS.
+func TestGetUnichainMainnetConfig(t *testing.T) {
+	chainConfig, err := ChainConfigByChainID(130)
+	require.NoError(t, err)
+	rollupConfig, err := RollupConfigByChainID(130)
+	require.NoError(t, err)
+
+	require.Equal(t, *rollupConfig.HoloceneTime, uint64(1736445601))
+	require.Equal(t, *chainConfig.HoloceneTime, uint64(1736445601))
+}
