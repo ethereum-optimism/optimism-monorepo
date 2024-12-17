@@ -64,7 +64,7 @@ WORKDIR /app/packages/contracts-bedrock/scripts/upgrades/holocene
 
 # allows to use modified local scripts and templates
 COPY scripts/*.sh ./scripts/
-COPY templates/*.* ./templates/
+COPY templates/ ./templates/
 
 # Set the entrypoint to the main.sh script
 ENTRYPOINT ["./scripts/main.sh"]
