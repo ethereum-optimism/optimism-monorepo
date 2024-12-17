@@ -23,7 +23,7 @@ make test-ws
 
 ## Overview
 
-`op-e2e` can be categorized as following:
+`op-e2e` can be categorized as follows:
 - `op-e2e/actions/`: imperative test style, more DSL-like, with a focus on the state-transition parts of services.
   Parallel processing is actively avoided, and a mock clock is used.
   - `op-e2e/actions/*`: sub-packages categorize specific domains to test.
