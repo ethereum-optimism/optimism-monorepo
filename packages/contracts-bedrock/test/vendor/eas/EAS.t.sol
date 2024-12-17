@@ -1869,9 +1869,7 @@ contract EASTest is CommonTest {
         vm.stopPrank();
     }
 
-    // =============================================================
-    //                   DELEGATION TESTS
-    // =============================================================
+    /// Delegation Tests
     /// @dev Tests basic delegated attestation functionality.
     ///      Demonstrates standard delegated attestation flow.
     function testDelegatedAttestation(
