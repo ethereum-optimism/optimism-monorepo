@@ -89,8 +89,7 @@ func testPrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 			op_e2e.InitParallel(t, op_e2e.UsesCannon)
 			ctx := context.Background()
 			genesisTime := hexutil.Uint64(0)
-			cfg := e2esys.EcotoneSystemConfig(t, &genesisTime)
-			cfg.AllocType = allocType
+			cfg := e2esys.EcotoneSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
 			// We don't need a verifier - just the sequencer is enough
 			delete(cfg.Nodes, "verifier")
 
@@ -194,8 +193,7 @@ func testGranitePrecompiles(t *testing.T, allocType e2e_config.AllocType) {
 	op_e2e.InitParallel(t, op_e2e.UsesCannon)
 	ctx := context.Background()
 	genesisTime := hexutil.Uint64(0)
-	cfg := e2esys.GraniteSystemConfig(t, &genesisTime)
-	cfg.AllocType = allocType
+	cfg := e2esys.GraniteSystemConfig(t, &genesisTime, e2esys.WithAllocType(allocType))
 	// We don't need a verifier - just the sequencer is enough
 	delete(cfg.Nodes, "verifier")
 
@@ -273,7 +271,7 @@ func runCannon(t *testing.T, ctx context.Context, sys *e2esys.System, inputs uti
 	cannonOpts(&cfg)
 
 	logger := testlog.Logger(t, log.LevelInfo).New("role", "cannon")
-	executor := vm.NewExecutor(logger, metrics.NoopMetrics.VmMetrics("cannon"), cfg.Cannon, vm.NewOpProgramServerExecutor(logger), cfg.CannonAbsolutePreState, inputs)
+	executor := vm.NewExecutor(logger, metrics.NoopMetrics.ToTypedVmMetrics("cannon"), cfg.Cannon, vm.NewOpProgramServerExecutor(logger), cfg.CannonAbsolutePreState, inputs)
 
 	t.Log("Running cannon")
 	err := executor.DoGenerateProof(ctx, proofsDir, math.MaxUint, math.MaxUint, extraVmArgs...)

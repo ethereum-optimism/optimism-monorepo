@@ -45,6 +45,15 @@ type Locator struct {
 	Tag string
 }
 
+func NewFileLocator(path string) (*Locator, error) {
+	u, err := url.Parse("file://" + path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	return &Locator{URL: u}, nil
+}
+
 func (a *Locator) UnmarshalText(text []byte) error {
 	str := string(text)
 

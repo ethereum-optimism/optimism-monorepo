@@ -2,11 +2,16 @@
 
 set -eu
 
+export OP_INTEROP_MNEMONIC="test test test test test test test test test test test junk"
+
+log_info() { echo "[INFO] $1"; }
+log_error() { echo "[ERROR] $1" >&2; }
+
 # Run this with workdir set as root of the repo
 if [ -f "../mise.toml" ]; then
-    echo "Running create-chains script."
+    log_info "Running create-chains script."
 else
-    echo "Cannot run create-chains script, must be in interop-devnet dir, but currently in:"
+    log_error "Cannot run create-chains script, must be in interop-devnet dir, but currently in:"
     pwd
     exit 1
 fi
@@ -16,13 +21,11 @@ cd ..
 
 # Check if already created
 if [ -d ".devnet-interop" ]; then
-    echo "Already created chains."
+    log_error "Already created chains. Cleanup .devnet-interop dir if you want to force a re-creation."
     exit 1
 else
-    echo "Creating new interop devnet chain configs"
+    log_info "Creating new interop devnet chain configs"
 fi
-
-export OP_INTEROP_MNEMONIC="test test test test test test test test test test test junk"
 
 go run ./op-node/cmd interop dev-setup \
   --artifacts-dir=packages/contracts-bedrock/forge-artifacts \
@@ -48,7 +51,7 @@ eth2-testnet-genesis deneb \
   --eth1-withdrawal-address=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa \
   --eth1-match-genesis-time
 
-echo "Writing env files now..."
+log_info "Writing env files now..."
 
 # write env files for each L2 service
 
@@ -74,4 +77,4 @@ echo "OP_PROPOSER_GAME_FACTORY_ADDRESS=$(jq -r .DisputeGameFactoryProxy .devnet-
 # batcher
 echo "OP_BATCHER_PRIVATE_KEY=$($key_cmd --name=batcher)" >> "$chain_env/op-batcher.env"
 
-echo "Interop devnet setup is complete!"
+log_info "Interop devnet setup is complete!"

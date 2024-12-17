@@ -90,6 +90,7 @@ func TestFullInterop(gt *testing.T) {
 	actors.L1Miner.ActL1FinalizeNext(t)
 	actors.ChainA.Sequencer.ActL1SafeSignal(t)
 	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
+	actors.Supervisor.SyncFinalizedL1(t, status.HeadL1)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
 	require.NoError(t, err)

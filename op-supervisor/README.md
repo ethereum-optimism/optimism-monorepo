@@ -117,7 +117,7 @@ participant opnodeB as op-node B
 Note over opnodeA: on new block
 
 opnodeA ->> opgethA: engine process unsafe block
-opgethA -->> opnodeA: engine proccessed unsafe block
+opgethA -->> opnodeA: engine processed unsafe block
 opnodeA ->> opsup: update Local unsafe
 opnodeB ->> opsup: update Local unsafe (maybe)
 opsup ->> opgethA: Fetch receipts

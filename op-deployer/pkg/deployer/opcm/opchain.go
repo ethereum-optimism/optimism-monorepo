@@ -36,15 +36,12 @@ type DeployOPChainInputV160 struct {
 	DisputeSplitDepth            uint64
 	DisputeClockExtension        uint64
 	DisputeMaxClockDuration      uint64
+	StartingAnchorRoots          []byte
 	AllowCustomDisputeParameters bool
 }
 
 func (input *DeployOPChainInputV160) InputSet() bool {
 	return true
-}
-
-func (input *DeployOPChainInputV160) StartingAnchorRoots() []byte {
-	return PermissionedGameStartingAnchorRoots
 }
 
 type DeployOPChainInputIsthmus struct {
@@ -88,7 +85,7 @@ func DeployOPChainIsthmus(host *script.Host, input DeployOPChainInputIsthmus) (D
 }
 
 func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, error) {
-	return RunBasicScript[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
+	return RunScriptSingle[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
 }
 
 type ReadImplementationAddressesInput struct {

@@ -16,7 +16,7 @@ Considering only the supertoken contract is merged into the `develop` branch, an
 
 ## Definitions
 
-- _legacy token:_ an OptimismMintableERC20 or L2StandardERC20 token on the suprechain that has either been deployed by the factory after the liquidity migration upgrade to the latter, or has been deployed before it **but** added to factory’s `deployments` mapping as part of the upgrade. This testing campaign is not concerned with tokens on L1 or not listed in the factory’s `deployments` mapping.
+- _legacy token:_ an OptimismMintableERC20 or L2StandardERC20 token on the superchain that has either been deployed by the factory after the liquidity migration upgrade to the latter, or has been deployed before it **but** added to factory’s `deployments` mapping as part of the upgrade. This testing campaign is not concerned with tokens on L1 or not listed in the factory’s `deployments` mapping.
 - _supertoken:_ a SuperchainERC20 contract deployed by the `OptimismSuperchainERC20Factory`
 
 # Ecosystem properties
