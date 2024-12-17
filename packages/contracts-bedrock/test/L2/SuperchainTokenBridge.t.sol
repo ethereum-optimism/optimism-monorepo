@@ -121,6 +121,7 @@ contract SuperchainTokenBridgeTest is CommonTest {
         // Mock the call over the `sendMessage` function and expect it to be called properly
         bytes memory _message =
             abi.encodeCall(superchainTokenBridge.relayERC20, (address(superchainERC20), _sender, _to, _amount));
+        // nosemgrep: sol-style-use-abi-encodecall
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeWithSignature(

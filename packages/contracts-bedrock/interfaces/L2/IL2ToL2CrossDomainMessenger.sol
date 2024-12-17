@@ -53,15 +53,15 @@ interface IL2ToL2CrossDomainMessenger {
     /// @param target       Target contract or wallet address.
     /// @param messageNonce Nonce associated with the message sent
     /// @param sender       Address initiating this message call
-    /// @param message      Message payload to call target with.
     /// @param entrypoint   Address of the entrypoint on the destination chain.
+    /// @param message      Message payload to call target with.
     event SentMessage(
         uint256 indexed destination,
         address indexed target,
         uint256 indexed messageNonce,
         address sender,
-        bytes message,
-        address entrypoint
+        address entrypoint,
+        bytes message
     );
 
     /// @notice Emitted whenever a message is successfully relayed on this chain.
@@ -104,15 +104,15 @@ interface IL2ToL2CrossDomainMessenger {
     ///         `relayMessage` for successful relaying.
     /// @param _destination Chain ID of the destination chain.
     /// @param _target      Target contract or wallet address.
-    /// @param _message     Message payload to call target with.
     /// @param _entrypoint  Address of the entrypoint on the destination chain. If it is address(0) then the
     ///                     message can be relayed by any address on the destination chain.
+    /// @param _message     Message payload to call target with.
     /// @return The hash of the message being sent, used to track whether the message has successfully been relayed.
     function sendMessage(
         uint256 _destination,
         address _target,
-        bytes calldata _message,
-        address _entrypoint
+        address _entrypoint,
+        bytes calldata _message
     )
         external
         returns (bytes32);

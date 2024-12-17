@@ -130,11 +130,6 @@
         "internalType": "bytes",
         "name": "_message",
         "type": "bytes"
-      },
-      {
-        "internalType": "address",
-        "name": "_entrypoint",
-        "type": "address"
       }
     ],
     "name": "sendMessage",
@@ -158,6 +153,11 @@
       {
         "internalType": "address",
         "name": "_target",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_entrypoint",
         "type": "address"
       },
       {
@@ -263,15 +263,15 @@
       },
       {
         "indexed": false,
-        "internalType": "bytes",
-        "name": "message",
-        "type": "bytes"
-      },
-      {
-        "indexed": false,
         "internalType": "address",
         "name": "entrypoint",
         "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "message",
+        "type": "bytes"
       }
     ],
     "name": "SentMessage",

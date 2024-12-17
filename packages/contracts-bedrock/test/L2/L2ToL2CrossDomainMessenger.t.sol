@@ -123,7 +123,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         assertEq(logs[0].topics[3], bytes32(messageNonce));
 
         // data
-        assertEq(logs[0].data, abi.encode(address(this), _message, address(0)));
+        assertEq(logs[0].data, abi.encode(address(this), address(0), _message));
 
         // Check that the message nonce has been incremented
         assertEq(l2ToL2CrossDomainMessenger.messageNonce(), messageNonce + 1);
@@ -158,7 +158,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         vm.recordLogs();
 
         // Call the sendMessage function
-        bytes32 msgHash = l2ToL2CrossDomainMessenger.sendMessage(_destination, _target, _message, _entrypoint);
+        bytes32 msgHash = l2ToL2CrossDomainMessenger.sendMessage(_destination, _target, _entrypoint, _message);
         assertEq(
             msgHash,
             Hashing.hashL2toL2CrossDomainMessage(
@@ -177,7 +177,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         assertEq(logs[0].topics[3], bytes32(messageNonce));
 
         // data
-        assertEq(logs[0].data, abi.encode(address(this), _message, _entrypoint));
+        assertEq(logs[0].data, abi.encode(address(this), _entrypoint, _message));
 
         // Check that the message nonce has been incremented
         assertEq(l2ToL2CrossDomainMessenger.messageNonce(), messageNonce + 1);
@@ -206,6 +206,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Call the sendMessage function with value to provoke revert
         // NOTE: using encodeWithSignature to target the correct overloaded function signature
+        // nosemgrep: sol-style-use-abi-encodecall
         (bool success,) = address(l2ToL2CrossDomainMessenger).call{ value: _value }(
             abi.encodeWithSignature("sendMessage(uint256, address, bytes)", _destination, _target, _message)
         );
@@ -287,10 +288,11 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message, address(_entrypoint)) // data
+            abi.encode(_sender, address(_entrypoint), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
+        // nosemgrep: sol-style-use-abi-encodecall
         vm.mockCall({
             callee: Predeploys.CROSS_L2_INBOX,
             data: abi.encodeCall(ICrossL2Inbox.validateMessage, (id, keccak256(sentMessage))),
@@ -361,7 +363,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message, address(0)) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -414,7 +416,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message, _entrypoint) // data
+            abi.encode(_sender, _entrypoint, _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -517,7 +519,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, target, _nonce), // topics
-            abi.encode(_sender, message, address(0)) // data
+            abi.encode(_sender, address(0), message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -559,7 +561,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         Identifier memory id = Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, 1, 1, 1, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, address(0), _nonce), // topics
-            abi.encode(_sender, "") // data
+            abi.encode(_sender, address(0), "") // data
         );
 
         l2ToL2CrossDomainMessenger.relayMessage(id, sentMessage);
@@ -598,7 +600,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source1);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, target, _nonce), // topics
-            abi.encode(_sender1, message, address(0)) // data
+            abi.encode(_sender1, address(0), message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -647,7 +649,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
         Identifier memory id = Identifier(_origin, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Call
@@ -680,7 +682,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, _destination, _target, _nonce), // topics
-            abi.encode(_sender, _message) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -719,7 +721,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             abi.encode(
                 L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, Predeploys.CROSS_L2_INBOX, _nonce
             ), // topics
-            abi.encode(_sender, _message) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -761,7 +763,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
                 Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
                 _nonce
             ), // topics
-            abi.encode(_sender, _message) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -811,7 +813,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message, address(0)) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
@@ -861,7 +863,7 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             Identifier(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER, _blockNum, _logIndex, _time, _source);
         bytes memory sentMessage = abi.encodePacked(
             abi.encode(L2ToL2CrossDomainMessenger.SentMessage.selector, block.chainid, _target, _nonce), // topics
-            abi.encode(_sender, _message, address(0)) // data
+            abi.encode(_sender, address(0), _message) // data
         );
 
         // Ensure the CrossL2Inbox validates this message
