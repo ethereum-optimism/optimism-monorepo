@@ -175,7 +175,11 @@ func ApplyPipeline(
 		L2: l2ArtifactsFS,
 	}
 
-	var deployer common.Address
+	deployer := common.Address{0x01}
+	if opts.DeployerPrivateKey != nil {
+		deployer = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
+	}
+
 	var bcaster broadcaster.Broadcaster
 	var l1Client *ethclient.Client
 	var l1Host *script.Host
@@ -193,7 +197,6 @@ func ApplyPipeline(
 		}
 
 		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(opts.DeployerPrivateKey, chainID))
-		deployer = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
 
 		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
 			Logger:  opts.Logger,
@@ -235,7 +238,6 @@ func ApplyPipeline(
 			return fmt.Errorf("failed to select fork: %w", err)
 		}
 	} else {
-		deployer = common.Address{0x01}
 		bcaster = broadcaster.NoopBroadcaster()
 		l1Host, err = env.DefaultScriptHost(
 			bcaster,
@@ -285,6 +287,11 @@ func ApplyPipeline(
 			fmt.Sprintf("deploy-alt-da-%s", chainID.Hex()),
 			func() error {
 				return pipeline.DeployAltDA(pEnv, intent, st, chainID)
+			},
+		}, pipelineStage{
+			fmt.Sprintf("deploy-additional-dispute-games-%s", chainID.Hex()),
+			func() error {
+				return pipeline.DeployAdditionalDisputeGames(pEnv, intent, st, chainID)
 			},
 		}, pipelineStage{
 			fmt.Sprintf("generate-l2-genesis-%s", chainID.Hex()),

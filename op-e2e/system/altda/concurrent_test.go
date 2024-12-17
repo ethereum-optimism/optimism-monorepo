@@ -22,7 +22,15 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 	numL1TxsExpected := int64(10)
 
 	cfg := e2esys.DefaultSystemConfig(t)
+	// Manually configure these since the alt-DA values aren't
+	// set at all in the standard config unless UseAltDA is set.
+	// For some reason this test doesn't use the alt DA allocs.
 	cfg.DeployConfig.UseAltDA = true
+	cfg.DeployConfig.DACommitmentType = "KeccakCommitment"
+	cfg.DeployConfig.DAChallengeWindow = 16
+	cfg.DeployConfig.DAResolveWindow = 16
+	cfg.DeployConfig.DABondSize = 1000000
+	cfg.DeployConfig.DAResolverRefundPercentage = 0
 	cfg.BatcherMaxPendingTransactions = 0 // no limit on parallel txs
 	// ensures that batcher txs are as small as possible
 	cfg.BatcherMaxL1TxSizeBytes = derive.FrameV0OverHeadSize + 1 /*version bytes*/ + 1

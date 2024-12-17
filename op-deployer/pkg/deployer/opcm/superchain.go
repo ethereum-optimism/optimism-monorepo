@@ -52,5 +52,5 @@ type DeploySuperchainOpts struct {
 }
 
 func DeploySuperchain(h *script.Host, input DeploySuperchainInput) (DeploySuperchainOutput, error) {
-	return RunBasicScript[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
+	return RunScriptSingle[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
 }

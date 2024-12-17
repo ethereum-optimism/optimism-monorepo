@@ -302,7 +302,7 @@ func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs .
 	body := types.Body{
 		Transactions: txs,
 	}
-	block := types.NewBlock(header, &body, receipts, trie.NewStackTrie(nil))
+	block := types.NewBlock(header, &body, receipts, trie.NewStackTrie(nil), types.DefaultBlockConfig)
 	logIndex := uint(0)
 	for i, r := range receipts {
 		r.BlockHash = block.Hash()

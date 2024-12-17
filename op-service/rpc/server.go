@@ -29,6 +29,7 @@ type Server struct {
 	corsHosts      []string
 	vHosts         []string
 	jwtSecret      []byte
+	wsEnabled      bool
 	rpcPath        string
 	healthzPath    string
 	httpRecorder   opmetrics.HTTPRecorder
@@ -69,6 +70,12 @@ func WithCORSHosts(hosts []string) ServerOption {
 func WithVHosts(hosts []string) ServerOption {
 	return func(b *Server) {
 		b.vHosts = hosts
+	}
+}
+
+func WithWebsocketEnabled() ServerOption {
+	return func(b *Server) {
+		b.wsEnabled = true
 	}
 }
 
@@ -173,6 +180,11 @@ func (b *Server) Start() error {
 	mux := http.NewServeMux()
 	mux.Handle(b.rpcPath, nodeHdlr)
 	mux.Handle(b.healthzPath, b.healthzHandler)
+
+	if b.wsEnabled {
+		wsHandler := node.NewWSHandlerStack(srv.WebsocketHandler(b.corsHosts), b.jwtSecret)
+		mux.Handle("/ws", wsHandler)
+	}
 
 	// http middleware
 	var handler http.Handler = mux

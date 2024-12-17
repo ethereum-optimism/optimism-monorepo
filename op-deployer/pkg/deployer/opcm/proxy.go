@@ -26,5 +26,5 @@ func DeployProxy(
 	host *script.Host,
 	input DeployProxyInput,
 ) (DeployProxyOutput, error) {
-	return RunBasicScript[DeployProxyInput, DeployProxyOutput](host, input, "DeployProxy.s.sol", "DeployProxy")
+	return RunScriptSingle[DeployProxyInput, DeployProxyOutput](host, input, "DeployProxy.s.sol", "DeployProxy")
 }

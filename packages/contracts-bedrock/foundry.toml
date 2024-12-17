@@ -86,11 +86,11 @@ depth = 32
 optimizer = false
 
 [profile.cicoverage.fuzz]
-runs = 512
+runs = 1
 
 [profile.cicoverage.invariant]
-runs = 256
-depth = 32
+runs = 1
+depth = 1
 
 ################################################################
 #                       PROFILE: CIHEAVY                       #

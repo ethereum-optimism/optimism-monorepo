@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { IOptimismMintableERC20 } from "interfaces/universal/IOptimismMintableERC20.sol";
-import { ILegacyMintableERC20 } from "interfaces/universal/ILegacyMintableERC20.sol";
+import { ILegacyMintableERC20 } from "interfaces/legacy/ILegacyMintableERC20.sol";
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 
 contract OptimismMintableERC20_Test is CommonTest {

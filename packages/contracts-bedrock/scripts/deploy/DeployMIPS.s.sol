@@ -63,24 +63,9 @@ contract DeployMIPSOutput is BaseDeployIO {
         }
     }
 
-    function checkOutput(DeployMIPSInput _mi) public view {
-        DeployUtils.assertValidContractAddress(address(_mipsSingleton));
-        assertValidDeploy(_mi);
-    }
-
     function mipsSingleton() public view returns (IMIPS) {
         DeployUtils.assertValidContractAddress(address(_mipsSingleton));
         return _mipsSingleton;
-    }
-
-    function assertValidDeploy(DeployMIPSInput _mi) public view {
-        assertValidMipsSingleton(_mi);
-    }
-
-    function assertValidMipsSingleton(DeployMIPSInput _mi) internal view {
-        IMIPS mips = mipsSingleton();
-
-        require(address(mips.oracle()) == address(_mi.preimageOracle()), "MIPS-10");
     }
 }
 
@@ -88,7 +73,7 @@ contract DeployMIPSOutput is BaseDeployIO {
 contract DeployMIPS is Script {
     function run(DeployMIPSInput _mi, DeployMIPSOutput _mo) public {
         deployMipsSingleton(_mi, _mo);
-        _mo.checkOutput(_mi);
+        assertValidDeploy(_mi, _mo);
     }
 
     function deployMipsSingleton(DeployMIPSInput _mi, DeployMIPSOutput _mo) internal {
@@ -105,5 +90,15 @@ contract DeployMIPS is Script {
 
         vm.label(address(singleton), "MIPSSingleton");
         _mo.set(_mo.mipsSingleton.selector, address(singleton));
+    }
+
+    function assertValidDeploy(DeployMIPSInput _mi, DeployMIPSOutput _mo) public view {
+        DeployUtils.assertValidContractAddress(address(_mo.mipsSingleton()));
+        assertValidMipsSingleton(_mi, _mo);
+    }
+
+    function assertValidMipsSingleton(DeployMIPSInput _mi, DeployMIPSOutput _mo) internal view {
+        IMIPS mips = _mo.mipsSingleton();
+        require(address(mips.oracle()) == address(_mi.preimageOracle()), "MIPS-10");
     }
 }

@@ -216,14 +216,15 @@ func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
 	}
 }
 
-func ManagerOwnerAddrFor(chainID uint64) (common.Address, error) {
+// SuperchainProxyAdminAddrFor returns the address of the Superchain ProxyAdmin for the given chain ID.
+// These have been verified to be the ProxyAdmin addresses on Mainnet and Sepolia.
+// DO NOT MODIFY THIS METHOD WITHOUT CLEARING IT WITH THE EVM SAFETY TEAM.
+func SuperchainProxyAdminAddrFor(chainID uint64) (common.Address, error) {
 	switch chainID {
 	case 1:
-		// Set to superchain proxy admin
 		return common.HexToAddress("0x543bA4AADBAb8f9025686Bd03993043599c6fB04"), nil
 	case 11155111:
-		// Set to development multisig
-		return common.HexToAddress("0xDEe57160aAfCF04c34C887B5962D0a69676d3C8B"), nil
+		return common.HexToAddress("0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}

@@ -54,7 +54,7 @@ make op-node
   --rpc.port=7000 \
   --syncmode=execution-layer
 
-# If running inside docker, ake sure to mount the below persistent data as (host) volume,
+# If running inside docker, make sure to mount the below persistent data as (host) volume,
 # it may be lost on restart otherwise:
 # - P2P private key: auto-generated when missing, used to maintain a stable peer identity.
 # - Peerstore DB: remember peer records to connect with, used to not wait for peer discovery.

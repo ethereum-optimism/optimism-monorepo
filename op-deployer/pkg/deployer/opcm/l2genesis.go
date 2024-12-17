@@ -2,6 +2,7 @@ package opcm
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
@@ -32,6 +33,8 @@ func L2Genesis(l2Host *script.Host, input *L2GenesisInput) error {
 	l2Host.SetEnvVar("L2GENESIS_L1CrossDomainMessengerProxy", input.L1Deployments.L1CrossDomainMessengerProxy.String())
 	l2Host.SetEnvVar("L2GENESIS_L1StandardBridgeProxy", input.L1Deployments.L1StandardBridgeProxy.String())
 	l2Host.SetEnvVar("L2GENESIS_L1ERC721BridgeProxy", input.L1Deployments.L1ERC721BridgeProxy.String())
+	allocsMode := input.L2Config.UpgradeScheduleDeployConfig.AllocMode(uint64(time.Now().Unix()))
+	l2Host.SetEnvVar("FORK", string(allocsMode))
 
 	deployConfig := &genesis.DeployConfig{
 		L2InitializationConfig: input.L2Config,
