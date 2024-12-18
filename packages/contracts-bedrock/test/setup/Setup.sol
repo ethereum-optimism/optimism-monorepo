@@ -15,6 +15,7 @@ import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
