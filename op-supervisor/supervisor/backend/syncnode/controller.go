@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
@@ -55,17 +54,16 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 		return fmt.Errorf("chain %v not in dependency set", id)
 	}
 	snc.controllers.Set(&ManagedNode{Node: ctrl}, struct{}{})
-	snc.maybeInit(id)
+	snc.maybeInitSafeDB(id, ctrl)
 	return nil
 }
 
-// maybeInit initializes the chain database if it is not already initialized
+// maybeInitSafeDB initializes the chain database if it is not already initialized
 // it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
-func (snc *SyncNodesController) maybeInit(id types.ChainID) {
+func (snc *SyncNodesController) maybeInitSafeDB(id types.ChainID, ctrl SyncControl) {
 	_, _, err := snc.db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
 		snc.logger.Debug("initializing chain database", "chain", id)
-		var ctrl SyncControl // TODO fix me
 		pair, err := ctrl.AnchorPoint(context.Background())
 		if err != nil {
 			snc.logger.Warn("failed to get anchor point", "chain", id, "error", err)
@@ -81,42 +79,4 @@ func (snc *SyncNodesController) maybeInit(id types.ChainID) {
 	} else {
 		snc.logger.Debug("chain database already initialized", "chain", id)
 	}
-}
-
-// DeriveFromL1 derives the L2 blocks from the L1 block reference for all the chains
-// if any chain fails to derive, the first error is returned
-func (snc *SyncNodesController) DeriveFromL1(ref eth.BlockRef) error {
-	snc.logger.Debug("deriving from L1", "ref", ref)
-	returns := make(chan error, len(snc.depSet.Chains()))
-	wg := sync.WaitGroup{}
-	// for now this function just prints all the chain-ids of controlled nodes, as a placeholder
-	for _, chain := range snc.depSet.Chains() {
-		wg.Add(1)
-		go func() {
-			returns <- snc.DeriveToEnd(chain, ref)
-			wg.Done()
-		}()
-	}
-	wg.Wait()
-	// collect all errors
-	errors := []error{}
-	for i := 0; i < len(snc.depSet.Chains()); i++ {
-		err := <-returns
-		if err != nil {
-			errors = append(errors, err)
-		}
-	}
-	// log all errors, but only return the first one
-	if len(errors) > 0 {
-		snc.logger.Warn("sync nodes failed to derive from L1", "errors", errors)
-		return errors[0]
-	}
-	return nil
-}
-
-// DeriveToEnd derives the L2 blocks from the L1 block reference for a single chain
-// it will continue to derive until no more blocks are derived
-func (snc *SyncNodesController) DeriveToEnd(id types.ChainID, ref eth.BlockRef) error {
-	// TODO fix me
-	return nil
 }

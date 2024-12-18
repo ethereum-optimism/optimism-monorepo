@@ -1,6 +1,16 @@
 package syncnode
 
-/* TODO fix me
+import (
+	"context"
+	"testing"
+
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/stretchr/testify/require"
+)
 
 type mockChainsDB struct {
 	localSafeFn       func(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error)
@@ -30,15 +40,16 @@ func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, 
 }
 
 type mockSyncControl struct {
-	tryDeriveNextFn func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
-	anchorPointFn   func(ctx context.Context) (types.DerivedPair, error)
-}
+	anchorPointFn       func(ctx context.Context) (types.DerivedPair, error)
+	provideL1Fn         func(ctx context.Context, ref eth.BlockRef) error
+	resetFn             func(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
+	updateCrossSafeFn   func(ctx context.Context, derived, derivedFrom eth.BlockID) error
+	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
+	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
 
-func (m *mockSyncControl) TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-	if m.tryDeriveNextFn != nil {
-		return m.tryDeriveNextFn(ctx, ref)
-	}
-	return eth.BlockRef{}, nil
+	subscribeDerivationUpdatesFn func(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error)
+	subscribeExhaustL1EventsFn   func(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error)
+	subscribeUnsafeBlocksFn      func(ctx context.Context, c chan eth.L1BlockRef) (ethereum.Subscription, error)
 }
 
 func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {
@@ -46,6 +57,62 @@ func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedPair, e
 		return m.anchorPointFn(ctx)
 	}
 	return types.DerivedPair{}, nil
+}
+
+func (m *mockSyncControl) ProvideL1(ctx context.Context, ref eth.BlockRef) error {
+	if m.provideL1Fn != nil {
+		return m.provideL1Fn(ctx, ref)
+	}
+	return nil
+}
+
+func (m *mockSyncControl) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
+	if m.resetFn != nil {
+		return m.resetFn(ctx, unsafe, safe, finalized)
+	}
+	return nil
+}
+
+func (m *mockSyncControl) SubscribeDerivationUpdates(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error) {
+	if m.subscribeDerivationUpdatesFn != nil {
+		return m.subscribeDerivationUpdatesFn(ctx, c)
+	}
+	return nil, nil
+}
+
+func (m *mockSyncControl) SubscribeExhaustL1Events(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error) {
+	if m.subscribeExhaustL1EventsFn != nil {
+		return m.subscribeExhaustL1EventsFn(ctx, c)
+	}
+	return nil, nil
+}
+
+func (m *mockSyncControl) SubscribeUnsafeBlocks(ctx context.Context, c chan eth.L1BlockRef) (ethereum.Subscription, error) {
+	if m.subscribeUnsafeBlocksFn != nil {
+		return m.subscribeUnsafeBlocksFn(ctx, c)
+	}
+	return nil, nil
+}
+
+func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+	if m.updateCrossSafeFn != nil {
+		return m.updateCrossSafeFn(ctx, derived, derivedFrom)
+	}
+	return nil
+}
+
+func (m *mockSyncControl) UpdateCrossUnsafe(ctx context.Context, derived eth.BlockID) error {
+	if m.updateCrossUnsafeFn != nil {
+		return m.updateCrossUnsafeFn(ctx, derived)
+	}
+	return nil
+}
+
+func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) error {
+	if m.updateFinalizedFn != nil {
+		return m.updateFinalizedFn(ctx, id)
+	}
+	return nil
 }
 
 func sampleDepSet(t *testing.T) depset.DependencySet {
@@ -147,127 +214,3 @@ func TestAttachNodeController(t *testing.T) {
 	require.Error(t, err)
 	require.Equal(t, 2, controller.controllers.Len(), "controllers should still have 2 entries")
 }
-
-// TestDeriveFromL1 tests the DeriveFromL1 function of the SyncNodesController for multiple chains
-func TestDeriveFromL1(t *testing.T) {
-	logger := log.New()
-	depSet := sampleDepSet(t)
-
-	// keep track of the updates for each chain with the mock
-	updates := map[types.ChainID][]eth.BlockRef{}
-	mockChainsDB := mockChainsDB{}
-	updateMu := sync.Mutex{}
-	mockChainsDB.updateLocalSafeFn = func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
-		updateMu.Lock()
-		defer updateMu.Unlock()
-		updates[chainID] = append(updates[chainID], derived)
-		return nil
-	}
-	controller := NewSyncNodesController(logger, depSet, &mockChainsDB)
-
-	refA := eth.BlockRef{Number: 1}
-	refB := eth.BlockRef{Number: 2}
-	refC := eth.BlockRef{Number: 3}
-	derived := []eth.BlockRef{refA, refB, refC}
-
-	// Attach a controller for chain 900 with a mock controller function
-	ctrl1 := mockSyncControl{}
-	ctrl1i := 0
-	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl1.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-		defer func() { ctrl1i++ }()
-		if ctrl1i >= len(derived) {
-			return eth.BlockRef{}, nil
-		}
-		return derived[ctrl1i], nil
-	}
-	err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl1)
-	require.NoError(t, err)
-
-	// Attach a controller for chain 900 with a mock controller function
-	ctrl2 := mockSyncControl{}
-	ctrl2i := 0
-	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl2.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-		defer func() { ctrl2i++ }()
-		if ctrl2i >= len(derived) {
-			return eth.BlockRef{}, nil
-		}
-		return derived[ctrl2i], nil
-	}
-	err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2)
-	require.NoError(t, err)
-
-	// Derive from L1
-	err = controller.DeriveFromL1(refA)
-	require.NoError(t, err)
-
-	// Check that the derived blocks were recorded for each chain
-	require.Equal(t, []eth.BlockRef{refA, refB, refC}, updates[types.ChainIDFromUInt64(900)])
-	require.Equal(t, []eth.BlockRef{refA, refB, refC}, updates[types.ChainIDFromUInt64(901)])
-
-}
-
-// TestDeriveFromL1Error tests that if a chain fails to derive from L1, the derived blocks up to the error are still recorded
-// for that chain, and all other chains that derived successfully are also recorded.
-func TestDeriveFromL1Error(t *testing.T) {
-	logger := log.New()
-	depSet := sampleDepSet(t)
-
-	// keep track of the updates for each chain with the mock
-	updates := map[types.ChainID][]eth.BlockRef{}
-	mockChainsDB := mockChainsDB{}
-	updateMu := sync.Mutex{}
-	mockChainsDB.updateLocalSafeFn = func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
-		updateMu.Lock()
-		defer updateMu.Unlock()
-		updates[chainID] = append(updates[chainID], derived)
-		return nil
-	}
-	controller := NewSyncNodesController(logger, depSet, &mockChainsDB)
-
-	refA := eth.BlockRef{Number: 1}
-	refB := eth.BlockRef{Number: 2}
-	refC := eth.BlockRef{Number: 3}
-	derived := []eth.BlockRef{refA, refB, refC}
-
-	// Attach a controller for chain 900 with a mock controller function
-	ctrl1 := mockSyncControl{}
-	ctrl1i := 0
-	// the controller will return the next derived block each time TryDeriveNext is called
-	ctrl1.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-		defer func() { ctrl1i++ }()
-		if ctrl1i >= len(derived) {
-			return eth.BlockRef{}, nil
-		}
-		return derived[ctrl1i], nil
-	}
-	err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl1)
-	require.NoError(t, err)
-
-	// Attach a controller for chain 900 with a mock controller function
-	ctrl2 := mockSyncControl{}
-	ctrl2i := 0
-	// this controller will error on the last derived block
-	ctrl2.tryDeriveNextFn = func(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-		defer func() { ctrl2i++ }()
-		if ctrl2i >= len(derived)-1 {
-			return eth.BlockRef{}, fmt.Errorf("error")
-		}
-		return derived[ctrl2i], nil
-	}
-	err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2)
-	require.NoError(t, err)
-
-	// Derive from L1
-	err = controller.DeriveFromL1(refA)
-	require.Error(t, err)
-
-	// Check that the derived blocks were recorded for each chain
-	// and in the case of the error, the derived blocks up to the error are recorded
-	require.Equal(t, []eth.BlockRef{refA, refB, refC}, updates[types.ChainIDFromUInt64(900)])
-	require.Equal(t, []eth.BlockRef{refA, refB}, updates[types.ChainIDFromUInt64(901)])
-
-}
-
-*/
