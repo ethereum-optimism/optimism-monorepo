@@ -71,7 +71,7 @@ func TestSyncResume(t *testing.T) {
 	require.NoError(t, err)
 
 	// Perform sync
-	err = client.SyncDatabase(context.Background(), chainID, DBLocalSafe, false)
+	err = client.SyncDatabase(context.Background(), chainID, DBLocalSafe, true)
 	require.NoError(t, err)
 	compareFiles(t, serverFile, clientFile)
 }
