@@ -83,8 +83,6 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 		return fmt.Errorf("failed to create chain directory: %w", err)
 	}
 
-	filePath = filepath.Join(chainDir, filePath)
-
 	// Ensure the database file exists and get initial size
 	filePath = filepath.Join(chainDir, filePath)
 	var initialSize int64
