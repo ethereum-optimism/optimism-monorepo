@@ -65,7 +65,7 @@ func (su *SupervisorService) initFromCLIConfig(ctx context.Context, cfg *config.
 	if err := su.initRPCServer(cfg); err != nil {
 		return fmt.Errorf("failed to start RPC server: %w", err)
 	}
-	if err := su.initDBSync(cfg); err != nil {
+	if err := su.initDBSync(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to start DB sync server: %w", err)
 	}
 	return nil
@@ -161,12 +161,16 @@ func (su *SupervisorService) initRPCServer(cfg *config.Config) error {
 	return nil
 }
 
-func (su *SupervisorService) initDBSync(cfg *config.Config) error {
+func (su *SupervisorService) initDBSync(ctx context.Context, cfg *config.Config) error {
 	syncCfg := sync.Config{
 		DataDir: cfg.Datadir,
 		Logger:  su.log,
 	}
-	handler, err := sync.NewServer(syncCfg, nil)
+	depSet, err := cfg.DependencySetSource.LoadDependencySet(ctx)
+	if err != nil {
+		return fmt.Errorf("failed to load dependency set: %w", err)
+	}
+	handler, err := sync.NewServer(syncCfg, depSet.Chains())
 	if err != nil {
 		return fmt.Errorf("failed to create db sync handler: %w", err)
 	}
