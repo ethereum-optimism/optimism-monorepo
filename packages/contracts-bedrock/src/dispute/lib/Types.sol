@@ -26,17 +26,6 @@ enum GameStatus {
     DEFENDER_WINS
 }
 
-enum GameValidityIssues {
-    OK,
-    NOT_RESOLVED,
-    WAIT_FINALITY_DELAY,
-    FACTORY_UNREGISTERED,
-    BLACKLISTED,
-    RESPECTED_GAME_TYPE_MISMATCH,
-    CHALLENGER_WINS,
-    RETIRED
-}
-
 /// @notice Represents an L2 output root and the L2 block number at which it was generated.
 /// @custom:field root The output root.
 /// @custom:field l2BlockNumber The L2 block number at which the output root was generated.
