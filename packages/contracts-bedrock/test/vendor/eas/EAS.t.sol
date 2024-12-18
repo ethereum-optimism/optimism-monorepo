@@ -485,7 +485,7 @@ contract EASTest is CommonTest {
     // Construction Tests
     /// @dev Tests the initial construction state of the EAS contract
     function testConstructionScenarios() public view {
-        assertEq(ISemver(address(eas)).version(), "1.4.1-beta.1");
+        assertEq(ISemver(address(eas)).version(), "1.4.1-beta.2");
     }
 
     /// @dev Tests behavior when using an invalid schema registry
