@@ -114,6 +114,15 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
+func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockRef, error) {
+	var result eth.BlockRef
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_finalizedL1")
+	return result, err
+}
+
 func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
 	var result eth.BlockRef
 	err := cl.client.CallContext(
@@ -142,15 +151,6 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.C
 		chainID,
 		derivedFrom,
 		lastDerived)
-}
-
-func (cl *SupervisorClient) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalizedL1 eth.L1BlockRef) error {
-	return cl.client.CallContext(
-		ctx,
-		nil,
-		"supervisor_updateFinalizedL1",
-		chainID,
-		finalizedL1)
 }
 
 func (cl *SupervisorClient) Close() {

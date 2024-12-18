@@ -21,13 +21,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -110,10 +111,10 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 	chainA := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900200"], supervisorAPI)
 	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"], supervisorAPI)
 	// Hook up L2 RPCs to supervisor, to fetch event data from
-	srcA := chainA.Sequencer.InteropSyncSource(is.T)
-	srcB := chainB.Sequencer.InteropSyncSource(is.T)
-	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcA))
-	require.NoError(is.T, supervisorAPI.backend.AttachSyncSource(is.T.Ctx(), srcB))
+	srcA := chainA.Sequencer.InteropSyncNode(is.T)
+	srcB := chainB.Sequencer.InteropSyncNode(is.T)
+	require.NoError(is.T, supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcA))
+	require.NoError(is.T, supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcB))
 	return &InteropActors{
 		L1Miner:    l1Miner,
 		Supervisor: supervisorAPI,
@@ -142,6 +143,11 @@ func (sa *SupervisorActor) SyncCrossSafe(t helpers.Testing, chainID types.ChainI
 	require.NoError(t, sa.backend.SyncCrossSafe(chainID))
 }
 
+func (sa *SupervisorActor) SyncFinalizedL1(t helpers.Testing, ref eth.BlockRef) {
+	sa.backend.SyncFinalizedL1(ref)
+	require.Equal(t, ref, sa.backend.FinalizedL1())
+}
+
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.
 func worldToDepSet(t helpers.Testing, worldOutput *interopgen.WorldOutput) *depset.StaticConfigDependencySet {
 	depSetCfg := make(map[types.ChainID]*depset.StaticConfigDependency)
@@ -166,7 +172,7 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 		DependencySetSource:   depSet,
 		SynchronousProcessors: true,
 		Datadir:               supervisorDataDir,
-		SyncSources:           &syncsrc.CLISyncSources{}, // sources are added dynamically afterwards
+		SyncSources:           &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
 	}
 	b, err := backend.NewSupervisorBackend(t.Ctx(),
 		logger.New("role", "supervisor"), metrics.NoopMetrics, svCfg)

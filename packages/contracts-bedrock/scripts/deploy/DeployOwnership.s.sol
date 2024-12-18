@@ -145,7 +145,7 @@ contract DeployOwnership is Deploy {
     /// @param _name The name of the Safe to deploy.
     /// @param _owners The owners of the Safe.
     /// @param _threshold The threshold of the Safe.
-    /// @param _keepDeployer Wether or not the deployer address will be added as an owner of the Safe.
+    /// @param _keepDeployer Whether or not the deployer address will be added as an owner of the Safe.
     function deploySafe(
         string memory _name,
         address[] memory _owners,

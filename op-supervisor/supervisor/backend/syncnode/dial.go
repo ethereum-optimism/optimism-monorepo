@@ -1,4 +1,4 @@
-package syncsrc
+package syncnode
 
 import (
 	"context"
@@ -13,16 +13,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-// RPCDialSetup implements SyncSourceSetup by dialing an RPC
-// and providing an RPC-client binding to sync with.
 type RPCDialSetup struct {
 	JWTSecret eth.Bytes32
 	Endpoint  string
 }
 
-var _ SyncSourceSetup = (*RPCDialSetup)(nil)
+var _ SyncNodeSetup = (*RPCDialSetup)(nil)
 
-func (r *RPCDialSetup) Setup(ctx context.Context, logger log.Logger) (SyncSource, error) {
+func (r *RPCDialSetup) Setup(ctx context.Context, logger log.Logger) (SyncNode, error) {
 	ctx, cancel := context.WithTimeout(ctx, time.Second*60)
 	defer cancel()
 
@@ -35,7 +33,7 @@ func (r *RPCDialSetup) Setup(ctx context.Context, logger log.Logger) (SyncSource
 	if err != nil {
 		return nil, err
 	}
-	return &RPCSyncSource{
+	return &RPCSyncNode{
 		name: fmt.Sprintf("RPCSyncSource(%s)", r.Endpoint),
 		cl:   rpcCl,
 	}, nil

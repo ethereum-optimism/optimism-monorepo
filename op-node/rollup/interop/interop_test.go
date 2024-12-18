@@ -158,7 +158,6 @@ func TestInteropDeriver(t *testing.T) {
 	t.Run("finalized L1 trigger cross-L2 finality check", func(t *testing.T) {
 		emitter.ExpectOnce(engine.RequestFinalizedUpdateEvent{})
 		finalizedL1 := testutils.RandomBlockRef(rng)
-		interopBackend.ExpectUpdateFinalizedL1(chainID, finalizedL1, nil)
 		interopDeriver.OnEvent(finality.FinalizeL1Event{
 			FinalizedL1: finalizedL1,
 		})

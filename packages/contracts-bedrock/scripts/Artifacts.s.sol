@@ -221,7 +221,7 @@ abstract contract Artifacts {
         }
 
         StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_contractName);
-        bytes32 slotVal = vm.load(contractAddress, bytes32(vm.parseUint(slot.slot)));
+        bytes32 slotVal = vm.load(contractAddress, bytes32(slot.slot));
         initialized_ = uint8((uint256(slotVal) >> (slot.offset * 8)) & 0xFF);
     }
 }

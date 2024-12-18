@@ -32,7 +32,6 @@ type InteropBackend interface {
 
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error
-	UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.L1BlockRef) error
 }
 
 // For testing usage, the backend of the supervisor implements the interface, no need for RPC.
@@ -153,12 +152,10 @@ func (d *InteropDeriver) onFinalizedL1(x finality.FinalizeL1Event) {
 	if !d.cfg.IsInterop(x.FinalizedL1.Time) {
 		return
 	}
-	d.log.Debug("Signaling finalized L1 update to interop backend", "finalized", x.FinalizedL1)
-	ctx, cancel := context.WithTimeout(d.driverCtx, rpcTimeout)
-	defer cancel()
-	if err := d.backend.UpdateFinalizedL1(ctx, d.chainID, x.FinalizedL1); err != nil {
-		d.log.Warn("Failed to signal finalized L1 block to interop backend", "finalized", x.FinalizedL1, "err", err)
-	}
+	// there used to be code here which sent the finalized L1 block to the supervisor
+	// but the supervisor manages its own finality now
+	// so we don't need to do anything here besides emit the event.
+
 	// New L2 blocks may be ready to finalize now that the backend knows of new L1 finalized info.
 	d.emitter.Emit(engine.RequestFinalizedUpdateEvent{})
 }

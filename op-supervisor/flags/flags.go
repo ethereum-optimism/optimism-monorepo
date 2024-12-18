@@ -12,7 +12,7 @@ import (
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 const EnvVarPrefix = "OP_SUPERVISOR"
@@ -110,8 +110,8 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 
 // syncSourceSetups creates a sync source collection, from CLI arguments.
 // These sources can share JWT secret configuration.
-func syncSourceSetups(ctx *cli.Context) syncsrc.SyncSourceCollection {
-	return &syncsrc.CLISyncSources{
+func syncSourceSetups(ctx *cli.Context) syncnode.SyncNodeCollection {
+	return &syncnode.CLISyncNodes{
 		Endpoints:      filterEmpty(ctx.StringSlice(L2ConsensusNodesFlag.Name)),
 		JWTSecretPaths: filterEmpty(ctx.StringSlice(L2ConsensusJWTSecret.Name)),
 	}

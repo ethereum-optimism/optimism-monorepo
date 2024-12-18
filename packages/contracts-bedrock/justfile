@@ -159,7 +159,7 @@ interfaces-check-no-build:
 
 # Checks that all interfaces are appropriately named and accurately reflect the corresponding
 # contract that they're meant to represent. We run "clean" before building because leftover
-# artifacts can cause the script to detect issues incorrectly.2
+# artifacts can cause the script to detect issues incorrectly.
 interfaces-check: clean build interfaces-check-no-build
 
 # Checks that the size of the contracts is within the limit.

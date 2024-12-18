@@ -64,13 +64,13 @@ var (
 	}
 	MinProposalSizeBytesFlag = &cli.Uint64Flag{
 		Name:    MinProposalSizeBytesFlagName,
-		Usage:   "Minimum proposal size in bytes.",
+		Usage:   "PreimageOracle minimum proposal size in bytes.",
 		EnvVars: deployer.PrefixEnvVar("MIN_PROPOSAL_SIZE_BYTES"),
 		Value:   standard.MinProposalSizeBytes,
 	}
 	ChallengePeriodSecondsFlag = &cli.Uint64Flag{
 		Name:    ChallengePeriodSecondsFlagName,
-		Usage:   "Challenge period in seconds.",
+		Usage:   "PreimageOracle challenge period in seconds.",
 		EnvVars: deployer.PrefixEnvVar("CHALLENGE_PERIOD_SECONDS"),
 		Value:   standard.ChallengePeriodSeconds,
 	}
@@ -253,8 +253,6 @@ var DisputeGameFlags = []cli.Flag{
 	deployer.PrivateKeyFlag,
 	OutfileFlag,
 	ArtifactsLocatorFlag,
-	MinProposalSizeBytesFlag,
-	ChallengePeriodSecondsFlag,
 	VmFlag,
 	GameKindFlag,
 	GameTypeFlag,

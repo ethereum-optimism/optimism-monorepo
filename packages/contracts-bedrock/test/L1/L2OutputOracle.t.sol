@@ -23,6 +23,28 @@ contract L2OutputOracle_TestBase is CommonTest {
         super.setUp();
     }
 
+    /// @dev Helper function to propose an output.
+    function proposeAnotherOutput() public {
+        bytes32 proposedOutput2 = keccak256(abi.encode());
+        uint256 nextBlockNumber = l2OutputOracle.nextBlockNumber();
+        uint256 nextOutputIndex = l2OutputOracle.nextOutputIndex();
+        warpToProposeTime(nextBlockNumber);
+        uint256 proposedNumber = l2OutputOracle.latestBlockNumber();
+
+        uint256 submissionInterval = deploy.cfg().l2OutputOracleSubmissionInterval();
+        // Ensure the submissionInterval is enforced
+        assertEq(nextBlockNumber, proposedNumber + submissionInterval);
+
+        vm.roll(nextBlockNumber + 1);
+
+        vm.expectEmit(true, true, true, true);
+        emit OutputProposed(proposedOutput2, nextOutputIndex, nextBlockNumber, block.timestamp);
+
+        address proposer = deploy.cfg().l2OutputOracleProposer();
+        vm.prank(proposer);
+        l2OutputOracle.proposeL2Output(proposedOutput2, nextBlockNumber, 0, 0);
+    }
+
     /// @dev Tests that constructor sets the initial values correctly.
     function test_constructor_succeeds() external {
         IL2OutputOracle oracleImpl = IL2OutputOracle(address(new L2OutputOracle()));

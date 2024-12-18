@@ -36,15 +36,12 @@ type DeployOPChainInputV160 struct {
 	DisputeSplitDepth            uint64
 	DisputeClockExtension        uint64
 	DisputeMaxClockDuration      uint64
+	StartingAnchorRoots          []byte
 	AllowCustomDisputeParameters bool
 }
 
 func (input *DeployOPChainInputV160) InputSet() bool {
 	return true
-}
-
-func (input *DeployOPChainInputV160) StartingAnchorRoots() []byte {
-	return PermissionedGameStartingAnchorRoots
 }
 
 type DeployOPChainInputIsthmus struct {

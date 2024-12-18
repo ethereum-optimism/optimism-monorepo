@@ -21,12 +21,12 @@ type QueryBackend interface {
 	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
 	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	FinalizedL1() eth.BlockRef
 }
 
 type UpdatesBackend interface {
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
-	UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error
 }
 
 type Backend interface {
@@ -67,6 +67,10 @@ func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (e
 	return q.Supervisor.Finalized(ctx, chainID)
 }
 
+func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
+	return q.Supervisor.FinalizedL1()
+}
+
 func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
 }
@@ -104,8 +108,4 @@ func (u *UpdatesFrontend) UpdateLocalUnsafe(ctx context.Context, chainID types.C
 
 func (u *UpdatesFrontend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
 	return u.Supervisor.UpdateLocalSafe(ctx, chainID, derivedFrom, lastDerived)
-}
-
-func (u *UpdatesFrontend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
-	return u.Supervisor.UpdateFinalizedL1(ctx, chainID, finalized)
 }
