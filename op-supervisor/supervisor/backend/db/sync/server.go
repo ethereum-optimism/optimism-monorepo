@@ -126,16 +126,6 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// AddChain adds a chain to the server's valid chains map.
-func (s *Server) AddChain(chainID types.ChainID) {
-	s.validChains[chainID] = struct{}{}
-}
-
-// RemoveChain removes a chain from the server's valid chains map.
-func (s *Server) RemoveChain(chainID types.ChainID) {
-	delete(s.validChains, chainID)
-}
-
 // logError logs an error iff a logger is configured.
 func (s *Server) logError(msg string, err error, fileName string) {
 	if s.config.Logger != nil {
