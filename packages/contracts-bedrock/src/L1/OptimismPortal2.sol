@@ -196,7 +196,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Constructs the OptimismPortal contract.
     constructor(uint256 _proofMaturityDelaySeconds) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
-
         _disableInitializers();
     }
 

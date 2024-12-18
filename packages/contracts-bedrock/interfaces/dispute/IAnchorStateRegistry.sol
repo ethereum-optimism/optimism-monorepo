@@ -20,6 +20,7 @@ interface IAnchorStateRegistry {
 
     function anchors(GameType) external view returns (Hash root, uint256 l2BlockNumber); // nosemgrep
     function disputeGameFactory() external view returns (IDisputeGameFactory);
+    function respectedGameType() external view returns (GameType);
     function initialize(
         StartingAnchorRoot[] memory _startingAnchorRoots,
         ISuperchainConfig _superchainConfig

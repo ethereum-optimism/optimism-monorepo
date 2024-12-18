@@ -24,10 +24,10 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     error InvalidGame();
-    error AnchorGameIsNewer(uint256 latestGameBlockNumber, uint256 candidateGameBlockNumber);
+    error AnchorGameIsNewer(uint256 anchorGameL2BlockNumber, uint256 candidateGameL2BlockNumber);
 
-    event AnchorGameSet(IDisputeGame _newAnchorGame);
-    event RespectedGameTypeSet(GameType _gameType);
+    event AnchorGameSet(IDisputeGame newAnchorGame);
+    event RespectedGameTypeSet(GameType gameType);
     event DisputeGameBlacklisted(IDisputeGame game);
     event GameRetirementTimestampSet(uint64 timestamp);
 
@@ -102,17 +102,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
             OutputRoot({ l2BlockNumber: _anchorGame.l2BlockNumber(), root: Hash.wrap(_anchorGame.rootClaim().raw()) });
     }
 
-    function registerAnchorGameCandidate() public {
-        IFaultDisputeGame _game = IFaultDisputeGame(msg.sender);
-        // game must not be invalid
-        if (!isGameMaybeValid(_game)) revert InvalidGame();
-        // if the game is older than the anchor game, we don't need it
-        if (_game.l2BlockNumber() < _anchorGame.l2BlockNumber()) {
-            return;
-        }
-        anchorGameCandidates.push(_game);
-    }
-
     function pokeAnchorState(uint256 _candidateGameIndex) external {
         IFaultDisputeGame _game = anchorGameCandidates[_candidateGameIndex];
         _anchorGameCandidateIndex = _candidateGameIndex + 1;
@@ -134,8 +123,20 @@ contract AnchorStateRegistry is Initializable, ISemver {
         emit AnchorGameSet(_game);
     }
 
+    function _maybeRegisterAnchorGameCandidate() internal {
+        IFaultDisputeGame _game = IFaultDisputeGame(msg.sender);
+        // game must not be invalid
+        if (!isGameMaybeValid(_game)) return;
+        // if the game is older than the anchor game, we don't need it
+        if (_game.l2BlockNumber() < _anchorGame.l2BlockNumber()) {
+            return;
+        }
+        anchorGameCandidates.push(_game);
+    }
+
     /// @notice Callable by FaultDisputeGame contracts to update the anchor state.
     function tryUpdateAnchorState() external {
+        _maybeRegisterAnchorGameCandidate();
         uint256 _anchorGameBlockNumber = _anchorGame.l2BlockNumber();
         uint256 _gasStart = gasleft();
         // TODO: add padding to ensure we don't run out of gas
