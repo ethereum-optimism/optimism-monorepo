@@ -115,7 +115,7 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 		return fmt.Errorf("HEAD request failed: %w", err)
 	}
 	if err := resp.Body.Close(); err != nil {
-		return err
+		return fmt.Errorf("HEAD request body failed to close: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("HEAD request failed with status %d", resp.StatusCode)
