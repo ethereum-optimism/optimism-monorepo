@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/cross"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -35,8 +36,8 @@ type SupervisorBackend struct {
 	// chainDBs is the primary interface to the databases, including logs, derived-from information and L1 finalization
 	chainDBs *db.ChainsDB
 
-	// l1Processor watches for new data from the L1 chain including new blocks and block finalization
-	l1Processor *processors.L1Processor
+	// l1Accessor provides access to the L1 chain for the L1 processor and subscribes to new block events
+	l1Accessor *l1access.L1Accessor
 
 	// chainProcessors are notified of new unsafe blocks, and add the unsafe log events data into the events DB
 	chainProcessors locks.RWMap[types.ChainID, *processors.ChainProcessor]
@@ -258,15 +259,18 @@ func (su *SupervisorBackend) attachL1RPC(ctx context.Context, l1RPCAddr string) 
 	return nil
 }
 
-// attachL1Source attaches an L1 source to the L1 processor.
-// If the L1 processor does not exist, it is created and started.
-func (su *SupervisorBackend) AttachL1Source(source processors.L1Source) {
-	if su.l1Processor == nil {
-		su.l1Processor = processors.NewL1Processor(su.logger, su.chainDBs, su.syncNodesController, source)
-		su.l1Processor.Start()
-	} else {
-		su.l1Processor.AttachClient(source)
+// AttachL1Source attaches an L1 source to the L1 accessor
+// if the L1 accessor does not exist, it is created
+// if an L1 source is already attached, it is replaced
+func (su *SupervisorBackend) AttachL1Source(source l1access.L1Source) {
+	if su.l1Accessor == nil {
+		su.l1Accessor = l1access.NewL1Accessor(
+			su.logger,
+			source,
+			processors.MaybeUpdateFinalizedL1Fn(context.Background(), su.logger, su.chainDBs),
+		)
 	}
+	su.l1Accessor.AttachClient(source)
 }
 
 func (su *SupervisorBackend) Start(ctx context.Context) error {
@@ -279,11 +283,6 @@ func (su *SupervisorBackend) Start(ctx context.Context) error {
 	// which rewinds the database to the last block that is guaranteed to have been fully recorded
 	if err := su.chainDBs.ResumeFromLastSealedBlock(); err != nil {
 		return fmt.Errorf("failed to resume chains db: %w", err)
-	}
-
-	// start the L1 processor if it exists
-	if su.l1Processor != nil {
-		su.l1Processor.Start()
 	}
 
 	if !su.synchronousProcessors {
@@ -310,11 +309,6 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 		return errAlreadyStopped
 	}
 	su.logger.Info("Closing supervisor backend")
-
-	// stop the L1 processor
-	if su.l1Processor != nil {
-		su.l1Processor.Stop()
-	}
 
 	// close all processors
 	su.chainProcessors.Range(func(id types.ChainID, processor *processors.ChainProcessor) bool {
@@ -516,6 +510,8 @@ func (su *SupervisorBackend) SyncCrossSafe(chainID types.ChainID) error {
 	return ch.ProcessWork()
 }
 
+// SyncFinalizedL1 is a test-only method to update the finalized L1 block without the use of a subscription
 func (su *SupervisorBackend) SyncFinalizedL1(ref eth.BlockRef) {
-	processors.MaybeUpdateFinalizedL1(context.Background(), su.logger, su.chainDBs, ref)
+	fn := processors.MaybeUpdateFinalizedL1Fn(context.Background(), su.logger, su.chainDBs)
+	fn(context.Background(), ref)
 }
