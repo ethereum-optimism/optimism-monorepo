@@ -314,7 +314,7 @@ def wait_for_rpc_server(url):
             if response.status < 300:
                 log.info(f'RPC server at {url} ready')
                 return
-        except Exception as e:
+        except Exception :
             log.info(f'Waiting for RPC server at {url}')
             time.sleep(1)
         finally:
