@@ -24,7 +24,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     error InvalidGame();
-    error LatestGameIsNewer(uint256 latestGameBlockNumber, uint256 candidateGameBlockNumber);
+    error AnchorGameIsNewer(uint256 latestGameBlockNumber, uint256 candidateGameBlockNumber);
 
     event AnchorGameSet(IDisputeGame _newAnchorGame);
     event RespectedGameTypeSet(GameType _gameType);
@@ -102,26 +102,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
             OutputRoot({ l2BlockNumber: _anchorGame.l2BlockNumber(), root: Hash.wrap(_anchorGame.rootClaim().raw()) });
     }
 
-    function _updateAnchorState(IFaultDisputeGame _game) internal {
-        uint256 _anchorL2BlockNumber = _anchorGame.l2BlockNumber();
-        uint256 _gameL2BlockNumber = _game.l2BlockNumber();
-        if (_gameL2BlockNumber <= _anchorL2BlockNumber) {
-            revert LatestGameIsNewer(_anchorL2BlockNumber, _gameL2BlockNumber);
-        }
-        if (!isGameValid(_game)) revert InvalidGame();
-        _updateAnchorStateWithValidNewerGame(_game);
-    }
-
-    function _updateAnchorStateWithValidNewerGame(IFaultDisputeGame _game) internal {
-        _anchorGame = _game;
-        emit AnchorGameSet(_game);
-    }
-
-    function pokeAnchorState(uint256 _candidateGameIndex) external {
-        IFaultDisputeGame _game = anchorGameCandidates[_candidateGameIndex];
-        _updateAnchorState(_game);
-    }
-
     function registerAnchorGameCandidate() public {
         IFaultDisputeGame _game = IFaultDisputeGame(msg.sender);
         // game must not be invalid
@@ -133,12 +113,33 @@ contract AnchorStateRegistry is Initializable, ISemver {
         anchorGameCandidates.push(_game);
     }
 
+    function pokeAnchorState(uint256 _candidateGameIndex) external {
+        IFaultDisputeGame _game = anchorGameCandidates[_candidateGameIndex];
+        _anchorGameCandidateIndex = _candidateGameIndex + 1;
+        _updateAnchorState(_game);
+    }
+
+    function _updateAnchorState(IFaultDisputeGame _game) internal {
+        uint256 _anchorL2BlockNumber = _anchorGame.l2BlockNumber();
+        uint256 _gameL2BlockNumber = _game.l2BlockNumber();
+        if (!isGameValid(_game)) revert InvalidGame();
+        if (_gameL2BlockNumber <= _anchorL2BlockNumber) {
+            revert AnchorGameIsNewer(_anchorL2BlockNumber, _gameL2BlockNumber);
+        }
+        _updateAnchorStateWithValidNewerGame(_game);
+    }
+
+    function _updateAnchorStateWithValidNewerGame(IFaultDisputeGame _game) internal {
+        _anchorGame = _game;
+        emit AnchorGameSet(_game);
+    }
+
     /// @notice Callable by FaultDisputeGame contracts to update the anchor state.
     function tryUpdateAnchorState() external {
         uint256 _anchorGameBlockNumber = _anchorGame.l2BlockNumber();
         uint256 _gasStart = gasleft();
-        // TODO: underflow
-        while (_gasStart - gasleft() > tryUpdateAnchorStateGas) {
+        // TODO: add padding to ensure we don't run out of gas
+        while (_gasStart - gasleft() < tryUpdateAnchorStateGas) {
             // if there are no candidates to consider, break
             if (_anchorGameCandidateIndex == anchorGameCandidates.length) break;
             // If the game's l2BlockNumber is older than that of anchorGame, seek ahead.
@@ -153,16 +154,15 @@ contract AnchorStateRegistry is Initializable, ISemver {
                         _anchorGameCandidateIndex++;
                     } else {
                         // If the game is finalized and valid, let's use it.
-                        _updateAnchorState(_anchorCandidate);
+                        _updateAnchorStateWithValidNewerGame(_anchorCandidate);
                         _anchorGameCandidateIndex++;
+                        _anchorGameBlockNumber = _anchorCandidate.l2BlockNumber();
                     }
                 } else {
                     // If the game is not finalized, we could consider checking some games ahead of it, but for draft
                     // impl we'll pause.
                     break;
                 }
-
-                _anchorGameBlockNumber = _anchorCandidate.l2BlockNumber();
             }
         }
     }
