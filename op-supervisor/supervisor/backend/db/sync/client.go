@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -27,11 +28,11 @@ var (
 type Client struct {
 	config     Config
 	baseURL    string
-	httpClient *http.Client
+	httpClient *client.BasicHTTPClient
 }
 
 // NewClient creates a new Client with the given config and server URL.
-func NewClient(config Config, serverURL string, httpClient *http.Client) (*Client, error) {
+func NewClient(config Config, serverURL string) (*Client, error) {
 	// Verify root directory exists and is actually a directory
 	root, err := filepath.Abs(config.DataDir)
 	if err != nil {
@@ -45,9 +46,8 @@ func NewClient(config Config, serverURL string, httpClient *http.Client) (*Clien
 		return nil, fmt.Errorf("root path is not a directory: %s", root)
 	}
 
-	if httpClient == nil {
-		httpClient = DefaultHTTPClient
-	}
+	// Create the HTTP client
+	httpClient := client.NewBasicHTTPClient(serverURL, config.Logger)
 
 	return &Client{
 		config:     config,
@@ -111,11 +111,8 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 // attemptSync makes a single attempt to sync the file
 func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, database Database, absPath string, initialSize int64) error {
 	// First do a HEAD request to get the file size
-	req, err := http.NewRequestWithContext(ctx, http.MethodHead, c.buildURL(chainID, database), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create HEAD request: %w", err)
-	}
-	resp, err := c.httpClient.Do(req)
+	path := c.buildURLPath(chainID, database)
+	resp, err := c.httpClient.Get(ctx, path, nil, http.Header{"X-HTTP-Method-Override": []string{"HEAD"}})
 	if err != nil {
 		return fmt.Errorf("HEAD request failed: %w", err)
 	}
@@ -136,17 +133,11 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 	}
 
 	// Create the GET request
-	req, err = http.NewRequestWithContext(ctx, http.MethodGet, c.buildURL(chainID, database), nil)
-	if err != nil {
-		return fmt.Errorf("failed to create GET request: %w", err)
-	}
-
-	// If we have partial file, try to resume
+	headers := make(http.Header)
 	if initialSize > 0 {
-		req.Header.Set("Range", fmt.Sprintf("bytes=%d-", initialSize))
+		headers.Set("Range", fmt.Sprintf("bytes=%d-", initialSize))
 	}
-
-	resp, err = c.httpClient.Do(req)
+	resp, err = c.httpClient.Get(ctx, path, nil, headers)
 	if err != nil {
 		return fmt.Errorf("GET request failed: %w", err)
 	}
@@ -155,7 +146,6 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 			c.logError("failed to close response body", err, database)
 		}
 	}(resp.Body)
-
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return fmt.Errorf("GET request failed with status %d", resp.StatusCode)
 	}
@@ -185,9 +175,9 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 	return nil
 }
 
-// buildURL creates the full URL for a database download request
-func (c *Client) buildURL(chainID types.ChainID, database Database) string {
-	return fmt.Sprintf("%s/dbsync/%s/%s", c.baseURL, chainID.String(), database)
+// buildURLPath creates the URL path for a given database download request
+func (c *Client) buildURLPath(chainID types.ChainID, database Database) string {
+	return fmt.Sprintf("dbsync/%s/%s", chainID.String(), database)
 }
 
 // parseContentLength parses the Content-Length header

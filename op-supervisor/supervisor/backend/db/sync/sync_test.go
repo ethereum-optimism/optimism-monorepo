@@ -35,7 +35,7 @@ func TestSyncBasic(t *testing.T) {
 	clientCfg := Config{
 		DataDir: clientRoot,
 	}
-	client, err := NewClient(clientCfg, ts.URL, nil)
+	client, err := NewClient(clientCfg, ts.URL)
 	require.NoError(t, err)
 
 	// Perform sync
@@ -67,7 +67,7 @@ func TestSyncResume(t *testing.T) {
 	clientCfg := Config{
 		DataDir: clientRoot,
 	}
-	client, err := NewClient(clientCfg, ts.URL, nil)
+	client, err := NewClient(clientCfg, ts.URL)
 	require.NoError(t, err)
 
 	// Perform sync
@@ -106,7 +106,7 @@ func TestSyncRetry(t *testing.T) {
 	clientCfg := Config{
 		DataDir: clientRoot,
 	}
-	client, err := NewClient(clientCfg, ts.URL, nil)
+	client, err := NewClient(clientCfg, ts.URL)
 	require.NoError(t, err)
 
 	// Perform sync
@@ -132,7 +132,7 @@ func TestSyncErrors(t *testing.T) {
 	clientCfg := Config{
 		DataDir: clientRoot,
 	}
-	client, err := NewClient(clientCfg, ts.URL, nil)
+	client, err := NewClient(clientCfg, ts.URL)
 	require.NoError(t, err)
 
 	t.Run("NonexistentFile", func(t *testing.T) {

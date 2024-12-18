@@ -1,9 +1,6 @@
 package sync
 
 import (
-	"net/http"
-	"time"
-
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -16,10 +13,6 @@ const (
 var Databases = map[Database]string{
 	DBLocalSafe: "local_safe.db",
 	DBCrossSafe: "cross_safe.db",
-}
-
-var DefaultHTTPClient = &http.Client{
-	Timeout: 30 * time.Second,
 }
 
 type Database string

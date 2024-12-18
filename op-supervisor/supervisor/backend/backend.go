@@ -77,7 +77,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 	// We only attempt to sync a database if it doesn't exist; we don't update existing databases
 	if cfg.DatadirSyncEndpoint != "" {
 		syncCfg := sync.Config{DataDir: cfg.Datadir, Logger: logger}
-		syncClient, err := sync.NewClient(syncCfg, cfg.DatadirSyncEndpoint, sync.DefaultHTTPClient)
+		syncClient, err := sync.NewClient(syncCfg, cfg.DatadirSyncEndpoint)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create db sync client: %w", err)
 		}
