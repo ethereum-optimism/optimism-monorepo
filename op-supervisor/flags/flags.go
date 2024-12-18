@@ -45,10 +45,10 @@ var (
 		Usage:   "Directory to store data generated as part of responding to games",
 		EnvVars: prefixEnvVars("DATADIR"),
 	}
-	DataDirSyncRPCFlag = &cli.PathFlag{
-		Name:    "datadir.sync-rpc",
-		Usage:   "op-supervisor RPC address to sync databases from",
-		EnvVars: prefixEnvVars("DATADIR_SYNC_RPC"),
+	DataDirSyncEndpointFlag = &cli.PathFlag{
+		Name:    "datadir.sync-endpoint",
+		Usage:   "op-supervisor endpoint to sync databases from",
+		EnvVars: prefixEnvVars("DATADIR_SYNC_ENDPOINT"),
 	}
 	DependencySetFlag = &cli.PathFlag{
 		Name:      "dependency-set",
@@ -74,7 +74,7 @@ var requiredFlags = []cli.Flag{
 
 var optionalFlags = []cli.Flag{
 	MockRunFlag,
-	DataDirSyncRPCFlag,
+	DataDirSyncEndpointFlag,
 }
 
 func init() {
@@ -111,7 +111,7 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		L1RPC:               ctx.String(L1RPCFlag.Name),
 		SyncSources:         syncSourceSetups(ctx),
 		Datadir:             ctx.Path(DataDirFlag.Name),
-		DatadirSyncRPC:      ctx.Path(DataDirSyncRPCFlag.Name),
+		DatadirSyncEndpoint: ctx.Path(DataDirSyncEndpointFlag.Name),
 	}
 }
 

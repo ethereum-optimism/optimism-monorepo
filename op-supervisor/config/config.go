@@ -39,8 +39,8 @@ type Config struct {
 	// SyncSources lists the consensus nodes that help sync the supervisor
 	SyncSources syncnode.SyncNodeCollection
 
-	Datadir        string
-	DatadirSyncRPC string
+	Datadir             string
+	DatadirSyncEndpoint string
 }
 
 func (c *Config) Check() error {
