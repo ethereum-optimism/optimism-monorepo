@@ -42,7 +42,7 @@ func SetMemoryUint64(t require.TestingT, mem *memory.Memory, addr Word, value ui
 	require.Equal(t, Word(value), actual)
 }
 
-// ToSignedInteger converts the unsigend Word to a SignedInteger.
+// ToSignedInteger converts the unsigned Word to a SignedInteger.
 // Useful for avoiding Go compiler warnings for literals that don't fit in a signed type
 func ToSignedInteger(x Word) arch.SignedInteger {
 	return arch.SignedInteger(x)
