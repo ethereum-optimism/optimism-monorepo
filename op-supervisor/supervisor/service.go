@@ -166,7 +166,7 @@ func (su *SupervisorService) initDBSync(cfg *config.Config) error {
 		DataDir: cfg.Datadir,
 		Logger:  su.log,
 	}
-	handler, err := sync.NewServer(syncCfg)
+	handler, err := sync.NewServer(syncCfg, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create db sync handler: %w", err)
 	}

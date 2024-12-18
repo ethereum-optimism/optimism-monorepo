@@ -25,9 +25,8 @@ func TestSyncBasic(t *testing.T) {
 	// Setup server
 	serverCfg := Config{
 		DataDir: serverRoot,
-		Chains:  []types.ChainID{chainID},
 	}
-	server, err := NewServer(serverCfg)
+	server, err := NewServer(serverCfg, []types.ChainID{chainID})
 	require.NoError(t, err)
 	ts := httptest.NewServer(server)
 	defer ts.Close()
@@ -35,7 +34,6 @@ func TestSyncBasic(t *testing.T) {
 	// Setup client
 	clientCfg := Config{
 		DataDir: clientRoot,
-		Chains:  []types.ChainID{chainID},
 	}
 	client, err := NewClient(clientCfg, ts.URL, nil)
 	require.NoError(t, err)
@@ -60,16 +58,14 @@ func TestSyncResume(t *testing.T) {
 	// Setup server and client
 	serverCfg := Config{
 		DataDir: serverRoot,
-		Chains:  []types.ChainID{chainID},
 	}
-	server, err := NewServer(serverCfg)
+	server, err := NewServer(serverCfg, []types.ChainID{chainID})
 	require.NoError(t, err)
 	ts := httptest.NewServer(server)
 	defer ts.Close()
 
 	clientCfg := Config{
 		DataDir: clientRoot,
-		Chains:  []types.ChainID{chainID},
 	}
 	client, err := NewClient(clientCfg, ts.URL, nil)
 	require.NoError(t, err)
@@ -91,9 +87,8 @@ func TestSyncRetry(t *testing.T) {
 	// Setup server with flaky handler that fails twice before succeeding
 	serverCfg := Config{
 		DataDir: serverRoot,
-		Chains:  []types.ChainID{chainID},
 	}
-	server, err := NewServer(serverCfg)
+	server, err := NewServer(serverCfg, []types.ChainID{chainID})
 	require.NoError(t, err)
 
 	failureCount := 0
@@ -110,7 +105,6 @@ func TestSyncRetry(t *testing.T) {
 
 	clientCfg := Config{
 		DataDir: clientRoot,
-		Chains:  []types.ChainID{chainID},
 	}
 	client, err := NewClient(clientCfg, ts.URL, nil)
 	require.NoError(t, err)
@@ -128,9 +122,8 @@ func TestSyncErrors(t *testing.T) {
 
 	serverCfg := Config{
 		DataDir: serverRoot,
-		Chains:  []types.ChainID{chainID},
 	}
-	server, err := NewServer(serverCfg)
+	server, err := NewServer(serverCfg, []types.ChainID{chainID})
 	require.NoError(t, err)
 
 	ts := httptest.NewServer(server)
@@ -138,7 +131,6 @@ func TestSyncErrors(t *testing.T) {
 
 	clientCfg := Config{
 		DataDir: clientRoot,
-		Chains:  []types.ChainID{chainID},
 	}
 	client, err := NewClient(clientCfg, ts.URL, nil)
 	require.NoError(t, err)

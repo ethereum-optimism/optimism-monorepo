@@ -5,8 +5,6 @@ import (
 	"time"
 
 	"github.com/ethereum/go-ethereum/log"
-
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 const (
@@ -37,6 +35,5 @@ func (d Database) File() string {
 // Config contains all configuration for the Server or Client.
 type Config struct {
 	DataDir string
-	Chains  []types.ChainID
 	Logger  log.Logger
 }

@@ -17,7 +17,7 @@ type Server struct {
 }
 
 // NewServer creates a new Server with the given config.
-func NewServer(config Config) (*Server, error) {
+func NewServer(config Config, chains []types.ChainID) (*Server, error) {
 	// Convert root to absolute path for security
 	root, err := filepath.Abs(config.DataDir)
 	if err != nil {
@@ -34,8 +34,8 @@ func NewServer(config Config) (*Server, error) {
 	}
 
 	// Build map of valid chains for efficient lookup
-	validChains := make(map[types.ChainID]struct{}, len(config.Chains))
-	for _, chain := range config.Chains {
+	validChains := make(map[types.ChainID]struct{}, len(chains))
+	for _, chain := range chains {
 		validChains[chain] = struct{}{}
 	}
 
