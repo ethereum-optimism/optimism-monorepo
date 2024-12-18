@@ -10,21 +10,24 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-const (
-	InitRetryDelay = 1 * time.Second
-	MaxRetryDelay  = 30 * time.Minute
+var (
+	maxRetries    = 500
+	retryStrategy = &retry.ExponentialStrategy{
+		Min:       1 * time.Second,
+		Max:       30 * time.Minute,
+		MaxJitter: 250 * time.Millisecond,
+	}
 )
 
 // Client handles downloading files from a sync server.
 type Client struct {
-	config  Config
-	baseURL string
-
+	config     Config
+	baseURL    string
 	httpClient *http.Client
-	retryDelay time.Duration
 }
 
 // NewClient creates a new Client with the given config and server URL.
@@ -50,7 +53,6 @@ func NewClient(config Config, serverURL string, httpClient *http.Client) (*Clien
 		config:     config,
 		baseURL:    serverURL,
 		httpClient: httpClient,
-		retryDelay: InitRetryDelay,
 	}, nil
 }
 
@@ -95,33 +97,15 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 		return nil
 	}
 
-	// Keep track of the current retry delay
-	currentDelay := c.retryDelay
-	for {
-		// Try to sync and return if successful
+	// Attempt to sync the file and retry until successful
+	return retry.Do0(ctx, maxRetries, retryStrategy, func() error {
 		err := c.attemptSync(ctx, chainID, database, filePath, initialSize)
-		if err == nil {
-			return nil
+		if err != nil {
+			c.logError("sync attempt failed", err, database)
+			return err
 		}
-
-		// Check if context was canceled
-		if ctx.Err() != nil {
-			return ctx.Err()
-		}
-		c.logError("sync attempt failed", err, database)
-
-		// Wait before retrying
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(currentDelay):
-			// Double the delay for next time, up to max
-			currentDelay *= 2
-			if currentDelay > MaxRetryDelay {
-				currentDelay = MaxRetryDelay
-			}
-		}
-	}
+		return nil
+	})
 }
 
 // attemptSync makes a single attempt to sync the file
