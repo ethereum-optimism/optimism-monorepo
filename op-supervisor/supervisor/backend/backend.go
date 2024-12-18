@@ -209,6 +209,9 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	su.chainDBs.AddCrossDerivedFromDB(chainID, crossDB)
 
 	su.chainDBs.AddCrossUnsafeTracker(chainID)
+
+	su.chainDBs.AddSubscriptions(chainID)
+
 	return nil
 }
 

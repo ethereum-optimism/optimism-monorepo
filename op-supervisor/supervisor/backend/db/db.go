@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	gethevent "github.com/ethereum/go-ethereum/event"
 )
 
 type LogStorage interface {
@@ -86,6 +87,10 @@ type ChainsDB struct {
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
 	crossDBs locks.RWMap[types.ChainID, CrossDerivedFromStorage]
 
+	// gethevent Feeds allow for subscription to events in the DB
+	l2FinalitySubscription locks.RWMap[types.ChainID, gethevent.FeedOf[eth.BlockID]]
+	crossSafeSubscription  locks.RWMap[types.ChainID, gethevent.FeedOf[types.DerivedPair]]
+
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
 	// an error until it has this L1 finality to work with.
@@ -134,6 +139,35 @@ func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
 		db.logger.Warn("overwriting existing cross-unsafe tracker for chain", "chain", chainID)
 	}
 	db.crossUnsafe.Set(chainID, &locks.RWValue[types.BlockSeal]{})
+}
+
+func (db *ChainsDB) AddSubscriptions(chainID types.ChainID) {
+	if db.l2FinalitySubscription.Has(chainID) {
+		db.logger.Warn("overwriting existing L2 finality subscription for chain", "chain", chainID)
+	}
+	if db.crossSafeSubscription.Has(chainID) {
+		db.logger.Warn("overwriting existing cross-safe subscription for chain", "chain", chainID)
+	}
+	db.l2FinalitySubscription.Set(chainID, gethevent.FeedOf[eth.BlockID]{})
+	db.crossSafeSubscription.Set(chainID, gethevent.FeedOf[types.DerivedPair]{})
+}
+
+func (db *ChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error {
+	sub, ok := db.crossSafeSubscription.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
+	}
+	sub.Subscribe(c)
+	return nil
+}
+
+func (db *ChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error {
+	sub, ok := db.l2FinalitySubscription.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
+	}
+	sub.Subscribe(c)
+	return nil
 }
 
 // ResumeFromLastSealedBlock prepares the chains db to resume recording events after a restart.
