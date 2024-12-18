@@ -38,6 +38,7 @@ WORKDIR /app
 
 # Clone the repository, only at the target revision
 RUN git clone --branch $REV --depth 1 https://github.com/ethereum-optimism/optimism.git .
+RUN go mod download
 
 # Set the working directory to the root of the monorepo
 WORKDIR /app
@@ -56,8 +57,6 @@ RUN forge build
 
 # Deliberately run the upgrade script with invalid args to trigger a build
 RUN forge script ./scripts/upgrades/holocene/DeployUpgrade.s.sol || true
-
-RUN go get github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar
 
 # Set the working directory to where upgrade.sh is located
 WORKDIR /app/packages/contracts-bedrock/scripts/upgrades/holocene
