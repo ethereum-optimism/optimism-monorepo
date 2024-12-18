@@ -19,23 +19,31 @@ func (ib *InteropAPI) SubscribeUnsafeBlocks(ctx context.Context) (*gethrpc.Subsc
 	return ib.backend.SubscribeUnsafeBlocks(ctx)
 }
 
-func (ib *InteropAPI) UpdateCrossUnsafe(ctx context.Context, ref eth.BlockRef) error {
-	return ib.backend.UpdateCrossUnsafe(ctx, ref)
+func (m *InteropAPI) SubscribeDerivationUpdates(ctx context.Context) (*gethrpc.Subscription, error) {
+	return m.backend.SubscribeDerivationUpdates(ctx)
 }
 
-func (ib *InteropAPI) UpdateCrossSafe(ctx context.Context, ref eth.BlockRef, derivedFrom eth.BlockRef) error {
-	return ib.backend.UpdateCrossSafe(ctx, ref, derivedFrom)
+func (m *InteropAPI) SubscribeExhaustL1Events(ctx context.Context) (*gethrpc.Subscription, error) {
+	return m.backend.SubscribeExhaustL1Events(ctx)
 }
 
-func (ib *InteropAPI) UpdateFinalized(ctx context.Context, ref eth.BlockRef) error {
-	return ib.backend.UpdateFinalized(ctx, ref)
+func (ib *InteropAPI) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {
+	return ib.backend.UpdateCrossUnsafe(ctx, id)
+}
+
+func (ib *InteropAPI) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+	return ib.backend.UpdateCrossSafe(ctx, derived, derivedFrom)
+}
+
+func (ib *InteropAPI) UpdateFinalized(ctx context.Context, id eth.BlockID) error {
+	return ib.backend.UpdateFinalized(ctx, id)
 }
 
 func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedPair, error) {
 	return ib.backend.AnchorPoint(ctx)
 }
 
-func (ib *InteropAPI) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockRef) error {
+func (ib *InteropAPI) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
 	return ib.Reset(ctx, unsafe, safe, finalized)
 }
 

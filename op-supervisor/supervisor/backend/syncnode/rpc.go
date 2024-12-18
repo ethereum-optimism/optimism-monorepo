@@ -70,10 +70,36 @@ func (rs *RPCSyncNode) String() string {
 	return rs.name
 }
 
-func (rs *RPCSyncNode) TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error) {
-	err := rs.cl.CallContext(ctx, &ref, "interop_tryDeriveNext")
-	// the node only returns an error currently
-	return eth.BlockRef{}, err
+func (rs *RPCSyncNode) SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error) {
+	return rs.cl.Subscribe(ctx, "interop", dest, "unsafeBlocks")
+}
+
+func (rs *RPCSyncNode) SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error) {
+	return rs.cl.Subscribe(ctx, "interop", dest, "derivationUpdates")
+}
+
+func (rs *RPCSyncNode) SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error) {
+	return rs.cl.Subscribe(ctx, "interop", dest, "exhaustL1Events")
+}
+
+func (rs *RPCSyncNode) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_updateCrossUnsafe", id)
+}
+
+func (rs *RPCSyncNode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_updateCrossSafe", derived, derivedFrom)
+}
+
+func (rs *RPCSyncNode) UpdateFinalized(ctx context.Context, id eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_updateFinalized", id)
+}
+
+func (rs *RPCSyncNode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
+	return rs.cl.CallContext(ctx, nil, "interop_reset", unsafe, safe, finalized)
+}
+
+func (rs *RPCSyncNode) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
+	return rs.cl.CallContext(ctx, nil, "interop_provideL1", nextL1)
 }
 
 func (rs *RPCSyncNode) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {

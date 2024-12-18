@@ -19,17 +19,29 @@ type chainsDB interface {
 	UpdateCrossSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
 }
 
-// SyncNodeController handles the sync node operations across multiple sync nodes
+type ManagedNode struct {
+	Node SyncControl
+	// TODO active subscriptions
+}
+
+func (m *ManagedNode) Close() error {
+	return nil
+}
+
+// SyncNodesController manages a collection of active sync nodes.
+// Sync nodes are used to sync the supervisor,
+// and subject to the canonical chain view as followed by the supervisor.
 type SyncNodesController struct {
-	logger      log.Logger
-	controllers locks.RWMap[types.ChainID, SyncControl]
+	logger log.Logger
+
+	controllers locks.RWMap[*ManagedNode, struct{}]
 
 	db chainsDB
 
 	depSet depset.DependencySet
 }
 
-// NewSyncNodeController creates a new SyncNodeController
+// NewSyncNodesController creates a new SyncNodeController
 func NewSyncNodesController(l log.Logger, depset depset.DependencySet, db chainsDB) *SyncNodesController {
 	return &SyncNodesController{
 		logger: l,
@@ -42,7 +54,7 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 	if !snc.depSet.HasChain(id) {
 		return fmt.Errorf("chain %v not in dependency set", id)
 	}
-	snc.controllers.Set(id, ctrl)
+	snc.controllers.Set(&ManagedNode{Node: ctrl}, struct{}{})
 	snc.maybeInit(id)
 	return nil
 }
@@ -53,11 +65,7 @@ func (snc *SyncNodesController) maybeInit(id types.ChainID) {
 	_, _, err := snc.db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
 		snc.logger.Debug("initializing chain database", "chain", id)
-		ctrl, ok := snc.controllers.Get(id)
-		if !ok {
-			snc.logger.Warn("missing controller for chain. Not initializing", "chain", id)
-			return
-		}
+		var ctrl SyncControl // TODO fix me
 		pair, err := ctrl.AnchorPoint(context.Background())
 		if err != nil {
 			snc.logger.Warn("failed to get anchor point", "chain", id, "error", err)
@@ -109,24 +117,6 @@ func (snc *SyncNodesController) DeriveFromL1(ref eth.BlockRef) error {
 // DeriveToEnd derives the L2 blocks from the L1 block reference for a single chain
 // it will continue to derive until no more blocks are derived
 func (snc *SyncNodesController) DeriveToEnd(id types.ChainID, ref eth.BlockRef) error {
-	ctrl, ok := snc.controllers.Get(id)
-	if !ok {
-		snc.logger.Warn("missing controller for chain. Not attempting derivation", "chain", id)
-		return nil // maybe return an error?
-	}
-	for {
-		derived, err := ctrl.TryDeriveNext(context.Background(), ref)
-		if err != nil {
-			return err
-		}
-		// if no more blocks are derived, we are done
-		// (or something? this exact behavior is yet to be defined by the node)
-		if derived == (eth.BlockRef{}) {
-			return nil
-		}
-		// record the new L2 to the local database
-		if err := snc.db.UpdateLocalSafe(id, ref, derived); err != nil {
-			return err
-		}
-	}
+	// TODO fix me
+	return nil
 }

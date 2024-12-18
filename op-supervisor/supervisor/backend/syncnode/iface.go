@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
@@ -29,7 +30,16 @@ type SyncSource interface {
 }
 
 type SyncControl interface {
-	TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
+	SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error)
+	SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error)
+	SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error)
+
+	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
+	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
+	UpdateFinalized(ctx context.Context, id eth.BlockID) error
+
+	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
+	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	AnchorPoint(ctx context.Context) (types.DerivedPair, error)
 }
 

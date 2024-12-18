@@ -34,8 +34,8 @@ func (m *mockRPC) CallContext(ctx context.Context, result any, method string, ar
 	return m.MethodCalled("CallContext", ctx, result, method, args).Get(0).([]error)[0]
 }
 
-func (m *mockRPC) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
-	called := m.MethodCalled("EthSubscribe", channel, args)
+func (m *mockRPC) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	called := m.MethodCalled("Subscribe", namespace, channel, args)
 	return called.Get(0).(*rpc.ClientSubscription), called.Get(1).([]error)[0]
 }
 

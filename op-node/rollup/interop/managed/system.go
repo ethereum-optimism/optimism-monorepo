@@ -142,8 +142,8 @@ func (m *ManagedMode) SubscribeExhaustL1Events(ctx context.Context) (*gethrpc.Su
 	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "exhaustL1Events"), &m.exhaustL1Events)
 }
 
-func (m *ManagedMode) UpdateCrossUnsafe(ctx context.Context, ref eth.BlockRef) error {
-	l2Ref, err := m.l2.L2BlockRefByHash(ctx, ref.Hash)
+func (m *ManagedMode) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {
+	l2Ref, err := m.l2.L2BlockRefByHash(ctx, id.Hash)
 	if err != nil {
 		return fmt.Errorf("failed to get L2BlockRef: %w", err)
 	}
@@ -155,22 +155,26 @@ func (m *ManagedMode) UpdateCrossUnsafe(ctx context.Context, ref eth.BlockRef) e
 	return nil
 }
 
-func (m *ManagedMode) UpdateCrossSafe(ctx context.Context, ref eth.BlockRef, derivedFrom eth.BlockRef) error {
-	l2Ref, err := m.l2.L2BlockRefByHash(ctx, ref.Hash)
+func (m *ManagedMode) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
+	l2Ref, err := m.l2.L2BlockRefByHash(ctx, derived.Hash)
 	if err != nil {
 		return fmt.Errorf("failed to get L2BlockRef: %w", err)
 	}
+	l1Ref, err := m.l1.L1BlockRefByHash(ctx, derivedFrom.Hash)
+	if err != nil {
+		return fmt.Errorf("failed to get L1BlockRef: %w", err)
+	}
 	m.emitter.Emit(engine.PromoteSafeEvent{
 		Ref:         l2Ref,
-		DerivedFrom: derivedFrom,
+		DerivedFrom: l1Ref,
 	})
 	// We return early: there is no point waiting for the cross-safe engine-update synchronously.
 	// All error-feedback comes to the supervisor by aborting derivation tasks with an error.
 	return nil
 }
 
-func (m *ManagedMode) UpdateFinalized(ctx context.Context, ref eth.BlockRef) error {
-	l2Ref, err := m.l2.L2BlockRefByHash(ctx, ref.Hash)
+func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error {
+	l2Ref, err := m.l2.L2BlockRefByHash(ctx, id.Hash)
 	if err != nil {
 		return fmt.Errorf("failed to get L2BlockRef: %w", err)
 	}
@@ -253,7 +257,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	return nil
 }
 
-func (m *ManagedMode) ProvideL1(ctx context.Context, fromL1 eth.BlockRef) error {
+func (m *ManagedMode) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
 	// TODO: when op-node is in need of a next L1 block (it tells through L1 exhaust eventS),
 	// the supervisor can provide it with this method.
 	// Here we then need to fire an event, which the L1-traversal can pick up to unblock itself.
