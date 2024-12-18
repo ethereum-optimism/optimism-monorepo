@@ -7,7 +7,6 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { UnregisteredGame, InvalidGameStatus } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -46,7 +45,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     // / @notice Returns the anchor state for the given game type.
     // mapping(GameType => OutputRoot) public anchors;
 
-    // TODO: ^^
+    // TODO: determine if this belongs
     // uint256 __gap0;
 
     /// @notice Address of the SuperchainConfig contract.

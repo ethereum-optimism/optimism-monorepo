@@ -15,23 +15,23 @@ import { SecureMerkleTrie } from "src/libraries/trie/SecureMerkleTrie.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import {
+    AlreadyFinalized,
     BadTarget,
-    LargeCalldata,
-    SmallGasLimit,
-    TransferFailed,
-    OnlyCustomGasToken,
-    NoValue,
-    Unauthorized,
     CallPaused,
     GasEstimation,
-    NonReentrant,
-    InvalidProof,
     InvalidDisputeGame,
     InvalidMerkleProof,
-    Unproven,
-    AlreadyFinalized
+    InvalidProof,
+    LargeCalldata,
+    NoValue,
+    NonReentrant,
+    OnlyCustomGasToken,
+    SmallGasLimit,
+    TransferFailed,
+    Unauthorized,
+    Unproven
 } from "src/libraries/PortalErrors.sol";
-import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
+import { Claim } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -133,7 +133,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     ///         for any given withdrawal hash. Fault Proofs version of this contract must allow
     ///         multiple proofs for the same withdrawal hash to prevent a malicious user from
     ///         blocking other withdrawals by proving them against invalid proposals. Submitters
-    ///         are tracked in an array to simplify the off-chain process off determining which
+    ///         are tracked in an array to simplify the off-chain process of determining which
     ///         proof submission should be used when finalizing a withdrawal.
     mapping(bytes32 => address[]) public proofSubmitters;
 

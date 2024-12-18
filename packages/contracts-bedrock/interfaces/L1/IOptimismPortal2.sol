@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Types } from "src/libraries/Types.sol";
-import { GameType, Timestamp } from "src/dispute/lib/LibUDT.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -11,14 +10,12 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 interface IOptimismPortal2 {
     error AlreadyFinalized();
     error BadTarget();
-    error Blacklisted();
     error CallPaused();
     error ContentLengthMismatch();
     error EmptyItem();
     error GasEstimation();
     error InvalidDataRemainder();
     error InvalidDisputeGame();
-    error InvalidGameType();
     error InvalidHeader();
     error InvalidMerkleProof();
     error InvalidProof();
@@ -27,7 +24,6 @@ interface IOptimismPortal2 {
     error NonReentrant();
     error OnlyCustomGasToken();
     error OutOfGas();
-    error ProposalNotValidated();
     error SmallGasLimit();
     error TransferFailed();
     error Unauthorized();
