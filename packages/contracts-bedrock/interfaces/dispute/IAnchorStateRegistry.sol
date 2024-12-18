@@ -20,17 +20,24 @@ interface IAnchorStateRegistry {
 
     function anchors(GameType) external view returns (Hash root, uint256 l2BlockNumber); // nosemgrep
     function disputeGameFactory() external view returns (IDisputeGameFactory);
-    function respectedGameType() external view returns (GameType);
     function initialize(
-        StartingAnchorRoot[] memory _startingAnchorRoots,
-        ISuperchainConfig _superchainConfig
+        IDisputeGameFactory _disputeGameFactory,
+        uint256 _disputeGameFinalityDelaySeconds,
+        IFaultDisputeGame _authorizedGame,
+        ISuperchainConfig _superchainConfig,
+        uint256 _tryUpdateAnchorStateGas
     )
         external;
+    function isGameMaybeValid(IFaultDisputeGame _game) external view returns (bool);
+    function isGameValid(IFaultDisputeGame _game) external view returns (bool);
+    function pokeAnchorState(uint256 _candidateGameIndex) external;
+    function respectedGameType() external view returns (GameType);
+    function retireAllExistingGames() external;
     function setAnchorState(IFaultDisputeGame _game) external;
+    function setGameBlacklisted(IFaultDisputeGame _disputeGame) external;
+    function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function tryUpdateAnchorState() external;
-    function isGameValid(IFaultDisputeGame _game) external view returns (bool);
-    function isGameMaybeValid(IFaultDisputeGame _game) external view returns (bool);
     function version() external view returns (string memory);
 
     function __constructor__(IDisputeGameFactory _disputeGameFactory) external;

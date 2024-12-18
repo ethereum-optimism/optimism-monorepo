@@ -26,12 +26,9 @@ import {
     GasEstimation,
     NonReentrant,
     InvalidProof,
-    InvalidGameType,
     InvalidDisputeGame,
     InvalidMerkleProof,
-    Blacklisted,
     Unproven,
-    ProposalNotValidated,
     AlreadyFinalized
 } from "src/libraries/PortalErrors.sol";
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
@@ -120,20 +117,23 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     mapping(bytes32 => mapping(address => ProvenWithdrawal)) public provenWithdrawals;
 
     /// @notice A mapping of dispute game addresses to whether or not they are blacklisted.
-    mapping(IDisputeGame => bool) public disputeGameBlacklist;
+    // TODO: storage slot
+    // mapping(IDisputeGame => bool) public disputeGameBlacklist;
 
     /// @notice The game type that the OptimismPortal consults for output proposals.
-    GameType public respectedGameType;
+    // TODO: storage slot
+    // GameType public respectedGameType;
 
     /// @notice The timestamp at which the respected game type was last updated.
-    uint64 public respectedGameTypeUpdatedAt;
+    // TODO: storage slot
+    // uint64 public respectedGameTypeUpdatedAt;
 
     /// @notice Mapping of withdrawal hashes to addresses that have submitted a proof for the
     ///         withdrawal. Original OptimismPortal contract only allowed one proof to be submitted
     ///         for any given withdrawal hash. Fault Proofs version of this contract must allow
     ///         multiple proofs for the same withdrawal hash to prevent a malicious user from
     ///         blocking other withdrawals by proving them against invalid proposals. Submitters
-    ///         are tracked in an array to simplify the off-chain process of determining which
+    ///         are tracked in an array to simplify the off-chain process off determining which
     ///         proof submission should be used when finalizing a withdrawal.
     mapping(bytes32 => address[]) public proofSubmitters;
 
@@ -172,15 +172,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param success        Whether the withdrawal transaction was successful.
     event WithdrawalFinalized(bytes32 indexed withdrawalHash, bool success);
 
-    /// @notice Emitted when a dispute game is blacklisted by the Guardian.
-    /// @param disputeGame Address of the dispute game that was blacklisted.
-    event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
-
-    /// @notice Emitted when the Guardian changes the respected game type in the portal.
-    /// @param newGameType The new respected game type.
-    /// @param updatedAt   The timestamp at which the respected game type was updated.
-    event RespectedGameTypeSet(GameType indexed newGameType, Timestamp indexed updatedAt);
-
     /// @notice Reverts when paused.
     modifier whenNotPaused() {
         if (paused()) revert CallPaused();
@@ -188,12 +179,14 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
+    // TODO: update?
     /// @custom:semver 3.11.0-beta.9
     function version() public pure virtual returns (string memory) {
         return "3.11.0-beta.9";
     }
 
     /// @notice Constructs the OptimismPortal contract.
+    // TODO: move maturity delay to initializer?
     constructor(uint256 _proofMaturityDelaySeconds) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         _disableInitializers();
@@ -317,7 +310,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         if (_tx.target == address(this)) revert BadTarget();
 
         // Fetch the dispute game proxy from the `DisputeGameFactory` contract.
-        (GameType gameType,, IDisputeGame gameProxy) = disputeGameFactory.gameAtIndex(_disputeGameIndex);
+        (,, IDisputeGame gameProxy) = disputeGameFactory.gameAtIndex(_disputeGameIndex);
         Claim outputRoot = gameProxy.rootClaim();
 
         // Verify that the output root can be generated with the elements in the proof.
