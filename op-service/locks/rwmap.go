@@ -35,6 +35,18 @@ func (m *RWMap[K, V]) Set(key K, value V) {
 	m.inner[key] = value
 }
 
+func (m *RWMap[K, V]) Len() int {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return len(m.inner)
+}
+
+func (m *RWMap[K, V]) Delete(key K) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.inner, key)
+}
+
 // Range calls f sequentially for each key and value present in the map.
 // If f returns false, range stops the iteration.
 func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {

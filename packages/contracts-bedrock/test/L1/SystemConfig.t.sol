@@ -48,18 +48,18 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
     /// @dev Tests that constructor sets the correct values.
     function test_constructor_succeeds() external view {
         ISystemConfig impl = ISystemConfig(systemConfigImpl);
-        assertEq(impl.owner(), address(0xdEaD));
+        assertEq(impl.owner(), address(0));
         assertEq(impl.overhead(), 0);
-        assertEq(impl.scalar(), uint256(0x01) << 248);
+        assertEq(impl.scalar(), 0);
         assertEq(impl.batcherHash(), bytes32(0));
-        assertEq(impl.gasLimit(), 1);
+        assertEq(impl.gasLimit(), 0);
         assertEq(impl.unsafeBlockSigner(), address(0));
         assertEq(impl.basefeeScalar(), 0);
         assertEq(impl.blobbasefeeScalar(), 0);
         IResourceMetering.ResourceConfig memory actual = impl.resourceConfig();
-        assertEq(actual.maxResourceLimit, 1);
-        assertEq(actual.elasticityMultiplier, 1);
-        assertEq(actual.baseFeeMaxChangeDenominator, 2);
+        assertEq(actual.maxResourceLimit, 0);
+        assertEq(actual.elasticityMultiplier, 0);
+        assertEq(actual.baseFeeMaxChangeDenominator, 0);
         assertEq(actual.minimumBaseFee, 0);
         assertEq(actual.systemTxMaxGas, 0);
         assertEq(actual.maximumBaseFee, 0);

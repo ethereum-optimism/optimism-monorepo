@@ -34,6 +34,7 @@ contract Specification_Test is CommonTest {
         SYSTEMCONFIGOWNER,
         GUARDIAN,
         DEPUTYGUARDIAN,
+        PAUSEDEPUTY,
         MESSENGER,
         L1PROXYADMINOWNER,
         GOVERNANCETOKENOWNER,
@@ -878,6 +879,24 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "DeputyGuardianModule", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "DeputyGuardianModule", _sel: _getSel("version()") });
 
+        // DeputyPauseModule
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("version()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("foundationSafe()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("deputyGuardianModule()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("superchainConfig()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("deputy()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("usedNonces(bytes32)") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("pauseMessageTypehash()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("deputyAuthMessageTypehash()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("setDeputy(address,bytes)"), _auth: Role.DEPUTYGUARDIAN });
+        _addSpec({
+            _name: "DeputyPauseModule",
+            _sel: _getSel("setDeputyGuardianModule(address)"),
+            _auth: Role.DEPUTYGUARDIAN
+        });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("eip712Domain()") });
+        _addSpec({ _name: "DeputyPauseModule", _sel: _getSel("pause(bytes32,bytes)"), _auth: Role.PAUSEDEPUTY });
+
         // LivenessGuard
         _addSpec({ _name: "LivenessGuard", _sel: _getSel("checkAfterExecution(bytes32,bool)"), _auth: Role.COUNCILSAFE });
         _addSpec({
@@ -987,8 +1006,9 @@ contract Specification_Test is CommonTest {
 
     /// @notice Ensures that the DeputyGuardian is authorized to take all Guardian actions.
     function test_deputyGuardianAuth_works() public view {
-        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length);
-        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, 5);
+        // Additional 2 roles for the DeputyPauseModule.
+        assertEq(specsByRole[Role.GUARDIAN].length, 5);
+        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 2);
 
         mapping(bytes4 => Spec) storage dgmFuncSpecs = specs["DeputyGuardianModule"];
         mapping(bytes4 => Spec) storage superchainConfigFuncSpecs = specs["SuperchainConfig"];

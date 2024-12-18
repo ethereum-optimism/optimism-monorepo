@@ -41,6 +41,7 @@ const (
 	Fjord    ForkName = "fjord"
 	Granite  ForkName = "granite"
 	Holocene ForkName = "holocene"
+	Isthmus  ForkName = "isthmus"
 	Interop  ForkName = "interop"
 	// ADD NEW FORKS TO AllForks BELOW!
 	None ForkName = "none"
@@ -55,6 +56,7 @@ var AllForks = []ForkName{
 	Fjord,
 	Granite,
 	Holocene,
+	Isthmus,
 	Interop,
 	// ADD NEW FORKS HERE!
 }
@@ -112,6 +114,11 @@ func (s *ChainSpec) IsCanyon(t uint64) bool {
 // IsHolocene returns true if t >= holocene_time
 func (s *ChainSpec) IsHolocene(t uint64) bool {
 	return s.config.IsHolocene(t)
+}
+
+// IsIsthmus returns true if t >= isthmus_time
+func (s *ChainSpec) IsIsthmus(t uint64) bool {
+	return s.config.IsIsthmus(t)
 }
 
 // MaxChannelBankSize returns the maximum number of bytes the can allocated inside the channel bank
@@ -185,6 +192,9 @@ func (s *ChainSpec) CheckForkActivation(log log.Logger, block eth.L2BlockRef) {
 		if s.config.IsHolocene(block.Time) {
 			s.currentFork = Holocene
 		}
+		if s.config.IsIsthmus(block.Time) {
+			s.currentFork = Isthmus
+		}
 		if s.config.IsInterop(block.Time) {
 			s.currentFork = Interop
 		}
@@ -209,6 +219,8 @@ func (s *ChainSpec) CheckForkActivation(log log.Logger, block eth.L2BlockRef) {
 		foundActivationBlock = s.config.IsGraniteActivationBlock(block.Time)
 	case Holocene:
 		foundActivationBlock = s.config.IsHoloceneActivationBlock(block.Time)
+	case Isthmus:
+		foundActivationBlock = s.config.IsIsthmusActivationBlock(block.Time)
 	case Interop:
 		foundActivationBlock = s.config.IsInteropActivationBlock(block.Time)
 	}

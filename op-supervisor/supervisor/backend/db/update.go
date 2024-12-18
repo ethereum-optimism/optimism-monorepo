@@ -1,6 +1,7 @@
 package db
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -84,5 +85,42 @@ func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	}
 	db.finalizedL1.Value = finalized
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
+	return nil
+}
+
+// RecordNewL1 records a new L1 block in the database.
+// it uses the latest derived L2 block as the derived block for the new L1 block.
+func (db *ChainsDB) RecordNewL1(ref eth.BlockRef) error {
+	for _, chain := range db.depSet.Chains() {
+		// get local derivation database
+		ldb, ok := db.localDBs.Get(chain)
+		if !ok {
+			return fmt.Errorf("cannot RecordNewL1 to chain %s: %w", chain, types.ErrUnknownChain)
+		}
+		// get the latest derived and derivedFrom blocks
+		derivedFrom, derived, err := ldb.Latest()
+		if err != nil {
+			return fmt.Errorf("failed to get latest derivedFrom for chain %s: %w", chain, err)
+		}
+		// make a ref from the latest derived block
+		derivedParent, err := ldb.PreviousDerived(derived.ID())
+		if errors.Is(err, types.ErrFuture) {
+			db.logger.Warn("Empty DB, Recording first L1 block", "chain", chain, "err", err)
+		} else if err != nil {
+			db.logger.Warn("Failed to get latest derivedfrom to insert new L1 block", "chain", chain, "err", err)
+			return err
+		}
+		derivedRef := derived.MustWithParent(derivedParent.ID())
+		// don't push the new L1 block if it's not newer than the latest derived block
+		if derivedFrom.Number >= ref.Number {
+			db.logger.Warn("L1 block has already been processed for this height", "chain", chain, "block", ref, "latest", derivedFrom)
+			continue
+		}
+		// the database is extended with the new L1 and the existing L2
+		if err = db.UpdateLocalSafe(chain, ref, derivedRef); err != nil {
+			db.logger.Error("Failed to update local safe", "chain", chain, "block", ref, "derived", derived, "err", err)
+			return err
+		}
+	}
 	return nil
 }

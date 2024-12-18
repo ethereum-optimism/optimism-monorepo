@@ -1,12 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-// Testing utilities
+// Forge
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 import { StdCheatsSafe } from "forge-std/StdCheats.sol";
 
-// Target contract
+// Libraries
+import { LibString } from "@solady/utils/LibString.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 
 contract SafeCall_Test is Test {
@@ -133,7 +134,10 @@ contract SafeCall_Test is Test {
             // Because forge coverage always runs with the optimizer disabled,
             // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
             // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
-            if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            if (
+                vm.isContext(VmSafe.ForgeContext.Coverage)
+                    || LibString.eq(vm.envOr("FOUNDRY_PROFILE", string("default")), "lite")
+            ) {
                 // 66_290 is the exact amount of gas required to make the safe call
                 // successfully with the optimizer disabled (ran via forge coverage)
                 expected = 66_290;
@@ -173,7 +177,10 @@ contract SafeCall_Test is Test {
             // Because forge coverage always runs with the optimizer disabled,
             // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
             // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
-            if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+            if (
+                vm.isContext(VmSafe.ForgeContext.Coverage)
+                    || LibString.eq(vm.envOr("FOUNDRY_PROFILE", string("default")), "lite")
+            ) {
                 // 15_278_989 is the exact amount of gas required to make the safe call
                 // successfully with the optimizer disabled (ran via forge coverage)
                 expected = 15_278_989;

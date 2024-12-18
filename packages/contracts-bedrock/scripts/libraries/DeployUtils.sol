@@ -351,15 +351,17 @@ library DeployUtils {
         }
     }
 
-    /// @notice Asserts that for a given contract the value of a storage slot at an offset is 1 or
-    ///         `type(uint8).max`. The value is set to 1 when a contract is initialized, and set to
-    ///         `type(uint8).max` when `_disableInitializers` is called.
-    function assertInitialized(address _contractAddress, uint256 _slot, uint256 _offset) internal view {
+    /// @dev Asserts that for a given contract the value of a storage slot at an offset is 1 (if a proxy contract) or
+    ///      type(uint8).max (if an implementation contract).
+    ///      A call to `initialize` will set proxies to 1 and a call to _disableInitializers will set implementations to
+    ///      type(uint8).max.
+    function assertInitialized(address _contractAddress, bool _isProxy, uint256 _slot, uint256 _offset) internal view {
         bytes32 slotVal = vm.load(_contractAddress, bytes32(_slot));
-        uint8 value = uint8((uint256(slotVal) >> (_offset * 8)) & 0xFF);
-        require(
-            value == 1 || value == type(uint8).max,
-            "DeployUtils: value at the given slot and offset does not indicate initialization"
-        );
+        uint8 val = uint8((uint256(slotVal) >> (_offset * 8)) & 0xFF);
+        if (_isProxy) {
+            require(val == 1, "DeployUtils: storage value is not 1 at the given slot and offset");
+        } else {
+            require(val == type(uint8).max, "DeployUtils: storage value is not 0xff at the given slot and offset");
+        }
     }
 }

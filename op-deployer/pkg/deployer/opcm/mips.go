@@ -11,16 +11,8 @@ type DeployMIPSInput struct {
 	PreimageOracle common.Address
 }
 
-func (input *DeployMIPSInput) InputSet() bool {
-	return true
-}
-
 type DeployMIPSOutput struct {
 	MipsSingleton common.Address
-}
-
-func (output *DeployMIPSOutput) CheckOutput(input common.Address) error {
-	return nil
 }
 
 type DeployMIPSScript struct {
@@ -31,5 +23,5 @@ func DeployMIPS(
 	host *script.Host,
 	input DeployMIPSInput,
 ) (DeployMIPSOutput, error) {
-	return RunBasicScript[DeployMIPSInput, DeployMIPSOutput](host, input, "DeployMIPS.s.sol", "DeployMIPS")
+	return RunScriptSingle[DeployMIPSInput, DeployMIPSOutput](host, input, "DeployMIPS.s.sol", "DeployMIPS")
 }

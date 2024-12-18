@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { FaultDisputeGame_Init, _changeClaimStatus } from "test/dispute/FaultDisputeGame.t.sol";
 
 // Libraries

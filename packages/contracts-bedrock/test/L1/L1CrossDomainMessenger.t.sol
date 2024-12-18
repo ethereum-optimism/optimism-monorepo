@@ -33,8 +33,8 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         assertEq(address(impl.superchainConfig()), address(0));
         assertEq(address(impl.PORTAL()), address(0));
         assertEq(address(impl.portal()), address(0));
-        assertEq(address(impl.OTHER_MESSENGER()), Predeploys.L2_CROSS_DOMAIN_MESSENGER);
-        assertEq(address(impl.otherMessenger()), Predeploys.L2_CROSS_DOMAIN_MESSENGER);
+        assertEq(address(impl.OTHER_MESSENGER()), address(0));
+        assertEq(address(impl.otherMessenger()), address(0));
     }
 
     /// @dev Tests that the proxy is initialized correctly.

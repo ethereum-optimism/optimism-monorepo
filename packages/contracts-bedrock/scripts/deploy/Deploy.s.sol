@@ -1018,10 +1018,10 @@ contract Deploy is Deployer {
         console.log("resetting initialized value on %s Proxy", _contractName);
         address proxy = mustGetAddress(string.concat(_contractName, "Proxy"));
         StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_contractName);
-        bytes32 slotVal = vm.load(proxy, bytes32(vm.parseUint(slot.slot)));
+        bytes32 slotVal = vm.load(proxy, bytes32(slot.slot));
         uint256 value = uint256(slotVal);
         value = value & ~(0xFF << (slot.offset * 8));
         slotVal = bytes32(value);
-        vm.store(proxy, bytes32(vm.parseUint(slot.slot)), slotVal);
+        vm.store(proxy, bytes32(slot.slot), slotVal);
     }
 }

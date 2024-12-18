@@ -20,6 +20,7 @@ type InstrumentedState struct {
 
 	memoryTracker *exec.MemoryTrackerImpl
 	stackTracker  ThreadedStackTracker
+	statsTracker  StatsTracker
 
 	preimageOracle *exec.TrackingPreimageOracleReader
 	meta           mipsevm.Metadata
@@ -35,6 +36,7 @@ func NewInstrumentedState(state *State, po mipsevm.PreimageOracle, stdOut, stdEr
 		stdErr:         stdErr,
 		memoryTracker:  exec.NewMemoryTracker(state.Memory),
 		stackTracker:   &NoopThreadedStackTracker{},
+		statsTracker:   NoopStatsTracker(),
 		preimageOracle: exec.NewTrackingPreimageOracleReader(po),
 		meta:           meta,
 	}
@@ -47,6 +49,10 @@ func (m *InstrumentedState) InitDebug() error {
 	}
 	m.stackTracker = stackTracker
 	return nil
+}
+
+func (m *InstrumentedState) EnableStats() {
+	m.statsTracker = NewStatsTracker()
 }
 
 func (m *InstrumentedState) Step(proof bool) (wit *mipsevm.StepWitness, err error) {
@@ -100,12 +106,15 @@ func (m *InstrumentedState) GetState() mipsevm.FPVMState {
 }
 
 func (m *InstrumentedState) GetDebugInfo() *mipsevm.DebugInfo {
-	return &mipsevm.DebugInfo{
+	debugInfo := &mipsevm.DebugInfo{
 		Pages:               m.state.Memory.PageCount(),
 		MemoryUsed:          hexutil.Uint64(m.state.Memory.UsageRaw()),
 		NumPreimageRequests: m.preimageOracle.NumPreimageRequests(),
 		TotalPreimageSize:   m.preimageOracle.TotalPreimageSize(),
+		TotalSteps:          m.state.GetStep(),
 	}
+	m.statsTracker.populateDebugInfo(debugInfo)
+	return debugInfo
 }
 
 func (m *InstrumentedState) Traceback() {

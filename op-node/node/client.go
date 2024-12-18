@@ -230,29 +230,3 @@ func parseHTTPHeader(headerStr string) (http.Header, error) {
 	h.Add(s[0], s[1])
 	return h, nil
 }
-
-type SupervisorEndpointSetup interface {
-	SupervisorClient(ctx context.Context, log log.Logger) (*sources.SupervisorClient, error)
-	Check() error
-}
-
-type SupervisorEndpointConfig struct {
-	SupervisorAddr string
-}
-
-var _ SupervisorEndpointSetup = (*SupervisorEndpointConfig)(nil)
-
-func (cfg *SupervisorEndpointConfig) Check() error {
-	if cfg.SupervisorAddr == "" {
-		return errors.New("supervisor RPC address is not set")
-	}
-	return nil
-}
-
-func (cfg *SupervisorEndpointConfig) SupervisorClient(ctx context.Context, log log.Logger) (*sources.SupervisorClient, error) {
-	cl, err := client.NewRPC(ctx, log, cfg.SupervisorAddr, client.WithLazyDial())
-	if err != nil {
-		return nil, fmt.Errorf("failed to create supervisor RPC: %w", err)
-	}
-	return sources.NewSupervisorClient(cl), nil
-}

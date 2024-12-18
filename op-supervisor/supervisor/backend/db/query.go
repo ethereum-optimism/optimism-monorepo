@@ -30,6 +30,32 @@ func (db *ChainsDB) LatestBlockNum(chain types.ChainID) (num uint64, ok bool) {
 	return logDB.LatestSealedBlockNum()
 }
 
+// LastCommonL1 returns the latest common L1 block between all chains in the database.
+// it only considers block numbers, not hash. That's because the L1 source is the same for all chains
+// this data can be used to determine the starting point for L1 processing
+func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
+	common := types.BlockSeal{}
+	for _, chain := range db.depSet.Chains() {
+		ldb, ok := db.localDBs.Get(chain)
+		if !ok {
+			return types.BlockSeal{}, types.ErrUnknownChain
+		}
+		_, derivedFrom, err := ldb.Latest()
+		if err != nil {
+			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
+		}
+		common = derivedFrom
+		// if the common block isn't yet set,
+		// or if the new common block is older than the current common block
+		// set the common block
+		if common == (types.BlockSeal{}) ||
+			derivedFrom.Number < common.Number {
+			common = derivedFrom
+		}
+	}
+	return common, nil
+}
+
 func (db *ChainsDB) IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) error {
 	v, ok := db.crossUnsafe.Get(chainID)
 	if !ok {
@@ -120,6 +146,10 @@ func (db *ChainsDB) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSea
 		return types.BlockSeal{}, types.BlockSeal{}, types.ErrUnknownChain
 	}
 	return crossDB.Latest()
+}
+
+func (db *ChainsDB) FinalizedL1() eth.BlockRef {
+	return db.finalizedL1.Get()
 }
 
 func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {

@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/cannon"
@@ -14,8 +17,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-challenger/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 func NewOutputCannonTraceAccessor(
@@ -41,7 +42,7 @@ func NewOutputCannonTraceAccessor(
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch cannon local inputs: %w", err)
 		}
-		provider := cannon.NewTraceProvider(logger, m.VmMetrics(cfg.VmType.String()), cfg, serverExecutor, prestateProvider, cannonPrestate, localInputs, subdir, depth)
+		provider := cannon.NewTraceProvider(logger, m.ToTypedVmMetrics(cfg.VmType.String()), cfg, serverExecutor, prestateProvider, cannonPrestate, localInputs, subdir, depth)
 		return provider, nil
 	}
 

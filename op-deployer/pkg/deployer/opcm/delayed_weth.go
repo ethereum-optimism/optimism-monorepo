@@ -34,5 +34,5 @@ func DeployDelayedWETH(
 	host *script.Host,
 	input DeployDelayedWETHInput,
 ) (DeployDelayedWETHOutput, error) {
-	return RunBasicScript[DeployDelayedWETHInput, DeployDelayedWETHOutput](host, input, "DeployDelayedWETH.s.sol", "DeployDelayedWETH")
+	return RunScriptSingle[DeployDelayedWETHInput, DeployDelayedWETHOutput](host, input, "DeployDelayedWETH.s.sol", "DeployDelayedWETH")
 }
