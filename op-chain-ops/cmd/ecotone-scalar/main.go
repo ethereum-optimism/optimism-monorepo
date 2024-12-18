@@ -43,13 +43,13 @@ func main() {
 			flag.Usage()
 			os.Exit(2)
 		}
-		encodedSlice := uint256.Bytes()
-		if len(encodedSlice) > 32 {
+		byteLen := (uint256.BitLen() + 7) / 8
+		if byteLen > 32 {
 			fmt.Fprintln(flag.CommandLine.Output(), "post-ecotone scalar out of uint256 range")
 			flag.Usage()
 			os.Exit(2)
 		}
-		copy(encoded[:], encodedSlice)
+		uint256.FillBytes(encoded[:])
 		decoded, err := eth.DecodeScalar(encoded)
 		if err != nil {
 			fmt.Fprintln(flag.CommandLine.Output(), "post-ecotone scalar could not be decoded:", err)
