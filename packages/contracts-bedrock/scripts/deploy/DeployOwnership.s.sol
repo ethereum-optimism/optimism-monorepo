@@ -11,7 +11,6 @@ import { GuardManager } from "safe-contracts/base/GuardManager.sol";
 import { Enum as SafeOps } from "safe-contracts/common/Enum.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { Deployer } from "scripts/deploy/Deployer.sol";
 
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
 import { LivenessModule } from "src/safe/LivenessModule.sol";

@@ -34,7 +34,7 @@ import {
     ProposalNotValidated,
     AlreadyFinalized
 } from "src/libraries/PortalErrors.sol";
-import { GameStatus, GameType, Claim, Timestamp, Hash } from "src/dispute/lib/Types.sol";
+import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -183,9 +183,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.7
+    /// @custom:semver 3.11.0-beta.8
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.7";
+        return "3.11.0-beta.8";
     }
 
     /// @notice Constructs the OptimismPortal contract.

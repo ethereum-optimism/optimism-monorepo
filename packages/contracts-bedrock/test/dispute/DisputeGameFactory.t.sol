@@ -2,11 +2,7 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
-
-// Contracts
-import { Proxy } from "src/universal/Proxy.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";

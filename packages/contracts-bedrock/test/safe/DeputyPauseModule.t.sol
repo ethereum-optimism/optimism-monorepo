@@ -3,7 +3,6 @@ pragma solidity 0.8.15;
 
 // Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 // Scripts
