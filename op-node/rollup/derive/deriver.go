@@ -19,6 +19,16 @@ func (d DeriverIdleEvent) String() string {
 	return "derivation-idle"
 }
 
+// ExhaustedL1Event is returned when no additional L1 information is available
+type ExhaustedL1Event struct {
+	L1Ref  eth.L1BlockRef
+	LastL2 eth.L2BlockRef
+}
+
+func (d ExhaustedL1Event) String() string {
+	return "exhausted-l1"
+}
+
 type DeriverL1StatusEvent struct {
 	Origin eth.L1BlockRef
 	LastL2 eth.L2BlockRef
@@ -118,6 +128,7 @@ func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 		if err == io.EOF {
 			d.pipeline.log.Debug("Derivation process went idle", "progress", d.pipeline.Origin(), "err", err)
 			d.emitter.Emit(DeriverIdleEvent{Origin: d.pipeline.Origin()})
+			d.emitter.Emit(ExhaustedL1Event{L1Ref: d.pipeline.Origin(), LastL2: x.PendingSafe})
 		} else if err != nil && errors.Is(err, EngineELSyncing) {
 			d.pipeline.log.Debug("Derivation process went idle because the engine is syncing", "progress", d.pipeline.Origin(), "err", err)
 			d.emitter.Emit(DeriverIdleEvent{Origin: d.pipeline.Origin()})

@@ -13,6 +13,7 @@ import (
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -41,7 +42,9 @@ type ManagedMode struct {
 	l1 L1Source
 	l2 L2Source
 
-	unsafeBlocks gethevent.FeedOf[eth.BlockRef]
+	unsafeBlocks      gethevent.FeedOf[eth.BlockRef]
+	derivationUpdates gethevent.FeedOf[supervisortypes.DerivedPair]
+	exhaustL1Events   gethevent.FeedOf[supervisortypes.DerivedPair]
 
 	cfg *rollup.Config
 
@@ -108,36 +111,35 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case engine.UnsafeUpdateEvent:
 		m.unsafeBlocks.Send(x.Ref.BlockRef())
+	case engine.LocalSafeUpdateEvent:
+		m.derivationUpdates.Send(supervisortypes.DerivedPair{
+			DerivedFrom: x.DerivedFrom,
+			Derived:     x.Ref.BlockRef(),
+		})
+	case derive.DeriverL1StatusEvent:
+		m.derivationUpdates.Send(supervisortypes.DerivedPair{
+			DerivedFrom: x.Origin,
+			Derived:     x.LastL2.BlockRef(),
+		})
+	case derive.ExhaustedL1Event:
+		m.exhaustL1Events.Send(supervisortypes.DerivedPair{
+			DerivedFrom: x.L1Ref,
+			Derived:     x.LastL2.BlockRef(),
+		})
 	}
 	return false
 }
 
 func (m *ManagedMode) SubscribeUnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
-	notifier, supported := gethrpc.NotifierFromContext(ctx)
-	if !supported {
-		return &gethrpc.Subscription{}, gethrpc.ErrNotificationsUnsupported
-	}
-	m.log.Info("Opening unsafe-blocks subscription via interop RPC")
+	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "unsafeBlocks"), &m.unsafeBlocks)
+}
 
-	rpcSub := notifier.CreateSubscription()
-	ch := make(chan eth.BlockRef, 10)
-	unsafeBlocksSub := m.unsafeBlocks.Subscribe(ch)
-	go func() {
-		defer m.log.Info("Closing unsafe-blocks interop RPC subscription")
-		defer unsafeBlocksSub.Unsubscribe()
+func (m *ManagedMode) SubscribeDerivationUpdates(ctx context.Context) (*gethrpc.Subscription, error) {
+	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "derivationUpdates"), &m.derivationUpdates)
+}
 
-		select {
-		case ref := <-ch:
-			if err := notifier.Notify(rpcSub.ID, ref); err != nil {
-				m.log.Warn("Failed to notify RPC subscription of unsafe block", "err", err)
-				return
-			}
-		case err := <-rpcSub.Err():
-			m.log.Warn("RPC subscription for unsafe blocks failed", "err", err)
-		}
-	}()
-
-	return rpcSub, nil
+func (m *ManagedMode) SubscribeExhaustL1Events(ctx context.Context) (*gethrpc.Subscription, error) {
+	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "exhaustL1Events"), &m.exhaustL1Events)
 }
 
 func (m *ManagedMode) UpdateCrossUnsafe(ctx context.Context, ref eth.BlockRef) error {
@@ -193,38 +195,54 @@ func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedP
 	}, nil
 }
 
-func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockRef) error {
-	unsafeRef, err := m.l2.L2BlockRefByNumber(ctx, unsafe.Number)
-	if err != nil {
-		if errors.Is(err, ethereum.NotFound) {
-			// TODO special error to signal to roll back more
+const (
+	InternalErrorRPCErrcode    = -32603
+	BlockNotFoundRPCErrCode    = -39001
+	ConflictingBlockRPCErrCode = -39002
+)
+
+func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
+	logger := m.log.New("unsafe", unsafe, "safe", safe, "finalized", finalized)
+
+	verify := func(ref eth.BlockID, name string) (eth.L2BlockRef, error) {
+		result, err := m.l2.L2BlockRefByNumber(ctx, ref.Number)
+		if err != nil {
+			if errors.Is(err, ethereum.NotFound) {
+				logger.Warn("Cannot reset, reset-anchor not found", "refName", name)
+				return eth.L2BlockRef{}, &gethrpc.JsonError{
+					Code:    BlockNotFoundRPCErrCode,
+					Message: "Block not found",
+					Data:    nil,
+				}
+			}
+			logger.Warn("unable to find reference", "refName", name)
+			return eth.L2BlockRef{}, &gethrpc.JsonError{
+				Code:    InternalErrorRPCErrcode,
+				Message: "failed to find block reference",
+				Data:    name,
+			}
 		}
-		return fmt.Errorf("unable to find reset reference point: %w", err)
-	}
-	if unsafeRef.Hash != unsafe.Hash {
-		// TODO special error to signal to roll back more
+		if result.Hash != unsafe.Hash {
+			return eth.L2BlockRef{}, &gethrpc.JsonError{
+				Code:    ConflictingBlockRPCErrCode,
+				Message: "Conflicting block",
+				Data:    result,
+			}
+		}
+		return result, nil
 	}
 
-	safeRef, err := m.l2.L2BlockRefByNumber(ctx, safe.Number)
+	unsafeRef, err := verify(unsafe, "unsafe")
 	if err != nil {
-		if errors.Is(err, ethereum.NotFound) {
-			// TODO special error to signal to roll back more
-		}
-		return fmt.Errorf("unable to find reset reference point: %w", err)
+		return err
 	}
-	if safeRef.Hash != safe.Hash {
-		// TODO special error to signal to roll back more
-	}
-
-	finalizedRef, err := m.l2.L2BlockRefByNumber(ctx, finalized.Number)
+	safeRef, err := verify(unsafe, "safe")
 	if err != nil {
-		if errors.Is(err, ethereum.NotFound) {
-			// TODO special error to signal to roll back more
-		}
-		return fmt.Errorf("unable to find reset reference point: %w", err)
+		return err
 	}
-	if finalizedRef.Hash != finalized.Hash {
-		// TODO special error to signal to roll back more
+	finalizedRef, err := verify(unsafe, "finalized")
+	if err != nil {
+		return err
 	}
 
 	m.emitter.Emit(engine.ForceEngineResetEvent{
@@ -235,27 +253,12 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	return nil
 }
 
-func (m *ManagedMode) TryDeriveNext(ctx context.Context, prevL2 eth.BlockRef, fromL1 eth.BlockRef) (derived eth.BlockRef, derivedFrom eth.BlockRef, err error) {
-
-	// TODO fire a derivation instruction event with (prevL2, fromL1)
-
-	// TODO in deriver, remember the last instruction event.
-
-	// On instruction, check prevL2, check fromL1
-	// On instruction mismatch; send error
-	// On L1 exhaust; mark the last instruction as done
-
-	// TODO await a engine.LocalSafeUpdateEvent (L2 update case)
-	//  or a derive.DeriverL1StatusEvent (L1 update case)
-	//  or a ctx timeout
-
-	// TODO(#13336): need to not auto-derive the next thing until next TryDeriveNext call: need to modify driver
-
-	// Sanity check that the L1 or L2 progress is a bump by 1, if not,
-	// then elsewhere we are deriving new blocks while we shouldn't.
-
-	// TODO(#13336): return the L1 or L2 progress
-	return eth.BlockRef{}, eth.BlockRef{}, nil
+func (m *ManagedMode) ProvideL1(ctx context.Context, fromL1 eth.BlockRef) error {
+	// TODO: when op-node is in need of a next L1 block (it tells through L1 exhaust eventS),
+	// the supervisor can provide it with this method.
+	// Here we then need to fire an event, which the L1-traversal can pick up to unblock itself.
+	// And send an error event maybe if the provided L1 block does not fit on top of the last known L1 block.
+	return nil
 }
 
 func (m *ManagedMode) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {
