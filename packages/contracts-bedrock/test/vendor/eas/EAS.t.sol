@@ -67,9 +67,7 @@ contract TestEIP712Proxy is EIP712 {
 
 // Mainnet Contract
 contract EASTest is CommonTest {
-    // =============================================================
-    //                           CONSTANTS
-    // =============================================================
+    // Constants
     uint64 constant NO_EXPIRATION = 0;
     bytes32 constant ZERO_BYTES32 = bytes32(0);
     bytes32 private constant ATTEST_TYPEHASH =
