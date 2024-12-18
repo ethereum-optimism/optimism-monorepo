@@ -139,11 +139,11 @@ func (c *Client) attemptSync(ctx context.Context, chainID types.ChainID, databas
 	if err != nil {
 		return fmt.Errorf("GET request failed: %w", err)
 	}
-	defer func(Body io.ReadCloser) {
-		if err := Body.Close(); err != nil {
+	defer func() {
+		if err := resp.Body.Close(); err != nil {
 			c.logError("failed to close response body", err, database)
 		}
-	}(resp.Body)
+	}()
 	if resp.StatusCode != http.StatusOK && resp.StatusCode != http.StatusPartialContent {
 		return fmt.Errorf("GET request failed with status %d", resp.StatusCode)
 	}
