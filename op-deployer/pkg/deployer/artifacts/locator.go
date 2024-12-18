@@ -13,6 +13,7 @@ type schemeUnmarshaler func(string) (*Locator, error)
 var schemeUnmarshalerDispatch = map[string]schemeUnmarshaler{
 	"tag":   unmarshalTag,
 	"file":  unmarshalURL,
+	"http":  unmarshalURL,
 	"https": unmarshalURL,
 }
 

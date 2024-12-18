@@ -43,6 +43,14 @@ func TestLocator_Marshaling(t *testing.T) {
 			err: false,
 		},
 		{
+			name: "valid HTTP URL",
+			in:   "http://example.com",
+			out: &Locator{
+				URL: parseUrl(t, "http://example.com"),
+			},
+			err: false,
+		},
+		{
 			name: "valid file URL",
 			in:   "file:///tmp/artifacts",
 			out: &Locator{
@@ -64,7 +72,7 @@ func TestLocator_Marshaling(t *testing.T) {
 		},
 		{
 			name: "unsupported scheme",
-			in:   "http://example.com",
+			in:   "ftp://example.com",
 			out:  nil,
 			err:  true,
 		},

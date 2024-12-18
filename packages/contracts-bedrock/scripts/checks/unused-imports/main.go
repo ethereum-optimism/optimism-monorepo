@@ -70,16 +70,20 @@ func findImports(content string) []string {
 }
 
 func isImportUsed(imp, content string) bool {
+	// Use a regular expression to match the import as a whole word
+	wordPattern := fmt.Sprintf(`\b%s\b`, regexp.QuoteMeta(imp))
 	scanner := bufio.NewScanner(strings.NewReader(content))
+
 	for scanner.Scan() {
 		line := scanner.Text()
-		if strings.HasPrefix(strings.TrimSpace(line), "//") {
+		if strings.HasPrefix(strings.TrimSpace(line), "//") || strings.HasPrefix(strings.TrimSpace(line), "/*") || strings.HasPrefix(strings.TrimSpace(line), "*") || strings.HasPrefix(strings.TrimSpace(line), "*/") {
 			continue
 		}
 		if strings.Contains(line, "import") {
 			continue
 		}
-		if strings.Contains(line, imp) {
+
+		if matched, _ := regexp.MatchString(wordPattern, line); matched {
 			return true
 		}
 	}
