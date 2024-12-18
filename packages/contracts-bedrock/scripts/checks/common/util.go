@@ -37,20 +37,27 @@ func (e *ErrorReporter) HasError() bool {
 	return e.hasErr.Load()
 }
 
-type FileProcessor func(path string) []error
+type Void struct{}
 
-func ProcessFiles(files map[string]string, processor FileProcessor) error {
+type FileProcessor[T any] func(path string) (T, []error)
+
+func ProcessFiles[T any](files map[string]string, processor FileProcessor[T]) (map[string]T, error) {
 	g := errgroup.Group{}
 	g.SetLimit(runtime.NumCPU())
 
 	reporter := NewErrorReporter()
+	results := sync.Map{}
+
 	for name, path := range files {
 		name, path := name, path // Capture loop variables
 		g.Go(func() error {
-			if errs := processor(path); len(errs) > 0 {
+			result, errs := processor(path)
+			if len(errs) > 0 {
 				for _, err := range errs {
 					reporter.Fail("%s: %v", name, err)
 				}
+			} else {
+				results.Store(path, result)
 			}
 			return nil
 		})
@@ -58,18 +65,26 @@ func ProcessFiles(files map[string]string, processor FileProcessor) error {
 
 	err := g.Wait()
 	if err != nil {
-		return fmt.Errorf("processing failed: %w", err)
+		return nil, fmt.Errorf("processing failed: %w", err)
 	}
 	if reporter.HasError() {
-		return fmt.Errorf("processing failed")
+		return nil, fmt.Errorf("processing failed")
 	}
-	return nil
+
+	// Convert sync.Map to regular map
+	finalResults := make(map[string]T)
+	results.Range(func(key, value interface{}) bool {
+		finalResults[key.(string)] = value.(T)
+		return true
+	})
+
+	return finalResults, nil
 }
 
-func ProcessFilesGlob(includes, excludes []string, processor FileProcessor) error {
+func ProcessFilesGlob[T any](includes, excludes []string, processor FileProcessor[T]) (map[string]T, error) {
 	files, err := FindFiles(includes, excludes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return ProcessFiles(files, processor)
 }

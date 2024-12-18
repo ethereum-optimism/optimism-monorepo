@@ -50,7 +50,7 @@ type Artifact struct {
 }
 
 func main() {
-	if err := common.ProcessFilesGlob(
+	if _, err := common.ProcessFilesGlob(
 		[]string{"forge-artifacts/**/*.json"},
 		[]string{},
 		processFile,
@@ -60,56 +60,56 @@ func main() {
 	}
 }
 
-func processFile(artifactPath string) []error {
+func processFile(artifactPath string) (*common.Void, []error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return []error{fmt.Errorf("failed to get current working directory: %w", err)}
+		return nil, []error{fmt.Errorf("failed to get current working directory: %w", err)}
 	}
 	artifactsDir := filepath.Join(cwd, "forge-artifacts")
 
 	contractName := strings.Split(filepath.Base(artifactPath), ".")[0]
 
 	if isExcluded(contractName) {
-		return nil
+		return nil, nil
 	}
 
 	artifact, err := readArtifact(artifactPath)
 	if err != nil {
-		return []error{fmt.Errorf("failed to read artifact: %w", err)}
+		return nil, []error{fmt.Errorf("failed to read artifact: %w", err)}
 	}
 
 	contractDef := getContractDefinition(artifact, contractName)
 	if contractDef == nil {
-		return nil // Skip processing if contract definition is not found
+		return nil, nil // Skip processing if contract definition is not found
 	}
 
 	if contractDef.ContractKind != "interface" {
-		return nil
+		return nil, nil
 	}
 
 	if !strings.HasPrefix(contractName, "I") {
-		return []error{fmt.Errorf("%s: Interface does not start with 'I'", contractName)}
+		return nil, []error{fmt.Errorf("%s: Interface does not start with 'I'", contractName)}
 	}
 
 	semver, err := getContractSemver(artifact)
 	if err != nil {
-		return []error{fmt.Errorf("failed to get contract semver: %w", err)}
+		return nil, []error{fmt.Errorf("failed to get contract semver: %w", err)}
 	}
 
 	if semver != "solidity^0.8.0" {
-		return []error{fmt.Errorf("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)}
+		return nil, []error{fmt.Errorf("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)}
 	}
 
 	contractBasename := contractName[1:]
 	correspondingContractFile := filepath.Join(artifactsDir, contractBasename+".sol", contractBasename+".json")
 
 	if _, err := os.Stat(correspondingContractFile); errors.Is(err, os.ErrNotExist) {
-		return nil
+		return nil, nil
 	}
 
 	contractArtifact, err := readArtifact(correspondingContractFile)
 	if err != nil {
-		return []error{fmt.Errorf("failed to read corresponding contract artifact: %w", err)}
+		return nil, []error{fmt.Errorf("failed to read corresponding contract artifact: %w", err)}
 	}
 
 	interfaceABI := artifact.ABI
@@ -117,23 +117,23 @@ func processFile(artifactPath string) []error {
 
 	normalizedInterfaceABI, err := normalizeABI(interfaceABI)
 	if err != nil {
-		return []error{fmt.Errorf("failed to normalize interface ABI: %w", err)}
+		return nil, []error{fmt.Errorf("failed to normalize interface ABI: %w", err)}
 	}
 
 	normalizedContractABI, err := normalizeABI(contractABI)
 	if err != nil {
-		return []error{fmt.Errorf("failed to normalize contract ABI: %w", err)}
+		return nil, []error{fmt.Errorf("failed to normalize contract ABI: %w", err)}
 	}
 
 	match, err := compareABIs(normalizedInterfaceABI, normalizedContractABI)
 	if err != nil {
-		return []error{fmt.Errorf("failed to compare ABIs: %w", err)}
+		return nil, []error{fmt.Errorf("failed to compare ABIs: %w", err)}
 	}
 	if !match {
-		return []error{fmt.Errorf("%s: Differences found in ABI between interface and actual contract", contractName)}
+		return nil, []error{fmt.Errorf("%s: Differences found in ABI between interface and actual contract", contractName)}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func readArtifact(path string) (*Artifact, error) {

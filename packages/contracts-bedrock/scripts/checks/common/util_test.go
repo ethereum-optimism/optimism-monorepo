@@ -1,6 +1,7 @@
 package common
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"sync"
@@ -33,22 +34,54 @@ func TestProcessFiles(t *testing.T) {
 		"file2": "path2",
 	}
 
-	// Test successful processing
-	err := ProcessFiles(files, func(path string) []error {
-		return nil
+	// Test void processing (no results)
+	_, err := ProcessFiles(files, func(path string) (*Void, []error) {
+		return nil, nil
 	})
 	if err != nil {
 		t.Errorf("expected no error, got %v", err)
 	}
 
 	// Test error handling
-	err = ProcessFiles(files, func(path string) []error {
+	_, err = ProcessFiles(files, func(path string) (*Void, []error) {
 		var errors []error
 		errors = append(errors, os.ErrNotExist)
-		return errors
+		return nil, errors
 	})
 	if err == nil {
 		t.Error("expected error, got nil")
+	}
+
+	// Test successful processing with string results
+	results, err := ProcessFiles(files, func(path string) (string, []error) {
+		return "processed_" + path, nil
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
+	if results["path1"] != "processed_path1" {
+		t.Errorf("expected processed_path1, got %s", results["path1"])
+	}
+
+	// Test processing with struct results
+	type testResult struct {
+		Path    string
+		Counter int
+	}
+	structResults, err := ProcessFiles(files, func(path string) (testResult, []error) {
+		return testResult{Path: path, Counter: len(path)}, nil
+	})
+	if err != nil {
+		t.Errorf("expected no error, got %v", err)
+	}
+	if len(structResults) != 2 {
+		t.Errorf("expected 2 results, got %d", len(structResults))
+	}
+	if structResults["path1"].Counter != 5 {
+		t.Errorf("expected counter 5, got %d", structResults["path1"].Counter)
 	}
 }
 
@@ -75,24 +108,24 @@ func TestProcessFilesGlob(t *testing.T) {
 		}
 	}
 
-	// Test processing with includes and excludes
 	includes := []string{"*.txt"}
 	excludes := []string{"skip.txt"}
 
+	// Test void processing (no results)
 	processedFiles := make(map[string]bool)
 	var mtx sync.Mutex
-	err := ProcessFilesGlob(includes, excludes, func(path string) []error {
+	_, err := ProcessFilesGlob(includes, excludes, func(path string) (*Void, []error) {
 		mtx.Lock()
 		processedFiles[filepath.Base(path)] = true
 		mtx.Unlock()
-		return nil
+		return nil, nil
 	})
 
 	if err != nil {
 		t.Errorf("ProcessFiles failed: %v", err)
 	}
 
-	// Verify results
+	// Verify void processing results
 	if len(processedFiles) != 2 {
 		t.Errorf("expected 2 processed files, got %d", len(processedFiles))
 	}
@@ -104,6 +137,54 @@ func TestProcessFilesGlob(t *testing.T) {
 	}
 	if processedFiles["skip.txt"] {
 		t.Error("skip.txt should have been excluded")
+	}
+
+	// Test processing with struct results
+	type fileInfo struct {
+		Size    int64
+		Content string
+	}
+
+	results, err := ProcessFilesGlob(includes, excludes, func(path string) (fileInfo, []error) {
+		content, err := os.ReadFile(path)
+		if err != nil {
+			return fileInfo{}, []error{err}
+		}
+		info, err := os.Stat(path)
+		if err != nil {
+			return fileInfo{}, []error{err}
+		}
+		return fileInfo{
+			Size:    info.Size(),
+			Content: string(content),
+		}, nil
+	})
+
+	if err != nil {
+		t.Errorf("ProcessFilesGlob failed: %v", err)
+	}
+
+	// Verify struct results
+	if len(results) != 2 {
+		t.Errorf("expected 2 results, got %d", len(results))
+	}
+	if result, exists := results["test1.txt"]; !exists {
+		t.Error("expected result for test1.txt")
+	} else {
+		if result.Content != "content1" {
+			t.Errorf("expected content1, got %s", result.Content)
+		}
+		if result.Size != 8 {
+			t.Errorf("expected size 8, got %d", result.Size)
+		}
+	}
+
+	// Test error handling
+	_, err = ProcessFilesGlob(includes, excludes, func(path string) (fileInfo, []error) {
+		return fileInfo{}, []error{fmt.Errorf("test error")}
+	})
+	if err == nil {
+		t.Error("expected error, got nil")
 	}
 }
 
