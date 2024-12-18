@@ -16,10 +16,10 @@ import (
 )
 
 var (
-	maxRetries    = 500
+	maxRetries    = 25
 	retryStrategy = &retry.ExponentialStrategy{
 		Min:       1 * time.Second,
-		Max:       30 * time.Minute,
+		Max:       30 * time.Second,
 		MaxJitter: 250 * time.Millisecond,
 	}
 )
@@ -96,7 +96,7 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 	}
 
 	// Attempt to sync the file and retry until successful
-	return retry.Do0(ctx, maxRetries, retryStrategy, func() error {
+	err := retry.Do0(ctx, maxRetries, retryStrategy, func() error {
 		err := c.attemptSync(ctx, chainID, database, filePath, initialSize)
 		if err != nil {
 			c.logError("sync attempt failed", err, database)
@@ -104,6 +104,10 @@ func (c *Client) SyncDatabase(ctx context.Context, chainID types.ChainID, databa
 		}
 		return nil
 	})
+	if err != nil {
+		return fmt.Errorf("failed to sync file: %w", err)
+	}
+	return nil
 }
 
 // attemptSync makes a single attempt to sync the file
