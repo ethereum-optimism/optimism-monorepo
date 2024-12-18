@@ -92,10 +92,23 @@ interface IL2ToL2CrossDomainMessenger {
     /// @return source_ Chain ID of the source of the current cross domain message.
     function crossDomainMessageSource() external view returns (uint256 source_);
 
+    /// @notice Retrieves the entrypoint of the current cross domain message.
+    /// @return entrypoint_ Address of the entrypoint of the current cross domain message.
+    function crossDomainMessageEntrypoint() external view returns (address entrypoint_);
+
+    /// @notice Retrieves the nonce of the current cross domain message.
+    /// @return nonce_ Nonce of the current cross domain message.
+    function crossDomainMessageNonce() external view returns (uint256 nonce_);
+
     /// @notice Retrieves the context of the current cross domain message. If not entered, reverts.
     /// @return sender_ Address of the sender of the current cross domain message.
     /// @return source_ Chain ID of the source of the current cross domain message.
-    function crossDomainMessageContext() external view returns (address sender_, uint256 source_);
+    /// @return entrypoint_ Address of the entrypoint of the current cross domain message.
+    /// @return nonce_ Nonce of the current cross domain message.
+    function crossDomainMessageContext()
+        external
+        view
+        returns (address sender_, uint256 source_, address entrypoint_, uint256 nonce_);
 
     /// @notice Sends a message to some target address on a destination chain with an entrypoint address as an
     ///         authorized relayer. Note that if the call always reverts, then the message will be unrelayable and any

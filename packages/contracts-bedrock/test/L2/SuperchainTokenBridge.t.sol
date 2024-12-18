@@ -167,6 +167,8 @@ contract SuperchainTokenBridgeTest is CommonTest {
     function testFuzz_relayERC20_notCrossDomainSender_reverts(
         address _crossDomainMessageSender,
         uint256 _source,
+        address _entrypoint,
+        uint256 _nonce,
         address _to,
         uint256 _amount
     )
@@ -178,7 +180,7 @@ contract SuperchainTokenBridgeTest is CommonTest {
         vm.mockCall(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
-            abi.encode(_crossDomainMessageSender, _source)
+            abi.encode(_crossDomainMessageSender, _source, _entrypoint, _nonce)
         );
 
         // Expect the revert with `InvalidCrossDomainSender` selector
@@ -190,14 +192,23 @@ contract SuperchainTokenBridgeTest is CommonTest {
     }
 
     /// @notice Tests the `relayERC20` mints the proper amount and emits the `RelayERC20` event.
-    function testFuzz_relayERC20_succeeds(address _from, address _to, uint256 _amount, uint256 _source) public {
+    function testFuzz_relayERC20_succeeds(
+        address _from,
+        address _to,
+        uint256 _amount,
+        uint256 _source,
+        address _entrypoint,
+        uint256 _nonce
+    )
+        public
+    {
         vm.assume(_to != ZERO_ADDRESS);
 
         // Mock the call over the `crossDomainMessageContext` function setting the same address as value
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
-            abi.encode(address(superchainTokenBridge), _source)
+            abi.encode(address(superchainTokenBridge), _source, _entrypoint, _nonce)
         );
 
         // Get the total supply and balance of `_to` before the relay to compare later on the assertions

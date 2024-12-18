@@ -130,6 +130,7 @@ library Hashing {
     /// @param _nonce Unique nonce associated with the message to prevent replay attacks.
     /// @param _sender Address of the user who originally sent the message.
     /// @param _target Address of the contract or wallet that the message is targeting on the destination chain.
+    /// @param _entrypoint Address of the entrypoint on the destination chain that will relay the message.
     /// @param _message The message payload to be relayed to the target on the destination chain.
     /// @return Hash of the encoded message parameters, used to uniquely identify the message.
     function hashL2toL2CrossDomainMessage(
@@ -138,12 +139,13 @@ library Hashing {
         uint256 _nonce,
         address _sender,
         address _target,
+        address _entrypoint,
         bytes memory _message
     )
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encode(_destination, _source, _nonce, _sender, _target, _message));
+        return keccak256(abi.encode(_destination, _source, _nonce, _sender, _target, _entrypoint, _message));
     }
 }

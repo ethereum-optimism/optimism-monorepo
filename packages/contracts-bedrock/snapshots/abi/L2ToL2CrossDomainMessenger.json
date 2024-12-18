@@ -12,6 +12,42 @@
         "internalType": "uint256",
         "name": "source_",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "entrypoint_",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nonce_",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "crossDomainMessageEntrypoint",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "entrypoint_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "crossDomainMessageNonce",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "nonce_",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",

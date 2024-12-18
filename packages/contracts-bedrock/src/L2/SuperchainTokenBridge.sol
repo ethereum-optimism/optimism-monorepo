@@ -46,8 +46,8 @@ contract SuperchainTokenBridge {
     address internal constant MESSENGER = Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.0-beta.5
+    string public constant version = "1.0.0-beta.5";
 
     /// @notice Sends tokens to a target address on another chain.
     /// @dev Tokens are burned on the source chain.
@@ -86,7 +86,7 @@ contract SuperchainTokenBridge {
     function relayERC20(address _token, address _from, address _to, uint256 _amount) external {
         if (msg.sender != MESSENGER) revert Unauthorized();
 
-        (address crossDomainMessageSender, uint256 source) =
+        (address crossDomainMessageSender, uint256 source,,) =
             IL2ToL2CrossDomainMessenger(MESSENGER).crossDomainMessageContext();
 
         if (crossDomainMessageSender != address(this)) revert InvalidCrossDomainSender();
