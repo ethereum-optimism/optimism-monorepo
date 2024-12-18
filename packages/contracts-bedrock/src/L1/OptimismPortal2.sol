@@ -327,7 +327,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
-        if (anchorStateRegistry.isGameInvalid(IFaultDisputeGame(address(gameProxy)))) {
+        if (!anchorStateRegistry.isGameMaybeValid(IFaultDisputeGame(address(gameProxy)))) {
             revert InvalidDisputeGame();
         }
 
