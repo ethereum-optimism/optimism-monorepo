@@ -1,8 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-// Contracts
+// Testing
 import { Test } from "forge-std/Test.sol";
+
+// Contracts
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
