@@ -17,4 +17,5 @@ interface IDisputeGame is IInitializable {
     function extraData() external pure returns (bytes memory extraData_);
     function resolve() external returns (GameStatus status_);
     function gameData() external view returns (GameType gameType_, Claim rootClaim_, bytes memory extraData_);
+    function wasRespectedGameTypeWhenCreated() external view returns (bool);
 }
