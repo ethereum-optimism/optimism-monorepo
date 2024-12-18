@@ -2,8 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os/exec"
-	"strings"
 	"testing"
 )
 
@@ -26,7 +26,15 @@ func TestMain_PreEcotoneScalar(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v, output: %s", err, output)
 	}
-	if !strings.Contains(output, "v1 hex encoding  : 0x00000000000000000000000000000000000000000000000000000000000a6fe0") {
+
+	o := new(outputTy)
+
+	err = json.Unmarshal([]byte(output), o)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if o.ScalarHex != "0x00000000000000000000000000000000000000000000000000000000000a6fe0" {
 		t.Errorf("did not find expected output: %s", output)
 	}
 }

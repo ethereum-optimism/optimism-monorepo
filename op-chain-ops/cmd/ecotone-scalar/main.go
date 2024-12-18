@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
 	"math"
@@ -9,6 +10,14 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
+
+// These names match those used in the SystemConfig contract
+type outputTy struct {
+	BaseFee           uint     `json:"baseFeeScalar"`
+	BlobbaseFeeScalar uint     `json:"blobbaseFeeScalar"`
+	ScalarHex         string   `json:"scalarHex"`
+	Scalar            *big.Int `json:"scalar"` // post-ecotone
+}
 
 func main() {
 	var scalar, blobScalar uint
@@ -66,9 +75,14 @@ func main() {
 	}
 	i := new(big.Int).SetBytes(encoded[:])
 
-	fmt.Println("# base fee scalar     :", scalar)
-	fmt.Println("# blob base fee scalar:", blobScalar)
-	fmt.Printf("# v1 hex encoding  : 0x%x\n", encoded[:])
-	fmt.Println("# uint value for the 'scalar' parameter in SystemConfigProxy.setGasConfig():")
-	fmt.Println(i)
+	o, err := json.Marshal(outputTy{
+		BaseFee:           scalar,
+		BlobbaseFeeScalar: blobScalar,
+		ScalarHex:         fmt.Sprintf("0x%x", encoded[:]),
+		Scalar:            i,
+	})
+	if err != nil {
+		panic(err)
+	}
+	fmt.Println(string(o))
 }
