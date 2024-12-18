@@ -229,4 +229,5 @@ rules:
           }
     paths:
       exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfig.sol
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
