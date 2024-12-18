@@ -151,7 +151,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 func (s *EthClient) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
 	// Note that *types.Header does not cache the block hash unlike *HeaderInfo, it always recomputes.
 	// Inefficient if used poorly, but no trust issue.
-	return s.client.EthSubscribe(ctx, ch, "newHeads")
+	return s.client.Subscribe(ctx, "eth", ch, "newHeads")
 }
 
 // rpcBlockID is an internal type to enforce header and block call results match the requested identifier

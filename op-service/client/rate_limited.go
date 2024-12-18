@@ -44,9 +44,9 @@ func (b *RateLimitingClient) BatchCallContext(ctx context.Context, batch []rpc.B
 	return b.c.BatchCallContext(cCtx, batch)
 }
 
-func (b *RateLimitingClient) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
+func (b *RateLimitingClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
 	if err := b.rl.Wait(ctx); err != nil {
 		return nil, err
 	}
-	return b.c.EthSubscribe(ctx, channel, args...)
+	return b.c.Subscribe(ctx, namespace, channel, args...)
 }
