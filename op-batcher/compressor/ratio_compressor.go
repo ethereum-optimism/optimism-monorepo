@@ -15,7 +15,7 @@ type RatioCompressor struct {
 // size and a compression ratio parameter to determine how much data can be written to
 // the compressor before it's considered full. The full calculation is as follows:
 //
-//	full = uncompressedLength * approxCompRatio >= targetFrameSize * targetNumFrames
+//	full = uncompressedLength * ApproxComprRatio >= targetFrameSize * targetNumFrames
 func NewRatioCompressor(config Config) (derive.Compressor, error) {
 	c := &RatioCompressor{
 		config: config,
