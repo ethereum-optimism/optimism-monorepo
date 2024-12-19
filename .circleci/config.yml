@@ -32,6 +32,9 @@ parameters:
   kontrol_dispatch:
     type: boolean
     default: false
+  superheavy_fuzz_dispatch:
+    type: boolean
+    default: false
   cannon_full_test_dispatch:
     type: boolean
     default: false
@@ -608,7 +611,7 @@ jobs:
 
   contracts-bedrock-tests:
     machine: true
-    resource_class: ethereum-optimism/latitude-1
+    resource_class: <<parameters.test_resource_class>>
     parameters:
       test_list:
         description: List of test files to run
@@ -629,6 +632,10 @@ jobs:
         description: Profile to use for testing
         type: string
         default: ci
+      test_resource_class:
+        description: Resource class to use for testing
+        type: string
+        default: ethereum-optimism/latitude-1
     steps:
       - checkout
       - attach_workspace: { at: "." }
@@ -1214,6 +1221,13 @@ workflows:
           test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
+      - contracts-bedrock-tests:
+          # Just seeing what happens if we do this
+          name: contracts-bedrock-tests-superheavy-fuzz
+          test_list: find test -name "*.t.sol"
+          test_timeout: 24h
+          test_profile: cisuperheavy
+          test_resource_class: ethereum-optimism/latitude-fuzzers-1
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
