@@ -7,7 +7,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
-// HashCrossDomainMessageV0 computes the pre bedrock cross domain messaging
+// HashCrossDomainMessageV0 computes the pre-Bedrock cross domain messaging
 // hashing scheme.
 func HashCrossDomainMessageV0(
 	target common.Address,
@@ -23,7 +23,7 @@ func HashCrossDomainMessageV0(
 	return common.BytesToHash(hash), nil
 }
 
-// HashCrossDomainMessageV1 computes the first post bedrock cross domain
+// HashCrossDomainMessageV1 computes the first post-Bedrock cross domain
 // messaging hashing scheme.
 func HashCrossDomainMessageV1(
 	nonce *big.Int,
