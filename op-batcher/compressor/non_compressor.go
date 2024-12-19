@@ -19,7 +19,7 @@ type NonCompressor struct {
 // NewNonCompressor creates a new derive.Compressor implementation that doesn't
 // compress by using zlib.NoCompression.
 // It flushes to the underlying buffer any data from a prior write call.
-// This is very unoptimal behavior and should only be used in tests.
+// This is very suboptimal behavior and should only be used in tests.
 // The NonCompressor can be used in tests to create a partially flushed channel.
 // If the output buffer size after a write exceeds TargetFrameSize*TargetNumFrames,
 // the compressor is marked as full, but the write succeeds.
