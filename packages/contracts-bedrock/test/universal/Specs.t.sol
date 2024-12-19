@@ -412,11 +412,13 @@ contract Specification_Test is CommonTest {
 
         // SuperchainConfig
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("GUARDIAN_SLOT()") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("UPGRADER_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("PAUSED_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("SHARED_LOCKBOX()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("guardian()") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("upgrader()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("systemConfigs(uint256)") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,bool)") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,address,bool)") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });

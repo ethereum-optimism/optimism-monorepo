@@ -23,8 +23,10 @@ contract SuperchainConfig is Initializable, ISemver {
 
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
+    /// @custom:value UPGRADER            Represents an update to the upgrader.
     enum UpdateType {
-        GUARDIAN
+        GUARDIAN,
+        UPGRADER
     }
 
     /// @notice Whether or not the Superchain is paused.
@@ -33,6 +35,10 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice The address of the guardian, which can pause withdrawals from the System.
     ///         It can only be modified by an upgrade.
     bytes32 public constant GUARDIAN_SLOT = bytes32(uint256(keccak256("superchainConfig.guardian")) - 1);
+
+    /// @notice The address of the upgrader, which can add a chain to the dependency set.
+    ///         It can only be modified by an upgrade.
+    bytes32 public constant UPGRADER_SLOT = bytes32(uint256(keccak256("superchainConfig.upgrader")) - 1);
 
     // The Shared Lockbox contract
     ISharedLockbox public immutable SHARED_LOCKBOX;
@@ -74,14 +80,16 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice Constructs the SuperchainConfig contract.
     constructor(address _sharedLockbox) {
         SHARED_LOCKBOX = ISharedLockbox(_sharedLockbox);
-        initialize({ _guardian: address(0), _paused: false });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
+    /// @param _upgrader    Address of the upgrader, can add a chain to the dependency set.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, bool _paused) public initializer {
+    function initialize(address _guardian, address _upgrader, bool _paused) public initializer {
         _setGuardian(_guardian);
+        _setUpgrader(_upgrader);
         if (_paused) {
             _pause("Initializer paused");
         }
@@ -90,6 +98,11 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice Getter for the guardian address.
     function guardian() public view returns (address guardian_) {
         guardian_ = Storage.getAddress(GUARDIAN_SLOT);
+    }
+
+    /// @notice Getter for the upgrader address.
+    function upgrader() public view returns (address upgrader_) {
+        upgrader_ = Storage.getAddress(UPGRADER_SLOT);
     }
 
     /// @notice Getter for the current paused status.
@@ -126,14 +139,21 @@ contract SuperchainConfig is Initializable, ISemver {
         emit ConfigUpdate(UpdateType.GUARDIAN, abi.encode(_guardian));
     }
 
+    /// @notice Sets the upgrader address. This is only callable during initialization, so an upgrade
+    ///         will be required to change the upgrader.
+    /// @param _upgrader The new upgrader address.
+    function _setUpgrader(address _upgrader) internal {
+        Storage.setAddress(UPGRADER_SLOT, _upgrader);
+        emit ConfigUpdate(UpdateType.UPGRADER, abi.encode(_upgrader));
+    }
+
     /// @notice Adds a new chain to the dependency set.
     ///         Adds the new chain as a dependency for all existing chains in the dependency set, and vice versa. It
     ///         also stores the SystemConfig address of it, and authorizes the OptimismPortal on the SharedLockbox.
     /// @param _chainId     The chain ID.
     /// @param _systemConfig The SystemConfig contract address of the chain to add.
     function addChain(uint256 _chainId, address _systemConfig) external {
-        // TODO: Updater role TBD, using guardian for now.
-        if (msg.sender != guardian()) revert Unauthorized();
+        if (msg.sender != upgrader()) revert Unauthorized();
         if (ISystemConfigInterop(_systemConfig).dependencyCounter() != 0) revert ChainAlreadyHasDependencies();
 
         // Add to the dependency set and check it is not already added (`add()` returns false if it already exists)

@@ -29,19 +29,20 @@ contract SuperchainConfigForTest is SuperchainConfig {
         systemConfigs[_chainId] = _systemConfig;
     }
 
-    function forTest_setGuardian(address _guardian) external {
-        bytes32 slot = GUARDIAN_SLOT;
+    function forTest_setUpgrader(address _upgrader) external {
+        bytes32 slot = UPGRADER_SLOT;
         assembly {
-            sstore(slot, _guardian)
+            sstore(slot, _upgrader)
         }
     }
 }
 
 contract SuperchainConfig_Init_Test is CommonTest {
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
-    function test_initialize_unpaused_succeeds() external view {
+    function test_initialize_succeeds() external view {
         assertFalse(superchainConfig.paused());
         assertEq(superchainConfig.guardian(), deploy.cfg().superchainConfigGuardian());
+        assertEq(superchainConfig.upgrader(), deploy.cfg().finalSystemOwner());
     }
 
     /// @dev Tests that it can be intialized as paused.
@@ -64,11 +65,15 @@ contract SuperchainConfig_Init_Test is CommonTest {
         vm.startPrank(alice);
         newProxy.upgradeToAndCall(
             address(newImpl),
-            abi.encodeCall(ISuperchainConfig.initialize, (deploy.cfg().superchainConfigGuardian(), true))
+            abi.encodeCall(
+                ISuperchainConfig.initialize,
+                (deploy.cfg().superchainConfigGuardian(), deploy.cfg().finalSystemOwner(), true)
+            )
         );
 
         assertTrue(ISuperchainConfig(address(newProxy)).paused());
         assertEq(ISuperchainConfig(address(newProxy)).guardian(), deploy.cfg().superchainConfigGuardian());
+        assertEq(ISuperchainConfig(address(newProxy)).upgrader(), deploy.cfg().finalSystemOwner());
     }
 }
 
@@ -149,7 +154,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
 
     /// @notice Tests that `addChain` reverts when called by an unauthorized address.
     function test_addChain_unauthorized_reverts(address _caller, uint256 _chainId, address _systemConfig) external {
-        vm.assume(_caller != superchainConfig.guardian());
+        vm.assume(_caller != superchainConfig.upgrader());
 
         vm.expectRevert(Unauthorized.selector);
         vm.prank(_caller);
@@ -166,7 +171,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
             abi.encode(numberOfDependencies)
         );
 
-        vm.startPrank(superchainConfig.guardian());
+        vm.prank(superchainConfig.upgrader());
         vm.expectRevert(ISuperchainConfig.ChainAlreadyHasDependencies.selector);
         superchainConfig.addChain(_chainId, _systemConfig);
     }
@@ -181,7 +186,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
             _systemConfig, abi.encodeWithSelector(ISystemConfigInterop.dependencyCounter.selector), abi.encode(0)
         );
 
-        vm.startPrank(superchainConfig.guardian());
+        vm.prank(superchainConfig.upgrader());
         vm.expectRevert(SuperchainConfig.ChainAlreadyAdded.selector);
         superchainConfig.addChain(_chainId, _systemConfig);
     }
@@ -213,7 +218,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
         emit ChainAdded(_chainId, address(systemConfig), _portal);
 
         // Add the new chain to the dependency set
-        vm.startPrank(superchainConfig.guardian());
+        vm.prank(superchainConfig.upgrader());
         superchainConfig.addChain(_chainId, address(systemConfig));
 
         // Check that the new chain is in the dependency set
@@ -228,9 +233,9 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
     function test_addChain_withMultipleDependencies_succeeds(uint256 _chainId, address _portal) external {
         vm.assume(_chainId > 3);
 
-        // Deploy a new SuperchainConfigForTest contract and set the address(sharedLockbox) and guardian addresses
+        // Deploy a new SuperchainConfigForTest contract and set the address(sharedLockbox) and upgrader addresses
         SuperchainConfigForTest superchainConfigForTest = new SuperchainConfigForTest(address(sharedLockbox));
-        superchainConfigForTest.forTest_setGuardian(superchainConfig.guardian());
+        superchainConfigForTest.forTest_setUpgrader(superchainConfig.upgrader());
 
         // Define the chains to be added to the dependency set
         (uint256 chainIdOne, address systemConfigOne) = (1, makeAddr("SystemConfigOne"));
@@ -292,7 +297,7 @@ contract SuperchainConfig_AddChain_Test is CommonTest {
         emit ChainAdded(_chainId, address(systemConfig), _portal);
 
         // Add the new chain to the dependency set
-        vm.prank(superchainConfigForTest.guardian());
+        vm.prank(superchainConfigForTest.upgrader());
         superchainConfigForTest.addChain(_chainId, address(systemConfig));
 
         // Check that the new chain is in the dependency set

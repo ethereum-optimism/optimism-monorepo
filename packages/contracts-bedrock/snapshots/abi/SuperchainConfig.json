@@ -50,6 +50,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "UPGRADER_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -98,6 +111,11 @@
       {
         "internalType": "address",
         "name": "_guardian",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_upgrader",
         "type": "address"
       },
       {
@@ -180,6 +198,19 @@
     "name": "unpause",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "upgrader",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "upgrader_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

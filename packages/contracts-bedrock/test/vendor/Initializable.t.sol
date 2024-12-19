@@ -55,7 +55,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "SuperchainConfig",
                 target: deploy.mustGetAddress("SuperchainConfig"),
-                initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), false))
+                initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), address(0), false))
             })
         );
         // SuperchainConfigProxy
@@ -63,7 +63,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "SuperchainConfigProxy",
                 target: address(superchainConfig),
-                initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), false))
+                initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), address(0), false))
             })
         );
         // L1CrossDomainMessengerImpl
