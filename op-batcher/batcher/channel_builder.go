@@ -187,13 +187,13 @@ func (c *ChannelBuilder) AddBlock(block *types.Block) (*derive.L1BlockInfo, erro
 	c.blocks.Enqueue(block)
 	c.updateSwTimeout(l1info.Number)
 
-	if l1info.Number > c.latestL1Origin.Number {
+	if l1info.Number > c.oldestL1Origin.Number {
 		c.latestL1Origin = eth.BlockID{
 			Hash:   l1info.BlockHash,
 			Number: l1info.Number,
 		}
 	}
-	if c.oldestL1Origin.Number == 0 || l1info.Number < c.latestL1Origin.Number {
+	if c.oldestL1Origin.Number == 0 || l1info.Number < c.oldestL1Origin.Number {
 		c.oldestL1Origin = eth.BlockID{
 			Hash:   l1info.BlockHash,
 			Number: l1info.Number,
