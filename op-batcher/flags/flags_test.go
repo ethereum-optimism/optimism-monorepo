@@ -36,7 +36,7 @@ func TestUniqueFlags(t *testing.T) {
 	}
 }
 
-// TestBetaFlags test that all flags starting with "beta." have "BETA_" in the env var, and vice versa.
+// TestBetaFlags tests that all flags starting with "beta." have "BETA_" in the env var, and vice versa.
 func TestBetaFlags(t *testing.T) {
 	for _, flag := range Flags {
 		envFlag, ok := flag.(interface {
