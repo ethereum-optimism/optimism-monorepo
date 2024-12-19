@@ -61,8 +61,8 @@ func (m *MockRPC) BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
 	return nil
 }
 
-func (m *MockRPC) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
-	m.t.Fatal("EthSubscribe should not be called")
+func (m *MockRPC) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	m.t.Fatal("Subscribe should not be called")
 	return nil, nil
 }
 
@@ -202,5 +202,5 @@ func requireChansEqual(t *testing.T, chans []chan *types.Header, root common.Has
 }
 
 func doSubscribe(client RPC, ch chan<- *types.Header) (ethereum.Subscription, error) {
-	return client.EthSubscribe(context.Background(), ch, "newHeads")
+	return client.Subscribe(context.Background(), "eth", ch, "newHeads")
 }

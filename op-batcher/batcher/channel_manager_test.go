@@ -65,19 +65,19 @@ func ChannelManagerReturnsErrReorg(t *testing.T, batchType uint) {
 
 	a := types.NewBlock(&types.Header{
 		Number: big.NewInt(0),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	b := types.NewBlock(&types.Header{
 		Number:     big.NewInt(1),
 		ParentHash: a.Hash(),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	c := types.NewBlock(&types.Header{
 		Number:     big.NewInt(2),
 		ParentHash: b.Hash(),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	x := types.NewBlock(&types.Header{
 		Number:     big.NewInt(2),
 		ParentHash: common.Hash{0xff},
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 
 	require.NoError(t, m.AddL2Block(a))
 	require.NoError(t, m.AddL2Block(b))
@@ -166,7 +166,7 @@ func ChannelManager_Clear(t *testing.T, batchType uint) {
 	b := types.NewBlock(&types.Header{
 		Number:     big.NewInt(1),
 		ParentHash: a.Hash(),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	require.NoError(m.AddL2Block(b))
 	require.Equal(m.blockCursor, len(m.blocks)-1)
 	require.Equal(b.Hash(), m.tip)
@@ -467,15 +467,15 @@ func TestChannelManager_PruneBlocks(t *testing.T) {
 	cfg.InitNoneCompressor()
 	a := types.NewBlock(&types.Header{
 		Number: big.NewInt(0),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	b := types.NewBlock(&types.Header{
 		Number:     big.NewInt(1),
 		ParentHash: a.Hash(),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	c := types.NewBlock(&types.Header{
 		Number:     big.NewInt(2),
 		ParentHash: b.Hash(),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 
 	type testCase struct {
 		name                string

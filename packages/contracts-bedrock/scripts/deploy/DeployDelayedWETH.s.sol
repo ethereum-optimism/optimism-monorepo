@@ -135,7 +135,12 @@ contract DeployDelayedWETHOutput is BaseDeployIO {
         vm.prank(address(0));
         address impl = proxy.implementation();
         require(impl == address(delayedWethImpl()), "DWI-10");
-        DeployUtils.assertInitialized({ _contractAddress: address(delayedWethImpl()), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({
+            _contractAddress: address(delayedWethImpl()),
+            _isProxy: false,
+            _slot: 0,
+            _offset: 0
+        });
         require(delayedWethImpl().owner() == address(0), "DWI-20");
         require(delayedWethImpl().delay() == _dwi.delayedWethDelay(), "DWI-30");
         require(address(delayedWethImpl().config()) == address(0), "DWI-30");
@@ -149,7 +154,12 @@ contract DeployDelayedWETHOutput is BaseDeployIO {
         require(admin == _dwi.proxyAdmin(), "DWP-10");
 
         // Check as implementation.
-        DeployUtils.assertInitialized({ _contractAddress: address(delayedWethProxy()), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({
+            _contractAddress: address(delayedWethProxy()),
+            _isProxy: true,
+            _slot: 0,
+            _offset: 0
+        });
         require(delayedWethProxy().owner() == _dwi.delayedWethOwner(), "DWP-20");
         require(delayedWethProxy().delay() == _dwi.delayedWethDelay(), "DWP-30");
         require(delayedWethProxy().config() == _dwi.superchainConfigProxy(), "DWP-40");

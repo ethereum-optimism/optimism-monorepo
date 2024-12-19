@@ -23,24 +23,20 @@ ignore:
 
 coverage:
   status:
-    patch:
-      default:
-        target: auto  # target coverage is equal to the PR base
-        threshold: 0% # coverage is not allowed to reduce vs. the PR base
-        base: auto
-        informational: true
-        enabled: true
     project:
       default:
         informational: true
+    patch:
+      contracts:
+        base: auto
+        target: auto
+        threshold: 5%
+        informational: false
+        flags:
+          - contracts-bedrock-tests
 
 flag_management:
-  # Note: flags should have the same name as the circleci job in which they
-  # are uploaded.
   individual_flags:
-    - name: contracts-bedrock-coverage
+    - name: contracts-bedrock-tests
       paths:
         - packages/contracts-bedrock/src
-      statuses:
-        - type: patch
-          target: 100%

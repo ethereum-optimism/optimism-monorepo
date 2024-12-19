@@ -77,26 +77,35 @@ type ImplementationsDeployment struct {
 	DisputeGameFactoryImplAddress           common.Address `json:"disputeGameFactoryImplAddress"`
 }
 
+type AdditionalDisputeGameState struct {
+	GameType      uint32
+	GameAddress   common.Address
+	VMAddress     common.Address
+	OracleAddress common.Address
+	VMType        VMType
+}
+
 type ChainState struct {
 	ID common.Hash `json:"id"`
 
-	ProxyAdminAddress                         common.Address `json:"proxyAdminAddress"`
-	AddressManagerAddress                     common.Address `json:"addressManagerAddress"`
-	L1ERC721BridgeProxyAddress                common.Address `json:"l1ERC721BridgeProxyAddress"`
-	SystemConfigProxyAddress                  common.Address `json:"systemConfigProxyAddress"`
-	OptimismMintableERC20FactoryProxyAddress  common.Address `json:"optimismMintableERC20FactoryProxyAddress"`
-	L1StandardBridgeProxyAddress              common.Address `json:"l1StandardBridgeProxyAddress"`
-	L1CrossDomainMessengerProxyAddress        common.Address `json:"l1CrossDomainMessengerProxyAddress"`
-	OptimismPortalProxyAddress                common.Address `json:"optimismPortalProxyAddress"`
-	DisputeGameFactoryProxyAddress            common.Address `json:"disputeGameFactoryProxyAddress"`
-	AnchorStateRegistryProxyAddress           common.Address `json:"anchorStateRegistryProxyAddress"`
-	AnchorStateRegistryImplAddress            common.Address `json:"anchorStateRegistryImplAddress"`
-	FaultDisputeGameAddress                   common.Address `json:"faultDisputeGameAddress"`
-	PermissionedDisputeGameAddress            common.Address `json:"permissionedDisputeGameAddress"`
-	DelayedWETHPermissionedGameProxyAddress   common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
-	DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
-	DataAvailabilityChallengeProxyAddress     common.Address `json:"dataAvailabilityChallengeProxyAddress"`
-	DataAvailabilityChallengeImplAddress      common.Address `json:"dataAvailabilityChallengeImplAddress"`
+	ProxyAdminAddress                         common.Address               `json:"proxyAdminAddress"`
+	AddressManagerAddress                     common.Address               `json:"addressManagerAddress"`
+	L1ERC721BridgeProxyAddress                common.Address               `json:"l1ERC721BridgeProxyAddress"`
+	SystemConfigProxyAddress                  common.Address               `json:"systemConfigProxyAddress"`
+	OptimismMintableERC20FactoryProxyAddress  common.Address               `json:"optimismMintableERC20FactoryProxyAddress"`
+	L1StandardBridgeProxyAddress              common.Address               `json:"l1StandardBridgeProxyAddress"`
+	L1CrossDomainMessengerProxyAddress        common.Address               `json:"l1CrossDomainMessengerProxyAddress"`
+	OptimismPortalProxyAddress                common.Address               `json:"optimismPortalProxyAddress"`
+	DisputeGameFactoryProxyAddress            common.Address               `json:"disputeGameFactoryProxyAddress"`
+	AnchorStateRegistryProxyAddress           common.Address               `json:"anchorStateRegistryProxyAddress"`
+	AnchorStateRegistryImplAddress            common.Address               `json:"anchorStateRegistryImplAddress"`
+	FaultDisputeGameAddress                   common.Address               `json:"faultDisputeGameAddress"`
+	PermissionedDisputeGameAddress            common.Address               `json:"permissionedDisputeGameAddress"`
+	DelayedWETHPermissionedGameProxyAddress   common.Address               `json:"delayedWETHPermissionedGameProxyAddress"`
+	DelayedWETHPermissionlessGameProxyAddress common.Address               `json:"delayedWETHPermissionlessGameProxyAddress"`
+	DataAvailabilityChallengeProxyAddress     common.Address               `json:"dataAvailabilityChallengeProxyAddress"`
+	DataAvailabilityChallengeImplAddress      common.Address               `json:"dataAvailabilityChallengeImplAddress"`
+	AdditionalDisputeGames                    []AdditionalDisputeGameState `json:"additionalDisputeGames"`
 
 	Allocs *GzipData[foundry.ForgeAllocs] `json:"allocs"`
 

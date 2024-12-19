@@ -19,7 +19,7 @@ type DeployDisputeGameInput struct {
 	MaxClockDuration         uint64
 	DelayedWethProxy         common.Address
 	AnchorStateRegistryProxy common.Address
-	L2ChainId                uint64
+	L2ChainId                common.Hash
 	Proposer                 common.Address
 	Challenger               common.Address
 }
@@ -44,5 +44,5 @@ func DeployDisputeGame(
 	host *script.Host,
 	input DeployDisputeGameInput,
 ) (DeployDisputeGameOutput, error) {
-	return RunBasicScript[DeployDisputeGameInput, DeployDisputeGameOutput](host, input, "DeployDisputeGame.s.sol", "DeployDisputeGame")
+	return RunScriptSingle[DeployDisputeGameInput, DeployDisputeGameOutput](host, input, "DeployDisputeGame.s.sol", "DeployDisputeGame")
 }

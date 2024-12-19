@@ -26,5 +26,5 @@ func DeployAsterisc(
 	host *script.Host,
 	input DeployAsteriscInput,
 ) (DeployAsteriscOutput, error) {
-	return RunBasicScript[DeployAsteriscInput, DeployAsteriscOutput](host, input, "DeployAsterisc.s.sol", "DeployAsterisc")
+	return RunScriptSingle[DeployAsteriscInput, DeployAsteriscOutput](host, input, "DeployAsterisc.s.sol", "DeployAsterisc")
 }

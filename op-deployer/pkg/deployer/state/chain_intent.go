@@ -8,6 +8,34 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
+type VMType string
+
+const (
+	VMTypeAlphabet = "ALPHABET"
+	VMTypeCannon1  = "CANNON1"
+	VMTypeCannon2  = "CANNON2"
+)
+
+type ChainProofParams struct {
+	DisputeGameType                         uint32      `json:"disputeGameType" toml:"disputeGameType"`
+	DisputeAbsolutePrestate                 common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
+	DisputeMaxGameDepth                     uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
+	DisputeSplitDepth                       uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
+	DisputeClockExtension                   uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
+	DisputeMaxClockDuration                 uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+	DangerouslyAllowCustomDisputeParameters bool        `json:"dangerouslyAllowCustomDisputeParameters" toml:"dangerouslyAllowCustomDisputeParameters"`
+}
+
+type AdditionalDisputeGame struct {
+	ChainProofParams
+	VMType                       VMType
+	UseCustomOracle              bool
+	OracleMinProposalSize        uint64
+	OracleChallengePeriodSeconds uint64
+	MakeRespected                bool
+	StartingAnchorRoot           common.Hash
+}
+
 type ChainIntent struct {
 	ID                         common.Hash               `json:"id" toml:"id"`
 	BaseFeeVaultRecipient      common.Address            `json:"baseFeeVaultRecipient" toml:"baseFeeVaultRecipient"`
@@ -19,6 +47,7 @@ type ChainIntent struct {
 	Roles                      ChainRoles                `json:"roles" toml:"roles"`
 	DeployOverrides            map[string]any            `json:"deployOverrides" toml:"deployOverrides"`
 	DangerousAltDAConfig       genesis.AltDADeployConfig `json:"dangerousAltDAConfig,omitempty" toml:"dangerousAltDAConfig,omitempty"`
+	AdditionalDisputeGames     []AdditionalDisputeGame   `json:"dangerousAdditionalDisputeGames" toml:"dangerousAdditionalDisputeGames,omitempty"`
 }
 
 type ChainRoles struct {

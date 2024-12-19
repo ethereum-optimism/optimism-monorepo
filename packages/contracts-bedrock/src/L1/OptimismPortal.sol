@@ -146,18 +146,14 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 2.8.1-beta.5
+    /// @custom:semver 2.8.1-beta.6
     function version() public pure virtual returns (string memory) {
-        return "2.8.1-beta.5";
+        return "2.8.1-beta.6";
     }
 
     /// @notice Constructs the OptimismPortal contract.
     constructor() {
-        initialize({
-            _l2Oracle: IL2OutputOracle(address(0)),
-            _systemConfig: ISystemConfig(address(0)),
-            _superchainConfig: ISuperchainConfig(address(0))
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
@@ -169,7 +165,7 @@ contract OptimismPortal is Initializable, ResourceMetering, ISemver {
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig
     )
-        public
+        external
         initializer
     {
         l2Oracle = _l2Oracle;

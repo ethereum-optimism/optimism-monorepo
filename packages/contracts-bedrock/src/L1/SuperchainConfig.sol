@@ -87,7 +87,7 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _upgrader    Address of the upgrader, can add a chain to the dependency set.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, address _upgrader, bool _paused) public initializer {
+    function initialize(address _guardian, address _upgrader, bool _paused) external initializer {
         _setGuardian(_guardian);
         _setUpgrader(_upgrader);
         if (_paused) {

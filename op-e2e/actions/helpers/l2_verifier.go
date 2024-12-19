@@ -5,11 +5,13 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 
 	"github.com/stretchr/testify/require"
 	"golang.org/x/time/rate"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	gnode "github.com/ethereum/go-ethereum/node"
 	"github.com/ethereum/go-ethereum/rpc"
@@ -31,6 +33,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/safego"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 // L2Verifier is an actor that functions like a rollup node,
@@ -65,6 +68,8 @@ type L2Verifier struct {
 
 	rpc *rpc.Server
 
+	interopRPC *rpc.Server
+
 	failRPC func(call []rpc.BatchElem) error // mock error
 
 	// The L2Verifier actor is embedded in the L2Sequencer actor,
@@ -79,6 +84,10 @@ type L2API interface {
 	// GetProof returns a proof of the account, it may return a nil result without error if the address was not found.
 	GetProof(ctx context.Context, address common.Address, storage []common.Hash, blockTag string) (*eth.AccountResult, error)
 	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
+
+	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
+	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
+	ChainID(ctx context.Context) (*big.Int, error)
 }
 
 type safeDB interface {
@@ -181,6 +190,13 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 
 	t.Cleanup(rollupNode.rpc.Stop)
 
+	if cfg.InteropTime != nil {
+		rollupNode.interopRPC = rpc.NewServer()
+		api := &interop.TemporaryInteropAPI{Eng: eng}
+		require.NoError(t, rollupNode.interopRPC.RegisterName("interop", api))
+		t.Cleanup(rollupNode.interopRPC.Stop)
+	}
+
 	// setup RPC server for rollup node, hooked to the actor as backend
 	m := &testutils.TestRPCMetrics{}
 	backend := &l2VerifierBackend{verifier: rollupNode}
@@ -201,6 +217,13 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	}
 	require.NoError(t, gnode.RegisterApis(apis, nil, rollupNode.rpc), "failed to set up APIs")
 	return rollupNode
+}
+
+func (v *L2Verifier) InteropSyncNode(t Testing) syncnode.SyncNode {
+	require.NotNil(t, v.interopRPC, "interop rpc must be running")
+	cl := rpc.DialInProc(v.interopRPC)
+	bCl := client.NewBaseRPCClient(cl)
+	return syncnode.NewRPCSyncNode("action-tests-l2-verifier", bCl)
 }
 
 type l2VerifierBackend struct {

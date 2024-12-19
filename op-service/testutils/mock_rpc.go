@@ -59,11 +59,11 @@ func (m *MockRPC) ExpectBatchCallContext(b []rpc.BatchElem, err error) {
 	}).Return(err)
 }
 
-func (m *MockRPC) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
-	out := m.Mock.Called(ctx, channel, args)
+func (m *MockRPC) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	out := m.Mock.Called(ctx, namespace, channel, args)
 	return out.Get(0).(ethereum.Subscription), out.Error(1)
 }
 
-func (m *MockRPC) ExpectEthSubscribe(channel any, args []any, sub ethereum.Subscription, err error) {
-	m.Mock.On("EthSubscribe", mock.Anything, channel, args).Once().Return(sub, err)
+func (m *MockRPC) ExpectSubscribe(namespace string, channel any, args []any, sub ethereum.Subscription, err error) {
+	m.Mock.On("Subscribe", mock.Anything, namespace, channel, args).Once().Return(sub, err)
 }

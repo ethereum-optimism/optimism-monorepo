@@ -13,6 +13,8 @@ import (
 )
 
 func TestDeployMIPS(t *testing.T) {
+	t.Parallel()
+
 	_, artifacts := testutil.LocalArtifacts(t)
 
 	host, err := env.DefaultScriptHost(

@@ -412,6 +412,9 @@ func unmarshalTransactions(in []byte) (txs []Data, err error) {
 		return nil, fmt.Errorf("invalid first tx offset: %d, out of scope %d", firstTxOffset, scope)
 	}
 	txCount := firstTxOffset / 4
+	if txCount == 0 && scope > 0 {
+		return nil, fmt.Errorf("invalid first tx offset: %d, no transactions in scope %d", firstTxOffset, scope)
+	}
 	if txCount > maxTransactionsPerPayload {
 		return nil, fmt.Errorf("too many transactions: %d > %d", txCount, maxTransactionsPerPayload)
 	}

@@ -192,7 +192,7 @@ Prints the list of current claims in a dispute game.
   --l1-beacon=<L1_BEACON> \
   --l2-eth-rpc=<L2_ETH_RPC> \
   --rollup-rpc=<ROLLUP_RPC> \
-  --data-dir=<DATA_DIR> \
+  --datadir=<DATA_DIR> \
   --prestates-url=<PRESTATES_URL> \
   --run=<RUN_CONFIG>
 ```

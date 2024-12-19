@@ -44,13 +44,13 @@ func (cl *SupervisorClient) Start(ctx context.Context) error {
 	return result
 }
 
-func (cl *SupervisorClient) AddL2RPC(ctx context.Context, rpc string) error {
+func (cl *SupervisorClient) AddL2RPC(ctx context.Context, rpc string, auth eth.Bytes32) error {
 	var result error
 	err := cl.client.CallContext(
 		ctx,
 		&result,
 		"admin_addL2RPC",
-		rpc)
+		rpc, auth)
 	if err != nil {
 		return fmt.Errorf("failed to Add L2 to Supervisor (rpc: %s): %w", rpc, err)
 	}
@@ -114,6 +114,15 @@ func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID
 	return result, err
 }
 
+func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockRef, error) {
+	var result eth.BlockRef
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_finalizedL1")
+	return result, err
+}
+
 func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
 	var result eth.BlockRef
 	err := cl.client.CallContext(
@@ -142,15 +151,6 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.C
 		chainID,
 		derivedFrom,
 		lastDerived)
-}
-
-func (cl *SupervisorClient) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalizedL1 eth.L1BlockRef) error {
-	return cl.client.CallContext(
-		ctx,
-		nil,
-		"supervisor_updateFinalizedL1",
-		chainID,
-		finalizedL1)
 }
 
 func (cl *SupervisorClient) Close() {

@@ -7,21 +7,19 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
 	"sort"
 	"strings"
-	"sync"
-	"sync/atomic"
 
+	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
 	"github.com/google/go-cmp/cmp"
 )
 
 var excludeContracts = []string{
 	// External dependencies
-	"IERC20", "IERC721", "IERC721Enumerable", "IERC721Upgradeable", "IERC721Metadata",
+	"IERC20", "IERC721", "IERC5267", "IERC721Enumerable", "IERC721Upgradeable", "IERC721Metadata",
 	"IERC165", "IERC165Upgradeable", "ERC721TokenReceiver", "ERC1155TokenReceiver",
 	"ERC777TokensRecipient", "Guard", "IProxy", "Vm", "VmSafe", "IMulticall3",
-	"IERC721TokenReceiver", "IProxyCreationCallback", "IBeacon",
+	"IERC721TokenReceiver", "IProxyCreationCallback", "IBeacon", "IEIP712",
 
 	// EAS
 	"IEAS", "ISchemaResolver", "ISchemaRegistry",
@@ -52,116 +50,66 @@ type Artifact struct {
 }
 
 func main() {
-	if err := run(); err != nil {
-		writeStderr("an error occurred: %v", err)
+	if _, err := common.ProcessFilesGlob(
+		[]string{"forge-artifacts/**/*.json"},
+		[]string{},
+		processFile,
+	); err != nil {
+		fmt.Printf("error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func writeStderr(msg string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, msg+"\n", args...)
-}
-
-func run() error {
+func processFile(artifactPath string) (*common.Void, []error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current working directory: %w", err)
+		return nil, []error{fmt.Errorf("failed to get current working directory: %w", err)}
 	}
-
 	artifactsDir := filepath.Join(cwd, "forge-artifacts")
 
-	artifactFiles, err := glob(artifactsDir, ".json")
-	if err != nil {
-		return fmt.Errorf("failed to get artifact files: %w", err)
-	}
+	contractName := strings.Split(filepath.Base(artifactPath), ".")[0]
 
-	// Remove duplicates from artifactFiles
-	uniqueArtifacts := make(map[string]string)
-	for contractName, artifactPath := range artifactFiles {
-		baseName := strings.Split(contractName, ".")[0]
-		uniqueArtifacts[baseName] = artifactPath
-	}
-
-	var hasErr int32
-	var outMtx sync.Mutex
-	fail := func(msg string, args ...any) {
-		outMtx.Lock()
-		writeStderr("❌  "+msg, args...)
-		outMtx.Unlock()
-		atomic.StoreInt32(&hasErr, 1)
-	}
-
-	sem := make(chan struct{}, runtime.NumCPU())
-	for contractName, artifactPath := range uniqueArtifacts {
-		contractName := contractName
-		artifactPath := artifactPath
-
-		sem <- struct{}{}
-
-		go func() {
-			defer func() {
-				<-sem
-			}()
-
-			if err := processArtifact(contractName, artifactPath, artifactsDir, fail); err != nil {
-				fail("%s: %v", contractName, err)
-			}
-		}()
-	}
-
-	for i := 0; i < cap(sem); i++ {
-		sem <- struct{}{}
-	}
-
-	if atomic.LoadInt32(&hasErr) == 1 {
-		return errors.New("interface check failed, see logs above")
-	}
-
-	return nil
-}
-
-func processArtifact(contractName, artifactPath, artifactsDir string, fail func(string, ...any)) error {
 	if isExcluded(contractName) {
-		return nil
+		return nil, nil
 	}
 
 	artifact, err := readArtifact(artifactPath)
 	if err != nil {
-		return fmt.Errorf("failed to read artifact: %w", err)
+		return nil, []error{fmt.Errorf("failed to read artifact: %w", err)}
 	}
 
 	contractDef := getContractDefinition(artifact, contractName)
 	if contractDef == nil {
-		return nil // Skip processing if contract definition is not found
+		return nil, nil // Skip processing if contract definition is not found
 	}
 
 	if contractDef.ContractKind != "interface" {
-		return nil
+		return nil, nil
 	}
 
 	if !strings.HasPrefix(contractName, "I") {
-		fail("%s: Interface does not start with 'I'", contractName)
+		return nil, []error{fmt.Errorf("%s: Interface does not start with 'I'", contractName)}
 	}
 
 	semver, err := getContractSemver(artifact)
 	if err != nil {
-		return err
+		return nil, []error{fmt.Errorf("failed to get contract semver: %w", err)}
 	}
 
 	if semver != "solidity^0.8.0" {
-		fail("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)
+		return nil, []error{fmt.Errorf("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)}
 	}
 
 	contractBasename := contractName[1:]
 	correspondingContractFile := filepath.Join(artifactsDir, contractBasename+".sol", contractBasename+".json")
 
 	if _, err := os.Stat(correspondingContractFile); errors.Is(err, os.ErrNotExist) {
-		return nil
+		return nil, nil
 	}
 
 	contractArtifact, err := readArtifact(correspondingContractFile)
 	if err != nil {
-		return fmt.Errorf("failed to read corresponding contract artifact: %w", err)
+		return nil, []error{fmt.Errorf("failed to read corresponding contract artifact: %w", err)}
 	}
 
 	interfaceABI := artifact.ABI
@@ -169,23 +117,23 @@ func processArtifact(contractName, artifactPath, artifactsDir string, fail func(
 
 	normalizedInterfaceABI, err := normalizeABI(interfaceABI)
 	if err != nil {
-		return fmt.Errorf("failed to normalize interface ABI: %w", err)
+		return nil, []error{fmt.Errorf("failed to normalize interface ABI: %w", err)}
 	}
 
 	normalizedContractABI, err := normalizeABI(contractABI)
 	if err != nil {
-		return fmt.Errorf("failed to normalize contract ABI: %w", err)
+		return nil, []error{fmt.Errorf("failed to normalize contract ABI: %w", err)}
 	}
 
 	match, err := compareABIs(normalizedInterfaceABI, normalizedContractABI)
 	if err != nil {
-		return fmt.Errorf("failed to compare ABIs: %w", err)
+		return nil, []error{fmt.Errorf("failed to compare ABIs: %w", err)}
 	}
 	if !match {
-		fail("%s: Differences found in ABI between interface and actual contract", contractName)
+		return nil, []error{fmt.Errorf("%s: Differences found in ABI between interface and actual contract", contractName)}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func readArtifact(path string) (*Artifact, error) {
@@ -337,18 +285,4 @@ func isExcluded(contractName string) bool {
 		}
 	}
 	return false
-}
-
-func glob(dir string, ext string) (map[string]string, error) {
-	out := make(map[string]string)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && filepath.Ext(path) == ext {
-			out[strings.TrimSuffix(filepath.Base(path), ext)] = path
-		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
-	}
-	return out, nil
 }

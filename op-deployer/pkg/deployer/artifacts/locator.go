@@ -13,6 +13,7 @@ type schemeUnmarshaler func(string) (*Locator, error)
 var schemeUnmarshalerDispatch = map[string]schemeUnmarshaler{
 	"tag":   unmarshalTag,
 	"file":  unmarshalURL,
+	"http":  unmarshalURL,
 	"https": unmarshalURL,
 }
 
@@ -43,6 +44,15 @@ func MustNewLocatorFromTag(tag string) *Locator {
 type Locator struct {
 	URL *url.URL
 	Tag string
+}
+
+func NewFileLocator(path string) (*Locator, error) {
+	u, err := url.Parse("file://" + path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	return &Locator{URL: u}, nil
 }
 
 func (a *Locator) UnmarshalText(text []byte) error {
