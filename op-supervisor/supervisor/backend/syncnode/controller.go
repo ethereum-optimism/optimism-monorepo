@@ -16,14 +16,56 @@ type chainsDB interface {
 	LocalSafe(types.ChainID) (types.BlockSeal, types.BlockSeal, error)
 	UpdateLocalSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
 	UpdateCrossSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
+	SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error
+	SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error
 }
 
 type ManagedNode struct {
-	Node SyncControl
-	// TODO active subscriptions
+	log                         log.Logger
+	Node                        SyncControl
+	chainID                     types.ChainID
+	CrossSafeUpdateSubscription chan types.DerivedPair
+	FinalizedUpdateSubscription chan eth.BlockID
+	cancel                      chan struct{}
+}
+
+func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chainsDB) *ManagedNode {
+	m := &ManagedNode{
+		log:     log,
+		Node:    node,
+		chainID: id,
+		cancel:  make(chan struct{}),
+	}
+	m.SubscribeToDBEvents(id, db)
+	return m
+}
+
+func (m *ManagedNode) SubscribeToDBEvents(id types.ChainID, db chainsDB) {
+	m.CrossSafeUpdateSubscription = make(chan types.DerivedPair, 10)
+	m.FinalizedUpdateSubscription = make(chan eth.BlockID, 10)
+	db.SubscribeCrossSafe(id, m.CrossSafeUpdateSubscription)
+	db.SubscribeFinalized(id, m.FinalizedUpdateSubscription)
+}
+
+func (m *ManagedNode) Start() {
+	go func() {
+		for {
+			select {
+			case <-m.cancel:
+				return
+			case pair := <-m.CrossSafeUpdateSubscription:
+				m.log.Debug("updating cross safe", "chain", m.chainID, "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
+				m.Node.UpdateCrossSafe(context.Background(), pair.Derived.ID(), pair.DerivedFrom.ID())
+			case id := <-m.FinalizedUpdateSubscription:
+				m.log.Debug("updating finalized", "chain", m.chainID, "id", id)
+				m.Node.UpdateFinalized(context.Background(), id)
+			}
+		}
+	}()
 }
 
 func (m *ManagedNode) Close() error {
+	m.cancel <- struct{}{}
 	return nil
 }
 
@@ -33,7 +75,7 @@ func (m *ManagedNode) Close() error {
 type SyncNodesController struct {
 	logger log.Logger
 
-	controllers locks.RWMap[*ManagedNode, struct{}]
+	controllers locks.RWMap[types.ChainID, locks.RWMap[*ManagedNode, struct{}]]
 
 	db chainsDB
 
@@ -53,8 +95,15 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 	if !snc.depSet.HasChain(id) {
 		return fmt.Errorf("chain %v not in dependency set", id)
 	}
-	snc.controllers.Set(&ManagedNode{Node: ctrl}, struct{}{})
+	// lazy init the controllers map for this chain
+	if !snc.controllers.Has(id) {
+		snc.controllers.Set(id, locks.RWMap[*ManagedNode, struct{}]{})
+	}
+	controllersForChain, _ := snc.controllers.Get(id)
+	node := NewManagedNode(snc.logger, id, ctrl, snc.db)
+	controllersForChain.Set(node, struct{}{})
 	snc.maybeInitSafeDB(id, ctrl)
+	node.Start()
 	return nil
 }
 

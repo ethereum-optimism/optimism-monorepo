@@ -39,6 +39,14 @@ func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, 
 	return nil
 }
 
+func (m *mockChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error {
+	return nil
+}
+
+func (m *mockChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error {
+	return nil
+}
+
 type mockSyncControl struct {
 	anchorPointFn       func(ctx context.Context) (types.DerivedPair, error)
 	provideL1Fn         func(ctx context.Context, ref eth.BlockRef) error
