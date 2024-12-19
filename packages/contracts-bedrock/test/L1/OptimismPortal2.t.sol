@@ -162,7 +162,7 @@ contract OptimismPortal2_Test is CommonTest {
         uint256 portalBalanceBefore = address(optimismPortal2).balance;
         uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
 
-        _value = bound(_value, 0, type(uint256).max - balanceBefore);
+        _value = bound(_value, 0, type(uint256).max - lockboxBalanceBefore);
 
         vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
@@ -266,7 +266,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         uint256 portalBalanceBefore = address(optimismPortal2).balance;
         uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
-        _mint = bound(_mint, 0, type(uint256).max - balanceBefore);
+        _mint = bound(_mint, 0, type(uint256).max - lockboxBalanceBefore);
 
         // EOA emulation
         vm.expectEmit(address(optimismPortal2));
@@ -319,7 +319,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         uint256 portalBalanceBefore = address(optimismPortal2).balance;
         uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
-        _mint = bound(_mint, 0, type(uint256).max - balanceBefore);
+        _mint = bound(_mint, 0, type(uint256).max - lockboxBalanceBefore);
 
         vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({

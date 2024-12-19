@@ -5,9 +5,6 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Unauthorized, Paused as PausedError } from "src/libraries/errors/CommonErrors.sol";
 
-// Targent contract
-import { SharedLockbox } from "src/L1/SharedLockbox.sol";
-
 // Interfaces
 import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 

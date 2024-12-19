@@ -79,12 +79,12 @@ contract SetDisputeGameImpl_Test is Test {
         input = new SetDisputeGameImplInput();
         DisputeGameFactory dgfImpl = new DisputeGameFactory();
         OptimismPortal2 portalImpl = new OptimismPortal2(0, 0);
-        SuperchainConfig supConfigImpl = new SuperchainConfig();
+        SuperchainConfig supConfigImpl = new SuperchainConfig(address(0));
 
         Proxy supConfigProxy = new Proxy(address(1));
         vm.prank(address(1));
         supConfigProxy.upgradeToAndCall(
-            address(supConfigImpl), abi.encodeCall(supConfigImpl.initialize, (address(this), false))
+            address(supConfigImpl), abi.encodeCall(supConfigImpl.initialize, (address(this), address(this), false))
         );
 
         Proxy factoryProxy = new Proxy(address(1));

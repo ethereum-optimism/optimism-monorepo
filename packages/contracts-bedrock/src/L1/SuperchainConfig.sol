@@ -68,8 +68,8 @@ contract SuperchainConfig is Initializable, ISemver {
     error ChainAlreadyAdded();
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.4
-    string public constant version = "1.1.1-beta.4";
+    /// @custom:semver 1.1.1-beta.5
+    string public constant version = "1.1.1-beta.5";
 
     // Mapping from chainId to SystemConfig address
     mapping(uint256 => address) public systemConfigs;
