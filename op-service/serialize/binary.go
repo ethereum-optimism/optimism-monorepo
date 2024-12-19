@@ -30,7 +30,11 @@ func LoadSerializedBinary[X any](inputPath string) (*X, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to open file %q: %w", inputPath, err)
 	}
-	defer f.Close()
+	defer func() {
+		if cerr := f.Close(); cerr != nil && err == nil {
+			err = fmt.Errorf("failed to close file: %w", cerr)
+		}
+	}()
 
 	var x X
 	serializable, ok := reflect.ValueOf(&x).Interface().(Deserializable)
