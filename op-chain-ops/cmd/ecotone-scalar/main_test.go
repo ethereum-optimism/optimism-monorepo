@@ -35,7 +35,8 @@ func TestMain_PreEcotoneScalar(t *testing.T) {
 }
 
 func TestMain_PostEcotoneScalar(t *testing.T) {
-	output, err := runMainWithArgs(t, []string{"-decode=452312848583266388373324160190187140051835877600158453279135543542576845931"})
+	longScalar := "452312848583266388373324160190187140051835877600158453279135543542576845931"
+	output, err := runMainWithArgs(t, []string{"-decode=" + longScalar})
 	require.NoError(t, err)
 
 	o := new(outputTy)
@@ -50,7 +51,8 @@ func TestMain_PostEcotoneScalar(t *testing.T) {
 		ScalarHex:         "0x010000000000000000000000000000000000000000000000000f79c50000146b",
 		Scalar:            new(big.Int),
 	}
-	_, ok := expected.Scalar.SetString("452312848583266388373324160190187140051835877600158453279135543542576845931", 0)
+	_, ok := expected.Scalar.SetString(longScalar, 0)
+
 	require.True(t, ok)
 	require.Equal(t, expected, o)
 }
