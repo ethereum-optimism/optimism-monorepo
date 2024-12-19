@@ -7,7 +7,7 @@ import { Vm } from "forge-std/Vm.sol";
 
 // Scripts
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
-import { ForkProd } from "test/setup/ForkProd.s.sol";
+import { ForkLive } from "test/setup/ForkLive.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
@@ -140,7 +140,7 @@ contract Setup {
                 "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
             );
 
-            vm.etch(address(deploy), vm.getDeployedCode("ForkProd.s.sol:ForkProd"));
+            vm.etch(address(deploy), vm.getDeployedCode("ForkLive.s.sol:ForkLive"));
         } else {
             vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         }

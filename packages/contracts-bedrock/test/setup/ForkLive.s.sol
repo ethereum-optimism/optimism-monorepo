@@ -16,7 +16,7 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 
-/// @title ForkProd
+/// @title ForkLive
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
 ///         alternative to Deploy.s.sol, when `FORK_TEST=true` is set in the env.
 ///         Like Deploy.s.sol this script saves the system addresses to disk so that they can be read into memory later
@@ -25,7 +25,7 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
-contract ForkProd is Deployer {
+contract ForkLive is Deployer {
     using stdJson for string;
 
     /// @notice Returns the base chain name to use for forking
