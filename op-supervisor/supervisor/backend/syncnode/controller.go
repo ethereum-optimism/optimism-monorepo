@@ -27,6 +27,10 @@ type chainsDB interface {
 type backend interface {
 	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
 	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
+	LocalSafe(ctx context.Context, chainID types.ChainID) (derivedFrom eth.BlockID, derived eth.BlockID, err error)
+	LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
+	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 }
 
 const (
@@ -175,9 +179,47 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedPair) {
 	if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
 		m.log.Warn("Backend failed to process local-safe update",
 			"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
-		// TODO: if conflict error -> send reset to drop
-		// TODO: if future error -> send reset to rewind
-		// TODO: if out of order -> warn, just old data
+		m.resetSignal(err, pair.DerivedFrom)
+	}
+}
+
+func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
+	// if conflict error -> send reset to drop
+	// if future error -> send reset to rewind
+	// if out of order -> warn, just old data
+	ctx, cancel := context.WithTimeout(m.ctx, dbTimeout)
+	defer cancel()
+	u, err := m.backend.LatestUnsafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Node failed to reset", "err", err)
+	}
+	f, err := m.backend.Finalized(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Node failed to reset", "err", err)
+	}
+	switch errSignal {
+	case types.ErrConflict:
+		s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
+		log.Debug("Node detected conflict, resetting", "unsafe", u, "safe", s, "finalized", f)
+		err = m.Node.Reset(ctx, u, s, f)
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
+	case types.ErrFuture:
+		_, s, err := m.backend.LocalSafe(ctx, m.chainID)
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
+		log.Debug("Node detected future block, resetting", "unsafe", u, "safe", s, "finalized", f)
+		err = m.Node.Reset(ctx, u, s, f)
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
+	case types.ErrOutOfOrder:
+		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
 	}
 }
 

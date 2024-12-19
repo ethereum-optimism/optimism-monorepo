@@ -103,6 +103,18 @@ func (db *ChainsDB) IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) erro
 	return nil
 }
 
+func (db *ChainsDB) SafeDerivedAt(chainID types.ChainID, derivedFrom eth.BlockID) (types.BlockSeal, error) {
+	lDB, ok := db.localDBs.Get(chainID)
+	if !ok {
+		return types.BlockSeal{}, types.ErrUnknownChain
+	}
+	derived, err := lDB.LastDerivedAt(derivedFrom)
+	if err != nil {
+		return types.BlockSeal{}, fmt.Errorf("failed to find derived block %s: %w", derivedFrom, err)
+	}
+	return derived, nil
+}
+
 func (db *ChainsDB) LocalUnsafe(chainID types.ChainID) (types.BlockSeal, error) {
 	eventsDB, ok := db.logDBs.Get(chainID)
 	if !ok {

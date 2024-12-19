@@ -444,6 +444,30 @@ func (su *SupervisorBackend) SafeView(ctx context.Context, chainID types.ChainID
 	}, nil
 }
 
+func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, eth.BlockID, error) {
+	df, d, err := su.chainDBs.LocalSafe(chainID)
+	if err != nil {
+		return eth.BlockID{}, eth.BlockID{}, err
+	}
+	return df.ID(), d.ID(), nil
+}
+
+func (su *SupervisorBackend) LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	v, err := su.chainDBs.LocalUnsafe(chainID)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return v.ID(), nil
+}
+
+func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
+	v, err := su.chainDBs.SafeDerivedAt(chainID, derivedFrom)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return v.ID(), nil
+}
+
 func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.Finalized(chainID)
 	if err != nil {
