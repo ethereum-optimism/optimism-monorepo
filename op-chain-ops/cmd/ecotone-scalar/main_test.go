@@ -26,30 +26,19 @@ func runMainWithArgs(t *testing.T, args []string) (string, error) {
 
 func TestMain_PreEcotoneScalar(t *testing.T) {
 	output, err := runMainWithArgs(t, []string{"-decode=684000"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v, output: %s", err, output)
-	}
+	require.NoError(t, err)
 
 	o := new(outputTy)
-
 	err = json.Unmarshal([]byte(output), o)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	if o.ScalarHex != "0x00000000000000000000000000000000000000000000000000000000000a6fe0" {
-		t.Errorf("did not find expected output: %s", output)
-	}
+	require.NoError(t, err)
+	require.Equal(t, "0x00000000000000000000000000000000000000000000000000000000000a6fe0", o.ScalarHex)
 }
 
 func TestMain_PostEcotoneScalar(t *testing.T) {
 	output, err := runMainWithArgs(t, []string{"-decode=452312848583266388373324160190187140051835877600158453279135543542576845931"})
-	if err != nil {
-		t.Fatalf("unexpected error: %v, output: %s", err, output)
-	}
+	require.NoError(t, err)
 
 	o := new(outputTy)
-
 	err = json.Unmarshal([]byte(output), o)
 	if err != nil {
 		t.Fatal(err)
@@ -62,9 +51,6 @@ func TestMain_PostEcotoneScalar(t *testing.T) {
 		Scalar:            new(big.Int),
 	}
 	_, ok := expected.Scalar.SetString("452312848583266388373324160190187140051835877600158453279135543542576845931", 0)
-
 	require.True(t, ok)
-
 	require.Equal(t, expected, o)
-
 }
