@@ -163,7 +163,7 @@ func ValidateWithdrawals(ctx Args, canyonActive bool) error {
 	}
 
 	if canyonActive && block.Withdrawals() == nil {
-		return errors.New("No nonwithdrawals in a canyon block")
+		return errors.New("No withdrawals in a canyon block")
 	} else if canyonActive && len(block.Withdrawals()) > 0 {
 		return errors.New("Withdrawals length is not zero in a canyon block")
 	} else if !canyonActive && block.Withdrawals() != nil {
