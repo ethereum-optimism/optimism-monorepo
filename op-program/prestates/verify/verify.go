@@ -44,11 +44,19 @@ func main() {
 		os.Exit(2)
 	}
 
+	stringCompare := func(a, b string) int {
+		if a > b {
+			return 1
+		} else if a == b {
+			return 0
+		}
+		return -1
+	}
 	sortFunc := func(a, b prestates.Release) int {
 		if a.Version > b.Version {
 			return 1
 		} else if a.Version == b.Version {
-			return 0
+			return stringCompare(string(a.Type), string(b.Type))
 		}
 		return -1
 	}
@@ -68,11 +76,12 @@ func main() {
 		expectedStr := get(expected, i)
 		actualStr := get(actual, i)
 		releaseDiffers := expectedStr != actualStr
+		releaseDiffers = releaseDiffers || (expected[i].Type != actual[i].Type)
 		marker := "✅"
 		if releaseDiffers {
 			marker = "❌"
 		}
-		report += fmt.Sprintf("%v %d\tExpected: %v\tActual: %v\n", marker, i, expectedStr, actualStr)
+		report += fmt.Sprintf("%v %d\tExpected: %v \tActual: %v \t Expected Type: %v \t Acutal Type: %v \t\n", marker, i, expectedStr, actualStr, expected[i].Type, actual[i].Type)
 		differs = differs || releaseDiffers
 	}
 	fmt.Println(report)
