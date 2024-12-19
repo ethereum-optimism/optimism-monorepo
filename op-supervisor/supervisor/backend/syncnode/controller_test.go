@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum"
+	gethevent "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -39,12 +40,12 @@ func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, 
 	return nil
 }
 
-func (m *mockChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error {
-	return nil
+func (m *mockChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) (gethevent.Subscription, error) {
+	return nil, nil
 }
 
-func (m *mockChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error {
-	return nil
+func (m *mockChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) (gethevent.Subscription, error) {
+	return nil, nil
 }
 
 type mockSyncControl struct {

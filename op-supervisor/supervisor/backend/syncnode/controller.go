@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	gethevent "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -16,17 +17,18 @@ type chainsDB interface {
 	LocalSafe(types.ChainID) (types.BlockSeal, types.BlockSeal, error)
 	UpdateLocalSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
 	UpdateCrossSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
-	SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error
-	SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error
+	SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) (gethevent.Subscription, error)
+	SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) (gethevent.Subscription, error)
 }
 
 type ManagedNode struct {
-	log                         log.Logger
-	Node                        SyncControl
-	chainID                     types.ChainID
-	CrossSafeUpdateSubscription chan types.DerivedPair
-	FinalizedUpdateSubscription chan eth.BlockID
-	cancel                      chan struct{}
+	log                 log.Logger
+	Node                SyncControl
+	chainID             types.ChainID
+	crossSafeUpdateChan chan types.DerivedPair
+	finalizedUpdateChan chan eth.BlockID
+	subscriptions       []gethevent.Subscription
+	cancel              chan struct{}
 }
 
 func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chainsDB) *ManagedNode {
@@ -41,10 +43,19 @@ func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chain
 }
 
 func (m *ManagedNode) SubscribeToDBEvents(id types.ChainID, db chainsDB) {
-	m.CrossSafeUpdateSubscription = make(chan types.DerivedPair, 10)
-	m.FinalizedUpdateSubscription = make(chan eth.BlockID, 10)
-	db.SubscribeCrossSafe(id, m.CrossSafeUpdateSubscription)
-	db.SubscribeFinalized(id, m.FinalizedUpdateSubscription)
+	m.crossSafeUpdateChan = make(chan types.DerivedPair, 10)
+	m.finalizedUpdateChan = make(chan eth.BlockID, 10)
+	sub, err := db.SubscribeCrossSafe(id, m.crossSafeUpdateChan)
+	if err != nil {
+		m.log.Warn("failed to subscribe to cross safe", "chain", id, "error", err)
+	} else {
+		m.subscriptions = append(m.subscriptions, sub)
+	}
+	if err != nil {
+		m.log.Warn("failed to subscribe to finalized", "chain", id, "error", err)
+	} else {
+		m.subscriptions = append(m.subscriptions, sub)
+	}
 }
 
 func (m *ManagedNode) Start() {
@@ -53,10 +64,10 @@ func (m *ManagedNode) Start() {
 			select {
 			case <-m.cancel:
 				return
-			case pair := <-m.CrossSafeUpdateSubscription:
+			case pair := <-m.crossSafeUpdateChan:
 				m.log.Debug("updating cross safe", "chain", m.chainID, "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
 				m.Node.UpdateCrossSafe(context.Background(), pair.Derived.ID(), pair.DerivedFrom.ID())
-			case id := <-m.FinalizedUpdateSubscription:
+			case id := <-m.finalizedUpdateChan:
 				m.log.Debug("updating finalized", "chain", m.chainID, "id", id)
 				m.Node.UpdateFinalized(context.Background(), id)
 			}
@@ -65,6 +76,9 @@ func (m *ManagedNode) Start() {
 }
 
 func (m *ManagedNode) Close() error {
+	for _, sub := range m.subscriptions {
+		sub.Unsubscribe()
+	}
 	m.cancel <- struct{}{}
 	return nil
 }
@@ -75,7 +89,7 @@ func (m *ManagedNode) Close() error {
 type SyncNodesController struct {
 	logger log.Logger
 
-	controllers locks.RWMap[types.ChainID, locks.RWMap[*ManagedNode, struct{}]]
+	controllers locks.RWMap[types.ChainID, *locks.RWMap[*ManagedNode, struct{}]]
 
 	db chainsDB
 
@@ -97,7 +111,7 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 	}
 	// lazy init the controllers map for this chain
 	if !snc.controllers.Has(id) {
-		snc.controllers.Set(id, locks.RWMap[*ManagedNode, struct{}]{})
+		snc.controllers.Set(id, &locks.RWMap[*ManagedNode, struct{}]{})
 	}
 	controllersForChain, _ := snc.controllers.Get(id)
 	node := NewManagedNode(snc.logger, id, ctrl, snc.db)

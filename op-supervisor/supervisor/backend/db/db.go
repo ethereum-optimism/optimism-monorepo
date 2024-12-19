@@ -88,8 +88,8 @@ type ChainsDB struct {
 	crossDBs locks.RWMap[types.ChainID, CrossDerivedFromStorage]
 
 	// gethevent Feeds allow for subscription to events in the DB
-	l2FinalitySubscription locks.RWMap[types.ChainID, gethevent.FeedOf[eth.BlockID]]
-	crossSafeSubscription  locks.RWMap[types.ChainID, gethevent.FeedOf[types.DerivedPair]]
+	l2FinalitySubscription locks.RWMap[types.ChainID, *gethevent.FeedOf[eth.BlockID]]
+	crossSafeSubscription  locks.RWMap[types.ChainID, *gethevent.FeedOf[types.DerivedPair]]
 
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
@@ -148,26 +148,24 @@ func (db *ChainsDB) AddSubscriptions(chainID types.ChainID) {
 	if db.crossSafeSubscription.Has(chainID) {
 		db.logger.Warn("overwriting existing cross-safe subscription for chain", "chain", chainID)
 	}
-	db.l2FinalitySubscription.Set(chainID, gethevent.FeedOf[eth.BlockID]{})
-	db.crossSafeSubscription.Set(chainID, gethevent.FeedOf[types.DerivedPair]{})
+	db.l2FinalitySubscription.Set(chainID, &gethevent.FeedOf[eth.BlockID]{})
+	db.crossSafeSubscription.Set(chainID, &gethevent.FeedOf[types.DerivedPair]{})
 }
 
-func (db *ChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) error {
+func (db *ChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedPair) (gethevent.Subscription, error) {
 	sub, ok := db.crossSafeSubscription.Get(chainID)
 	if !ok {
-		return fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
+		return nil, fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
 	}
-	sub.Subscribe(c)
-	return nil
+	return sub.Subscribe(c), nil
 }
 
-func (db *ChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) error {
+func (db *ChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) (gethevent.Subscription, error) {
 	sub, ok := db.l2FinalitySubscription.Get(chainID)
 	if !ok {
-		return fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
+		return nil, fmt.Errorf("cannot subscribe to cross-safe: %w: %s", types.ErrUnknownChain, chainID)
 	}
-	sub.Subscribe(c)
-	return nil
+	return sub.Subscribe(c), nil
 }
 
 // ResumeFromLastSealedBlock prepares the chains db to resume recording events after a restart.
