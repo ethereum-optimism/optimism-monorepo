@@ -140,7 +140,7 @@ contract Setup {
                 "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
             );
 
-            vm.etch(address(deploy), vm.getDeployedCode("Upgrade.s.sol:Upgrade"));
+            vm.etch(address(deploy), vm.getDeployedCode("ForkProd.s.sol:ForkProd"));
         } else {
             vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         }
