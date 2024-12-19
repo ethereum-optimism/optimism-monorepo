@@ -78,7 +78,7 @@ Immutable variables:
 
 - should be in `SCREAMING_SNAKE_CASE`
 - should be `internal`
-- should have a hand written getter function
+- should have a handwritten getter function
 
 This approach clearly indicates to the developer that the value is immutable, without exposing
 the non-standard casing to the interface. It also ensures that we don’t need to break the ABIs if
