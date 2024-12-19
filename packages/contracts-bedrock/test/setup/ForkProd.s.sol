@@ -16,28 +16,28 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 
-/// @title Upgrade
+/// @title ForkProd
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
-///         alternative to Deploy.s.sol, when `UPGRADE_TEST=true` is set in the env.
+///         alternative to Deploy.s.sol, when `FORK_TEST=true` is set in the env.
 ///         Like Deploy.s.sol this script saves the system addresses to disk so that they can be read into memory later
 ///         on, however rather than deploying new contracts from the local source code, it simply reads the addresses
 ///         from the superchain-registry.
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
-contract Upgrade is Deployer {
+contract ForkProd is Deployer {
     using stdJson for string;
 
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
-    function upgradeBaseChain() internal view returns (string memory) {
-        return vm.envOr("UPGRADE_BASE_CHAIN", string("mainnet"));
+    function baseChain() internal view returns (string memory) {
+        return vm.envOr("FORK_BASE_CHAIN", string("mainnet"));
     }
 
     /// @notice Returns the OP chain name to use for forking
     /// @return The OP chain name as a string
-    function upgradeOpChain() internal view returns (string memory) {
-        return vm.envOr("UPGRADE_OP_CHAIN", string("op"));
+    function opChain() internal view returns (string memory) {
+        return vm.envOr("FORK_OP_CHAIN", string("op"));
     }
 
     /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
@@ -51,10 +51,8 @@ contract Upgrade is Deployer {
         // After the upgrade is complete, the superchain-registry will be updated and the contract will be present.
         // At this point, the test will need to be updated to read the new contract from the superchain-registry using
         // either the `saveProxyAndImpl` or `save` functions.
-        string memory superchainToml =
-            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain(), "/superchain.toml"));
-        string memory opToml =
-            vm.readFile(string.concat(superchainBasePath, upgradeBaseChain(), "/", upgradeOpChain(), ".toml"));
+        string memory superchainToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/superchain.toml"));
+        string memory opToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/", opChain(), ".toml"));
 
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");

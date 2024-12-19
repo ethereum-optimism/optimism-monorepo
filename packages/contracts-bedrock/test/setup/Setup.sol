@@ -7,7 +7,7 @@ import { Vm } from "forge-std/Vm.sol";
 
 // Scripts
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
-import { Upgrade } from "test/setup/Upgrade.s.sol";
+import { ForkProd } from "test/setup/ForkProd.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
@@ -122,7 +122,7 @@ contract Setup {
         return _isForkTest;
     }
 
-    /// @dev Deploys either the Deploy.s.sol or Upgrade.s.sol contract, by fetching the bytecode dynamically using
+    /// @dev Deploys either the Deploy.s.sol or Fork.s.sol contract, by fetching the bytecode dynamically using
     ///      `vm.getDeployedCode()` and etching it into the state.
     ///      This enables us to avoid including the bytecode of those contracts in the bytecode of this contract.
     ///      If the bytecode of those contracts was included in this contract, then it will double
@@ -131,7 +131,7 @@ contract Setup {
     ///      This is a hack as we are pushing solidity to the edge.
     function setUp() public virtual {
         console.log("Setup: L1 setup start!");
-        if (vm.envOr("UPGRADE_TEST", false)) {
+        if (vm.envOr("FORK_TEST", false)) {
             string memory forkUrl = vm.envString("FORK_RPC_URL");
             _isForkTest = true;
             vm.createSelectFork(forkUrl, vm.envUint("FORK_BLOCK_NUMBER"));

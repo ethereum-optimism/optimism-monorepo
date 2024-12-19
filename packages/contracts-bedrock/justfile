@@ -75,7 +75,7 @@ test-upgrade *ARGS: build-go-ffi
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_Initialize_Test|AnchorStateRegistry_TryUpdateAnchorState_Test|FaultDisputeGame_Test|FaultDispute_1v1_Actors_Test"
   FORK_RPC_URL=$ETH_RPC_URL \
-    UPGRADE_TEST=true \
+    FORK_TEST=true \
     forge test --match-path "test/{L1,dispute}/**" \
     --no-match-contract "$NO_MATCH_CONTRACTS" \
     {{ARGS}}
@@ -92,7 +92,7 @@ anvil-fork:
 # Helpful for debugging.
 test-upgrade-against-anvil *ARGS: build-go-ffi
   FORK_RPC_URL=http://127.0.0.1:8545 \
-    UPGRADE_TEST=true \
+    FORK_TEST=true \
     forge test {{ARGS}}
 
 # Runs standard contract tests with rerun flag.
