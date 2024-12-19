@@ -717,15 +717,13 @@ contract DeployImplementations is Script {
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
-            address sharedLockbox = address(_dii.sharedLockboxProxy());
             vm.broadcast(msg.sender);
             impl = IOptimismPortal2(
                 DeployUtils.create1({
                     _name: "OptimismPortal2",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(
-                            IOptimismPortal2.__constructor__,
-                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds, sharedLockbox)
+                            IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                         )
                     )
                 })
@@ -959,7 +957,6 @@ contract DeployImplementationsInterop is DeployImplementations {
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
-            address sharedLockbox = address(_dii.sharedLockboxProxy());
             vm.broadcast(msg.sender);
             impl = IOptimismPortalInterop(
                 DeployUtils.create1({
@@ -967,7 +964,7 @@ contract DeployImplementationsInterop is DeployImplementations {
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(
                             IOptimismPortalInterop.__constructor__,
-                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds, sharedLockbox)
+                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                         )
                     )
                 })

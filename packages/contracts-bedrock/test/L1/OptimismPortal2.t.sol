@@ -55,7 +55,6 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(opImpl.superchainConfig()), address(0));
         assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(opImpl.respectedGameType().raw(), deploy.cfg().respectedGameType());
-        assertEq(opImpl.sharedLockbox(), address(sharedLockbox));
     }
 
     /// @dev Tests that the initializer sets the correct values.
@@ -70,7 +69,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(optimismPortal2.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(optimismPortal2.paused(), false);
         assertEq(optimismPortal2.respectedGameType().raw(), deploy.cfg().respectedGameType());
-        assertEq(optimismPortal2.sharedLockbox(), address(sharedLockbox));
+        assertEq(address(optimismPortal2.sharedLockbox()), address(sharedLockbox));
     }
 
     /// @dev Tests that `pause` successfully pauses
@@ -132,6 +131,20 @@ contract OptimismPortal2_Test is CommonTest {
         superchainConfig.unpause();
 
         assertEq(optimismPortal2.paused(), true);
+    }
+
+    /// @dev Tests that `sharedLockbox` returns correctly
+    function testFuzz_sharedLockbox_succeeds(address _caller, address _lockbox) external {
+        // Mock and expect the SuperchainConfig's SharedLockbox
+        vm.mockCall(
+            address(superchainConfig), abi.encodeCall(superchainConfig.SHARED_LOCKBOX, ()), abi.encode(_lockbox)
+        );
+        vm.expectCall(address(superchainConfig), 0, abi.encodeCall(superchainConfig.SHARED_LOCKBOX, ()));
+
+        vm.prank(_caller);
+        address _result = address(optimismPortal2.sharedLockbox());
+
+        assertEq(_result, _lockbox);
     }
 
     /// @dev Tests that `receive` successdully deposits ETH.

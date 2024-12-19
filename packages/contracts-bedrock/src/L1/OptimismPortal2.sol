@@ -71,9 +71,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     ///         finalized.
     uint256 internal immutable DISPUTE_GAME_FINALITY_DELAY_SECONDS;
 
-    /// @notice The Shared Lockbox contract.
-    ISharedLockbox internal immutable SHARED_LOCKBOX;
-
     /// @notice Version of the deposit event.
     uint256 internal constant DEPOSIT_VERSION = 0;
 
@@ -192,10 +189,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Constructs the OptimismPortal contract.
-    constructor(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds, address _sharedLockbox) {
+    constructor(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
-        SHARED_LOCKBOX = ISharedLockbox(_sharedLockbox);
 
         initialize({
             _disputeGameFactory: IDisputeGameFactory(address(0)),
@@ -279,8 +275,8 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Getter for the address of the shared lockbox.
-    function sharedLockbox() public view returns (address) {
-        return address(SHARED_LOCKBOX);
+    function sharedLockbox() public view returns (ISharedLockbox) {
+        return superchainConfig.SHARED_LOCKBOX();
     }
 
     /// @notice Computes the minimum gas limit for a deposit.
@@ -437,7 +433,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         (address token,) = gasPayingToken();
         if (token == Constants.ETHER) {
             // Unlock and receive the ETH from the shared lockbox.
-            if (_tx.value != 0) SHARED_LOCKBOX.unlockETH(_tx.value);
+            if (_tx.value != 0) sharedLockbox().unlockETH(_tx.value);
 
             // Trigger the call to the target contract. We use a custom low level method
             // SafeCall.callWithMinGas to ensure two key properties
@@ -570,7 +566,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         if (token == Constants.ETHER && msg.value != 0) {
             // Lock the ETH in the shared lockbox.
-            SHARED_LOCKBOX.lockETH{ value: msg.value }();
+            sharedLockbox().lockETH{ value: msg.value }();
         }
 
         _depositTransaction({

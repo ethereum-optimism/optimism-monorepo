@@ -10,11 +10,6 @@
         "internalType": "uint256",
         "name": "_disputeGameFinalityDelaySeconds",
         "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "_sharedLockbox",
-        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -653,7 +648,7 @@
     "name": "sharedLockbox",
     "outputs": [
       {
-        "internalType": "address",
+        "internalType": "contract ISharedLockbox",
         "name": "",
         "type": "address"
       }

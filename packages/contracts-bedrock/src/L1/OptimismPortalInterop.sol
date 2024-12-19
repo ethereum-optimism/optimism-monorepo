@@ -20,10 +20,9 @@ import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 contract OptimismPortalInterop is OptimismPortal2 {
     constructor(
         uint256 _proofMaturityDelaySeconds,
-        uint256 _disputeGameFinalityDelaySeconds,
-        address _sharedLockbox
+        uint256 _disputeGameFinalityDelaySeconds
     )
-        OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds, _sharedLockbox)
+        OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
     /// @custom:semver +interop-beta.5

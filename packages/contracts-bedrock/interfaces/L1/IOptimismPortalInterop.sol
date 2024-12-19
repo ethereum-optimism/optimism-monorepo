@@ -8,6 +8,7 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 interface IOptimismPortalInterop {
     error AlreadyFinalized();
@@ -70,7 +71,7 @@ interface IOptimismPortalInterop {
     function disputeGameBlacklist(IDisputeGame) external view returns (bool);
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function disputeGameFinalityDelaySeconds() external view returns (uint256);
-    function sharedLockbox() external view returns (address);
+    function sharedLockbox() external view returns (ISharedLockbox);
     function donateETH() external payable;
     function finalizeWithdrawalTransaction(Types.WithdrawalTransaction memory _tx) external;
     function finalizeWithdrawalTransactionExternalProof(
@@ -117,10 +118,5 @@ interface IOptimismPortalInterop {
     function systemConfig() external view returns (ISystemConfig);
     function version() external pure returns (string memory);
 
-    function __constructor__(
-        uint256 _proofMaturityDelaySeconds,
-        uint256 _disputeGameFinalityDelaySeconds,
-        address _sharedLockbox
-    )
-        external;
+    function __constructor__(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) external;
 }
