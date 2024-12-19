@@ -235,7 +235,7 @@ func (b *BaseRPCClient) BatchCallContext(ctx context.Context, batch []rpc.BatchE
 }
 
 func (b *BaseRPCClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
-	return b.c.Subscribe(ctx, namespace, channel, args)
+	return b.c.Subscribe(ctx, namespace, channel, args...)
 }
 
 // InstrumentedRPCClient is an RPC client that tracks
