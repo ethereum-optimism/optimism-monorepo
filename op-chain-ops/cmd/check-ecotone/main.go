@@ -710,7 +710,7 @@ func checkL1Block(ctx context.Context, env *actionEnv) error {
 	}
 	blobBaseFee, err := cl.BlobBaseFee(nil)
 	if err != nil {
-		return fmt.Errorf("failed to get blob basfee from L1Block contract: %w", err)
+		return fmt.Errorf("failed to get blob basefee from L1Block contract: %w", err)
 	}
 	if big.NewInt(0).Cmp(blobBaseFee) == 0 {
 		return errors.New("blob basefee must never be 0, EIP specifies minimum of 1")
