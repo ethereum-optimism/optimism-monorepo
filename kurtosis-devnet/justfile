@@ -1,5 +1,8 @@
 set shell := ["/bin/bash", "-c"]
 
+_kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
+	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
+
 # Internal recipes for kurtosis-devnet
 _contracts-build BUNDLE='contracts-bundle.tar.gz':
     just ../packages/contracts-bedrock/forge-build
