@@ -103,7 +103,7 @@ def main():
     git_commit = subprocess.run(['git', 'rev-parse', 'HEAD'], capture_output=True, text=True).stdout.strip()
     git_date = subprocess.run(['git', 'show', '-s', "--format=%ct"], capture_output=True, text=True).stdout.strip()
 
-    # CI loads the images from workspace, and does not otherwise know the images are good as-is
+    # CI loads the images from the workspace and does not otherwise know the images are good as-is
     if DEVNET_NO_BUILD:
         log.info('Skipping docker images build')
     else:
