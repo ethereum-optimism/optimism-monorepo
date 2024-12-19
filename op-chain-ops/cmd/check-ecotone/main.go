@@ -495,7 +495,7 @@ func checkBlobTxDenial(ctx context.Context, env *actionEnv) error {
 	var blob eth.Blob
 	_, err := rand.Read(blob[:])
 	if err != nil {
-		return fmt.Errorf("failed randomnes: %w", err)
+		return fmt.Errorf("failed randomness: %w", err)
 	}
 	// get the field-elements into a valid range
 	for i := 0; i < 4096; i++ {
