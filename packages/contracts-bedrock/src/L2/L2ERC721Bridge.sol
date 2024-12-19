@@ -10,7 +10,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
-import { IOptimismMintableERC721 } from "interfaces/universal/IOptimismMintableERC721.sol";
+import { IOptimismMintableERC721 } from "interfaces/L2/IOptimismMintableERC721.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
