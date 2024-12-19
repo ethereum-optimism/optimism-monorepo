@@ -22,9 +22,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 ///         acts as a minter for new tokens when it hears about deposits into the L1 ERC721 bridge.
 ///         This contract also acts as a burner for tokens being withdrawn.
 ///         **WARNING**: Do not bridge an ERC721 that was originally deployed on Optimism. This
-///         bridge ONLY supports ERC721s originally deployed on Ethereum. Users will need to
-///         wait for the one-week challenge period to elapse before their Optimism-native NFT
-///         can be refunded on L2.
+///         bridge ONLY supports ERC721s originally deployed on Ethereum.
 contract L2ERC721Bridge is ERC721Bridge, ISemver {
     /// @custom:semver 1.8.0-beta.4
     string public constant version = "1.8.0-beta.4";
