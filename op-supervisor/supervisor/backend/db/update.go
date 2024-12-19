@@ -71,21 +71,47 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 	if err := crossDB.AddDerived(l1View, lastCrossDerived); err != nil {
 		return err
 	}
+	// notify subscribers
+	sub, ok := db.crossSafeSubscription.Get(chain)
+	if ok {
+		sub.Send(types.DerivedPair{DerivedFrom: l1View, Derived: lastCrossDerived})
+	}
 	db.logger.Info("Updated cross-safe", "chain", chain, "l1View", l1View, "lastCrossDerived", lastCrossDerived)
 	return nil
 }
 
 func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	// Lock, so we avoid race-conditions in-between getting (for comparison) and setting.
+	// Unlock is managed explicitly, in this function so we can call NotifyL2Finalized after releasing the lock.
 	db.finalizedL1.Lock()
-	defer db.finalizedL1.Unlock()
 
 	if v := db.finalizedL1.Value; v.Number > finalized.Number {
+		db.finalizedL1.Unlock()
 		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", v, finalized)
 	}
 	db.finalizedL1.Value = finalized
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
+	db.finalizedL1.Unlock()
+
+	// whenver the L1 Finalized changes, the L2 Finalized may change, notify subscribers
+	db.NotifyL2Finalized()
+
 	return nil
+}
+
+// NotifyL2Finalized notifies all L2 finality subscribers of the latest L2 finalized block, per chain.
+func (db *ChainsDB) NotifyL2Finalized() {
+	for _, chain := range db.depSet.Chains() {
+		f, err := db.Finalized(chain)
+		if err != nil {
+			db.logger.Error("Failed to get finalized L1 block", "chain", chain, "err", err)
+			continue
+		}
+		sub, ok := db.l2FinalitySubscription.Get(chain)
+		if ok {
+			sub.Send(f.ID())
+		}
+	}
 }
 
 // RecordNewL1 records a new L1 block in the database.

@@ -24,15 +24,9 @@ type QueryBackend interface {
 	FinalizedL1() eth.BlockRef
 }
 
-type UpdatesBackend interface {
-	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
-	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
-}
-
 type Backend interface {
 	AdminBackend
 	QueryBackend
-	UpdatesBackend
 }
 
 type QueryFrontend struct {
@@ -94,18 +88,4 @@ func (a *AdminFrontend) Stop(ctx context.Context) error {
 // AddL2RPC adds a new L2 chain to the supervisor backend
 func (a *AdminFrontend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
 	return a.Supervisor.AddL2RPC(ctx, rpc, jwtSecret)
-}
-
-type UpdatesFrontend struct {
-	Supervisor UpdatesBackend
-}
-
-var _ UpdatesBackend = (*UpdatesFrontend)(nil)
-
-func (u *UpdatesFrontend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalUnsafe(ctx, chainID, head)
-}
-
-func (u *UpdatesFrontend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalSafe(ctx, chainID, derivedFrom, lastDerived)
 }
