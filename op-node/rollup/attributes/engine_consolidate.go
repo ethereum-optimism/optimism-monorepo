@@ -92,32 +92,29 @@ func checkWithdrawals(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes, bl
 	attrWithdrawals := attrs.Withdrawals
 	blockWithdrawals := block.Withdrawals
 
-	// If we are pre-canyon, attributes should have nil withdrawals list and withdrawalsRoot
-	if !rollupCfg.IsCanyon(uint64(block.Timestamp)) {
+	if rollupCfg.IsCanyon(uint64(block.Timestamp)) {
+		// canyon is active, we should have an empty withdrawals list
+		if !(blockWithdrawals != nil && len(*blockWithdrawals) == 0) {
+			return fmt.Errorf("canyon: expected withdrawals in block to be non-nil and empty, actual %v", *blockWithdrawals)
+		}
+		if !(attrWithdrawals != nil && len(*attrWithdrawals) == 0) {
+			return fmt.Errorf("canyon: expected withdrawals in attributes to be non-nil and empty, actual %v", *attrWithdrawals)
+		}
+	} else {
 		if attrWithdrawals != nil {
 			return fmt.Errorf("pre-canyon: expected withdrawals in attributes to be nil, actual %v", *attrWithdrawals)
 		}
-	} else if rollupCfg.IsIsthmus(uint64(block.Timestamp)) {
-		// isthmus is active, we should have an empty withdrawals list and non-nil withdrawalsRoot
-		if !(blockWithdrawals != nil && len(*blockWithdrawals) == 0) {
-			return fmt.Errorf("isthmus: expected withdrawals in block to be non-nil and empty, actual %v", *blockWithdrawals)
-		}
+	}
+
+	if rollupCfg.IsIsthmus(uint64(block.Timestamp)) {
 		if block.WithdrawalsRoot == nil {
+			// isthmus is active, we should have a non-nil withdrawalsRoot
 			return fmt.Errorf("isthmus: expected withdrawalsRoot in block to be non-nil")
 		}
-		if !(attrWithdrawals != nil && len(*attrWithdrawals) == 0) {
-			return fmt.Errorf("isthmus: expected withdrawals in attributes to be non-nil and empty, actual %v", *attrWithdrawals)
-		}
 	} else {
-		// pre-isthmus, post-canyon
-		if !(blockWithdrawals != nil && len(*blockWithdrawals) == 0) {
-			return fmt.Errorf("pre-isthmus: expected withdrawals in block to be non-nil and empty, actual %v", *blockWithdrawals)
-		}
 		if block.WithdrawalsRoot != nil {
+			// pre-isthmus, post-canyon
 			return fmt.Errorf("pre-isthmus: expected withdrawalsRoot in block to be nil, actual %v", *block.WithdrawalsRoot)
-		}
-		if !(attrWithdrawals != nil && len(*attrWithdrawals) == 0) {
-			return fmt.Errorf("pre-isthmus: expected withdrawals in attributes to be non-nil and empty, actual %v", *attrWithdrawals)
 		}
 	}
 	return nil

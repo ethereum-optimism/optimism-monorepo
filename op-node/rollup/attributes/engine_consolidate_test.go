@@ -316,8 +316,10 @@ func TestWithdrawalsMatch(t *testing.T) {
 			desc:       "post-isthmus: non-empty block withdrawals list",
 		},
 		{
-			cfg:   rollupCfgPostIsthmusChecks,
-			attrs: &eth.PayloadAttributes{},
+			cfg: rollupCfgPostIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &emptyWithdrawals,
+			},
 			block: &eth.ExecutionPayload{
 				Timestamp:       200,
 				WithdrawalsRoot: nil,
@@ -371,8 +373,10 @@ func TestWithdrawalsMatch(t *testing.T) {
 			desc:       "pre-isthmus: non-empty block withdrawals list",
 		},
 		{
-			cfg:   rollupCfgPreIsthmusChecks,
-			attrs: &eth.PayloadAttributes{},
+			cfg: rollupCfgPreIsthmusChecks,
+			attrs: &eth.PayloadAttributes{
+				Withdrawals: &emptyWithdrawals,
+			},
 			block: &eth.ExecutionPayload{
 				Timestamp:       200,
 				Withdrawals:     &types.Withdrawals{},
