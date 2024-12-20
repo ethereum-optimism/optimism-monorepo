@@ -80,8 +80,8 @@ func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chain
 }
 
 func (m *ManagedNode) SubscribeToDBEvents(db chainsDB) {
-	m.crossSafeUpdateChan = make(chan types.DerivedPair, 10)
-	m.finalizedUpdateChan = make(chan eth.BlockID, 10)
+	m.crossSafeUpdateChan = make(chan types.DerivedPair, 100)
+	m.finalizedUpdateChan = make(chan eth.BlockID, 100)
 	sub, err := db.SubscribeCrossSafe(m.chainID, m.crossSafeUpdateChan)
 	if err != nil {
 		m.log.Warn("failed to subscribe to cross safe", "err", err)
