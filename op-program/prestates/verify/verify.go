@@ -76,12 +76,11 @@ func main() {
 		expectedStr := get(expected, i)
 		actualStr := get(actual, i)
 		releaseDiffers := expectedStr != actualStr
-		releaseDiffers = releaseDiffers || (expected[i].Type != actual[i].Type)
 		marker := "✅"
 		if releaseDiffers {
 			marker = "❌"
 		}
-		report += fmt.Sprintf("%v %d\tExpected: %v \tActual: %v \t Expected Type: %v \t Acutal Type: %v \t\n", marker, i, expectedStr, actualStr, expected[i].Type, actual[i].Type)
+		report += fmt.Sprintf("%v %d\tExpected: %v\tActual: %v\n", marker, i, expectedStr, actualStr)
 		differs = differs || releaseDiffers
 	}
 	fmt.Println(report)
@@ -91,5 +90,5 @@ func main() {
 }
 
 func formatRelease(release prestates.Release) string {
-	return fmt.Sprintf("%-13v %s", release.Version, release.Hash)
+	return fmt.Sprintf("%-13v %s %s", release.Version, release.Hash, release.Type)
 }
