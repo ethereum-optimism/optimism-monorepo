@@ -606,6 +606,7 @@ library ChainAssertions {
         require(impls.delayedWETHImpl == _contracts.DelayedWETH, "CHECK-OPCM-120");
         require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
 
+		// Verify that initCode is correctly set into the blueprints
         OPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
         Blueprint.Preamble memory addressManagerPreamble =
             Blueprint.parseBlueprintPreamble(address(blueprints.addressManager).code);
