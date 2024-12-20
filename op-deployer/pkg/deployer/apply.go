@@ -78,9 +78,9 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 		l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 		oplog.SetGlobalLogHandler(l.Handler())
 
-		l1RPCUrl := cliCtx.String(L1RPCURLFlagName)
-		workdir := cliCtx.String(WorkdirFlagName)
-		privateKey := cliCtx.String(PrivateKeyFlagName)
+		l1RPCUrl := cliCtx.String(L1RPCURLFlag.Name)
+		workdir := cliCtx.String(WorkdirFlag.Name)
+		privateKey := cliCtx.String(PrivateKeyFlag.Name)
 
 		ctx := ctxinterrupt.WithCancelOnInterrupt(cliCtx.Context)
 

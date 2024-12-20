@@ -84,8 +84,8 @@ func SuperchainCLI(cliCtx *cli.Context) error {
 	l := oplog.NewLogger(oplog.AppOut(cliCtx), logCfg)
 	oplog.SetGlobalLogHandler(l.Handler())
 
-	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlagName)
-	privateKey := cliCtx.String(deployer.PrivateKeyFlagName)
+	l1RPCUrl := cliCtx.String(deployer.L1RPCURLFlag.Name)
+	privateKey := cliCtx.String(deployer.PrivateKeyFlag.Name)
 	artifactsURLStr := cliCtx.String(ArtifactsLocatorFlagName)
 	artifactsLocator := new(artifacts.Locator)
 	if err := artifactsLocator.UnmarshalText([]byte(artifactsURLStr)); err != nil {

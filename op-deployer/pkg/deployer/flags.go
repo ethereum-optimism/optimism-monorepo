@@ -12,20 +12,13 @@ import (
 )
 
 const (
-	EnvVarPrefix               = "DEPLOYER"
-	L1RPCURLFlagName           = "l1-rpc-url"
-	L1ChainIDFlagName          = "l1-chain-id"
-	L2ChainIDsFlagName         = "l2-chain-ids"
-	WorkdirFlagName            = "workdir"
-	OutdirFlagName             = "outdir"
-	PrivateKeyFlagName         = "private-key"
-	DeploymentStrategyFlagName = "deployment-strategy"
-	IntentConfigTypeFlagName   = "intent-config-type"
+	EnvVarPrefix   = "DEPLOYER"
+	OutdirFlagName = "outdir"
 )
 
 var (
 	L1RPCURLFlag = &cli.StringFlag{
-		Name: L1RPCURLFlagName,
+		Name: "l1-rpc-url",
 		Usage: "RPC URL for the L1 chain. Must be set for live chains. " +
 			"Can be blank for chains deploying to local allocs files.",
 		EnvVars: []string{
@@ -33,18 +26,18 @@ var (
 		},
 	}
 	L1ChainIDFlag = &cli.Uint64Flag{
-		Name:    L1ChainIDFlagName,
+		Name:    "l1-chain-id",
 		Usage:   "Chain ID of the L1 chain.",
 		EnvVars: PrefixEnvVar("L1_CHAIN_ID"),
 		Value:   11155111,
 	}
 	L2ChainIDsFlag = &cli.StringFlag{
-		Name:    L2ChainIDsFlagName,
+		Name:    "l2-chain-ids",
 		Usage:   "Comma-separated list of L2 chain IDs to deploy.",
 		EnvVars: PrefixEnvVar("L2_CHAIN_IDS"),
 	}
 	WorkdirFlag = &cli.StringFlag{
-		Name:    WorkdirFlagName,
+		Name:    "workdir",
 		Usage:   "Directory storing intent and stage. Defaults to the current directory.",
 		EnvVars: PrefixEnvVar("WORKDIR"),
 		Value:   cwd(),
@@ -53,18 +46,18 @@ var (
 		},
 	}
 	PrivateKeyFlag = &cli.StringFlag{
-		Name:    PrivateKeyFlagName,
+		Name:    "private-key",
 		Usage:   "Private key of the deployer account.",
 		EnvVars: PrefixEnvVar("PRIVATE_KEY"),
 	}
 	DeploymentStrategyFlag = &cli.StringFlag{
-		Name:    DeploymentStrategyFlagName,
+		Name:    "deployment-strategy",
 		Usage:   fmt.Sprintf("Deployment strategy to use. Options: %s, %s", state.DeploymentStrategyLive, state.DeploymentStrategyGenesis),
 		EnvVars: PrefixEnvVar("DEPLOYMENT_STRATEGY"),
 		Value:   string(state.DeploymentStrategyLive),
 	}
 	IntentConfigTypeFlag = &cli.StringFlag{
-		Name: IntentConfigTypeFlagName,
+		Name: "intent-config-type",
 		Usage: fmt.Sprintf("Intent config type to use. Options: %s (default), %s, %s, %s, %s",
 			state.IntentConfigTypeStandard,
 			state.IntentConfigTypeCustom,
