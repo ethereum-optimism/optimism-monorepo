@@ -15,6 +15,10 @@ type InteropAPI struct {
 	backend *ManagedMode
 }
 
+func (ib *InteropAPI) ResetEvents(ctx context.Context) (*gethrpc.Subscription, error) {
+	return ib.backend.ResetEvents(ctx)
+}
+
 func (ib *InteropAPI) UnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
 	return ib.backend.UnsafeBlocks(ctx)
 }

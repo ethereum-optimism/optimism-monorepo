@@ -56,9 +56,10 @@ type mockSyncControl struct {
 	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
 	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
 
-	subscribeDerivationUpdatesFn func(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error)
-	subscribeExhaustL1EventsFn   func(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error)
-	subscribeUnsafeBlocksFn      func(ctx context.Context, c chan eth.L1BlockRef) (ethereum.Subscription, error)
+	subscribeDerivationUpdates gethevent.FeedOf[types.DerivedPair]
+	subscribeExhaustL1Events   gethevent.FeedOf[types.DerivedPair]
+	subscribeUnsafeBlocks      gethevent.FeedOf[eth.L1BlockRef]
+	subscribeResetEvents       gethevent.FeedOf[string]
 }
 
 func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {
@@ -83,24 +84,19 @@ func (m *mockSyncControl) Reset(ctx context.Context, unsafe, safe, finalized eth
 }
 
 func (m *mockSyncControl) SubscribeDerivationUpdates(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error) {
-	if m.subscribeDerivationUpdatesFn != nil {
-		return m.subscribeDerivationUpdatesFn(ctx, c)
-	}
-	return nil, nil
+	return m.subscribeDerivationUpdates.Subscribe(c), nil
 }
 
 func (m *mockSyncControl) SubscribeExhaustL1Events(ctx context.Context, c chan types.DerivedPair) (ethereum.Subscription, error) {
-	if m.subscribeExhaustL1EventsFn != nil {
-		return m.subscribeExhaustL1EventsFn(ctx, c)
-	}
-	return nil, nil
+	return m.subscribeExhaustL1Events.Subscribe(c), nil
 }
 
 func (m *mockSyncControl) SubscribeUnsafeBlocks(ctx context.Context, c chan eth.L1BlockRef) (ethereum.Subscription, error) {
-	if m.subscribeUnsafeBlocksFn != nil {
-		return m.subscribeUnsafeBlocksFn(ctx, c)
-	}
-	return nil, nil
+	return m.subscribeUnsafeBlocks.Subscribe(c), nil
+}
+
+func (m *mockSyncControl) SubscribeResetEvents(ctx context.Context, c chan string) (ethereum.Subscription, error) {
+	return m.subscribeResetEvents.Subscribe(c), nil
 }
 
 func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
@@ -124,6 +120,39 @@ func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) e
 	return nil
 }
 
+type mockBackend struct {
+}
+
+func (m *mockBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (derivedFrom eth.BlockID, derived eth.BlockID, err error) {
+	return eth.BlockID{}, eth.BlockID{}, nil
+}
+
+func (m *mockBackend) LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
+}
+
+func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
+	return eth.BlockID{}, nil
+}
+
+func (m *mockBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
+}
+
+func (m *mockBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
+	return nil
+}
+
+func (m *mockBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
+	return nil
+}
+
+func (m *mockBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
+	return eth.L1BlockRef{}, nil
+}
+
+var _ backend = (*mockBackend)(nil)
+
 func sampleDepSet(t *testing.T) depset.DependencySet {
 	depSet, err := depset.NewStaticConfigDependencySet(
 		map[types.ChainID]*depset.StaticConfigDependency{
@@ -146,7 +175,7 @@ func sampleDepSet(t *testing.T) depset.DependencySet {
 func TestInitFromAnchorPoint(t *testing.T) {
 	logger := log.New()
 	depSet := sampleDepSet(t)
-	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{})
+	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{}, &mockBackend{})
 
 	require.Zero(t, controller.controllers.Len(), "controllers should be empty to start")
 
@@ -199,7 +228,7 @@ func TestInitFromAnchorPoint(t *testing.T) {
 func TestAttachNodeController(t *testing.T) {
 	logger := log.New()
 	depSet := sampleDepSet(t)
-	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{})
+	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{}, &mockBackend{})
 
 	require.Zero(t, controller.controllers.Len(), "controllers should be empty to start")
 

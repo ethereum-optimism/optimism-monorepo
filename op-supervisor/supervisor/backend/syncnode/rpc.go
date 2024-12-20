@@ -70,6 +70,10 @@ func (rs *RPCSyncNode) String() string {
 	return rs.name
 }
 
+func (rs *RPCSyncNode) SubscribeResetEvents(ctx context.Context, dest chan string) (ethereum.Subscription, error) {
+	return rs.cl.Subscribe(ctx, "interop", dest, "resetEvents")
+}
+
 func (rs *RPCSyncNode) SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error) {
 	return rs.cl.Subscribe(ctx, "interop", dest, "unsafeBlocks")
 }

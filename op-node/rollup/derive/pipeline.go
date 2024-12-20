@@ -58,6 +58,12 @@ type L2Source interface {
 	SystemConfigL2Fetcher
 }
 
+type l1TraversalStage interface {
+	NextBlockProvider
+	ResettableStage
+	AdvanceL1Block(ctx context.Context) error
+}
+
 // DerivationPipeline is updated with new L1 data, and the Step() function can be iterated on to generate attributes
 type DerivationPipeline struct {
 	log       log.Logger
@@ -73,7 +79,7 @@ type DerivationPipeline struct {
 	stages    []ResettableStage
 
 	// Special stages to keep track of
-	traversal *L1Traversal
+	traversal l1TraversalStage
 
 	attrib *AttributesQueue
 
@@ -88,11 +94,17 @@ type DerivationPipeline struct {
 
 // NewDerivationPipeline creates a DerivationPipeline, to turn L1 data into L2 block-inputs.
 func NewDerivationPipeline(log log.Logger, rollupCfg *rollup.Config, l1Fetcher L1Fetcher, l1Blobs L1BlobsFetcher,
-	altDA AltDAInputFetcher, l2Source L2Source, metrics Metrics,
+	altDA AltDAInputFetcher, l2Source L2Source, metrics Metrics, managedMode bool,
 ) *DerivationPipeline {
 	spec := rollup.NewChainSpec(rollupCfg)
-	// Pull stages
-	l1Traversal := NewL1Traversal(log, rollupCfg, l1Fetcher)
+	// Stages are strung together into a pipeline,
+	// results are pulled from the stage closed to the L2 engine, which pulls from the previous stage, and so on.
+	var l1Traversal l1TraversalStage
+	if managedMode {
+		l1Traversal = NewL1TraversalManaged(log, rollupCfg, l1Fetcher)
+	} else {
+		l1Traversal = NewL1Traversal(log, rollupCfg, l1Fetcher)
+	}
 	dataSrc := NewDataSourceFactory(log, rollupCfg, l1Fetcher, l1Blobs, altDA) // auxiliary stage for L1Retrieval
 	l1Src := NewL1Retrieval(log, dataSrc, l1Traversal)
 	frameQueue := NewFrameQueue(log, rollupCfg, l1Src)

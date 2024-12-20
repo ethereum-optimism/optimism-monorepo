@@ -400,10 +400,14 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	managedMode := false
 	if cfg.Rollup.InteropTime != nil {
 		sys, err := cfg.InteropConfig.Setup(ctx, n.log, &n.cfg.Rollup, n.l1Source, n.l2Source)
 		if err != nil {
 			return fmt.Errorf("failed to setup interop: %w", err)
+		}
+		if _, ok := sys.(*managed.ManagedMode); ok {
+			managedMode = ok
 		}
 		n.interopSys = sys
 		n.eventSys.Register("interop", n.interopSys, event.DefaultRegisterOpts())
@@ -431,7 +435,7 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
-		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
+		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA, managedMode)
 	return nil
 }
 

@@ -29,6 +29,16 @@ func (d ExhaustedL1Event) String() string {
 	return "exhausted-l1"
 }
 
+// ProvideL1Traversal is accepted to override the next L1 block to traverse into.
+// This block must fit on the previous L1 block, or a ResetEvent may be emitted.
+type ProvideL1Traversal struct {
+	NextL1 eth.L1BlockRef
+}
+
+func (d ProvideL1Traversal) String() string {
+	return "provide-l1-traversal"
+}
+
 type DeriverL1StatusEvent struct {
 	Origin eth.L1BlockRef
 	LastL2 eth.L2BlockRef
@@ -163,6 +173,22 @@ func (d *PipelineDeriver) OnEvent(ev event.Event) bool {
 			return true
 		}
 		d.emitDerivedAttributesEvent(attrib)
+	case ProvideL1Traversal:
+		if l1t, ok := d.pipeline.traversal.(ManagedL1Traversal); ok {
+			if err := l1t.ProvideNextL1(d.ctx, x.NextL1); err != nil {
+				if err != nil && errors.Is(err, ErrReset) {
+					d.emitter.Emit(rollup.ResetEvent{Err: err})
+				} else if err != nil && errors.Is(err, ErrTemporary) {
+					d.emitter.Emit(rollup.L1TemporaryErrorEvent{Err: err})
+				} else if err != nil && errors.Is(err, ErrCritical) {
+					d.emitter.Emit(rollup.CriticalErrorEvent{Err: err})
+				} else {
+					d.emitter.Emit(rollup.L1TemporaryErrorEvent{Err: err})
+				}
+			}
+		} else {
+			d.pipeline.log.Warn("Ignoring ProvideL1Traversal event, L1 traversal derivation stage does not support it")
+		}
 	default:
 		return false
 	}

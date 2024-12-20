@@ -7,6 +7,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
 	gethevent "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -31,11 +32,12 @@ type backend interface {
 	LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 	SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
 const (
-	dbTimeout   = time.Second * 30
-	nodeTimeout = time.Second * 10
+	internalTimeout = time.Second * 30
+	nodeTimeout     = time.Second * 10
 )
 
 type ManagedNode struct {
@@ -50,6 +52,8 @@ type ManagedNode struct {
 	// when the supervisor has a finality update for the node
 	finalizedUpdateChan chan eth.BlockID
 
+	// when the node says a reset is necessary, on any sync inconsistency
+	resetEventsChan chan string
 	// new L2 blocks from the node
 	unsafeBlocks chan eth.BlockRef
 	// new local-safe L2 blocks from the node
@@ -103,6 +107,10 @@ func (m *ManagedNode) SubscribeToNodeEvents() {
 	// For each of these, we want to resubscribe on error. Since the RPC subscription might fail intermittently.
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
 		func(ctx context.Context, err error) (gethevent.Subscription, error) {
+			return m.Node.SubscribeResetEvents(ctx, m.resetEventsChan)
+		}))
+	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
+		func(ctx context.Context, err error) (gethevent.Subscription, error) {
 			return m.Node.SubscribeUnsafeBlocks(ctx, m.unsafeBlocks)
 		}))
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
@@ -125,6 +133,8 @@ func (m *ManagedNode) Start() {
 			case <-m.ctx.Done():
 				m.log.Info("Exiting node syncing")
 				return
+			case errStr := <-m.resetEventsChan:
+				m.onResetEvent(errStr)
 			case pair := <-m.crossSafeUpdateChan:
 				m.onCrossSafeUpdate(pair)
 			case id := <-m.finalizedUpdateChan:
@@ -138,6 +148,13 @@ func (m *ManagedNode) Start() {
 			}
 		}
 	}()
+}
+
+func (m *ManagedNode) onResetEvent(errStr string) {
+	m.log.Warn("Node sent us a reset error", "err", errStr)
+	// Try and restore the safe head of the op-supervisor.
+	// The node will abort the reset until we find a block that is known.
+	m.resetSignal(types.ErrFuture, eth.L1BlockRef{})
 }
 
 func (m *ManagedNode) onCrossSafeUpdate(pair types.DerivedPair) {
@@ -162,7 +179,7 @@ func (m *ManagedNode) onFinalizedL1(id eth.BlockID) {
 
 func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 	m.log.Info("Node has new unsafe block", "unsafeBlock", unsafeRef)
-	ctx, cancel := context.WithTimeout(m.ctx, dbTimeout)
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 	if err := m.backend.UpdateLocalUnsafe(ctx, m.chainID, unsafeRef); err != nil {
 		m.log.Warn("Backend failed to pick up on new unsafe block", "unsafeBlock", unsafeRef, "err", err)
@@ -174,7 +191,7 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedPair) {
 	m.log.Info("Node derived new block", "derived", pair.Derived, "derivedFrom", pair.DerivedFrom)
-	ctx, cancel := context.WithTimeout(m.ctx, dbTimeout)
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 	if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
 		m.log.Warn("Backend failed to process local-safe update",
@@ -187,7 +204,7 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	// if conflict error -> send reset to drop
 	// if future error -> send reset to rewind
 	// if out of order -> warn, just old data
-	ctx, cancel := context.WithTimeout(m.ctx, dbTimeout)
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 	u, err := m.backend.LatestUnsafe(ctx, m.chainID)
 	if err != nil {
@@ -225,13 +242,27 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedPair) {
 	m.log.Info("Node completed syncing", "l2", completed.Derived, "l1", completed.DerivedFrom)
-	nextL1 := eth.BlockRef{} // TODO: block-by-number call, with parent-hash conistency check
-	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+
+	internalCtx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
-	err := m.Node.ProvideL1(ctx, nextL1)
+	nextL1, err := m.backend.L1BlockRefByNumber(internalCtx, completed.DerivedFrom.Number+1)
 	if err != nil {
-		m.log.Warn("Node needs next L1, but is not accepting suggested next L1 block", "err", err)
-		// TODO maybe reset the node
+		if errors.Is(err, ethereum.NotFound) {
+			m.log.Debug("Next L1 block is not yet available", "l1Block", completed.DerivedFrom, "err", err)
+			return
+		}
+		m.log.Error("Failed to retrieve next L1 block for node", "l1Block", completed.DerivedFrom, "err", err)
+		return
+	}
+
+	nodeCtx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer cancel()
+	if err := m.Node.ProvideL1(nodeCtx, nextL1); err != nil {
+		m.log.Warn("Failed to provide next L1 block to node", "err", err)
+		// We will reset the node if we receive a reset-event from it,
+		// which is fired if the provided L1 block was received successfully,
+		// but does not fit on the derivation state.
+		return
 	}
 }
 

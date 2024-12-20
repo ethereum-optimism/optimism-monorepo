@@ -42,6 +42,7 @@ type ManagedMode struct {
 	l1 L1Source
 	l2 L2Source
 
+	resetEvents       gethevent.FeedOf[string]
 	unsafeBlocks      gethevent.FeedOf[eth.BlockRef]
 	derivationUpdates gethevent.FeedOf[supervisortypes.DerivedPair]
 	exhaustL1Events   gethevent.FeedOf[supervisortypes.DerivedPair]
@@ -109,6 +110,8 @@ func (m *ManagedMode) AttachEmitter(em event.Emitter) {
 
 func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
+	case rollup.ResetEvent:
+		m.resetEvents.Send(x.Err.Error())
 	case engine.UnsafeUpdateEvent:
 		m.unsafeBlocks.Send(x.Ref.BlockRef())
 	case engine.LocalSafeUpdateEvent:
@@ -128,6 +131,10 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 		})
 	}
 	return false
+}
+
+func (m *ManagedMode) ResetEvents(ctx context.Context) (*gethrpc.Subscription, error) {
+	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "resetEvents"), &m.resetEvents)
 }
 
 func (m *ManagedMode) UnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
@@ -258,10 +265,10 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 }
 
 func (m *ManagedMode) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
-	// TODO: when op-node is in need of a next L1 block (it tells through L1 exhaust eventS),
-	// the supervisor can provide it with this method.
-	// Here we then need to fire an event, which the L1-traversal can pick up to unblock itself.
-	// And send an error event maybe if the provided L1 block does not fit on top of the last known L1 block.
+	m.log.Info("Received next L1 block", "nextL1", nextL1)
+	m.emitter.Emit(derive.ProvideL1Traversal{
+		NextL1: nextL1,
+	})
 	return nil
 }
 

@@ -488,6 +488,10 @@ func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types
 	return v, nil
 }
 
+func (su *SupervisorBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
+	return su.l1Accessor.L1BlockRefByNumber(ctx, number)
+}
+
 // Update methods
 // ----------------------------
 
