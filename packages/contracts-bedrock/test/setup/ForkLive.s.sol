@@ -6,6 +6,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
+import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
 import { GameTypes } from "src/dispute/lib/Types.sol";
@@ -97,6 +98,21 @@ contract ForkLive is Deployer {
             IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
         artifacts.save("PermissionedDisputeGame", address(permissionedDisputeGame));
         artifacts.save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
+
+        // Now deploy the updated OPCM and implementations of the contracts
+        _deployNewImplementations();
+    }
+
+    function _deployNewImplementations() internal {
+        Deploy deployNew = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy.new"))))));
+        vm.etch(address(deployNew), vm.getDeployedCode("Deploy.s.sol:Deploy"));
+        vm.label(address(deployNew), "DeployNew");
+        vm.allowCheatcodes(address(deployNew));
+        vm.setEnv("CONTRACT_ADDRESSES_PATH", string.concat(vm.projectRoot(), "/deployments/1-deploy.json"));
+
+        deployNew.setUp();
+        deployNew.cfg().setUseFaultProofs(true);
+        deployNew.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
@@ -106,6 +122,7 @@ contract ForkLive is Deployer {
     function saveProxyAndImpl(string memory _contractName, string memory _tomlPath, string memory _tomlKey) internal {
         address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
         artifacts.save(string.concat(_contractName, "Proxy"), proxy);
+
         address impl = EIP1967Helper.getImplementation(proxy);
         require(impl != address(0), "Upgrade: Implementation address is zero");
         artifacts.save(string.concat(_contractName, "Impl"), impl);

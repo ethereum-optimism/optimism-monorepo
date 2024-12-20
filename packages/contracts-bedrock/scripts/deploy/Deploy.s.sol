@@ -200,7 +200,7 @@ contract Deploy is Deployer {
             deploySuperchain();
         }
 
-        deployImplementations({ _isInterop: cfg.useInterop() });
+        deployImplementations({ _isInterop: cfg.useInterop(), _suffix: "" });
 
         // Deploy Current OPChain Contracts
         deployOpChain();
@@ -275,7 +275,11 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy all of the implementations
-    function deployImplementations(bool _isInterop) public {
+    /// @param _isInterop Whether to use interop
+    /// @param _suffix    An optional suffix to append to the implementation names. Used in the ForkLives script to
+    ///                   distinguish between implementations already in production and new implementations deployed by
+    ///                   this script.
+    function deployImplementations(bool _isInterop, string memory _suffix) public {
         require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
 
         console.log("Deploying implementations");
@@ -302,21 +306,40 @@ contract Deploy is Deployer {
         }
         di.run(dii, dio);
 
-        artifacts.save("L1CrossDomainMessengerImpl", address(dio.l1CrossDomainMessengerImpl()));
-        artifacts.save("OptimismMintableERC20FactoryImpl", address(dio.optimismMintableERC20FactoryImpl()));
-        artifacts.save("SystemConfigImpl", address(dio.systemConfigImpl()));
-        artifacts.save("L1StandardBridgeImpl", address(dio.l1StandardBridgeImpl()));
-        artifacts.save("L1ERC721BridgeImpl", address(dio.l1ERC721BridgeImpl()));
+        artifacts.save(string.concat("L1CrossDomainMessengerImpl", _suffix), address(dio.l1CrossDomainMessengerImpl()));
+        artifacts.save(
+            string.concat("OptimismMintableERC20FactoryImpl", _suffix), address(dio.optimismMintableERC20FactoryImpl())
+        );
+        artifacts.save(string.concat("SystemConfigImpl", _suffix), address(dio.systemConfigImpl()));
+        artifacts.save(string.concat("L1StandardBridgeImpl", _suffix), address(dio.l1StandardBridgeImpl()));
+        artifacts.save(string.concat("L1ERC721BridgeImpl", _suffix), address(dio.l1ERC721BridgeImpl()));
 
         // Fault proofs
-        artifacts.save("OptimismPortal2Impl", address(dio.optimismPortalImpl()));
-        artifacts.save("DisputeGameFactoryImpl", address(dio.disputeGameFactoryImpl()));
-        artifacts.save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
-        artifacts.save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
-        artifacts.save("MipsSingleton", address(dio.mipsSingleton()));
-        artifacts.save("OPContractsManager", address(dio.opcm()));
+        artifacts.save(string.concat("OptimismPortal2Impl", _suffix), address(dio.optimismPortalImpl()));
+        artifacts.save(string.concat("DisputeGameFactoryImpl", _suffix), address(dio.disputeGameFactoryImpl()));
+        artifacts.save(string.concat("DelayedWETHImpl", _suffix), address(dio.delayedWETHImpl()));
+        artifacts.save(string.concat("PreimageOracleSingleton", _suffix), address(dio.preimageOracleSingleton()));
+        artifacts.save(string.concat("MipsSingleton", _suffix), address(dio.mipsSingleton()));
+        artifacts.save(string.concat("OPContractsManager", _suffix), address(dio.opcm()));
 
-        Types.ContractSet memory contracts = _impls();
+        // Get a contract set from the implementation addresses with the suffix.
+        Types.ContractSet memory contracts = Types.ContractSet({
+            L1CrossDomainMessenger: mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
+            L1StandardBridge: mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
+            L2OutputOracle: address(0),
+            DisputeGameFactory: mustGetAddress(string.concat("DisputeGameFactoryImpl", _suffix)),
+            DelayedWETH: mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
+            PermissionedDelayedWETH: mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
+            AnchorStateRegistry: address(0),
+            OptimismMintableERC20Factory: mustGetAddress(string.concat("OptimismMintableERC20FactoryImpl", _suffix)),
+            OptimismPortal: mustGetAddress(string.concat("OptimismPortal2Impl", _suffix)),
+            SystemConfig: mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
+            L1ERC721Bridge: mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
+            // We didn't deploy a new version of these so we don't append a suffix
+            ProtocolVersions: mustGetAddress("ProtocolVersionsImpl"),
+            SuperchainConfig: mustGetAddress("SuperchainConfigImpl")
+        });
+
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
         ChainAssertions.checkL1StandardBridge({ _contracts: contracts, _isProxy: false });
         ChainAssertions.checkL1ERC721Bridge({ _contracts: contracts, _isProxy: false });
@@ -339,8 +362,8 @@ contract Deploy is Deployer {
         });
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
-            _opcm: OPContractsManager(artifacts.mustGetAddress("OPContractsManager")),
-            _mips: IMIPS(artifacts.mustGetAddress("MipsSingleton"))
+            _opcm: OPContractsManager(artifacts.mustGetAddress(string.concat("OPContractsManager", _suffix))),
+            _mips: IMIPS(artifacts.mustGetAddress(string.concat("MipsSingleton", _suffix)))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
