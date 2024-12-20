@@ -581,7 +581,6 @@ library ChainAssertions {
         console.log("Running chain assertions on the OPContractsManager at %s", address(_opcm));
         require(address(_opcm) != address(0), "CHECK-OPCM-10");
 
-        // immutables
         require(
             address(EIP1967Helper.getImplementation(address(_opcm.superchainConfig())))
                 == address(_contracts.SuperchainConfig),
@@ -594,7 +593,7 @@ library ChainAssertions {
 
         require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-40");
 
-		// Ensure that the OPCM impls are correctly saved
+        // Ensure that the OPCM impls are correctly saved
         OPContractsManager.Implementations memory impls = _opcm.implementations();
         require(impls.l1ERC721BridgeImpl == _contracts.L1ERC721Bridge, "CHECK-OPCM-50");
         require(impls.optimismPortalImpl == _contracts.OptimismPortal2, "CHECK-OPCM-60");
@@ -606,7 +605,7 @@ library ChainAssertions {
         require(impls.delayedWETHImpl == _contracts.DelayedWETH, "CHECK-OPCM-120");
         require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
 
-		// Verify that initCode is correctly set into the blueprints
+        // Verify that initCode is correctly set into the blueprints
         OPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
         Blueprint.Preamble memory addressManagerPreamble =
             Blueprint.parseBlueprintPreamble(address(blueprints.addressManager).code);
