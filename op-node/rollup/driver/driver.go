@@ -224,6 +224,7 @@ func NewDriver(
 		Log:            log,
 		Ctx:            driverCtx,
 		Drain:          drain.Drain,
+		ManagedMode:    managedMode,
 	}
 	sys.Register("sync", syncDeriver, opts)
 

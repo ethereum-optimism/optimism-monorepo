@@ -223,7 +223,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 				return eth.L2BlockRef{}, &gethrpc.JsonError{
 					Code:    BlockNotFoundRPCErrCode,
 					Message: "Block not found",
-					Data:    nil,
+					Data:    nil, // TODO communicate the latest block that we do have.
 				}
 			}
 			logger.Warn("unable to find reference", "refName", name)

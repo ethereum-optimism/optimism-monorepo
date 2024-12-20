@@ -62,3 +62,7 @@ func (ib *InteropAPI) BlockRefByNumber(ctx context.Context, num uint64) (eth.Blo
 func (ib *InteropAPI) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
 	return ib.backend.ChainID(ctx)
 }
+
+func (ib *InteropAPI) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
+	return ib.backend.ProvideL1(ctx, nextL1)
+}

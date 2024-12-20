@@ -214,6 +214,13 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	if err != nil {
 		m.log.Warn("Node failed to reset", "err", err)
 	}
+
+	// fix finalized to point to a L2 block that the L2 node knows about
+	// Conceptually: track the last known block by the node (based on unsafe block updates), as upper bound for resets.
+	// Then when reset fails, lower the last known block
+	// (and prevent it from changing by subscription, until success with reset), and rinse and repeat.
+
+	// TODO: errors.As switch
 	switch errSignal {
 	case types.ErrConflict:
 		s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())

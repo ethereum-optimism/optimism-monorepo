@@ -307,6 +307,10 @@ type SyncDeriver struct {
 	Ctx context.Context
 
 	Drain func() error
+
+	// When in interop, and managed by an op-supervisor,
+	// the node performs a reset based on the instructions of the op-supervisor.
+	ManagedMode bool
 }
 
 func (s *SyncDeriver) AttachEmitter(em event.Emitter) {
@@ -386,6 +390,10 @@ func (s *SyncDeriver) onEngineConfirmedReset(x engine.EngineResetConfirmedEvent)
 }
 
 func (s *SyncDeriver) onResetEvent(x rollup.ResetEvent) {
+	if s.ManagedMode {
+		s.Log.Warn("Encountered reset, waiting for op-supervisor to recover", "err", x.Err)
+		return
+	}
 	// If the system corrupts, e.g. due to a reorg, simply reset it
 	s.Log.Warn("Deriver system is resetting", "err", x.Err)
 	s.Emitter.Emit(StepReqEvent{})
