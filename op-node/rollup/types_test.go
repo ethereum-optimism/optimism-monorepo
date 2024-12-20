@@ -169,7 +169,38 @@ func TestRandomConfigDescription(t *testing.T) {
 		out := config.Description(nil)
 		require.Contains(t, out, "Regolith: @ genesis")
 	})
-	t.Run("regolith date", func(t *testing.T) {
+	t.Run("optimism forks check,  date", func(t *testing.T) {
+		config := randConfig()
+		r := uint64(1677119335)
+		config.RegolithTime = &r
+		c := uint64(1677119336)
+		config.CanyonTime = &c
+		d := uint64(1677119337)
+		config.DeltaTime = &d
+		e := uint64(1677119338)
+		config.EcotoneTime = &e
+		f := uint64(1677119339)
+		config.FjordTime = &f
+		h := uint64(1677119340)
+		config.HoloceneTime = &h
+		i := uint64(1677119341)
+		config.IsthmusTime = &i
+		it := uint64(1677119342)
+		config.InteropTime = &it
+
+		out := config.Description(nil)
+		// Don't check human-readable part of the date, it's timezone-dependent.
+		// Don't make this test fail only in Australia :')
+		require.Contains(t, out, fmt.Sprintf("Regolith: @ %d ~ ", r))
+		require.Contains(t, out, fmt.Sprintf("Canyon: @ %d ~ ", c))
+		require.Contains(t, out, fmt.Sprintf("Delta: @ %d ~ ", d))
+		require.Contains(t, out, fmt.Sprintf("Ecotone: @ %d ~ ", e))
+		require.Contains(t, out, fmt.Sprintf("Fjord: @ %d ~ ", f))
+		require.Contains(t, out, fmt.Sprintf("Holocene: @ %d ~ ", h))
+		require.Contains(t, out, fmt.Sprintf("Isthmus: @ %d ~ ", i))
+		require.Contains(t, out, fmt.Sprintf("Interop: @ %d ~ ", it))
+	})
+	t.Run("holocene & isthmus date", func(t *testing.T) {
 		config := randConfig()
 		x := uint64(1677119335)
 		config.RegolithTime = &x
@@ -248,6 +279,15 @@ func TestActivations(t *testing.T) {
 			},
 			checkEnabled: func(t uint64, c *Config) bool {
 				return c.IsHolocene(t)
+			},
+		},
+		{
+			name: "Isthmus",
+			setUpgradeTime: func(t *uint64, c *Config) {
+				c.IsthmusTime = t
+			},
+			checkEnabled: func(t uint64, c *Config) bool {
+				return c.IsIsthmus(t)
 			},
 		},
 		{
@@ -518,10 +558,20 @@ func TestConfig_Check(t *testing.T) {
 				canyonTime := uint64(2)
 				deltaTime := uint64(3)
 				ecotoneTime := uint64(4)
+				fjordTime := uint64(5)
+				graniteTime := uint64(6)
+				holoceneTime := uint64(7)
+				isthmusTime := uint64(8)
+				interopTime := uint64(9)
 				cfg.RegolithTime = &regolithTime
 				cfg.CanyonTime = &canyonTime
 				cfg.DeltaTime = &deltaTime
 				cfg.EcotoneTime = &ecotoneTime
+				cfg.FjordTime = &fjordTime
+				cfg.GraniteTime = &graniteTime
+				cfg.HoloceneTime = &holoceneTime
+				cfg.IsthmusTime = &isthmusTime
+				cfg.InteropTime = &interopTime
 			},
 			expectedErr: nil,
 		},
@@ -715,5 +765,39 @@ func TestConfig_IsActivationBlock(t *testing.T) {
 		require.Equal(t, fork, cfg.IsActivationBlock(ts-1, ts+1))
 		require.Zero(t, cfg.IsActivationBlock(0, ts-1))
 		require.Zero(t, cfg.IsActivationBlock(ts, ts+1))
+	}
+}
+
+func TestConfigImplementsBlockType(t *testing.T) {
+	config := randConfig()
+	isthmusTime := uint64(100)
+	config.IsthmusTime = &isthmusTime
+	tests := []struct {
+		name                       string
+		blockTime                  uint64
+		hasOptimismWithdrawalsRoot bool
+	}{
+		{
+			name:                       "BeforeIsthmus",
+			blockTime:                  uint64(99),
+			hasOptimismWithdrawalsRoot: false,
+		},
+		{
+			name:                       "AtIsthmus",
+			blockTime:                  uint64(100),
+			hasOptimismWithdrawalsRoot: true,
+		},
+		{
+			name:                       "AfterIsthmus",
+			blockTime:                  uint64(200),
+			hasOptimismWithdrawalsRoot: true,
+		},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("TestHasOptimismWithdrawalsRoot_%s", test.name), func(t *testing.T) {
+			assert.Equal(t, config.HasOptimismWithdrawalsRoot(test.blockTime), test.hasOptimismWithdrawalsRoot)
+		})
 	}
 }

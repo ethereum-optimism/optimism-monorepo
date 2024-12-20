@@ -47,11 +47,11 @@ contract OptimismPortal_Test is CommonTest {
         assertEq(address(opImpl.l2Oracle()), address(0));
         assertEq(address(opImpl.systemConfig()), address(0));
         assertEq(address(opImpl.superchainConfig()), address(0));
-        assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
+        assertEq(opImpl.l2Sender(), address(0));
         (uint128 prevBaseFee, uint64 prevBoughtGas, uint64 prevBlockNum) = opImpl.params();
-        assertEq(prevBaseFee, 1 gwei);
+        assertEq(prevBaseFee, 0);
         assertEq(prevBoughtGas, 0);
-        assertEq(prevBlockNum, uint64(block.number));
+        assertEq(prevBlockNum, 0);
     }
 
     /// @dev Tests that the initializer sets the correct values.
@@ -532,6 +532,8 @@ contract OptimismPortal_Test is CommonTest {
 
     /// @dev Tests that `depositERC20Transaction` reverts when the gas paying token is ether.
     function test_depositERC20Transaction_noCustomGasToken_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: gas paying token functionality DNE on op mainnet");
         // Check that the gas paying token is set to ether
         (address token,) = systemConfig.gasPayingToken();
         assertEq(token, Constants.ETHER);
@@ -541,6 +543,8 @@ contract OptimismPortal_Test is CommonTest {
     }
 
     function test_depositERC20Transaction_balanceOverflow_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: custom gas token DNE on op mainnet");
         vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(42), 18));
 
         // The balance slot
@@ -569,6 +573,47 @@ contract OptimismPortal_Test is CommonTest {
 
         // Check that the balance has been correctly updated
         assertEq(optimismPortal.balance(), address(optimismPortal).balance);
+    }
+
+    /// @dev Tests that the donateETH function donates ETH and does no state read/write
+    function test_donateETH_succeeds(uint256 _amount) external {
+        vm.startPrank(alice);
+        vm.deal(alice, _amount);
+
+        uint256 preBalance = address(optimismPortal).balance;
+
+        vm.startStateDiffRecording();
+        optimismPortal.donateETH{ value: _amount }();
+        VmSafe.AccountAccess[] memory accountAccesses = vm.stopAndReturnStateDiff();
+
+        // not necessary since it's checked below
+        assertEq(address(optimismPortal).balance, preBalance + _amount);
+
+        // 0 for extcodesize of proxy before being called by this test,
+        // 1 for the call to the proxy by the pranked address
+        // 2 for the delegate call to the impl by the proxy
+        assertEq(accountAccesses.length, 3);
+        assertEq(uint8(accountAccesses[1].kind), uint8(VmSafe.AccountAccessKind.Call));
+        assertEq(uint8(accountAccesses[2].kind), uint8(VmSafe.AccountAccessKind.DelegateCall));
+
+        // to of 1 is the optimism portal proxy
+        assertEq(accountAccesses[1].account, address(optimismPortal));
+        // accessor is the pranked address
+        assertEq(accountAccesses[1].accessor, alice);
+        // value is the amount of ETH donated
+        assertEq(accountAccesses[1].value, _amount);
+        // old balance is the balance of the optimism portal before the donation
+        assertEq(accountAccesses[1].oldBalance, preBalance);
+        // new balance is the balance of the optimism portal after the donation
+        assertEq(accountAccesses[1].newBalance, preBalance + _amount);
+        // data is the selector of the donateETH function
+        assertEq(accountAccesses[1].data, abi.encodePacked(optimismPortal.donateETH.selector));
+        // reverted of alice call to proxy is false
+        assertEq(accountAccesses[1].reverted, false);
+        // reverted of delegate call of proxy to impl is false
+        assertEq(accountAccesses[2].reverted, false);
+        // storage accesses of delegate call of proxy to impl is empty (No storage read or write!)
+        assertEq(accountAccesses[2].storageAccesses.length, 0);
     }
 }
 
@@ -1297,7 +1342,9 @@ contract OptimismPortal_FinalizeWithdrawal_Test is CommonTest {
 
 contract OptimismPortalUpgradeable_Test is CommonTest {
     /// @dev Tests that the proxy is initialized correctly.
-    function test_params_initValuesOnProxy_succeeds() external view {
+    function test_params_initValuesOnProxy_succeeds() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: resource config varies on mainnet");
         (uint128 prevBaseFee, uint64 prevBoughtGas, uint64 prevBlockNum) = optimismPortal.params();
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
 
@@ -1718,6 +1765,8 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     )
         external
     {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: gas paying token functionality DNE on op mainnet");
         // Ensure that msg.sender == tx.origin
         vm.startPrank(address(this), address(this));
 
@@ -1741,6 +1790,8 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
     )
         external
     {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: gas paying token functionality DNE on op mainnet");
         // Ensure that msg.sender != tx.origin
         vm.startPrank(address(this), address(1));
 
@@ -1756,6 +1807,8 @@ contract OptimismPortalWithMockERC20_Test is OptimismPortal_FinalizeWithdrawal_T
 
     /// @dev Tests that `depositTransaction` fails when a custom gas token is used and msg.value is non-zero.
     function test_depositTransaction_customGasTokenWithValue_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal_Test: gas paying token functionality DNE on op mainnet");
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)

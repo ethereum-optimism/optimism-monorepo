@@ -145,7 +145,7 @@ func DelayedWETH(ctx context.Context, cfg DelayedWETHConfig) (opcm.DeployDelayed
 	if err != nil {
 		return dwo, fmt.Errorf("error getting superchain config: %w", err)
 	}
-	proxyAdmin, err := standard.ManagerOwnerAddrFor(chainIDU64)
+	proxyAdmin, err := standard.SuperchainProxyAdminAddrFor(chainIDU64)
 	if err != nil {
 		return dwo, fmt.Errorf("error getting superchain proxy admin: %w", err)
 	}

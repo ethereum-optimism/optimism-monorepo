@@ -27,7 +27,7 @@ contract GovernanceToken is ERC20Burnable, ERC20Votes, Ownable {
     /// @notice Callback called after a token transfer.
     /// @param from   The account sending tokens.
     /// @param to     The account receiving tokens.
-    /// @param amount The amount of tokens being transfered.
+    /// @param amount The amount of tokens being transferred.
     function _afterTokenTransfer(address from, address to, uint256 amount) internal override(ERC20, ERC20Votes) {
         super._afterTokenTransfer(from, to, amount);
     }

@@ -14,6 +14,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"strings"
 	"time"
 
 	"github.com/ethereum/go-ethereum"
@@ -44,6 +45,8 @@ type EthClientConfig struct {
 	HeadersCacheSize int
 	// Number of payloads to cache
 	PayloadsCacheSize int
+
+	BlockRefsCacheSize int
 
 	// If the RPC is untrusted, then we should not use cached information from responses,
 	// and instead verify against the block-hash.
@@ -113,6 +116,10 @@ type EthClient struct {
 	// cache payloads by hash
 	// common.Hash -> *eth.ExecutionPayload
 	payloadsCache *caching.LRUCache[common.Hash, *eth.ExecutionPayloadEnvelope]
+
+	// cache BlockRef by hash
+	// common.Hash -> eth.BlockRef
+	blockRefsCache *caching.LRUCache[common.Hash, eth.BlockRef]
 }
 
 // NewEthClient returns an [EthClient], wrapping an RPC with bindings to fetch ethereum data with added error logging,
@@ -136,6 +143,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 		transactionsCache: caching.NewLRUCache[common.Hash, types.Transactions](metrics, "txs", config.TransactionsCacheSize),
 		headersCache:      caching.NewLRUCache[common.Hash, eth.BlockInfo](metrics, "headers", config.HeadersCacheSize),
 		payloadsCache:     caching.NewLRUCache[common.Hash, *eth.ExecutionPayloadEnvelope](metrics, "payloads", config.PayloadsCacheSize),
+		blockRefsCache:    caching.NewLRUCache[common.Hash, eth.L1BlockRef](metrics, "blockrefs", config.BlockRefsCacheSize),
 	}, nil
 }
 
@@ -143,7 +151,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 func (s *EthClient) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
 	// Note that *types.Header does not cache the block hash unlike *HeaderInfo, it always recomputes.
 	// Inefficient if used poorly, but no trust issue.
-	return s.client.EthSubscribe(ctx, ch, "newHeads")
+	return s.client.Subscribe(ctx, "eth", ch, "newHeads")
 }
 
 // rpcBlockID is an internal type to enforce header and block call results match the requested identifier
@@ -388,4 +396,48 @@ func (s *EthClient) ReadStorageAt(ctx context.Context, address common.Address, s
 
 func (s *EthClient) Close() {
 	s.client.Close()
+}
+
+// BlockRefByLabel returns the [eth.BlockRef] for the given block label.
+// Notice, we cannot cache a block reference by label because labels are not guaranteed to be unique.
+func (s *EthClient) BlockRefByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockRef, error) {
+	info, err := s.InfoByLabel(ctx, label)
+	if err != nil {
+		// Both geth and erigon like to serve non-standard errors for the safe and finalized heads, correct that.
+		// This happens when the chain just started and nothing is marked as safe/finalized yet.
+		if strings.Contains(err.Error(), "block not found") || strings.Contains(err.Error(), "Unknown block") {
+			err = ethereum.NotFound
+		}
+		return eth.L1BlockRef{}, fmt.Errorf("failed to fetch head header: %w", err)
+	}
+	ref := eth.InfoToL1BlockRef(info)
+	s.blockRefsCache.Add(ref.Hash, ref)
+	return ref, nil
+}
+
+// BlockRefByNumber returns an [eth.BlockRef] for the given block number.
+// Notice, we cannot cache a block reference by number because L1 re-orgs can invalidate the cached block reference.
+func (s *EthClient) BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error) {
+	info, err := s.InfoByNumber(ctx, num)
+	if err != nil {
+		return eth.L1BlockRef{}, fmt.Errorf("failed to fetch header by num %d: %w", num, err)
+	}
+	ref := eth.InfoToL1BlockRef(info)
+	s.blockRefsCache.Add(ref.Hash, ref)
+	return ref, nil
+}
+
+// BlockRefByHash returns the [eth.BlockRef] for the given block hash.
+// We cache the block reference by hash as it is safe to assume collision will not occur.
+func (s *EthClient) BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error) {
+	if v, ok := s.blockRefsCache.Get(hash); ok {
+		return v, nil
+	}
+	info, err := s.InfoByHash(ctx, hash)
+	if err != nil {
+		return eth.BlockRef{}, fmt.Errorf("failed to fetch header by hash %v: %w", hash, err)
+	}
+	ref := eth.InfoToL1BlockRef(info)
+	s.blockRefsCache.Add(ref.Hash, ref)
+	return ref, nil
 }

@@ -1,0 +1,37 @@
+[
+  {
+    "bytes": "32",
+    "label": "_nameFallback",
+    "offset": 0,
+    "slot": "0",
+    "type": "string"
+  },
+  {
+    "bytes": "32",
+    "label": "_versionFallback",
+    "offset": 0,
+    "slot": "1",
+    "type": "string"
+  },
+  {
+    "bytes": "20",
+    "label": "deputy",
+    "offset": 0,
+    "slot": "2",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "deputyGuardianModule",
+    "offset": 0,
+    "slot": "3",
+    "type": "contract IDeputyGuardianModule"
+  },
+  {
+    "bytes": "32",
+    "label": "usedNonces",
+    "offset": 0,
+    "slot": "4",
+    "type": "mapping(bytes32 => bool)"
+  }
+]

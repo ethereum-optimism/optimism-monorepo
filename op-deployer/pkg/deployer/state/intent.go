@@ -45,6 +45,15 @@ const (
 var emptyAddress common.Address
 var emptyHash common.Hash
 
+type SuperchainProofParams struct {
+	WithdrawalDelaySeconds          uint64 `json:"faultGameWithdrawalDelay" toml:"faultGameWithdrawalDelay"`
+	MinProposalSizeBytes            uint64 `json:"preimageOracleMinProposalSize" toml:"preimageOracleMinProposalSize"`
+	ChallengePeriodSeconds          uint64 `json:"preimageOracleChallengePeriod" toml:"preimageOracleChallengePeriod"`
+	ProofMaturityDelaySeconds       uint64 `json:"proofMaturityDelaySeconds" toml:"proofMaturityDelaySeconds"`
+	DisputeGameFinalityDelaySeconds uint64 `json:"disputeGameFinalityDelaySeconds" toml:"disputeGameFinalityDelaySeconds"`
+	MIPSVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
+}
+
 type Intent struct {
 	DeploymentStrategy    DeploymentStrategy `json:"deploymentStrategy" toml:"deploymentStrategy"`
 	ConfigType            IntentConfigType   `json:"configType" toml:"configType"`
@@ -164,6 +173,9 @@ func (c *Intent) validateStandardValues() error {
 			chain.Eip1559Denominator != standard.Eip1559Denominator ||
 			chain.Eip1559Elasticity != standard.Eip1559Elasticity {
 			return fmt.Errorf("%w: chainId=%s", ErrNonStandardValue, chain.ID)
+		}
+		if len(chain.AdditionalDisputeGames) > 0 {
+			return fmt.Errorf("%w: chainId=%s additionalDisputeGames must be nil", ErrNonStandardValue, chain.ID)
 		}
 	}
 
@@ -351,7 +363,7 @@ func NewIntentStrict(deploymentStrategy DeploymentStrategy, l1ChainId uint64, l2
 	intent.ConfigType = IntentConfigTypeStrict
 
 	challenger, _ := standard.ChallengerAddressFor(l1ChainId)
-	l1ProxyAdminOwner, _ := standard.ManagerOwnerAddrFor(l1ChainId)
+	l1ProxyAdminOwner, _ := standard.L1ProxyAdminOwner(l1ChainId)
 	for chainIndex := range intent.Chains {
 		intent.Chains[chainIndex].Roles.Challenger = challenger
 		intent.Chains[chainIndex].Roles.L1ProxyAdminOwner = l1ProxyAdminOwner

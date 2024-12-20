@@ -46,6 +46,12 @@ contract L2StandardBridge_Test is CommonTest {
         assertEq(address(l2StandardBridge.otherBridge()), address(l1StandardBridge));
     }
 
+    /// @notice Tests that the version function returns a valid string. We avoid testing the
+    ///         specific value of the string as it changes frequently.
+    function test_version_succeeds() external view {
+        assert(bytes(l2StandardBridge.version()).length > 0);
+    }
+
     /// @dev Ensures that the L2StandardBridge is always not paused. The pausability
     ///      happens on L1 and not L2.
     function test_paused_succeeds() external view {
@@ -413,7 +419,7 @@ contract PreBridgeERC20To is CommonTest {
     // so they should share the same setup and expectEmit calls
     function _preBridgeERC20To(bool _isLegacy, address _l2Token) internal {
         deal(_l2Token, alice, 100, true);
-        assertEq(ERC20(L2Token).balanceOf(alice), 100);
+        assertEq(L2Token.balanceOf(alice), 100);
         uint256 nonce = l2CrossDomainMessenger.messageNonce();
         bytes memory message =
             abi.encodeCall(IStandardBridge.finalizeBridgeERC20, (address(L1Token), _l2Token, alice, bob, 100, hex""));

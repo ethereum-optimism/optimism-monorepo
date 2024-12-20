@@ -33,8 +33,11 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         assertEq(address(impl.superchainConfig()), address(0));
         assertEq(address(impl.PORTAL()), address(0));
         assertEq(address(impl.portal()), address(0));
-        assertEq(address(impl.OTHER_MESSENGER()), Predeploys.L2_CROSS_DOMAIN_MESSENGER);
-        assertEq(address(impl.otherMessenger()), Predeploys.L2_CROSS_DOMAIN_MESSENGER);
+
+        // The constructor now uses _disableInitializers, whereas OP Mainnet has the other messenger in storage
+        returnIfForkTest("L1CrossDomainMessenger_Test: impl storage differs on forked network");
+        assertEq(address(impl.OTHER_MESSENGER()), address(0));
+        assertEq(address(impl.otherMessenger()), address(0));
     }
 
     /// @dev Tests that the proxy is initialized correctly.
@@ -129,7 +132,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
 
         // Try to relay a v2 message.
         vm.prank(address(optimismPortal));
-        l2CrossDomainMessenger.relayMessage(
+        l1CrossDomainMessenger.relayMessage(
             Encoding.encodeVersionedNonce({ _nonce: 0, _version: 2 }), // nonce
             sender,
             target,
@@ -745,6 +748,9 @@ contract L1CrossDomainMessenger_Test is CommonTest {
 
     /// @dev Tests that the sendMessage reverts when call value is non-zero with custom gas token.
     function test_sendMessage_customGasTokenWithValue_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("L1CrossDomainMessenger_Test: gas paying token functionality DNE on op mainnet");
+
         // Mock the gasPayingToken function to return a custom gas token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
@@ -756,6 +762,9 @@ contract L1CrossDomainMessenger_Test is CommonTest {
 
     /// @dev Tests that the relayMessage succeeds with a custom gas token when the call value is zero.
     function test_relayMessage_customGasTokenAndNoValue_succeeds() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("L1CrossDomainMessenger_Test: gas paying token functionality DNE on op mainnet");
+
         // Mock the gasPayingToken function to return a custom gas token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))

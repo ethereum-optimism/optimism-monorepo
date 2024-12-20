@@ -117,7 +117,7 @@ participant opnodeB as op-node B
 Note over opnodeA: on new block
 
 opnodeA ->> opgethA: engine process unsafe block
-opgethA -->> opnodeA: engine proccessed unsafe block
+opgethA -->> opnodeA: engine processed unsafe block
 opnodeA ->> opsup: update Local unsafe
 opnodeB ->> opsup: update Local unsafe (maybe)
 opsup ->> opgethA: Fetch receipts
@@ -290,7 +290,7 @@ such that a chain which does not take on new interop dependencies, can continue 
 
 I.e. safety must be guaranteed at all times,
 but a minimal level of liveness can be maintained by holding off on cross-chain message acceptance
-while allowing regular single-chain functionaltiy to proceed.
+while allowing regular single-chain functionality to proceed.
 
 ## Testing
 

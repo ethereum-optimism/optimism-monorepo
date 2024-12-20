@@ -24,6 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/conductor"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/driver"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sequencing"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -75,7 +76,8 @@ type OpNode struct {
 
 	beacon *sources.L1BeaconClient
 
-	supervisor *sources.SupervisorClient
+	supervisor       *sources.SupervisorClient
+	tmpInteropServer *interop.TemporaryInteropServer
 
 	// some resources cannot be stopped directly, like the p2p gossipsub router (not our design),
 	// and depend on this ctx to be closed.
@@ -398,11 +400,12 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 	}
 
 	if cfg.Rollup.InteropTime != nil {
-		cl, err := cfg.Supervisor.SupervisorClient(ctx, n.log)
+		cl, srv, err := cfg.InteropConfig.TemporarySetup(ctx, n.log, n.l2Source)
 		if err != nil {
-			return fmt.Errorf("failed to setup supervisor RPC client: %w", err)
+			return fmt.Errorf("failed to setup interop: %w", err)
 		}
 		n.supervisor = cl
+		n.tmpInteropServer = srv
 	}
 
 	var sequencerConductor conductor.SequencerConductor = &conductor.NoOpConductor{}
@@ -717,6 +720,16 @@ func (n *OpNode) Stop(ctx context.Context) error {
 		}
 	}
 
+	// close the interop sub system
+	if n.supervisor != nil {
+		n.supervisor.Close()
+	}
+	if n.tmpInteropServer != nil {
+		if err := n.tmpInteropServer.Close(); err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to close interop RPC server: %w", err))
+		}
+	}
+
 	if n.eventSys != nil {
 		n.eventSys.Stop()
 	}
@@ -735,11 +748,6 @@ func (n *OpNode) Stop(ctx context.Context) error {
 	// close L2 engine RPC client
 	if n.l2Source != nil {
 		n.l2Source.Close()
-	}
-
-	// close the supervisor RPC client
-	if n.supervisor != nil {
-		n.supervisor.Close()
 	}
 
 	// close L1 data source
@@ -786,6 +794,13 @@ func (n *OpNode) HTTPEndpoint() string {
 		return ""
 	}
 	return fmt.Sprintf("http://%s", n.server.Addr().String())
+}
+
+func (n *OpNode) InteropRPC() (rpcEndpoint string, jwtSecret eth.Bytes32) {
+	if n.tmpInteropServer == nil {
+		return "", [32]byte{}
+	}
+	return n.tmpInteropServer.Endpoint(), [32]byte{} // tmp server has no secret
 }
 
 func (n *OpNode) getP2PNodeIfEnabled() *p2p.NodeP2P {

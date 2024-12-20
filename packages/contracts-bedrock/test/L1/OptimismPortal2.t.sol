@@ -53,21 +53,31 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(opImpl.disputeGameFactory()), address(0));
         assertEq(address(opImpl.systemConfig()), address(0));
         assertEq(address(opImpl.superchainConfig()), address(0));
-        assertEq(opImpl.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(opImpl.respectedGameType().raw(), deploy.cfg().respectedGameType());
+
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        returnIfForkTest("OptimismPortal2_Test: l2Sender is nonzero on OP mainnet");
+        assertEq(opImpl.l2Sender(), address(0));
     }
 
     /// @dev Tests that the initializer sets the correct values.
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_initialize_succeeds() external virtual {
-        address guardian = deploy.cfg().superchainConfigGuardian();
         assertEq(address(optimismPortal2.disputeGameFactory()), address(disputeGameFactory));
-        assertEq(address(optimismPortal2.systemConfig()), address(systemConfig));
-        assertEq(optimismPortal2.guardian(), guardian);
         assertEq(address(optimismPortal2.superchainConfig()), address(superchainConfig));
         assertEq(optimismPortal2.l2Sender(), Constants.DEFAULT_L2_SENDER);
         assertEq(optimismPortal2.paused(), false);
+        assertEq(address(optimismPortal2.systemConfig()), address(systemConfig));
+
+        returnIfForkTest(
+            "OptimismPortal2_Initialize_Test: Do not check guardian and respectedGameType on forked networks"
+        );
+        address guardian = superchainConfig.guardian();
+        // This check is not valid for forked tests, as the guardian is not the same as the one in hardhat.json
+        assertEq(guardian, deploy.cfg().superchainConfigGuardian());
+
+        // This check is not valid on forked tests as the respectedGameType varies between OP Chains.
         assertEq(optimismPortal2.respectedGameType().raw(), deploy.cfg().respectedGameType());
         assertEq(address(optimismPortal2.sharedLockbox()), address(sharedLockbox));
     }
@@ -149,6 +159,11 @@ contract OptimismPortal2_Test is CommonTest {
 
     /// @dev Tests that `receive` successdully deposits ETH.
     function testFuzz_receive_succeeds(uint256 _value) external {
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
+
+        _value = bound(_value, 0, type(uint256).max - lockboxBalanceBefore);
+
         vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
             _from: alice,
@@ -169,8 +184,8 @@ contract OptimismPortal2_Test is CommonTest {
         (bool s,) = address(optimismPortal2).call{ value: _value }(hex"");
 
         assertTrue(s);
-        assertEq(address(optimismPortal2).balance, 0);
-        assertEq(address(sharedLockbox).balance, _value);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + _value);
     }
 
     /// @dev Tests that `depositTransaction` reverts when the destination address is non-zero
@@ -249,6 +264,10 @@ contract OptimismPortal2_Test is CommonTest {
         );
         if (_isCreation) _to = address(0);
 
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
+        _mint = bound(_mint, 0, type(uint256).max - lockboxBalanceBefore);
+
         // EOA emulation
         vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
@@ -274,8 +293,8 @@ contract OptimismPortal2_Test is CommonTest {
             _data: _data
         });
 
-        assertEq(address(optimismPortal2).balance, 0);
-        assertEq(address(sharedLockbox).balance, _mint);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + _mint);
     }
 
     /// @dev Tests that `depositTransaction` succeeds for a contract.
@@ -297,6 +316,10 @@ contract OptimismPortal2_Test is CommonTest {
             )
         );
         if (_isCreation) _to = address(0);
+
+        uint256 portalBalanceBefore = address(optimismPortal2).balance;
+        uint256 lockboxBalanceBefore = address(sharedLockbox).balance;
+        _mint = bound(_mint, 0, type(uint256).max - lockboxBalanceBefore);
 
         vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
@@ -322,8 +345,8 @@ contract OptimismPortal2_Test is CommonTest {
             _data: _data
         });
 
-        assertEq(address(optimismPortal2).balance, 0);
-        assertEq(address(sharedLockbox).balance, _mint);
+        assertEq(address(optimismPortal2).balance, portalBalanceBefore);
+        assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + _mint);
     }
 
     /// @dev Tests that the gas paying token can be set.
@@ -335,6 +358,9 @@ contract OptimismPortal2_Test is CommonTest {
     )
         external
     {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+
         vm.expectEmit(address(optimismPortal2));
         emit TransactionDeposited(
             0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
@@ -363,6 +389,9 @@ contract OptimismPortal2_Test is CommonTest {
     )
         external
     {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+
         if (bytes(_name).length > 32) {
             _name = _name[0:32];
         }
@@ -375,6 +404,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         vm.recordLogs();
 
+        vm.deal(address(systemConfig), 100 ether);
         vm.prank(address(systemConfig));
         optimismPortal2.setGasPayingToken({ _token: _token, _decimals: 18, _name: name, _symbol: symbol });
 
@@ -404,6 +434,9 @@ contract OptimismPortal2_Test is CommonTest {
 
     /// @dev Tests that the gas paying token cannot be set by a non-system config.
     function test_setGasPayingToken_notSystemConfig_fails(address _caller) external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+
         vm.assume(_caller != address(systemConfig));
         vm.prank(_caller);
         vm.expectRevert(Unauthorized.selector);
@@ -412,6 +445,9 @@ contract OptimismPortal2_Test is CommonTest {
 
     /// @dev Tests that `depositERC20Transaction` reverts when the gas paying token is ether.
     function test_depositERC20Transaction_noCustomGasToken_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+
         // Check that the gas paying token is set to ether
         (address token,) = systemConfig.gasPayingToken();
         assertEq(token, Constants.ETHER);
@@ -421,6 +457,8 @@ contract OptimismPortal2_Test is CommonTest {
     }
 
     function test_depositERC20Transaction_balanceOverflow_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
         vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(42), 18));
 
         // The balance slot
@@ -440,6 +478,8 @@ contract OptimismPortal2_Test is CommonTest {
 
     /// @dev Tests that `balance()` returns the correct balance when the gas paying token is ether.
     function testFuzz_balance_ether_succeeds(uint256 _amount) external {
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
         // Check that the gas paying token is set to ether
         (address token,) = systemConfig.gasPayingToken();
         assertEq(token, Constants.ETHER);
@@ -449,6 +489,48 @@ contract OptimismPortal2_Test is CommonTest {
 
         // Check that the balance has been correctly updated
         assertEq(optimismPortal2.balance(), address(optimismPortal2).balance);
+    }
+
+    /// @dev Tests that the donateETH function donates ETH and does no state read/write
+    function test_donateETH_succeeds(uint256 _amount) external {
+        vm.startPrank(alice);
+        vm.deal(alice, _amount);
+
+        uint256 preBalance = address(optimismPortal2).balance;
+        _amount = bound(_amount, 0, type(uint256).max - preBalance);
+
+        vm.startStateDiffRecording();
+        optimismPortal2.donateETH{ value: _amount }();
+        VmSafe.AccountAccess[] memory accountAccesses = vm.stopAndReturnStateDiff();
+
+        // not necessary since it's checked below
+        assertEq(address(optimismPortal2).balance, preBalance + _amount);
+
+        // 0 for extcodesize of proxy before being called by this test,
+        // 1 for the call to the proxy by the pranked address
+        // 2 for the delegate call to the impl by the proxy
+        assertEq(accountAccesses.length, 3);
+        assertEq(uint8(accountAccesses[1].kind), uint8(VmSafe.AccountAccessKind.Call));
+        assertEq(uint8(accountAccesses[2].kind), uint8(VmSafe.AccountAccessKind.DelegateCall));
+
+        // to of 1 is the optimism portal proxy
+        assertEq(accountAccesses[1].account, address(optimismPortal2));
+        // accessor is the pranked address
+        assertEq(accountAccesses[1].accessor, alice);
+        // value is the amount of ETH donated
+        assertEq(accountAccesses[1].value, _amount);
+        // old balance is the balance of the optimism portal before the donation
+        assertEq(accountAccesses[1].oldBalance, preBalance);
+        // new balance is the balance of the optimism portal after the donation
+        assertEq(accountAccesses[1].newBalance, preBalance + _amount);
+        // data is the selector of the donateETH function
+        assertEq(accountAccesses[1].data, abi.encodePacked(optimismPortal2.donateETH.selector));
+        // reverted of alice call to proxy is false
+        assertEq(accountAccesses[1].reverted, false);
+        // reverted of delegate call of proxy to impl is false
+        assertEq(accountAccesses[2].reverted, false);
+        // storage accesses of delegate call of proxy to impl is empty (No storage read or write!)
+        assertEq(accountAccesses[2].storageAccesses.length, 0);
     }
 }
 
@@ -494,10 +576,12 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     /// @dev Setup the system for a ready-to-use state.
     function setUp() public virtual override {
         _proposedBlockNumber = 0xFF;
+        GameType respectedGameType = optimismPortal2.respectedGameType();
+        uint256 bondAmount = disputeGameFactory.initBonds(respectedGameType);
         game = IFaultDisputeGame(
             payable(
                 address(
-                    disputeGameFactory.create(
+                    disputeGameFactory.create{ value: bondAmount }(
                         optimismPortal2.respectedGameType(), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
                     )
                 )
@@ -1621,7 +1705,8 @@ contract OptimismPortal2_Upgradeable_Test is CommonTest {
     }
 
     /// @dev Tests that the proxy is initialized correctly.
-    function test_params_initValuesOnProxy_succeeds() external view {
+    function test_params_initValuesOnProxy_succeeds() external {
+        skipIfForkTest("OptimismPortal2_Test: resource config varies on mainnet");
         (uint128 prevBaseFee, uint64 prevBoughtGas, uint64 prevBlockNum) = optimismPortal2.params();
         IResourceMetering.ResourceConfig memory rcfg = systemConfig.resourceConfig();
 
@@ -1761,6 +1846,9 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
     function setUp() public virtual override {
         super.setUp();
         token = new MockERC20("Test", "TST", 18);
+
+        // TODO(opcm upgrades): remove skip once upgrade path is implemented
+        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
     }
 
     function depositERC20Transaction(

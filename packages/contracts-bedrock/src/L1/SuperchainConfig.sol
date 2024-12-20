@@ -68,8 +68,8 @@ contract SuperchainConfig is Initializable, ISemver {
     error ChainAlreadyAdded();
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.4
-    string public constant version = "1.1.1-beta.4";
+    /// @custom:semver 1.1.1-beta.5
+    string public constant version = "1.1.1-beta.5";
 
     // Mapping from chainId to SystemConfig address
     mapping(uint256 => address) public systemConfigs;
@@ -87,7 +87,7 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _upgrader    Address of the upgrader, can add a chain to the dependency set.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, address _upgrader, bool _paused) public initializer {
+    function initialize(address _guardian, address _upgrader, bool _paused) external initializer {
         _setGuardian(_guardian);
         _setUpgrader(_upgrader);
         if (_paused) {

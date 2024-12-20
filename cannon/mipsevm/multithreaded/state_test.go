@@ -399,7 +399,7 @@ func TestStateWitnessSize(t *testing.T) {
 func TestThreadStateWitnessSize(t *testing.T) {
 	expectedWitnessSize := 166
 	if !arch.IsMips32 {
-		expectedWitnessSize = 322
+		expectedWitnessSize = 318
 	}
 	require.Equal(t, expectedWitnessSize, SERIALIZED_THREAD_SIZE)
 }

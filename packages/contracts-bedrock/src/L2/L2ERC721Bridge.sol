@@ -26,17 +26,17 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 ///         wait for the one-week challenge period to elapse before their Optimism-native NFT
 ///         can be refunded on L2.
 contract L2ERC721Bridge is ERC721Bridge, ISemver {
-    /// @custom:semver 1.8.0-beta.3
-    string public constant version = "1.8.0-beta.3";
+    /// @custom:semver 1.8.0-beta.4
+    string public constant version = "1.8.0-beta.4";
 
     /// @notice Constructs the L2ERC721Bridge contract.
     constructor() ERC721Bridge() {
-        initialize({ _l1ERC721Bridge: payable(address(0)) });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _l1ERC721Bridge Address of the ERC721 bridge contract on the other network.
-    function initialize(address payable _l1ERC721Bridge) public initializer {
+    function initialize(address payable _l1ERC721Bridge) external initializer {
         __ERC721Bridge_init({
             _messenger: ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER),
             _otherBridge: ERC721Bridge(_l1ERC721Bridge)

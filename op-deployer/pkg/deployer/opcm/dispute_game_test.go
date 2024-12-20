@@ -1,6 +1,7 @@
 package opcm
 
 import (
+	"math/big"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
@@ -15,6 +16,8 @@ import (
 )
 
 func TestDeployDisputeGame(t *testing.T) {
+	t.Parallel()
+
 	_, artifacts := testutil.LocalArtifacts(t)
 
 	host, err := env.DefaultScriptHost(
@@ -45,7 +48,7 @@ func TestDeployDisputeGame(t *testing.T) {
 		MaxClockDuration:         standard.DisputeMaxClockDuration,
 		DelayedWethProxy:         common.Address{'D'},
 		AnchorStateRegistryProxy: common.Address{'A'},
-		L2ChainId:                69,
+		L2ChainId:                common.BigToHash(big.NewInt(69)),
 		Proposer:                 common.Address{'P'},
 		Challenger:               common.Address{'C'},
 	}

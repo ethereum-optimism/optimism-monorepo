@@ -1,13 +1,18 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity 0.8.15;
 
-// Testing utilities
+// Forge
 import { Test } from "forge-std/Test.sol";
 import { VmSafe } from "forge-std/Vm.sol";
 
-// Target contract
-import { IL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
+// Scripts
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+
+// Libraries
+import { LibString } from "@solady/utils/LibString.sol";
+
+// Interfaces
+import { IL1ChugSplashProxy } from "interfaces/legacy/IL1ChugSplashProxy.sol";
 
 contract Owner {
     bool public isUpgrading;
@@ -103,7 +108,10 @@ contract L1ChugSplashProxy_Test is Test {
         // Because forge coverage always runs with the optimizer disabled,
         // if forge coverage is run before testing this with forge test or forge snapshot, forge clean should be
         // run first so that it recompiles the contracts using the foundry.toml optimizer settings.
-        if (vm.isContext(VmSafe.ForgeContext.Coverage)) {
+        if (
+            vm.isContext(VmSafe.ForgeContext.Coverage)
+                || LibString.eq(vm.envOr("FOUNDRY_PROFILE", string("default")), "lite")
+        ) {
             gasLimit = 95_000;
         } else if (vm.isContext(VmSafe.ForgeContext.Test) || vm.isContext(VmSafe.ForgeContext.Snapshot)) {
             gasLimit = 65_000;

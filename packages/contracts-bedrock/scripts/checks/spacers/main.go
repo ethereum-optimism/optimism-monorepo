@@ -89,14 +89,14 @@ func validateSpacer(variable solc.StorageLayoutEntry, types map[string]solc.Stor
 	return errors
 }
 
-func processFile(path string) []error {
+func processFile(path string) (*common.Void, []error) {
 	artifact, err := common.ReadForgeArtifact(path)
 	if err != nil {
-		return []error{err}
+		return nil, []error{err}
 	}
 
 	if artifact.StorageLayout == nil {
-		return nil
+		return nil, nil
 	}
 
 	var errors []error
@@ -109,11 +109,11 @@ func processFile(path string) []error {
 		}
 	}
 
-	return errors
+	return nil, errors
 }
 
 func main() {
-	if err := common.ProcessFilesGlob(
+	if _, err := common.ProcessFilesGlob(
 		[]string{"forge-artifacts/**/*.json"},
 		[]string{"forge-artifacts/**/CrossDomainMessengerLegacySpacer{0,1}.json"},
 		processFile,

@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 import { LegacyMintableERC20 } from "src/legacy/LegacyMintableERC20.sol";
-import { ILegacyMintableERC20 } from "interfaces/universal/ILegacyMintableERC20.sol";
+import { ILegacyMintableERC20 } from "interfaces/legacy/ILegacyMintableERC20.sol";
 
 contract LegacyMintableERC20_Test is CommonTest {
     LegacyMintableERC20 legacyMintableERC20;
