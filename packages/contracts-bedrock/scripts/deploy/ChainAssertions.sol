@@ -594,6 +594,7 @@ library ChainAssertions {
 
         require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-40");
 
+		// Ensure that the OPCM impls are correctly saved
         OPContractsManager.Implementations memory impls = _opcm.implementations();
         require(impls.l1ERC721BridgeImpl == _contracts.L1ERC721Bridge, "CHECK-OPCM-50");
         require(impls.optimismPortalImpl == _contracts.OptimismPortal2, "CHECK-OPCM-60");
