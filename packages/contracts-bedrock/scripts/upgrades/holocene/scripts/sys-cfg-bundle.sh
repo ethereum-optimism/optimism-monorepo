@@ -50,8 +50,11 @@ OPTIMISM_MINTABLE_ERC20_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "o
 
 
 # Decode base fee scalar and blob base fee scalar from scalar value:
-BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SCALAR" | awk '/^# base fee scalar[[:space:]]*:/{print $NF}')
-BLOB_BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SCALAR" | awk '/^# blob base fee scalar[[:space:]]*:/{print $NF}')
+BASE_FEE_SCALAR=$(./ecotone-scalar --decode="$SCALAR" | yq '.baseFeeScalar')
+BLOB_BASE_FEE_SCALAR=$(./ecotone-scalar --decode="$SCALAR" | yq '.blobbaseFeeScalar')
+
+echo "BASE_FEE_SCALAR: $BASE_FEE_SCALAR"
+echo "BLOB_BASE_FEE_SCALAR: $BLOB_BASE_FEE_SCALAR"
 
 # Now we generate the initialization calldata
 SYSTEM_CONFIG_INITIALIZE_CALLDATA=$(cast calldata \

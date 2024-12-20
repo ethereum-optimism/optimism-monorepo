@@ -58,6 +58,7 @@ sys-cfg-task output-folder-path="$(pwd)/output/" *args='':
 
 # Build the image locally.
 build-image:
+  GOOS=linux GOARCH=amd64 go build ../../../../../op-chain-ops/cmd/ecotone-scalar
   docker build \
   -t op-holocene-upgrade:local \
   -f upgrade.dockerfile \
