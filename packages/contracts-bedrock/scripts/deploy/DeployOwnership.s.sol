@@ -90,7 +90,7 @@ contract DeployOwnership is Deploy {
             safeConfig: SafeConfig({ threshold: 1, owners: exampleGuardianOwners }),
             deputyGuardianModuleConfig: DeputyGuardianModuleConfig({
                 deputyGuardian: mustGetAddress("FoundationOperationsSafe"),
-                superchainConfig: ISuperchainConfig(mustGetAddress("SuperchainConfig"))
+                superchainConfig: ISuperchainConfig(mustGetAddress("SuperchainConfigImpl"))
             })
         });
     }

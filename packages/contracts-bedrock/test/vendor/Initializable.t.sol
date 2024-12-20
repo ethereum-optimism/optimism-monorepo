@@ -53,7 +53,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "SuperchainConfig",
-                target: deploy.mustGetAddress("SuperchainConfig"),
+                target: deploy.mustGetAddress("SuperchainConfigImpl"),
                 initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), false))
             })
         );
@@ -69,7 +69,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1CrossDomainMessenger",
-                target: deploy.mustGetAddress("L1CrossDomainMessenger"),
+                target: deploy.mustGetAddress("L1CrossDomainMessengerImpl"),
                 initCalldata: abi.encodeCall(
                     l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
                 )
@@ -89,7 +89,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DisputeGameFactory",
-                target: deploy.mustGetAddress("DisputeGameFactory"),
+                target: deploy.mustGetAddress("DisputeGameFactoryImpl"),
                 initCalldata: abi.encodeCall(disputeGameFactory.initialize, (address(0)))
             })
         );
@@ -105,7 +105,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DelayedWETH",
-                target: deploy.mustGetAddress("DelayedWETH"),
+                target: deploy.mustGetAddress("DelayedWETHImpl"),
                 initCalldata: abi.encodeCall(delayedWeth.initialize, (address(0), ISuperchainConfig(address(0))))
             })
         );
@@ -121,7 +121,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "OptimismPortal2",
-                target: deploy.mustGetAddress("OptimismPortal2"),
+                target: deploy.mustGetAddress("OptimismPortal2Impl"),
                 initCalldata: abi.encodeCall(
                     optimismPortal2.initialize,
                     (
@@ -133,7 +133,7 @@ contract Initializer_Test is CommonTest {
                 )
             })
         );
-        // OptimismPortalProxy
+        // OptimismPortal2Proxy
         contracts.push(
             InitializeableContract({
                 name: "OptimismPortal2Proxy",
@@ -153,7 +153,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "SystemConfig",
-                target: deploy.mustGetAddress("SystemConfig"),
+                target: deploy.mustGetAddress("SystemConfigImpl"),
                 initCalldata: abi.encodeCall(
                     systemConfig.initialize,
                     (
@@ -225,7 +225,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "ProtocolVersions",
-                target: deploy.mustGetAddress("ProtocolVersions"),
+                target: deploy.mustGetAddress("ProtocolVersionsImpl"),
                 initCalldata: abi.encodeCall(
                     protocolVersions.initialize, (address(0), ProtocolVersion.wrap(1), ProtocolVersion.wrap(2))
                 )
@@ -253,7 +253,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1StandardBridge",
-                target: deploy.mustGetAddress("L1StandardBridge"),
+                target: deploy.mustGetAddress("L1StandardBridgeImpl"),
                 initCalldata: abi.encodeCall(
                     l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig, systemConfig)
                 )
@@ -289,7 +289,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1ERC721Bridge",
-                target: deploy.mustGetAddress("L1ERC721Bridge"),
+                target: deploy.mustGetAddress("L1ERC721BridgeImpl"),
                 initCalldata: abi.encodeCall(l1ERC721Bridge.initialize, (l1CrossDomainMessenger, superchainConfig))
             })
         );
@@ -313,7 +313,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "OptimismMintableERC20Factory",
-                target: deploy.mustGetAddress("OptimismMintableERC20Factory"),
+                target: deploy.mustGetAddress("OptimismMintableERC20FactoryImpl"),
                 initCalldata: abi.encodeCall(l1OptimismMintableERC20Factory.initialize, (address(l1StandardBridge)))
             })
         );
@@ -329,7 +329,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DataAvailabilityChallenge",
-                target: deploy.mustGetAddress("DataAvailabilityChallenge"),
+                target: deploy.mustGetAddress("DataAvailabilityChallengeImpl"),
                 initCalldata: abi.encodeCall(dataAvailabilityChallenge.initialize, (address(0), 0, 0, 0, 0))
             })
         );

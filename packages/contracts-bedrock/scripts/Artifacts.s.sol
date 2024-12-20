@@ -212,7 +212,12 @@ abstract contract Artifacts {
 
     /// @notice Returns the value of the internal `_initialized` storage slot for a given contract.
     function loadInitializedSlot(string memory _contractName) public returns (uint8 initialized_) {
-        address contractAddress = mustGetAddress(_contractName);
+        string memory lookupName = _contractName;
+        // If the contract name does not end in Proxy, add Impl to the end.
+        if (!LibString.endsWith(_contractName, "Proxy")) {
+            lookupName = string.concat(_contractName, "Impl");
+        }
+        address contractAddress = mustGetAddress(lookupName);
 
         // Check if the contract name ends with `Proxy` and, if so override the contract name which is used to
         // retrieve the storage layout.

@@ -198,47 +198,59 @@ contract Setup {
         console.log("Setup: completed L1 deployment, registering addresses now");
 
         optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
-        disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
-        delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
+        vm.label(address(optimismPortal2), "OptimismPortalProxy");
+        vm.label(deploy.mustGetAddress("OptimismPortalImpl"), "OptimismPortalImpl");
+
         systemConfig = ISystemConfig(deploy.mustGetAddress("SystemConfigProxy"));
+        vm.label(address(systemConfig), "SystemConfigProxy");
+        vm.label(deploy.mustGetAddress("SystemConfigImpl"), "SystemConfigImpl");
+
         l1StandardBridge = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridgeProxy"));
+        vm.label(address(l1StandardBridge), "L1StandardBridgeProxy");
+        vm.label(deploy.mustGetAddress("L1StandardBridgeImpl"), "L1StandardBridgeImpl");
+
         l1CrossDomainMessenger = IL1CrossDomainMessenger(deploy.mustGetAddress("L1CrossDomainMessengerProxy"));
+        vm.label(address(l1CrossDomainMessenger), "L1CrossDomainMessengerProxy");
+        vm.label(deploy.mustGetAddress("L1CrossDomainMessengerImpl"), "L1CrossDomainMessengerImpl");
+        vm.label(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessenger_aliased");
+
         addressManager = IAddressManager(deploy.mustGetAddress("AddressManager"));
+        vm.label(address(addressManager), "AddressManager");
+
         l1ERC721Bridge = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721BridgeProxy"));
+        vm.label(address(l1ERC721Bridge), "L1ERC721BridgeProxy");
+        vm.label(deploy.mustGetAddress("L1ERC721BridgeImpl"), "L1ERC721BridgeImpl");
+
         l1OptimismMintableERC20Factory =
             IOptimismMintableERC20Factory(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"));
-        protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
-        superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
-        anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
+        vm.label(address(l1OptimismMintableERC20Factory), "OptimismMintableERC20FactoryProxy");
+        vm.label(deploy.mustGetAddress("OptimismMintableERC20FactoryImpl"), "OptimismMintableERC20FactoryImpl");
 
-        vm.label(deploy.mustGetAddress("OptimismPortalProxy"), "OptimismPortalProxy");
-        vm.label(address(disputeGameFactory), "DisputeGameFactory");
-        vm.label(deploy.mustGetAddress("DisputeGameFactoryProxy"), "DisputeGameFactoryProxy");
-        vm.label(address(delayedWeth), "DelayedWETH");
-        vm.label(deploy.mustGetAddress("DelayedWETHProxy"), "DelayedWETHProxy");
-        vm.label(address(systemConfig), "SystemConfig");
-        vm.label(deploy.mustGetAddress("SystemConfigProxy"), "SystemConfigProxy");
-        vm.label(address(l1StandardBridge), "L1StandardBridge");
-        vm.label(deploy.mustGetAddress("L1StandardBridgeProxy"), "L1StandardBridgeProxy");
-        vm.label(address(l1CrossDomainMessenger), "L1CrossDomainMessenger");
-        vm.label(deploy.mustGetAddress("L1CrossDomainMessengerProxy"), "L1CrossDomainMessengerProxy");
-        vm.label(address(addressManager), "AddressManager");
-        vm.label(address(l1ERC721Bridge), "L1ERC721Bridge");
-        vm.label(deploy.mustGetAddress("L1ERC721BridgeProxy"), "L1ERC721BridgeProxy");
-        vm.label(address(l1OptimismMintableERC20Factory), "OptimismMintableERC20Factory");
-        vm.label(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"), "OptimismMintableERC20FactoryProxy");
-        vm.label(address(protocolVersions), "ProtocolVersions");
+        protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
+        vm.label(address(protocolVersions), "ProtocolVersionsProxy");
         vm.label(deploy.mustGetAddress("ProtocolVersionsProxy"), "ProtocolVersionsProxy");
-        vm.label(address(superchainConfig), "SuperchainConfig");
-        vm.label(deploy.mustGetAddress("SuperchainConfigProxy"), "SuperchainConfigProxy");
+
+        superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
+        vm.label(address(superchainConfig), "SuperchainConfigProxy");
+        vm.label(deploy.mustGetAddress("SuperchainConfigImpl"), "SuperchainConfigImpl");
+
+        anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
         vm.label(address(anchorStateRegistry), "AnchorStateRegistryProxy");
-        vm.label(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessenger_aliased");
+        vm.label(deploy.mustGetAddress("AnchorStateRegistryImpl"), "AnchorStateRegistryImpl");
+
+        disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
+        vm.label(address(disputeGameFactory), "DisputeGameFactory");
+        vm.label(deploy.mustGetAddress("DisputeGameFactoryImpl"), "DisputeGameFactoryImpl");
+
+        delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
+        vm.label(address(delayedWeth), "DelayedWETHProxy");
+        vm.label(deploy.mustGetAddress("DelayedWETHImpl"), "DelayedWETHImpl");
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
                 IDataAvailabilityChallenge(deploy.mustGetAddress("DataAvailabilityChallengeProxy"));
             vm.label(address(dataAvailabilityChallenge), "DataAvailabilityChallengeProxy");
-            vm.label(deploy.mustGetAddress("DataAvailabilityChallenge"), "DataAvailabilityChallenge");
+            vm.label(deploy.mustGetAddress("DataAvailabilityChallengeImpl"), "DataAvailabilityChallengeImpl");
         }
         console.log("Setup: registered L1 deployments");
     }
