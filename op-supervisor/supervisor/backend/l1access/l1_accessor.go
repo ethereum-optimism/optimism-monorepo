@@ -15,6 +15,13 @@ type L1Source interface {
 	L1BlockRefByLabel(ctx context.Context, label eth.BlockLabel) (eth.L1BlockRef, error)
 }
 
+// L1Accessor provides access to the L1 chain.
+// it wraps an L1 source in order to pass calls to the L1 chain
+// and manages the finality and latest block subscriptions.
+// The finality subscription is hooked to a finality handler function provided by the caller.
+// and the latest block subscription is used to monitor the tip height of the L1 chain.
+// L1Accessor has the concept of confirmation depth, which is used to block access to requests to blocks which are too recent.
+// When requests for blocks are more recent than the tip minus the confirmation depth, a NotFound error is returned.
 type L1Accessor struct {
 	log      log.Logger
 	client   L1Source

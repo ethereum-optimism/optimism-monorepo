@@ -143,10 +143,12 @@ func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
 
 func (db *ChainsDB) AddSubscriptions(chainID types.ChainID) {
 	if db.l2FinalitySubscription.Has(chainID) {
-		db.logger.Warn("overwriting existing L2 finality subscription for chain", "chain", chainID)
+		db.logger.Warn("a subscription for this chain already exists", "chain", chainID)
+		return
 	}
 	if db.crossSafeSubscription.Has(chainID) {
-		db.logger.Warn("overwriting existing cross-safe subscription for chain", "chain", chainID)
+		db.logger.Warn("a subscription for this chain already exists", "chain", chainID)
+		return
 	}
 	db.l2FinalitySubscription.Set(chainID, &gethevent.FeedOf[eth.BlockID]{})
 	db.crossSafeSubscription.Set(chainID, &gethevent.FeedOf[types.DerivedPair]{})
