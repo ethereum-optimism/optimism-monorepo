@@ -128,8 +128,7 @@ contract Deploy is Deployer {
             SystemConfig: getAddress("SystemConfigProxy"),
             L1ERC721Bridge: getAddress("L1ERC721BridgeProxy"),
             ProtocolVersions: getAddress("ProtocolVersionsProxy"),
-            SuperchainConfig: getAddress("SuperchainConfigProxy"),
-            OPContractsManager: getAddress("OPContractsManager")
+            SuperchainConfig: getAddress("SuperchainConfigProxy")
         });
     }
 
@@ -149,8 +148,7 @@ contract Deploy is Deployer {
             SystemConfig: getAddress("SystemConfig"),
             L1ERC721Bridge: getAddress("L1ERC721Bridge"),
             ProtocolVersions: getAddress("ProtocolVersions"),
-            SuperchainConfig: getAddress("SuperchainConfig"),
-            OPContractsManager: getAddress("OPContractsManager")
+            SuperchainConfig: getAddress("SuperchainConfig")
         });
     }
 
@@ -362,6 +360,11 @@ contract Deploy is Deployer {
         ChainAssertions.checkMIPS({
             _mips: IMIPS(address(dio.mipsSingleton())),
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton()))
+        });
+        ChainAssertions.checkOPContractsManager({
+            _contracts: contracts,
+            _opcm: OPContractsManager(mustGetAddress("OPContractsManager")),
+            _mips: IMIPS(mustGetAddress("Mips"))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
