@@ -82,14 +82,16 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 
 func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	// Lock, so we avoid race-conditions in-between getting (for comparison) and setting.
+	// Unlock is managed explicitly, in this function so we can call NotifyL2Finalized after releasing the lock.
 	db.finalizedL1.Lock()
-	defer db.finalizedL1.Unlock()
 
 	if v := db.finalizedL1.Value; v.Number > finalized.Number {
+		db.finalizedL1.Unlock()
 		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", v, finalized)
 	}
 	db.finalizedL1.Value = finalized
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
+	db.finalizedL1.Unlock()
 
 	// whenver the L1 Finalized changes, the L2 Finalized may change, notify subscribers
 	db.NotifyL2Finalized()
