@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
-
+import { console2 as console } from "forge-std/console2.sol";
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -149,6 +149,12 @@ contract OPContractsManager is ISemver {
     event Deployed(
         uint256 indexed outputVersion, uint256 indexed l2ChainId, address indexed deployer, bytes deployOutput
     );
+
+    /// @notice Emitted when a chain is upgraded
+    /// @param l2ChainId Chain ID of the upgraded chain
+    /// @param systemConfig Address of the chain's SystemConfig contract
+    /// @param upgrader Address that initiated the upgrade
+    event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
 
     // -------- Errors --------
 
@@ -361,6 +367,23 @@ contract OPContractsManager is ISemver {
 
         emit Deployed(OUTPUT_VERSION, l2ChainId, msg.sender, abi.encode(output));
         return output;
+    }
+
+    /// @notice Upgrades a set of chains to the latest implementation contracts
+    /// @param _systemConfigs Array of SystemConfig contracts, one per chain to upgrade
+    /// @param _proxyAdmins Array of ProxyAdmin contracts, one per chain to upgrade
+    /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
+    function upgrade(
+        ISystemConfig[] calldata _systemConfigs,
+        IProxyAdmin[] calldata _proxyAdmins
+    )
+        external
+    {
+        for (uint256 i = 0; i < _systemConfigs.length; i++) {
+            ISystemConfig systemConfig = _systemConfigs[i];
+            IProxyAdmin proxyAdmin = _proxyAdmins[i];
+            proxyAdmin.upgradeAndCall(payable(address(systemConfig)), implementation.systemConfigImpl, abi.encode());
+        }
     }
 
     // -------- Utilities --------

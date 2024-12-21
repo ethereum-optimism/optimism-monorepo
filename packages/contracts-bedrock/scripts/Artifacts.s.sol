@@ -158,6 +158,7 @@ contract Artifacts {
         if (bytes(_name).length == 0) {
             revert InvalidDeployment("EmptyName");
         }
+
         Deployment memory existing = _namedDeployments[_name];
         if (bytes(existing.name).length > 0) {
             console.log("Warning: Deployment already exists for %s.", _name);

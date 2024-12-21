@@ -16,6 +16,9 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 /// @title ForkLive
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
@@ -52,6 +55,9 @@ contract ForkLive is Deployer {
 
         // Now deploy the updated OPCM and implementations of the contracts
         _deployNewImplementations();
+
+        // Now upgrade the contracts
+        _upgrade();
     }
 
     /// @notice Reads the superchain config files and saves the addresses to disk.
