@@ -236,7 +236,7 @@ func ChainOperatorKeys(chainID *big.Int) func(ChainOperatorRole) ChainOperatorKe
 
 // Key identifies an account, and produces an HD-Path to derive the secret-key from.
 //
-// We organize the dev keys with a mnemonic key-path structure as following:
+// We organize the dev keys with a mnemonic key-path structure as follows:
 // BIP-44: `m / purpose' / coin_type' / account' / change / address_index`
 // purpose = standard secp256k1 usage (Eth2 BLS keys use different purpose data).
 // coin_type = chain type, set to 60' for ETH. See SLIP-0044.
