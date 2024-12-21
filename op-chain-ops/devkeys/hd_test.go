@@ -29,7 +29,7 @@ func TestMnemonicDevKeys(t *testing.T) {
 
 	t.Run("superchain-operator", func(t *testing.T) {
 		keys := SuperchainOperatorKeys(big.NewInt(1))
-		// Check that each key address and name is unique
+		// Check that each key address and name are unique
 		addrs := make(map[common.Address]struct{})
 		names := make(map[string]struct{})
 		for i := SuperchainOperatorRole(0); i < 20; i++ {
