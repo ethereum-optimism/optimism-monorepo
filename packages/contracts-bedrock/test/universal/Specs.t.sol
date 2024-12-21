@@ -391,6 +391,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("getAddresses()") });
 
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -470,6 +471,7 @@ contract Specification_Test is CommonTest {
             _auth: Role.DEPENDENCYMANAGER
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("getAddresses()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });
@@ -783,6 +785,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.upgrade.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
 
         // OPContractsManagerInterop
@@ -794,6 +797,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.upgrade.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.addGameType.selector });
 
         // DeputyGuardianModule

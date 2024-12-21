@@ -112,6 +112,12 @@ contract OPContractsManager is ISemver {
         address mipsImpl;
     }
 
+    /// @notice The input required to identify a chain for upgrading.
+    struct OpChain {
+        ISystemConfig systemConfigProxy;
+        IProxyAdmin proxyAdmin;
+    }
+
     struct AddGameInput {
         string saltMixer;
         ISystemConfig systemConfig;
@@ -135,8 +141,10 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.32
-    string public constant version = "1.0.0-beta.32";
+    /// @custom:semver 1.0.0-beta.33
+    function version() public pure virtual returns (string memory) {
+        return "1.0.0-beta.33";
+    }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
     ISuperchainConfig public immutable superchainConfig;
@@ -168,6 +176,11 @@ contract OPContractsManager is ISemver {
     /// @param deployOutput ABI-encoded output of the deployment.
     event Deployed(uint256 indexed l2ChainId, address indexed deployer, bytes deployOutput);
 
+    /// @notice Emitted when a chain is upgraded
+    /// @param systemConfig Address of the chain's SystemConfig contract
+    /// @param upgrader Address that initiated the upgrade
+    event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+
     // -------- Errors --------
 
     /// @notice Thrown when an address is the zero address.
@@ -196,6 +209,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice Thrown when game configs passed to addGameType are invalid.
     error InvalidGameConfigs();
+
+    /// @notice Thrown when the SuperchainConfig of the chain does not match the SuperchainConfig of this OPCM.
+    error SuperchainConfigMismatch(ISystemConfig systemConfig);
 
     // -------- Methods --------
 
@@ -318,25 +334,25 @@ contract OPContractsManager is ISemver {
         bytes memory data;
 
         data = encodeL1ERC721BridgeInitializer(output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), implementation.l1ERC721BridgeImpl, data
         );
 
         data = encodeOptimismPortalInitializer(output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
 
         // First we upgrade the implementation so it's version can be retrieved, then we initialize
         // it afterwards. See the comments in encodeSystemConfigInitializer to learn more.
-        output.opChainProxyAdmin.upgrade(payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
+        upgradeTo(output.opChainProxyAdmin, payable(address(output.systemConfigProxy)), implementation.systemConfigImpl);
         data = encodeSystemConfigInitializer(_input, output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
         );
 
         data = encodeOptimismMintableERC20FactoryInitializer(output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin,
             address(output.optimismMintableERC20FactoryProxy),
             implementation.optimismMintableERC20FactoryImpl,
@@ -344,7 +360,7 @@ contract OPContractsManager is ISemver {
         );
 
         data = encodeL1CrossDomainMessengerInitializer(output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin,
             address(output.l1CrossDomainMessengerProxy),
             implementation.l1CrossDomainMessengerImpl,
@@ -352,13 +368,13 @@ contract OPContractsManager is ISemver {
         );
 
         data = encodeL1StandardBridgeInitializer(output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), implementation.l1StandardBridgeImpl, data
         );
 
         data = encodeDelayedWETHInitializer(_input);
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin,
             address(output.delayedWETHPermissionedGameProxy),
             implementation.delayedWETHImpl,
@@ -367,7 +383,7 @@ contract OPContractsManager is ISemver {
 
         // We set the initial owner to this contract, set game implementations, then transfer ownership.
         data = encodeDisputeGameFactoryInitializer();
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin,
             address(output.disputeGameFactoryProxy),
             implementation.disputeGameFactoryImpl,
@@ -379,7 +395,7 @@ contract OPContractsManager is ISemver {
         output.disputeGameFactoryProxy.transferOwnership(address(_input.roles.opChainProxyAdminOwner));
 
         data = encodeAnchorStateRegistryInitializer(_input, output);
-        upgradeAndCall(
+        upgradeToAndCall(
             output.opChainProxyAdmin,
             address(output.anchorStateRegistryProxy),
             implementation.anchorStateRegistryImpl,
@@ -392,6 +408,75 @@ contract OPContractsManager is ISemver {
 
         emit Deployed(l2ChainId, msg.sender, abi.encode(output));
         return output;
+    }
+
+    /// @notice Upgrades a set of chains to the latest implementation contracts
+    /// @param _opChains Array of OpChain structs, one per chain to upgrade
+    /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
+    function upgrade(OpChain[] memory _opChains) external {
+        if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
+
+        Implementations memory impls = thisOPCM.implementations();
+
+        // TODO: upgrading the SuperchainConfig and ProtocolVersions (in a new function)
+
+        for (uint256 i = 0; i < _opChains.length; i++) {
+            ISystemConfig systemConfig = _opChains[i].systemConfigProxy;
+            // After Upgrade 12, we will be able to use systemConfigProxy.getAddresses() here.
+            ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
+                l1CrossDomainMessenger: systemConfig.l1CrossDomainMessenger(),
+                l1ERC721Bridge: systemConfig.l1ERC721Bridge(),
+                l1StandardBridge: systemConfig.l1StandardBridge(),
+                disputeGameFactory: systemConfig.disputeGameFactory(),
+                optimismPortal: systemConfig.optimismPortal(),
+                optimismMintableERC20Factory: systemConfig.optimismMintableERC20Factory()
+            });
+
+            if (IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig) {
+                revert SuperchainConfigMismatch(systemConfig);
+            }
+
+            IProxyAdmin proxyAdmin = _opChains[i].proxyAdmin;
+
+            // -------- Upgrade Contracts Stored in SystemConfig --------
+            upgradeTo(proxyAdmin, address(systemConfig), impls.systemConfigImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.l1CrossDomainMessenger, impls.l1CrossDomainMessengerImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.l1ERC721Bridge, impls.l1ERC721BridgeImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.l1StandardBridge, impls.l1StandardBridgeImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.disputeGameFactory, impls.disputeGameFactoryImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.optimismPortal, impls.optimismPortalImpl);
+            upgradeTo(proxyAdmin, opChainAddrs.optimismMintableERC20Factory, impls.optimismMintableERC20FactoryImpl);
+
+            // -------- Discover and Upgrade Proofs Contracts --------
+            // Starting with the permissioned game, permissioned weth, and anchor state registry, which all chains have.
+            IPermissionedDisputeGame permissionedDisputeGame = IPermissionedDisputeGame(
+                address(
+                    getGameImplementation(
+                        IDisputeGameFactory(opChainAddrs.disputeGameFactory), GameTypes.PERMISSIONED_CANNON
+                    )
+                )
+            );
+            IDelayedWETH delayedWETHPermissionedGameProxy = permissionedDisputeGame.weth();
+            IAnchorStateRegistry anchorStateRegistryProxy = permissionedDisputeGame.anchorStateRegistry();
+            upgradeTo(proxyAdmin, address(anchorStateRegistryProxy), impls.anchorStateRegistryImpl);
+            upgradeTo(proxyAdmin, address(delayedWETHPermissionedGameProxy), impls.delayedWETHImpl);
+            // TODO: redeploy and replace permissioned game implementation
+
+            // Now retrieve the permissionless game. If it exists, upgrade its weth and replace its implementation.
+            IFaultDisputeGame faultDisputeGame = IFaultDisputeGame(
+                address(getGameImplementation(IDisputeGameFactory(opChainAddrs.disputeGameFactory), GameTypes.CANNON))
+            );
+            if (address(faultDisputeGame) != address(0)) {
+                IDelayedWETH delayedWETHPermissionlessGameProxy = faultDisputeGame.weth();
+                upgradeTo(proxyAdmin, address(delayedWETHPermissionlessGameProxy), impls.delayedWETHImpl);
+                // TODO: redeploy and replace permissionless game implementation
+            }
+
+            // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
+            // the caller will be the value of the ADDRESS opcode.
+            uint256 l2ChainId = permissionedDisputeGame.l2ChainId();
+            emit Upgraded(l2ChainId, systemConfig, address(this));
+        }
     }
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
@@ -419,8 +504,8 @@ contract OPContractsManager is ISemver {
             // Grab the FDG from the SystemConfig.
             IFaultDisputeGame fdg = IFaultDisputeGame(
                 address(
-                    IDisputeGameFactory(gameConfig.systemConfig.disputeGameFactory()).gameImpls(
-                        GameTypes.PERMISSIONED_CANNON
+                    getGameImplementation(
+                        IDisputeGameFactory(gameConfig.systemConfig.disputeGameFactory()), GameTypes.PERMISSIONED_CANNON
                     )
                 )
             );
@@ -435,7 +520,7 @@ contract OPContractsManager is ISemver {
                 );
 
                 // Initialize the proxy.
-                upgradeAndCall(
+                upgradeToAndCall(
                     gameConfig.proxyAdmin,
                     address(outputs[i].delayedWETH),
                     thisOPCM.implementations().delayedWETHImpl,
@@ -743,7 +828,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice Makes an external call to the target to initialize the proxy with the specified data.
     /// First performs safety checks to ensure the target, implementation, and proxy admin are valid.
-    function upgradeAndCall(
+    function upgradeToAndCall(
         IProxyAdmin _proxyAdmin,
         address _target,
         address _implementation,
@@ -751,15 +836,20 @@ contract OPContractsManager is ISemver {
     )
         internal
     {
-        assertValidContractAddress(address(_proxyAdmin));
-        assertValidContractAddress(_target);
         assertValidContractAddress(_implementation);
 
         _proxyAdmin.upgradeAndCall(payable(address(_target)), _implementation, _data);
     }
 
+    /// @notice Updates the implementation of a proxy without calling the initializer.
+    /// First performs safety checks to ensure the target, implementation, and proxy admin are valid.
+    function upgradeTo(IProxyAdmin _proxyAdmin, address _target, address _implementation) internal {
+        assertValidContractAddress(_implementation);
+
+        _proxyAdmin.upgrade(payable(address(_target)), _implementation);
+    }
+
     function assertValidContractAddress(address _who) internal view {
-        if (_who == address(0)) revert AddressNotFound(_who);
         if (_who.code.length == 0) revert AddressHasNoCode(_who);
     }
 
@@ -771,5 +861,17 @@ contract OPContractsManager is ISemver {
     /// @notice Returns the implementation contract addresses.
     function implementations() public view returns (Implementations memory) {
         return implementation;
+    }
+
+    /// @notice Returns the implementation contract address for a given game type.
+    function getGameImplementation(
+        IDisputeGameFactory _disputeGameFactory,
+        GameType _gameType
+    )
+        internal
+        view
+        returns (IDisputeGame)
+    {
+        return _disputeGameFactory.gameImpls(_gameType);
     }
 }

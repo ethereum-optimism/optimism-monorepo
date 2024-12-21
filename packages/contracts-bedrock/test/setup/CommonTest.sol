@@ -37,6 +37,12 @@ contract CommonTest is Test, Setup, Events {
     address customGasToken;
     bool useInteropOverride;
 
+    /// @dev This value is only used in forked tests. During forked tests, the default is to perform the upgrade before
+    ///      running the tests.
+    ///      This value should only be set to false in forked tests which are specifically testing the upgrade path
+    ///      itself, rather than simply ensuring that the tests pass after the upgrade.
+    bool useUpgradedFork = true;
+
     ERC20 L1Token;
     ERC20 BadL1Token;
     IOptimismMintableERC20Full L2Token;
@@ -64,6 +70,9 @@ contract CommonTest is Test, Setup, Events {
         }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
+        }
+        if (useUpgradedFork) {
+            deploy.cfg().setUseUpgradedFork(true);
         }
 
         if (isForkTest()) {
@@ -166,34 +175,42 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
-    function enableAltDA() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable altda after deployment. Consider overriding `setUp`.");
+    /// @dev Checks if the system has already been deployed, based off of the heuristic that alice and bob have not been
+    ///      set by the `setUp` function yet.
+    function _checkNotDeployed(string memory _feature) internal view {
+        if (alice != address(0) && bob != address(0)) {
+            revert(
+                string.concat("CommonTest: Cannot enable ", _feature, " after deployment. Consider overriding `setUp`.")
+            );
         }
+        console.log("CommonTest: enabling", _feature);
+    }
 
+    /// @dev Enables alternative data availability mode for testing
+    function enableAltDA() public {
+        _checkNotDeployed("altda");
         useAltDAOverride = true;
     }
 
+    /// @dev Sets a custom gas token for testing. Cannot be ETH.
     function enableCustomGasToken(address _token) public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable custom gas token after deployment. Consider overriding `setUp`.");
-        }
+        _checkNotDeployed("custom gas token");
         require(_token != Constants.ETHER, "CommonTest: Cannot set gas token to ETHER");
-
         customGasToken = _token;
     }
 
+    /// @dev Enables interoperability mode for testing
     function enableInterop() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable interop after deployment. Consider overriding `setUp`.");
-        }
-
+        _checkNotDeployed("interop");
         useInteropOverride = true;
+    }
+
+    /// @dev Disables upgrade mode for testing. By default the fork testing env will be upgraded to the latest
+    ///      implementation. This can be used to disable the upgrade which, is useful for tests targeting the upgrade
+    ///      process itself.
+    function disableUpgradedFork() public {
+        _checkNotDeployed("non-upgraded fork");
+
+        useUpgradedFork = false;
     }
 }

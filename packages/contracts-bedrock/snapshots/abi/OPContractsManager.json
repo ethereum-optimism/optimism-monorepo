@@ -601,6 +601,31 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract ISystemConfig",
+            "name": "systemConfigProxy",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IProxyAdmin",
+            "name": "proxyAdmin",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct OPContractsManager.OpChain[]",
+        "name": "_opChains",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "version",
     "outputs": [
@@ -610,7 +635,7 @@
         "type": "string"
       }
     ],
-    "stateMutability": "view",
+    "stateMutability": "pure",
     "type": "function"
   },
   {
@@ -636,6 +661,31 @@
       }
     ],
     "name": "Deployed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "l2ChainId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract ISystemConfig",
+        "name": "systemConfig",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "upgrader",
+        "type": "address"
+      }
+    ],
+    "name": "Upgraded",
     "type": "event"
   },
   {
@@ -729,6 +779,17 @@
   {
     "inputs": [],
     "name": "ReservedBitsSet",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract ISystemConfig",
+        "name": "systemConfig",
+        "type": "address"
+      }
+    ],
+    "name": "SuperchainConfigMismatch",
     "type": "error"
   },
   {

@@ -1,8 +1,11 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { console2 as console } from "forge-std/console2.sol";
+
 // Testing
-import { stdJson } from "forge-std/StdJson.sol";
+import { stdToml } from "forge-std/StdToml.sol";
+import { DelegateCaller } from "test/mocks/Callers.sol";
 
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
@@ -16,6 +19,9 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 /// @title ForkLive
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
@@ -27,7 +33,7 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
 contract ForkLive is Deployer {
-    using stdJson for string;
+    using stdToml for string;
 
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
@@ -52,6 +58,12 @@ contract ForkLive is Deployer {
 
         // Now deploy the updated OPCM and implementations of the contracts
         _deployNewImplementations();
+
+        // Now upgrade the contracts (if the config is set to do so)
+        if (cfg.useUpgradedFork()) {
+            console.log("ForkLive: upgrading");
+            _upgrade();
+        }
     }
 
     /// @notice Reads the superchain config files and saves the addresses to disk.
@@ -67,6 +79,8 @@ contract ForkLive is Deployer {
         string memory superchainToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/superchain.toml"));
         string memory opToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/", opChain(), ".toml"));
 
+        // Slightly hacky, we encode the uint chainId as an address to save it in Artifacts
+        artifacts.save("L2ChainId", address(uint160(vm.parseTomlUint(opToml, ".chain_id"))));
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
         saveProxyAndImpl("ProtocolVersions", superchainToml, ".protocol_versions_addr");
@@ -99,11 +113,17 @@ contract ForkLive is Deployer {
         saveProxyAndImpl("DelayedWETH", opToml, ".addresses.DelayedWETHProxy");
 
         // Fault proof non-proxied contracts
+        // For chains that don't have a permissionless game, we save the dispute game and WETH
+        // addresses as the zero address.
         artifacts.save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
         artifacts.save("MipsSingleton", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
         IDisputeGameFactory disputeGameFactory =
             IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
-        artifacts.save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
+        IFaultDisputeGame faultDisputeGame =
+            IFaultDisputeGame(opToml.readAddressOr(".addresses.FaultDisputeGame", address(0)));
+        artifacts.save("FaultDisputeGame", address(faultDisputeGame));
+        artifacts.save("PermissionlessDelayedWETHProxy", address(faultDisputeGame.weth()));
+
         // The PermissionedDisputeGame and PermissionedDelayedWETHProxy are not listed in the registry for OP, so we
         // look it up onchain
         IFaultDisputeGame permissionedDisputeGame =
@@ -117,6 +137,25 @@ contract ForkLive is Deployer {
     function _deployNewImplementations() internal {
         Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
         deploy.deployImplementations({ _isInterop: false });
+    }
+
+    /// @notice Upgrades the contracts using the OPCM.
+    function _upgrade() internal {
+        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
+
+        ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
+        IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
+
+        address upgrader = proxyAdmin.owner();
+        vm.label(upgrader, "ProxyAdmin Owner");
+
+        OPContractsManager.OpChain[] memory opChains = new OPContractsManager.OpChain[](1);
+        opChains[0] = OPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
+
+        // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
+        // reflecting the production system.
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name

@@ -1,18 +1,32 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
-
-import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
+import { DelegateCaller } from "test/mocks/Callers.sol";
 
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+// Scripts
+import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
+
+// Libraries
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
+import { Blueprint } from "src/libraries/Blueprint.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
+
+// Interfaces
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
+// Contracts
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
 import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
@@ -164,6 +178,127 @@ contract OPContractsManager_InternalMethods_Test is Test {
         expected = 0x00a9C584056064687E149968cBaB758a3376D22A;
         actual = opcmHarness.chainIdToBatchInboxAddress_exposed(chainId);
         vm.assertEq(expected, actual);
+    }
+}
+
+contract OPContractsManager_Upgrade_Harness is CommonTest {
+    // The Upgraded event emitted by the Proxy contract.
+    event Upgraded(address indexed implementation);
+
+    // The Upgraded event emitted by the OPContractsManager contract.
+    event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+
+    // The AddressSet event emitted by the AddressManager contract.
+    event AddressSet(string indexed name, address newAddress, address oldAddress);
+
+    uint256 l2ChainId;
+    IProxyAdmin proxyAdmin;
+    address upgrader;
+    OPContractsManager.OpChain[] opChains;
+
+    // L1 contracts not stored in CommonTest, but needed here for the upgrade test.
+    IDelayedWETH delayedWETHPermissionlessGameProxy;
+    IDelayedWETH delayedWETHPermissionedGameProxy;
+    IFaultDisputeGame faultDisputeGame;
+    IPermissionedDisputeGame permissionedDisputeGame;
+
+    function setUp() public virtual override {
+        super.disableUpgradedFork();
+        super.setUp();
+        if (!isForkTest()) {
+            // This test is only supported in forked tests, as we are testing the upgrade.
+            vm.skip(true);
+        }
+
+        proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
+        upgrader = proxyAdmin.owner();
+        vm.label(upgrader, "ProxyAdmin Owner");
+
+        opChains.push(OPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin }));
+
+        // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
+        // encoded as an address.
+        l2ChainId = uint256(bytes32(bytes20(address(artifacts.mustGetAddress("L2ChainId")))) >> 96);
+
+        delayedWETHPermissionedGameProxy =
+            IDelayedWETH(payable(artifacts.mustGetAddress("PermissionedDelayedWETHProxy")));
+        delayedWETHPermissionlessGameProxy =
+            IDelayedWETH(payable(artifacts.mustGetAddress("PermissionlessDelayedWETHProxy")));
+        permissionedDisputeGame = IPermissionedDisputeGame(address(artifacts.mustGetAddress("PermissionedDisputeGame")));
+        faultDisputeGame = IFaultDisputeGame(address(artifacts.mustGetAddress("FaultDisputeGame")));
+    }
+}
+
+contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
+    function test_upgrade_succeeds() public {
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        OPContractsManager.Implementations memory impls = opcm.implementations();
+        address oldL1CrossDomainMessenger = addressManager.getAddress("OVM_L1CrossDomainMessenger");
+
+        expectEmitUpgraded(impls.systemConfigImpl, address(systemConfig));
+        vm.expectEmit(address(addressManager));
+        emit AddressSet("OVM_L1CrossDomainMessenger", impls.l1CrossDomainMessengerImpl, oldL1CrossDomainMessenger);
+        // This is where we would emit an event for the L1StandardBridge however
+        // the Chugsplash proxy does not emit such an event.
+        expectEmitUpgraded(impls.l1ERC721BridgeImpl, address(l1ERC721Bridge));
+        expectEmitUpgraded(impls.disputeGameFactoryImpl, address(disputeGameFactory));
+        expectEmitUpgraded(impls.optimismPortalImpl, address(optimismPortal2));
+        expectEmitUpgraded(impls.optimismMintableERC20FactoryImpl, address(l1OptimismMintableERC20Factory));
+        expectEmitUpgraded(impls.anchorStateRegistryImpl, address(anchorStateRegistry));
+        expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionedGameProxy));
+        if (address(delayedWETHPermissionlessGameProxy) != address(0)) {
+            expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionlessGameProxy));
+        }
+        vm.expectEmit(true, true, true, true, address(upgrader));
+        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(upgrader));
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
+
+        assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
+        assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
+        assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
+        assertEq(impls.optimismPortalImpl, EIP1967Helper.getImplementation(address(optimismPortal2)));
+        assertEq(
+            impls.optimismMintableERC20FactoryImpl,
+            EIP1967Helper.getImplementation(address(l1OptimismMintableERC20Factory))
+        );
+        assertEq(impls.l1StandardBridgeImpl, EIP1967Helper.getImplementation(address(l1StandardBridge)));
+        assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
+
+        assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(anchorStateRegistry)));
+        assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionlessGameProxy)));
+        if (address(delayedWETHPermissionlessGameProxy) != address(0)) {
+            assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
+        }
+
+        // TODO: ensure dispute games are updated (upcoming PR)
+    }
+
+    function expectEmitUpgraded(address impl, address proxy) public {
+        vm.expectEmit(proxy);
+        emit Upgraded(impl);
+    }
+}
+
+contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harness {
+    function test_upgrade_notDelegateCalled_reverts() public {
+        vm.prank(upgrader);
+        vm.expectRevert(OPContractsManager.OnlyDelegatecall.selector);
+        opcm.upgrade(opChains);
+    }
+
+    function test_upgrade_superchainConfigMismatch_reverts() public {
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        // Set the superchainConfig to a different address in the OptimismPortal2 contract.
+        vm.store(
+            address(optimismPortal2),
+            bytes32(ForgeArtifacts.getSlot("OptimismPortal2", "superchainConfig").slot),
+            bytes32(abi.encode(bob))
+        );
+
+        vm.expectRevert(
+            abi.encodeWithSelector(OPContractsManager.SuperchainConfigMismatch.selector, address(systemConfig))
+        );
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
     }
 }
 
