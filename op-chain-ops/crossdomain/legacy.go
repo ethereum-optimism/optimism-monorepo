@@ -89,7 +89,7 @@ func ReadLegacyReceipts(db ethdb.Reader, hash common.Hash, number uint64) ([]*Le
 	// Convert the receipts from their storage form to their internal representation
 	storageReceipts := []*LegacyReceipt{}
 	if err := rlp.DecodeBytes(data, &storageReceipts); err != nil {
-		return nil, fmt.Errorf("error decoding legacy receiptsL: %w", err)
+		return nil, fmt.Errorf("error decoding legacy receipts: %w", err)
 	}
 	return storageReceipts, nil
 }
