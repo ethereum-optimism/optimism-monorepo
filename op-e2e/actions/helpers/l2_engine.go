@@ -179,7 +179,7 @@ func (e *L2Engine) EngineClient(t Testing, cfg *rollup.Config) *sources.EngineCl
 	return l2Cl
 }
 
-// ActL2RPCFail makes the next L2 RPC request fail with given error
+// ActL2RPCFail makes the next L2 RPC request fail with a given error
 func (e *L2Engine) ActL2RPCFail(t Testing, err error) {
 	if e.FailL2RPC != nil { // already set to fail?
 		t.InvalidAction("already set a mock L2 rpc error")
