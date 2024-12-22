@@ -8,7 +8,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestArtifactJSON tests roundtrip serialization of a foundry artifact for commonly used fields.
+// TestArtifactJSON tests round-trip serialization of a foundry artifact for commonly used fields.
 func TestArtifactJSON(t *testing.T) {
 	artifact, err := ReadArtifact("testdata/forge-artifacts/Owned.sol/Owned.json")
 	require.NoError(t, err)
