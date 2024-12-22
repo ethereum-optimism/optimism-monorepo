@@ -144,8 +144,7 @@ func TestSyncErrors(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		cancel() // Cancel immediately
 		err := client.SyncDatabase(ctx, chainID, DBLocalSafe, false)
-		require.Error(t, err)
-		require.Equal(t, context.Canceled, err)
+		require.ErrorIs(t, err, context.Canceled)
 	})
 }
 
