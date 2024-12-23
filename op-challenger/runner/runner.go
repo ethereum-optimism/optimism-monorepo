@@ -68,7 +68,7 @@ func NewRunner(logger log.Logger, cfg *config.Config, runConfigs []RunConfig) *R
 		log:        logger,
 		cfg:        cfg,
 		runConfigs: runConfigs,
-		m:          NewMetrics(),
+		m:          NewMetrics(runConfigs),
 	}
 }
 
