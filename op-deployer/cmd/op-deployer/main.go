@@ -17,12 +17,12 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-var (
-	GitCommit = ""
-	GitDate   = ""
-)
+// GitCommit contains the current git commit hash
+var GitCommit = ""
+// GitDate contains the build date
+var GitDate = ""
 
-// VersionWithMeta holds the textual version string including the metadata.
+// VersionWithMeta holds the textual version string including the metadata
 var VersionWithMeta = opservice.FormatVersion(version.Version, GitCommit, GitDate, version.Meta)
 
 func main() {
@@ -30,19 +30,24 @@ func main() {
 	app.Version = VersionWithMeta
 	app.Name = "op-deployer"
 	app.Usage = "Tool to configure and deploy OP Chains."
+	app.Description = `A comprehensive tool for deploying and managing Optimism chains. 
+This application provides functionality for initialization, deployment, 
+bootstrapping, and management of OP Chain instances.`
 	app.Flags = cliapp.ProtectFlags(deployer.GlobalFlags)
 	app.Commands = []*cli.Command{
 		{
-			Name:   "init",
-			Usage:  "initializes a chain intent and state file",
-			Flags:  cliapp.ProtectFlags(deployer.InitFlags),
-			Action: deployer.InitCLI(),
+			Name:      "init",
+			Usage:     "initializes a chain intent and state file",
+			Category:  "Setup",
+			Flags:     cliapp.ProtectFlags(deployer.InitFlags),
+			Action:    deployer.InitCLI(),
 		},
 		{
-			Name:   "apply",
-			Usage:  "applies a chain intent to the chain",
-			Flags:  cliapp.ProtectFlags(deployer.ApplyFlags),
-			Action: deployer.ApplyCLI(),
+			Name:      "apply",
+			Usage:     "applies a chain intent to the chain",
+			Category:  "Deployment",
+			Flags:     cliapp.ProtectFlags(deployer.ApplyFlags),
+			Action:    deployer.ApplyCLI(),
 		},
 		{
 			Name:        "bootstrap",
@@ -62,9 +67,8 @@ func main() {
 	}
 	app.Writer = os.Stdout
 	app.ErrWriter = os.Stderr
-	err := app.Run(os.Args)
-	if err != nil {
-		_, _ = fmt.Fprintf(os.Stderr, "Application failed: %v\n", err)
+	if err := app.Run(os.Args); err != nil {
+		fmt.Fprintf(os.Stderr, "Application failed: %v\n", err)
 		os.Exit(1)
 	}
 }
