@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"text/template"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
@@ -15,89 +14,6 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )
-
-func TestFindRPCEndpoints(t *testing.T) {
-	testServices := inspect.ServiceMap{
-		"el-1-geth-lighthouse": {
-			"metrics":       52643,
-			"tcp-discovery": 52644,
-			"udp-discovery": 51936,
-			"engine-rpc":    52642,
-			"rpc":           52645,
-			"ws":            52646,
-		},
-		"op-batcher-op-kurtosis": {
-			"http": 53572,
-		},
-		"op-cl-1-op-node-op-geth-op-kurtosis": {
-			"udp-discovery": 50990,
-			"http":          53503,
-			"tcp-discovery": 53504,
-		},
-		"op-el-1-op-geth-op-node-op-kurtosis": {
-			"udp-discovery": 53233,
-			"engine-rpc":    53399,
-			"metrics":       53400,
-			"rpc":           53402,
-			"ws":            53403,
-			"tcp-discovery": 53401,
-		},
-		"vc-1-geth-lighthouse": {
-			"metrics": 53149,
-		},
-		"cl-1-lighthouse-geth": {
-			"metrics":       52691,
-			"tcp-discovery": 52692,
-			"udp-discovery": 58275,
-			"http":          52693,
-		},
-	}
-
-	tests := []struct {
-		name          string
-		services      inspect.ServiceMap
-		lookupFn      func(inspect.ServiceMap) ([]Node, EndpointMap)
-		wantNodes     []Node
-		wantEndpoints EndpointMap
-	}{
-		{
-			name:     "find L1 endpoints",
-			services: testServices,
-			lookupFn: findL1Endpoints,
-			wantNodes: []Node{
-				{
-					"cl": "http://localhost:52693",
-					"el": "http://localhost:52645",
-				},
-			},
-			wantEndpoints: EndpointMap{},
-		},
-		{
-			name:     "find op-kurtosis L2 endpoints",
-			services: testServices,
-			lookupFn: func(services inspect.ServiceMap) ([]Node, EndpointMap) {
-				return findL2Endpoints(services, "-op-kurtosis")
-			},
-			wantNodes: []Node{
-				{
-					"cl": "http://localhost:53503",
-					"el": "http://localhost:53402",
-				},
-			},
-			wantEndpoints: EndpointMap{
-				"batcher": "http://localhost:53572",
-			},
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			gotNodes, gotEndpoints := tt.lookupFn(tt.services)
-			assert.Equal(t, tt.wantNodes, gotNodes)
-			assert.Equal(t, tt.wantEndpoints, gotEndpoints)
-		})
-	}
-}
 
 func TestKurtosisDeployer(t *testing.T) {
 	tests := []struct {
@@ -158,53 +74,6 @@ func TestPrepareArgFile(t *testing.T) {
 	assert.Equal(t, "test content", string(content))
 }
 
-func TestRunKurtosisCommand(t *testing.T) {
-	fakeCmdTemplate := template.Must(template.New("fake_cmd").Parse("echo 'would run: {{.PackageName}} {{.ArgFile}} {{.Enclave}}'"))
-
-	tests := []struct {
-		name        string
-		dryRun      bool
-		wantError   bool
-		wantOutput  bool
-		cmdTemplate *template.Template
-	}{
-		{
-			name:        "dry run",
-			dryRun:      true,
-			wantError:   false,
-			cmdTemplate: fakeCmdTemplate,
-		},
-		{
-			name:        "successful run",
-			dryRun:      false,
-			wantError:   false,
-			wantOutput:  true,
-			cmdTemplate: fakeCmdTemplate,
-		},
-		{
-			name:        "template error",
-			dryRun:      false,
-			wantError:   true,
-			cmdTemplate: template.Must(template.New("bad_cmd").Parse("{{.NonExistentField}}")),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := NewKurtosisDeployer(
-				WithKurtosisDryRun(tt.dryRun),
-				WithKurtosisCmdTemplate(tt.cmdTemplate),
-			)
-			err := d.runKurtosisCommand("test.yaml")
-			if tt.wantError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 // fakeEnclaveInspecter implements EnclaveInspecter for testing
 type fakeEnclaveInspecter struct {
 	result *inspect.InspectData
@@ -236,9 +105,6 @@ func (f *fakeEnclaveSpecifier) EnclaveSpec(r io.Reader) (*spec.EnclaveSpec, erro
 }
 
 func TestDeploy(t *testing.T) {
-	// Create a template that just echoes the command that would be run
-	fakeCmdTemplate := template.Must(template.New("fake_cmd").Parse("echo 'would run: {{.PackageName}} {{.ArgFile}} {{.Enclave}}'"))
-
 	testSpecWithL2 := &spec.EnclaveSpec{
 		Chains: []spec.ChainSpec{
 			{
@@ -252,19 +118,27 @@ func TestDeploy(t *testing.T) {
 		Chains: []spec.ChainSpec{},
 	}
 
-	testServices := inspect.ServiceMap{
-		"el-1-geth-lighthouse": {
-			"rpc": 52645,
-		},
-		"op-el-1-op-geth-op-node-op-kurtosis": {
-			"rpc": 53402,
-		},
-		"op-cl-1-op-node-op-geth-op-kurtosis": {
-			"http": 53503,
-		},
-		"op-batcher-op-kurtosis": {
-			"http": 53572,
-		},
+	// Define successful responses that will be used in multiple test cases
+	successResponses := []fakeStarlarkResponse{
+		{progressMsg: []string{"Starting deployment..."}},
+		{info: "Preparing environment"},
+		{instruction: "Executing package"},
+		{progressMsg: []string{"Deployment complete"}},
+		{isSuccessful: true},
+	}
+
+	testServices := make(inspect.ServiceMap)
+	testServices["el-1-geth-lighthouse"] = inspect.PortMap{
+		"rpc": {Port: 52645},
+	}
+	testServices["op-el-1-op-geth-op-node-op-kurtosis"] = inspect.PortMap{
+		"rpc": {Port: 53402},
+	}
+	testServices["op-cl-1-op-node-op-geth-op-kurtosis"] = inspect.PortMap{
+		"http": {Port: 53503},
+	}
+	testServices["op-batcher-op-kurtosis"] = inspect.PortMap{
+		"http": {Port: 53572},
 	}
 
 	testWallets := deployer.WalletList{
@@ -288,7 +162,8 @@ func TestDeploy(t *testing.T) {
 		inspectErr     error
 		deployerState  *deployer.DeployerData
 		deployerErr    error
-		dryRun         bool
+		kurtosisErr    error
+		responses      []fakeStarlarkResponse
 		wantL1Nodes    []Node
 		wantL2Nodes    []Node
 		wantL2Services EndpointMap
@@ -308,6 +183,7 @@ func TestDeploy(t *testing.T) {
 					"1234": testAddresses,
 				},
 			},
+			responses: successResponses,
 			wantL1Nodes: []Node{
 				{
 					"el": "http://localhost:52645",
@@ -337,17 +213,18 @@ func TestDeploy(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:   "dry run",
-			input:  "test input",
-			spec:   testSpecWithL2,
-			dryRun: true,
-		},
-		{
 			name:       "inspect error",
 			input:      "test input",
 			spec:       testSpecWithL2,
 			inspectErr: fmt.Errorf("inspect failed"),
 			wantErr:    true,
+		},
+		{
+			name:        "kurtosis error",
+			input:       "test input",
+			spec:        testSpecWithL2,
+			kurtosisErr: fmt.Errorf("kurtosis failed"),
+			wantErr:     true,
 		},
 		{
 			name:  "deployer error",
@@ -365,11 +242,11 @@ func TestDeploy(t *testing.T) {
 			spec:  testSpecWithL2,
 			inspectResult: &inspect.InspectData{
 				UserServices: inspect.ServiceMap{
-					"op-el-1-op-geth-op-node-op-kurtosis": {
-						"rpc": 53402,
+					"op-el-1-op-geth-op-node-op-kurtosis": inspect.PortMap{
+						"rpc": {Port: 53402},
 					},
-					"op-cl-1-op-node-op-geth-op-kurtosis": {
-						"http": 53503,
+					"op-cl-1-op-node-op-geth-op-kurtosis": inspect.PortMap{
+						"http": {Port: 53503},
 					},
 				},
 			},
@@ -379,6 +256,7 @@ func TestDeploy(t *testing.T) {
 					"1234": testAddresses,
 				},
 			},
+			responses: successResponses,
 			wantL2Nodes: []Node{
 				{
 					"el": "http://localhost:53402",
@@ -398,14 +276,15 @@ func TestDeploy(t *testing.T) {
 			spec:  testSpecNoL2,
 			inspectResult: &inspect.InspectData{
 				UserServices: inspect.ServiceMap{
-					"el-1-geth-lighthouse": {
-						"rpc": 52645,
+					"el-1-geth-lighthouse": inspect.PortMap{
+						"rpc": {Port: 52645},
 					},
 				},
 			},
 			deployerState: &deployer.DeployerData{
 				Wallets: testWallets,
 			},
+			responses: successResponses,
 			wantL1Nodes: []Node{
 				{
 					"el": "http://localhost:52645",
@@ -422,9 +301,15 @@ func TestDeploy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a fake Kurtosis context
+			fakeCtx := &fakeKurtosisContext{
+				enclaveCtx: &fakeEnclaveContext{
+					runErr:    tt.kurtosisErr,
+					responses: tt.responses,
+				},
+			}
+
 			d := NewKurtosisDeployer(
-				WithKurtosisDryRun(tt.dryRun),
-				WithKurtosisCmdTemplate(fakeCmdTemplate),
 				WithKurtosisEnclaveSpec(&fakeEnclaveSpecifier{
 					spec: tt.spec,
 					err:  tt.specErr,
@@ -439,6 +324,9 @@ func TestDeploy(t *testing.T) {
 				}),
 			)
 
+			// Set the fake Kurtosis context
+			d.kurtosisCtx = fakeCtx
+
 			env, err := d.Deploy(context.Background(), strings.NewReader(tt.input))
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -446,30 +334,25 @@ func TestDeploy(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			if tt.dryRun {
-				assert.NotNil(t, env)
-				assert.Empty(t, env.L1)
-				assert.Empty(t, env.L2)
-				assert.Empty(t, env.Wallets)
-				return
-			}
+			assert.NotNil(t, env)
 
 			if tt.wantL1Nodes != nil {
+				require.NotNil(t, env.L1)
 				assert.Equal(t, tt.wantL1Nodes, env.L1.Nodes)
 			} else {
 				assert.Nil(t, env.L1)
 			}
-			if len(tt.wantL2Nodes) > 0 {
+
+			if tt.wantL2Nodes != nil {
+				require.Len(t, env.L2, 1)
 				assert.Equal(t, tt.wantL2Nodes, env.L2[0].Nodes)
 				if tt.wantL2Services != nil {
 					assert.Equal(t, tt.wantL2Services, env.L2[0].Services)
 				}
-				if addresses, ok := tt.deployerState.State["1234"]; ok {
-					assert.Equal(t, addresses, env.L2[0].Addresses)
-				}
 			} else {
 				assert.Empty(t, env.L2)
 			}
+
 			assert.Equal(t, tt.wantWallets, env.Wallets)
 		})
 	}

@@ -38,8 +38,12 @@ func main() {
 	fmt.Println("\nServices:")
 	for svc, ports := range data.UserServices {
 		fmt.Printf("  %s:\n", svc)
-		for portName, portNum := range ports {
-			fmt.Printf("    %s: %d\n", portName, portNum)
+		for portName, portInfo := range ports {
+			host := portInfo.Host
+			if host == "" {
+				host = "localhost"
+			}
+			fmt.Printf("    %s: %s:%d\n", portName, host, portInfo.Port)
 		}
 	}
 }
