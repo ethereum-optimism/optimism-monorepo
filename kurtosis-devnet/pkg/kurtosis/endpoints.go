@@ -88,14 +88,14 @@ func (f *ServiceFinder) findRPCEndpoints(matchService func(string) (string, int,
 	var nodes []Node
 
 	for serviceName, ports := range f.services {
-		var port int
+		var portInfo *inspect.PortInfo
 		for _, interestingPort := range f.interestingPorts {
 			if p, ok := ports[interestingPort]; ok {
-				port = p
+				portInfo = &p
 				break
 			}
 		}
-		if port == 0 {
+		if portInfo == nil {
 			continue
 		}
 
@@ -106,12 +106,20 @@ func (f *ServiceFinder) findRPCEndpoints(matchService func(string) (string, int,
 					if num > len(nodes) {
 						nodes = append(nodes, make(Node))
 					}
-					nodes[num-1][serviceIdentifier] = fmt.Sprintf("http://localhost:%d", port)
+					host := portInfo.Host
+					if host == "" {
+						host = "localhost"
+					}
+					nodes[num-1][serviceIdentifier] = fmt.Sprintf("http://%s:%d", host, portInfo.Port)
 					allocated = true
 				}
 			}
 			if !allocated {
-				endpointMap[serviceIdentifier] = fmt.Sprintf("http://localhost:%d", port)
+				host := portInfo.Host
+				if host == "" {
+					host = "localhost"
+				}
+				endpointMap[serviceIdentifier] = fmt.Sprintf("http://%s:%d", host, portInfo.Port)
 			}
 		}
 	}

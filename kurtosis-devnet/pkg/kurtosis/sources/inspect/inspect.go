@@ -6,7 +6,13 @@ import (
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
-type PortMap map[string]int
+// PortInfo contains the host and port number for a service port
+type PortInfo struct {
+	Host string
+	Port int
+}
+
+type PortMap map[string]PortInfo
 
 type ServiceMap map[string]PortMap
 
@@ -64,7 +70,10 @@ func (e *Inspector) ExtractData(ctx context.Context) (*InspectData, error) {
 		portMap := make(PortMap)
 
 		for port, portSpec := range svcCtx.GetPublicPorts() {
-			portMap[port] = int(portSpec.GetNumber())
+			portMap[port] = PortInfo{
+				Host: svcCtx.GetMaybePublicIPAddress(),
+				Port: int(portSpec.GetNumber()),
+			}
 		}
 
 		if len(portMap) != 0 {

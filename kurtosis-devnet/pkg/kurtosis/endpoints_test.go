@@ -8,40 +8,45 @@ import (
 )
 
 func TestFindRPCEndpoints(t *testing.T) {
-	testServices := inspect.ServiceMap{
-		"el-1-geth-lighthouse": {
-			"metrics":       52643,
-			"tcp-discovery": 52644,
-			"udp-discovery": 51936,
-			"engine-rpc":    52642,
-			"rpc":           52645,
-			"ws":            52646,
-		},
-		"op-batcher-op-kurtosis": {
-			"http": 53572,
-		},
-		"op-cl-1-op-node-op-geth-op-kurtosis": {
-			"udp-discovery": 50990,
-			"http":          53503,
-			"tcp-discovery": 53504,
-		},
-		"op-el-1-op-geth-op-node-op-kurtosis": {
-			"udp-discovery": 53233,
-			"engine-rpc":    53399,
-			"metrics":       53400,
-			"rpc":           53402,
-			"ws":            53403,
-			"tcp-discovery": 53401,
-		},
-		"vc-1-geth-lighthouse": {
-			"metrics": 53149,
-		},
-		"cl-1-lighthouse-geth": {
-			"metrics":       52691,
-			"tcp-discovery": 52692,
-			"udp-discovery": 58275,
-			"http":          52693,
-		},
+	testServices := make(inspect.ServiceMap)
+
+	testServices["el-1-geth-lighthouse"] = inspect.PortMap{
+		"metrics":       {Port: 52643},
+		"tcp-discovery": {Port: 52644},
+		"udp-discovery": {Port: 51936},
+		"engine-rpc":    {Port: 52642},
+		"rpc":           {Port: 52645},
+		"ws":            {Port: 52646},
+	}
+
+	testServices["op-batcher-op-kurtosis"] = inspect.PortMap{
+		"http": {Port: 53572},
+	}
+
+	testServices["op-cl-1-op-node-op-geth-op-kurtosis"] = inspect.PortMap{
+		"udp-discovery": {Port: 50990},
+		"http":          {Port: 53503},
+		"tcp-discovery": {Port: 53504},
+	}
+
+	testServices["op-el-1-op-geth-op-node-op-kurtosis"] = inspect.PortMap{
+		"udp-discovery": {Port: 53233},
+		"engine-rpc":    {Port: 53399},
+		"metrics":       {Port: 53400},
+		"rpc":           {Port: 53402},
+		"ws":            {Port: 53403},
+		"tcp-discovery": {Port: 53401},
+	}
+
+	testServices["vc-1-geth-lighthouse"] = inspect.PortMap{
+		"metrics": {Port: 53149},
+	}
+
+	testServices["cl-1-lighthouse-geth"] = inspect.PortMap{
+		"metrics":       {Port: 52691},
+		"tcp-discovery": {Port: 52692},
+		"udp-discovery": {Port: 58275},
+		"http":          {Port: 52693},
 	}
 
 	tests := []struct {
@@ -79,6 +84,21 @@ func TestFindRPCEndpoints(t *testing.T) {
 			},
 			wantEndpoints: EndpointMap{
 				"batcher": "http://localhost:53572",
+			},
+		},
+		{
+			name: "custom host in endpoint",
+			services: inspect.ServiceMap{
+				"op-batcher-custom-host": inspect.PortMap{
+					"http": {Host: "custom.host", Port: 8080},
+				},
+			},
+			findFn: func(f *ServiceFinder) ([]Node, EndpointMap) {
+				return f.FindL2Endpoints("custom-host")
+			},
+			wantNodes: nil,
+			wantEndpoints: EndpointMap{
+				"batcher": "http://custom.host:8080",
 			},
 		},
 	}

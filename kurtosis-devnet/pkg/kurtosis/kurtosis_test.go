@@ -169,19 +169,18 @@ func TestDeploy(t *testing.T) {
 		Chains: []spec.ChainSpec{},
 	}
 
-	testServices := inspect.ServiceMap{
-		"el-1-geth-lighthouse": {
-			"rpc": 52645,
-		},
-		"op-el-1-op-geth-op-node-op-kurtosis": {
-			"rpc": 53402,
-		},
-		"op-cl-1-op-node-op-geth-op-kurtosis": {
-			"http": 53503,
-		},
-		"op-batcher-op-kurtosis": {
-			"http": 53572,
-		},
+	testServices := make(inspect.ServiceMap)
+	testServices["el-1-geth-lighthouse"] = inspect.PortMap{
+		"rpc": {Port: 52645},
+	}
+	testServices["op-el-1-op-geth-op-node-op-kurtosis"] = inspect.PortMap{
+		"rpc": {Port: 53402},
+	}
+	testServices["op-cl-1-op-node-op-geth-op-kurtosis"] = inspect.PortMap{
+		"http": {Port: 53503},
+	}
+	testServices["op-batcher-op-kurtosis"] = inspect.PortMap{
+		"http": {Port: 53572},
 	}
 
 	testWallets := deployer.WalletList{
@@ -282,11 +281,11 @@ func TestDeploy(t *testing.T) {
 			spec:  testSpecWithL2,
 			inspectResult: &inspect.InspectData{
 				UserServices: inspect.ServiceMap{
-					"op-el-1-op-geth-op-node-op-kurtosis": {
-						"rpc": 53402,
+					"op-el-1-op-geth-op-node-op-kurtosis": inspect.PortMap{
+						"rpc": {Port: 53402},
 					},
-					"op-cl-1-op-node-op-geth-op-kurtosis": {
-						"http": 53503,
+					"op-cl-1-op-node-op-geth-op-kurtosis": inspect.PortMap{
+						"http": {Port: 53503},
 					},
 				},
 			},
@@ -315,8 +314,8 @@ func TestDeploy(t *testing.T) {
 			spec:  testSpecNoL2,
 			inspectResult: &inspect.InspectData{
 				UserServices: inspect.ServiceMap{
-					"el-1-geth-lighthouse": {
-						"rpc": 52645,
+					"el-1-geth-lighthouse": inspect.PortMap{
+						"rpc": {Port: 52645},
 					},
 				},
 			},
