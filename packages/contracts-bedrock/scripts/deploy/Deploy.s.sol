@@ -296,12 +296,19 @@ contract Deploy is Deployer {
         save("ProtocolVersions", address(dso.protocolVersionsImpl()));
         save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
         save("SharedLockbox", address(dso.sharedLockboxImpl()));
+        save("LiquidityMigrator", address(dso.liquidityMigratorImpl()));
 
         // First run assertions for the ProtocolVersions, SuperchainConfig and SharedLockbox proxy contracts.
         Types.ContractSet memory contracts = _proxies();
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: true });
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isProxy: true, _isPaused: false });
         ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: true });
+
+        // Test the LiquidityMigrator contract is setup correctly.
+        ChainAssertions.checkLiquidityMigrator({
+            _contracts: contracts,
+            _liquidityMigrator: mustGetAddress("LiquidityMigrator")
+        });
 
         // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
         contracts.SharedLockbox = mustGetAddress("SharedLockbox");

@@ -8,6 +8,7 @@ import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { Proxy } from "src/universal/Proxy.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
 import { SharedLockbox } from "src/L1/SharedLockbox.sol";
+import { LiquidityMigrator } from "src/L1/LiquidityMigrator.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
@@ -63,6 +64,7 @@ contract DeploySuperchainOutput_Test is Test {
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
         SharedLockbox sharedLockboxImpl = SharedLockbox(makeAddr("sharedLockboxImpl"));
         SharedLockbox sharedLockboxProxy = SharedLockbox(makeAddr("sharedLockboxProxy"));
+        LiquidityMigrator liquidityMigratorImpl = LiquidityMigrator(makeAddr("liquidityMigratorImpl"));
 
         // Ensure each address has code, since these are expected to be contracts.
         vm.etch(address(superchainProxyAdmin), hex"01");
@@ -72,6 +74,7 @@ contract DeploySuperchainOutput_Test is Test {
         vm.etch(address(protocolVersionsProxy), hex"01");
         vm.etch(address(sharedLockboxImpl), hex"01");
         vm.etch(address(sharedLockboxProxy), hex"01");
+        vm.etch(address(liquidityMigratorImpl), hex"01");
 
         // Set the output data.
         dso.set(dso.superchainProxyAdmin.selector, address(superchainProxyAdmin));
@@ -81,6 +84,7 @@ contract DeploySuperchainOutput_Test is Test {
         dso.set(dso.protocolVersionsProxy.selector, address(protocolVersionsProxy));
         dso.set(dso.sharedLockboxImpl.selector, address(sharedLockboxImpl));
         dso.set(dso.sharedLockboxProxy.selector, address(sharedLockboxProxy));
+        dso.set(dso.liquidityMigratorImpl.selector, address(liquidityMigratorImpl));
 
         // Compare the test data to the getter methods.
         assertEq(address(superchainProxyAdmin), address(dso.superchainProxyAdmin()), "100");
@@ -90,6 +94,7 @@ contract DeploySuperchainOutput_Test is Test {
         assertEq(address(protocolVersionsProxy), address(dso.protocolVersionsProxy()), "500");
         assertEq(address(sharedLockboxImpl), address(dso.sharedLockboxImpl()), "600");
         assertEq(address(sharedLockboxProxy), address(dso.sharedLockboxProxy()), "700");
+        assertEq(address(liquidityMigratorImpl), address(dso.liquidityMigratorImpl()), "800");
     }
 
     function test_getters_whenNotSet_reverts() public {
@@ -110,6 +115,9 @@ contract DeploySuperchainOutput_Test is Test {
 
         vm.expectRevert("DeployUtils: zero address");
         dso.sharedLockboxProxy();
+
+        vm.expectRevert("DeployUtils: zero address");
+        dso.liquidityMigratorImpl();
     }
 
     function test_getters_whenAddrHasNoCode_reverts() public {
@@ -139,6 +147,10 @@ contract DeploySuperchainOutput_Test is Test {
         dso.set(dso.sharedLockboxProxy.selector, emptyAddr);
         vm.expectRevert(expectedErr);
         dso.sharedLockboxProxy();
+
+        dso.set(dso.liquidityMigratorImpl.selector, emptyAddr);
+        vm.expectRevert(expectedErr);
+        dso.liquidityMigratorImpl();
     }
 }
 

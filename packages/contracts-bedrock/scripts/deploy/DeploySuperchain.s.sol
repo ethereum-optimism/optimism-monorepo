@@ -9,6 +9,7 @@ import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersi
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
+import { ILiquidityMigrator } from "interfaces/L1/ILiquidityMigrator.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
@@ -165,6 +166,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
     IProxyAdmin internal _superchainProxyAdmin;
     ISharedLockbox internal _sharedLockboxImpl;
     ISharedLockbox internal _sharedLockboxProxy;
+    ILiquidityMigrator internal _liquidityMigratorImpl;
 
     // This method lets each field be set individually. The selector of an output's getter method
     // is used to determine which field to set.
@@ -177,6 +179,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_address);
         else if (_sel == this.sharedLockboxImpl.selector) _sharedLockboxImpl = ISharedLockbox(_address);
         else if (_sel == this.sharedLockboxProxy.selector) _sharedLockboxProxy = ISharedLockbox(_address);
+        else if (_sel == this.liquidityMigratorImpl.selector) _liquidityMigratorImpl = ILiquidityMigrator(_address);
         else revert("DeploySuperchainOutput: unknown selector");
     }
 
@@ -190,7 +193,8 @@ contract DeploySuperchainOutput is BaseDeployIO {
             address(this.protocolVersionsImpl()),
             address(this.protocolVersionsProxy()),
             address(this.sharedLockboxImpl()),
-            address(this.sharedLockboxProxy())
+            address(this.sharedLockboxProxy()),
+            address(this.liquidityMigratorImpl())
         );
         DeployUtils.assertValidContractAddresses(addrs);
 
@@ -246,12 +250,18 @@ contract DeploySuperchainOutput is BaseDeployIO {
         return _sharedLockboxProxy;
     }
 
+    function liquidityMigratorImpl() public view returns (ILiquidityMigrator) {
+        DeployUtils.assertValidContractAddress(address(_liquidityMigratorImpl));
+        return _liquidityMigratorImpl;
+    }
+
     // -------- Deployment Assertions --------
     function assertValidDeploy(DeploySuperchainInput _dsi) public {
         assertValidSuperchainProxyAdmin(_dsi);
         assertValidSuperchainConfig(_dsi);
         assertValidProtocolVersions(_dsi);
         assertValidSharedLockbox();
+        assertValidLiquidityMigrator();
     }
 
     function assertValidSuperchainProxyAdmin(DeploySuperchainInput _dsi) internal view {
@@ -322,6 +332,12 @@ contract DeploySuperchainOutput is BaseDeployIO {
         sl = sharedLockboxImpl();
         require(sl.SUPERCHAIN_CONFIG() == superchainConfigProxy(), "SLB-40");
     }
+
+    function assertValidLiquidityMigrator() internal view {
+        // Implementation checks.
+        ILiquidityMigrator lm = liquidityMigratorImpl();
+        require(lm.SHARED_LOCKBOX() == sharedLockboxProxy(), "LM-10");
+    }
 }
 
 // For all broadcasts in this script we explicitly specify the deployer as `msg.sender` because for
@@ -383,8 +399,8 @@ contract DeploySuperchain is Script {
     function deploySuperchain(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
         // Precalculate the proxies addresses. Needed since there are circular dependencies between them.
         PrecalculatedAddresses memory precalculatedAddresses;
-        precalculatedAddresses.superchainConfigProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 3);
-        precalculatedAddresses.sharedLockboxProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 7);
+        precalculatedAddresses.superchainConfigProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 4);
+        precalculatedAddresses.sharedLockboxProxy = vm.computeCreateAddress(msg.sender, vm.getNonce(msg.sender) + 8);
 
         // Deploy implementation contracts
         deploySuperchainImplementationContracts(_dsi, _dso, precalculatedAddresses);
@@ -430,15 +446,27 @@ contract DeploySuperchain is Script {
             })
         );
 
+        // Deploy LiquidityMigrator implementation
+        ILiquidityMigrator liquidityMigratorImpl = ILiquidityMigrator(
+            DeployUtils.create1({
+                _name: "LiquidityMigrator",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(ILiquidityMigrator.__constructor__, (_precalculatedAddresses.sharedLockboxProxy))
+                )
+            })
+        );
+
         vm.stopBroadcast();
 
         vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
         vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");
         vm.label(address(sharedLockboxImpl), "SharedLockboxImpl");
+        vm.label(address(liquidityMigratorImpl), "LiquidityMigratorImpl");
 
         _dso.set(_dso.superchainConfigImpl.selector, address(superchainConfigImpl));
         _dso.set(_dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
         _dso.set(_dso.sharedLockboxImpl.selector, address(sharedLockboxImpl));
+        _dso.set(_dso.liquidityMigratorImpl.selector, address(liquidityMigratorImpl));
     }
 
     function deployAndInitializeSuperchainProxyContracts(

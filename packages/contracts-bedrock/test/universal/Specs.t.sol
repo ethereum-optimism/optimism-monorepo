@@ -934,6 +934,8 @@ contract Specification_Test is CommonTest {
 
         // LiquidityMigrator
         _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("migrateETH()") });
+        _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("SHARED_LOCKBOX()") });
+        _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("version()") });
     }
 
     /// @dev Computes the selector from a function signature.

@@ -19,6 +19,10 @@
     "initCodeHash": "0xd992c45b8461b9546fe4e3cecbce15d17ce366a62aab17058aad3b15bf36d21d",
     "sourceCodeHash": "0xa35478e9e2659a320da725a117b200dea2826175d2b17d881de1196da0cc91eb"
   },
+  "src/L1/LiquidityMigrator.sol": {
+    "initCodeHash": "0x708f764a2de821caa3d520c93f1951e24128b136a5c41b06e2b1444a1a34e2e8",
+    "sourceCodeHash": "0x4f719e707583e2b23b9fcbd6e70935df099f45ac0efc50d1156051609bc26f69"
+  },
   "src/L1/OPContractsManager.sol": {
     "initCodeHash": "0x9b704574a7005dc2aa8d6a3e0d85572493cc4bbd60033a23e437632a5fef7720",
     "sourceCodeHash": "0x05ed7ad68e4e9bca7334314e794a1f66e5899532bb01cfa3a7716cb2688df9d5"
