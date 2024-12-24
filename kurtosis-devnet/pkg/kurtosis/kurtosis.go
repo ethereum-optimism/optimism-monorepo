@@ -7,12 +7,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"strconv"
-	"strings"
 	"text/template"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 )
 
@@ -151,92 +148,6 @@ type templateData struct {
 	Enclave     string
 }
 
-// TODO: the following functions follow closely the naming convensions in place
-// with optimism-package. We should probably make them a bit more generic, to
-// make the whole thing less fragile.
-
-// findRPCEndpoint looks for a service matching the given predicate that has an RPC port
-func findRPCEndpoints(services inspect.ServiceMap, matchService func(string) (string, int, bool)) ([]Node, EndpointMap) {
-	interestingPorts := []string{"rpc", "http"}
-	nodeServices := []string{"cl", "el"}
-
-	endpointMap := make(EndpointMap)
-	var nodes []Node
-
-	for serviceName, ports := range services {
-		var port int
-		for _, interestingPort := range interestingPorts {
-			if p, ok := ports[interestingPort]; ok {
-				port = p
-				break
-			}
-		}
-		if port == 0 { // nothing to see here
-			continue
-		}
-
-		if serviceIdentifier, num, ok := matchService(serviceName); ok {
-			var allocated bool
-			for _, service := range nodeServices {
-				if serviceIdentifier == service { // this is a node
-					if num > len(nodes) {
-						nodes = append(nodes, make(Node))
-					}
-					nodes[num-1][serviceIdentifier] = fmt.Sprintf("http://localhost:%d", port)
-					allocated = true
-				}
-			}
-			if !allocated {
-				endpointMap[serviceIdentifier] = fmt.Sprintf("http://localhost:%d", port)
-			}
-		}
-	}
-	return nodes, endpointMap
-}
-
-// return the shorthand service tag (used as key in the final output) and the
-// index if that's a service with multiple instances.
-func serviceTag(serviceName string) (string, int) {
-	// Find index of first number
-	i := strings.IndexFunc(serviceName, func(r rune) bool {
-		return r >= '0' && r <= '9'
-	})
-	if i == -1 {
-		return serviceName, 0
-	}
-	idx, err := strconv.Atoi(serviceName[i : i+1])
-	if err != nil {
-		return serviceName, 0
-	}
-	return serviceName[:i-1], idx
-}
-
-const l2ServiceTagPrefix = "op-"
-
-func findL2Endpoints(services inspect.ServiceMap, suffix string) ([]Node, EndpointMap) {
-	return findRPCEndpoints(services, func(serviceName string) (string, int, bool) {
-		if strings.HasSuffix(serviceName, suffix) {
-			name := strings.TrimSuffix(serviceName, suffix)
-			tag, idx := serviceTag(strings.TrimPrefix(name, l2ServiceTagPrefix))
-			return tag, idx, true
-		}
-		return "", 0, false
-	})
-}
-
-// TODO: L1 services are detected as "non-L2" right now. That might need to change
-// in the future, but for now it's good enough.
-func findL1Endpoints(services inspect.ServiceMap) ([]Node, EndpointMap) {
-	return findRPCEndpoints(services, func(serviceName string) (string, int, bool) {
-		match := !strings.HasPrefix(serviceName, l2ServiceTagPrefix)
-		if match {
-			tag, idx := serviceTag(serviceName)
-			return tag, idx, true
-		}
-		return "", 0, false
-	})
-}
-
 // prepareArgFile creates a temporary file with the input content and returns its path
 // The caller is responsible for deleting the file.
 func (d *KurtosisDeployer) prepareArgFile(input io.Reader) (string, error) {
@@ -316,7 +227,8 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 	}
 
 	// Find L1 endpoint
-	if nodes, endpoints := findL1Endpoints(inspectResult.UserServices); len(nodes) > 0 {
+	finder := NewServiceFinder(inspectResult.UserServices)
+	if nodes, endpoints := finder.FindL1Endpoints(); len(nodes) > 0 {
 		env.L1 = &Chain{
 			Name:     "Ethereum",
 			Services: endpoints,
@@ -326,7 +238,7 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 
 	// Find L2 endpoints
 	for _, chainSpec := range spec.Chains {
-		nodes, endpoints := findL2Endpoints(inspectResult.UserServices, fmt.Sprintf("-%s", chainSpec.Name))
+		nodes, endpoints := finder.FindL2Endpoints(chainSpec.Name)
 
 		chain := &Chain{
 			Name:     chainSpec.Name,
