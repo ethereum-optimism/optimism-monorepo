@@ -32,8 +32,8 @@ type SyncSource interface {
 type SyncControl interface {
 	SubscribeResetEvents(ctx context.Context, c chan string) (ethereum.Subscription, error)
 	SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error)
-	SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error)
-	SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error)
+	SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error)
+	SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error)
 
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
 	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
@@ -41,10 +41,16 @@ type SyncControl interface {
 
 	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
-	AnchorPoint(ctx context.Context) (types.DerivedPair, error)
+	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
 }
 
 type SyncNode interface {
 	SyncSource
 	SyncControl
+}
+
+type Node interface {
+	AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error
+	AwaitSentCrossSafeUpdate(ctx context.Context, minNum uint64) error
+	AwaitSentFinalizedUpdate(ctx context.Context, minNum uint64) error
 }

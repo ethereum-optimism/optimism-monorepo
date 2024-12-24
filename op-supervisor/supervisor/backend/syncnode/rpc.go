@@ -78,11 +78,11 @@ func (rs *RPCSyncNode) SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.
 	return rs.cl.Subscribe(ctx, "interop", dest, "unsafeBlocks")
 }
 
-func (rs *RPCSyncNode) SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error) {
+func (rs *RPCSyncNode) SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
 	return rs.cl.Subscribe(ctx, "interop", dest, "derivationUpdates")
 }
 
-func (rs *RPCSyncNode) SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedPair) (ethereum.Subscription, error) {
+func (rs *RPCSyncNode) SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
 	return rs.cl.Subscribe(ctx, "interop", dest, "exhaustL1Events")
 }
 
@@ -106,8 +106,8 @@ func (rs *RPCSyncNode) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	return rs.cl.CallContext(ctx, nil, "interop_provideL1", nextL1)
 }
 
-func (rs *RPCSyncNode) AnchorPoint(ctx context.Context) (types.DerivedPair, error) {
-	var out types.DerivedPair
+func (rs *RPCSyncNode) AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error) {
+	var out types.DerivedBlockRefPair
 	err := rs.cl.CallContext(ctx, &out, "interop_anchorPoint")
 	return out, err
 }

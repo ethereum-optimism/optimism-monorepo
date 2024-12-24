@@ -2,6 +2,7 @@ package l1access
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"time"
 
@@ -24,7 +25,7 @@ type L1Source interface {
 // When requests for blocks are more recent than the tip minus the confirmation depth, a NotFound error is returned.
 type L1Accessor struct {
 	log      log.Logger
-	client   L1Source
+	client   L1Source // may be nil if no source is attached
 	clientMu sync.RWMutex
 
 	finalityHandler eth.HeadSignalFn
@@ -102,6 +103,9 @@ func (p *L1Accessor) SetTipHeight(ctx context.Context, ref eth.L1BlockRef) {
 func (p *L1Accessor) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
 	p.clientMu.RLock()
 	defer p.clientMu.RUnlock()
+	if p.client == nil {
+		return eth.L1BlockRef{}, errors.New("no L1 source available")
+	}
 	// block access to requests more recent than the confirmation depth
 	if number > p.tipHeight-p.confDepth {
 		return eth.L1BlockRef{}, ethereum.NotFound

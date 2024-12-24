@@ -65,3 +65,16 @@ func (m *RWMap[K, V]) Clear() {
 	defer m.mu.Unlock()
 	clear(m.inner)
 }
+
+// InitPtrMaybe sets a pointer-value in the map, if it's not set yet, to a new object.
+func InitPtrMaybe[K comparable, V any](m *RWMap[K, *V], key K) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inner == nil {
+		m.inner = make(map[K]*V)
+	}
+	_, ok := m.inner[key]
+	if !ok {
+		m.inner[key] = new(V)
+	}
+}

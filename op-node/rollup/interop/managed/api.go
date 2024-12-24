@@ -43,12 +43,12 @@ func (ib *InteropAPI) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return ib.backend.UpdateFinalized(ctx, id)
 }
 
-func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedPair, error) {
+func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	return ib.backend.AnchorPoint(ctx)
 }
 
 func (ib *InteropAPI) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
-	return ib.Reset(ctx, unsafe, safe, finalized)
+	return ib.backend.Reset(ctx, unsafe, safe, finalized)
 }
 
 func (ib *InteropAPI) FetchReceipts(ctx context.Context, blockHash common.Hash) (types.Receipts, error) {

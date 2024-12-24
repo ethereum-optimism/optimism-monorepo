@@ -33,6 +33,10 @@ func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
 		return fmt.Errorf("failed to seal block %v: %w", block, err)
 	}
 	db.logger.Info("Updated local unsafe", "chain", chain, "block", block)
+	feed, ok := db.localUnsafeFeeds.Get(chain)
+	if ok {
+		feed.Send(types.BlockSealFromRef(block))
+	}
 	return nil
 }
 
@@ -50,7 +54,17 @@ func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRe
 		return fmt.Errorf("cannot UpdateLocalSafe: %w: %v", types.ErrUnknownChain, chain)
 	}
 	db.logger.Debug("Updating local safe", "chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
-	return localDB.AddDerived(derivedFrom, lastDerived)
+	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
+		return err
+	}
+	feed, ok := db.localSafeFeeds.Get(chain)
+	if ok {
+		feed.Send(types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSealFromRef(derivedFrom),
+			Derived:     types.BlockSealFromRef(lastDerived),
+		})
+	}
+	return nil
 }
 
 func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error {
@@ -59,6 +73,10 @@ func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.Blo
 		return fmt.Errorf("cannot UpdateCrossUnsafe: %w: %s", types.ErrUnknownChain, chain)
 	}
 	v.Set(crossUnsafe)
+	feed, ok := db.crossUnsafeFeeds.Get(chain)
+	if ok {
+		feed.Send(crossUnsafe)
+	}
 	db.logger.Info("Updated cross-unsafe", "chain", chain, "crossUnsafe", crossUnsafe)
 	return nil
 }
@@ -71,12 +89,15 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 	if err := crossDB.AddDerived(l1View, lastCrossDerived); err != nil {
 		return err
 	}
-	// notify subscribers
-	sub, ok := db.crossSafeSubscription.Get(chain)
-	if ok {
-		sub.Send(types.DerivedPair{DerivedFrom: l1View, Derived: lastCrossDerived})
-	}
 	db.logger.Info("Updated cross-safe", "chain", chain, "l1View", l1View, "lastCrossDerived", lastCrossDerived)
+	// notify subscribers
+	sub, ok := db.crossSafeFeeds.Get(chain)
+	if ok {
+		sub.Send(types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSealFromRef(l1View),
+			Derived:     types.BlockSealFromRef(lastCrossDerived),
+		})
+	}
 	return nil
 }
 
@@ -107,9 +128,9 @@ func (db *ChainsDB) NotifyL2Finalized() {
 			db.logger.Error("Failed to get finalized L1 block", "chain", chain, "err", err)
 			continue
 		}
-		sub, ok := db.l2FinalitySubscription.Get(chain)
+		sub, ok := db.l2FinalityFeeds.Get(chain)
 		if ok {
-			sub.Send(f.ID())
+			sub.Send(f)
 		}
 	}
 }

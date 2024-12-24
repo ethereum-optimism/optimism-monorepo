@@ -33,7 +33,7 @@ type Config struct {
 }
 
 func (cfg *Config) Check() error {
-	if (cfg.SupervisorAddr == "") != (cfg.RPCAddr == "") {
+	if (cfg.SupervisorAddr == "") == (cfg.RPCAddr == "") {
 		return errors.New("must have either a supervisor RPC endpoint to follow, or interop RPC address to serve from")
 	}
 	return nil

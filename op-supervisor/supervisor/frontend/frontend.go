@@ -18,8 +18,8 @@ type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
 	CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
-	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
-	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
+	LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 	FinalizedL1() eth.BlockRef
 }
@@ -49,12 +49,12 @@ func (q *QueryFrontend) CheckMessages(
 	return q.Supervisor.CheckMessages(messages, minSafety)
 }
 
-func (q *QueryFrontend) UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-	return q.Supervisor.UnsafeView(ctx, chainID, unsafe)
+func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	return q.Supervisor.LocalUnsafe(ctx, chainID)
 }
 
-func (q *QueryFrontend) SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
-	return q.Supervisor.SafeView(ctx, chainID, safe)
+func (q *QueryFrontend) CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+	return q.Supervisor.CrossSafe(ctx, chainID)
 }
 
 func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {

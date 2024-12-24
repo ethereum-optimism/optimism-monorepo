@@ -311,9 +311,34 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 	return msg
 }
 
-// DerivedPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
-// it is used in cases where RPC can only return a single value, so the pair is returned as a struct.
-type DerivedPair struct {
+// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockRefPair struct {
 	DerivedFrom eth.BlockRef
 	Derived     eth.BlockRef
+}
+
+func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: refs.DerivedFrom.ID(),
+		Derived:     refs.Derived.ID(),
+	}
+}
+
+// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockSealPair struct {
+	DerivedFrom BlockSeal
+	Derived     BlockSeal
+}
+
+func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: seals.DerivedFrom.ID(),
+		Derived:     seals.Derived.ID(),
+	}
+}
+
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedIDPair struct {
+	DerivedFrom eth.BlockID
+	Derived     eth.BlockID
 }

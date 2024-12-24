@@ -46,6 +46,7 @@ func TestFullInterop(gt *testing.T) {
 	// Verify as cross-unsafe with supervisor
 	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
 	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
+	actors.ChainA.Sequencer.AwaitSentCrossUnsafeUpdate(t, 1)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
@@ -72,8 +73,8 @@ func TestFullInterop(gt *testing.T) {
 	require.Equal(t, uint64(0), n)
 
 	// Cross-safe verify it
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
-	actors.ChainA.Sequencer.ActInteropBackendCheck(t)
+	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID) // TODO
+	actors.ChainA.Sequencer.AwaitSentCrossSafeUpdate(t, 1)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
@@ -91,13 +92,12 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.ActL1SafeSignal(t)
 	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
 	actors.Supervisor.SyncFinalizedL1(t, status.HeadL1)
+	actors.ChainA.Sequencer.AwaitSentFinalizedUpdate(t, 1)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
 	require.NoError(t, err)
 	require.Equal(t, head, finalizedL2BlockID)
 
-	// The op-node needs a poke to look at the updated supervisor finality state
-	actors.ChainA.Sequencer.ActInteropBackendCheck(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	h = actors.ChainA.SequencerEngine.L2Chain().CurrentFinalBlock().Hash()
 	require.Equal(t, head.Hash, h)

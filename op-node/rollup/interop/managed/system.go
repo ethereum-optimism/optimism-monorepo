@@ -44,8 +44,8 @@ type ManagedMode struct {
 
 	resetEvents       gethevent.FeedOf[string]
 	unsafeBlocks      gethevent.FeedOf[eth.BlockRef]
-	derivationUpdates gethevent.FeedOf[supervisortypes.DerivedPair]
-	exhaustL1Events   gethevent.FeedOf[supervisortypes.DerivedPair]
+	derivationUpdates gethevent.FeedOf[supervisortypes.DerivedBlockRefPair]
+	exhaustL1Events   gethevent.FeedOf[supervisortypes.DerivedBlockRefPair]
 
 	cfg *rollup.Config
 
@@ -115,17 +115,17 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	case engine.UnsafeUpdateEvent:
 		m.unsafeBlocks.Send(x.Ref.BlockRef())
 	case engine.LocalSafeUpdateEvent:
-		m.derivationUpdates.Send(supervisortypes.DerivedPair{
+		m.derivationUpdates.Send(supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.DerivedFrom,
 			Derived:     x.Ref.BlockRef(),
 		})
 	case derive.DeriverL1StatusEvent:
-		m.derivationUpdates.Send(supervisortypes.DerivedPair{
+		m.derivationUpdates.Send(supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.Origin,
 			Derived:     x.LastL2.BlockRef(),
 		})
 	case derive.ExhaustedL1Event:
-		m.exhaustL1Events.Send(supervisortypes.DerivedPair{
+		m.exhaustL1Events.Send(supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
 		})
@@ -191,16 +191,16 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return nil
 }
 
-func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedPair, error) {
+func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	l1Ref, err := m.l1.L1BlockRefByHash(ctx, m.cfg.Genesis.L1.Hash)
 	if err != nil {
-		return supervisortypes.DerivedPair{}, fmt.Errorf("failed to fetch L1 block ref: %w", err)
+		return supervisortypes.DerivedBlockRefPair{}, fmt.Errorf("failed to fetch L1 block ref: %w", err)
 	}
 	l2Ref, err := m.l2.L2BlockRefByHash(ctx, m.cfg.Genesis.L2.Hash)
 	if err != nil {
-		return supervisortypes.DerivedPair{}, fmt.Errorf("failed to fetch L2 block ref: %w", err)
+		return supervisortypes.DerivedBlockRefPair{}, fmt.Errorf("failed to fetch L2 block ref: %w", err)
 	}
-	return supervisortypes.DerivedPair{
+	return supervisortypes.DerivedBlockRefPair{
 		DerivedFrom: l1Ref,
 		Derived:     l2Ref.BlockRef(),
 	}, nil

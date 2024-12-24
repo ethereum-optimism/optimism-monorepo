@@ -95,7 +95,7 @@ func TestBackendLifetime(t *testing.T) {
 	require.NoError(t, err)
 	t.Log("started!")
 
-	_, err = b.UnsafeView(context.Background(), chainA, types.ReferenceView{})
+	_, err = b.LocalUnsafe(context.Background(), chainA)
 	require.ErrorIs(t, err, types.ErrFuture, "no data yet, need local-unsafe")
 
 	src.ExpectBlockRefByNumber(0, blockX, nil)
@@ -113,7 +113,7 @@ func TestBackendLifetime(t *testing.T) {
 	proc, _ := b.chainProcessors.Get(chainA)
 	proc.ProcessToHead()
 
-	_, err = b.UnsafeView(context.Background(), chainA, types.ReferenceView{})
+	_, err = b.LocalUnsafe(context.Background(), chainA)
 	require.ErrorIs(t, err, types.ErrFuture, "still no data yet, need cross-unsafe")
 
 	err = b.chainDBs.UpdateCrossUnsafe(chainA, types.BlockSeal{
@@ -123,10 +123,9 @@ func TestBackendLifetime(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	v, err := b.UnsafeView(context.Background(), chainA, types.ReferenceView{})
-	require.NoError(t, err, "have a functioning cross/local unsafe view now")
-	require.Equal(t, blockX.ID(), v.Cross)
-	require.Equal(t, blockY.ID(), v.Local)
+	v, err := b.CrossUnsafe(context.Background(), chainA)
+	require.NoError(t, err, "have a functioning cross unsafe value now")
+	require.Equal(t, blockY.ID(), v)
 
 	err = b.Stop(context.Background())
 	require.NoError(t, err)

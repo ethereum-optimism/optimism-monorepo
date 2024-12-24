@@ -90,13 +90,20 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 	// create initial per-chain resources
 	chainsDBs := db.NewChainsDB(logger, depSet)
 
+	l1Accessor := l1access.NewL1Accessor(
+		logger,
+		nil,
+		processors.MaybeUpdateFinalizedL1Fn(context.Background(), logger, chainsDBs),
+	)
+
 	// create the supervisor backend
 	super := &SupervisorBackend{
-		logger:   logger,
-		m:        m,
-		dataDir:  cfg.Datadir,
-		depSet:   depSet,
-		chainDBs: chainsDBs,
+		logger:     logger,
+		m:          m,
+		dataDir:    cfg.Datadir,
+		depSet:     depSet,
+		chainDBs:   chainsDBs,
+		l1Accessor: l1Accessor,
 		// For testing we can avoid running the processors.
 		synchronousProcessors: cfg.SynchronousProcessors,
 	}
@@ -163,7 +170,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		if err != nil {
 			return fmt.Errorf("failed to set up sync source: %w", err)
 		}
-		if err := su.AttachSyncNode(ctx, src); err != nil {
+		if _, err := su.AttachSyncNode(ctx, src); err != nil {
 			return fmt.Errorf("failed to attach sync source %s: %w", src, err)
 		}
 	}
@@ -228,19 +235,19 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	return nil
 }
 
-func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.SyncNode) error {
+func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.SyncNode) (syncnode.Node, error) {
 	su.logger.Info("attaching sync source to chain processor", "source", src)
 
 	chainID, err := src.ChainID(ctx)
 	if err != nil {
-		return fmt.Errorf("failed to identify chain ID of sync source: %w", err)
+		return nil, fmt.Errorf("failed to identify chain ID of sync source: %w", err)
 	}
 	if !su.depSet.HasChain(chainID) {
-		return fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
+		return nil, fmt.Errorf("chain %s is not part of the interop dependency set: %w", chainID, types.ErrUnknownChain)
 	}
 	err = su.AttachProcessorSource(chainID, src)
 	if err != nil {
-		return fmt.Errorf("failed to attach sync source to processor: %w", err)
+		return nil, fmt.Errorf("failed to attach sync source to processor: %w", err)
 	}
 	return su.syncNodesController.AttachNodeController(chainID, src)
 }
@@ -279,13 +286,6 @@ func (su *SupervisorBackend) attachL1RPC(ctx context.Context, l1RPCAddr string) 
 // if the L1 accessor does not exist, it is created
 // if an L1 source is already attached, it is replaced
 func (su *SupervisorBackend) AttachL1Source(source l1access.L1Source) {
-	if su.l1Accessor == nil {
-		su.l1Accessor = l1access.NewL1Accessor(
-			su.logger,
-			source,
-			processors.MaybeUpdateFinalizedL1Fn(context.Background(), su.logger, su.chainDBs),
-		)
-	}
 	su.l1Accessor.AttachClient(source)
 }
 
@@ -362,7 +362,8 @@ func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret
 	if err != nil {
 		return fmt.Errorf("failed to set up sync source from RPC: %w", err)
 	}
-	return su.AttachSyncNode(ctx, src)
+	_, err = su.AttachSyncNode(ctx, src)
+	return err
 }
 
 // Internal methods, for processors
@@ -422,52 +423,38 @@ func (su *SupervisorBackend) CheckMessages(
 	return nil
 }
 
-func (su *SupervisorBackend) UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-	head, err := su.chainDBs.LocalUnsafe(chainID)
+func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+	p, err := su.chainDBs.CrossSafe(chainID)
 	if err != nil {
-		return types.ReferenceView{}, fmt.Errorf("failed to get local-unsafe head: %w", err)
+		return types.DerivedIDPair{}, err
 	}
-	cross, err := su.chainDBs.CrossUnsafe(chainID)
-	if err != nil {
-		return types.ReferenceView{}, fmt.Errorf("failed to get cross-unsafe head: %w", err)
-	}
-
-	// TODO(#11693): check `unsafe` input to detect reorg conflicts
-
-	return types.ReferenceView{
-		Local: head.ID(),
-		Cross: cross.ID(),
+	return types.DerivedIDPair{
+		DerivedFrom: p.DerivedFrom.ID(),
+		Derived:     p.Derived.ID(),
 	}, nil
 }
 
-func (su *SupervisorBackend) SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
-	_, localSafe, err := su.chainDBs.LocalSafe(chainID)
+func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+	p, err := su.chainDBs.LocalSafe(chainID)
 	if err != nil {
-		return types.ReferenceView{}, fmt.Errorf("failed to get local-safe head: %w", err)
+		return types.DerivedIDPair{}, err
 	}
-	_, crossSafe, err := su.chainDBs.CrossSafe(chainID)
-	if err != nil {
-		return types.ReferenceView{}, fmt.Errorf("failed to get cross-safe head: %w", err)
-	}
-
-	// TODO(#11693): check `safe` input to detect reorg conflicts
-
-	return types.ReferenceView{
-		Local: localSafe.ID(),
-		Cross: crossSafe.ID(),
+	return types.DerivedIDPair{
+		DerivedFrom: p.DerivedFrom.ID(),
+		Derived:     p.Derived.ID(),
 	}, nil
 }
 
-func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, eth.BlockID, error) {
-	df, d, err := su.chainDBs.LocalSafe(chainID)
-	if err != nil {
-		return eth.BlockID{}, eth.BlockID{}, err
-	}
-	return df.ID(), d.ID(), nil
-}
-
-func (su *SupervisorBackend) LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (su *SupervisorBackend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.LocalUnsafe(chainID)
+	if err != nil {
+		return eth.BlockID{}, err
+	}
+	return v.ID(), nil
+}
+
+func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	v, err := su.chainDBs.CrossUnsafe(chainID)
 	if err != nil {
 		return eth.BlockID{}, err
 	}
