@@ -313,6 +313,7 @@ contract Deploy is Deployer {
         save("L1ERC721Bridge", address(dio.l1ERC721BridgeImpl()));
 
         // Fault proofs
+        save("OptimismPortal", address(dio.optimismPortalImpl()));
         save("OptimismPortal2", address(dio.optimismPortalImpl()));
         save("DisputeGameFactory", address(dio.disputeGameFactoryImpl()));
         save("DelayedWETH", address(dio.delayedWETHImpl()));
@@ -380,6 +381,7 @@ contract Deploy is Deployer {
         save("AnchorStateRegistry", address(deployOutput.anchorStateRegistryImpl));
         save("PermissionedDisputeGame", address(deployOutput.permissionedDisputeGame));
         save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
+        save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
 
         // Check if the permissionless game implementation is already set
         IDisputeGameFactory factory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));

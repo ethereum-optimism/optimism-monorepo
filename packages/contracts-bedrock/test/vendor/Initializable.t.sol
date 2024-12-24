@@ -137,7 +137,7 @@ contract Initializer_Test is CommonTest {
         // OptimismPortalProxy
         contracts.push(
             InitializeableContract({
-                name: "OptimismPortalProxy",
+                name: "OptimismPortal2Proxy",
                 target: address(optimismPortal2),
                 initCalldata: abi.encodeCall(
                     optimismPortal2.initialize,
@@ -364,8 +364,6 @@ contract Initializer_Test is CommonTest {
                 )
             })
         );
-
-        nicknames["OptimismPortal2"] = "OptimismPortal";
     }
 
     /// @notice Tests that:
