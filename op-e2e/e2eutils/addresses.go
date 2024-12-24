@@ -4,6 +4,8 @@ import (
 	"bytes"
 	"sort"
 
+	"golang.org/x/exp/maps"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 
@@ -12,10 +14,7 @@ import (
 )
 
 func collectAllocAddrs(alloc types.GenesisAlloc) []common.Address {
-	var out []common.Address
-	for addr := range alloc {
-		out = append(out, addr)
-	}
+	out := maps.Keys(alloc)
 	// make output deterministic
 	sort.Slice(out, func(i, j int) bool {
 		return bytes.Compare(out[i][:], out[j][:]) < 0
