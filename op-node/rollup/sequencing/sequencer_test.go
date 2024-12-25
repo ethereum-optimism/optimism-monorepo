@@ -613,6 +613,14 @@ func TestSequencerBuild(t *testing.T) {
 	require.Equal(t, testClock.Now(), nextTime, "start asap on the next block")
 }
 
+type l2ConfigFetcher struct {
+	cfg *rollup.Config
+}
+
+func (f l2ConfigFetcher) SystemConfigByL2Payload(payload *eth.ExecutionPayload) (eth.SystemConfig, error) {
+	return derive.PayloadToSystemConfig(f.cfg, payload)
+}
+
 type sequencerTestDeps struct {
 	cfg              *rollup.Config
 	attribBuilder    *FakeAttributesBuilder
@@ -661,7 +669,7 @@ func createSequencer(log log.Logger) (*Sequencer, *sequencerTestDeps) {
 	}
 	seq := NewSequencer(context.Background(), log, cfg, deps.attribBuilder,
 		deps.l1OriginSelector, deps.seqState, deps.conductor,
-		deps.asyncGossip, metrics.NoopMetrics)
+		deps.asyncGossip, metrics.NoopMetrics, l2ConfigFetcher{cfg})
 	// We create mock payloads, with the epoch-id as tx[0], rather than proper L1Block-info deposit tx.
 	seq.toBlockRef = func(rollupCfg *rollup.Config, payload *eth.ExecutionPayload) (eth.L2BlockRef, error) {
 		return eth.L2BlockRef{

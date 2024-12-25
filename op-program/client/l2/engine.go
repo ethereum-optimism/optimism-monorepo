@@ -147,6 +147,10 @@ func (o *OracleEngine) L2BlockRefByNumber(ctx context.Context, n uint64) (eth.L2
 	return o.L2BlockRefByHash(ctx, hash)
 }
 
+func (o *OracleEngine) SystemConfigByL2Payload(payload *eth.ExecutionPayload) (eth.SystemConfig, error) {
+	return derive.PayloadToSystemConfig(o.rollupCfg, payload)
+}
+
 func (o *OracleEngine) SystemConfigByL2Hash(ctx context.Context, hash common.Hash) (eth.SystemConfig, error) {
 	payload, err := o.PayloadByHash(ctx, hash)
 	if err != nil {

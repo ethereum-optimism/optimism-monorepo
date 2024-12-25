@@ -88,6 +88,7 @@ type L2API interface {
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	ChainID(ctx context.Context) (*big.Int, error)
+	SystemConfigByL2Payload(payload *eth.ExecutionPayload) (eth.SystemConfig, error)
 }
 
 type safeDB interface {

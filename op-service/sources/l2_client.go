@@ -152,6 +152,17 @@ func (s *L2Client) L2BlockRefByHash(ctx context.Context, hash common.Hash) (eth.
 	return ref, nil
 }
 
+// SystemConfigByL2Payload returns the [eth.SystemConfig] (matching the config updates up to and including the L1 origin) for the given L2 payload.
+// It also caches it so that next query might be faster
+func (s *L2Client) SystemConfigByL2Payload(payload *eth.ExecutionPayload) (eth.SystemConfig, error) {
+	cfg, err := derive.PayloadToSystemConfig(s.rollupCfg, payload)
+	if err != nil {
+		return eth.SystemConfig{}, err
+	}
+	s.systemConfigsCache.Add(payload.BlockHash, cfg)
+	return cfg, nil
+}
+
 // SystemConfigByL2Hash returns the [eth.SystemConfig] (matching the config updates up to and including the L1 origin) for the given L2 block hash.
 // The returned [eth.SystemConfig] may not be in the canonical chain when the hash is not canonical.
 func (s *L2Client) SystemConfigByL2Hash(ctx context.Context, hash common.Hash) (eth.SystemConfig, error) {
@@ -164,12 +175,7 @@ func (s *L2Client) SystemConfigByL2Hash(ctx context.Context, hash common.Hash) (
 		// w%: wrap to preserve ethereum.NotFound case
 		return eth.SystemConfig{}, fmt.Errorf("failed to determine block-hash of hash %v, could not get payload: %w", hash, err)
 	}
-	cfg, err := derive.PayloadToSystemConfig(s.rollupCfg, envelope.ExecutionPayload)
-	if err != nil {
-		return eth.SystemConfig{}, err
-	}
-	s.systemConfigsCache.Add(hash, cfg)
-	return cfg, nil
+	return s.SystemConfigByL2Payload(envelope.ExecutionPayload)
 }
 
 func (s *L2Client) OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error) {

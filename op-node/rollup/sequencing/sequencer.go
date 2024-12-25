@@ -52,6 +52,10 @@ type AsyncGossiper interface {
 	Start()
 }
 
+type SystemConfigL2Fetcher interface {
+	SystemConfigByL2Payload(payload *eth.ExecutionPayload) (eth.SystemConfig, error)
+}
+
 // SequencerActionEvent triggers the sequencer to start/seal a block, if active and ready to act.
 // This event is used to prioritize sequencer work over derivation work,
 // by emitting it before e.g. a derivation-pipeline step.
@@ -119,6 +123,9 @@ type Sequencer struct {
 
 	// toBlockRef converts a payload to a block-ref, and is only configurable for test-purposes
 	toBlockRef func(rollupCfg *rollup.Config, payload *eth.ExecutionPayload) (eth.L2BlockRef, error)
+
+	// l2 caches system config
+	l2 SystemConfigL2Fetcher
 }
 
 var _ SequencerIface = (*Sequencer)(nil)
@@ -130,6 +137,7 @@ func NewSequencer(driverCtx context.Context, log log.Logger, rollupCfg *rollup.C
 	conductor conductor.SequencerConductor,
 	asyncGossip AsyncGossiper,
 	metrics Metrics,
+	l2 SystemConfigL2Fetcher,
 ) *Sequencer {
 	return &Sequencer{
 		ctx:              driverCtx,
@@ -144,6 +152,7 @@ func NewSequencer(driverCtx context.Context, log log.Logger, rollupCfg *rollup.C
 		metrics:          metrics,
 		timeNow:          time.Now,
 		toBlockRef:       derive.PayloadToBlockRef,
+		l2:               l2,
 	}
 }
 
@@ -328,6 +337,8 @@ func (d *Sequencer) onPayloadSuccess(x engine.PayloadSuccessEvent) {
 		// Not a payload that was built by this sequencer. We can ignore it, and continue upon forkchoice update.
 		return
 	}
+	// Cache new system config, so that we won't query engine on next payload attributes
+	_, _ = d.l2.SystemConfigByL2Payload(x.Envelope.ExecutionPayload)
 	d.latest = BuildingState{}
 	d.log.Info("Sequencer inserted block",
 		"block", x.Ref, "parent", x.Envelope.ExecutionPayload.ParentID())
