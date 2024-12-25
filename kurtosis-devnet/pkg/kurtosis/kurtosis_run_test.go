@@ -261,7 +261,7 @@ func TestRunKurtosis(t *testing.T) {
 			d := NewKurtosisDeployer()
 			d.kurtosisCtx = fakeCtx
 
-			err := d.runKurtosis(ctx, "")
+			err := d.runKurtosis(ctx, nil)
 			if tt.wantErr {
 				assert.Error(t, err)
 			} else {

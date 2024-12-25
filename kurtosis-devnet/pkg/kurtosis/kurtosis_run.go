@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"io"
 	"os"
 
 	"github.com/fatih/color"
@@ -374,10 +375,17 @@ func (w *instructionResultWrapper) GetSerializedInstructionResult() string {
 }
 
 // runKurtosis executes the kurtosis package using the SDK
-func (d *KurtosisDeployer) runKurtosis(ctx context.Context, argFile string) error {
+func (d *KurtosisDeployer) runKurtosis(ctx context.Context, args io.Reader) error {
 	if d.dryRun {
-		fmt.Printf("Dry run mode enabled, would run kurtosis package %s with args file %s in enclave %s\n",
-			d.packageName, argFile, d.enclave)
+		fmt.Printf("Dry run mode enabled, would run kurtosis package %s in enclave %s\n",
+			d.packageName, d.enclave)
+		if args != nil {
+			fmt.Println("\nWith arguments:")
+			if _, err := io.Copy(os.Stdout, args); err != nil {
+				return fmt.Errorf("failed to dump args: %w", err)
+			}
+			fmt.Println()
+		}
 		return nil
 	}
 
@@ -405,11 +413,12 @@ func (d *KurtosisDeployer) runKurtosis(ctx context.Context, argFile string) erro
 		fmt.Printf("Using existing enclave '%s'\n\n", d.enclave)
 	}
 
+	// Set up run config with args if provided
 	var serializedParams string
-	if argFile != "" {
-		argsBytes, err := os.ReadFile(argFile)
+	if args != nil {
+		argsBytes, err := io.ReadAll(args)
 		if err != nil {
-			return fmt.Errorf("failed to read args file: %w", err)
+			return fmt.Errorf("failed to read args: %w", err)
 		}
 		serializedParams = string(argsBytes)
 	}

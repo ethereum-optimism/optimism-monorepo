@@ -259,7 +259,7 @@ func deploy(ctx context.Context, cfg *config, r io.Reader) error {
 		}
 		defer envOutput.Close()
 	} else {
-		log.Println("Environment description:")
+		log.Println("\nEnvironment description:")
 	}
 
 	enc := json.NewEncoder(envOutput)

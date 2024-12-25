@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
@@ -130,23 +129,6 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) *KurtosisDeployer {
 	return d
 }
 
-// prepareArgFile creates a temporary file with the input content and returns its path
-// The caller is responsible for deleting the file.
-func (d *KurtosisDeployer) prepareArgFile(input io.Reader) (string, error) {
-	argFile, err := os.CreateTemp("", "kurtosis-args-*.yaml")
-	if err != nil {
-		return "", fmt.Errorf("failed to create temporary arg file: %w", err)
-	}
-	defer argFile.Close()
-
-	if _, err := io.Copy(argFile, input); err != nil {
-		os.Remove(argFile.Name())
-		return "", fmt.Errorf("failed to write arg file: %w", err)
-	}
-
-	return argFile.Name(), nil
-}
-
 func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
 	walletMap := make(WalletMap)
 	for _, wallet := range wallets {
@@ -219,15 +201,8 @@ func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*Kurtos
 		return nil, fmt.Errorf("failed to parse input spec: %w", err)
 	}
 
-	// Prepare argument file
-	argFile, err := d.prepareArgFile(inputCopy)
-	if err != nil {
-		return nil, err
-	}
-	defer os.Remove(argFile)
-
 	// Run kurtosis command
-	if err := d.runKurtosis(ctx, argFile); err != nil {
+	if err := d.runKurtosis(ctx, inputCopy); err != nil {
 		return nil, err
 	}
 

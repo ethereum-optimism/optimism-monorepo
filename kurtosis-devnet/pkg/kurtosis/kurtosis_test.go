@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
 	"strings"
 	"testing"
 
@@ -56,22 +55,6 @@ func TestKurtosisDeployer(t *testing.T) {
 			assert.Equal(t, tt.wantEnclave, d.enclave)
 		})
 	}
-}
-
-func TestPrepareArgFile(t *testing.T) {
-	d := NewKurtosisDeployer()
-	input := strings.NewReader("test content")
-
-	path, err := d.prepareArgFile(input)
-	require.NoError(t, err)
-	defer func() {
-		err := os.Remove(path)
-		require.NoError(t, err)
-	}()
-
-	content, err := os.ReadFile(path)
-	require.NoError(t, err)
-	assert.Equal(t, "test content", string(content))
 }
 
 // fakeEnclaveInspecter implements EnclaveInspecter for testing
