@@ -6,8 +6,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"os/exec"
-	"text/template"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
@@ -48,8 +46,6 @@ type KurtosisEnvironment struct {
 type KurtosisDeployer struct {
 	// Base directory where the deployment commands should be executed
 	baseDir string
-	// Template for the deployment command
-	cmdTemplate *template.Template
 	// Package name to deploy
 	packageName string
 	// Dry run mode
@@ -60,14 +56,8 @@ type KurtosisDeployer struct {
 	enclaveSpec      EnclaveSpecifier
 	enclaveInspecter EnclaveInspecter
 	enclaveObserver  EnclaveObserver
-}
-
-const cmdTemplateStr = "just _kurtosis-run {{.PackageName}} {{.ArgFile}} {{.Enclave}}"
-
-var defaultCmdTemplate *template.Template
-
-func init() {
-	defaultCmdTemplate = template.Must(template.New("kurtosis_deploy_cmd").Parse(cmdTemplateStr))
+	kurtosisCtx      kurtosisContextInterface
+	runHandlers      []MessageHandler
 }
 
 type KurtosisDeployerOptions func(*KurtosisDeployer)
@@ -75,12 +65,6 @@ type KurtosisDeployerOptions func(*KurtosisDeployer)
 func WithKurtosisBaseDir(baseDir string) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
 		d.baseDir = baseDir
-	}
-}
-
-func WithKurtosisCmdTemplate(cmdTemplate *template.Template) KurtosisDeployerOptions {
-	return func(d *KurtosisDeployer) {
-		d.cmdTemplate = cmdTemplate
 	}
 }
 
@@ -120,14 +104,19 @@ func WithKurtosisEnclaveObserver(enclaveObserver EnclaveObserver) KurtosisDeploy
 	}
 }
 
+func WithKurtosisRunHandlers(runHandlers []MessageHandler) KurtosisDeployerOptions {
+	return func(d *KurtosisDeployer) {
+		d.runHandlers = runHandlers
+	}
+}
+
 // NewKurtosisDeployer creates a new KurtosisDeployer instance
 func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) *KurtosisDeployer {
 	d := &KurtosisDeployer{
 		baseDir:     ".",
-		cmdTemplate: defaultCmdTemplate,
 		packageName: DefaultPackageName,
 		dryRun:      false,
-		enclave:     "devnet",
+		enclave:     DefaultEnclave,
 
 		enclaveSpec:      &enclaveSpecAdapter{},
 		enclaveInspecter: &enclaveInspectAdapter{},
@@ -139,13 +128,6 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) *KurtosisDeployer {
 	}
 
 	return d
-}
-
-// templateData holds the data for the command template
-type templateData struct {
-	PackageName string
-	ArgFile     string
-	Enclave     string
 }
 
 // prepareArgFile creates a temporary file with the input content and returns its path
@@ -163,38 +145,6 @@ func (d *KurtosisDeployer) prepareArgFile(input io.Reader) (string, error) {
 	}
 
 	return argFile.Name(), nil
-}
-
-// runKurtosisCommand executes the kurtosis command with the given arguments
-// TODO: reimplement this with the kurtosis SDK, it'll be cleaner.
-func (d *KurtosisDeployer) runKurtosisCommand(argFile string) error {
-	data := templateData{
-		PackageName: d.packageName,
-		ArgFile:     argFile,
-		Enclave:     d.enclave,
-	}
-
-	var cmdBuf bytes.Buffer
-	if err := d.cmdTemplate.Execute(&cmdBuf, data); err != nil {
-		return fmt.Errorf("failed to execute command template: %w", err)
-	}
-
-	if d.dryRun {
-		fmt.Println("Dry run mode enabled, kurtosis would run the following command:")
-		fmt.Println(cmdBuf.String())
-		return nil
-	}
-
-	cmd := exec.Command("sh", "-c", cmdBuf.String())
-	cmd.Dir = d.baseDir
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("kurtosis deployment failed: %w", err)
-	}
-
-	return nil
 }
 
 func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
@@ -277,7 +227,7 @@ func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*Kurtos
 	defer os.Remove(argFile)
 
 	// Run kurtosis command
-	if err := d.runKurtosisCommand(argFile); err != nil {
+	if err := d.runKurtosis(ctx, argFile); err != nil {
 		return nil, err
 	}
 

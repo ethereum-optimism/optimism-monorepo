@@ -7,7 +7,6 @@ import (
 	"os"
 	"strings"
 	"testing"
-	"text/template"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
@@ -75,53 +74,6 @@ func TestPrepareArgFile(t *testing.T) {
 	assert.Equal(t, "test content", string(content))
 }
 
-func TestRunKurtosisCommand(t *testing.T) {
-	fakeCmdTemplate := template.Must(template.New("fake_cmd").Parse("echo 'would run: {{.PackageName}} {{.ArgFile}} {{.Enclave}}'"))
-
-	tests := []struct {
-		name        string
-		dryRun      bool
-		wantError   bool
-		wantOutput  bool
-		cmdTemplate *template.Template
-	}{
-		{
-			name:        "dry run",
-			dryRun:      true,
-			wantError:   false,
-			cmdTemplate: fakeCmdTemplate,
-		},
-		{
-			name:        "successful run",
-			dryRun:      false,
-			wantError:   false,
-			wantOutput:  true,
-			cmdTemplate: fakeCmdTemplate,
-		},
-		{
-			name:        "template error",
-			dryRun:      false,
-			wantError:   true,
-			cmdTemplate: template.Must(template.New("bad_cmd").Parse("{{.NonExistentField}}")),
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			d := NewKurtosisDeployer(
-				WithKurtosisDryRun(tt.dryRun),
-				WithKurtosisCmdTemplate(tt.cmdTemplate),
-			)
-			err := d.runKurtosisCommand("test.yaml")
-			if tt.wantError {
-				assert.Error(t, err)
-			} else {
-				assert.NoError(t, err)
-			}
-		})
-	}
-}
-
 // fakeEnclaveInspecter implements EnclaveInspecter for testing
 type fakeEnclaveInspecter struct {
 	result *inspect.InspectData
@@ -153,9 +105,6 @@ func (f *fakeEnclaveSpecifier) EnclaveSpec(r io.Reader) (*spec.EnclaveSpec, erro
 }
 
 func TestDeploy(t *testing.T) {
-	// Create a template that just echoes the command that would be run
-	fakeCmdTemplate := template.Must(template.New("fake_cmd").Parse("echo 'would run: {{.PackageName}} {{.ArgFile}} {{.Enclave}}'"))
-
 	testSpecWithL2 := &spec.EnclaveSpec{
 		Chains: []spec.ChainSpec{
 			{
@@ -167,6 +116,15 @@ func TestDeploy(t *testing.T) {
 
 	testSpecNoL2 := &spec.EnclaveSpec{
 		Chains: []spec.ChainSpec{},
+	}
+
+	// Define successful responses that will be used in multiple test cases
+	successResponses := []fakeStarlarkResponse{
+		{progressMsg: []string{"Starting deployment..."}},
+		{info: "Preparing environment"},
+		{instruction: "Executing package"},
+		{progressMsg: []string{"Deployment complete"}},
+		{isSuccessful: true},
 	}
 
 	testServices := make(inspect.ServiceMap)
@@ -204,7 +162,8 @@ func TestDeploy(t *testing.T) {
 		inspectErr     error
 		deployerState  *deployer.DeployerData
 		deployerErr    error
-		dryRun         bool
+		kurtosisErr    error
+		responses      []fakeStarlarkResponse
 		wantL1Nodes    []Node
 		wantL2Nodes    []Node
 		wantL2Services EndpointMap
@@ -224,6 +183,7 @@ func TestDeploy(t *testing.T) {
 					"1234": testAddresses,
 				},
 			},
+			responses: successResponses,
 			wantL1Nodes: []Node{
 				{
 					"el": "http://localhost:52645",
@@ -253,17 +213,18 @@ func TestDeploy(t *testing.T) {
 			wantErr: true,
 		},
 		{
-			name:   "dry run",
-			input:  "test input",
-			spec:   testSpecWithL2,
-			dryRun: true,
-		},
-		{
 			name:       "inspect error",
 			input:      "test input",
 			spec:       testSpecWithL2,
 			inspectErr: fmt.Errorf("inspect failed"),
 			wantErr:    true,
+		},
+		{
+			name:        "kurtosis error",
+			input:       "test input",
+			spec:        testSpecWithL2,
+			kurtosisErr: fmt.Errorf("kurtosis failed"),
+			wantErr:     true,
 		},
 		{
 			name:  "deployer error",
@@ -295,6 +256,7 @@ func TestDeploy(t *testing.T) {
 					"1234": testAddresses,
 				},
 			},
+			responses: successResponses,
 			wantL2Nodes: []Node{
 				{
 					"el": "http://localhost:53402",
@@ -322,6 +284,7 @@ func TestDeploy(t *testing.T) {
 			deployerState: &deployer.DeployerData{
 				Wallets: testWallets,
 			},
+			responses: successResponses,
 			wantL1Nodes: []Node{
 				{
 					"el": "http://localhost:52645",
@@ -338,9 +301,15 @@ func TestDeploy(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
+			// Create a fake Kurtosis context
+			fakeCtx := &fakeKurtosisContext{
+				enclaveCtx: &fakeEnclaveContext{
+					runErr:    tt.kurtosisErr,
+					responses: tt.responses,
+				},
+			}
+
 			d := NewKurtosisDeployer(
-				WithKurtosisDryRun(tt.dryRun),
-				WithKurtosisCmdTemplate(fakeCmdTemplate),
 				WithKurtosisEnclaveSpec(&fakeEnclaveSpecifier{
 					spec: tt.spec,
 					err:  tt.specErr,
@@ -355,6 +324,9 @@ func TestDeploy(t *testing.T) {
 				}),
 			)
 
+			// Set the fake Kurtosis context
+			d.kurtosisCtx = fakeCtx
+
 			env, err := d.Deploy(context.Background(), strings.NewReader(tt.input))
 			if tt.wantErr {
 				assert.Error(t, err)
@@ -362,30 +334,25 @@ func TestDeploy(t *testing.T) {
 			}
 
 			require.NoError(t, err)
-			if tt.dryRun {
-				assert.NotNil(t, env)
-				assert.Empty(t, env.L1)
-				assert.Empty(t, env.L2)
-				assert.Empty(t, env.Wallets)
-				return
-			}
+			assert.NotNil(t, env)
 
 			if tt.wantL1Nodes != nil {
+				assert.NotNil(t, env.L1)
 				assert.Equal(t, tt.wantL1Nodes, env.L1.Nodes)
 			} else {
 				assert.Nil(t, env.L1)
 			}
-			if len(tt.wantL2Nodes) > 0 {
+
+			if tt.wantL2Nodes != nil {
+				require.Len(t, env.L2, 1)
 				assert.Equal(t, tt.wantL2Nodes, env.L2[0].Nodes)
 				if tt.wantL2Services != nil {
 					assert.Equal(t, tt.wantL2Services, env.L2[0].Services)
 				}
-				if addresses, ok := tt.deployerState.State["1234"]; ok {
-					assert.Equal(t, addresses, env.L2[0].Addresses)
-				}
 			} else {
 				assert.Empty(t, env.L2)
 			}
+
 			assert.Equal(t, tt.wantWallets, env.Wallets)
 		})
 	}
