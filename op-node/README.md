@@ -192,7 +192,7 @@ Blocks may continue to sync through the happy-path if P2P connectivity is undisr
 
 ### No batch confirmation
 
-As per the [rollup-node spec] the sequencing-window ensures that after a bounded period of L1 blocks
+As per the [rollup-node spec](https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/rollup-node.md) the sequencing-window ensures that after a bounded period of L1 blocks
 the verifier will infer blocks, to ensure liveness of blocks with deposited transactions.
 The op-node will continue to process the happy-path in the mean time,
 which may have to be reorged out if it does not match the blocks that is inferred after sequencing window expiry.
