@@ -360,7 +360,7 @@ contract Deploy is Deployer {
 
         // Ensure that the requisite contracts are deployed
         address superchainConfigProxy = mustGetAddress("SuperchainConfigProxy");
-        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager"));
+        OPContractsManager opcm = new OPContractsManager();
 
         OPContractsManager.DeployInput memory deployInput = getDeployInput();
         OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
