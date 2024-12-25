@@ -212,24 +212,15 @@ contract Setup {
         anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
 
         vm.label(deploy.mustGetAddress("OptimismPortalProxy"), "OptimismPortalProxy");
-        vm.label(address(disputeGameFactory), "DisputeGameFactory");
         vm.label(deploy.mustGetAddress("DisputeGameFactoryProxy"), "DisputeGameFactoryProxy");
-        vm.label(address(delayedWeth), "DelayedWETH");
         vm.label(deploy.mustGetAddress("DelayedWETHProxy"), "DelayedWETHProxy");
-        vm.label(address(systemConfig), "SystemConfig");
         vm.label(deploy.mustGetAddress("SystemConfigProxy"), "SystemConfigProxy");
-        vm.label(address(l1StandardBridge), "L1StandardBridge");
         vm.label(deploy.mustGetAddress("L1StandardBridgeProxy"), "L1StandardBridgeProxy");
-        vm.label(address(l1CrossDomainMessenger), "L1CrossDomainMessenger");
         vm.label(deploy.mustGetAddress("L1CrossDomainMessengerProxy"), "L1CrossDomainMessengerProxy");
         vm.label(address(addressManager), "AddressManager");
-        vm.label(address(l1ERC721Bridge), "L1ERC721Bridge");
         vm.label(deploy.mustGetAddress("L1ERC721BridgeProxy"), "L1ERC721BridgeProxy");
-        vm.label(address(l1OptimismMintableERC20Factory), "OptimismMintableERC20Factory");
         vm.label(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"), "OptimismMintableERC20FactoryProxy");
-        vm.label(address(protocolVersions), "ProtocolVersions");
         vm.label(deploy.mustGetAddress("ProtocolVersionsProxy"), "ProtocolVersionsProxy");
-        vm.label(address(superchainConfig), "SuperchainConfig");
         vm.label(deploy.mustGetAddress("SuperchainConfigProxy"), "SuperchainConfigProxy");
         vm.label(address(anchorStateRegistry), "AnchorStateRegistryProxy");
         vm.label(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessenger_aliased");
