@@ -239,12 +239,15 @@ func deploy(ctx context.Context, cfg *config, r io.Reader) error {
 		return fmt.Errorf("error copying deployment input: %w", err)
 	}
 
-	kurtosisDeployer := kurtosis.NewKurtosisDeployer(
+	kurtosisDeployer, err := kurtosis.NewKurtosisDeployer(
 		kurtosis.WithKurtosisBaseDir(cfg.baseDir),
 		kurtosis.WithKurtosisDryRun(cfg.dryRun),
 		kurtosis.WithKurtosisPackageName(cfg.kurtosisPackage),
 		kurtosis.WithKurtosisEnclave(cfg.enclave),
 	)
+	if err != nil {
+		return fmt.Errorf("error creating kurtosis deployer: %w", err)
+	}
 
 	env, err := kurtosisDeployer.Deploy(ctx, buf)
 	if err != nil {
