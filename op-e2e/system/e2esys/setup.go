@@ -810,6 +810,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 
 		if action, ok := parsedStartOpts.Get("afterRollupNodeStart", name); ok {
 			action(&cfg, sys)
+			sys.Cfg = cfg
 		}
 	}
 
@@ -947,6 +948,7 @@ func (cfg SystemConfig) Start(t *testing.T, startOpts ...StartOption) (*System, 
 	sys.BatchSubmitter = batcher
 	if action, ok := parsedStartOpts.Get("beforeBatcherStart", ""); ok {
 		action(&cfg, sys)
+		sys.Cfg = cfg
 	}
 	if err := batcher.Start(context.Background()); err != nil {
 		return nil, errors.Join(fmt.Errorf("failed to start batch submitter: %w", err), batcher.Stop(context.Background()))
