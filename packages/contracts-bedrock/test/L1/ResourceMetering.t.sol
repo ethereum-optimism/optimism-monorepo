@@ -54,6 +54,10 @@ contract MeterUser is ResourceMetering {
     function setParams(ResourceMetering.ResourceConfig memory newConfig) public {
         innerConfig = newConfig;
     }
+
+    function callUseGas(uint32 _amount) public {
+        useGas(_amount);
+    }
 }
 
 /// @title ResourceMetering_Test
@@ -221,6 +225,24 @@ contract ResourceMetering_Test is Test {
 
         (, uint64 postPrevBoughtGas,) = meter.params();
         assertEq(postPrevBoughtGas, prevBoughtGas + _amount);
+    }
+
+    /// @dev Tests that the `useGas` function works correctly when the amount is less than the max resource limit.
+    function testFuzz_useGas_succeeds(uint32 _amount) external {
+        _amount = uint32(bound(_amount, 0, meter.resourceConfig().maxResourceLimit));
+
+        meter.callUseGas(_amount);
+
+        (, uint64 prevBoughtGas,) = meter.params();
+        assertEq(prevBoughtGas, _amount);
+    }
+
+    /// @dev Tests that the `useGas` function reverts when the amount is greater than the max resource limit.
+    function testFuzz_useGas_withAmountGreaterThanMaxResourceLimit_reverts(uint32 _amount) external {
+        vm.assume(_amount > meter.resourceConfig().maxResourceLimit);
+
+        vm.expectRevert(ResourceMetering.OutOfGas.selector);
+        meter.callUseGas(_amount);
     }
 }
 
