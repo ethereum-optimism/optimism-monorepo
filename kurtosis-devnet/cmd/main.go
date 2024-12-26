@@ -18,25 +18,29 @@ import (
 )
 
 type config struct {
-	templateFile    string
-	dataFile        string
-	kurtosisPackage string
-	enclave         string
-	environment     string
-	dryRun          bool
-	localHostName   string
-	baseDir         string
+	templateFile       string
+	dataFile           string
+	kurtosisPackage    string
+	enclave            string
+	environment        string
+	dryRun             bool
+	localHostName      string
+	baseDir            string
+	forceImageDownload bool
+	parallelism        int
 }
 
 func newConfig(c *cli.Context) (*config, error) {
 	cfg := &config{
-		templateFile:    c.String("template"),
-		dataFile:        c.String("data"),
-		kurtosisPackage: c.String("kurtosis-package"),
-		enclave:         c.String("enclave"),
-		environment:     c.String("environment"),
-		dryRun:          c.Bool("dry-run"),
-		localHostName:   c.String("local-hostname"),
+		templateFile:       c.String("template"),
+		dataFile:           c.String("data"),
+		kurtosisPackage:    c.String("kurtosis-package"),
+		enclave:            c.String("enclave"),
+		environment:        c.String("environment"),
+		dryRun:             c.Bool("dry-run"),
+		localHostName:      c.String("local-hostname"),
+		forceImageDownload: c.Bool("force-image-download"),
+		parallelism:        c.Int("parallelism"),
 	}
 
 	// Validate required flags
@@ -333,6 +337,16 @@ func getFlags() []cli.Flag {
 			Name:  "local-hostname",
 			Usage: "DNS for localhost from Kurtosis perspective (optional)",
 			Value: "host.docker.internal",
+		},
+		&cli.BoolFlag{
+			Name:  "force-image-download",
+			Usage: "Force image download (optional)",
+			Value: false,
+		},
+		&cli.IntFlag{
+			Name:  "parallelism",
+			Usage: "Parallelism for image download (optional)",
+			Value: 4,
 		},
 	}
 }

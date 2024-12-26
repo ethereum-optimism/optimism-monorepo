@@ -9,14 +9,22 @@ import (
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/wrappers"
+	"github.com/kurtosis-tech/kurtosis/api/golang/core/kurtosis_core_rpc_api_bindings"
 	"github.com/kurtosis-tech/kurtosis/api/golang/core/lib/starlark_run_config"
 )
 
+const (
+	DefaultParallelism        = 4
+	DefaultForceImageDownload = false
+)
+
 type KurtosisRunner struct {
-	dryRun      bool
-	enclave     string
-	kurtosisCtx interfaces.KurtosisContextInterface
-	runHandlers []MessageHandler
+	dryRun             bool
+	enclave            string
+	kurtosisCtx        interfaces.KurtosisContextInterface
+	runHandlers        []MessageHandler
+	parallelism        int
+	forceImageDownload bool
 }
 
 type KurtosisRunnerOptions func(*KurtosisRunner)
@@ -45,8 +53,23 @@ func WithKurtosisRunnerRunHandlers(runHandlers ...MessageHandler) KurtosisRunner
 	}
 }
 
+func WithKurtosisRunnerParallelism(parallelism int) KurtosisRunnerOptions {
+	return func(r *KurtosisRunner) {
+		r.parallelism = parallelism
+	}
+}
+
+func WithKurtosisRunnerForceImageDownload(forceImageDownload bool) KurtosisRunnerOptions {
+	return func(r *KurtosisRunner) {
+		r.forceImageDownload = forceImageDownload
+	}
+}
+
 func NewKurtosisRunner(opts ...KurtosisRunnerOptions) (*KurtosisRunner, error) {
-	r := &KurtosisRunner{}
+	r := &KurtosisRunner{
+		parallelism:        DefaultParallelism,
+		forceImageDownload: DefaultForceImageDownload,
+	}
 	for _, opt := range opts {
 		opt(r)
 	}
@@ -99,8 +122,16 @@ func (r *KurtosisRunner) Run(ctx context.Context, packageName string, args io.Re
 		serializedParams = string(argsBytes)
 	}
 
+	var imageDownload kurtosis_core_rpc_api_bindings.ImageDownloadMode
+	if r.forceImageDownload {
+		imageDownload = kurtosis_core_rpc_api_bindings.ImageDownloadMode_always
+	} else {
+		imageDownload = kurtosis_core_rpc_api_bindings.ImageDownloadMode_missing
+	}
 	runConfig := &starlark_run_config.StarlarkRunConfig{
 		SerializedParams: serializedParams,
+		Parallelism:      int32(r.parallelism),
+		ImageDownload:    imageDownload,
 	}
 
 	stream, _, err := enclaveCtx.RunStarlarkPackage(ctx, packageName, runConfig)

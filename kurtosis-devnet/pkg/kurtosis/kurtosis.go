@@ -55,6 +55,10 @@ type KurtosisDeployer struct {
 	// Enclave name
 	enclave string
 
+	// Kurtosis runner options
+	parallelism        int
+	forceImageDownload bool
+
 	enclaveSpec      EnclaveSpecifier
 	enclaveInspecter EnclaveInspecter
 	enclaveObserver  EnclaveObserver
@@ -111,6 +115,18 @@ func WithKurtosisKurtosisContext(kurtosisCtx interfaces.KurtosisContextInterface
 	}
 }
 
+func WithKurtosisRunnerParallelism(parallelism int) KurtosisDeployerOptions {
+	return func(d *KurtosisDeployer) {
+		d.parallelism = parallelism
+	}
+}
+
+func WithKurtosisRunnerForceImageDownload(forceImageDownload bool) KurtosisDeployerOptions {
+	return func(d *KurtosisDeployer) {
+		d.forceImageDownload = forceImageDownload
+	}
+}
+
 // NewKurtosisDeployer creates a new KurtosisDeployer instance
 func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) (*KurtosisDeployer, error) {
 	d := &KurtosisDeployer{
@@ -118,6 +134,10 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) (*KurtosisDeployer, er
 		packageName: DefaultPackageName,
 		dryRun:      false,
 		enclave:     DefaultEnclave,
+
+		// Kurtosis runner options
+		parallelism:        run.DefaultParallelism,
+		forceImageDownload: run.DefaultForceImageDownload,
 
 		enclaveSpec:      &enclaveSpecAdapter{},
 		enclaveInspecter: &enclaveInspectAdapter{},
@@ -216,6 +236,8 @@ func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*Kurtos
 		run.WithKurtosisRunnerDryRun(d.dryRun),
 		run.WithKurtosisRunnerEnclave(d.enclave),
 		run.WithKurtosisRunnerKurtosisContext(d.kurtosisCtx),
+		run.WithKurtosisRunnerParallelism(d.parallelism),
+		run.WithKurtosisRunnerForceImageDownload(d.forceImageDownload),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create Kurtosis runner: %w", err)
