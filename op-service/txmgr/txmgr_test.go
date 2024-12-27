@@ -392,7 +392,7 @@ func TestTxMgrConfirmAtMinGasPrice(t *testing.T) {
 }
 
 // TestTxMgrNeverConfirmCancel asserts that a Send can be canceled even if no
-// transaction is mined. This is done to ensure the the tx mgr can properly
+// transaction is mined. This is done to ensure the tx mgr can properly
 // abort on shutdown, even if a txn is in the process of being published.
 func TestTxMgrNeverConfirmCancel(t *testing.T) {
 	t.Parallel()
