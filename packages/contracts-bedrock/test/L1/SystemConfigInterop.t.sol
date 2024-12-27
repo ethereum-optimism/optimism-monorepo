@@ -24,6 +24,7 @@ contract SystemConfigInterop_Test is CommonTest {
     function setUp() public virtual override {
         super.enableInterop();
         super.setUp();
+        systemConfig.version();
     }
 
     /// @dev Temporary test that checks that correct calls to initialize when using a custom gas token revert with the

@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 // Contracts
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SystemConfig } from "src/L1/SystemConfig.sol";
+import { SystemConfigIsthmus } from "src/L1/SystemConfigIsthmus.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
@@ -24,7 +25,7 @@ error CustomGasTokenNotSupported();
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
-contract SystemConfigInterop is SystemConfig {
+contract SystemConfigInterop is SystemConfigIsthmus {
     /// @notice Storage slot where the dependency manager address is stored
     /// @dev    Equal to bytes32(uint256(keccak256("systemconfig.dependencymanager")) - 1)
     bytes32 internal constant DEPENDENCY_MANAGER_SLOT =

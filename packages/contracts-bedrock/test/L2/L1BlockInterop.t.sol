@@ -28,6 +28,7 @@ contract L1BlockInteropTest is CommonTest {
     function setUp() public virtual override {
         super.enableInterop();
         super.setUp();
+        l1Block.version();
     }
 
     /// @dev Tests that an arbitrary chain ID can be added to the dependency set.

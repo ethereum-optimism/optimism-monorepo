@@ -231,6 +231,8 @@ type ExecutionPayload struct {
 	BlobGasUsed *Uint64Quantity `json:"blobGasUsed,omitempty"`
 	// Nil if not present (Bedrock, Canyon, Delta)
 	ExcessBlobGas *Uint64Quantity `json:"excessBlobGas,omitempty"`
+	// Nil if not present (Bedrock, Canyon, Delta, Ecotone, Fjord, Granite, Holocene)
+	WithdrawalsRoot *common.Hash `json:"withdrawalsRoot,omitempty"`
 }
 
 func (payload *ExecutionPayload) ID() BlockID {
@@ -307,22 +309,23 @@ func BlockAsPayload(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayload, e
 	}
 
 	payload := &ExecutionPayload{
-		ParentHash:    bl.ParentHash(),
-		FeeRecipient:  bl.Coinbase(),
-		StateRoot:     Bytes32(bl.Root()),
-		ReceiptsRoot:  Bytes32(bl.ReceiptHash()),
-		LogsBloom:     Bytes256(bl.Bloom()),
-		PrevRandao:    Bytes32(bl.MixDigest()),
-		BlockNumber:   Uint64Quantity(bl.NumberU64()),
-		GasLimit:      Uint64Quantity(bl.GasLimit()),
-		GasUsed:       Uint64Quantity(bl.GasUsed()),
-		Timestamp:     Uint64Quantity(bl.Time()),
-		ExtraData:     bl.Extra(),
-		BaseFeePerGas: Uint256Quantity(*baseFee),
-		BlockHash:     bl.Hash(),
-		Transactions:  opaqueTxs,
-		ExcessBlobGas: (*Uint64Quantity)(bl.ExcessBlobGas()),
-		BlobGasUsed:   (*Uint64Quantity)(bl.BlobGasUsed()),
+		ParentHash:      bl.ParentHash(),
+		FeeRecipient:    bl.Coinbase(),
+		StateRoot:       Bytes32(bl.Root()),
+		ReceiptsRoot:    Bytes32(bl.ReceiptHash()),
+		LogsBloom:       Bytes256(bl.Bloom()),
+		PrevRandao:      Bytes32(bl.MixDigest()),
+		BlockNumber:     Uint64Quantity(bl.NumberU64()),
+		GasLimit:        Uint64Quantity(bl.GasLimit()),
+		GasUsed:         Uint64Quantity(bl.GasUsed()),
+		Timestamp:       Uint64Quantity(bl.Time()),
+		ExtraData:       bl.Extra(),
+		BaseFeePerGas:   Uint256Quantity(*baseFee),
+		BlockHash:       bl.Hash(),
+		Transactions:    opaqueTxs,
+		ExcessBlobGas:   (*Uint64Quantity)(bl.ExcessBlobGas()),
+		BlobGasUsed:     (*Uint64Quantity)(bl.BlobGasUsed()),
+		WithdrawalsRoot: bl.WithdrawalsRoot(),
 	}
 
 	if shanghaiTime != nil && uint64(payload.Timestamp) >= *shanghaiTime {
@@ -455,6 +458,10 @@ type SystemConfig struct {
 	// value will be 0 if Holocene is not active, or if derivation has yet to
 	// process any EIP_1559_PARAMS system config update events.
 	EIP1559Params Bytes8 `json:"eip1559Params"`
+	// DepositNonce identifies the nonce of the last TransactionDeposited event processed by this chain.
+	DepositNonce uint64 `json:"depositNonce"`
+	// ConfigUpdateNonce identifies the nonce of the last ConfigUpdate event processed by this chain.
+	ConfigUpdateNonce uint64 `json:"configUpdateNonce"`
 	// More fields can be added for future SystemConfig versions.
 
 	// MarshalPreHolocene indicates whether or not this struct should be
@@ -516,6 +523,19 @@ func (sysCfg *SystemConfig) EcotoneScalars() (EcotoneScalars, error) {
 		return EcotoneScalars{}, err
 	}
 	return DecodeScalar(sysCfg.Scalar)
+}
+
+func (sysCfg *SystemConfig) IncrementGenesisNonces(isthmusTime *uint64, customGasToken bool) {
+	// if Isthmus is active at genesis, we must ensure the nonces are set correctly
+	if isthmusTime != nil && *isthmusTime == 0 {
+		// SystemConfig emits 3 ConfigUpdate events which increments the nonce by 3
+		sysCfg.ConfigUpdateNonce += 3
+		// If a custom gas token is in use, a TransactionDeposited event is emitted from
+		// the OptimismPortal, which increments the deposit nonce by 1
+		if customGasToken {
+			sysCfg.DepositNonce += 1
+		}
+	}
 }
 
 // DecodeScalar decodes the blobBaseFeeScalar and baseFeeScalar from a 32-byte scalar value.

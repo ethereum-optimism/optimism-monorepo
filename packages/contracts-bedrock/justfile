@@ -69,11 +69,12 @@ print-pinned-block-number:
 #   rpc call responses in ~/.foundry/cache/rpc. The default block will need to be updated
 #   when the L1 chain is upgraded.
 # TODO(opcm upgrades): unskip the "NMC" tests which fail on the forked upgrade path with "UnexpectedRootClaim" errors.
+# TODO(isthmus upgrades): unskip the "*Isthmus*" tests once mainnet L1 is upgraded, post Isthmus.
 test-upgrade *ARGS: build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
-  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_Initialize_Test|AnchorStateRegistry_TryUpdateAnchorState_Test|FaultDisputeGame_Test|FaultDispute_1v1_Actors_Test"
+  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|AnchorStateRegistry_Initialize_Test|AnchorStateRegistry_TryUpdateAnchorState_Test|FaultDisputeGame_Test|FaultDispute_1v1_Actors_Test|OptimismPortalIsthmus_Test|SystemConfigIsthmus_Test|SystemConfigIsthmus_Setters_Test"
   FORK_RPC_URL=$ETH_RPC_URL \
     FORK_TEST=true \
     forge test --match-path "test/{L1,dispute}/**" \

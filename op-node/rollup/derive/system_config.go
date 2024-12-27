@@ -27,7 +27,8 @@ var (
 var (
 	ConfigUpdateEventABI      = "ConfigUpdate(uint256,uint8,bytes)"
 	ConfigUpdateEventABIHash  = crypto.Keccak256Hash([]byte(ConfigUpdateEventABI))
-	ConfigUpdateEventVersion0 = common.Hash{}
+	ConfigUpdateEventVersion0 = uint64(0)
+	ConfigUpdateEventVersion1 = uint64(1)
 )
 
 // UpdateSystemConfigWithL1Receipts filters all L1 receipts to find config updates and applies the config updates to the given sysCfg
@@ -39,7 +40,8 @@ func UpdateSystemConfigWithL1Receipts(sysCfg *eth.SystemConfig, receipts []*type
 		}
 		for j, log := range rec.Logs {
 			if log.Address == cfg.L1SystemConfigAddress && len(log.Topics) > 0 && log.Topics[0] == ConfigUpdateEventABIHash {
-				if err := ProcessSystemConfigUpdateLogEvent(sysCfg, log, cfg, l1Time); err != nil {
+				var err error
+				if err = ProcessSystemConfigUpdateLogEvent(sysCfg, log, cfg, l1Time); err != nil {
 					result = multierror.Append(result, fmt.Errorf("malformatted L1 system sysCfg log in receipt %d, log %d: %w", i, j, err))
 				}
 			}
@@ -53,7 +55,7 @@ func UpdateSystemConfigWithL1Receipts(sysCfg *eth.SystemConfig, receipts []*type
 // parse log data for:
 //
 //	event ConfigUpdate(
-//	    uint256 indexed version,
+//	    uint256 indexed nonceAndVersion,
 //	    UpdateType indexed updateType,
 //	    bytes data
 //	);
@@ -66,10 +68,18 @@ func ProcessSystemConfigUpdateLogEvent(destSysCfg *eth.SystemConfig, ev *types.L
 	}
 
 	// indexed 0
-	version := ev.Topics[1]
-	if version != ConfigUpdateEventVersion0 {
-		return fmt.Errorf("unrecognized SystemConfig update event version: %s", version)
+	newNonce, version := UnpackNonceAndVersion(ev.Topics[1])
+	switch version {
+	case ConfigUpdateEventVersion0:
+	case ConfigUpdateEventVersion1:
+		if newNonce != destSysCfg.ConfigUpdateNonce+1 {
+			return fmt.Errorf("invalid config update nonce, expected %d got %d", destSysCfg.ConfigUpdateNonce+1, newNonce)
+		}
+		destSysCfg.ConfigUpdateNonce = newNonce
+	default:
+		return fmt.Errorf("unrecognized SystemConfig update event version: %d", version)
 	}
+
 	// indexed 1
 	updateType := ev.Topics[2]
 

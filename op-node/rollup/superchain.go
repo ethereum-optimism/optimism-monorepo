@@ -35,6 +35,7 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 			Scalar:      eth.Bytes32(sysCfg.Scalar),
 			GasLimit:    sysCfg.GasLimit,
 		}
+		genesisSysConfig.IncrementGenesisNonces(chConfig.IsthmusTime, chConfig.GasPayingToken != nil)
 	} else {
 		return nil, fmt.Errorf("unable to retrieve genesis SystemConfig of chain %d", chainID)
 	}
@@ -92,6 +93,7 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 		FjordTime:              chConfig.FjordTime,
 		GraniteTime:            chConfig.GraniteTime,
 		HoloceneTime:           chConfig.HoloceneTime,
+		IsthmusTime:            chConfig.IsthmusTime,
 		BatchInboxAddress:      common.Address(chConfig.BatchInboxAddr),
 		DepositContractAddress: common.Address(addrs.OptimismPortalProxy),
 		L1SystemConfigAddress:  common.Address(addrs.SystemConfigProxy),

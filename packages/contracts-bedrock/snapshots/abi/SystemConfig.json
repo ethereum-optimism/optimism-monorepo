@@ -258,6 +258,19 @@
   },
   {
     "inputs": [],
+    "name": "gasPayingTokenAddress",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "addr_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "gasPayingTokenName",
     "outputs": [
       {
@@ -750,7 +763,7 @@
       {
         "indexed": true,
         "internalType": "uint256",
-        "name": "version",
+        "name": "nonceAndVersion",
         "type": "uint256"
       },
       {

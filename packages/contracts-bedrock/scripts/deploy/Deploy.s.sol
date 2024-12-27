@@ -20,6 +20,7 @@ import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from 
 import {
     DeployImplementationsInput,
     DeployImplementations,
+    DeployImplementationsIsthmus,
     DeployImplementationsInterop,
     DeployImplementationsOutput
 } from "scripts/deploy/DeployImplementations.s.sol";
@@ -200,7 +201,7 @@ contract Deploy is Deployer {
             deploySuperchain();
         }
 
-        deployImplementations({ _isInterop: cfg.useInterop() });
+        deployImplementations();
 
         // Deploy Current OPChain Contracts
         deployOpChain();
@@ -275,10 +276,7 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy all of the implementations
-    /// @param _isInterop Whether to use interop
-    function deployImplementations(bool _isInterop) public {
-        require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
-
+    function deployImplementations() public {
         console.log("Deploying implementations");
 
         DeployImplementations di = new DeployImplementations();
@@ -299,8 +297,10 @@ contract Deploy is Deployer {
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
         dii.set(dii.salt.selector, _implSalt());
 
-        if (_isInterop) {
+        if (cfg.useInterop()) {
             di = DeployImplementations(new DeployImplementationsInterop());
+        } else if (cfg.l2GenesisIsthmusTimeOffset() == 0) {
+            di = DeployImplementations(new DeployImplementationsIsthmus());
         }
         di.run(dii, dio);
 
@@ -353,7 +353,7 @@ contract Deploy is Deployer {
             _opcm: OPContractsManager(address(dio.opcm())),
             _mips: IMIPS(address(dio.mipsSingleton()))
         });
-        if (_isInterop) {
+        if (cfg.useInterop()) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
         } else {
             ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
