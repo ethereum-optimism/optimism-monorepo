@@ -2,7 +2,7 @@
 
 # Incident Summary
 
-On April 26, 2023 between the hours of 1900 and 2100 UTC, OP Mainnet experienced degraded service following a ~10x increase in the rate of `eth_sendRawTransaction` requests. 
+On April 26, 2023 between the hours of 1900 and 2100 UTC, OP Mainnet experienced degraded service following a ~10x increase in the rate of `eth_sendRawTransaction` requests.
 
 While the sequencer remained online and continued to process transactions, users experienced transaction inclusion delays, rate limit errors, problems syncing nodes, and other symptoms of degraded performance.
 
@@ -15,7 +15,7 @@ OP Mainnet has not yet been upgraded to Bedrock. As a result, all OP Mainnet nod
 - The `data-transport-layer` (or DTL), which indexes transactions from L1 or another L2 node.
 - `l2geth`, which executes the transactions indexed by the DTL and maintains the L2 chain’s state.
 
-The DTL and `l2geth` retrieve new data by polling for it. The DTL polls L1 or L2 depending on how it is configured, and `l2geth` polls the DTL. The higher the transaction throughput is, the more transactions will have to be processed between each “tick” of the polling loop. When throughput is too high, it is possible for the number of transactions between each tick to exceed what can be processed in a single tick. In this case, multiple ticks are necessary to catch up to the tip of the chain.
+The DTL and `l2geth` retrieve new data by polling for it. The DTL polls L1 or L2 depending on how it is configured, and `l2geth` polls the DTL. The higher the transaction throughput is, the more transactions will have to be processed between each "tick" of the polling loop. When throughput is too high, it is possible for the number of transactions between each tick to exceed what can be processed in a single tick. In this case, multiple ticks are necessary to catch up to the tip of the chain.
 
 To protect the sequencer against traffic spikes, we route read requests - specifically `eth_getBlockRange`, which the DTL uses to sync from L2 - to a read-only replica rather than to the sequencer itself.
 
