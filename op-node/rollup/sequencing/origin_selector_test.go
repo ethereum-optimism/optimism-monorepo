@@ -306,7 +306,7 @@ func TestOriginSelectorFetchesNextOrigin(t *testing.T) {
 // The next L2 time is 24 which is before the next L1 block time. There
 // is no conf depth to stop the LOS from potentially selecting block `b`
 // but it should select block `a` because the L2 block time must be ahead
-// of the the timestamp of it's L1 origin.
+// of the timestamp of it's L1 origin.
 func TestOriginSelectorRespectsOriginTiming(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
