@@ -32,7 +32,7 @@ func (s *ManagedMode) AttachEmitter(em event.Emitter) {
 }
 
 func (s *ManagedMode) OnEvent(ev event.Event) bool {
-	// TODO(#13336): let all active subscriptions now
+	// TODO(#13336): let all active subscriptions know
 	return false
 }
 
