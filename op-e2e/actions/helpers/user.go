@@ -393,7 +393,7 @@ func (s *CrossLayerUser) CheckDepositTx(t Testing, l1TxHash common.Hash, index i
 		require.False(t, l2Success)
 	} else {
 		require.Less(t, index, len(depositReceipt.Logs), "must have enough logs in receipt")
-		reconstructedDep, err := derive.UnmarshalDepositLogEvent(depositReceipt.Logs[index])
+		reconstructedDep, err := derive.UnmarshalDepositLogEventIgnoreNonce(depositReceipt.Logs[index])
 		require.NoError(t, err, "Could not reconstruct L2 Deposit")
 		l2Tx := types.NewTx(reconstructedDep)
 		s.L2.CheckReceipt(t, l2Success, l2Tx.Hash())

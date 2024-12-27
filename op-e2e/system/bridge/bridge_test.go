@@ -102,7 +102,7 @@ func TestERC20BridgeDeposits(t *testing.T) {
 	depositEvent, err := receipts.FindLog(depositReceipt.Logs, portal.ParseTransactionDeposited)
 	require.NoError(t, err, "Should emit deposit event")
 
-	depositTx, err := derive.UnmarshalDepositLogEvent(&depositEvent.Raw)
+	depositTx, err := derive.UnmarshalDepositLogEventIgnoreNonce(&depositEvent.Raw)
 	require.NoError(t, err)
 	_, err = wait.ForReceiptOK(context.Background(), l2Client, types.NewTx(depositTx).Hash())
 	require.NoError(t, err)

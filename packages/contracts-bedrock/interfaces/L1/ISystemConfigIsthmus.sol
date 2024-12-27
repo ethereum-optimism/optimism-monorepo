@@ -4,7 +4,8 @@ pragma solidity ^0.8.0;
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
-interface ISystemConfigInterop {
+/// @notice This interface corresponds to the Custom Gas Token version of the SystemConfig contract.
+interface ISystemConfigIsthmus {
     event ConfigUpdate(uint256 indexed nonceAndVersion, ISystemConfig.UpdateType indexed updateType, bytes data);
     event Initialized(uint8 version);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
@@ -30,6 +31,23 @@ interface ISystemConfigInterop {
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
     function configUpdateNonce() external view returns (uint64 nonce_);
+    function gasPayingToken() external view returns (address addr_, uint8 decimals_);
+    function gasPayingTokenAddress() external view returns (address addr_);
+    function gasPayingTokenName() external view returns (string memory name_);
+    function gasPayingTokenSymbol() external view returns (string memory symbol_);
+    function initialize(
+        address _owner,
+        uint32 _basefeeScalar,
+        uint32 _blobbasefeeScalar,
+        bytes32 _batcherHash,
+        uint64 _gasLimit,
+        address _unsafeBlockSigner,
+        IResourceMetering.ResourceConfig memory _config,
+        address _batchInbox,
+        ISystemConfig.Addresses memory _addresses
+    )
+        external;
+    function isCustomGasToken() external view returns (bool);
     function l1CrossDomainMessenger() external view returns (address addr_);
     function l1ERC721Bridge() external view returns (address addr_);
     function l1StandardBridge() external view returns (address addr_);
@@ -51,23 +69,6 @@ interface ISystemConfigInterop {
     function startBlock() external view returns (uint256 startBlock_);
     function transferOwnership(address newOwner) external; // nosemgrep
     function unsafeBlockSigner() external view returns (address addr_);
-
-    function addDependency(uint256 _chainId) external;
-    function removeDependency(uint256 _chainId) external;
-    function dependencyManager() external view returns (address);
-    function initialize(
-        address _owner,
-        uint32 _basefeeScalar,
-        uint32 _blobbasefeeScalar,
-        bytes32 _batcherHash,
-        uint64 _gasLimit,
-        address _unsafeBlockSigner,
-        IResourceMetering.ResourceConfig memory _config,
-        address _batchInbox,
-        ISystemConfig.Addresses memory _addresses,
-        address _dependencyManager
-    )
-        external;
     function version() external pure returns (string memory);
 
     function __constructor__() external;

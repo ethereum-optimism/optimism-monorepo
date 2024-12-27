@@ -1,0 +1,128 @@
+[
+  {
+    "bytes": "1",
+    "label": "_initialized",
+    "offset": 0,
+    "slot": "0",
+    "type": "uint8"
+  },
+  {
+    "bytes": "1",
+    "label": "_initializing",
+    "offset": 1,
+    "slot": "0",
+    "type": "bool"
+  },
+  {
+    "bytes": "32",
+    "label": "params",
+    "offset": 0,
+    "slot": "1",
+    "type": "struct ResourceMetering.ResourceParams"
+  },
+  {
+    "bytes": "1536",
+    "label": "__gap",
+    "offset": 0,
+    "slot": "2",
+    "type": "uint256[48]"
+  },
+  {
+    "bytes": "20",
+    "label": "l2Sender",
+    "offset": 0,
+    "slot": "50",
+    "type": "address"
+  },
+  {
+    "bytes": "32",
+    "label": "finalizedWithdrawals",
+    "offset": 0,
+    "slot": "51",
+    "type": "mapping(bytes32 => bool)"
+  },
+  {
+    "bytes": "32",
+    "label": "spacer_52_0_32",
+    "offset": 0,
+    "slot": "52",
+    "type": "bytes32"
+  },
+  {
+    "bytes": "1",
+    "label": "spacer_53_0_1",
+    "offset": 0,
+    "slot": "53",
+    "type": "bool"
+  },
+  {
+    "bytes": "20",
+    "label": "superchainConfig",
+    "offset": 1,
+    "slot": "53",
+    "type": "contract ISuperchainConfig"
+  },
+  {
+    "bytes": "20",
+    "label": "spacer_54_0_20",
+    "offset": 0,
+    "slot": "54",
+    "type": "address"
+  },
+  {
+    "bytes": "20",
+    "label": "systemConfig",
+    "offset": 0,
+    "slot": "55",
+    "type": "contract ISystemConfig"
+  },
+  {
+    "bytes": "20",
+    "label": "disputeGameFactory",
+    "offset": 0,
+    "slot": "56",
+    "type": "contract IDisputeGameFactory"
+  },
+  {
+    "bytes": "32",
+    "label": "provenWithdrawals",
+    "offset": 0,
+    "slot": "57",
+    "type": "mapping(bytes32 => mapping(address => struct OptimismPortal2.ProvenWithdrawal))"
+  },
+  {
+    "bytes": "32",
+    "label": "disputeGameBlacklist",
+    "offset": 0,
+    "slot": "58",
+    "type": "mapping(contract IDisputeGame => bool)"
+  },
+  {
+    "bytes": "4",
+    "label": "respectedGameType",
+    "offset": 0,
+    "slot": "59",
+    "type": "GameType"
+  },
+  {
+    "bytes": "8",
+    "label": "respectedGameTypeUpdatedAt",
+    "offset": 4,
+    "slot": "59",
+    "type": "uint64"
+  },
+  {
+    "bytes": "32",
+    "label": "proofSubmitters",
+    "offset": 0,
+    "slot": "60",
+    "type": "mapping(bytes32 => address[])"
+  },
+  {
+    "bytes": "32",
+    "label": "_balance",
+    "offset": 0,
+    "slot": "61",
+    "type": "uint256"
+  }
+]

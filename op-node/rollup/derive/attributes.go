@@ -65,38 +65,35 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 	// case we need to fetch all transaction receipts from the L1 origin block so we can scan for
 	// user deposits.
 	if l2Parent.L1Origin.Number != epoch.Number {
-		info, receipts, err := ba.l1.FetchReceipts(ctx, epoch.Hash)
-		if err != nil {
+		var receipts types.Receipts
+		if l1Info, receipts, err = ba.l1.FetchReceipts(ctx, epoch.Hash); err != nil {
 			return nil, NewTemporaryError(fmt.Errorf("failed to fetch L1 block info and receipts: %w", err))
 		}
-		if l2Parent.L1Origin.Hash != info.ParentHash() {
+		if l2Parent.L1Origin.Hash != l1Info.ParentHash() {
 			return nil, NewResetError(
 				fmt.Errorf("cannot create new block with L1 origin %s (parent %s) on top of L1 origin %s",
-					epoch, info.ParentHash(), l2Parent.L1Origin))
+					epoch, l1Info.ParentHash(), l2Parent.L1Origin))
 		}
 
-		deposits, err := DeriveDeposits(receipts, ba.rollupCfg.DepositContractAddress)
-		if err != nil {
+		if depositTxs, sysConfig.DepositNonce, err = DeriveDeposits(receipts, ba.rollupCfg.DepositContractAddress, sysConfig.DepositNonce); err != nil {
 			// deposits may never be ignored. Failing to process them is a critical error.
 			return nil, NewCriticalError(fmt.Errorf("failed to derive some deposits: %w", err))
 		}
+
 		// apply sysCfg changes
-		if err := UpdateSystemConfigWithL1Receipts(&sysConfig, receipts, ba.rollupCfg, info.Time()); err != nil {
+		if err = UpdateSystemConfigWithL1Receipts(&sysConfig, receipts, ba.rollupCfg, l1Info.Time()); err != nil {
 			return nil, NewCriticalError(fmt.Errorf("failed to apply derived L1 sysCfg updates: %w", err))
 		}
 
-		l1Info = info
-		depositTxs = deposits
 		seqNumber = 0
 	} else {
 		if l2Parent.L1Origin.Hash != epoch.Hash {
 			return nil, NewResetError(fmt.Errorf("cannot create new block with L1 origin %s in conflict with L1 origin %s", epoch, l2Parent.L1Origin))
 		}
-		info, err := ba.l1.InfoByHash(ctx, epoch.Hash)
+		l1Info, err = ba.l1.InfoByHash(ctx, epoch.Hash)
 		if err != nil {
 			return nil, NewTemporaryError(fmt.Errorf("failed to fetch L1 block info: %w", err))
 		}
-		l1Info = info
 		depositTxs = nil
 		seqNumber = l2Parent.SequenceNumber + 1
 	}

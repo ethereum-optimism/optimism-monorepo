@@ -18,6 +18,7 @@ contract SystemConfigInterop_Test is CommonTest {
     function setUp() public virtual override {
         super.enableInterop();
         super.setUp();
+        systemConfig.version();
     }
 
     /// @notice Tests that the version function returns a valid string. We avoid testing the

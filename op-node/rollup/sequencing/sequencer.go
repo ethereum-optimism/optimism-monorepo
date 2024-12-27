@@ -543,9 +543,15 @@ func (d *Sequencer) startBuildingBlock() {
 		d.log.Info("Sequencing Fjord upgrade block")
 	}
 
-	// For the Granite activation block we shouldn't include any sequencer transactions.
+	// For the Granite activation block we allow sequencer transactions.
 	if d.rollupCfg.IsGraniteActivationBlock(uint64(attrs.Timestamp)) {
 		d.log.Info("Sequencing Granite upgrade block")
+	}
+
+	// For the Isthmus activation block we shouldn't include any sequencer transactions.
+	if d.rollupCfg.IsIsthmusActivationBlock(uint64(attrs.Timestamp)) {
+		attrs.NoTxPool = true
+		d.log.Info("Sequencing Isthmus upgrade block")
 	}
 
 	d.log.Debug("prepared attributes for new block",

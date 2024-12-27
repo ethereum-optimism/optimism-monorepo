@@ -212,7 +212,9 @@ func logL1InfoTxns(rollupCfg *rollup.Config, l log.Logger, l2Number, l2Timestamp
 		"unsafe_l1_time", unsafeInfo.Time, "unsafe_seq_num", unsafeInfo.SequenceNumber,
 		"unsafe_l1_basefee", unsafeInfo.BaseFee, "unsafe_batcher_addr", unsafeInfo.BatcherAddr,
 	)
-	if bytes.HasPrefix(safeTxValue.Data(), types.EcotoneL1AttributesSelector) {
+	if bytes.HasPrefix(safeTxValue.Data(), types.EcotoneL1AttributesSelector[:]) ||
+		bytes.HasPrefix(safeTxValue.Data(), types.IsthmusL1AttributesSelector[:]) ||
+		bytes.HasPrefix(safeTxValue.Data(), types.InteropL1AttributesSelector[:]) {
 		l.Error("L1 Info transaction differs",
 			"safe_l1_blob_basefee", safeInfo.BlobBaseFee,
 			"safe_l1_basefee_scalar", safeInfo.BaseFeeScalar,

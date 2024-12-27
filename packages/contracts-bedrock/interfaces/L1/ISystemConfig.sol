@@ -21,7 +21,7 @@ interface ISystemConfig {
         address optimismMintableERC20Factory;
     }
 
-    event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
+    event ConfigUpdate(uint256 indexed nonceAndVersion, UpdateType indexed updateType, bytes data);
     event Initialized(uint8 version);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
 

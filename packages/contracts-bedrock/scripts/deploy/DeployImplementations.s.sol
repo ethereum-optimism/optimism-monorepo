@@ -25,6 +25,8 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
+import { IOptimismPortalIsthmus } from "interfaces/L1/IOptimismPortalIsthmus.sol";
+import { ISystemConfigIsthmus } from "interfaces/L1/ISystemConfigIsthmus.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -809,6 +811,89 @@ contract DeployImplementations is Script {
     function getIOContracts() public view returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         dii_ = DeployImplementationsInput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsInput"));
         dio_ = DeployImplementationsOutput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsOutput"));
+    }
+}
+
+// Using the base scripts and contracts (DeploySuperchain, DeployImplementations, DeployOPChain, and
+// the corresponding OPContractsManager) deploys a standard chain. For nonstandard and in-development
+// features we need to modify some or all of those contracts, and we do that via inheritance. Using
+// Isthmus as an example, we've made the following changes to L1 contracts:
+//   - `OptimismPortalIsthmus is OptimismPortal`: A different portal implementation is used, and
+//     it has an additional method for retrieving the TransactionDeposited nonce.
+//   - `SystemConfigIsthmus is SystemConfig`: A different system config implementation is used, and
+//     it has an additional method for retrieving the ConfigUpdate nonce.
+//
+// Similar to how inheritance was used to develop the new portal and system config contracts, we use
+// inheritance to modify up to all of the deployer contracts. For this isthmus example, what this
+// means is we need:
+//   - A `DeployImplementationsIsthmus is DeployImplementations` that:
+//     - Deploys OptimismPortalIsthmus instead of OptimismPortal.
+//     - Deploys SystemConfigIsthmus instead of SystemConfig.
+contract DeployImplementationsIsthmus is DeployImplementations {
+    function deployOptimismPortalImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        override
+    {
+        string memory release = _dii.l1ContractsRelease();
+        string memory stdVerToml = _dii.standardVersionsToml();
+        string memory contractName = "optimism_portal";
+        IOptimismPortalIsthmus impl;
+
+        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
+        if (existingImplementation != address(0)) {
+            impl = IOptimismPortalIsthmus(payable(existingImplementation));
+        } else {
+            uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
+            uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+            vm.broadcast(msg.sender);
+            impl = IOptimismPortalIsthmus(
+                DeployUtils.create1({
+                    _name: "OptimismPortalIsthmus",
+                    _args: DeployUtils.encodeConstructor(
+                        abi.encodeCall(
+                            IOptimismPortalIsthmus.__constructor__,
+                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
+                        )
+                    )
+                })
+            );
+        }
+
+        vm.label(address(impl), "OptimismPortalImpl");
+        _dio.set(_dio.optimismPortalImpl.selector, address(impl));
+    }
+
+    function deploySystemConfigImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        override
+    {
+        string memory release = _dii.l1ContractsRelease();
+        string memory stdVerToml = _dii.standardVersionsToml();
+
+        string memory contractName = "system_config";
+        ISystemConfigIsthmus impl;
+
+        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
+        if (existingImplementation != address(0)) {
+            impl = ISystemConfigIsthmus(existingImplementation);
+        } else {
+            vm.broadcast(msg.sender);
+            impl = ISystemConfigIsthmus(
+                DeployUtils.create1({
+                    _name: "SystemConfigIsthmus",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigIsthmus.__constructor__, ()))
+                })
+            );
+        }
+
+        vm.label(address(impl), "SystemConfigImpl");
+        _dio.set(_dio.systemConfigImpl.selector, address(impl));
     }
 }
 

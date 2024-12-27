@@ -17,8 +17,25 @@ import (
 var (
 	DepositEventABI      = "TransactionDeposited(address,address,uint256,bytes)"
 	DepositEventABIHash  = crypto.Keccak256Hash([]byte(DepositEventABI))
-	DepositEventVersion0 = common.Hash{}
+	DepositEventVersion0 = uint64(0)
+	DepositEventVersion1 = uint64(1)
 )
+
+// UnmarshalDepositLogEventIgnoreNonce decodes an EVM log entry emitted by the deposit contract into typed deposit data.
+// Same as UnmarshalDepositLogEvent, but it force-ensures that the deposit nonce is correct.
+// This is useful for testing or non-consensus applications.
+func UnmarshalDepositLogEventIgnoreNonce(ev *types.Log) (*types.DepositTx, error) {
+	previousNonce := uint64(0)
+	if len(ev.Topics) == 4 {
+		nonce, version := UnpackNonceAndVersion(ev.Topics[3])
+		switch version {
+		case DepositEventVersion1:
+			previousNonce = nonce - 1
+		}
+	}
+	dep, _, err := UnmarshalDepositLogEvent(ev, previousNonce)
+	return dep, err
+}
 
 // UnmarshalDepositLogEvent decodes an EVM log entry emitted by the deposit contract into typed deposit data.
 //
@@ -27,23 +44,23 @@ var (
 //	event TransactionDeposited(
 //	    address indexed from,
 //	    address indexed to,
-//	    uint256 indexed version,
+//	    uint256 indexed nonceAndVersion,
 //	    bytes opaqueData
 //	);
 //
 // Additionally, the event log-index and
-func UnmarshalDepositLogEvent(ev *types.Log) (*types.DepositTx, error) {
+func UnmarshalDepositLogEvent(ev *types.Log, currentNonce uint64) (*types.DepositTx, uint64, error) {
 	if len(ev.Topics) != 4 {
-		return nil, fmt.Errorf("expected 4 event topics (event identity, indexed from, indexed to, indexed version), got %d", len(ev.Topics))
+		return nil, currentNonce, fmt.Errorf("expected 4 event topics (event identity, indexed from, indexed to, indexed version), got %d", len(ev.Topics))
 	}
 	if ev.Topics[0] != DepositEventABIHash {
-		return nil, fmt.Errorf("invalid deposit event selector: %s, expected %s", ev.Topics[0], DepositEventABIHash)
+		return nil, currentNonce, fmt.Errorf("invalid deposit event selector: %s, expected %s", ev.Topics[0], DepositEventABIHash)
 	}
 	if len(ev.Data) < 64 {
-		return nil, fmt.Errorf("incomplate opaqueData slice header (%d bytes): %x", len(ev.Data), ev.Data)
+		return nil, currentNonce, fmt.Errorf("incomplate opaqueData slice header (%d bytes): %x", len(ev.Data), ev.Data)
 	}
 	if len(ev.Data)%32 != 0 {
-		return nil, fmt.Errorf("expected log data to be multiple of 32 bytes: got %d bytes", len(ev.Data))
+		return nil, currentNonce, fmt.Errorf("expected log data to be multiple of 32 bytes: got %d bytes", len(ev.Data))
 	}
 
 	// indexed 0
@@ -51,7 +68,7 @@ func UnmarshalDepositLogEvent(ev *types.Log) (*types.DepositTx, error) {
 	// indexed 1
 	to := common.BytesToAddress(ev.Topics[2][12:])
 	// indexed 2
-	version := ev.Topics[3]
+	nonceAndVersion := ev.Topics[3]
 	// unindexed data
 	// Solidity serializes the event's Data field as follows:
 	// abi.encode(abi.encodPacked(uint256 mint, uint256 value, uint64 gasLimit, uint8 isCreation, bytes data))
@@ -60,14 +77,14 @@ func UnmarshalDepositLogEvent(ev *types.Log) (*types.DepositTx, error) {
 	var opaqueContentOffset uint256.Int
 	opaqueContentOffset.SetBytes(ev.Data[0:32])
 	if !opaqueContentOffset.IsUint64() || opaqueContentOffset.Uint64() != 32 {
-		return nil, fmt.Errorf("invalid opaqueData slice header offset: %d", opaqueContentOffset.Uint64())
+		return nil, currentNonce, fmt.Errorf("invalid opaqueData slice header offset: %d", opaqueContentOffset.Uint64())
 	}
 	// The next 32 bytes indicate the length of the opaqueData content.
 	var opaqueContentLength uint256.Int
 	opaqueContentLength.SetBytes(ev.Data[32:64])
 	// Make sure the length is an uint64, it's not larger than the remaining data, and the log is using minimal padding (i.e. can't add 32 bytes without exceeding data)
 	if !opaqueContentLength.IsUint64() || opaqueContentLength.Uint64() > uint64(len(ev.Data)-64) || opaqueContentLength.Uint64()+32 <= uint64(len(ev.Data)-64) {
-		return nil, fmt.Errorf("invalid opaqueData slice header length: %d", opaqueContentLength.Uint64())
+		return nil, currentNonce, fmt.Errorf("invalid opaqueData slice header length: %d", opaqueContentLength.Uint64())
 	}
 	// The remaining data is the opaqueData which is tightly packed
 	// and then padded to 32 bytes by the EVM.
@@ -83,17 +100,39 @@ func UnmarshalDepositLogEvent(ev *types.Log) (*types.DepositTx, error) {
 	dep.From = from
 	dep.IsSystemTransaction = false
 
+	newNonce, version := UnpackNonceAndVersion(nonceAndVersion)
+
 	var err error
 	switch version {
 	case DepositEventVersion0:
 		err = unmarshalDepositVersion0(&dep, to, opaqueData)
+	case DepositEventVersion1:
+		if newNonce != currentNonce+1 {
+			return nil, currentNonce, fmt.Errorf("invalid deposit nonce, expected %d got %d", currentNonce+1, newNonce)
+		}
+		err = unmarshalDepositVersion1(&dep, to, opaqueData)
 	default:
-		return nil, fmt.Errorf("invalid deposit version, got %s", version)
+		return nil, currentNonce, fmt.Errorf("invalid deposit version, got %d", version)
 	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to decode deposit (version %s): %w", version, err)
+		return nil, currentNonce, fmt.Errorf("failed to decode deposit (version %d): %w", version, err)
 	}
-	return &dep, nil
+	return &dep, newNonce, nil
+}
+
+func UnpackNonceAndVersion(nonceAndVersion common.Hash) (nonce uint64, version uint64) {
+	i := new(big.Int).SetBytes(nonceAndVersion[:])
+	mask64 := new(big.Int).SetBytes(common.Hex2Bytes("ffffffffffffffff"))
+	version = mask64.And(mask64, i).Uint64()
+	nonce = i.Rsh(i, 128).Uint64()
+	return
+}
+
+func PackNonceAndVersion(nonce uint64, version uint64) common.Hash {
+	i := new(big.Int).SetUint64(nonce)
+	i.Lsh(i, 128)
+	i.Or(i, new(big.Int).SetUint64(version))
+	return common.BytesToHash(i.Bytes())
 }
 
 func unmarshalDepositVersion0(dep *types.DepositTx, to common.Address, opaqueData []byte) error {
@@ -140,6 +179,11 @@ func unmarshalDepositVersion0(dep *types.DepositTx, to common.Address, opaqueDat
 	return nil
 }
 
+func unmarshalDepositVersion1(dep *types.DepositTx, to common.Address, opaqueData []byte) error {
+	// version 1 simply adds a nonce; the rest is the same
+	return unmarshalDepositVersion0(dep, to, opaqueData)
+}
+
 // MarshalDepositLogEvent returns an EVM log entry that encodes a TransactionDeposited event from the deposit contract.
 // This is the reverse of the deposit transaction derivation.
 func MarshalDepositLogEvent(depositContractAddr common.Address, deposit *types.DepositTx) (*types.Log, error) {
@@ -151,7 +195,7 @@ func MarshalDepositLogEvent(depositContractAddr common.Address, deposit *types.D
 		DepositEventABIHash,
 		eth.AddressAsLeftPaddedHash(deposit.From),
 		toBytes,
-		DepositEventVersion0,
+		PackNonceAndVersion(0, DepositEventVersion0),
 	}
 
 	data := make([]byte, 64, 64+3*32)

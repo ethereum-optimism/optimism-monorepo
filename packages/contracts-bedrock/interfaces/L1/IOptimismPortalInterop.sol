@@ -37,13 +37,14 @@ interface IOptimismPortalInterop {
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
     event Initialized(uint8 version);
     event RespectedGameTypeSet(GameType indexed newGameType, Timestamp indexed updatedAt);
-    event TransactionDeposited(address indexed from, address indexed to, uint256 indexed version, bytes opaqueData);
+    event TransactionDeposited(address indexed from, address indexed to, uint256 indexed nonceAndVersion, bytes opaqueData);
     event WithdrawalFinalized(bytes32 indexed withdrawalHash, bool success);
     event WithdrawalProven(bytes32 indexed withdrawalHash, address indexed from, address indexed to);
     event WithdrawalProvenExtension1(bytes32 indexed withdrawalHash, address indexed proofSubmitter);
 
     receive() external payable;
 
+    function DEPOSIT_NONCE_SLOT() external view returns (bytes32);
     function blacklistDisputeGame(IDisputeGame _disputeGame) external;
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
     function depositTransaction(
@@ -81,6 +82,7 @@ interface IOptimismPortalInterop {
     function paused() external view returns (bool);
     function proofMaturityDelaySeconds() external view returns (uint256);
     function proofSubmitters(bytes32, uint256) external view returns (address);
+    function depositNonce() external view returns (uint64 nonce_);
     function proveWithdrawalTransaction(
         Types.WithdrawalTransaction memory _tx,
         uint256 _disputeGameIndex,

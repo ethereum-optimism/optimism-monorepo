@@ -85,10 +85,12 @@ func PayloadToSystemConfig(rollupCfg *rollup.Config, payload *eth.ExecutionPaylo
 		binary.BigEndian.PutUint32(info.L1FeeScalar[28:32], info.BaseFeeScalar)
 	}
 	r := eth.SystemConfig{
-		BatcherAddr: info.BatcherAddr,
-		Overhead:    info.L1FeeOverhead,
-		Scalar:      info.L1FeeScalar,
-		GasLimit:    uint64(payload.GasLimit),
+		BatcherAddr:       info.BatcherAddr,
+		Overhead:          info.L1FeeOverhead,
+		Scalar:            info.L1FeeScalar,
+		GasLimit:          uint64(payload.GasLimit),
+		DepositNonce:      info.DepositNonce,
+		ConfigUpdateNonce: info.ConfigUpdateNonce,
 	}
 	if rollupCfg.IsHolocene(uint64(payload.Timestamp)) {
 		if err := eip1559.ValidateHoloceneExtraData(payload.ExtraData); err != nil {

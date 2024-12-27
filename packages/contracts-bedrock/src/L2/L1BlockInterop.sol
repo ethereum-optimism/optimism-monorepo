@@ -75,15 +75,15 @@ contract L1BlockInterop is L1Block {
     }
 
     /// @notice Updates the `isDeposit` flag and sets the L1 block values for an Interop upgraded chain.
-    ///         It updates the L1 block values through the `setL1BlockValuesEcotone` function.
-    ///         It forwards the calldata to the internally-used `setL1BlockValuesEcotone` function.
+    ///         It updates the L1 block values through the `_setL1BlockValuesIsthmus` function.
+    ///         It forwards the calldata to the internally-used `_setL1BlockValuesIsthmus` function.
     function setL1BlockValuesInterop() external {
         // Set the isDeposit flag to true.
         assembly {
             sstore(IS_DEPOSIT_SLOT, 1)
         }
 
-        _setL1BlockValuesEcotone();
+        _setL1BlockValuesIsthmus();
     }
 
     /// @notice Resets the isDeposit flag.

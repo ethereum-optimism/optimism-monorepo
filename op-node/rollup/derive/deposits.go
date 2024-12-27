@@ -11,7 +11,7 @@ import (
 )
 
 // UserDeposits transforms the L2 block-height and L1 receipts into the transaction inputs for a full L2 block
-func UserDeposits(receipts []*types.Receipt, depositContractAddr common.Address) ([]*types.DepositTx, error) {
+func UserDeposits(receipts []*types.Receipt, depositContractAddr common.Address, currentNonce uint64) ([]*types.DepositTx, uint64, error) {
 	var out []*types.DepositTx
 	var result error
 	for i, rec := range receipts {
@@ -20,7 +20,8 @@ func UserDeposits(receipts []*types.Receipt, depositContractAddr common.Address)
 		}
 		for j, log := range rec.Logs {
 			if log.Address == depositContractAddr && len(log.Topics) > 0 && log.Topics[0] == DepositEventABIHash {
-				dep, err := UnmarshalDepositLogEvent(log)
+				dep, newNonce, err := UnmarshalDepositLogEvent(log, currentNonce)
+				currentNonce = newNonce
 				if err != nil {
 					result = multierror.Append(result, fmt.Errorf("malformatted L1 deposit log in receipt %d, log %d: %w", i, j, err))
 				} else {
@@ -29,12 +30,13 @@ func UserDeposits(receipts []*types.Receipt, depositContractAddr common.Address)
 			}
 		}
 	}
-	return out, result
+	return out, currentNonce, result
 }
 
-func DeriveDeposits(receipts []*types.Receipt, depositContractAddr common.Address) ([]hexutil.Bytes, error) {
+func DeriveDeposits(receipts []*types.Receipt, depositContractAddr common.Address, currentNonce uint64) ([]hexutil.Bytes, uint64, error) {
 	var result error
-	userDeposits, err := UserDeposits(receipts, depositContractAddr)
+	userDeposits, newNonce, err := UserDeposits(receipts, depositContractAddr, currentNonce)
+	currentNonce = newNonce
 	if err != nil {
 		result = multierror.Append(result, err)
 	}
@@ -47,5 +49,5 @@ func DeriveDeposits(receipts []*types.Receipt, depositContractAddr common.Addres
 			encodedTxs = append(encodedTxs, opaqueTx)
 		}
 	}
-	return encodedTxs, result
+	return encodedTxs, currentNonce, result
 }
