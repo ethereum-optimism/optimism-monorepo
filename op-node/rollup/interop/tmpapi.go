@@ -14,7 +14,7 @@ import (
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// TemporaryInteropServer is a work-around to serve the "managed"-
+// TemporaryInteropServer is a work-around to serve the "managed"
 // mode endpoints used by the op-supervisor for data,
 // while still using the old interop deriver for syncing.
 type TemporaryInteropServer struct {
