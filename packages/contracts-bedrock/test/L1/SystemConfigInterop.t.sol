@@ -68,7 +68,7 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(symbol));
 
         vm.expectCall(
-            address(optimismPortal),
+            address(optimismPortal2),
             abi.encodeCall(
                 IOptimismPortalInterop.setConfig,
                 (
@@ -108,7 +108,7 @@ contract SystemConfigInterop_Test is CommonTest {
                 l1ERC721Bridge: address(0),
                 disputeGameFactory: address(0),
                 l1StandardBridge: address(0),
-                optimismPortal: address(optimismPortal),
+                optimismPortal: address(optimismPortal2),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: _token
             })

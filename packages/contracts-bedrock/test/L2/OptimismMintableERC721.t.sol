@@ -6,7 +6,7 @@ import { IERC721Enumerable } from "@openzeppelin/contracts/token/ERC721/extensio
 import { IERC165 } from "@openzeppelin/contracts/utils/introspection/IERC165.sol";
 import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { OptimismMintableERC721, IOptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
+import { OptimismMintableERC721, IOptimismMintableERC721 } from "src/L2/OptimismMintableERC721.sol";
 
 contract OptimismMintableERC721_Test is CommonTest {
     ERC721 internal L1NFT;

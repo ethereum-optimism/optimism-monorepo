@@ -74,7 +74,7 @@
     "name": "PORTAL",
     "outputs": [
       {
-        "internalType": "contract IOptimismPortal",
+        "internalType": "contract IOptimismPortal2",
         "name": "",
         "type": "address"
       }
@@ -185,7 +185,7 @@
         "type": "address"
       },
       {
-        "internalType": "contract IOptimismPortal",
+        "internalType": "contract IOptimismPortal2",
         "name": "_portal",
         "type": "address"
       },
@@ -244,7 +244,7 @@
     "name": "portal",
     "outputs": [
       {
-        "internalType": "contract IOptimismPortal",
+        "internalType": "contract IOptimismPortal2",
         "name": "",
         "type": "address"
       }

@@ -107,7 +107,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         assertEq(address(systemConfig.l1ERC721Bridge()), address(l1ERC721Bridge));
         assertEq(address(systemConfig.l1StandardBridge()), address(l1StandardBridge));
         assertEq(address(systemConfig.disputeGameFactory()), address(disputeGameFactory));
-        assertEq(address(systemConfig.optimismPortal()), address(optimismPortal));
+        assertEq(address(systemConfig.optimismPortal()), address(optimismPortal2));
         assertEq(address(systemConfig.optimismMintableERC20Factory()), address(optimismMintableERC20Factory));
         // Check gas paying token
         (address token, uint8 decimals) = systemConfig.gasPayingToken();
@@ -352,7 +352,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
                 l1ERC721Bridge: address(0),
                 disputeGameFactory: address(0),
                 l1StandardBridge: address(0),
-                optimismPortal: address(optimismPortal),
+                optimismPortal: address(optimismPortal2),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: _gasPayingToken
             })
@@ -477,11 +477,11 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
     /// @dev Tests that initialization works with OptimismPortal.
     function test_initialize_customGasTokenCall_succeeds() external {
         vm.expectCall(
-            address(optimismPortal),
-            abi.encodeCall(optimismPortal.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
+            address(optimismPortal2),
+            abi.encodeCall(optimismPortal2.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
         );
 
-        vm.expectEmit(address(optimismPortal));
+        vm.expectEmit(address(optimismPortal2));
         emit TransactionDeposited(
             0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
             Predeploys.L1_BLOCK_ATTRIBUTES,

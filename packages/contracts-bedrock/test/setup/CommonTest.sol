@@ -177,11 +177,6 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
-    // @dev Advance the evm's time to meet the L2OutputOracle's requirements for proposeL2Output
-    function warpToProposeTime(uint256 _nextBlockNumber) public {
-        vm.warp(l2OutputOracle.computeL2Timestamp(_nextBlockNumber) + 1);
-    }
-
     function enableLegacyContracts() public {
         // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
         // set by the `setUp` function yet.

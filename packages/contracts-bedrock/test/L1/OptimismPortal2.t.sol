@@ -35,13 +35,6 @@ contract OptimismPortal2_Test is CommonTest {
 
     function setUp() public virtual override {
         super.setUp();
-
-        // zero out contracts that should not be used
-        assembly {
-            sstore(l2OutputOracle.slot, 0)
-            sstore(optimismPortal.slot, 0)
-        }
-
         depositor = makeAddr("depositor");
     }
 

@@ -1,0 +1,32 @@
+set shell := ["/bin/bash", "-c"]
+
+_kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
+	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
+
+# Internal recipes for kurtosis-devnet
+_contracts-build BUNDLE='contracts-bundle.tar.gz':
+    just ../packages/contracts-bedrock/forge-build
+    tar -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
+
+_docker_build TAG TARGET='' CONTEXT='.' DOCKERFILE='Dockerfile':
+    docker buildx build -t {{TAG}} \
+        -f {{CONTEXT}}/{{DOCKERFILE}} \
+        {{ if TARGET != '' {  "--target " + TARGET } else { "" } }} \
+        --build-arg GIT_COMMIT={git_commit} \
+        --build-arg GIT_DATE={git_date} \
+        {{CONTEXT}}
+
+_docker_build_stack TAG TARGET='': (_docker_build TAG TARGET "../" "ops/docker/op-stack-go/Dockerfile")
+
+cannon-image TAG='cannon:devnet': (_docker_build_stack TAG "cannon-target")
+op-program-image TAG='op-program:devnet': (_docker_build_stack TAG "op-program-target")
+op-wheel-image TAG='op-wheel:devnet': (_docker_build_stack TAG "op-wheel-target")
+op-node-image TAG='op-node:devnet': (_docker_build_stack TAG "op-node-target")
+op-challenger-image TAG='op-challenger:devnet': (_docker_build_stack TAG "op-challenger-target")
+op-dispute-mon-image TAG='op-dispute-mon:devnet': (_docker_build_stack TAG "op-dispute-mon-target")
+op-batcher-image TAG='op-batcher:devnet': (_docker_build_stack TAG "op-batcher-target")
+op-proposer-image TAG='op-proposer:devnet': (_docker_build_stack TAG "op-proposer-target")
+op-conductor-image TAG='op-conductor:devnet': (_docker_build_stack TAG "op-conductor-target")
+da-server-image TAG='da-server:devnet': (_docker_build_stack TAG "da-server-target")
+op-supervisor-image TAG='op-supervisor:devnet': (_docker_build_stack TAG "op-supervisor-target")
+op-deployer-image TAG='op-deployer:devnet': (_docker_build_stack TAG "op-deployer-target")
