@@ -2,8 +2,8 @@
 pragma solidity 0.8.15;
 
 import { CommonTest } from "test/setup/CommonTest.sol";
-import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
-import { OptimismMintableERC721Factory } from "src/universal/OptimismMintableERC721Factory.sol";
+import { OptimismMintableERC721 } from "src/L2/OptimismMintableERC721.sol";
+import { OptimismMintableERC721Factory } from "src/L2/OptimismMintableERC721Factory.sol";
 
 contract OptimismMintableERC721Factory_Test is CommonTest {
     event OptimismMintableERC721Created(address indexed localToken, address indexed remoteToken, address deployer);

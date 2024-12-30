@@ -2,11 +2,13 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
+import { OptimismMintableERC721 } from "src/L2/OptimismMintableERC721.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
+/// @custom:proxied true
+/// @custom:predeploy 0x4200000000000000000000000000000000000017
 /// @title OptimismMintableERC721Factory
 /// @notice Factory contract for creating OptimismMintableERC721 contracts.
 contract OptimismMintableERC721Factory is ISemver {
@@ -28,8 +30,8 @@ contract OptimismMintableERC721Factory is ISemver {
     event OptimismMintableERC721Created(address indexed localToken, address indexed remoteToken, address deployer);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.1-beta.6
-    string public constant version = "1.4.1-beta.6";
+    /// @custom:semver 1.4.1-beta.7
+    string public constant version = "1.4.1-beta.7";
 
     /// @notice The semver MUST be bumped any time that there is a change in
     ///         the OptimismMintableERC721 token contract since this contract

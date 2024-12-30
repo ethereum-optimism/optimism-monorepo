@@ -6,7 +6,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { Unauthorized, Paused as PausedError } from "src/libraries/errors/CommonErrors.sol";
 
 // Interfaces
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
 
 contract SharedLockboxTest is CommonTest {
     event ETHLocked(address indexed portal, uint256 amount);
@@ -98,7 +98,7 @@ contract SharedLockboxTest is CommonTest {
         uint256 _lockboxBalanceBefore = address(sharedLockbox).balance;
 
         // Expect `donateETH` function to be called on Portal
-        vm.expectCall(address(optimismPortal2), abi.encodeWithSelector(IOptimismPortal.donateETH.selector));
+        vm.expectCall(address(optimismPortal2), abi.encodeCall(IOptimismPortal.donateETH, ()));
 
         // Look for the emit of the `ETHUnlocked` event
         vm.expectEmit(address(sharedLockbox));

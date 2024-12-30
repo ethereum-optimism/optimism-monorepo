@@ -549,7 +549,7 @@ contract DeploySuperchain is Script {
         // To ensure deployments are correct, check that the precalculated address matches the actual address.
         require(
             address(superchainConfigProxy) == _precalculatedAddresses.superchainConfigProxy,
-            "superchain config expected address mismatch"
+            "SuperchainConfig: expected address mismatch"
         );
 
         vm.label(address(protocolVersionsProxy), "ProtocolVersionsProxy");
@@ -560,7 +560,7 @@ contract DeploySuperchain is Script {
         // To ensure deployments are correct, check that the precalculated address matches the actual address.
         require(
             address(sharedLockboxProxy) == _precalculatedAddresses.sharedLockboxProxy,
-            "shared lockbox expected address mismatch"
+            "SharedLockbox: expected address mismatch"
         );
     }
 

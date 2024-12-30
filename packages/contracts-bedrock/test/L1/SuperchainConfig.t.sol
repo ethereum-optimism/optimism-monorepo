@@ -200,10 +200,10 @@ contract SuperchainConfig_AddDependency_Test is CommonTest {
             bytes32(uint256(keccak256("systemconfig.optimismportal")) - 1),
             bytes32(uint256(uint160(_portal)))
         );
-        vm.expectCall(address(systemConfig), abi.encodeWithSelector(ISystemConfig.optimismPortal.selector));
+        vm.expectCall(address(systemConfig), abi.encodeCall(ISystemConfig.optimismPortal, ()));
 
         // Mock and expect the call to authorize the portal on the SharedLockbox with the `_portal` address
-        vm.expectCall(address(sharedLockbox), abi.encodeWithSelector(ISharedLockbox.authorizePortal.selector, _portal));
+        vm.expectCall(address(sharedLockbox), abi.encodeCall(ISharedLockbox.authorizePortal, (_portal)));
 
         // Expect the DependencyAdded event to be emitted
         vm.expectEmit(address(superchainConfig));

@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/cross"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/sync"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
@@ -70,6 +71,19 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger, m Metrics, cfg
 	depSet, err := cfg.DependencySetSource.LoadDependencySet(ctx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to load dependency set: %w", err)
+	}
+
+	// Sync the databases from the remote server if configured
+	// We only attempt to sync a database if it doesn't exist; we don't update existing databases
+	if cfg.DatadirSyncEndpoint != "" {
+		syncCfg := sync.Config{DataDir: cfg.Datadir, Logger: logger}
+		syncClient, err := sync.NewClient(syncCfg, cfg.DatadirSyncEndpoint)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create db sync client: %w", err)
+		}
+		if err := syncClient.SyncAll(ctx, depSet.Chains(), false); err != nil {
+			return nil, fmt.Errorf("failed to sync databases: %w", err)
+		}
 	}
 
 	// create initial per-chain resources

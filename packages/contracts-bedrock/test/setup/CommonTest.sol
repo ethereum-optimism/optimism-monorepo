@@ -98,10 +98,8 @@ contract CommonTest is Test, Setup, Events {
         Setup.L2();
 
         // Authorize portals to interact with the SharedLockbox.
-        vm.startPrank(address(superchainConfig));
-        sharedLockbox.authorizePortal(address(optimismPortal));
+        vm.prank(address(superchainConfig));
         sharedLockbox.authorizePortal(address(optimismPortal2));
-        vm.stopPrank();
 
         // Call bridge initializer setup function
         bridgeInitializerSetUp();
@@ -175,11 +173,6 @@ contract CommonTest is Test, Setup, Events {
         internal
     {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
-    }
-
-    // @dev Advance the evm's time to meet the L2OutputOracle's requirements for proposeL2Output
-    function warpToProposeTime(uint256 _nextBlockNumber) public {
-        vm.warp(l2OutputOracle.computeL2Timestamp(_nextBlockNumber) + 1);
     }
 
     function enableLegacyContracts() public {
