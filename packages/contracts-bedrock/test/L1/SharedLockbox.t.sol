@@ -98,7 +98,7 @@ contract SharedLockboxTest is CommonTest {
         uint256 _lockboxBalanceBefore = address(sharedLockbox).balance;
 
         // Expect `donateETH` function to be called on Portal
-        vm.expectCall(address(optimismPortal2), abi.encodeWithSelector(IOptimismPortal.donateETH.selector));
+        vm.expectCall(address(optimismPortal2), abi.encodeCall(IOptimismPortal.donateETH, ()));
 
         // Look for the emit of the `ETHUnlocked` event
         vm.expectEmit(address(sharedLockbox));
