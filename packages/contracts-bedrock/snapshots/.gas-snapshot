@@ -1,6 +1,6 @@
 GasBenchMark_L1BlockInterop_DepositsComplete:test_depositsComplete_benchmark() (gas: 7589)
 GasBenchMark_L1BlockInterop_DepositsComplete_Warm:test_depositsComplete_benchmark() (gas: 5589)
-GasBenchMark_L1BlockInterop_SetValuesInterop:test_setL1BlockValuesInterop_benchmark() (gas: 175722)
+GasBenchMark_L1BlockInterop_SetValuesInterop:test_setL1BlockValuesInterop_benchmark() (gas: 175700)
 GasBenchMark_L1BlockInterop_SetValuesInterop_Warm:test_setL1BlockValuesInterop_benchmark() (gas: 5144)
 GasBenchMark_L1Block_SetValuesEcotone:test_setL1BlockValuesEcotone_benchmark() (gas: 158553)
 GasBenchMark_L1Block_SetValuesEcotone_Warm:test_setL1BlockValuesEcotone_benchmark() (gas: 7619)

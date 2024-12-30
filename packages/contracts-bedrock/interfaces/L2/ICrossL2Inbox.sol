@@ -26,9 +26,6 @@ interface ICrossL2Inbox {
     /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier timestamp.
     error InvalidTimestamp();
 
-    /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier chain ID.
-    error InvalidChainId();
-
     /// @notice Thrown when trying to execute a cross chain message and the target call fails.
     error TargetCallFailed();
 

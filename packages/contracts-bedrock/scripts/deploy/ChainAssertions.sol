@@ -144,7 +144,6 @@ library ChainAssertions {
     /// @notice Asserts that the SystemConfigInterop is setup correctly
     function checkSystemConfigInterop(
         Types.ContractSet memory _contracts,
-        Types.ContractSet memory _proxies,
         DeployConfig _cfg,
         bool _isProxy
     )
@@ -152,7 +151,6 @@ library ChainAssertions {
         view
     {
         ISystemConfigInterop config = ISystemConfigInterop(_contracts.SystemConfig);
-        ISuperchainConfig superchainConfig = ISuperchainConfig(_proxies.SuperchainConfig);
 
         console.log(
             "Running chain assertions on the SystemConfigInterop %s at %s",
@@ -161,9 +159,6 @@ library ChainAssertions {
         );
 
         checkSystemConfig(_contracts, _cfg, _isProxy);
-
-        require(config.dependencyCounter() == 0, "CHECK-SCFGI-10");
-        require(config.SUPERCHAIN_CONFIG() == address(superchainConfig), "CHECK-SCFGI-20");
     }
 
     /// @notice Asserts that the L1CrossDomainMessenger is setup correctly

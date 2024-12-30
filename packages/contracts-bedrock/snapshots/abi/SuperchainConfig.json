@@ -12,6 +12,19 @@
   },
   {
     "inputs": [],
+    "name": "DEPENDENCY_MANAGER_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "GUARDIAN_SLOT",
     "outputs": [
       {
@@ -50,19 +63,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "UPGRADER_SLOT",
-    "outputs": [
-      {
-        "internalType": "bytes32",
-        "name": "",
-        "type": "bytes32"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "uint256",
@@ -75,9 +75,22 @@
         "type": "address"
       }
     ],
-    "name": "addChain",
+    "name": "addDependency",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "dependencyManager",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "dependencyManager_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -88,6 +101,19 @@
         "internalType": "uint256[]",
         "name": "",
         "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "dependencySetSize",
+    "outputs": [
+      {
+        "internalType": "uint8",
+        "name": "",
+        "type": "uint8"
       }
     ],
     "stateMutability": "view",
@@ -115,7 +141,7 @@
       },
       {
         "internalType": "address",
-        "name": "_upgrader",
+        "name": "_dependencyManager",
         "type": "address"
       },
       {
@@ -175,42 +201,10 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "systemConfigs",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "unpause",
     "outputs": [],
     "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "upgrader",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "upgrader_",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -225,6 +219,25 @@
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "enum SuperchainConfig.UpdateType",
+        "name": "updateType",
+        "type": "uint8"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes",
+        "name": "data",
+        "type": "bytes"
+      }
+    ],
+    "name": "ConfigUpdate",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -248,26 +261,7 @@
         "type": "address"
       }
     ],
-    "name": "ChainAdded",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "enum SuperchainConfig.UpdateType",
-        "name": "updateType",
-        "type": "uint8"
-      },
-      {
-        "indexed": false,
-        "internalType": "bytes",
-        "name": "data",
-        "type": "bytes"
-      }
-    ],
-    "name": "ConfigUpdate",
+    "name": "DependencyAdded",
     "type": "event"
   },
   {
@@ -304,12 +298,17 @@
   },
   {
     "inputs": [],
-    "name": "ChainAlreadyAdded",
+    "name": "DependencyAlreadyAdded",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "ChainAlreadyHasDependencies",
+    "name": "DependencySetTooLarge",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidChainID",
     "type": "error"
   },
   {

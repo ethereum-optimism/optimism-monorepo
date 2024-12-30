@@ -21,9 +21,7 @@ import {
     MessageTargetL2ToL2CrossDomainMessenger,
     MessageAlreadyRelayed,
     ReentrantCall,
-    TargetCallFailed,
-    IDependencySet,
-    InvalidChainId
+    TargetCallFailed
 } from "src/L2/L2ToL2CrossDomainMessenger.sol";
 
 // Interfaces
@@ -90,13 +88,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
 
         // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
         vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
-
-        // Mock the call over the `isInDependencySet` function to return true
-        vm.mockCall(
-            Predeploys.L1_BLOCK_ATTRIBUTES,
-            abi.encodeCall(IDependencySet.isInDependencySet, (_destination)),
-            abi.encode(true)
-        );
 
         // Get the current message nonce
         uint256 messageNonce = l2ToL2CrossDomainMessenger.messageNonce();
@@ -204,34 +195,6 @@ contract L2ToL2CrossDomainMessengerTest is Test {
             _target: Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             _message: _message
         });
-    }
-
-    /// @notice Tests the `sendMessage` function reverts when the `destination` is not in the dependency set.
-    function testFuzz_sendMessage_notInDependencySet_reverts(
-        uint256 _destination,
-        address _target,
-        bytes calldata _message
-    )
-        external
-    {
-        // Ensure the destination is not the same as the source, otherwise the function will revert
-        vm.assume(_destination != block.chainid);
-
-        // Ensure that the target contract is not CrossL2Inbox or L2ToL2CrossDomainMessenger
-        vm.assume(_target != Predeploys.CROSS_L2_INBOX && _target != Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
-
-        // Mock the call over the `isInDependencySet` function to return false
-        vm.mockCall(
-            Predeploys.L1_BLOCK_ATTRIBUTES,
-            abi.encodeCall(IDependencySet.isInDependencySet, (_destination)),
-            abi.encode(false)
-        );
-
-        // Expect a revert with the InvalidChainId selector
-        vm.expectRevert(InvalidChainId.selector);
-
-        // Call `sendMessage` with a destination that is not in the dependency set to provoke revert
-        l2ToL2CrossDomainMessenger.sendMessage(_destination, _target, _message);
     }
 
     /// @dev Tests that the `relayMessage` function succeeds and emits the correct RelayedMessage event.

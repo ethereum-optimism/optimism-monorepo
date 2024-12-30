@@ -8,7 +8,7 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 import { Storage } from "src/libraries/Storage.sol";
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 // Interfaces
@@ -23,10 +23,10 @@ contract SuperchainConfig is Initializable, ISemver {
 
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
-    /// @custom:value UPGRADER            Represents an update to the upgrader.
+    /// @custom:value DEPENDENCY_MANAGER  Represents an update to the dependency manager.
     enum UpdateType {
         GUARDIAN,
-        UPGRADER
+        DEPENDENCY_MANAGER
     }
 
     /// @notice Whether or not the Superchain is paused.
@@ -36,9 +36,10 @@ contract SuperchainConfig is Initializable, ISemver {
     ///         It can only be modified by an upgrade.
     bytes32 public constant GUARDIAN_SLOT = bytes32(uint256(keccak256("superchainConfig.guardian")) - 1);
 
-    /// @notice The address of the upgrader, which can add a chain to the dependency set.
+    /// @notice The address of the dependency manager, which can add a chain to the dependency set.
     ///         It can only be modified by an upgrade.
-    bytes32 public constant UPGRADER_SLOT = bytes32(uint256(keccak256("superchainConfig.upgrader")) - 1);
+    bytes32 public constant DEPENDENCY_MANAGER_SLOT =
+        bytes32(uint256(keccak256("superchainConfig.dependencyManager")) - 1);
 
     // The Shared Lockbox contract
     ISharedLockbox public immutable SHARED_LOCKBOX;
@@ -55,24 +56,24 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @param data       Encoded update data.
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
 
-    /// @notice Emitted when a new chain is added as part of the dependency set.
+    /// @notice Emitted when a new dependency is added as part of the dependency set.
     /// @param chainId      The chain ID.
     /// @param systemConfig The address of the SystemConfig contract.
     /// @param portal       The address of the OptimismPortal contract.
-    event ChainAdded(uint256 indexed chainId, address indexed systemConfig, address indexed portal);
+    event DependencyAdded(uint256 indexed chainId, address indexed systemConfig, address indexed portal);
 
-    /// @notice Thrown when the input chain's system config already contains dependencies on its set.
-    error ChainAlreadyHasDependencies();
+    /// @notice Thrown when the dependency set is too large to add a new dependency.
+    error DependencySetTooLarge();
 
-    /// @notice Thrown when the input chain is already added to the dependency set.
-    error ChainAlreadyAdded();
+    /// @notice Thrown when the input chain ID is the same as the current chain ID.
+    error InvalidChainID();
+
+    /// @notice Thrown when the input dependency is already added to the set.
+    error DependencyAlreadyAdded();
 
     /// @notice Semantic version.
     /// @custom:semver 1.1.1-beta.5
     string public constant version = "1.1.1-beta.5";
-
-    // Mapping from chainId to SystemConfig address
-    mapping(uint256 => address) public systemConfigs;
 
     // Dependency set of chains that are part of the same cluster
     EnumerableSet.UintSet internal _dependencySet;
@@ -84,12 +85,12 @@ contract SuperchainConfig is Initializable, ISemver {
     }
 
     /// @notice Initializer.
-    /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
-    /// @param _upgrader    Address of the upgrader, can add a chain to the dependency set.
-    /// @param _paused      Initial paused status.
-    function initialize(address _guardian, address _upgrader, bool _paused) external initializer {
+    /// @param _guardian             Address of the guardian, can pause the OptimismPortal.
+    /// @param _dependencyManager    Address of the dependencyManager, can add a chain to the dependency set.
+    /// @param _paused               Initial paused status.
+    function initialize(address _guardian, address _dependencyManager, bool _paused) external initializer {
         _setGuardian(_guardian);
-        _setUpgrader(_upgrader);
+        _setDependencyManager(_dependencyManager);
         if (_paused) {
             _pause("Initializer paused");
         }
@@ -100,9 +101,9 @@ contract SuperchainConfig is Initializable, ISemver {
         guardian_ = Storage.getAddress(GUARDIAN_SLOT);
     }
 
-    /// @notice Getter for the upgrader address.
-    function upgrader() public view returns (address upgrader_) {
-        upgrader_ = Storage.getAddress(UPGRADER_SLOT);
+    /// @notice Getter for the dependency manager address.
+    function dependencyManager() public view returns (address dependencyManager_) {
+        dependencyManager_ = Storage.getAddress(DEPENDENCY_MANAGER_SLOT);
     }
 
     /// @notice Getter for the current paused status.
@@ -139,45 +140,32 @@ contract SuperchainConfig is Initializable, ISemver {
         emit ConfigUpdate(UpdateType.GUARDIAN, abi.encode(_guardian));
     }
 
-    /// @notice Sets the upgrader address. This is only callable during initialization, so an upgrade
-    ///         will be required to change the upgrader.
-    /// @param _upgrader The new upgrader address.
-    function _setUpgrader(address _upgrader) internal {
-        Storage.setAddress(UPGRADER_SLOT, _upgrader);
-        emit ConfigUpdate(UpdateType.UPGRADER, abi.encode(_upgrader));
+    /// @notice Sets the dependency manager address. This is only callable during initialization, so an upgrade
+    ///         will be required to change the dependency manager.
+    /// @param _dependencyManager The new dependency manager address.
+    function _setDependencyManager(address _dependencyManager) internal {
+        Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
+        emit ConfigUpdate(UpdateType.DEPENDENCY_MANAGER, abi.encode(_dependencyManager));
     }
 
-    /// @notice Adds a new chain to the dependency set.
-    ///         Adds the new chain as a dependency for all existing chains in the dependency set, and vice versa. It
-    ///         also stores the SystemConfig address of it, and authorizes the OptimismPortal on the SharedLockbox.
-    /// @param _chainId     The chain ID.
-    /// @param _systemConfig The SystemConfig contract address of the chain to add.
-    function addChain(uint256 _chainId, address _systemConfig) external {
-        if (msg.sender != upgrader()) revert Unauthorized();
-        if (ISystemConfigInterop(_systemConfig).dependencyCounter() != 0) revert ChainAlreadyHasDependencies();
+    /// @notice Adds a new dependency to the dependency set. It also authorizes it's OptimismPortal on the
+    ///         SharedLockbox. Can only be called by the dependency manager.
+    /// @param _chainId         The chain ID.
+    /// @param _systemConfig    The SystemConfig contract address of the chain to add.
+    function addDependency(uint256 _chainId, address _systemConfig) external {
+        if (msg.sender != dependencyManager()) revert Unauthorized();
+
+        if (_dependencySet.length() == type(uint8).max) revert DependencySetTooLarge();
+        if (_chainId == block.chainid) revert InvalidChainID();
 
         // Add to the dependency set and check it is not already added (`add()` returns false if it already exists)
-        if (!_dependencySet.add(_chainId)) revert ChainAlreadyAdded();
-
-        systemConfigs[_chainId] = _systemConfig;
-
-        // Loop through the dependency set and update the dependency for each chain. Using length - 1 to exclude the
-        // current chain from the loop.
-        for (uint256 i; i < _dependencySet.length() - 1; i++) {
-            uint256 currentId = _dependencySet.at(i);
-
-            // Add the new chain as dependency for the current chain on the loop
-            ISystemConfigInterop(systemConfigs[currentId]).addDependency(_chainId);
-
-            // Add the current chain on the loop as dependency for the new chain
-            ISystemConfigInterop(_systemConfig).addDependency(currentId);
-        }
+        if (!_dependencySet.add(_chainId)) revert DependencyAlreadyAdded();
 
         // Authorize the portal on the shared lockbox
-        address portal = ISystemConfigInterop(_systemConfig).optimismPortal();
+        address portal = ISystemConfig(_systemConfig).optimismPortal();
         SHARED_LOCKBOX.authorizePortal(portal);
 
-        emit ChainAdded(_chainId, _systemConfig, portal);
+        emit DependencyAdded(_chainId, _systemConfig, portal);
     }
 
     /// @notice Checks if a chain is part or not of the dependency set.
@@ -189,5 +177,11 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice Getter for the chain ids list on the dependency set.
     function dependencySet() external view returns (uint256[] memory) {
         return _dependencySet.values();
+    }
+
+    /// @notice Returns the size of the dependency set.
+    /// @return The size of the dependency set.
+    function dependencySetSize() external view returns (uint8) {
+        return uint8(_dependencySet.length());
     }
 }

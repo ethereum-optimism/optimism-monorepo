@@ -394,13 +394,7 @@ contract Deploy is Deployer {
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton()))
         });
         if (_isInterop) {
-            Types.ContractSet memory proxies = _proxies();
-            ChainAssertions.checkSystemConfigInterop({
-                _contracts: contracts,
-                _proxies: proxies,
-                _cfg: cfg,
-                _isProxy: false
-            });
+            ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
         } else {
             ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
         }

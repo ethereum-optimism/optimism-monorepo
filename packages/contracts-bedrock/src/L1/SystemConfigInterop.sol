@@ -9,7 +9,6 @@ import { SystemConfig } from "src/L1/SystemConfig.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
-import { Storage } from "src/libraries/Storage.sol";
 
 // Interfaces
 import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
@@ -21,23 +20,9 @@ import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
 contract SystemConfigInterop is SystemConfig {
-    /// @notice Storage slot where the dependency counter is stored
-    /// @dev    Equal to bytes32(uint256(keccak256("systemconfig.dependencyCounter")) - 1)
-    bytes32 internal constant DEPENDENCY_COUNTER_SLOT =
-        0x4ae776ed628fe5cb57f351f2986b1f5aee6fda3f6ec83fa6166e8098945adb19;
-
-    /// @notice The address of the SuperchainConfig contract.
-    address public immutable SUPERCHAIN_CONFIG;
-
-    /// @custom:semver +interop-beta.8
+    /// @custom:semver +interop-beta.9
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.8");
-    }
-
-    /// @notice Constructs the SystemConfig contract.
-    /// @param _superchainConfig The address of the SuperchainConfig contract.
-    constructor(address _superchainConfig) {
-        SUPERCHAIN_CONFIG = _superchainConfig;
+        return string.concat(super.version(), "+interop-beta.9");
     }
 
     /// @notice Internal setter for the gas paying token address, includes validation.
@@ -67,34 +52,5 @@ contract SystemConfigInterop is SystemConfig {
                 })
             );
         }
-    }
-
-    /// @notice Adds a chain to the interop dependency set. Can only be called by the SuperchainConfig.
-    /// @param _chainId Chain ID of chain to add.
-    function addDependency(uint256 _chainId) external {
-        require(msg.sender == SUPERCHAIN_CONFIG, "SystemConfig: caller is not the SuperchainConfig");
-
-        Storage.setUint(DEPENDENCY_COUNTER_SLOT, dependencyCounter() + 1);
-
-        IOptimismPortal(payable(optimismPortal())).setConfig(
-            ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId)
-        );
-    }
-
-    /// @notice Removes a chain from the interop dependency set. Can only be called by the SuperchainConfig
-    /// @param _chainId Chain ID of the chain to remove.
-    function removeDependency(uint256 _chainId) external {
-        require(msg.sender == SUPERCHAIN_CONFIG, "SystemConfig: caller is not the SuperchainConfig");
-
-        Storage.setUint(DEPENDENCY_COUNTER_SLOT, dependencyCounter() - 1);
-
-        IOptimismPortal(payable(optimismPortal())).setConfig(
-            ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(_chainId)
-        );
-    }
-
-    /// @notice getter for the dependency counter
-    function dependencyCounter() public view returns (uint256) {
-        return Storage.getUint(DEPENDENCY_COUNTER_SLOT);
     }
 }

@@ -990,14 +990,11 @@ contract DeployImplementationsInterop is DeployImplementations {
         if (existingImplementation != address(0)) {
             impl = ISystemConfigInterop(existingImplementation);
         } else {
-            address superchainConfig = address(_dii.superchainConfigProxy());
             vm.broadcast(msg.sender);
             impl = ISystemConfigInterop(
                 DeployUtils.create1({
                     _name: "SystemConfigInterop",
-                    _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(ISystemConfigInterop.__constructor__, (superchainConfig))
-                    )
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ()))
                 })
             );
         }

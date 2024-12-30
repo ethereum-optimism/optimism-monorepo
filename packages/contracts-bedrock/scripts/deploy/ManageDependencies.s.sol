@@ -47,17 +47,18 @@ contract ManageDependenciesInput is BaseDeployIO {
 }
 
 contract ManageDependencies is Script {
+    // TODO: Fix dependency management since SystemConfig does not handle them anymore
     function run(ManageDependenciesInput _input) public {
-        bool remove = _input.remove();
-        uint256 chainId = _input.chainId();
-        ISystemConfigInterop systemConfig = _input.systemConfig();
+        // bool remove = _input.remove();
+        // uint256 chainId = _input.chainId();
+        // ISystemConfigInterop systemConfig = _input.systemConfig();
 
-        // Call the appropriate function based on the remove flag
-        vm.broadcast(msg.sender);
-        if (remove) {
-            systemConfig.removeDependency(chainId);
-        } else {
-            systemConfig.addDependency(chainId);
-        }
+        // // Call the appropriate function based on the remove flag
+        // vm.broadcast(msg.sender);
+        // if (remove) {
+        //     systemConfig.removeDependency(chainId);
+        // } else {
+        //     systemConfig.addDependency(chainId);
+        // }
     }
 }

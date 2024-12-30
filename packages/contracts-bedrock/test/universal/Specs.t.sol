@@ -45,7 +45,8 @@ contract Specification_Test is CommonTest {
         COUNCILSAFE,
         COUNCILSAFEOWNER,
         PORTAL,
-        SUPERCHAINCONFIG
+        SUPERCHAINCONFIG,
+        DEPENDENCYMANAGER
     }
 
     /// @notice Represents the specification of a function.
@@ -413,20 +414,24 @@ contract Specification_Test is CommonTest {
 
         // SuperchainConfig
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("GUARDIAN_SLOT()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("UPGRADER_SLOT()") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("DEPENDENCY_MANAGER_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("PAUSED_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("SHARED_LOCKBOX()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("upgrader()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("systemConfigs(uint256)") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencyManager()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,address,bool)") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("addChain(uint256,address)") });
+        _addSpec({
+            _name: "SuperchainConfig",
+            _sel: _getSel("addDependency(uint256,address)"),
+            _auth: Role.DEPENDENCYMANAGER
+        });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("isInDependencySet(uint256)") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencySet()") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencySetSize()") });
 
         // SharedLockbox
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("SUPERCHAIN_CONFIG()") });
@@ -566,14 +571,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("maximumGasLimit()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("addDependency(uint256)"), _auth: Role.SUPERCHAINCONFIG });
-        _addSpec({
-            _name: "SystemConfigInterop",
-            _sel: _getSel("removeDependency(uint256)"),
-            _auth: Role.SUPERCHAINCONFIG
-        });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyCounter()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("SUPERCHAIN_CONFIG()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });

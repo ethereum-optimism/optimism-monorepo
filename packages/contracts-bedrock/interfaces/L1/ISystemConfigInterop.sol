@@ -53,9 +53,6 @@ interface ISystemConfigInterop {
     function transferOwnership(address newOwner) external; // nosemgrep
     function unsafeBlockSigner() external view returns (address addr_);
 
-    function addDependency(uint256 _chainId) external;
-    function removeDependency(uint256 _chainId) external;
-    function dependencyCounter() external view returns (uint256);
     function initialize(
         address _owner,
         uint32 _basefeeScalar,
@@ -69,7 +66,6 @@ interface ISystemConfigInterop {
     )
         external;
     function version() external pure returns (string memory);
-    function SUPERCHAIN_CONFIG() external view returns (address);
 
-    function __constructor__(address _superchainConfig) external;
+    function __constructor__() external;
 }

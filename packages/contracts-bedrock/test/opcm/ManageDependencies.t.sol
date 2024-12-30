@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { ManageDependencies, ManageDependenciesInput } from "scripts/deploy/ManageDependencies.s.sol";
 
 contract ManageDependencies_Test is Test {
@@ -21,25 +20,6 @@ contract ManageDependencies_Test is Test {
         testChainId = 123;
 
         vm.etch(mockSystemConfig, hex"01");
-    }
-
-    function test_run_add_succeeds() public {
-        input.set(input.systemConfig.selector, mockSystemConfig);
-        input.set(input.chainId.selector, testChainId);
-        input.set(input.remove.selector, false);
-
-        // Expect the addDependency call
-        vm.mockCall(mockSystemConfig, abi.encodeCall(ISystemConfigInterop.addDependency, testChainId), bytes(""));
-        script.run(input);
-    }
-
-    function test_run_remove_succeeds() public {
-        input.set(input.systemConfig.selector, mockSystemConfig);
-        input.set(input.chainId.selector, testChainId);
-        input.set(input.remove.selector, true);
-
-        vm.mockCall(mockSystemConfig, abi.encodeCall(ISystemConfigInterop.removeDependency, testChainId), bytes(""));
-        script.run(input);
     }
 }
 

@@ -44,52 +44,6 @@ contract OptimismPortalInterop_Test is CommonTest {
         _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
 
-    /// @dev Tests that the config for adding a dependency can be set.
-    function testFuzz_setConfig_addDependency_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal));
-        emitTransactionDeposited({
-            _from: Constants.DEPOSITOR_ACCOUNT,
-            _to: Predeploys.L1_BLOCK_ATTRIBUTES,
-            _value: 0,
-            _mint: 0,
-            _gasLimit: 200_000,
-            _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.ADD_DEPENDENCY, _value))
-        });
-
-        vm.prank(address(_optimismPortalInterop().systemConfig()));
-        _optimismPortalInterop().setConfig(ConfigType.ADD_DEPENDENCY, _value);
-    }
-
-    /// @dev Tests that setting the add dependency config as not the system config reverts.
-    function testFuzz_setConfig_addDependencyButNotSystemConfig_reverts(bytes calldata _value) public {
-        vm.expectRevert(Unauthorized.selector);
-        _optimismPortalInterop().setConfig(ConfigType.ADD_DEPENDENCY, _value);
-    }
-
-    /// @dev Tests that the config for removing a dependency can be set.
-    function testFuzz_setConfig_removeDependency_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal));
-        emitTransactionDeposited({
-            _from: Constants.DEPOSITOR_ACCOUNT,
-            _to: Predeploys.L1_BLOCK_ATTRIBUTES,
-            _value: 0,
-            _mint: 0,
-            _gasLimit: 200_000,
-            _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.REMOVE_DEPENDENCY, _value))
-        });
-
-        vm.prank(address(_optimismPortalInterop().systemConfig()));
-        _optimismPortalInterop().setConfig(ConfigType.REMOVE_DEPENDENCY, _value);
-    }
-
-    /// @dev Tests that setting the remove dependency config as not the system config reverts.
-    function testFuzz_setConfig_removeDependencyButNotSystemConfig_reverts(bytes calldata _value) public {
-        vm.expectRevert(Unauthorized.selector);
-        _optimismPortalInterop().setConfig(ConfigType.REMOVE_DEPENDENCY, _value);
-    }
-
     /// @dev Returns the OptimismPortalInterop instance.
     function _optimismPortalInterop() internal view returns (IOptimismPortalInterop) {
         return IOptimismPortalInterop(payable(address(optimismPortal)));

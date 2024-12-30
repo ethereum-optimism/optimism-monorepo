@@ -245,11 +245,6 @@
   },
   {
     "inputs": [],
-    "name": "InvalidChainId",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InvalidTimestamp",
     "type": "error"
   },

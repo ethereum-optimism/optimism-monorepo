@@ -14,17 +14,10 @@
     "type": "bool"
   },
   {
-    "bytes": "32",
-    "label": "systemConfigs",
-    "offset": 0,
-    "slot": "1",
-    "type": "mapping(uint256 => address)"
-  },
-  {
     "bytes": "64",
     "label": "_dependencySet",
     "offset": 0,
-    "slot": "2",
+    "slot": "1",
     "type": "struct EnumerableSet.UintSet"
   }
 ]
