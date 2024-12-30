@@ -34,7 +34,6 @@ contract CommonTest is Test, Setup, Events {
     FFIInterface constant ffi = FFIInterface(address(uint160(uint256(keccak256(abi.encode("optimism.ffi"))))));
 
     bool useAltDAOverride;
-    bool useLegacyContracts;
     address customGasToken;
     bool useInteropOverride;
 
@@ -60,10 +59,6 @@ contract CommonTest is Test, Setup, Events {
         if (useAltDAOverride) {
             deploy.cfg().setUseAltDA(true);
         }
-        // We default to fault proofs unless explicitly disabled by useLegacyContracts
-        if (!useLegacyContracts) {
-            deploy.cfg().setUseFaultProofs(true);
-        }
         if (customGasToken != address(0)) {
             deploy.cfg().setUseCustomGasToken(customGasToken);
         }
@@ -73,7 +68,7 @@ contract CommonTest is Test, Setup, Events {
 
         if (isForkTest()) {
             // Skip any test suite which uses a nonstandard configuration.
-            if (useAltDAOverride || useLegacyContracts || customGasToken != address(0) || useInteropOverride) {
+            if (useAltDAOverride || customGasToken != address(0) || useInteropOverride) {
                 vm.skip(true);
             }
         } else {
@@ -169,16 +164,6 @@ contract CommonTest is Test, Setup, Events {
         internal
     {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
-    }
-
-    function enableLegacyContracts() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable fault proofs after deployment. Consider overriding `setUp`.");
-        }
-
-        useLegacyContracts = true;
     }
 
     function enableAltDA() public {
