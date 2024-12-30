@@ -6,7 +6,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 import { Unauthorized, Paused as PausedError } from "src/libraries/errors/CommonErrors.sol";
 
 // Interfaces
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
 
 contract SharedLockboxTest is CommonTest {
     event ETHLocked(address indexed portal, uint256 amount);

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 import { ISemver } from "interfaces/universal/ISemver.sol";
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { Unauthorized, Paused } from "src/libraries/errors/CommonErrors.sol";
 
