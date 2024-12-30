@@ -213,8 +213,10 @@ abstract contract Artifacts {
     /// @notice Returns the value of the internal `_initialized` storage slot for a given contract.
     function loadInitializedSlot(string memory _contractName) public returns (uint8 initialized_) {
         string memory lookupName = _contractName;
-        // If the contract name does not end in Proxy, add Impl to the end.
-        if (!LibString.endsWith(_contractName, "Proxy")) {
+        // If the contract name does not end in Proxy, and is not a predeploy, add Impl to the end.
+        // Predeploy implementations are not currently tracked in the deployment script and cannot be retrieved by
+        // `getAddress`.
+        if (!LibString.endsWith(_contractName, "Proxy") && !ForgeArtifacts.isPredeployedContract(_contractName)) {
             lookupName = string.concat(_contractName, "Impl");
         }
         address contractAddress = mustGetAddress(lookupName);
