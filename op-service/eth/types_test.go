@@ -126,7 +126,7 @@ func TestStorageKey(t *testing.T) {
 
 	for _, c := range cases {
 		var key StorageKey
-		err := key.UnmarshalJSON([]byte("\"" + c.unmarshaled + "\""))
+		err := key.UnmarshalText([]byte(c.unmarshaled))
 		require.NoError(t, err)
 		require.Equal(t, c.marshaled, []uint8(key)[:])
 	}

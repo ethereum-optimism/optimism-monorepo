@@ -634,24 +634,20 @@ const (
 // an arbitrary length.
 type StorageKey []byte
 
-func (k *StorageKey) UnmarshalJSON(text []byte) error {
-	// unmarshal string that may have 0x prefix
-	var str string
-	if err := json.Unmarshal(text, &str); err != nil {
-		return err
-	}
+func (k *StorageKey) UnmarshalText(text []byte) error {
+	textString := string(text)
 
-	if len(str)%2 != 0 {
+	if len(textString)%2 != 0 {
 		// add leading 0 if odd length
-		if strings.HasPrefix(str, "0x") {
-			str = str[:2] + "0" + str[2:]
+		if strings.HasPrefix(textString, "0x") {
+			textString = textString[:2] + "0" + textString[2:]
 		} else {
-			str = "0" + str
+			textString = "0" + textString
 		}
 	}
 
 	// decode hex string
-	b, err := hexutil.Decode(str)
+	b, err := hexutil.Decode(textString)
 	if err != nil {
 		return err
 	}
@@ -660,8 +656,8 @@ func (k *StorageKey) UnmarshalJSON(text []byte) error {
 	return nil
 }
 
-func (k StorageKey) MarshalJSON() ([]byte, error) {
-	return json.Marshal(hexutil.Encode(k))
+func (k StorageKey) MarshalText() ([]byte, error) {
+	return []byte(hexutil.Encode(k)), nil
 }
 
 func (k StorageKey) String() string {
