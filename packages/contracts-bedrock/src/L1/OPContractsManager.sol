@@ -1,5 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
+
 import { console2 as console } from "forge-std/console2.sol";
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
@@ -373,16 +374,20 @@ contract OPContractsManager is ISemver {
     /// @param _systemConfigs Array of SystemConfig contracts, one per chain to upgrade
     /// @param _proxyAdmins Array of ProxyAdmin contracts, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(
-        ISystemConfig[] calldata _systemConfigs,
-        IProxyAdmin[] calldata _proxyAdmins
-    )
-        external
-    {
+    function upgrade(ISystemConfig[] calldata _systemConfigs, IProxyAdmin[] calldata _proxyAdmins) external {
         for (uint256 i = 0; i < _systemConfigs.length; i++) {
             ISystemConfig systemConfig = _systemConfigs[i];
+            ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
+                l1CrossDomainMessenger: systemConfig.l1CrossDomainMessenger(),
+                l1ERC721Bridge: systemConfig.l1ERC721Bridge(),
+                l1StandardBridge: systemConfig.l1StandardBridge(),
+                disputeGameFactory: systemConfig.disputeGameFactory(),
+                optimismPortal: systemConfig.optimismPortal(),
+                optimismMintableERC20Factory: systemConfig.optimismMintableERC20Factory(),
+                gasPayingToken: address(0)
+            });
+
             IProxyAdmin proxyAdmin = _proxyAdmins[i];
-            proxyAdmin.upgradeAndCall(payable(address(systemConfig)), implementation.systemConfigImpl, abi.encode());
         }
     }
 
