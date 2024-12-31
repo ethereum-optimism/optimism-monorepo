@@ -207,14 +207,12 @@ contract Deploy is Deployer {
         // Deploy Current OPChain Contracts
         deployOpChain();
 
-        // Apply modifications for non-standard configurations not supported by the OPCM deployment
-        if (cfg.useFaultProofs()) {
-            vm.startPrank(ISuperchainConfig(mustGetAddress("SuperchainConfigProxy")).guardian());
-            IOptimismPortal2(mustGetAddress("OptimismPortalProxy")).setRespectedGameType(
-                GameType.wrap(uint32(cfg.respectedGameType()))
-            );
-            vm.stopPrank();
-        }
+        // Set the respected game type according to the deploy config
+        vm.startPrank(ISuperchainConfig(mustGetAddress("SuperchainConfigProxy")).guardian());
+        IOptimismPortal2(mustGetAddress("OptimismPortalProxy")).setRespectedGameType(
+            GameType.wrap(uint32(cfg.respectedGameType()))
+        );
+        vm.stopPrank();
 
         if (cfg.useCustomGasToken()) {
             // Reset the systemconfig then reinitialize it with the custom gas token
