@@ -161,11 +161,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.9
-    string public constant version = "1.3.1-beta.9";
-
-    /// @notice The starting timestamp of the game
-    Timestamp public createdAt;
+    /// @custom:semver 1.3.1-beta.10
+    string public constant version = "1.3.1-beta.10";
 
     /// @notice The timestamp of the game's global resolution.
     Timestamp public resolvedAt;
@@ -321,9 +318,11 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Deposit the bond.
         WETH.deposit{ value: msg.value }();
+    }
 
-        // Set the game's starting timestamp
-        createdAt = Timestamp.wrap(uint64(block.timestamp));
+    /// @notice The starting timestamp of the game
+    function createdAt() public view returns (Timestamp) {
+        return claimData[0].clock.timestamp();
     }
 
     ////////////////////////////////////////////////////////////////
