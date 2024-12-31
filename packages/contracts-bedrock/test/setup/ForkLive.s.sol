@@ -1,6 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { console } from "forge-std/console.sol";
 // Testing
 import { stdJson } from "forge-std/StdJson.sol";
 
@@ -123,6 +124,34 @@ contract ForkLive is Deployer {
     function _deployNewImplementations() internal {
         Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
         deploy.deployImplementations({ _isInterop: false });
+    }
+
+    function _upgrade() internal {
+        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager_NextVersion"));
+        ISystemConfig systemConfig = ISystemConfig(mustGetAddress("SystemConfigProxy"));
+        IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
+
+        address upgrader = proxyAdmin.owner();
+        vm.label(upgrader, "ProxyAdmin Owner");
+
+        ISystemConfig[] memory systemConfigs = new ISystemConfig[](1);
+        systemConfigs[0] = systemConfig;
+        IProxyAdmin[] memory proxyAdmins = new IProxyAdmin[](1);
+        proxyAdmins[0] = proxyAdmin;
+
+        // TODO: Add support for this prank() call to forge-std
+        console.log("delegatecall with prank");
+        (bool success,) = address(vm).call(abi.encodeWithSignature("prank(address,bool)", address(this), true));
+        require(success, "ForkLive: Failed to prank");
+
+        (success,) =
+            address(opcm).delegatecall(abi.encodeCall(OPContractsManager.upgrade, (systemConfigs, proxyAdmins)));
+        require(success, "ForkLive: Upgrade failed");
+
+        console.log("delegatecall without prank");
+        (success,) =
+            address(opcm).delegatecall(abi.encodeCall(OPContractsManager.upgrade, (systemConfigs, proxyAdmins)));
+        require(success, "ForkLive: Upgrade failed");
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
