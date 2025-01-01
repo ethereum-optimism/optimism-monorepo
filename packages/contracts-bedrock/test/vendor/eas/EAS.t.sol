@@ -5,6 +5,7 @@ pragma solidity =0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { IEAS } from "src/vendor/eas/IEAS.sol";
 import { ISchemaRegistry } from "src/vendor/eas/ISchemaRegistry.sol";
+import { IEAS_EIP1271 } from "src/vendor/eas/IEAS_EIP1271.sol";
 import {
     Attestation,
     AttestationRequest,
@@ -23,11 +24,6 @@ import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
-
-// Mock contracts
-interface IEAS_EIP1271 {
-    function getNonce(address account) external view returns (uint256);
-}
 
 /// @dev Helper contract for testing EIP712 signature verification
 contract TestEIP712Helper is EIP712 {
@@ -145,12 +141,12 @@ contract EASTest is CommonTest {
     }
 
     /// @dev Returns the type hash for delegated attestations
-    function getDelegatedAttestationTypeHash() internal pure returns (bytes32) {
+    function _getDelegatedAttestationTypeHash() internal pure returns (bytes32) {
         return ATTEST_TYPEHASH;
     }
 
     /// @dev Creates standard attestation request data for testing
-    function createAttestationRequestData() internal view returns (AttestationRequestData memory) {
+    function _createAttestationRequestData() internal view returns (AttestationRequestData memory) {
         return AttestationRequestData({
             recipient: recipient,
             expirationTime: uint64(block.timestamp + 30 days),
