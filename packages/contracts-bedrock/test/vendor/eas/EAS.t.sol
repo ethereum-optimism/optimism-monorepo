@@ -9,10 +9,7 @@ import { Attestation, AttestationRequest, AttestationRequestData, MultiAttestati
 import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
-import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
-import { Strings } from "@openzeppelin/contracts/utils/Strings.sol";
-import { ECDSA } from "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 // Mock contracts
 interface IEAS_EIP1271 {
