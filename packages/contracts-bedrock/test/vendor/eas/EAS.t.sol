@@ -422,12 +422,12 @@ contract EASTest is CommonTest {
 
     // Construction Tests
     /// @dev Tests the initial construction state of the EAS contract
-    function test_construction_scenarios_works() public view {
+    function test_constructionScenarios_succeeds() public view {
         assertEq(ISemver(address(eas)).version(), "1.4.1-beta.2");
     }
 
     /// @dev Tests behavior when using an invalid schema registry
-    function test_invalid_schema_registry_reverts() public {
+    function test_schemaRegistry_invalid_reverts() public {
         // Deploy new EAS with invalid registry address
         IEAS invalidEas = IEAS(Predeploys.EAS);
 
@@ -455,7 +455,7 @@ contract EASTest is CommonTest {
     // Signature Verification Tests
     /// @dev Tests the flow of a valid EIP-712 signed attestation.
     ///      Demonstrates complete flow of EIP-712 signed attestation
-    function test_valid_signature_attestation_succeeds(uint256 _signerKey) public {
+    function test_validAttestationSignature_succeeds(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -503,7 +503,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests rejection of attestations with expired signature deadlines.
     ///      Ensures proper enforcement of signature deadlines in delegated attestations.
-    function test_expired_deadline_signature_reverts(uint256 _signerKey) public {
+    function test_AttestationSignature_expiredDeadline_reverts(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -534,7 +534,7 @@ contract EASTest is CommonTest {
     /// @dev Tests rejection of attestations with mismatched signer and attester.
     ///      Ensures attestations cannot be submitted with signatures from addresses
     ///      different than the specified attester.
-    function test_wrong_signer_attestation_reverts(uint256 _wrongSignerKey) public {
+    function test_attestationSignature_wrongSigner_reverts(uint256 _wrongSignerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_wrongSignerKey > 0 && _wrongSignerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -562,7 +562,7 @@ contract EASTest is CommonTest {
     /// @dev Tests signature verification against data tampering in attestations.
     ///      Ensures EIP-712 signature verification properly detects
     ///      post-signing data modifications
-    function test_signature_data_tampering_reverts(uint256 _signerKey, uint256 _modifiedData) public {
+    function test_attestationSignature_tamperedData_reverts(uint256 _signerKey, uint256 _modifiedData) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -591,7 +591,7 @@ contract EASTest is CommonTest {
     }
 
     /// @dev Tests direct and delegated signature types.
-    function test_direct_delegated_signatures_works(uint256 _signerKey) public {
+    function test_signatures_directDelegated_succeeds(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         // Register schema once at the start
@@ -613,7 +613,7 @@ contract EASTest is CommonTest {
     /// @dev Tests attestation through proxy contract with signature verification.
     ///      Demonstrates complete proxy attestation flow with
     ///      proper signature verification and delegation.
-    function test_proxy_attestation_succeeds(uint256 _signerKey, string memory _name) public {
+    function test_signatures_proxyAttestation_succeeds(uint256 _signerKey, string memory _name) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         vm.warp(1000);
@@ -673,7 +673,7 @@ contract EASTest is CommonTest {
     /// @dev Tests signature verification against data tampering.
     ///      Demonstrates EIP-712 signature verification prevents
     ///      data tampering after signing
-    function test_signature_verification_tampering_reverts(uint256 _signerKey) public {
+    function test_signature_tampering_reverts(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -736,7 +736,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests timestamp duplication prevention.
     ///      Ensures data can only be timestamped once.
-    function test_timestamp_single_reverts(bytes memory _randomData) public {
+    function test_timestamp_alreadyTimestamped_reverts(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         // First timestamp should succeed
@@ -749,7 +749,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests comprehensive batch timestamping scenarios.
     /// Demonstrates efficient batch processing of multiple stimestamp recrods.
-    function test_multi_timestamp_scenarios_works(
+    function test_attestationMultiTimestamp_succeeds(
         uint256 _randomData1,
         uint256 _randomData2,
         uint256 _randomData3,
@@ -794,7 +794,13 @@ contract EASTest is CommonTest {
 
     /// @dev Tests revert conditions for batch timestamping.
     /// Ensures proper duplicate detection in all batch scenarios.
-    function test_multi_timestamp_reverts(uint256 _randomData1, uint256 _randomData2, uint256 _randomData3) public {
+    function test_multiOffchainRevoke_alreadyTimestamped_reverts(
+        uint256 _randomData1,
+        uint256 _randomData2,
+        uint256 _randomData3
+    )
+        public
+    {
         vm.assume(_randomData1 < type(uint128).max);
         vm.assume(_randomData2 < type(uint128).max);
         vm.assume(_randomData3 < type(uint128).max);
@@ -930,7 +936,7 @@ contract EASTest is CommonTest {
     /// @dev Tests attestation with empty schema registration.
     ///      Demonstrates system handles empty schemas correctly,
     ///      allowing attestations without schema definitions
-    function test_attestation_no_schema_succeeds(address _resolver, bool _revocable) public {
+    function test_attestation_noSchema_succeeds(address _resolver, bool _revocable) public {
         bytes32 schemaId = _getSchemaUID("", _resolver, _revocable);
 
         vm.startPrank(sender);
@@ -963,7 +969,14 @@ contract EASTest is CommonTest {
     /// @dev Tests attestation with schema resolver integration.
     ///      Demonstrates attestation flow with resolver integration,
     ///      ensuring resolver-enabled schemas work correctly.
-    function test_attestation_resolver_succeeds(string memory _name, uint256 _age, bool _isStudent, bool _revocable) public {
+    function test_attestation_resolver_succeeds(
+        string memory _name,
+        uint256 _age,
+        bool _isStudent,
+        bool _revocable
+    )
+        public
+    {
         string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), _revocable);
 
@@ -1033,50 +1046,10 @@ contract EASTest is CommonTest {
         vm.stopPrank();
     }
 
-    /// @dev Tests rejection of attestations with expired timestamps.
-    ///      Ensures system properly validates attestation
-    ///      expiration times, preventing backdated attestations.
-    function test_attestation_expired_reverts(
-        string memory _name,
-        uint256 _age,
-        bool _isStudent,
-        address _resolver,
-        bool _revocable
-    )
-        public
-    {
-        string memory schema = "string name,uint256 age,bool isStudent";
-        schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
-        bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
-
-        // Set a specific block timestamp first
-        vm.warp(1000000);
-
-        unchecked {
-            uint64 expiredTime = uint64(block.timestamp - 1000);
-            bytes memory data = abi.encode(_name, _age, _isStudent);
-
-            AttestationRequest memory request = AttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: recipient,
-                    expirationTime: expiredTime,
-                    revocable: _revocable,
-                    refUID: ZERO_BYTES32,
-                    data: data,
-                    value: 0
-                })
-            });
-
-            vm.expectRevert(InvalidExpirationTime.selector);
-            eas.attest(request);
-        }
-    }
-
     /// @dev Tests the behavior of the attestation system with respect to schema registration and validation.
     ///      This function serves to ensure that the system correctly handles
     ///      both valid and invalid schema scenarios.
-    function test_unregistered_schema_reverts() public {
+    function test_schema_unregistered_reverts() public {
         // Register test schemas first
         string memory schema1 = "bool like";
         string memory schema2 = "bytes32 proposalId, bool vote";
@@ -1110,7 +1083,12 @@ contract EASTest is CommonTest {
     /// @dev Tests attestations with varying data payload sizes.
     ///      Verifies that the system correctly handles and stores data of different sizes
     ///      by checking that stored attestation data matches the input data for each case.
-    function test_attestation_data_scenarios_works(string memory _smallTestData, string memory _mediumTestData) public {
+    function test_attestation_dataScenarios_succeeds(
+        string memory _smallTestData,
+        string memory _mediumTestData
+    )
+        public
+    {
         vm.assume(bytes(_smallTestData).length > 2);
         vm.assume(bytes(_smallTestData).length < 32);
         vm.assume(bytes(_mediumTestData).length > 32);
@@ -1151,7 +1129,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests comprehensive attestation scenarios with varying parameter combinations.
     ///      Also tests value transfer functionality with the resolver contract
-    function test_detailed_attestation_works(
+    function test_attestation_comprehensive_succeeds(
         address _recipient,
         uint256 _expirationOffset,
         bytes memory _data1,
@@ -1224,10 +1202,7 @@ contract EASTest is CommonTest {
     }
 
     /// @dev Tests a valid attestation with a valid expiration
-    function test_attestation_valid_expiration_succeeds(
-        address _recipient,
-        uint256 _validExpirationOffset
-    ) public {
+    function test_attestation_validExpiration_succeeds(address _recipient, uint256 _validExpirationOffset) public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1267,38 +1242,49 @@ contract EASTest is CommonTest {
     }
 
     /// @dev Tests rejection of attestations with expired timestamps.
-    function test_attestation_expired_time_reverts(address _recipient) public {
-        string memory schema = "bool like";
-        bytes32 schemaId = _getSchemaUID(schema, address(0), true);
-
+    ///      Ensures system properly validates attestation
+    ///      expiration times, preventing backdated attestations.
+    function test_attestation_invalidExpiration_reverts(
+        string memory _name,
+        uint256 _age,
+        bool _isStudent,
+        address _resolver,
+        bool _revocable,
+        address _recipient
+    ) public {
         vm.assume(_recipient != address(0));
-
+        
+        string memory schema = "string name,uint256 age,bool isStudent";
+        
         vm.startPrank(sender);
-        schemaRegistry.register(schema, ISchemaResolver(address(0)), true);
+        schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
+        bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
 
+        // Set a specific block timestamp
         vm.warp(1000000);
-        uint64 expiredTime = uint64(block.timestamp - 100);
+        uint64 expiredTime = uint64(block.timestamp - 1000);
+        bytes memory data = abi.encode(_name, _age, _isStudent);
+
+        AttestationRequest memory request = AttestationRequest({
+            schema: schemaId,
+            data: AttestationRequestData({
+                recipient: _recipient,
+                expirationTime: expiredTime,
+                revocable: _revocable,
+                refUID: ZERO_BYTES32,
+                data: data,
+                value: 0
+            })
+        });
 
         vm.expectRevert(InvalidExpirationTime.selector);
-        eas.attest(
-            AttestationRequest({
-                schema: schemaId,
-                data: AttestationRequestData({
-                    recipient: _recipient,
-                    expirationTime: expiredTime,
-                    revocable: true,
-                    refUID: bytes32(0),
-                    data: hex"1234",
-                    value: 0
-                })
-            })
-        );
+        eas.attest(request);
         vm.stopPrank();
     }
 
     /// @dev Tests behavior when querying non-existent (unregistered) attestations and revocations.
     ///      Ensures system handles queries for non-existent data gracefully.
-    function test_unregistered_data_works(string memory _unregisteredData) public view {
+    function test_unregistered_data_succeeds(string memory _unregisteredData) public view {
         bytes32 unregisteredData = keccak256(abi.encodePacked(_unregisteredData));
 
         // Should return 0 for unregistered timestamp
@@ -1311,7 +1297,7 @@ contract EASTest is CommonTest {
     /// @dev Tests rejection of attestations with invalid reference UIDs.
     ///      Ensures system properly validates referenced attestations,
     ///      preventing attestations that reference non-existent UIDs.
-    function test_invalid_attestation_data_reverts(uint256 _nonExistentUID) public {
+    function test_attestation_invalidData_reverts(uint256 _nonExistentUID) public {
         vm.assume(_nonExistentUID > 0);
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -1342,7 +1328,14 @@ contract EASTest is CommonTest {
     /// @dev Tests attestation referencing functionality.
     ///      Demonstrates the ability to create linked attestations
     ///      through reference UIDs
-    function test_reference_attestation_succeeds(string memory _name, string memory _name2, bytes32 _id, bytes32 _id2) public {
+    function test_attestation_reference_succeeds(
+        string memory _name,
+        string memory _name2,
+        bytes32 _id,
+        bytes32 _id2
+    )
+        public
+    {
         string memory schema = "string name,bytes32 id";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1389,7 +1382,7 @@ contract EASTest is CommonTest {
     /// It validates that multiple attestations can be created in a single transaction,
     /// ensuring that each attestation corresponds to the correct schema and that the
     /// data matches the expected values for both "like" and "score".
-    function test_multi_attestation_comprehensive_works(
+    function test_attestation_multiDelegated_succeeds(
         address _recipient,
         address _recipient2,
         bool _like,
@@ -1475,7 +1468,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests complex multi-attestation expiration scenarios across different schemas.
     ///      Verifies correct schema assignment and attester for all attestations
-    function test_complex_multi_attestation_works() public {
+    function test_attestation_complexMulti_succeeds() public {
         string memory schema = "bool like";
         string memory schema2 = "uint256 score";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -1539,7 +1532,7 @@ contract EASTest is CommonTest {
     /// @dev Tests multiple error conditions for multi-attestation requests,
     ///      including InvalidLength, InvalidSchema, InvalidExpirationTime,
     ///      and insufficient ETH value (default error).
-    function test_multi_attestation_reverts() public {
+    function test_attestation_multiDelegated_reverts() public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
         bytes32 schemaWithResolverId = _getSchemaUID(schema, address(payableResolver), true);
@@ -1598,7 +1591,7 @@ contract EASTest is CommonTest {
     ///      each with a specified amount of ether attached. It verifies that
     ///      the attestations are correctly recorded and that the sender's
     ///      balance is appropriately managed.
-    function test_multi_attestation_value_succeeds(
+    function test_attestation_multiValue_succeeds(
         uint256 _value,
         address _userAddress,
         string memory _userName,
@@ -1668,7 +1661,7 @@ contract EASTest is CommonTest {
     /// Delegation Tests
     /// @dev Tests basic delegated attestation functionality.
     ///      Demonstrates standard delegated attestation flow.
-    function test_delegated_attestation_succeeds(
+    function test_attestation_delegated_succeeds(
         string memory _name,
         uint256 _age,
         bool _isStudent,
@@ -1731,7 +1724,7 @@ contract EASTest is CommonTest {
     /// @dev Tests delegated attestation with various deadline scenarios.
     ///      Tests three different deadline configurations and verifies
     ///      deadline passing in all scenarios.
-    function test_delegated_attestation_time_works(
+    function test_attestation_delegatedTime_succeeds(
         string memory _name,
         uint256 _age,
         bool _isStudent,
@@ -1798,7 +1791,7 @@ contract EASTest is CommonTest {
     /// @dev Tests deadline validation in delegated attestations.
     ///      Ensures proper enforcement of deadline constraints
     ///      in delegated attestations.
-    function test_delegated_attestation_deadline_reverts(string memory _name) public {
+    function test_attestationDelegated_expiredDeadline_reverts(string memory _name) public {
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1828,7 +1821,13 @@ contract EASTest is CommonTest {
     /// Multi-delegation Tests
     /// @dev Tests batch attestation delegation functionality.
     ///      Demonstrates efficient batch processing of delegated attestations
-    function test_multi_delegated_attestation_succeeds(address _recipient, address _recipient2, string[] memory _names) public {
+    function test_attestation_multiDelegated_succeeds(
+        address _recipient,
+        address _recipient2,
+        string[] memory _names
+    )
+        public
+    {
         vm.assume(_names.length >= 2);
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -1897,7 +1896,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests delegated attestations with signatures.
     ///      Ensures signature validation works for both single and batch cases.
-    function test_delegated_attestation_signature_reverts(
+    function test_attestationDelegated_invalidSignature_reverts(
         uint8 _v,
         bytes32 _r,
         bytes32 _s,
@@ -1961,7 +1960,7 @@ contract EASTest is CommonTest {
     ///      Demonstrates complete flow of multiple delegated
     ///      attestations with different signers
 
-    function test_multi_delegated_unique_succeeds(string[] memory _names) public {
+    function test_attestation_multiDelegatedUnique_succeeds(string[] memory _names) public {
         vm.assume(_names.length == 3);
         bytes32 schemaId = schemaRegistry.register("string name", ISchemaResolver(address(0)), true);
         uint64 deadline = uint64(block.timestamp + 1 days);
@@ -2011,7 +2010,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests error conditions for delegated attestations.
     ///      Ensures proper error handling for InvalidLength and DeadlineExpired
-    function test_multi_delegated_attestation_reverts(string memory _propertyName, string memory _value) public {
+    function test_attestationMultiDelegated_invalidLengthAndDeadlineExpired_reverts(string memory _propertyName, string memory _value) public {
         string memory schema = string.concat("string ", _propertyName);
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -2072,7 +2071,7 @@ contract EASTest is CommonTest {
     /// @dev Tests the attestation revocation process.
     /// Creates a revocable attestation, revokes the attestation,
     /// and verified the revocation.
-    function test_revoke_attestation_succeeds(
+    function test_attestation_revoke_succeeds(
         address _userAddress,
         string memory _userName,
         bool _isActive,
@@ -2114,7 +2113,7 @@ contract EASTest is CommonTest {
     /// @dev Tests that attestations can only be revoked by their original attester.
     /// Creates an attestation from one address and attempts to revoke it from another address.
     /// Expects an Access Denied error.
-    function test_revoke_others_attestation_reverts(
+    function test_attestationRevoke_unauthorized_reverts(
         address _userAddress,
         string memory _userName,
         bool _isActive,
@@ -2154,7 +2153,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests revocation attempt of a non-existent attestation.
     /// Expects a NotFound error.
-    function test_revoke_nonexistent_reverts(bytes32 _nonExistentUid) public {
+    function test_attestationRevoke_nonexistent_reverts(bytes32 _nonExistentUid) public {
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -2235,7 +2234,7 @@ contract EASTest is CommonTest {
     /// @dev Tests batch revocation of multiple attestations.
     ///      Creates three attestations and revokes all in one
     ///      attestation. Then Vefifies all have a non-zero revocationTime.
-    function test_multi_revocation_succeeds(uint256 _count, uint64 _expirationOffset) public {
+    function test_revokation_multiOffchain_succeeds(uint256 _count, uint64 _expirationOffset) public {
         vm.assume(_count > 0 && _count <= 10);
         vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -2280,7 +2279,7 @@ contract EASTest is CommonTest {
         vm.stopPrank();
     }
 
-    function test_delegated_revocation_succeeds(string memory _name) public {
+    function test_revokation_delegated_succeeds(string memory _name) public {
         // Define schema and register it
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2359,7 +2358,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests multi-delegated revocation functionality
     /// Creates multiple attestations and revokes them through delegation
-    function test_multi_delegated_revocation_succeeds(uint256 _uint256Value) public {
+    function test_revokation_multiDelegated_succeeds(uint256 _uint256Value) public {
         vm.assume(_uint256Value < 1000000);
         string memory schema = "uint256 value";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2420,7 +2419,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests access control for delegated revocations.
     /// Verifies that only the designated revoker can revoke through delegation
-    function test_delegated_revocation_reverts(uint64 _expirationOffset) public {
+    function test_revokationDelegated_invalidSignature_reverts(uint64 _expirationOffset) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
         vm.assume(sender2 != address(0));
         vm.assume(sender2 != attester); // Ensure sender2 is different from attester
@@ -2475,7 +2474,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests comprehensive scenarios for irrevocable schemas.
     ///      Ensures that  irrevocable property is enforced in all scenarios.
-    function test_irrevocable_schema_works(
+    function test_irrevocableSchema_succeeds(
         address _userAddress,
         string memory _userName,
         bool _isActive,
@@ -2573,7 +2572,7 @@ contract EASTest is CommonTest {
     /// @dev Tests scenarios mixing revocable and irrevocable schemas.
     ///      Verifies that revocable attestations can be revoked
     ///      and that irrevocable attestations cannot be revoked.
-    function test_mixed_revocability_works(
+    function test_mixed_revocability_succeeds(
         string memory _revocableSchemaProperty,
         string memory _irrevocableSchemaProperty,
         string memory _revocableSchemaValue,
@@ -2649,7 +2648,7 @@ contract EASTest is CommonTest {
     /// @dev Tests revocation with invalid schema data.
     ///      Verifies the revocations fail with InvalidSchema error.
     ///      Ensures revocations are properly validated against registered schemas.
-    function test_invalid_revocation_data_reverts(string memory _stringName, string memory _invalidSchema) public {
+    function test_revocation_invalidSchema_reverts(string memory _stringName, string memory _invalidSchema) public {
         vm.assume(bytes(_stringName).length > 0 && bytes(_invalidSchema).length < 32);
         string memory schema = string.concat("string ", _stringName);
 
@@ -2669,7 +2668,7 @@ contract EASTest is CommonTest {
     /// @dev Tests revocation behavior in referenced attestations.
     ///      Demonstrates that revocation does not cascade through
     ///      referenced attestations.
-    function test_cascading_revocation_works(string[] memory _names) public {
+    function test_cascadingRevocation_succeeds(string[] memory _names) public {
         vm.assume(_names.length == 2);
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2731,7 +2730,7 @@ contract EASTest is CommonTest {
     /// @dev Tests complex revocation scenarios with multiple attestations.
     ///      Demonstrates independence of revocations and proper
     ///      handling of referenced attestations in complex scenarios
-    function test_advanced_revocation_works(string[] memory _names) public {
+    function test_advancedRevocation_succeeds(string[] memory _names) public {
         vm.assume(_names.length >= 3);
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2810,7 +2809,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests error conditions for multi-attestation delegation revocation.
     ///      Ensures proper validation of batch revocation parameters
-    function test_multi_attestation_delegation_reverts(string[] memory _name, uint8 _v) public {
+    function test_attestationMultiDelegation_invalidLength_reverts(string[] memory _name, uint8 _v) public {
         vm.assume(_name.length == 2);
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2884,7 +2883,7 @@ contract EASTest is CommonTest {
     ///      Demonstrates off-chain revocation mechanism,
     ///      useful for revoking attestations without on-chain
     ///      transaction for each attestation
-    function test_revoke_offchain_succeeds(bytes memory _randomData) public {
+    function test_revoke_succeeds_offchain(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         vm.prank(sender);
@@ -2896,7 +2895,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests off-chain revocation behavior.
     ///      Ensures off-chain revocations cannot be duplicated
-    function test_revoke_offchain_reverts(bytes memory _randomData) public {
+    function test_revokeoffChain_alreadyRevoked_reverts(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         vm.startPrank(sender);
@@ -2911,7 +2910,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests batch off-chain revocation functionality.
     ///      Demonstrates efficient batch processing of off-chain revocations
-    function test_revoke_offchain_multiple_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
+    function test_revokeoffChain_multiple_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256(_randomData);
         data[1] = keccak256(_randomData2);
@@ -2927,7 +2926,7 @@ contract EASTest is CommonTest {
     }
 
     /// @dev Tests off-chain revocation independence between accounts.
-    function test_revoke_offchain_different_succeeds(bytes memory _randomData) public {
+    function test_revokeoffChain_differentAccounts_succeeds(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         // First account revokes
@@ -2947,7 +2946,7 @@ contract EASTest is CommonTest {
     /// @dev Tests revert conditions for batch off-chain revocations.
     ///      Ensures that batch revocations properly check
     ///      for already revoked data in all scenarios
-    function test_multi_revoke_offchain_reverts(
+    function test_revoke_reverts_multiOffchain(
         bytes memory _randomData,
         bytes memory _randomData2,
         bytes memory _randomData3
@@ -2980,13 +2979,13 @@ contract EASTest is CommonTest {
     /// @dev Tests retrieval of unregistered off-chain revocations.
     ///      Ensures system properly handles queries for
     ///      non-existent off-chain revocations
-    function test_unregistered_revoke_offchain_succeeds(bytes memory _randomData) public view {
+    function test_revokeoffChain_unregistered_succeeds(bytes memory _randomData) public view {
         bytes32 data = keccak256(_randomData);
         assertEq(eas.getRevokeOffchain(sender, data), 0);
     }
 
     /// @dev Tests multiple account off-chain revocations of the same data.
-    function test_revoke_offchain_accounts_succeeds(bytes memory _randomData) public {
+    function test_revokeoffChain_multipleAccounts_succeeds(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         // First account revokes
@@ -3007,7 +3006,7 @@ contract EASTest is CommonTest {
     /// @dev Tests comprehensive scenarios for batch off-chain revocations.
     ///      Demonstrates the system's ability to handle multiple batch
     ///      revocations from the same account.
-    function test_multi_revoke_offchain_works(
+    function test_revokeoffChain_multiple_succeeds(
         uint256 _randomData1,
         uint256 _randomData2,
         uint256 _randomData3,
