@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"testing"
 	"time"
@@ -22,6 +23,9 @@ type Foo struct {
 type testStreamRPC struct {
 	log    log.Logger
 	events *Stream[Foo]
+
+	// To await out-of-events case.
+	outOfEvents chan struct{}
 }
 
 func (api *testStreamRPC) Foo(ctx context.Context) (*rpc.Subscription, error) {
@@ -29,7 +33,14 @@ func (api *testStreamRPC) Foo(ctx context.Context) (*rpc.Subscription, error) {
 }
 
 func (api *testStreamRPC) PullFoo() (*Foo, error) {
-	return api.events.Serve()
+	data, err := api.events.Serve()
+	if api.outOfEvents != nil && err != nil {
+		var x rpc.Error
+		if errors.As(err, &x); x.ErrorCode() == OutOfEventsErrCode {
+			api.outOfEvents <- struct{}{}
+		}
+	}
+	return data, err
 }
 
 func TestStream_Polling(t *testing.T) {
@@ -178,4 +189,90 @@ func TestStream_Subscription(t *testing.T) {
 	case <-testCtx.Done():
 		t.Fatal("timed out subscription result")
 	}
+}
+
+func TestStreamFallback(t *testing.T) {
+	appVersion := "test"
+
+	logger := testlog.Logger(t, log.LevelDebug)
+
+	maxQueueSize := 10
+	api := &testStreamRPC{
+		log:         logger,
+		events:      NewStream[Foo](logger, maxQueueSize),
+		outOfEvents: make(chan struct{}, 100),
+	}
+	// Create an HTTP server, this won't support RPC subscriptions
+	server := NewServer(
+		"127.0.0.1",
+		0,
+		appVersion,
+		WithLogger(logger),
+		WithAPIs([]rpc.API{
+			{
+				Namespace: "custom",
+				Service:   api,
+			},
+		}),
+	)
+	require.NoError(t, server.Start(), "must start")
+
+	// Dial via HTTP, to ensure no subscription support
+	rpcClient, err := rpc.Dial(fmt.Sprintf("http://%s", server.endpoint))
+	require.NoError(t, err)
+	t.Cleanup(rpcClient.Close)
+
+	testCtx, cancel := context.WithTimeout(context.Background(), time.Second*10)
+	defer cancel()
+
+	// regular subscription won't work over HTTP
+	dest := make(chan *Foo, 10)
+	_, err = SubscribeStream[Foo](testCtx,
+		"custom", &ClientWrapper{cl: rpcClient}, dest, "foo")
+	require.ErrorIs(t, err, rpc.ErrNotificationsUnsupported, "no subscriptions")
+
+	// Fallback will work, and pull the buffered stream data
+	fn := func(ctx context.Context) (*Foo, error) {
+		var x *Foo
+		err := rpcClient.CallContext(ctx, &x, "custom_pullFoo")
+		return x, err
+	}
+	sub, err := StreamFallback[Foo](fn, time.Millisecond*200, dest)
+	require.NoError(t, err)
+
+	api.events.Send(&Foo{"hello world"})
+
+	select {
+	case err := <-sub.Err():
+		require.NoError(t, err, "unexpected subscription error")
+	case x := <-dest:
+		require.Equal(t, "hello world", x.Message)
+	case <-testCtx.Done():
+		t.Fatal("test timeout")
+	}
+
+	// Ensure we hit the out-of-events error intermittently
+	select {
+	case <-api.outOfEvents:
+	case <-testCtx.Done():
+		t.Fatal("test timeout while waiting for out-of-events")
+	}
+	// Now send an event, which will only be picked up after backoff is over,
+	// since we just ran into out-of-events.
+	api.events.Send(&Foo{"hello again"})
+
+	// Wait for polling to pick up the data
+	select {
+	case err := <-sub.Err():
+		require.NoError(t, err, "unexpected subscription error")
+	case x := <-dest:
+		require.Equal(t, "hello again", x.Message)
+	case <-testCtx.Done():
+		t.Fatal("test timeout")
+	}
+
+	sub.Unsubscribe()
+	dest <- &Foo{Message: "open check"}
+	_, ok := <-dest
+	require.True(t, ok, "kept open for easy resubscribing")
 }

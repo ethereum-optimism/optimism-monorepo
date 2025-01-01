@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/event"
@@ -23,6 +24,61 @@ type eventEntry[E any] struct {
 	Data *E `json:"data"`
 	// Close is set to true when the server will send no further events over this subscription.
 	Close bool `json:"close,omitempty"`
+}
+
+// StreamFallback polls the given function for data.
+// When the function returns a JSON RPC error with OutOfEventsErrCode error-code,
+// the polling backs off by waiting for the given frequency time duration.
+// When the function returns any other error, the stream is aborted,
+// and the error is forwarded to the subscription-error channel.
+// The dest channel is kept open after stream error, in case re-subscribing is desired.
+func StreamFallback[E any](fn func(ctx context.Context) (*E, error), frequency time.Duration, dest chan *E) (ethereum.Subscription, error) {
+	return event.NewSubscription(func(quit <-chan struct{}) error {
+		poll := time.NewTimer(frequency)
+		defer poll.Stop()
+
+		requestNext := make(chan struct{}, 1)
+
+		getNext := func() error {
+			ctx, cancel := context.WithTimeout(context.Background(), frequency)
+			item, err := fn(ctx)
+			cancel()
+			if err != nil {
+				var x gethrpc.Error
+				if errors.As(err, &x); x.ErrorCode() == OutOfEventsErrCode {
+					// back-off, by waiting for next tick, if out of events
+					poll.Reset(frequency)
+					return nil
+				}
+				return err
+			}
+			select {
+			case dest <- item:
+			case <-quit:
+				return nil
+			}
+			requestNext <- struct{}{}
+			return nil
+		}
+
+		// immediately start pulling data
+		requestNext <- struct{}{}
+
+		for {
+			select {
+			case <-quit:
+				return nil
+			case <-poll.C:
+				if err := getNext(); err != nil {
+					return err
+				}
+			case <-requestNext:
+				if err := getNext(); err != nil {
+					return err
+				}
+			}
+		}
+	}), nil
 }
 
 // Subscriber implements the subscribe subset of the RPC client interface.
