@@ -30,10 +30,8 @@ type SyncSource interface {
 }
 
 type SyncControl interface {
-	SubscribeResetEvents(ctx context.Context, c chan string) (ethereum.Subscription, error)
-	SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error)
-	SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error)
-	SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error)
+	SubscribeEvents(ctx context.Context, c chan *types.ManagedEvent) (ethereum.Subscription, error)
+	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
 
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
 	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error

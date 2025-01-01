@@ -15,7 +15,7 @@ type InteropAPI struct {
 	backend *ManagedMode
 }
 
-func (ib *InteropAPI) PullEvent() (*ManagedEvent, error) {
+func (ib *InteropAPI) PullEvent() (*supervisortypes.ManagedEvent, error) {
 	return ib.backend.PullEvent()
 }
 

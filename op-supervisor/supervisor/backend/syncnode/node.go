@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 	"errors"
+	"io"
 	"strings"
 	"sync"
 	"time"
@@ -58,14 +59,8 @@ type ManagedNode struct {
 	// when the supervisor has a finality update for the node
 	finalizedUpdateChan chan types.BlockSeal
 
-	// when the node says a reset is necessary, on any sync inconsistency
-	resetEventsChan chan string
-	// new L2 blocks from the node
-	unsafeBlocks chan eth.BlockRef
-	// new local-safe L2 blocks from the node
-	derivationUpdates chan types.DerivedBlockRefPair
-	// when the node needs new L1 blocks
-	exhaustL1Events chan types.DerivedBlockRefPair
+	// when the node has an update for us
+	nodeEvents chan *types.ManagedEvent
 
 	subscriptions []gethevent.Subscription
 
@@ -111,27 +106,12 @@ func (m *ManagedNode) SubscribeToDBEvents(db chainsDB) {
 }
 
 func (m *ManagedNode) SubscribeToNodeEvents() {
-	m.resetEventsChan = make(chan string, 10)
-	m.unsafeBlocks = make(chan eth.BlockRef, 10)
-	m.derivationUpdates = make(chan types.DerivedBlockRefPair, 10)
-	m.exhaustL1Events = make(chan types.DerivedBlockRefPair, 10)
+	m.nodeEvents = make(chan *types.ManagedEvent, 10)
 
 	// For each of these, we want to resubscribe on error. Since the RPC subscription might fail intermittently.
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
 		func(ctx context.Context, err error) (gethevent.Subscription, error) {
-			return m.Node.SubscribeResetEvents(ctx, m.resetEventsChan)
-		}))
-	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
-		func(ctx context.Context, err error) (gethevent.Subscription, error) {
-			return m.Node.SubscribeUnsafeBlocks(ctx, m.unsafeBlocks)
-		}))
-	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
-		func(ctx context.Context, err error) (gethevent.Subscription, error) {
-			return m.Node.SubscribeDerivationUpdates(ctx, m.derivationUpdates)
-		}))
-	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
-		func(ctx context.Context, err error) (gethevent.Subscription, error) {
-			return m.Node.SubscribeExhaustL1Events(ctx, m.exhaustL1Events)
+			return m.Node.SubscribeEvents(ctx, m.nodeEvents)
 		}))
 }
 
@@ -145,23 +125,48 @@ func (m *ManagedNode) Start() {
 			case <-m.ctx.Done():
 				m.log.Info("Exiting node syncing")
 				return
-			case errStr := <-m.resetEventsChan:
-				m.onResetEvent(errStr)
 			case seal := <-m.crossUnsafeUpdateChan:
 				m.onCrossUnsafeUpdate(seal)
 			case pair := <-m.crossSafeUpdateChan:
 				m.onCrossSafeUpdate(pair)
 			case seal := <-m.finalizedUpdateChan:
 				m.onFinalizedL2(seal)
-			case unsafeRef := <-m.unsafeBlocks:
-				m.onUnsafeBlock(unsafeRef)
-			case pair := <-m.derivationUpdates:
-				m.onDerivationUpdate(pair)
-			case completed := <-m.exhaustL1Events:
-				m.onExhaustL1Event(completed)
+			case ev := <-m.nodeEvents:
+				m.onNodeEvent(ev)
 			}
 		}
 	}()
+}
+
+// PollEvents pulls all events, until there are none left,
+// the ctx is canceled, or an error upon event-pulling occurs.
+func (m *ManagedNode) PollEvents(ctx context.Context) error {
+	for {
+		ev, err := m.Node.PullEvent(ctx)
+		if err != nil {
+			if errors.Is(err, io.EOF) {
+				// no events left
+				return nil
+			}
+			return err
+		}
+		m.onNodeEvent(ev)
+	}
+}
+
+func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
+	if ev.Reset != nil {
+		m.onResetEvent(*ev.Reset)
+	}
+	if ev.UnsafeBlock != nil {
+		m.onUnsafeBlock(*ev.UnsafeBlock)
+	}
+	if ev.DerivationUpdate != nil {
+		m.onDerivationUpdate(*ev.DerivationUpdate)
+	}
+	if ev.ExhaustL1 != nil {
+		m.onExhaustL1Event(*ev.ExhaustL1)
+	}
 }
 
 func (m *ManagedNode) onResetEvent(errStr string) {

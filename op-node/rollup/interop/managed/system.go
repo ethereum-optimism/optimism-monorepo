@@ -31,15 +31,6 @@ type L1Source interface {
 	L1BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L1BlockRef, error)
 }
 
-// ManagedEvent is an event sent by the managed node to the supervisor,
-// to share an update. One of the fields will be non-null; different kinds of updates may be sent.
-type ManagedEvent struct {
-	Reset            *string                              `json:"reset,omitempty"`
-	UnsafeBlock      *eth.BlockRef                        `json:"unsafeBlock,omitempty"`
-	DerivationUpdate *supervisortypes.DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
-	ExhaustL1        *supervisortypes.DerivedBlockRefPair `json:"exhaustL1,omitempty"`
-}
-
 // ManagedMode makes the op-node managed by an op-supervisor,
 // by serving sync work and updating the canonical chain based on instructions.
 type ManagedMode struct {
@@ -50,7 +41,7 @@ type ManagedMode struct {
 	l1 L1Source
 	l2 L2Source
 
-	events *rpc.Stream[ManagedEvent]
+	events *rpc.Stream[supervisortypes.ManagedEvent]
 
 	cfg *rollup.Config
 
@@ -65,7 +56,7 @@ func NewManagedMode(log log.Logger, cfg *rollup.Config, addr string, port int, j
 		l1:        l1,
 		l2:        l2,
 		jwtSecret: jwtSecret,
-		events:    rpc.NewRPCEvents[ManagedEvent](log, 100),
+		events:    rpc.NewStream[supervisortypes.ManagedEvent](log, 100),
 	}
 
 	out.srv = rpc.NewServer(addr, port, "v0.0.0",
@@ -118,22 +109,22 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case rollup.ResetEvent:
 		msg := x.Err.Error()
-		m.events.Send(&ManagedEvent{Reset: &msg})
+		m.events.Send(&supervisortypes.ManagedEvent{Reset: &msg})
 	case engine.UnsafeUpdateEvent:
 		ref := x.Ref.BlockRef()
-		m.events.Send(&ManagedEvent{UnsafeBlock: &ref})
+		m.events.Send(&supervisortypes.ManagedEvent{UnsafeBlock: &ref})
 	case engine.LocalSafeUpdateEvent:
-		m.events.Send(&ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.DerivedFrom,
 			Derived:     x.Ref.BlockRef(),
 		}})
 	case derive.DeriverL1StatusEvent:
-		m.events.Send(&ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&supervisortypes.ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.Origin,
 			Derived:     x.LastL2.BlockRef(),
 		}})
 	case derive.ExhaustedL1Event:
-		m.events.Send(&ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&supervisortypes.ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
 		}})
@@ -141,7 +132,7 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	return false
 }
 
-func (m *ManagedMode) PullEvent() (*ManagedEvent, error) {
+func (m *ManagedMode) PullEvent() (*supervisortypes.ManagedEvent, error) {
 	return m.events.Serve()
 }
 

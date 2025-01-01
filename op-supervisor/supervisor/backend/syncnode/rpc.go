@@ -3,11 +3,13 @@ package syncnode
 import (
 	"context"
 	"errors"
+	"github.com/ethereum-optimism/optimism/op-service/rpc"
+	"io"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/rpc"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -34,7 +36,7 @@ func (rs *RPCSyncNode) BlockRefByNumber(ctx context.Context, number uint64) (eth
 	var out *eth.BlockRef
 	err := rs.cl.CallContext(ctx, &out, "interop_blockRefByNumber", number)
 	if err != nil {
-		var jsonErr rpc.Error
+		var jsonErr gethrpc.Error
 		if errors.As(err, &jsonErr) {
 			if jsonErr.ErrorCode() == 0 { // TODO
 				return eth.BlockRef{}, ethereum.NotFound
@@ -49,7 +51,7 @@ func (rs *RPCSyncNode) FetchReceipts(ctx context.Context, blockHash common.Hash)
 	var out gethtypes.Receipts
 	err := rs.cl.CallContext(ctx, &out, "interop_fetchReceipts", blockHash)
 	if err != nil {
-		var jsonErr rpc.Error
+		var jsonErr gethrpc.Error
 		if errors.As(err, &jsonErr) {
 			if jsonErr.ErrorCode() == 0 { // TODO
 				return nil, ethereum.NotFound
@@ -70,20 +72,23 @@ func (rs *RPCSyncNode) String() string {
 	return rs.name
 }
 
-func (rs *RPCSyncNode) SubscribeResetEvents(ctx context.Context, dest chan string) (ethereum.Subscription, error) {
-	return rs.cl.Subscribe(ctx, "interop", dest, "resetEvents")
+func (rs *RPCSyncNode) SubscribeEvents(ctx context.Context, dest chan *types.ManagedEvent) (ethereum.Subscription, error) {
+	return rs.cl.Subscribe(ctx, "interop", dest, "events")
 }
 
-func (rs *RPCSyncNode) SubscribeUnsafeBlocks(ctx context.Context, dest chan eth.BlockRef) (ethereum.Subscription, error) {
-	return rs.cl.Subscribe(ctx, "interop", dest, "unsafeBlocks")
-}
-
-func (rs *RPCSyncNode) SubscribeDerivationUpdates(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
-	return rs.cl.Subscribe(ctx, "interop", dest, "derivationUpdates")
-}
-
-func (rs *RPCSyncNode) SubscribeExhaustL1Events(ctx context.Context, dest chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
-	return rs.cl.Subscribe(ctx, "interop", dest, "exhaustL1Events")
+// PullEvent pulls an event, as alternative to an event-subscription with SubscribeEvents.
+// This returns an io.EOF error if no new events are available.
+func (rs *RPCSyncNode) PullEvent(ctx context.Context) (*types.ManagedEvent, error) {
+	var out *types.ManagedEvent
+	err := rs.cl.CallContext(ctx, &out, "interop_pullEvent")
+	var x gethrpc.Error
+	if err != nil {
+		if errors.As(err, &x) && x.ErrorCode() == rpc.OutOfEventsErrCode {
+			return nil, io.EOF
+		}
+		return nil, err
+	}
+	return out, nil
 }
 
 func (rs *RPCSyncNode) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {
