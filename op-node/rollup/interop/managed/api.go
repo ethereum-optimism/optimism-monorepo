@@ -15,20 +15,12 @@ type InteropAPI struct {
 	backend *ManagedMode
 }
 
-func (ib *InteropAPI) ResetEvents(ctx context.Context) (*gethrpc.Subscription, error) {
-	return ib.backend.ResetEvents(ctx)
+func (ib *InteropAPI) PullEvent() (*ManagedEvent, error) {
+	return ib.backend.PullEvent()
 }
 
-func (ib *InteropAPI) UnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
-	return ib.backend.UnsafeBlocks(ctx)
-}
-
-func (m *InteropAPI) DerivationUpdates(ctx context.Context) (*gethrpc.Subscription, error) {
-	return m.backend.DerivationUpdates(ctx)
-}
-
-func (m *InteropAPI) ExhaustL1Events(ctx context.Context) (*gethrpc.Subscription, error) {
-	return m.backend.ExhaustL1Events(ctx)
+func (ib *InteropAPI) Events(ctx context.Context) (*gethrpc.Subscription, error) {
+	return ib.backend.Events(ctx)
 }
 
 func (ib *InteropAPI) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {

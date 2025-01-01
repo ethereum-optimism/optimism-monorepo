@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
-	gethevent "github.com/ethereum/go-ethereum/event"
 	"github.com/ethereum/go-ethereum/log"
 	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
@@ -32,6 +31,15 @@ type L1Source interface {
 	L1BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L1BlockRef, error)
 }
 
+// ManagedEvent is an event sent by the managed node to the supervisor,
+// to share an update. One of the fields will be non-null; different kinds of updates may be sent.
+type ManagedEvent struct {
+	Reset            *string                              `json:"reset,omitempty"`
+	UnsafeBlock      *eth.BlockRef                        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate *supervisortypes.DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1        *supervisortypes.DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+}
+
 // ManagedMode makes the op-node managed by an op-supervisor,
 // by serving sync work and updating the canonical chain based on instructions.
 type ManagedMode struct {
@@ -42,10 +50,7 @@ type ManagedMode struct {
 	l1 L1Source
 	l2 L2Source
 
-	resetEvents       gethevent.FeedOf[string]
-	unsafeBlocks      gethevent.FeedOf[eth.BlockRef]
-	derivationUpdates gethevent.FeedOf[supervisortypes.DerivedBlockRefPair]
-	exhaustL1Events   gethevent.FeedOf[supervisortypes.DerivedBlockRefPair]
+	events *rpc.Stream[ManagedEvent]
 
 	cfg *rollup.Config
 
@@ -60,6 +65,7 @@ func NewManagedMode(log log.Logger, cfg *rollup.Config, addr string, port int, j
 		l1:        l1,
 		l2:        l2,
 		jwtSecret: jwtSecret,
+		events:    rpc.NewRPCEvents[ManagedEvent](log, 100),
 	}
 
 	out.srv = rpc.NewServer(addr, port, "v0.0.0",
@@ -111,42 +117,36 @@ func (m *ManagedMode) AttachEmitter(em event.Emitter) {
 func (m *ManagedMode) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case rollup.ResetEvent:
-		m.resetEvents.Send(x.Err.Error())
+		msg := x.Err.Error()
+		m.events.Send(&ManagedEvent{Reset: &msg})
 	case engine.UnsafeUpdateEvent:
-		m.unsafeBlocks.Send(x.Ref.BlockRef())
+		ref := x.Ref.BlockRef()
+		m.events.Send(&ManagedEvent{UnsafeBlock: &ref})
 	case engine.LocalSafeUpdateEvent:
-		m.derivationUpdates.Send(supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.DerivedFrom,
 			Derived:     x.Ref.BlockRef(),
-		})
+		}})
 	case derive.DeriverL1StatusEvent:
-		m.derivationUpdates.Send(supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&ManagedEvent{DerivationUpdate: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.Origin,
 			Derived:     x.LastL2.BlockRef(),
-		})
+		}})
 	case derive.ExhaustedL1Event:
-		m.exhaustL1Events.Send(supervisortypes.DerivedBlockRefPair{
+		m.events.Send(&ManagedEvent{ExhaustL1: &supervisortypes.DerivedBlockRefPair{
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
-		})
+		}})
 	}
 	return false
 }
 
-func (m *ManagedMode) ResetEvents(ctx context.Context) (*gethrpc.Subscription, error) {
-	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "resetEvents"), &m.resetEvents)
+func (m *ManagedMode) PullEvent() (*ManagedEvent, error) {
+	return m.events.Serve()
 }
 
-func (m *ManagedMode) UnsafeBlocks(ctx context.Context) (*gethrpc.Subscription, error) {
-	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "unsafeBlocks"), &m.unsafeBlocks)
-}
-
-func (m *ManagedMode) DerivationUpdates(ctx context.Context) (*gethrpc.Subscription, error) {
-	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "derivationUpdates"), &m.derivationUpdates)
-}
-
-func (m *ManagedMode) ExhaustL1Events(ctx context.Context) (*gethrpc.Subscription, error) {
-	return rpc.SubscribeRPC(ctx, m.log.New("subscription", "exhaustL1Events"), &m.exhaustL1Events)
+func (m *ManagedMode) Events(ctx context.Context) (*gethrpc.Subscription, error) {
+	return m.events.Subscribe(ctx)
 }
 
 func (m *ManagedMode) UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error {
