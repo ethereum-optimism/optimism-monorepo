@@ -55,7 +55,7 @@ type staticServer struct {
 
 func launchStaticServer(ctx context.Context, cfg *config) (*staticServer, func(), error) {
 	// we will serve content from this tmpDir for the duration of the devnet creation
-	tmpDir, err := os.MkdirTemp("", "contracts-bundle")
+	tmpDir, err := os.MkdirTemp("", cfg.enclave)
 	if err != nil {
 		return nil, nil, fmt.Errorf("error creating temporary directory: %w", err)
 	}
@@ -124,10 +124,74 @@ func localContractArtifactsOption(cfg *config, server *staticServer) tmpl.Templa
 	})
 }
 
+func localPrestateOption(cfg *config, server *staticServer) tmpl.TemplateContextOptions {
+	prestateBuilder := build.NewPrestateBuilder(
+		build.WithPrestateBaseDir(cfg.baseDir),
+		build.WithPrestateDryRun(cfg.dryRun),
+	)
+
+	return tmpl.WithFunction("localPrestate", func() (string, error) {
+		// Create build directory with the final path structure
+		buildDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
+		if err := os.MkdirAll(buildDir, 0755); err != nil {
+			return "", fmt.Errorf("failed to create prestate build directory: %w", err)
+		}
+
+		// Build all prestate files directly in the target directory
+		if err := prestateBuilder.Build(buildDir); err != nil {
+			return "", fmt.Errorf("failed to build prestates: %w", err)
+		}
+
+		// Get the relative path from server.dir to buildDir for the URL
+		relPath, err := filepath.Rel(server.dir, buildDir)
+		if err != nil {
+			return "", fmt.Errorf("failed to get relative path: %w", err)
+		}
+
+		url := fmt.Sprintf("%s/%s", server.URL(), relPath)
+
+		if cfg.dryRun {
+			return url, nil
+		}
+
+		// Find all prestate-proof*.json files
+		matches, err := filepath.Glob(filepath.Join(buildDir, "prestate-proof*.json"))
+		if err != nil {
+			return "", fmt.Errorf("failed to find prestate files: %w", err)
+		}
+
+		// Process each file to rename it to its hash
+		for _, filePath := range matches {
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return "", fmt.Errorf("failed to read prestate %s: %w", filepath.Base(filePath), err)
+			}
+
+			var data struct {
+				Pre string `json:"pre"`
+			}
+			if err := json.Unmarshal(content, &data); err != nil {
+				return "", fmt.Errorf("failed to parse prestate %s: %w", filepath.Base(filePath), err)
+			}
+
+			// Rename the file to just the hash
+			hashedPath := filepath.Join(buildDir, data.Pre)
+			if err := os.Rename(filePath, hashedPath); err != nil {
+				return "", fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(filePath), err)
+			}
+
+			log.Printf("%s available at: %s/%s/%s\n", filepath.Base(filePath), server.URL(), relPath, data.Pre)
+		}
+
+		return url, nil
+	})
+}
+
 func renderTemplate(cfg *config, server *staticServer) (*bytes.Buffer, error) {
 	opts := []tmpl.TemplateContextOptions{
 		localDockerImageOption(cfg),
 		localContractArtifactsOption(cfg, server),
+		localPrestateOption(cfg, server),
 	}
 
 	// Read and parse the data file if provided

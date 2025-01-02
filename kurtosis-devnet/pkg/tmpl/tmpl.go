@@ -7,7 +7,7 @@ import (
 )
 
 // TemplateFunc represents a function that can be used in templates
-type TemplateFunc func(string) (string, error)
+type TemplateFunc any
 
 // TemplateContext contains data and functions to be passed to templates
 type TemplateContext struct {

@@ -9,6 +9,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
@@ -214,4 +215,78 @@ func TestMainFunc(t *testing.T) {
 
 	// Verify the environment file was created
 	assert.FileExists(t, envPath)
+}
+
+func TestLocalPrestate(t *testing.T) {
+	// Create a temporary directory for test files
+	tmpDir, err := os.MkdirTemp("", "prestate-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	// Create a mock justfile
+	err = os.WriteFile(filepath.Join(tmpDir, "justfile"), []byte(`
+_prestate-build target:
+	@echo "Mock prestate build"
+`), 0644)
+	require.NoError(t, err)
+
+	tests := []struct {
+		name    string
+		dryRun  bool
+		wantErr bool
+	}{
+		{
+			name:    "dry run mode",
+			dryRun:  true,
+			wantErr: false,
+		},
+		{
+			name:    "normal mode",
+			dryRun:  false,
+			wantErr: false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := &config{
+				baseDir: tmpDir,
+				dryRun:  tt.dryRun,
+			}
+
+			ctx := context.Background()
+			server, cleanup, err := launchStaticServer(ctx, cfg)
+			require.NoError(t, err)
+			defer cleanup()
+
+			// Create template context with just the prestate function
+			tmplCtx := tmpl.NewTemplateContext(localPrestateOption(cfg, server))
+
+			// Test template
+			template := `{"prestate": "{{localPrestate}}"}`
+			buf := bytes.NewBuffer(nil)
+			err = tmplCtx.InstantiateTemplate(bytes.NewBufferString(template), buf)
+
+			if tt.wantErr {
+				assert.Error(t, err)
+				return
+			}
+			require.NoError(t, err)
+
+			// Parse the output
+			var output struct {
+				Prestate string `json:"prestate"`
+			}
+			err = json.Unmarshal(buf.Bytes(), &output)
+			require.NoError(t, err)
+
+			// Verify the URL structure
+			assert.Contains(t, output.Prestate, server.URL())
+			assert.Contains(t, output.Prestate, "/proofs/op-program/cannon")
+
+			// Verify the directory was created
+			prestateDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
+			assert.DirExists(t, prestateDir)
+		})
+	}
 }
