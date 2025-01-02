@@ -97,7 +97,7 @@ submodules: ## Updates git submodules
 
 
 op-node: ## Builds op-node binary
-	just $(JUSTFLAGS) ./op-node/op-node
+	go build -o ./bin/op-node -ldflags "-X main.GitCommit=$$(git rev-parse HEAD) -X main.GitDate=$$(git show -s --format='%ct') -X github.com/ethereum-optimism/optimism/op-node/version.Version=$$(git describe --tags --abbrev=0) -X github.com/ethereum-optimism/optimism/op-node/version.Meta=$$(git describe --tags --abbrev=0 | sed 's/^v//')" ./op-node/cmd
 .PHONY: op-node
 
 generate-mocks-op-node: ## Generates mocks for op-node
