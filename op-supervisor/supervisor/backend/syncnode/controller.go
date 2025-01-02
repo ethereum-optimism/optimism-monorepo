@@ -36,7 +36,9 @@ func NewSyncNodesController(l log.Logger, depset depset.DependencySet, db chains
 	}
 }
 
-func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl SyncControl) (Node, error) {
+// AttachNodeController attaches a node to be managed by the supervisor.
+// If noSubscribe, the node is not actively polled/subscribed to, and requires manual ManagedNode.PullEvents calls.
+func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl SyncControl, noSubscribe bool) (Node, error) {
 	if !snc.depSet.HasChain(id) {
 		return nil, fmt.Errorf("chain %v not in dependency set: %w", id, types.ErrUnknownChain)
 	}
@@ -45,7 +47,7 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 		snc.controllers.Set(id, &locks.RWMap[*ManagedNode, struct{}]{})
 	}
 	controllersForChain, _ := snc.controllers.Get(id)
-	node := NewManagedNode(snc.logger, id, ctrl, snc.db, snc.backend)
+	node := NewManagedNode(snc.logger, id, ctrl, snc.db, snc.backend, noSubscribe)
 	controllersForChain.Set(node, struct{}{})
 	snc.maybeInitSafeDB(id, ctrl)
 	node.Start()

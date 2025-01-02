@@ -170,7 +170,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		if err != nil {
 			return fmt.Errorf("failed to set up sync source: %w", err)
 		}
-		if _, err := su.AttachSyncNode(ctx, src); err != nil {
+		if _, err := su.AttachSyncNode(ctx, src, false); err != nil {
 			return fmt.Errorf("failed to attach sync source %s: %w", src, err)
 		}
 	}
@@ -235,7 +235,9 @@ func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
 	return nil
 }
 
-func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.SyncNode) (syncnode.Node, error) {
+// AttachSyncNode attaches a node to be managed by the supervisor.
+// If noSubscribe, the node is not actively polled/subscribed to, and requires manual Node.PullEvents calls.
+func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.SyncNode, noSubscribe bool) (syncnode.Node, error) {
 	su.logger.Info("attaching sync source to chain processor", "source", src)
 
 	chainID, err := src.ChainID(ctx)
@@ -249,7 +251,7 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to processor: %w", err)
 	}
-	return su.syncNodesController.AttachNodeController(chainID, src)
+	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 
 func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src processors.Source) error {
@@ -362,7 +364,7 @@ func (su *SupervisorBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret
 	if err != nil {
 		return fmt.Errorf("failed to set up sync source from RPC: %w", err)
 	}
-	_, err = su.AttachSyncNode(ctx, src)
+	_, err = su.AttachSyncNode(ctx, src, false)
 	return err
 }
 

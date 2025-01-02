@@ -3,6 +3,8 @@ package syncnode
 import (
 	"context"
 	"errors"
+	"github.com/ethereum-optimism/optimism/op-service/rpc"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"io"
 	"strings"
 	"sync"
@@ -69,7 +71,7 @@ type ManagedNode struct {
 	wg     sync.WaitGroup
 }
 
-func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chainsDB, backend backend) *ManagedNode {
+func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chainsDB, backend backend, noSubscribe bool) *ManagedNode {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &ManagedNode{
 		log:     log.New("chain", id),
@@ -80,7 +82,10 @@ func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, db chain
 		cancel:  cancel,
 	}
 	m.SubscribeToDBEvents(db)
-	m.SubscribeToNodeEvents()
+	if !noSubscribe {
+		m.SubscribeToNodeEvents()
+	}
+	m.WatchSubscriptionErrors()
 	return m
 }
 
@@ -108,11 +113,37 @@ func (m *ManagedNode) SubscribeToDBEvents(db chainsDB) {
 func (m *ManagedNode) SubscribeToNodeEvents() {
 	m.nodeEvents = make(chan *types.ManagedEvent, 10)
 
-	// For each of these, we want to resubscribe on error. Since the RPC subscription might fail intermittently.
+	// Resubscribe, since the RPC subscription might fail intermittently.
+	// And fall back to polling, if RPC subscriptions are not supported.
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
 		func(ctx context.Context, err error) (gethevent.Subscription, error) {
-			return m.Node.SubscribeEvents(ctx, m.nodeEvents)
+			sub, err := m.Node.SubscribeEvents(ctx, m.nodeEvents)
+			if err != nil {
+				if errors.Is(err, gethrpc.ErrNotificationsUnsupported) {
+					// fallback to polling if subscriptions are not supported.
+					return rpc.StreamFallback[types.ManagedEvent](
+						m.Node.PullEvent, time.Millisecond*100, m.nodeEvents)
+				}
+				return nil, err
+			}
+			return sub, nil
 		}))
+}
+
+func (m *ManagedNode) WatchSubscriptionErrors() {
+	watchSub := func(sub ethereum.Subscription) {
+		defer m.wg.Done()
+		select {
+		case err := <-sub.Err():
+			m.log.Error("Subscription error", "err", err)
+		case <-m.ctx.Done():
+			// we're closing, stop watching the subscription
+		}
+	}
+	for _, sub := range m.subscriptions {
+		m.wg.Add(1)
+		go watchSub(sub)
+	}
 }
 
 func (m *ManagedNode) Start() {
@@ -138,18 +169,19 @@ func (m *ManagedNode) Start() {
 	}()
 }
 
-// PollEvents pulls all events, until there are none left,
+// PullEvents pulls all events, until there are none left,
 // the ctx is canceled, or an error upon event-pulling occurs.
-func (m *ManagedNode) PollEvents(ctx context.Context) error {
+func (m *ManagedNode) PullEvents(ctx context.Context) (pulledAny bool, err error) {
 	for {
 		ev, err := m.Node.PullEvent(ctx)
 		if err != nil {
 			if errors.Is(err, io.EOF) {
 				// no events left
-				return nil
+				return pulledAny, nil
 			}
-			return err
+			return pulledAny, err
 		}
+		pulledAny = true
 		m.onNodeEvent(ev)
 	}
 }
@@ -179,22 +211,6 @@ func (m *ManagedNode) onResetEvent(errStr string) {
 	// The node will abort the reset until we find a block that is known.
 	m.resetSignal(types.ErrFuture, eth.L1BlockRef{})
 }
-
-// in chain: "failed to update cross-safe head
-//		to 0x2d904e68aa2a8a9dbc1ba023b4b04d485cc88885747d1d5999548ce8e3c956b6:1,
-//		derived from scope 0x0fd8b875f8564ab0287c0180b905c75c3441ef491db57743964db0a261fee89b:1:
-//		cannot add block 0x2d904e68aa2a8a9dbc1ba023b4b04d485cc88885747d1d5999548ce8e3c956b6:1
-//		as derived from 0x0fd8b875f8564ab0287c0180b905c75c3441ef491db57743964db0a261fee89b:1
-//		(parent 0x5b340cb5db27e84cb11f63f5e8329f1d31a2518e8064b52ed262b7105c8d0f21)
-//		derived on top of BlockSeal(
-//			hash:0x0bfcdc12076a6a4eab82afc6133f09afd37ff85f135f628c983a43079f21ad0f, number:0, time:1735057355):
-//				conflicting data"
-// 	"cannot add block 0x2d904e68aa2a8a9dbc1ba023b4b04d485cc88885747d1d5999548ce8e3c956b6:1
-//		as derived from 0x0fd8b875f8564ab0287c0180b905c75c3441ef491db57743964db0a261fee89b:1
-//		(parent 0x5b340cb5db27e84cb11f63f5e8329f1d31a2518e8064b52ed262b7105c8d0f21)
-//		derived on top of BlockSeal(
-//			hash:0x0bfcdc12076a6a4eab82afc6133f09afd37ff85f135f628c983a43079f21ad0f, number:0, time:1735057355): conflicting data"
-//        	            		"conflicting data"
 
 func (m *ManagedNode) onCrossUnsafeUpdate(seal types.BlockSeal) {
 	m.log.Debug("updating cross unsafe", "crossUnsafe", seal)
