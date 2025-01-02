@@ -533,15 +533,16 @@ contract EASTest is CommonTest {
     function test_attestationSignature_wrongSigner_reverts(uint256 _wrongSignerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_wrongSignerKey > 0 && _wrongSignerKey < CURVE_ORDER);
+        
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
-        uint256 wrongSignerKey = _wrongSignerKey;
-        address wrongSigner = vm.addr(wrongSignerKey);
+        address wrongSigner = vm.addr(_wrongSignerKey);
+        vm.assume(wrongSigner != sender);  // Make sure wrong signer isn't the actual sender
 
         AttestationRequestData memory requestData = _createAttestationRequestData();
-        bytes32 digest = _createAttestationDigest(schemaId, requestData, wrongSigner, deadline, 0);
-        (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongSignerKey, digest);
+        bytes32 digest = _createAttestationDigest(schemaId, requestData, sender, deadline, 0);  // Use sender here, not wrongSigner
+        (uint8 v, bytes32 r, bytes32 s) = vm.sign(_wrongSignerKey, digest);
 
         DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
             schema: schemaId,
@@ -717,6 +718,7 @@ contract EASTest is CommonTest {
     // Records and verifies timestamp of 3 different data items.
     function test_timestamp_multiple_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
         vm.assume(bytes(_randomData).length > 0 && bytes(_randomData2).length > 0);
+        vm.assume(keccak256(_randomData) != keccak256(_randomData2));
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256(_randomData);
         data[1] = keccak256(_randomData2);
@@ -892,6 +894,10 @@ contract EASTest is CommonTest {
     )
         public
     {
+        vm.assume(_resolver != address(0));  
+        vm.assume(_resolver.code.length == 0); 
+        vm.assume(_resolver != 0x000000000000000000636F6e736F6c652e6c6f67);
+        vm.assume(uint160(_resolver) > 0xFF);  
         // Create schema string using valid types from docs
         string memory schema = "string name,uint256 age,bool isStudent";
 
@@ -933,6 +939,10 @@ contract EASTest is CommonTest {
     ///      Demonstrates system handles empty schemas correctly,
     ///      allowing attestations without schema definitions
     function test_attestation_noSchema_succeeds(address _resolver, bool _revocable) public {
+        vm.assume(_resolver != address(0));
+        vm.assume(_resolver.code.length == 0);
+        vm.assume(_resolver != 0x000000000000000000636F6e736F6c652e6c6f67);
+        vm.assume(uint160(_resolver) > 0xFF);
         bytes32 schemaId = _getSchemaUID("", _resolver, _revocable);
 
         vm.startPrank(sender);
@@ -940,7 +950,13 @@ contract EASTest is CommonTest {
 
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
-        vm.mockCall(_resolver, abi.encodeWithSelector(ISchemaResolver.attest.selector), abi.encode(true));
+
+        vm.assume(_resolver.code.length == 0);  // Ensure it's not a contract already
+        vm.mockCall(
+            _resolver,
+            abi.encodeWithSelector(ISchemaResolver.attest.selector),
+            abi.encode(true)
+        );
 
         bytes32 uid = eas.attest(
             AttestationRequest({
@@ -2907,6 +2923,7 @@ contract EASTest is CommonTest {
     ///      Demonstrates efficient batch processing of off-chain revocations
     function test_revocationMulti_mixed_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
         vm.assume(_randomData.length > 0 && _randomData2.length > 0);
+        vm.assume(keccak256(_randomData) != keccak256(_randomData2));
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256(_randomData);
         data[1] = keccak256(_randomData2);
@@ -2942,13 +2959,18 @@ contract EASTest is CommonTest {
     /// @dev Tests revert conditions for batch off-chain revocations.
     ///      Ensures that batch revocations properly check
     ///      for already revoked data in all scenarios
-    function test_revoke_reverts_multiOffchain(
+    function test_revokeMultiOffchain_alreadyRevoked_reverts(
         bytes memory _randomData,
         bytes memory _randomData2,
         bytes memory _randomData3
     )
         public
     {
+        vm.assume(_randomData.length > 0 && _randomData2.length > 0 && _randomData3.length > 0);
+        vm.assume(keccak256(_randomData) != keccak256(_randomData2));
+        vm.assume(keccak256(_randomData) != keccak256(_randomData3));
+        vm.assume(keccak256(_randomData2) != keccak256(_randomData3));
+
         bytes32[] memory data = new bytes32[](2);
         data[0] = keccak256(_randomData);
         data[1] = keccak256(_randomData2);
