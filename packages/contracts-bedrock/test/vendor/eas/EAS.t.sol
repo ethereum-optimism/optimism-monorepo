@@ -2230,16 +2230,17 @@ contract EASTest is CommonTest {
     /// @dev Tests batch revocation of multiple attestations.
     ///      Creates three attestations and revokes all in one
     ///      attestation. Then Vefifies all have a non-zero revocationTime.
-    function test_revokation_multiOffchain_succeeds(uint256 _count, uint64 _expirationOffset) public {
+    function test_revocation_multi_succeeds(uint256 _count, uint64 _expirationOffset) public {
         _count = bound(_count, 1, 10);
         _expirationOffset = uint64(bound(_expirationOffset, 1, 365 days));
         bytes32 schemaId = _registerSchema("bool like", true);
 
         vm.startPrank(sender);
 
-        // Create multiple attestations
+        // Create multiple attestations with unique data
         bytes32[] memory uids = new bytes32[](_count);
         for (uint256 i = 0; i < _count; i++) {
+            // Add timestamp to make each attestation unique
             uids[i] = eas.attest(
                 AttestationRequest({
                     schema: schemaId,
@@ -2248,7 +2249,7 @@ contract EASTest is CommonTest {
                         expirationTime: uint64(block.timestamp + _expirationOffset),
                         revocable: true,
                         refUID: ZERO_BYTES32,
-                        data: abi.encodePacked(bytes1(uint8(i + 1))),
+                        data: abi.encodePacked(bytes1(uint8(i + 1)), block.timestamp),  // Added timestamp
                         value: 0
                     })
                 })
@@ -2275,7 +2276,7 @@ contract EASTest is CommonTest {
         vm.stopPrank();
     }
 
-    function test_revokation_delegated_succeeds(string memory _name) public {
+    function test_revocation_delegated_succeeds(string memory _name) public {
         // Define schema and register it
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2354,7 +2355,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests multi-delegated revocation functionality
     /// Creates multiple attestations and revokes them through delegation
-    function test_revokation_multiDelegated_succeeds(uint256 _uint256Value) public {
+    function test_revocation_multiDelegated_succeeds(uint256 _uint256Value) public {
         vm.assume(_uint256Value < 1000000);
         string memory schema = "uint256 value";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
@@ -2415,7 +2416,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests access control for delegated revocations.
     /// Verifies that only the designated revoker can revoke through delegation
-    function test_revokationDelegated_invalidSignature_reverts(uint64 _expirationOffset) public {
+    function test_revocationDelegated_invalidSignature_reverts(uint64 _expirationOffset) public {
         vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
         vm.assume(sender2 != address(0));
         vm.assume(sender2 != attester); // Ensure sender2 is different from attester
@@ -2904,7 +2905,8 @@ contract EASTest is CommonTest {
 
     /// @dev Tests batch off-chain revocation functionality.
     ///      Demonstrates efficient batch processing of off-chain revocations
-    function test_revokeoffChain_multiple_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
+    function test_revocationMulti_mixed_succeeds(bytes memory _randomData, bytes memory _randomData2) public {
+        vm.assume(_randomData.length > 0 && _randomData2.length > 0);
         bytes32[] memory data = new bytes32[](3);
         data[0] = keccak256(_randomData);
         data[1] = keccak256(_randomData2);
@@ -3019,9 +3021,9 @@ contract EASTest is CommonTest {
 
         // Create the first batch of data to revoke
         bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256(abi.encodePacked(_randomData1));
-        data[1] = keccak256(abi.encodePacked(_randomData2));
-        data[2] = keccak256(abi.encodePacked(_randomData3));
+        data[0] = keccak256(abi.encodePacked(_randomData1, block.timestamp, uint256(1)));
+        data[1] = keccak256(abi.encodePacked(_randomData2, block.timestamp, uint256(2)));
+        data[2] = keccak256(abi.encodePacked(_randomData3, block.timestamp, uint256(3)));
 
         vm.startPrank(sender);
 
@@ -3036,8 +3038,8 @@ contract EASTest is CommonTest {
 
         // Create the second batch of data to revoke
         bytes32[] memory data2 = new bytes32[](2);
-        data2[0] = keccak256(abi.encodePacked(_randomData4));
-        data2[1] = keccak256(abi.encodePacked(_randomData5));
+        data2[0] = keccak256(abi.encodePacked(_randomData4, block.timestamp, uint256(4)));
+        data2[1] = keccak256(abi.encodePacked(_randomData5, block.timestamp, uint256(5)));
 
         eas.multiRevokeOffchain(data2);
 
@@ -3047,5 +3049,42 @@ contract EASTest is CommonTest {
         }
 
         vm.stopPrank();
+    }
+
+    function test_revokeMultiOffchain_alreadyRevoked_Revert(
+        bytes memory _data1,
+        bytes memory _data2,
+        bytes memory _data3
+    ) public {
+        // Ensure data is unique and not empty
+        vm.assume(_data1.length > 0);
+        vm.assume(_data2.length > 0);
+        vm.assume(_data3.length > 0);
+        vm.assume(keccak256(_data1) != keccak256(_data2));
+        vm.assume(keccak256(_data2) != keccak256(_data3));
+        vm.assume(keccak256(_data1) != keccak256(_data3));
+
+        bytes32[] memory data = new bytes32[](3);
+        data[0] = keccak256(_data1);
+        data[1] = keccak256(_data2);
+        data[2] = keccak256(_data3);
+
+        // First revocation should succeed
+        vm.prank(sender);
+        eas.multiRevokeOffchain(data);
+
+        // Second revocation of same data should fail
+        vm.prank(sender);
+        vm.expectRevert(AlreadyRevokedOffchain.selector);
+        eas.multiRevokeOffchain(data);
+
+        // Even a partial overlap should fail
+        bytes32[] memory newData = new bytes32[](2);
+        newData[0] = data[0];  // Using previously revoked data
+        newData[1] = keccak256(abi.encodePacked("new data")); // New data
+
+        vm.prank(sender);
+        vm.expectRevert(AlreadyRevokedOffchain.selector);
+        eas.multiRevokeOffchain(newData);
     }
 }
