@@ -533,15 +533,16 @@ contract EASTest is CommonTest {
     function test_attestationSignature_wrongSigner_reverts(uint256 _wrongSignerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_wrongSignerKey > 0 && _wrongSignerKey < CURVE_ORDER);
-        
+
         bytes32 schemaId = _registerSchema("bool like", true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
         address wrongSigner = vm.addr(_wrongSignerKey);
-        vm.assume(wrongSigner != sender);  // Make sure wrong signer isn't the actual sender
+        vm.assume(wrongSigner != sender); // Make sure wrong signer isn't the actual sender
 
         AttestationRequestData memory requestData = _createAttestationRequestData();
-        bytes32 digest = _createAttestationDigest(schemaId, requestData, sender, deadline, 0);  // Use sender here, not wrongSigner
+        bytes32 digest = _createAttestationDigest(schemaId, requestData, sender, deadline, 0); // Use sender here, not
+            // wrongSigner
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_wrongSignerKey, digest);
 
         DelegatedAttestationRequest memory request = DelegatedAttestationRequest({
@@ -894,10 +895,10 @@ contract EASTest is CommonTest {
     )
         public
     {
-        vm.assume(_resolver != address(0));  
-        vm.assume(_resolver.code.length == 0); 
+        vm.assume(_resolver != address(0));
+        vm.assume(_resolver.code.length == 0);
         vm.assume(_resolver != 0x000000000000000000636F6e736F6c652e6c6f67);
-        vm.assume(uint160(_resolver) > 0xFF);  
+        vm.assume(uint160(_resolver) > 0xFF);
         // Create schema string using valid types from docs
         string memory schema = "string name,uint256 age,bool isStudent";
 
@@ -951,12 +952,8 @@ contract EASTest is CommonTest {
         uint64 expirationTime = uint64(block.timestamp + 30 days);
         bytes memory data = hex"1234";
 
-        vm.assume(_resolver.code.length == 0);  // Ensure it's not a contract already
-        vm.mockCall(
-            _resolver,
-            abi.encodeWithSelector(ISchemaResolver.attest.selector),
-            abi.encode(true)
-        );
+        vm.assume(_resolver.code.length == 0); // Ensure it's not a contract already
+        vm.mockCall(_resolver, abi.encodeWithSelector(ISchemaResolver.attest.selector), abi.encode(true));
 
         bytes32 uid = eas.attest(
             AttestationRequest({
@@ -1098,14 +1095,15 @@ contract EASTest is CommonTest {
     function test_attestation_dataScenarios_succeeds(
         string memory _smallTestData,
         string memory _mediumTestData
-    ) public {
-
+    )
+        public
+    {
         // Relax the constraints
         vm.assume(bytes(_smallTestData).length > 0);
         vm.assume(bytes(_smallTestData).length < 100);
         vm.assume(bytes(_mediumTestData).length > 0);
         vm.assume(bytes(_mediumTestData).length < 1000);
-        
+
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1264,11 +1262,13 @@ contract EASTest is CommonTest {
         address _resolver,
         bool _revocable,
         address _recipient
-    ) public {
+    )
+        public
+    {
         vm.assume(_recipient != address(0));
-        
+
         string memory schema = "string name,uint256 age,bool isStudent";
-        
+
         vm.startPrank(sender);
         schemaRegistry.register(schema, ISchemaResolver(_resolver), _revocable);
         bytes32 schemaId = _getSchemaUID(schema, _resolver, _revocable);
@@ -2022,7 +2022,12 @@ contract EASTest is CommonTest {
 
     /// @dev Tests error conditions for delegated attestations.
     ///      Ensures proper error handling for InvalidLength and DeadlineExpired
-    function test_attestationMultiDelegated_invalidLengthAndDeadlineExpired_reverts(string memory _propertyName, string memory _value) public {
+    function test_attestationMultiDelegated_invalidLengthAndDeadlineExpired_reverts(
+        string memory _propertyName,
+        string memory _value
+    )
+        public
+    {
         string memory schema = string.concat("string ", _propertyName);
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -2265,7 +2270,7 @@ contract EASTest is CommonTest {
                         expirationTime: uint64(block.timestamp + _expirationOffset),
                         revocable: true,
                         refUID: ZERO_BYTES32,
-                        data: abi.encodePacked(bytes1(uint8(i + 1)), block.timestamp),  // Added timestamp
+                        data: abi.encodePacked(bytes1(uint8(i + 1)), block.timestamp), // Added timestamp
                         value: 0
                     })
                 })
@@ -3077,7 +3082,9 @@ contract EASTest is CommonTest {
         bytes memory _data1,
         bytes memory _data2,
         bytes memory _data3
-    ) public {
+    )
+        public
+    {
         // Ensure data is unique and not empty
         vm.assume(_data1.length > 0);
         vm.assume(_data2.length > 0);
@@ -3102,7 +3109,7 @@ contract EASTest is CommonTest {
 
         // Even a partial overlap should fail
         bytes32[] memory newData = new bytes32[](2);
-        newData[0] = data[0];  // Using previously revoked data
+        newData[0] = data[0]; // Using previously revoked data
         newData[1] = keccak256(abi.encodePacked("new data")); // New data
 
         vm.prank(sender);
