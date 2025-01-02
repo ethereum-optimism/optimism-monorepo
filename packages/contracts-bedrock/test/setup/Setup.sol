@@ -134,7 +134,7 @@ contract Setup {
         IOptimismSuperchainERC20Factory(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
     IEAS eas = IEAS(Predeploys.EAS);
     ISchemaRegistry schemaRegistry = ISchemaRegistry(Predeploys.SCHEMA_REGISTRY);
-    
+
     /// @notice Indicates whether a test is running against a forked production network.
     function isForkTest() public view returns (bool) {
         return vm.envOr("FORK_TEST", false);
