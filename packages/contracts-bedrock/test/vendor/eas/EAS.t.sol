@@ -499,7 +499,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests rejection of attestations with expired signature deadlines.
     ///      Ensures proper enforcement of signature deadlines in delegated attestations.
-    function test_AttestationSignature_expiredDeadline_reverts(uint256 _signerKey) public {
+    function test_attestationSignature_expiredDeadline_reverts(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -1834,7 +1834,7 @@ contract EASTest is CommonTest {
     /// Multi-delegation Tests
     /// @dev Tests batch attestation delegation functionality.
     ///      Demonstrates efficient batch processing of delegated attestations
-    function test_attestation_multiDelegated_succeeds(
+    function test_attestation_multiDelegatedBatch_succeeds(
         address _recipient,
         address _recipient2,
         string[] memory _names
@@ -2899,7 +2899,7 @@ contract EASTest is CommonTest {
     ///      Demonstrates off-chain revocation mechanism,
     ///      useful for revoking attestations without on-chain
     ///      transaction for each attestation
-    function test_revoke_succeeds_offchain(bytes memory _randomData) public {
+    function test_revoke_offchain_succeeds(bytes memory _randomData) public {
         bytes32 data = keccak256(_randomData);
 
         vm.prank(sender);
