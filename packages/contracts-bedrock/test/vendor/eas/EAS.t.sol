@@ -1082,13 +1082,14 @@ contract EASTest is CommonTest {
     function test_attestation_dataScenarios_succeeds(
         string memory _smallTestData,
         string memory _mediumTestData
-    )
-        public
-    {
-        vm.assume(bytes(_smallTestData).length > 2);
-        vm.assume(bytes(_smallTestData).length < 32);
-        vm.assume(bytes(_mediumTestData).length > 32);
-        vm.assume(bytes(_mediumTestData).length < 90);
+    ) public {
+
+        // Relax the constraints
+        vm.assume(bytes(_smallTestData).length > 0);
+        vm.assume(bytes(_smallTestData).length < 100);
+        vm.assume(bytes(_mediumTestData).length > 0);
+        vm.assume(bytes(_mediumTestData).length < 1000);
+        
         string memory schema = "bool like";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -2805,8 +2806,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests error conditions for multi-attestation delegation revocation.
     ///      Ensures proper validation of batch revocation parameters
-    function test_attestationMultiDelegation_invalidLength_reverts(string[] memory _name, uint8 _v) public {
-        vm.assume(_name.length == 2);
+    function test_attestationMultiDelegation_invalidLength_reverts(string[2] memory _names, uint8 _v) public {
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -2822,7 +2822,7 @@ contract EASTest is CommonTest {
                     expirationTime: uint64(block.timestamp + 30 days),
                     revocable: true,
                     refUID: ZERO_BYTES32,
-                    data: abi.encode(_name[0]),
+                    data: abi.encode(_names[0]),
                     value: 0
                 })
             })
@@ -2836,7 +2836,7 @@ contract EASTest is CommonTest {
                     expirationTime: uint64(block.timestamp + 30 days),
                     revocable: true,
                     refUID: ZERO_BYTES32,
-                    data: abi.encode(_name[1]),
+                    data: abi.encode(_names[1]),
                     value: 0
                 })
             })
