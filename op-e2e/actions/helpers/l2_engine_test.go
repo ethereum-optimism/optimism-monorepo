@@ -54,7 +54,7 @@ func TestL2EngineAPI(gt *testing.T) {
 		}
 	})
 
-	payloadA, err := eth.BlockAsPayloadEnv(chainA[0], sd.RollupCfg.CanyonTime)
+	payloadA, err := eth.BlockAsPayloadEnv(chainA[0], sd.L2Cfg.Config)
 	require.NoError(t, err)
 
 	// apply the payload
@@ -83,7 +83,7 @@ func TestL2EngineAPI(gt *testing.T) {
 		}
 	})
 
-	payloadB, err := eth.BlockAsPayloadEnv(chainB[0], sd.RollupCfg.CanyonTime)
+	payloadB, err := eth.BlockAsPayloadEnv(chainB[0], sd.L2Cfg.Config)
 	require.NoError(t, err)
 
 	// apply the payload

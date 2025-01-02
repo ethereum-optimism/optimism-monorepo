@@ -351,12 +351,12 @@ func CopyPayload(ctx context.Context, number uint64, copyFrom client.RPC, copyTo
 }
 
 func blockAsPayloadEnv(block *types.Block, evp sources.EngineVersionProvider) (*eth.ExecutionPayloadEnvelope, error) {
-	var canyon *uint64
+	var config params.ChainConfig
 	// hack: if we're calling at least FCUV2, get empty withdrawals by setting Canyon before the block time
 	if v := evp.ForkchoiceUpdatedVersion(&eth.PayloadAttributes{Timestamp: hexutil.Uint64(block.Time())}); v != eth.FCUV1 {
-		canyon = new(uint64)
+		config.CanyonTime = new(uint64)
 	}
-	return eth.BlockAsPayloadEnv(block, canyon)
+	return eth.BlockAsPayloadEnv(block, &config)
 }
 
 func SetForkchoice(ctx context.Context, client *sources.EngineAPIClient, finalizedNum, safeNum, unsafeNum uint64) error {
