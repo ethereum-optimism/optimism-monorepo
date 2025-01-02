@@ -171,7 +171,7 @@ contract EASTest is CommonTest {
     {
         bytes32 structHash = keccak256(
             abi.encode(
-                getDelegatedAttestationTypeHash(),
+                _getDelegatedAttestationTypeHash(),
                 attesterAddress,
                 schemaId,
                 data.recipient,
@@ -228,7 +228,7 @@ contract EASTest is CommonTest {
 
     /// @dev Creates and verifies a direct signature attestation
     function _testDirectSignature(bytes32 schemaId, uint256 signerKey) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         address signer = vm.addr(signerKey);
         // Test direct attestation
         vm.prank(signer);
@@ -243,7 +243,7 @@ contract EASTest is CommonTest {
 
     /// @dev Creates and verifies a proxy-based signature attestation
     function _testProxySignature(bytes32 schemaId) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         uint64 deadline = uint64(block.timestamp + 1 days);
 
         uint256 signerKey = 0x12345;
@@ -278,7 +278,7 @@ contract EASTest is CommonTest {
 
     /// @dev Creates and verifies a delegated signature attestation
     function _testDelegatedSignature(bytes32 schemaId, uint256 signerKey) internal {
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         uint64 deadline = uint64(block.timestamp + 1 days);
         address signer = vm.addr(signerKey);
         vm.deal(signer, 100 ether);
@@ -461,12 +461,12 @@ contract EASTest is CommonTest {
         address signer = vm.addr(signerKey);
         vm.deal(signer, 100 ether);
 
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         bytes32 DOMAIN_SEPARATOR = _createDomainSeparator();
 
         bytes32 structHash = keccak256(
             abi.encode(
-                getDelegatedAttestationTypeHash(),
+                _getDelegatedAttestationTypeHash(),
                 signer,
                 schemaId,
                 requestData.recipient,
@@ -503,7 +503,7 @@ contract EASTest is CommonTest {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
 
         // Set a specific timestamp
         vm.warp(1000);
@@ -539,7 +539,7 @@ contract EASTest is CommonTest {
         uint256 wrongSignerKey = _wrongSignerKey;
         address wrongSigner = vm.addr(wrongSignerKey);
 
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         bytes32 digest = _createAttestationDigest(schemaId, requestData, wrongSigner, deadline, 0);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(wrongSignerKey, digest);
 
@@ -567,7 +567,7 @@ contract EASTest is CommonTest {
         uint256 signerKey = 0x12345;
         address signer = vm.addr(signerKey);
 
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         bytes32 digest = _createAttestationDigest(schemaId, requestData, signer, deadline, 0);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(signerKey, digest);
 
@@ -678,7 +678,7 @@ contract EASTest is CommonTest {
         address signer = vm.addr(_signerKey);
         vm.deal(signer, 100 ether);
 
-        AttestationRequestData memory requestData = createAttestationRequestData();
+        AttestationRequestData memory requestData = _createAttestationRequestData();
         bytes32 digest = _createAttestationDigest(schemaId, requestData, signer, deadline, 0);
         (uint8 v, bytes32 r, bytes32 s) = vm.sign(_signerKey, digest);
 
