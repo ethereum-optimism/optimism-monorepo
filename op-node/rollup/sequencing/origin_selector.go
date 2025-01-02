@@ -62,8 +62,8 @@ func (los *L1OriginSelector) OnEvent(ev event.Event) bool {
 // FindL1Origin determines what the next L1 Origin should be.
 // The L1 Origin is either the L2 Head's Origin, or the following L1 block
 // if the next L2 block's time is greater than or equal to the L2 Head's Origin.
-func (los *L1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef) (eth.L1BlockRef, error) {
-	currentOrigin, nextOrigin, err := los.CurrentAndNextOrigin(ctx, l2Head)
+func (los *L1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef, recoverMode bool) (eth.L1BlockRef, error) {
+	currentOrigin, nextOrigin, err := los.CurrentAndNextOrigin(ctx, l2Head, recoverMode)
 	if err != nil {
 		return eth.L1BlockRef{}, err
 	}
@@ -110,9 +110,25 @@ func (los *L1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2Bloc
 	return nextOrigin, nil
 }
 
-func (los *L1OriginSelector) CurrentAndNextOrigin(ctx context.Context, l2Head eth.L2BlockRef) (eth.L1BlockRef, eth.L1BlockRef, error) {
+func (los *L1OriginSelector) CurrentAndNextOrigin(ctx context.Context, l2Head eth.L2BlockRef, recoverMode bool) (eth.L1BlockRef, eth.L1BlockRef, error) {
 	los.mu.Lock()
 	defer los.mu.Unlock()
+
+	if recoverMode {
+		currentOrigin, err := los.l1.L1BlockRefByHash(ctx, l2Head.L1Origin.Hash)
+		if err != nil {
+			return eth.L1BlockRef{}, eth.L1BlockRef{},
+				derive.NewTemporaryError(fmt.Errorf("failed to fetch current L1 origin: %w", err))
+		}
+		los.currentOrigin = currentOrigin
+		nextOrigin, err := los.l1.L1BlockRefByNumber(ctx, currentOrigin.Number+1)
+		if err != nil {
+			return eth.L1BlockRef{}, eth.L1BlockRef{},
+				derive.NewTemporaryError(fmt.Errorf("failed to fetch next L1 origin: %w", err))
+		}
+		los.nextOrigin = nextOrigin
+		return los.currentOrigin, los.nextOrigin, nil
+	}
 
 	if l2Head.L1Origin == los.currentOrigin.ID() {
 		// Most likely outcome: the L2 head is still on the current origin.
@@ -154,9 +170,9 @@ func (los *L1OriginSelector) onForkchoiceUpdate(unsafeL2Head eth.L2BlockRef) {
 	ctx, cancel := context.WithTimeout(los.ctx, 500*time.Millisecond)
 	defer cancel()
 
-	currentOrigin, nextOrigin, err := los.CurrentAndNextOrigin(ctx, unsafeL2Head)
+	currentOrigin, nextOrigin, err := los.CurrentAndNextOrigin(ctx, unsafeL2Head, false)
 	if err != nil {
-		log.Error("Failed to get current and next L1 origin on forkchoice update", "err", err)
+		los.log.Error("Failed to get current and next L1 origin on forkchoice update", "err", err)
 		return
 	}
 
@@ -178,9 +194,9 @@ func (los *L1OriginSelector) tryFetchNextOrigin(ctx context.Context, currentOrig
 
 	if _, err := los.fetch(ctx, currentOrigin.Number+1); err != nil {
 		if errors.Is(err, ethereum.NotFound) {
-			log.Debug("No next potential L1 origin found")
+			los.log.Debug("No next potential L1 origin found")
 		} else {
-			log.Error("Failed to get next origin", "err", err)
+			los.log.Error("Failed to get next origin", "err", err)
 		}
 	}
 }

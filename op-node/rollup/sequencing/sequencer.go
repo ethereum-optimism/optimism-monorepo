@@ -29,7 +29,7 @@ var (
 )
 
 type L1OriginSelectorIface interface {
-	FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef) (eth.L1BlockRef, error)
+	FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef, recoverMode bool) (eth.L1BlockRef, error)
 }
 
 type Metrics interface {
@@ -84,6 +84,8 @@ type Sequencer struct {
 	spec      *rollup.ChainSpec
 
 	maxSafeLag atomic.Uint64
+
+	recoverMode atomic.Bool
 
 	// active identifies whether the sequencer is running.
 	// This is an atomic value, so it can be read without locking the whole sequencer.
@@ -488,8 +490,10 @@ func (d *Sequencer) startBuildingBlock() {
 		return
 	}
 
+	recoverMode := d.recoverMode.Load()
+
 	// Figure out which L1 origin block we're going to be building on top of.
-	l1Origin, err := d.l1OriginSelector.FindL1Origin(ctx, l2Head)
+	l1Origin, err := d.l1OriginSelector.FindL1Origin(ctx, l2Head, recoverMode)
 	if err != nil {
 		d.log.Error("Error finding next L1 Origin", "err", err)
 		d.emitter.Emit(rollup.L1TemporaryErrorEvent{Err: err})
@@ -546,6 +550,11 @@ func (d *Sequencer) startBuildingBlock() {
 	// For the Granite activation block we shouldn't include any sequencer transactions.
 	if d.rollupCfg.IsGraniteActivationBlock(uint64(attrs.Timestamp)) {
 		d.log.Info("Sequencing Granite upgrade block")
+	}
+
+	if recoverMode {
+		attrs.NoTxPool = true
+		d.log.Warn("Sequencing temporarily without user transactions, in catch-up mode")
 	}
 
 	d.log.Debug("prepared attributes for new block",
@@ -717,6 +726,10 @@ func (d *Sequencer) OverrideLeader(ctx context.Context) error {
 
 func (d *Sequencer) ConductorEnabled(ctx context.Context) bool {
 	return d.conductor.Enabled(ctx)
+}
+
+func (d *Sequencer) SetRecoverMode(mode bool) {
+	d.recoverMode.Store(mode)
 }
 
 func (d *Sequencer) Close() {

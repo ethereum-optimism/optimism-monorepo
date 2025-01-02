@@ -31,11 +31,11 @@ type MockL1OriginSelector struct {
 	originOverride eth.L1BlockRef // override which origin gets picked
 }
 
-func (m *MockL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef) (eth.L1BlockRef, error) {
+func (m *MockL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef, recoverMode bool) (eth.L1BlockRef, error) {
 	if m.originOverride != (eth.L1BlockRef{}) {
 		return m.originOverride, nil
 	}
-	return m.actual.FindL1Origin(ctx, l2Head)
+	return m.actual.FindL1Origin(ctx, l2Head, recoverMode)
 }
 
 // L2Sequencer is an actor that functions like a rollup node,
@@ -178,7 +178,7 @@ func (s *L2Sequencer) ActBuildToL1HeadUnsafe(t Testing) {
 func (s *L2Sequencer) ActBuildToL1HeadExcl(t Testing) {
 	for {
 		s.ActL2PipelineFull(t)
-		nextOrigin, err := s.mockL1OriginSelector.FindL1Origin(t.Ctx(), s.engine.UnsafeL2Head())
+		nextOrigin, err := s.mockL1OriginSelector.FindL1Origin(t.Ctx(), s.engine.UnsafeL2Head(), false)
 		require.NoError(t, err)
 		if nextOrigin.Number >= s.syncStatus.L1Head().Number {
 			break
@@ -191,7 +191,7 @@ func (s *L2Sequencer) ActBuildToL1HeadExcl(t Testing) {
 func (s *L2Sequencer) ActBuildToL1HeadExclUnsafe(t Testing) {
 	for {
 		// Note: the derivation pipeline does not run, we are just sequencing a block on top of the existing L2 chain.
-		nextOrigin, err := s.mockL1OriginSelector.FindL1Origin(t.Ctx(), s.engine.UnsafeL2Head())
+		nextOrigin, err := s.mockL1OriginSelector.FindL1Origin(t.Ctx(), s.engine.UnsafeL2Head(), false)
 		require.NoError(t, err)
 		if nextOrigin.Number >= s.syncStatus.L1Head().Number {
 			break
