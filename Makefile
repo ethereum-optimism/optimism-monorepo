@@ -80,7 +80,7 @@ cross-op-node: ## Builds cross-platform Docker image for op-node
 			--no-cache \
 			-f docker-bake.hcl \
 			op-node
-.PHONY: golang-docker
+.PHONY: cross-op-node
 
 contracts-bedrock-docker: ## Builds Docker image for Bedrock contracts
 	IMAGE_TAGS=$$(git rev-parse HEAD),latest \
