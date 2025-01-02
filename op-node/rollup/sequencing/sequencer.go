@@ -554,7 +554,7 @@ func (d *Sequencer) startBuildingBlock() {
 
 	if recoverMode {
 		attrs.NoTxPool = true
-		d.log.Warn("Sequencing temporarily without user transactions, in catch-up mode")
+		d.log.Warn("Sequencing temporarily without user transactions, in recover mode")
 	}
 
 	d.log.Debug("prepared attributes for new block",
