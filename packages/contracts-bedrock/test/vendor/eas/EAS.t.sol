@@ -1667,8 +1667,8 @@ contract EASTest is CommonTest {
     )
         public
     {
-        vm.assume(_expirationTimeOffset > 0 && _deadlineOffset > 0);
-        vm.assume(_expirationTimeOffset < 365 && _deadlineOffset < 365);
+        _expirationTimeOffset = bound(_expirationTimeOffset, 1, 364);
+        _deadlineOffset = bound(_deadlineOffset, 1, 364);
         string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
@@ -1730,8 +1730,8 @@ contract EASTest is CommonTest {
     )
         public
     {
-        vm.assume(_expirationTimeOffset > 0 && _deadlineOffset > 0);
-        vm.assume(_expirationTimeOffset < 365 && _deadlineOffset < 365);
+        _expirationTimeOffset = bound(_expirationTimeOffset, 1, 364);
+        _deadlineOffset = bound(_deadlineOffset, 1, 364);
         string memory schema = "string name,uint256 age,bool isStudent";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
         bytes memory data = abi.encode(_name, _age, _isStudent);
