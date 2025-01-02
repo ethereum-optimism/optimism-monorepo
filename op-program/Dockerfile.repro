@@ -50,6 +50,11 @@ RUN mv /app/op-program/bin/0-mt64.json /app/op-program/bin/prestate-proof-mt64.j
 # Exports files to the specified output location.
 # Writing files to host requires buildkit to be enabled.
 # e.g. `BUILDKIT=1 docker build ...`
+FROM scratch AS export-stage-proofs
+COPY --from=builder /app/op-program/bin/prestate-proof.json .
+COPY --from=builder /app/op-program/bin/prestate-proof-mt.json .
+COPY --from=builder /app/op-program/bin/prestate-proof-mt64.json .
+
 FROM scratch AS export-stage
 COPY --from=builder /app/op-program/bin/op-program-client.elf .
 COPY --from=builder /app/op-program/bin/op-program-client64.elf .

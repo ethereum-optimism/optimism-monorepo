@@ -9,8 +9,7 @@ _contracts-build BUNDLE='contracts-bundle.tar.gz':
     tar -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
 
 _prestate-build PATH='.':
-    make -C ../op-program reproducible-prestate
-    cp ../op-program/bin/prestate-proof*.json {{PATH}}
+    docker buildx build --output {{PATH}} --target export-stage-proofs --progress plain -f ../op-program/Dockerfile.repro ../
 
 _docker_build TAG TARGET='' CONTEXT='.' DOCKERFILE='Dockerfile':
     docker buildx build -t {{TAG}} \
