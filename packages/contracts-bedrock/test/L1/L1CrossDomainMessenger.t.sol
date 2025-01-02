@@ -29,7 +29,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() external virtual {
-        IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(deploy.mustGetAddress("L1CrossDomainMessenger"));
+        IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(deploy.mustGetAddress("L1CrossDomainMessengerImpl"));
         assertEq(address(impl.superchainConfig()), address(0));
         assertEq(address(impl.PORTAL()), address(0));
         assertEq(address(impl.portal()), address(0));
