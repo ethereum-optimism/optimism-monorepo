@@ -467,21 +467,22 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        bytes4 selector = ISystemConfig.initialize.selector;
         (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
-            defaultSystemConfigParams(selector, _input, _output);
+            defaultSystemConfigParams(_input, _output);
 
-        return abi.encodeWithSelector(
-            selector,
-            _input.roles.systemConfigOwner,
-            _input.basefeeScalar,
-            _input.blobBasefeeScalar,
-            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-            _input.gasLimit,
-            _input.roles.unsafeBlockSigner,
-            referenceResourceConfig,
-            chainIdToBatchInboxAddress(_input.l2ChainId),
-            opChainAddrs
+        return abi.encodeCall(
+            ISystemConfig.initialize,
+            (
+                _input.roles.systemConfigOwner,
+                _input.basefeeScalar,
+                _input.blobBasefeeScalar,
+                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
+                _input.gasLimit,
+                _input.roles.unsafeBlockSigner,
+                referenceResourceConfig,
+                chainIdToBatchInboxAddress(_input.l2ChainId),
+                opChainAddrs
+            )
         );
     }
 
@@ -595,7 +596,6 @@ contract OPContractsManager is ISemver {
     /// @notice Returns default, standard config arguments for the SystemConfig initializer.
     /// This is used by subclasses to reduce code duplication.
     function defaultSystemConfigParams(
-        bytes4, /* selector */
         DeployInput memory, /* _input */
         DeployOutput memory _output
     )
