@@ -62,6 +62,7 @@ participants:
     el_extra_params:
       - "--gcmode=archive"
       - "--rpc.txfeecap=0"
+      - "--netrestrict=172.17.0.0/16"
     cl_type: lighthouse
 network_params:
   prefunded_accounts: '{ "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": { "balance": "1000000ETH" } }'
