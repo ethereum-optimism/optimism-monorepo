@@ -103,7 +103,7 @@ func (o *OracleEngine) PayloadByHash(ctx context.Context, hash common.Hash) (*et
 	if block == nil {
 		return nil, ErrNotFound
 	}
-	return eth.BlockAsPayloadEnv(block, o.backend.Config().ShanghaiTime)
+	return eth.BlockAsPayloadEnv(block, o.backend.Config())
 }
 
 func (o *OracleEngine) PayloadByNumber(ctx context.Context, n uint64) (*eth.ExecutionPayloadEnvelope, error) {
