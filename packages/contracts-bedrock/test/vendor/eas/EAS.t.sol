@@ -1601,7 +1601,7 @@ contract EASTest is CommonTest {
     {
         string memory schema =
             "address userAddress,string userName,bool isActive,address userAddress2,string userName2,bool isActive2";
-        vm.assume(_value <= 10);
+        _value = bound(_value, 1, 10);
         bytes32 schemaId = _getSchemaUID(schema, address(payableResolver), true);
 
         vm.startPrank(sender);
@@ -2665,8 +2665,7 @@ contract EASTest is CommonTest {
     /// @dev Tests revocation behavior in referenced attestations.
     ///      Demonstrates that revocation does not cascade through
     ///      referenced attestations.
-    function test_cascadingRevocation_succeeds(string[] memory _names) public {
-        vm.assume(_names.length == 2);
+    function test_cascadingRevocation_succeeds(string[2] memory _names) public {
         string memory schema = "string name";
         bytes32 schemaId = _getSchemaUID(schema, address(0), true);
 
