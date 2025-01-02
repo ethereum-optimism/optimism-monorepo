@@ -291,6 +291,11 @@ func (c *mockDriverClient) ConductorEnabled(ctx context.Context) (bool, error) {
 	return c.Mock.MethodCalled("ConductorEnabled").Get(0).(bool), nil
 }
 
+func (c *mockDriverClient) SetRecoverMode(ctx context.Context, mode bool) error {
+	c.Mock.MethodCalled("SetRecoverMode")
+	return nil
+}
+
 type mockSafeDBReader struct {
 	mock.Mock
 }

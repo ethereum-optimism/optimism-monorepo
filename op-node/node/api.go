@@ -35,6 +35,7 @@ type driverClient interface {
 	OnUnsafeL2Payload(ctx context.Context, payload *eth.ExecutionPayloadEnvelope) error
 	OverrideLeader(ctx context.Context) error
 	ConductorEnabled(ctx context.Context) (bool, error)
+	SetRecoverMode(ctx context.Context, mode bool) error
 }
 
 type SafeDBReader interface {
@@ -104,6 +105,10 @@ func (n *adminAPI) ConductorEnabled(ctx context.Context) (bool, error) {
 	recordDur := n.M.RecordRPCServerRequest("admin_conductorEnabled")
 	defer recordDur()
 	return n.dr.ConductorEnabled(ctx)
+}
+
+func (n *adminAPI) SetRecoverMode(ctx context.Context, mode bool) error {
+	return n.dr.SetRecoverMode(ctx, mode)
 }
 
 type nodeAPI struct {

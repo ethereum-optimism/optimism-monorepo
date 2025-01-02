@@ -79,8 +79,9 @@ type Driver struct {
 // The loop will have been started iff err is not nil.
 func (s *Driver) Start() error {
 	log.Info("Starting driver", "sequencerEnabled", s.driverConfig.SequencerEnabled,
-		"sequencerStopped", s.driverConfig.SequencerStopped)
+		"sequencerStopped", s.driverConfig.SequencerStopped, "recoverMode", s.driverConfig.RecoverMode)
 	if s.driverConfig.SequencerEnabled {
+		s.sequencer.SetRecoverMode(s.driverConfig.RecoverMode)
 		if err := s.sequencer.SetMaxSafeLag(s.driverCtx, s.driverConfig.SequencerMaxSafeLag); err != nil {
 			return fmt.Errorf("failed to set sequencer max safe lag: %w", err)
 		}
@@ -485,6 +486,11 @@ func (s *Driver) OverrideLeader(ctx context.Context) error {
 
 func (s *Driver) ConductorEnabled(ctx context.Context) (bool, error) {
 	return s.sequencer.ConductorEnabled(ctx), nil
+}
+
+func (s *Driver) SetRecoverMode(ctx context.Context, mode bool) error {
+	s.sequencer.SetRecoverMode(mode)
+	return nil
 }
 
 // SyncStatus blocks the driver event loop and captures the syncing status.

@@ -236,6 +236,13 @@ var (
 		Value:    4,
 		Category: SequencerCategory,
 	}
+	SequencerRecoverMode = &cli.BoolFlag{
+		Name:     "sequencer.recover",
+		Usage:    "Forces the sequencer to strictly prepare the next L1 origin and create empty L2 blocks",
+		EnvVars:  prefixEnvVars("SEQUENCER_RECOVER"),
+		Value:    false,
+		Category: SequencerCategory,
+	}
 	L1EpochPollIntervalFlag = &cli.DurationFlag{
 		Name:     "l1.epoch-poll-interval",
 		Usage:    "Poll interval for retrieving new L1 epoch updates such as safe and finalized block changes. Disabled if 0 or negative.",
@@ -401,6 +408,7 @@ var optionalFlags = []cli.Flag{
 	SequencerStoppedFlag,
 	SequencerMaxSafeLagFlag,
 	SequencerL1Confs,
+	SequencerRecoverMode,
 	L1EpochPollIntervalFlag,
 	RuntimeConfigReloadIntervalFlag,
 	RPCEnableAdmin,

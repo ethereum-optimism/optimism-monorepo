@@ -20,4 +20,8 @@ type Config struct {
 	// SequencerMaxSafeLag is the maximum number of L2 blocks for restricting the distance between L2 safe and unsafe.
 	// Disabled if 0.
 	SequencerMaxSafeLag uint64 `json:"sequencer_max_safe_lag"`
+
+	// RecoverMode forces the sequencer to select the next L1 Origin exactly, and create an empty block,
+	// to be compatible with verifiers forcefully generating the same block.
+	RecoverMode bool `json:"recover_mode"`
 }

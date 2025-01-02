@@ -74,7 +74,7 @@ type FakeL1OriginSelector struct {
 	l1OriginFn func(l2Head eth.L2BlockRef) (eth.L1BlockRef, error)
 }
 
-func (f *FakeL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef) (eth.L1BlockRef, error) {
+func (f *FakeL1OriginSelector) FindL1Origin(ctx context.Context, l2Head eth.L2BlockRef, recoverMode bool) (eth.L1BlockRef, error) {
 	f.request = l2Head
 	return f.l1OriginFn(l2Head)
 }
