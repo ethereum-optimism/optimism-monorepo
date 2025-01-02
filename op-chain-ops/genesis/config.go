@@ -996,13 +996,8 @@ func (d *DeployConfig) RollupConfig(l1StartBlock *types.Header, l2GenesisBlockHa
 				Hash:   l2GenesisBlockHash,
 				Number: l2GenesisBlockNumber,
 			},
-			L2Time: l1StartBlock.Time,
-			SystemConfig: eth.SystemConfig{
-				BatcherAddr: d.BatchSenderAddress,
-				Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(d.GasPriceOracleOverhead))),
-				Scalar:      eth.Bytes32(d.FeeScalar()),
-				GasLimit:    uint64(d.L2GenesisBlockGasLimit),
-			},
+			L2Time:       l1StartBlock.Time,
+			SystemConfig: d.GenesisSystemConfig(),
 		},
 		BlockTime:               d.L2BlockTime,
 		MaxSequencerDrift:       d.MaxSequencerDrift,
@@ -1025,6 +1020,17 @@ func (d *DeployConfig) RollupConfig(l1StartBlock *types.Header, l2GenesisBlockHa
 		ProtocolVersionsAddress: d.ProtocolVersionsProxy,
 		AltDAConfig:             altDA,
 	}, nil
+}
+
+// GenesisSystemConfig converts a DeployConfig to a eth.SystemConfig. If Ecotone is active at genesis, the
+// Overhead value is considered a noop.
+func (d *DeployConfig) GenesisSystemConfig() eth.SystemConfig {
+	return eth.SystemConfig{
+		BatcherAddr: d.BatchSenderAddress,
+		Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(d.GasPriceOracleOverhead))),
+		Scalar:      d.FeeScalar(),
+		GasLimit:    uint64(d.L2GenesisBlockGasLimit),
+	}
 }
 
 // NewDeployConfig reads a config file given a path on the filesystem.
