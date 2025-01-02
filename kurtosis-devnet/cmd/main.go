@@ -137,11 +137,6 @@ func localPrestateOption(cfg *config, server *staticServer) tmpl.TemplateContext
 			return "", fmt.Errorf("failed to create prestate build directory: %w", err)
 		}
 
-		// Build all prestate files directly in the target directory
-		if err := prestateBuilder.Build(buildDir); err != nil {
-			return "", fmt.Errorf("failed to build prestates: %w", err)
-		}
-
 		// Get the relative path from server.dir to buildDir for the URL
 		relPath, err := filepath.Rel(server.dir, buildDir)
 		if err != nil {
@@ -152,6 +147,17 @@ func localPrestateOption(cfg *config, server *staticServer) tmpl.TemplateContext
 
 		if cfg.dryRun {
 			return url, nil
+		}
+
+		// Check if we already have prestate files. Typical in interop mode,
+		// where we have a prestate for each chain.
+		if dir, _ := os.ReadDir(buildDir); len(dir) > 0 {
+			return url, nil
+		}
+
+		// Build all prestate files directly in the target directory
+		if err := prestateBuilder.Build(buildDir); err != nil {
+			return "", fmt.Errorf("failed to build prestates: %w", err)
 		}
 
 		// Find all prestate-proof*.json files
