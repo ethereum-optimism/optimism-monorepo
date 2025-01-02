@@ -32,8 +32,6 @@ builds:
     ldflags:
       - -X main.GitCommit={{ .FullCommit }}
       - -X main.GitDate={{ .CommitDate }}
-      - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Version={{ .Version }}
-      - -X github.com/ethereum-optimism/optimism/op-chain-ops/deployer/version.Meta="unstable"
 
 archives:
   - format: tar.gz
