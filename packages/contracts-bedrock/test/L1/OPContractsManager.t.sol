@@ -1,11 +1,18 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
-
-import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
+import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 
+// Scripts
+import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
+
+// Libraries
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
+
+// Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -146,5 +153,32 @@ contract OPContractsManager_InternalMethods_Test is Test {
         expected = 0x00a9C584056064687E149968cBaB758a3376D22A;
         actual = opcmHarness.chainIdToBatchInboxAddress_exposed(chainId);
         vm.assertEq(expected, actual);
+    }
+}
+
+contract OPContractsManager_Upgrade_Test is CommonTest {
+    function setUp() public override {
+        super.setUp();
+        if (!isForkTest()) {
+            // This test is only supported in forked tests, as we are testing the upgrade.
+            vm.skip(true);
+        }
+    }
+
+    function test_upgrade_succeeds() public {
+        // TODO: make a state var for opcm in CommonTest
+        OPContractsManager opcm = OPContractsManager(deploy.mustGetAddress("OPContractsManager_NextVersion"));
+        OPContractsManager.Implementations memory impls = opcm.implementations();
+        assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
+        assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
+        assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
+        assertEq(impls.optimismPortalImpl, EIP1967Helper.getImplementation(address(optimismPortal2)));
+        assertEq(
+            impls.optimismMintableERC20FactoryImpl,
+            EIP1967Helper.getImplementation(address(l1OptimismMintableERC20Factory))
+        );
+        assertEq(impls.l1StandardBridgeImpl, EIP1967Helper.getImplementation(address(l1StandardBridge)));
+
+        assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
     }
 }

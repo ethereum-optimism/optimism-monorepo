@@ -29,3 +29,10 @@ contract Reverter {
         revert();
     }
 }
+
+contract DelegateCaller {
+    function dcForward(address _target, bytes calldata _data) external {
+        (bool success,) = _target.delegatecall(_data);
+        require(success, "DelegateCaller: Delegatecall failed");
+    }
+}

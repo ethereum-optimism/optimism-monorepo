@@ -2,6 +2,7 @@
 pragma solidity 0.8.15;
 
 import { console2 as console } from "forge-std/console2.sol";
+
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -140,6 +141,10 @@ contract OPContractsManager is ISemver {
     /// @notice Addresses of the latest implementation contracts.
     Implementations internal implementation;
 
+    /// @notice The OPContractsManager contract that is currently being used. This is needed in the upgrade function
+    /// which is intended to be DELEGATECALLed.
+    OPContractsManager public immutable thisOPCM;
+
     // -------- Events --------
 
     /// @notice Emitted when a new OP Stack chain is deployed.
@@ -197,6 +202,7 @@ contract OPContractsManager is ISemver {
 
         blueprint = _blueprints;
         implementation = _implementations;
+        thisOPCM = this;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -375,6 +381,8 @@ contract OPContractsManager is ISemver {
     /// @param _proxyAdmins Array of ProxyAdmin contracts, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
     function upgrade(ISystemConfig[] calldata _systemConfigs, IProxyAdmin[] calldata _proxyAdmins) external {
+        Implementations memory impls = thisOPCM.implementations();
+
         for (uint256 i = 0; i < _systemConfigs.length; i++) {
             ISystemConfig systemConfig = _systemConfigs[i];
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
@@ -388,6 +396,15 @@ contract OPContractsManager is ISemver {
             });
 
             IProxyAdmin proxyAdmin = _proxyAdmins[i];
+            proxyAdmin.upgrade(payable(address(systemConfig)), impls.systemConfigImpl);
+            proxyAdmin.upgrade(payable(opChainAddrs.l1CrossDomainMessenger), impls.l1CrossDomainMessengerImpl);
+            proxyAdmin.upgrade(payable(opChainAddrs.l1ERC721Bridge), impls.l1ERC721BridgeImpl);
+            proxyAdmin.upgrade(payable(opChainAddrs.l1StandardBridge), impls.l1StandardBridgeImpl);
+            proxyAdmin.upgrade(payable(opChainAddrs.disputeGameFactory), impls.disputeGameFactoryImpl);
+            proxyAdmin.upgrade(payable(opChainAddrs.optimismPortal), impls.optimismPortalImpl);
+            proxyAdmin.upgrade(
+                payable(opChainAddrs.optimismMintableERC20Factory), impls.optimismMintableERC20FactoryImpl
+            );
         }
     }
 
