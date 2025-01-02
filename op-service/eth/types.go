@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/holiman/uint256"
 )
@@ -310,7 +311,7 @@ func (envelope *ExecutionPayloadEnvelope) CheckBlockHash() (actual common.Hash, 
 	return blockHash, blockHash == payload.BlockHash
 }
 
-func BlockAsPayload(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayload, error) {
+func BlockAsPayload(bl *types.Block, config *params.ChainConfig) (*ExecutionPayload, error) {
 	baseFee, overflow := uint256.FromBig(bl.BaseFee())
 	if overflow {
 		return nil, fmt.Errorf("invalid base fee in block: %s", bl.BaseFee())
@@ -325,34 +326,37 @@ func BlockAsPayload(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayload, e
 	}
 
 	payload := &ExecutionPayload{
-		ParentHash:      bl.ParentHash(),
-		FeeRecipient:    bl.Coinbase(),
-		StateRoot:       Bytes32(bl.Root()),
-		ReceiptsRoot:    Bytes32(bl.ReceiptHash()),
-		LogsBloom:       Bytes256(bl.Bloom()),
-		PrevRandao:      Bytes32(bl.MixDigest()),
-		BlockNumber:     Uint64Quantity(bl.NumberU64()),
-		GasLimit:        Uint64Quantity(bl.GasLimit()),
-		GasUsed:         Uint64Quantity(bl.GasUsed()),
-		Timestamp:       Uint64Quantity(bl.Time()),
-		ExtraData:       bl.Extra(),
-		BaseFeePerGas:   Uint256Quantity(*baseFee),
-		BlockHash:       bl.Hash(),
-		Transactions:    opaqueTxs,
-		ExcessBlobGas:   (*Uint64Quantity)(bl.ExcessBlobGas()),
-		BlobGasUsed:     (*Uint64Quantity)(bl.BlobGasUsed()),
-		WithdrawalsRoot: bl.Header().WithdrawalsHash,
+		ParentHash:    bl.ParentHash(),
+		FeeRecipient:  bl.Coinbase(),
+		StateRoot:     Bytes32(bl.Root()),
+		ReceiptsRoot:  Bytes32(bl.ReceiptHash()),
+		LogsBloom:     Bytes256(bl.Bloom()),
+		PrevRandao:    Bytes32(bl.MixDigest()),
+		BlockNumber:   Uint64Quantity(bl.NumberU64()),
+		GasLimit:      Uint64Quantity(bl.GasLimit()),
+		GasUsed:       Uint64Quantity(bl.GasUsed()),
+		Timestamp:     Uint64Quantity(bl.Time()),
+		ExtraData:     bl.Extra(),
+		BaseFeePerGas: Uint256Quantity(*baseFee),
+		BlockHash:     bl.Hash(),
+		Transactions:  opaqueTxs,
+		ExcessBlobGas: (*Uint64Quantity)(bl.ExcessBlobGas()),
+		BlobGasUsed:   (*Uint64Quantity)(bl.BlobGasUsed()),
 	}
 
-	if shanghaiTime != nil && uint64(payload.Timestamp) >= *shanghaiTime {
+	if config.ShanghaiTime != nil && uint64(payload.Timestamp) >= *config.ShanghaiTime {
 		payload.Withdrawals = &types.Withdrawals{}
+	}
+
+	if config.IsthmusTime != nil && uint64(payload.Timestamp) >= *config.IsthmusTime {
+		payload.WithdrawalsRoot = bl.Header().WithdrawalsHash
 	}
 
 	return payload, nil
 }
 
-func BlockAsPayloadEnv(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayloadEnvelope, error) {
-	payload, err := BlockAsPayload(bl, shanghaiTime)
+func BlockAsPayloadEnv(bl *types.Block, config *params.ChainConfig) (*ExecutionPayloadEnvelope, error) {
+	payload, err := BlockAsPayload(bl, config)
 	if err != nil {
 		return nil, err
 	}

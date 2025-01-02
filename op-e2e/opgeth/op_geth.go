@@ -106,7 +106,11 @@ func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*Op
 	require.NoError(t, err)
 
 	// Note: Using CanyonTime here because for OP Stack chains, Shanghai must be activated at the same time as Canyon.
-	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()))
+	chainCfg := params.ChainConfig{
+		CanyonTime: cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()),
+	}
+
+	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, &chainCfg)
 
 	require.NoError(t, err)
 	return &OpGeth{
