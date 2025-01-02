@@ -1,3 +1,4 @@
+```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -467,82 +468,5 @@ library ChainAssertions {
             require(superchainConfig.guardian() == address(0), "CHECK-SC-40");
             require(superchainConfig.paused() == false, "CHECK-SC-50");
         }
-    }
-
-    /// @notice Asserts that the OPContractsManager is setup correctly
-    function checkOPContractsManager(
-        Types.ContractSet memory _contracts,
-        OPContractsManager _opcm,
-        IMIPS _mips
-    )
-        internal
-        view
-    {
-        console.log("Running chain assertions on the OPContractsManager at %s", address(_opcm));
-        require(address(_opcm) != address(0), "CHECK-OPCM-10");
-
-        require(
-            address(EIP1967Helper.getImplementation(address(_opcm.superchainConfig())))
-                == address(_contracts.SuperchainConfig),
-            "CHECK-OPCM-20"
-        );
-        require(
-            EIP1967Helper.getImplementation(address(_opcm.protocolVersions())) == address(_contracts.ProtocolVersions),
-            "CHECK-OPCM-30"
-        );
-
-        require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-40");
-
-        // Ensure that the OPCM impls are correctly saved
-        OPContractsManager.Implementations memory impls = _opcm.implementations();
-        require(impls.l1ERC721BridgeImpl == _contracts.L1ERC721Bridge, "CHECK-OPCM-50");
-        require(impls.optimismPortalImpl == _contracts.OptimismPortal, "CHECK-OPCM-60");
-        require(impls.systemConfigImpl == _contracts.SystemConfig, "CHECK-OPCM-70");
-        require(impls.optimismMintableERC20FactoryImpl == _contracts.OptimismMintableERC20Factory, "CHECK-OPCM-80");
-        require(impls.l1CrossDomainMessengerImpl == _contracts.L1CrossDomainMessenger, "CHECK-OPCM-90");
-        require(impls.l1StandardBridgeImpl == _contracts.L1StandardBridge, "CHECK-OPCM-100");
-        require(impls.disputeGameFactoryImpl == _contracts.DisputeGameFactory, "CHECK-OPCM-110");
-        require(impls.delayedWETHImpl == _contracts.DelayedWETH, "CHECK-OPCM-120");
-        require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
-
-        // Verify that initCode is correctly set into the blueprints
-        OPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
-        Blueprint.Preamble memory addressManagerPreamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.addressManager).code);
-        require(keccak256(addressManagerPreamble.initcode) == keccak256(vm.getCode("AddressManager")), "CHECK-OPCM-140");
-
-        Blueprint.Preamble memory proxyPreamble = Blueprint.parseBlueprintPreamble(address(blueprints.proxy).code);
-        require(keccak256(proxyPreamble.initcode) == keccak256(vm.getCode("Proxy")), "CHECK-OPCM-150");
-
-        Blueprint.Preamble memory proxyAdminPreamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.proxyAdmin).code);
-        require(keccak256(proxyAdminPreamble.initcode) == keccak256(vm.getCode("ProxyAdmin")), "CHECK-OPCM-160");
-
-        Blueprint.Preamble memory l1ChugSplashProxyPreamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.l1ChugSplashProxy).code);
-        require(
-            keccak256(l1ChugSplashProxyPreamble.initcode) == keccak256(vm.getCode("L1ChugSplashProxy")),
-            "CHECK-OPCM-170"
-        );
-
-        Blueprint.Preamble memory rdProxyPreamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.resolvedDelegateProxy).code);
-        require(keccak256(rdProxyPreamble.initcode) == keccak256(vm.getCode("ResolvedDelegateProxy")), "CHECK-OPCM-180");
-
-        Blueprint.Preamble memory asrPreamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.anchorStateRegistry).code);
-        require(keccak256(asrPreamble.initcode) == keccak256(vm.getCode("AnchorStateRegistry")), "CHECK-OPCM-190");
-
-        Blueprint.Preamble memory pdg1Preamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.permissionedDisputeGame1).code);
-        Blueprint.Preamble memory pdg2Preamble =
-            Blueprint.parseBlueprintPreamble(address(blueprints.permissionedDisputeGame2).code);
-        // combine pdg1 and pdg2 initcodes
-        bytes memory fullPermissionedDisputeGameInitcode =
-            abi.encodePacked(pdg1Preamble.initcode, pdg2Preamble.initcode);
-        require(
-            keccak256(fullPermissionedDisputeGameInitcode) == keccak256(vm.getCode("PermissionedDisputeGame")),
-            "CHECK-OPCM-200"
-        );
     }
 }

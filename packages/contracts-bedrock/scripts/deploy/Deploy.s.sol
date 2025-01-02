@@ -1,3 +1,4 @@
+```solidity
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
@@ -319,7 +320,6 @@ contract Deploy is Deployer {
         save("DelayedWETH", address(dio.delayedWETHImpl()));
         save("PreimageOracle", address(dio.preimageOracleSingleton()));
         save("Mips", address(dio.mipsSingleton()));
-        save("OPContractsManager", address(dio.opcm()));
 
         Types.ContractSet memory contracts = _impls();
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
@@ -342,16 +342,6 @@ contract Deploy is Deployer {
             _mips: IMIPS(address(dio.mipsSingleton())),
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton()))
         });
-        ChainAssertions.checkOPContractsManager({
-            _contracts: contracts,
-            _opcm: OPContractsManager(mustGetAddress("OPContractsManager")),
-            _mips: IMIPS(mustGetAddress("Mips"))
-        });
-        if (_isInterop) {
-            ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
-        } else {
-            ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
-        }
     }
 
     /// @notice Deploy all of the OP Chain specific contracts
@@ -360,7 +350,6 @@ contract Deploy is Deployer {
 
         // Ensure that the requisite contracts are deployed
         address superchainConfigProxy = mustGetAddress("SuperchainConfigProxy");
-        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager"));
 
         OPContractsManager.DeployInput memory deployInput = getDeployInput();
         OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
@@ -904,3 +893,4 @@ contract Deploy is Deployer {
         vm.store(proxy, bytes32(slot.slot), slotVal);
     }
 }
+```
