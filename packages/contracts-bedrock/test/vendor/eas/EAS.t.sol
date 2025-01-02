@@ -2232,8 +2232,8 @@ contract EASTest is CommonTest {
     ///      Creates three attestations and revokes all in one
     ///      attestation. Then Vefifies all have a non-zero revocationTime.
     function test_revokation_multiOffchain_succeeds(uint256 _count, uint64 _expirationOffset) public {
-        vm.assume(_count > 0 && _count <= 10);
-        vm.assume(_expirationOffset > 0 && _expirationOffset <= 365 days);
+        _count = bound(_count, 1, 10);
+        _expirationOffset = uint64(bound(_expirationOffset, 1, 365 days));
         bytes32 schemaId = _registerSchema("bool like", true);
 
         vm.startPrank(sender);
