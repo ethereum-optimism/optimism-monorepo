@@ -113,9 +113,9 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 	// Hook up L2 RPCs to supervisor, to fetch event data from
 	srcA := chainA.Sequencer.InteropSyncNode(is.T)
 	srcB := chainB.Sequencer.InteropSyncNode(is.T)
-	nodeA, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcA)
+	nodeA, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcA, true)
 	require.NoError(is.T, err)
-	nodeB, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcB)
+	nodeB, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcB, true)
 	require.NoError(is.T, err)
 	chainA.Sequencer.InteropControl = nodeA
 	chainB.Sequencer.InteropControl = nodeB

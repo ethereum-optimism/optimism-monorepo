@@ -40,6 +40,8 @@ import (
 var interopJWTSecret = [32]byte{4}
 
 type InteropControl interface {
+	PullEvents(ctx context.Context) (pulledAny bool, err error)
+
 	AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error
 	AwaitSentCrossSafeUpdate(ctx context.Context, minNum uint64) error
 	AwaitSentFinalizedUpdate(ctx context.Context, minNum uint64) error
@@ -160,7 +162,8 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	sys.Register("attributes-handler",
 		attributes.NewAttributesHandler(log, cfg, ctx, eng), opts)
 
-	pipeline := derive.NewDerivationPipeline(log, cfg, l1, blobsSrc, altDASrc, eng, metrics, false)
+	managedMode := interopSys != nil
+	pipeline := derive.NewDerivationPipeline(log, cfg, l1, blobsSrc, altDASrc, eng, metrics, managedMode)
 	sys.Register("pipeline", derive.NewPipelineDeriver(ctx, pipeline), opts)
 
 	testActionEmitter := sys.Register("test-action", nil, opts)
@@ -458,4 +461,10 @@ func (s *L2Verifier) AwaitSentCrossSafeUpdate(t Testing, minNum uint64) {
 func (s *L2Verifier) AwaitSentFinalizedUpdate(t Testing, minNum uint64) {
 	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
 	require.NoError(t, s.InteropControl.AwaitSentFinalizedUpdate(t.Ctx(), minNum))
+}
+
+func (s *L2Verifier) SyncSupervisor(t Testing) {
+	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
+	_, err := s.InteropControl.PullEvents(t.Ctx())
+	require.NoError(t, err)
 }
