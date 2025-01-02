@@ -6,7 +6,6 @@ import (
 	"path"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -230,17 +229,12 @@ func Setup(t require.TestingT, deployParams *DeployParams, alloc *AllocParams) *
 }
 
 func SystemConfigFromDeployConfig(deployConfig *genesis.DeployConfig) eth.SystemConfig {
-	return eth.SystemConfig{
-		BatcherAddr: deployConfig.BatchSenderAddress,
-		Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(deployConfig.GasPriceOracleOverhead))),
-		Scalar:      eth.Bytes32(deployConfig.FeeScalar()),
-		GasLimit:    uint64(deployConfig.L2GenesisBlockGasLimit),
-	}
+	return deployConfig.GenesisSystemConfig()
 }
 
 func ApplyDeployConfigForks(deployConfig *genesis.DeployConfig) {
 	isIsthmus := os.Getenv("OP_E2E_USE_ISTHMUS") == "true"
-	isHolocene := os.Getenv("OP_E2E_USE_HOLOCENE") == "true"
+	isHolocene := isIsthmus || os.Getenv("OP_E2E_USE_HOLOCENE") == "true"
 	isGranite := isHolocene || os.Getenv("OP_E2E_USE_GRANITE") == "true"
 	isFjord := isGranite || os.Getenv("OP_E2E_USE_FJORD") == "true"
 	isEcotone := isFjord || os.Getenv("OP_E2E_USE_ECOTONE") == "true"
