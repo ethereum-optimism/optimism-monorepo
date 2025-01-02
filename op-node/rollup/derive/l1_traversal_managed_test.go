@@ -37,16 +37,16 @@ func TestL1TraversalManaged(t *testing.T) {
 
 	_ = tr.Reset(context.Background(), a, l1Cfg)
 
-	// First call should always succeed
+	// First call will not succeed, we count the first block as consumed-already,
+	// since other stages had it too.
 	ref, err := tr.NextL1Block(context.Background())
-	require.NoError(t, err)
-	require.Equal(t, a, ref)
-
-	// Subsequent calls should return io.EOF
-	ref, err = tr.NextL1Block(context.Background())
+	require.ErrorIs(t, err, io.EOF)
 	require.Equal(t, eth.L1BlockRef{}, ref)
-	require.Equal(t, io.EOF, err)
-	// again
+
+	// Advancing doesn't work either, we have no data to advance to.
+	require.ErrorIs(t, tr.AdvanceL1Block(context.Background()), io.EOF)
+
+	// again, EOF until we provide the block
 	ref, err = tr.NextL1Block(context.Background())
 	require.Equal(t, eth.L1BlockRef{}, ref)
 	require.Equal(t, io.EOF, err)

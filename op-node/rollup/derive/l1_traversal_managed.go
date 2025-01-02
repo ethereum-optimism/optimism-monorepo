@@ -54,6 +54,7 @@ func (l1t *L1TraversalManaged) Origin() eth.L1BlockRef {
 // NextL1Block returns the next block. It does not advance, but it can only be
 // called once before returning io.EOF
 func (l1t *L1TraversalManaged) NextL1Block(_ context.Context) (eth.L1BlockRef, error) {
+	l1t.log.Trace("NextL1Block", "done", l1t.done, "block", l1t.block)
 	if !l1t.done {
 		l1t.done = true
 		return l1t.block, nil
@@ -64,18 +65,20 @@ func (l1t *L1TraversalManaged) NextL1Block(_ context.Context) (eth.L1BlockRef, e
 
 // AdvanceL1Block advances the internal state of L1 Traversal
 func (l1t *L1TraversalManaged) AdvanceL1Block(ctx context.Context) error {
+	l1t.log.Trace("AdvanceL1Block", "done", l1t.done, "block", l1t.block)
 	if !l1t.done {
-		return fmt.Errorf("L1TraversalManaged should not advance to next L1 block before reading the current L1 block")
+		l1t.log.Debug("Need to process current block first", "block", l1t.block)
+		return nil
 	}
 	// At this point we consumed the L1 block, i.e. exhausted available data.
 	// The next L1 block will not be available until a manual ProvideNextL1 call.
-	return nil
+	return io.EOF
 }
 
 // Reset sets the internal L1 block to the supplied base.
 func (l1t *L1TraversalManaged) Reset(ctx context.Context, base eth.L1BlockRef, cfg eth.SystemConfig) error {
 	l1t.block = base
-	l1t.done = false
+	l1t.done = true // Retrieval will be at this same L1 block, so technically it has been consumed already.
 	l1t.sysCfg = cfg
 	l1t.log.Info("completed reset of derivation pipeline", "origin", base)
 	return io.EOF

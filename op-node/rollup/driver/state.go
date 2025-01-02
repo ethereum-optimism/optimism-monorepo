@@ -452,7 +452,7 @@ func (s *SyncDeriver) SyncStep() {
 
 	// If interop is configured, we have to run the engine events,
 	// to ensure cross-L2 safety is continuously verified against the interop-backend.
-	if s.Config.InteropTime != nil {
+	if s.Config.InteropTime != nil && !s.ManagedMode {
 		s.Emitter.Emit(engine.CrossUpdateRequestEvent{})
 	}
 }
