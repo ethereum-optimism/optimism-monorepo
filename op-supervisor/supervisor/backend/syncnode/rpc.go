@@ -3,8 +3,9 @@ package syncnode
 import (
 	"context"
 	"errors"
-	"github.com/ethereum-optimism/optimism/op-service/rpc"
 	"io"
+
+	"github.com/ethereum-optimism/optimism/op-service/rpc"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"

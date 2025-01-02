@@ -195,7 +195,7 @@ func (evs *Stream[E]) Subscribe(ctx context.Context) (*gethrpc.Subscription, err
 	go func() {
 		// Errors when connection is disrupted/closed.
 		// Closed when subscription is over.
-		clErr, _ := <-rpcSub.Err()
+		clErr := <-rpcSub.Err()
 		if clErr != nil {
 			if errors.Is(clErr, gethrpc.ErrClientQuit) {
 				evs.log.Debug("RPC client disconnected, closing subscription")

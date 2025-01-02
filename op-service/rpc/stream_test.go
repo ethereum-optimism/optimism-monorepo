@@ -176,7 +176,7 @@ func TestStream_Subscription(t *testing.T) {
 	api.events.Send(&Foo{Message: "hello dave"})
 
 	dest = make(chan *Foo, 10)
-	sub, err = SubscribeStream[Foo](testCtx,
+	_, err = SubscribeStream[Foo](testCtx,
 		"custom", &ClientWrapper{cl: cl}, dest, "foo")
 	require.NoError(t, err)
 

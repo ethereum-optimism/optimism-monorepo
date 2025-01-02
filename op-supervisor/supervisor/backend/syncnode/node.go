@@ -3,12 +3,13 @@ package syncnode
 import (
 	"context"
 	"errors"
-	"github.com/ethereum-optimism/optimism/op-service/rpc"
-	gethrpc "github.com/ethereum/go-ethereum/rpc"
 	"io"
 	"strings"
 	"sync"
 	"time"
+
+	"github.com/ethereum-optimism/optimism/op-service/rpc"
+	gethrpc "github.com/ethereum/go-ethereum/rpc"
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
@@ -116,7 +117,7 @@ func (m *ManagedNode) SubscribeToNodeEvents() {
 	// Resubscribe, since the RPC subscription might fail intermittently.
 	// And fall back to polling, if RPC subscriptions are not supported.
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
-		func(ctx context.Context, err error) (gethevent.Subscription, error) {
+		func(ctx context.Context, _ error) (gethevent.Subscription, error) {
 			sub, err := m.Node.SubscribeEvents(ctx, m.nodeEvents)
 			if err != nil {
 				if errors.Is(err, gethrpc.ErrNotificationsUnsupported) {
