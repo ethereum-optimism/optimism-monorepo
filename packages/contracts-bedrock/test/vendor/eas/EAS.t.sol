@@ -1957,8 +1957,7 @@ contract EASTest is CommonTest {
     ///      Demonstrates complete flow of multiple delegated
     ///      attestations with different signers
 
-    function test_attestation_multiDelegatedUnique_succeeds(string[] memory _names) public {
-        vm.assume(_names.length == 3);
+    function test_attestation_multiDelegatedUnique_succeeds(string[3] memory _names) public {
         bytes32 schemaId = schemaRegistry.register("string name", ISchemaResolver(address(0)), true);
         uint64 deadline = uint64(block.timestamp + 1 days);
 
