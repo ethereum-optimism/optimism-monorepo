@@ -96,7 +96,7 @@ func executionPayloadFixedPart(version BlockVersion) uint32 {
 }
 
 func (payload *ExecutionPayload) inferVersion() BlockVersion {
-	if payload.WithdrawalsRoot != nil {
+	if payload.WithdrawalsRoot != nil && *payload.WithdrawalsRoot != types.EmptyWithdrawalsHash {
 		return BlockV4
 	} else if payload.ExcessBlobGas != nil && payload.BlobGasUsed != nil {
 		return BlockV3
