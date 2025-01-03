@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -56,8 +55,6 @@ type channelManager struct {
 	channelQueue []*channel
 	// used to lookup channels by tx ID upon tx success / failure
 	txChannels map[string]*channel
-
-	mtx sync.Mutex
 }
 
 func NewChannelManager(log log.Logger, metr metrics.Metricer, cfgProvider ChannelConfigProvider, rollupCfg *rollup.Config) *channelManager {
@@ -96,9 +93,6 @@ func (s *channelManager) pendingBlocks() int {
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
 // in the failed transaction.
 func (s *channelManager) TxFailed(_id txID) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
@@ -111,8 +105,6 @@ func (s *channelManager) TxFailed(_id txID) {
 // TxConfirmed marks a transaction as confirmed on L1. Only if the channel timed out
 // the channelManager's state is modified.
 func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
 
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
@@ -199,9 +191,6 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 // When switching DA type, the channelManager state will be rebuilt
 // with a new ChannelConfig.
 func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
-	s.mtx.Lock()
-	defer s.mtx.Unlock()
-
 	channel, err := s.getReadyChannel(l1Head)
 	if err != nil {
 		return emptyTxData, err
