@@ -7,7 +7,6 @@ import { Vm } from "forge-std/Vm.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Config } from "scripts/libraries/Config.sol";
 import { StorageSlot } from "scripts/libraries/ForgeArtifacts.sol";
-import { LibString } from "@solady/utils/LibString.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import { Process } from "scripts/libraries/Process.sol";
 
