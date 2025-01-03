@@ -112,7 +112,7 @@ func checkWithdrawals(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes, bl
 			return fmt.Errorf("isthmus: expected withdrawalsRoot in block to be non-nil")
 		}
 	} else {
-		if block.WithdrawalsRoot != nil {
+		if !(block.WithdrawalsRoot == nil || *block.WithdrawalsRoot == types.EmptyWithdrawalsHash) {
 			// pre-isthmus, post-canyon
 			return fmt.Errorf("pre-isthmus: expected withdrawalsRoot in block to be nil, actual %v", *block.WithdrawalsRoot)
 		}
