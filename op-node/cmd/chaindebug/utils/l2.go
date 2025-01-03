@@ -58,7 +58,7 @@ func OnL2Block(cfg *rollup.Config, logger log.Logger, outDir string) (func(ctx c
 			}
 		}
 		filename := filepath.Join(blocksDir, fmt.Sprintf("%08d_%s.json", uint64(bl.Number), bl.Hash))
-		if err := writeJSON(filename, bl); err != nil {
+		if err := writeJSON(filename, entry); err != nil {
 			return fmt.Errorf("failed to write block json %q: %w", filename, err)
 		}
 

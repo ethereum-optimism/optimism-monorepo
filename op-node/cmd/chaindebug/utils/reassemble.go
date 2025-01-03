@@ -19,4 +19,5 @@ func Reassemble(ctx context.Context, logger log.Logger, cfg *ReassembleConfig) e
 	// TODO load all txs, return sorted list of frames
 	// TODO assemble channels from frames, tag with completion L1 block
 	// TODO decode batches from channels, tag with completion L1 block
+	return nil
 }

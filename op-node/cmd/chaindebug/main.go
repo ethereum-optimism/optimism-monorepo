@@ -123,7 +123,7 @@ func main() {
 					return fmt.Errorf("failed to download range: %w", err)
 				}
 				logger.Info("Downloading gaps")
-				if err := utils.DownloadGaps(cliCtx.Context, logger, cfg, onL1Block, filepath.Join(outDir, "blocks")); err != nil {
+				if err := utils.DownloadGaps(cliCtx.Context, logger, cfg, onL1Block, filepath.Join(outDir, "l1-blocks")); err != nil {
 					return fmt.Errorf("failed to download gaps: %w", err)
 				}
 				logger.Info("Done!")
@@ -174,7 +174,7 @@ func main() {
 					return fmt.Errorf("failed to download range: %w", err)
 				}
 				logger.Info("Downloading gaps")
-				if err := utils.DownloadGaps(cliCtx.Context, logger, cfg, onL2Block, filepath.Join(outDir, "blocks")); err != nil {
+				if err := utils.DownloadGaps(cliCtx.Context, logger, cfg, onL2Block, filepath.Join(outDir, "l2-blocks")); err != nil {
 					return fmt.Errorf("failed to download gaps: %w", err)
 				}
 				logger.Info("Done!")

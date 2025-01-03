@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
@@ -32,7 +33,9 @@ func DownloadRange(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 
 	// Produce work to run
 	work := make(chan uint64)
+	start := time.Now()
 	go func() {
+		lastUpdate := time.Now()
 		for i := cfg.StartNum; i < cfg.EndNum; i++ {
 			select {
 			case work <- i:
@@ -40,7 +43,20 @@ func DownloadRange(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 				return
 			}
 			if count := i - cfg.StartNum; count%100 == 0 {
-				logger.Info("scheduled download work", "count", count)
+				now := time.Now()
+				// speed in number of blocks downloaded per second,
+				// as measured over the last check
+				speed := float64(100) / (float64(now.Sub(lastUpdate)) / float64(time.Second))
+				total := cfg.EndNum - cfg.StartNum
+				remaining := total - count
+				eta := time.Duration(float64(remaining)/speed) * time.Second
+				elapsed := now.Sub(start)
+				logger.Info("scheduled download work",
+					"count", count, "elapsed", elapsed,
+					"speed", fmt.Sprintf("%.3f blocks / sec", speed),
+					"remaining", remaining,
+					"eta", eta)
+				lastUpdate = now
 			}
 		}
 		close(work) // only close if we finished all the work
@@ -166,7 +182,8 @@ func DownloadGaps(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 		}
 		knownBlocks[id] = parentID
 	}
-	logger.Info("Scanned initial list of known blocks", "known", len(knownBlocks))
+	logger.Info("Scanned initial list of known blocks to search for gaps",
+		"known", len(knownBlocks))
 	for {
 		if ctx.Err() != nil {
 			return ctx.Err()
@@ -180,6 +197,9 @@ func DownloadGaps(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 			if _, ok := knownBlocks[parentID]; !ok {
 				unknownBlocks[parentID] = struct{}{}
 			}
+		}
+		if len(unknownBlocks) == 0 {
+			break
 		}
 		logger.Info("Scanned known blocks",
 			"unknown", len(unknownBlocks), "known", len(knownBlocks))
@@ -211,6 +231,7 @@ func DownloadGaps(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 		}
 		// Repeat for remaining unknown blocks.
 	}
+	return nil
 }
 
 var retryErr = errors.New("retry")
