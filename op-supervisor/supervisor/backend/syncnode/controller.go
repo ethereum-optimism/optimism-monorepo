@@ -36,6 +36,17 @@ func NewSyncNodesController(l log.Logger, depset depset.DependencySet, db chains
 	}
 }
 
+func (snc *SyncNodesController) Close() error {
+	snc.controllers.Range(func(chainID types.ChainID, controllers *locks.RWMap[*ManagedNode, struct{}]) bool {
+		controllers.Range(func(node *ManagedNode, _ struct{}) bool {
+			node.Close()
+			return true
+		})
+		return true
+	})
+	return nil
+}
+
 // AttachNodeController attaches a node to be managed by the supervisor.
 // If noSubscribe, the node is not actively polled/subscribed to, and requires manual ManagedNode.PullEvents calls.
 func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl SyncControl, noSubscribe bool) (Node, error) {
@@ -49,30 +60,52 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 	controllersForChain, _ := snc.controllers.Get(id)
 	node := NewManagedNode(snc.logger, id, ctrl, snc.db, snc.backend, noSubscribe)
 	controllersForChain.Set(node, struct{}{})
-	snc.maybeInitSafeDB(id, ctrl)
+	anchor, err := ctrl.AnchorPoint(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get anchor point: %w", err)
+	}
+	snc.maybeInitSafeDB(id, anchor)
 	node.Start()
+	snc.maybeInitEventsDB(id, anchor, node)
 	return node, nil
 }
 
 // maybeInitSafeDB initializes the chain database if it is not already initialized
 // it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
-func (snc *SyncNodesController) maybeInitSafeDB(id types.ChainID, ctrl SyncControl) {
+func (snc *SyncNodesController) maybeInitSafeDB(id types.ChainID, anchor types.DerivedBlockRefPair) {
 	_, err := snc.db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
 		snc.logger.Debug("initializing chain database", "chain", id)
-		pair, err := ctrl.AnchorPoint(context.Background())
 		if err != nil {
 			snc.logger.Warn("failed to get anchor point", "chain", id, "error", err)
 			return
 		}
-		if err := snc.db.UpdateCrossSafe(id, pair.DerivedFrom, pair.Derived); err != nil {
+		if err := snc.db.UpdateCrossSafe(id, anchor.DerivedFrom, anchor.Derived); err != nil {
 			snc.logger.Warn("failed to initialize cross safe", "chain", id, "error", err)
 		}
-		if err := snc.db.UpdateLocalSafe(id, pair.DerivedFrom, pair.Derived); err != nil {
+		if err := snc.db.UpdateLocalSafe(id, anchor.DerivedFrom, anchor.Derived); err != nil {
 			snc.logger.Warn("failed to initialize local safe", "chain", id, "error", err)
 		}
-		snc.logger.Debug("initialized chain database", "chain", id, "anchor", pair)
+		snc.logger.Debug("initialized chain database", "chain", id, "anchor", anchor)
+	} else if err != nil {
+		snc.logger.Warn("failed to check if chain database is initialized", "chain", id, "error", err)
 	} else {
 		snc.logger.Debug("chain database already initialized", "chain", id)
+	}
+}
+
+func (snc *SyncNodesController) maybeInitEventsDB(id types.ChainID, anchor types.DerivedBlockRefPair, node *ManagedNode) {
+	_, _, _, err := snc.db.OpenBlock(id, 0)
+	if errors.Is(err, types.ErrFuture) {
+		snc.logger.Debug("initializing events database", "chain", id)
+		err := node.backend.UpdateLocalUnsafe(context.Background(), id, anchor.Derived)
+		if err != nil {
+			snc.logger.Warn("failed to seal initial block", "chain", id, "error", err)
+		}
+		snc.logger.Debug("initialized events database", "chain", id)
+	} else if err != nil {
+		snc.logger.Warn("failed to check if logDB is initialized", "chain", id, "error", err)
+	} else {
+		snc.logger.Debug("events database already initialized", "chain", id)
 	}
 }

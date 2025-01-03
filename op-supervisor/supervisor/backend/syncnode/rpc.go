@@ -74,7 +74,7 @@ func (rs *RPCSyncNode) String() string {
 }
 
 func (rs *RPCSyncNode) SubscribeEvents(ctx context.Context, dest chan *types.ManagedEvent) (ethereum.Subscription, error) {
-	return rs.cl.Subscribe(ctx, "interop", dest, "events")
+	return rpc.SubscribeStream(ctx, "interop", rs.cl, dest, "events")
 }
 
 // PullEvent pulls an event, as alternative to an event-subscription with SubscribeEvents.

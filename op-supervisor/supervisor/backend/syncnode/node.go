@@ -22,6 +22,7 @@ import (
 
 type chainsDB interface {
 	LocalSafe(chainID types.ChainID) (types.DerivedBlockSealPair, error)
+	OpenBlock(chainID types.ChainID, blockNum uint64) (seal eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 	UpdateLocalSafe(chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
 	UpdateCrossSafe(chainID types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
 	SubscribeCrossUnsafe(chainID types.ChainID, c chan<- types.BlockSeal) (gethevent.Subscription, error)
@@ -188,6 +189,10 @@ func (m *ManagedNode) PullEvents(ctx context.Context) (pulledAny bool, err error
 }
 
 func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
+	if ev == nil {
+		m.log.Warn("Received nil event")
+		return
+	}
 	if ev.Reset != nil {
 		m.onResetEvent(*ev.Reset)
 	}

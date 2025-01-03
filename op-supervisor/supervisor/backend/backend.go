@@ -350,6 +350,8 @@ func (su *SupervisorBackend) Stop(ctx context.Context) error {
 	})
 	su.crossSafeProcessors.Clear()
 
+	su.syncNodesController.Close()
+
 	// close the databases
 	return su.chainDBs.Close()
 }

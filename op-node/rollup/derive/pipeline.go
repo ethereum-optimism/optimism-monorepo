@@ -13,6 +13,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
+var ErrEngineResetReq = errors.New("cannot continue derivation until Engine has been reset")
+
 type Metrics interface {
 	RecordL1Ref(name string, ref eth.L1BlockRef)
 	RecordL2Ref(name string, ref eth.L2BlockRef)
@@ -175,7 +177,7 @@ func (dp *DerivationPipeline) Step(ctx context.Context, pendingSafeHead eth.L2Bl
 	// if any stages need to be reset, do that first.
 	if dp.resetting < len(dp.stages) {
 		if !dp.engineIsReset {
-			return nil, NewResetError(errors.New("cannot continue derivation until Engine has been reset"))
+			return nil, NewResetError(ErrEngineResetReq)
 		}
 
 		// After the Engine has been reset to ensure it is derived from the canonical L1 chain,

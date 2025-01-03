@@ -17,9 +17,9 @@ import (
 // A polling RPC client should back off in this case.
 const OutOfEventsErrCode = -39001
 
-// eventEntry wraps subscription data, so the server can communicate alternative metadata,
+// EventEntry wraps subscription data, so the server can communicate alternative metadata,
 // such as close instructions.
-type eventEntry[E any] struct {
+type EventEntry[E any] struct {
 	// Data wraps the actual event object. It may be nil if Close is true.
 	Data *E `json:"data"`
 	// Close is set to true when the server will send no further events over this subscription.
@@ -99,7 +99,7 @@ var ErrClosedByServer = errors.New("closed by server")
 // Or any of the geth RPC errors, when the connection closes or RPC fails.
 // The args work like the Subscriber interface: the subscription identifier needs to be there.
 func SubscribeStream[E any](ctx context.Context, namespace string, subscriber Subscriber, dest chan *E, args ...any) (ethereum.Subscription, error) {
-	unpackCh := make(chan eventEntry[E])
+	unpackCh := make(chan EventEntry[E])
 	sub, err := subscriber.Subscribe(ctx, namespace, unpackCh, args...)
 	if err != nil {
 		return nil, err
@@ -163,7 +163,7 @@ func NewStream[E any](log log.Logger, maxQueueSize int) *Stream[E] {
 }
 
 // notify is a helper func to send an event entry to the active subscription.
-func (evs *Stream[E]) notify(v eventEntry[E]) {
+func (evs *Stream[E]) notify(v EventEntry[E]) {
 	if evs.sub == nil {
 		return
 	}
@@ -220,7 +220,7 @@ func (evs *Stream[E]) closeSub() {
 		return
 	}
 	// Let the subscription know we're no longer serving them
-	evs.notify(eventEntry[E]{Data: nil, Close: true})
+	evs.notify(EventEntry[E]{Data: nil, Close: true})
 	// Note: the connection stays open,
 	// a subscription is just the choice of the server to write function-calls back with a particular RPC ID.
 	// The server ends up holding on to an error channel,
@@ -260,7 +260,7 @@ func (evs *Stream[E]) Send(ev *E) {
 	evs.mu.Lock()
 	defer evs.mu.Unlock()
 	if evs.sub != nil {
-		evs.notify(eventEntry[E]{
+		evs.notify(EventEntry[E]{
 			Data: ev,
 		})
 		return

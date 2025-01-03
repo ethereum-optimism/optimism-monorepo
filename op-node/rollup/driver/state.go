@@ -391,7 +391,12 @@ func (s *SyncDeriver) onEngineConfirmedReset(x engine.EngineResetConfirmedEvent)
 
 func (s *SyncDeriver) onResetEvent(x rollup.ResetEvent) {
 	if s.ManagedMode {
-		s.Log.Warn("Encountered reset, waiting for op-supervisor to recover", "err", x.Err)
+		if errors.Is(x.Err, derive.ErrEngineResetReq) {
+			s.Log.Warn("Managed Mode is enabled, but engine reset is required", "err", x.Err)
+			s.Emitter.Emit(engine.ResetEngineRequestEvent{})
+		} else {
+			s.Log.Warn("Encountered reset, waiting for op-supervisor to recover", "err", x.Err)
+		}
 		return
 	}
 	// If the system corrupts, e.g. due to a reorg, simply reset it
