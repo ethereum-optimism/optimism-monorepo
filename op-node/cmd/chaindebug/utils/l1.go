@@ -1,4 +1,4 @@
-package experimental
+package utils
 
 import (
 	"context"
@@ -33,11 +33,11 @@ type TransactionWithMetadata struct {
 }
 
 type L1Entry struct {
-	Header   sources.RPCHeader `json:"header"`
+	Block    *sources.RPCBlock `json:"block"`
 	BatchTxs []common.Hash     `json:"batchTxs"`
 }
 
-func onL1Block(cfg *rollup.Config, logger log.Logger,
+func OnL1Block(cfg *rollup.Config, logger log.Logger,
 	beacon *sources.L1BeaconClient, outDir string) (func(ctx context.Context, bl *sources.RPCBlock) error, error) {
 
 	blocksDir := filepath.Join(outDir, "l1-blocks")
@@ -51,7 +51,7 @@ func onL1Block(cfg *rollup.Config, logger log.Logger,
 
 	return func(ctx context.Context, bl *sources.RPCBlock) error {
 		entry := &L1Entry{
-			Header: bl.RPCHeader,
+			Block: bl,
 		}
 		signer := cfg.L1Signer()
 
@@ -151,7 +151,7 @@ func onL1Block(cfg *rollup.Config, logger log.Logger,
 			return fmt.Errorf("failed to write block json %q: %w", filename, err)
 		}
 
-		logger.Info("Processed L1 block", "block", entry.Header.BlockID())
+		logger.Info("Processed L1 block", "block", entry.Block.BlockID())
 		return nil
 	}, nil
 }

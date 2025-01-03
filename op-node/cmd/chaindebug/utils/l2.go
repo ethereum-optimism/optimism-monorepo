@@ -1,4 +1,4 @@
-package experimental
+package utils
 
 import (
 	"context"
@@ -17,7 +17,7 @@ import (
 )
 
 type L2Entry struct {
-	Header           sources.RPCHeader `json:"header"`
+	Block            *sources.RPCBlock `json:"block"`
 	L1Origin         eth.BlockID       `json:"l1origin"`
 	SequenceNumber   uint64            `json:"sequenceNumber"` // distance to first block of epoch
 	L1OriginTime     uint64            `json:"l1OriginTime"`
@@ -25,7 +25,7 @@ type L2Entry struct {
 	UserTransactions []common.Hash     `json:"userTxs"`
 }
 
-func onL2Block(cfg *rollup.Config, logger log.Logger, outDir string) (func(ctx context.Context, bl *sources.RPCBlock) error, error) {
+func OnL2Block(cfg *rollup.Config, logger log.Logger, outDir string) (func(ctx context.Context, bl *sources.RPCBlock) error, error) {
 
 	blocksDir := filepath.Join(outDir, "l2-blocks")
 	if err := os.MkdirAll(blocksDir, 0755); err != nil {
@@ -34,7 +34,7 @@ func onL2Block(cfg *rollup.Config, logger log.Logger, outDir string) (func(ctx c
 
 	return func(ctx context.Context, bl *sources.RPCBlock) error {
 		entry := &L2Entry{
-			Header: bl.RPCHeader,
+			Block: bl,
 		}
 		if len(bl.Transactions) > 0 {
 			l1Info, err := derive.L1BlockInfoFromBytes(cfg, cfg.BlockTime, bl.Transactions[0].Data())
@@ -62,7 +62,7 @@ func onL2Block(cfg *rollup.Config, logger log.Logger, outDir string) (func(ctx c
 			return fmt.Errorf("failed to write block json %q: %w", filename, err)
 		}
 
-		logger.Info("Processed L2 block", "block", entry.Header.BlockID())
+		logger.Info("Processed L2 block", "block", entry.Block.BlockID())
 		return nil
 	}, nil
 }
