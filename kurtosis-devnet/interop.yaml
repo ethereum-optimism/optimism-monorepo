@@ -56,12 +56,14 @@ optimism_package:
         fjord_time_offset: 0
         granite_time_offset: 0
         holocene_time_offset: 0
+        interop_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
         image: {{ localDockerImage "op-batcher" }}
         extra_params: []
       challenger_params:
         image: {{ localDockerImage "op-challenger" }}
+        cannon_prestate_path: ""
         cannon_prestates_url: {{ localPrestate }}
         extra_params: []
       proposer_params:
@@ -110,12 +112,14 @@ optimism_package:
         fjord_time_offset: 0
         granite_time_offset: 0
         holocene_time_offset: 0
+        interop_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
         image: {{ localDockerImage "op-batcher" }}
         extra_params: []
       challenger_params:
         image: {{ localDockerImage "op-challenger" }}
+        cannon_prestate_path: ""
         cannon_prestates_url: {{ localPrestate }}
         extra_params: []
       proposer_params:
