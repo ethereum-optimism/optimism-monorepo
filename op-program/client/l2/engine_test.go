@@ -31,7 +31,7 @@ func TestPayloadByHash(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("KnownBlock", func(t *testing.T) {
-		engine, stub := createOracleEngine(t)
+		engine, stub := createOracleEngine(t, false)
 		block := stub.head
 		payload, err := engine.PayloadByHash(ctx, block.Hash())
 		require.NoError(t, err)
@@ -41,7 +41,7 @@ func TestPayloadByHash(t *testing.T) {
 	})
 
 	t.Run("UnknownBlock", func(t *testing.T) {
-		engine, _ := createOracleEngine(t)
+		engine, _ := createOracleEngine(t, false)
 		hash := common.HexToHash("0x878899")
 		payload, err := engine.PayloadByHash(ctx, hash)
 		require.ErrorIs(t, err, ErrNotFound)
@@ -53,7 +53,7 @@ func TestPayloadByNumber(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("KnownBlock", func(t *testing.T) {
-		engine, stub := createOracleEngine(t)
+		engine, stub := createOracleEngine(t, false)
 		block := stub.head
 		payload, err := engine.PayloadByNumber(ctx, block.NumberU64())
 		require.NoError(t, err)
@@ -63,14 +63,14 @@ func TestPayloadByNumber(t *testing.T) {
 	})
 
 	t.Run("NoCanonicalHash", func(t *testing.T) {
-		engine, _ := createOracleEngine(t)
+		engine, _ := createOracleEngine(t, false)
 		payload, err := engine.PayloadByNumber(ctx, uint64(700))
 		require.ErrorIs(t, err, ErrNotFound)
 		require.Nil(t, payload)
 	})
 
 	t.Run("UnknownBlock", func(t *testing.T) {
-		engine, stub := createOracleEngine(t)
+		engine, stub := createOracleEngine(t, false)
 		hash := common.HexToHash("0x878899")
 		number := uint64(700)
 		stub.canonical[number] = hash
@@ -82,7 +82,7 @@ func TestPayloadByNumber(t *testing.T) {
 
 func TestL2BlockRefByLabel(t *testing.T) {
 	ctx := context.Background()
-	engine, stub := createOracleEngine(t)
+	engine, stub := createOracleEngine(t, false)
 	tests := []struct {
 		name  eth.BlockLabel
 		block *types.Block
@@ -108,7 +108,7 @@ func TestL2BlockRefByLabel(t *testing.T) {
 
 func TestL2BlockRefByHash(t *testing.T) {
 	ctx := context.Background()
-	engine, stub := createOracleEngine(t)
+	engine, stub := createOracleEngine(t, false)
 
 	t.Run("KnownBlock", func(t *testing.T) {
 		expected, err := derive.L2BlockToBlockRef(engine.rollupCfg, stub.safe)
@@ -127,7 +127,7 @@ func TestL2BlockRefByHash(t *testing.T) {
 
 func TestSystemConfigByL2Hash(t *testing.T) {
 	ctx := context.Background()
-	engine, stub := createOracleEngine(t)
+	engine, stub := createOracleEngine(t, false)
 
 	t.Run("KnownBlock", func(t *testing.T) {
 		payload, err := eth.BlockAsPayload(stub.safe, engine.backend.Config())
@@ -146,11 +146,25 @@ func TestSystemConfigByL2Hash(t *testing.T) {
 	})
 }
 
-func createOracleEngine(t *testing.T) (*OracleEngine, *stubEngineBackend) {
-	head := createL2Block(t, 4)
-	safe := createL2Block(t, 3)
-	finalized := createL2Block(t, 2)
+func TestL2OutputRootIsthmus(t *testing.T) {
+	engine, _ := createOracleEngine(t, true)
+
+	t.Run("Header withdrawalsRoot without fetching state", func(t *testing.T) {
+		// should return without a panic since there's no need to fetch state when Isthmus is activate,
+		// StateAt() is not implemented in the stub
+		_, err := engine.L2OutputRoot(4)
+		require.NoError(t, err)
+	})
+}
+
+func createOracleEngine(t *testing.T, headBlockOnIsthmus bool) (*OracleEngine, *stubEngineBackend) {
+	head := createL2Block(t, 4, headBlockOnIsthmus)
+	safe := createL2Block(t, 3, false)
+	finalized := createL2Block(t, 2, false)
 	rollupCfg := chaincfg.OPSepolia()
+	if headBlockOnIsthmus {
+		rollupCfg.IsthmusTime = &head.Header().Time
+	}
 	backend := &stubEngineBackend{
 		head:      head,
 		safe:      safe,
@@ -174,7 +188,7 @@ func createOracleEngine(t *testing.T) (*OracleEngine, *stubEngineBackend) {
 	return &engine, backend
 }
 
-func createL2Block(t *testing.T, number int) *types.Block {
+func createL2Block(t *testing.T, number int, setWithdrawalsRoot bool) *types.Block {
 	tx, err := derive.L1InfoDeposit(chaincfg.OPSepolia(), eth.SystemConfig{}, uint64(1), eth.HeaderBlockInfo(&types.Header{
 		Number:  big.NewInt(32),
 		BaseFee: big.NewInt(7),
@@ -187,7 +201,16 @@ func createL2Block(t *testing.T, number int) *types.Block {
 	body := &types.Body{
 		Transactions: []*types.Transaction{types.NewTx(tx)},
 	}
-	return types.NewBlock(header, body, nil, trie.NewStackTrie(nil), types.DefaultBlockConfig)
+	blockConfig := types.DefaultBlockConfig
+	var withdrawals []*types.Withdrawal
+	if setWithdrawalsRoot {
+		withdrawals = make([]*types.Withdrawal, 0)
+		body.Withdrawals = withdrawals
+		hash := common.HexToHash("0x1234")
+		header.WithdrawalsHash = &hash
+		blockConfig = types.IsthmusBlockConfig
+	}
+	return types.NewBlock(header, body, nil, trie.NewStackTrie(nil), blockConfig)
 }
 
 type stubEngineBackend struct {
@@ -273,8 +296,9 @@ func (s *stubEngineBackend) GetHeader(hash common.Hash, number uint64) *types.He
 	panic("unsupported")
 }
 
+// currently returns the head block's header (as required by a test)
 func (s *stubEngineBackend) GetHeaderByNumber(number uint64) *types.Header {
-	panic("unsupported")
+	return s.head.Header()
 }
 
 func (s *stubEngineBackend) GetHeaderByHash(hash common.Hash) *types.Header {
