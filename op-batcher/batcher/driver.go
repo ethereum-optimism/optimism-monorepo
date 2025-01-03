@@ -413,8 +413,8 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 	if syncActions.clearState != nil {
 		l.channelMgr.Clear(*syncActions.clearState)
 	} else {
-		l.channelMgr.pruneSafeBlocks(syncActions.blocksToPrune)
-		l.channelMgr.pruneChannels(syncActions.channelsToPrune)
+		l.channelMgr.PruneSafeBlocks(syncActions.blocksToPrune)
+		l.channelMgr.PruneChannels(syncActions.channelsToPrune)
 	}
 	return syncActions.blocksToLoad
 }
