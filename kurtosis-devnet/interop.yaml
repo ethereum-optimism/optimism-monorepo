@@ -1,4 +1,24 @@
 optimism_package:
+  interop:
+    enabled: true
+    supervisor_params:
+      image: {{ localDockerImage "op-supervisor" }}
+      dependency_set: |
+        {
+          "dependencies": {
+            "2151908": {
+              "chainIndex": "2151908",
+              "activationTime": 0,
+              "historyMinTime": 0
+            },
+            "2151909": {
+              "chainIndex": "2151909",
+              "activationTime": 0,
+              "historyMinTime": 0
+            }
+          }
+        }
+      extra_params: []
   chains:
     - participants:
       - el_type: op-geth
@@ -40,6 +60,15 @@ optimism_package:
       batcher_params:
         image: {{ localDockerImage "op-batcher" }}
         extra_params: []
+      challenger_params:
+        image: {{ localDockerImage "op-challenger" }}
+        cannon_prestates_url: {{ localPrestate }}
+        extra_params: []
+      proposer_params:
+        image: {{ localDockerImage "op-proposer" }}
+        extra_params: []
+        game_type: 1
+        proposal_interval: 10m
       mev_params:
         rollup_boost_image: ""
         builder_host: ""
@@ -85,6 +114,15 @@ optimism_package:
       batcher_params:
         image: {{ localDockerImage "op-batcher" }}
         extra_params: []
+      challenger_params:
+        image: {{ localDockerImage "op-challenger" }}
+        cannon_prestates_url: {{ localPrestate }}
+        extra_params: []
+      proposer_params:
+        image: {{ localDockerImage "op-proposer" }}
+        extra_params: []
+        game_type: 1
+        proposal_interval: 10m
       mev_params:
         rollup_boost_image: ""
         builder_host: ""
