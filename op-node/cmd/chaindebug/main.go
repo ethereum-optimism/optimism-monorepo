@@ -45,6 +45,11 @@ var (
 		Value:   "debug_out",
 		EnvVars: op_service.PrefixEnvVar(EnvPrefix, "OUT"),
 	}
+	txsInFlag = &cli.PathFlag{
+		Name:    "txs-in",
+		Value:   "debug_out/l1/l1-txs",
+		EnvVars: op_service.PrefixEnvVar(EnvPrefix, "TXS_IN"),
+	}
 	rpcFlag = &cli.StringFlag{
 		Name:    "rpc",
 		Value:   "http://localhost:8545",
@@ -176,6 +181,41 @@ func main() {
 				logger.Info("Downloading gaps")
 				if err := utils.DownloadGaps(cliCtx.Context, logger, cfg, onL2Block, filepath.Join(outDir, "l2-blocks")); err != nil {
 					return fmt.Errorf("failed to download gaps: %w", err)
+				}
+				logger.Info("Done!")
+				return nil
+			},
+		},
+		{
+			Name:  "reassemble",
+			Usage: "Reassemble batches",
+			Flags: cliapp.ProtectFlags(append([]cli.Flag{
+				networkFlag,
+				outFlag,
+				txsInFlag,
+			}, oplog.CLIFlags(EnvPrefix)...)),
+
+			Action: func(cliCtx *cli.Context) error {
+				logCfg := oplog.ReadCLIConfig(cliCtx)
+				logger := oplog.NewLogger(cliCtx.App.Writer, logCfg)
+
+				network := cliCtx.String(networkFlag.Name)
+				outDir := cliCtx.Path(outFlag.Name)
+				txsDir := cliCtx.Path(txsInFlag.Name)
+
+				rollupCfg, err := chaincfg.GetRollupConfig(network)
+				if err != nil {
+					return err
+				}
+				logger.Info("Starting", "network", network, "out", outDir)
+
+				cfg := &utils.ReassembleConfig{
+					TxsDir:           txsDir,
+					ChannelsDir:      filepath.Join(outDir, "channels"),
+					ImpliedBlocksDir: filepath.Join(outDir, "implied-blocks"),
+				}
+				if err := utils.Channels(cliCtx.Context, cfg, logger, rollupCfg); err != nil {
+					return err
 				}
 				logger.Info("Done!")
 				return nil

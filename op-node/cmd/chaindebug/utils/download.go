@@ -97,6 +97,7 @@ func downloadWorker(ctx context.Context, work <-chan uint64,
 	if err != nil {
 		return fmt.Errorf("failed to open RPC client: %w", err)
 	}
+	defer cl.Close()
 	for {
 		var num uint64
 		select {
@@ -147,6 +148,10 @@ func DownloadGaps(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 	cl, err := client.NewRPC(ctx, logger, cfg.Addr,
 		client.WithRateLimit(10, 100),
 		client.WithDialAttempts(10))
+	if err != nil {
+		return fmt.Errorf("failed to open RPC client: %w", err)
+	}
+	defer cl.Close()
 
 	// block ID -> parent block
 	knownBlocks := map[eth.BlockID]eth.BlockID{}
@@ -198,11 +203,11 @@ func DownloadGaps(ctx context.Context, logger log.Logger, cfg *DownloadConfig,
 				unknownBlocks[parentID] = struct{}{}
 			}
 		}
+		logger.Info("Scanned known blocks",
+			"unknown", len(unknownBlocks), "known", len(knownBlocks))
 		if len(unknownBlocks) == 0 {
 			break
 		}
-		logger.Info("Scanned known blocks",
-			"unknown", len(unknownBlocks), "known", len(knownBlocks))
 		// fetch all unknown blocks.
 		for id := range unknownBlocks {
 			err := retry.Do0(ctx, 10, retry.Exponential(), func() error {
