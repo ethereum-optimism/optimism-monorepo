@@ -892,6 +892,8 @@ func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txRef]) {
 }
 
 func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	if err != nil {
 		l.Log.Warn("DA request failed", logFields(id, err)...)
 	}
