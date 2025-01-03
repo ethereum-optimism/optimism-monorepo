@@ -98,7 +98,7 @@ fetch_standard_address() {
     local contract_name="$3"
 
     # Determine the correct toml url
-    local toml_url="https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/58465d53fd0aed359f946aadbf0a87ae66bb46fb/validation/standard/standard-versions"
+    local toml_url="https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/8b965e372b81dea540d9a7b759a1ee3c6df562a6/validation/standard/standard-versions"
     if [ "$network_name" = "mainnet" ]; then
         toml_url="$toml_url.toml"
     elif [ "$network_name" = "sepolia" ]; then
