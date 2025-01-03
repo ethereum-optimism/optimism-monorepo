@@ -167,10 +167,6 @@ func (d *OpGeth) AddL2Block(ctx context.Context, txs ...*types.Transaction) (*et
 		if getProofResponse == nil {
 			return nil, ethereum.NotFound
 		}
-		// output, err := d.l2Engine.OutputV0AtBlock(ctx, payload.BlockHash)
-		// if err != nil {
-		// 	return nil, fmt.Errorf("output at block: %w", err)
-		// }
 		storageHash := getProofResponse.StorageHash
 		payload.WithdrawalsRoot = &storageHash
 	}
