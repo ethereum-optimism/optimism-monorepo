@@ -153,11 +153,9 @@ func localPrestateOption(cfg *config, server *staticServer) tmpl.TemplateContext
 			return url, nil
 		}
 
-		proofGlob := filepath.Join(buildDir, "prestate-proof*.json")
-
 		// Check if we already have prestate files. Typical in interop mode,
 		// where we have a prestate for each chain.
-		if matches, _ := filepath.Glob(proofGlob); len(matches) > 0 {
+		if dir, _ := os.ReadDir(buildDir); len(dir) > 0 {
 			return url, nil
 		}
 
@@ -167,7 +165,7 @@ func localPrestateOption(cfg *config, server *staticServer) tmpl.TemplateContext
 		}
 
 		// Find all prestate-proof*.json files
-		matches, err := filepath.Glob(proofGlob)
+		matches, err := filepath.Glob(filepath.Join(buildDir, "prestate-proof*.json"))
 		if err != nil {
 			return "", fmt.Errorf("failed to find prestate files: %w", err)
 		}
