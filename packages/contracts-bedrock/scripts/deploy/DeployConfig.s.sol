@@ -78,7 +78,6 @@ contract DeployConfig is Script {
     uint256 public proofMaturityDelaySeconds;
     uint256 public disputeGameFinalityDelaySeconds;
     uint256 public respectedGameType;
-    bool public useFaultProofs;
     bool public useAltDA;
     string public daCommitmentType;
     uint256 public daChallengeWindow;
@@ -148,7 +147,6 @@ contract DeployConfig is Script {
         requiredProtocolVersion = stdJson.readUint(_json, "$.requiredProtocolVersion");
         recommendedProtocolVersion = stdJson.readUint(_json, "$.recommendedProtocolVersion");
 
-        useFaultProofs = _readOr(_json, "$.useFaultProofs", false);
         proofMaturityDelaySeconds = _readOr(_json, "$.proofMaturityDelaySeconds", 0);
         disputeGameFinalityDelaySeconds = _readOr(_json, "$.disputeGameFinalityDelaySeconds", 0);
         respectedGameType = _readOr(_json, "$.respectedGameType", 0);
