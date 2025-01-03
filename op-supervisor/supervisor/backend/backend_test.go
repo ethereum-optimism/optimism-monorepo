@@ -113,7 +113,7 @@ func TestBackendLifetime(t *testing.T) {
 	proc, _ := b.chainProcessors.Get(chainA)
 	proc.ProcessToHead()
 
-	_, err = b.LocalUnsafe(context.Background(), chainA)
+	_, err = b.CrossUnsafe(context.Background(), chainA)
 	require.ErrorIs(t, err, types.ErrFuture, "still no data yet, need cross-unsafe")
 
 	err = b.chainDBs.UpdateCrossUnsafe(chainA, types.BlockSeal{
@@ -125,7 +125,7 @@ func TestBackendLifetime(t *testing.T) {
 
 	v, err := b.CrossUnsafe(context.Background(), chainA)
 	require.NoError(t, err, "have a functioning cross unsafe value now")
-	require.Equal(t, blockY.ID(), v)
+	require.Equal(t, blockX.ID(), v)
 
 	err = b.Stop(context.Background())
 	require.NoError(t, err)
