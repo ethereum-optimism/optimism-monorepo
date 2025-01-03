@@ -177,7 +177,6 @@ func (ea *L2EngineAPI) startBlock(parent common.Hash, attrs *eth.PayloadAttribut
 			return fmt.Errorf("failed to apply deposit transaction to L2 block (tx %d): %w", i, err)
 		}
 	}
-
 	return nil
 }
 
