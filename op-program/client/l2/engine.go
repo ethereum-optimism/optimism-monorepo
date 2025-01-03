@@ -41,15 +41,23 @@ func (o *OracleEngine) L2OutputRoot(l2ClaimBlockNum uint64) (eth.Bytes32, error)
 	if outBlock == nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to get L2 block at %d", l2ClaimBlockNum)
 	}
-	stateDB, err := o.backend.StateAt(outBlock.Root)
-	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to open L2 state db at block %s: %w", outBlock.Hash(), err)
+	var storageRoot [32]byte
+	// if Isthmus is active, we don't need to compute the storage root, we can use the header
+	// withdrawalRoot which is the storage root for the L2ToL1MessagePasser contract
+	if o.rollupCfg.IsIsthmus(outBlock.Time) {
+		storageRoot = *outBlock.WithdrawalsHash
+	} else {
+		stateDB, err := o.backend.StateAt(outBlock.Root)
+		if err != nil {
+			return eth.Bytes32{}, fmt.Errorf("failed to open L2 state db at block %s: %w", outBlock.Hash(), err)
+		}
+		withdrawalsTrie, err := stateDB.OpenStorageTrie(predeploys.L2ToL1MessagePasserAddr)
+		if err != nil {
+			return eth.Bytes32{}, fmt.Errorf("withdrawals trie unavailable at block %v: %w", outBlock.Hash(), err)
+		}
+		storageRoot = withdrawalsTrie.Hash()
 	}
-	withdrawalsTrie, err := stateDB.OpenStorageTrie(predeploys.L2ToL1MessagePasserAddr)
-	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("withdrawals trie unavailable at block %v: %w", outBlock.Hash(), err)
-	}
-	return rollup.ComputeL2OutputRootV0(eth.HeaderBlockInfo(outBlock), withdrawalsTrie.Hash())
+	return rollup.ComputeL2OutputRootV0(eth.HeaderBlockInfo(outBlock), storageRoot)
 }
 
 func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadInfo) (*eth.ExecutionPayloadEnvelope, error) {
