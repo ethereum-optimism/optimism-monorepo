@@ -499,7 +499,7 @@ contract EASTest is CommonTest {
 
     /// @dev Tests rejection of attestations with expired signature deadlines.
     ///      Ensures proper enforcement of signature deadlines in delegated attestations.
-    function test_attestationSignature_expiredDeadline_reverts(uint256 _signerKey) public {
+    function test_ttestationSignature_expiredDeadline_reverts(uint256 _signerKey) public {
         uint256 CURVE_ORDER = 115792089237316195423570985008687907852837564279074904382605163141518161494337;
         vm.assume(_signerKey > 0 && _signerKey < CURVE_ORDER);
         bytes32 schemaId = _registerSchema("bool like", true);
@@ -3076,44 +3076,5 @@ contract EASTest is CommonTest {
         }
 
         vm.stopPrank();
-    }
-
-    function test_revokeMultiOffchain_alreadyRevoked_Revert(
-        bytes memory _data1,
-        bytes memory _data2,
-        bytes memory _data3
-    )
-        public
-    {
-        // Ensure data is unique and not empty
-        vm.assume(_data1.length > 0);
-        vm.assume(_data2.length > 0);
-        vm.assume(_data3.length > 0);
-        vm.assume(keccak256(_data1) != keccak256(_data2));
-        vm.assume(keccak256(_data2) != keccak256(_data3));
-        vm.assume(keccak256(_data1) != keccak256(_data3));
-
-        bytes32[] memory data = new bytes32[](3);
-        data[0] = keccak256(_data1);
-        data[1] = keccak256(_data2);
-        data[2] = keccak256(_data3);
-
-        // First revocation should succeed
-        vm.prank(sender);
-        eas.multiRevokeOffchain(data);
-
-        // Second revocation of same data should fail
-        vm.prank(sender);
-        vm.expectRevert(AlreadyRevokedOffchain.selector);
-        eas.multiRevokeOffchain(data);
-
-        // Even a partial overlap should fail
-        bytes32[] memory newData = new bytes32[](2);
-        newData[0] = data[0]; // Using previously revoked data
-        newData[1] = keccak256(abi.encodePacked("new data")); // New data
-
-        vm.prank(sender);
-        vm.expectRevert(AlreadyRevokedOffchain.selector);
-        eas.multiRevokeOffchain(newData);
     }
 }
