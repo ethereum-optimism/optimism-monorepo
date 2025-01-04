@@ -1,8 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
-import { console2 as console } from "forge-std/console2.sol";
-
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -143,7 +141,7 @@ contract OPContractsManager is ISemver {
 
     /// @notice The OPContractsManager contract that is currently being used. This is needed in the upgrade function
     /// which is intended to be DELEGATECALLed.
-    OPContractsManager public immutable thisOPCM;
+    OPContractsManager internal immutable thisOPCM;
 
     // -------- Events --------
 
