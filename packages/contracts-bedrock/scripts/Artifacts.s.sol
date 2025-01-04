@@ -190,6 +190,8 @@ abstract contract Artifacts {
         _namedDeployments[_name] = deployment;
         _newDeployments.push(deployment);
         _appendDeployment(_name, _deployed);
+
+        vm.label(_deployed, _name);
     }
 
     /// @notice Adds a deployment to the temp deployments file
