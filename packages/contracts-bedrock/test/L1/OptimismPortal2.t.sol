@@ -2127,3 +2127,160 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         optimismPortal2.depositTransaction{ value: 100 }(address(0), 0, 0, false, "");
     }
 }
+
+/// @dev Optimized structure for storing resource parameters
+struct ResourceParams {
+    uint32 maxResourceLimit;
+    uint32 systemTxMaxGas;
+    uint128 maximumBaseFee;
+    uint32 minimumBaseFee;
+    uint64 gasLimit;
+    uint128 prevBaseFee;
+    uint64 prevBoughtGas;
+    uint8 blockDiff;
+    uint8 baseFeeMaxChangeDenominator;
+    uint8 elasticityMultiplier;
+}
+
+contract OptimismPortal2_ResourceMetering_Test is OptimismPortal2_Test {
+    // Constants for gas optimization
+    uint256 constant internal BLOCK_BATCH_SIZE = 10;
+    uint256 constant internal MIN_GAS_DIFF_WINDOW = 50000;
+    uint256 constant internal OPTIMAL_GAS_USAGE = 80; // 80% of target usage
+
+    /// @dev Test for optimized gas usage during batch processing
+    function test_batchedGasUsage_succeeds() public {
+        // Preparing initial parameters
+        ResourceParams memory params = ResourceParams({
+            maxResourceLimit: uint32(MAX_GAS_LIMIT / 8),
+            systemTxMaxGas: uint32(100000),
+            maximumBaseFee: 2 gwei,
+            minimumBaseFee: 100 wei,
+            gasLimit: uint64(1000000),
+            prevBaseFee: 1 gwei,
+            prevBoughtGas: 0,
+            blockDiff: 1,
+            baseFeeMaxChangeDenominator: 8,
+            elasticityMultiplier: 2
+        });
+
+        // Configuring the system settings
+        IResourceMetering.ResourceConfig memory rcfg = IResourceMetering.ResourceConfig({
+            maxResourceLimit: params.maxResourceLimit,
+            elasticityMultiplier: params.elasticityMultiplier,
+            baseFeeMaxChangeDenominator: params.baseFeeMaxChangeDenominator,
+            minimumBaseFee: params.minimumBaseFee,
+            systemTxMaxGas: params.systemTxMaxGas,
+            maximumBaseFee: params.maximumBaseFee
+        });
+        vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.resourceConfig, ()), abi.encode(rcfg));
+
+        // Testing batch transaction processing
+        uint256 totalGasUsed = 0;
+        uint256 startGas = gasleft();
+
+        for (uint256 i = 0; i < BLOCK_BATCH_SIZE; i++) {
+            // Setting parameters for the current block
+            vm.roll(block.number + 1);
+
+            uint64 batchGasLimit = uint64((params.maxResourceLimit * OPTIMAL_GAS_USAGE) / 100);
+
+            // Executing deposit with optimized gas
+            uint256 txGasStart = gasleft();
+            optimismPortal2.depositTransaction{gas: batchGasLimit}({
+                _to: address(0x20),
+                _value: 0,
+                _gasLimit: batchGasLimit,
+                _isCreation: false,
+                _data: hex""
+            });
+            totalGasUsed += txGasStart - gasleft();
+
+            // Updating base fee for the next block
+            params.prevBaseFee = uint128(
+                (params.prevBaseFee * params.elasticityMultiplier) / params.baseFeeMaxChangeDenominator
+            );
+        }
+
+        uint256 avgGasPerTx = totalGasUsed / BLOCK_BATCH_SIZE;
+        assertTrue(avgGasPerTx < params.maxResourceLimit, "Average gas usage too high");
+        assertTrue(avgGasPerTx > MIN_GAS_DIFF_WINDOW, "Average gas usage too low");
+
+        // Verifying gas usage efficiency
+        uint256 gasEfficiency = (avgGasPerTx * 100) / params.maxResourceLimit;
+        assertTrue(gasEfficiency <= OPTIMAL_GAS_USAGE, "Gas efficiency above target");
+        assertTrue(gasEfficiency >= OPTIMAL_GAS_USAGE - 20, "Gas efficiency too low");
+    }
+
+    /// @dev Test for adaptive gas management
+    function test_adaptiveGasManagement_succeeds() public {
+        ResourceParams memory params = ResourceParams({
+            maxResourceLimit: uint32(MAX_GAS_LIMIT / 8),
+            systemTxMaxGas: uint32(100000),
+            maximumBaseFee: 2 gwei,
+            minimumBaseFee: 100 wei,
+            gasLimit: uint64(1000000),
+            prevBaseFee: 1 gwei,
+            prevBoughtGas: 0,
+            blockDiff: 1,
+            baseFeeMaxChangeDenominator: 8,
+            elasticityMultiplier: 2
+        });
+
+        // Configuring the settings
+        IResourceMetering.ResourceConfig memory rcfg = IResourceMetering.ResourceConfig({
+            maxResourceLimit: params.maxResourceLimit,
+            elasticityMultiplier: params.elasticityMultiplier,
+            baseFeeMaxChangeDenominator: params.baseFeeMaxChangeDenominator,
+            minimumBaseFee: params.minimumBaseFee,
+            systemTxMaxGas: params.systemTxMaxGas,
+            maximumBaseFee: params.maximumBaseFee
+        });
+        vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.resourceConfig, ()), abi.encode(rcfg));
+
+        // Arrays for tracking gas usage
+        uint256[] memory gasUsageHistory = new uint256[](BLOCK_BATCH_SIZE);
+
+        // Simulating changing workload
+        for (uint256 i = 0; i < BLOCK_BATCH_SIZE; i++) {
+            vm.roll(block.number + 1);
+
+            // Adaptive gas limit calculation based on usage history
+            uint64 adaptiveGasLimit;
+            if (i > 0) {
+                uint256 prevUsage = gasUsageHistory[i-1];
+                adaptiveGasLimit = uint64(
+                    (prevUsage * (100 + params.elasticityMultiplier)) / 100
+                );
+                adaptiveGasLimit = uint64(
+                    bound(adaptiveGasLimit, params.systemTxMaxGas, params.maxResourceLimit)
+                );
+            } else {
+                adaptiveGasLimit = uint64(params.maxResourceLimit / 2);
+            }
+
+            // Executing transaction and recording gas usage
+            uint256 txGasStart = gasleft();
+            optimismPortal2.depositTransaction{gas: adaptiveGasLimit}({
+                _to: address(0x20),
+                _value: 0,
+                _gasLimit: adaptiveGasLimit,
+                _isCreation: false,
+                _data: hex""
+            });
+            gasUsageHistory[i] = txGasStart - gasleft();
+
+            // Verifying adaptation efficiency
+            if (i > 0) {
+                uint256 gasUsageDiff = gasUsageHistory[i] > gasUsageHistory[i-1] ?
+                    gasUsageHistory[i] - gasUsageHistory[i-1] :
+                    gasUsageHistory[i-1] - gasUsageHistory[i];
+
+                assertTrue(
+                    gasUsageDiff < MIN_GAS_DIFF_WINDOW,
+                    "Gas usage variation too high"
+                );
+            }
+        }
+    }
+}
