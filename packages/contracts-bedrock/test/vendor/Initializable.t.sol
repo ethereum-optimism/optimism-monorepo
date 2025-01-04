@@ -416,19 +416,12 @@ contract Initializer_Test is CommonTest {
         for (uint256 i; i < contracts.length; i++) {
             InitializeableContract memory _contract = contracts[i];
             string memory deploymentName = _getRealContractName(_contract.name);
-            string memory sourceName = deploymentName;
 
             // Grab the value of the "initialized" storage slot.
-            // Check if the contract name ends with `Proxy` and, if so override the contract name which is used to
-            // retrieve the storage layout.
-            if (LibString.endsWith(deploymentName, "Proxy")) {
-                sourceName = LibString.slice(deploymentName, 0, bytes(deploymentName).length - 5);
-            }
-            if (LibString.endsWith(deploymentName, "Impl")) {
-                sourceName = LibString.slice(deploymentName, 0, bytes(deploymentName).length - 4);
-            }
-            uint8 initializedSlotVal;
-            initializedSlotVal = deploy.loadInitializedSlot(sourceName, deploymentName);
+            uint8 initializedSlotVal = deploy.loadInitializedSlot({
+                _sourceName: _removeSuffix(deploymentName),
+                _deploymentName: deploymentName
+            });
 
             // Assert that the contract is already initialized.
             assertTrue(
@@ -479,6 +472,16 @@ contract Initializer_Test is CommonTest {
             }
         } else {
             revert("Initializer_Test: Invalid returndata format. Expected `Error(string)`");
+        }
+    }
+
+    /// @dev Removes the `Proxy` or `Impl` suffix from the contract name.
+    function _removeSuffix(string memory _contractName) internal pure returns (string memory deploymentName_) {
+        if (LibString.endsWith(_contractName, "Proxy")) {
+            deploymentName_ = LibString.slice(_contractName, 0, bytes(_contractName).length - 5);
+        }
+        if (LibString.endsWith(_contractName, "Impl")) {
+            deploymentName_ = LibString.slice(_contractName, 0, bytes(_contractName).length - 4);
         }
     }
 }
