@@ -219,7 +219,6 @@ abstract contract Artifacts {
         public
         returns (uint8 initialized_)
     {
-        console.log("_deploymentName:", _deploymentName);
         address contractAddress = mustGetAddress(_deploymentName);
 
         StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_sourceName);

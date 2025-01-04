@@ -106,7 +106,10 @@ contract PredeploysBaseTest is CommonTest {
             }
 
             if (_isInitializable(addr)) {
-                assertEq(l2Genesis.loadInitializedSlot(cname, cname), uint8(1));
+                assertEq(l2Genesis.loadInitializedSlot({
+                    _sourceName: cname,
+                    _deploymentName: cname
+                }), uint8(1));
             }
         }
     }
