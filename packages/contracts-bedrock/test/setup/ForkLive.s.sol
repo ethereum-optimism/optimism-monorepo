@@ -111,7 +111,6 @@ contract ForkLive is Deployer {
         vm.setEnv("CONTRACT_ADDRESSES_PATH", string.concat(vm.projectRoot(), "/deployments/1-deploy.json"));
 
         deployNew.setUp();
-        deployNew.cfg().setUseFaultProofs(true);
         deployNew.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });
     }
 
