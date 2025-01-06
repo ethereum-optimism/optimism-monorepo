@@ -13,8 +13,9 @@ type (
 )
 
 const (
-	WordSize = 32
-	ExtMask  = 0x3
+	AddressMask = 0xFFffFFfc
+	WordSize    = 32
+	ExtMask     = 0x3
 
 	HeapStart       = 0x05_00_00_00
 	HeapEnd         = 0x60_00_00_00

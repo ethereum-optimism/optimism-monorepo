@@ -13,8 +13,9 @@ type (
 )
 
 const (
-	WordSize = 64
-	ExtMask  = 0x7
+	AddressMask = 0xFFFFFFFFFFFFFFF8
+	WordSize    = 64
+	ExtMask     = 0x7
 
 	// Ensure virtual address is limited to 48-bits as many user programs assume such to implement packed pointers
 	// limit          0x00_00_FF_FF_FF_FF_FF_FF

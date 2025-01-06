@@ -10,6 +10,4 @@ const (
 
 	MemProofLeafCount = WordSize - 4
 	MemProofSize      = MemProofLeafCount * 32
-
-	AddressMask = ^Word(0) - ExtMask
 )
