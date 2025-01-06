@@ -301,6 +301,11 @@
   },
   {
     "inputs": [],
+    "name": "DeputyPauseModule_InvalidDeputyGuardianModule",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "DeputyPauseModule_NonceAlreadyUsed",
     "type": "error"
   },
