@@ -1256,7 +1256,7 @@ workflows:
       - contracts-bedrock-tests:
           # Test everything except PreimageOracle.t.sol since it's slow.
           name: contracts-bedrock-tests
-          test_list: find test -name "PreimageOracle.t.sol"
+          test_list: find test -name "*.t.sol" -not -name "PreimageOracle.t.sol"
       - contracts-bedrock-tests:
           # PreimageOracle test is slow, run it separately to unblock CI.
           name: contracts-bedrock-tests-preimage-oracle

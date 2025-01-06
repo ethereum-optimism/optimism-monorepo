@@ -19,17 +19,15 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 
 // Interfaces
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
-import { IL2OutputOracle } from "interfaces/L1/IL2OutputOracle.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
-import { IOptimismMintableERC721Factory } from "interfaces/universal/IOptimismMintableERC721Factory.sol";
+import { IOptimismMintableERC721Factory } from "interfaces/L2/IOptimismMintableERC721Factory.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
@@ -80,9 +78,7 @@ contract Setup {
     IDisputeGameFactory disputeGameFactory;
     IAnchorStateRegistry anchorStateRegistry;
     IDelayedWETH delayedWeth;
-    IOptimismPortal optimismPortal;
     IOptimismPortal2 optimismPortal2;
-    IL2OutputOracle l2OutputOracle;
     ISystemConfig systemConfig;
     IL1StandardBridge l1StandardBridge;
     IL1CrossDomainMessenger l1CrossDomainMessenger;
@@ -131,34 +127,43 @@ contract Setup {
     ///      This is a hack as we are pushing solidity to the edge.
     function setUp() public virtual {
         console.log("Setup: L1 setup start!");
-        if (vm.envOr("FORK_TEST", false)) {
-            string memory forkUrl = vm.envString("FORK_RPC_URL");
-            _isForkTest = true;
-            vm.createSelectFork(forkUrl, vm.envUint("FORK_BLOCK_NUMBER"));
+
+        // Optimistically etch, label and allow cheatcodes for the Deploy.s.sol contract
+        vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
+        vm.label(address(deploy), "Deploy");
+        vm.allowCheatcodes(address(deploy));
+
+        _isForkTest = vm.envOr("FORK_TEST", false);
+        if (_isForkTest) {
+            vm.createSelectFork(vm.envString("FORK_RPC_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
             require(
                 block.chainid == Chains.Sepolia || block.chainid == Chains.Mainnet,
                 "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
             );
 
+            // Overwrite the Deploy.s.sol contract with the ForkLive.s.sol contract
             vm.etch(address(deploy), vm.getDeployedCode("ForkLive.s.sol:ForkLive"));
-        } else {
-            vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
+            vm.label(address(deploy), "ForkLive");
         }
 
-        vm.allowCheatcodes(address(deploy));
+        // deploy.setUp() will either:
+        // 1. deploy a fresh system or
+        // 2. fork from L1
+        // It will then save the appropriate name/address pairs to disk using Artifacts.save()
         deploy.setUp();
-
         console.log("Setup: L1 setup done!");
 
+        // Return early if this is a fork test
         if (_isForkTest) {
-            console.log("Setup: fork test detected, skipping L2 setup");
-        } else {
-            console.log("Setup: L2 setup start!");
-            vm.etch(address(l2Genesis), vm.getDeployedCode("L2Genesis.s.sol:L2Genesis"));
-            vm.allowCheatcodes(address(l2Genesis));
-            l2Genesis.setUp();
-            console.log("Setup: L2 setup done!");
+            console.log("Setup: fork test detected, skipping L2 genesis generation");
+            return;
         }
+
+        console.log("Setup: L2 setup start!");
+        vm.etch(address(l2Genesis), vm.getDeployedCode("L2Genesis.s.sol:L2Genesis"));
+        vm.allowCheatcodes(address(l2Genesis));
+        l2Genesis.setUp();
+        console.log("Setup: L2 setup done!");
     }
 
     /// @dev Skips tests when running against a forked production network.
@@ -192,7 +197,6 @@ contract Setup {
         deploy.run();
         console.log("Setup: completed L1 deployment, registering addresses now");
 
-        optimismPortal = IOptimismPortal(deploy.mustGetAddress("OptimismPortalProxy"));
         optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
         disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
@@ -207,7 +211,6 @@ contract Setup {
         superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
         anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
 
-        vm.label(address(optimismPortal), "OptimismPortal");
         vm.label(deploy.mustGetAddress("OptimismPortalProxy"), "OptimismPortalProxy");
         vm.label(address(disputeGameFactory), "DisputeGameFactory");
         vm.label(deploy.mustGetAddress("DisputeGameFactoryProxy"), "DisputeGameFactoryProxy");
@@ -230,12 +233,6 @@ contract Setup {
         vm.label(deploy.mustGetAddress("SuperchainConfigProxy"), "SuperchainConfigProxy");
         vm.label(address(anchorStateRegistry), "AnchorStateRegistryProxy");
         vm.label(AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessenger_aliased");
-
-        if (!deploy.cfg().useFaultProofs()) {
-            l2OutputOracle = IL2OutputOracle(deploy.mustGetAddress("L2OutputOracleProxy"));
-            vm.label(address(l2OutputOracle), "L2OutputOracle");
-            vm.label(deploy.mustGetAddress("L2OutputOracleProxy"), "L2OutputOracleProxy");
-        }
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =

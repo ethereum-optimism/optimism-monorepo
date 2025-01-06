@@ -193,12 +193,12 @@ func DeployOPCMInputForChain(release string, chainID uint64) (opcm.DeployOPCMInp
 	if err != nil {
 		return opcm.DeployOPCMInput{}, fmt.Errorf("error getting L1 versions: %w", err)
 	}
-	releases, ok := l1VersionsData.Releases[release]
+	releases, ok := l1VersionsData[release]
 	if !ok {
 		return opcm.DeployOPCMInput{}, fmt.Errorf("release not found: %s", release)
 	}
 
-	blueprints, err := standard.OPCMBlueprintsFor(chainID)
+	blueprints, err := standard.OPCMBlueprintsFor(chainID, release)
 	if err != nil {
 		return opcm.DeployOPCMInput{}, fmt.Errorf("error getting OPCM blueprints: %w", err)
 	}

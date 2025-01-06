@@ -133,7 +133,7 @@ contract DeployOPChainOutput_Test is Test {
         (IL1ChugSplashProxy l1StandardBridgeProxy) = DeployUtils.buildL1ChugSplashProxyWithImpl("l1StandardBridgeProxy");
         (IResolvedDelegateProxy l1CrossDomainMessengerProxy) =
             DeployUtils.buildResolvedDelegateProxyWithImpl(addressManager, "OVM_L1CrossDomainMessenger");
-        (IProxy optimismPortalProxy) = DeployUtils.buildERC1967ProxyWithImpl("optimismPortalProxy");
+        (IProxy optimismPortalProxy) = DeployUtils.buildERC1967ProxyWithImpl("OptimismPortalProxy");
         (IProxy disputeGameFactoryProxy) = DeployUtils.buildERC1967ProxyWithImpl("disputeGameFactoryProxy");
         (IProxy anchorStateRegistryProxy) = DeployUtils.buildERC1967ProxyWithImpl("anchorStateRegistryProxy");
         vm.etch(address(anchorStateRegistryImpl), hex"01");

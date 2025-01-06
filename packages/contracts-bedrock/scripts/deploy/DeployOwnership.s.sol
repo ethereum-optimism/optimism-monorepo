@@ -327,9 +327,9 @@ contract DeployOwnership is Deploy {
             })
         );
 
-        require(superchainConfig.guardian() == address(0));
+        require(superchainConfig.guardian() == address(0), "SuperchainConfig: guardian must be address(0)");
         bytes32 initialized = vm.load(address(superchainConfig), bytes32(0));
-        require(initialized != 0);
+        require(initialized != 0, "SuperchainConfig: must be initialized");
     }
 
     /// @notice Configure the Guardian Safe with the DeputyGuardianModule.

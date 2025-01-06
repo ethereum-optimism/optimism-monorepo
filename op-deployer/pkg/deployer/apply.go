@@ -160,15 +160,21 @@ func ApplyPipeline(
 		}
 	}()
 
-	l2ArtifactsFS, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
-	if err != nil {
-		return fmt.Errorf("failed to download L2 artifacts: %w", err)
-	}
-	defer func() {
-		if err := cleanupL2(); err != nil {
-			opts.Logger.Warn("failed to clean up L2 artifacts", "err", err)
+	var l2ArtifactsFS foundry.StatDirFs
+	if intent.L1ContractsLocator.Equal(intent.L2ContractsLocator) {
+		l2ArtifactsFS = l1ArtifactsFS
+	} else {
+		l2Afs, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
+		if err != nil {
+			return fmt.Errorf("failed to download L2 artifacts: %w", err)
 		}
-	}()
+		defer func() {
+			if err := cleanupL2(); err != nil {
+				opts.Logger.Warn("failed to clean up L2 artifacts", "err", err)
+			}
+		}()
+		l2ArtifactsFS = l2Afs
+	}
 
 	bundle := pipeline.ArtifactsBundle{
 		L1: l1ArtifactsFS,

@@ -23,7 +23,7 @@ contract OptimismPortalInterop_Test is CommonTest {
 
     /// @dev Tests that the config for the gas paying token can be set.
     function testFuzz_setConfig_gasPayingToken_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal));
+        vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
@@ -46,7 +46,7 @@ contract OptimismPortalInterop_Test is CommonTest {
 
     /// @dev Tests that the config for adding a dependency can be set.
     function testFuzz_setConfig_addDependency_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal));
+        vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
@@ -69,7 +69,7 @@ contract OptimismPortalInterop_Test is CommonTest {
 
     /// @dev Tests that the config for removing a dependency can be set.
     function testFuzz_setConfig_removeDependency_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal));
+        vm.expectEmit(address(optimismPortal2));
         emitTransactionDeposited({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
@@ -92,6 +92,6 @@ contract OptimismPortalInterop_Test is CommonTest {
 
     /// @dev Returns the OptimismPortalInterop instance.
     function _optimismPortalInterop() internal view returns (IOptimismPortalInterop) {
-        return IOptimismPortalInterop(payable(address(optimismPortal)));
+        return IOptimismPortalInterop(payable(address(optimismPortal2)));
     }
 }

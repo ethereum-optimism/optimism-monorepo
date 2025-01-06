@@ -241,7 +241,7 @@ contract DeployOPCM is Script {
         OPContractsManager impl = OPContractsManager(address(_doo.opcm()));
         require(address(impl.superchainConfig()) == address(_doi.superchainConfig()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPCMI-20");
-        require(LibString.eq(impl.l1ContractsRelease(), _doi.l1ContractsRelease()));
+        require(LibString.eq(impl.l1ContractsRelease(), _doi.l1ContractsRelease()), "OPCMI-30");
 
         OPContractsManager.Blueprints memory blueprints = impl.blueprints();
         require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-40");

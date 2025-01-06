@@ -122,7 +122,6 @@ func NewVmMetrics(namespace string, factory metrics.Factory) *VmMetrics {
 			Name:      "vm_rmw_fail_count",
 			Help:      "Number of failed RMW instruction sequences during vm run",
 		}, []string{"vm"}),
-		// Note: vmMaxStepsBetweenLLAndSC is not complete and may miss longer ranges for failed rmw sequences.
 		vmMaxStepsBetweenLLAndSC: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "vm_max_steps_between_ll_and_sc",

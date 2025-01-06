@@ -197,7 +197,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(caller);
         vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
@@ -218,7 +218,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(caller);
         vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
@@ -232,14 +232,14 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         );
     }
 
-    /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal but not a failed
+    /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal2 but not a failed
     /// message
     function test_relayMessage_relayingNewMessageByExternalUser_reverts() external {
         address target = address(alice);
         address sender = address(l1CrossDomainMessenger);
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(bob);
         vm.expectRevert("CrossDomainMessenger: message cannot be replayed");

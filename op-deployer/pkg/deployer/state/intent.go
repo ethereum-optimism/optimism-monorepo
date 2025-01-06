@@ -263,7 +263,7 @@ func (c *Intent) checkL1Prod() error {
 		return err
 	}
 
-	if _, ok := versions.Releases[c.L1ContractsLocator.Tag]; !ok {
+	if _, ok := versions[c.L1ContractsLocator.Tag]; !ok {
 		return fmt.Errorf("tag '%s' not found in standard versions", c.L1ContractsLocator.Tag)
 	}
 

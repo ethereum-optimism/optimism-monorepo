@@ -44,7 +44,6 @@ contract Initializer_Test is CommonTest {
 
     function setUp() public override {
         super.enableAltDA();
-        super.enableLegacyContracts();
         super.setUp();
 
         // Initialize the `contracts` array with the addresses of the contracts to test, the
@@ -72,7 +71,7 @@ contract Initializer_Test is CommonTest {
                 name: "L1CrossDomainMessenger",
                 target: deploy.mustGetAddress("L1CrossDomainMessenger"),
                 initCalldata: abi.encodeCall(
-                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal, systemConfig)
+                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
                 )
             })
         );
@@ -82,7 +81,7 @@ contract Initializer_Test is CommonTest {
                 name: "L1CrossDomainMessengerProxy",
                 target: address(l1CrossDomainMessenger),
                 initCalldata: abi.encodeCall(
-                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal, systemConfig)
+                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
                 )
             })
         );
@@ -118,43 +117,27 @@ contract Initializer_Test is CommonTest {
                 initCalldata: abi.encodeCall(delayedWeth.initialize, (address(0), ISuperchainConfig(address(0))))
             })
         );
-        // L2OutputOracleImpl
-        contracts.push(
-            InitializeableContract({
-                name: "L2OutputOracle",
-                target: deploy.mustGetAddress("L2OutputOracle"),
-                initCalldata: abi.encodeCall(l2OutputOracle.initialize, (0, 0, 0, 0, address(0), address(0), 0))
-            })
-        );
-        // L2OutputOracleProxy
-        contracts.push(
-            InitializeableContract({
-                name: "L2OutputOracleProxy",
-                target: address(l2OutputOracle),
-                initCalldata: abi.encodeCall(l2OutputOracle.initialize, (0, 0, 0, 0, address(0), address(0), 0))
-            })
-        );
-        // OptimismPortalImpl
-        contracts.push(
-            InitializeableContract({
-                name: "OptimismPortal",
-                target: deploy.mustGetAddress("OptimismPortal"),
-                initCalldata: abi.encodeCall(optimismPortal.initialize, (l2OutputOracle, systemConfig, superchainConfig))
-            })
-        );
-        // OptimismPortalProxy
-        contracts.push(
-            InitializeableContract({
-                name: "OptimismPortalProxy",
-                target: address(optimismPortal),
-                initCalldata: abi.encodeCall(optimismPortal.initialize, (l2OutputOracle, systemConfig, superchainConfig))
-            })
-        );
         // OptimismPortal2Impl
         contracts.push(
             InitializeableContract({
                 name: "OptimismPortal2",
                 target: deploy.mustGetAddress("OptimismPortal2"),
+                initCalldata: abi.encodeCall(
+                    optimismPortal2.initialize,
+                    (
+                        disputeGameFactory,
+                        systemConfig,
+                        superchainConfig,
+                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
+                    )
+                )
+            })
+        );
+        // OptimismPortalProxy
+        contracts.push(
+            InitializeableContract({
+                name: "OptimismPortal2Proxy",
+                target: address(optimismPortal2),
                 initCalldata: abi.encodeCall(
                     optimismPortal2.initialize,
                     (
@@ -380,9 +363,6 @@ contract Initializer_Test is CommonTest {
                 )
             })
         );
-
-        // Nicknamed contracts.
-        nicknames["OptimismPortal2Proxy"] = "OptimismPortalProxy";
     }
 
     /// @notice Tests that:
@@ -488,7 +468,8 @@ contract Initializer_Test is CommonTest {
     function _hasMatchingContract(string memory _name) internal view returns (bool matching_) {
         for (uint256 i; i < contracts.length; i++) {
             if (LibString.eq(contracts[i].name, _getRealContractName(_name))) {
-                matching_ = true;
+                // return early
+                return true;
             }
         }
     }
