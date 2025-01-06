@@ -133,7 +133,7 @@ optimism_package:
         builder_port: ""
       additional_services: []
   op_contract_deployer_params:
-    image: opsigma/op-deployer:v0.0.7-http
+    image: {{ localDockerImage "op-deployer" }}
     l1_artifacts_locator: {{ localContractArtifacts "l1" }}
     l2_artifacts_locator: {{ localContractArtifacts "l2" }}
   global_log_level: "info"
