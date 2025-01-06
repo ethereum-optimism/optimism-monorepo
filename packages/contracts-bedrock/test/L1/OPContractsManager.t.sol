@@ -165,7 +165,7 @@ contract OPContractsManager_Upgrade_Test is CommonTest {
         }
     }
 
-    function test_upgrade_succeeds() public {
+    function test_upgrade_succeeds() public view {
         // TODO: make a state var for opcm in CommonTest
         OPContractsManager opcm = OPContractsManager(deploy.mustGetAddress("OPContractsManager_NextVersion"));
         OPContractsManager.Implementations memory impls = opcm.implementations();

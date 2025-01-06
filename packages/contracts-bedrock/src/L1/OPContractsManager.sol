@@ -114,8 +114,8 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.27
-    string public constant version = "1.0.0-beta.27";
+    /// @custom:semver 1.0.0-beta.28
+    string public constant version = "1.0.0-beta.28";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
