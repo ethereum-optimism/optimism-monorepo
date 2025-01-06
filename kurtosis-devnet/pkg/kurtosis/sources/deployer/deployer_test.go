@@ -25,12 +25,21 @@ func TestParseStateFile(t *testing.T) {
 				"someOtherField": 123,
 				"L2OutputOracleAddress":         "0xghi"
 			}
-		]
+		],
+		"superchainDeployment": {
+			"SuperchainConfigAddress": "0x111",
+			"ProtocolVersionsAddress": "0x222"
+		},
+		"implementationsDeployment": {
+			"L1CrossDomainMessengerProxyAddress": "0x333",
+			"L1StandardBridgeProxyAddress": "0x444"
+		}
 	}`
 
 	result, err := parseStateFile(strings.NewReader(stateJSON))
 	require.NoError(t, err, "Failed to parse state file")
 
+	// Test chain deployments
 	tests := []struct {
 		chainID  string
 		expected DeploymentAddresses
@@ -54,13 +63,27 @@ func TestParseStateFile(t *testing.T) {
 	}
 
 	for _, tt := range tests {
-		chain, ok := result[tt.chainID]
+		chain, ok := result.Deployments[tt.chainID]
 		require.True(t, ok, "Chain %s not found in result", tt.chainID)
 
 		for key, expected := range tt.expected {
 			actual := chain[key]
 			require.Equal(t, expected, actual, "Chain %s, %s: expected %s, got %s", tt.chainID, key, expected, actual)
 		}
+	}
+
+	// Test superchain and implementations addresses
+	expectedAddresses := DeploymentAddresses{
+		"SuperchainConfig":            "0x111",
+		"ProtocolVersions":            "0x222",
+		"L1CrossDomainMessengerProxy": "0x333",
+		"L1StandardBridgeProxy":       "0x444",
+	}
+
+	for key, expected := range expectedAddresses {
+		actual, ok := result.Addresses[key]
+		require.True(t, ok, "Address %s not found in result", key)
+		require.Equal(t, expected, actual, "Address %s: expected %s, got %s", key, expected, actual)
 	}
 }
 

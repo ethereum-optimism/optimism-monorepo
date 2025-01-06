@@ -25,24 +25,31 @@ type DeploymentAddresses map[string]string
 // DeploymentStateAddresses maps chain IDs to their contract addresses
 type DeploymentStateAddresses map[string]DeploymentAddresses
 
+type DeployerState struct {
+	Deployments DeploymentStateAddresses `json:"l2s"`
+	Addresses   DeploymentAddresses      `json:"superchain"`
+}
+
 // StateFile represents the structure of the state.json file
 type StateFile struct {
-	OpChainDeployments []map[string]interface{} `json:"opChainDeployments"`
+	OpChainDeployments        []map[string]interface{} `json:"opChainDeployments"`
+	SuperChainDeployment      map[string]interface{}   `json:"superchainDeployment"`
+	ImplementationsDeployment map[string]interface{}   `json:"implementationsDeployment"`
 }
 
 // Wallet represents a wallet with optional private key and name
 type Wallet struct {
-	Address    string
-	PrivateKey string
-	Name       string
+	Address    string `json:"address"`
+	PrivateKey string `json:"private_key"`
+	Name       string `json:"name"`
 }
 
 // WalletList holds a list of wallets
 type WalletList []*Wallet
 
 type DeployerData struct {
-	Wallets WalletList
-	State   DeploymentStateAddresses
+	Wallets WalletList     `json:"wallets"`
+	State   *DeployerState `json:"state"`
 }
 
 type Deployer struct {
@@ -176,13 +183,27 @@ func hexToDecimal(hex string) (string, error) {
 }
 
 // parseStateFile parses the state.json file and extracts addresses
-func parseStateFile(r io.Reader) (DeploymentStateAddresses, error) {
+func parseStateFile(r io.Reader) (*DeployerState, error) {
 	var state StateFile
 	if err := json.NewDecoder(r).Decode(&state); err != nil {
 		return nil, fmt.Errorf("failed to decode state file: %w", err)
 	}
 
-	result := make(DeploymentStateAddresses)
+	result := &DeployerState{
+		Deployments: make(DeploymentStateAddresses),
+		Addresses:   make(DeploymentAddresses),
+	}
+
+	mapDeployment := func(deployment map[string]interface{}) DeploymentAddresses {
+		addrSuffix := "Address"
+		addresses := make(DeploymentAddresses)
+		for key, value := range deployment {
+			if strings.HasSuffix(key, addrSuffix) {
+				addresses[strings.TrimSuffix(key, addrSuffix)] = value.(string)
+			}
+		}
+		return addresses
+	}
 
 	for _, deployment := range state.OpChainDeployments {
 		// Get the chain ID
@@ -201,19 +222,17 @@ func parseStateFile(r io.Reader) (DeploymentStateAddresses, error) {
 			continue
 		}
 
-		addresses := make(DeploymentAddresses)
-
-		// Look for address fields in the deployment map
-		for key, value := range deployment {
-			if strings.HasSuffix(key, "Address") {
-				key = strings.TrimSuffix(key, "Address")
-				addresses[key] = value.(string)
-			}
-		}
+		addresses := mapDeployment(deployment)
 
 		if len(addresses) > 0 {
-			result[id] = addresses
+			result.Deployments[id] = addresses
 		}
+	}
+
+	result.Addresses = mapDeployment(state.ImplementationsDeployment)
+	// merge the superchain and implementations addresses
+	for key, value := range mapDeployment(state.SuperChainDeployment) {
+		result.Addresses[key] = value
 	}
 
 	return result, nil

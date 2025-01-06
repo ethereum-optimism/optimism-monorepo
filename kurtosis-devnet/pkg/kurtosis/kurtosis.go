@@ -171,11 +171,15 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 	// Find L1 endpoint
 	finder := NewServiceFinder(inspectResult.UserServices)
 	if nodes, endpoints := finder.FindL1Endpoints(); len(nodes) > 0 {
-		env.L1 = &Chain{
+		chain := &Chain{
 			Name:     "Ethereum",
 			Services: endpoints,
 			Nodes:    nodes,
 		}
+		if deployerState.State != nil {
+			chain.Addresses = deployerState.State.Addresses
+		}
+		env.L1 = chain
 	}
 
 	// Find L2 endpoints
@@ -190,8 +194,10 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 		}
 
 		// Add contract addresses if available
-		if addresses, ok := deployerState.State[chainSpec.NetworkID]; ok {
-			chain.Addresses = addresses
+		if deployerState.State != nil && deployerState.State.Deployments != nil {
+			if addresses, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
+				chain.Addresses = addresses
+			}
 		}
 
 		env.L2 = append(env.L2, chain)
