@@ -103,6 +103,9 @@ contract ForkLive is Deployer {
         _deployNewImplementations();
     }
 
+    /// @notice Etches a new Deploy.s.sol contract at a deterministic address, sets up the environment,
+    ///         and deploys new implementations with a "_NextVersion" suffix. This suffix is necessary to avoid
+    ///         naming collisions with the implementations saved above.
     function _deployNewImplementations() internal {
         Deploy deployNew = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy.new"))))));
         vm.etch(address(deployNew), vm.getDeployedCode("Deploy.s.sol:Deploy"));

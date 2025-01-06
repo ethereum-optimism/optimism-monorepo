@@ -200,6 +200,8 @@ contract Deploy is Deployer {
             deploySuperchain();
         }
 
+        // Deploy the implementations, with no suffix. The suffix is only used when deploying a new set of
+        // implementations to test upgrades.
         deployImplementations({ _isInterop: cfg.useInterop(), _suffix: "" });
 
         // Deploy Current OPChain Contracts
@@ -276,7 +278,7 @@ contract Deploy is Deployer {
 
     /// @notice Deploy all of the implementations
     /// @param _isInterop Whether to use interop
-    /// @param _suffix    An optional suffix to append to the implementation names. Used in the ForkLives script to
+    /// @param _suffix    An optional suffix to append to the implementation names. Used in the ForkLive script to
     ///                   distinguish between implementations already in production and new implementations deployed by
     ///                   this script.
     function deployImplementations(bool _isInterop, string memory _suffix) public {
@@ -323,6 +325,7 @@ contract Deploy is Deployer {
         artifacts.save(string.concat("OPContractsManager", _suffix), address(dio.opcm()));
 
         // Get a contract set from the implementation addresses with the suffix.
+        // Get a contract set from the implementation addresses just deployed
         Types.ContractSet memory contracts = Types.ContractSet({
             L1CrossDomainMessenger: mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
             L1StandardBridge: mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
@@ -336,6 +339,7 @@ contract Deploy is Deployer {
             SystemConfig: mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
             L1ERC721Bridge: mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
             // We didn't deploy a new version of these so we don't append a suffix
+            // We didn't deploy these in this function so we don't need to append a suffix.
             ProtocolVersions: mustGetAddress("ProtocolVersionsImpl"),
             SuperchainConfig: mustGetAddress("SuperchainConfigImpl")
         });
