@@ -8,7 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 var (
@@ -37,9 +37,10 @@ type Config struct {
 	L1RPC string
 
 	// SyncSources lists the consensus nodes that help sync the supervisor
-	SyncSources syncsrc.SyncSourceCollection
+	SyncSources syncnode.SyncNodeCollection
 
-	Datadir string
+	Datadir             string
+	DatadirSyncEndpoint string
 }
 
 func (c *Config) Check() error {
@@ -63,7 +64,7 @@ func (c *Config) Check() error {
 
 // NewConfig creates a new config using default values whenever possible.
 // Required options with no suitable default are passed as parameters.
-func NewConfig(l1RPC string, syncSrcs syncsrc.SyncSourceCollection, depSet depset.DependencySetSource, datadir string) *Config {
+func NewConfig(l1RPC string, syncSrcs syncnode.SyncNodeCollection, depSet depset.DependencySetSource, datadir string) *Config {
 	return &Config{
 		LogConfig:           oplog.DefaultCLIConfig(),
 		MetricsConfig:       opmetrics.DefaultCLIConfig(),

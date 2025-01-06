@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"errors"
+	"fmt"
 	"sync"
 	"time"
 
@@ -86,11 +87,15 @@ func (w *PollingClient) BatchCallContext(ctx context.Context, b []rpc.BatchElem)
 	return w.c.BatchCallContext(ctx, b)
 }
 
-// EthSubscribe creates a new newHeads subscription. It takes identical arguments
-// to Geth's native EthSubscribe method. It will return an error, however, if the
+// Subscribe supports eth_subscribe of block headers,
+// by creating a new newHeads subscription. It takes identical arguments
+// to Geth's native Subscribe method. It will return an error, however, if the
 // passed in channel is not a *types.Headers channel or the subscription type is not
-// newHeads.
-func (w *PollingClient) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
+// newHeads. Or if the namespace is not "eth".
+func (w *PollingClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	if namespace != "eth" {
+		return nil, fmt.Errorf("polling fallback is only supported for eth_subscribe, not for namespace %q", namespace)
+	}
 	select {
 	case <-w.ctx.Done():
 		return nil, ErrSubscriberClosed

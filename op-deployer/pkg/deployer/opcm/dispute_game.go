@@ -19,7 +19,7 @@ type DeployDisputeGameInput struct {
 	MaxClockDuration         uint64
 	DelayedWethProxy         common.Address
 	AnchorStateRegistryProxy common.Address
-	L2ChainId                uint64
+	L2ChainId                common.Hash
 	Proposer                 common.Address
 	Challenger               common.Address
 }

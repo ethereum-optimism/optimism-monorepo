@@ -14,12 +14,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 var (
 	ValidL1RPC  = "http://localhost:8545"
-	ValidL2RPCs = &syncsrc.CLISyncSources{
+	ValidL2RPCs = &syncnode.CLISyncNodes{
 		JWTSecretPaths: []string{"./jwt_secret.txt"},
 	}
 	ValidDatadir = "./supervisor_test_datadir"
@@ -58,7 +58,7 @@ func TestL2ConsensusNodes(t *testing.T) {
 		url2 := "http://foobar.com:1234"
 		cfg := configForArgs(t, addRequiredArgsExcept(
 			"--l2-consensus-nodes", "--l2-consensus.nodes="+url1+","+url2))
-		require.Equal(t, []string{url1, url2}, cfg.SyncSources.(*syncsrc.CLISyncSources).Endpoints)
+		require.Equal(t, []string{url1, url2}, cfg.SyncSources.(*syncnode.CLISyncNodes).Endpoints)
 	})
 }
 

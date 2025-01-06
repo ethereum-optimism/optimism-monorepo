@@ -160,22 +160,32 @@ func ApplyPipeline(
 		}
 	}()
 
-	l2ArtifactsFS, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
-	if err != nil {
-		return fmt.Errorf("failed to download L2 artifacts: %w", err)
-	}
-	defer func() {
-		if err := cleanupL2(); err != nil {
-			opts.Logger.Warn("failed to clean up L2 artifacts", "err", err)
+	var l2ArtifactsFS foundry.StatDirFs
+	if intent.L1ContractsLocator.Equal(intent.L2ContractsLocator) {
+		l2ArtifactsFS = l1ArtifactsFS
+	} else {
+		l2Afs, cleanupL2, err := artifacts.Download(ctx, intent.L2ContractsLocator, progressor)
+		if err != nil {
+			return fmt.Errorf("failed to download L2 artifacts: %w", err)
 		}
-	}()
+		defer func() {
+			if err := cleanupL2(); err != nil {
+				opts.Logger.Warn("failed to clean up L2 artifacts", "err", err)
+			}
+		}()
+		l2ArtifactsFS = l2Afs
+	}
 
 	bundle := pipeline.ArtifactsBundle{
 		L1: l1ArtifactsFS,
 		L2: l2ArtifactsFS,
 	}
 
-	var deployer common.Address
+	deployer := common.Address{0x01}
+	if opts.DeployerPrivateKey != nil {
+		deployer = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
+	}
+
 	var bcaster broadcaster.Broadcaster
 	var l1Client *ethclient.Client
 	var l1Host *script.Host
@@ -193,7 +203,6 @@ func ApplyPipeline(
 		}
 
 		signer := opcrypto.SignerFnFromBind(opcrypto.PrivateKeySignerFn(opts.DeployerPrivateKey, chainID))
-		deployer = crypto.PubkeyToAddress(opts.DeployerPrivateKey.PublicKey)
 
 		bcaster, err = broadcaster.NewKeyedBroadcaster(broadcaster.KeyedBroadcasterOpts{
 			Logger:  opts.Logger,
@@ -235,7 +244,6 @@ func ApplyPipeline(
 			return fmt.Errorf("failed to select fork: %w", err)
 		}
 	} else {
-		deployer = common.Address{0x01}
 		bcaster = broadcaster.NoopBroadcaster()
 		l1Host, err = env.DefaultScriptHost(
 			bcaster,
@@ -285,6 +293,11 @@ func ApplyPipeline(
 			fmt.Sprintf("deploy-alt-da-%s", chainID.Hex()),
 			func() error {
 				return pipeline.DeployAltDA(pEnv, intent, st, chainID)
+			},
+		}, pipelineStage{
+			fmt.Sprintf("deploy-additional-dispute-games-%s", chainID.Hex()),
+			func() error {
+				return pipeline.DeployAdditionalDisputeGames(pEnv, intent, st, chainID)
 			},
 		}, pipelineStage{
 			fmt.Sprintf("generate-l2-genesis-%s", chainID.Hex()),

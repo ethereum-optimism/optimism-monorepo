@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"math"
-	"sync"
 
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -29,7 +28,6 @@ type ChannelOutFactory func(cfg ChannelConfig, rollupCfg *rollup.Config) (derive
 // channel.
 // Public functions on channelManager are safe for concurrent access.
 type channelManager struct {
-	mu          sync.Mutex
 	log         log.Logger
 	metr        metrics.Metricer
 	cfgProvider ChannelConfigProvider
@@ -78,8 +76,6 @@ func (s *channelManager) SetChannelOutFactory(outFactory ChannelOutFactory) {
 // Clear clears the entire state of the channel manager.
 // It is intended to be used before launching op-batcher and after an L2 reorg.
 func (s *channelManager) Clear(l1OriginLastSubmittedChannel eth.BlockID) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	s.log.Trace("clearing channel manager state")
 	s.blocks.Clear()
 	s.blockCursor = 0
@@ -97,8 +93,6 @@ func (s *channelManager) pendingBlocks() int {
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
 // in the failed transaction.
 func (s *channelManager) TxFailed(_id txID) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
@@ -111,8 +105,7 @@ func (s *channelManager) TxFailed(_id txID) {
 // TxConfirmed marks a transaction as confirmed on L1. Only if the channel timed out
 // the channelManager's state is modified.
 func (s *channelManager) TxConfirmed(_id txID, inclusionBlock eth.BlockID) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
+
 	id := _id.String()
 	if channel, ok := s.txChannels[id]; ok {
 		delete(s.txChannels, id)
@@ -155,7 +148,7 @@ func (s *channelManager) handleChannelInvalidated(c *channel) {
 		}
 		s.rewindToBlock(blockID)
 	} else {
-		s.log.Debug("channelManager.handleChanneInvalidated: channel had no blocks")
+		s.log.Debug("channelManager.handleChannelInvalidated: channel had no blocks")
 	}
 
 	// Trim provided channel and any older channels:
@@ -198,8 +191,6 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 // When switching DA type, the channelManager state will be rebuilt
 // with a new ChannelConfig.
 func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
 	channel, err := s.getReadyChannel(l1Head)
 	if err != nil {
 		return emptyTxData, err
@@ -437,9 +428,6 @@ func (s *channelManager) outputFrames() error {
 // if the block does not extend the last block loaded into the state. If no
 // blocks were added yet, the parent hash check is skipped.
 func (s *channelManager) AddL2Block(block *types.Block) error {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-
 	if s.tip != (common.Hash{}) && s.tip != block.ParentHash() {
 		return ErrReorg
 	}
@@ -464,8 +452,8 @@ func l2BlockRefFromBlockAndL1Info(block *types.Block, l1info *derive.L1BlockInfo
 
 var ErrPendingAfterClose = errors.New("pending channels remain after closing channel-manager")
 
-// pruneSafeBlocks dequeues the provided number of blocks from the internal blocks queue
-func (s *channelManager) pruneSafeBlocks(num int) {
+// PruneSafeBlocks dequeues the provided number of blocks from the internal blocks queue
+func (s *channelManager) PruneSafeBlocks(num int) {
 	_, ok := s.blocks.DequeueN(int(num))
 	if !ok {
 		panic("tried to prune more blocks than available")
@@ -476,8 +464,8 @@ func (s *channelManager) pruneSafeBlocks(num int) {
 	}
 }
 
-// pruneChannels dequeues the provided number of channels from the internal channels queue
-func (s *channelManager) pruneChannels(num int) {
+// PruneChannels dequeues the provided number of channels from the internal channels queue
+func (s *channelManager) PruneChannels(num int) {
 	clearCurrentChannel := false
 	for i := 0; i < num; i++ {
 		if s.channelQueue[i] == s.currentChannel {

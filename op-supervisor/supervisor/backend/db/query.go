@@ -148,6 +148,10 @@ func (db *ChainsDB) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSea
 	return crossDB.Latest()
 }
 
+func (db *ChainsDB) FinalizedL1() eth.BlockRef {
+	return db.finalizedL1.Get()
+}
+
 func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
 	finalizedL1 := db.finalizedL1.Get()
 	if finalizedL1 == (eth.L1BlockRef{}) {

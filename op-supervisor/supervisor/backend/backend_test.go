@@ -24,7 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -57,7 +57,7 @@ func TestBackendLifetime(t *testing.T) {
 		DependencySetSource:   depSet,
 		SynchronousProcessors: true,
 		MockRun:               false,
-		SyncSources:           &syncsrc.CLISyncSources{},
+		SyncSources:           &syncnode.CLISyncNodes{},
 		Datadir:               dataDir,
 	}
 

@@ -34,6 +34,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
 
     function setUp() public virtual override {
         super.setUp();
+        skipIfForkTest("SystemConfig_Initialize_Test: cannot test initialization on forked network");
         batchInbox = deploy.cfg().batchInboxAddress();
         owner = deploy.cfg().finalSystemOwner();
         basefeeScalar = deploy.cfg().basefeeScalar();
@@ -48,18 +49,18 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
     /// @dev Tests that constructor sets the correct values.
     function test_constructor_succeeds() external view {
         ISystemConfig impl = ISystemConfig(systemConfigImpl);
-        assertEq(impl.owner(), address(0xdEaD));
+        assertEq(impl.owner(), address(0));
         assertEq(impl.overhead(), 0);
-        assertEq(impl.scalar(), uint256(0x01) << 248);
+        assertEq(impl.scalar(), 0);
         assertEq(impl.batcherHash(), bytes32(0));
-        assertEq(impl.gasLimit(), 1);
+        assertEq(impl.gasLimit(), 0);
         assertEq(impl.unsafeBlockSigner(), address(0));
         assertEq(impl.basefeeScalar(), 0);
         assertEq(impl.blobbasefeeScalar(), 0);
         IResourceMetering.ResourceConfig memory actual = impl.resourceConfig();
-        assertEq(actual.maxResourceLimit, 1);
-        assertEq(actual.elasticityMultiplier, 1);
-        assertEq(actual.baseFeeMaxChangeDenominator, 2);
+        assertEq(actual.maxResourceLimit, 0);
+        assertEq(actual.elasticityMultiplier, 0);
+        assertEq(actual.baseFeeMaxChangeDenominator, 0);
         assertEq(actual.minimumBaseFee, 0);
         assertEq(actual.systemTxMaxGas, 0);
         assertEq(actual.maximumBaseFee, 0);
@@ -106,7 +107,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         assertEq(address(systemConfig.l1ERC721Bridge()), address(l1ERC721Bridge));
         assertEq(address(systemConfig.l1StandardBridge()), address(l1StandardBridge));
         assertEq(address(systemConfig.disputeGameFactory()), address(disputeGameFactory));
-        assertEq(address(systemConfig.optimismPortal()), address(optimismPortal));
+        assertEq(address(systemConfig.optimismPortal()), address(optimismPortal2));
         assertEq(address(systemConfig.optimismMintableERC20Factory()), address(optimismMintableERC20Factory));
         // Check gas paying token
         (address token, uint8 decimals) = systemConfig.gasPayingToken();
@@ -290,10 +291,12 @@ contract SystemConfig_Init_ResourceConfig is SystemConfig_Init {
     )
         internal
     {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Init_ResourceConfig: initialize() interface differs from mainnet.");
         // Wipe out the initialized slot so the proxy can be initialized again
         vm.store(address(systemConfig), bytes32(0), bytes32(0));
         // Fetch the current gas limit
-        uint64 gasLimit = uint64(deploy.cfg().l2GenesisBlockGasLimit());
+        uint64 gasLimit = systemConfig.gasLimit();
 
         vm.expectRevert(bytes(revertMessage));
         systemConfig.initialize({
@@ -349,7 +352,7 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
                 l1ERC721Bridge: address(0),
                 disputeGameFactory: address(0),
                 l1StandardBridge: address(0),
-                optimismPortal: address(optimismPortal),
+                optimismPortal: address(optimismPortal2),
                 optimismMintableERC20Factory: address(0),
                 gasPayingToken: _gasPayingToken
             })
@@ -474,11 +477,11 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
     /// @dev Tests that initialization works with OptimismPortal.
     function test_initialize_customGasTokenCall_succeeds() external {
         vm.expectCall(
-            address(optimismPortal),
-            abi.encodeCall(optimismPortal.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
+            address(optimismPortal2),
+            abi.encodeCall(optimismPortal2.setGasPayingToken, (address(token), 18, bytes32("Silly"), bytes32("SIL")))
         );
 
-        vm.expectEmit(address(optimismPortal));
+        vm.expectEmit(address(optimismPortal2));
         emit TransactionDeposited(
             0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
             Predeploys.L1_BLOCK_ATTRIBUTES,
@@ -511,12 +514,16 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
 
     /// @notice Ensures that `setGasConfig` reverts if version byte is set.
     function test_setGasConfig_badValues_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'scalar exceeds max' check DNE on op mainnet");
         vm.prank(systemConfig.owner());
         vm.expectRevert("SystemConfig: scalar exceeds max.");
         systemConfig.setGasConfig({ _overhead: 0, _scalar: type(uint256).max });
     }
 
     function test_setGasConfigEcotone_notOwner_reverts() external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setGasConfigEcotone' method DNE on op mainnet");
         vm.expectRevert("Ownable: caller is not the owner");
         systemConfig.setGasConfigEcotone({ _basefeeScalar: 0, _blobbasefeeScalar: 0 });
     }
@@ -551,12 +558,16 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
 
     /// @dev Tests that `setEIP1559Params` reverts if the caller is not the owner.
     function test_setEIP1559Params_notOwner_reverts(uint32 _denominator, uint32 _elasticity) external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setEIP1559Params' method DNE on op mainnet");
         vm.expectRevert("Ownable: caller is not the owner");
         systemConfig.setEIP1559Params({ _denominator: _denominator, _elasticity: _elasticity });
     }
 
     /// @dev Tests that `setEIP1559Params` reverts if the denominator is zero.
     function test_setEIP1559Params_zeroDenominator_reverts(uint32 _elasticity) external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setEIP1559Params' method DNE on op mainnet");
         vm.prank(systemConfig.owner());
         vm.expectRevert("SystemConfig: denominator must be >= 1");
         systemConfig.setEIP1559Params({ _denominator: 0, _elasticity: _elasticity });
@@ -564,6 +575,8 @@ contract SystemConfig_Setters_TestFail is SystemConfig_Init {
 
     /// @dev Tests that `setEIP1559Params` reverts if the elasticity is zero.
     function test_setEIP1559Params_zeroElasticity_reverts(uint32 _denominator) external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setEIP1559Params' method DNE on op mainnet");
         _denominator = uint32(bound(_denominator, 1, type(uint32).max));
         vm.prank(systemConfig.owner());
         vm.expectRevert("SystemConfig: elasticity must be >= 1");
@@ -596,6 +609,8 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
     }
 
     function testFuzz_setGasConfigEcotone_succeeds(uint32 _basefeeScalar, uint32 _blobbasefeeScalar) external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setGasConfigEcotone' method DNE on op mainnet");
         bytes32 encoded =
             ffi.encodeScalarEcotone({ _basefeeScalar: _basefeeScalar, _blobbasefeeScalar: _blobbasefeeScalar });
 
@@ -639,6 +654,8 @@ contract SystemConfig_Setters_Test is SystemConfig_Init {
 
     /// @dev Tests that `setEIP1559Params` updates the EIP1559 parameters successfully.
     function testFuzz_setEIP1559Params_succeeds(uint32 _denominator, uint32 _elasticity) external {
+        // TODO(opcm upgrades): remove skip once upgrade is implemented
+        skipIfForkTest("SystemConfig_Setters_TestFail: 'setEIP1559Params' method DNE on op mainnet");
         _denominator = uint32(bound(_denominator, 2, type(uint32).max));
         _elasticity = uint32(bound(_elasticity, 2, type(uint32).max));
 

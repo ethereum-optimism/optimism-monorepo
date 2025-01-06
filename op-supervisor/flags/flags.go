@@ -12,7 +12,7 @@ import (
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 const EnvVarPrefix = "OP_SUPERVISOR"
@@ -45,6 +45,11 @@ var (
 		Usage:   "Directory to store data generated as part of responding to games",
 		EnvVars: prefixEnvVars("DATADIR"),
 	}
+	DataDirSyncEndpointFlag = &cli.PathFlag{
+		Name:    "datadir.sync-endpoint",
+		Usage:   "op-supervisor endpoint to sync databases from",
+		EnvVars: prefixEnvVars("DATADIR_SYNC_ENDPOINT"),
+	}
 	DependencySetFlag = &cli.PathFlag{
 		Name:      "dependency-set",
 		Usage:     "Dependency-set configuration, point at JSON file.",
@@ -69,6 +74,7 @@ var requiredFlags = []cli.Flag{
 
 var optionalFlags = []cli.Flag{
 	MockRunFlag,
+	DataDirSyncEndpointFlag,
 }
 
 func init() {
@@ -105,13 +111,14 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		L1RPC:               ctx.String(L1RPCFlag.Name),
 		SyncSources:         syncSourceSetups(ctx),
 		Datadir:             ctx.Path(DataDirFlag.Name),
+		DatadirSyncEndpoint: ctx.Path(DataDirSyncEndpointFlag.Name),
 	}
 }
 
 // syncSourceSetups creates a sync source collection, from CLI arguments.
 // These sources can share JWT secret configuration.
-func syncSourceSetups(ctx *cli.Context) syncsrc.SyncSourceCollection {
-	return &syncsrc.CLISyncSources{
+func syncSourceSetups(ctx *cli.Context) syncnode.SyncNodeCollection {
+	return &syncnode.CLISyncNodes{
 		Endpoints:      filterEmpty(ctx.StringSlice(L2ConsensusNodesFlag.Name)),
 		JWTSecretPaths: filterEmpty(ctx.StringSlice(L2ConsensusJWTSecret.Name)),
 	}

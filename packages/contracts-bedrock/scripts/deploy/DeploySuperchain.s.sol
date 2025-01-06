@@ -239,7 +239,12 @@ contract DeploySuperchainOutput is BaseDeployIO {
     function assertValidSuperchainConfig(DeploySuperchainInput _dsi) internal {
         // Proxy checks.
         ISuperchainConfig superchainConfig = superchainConfigProxy();
-        DeployUtils.assertInitialized({ _contractAddress: address(superchainConfig), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({
+            _contractAddress: address(superchainConfig),
+            _isProxy: true,
+            _slot: 0,
+            _offset: 0
+        });
         require(superchainConfig.guardian() == _dsi.guardian(), "SUPCON-10");
         require(superchainConfig.paused() == _dsi.paused(), "SUPCON-20");
 
@@ -259,7 +264,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
     function assertValidProtocolVersions(DeploySuperchainInput _dsi) internal {
         // Proxy checks.
         IProtocolVersions pv = protocolVersionsProxy();
-        DeployUtils.assertInitialized({ _contractAddress: address(pv), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(pv), _isProxy: true, _slot: 0, _offset: 0 });
         require(pv.owner() == _dsi.protocolVersionsOwner(), "PV-10");
         require(
             ProtocolVersion.unwrap(pv.required()) == ProtocolVersion.unwrap(_dsi.requiredProtocolVersion()), "PV-20"
@@ -276,7 +281,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
 
         // Implementation checks.
         pv = protocolVersionsImpl();
-        require(pv.owner() == address(0xdead), "PV-60");
+        require(pv.owner() == address(0), "PV-60");
         require(ProtocolVersion.unwrap(pv.required()) == 0, "PV-70");
         require(ProtocolVersion.unwrap(pv.recommended()) == 0, "PV-80");
     }

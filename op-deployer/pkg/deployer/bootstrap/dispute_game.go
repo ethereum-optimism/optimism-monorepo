@@ -4,6 +4,7 @@ import (
 	"context"
 	"crypto/ecdsa"
 	"fmt"
+	"math/big"
 	"strings"
 
 	artifacts2 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
@@ -224,7 +225,7 @@ func DisputeGame(ctx context.Context, cfg DisputeGameConfig) (opcm.DeployDispute
 			MaxClockDuration:         cfg.MaxClockDuration,
 			DelayedWethProxy:         cfg.DelayedWethProxy,
 			AnchorStateRegistryProxy: cfg.AnchorStateRegistryProxy,
-			L2ChainId:                cfg.L2ChainId,
+			L2ChainId:                common.BigToHash(new(big.Int).SetUint64(cfg.L2ChainId)),
 			Proposer:                 cfg.Proposer,
 			Challenger:               cfg.Challenger,
 		},

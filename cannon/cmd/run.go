@@ -11,6 +11,12 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/log"
+	"github.com/pkg/profile"
+	"github.com/urfave/cli/v2"
+
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	mipsexec "github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
@@ -20,11 +26,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/ioutil"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 	"github.com/ethereum-optimism/optimism/op-service/serialize"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/log"
-	"github.com/pkg/profile"
-	"github.com/urfave/cli/v2"
 )
 
 var (
@@ -379,6 +380,8 @@ func Run(ctx *cli.Context) error {
 	}
 	l.Info("Loaded input state", "version", state.Version)
 	vm := state.CreateVM(l, po, outLog, errLog, meta)
+
+	// Enable debug/stats tracking as requested
 	debugProgram := ctx.Bool(RunDebugFlag.Name)
 	if debugProgram {
 		if metaPath := ctx.Path(RunMetaFlag.Name); metaPath == "" {
@@ -387,6 +390,9 @@ func Run(ctx *cli.Context) error {
 		if err := vm.InitDebug(); err != nil {
 			return fmt.Errorf("failed to initialize debug mode: %w", err)
 		}
+	}
+	if debugInfoFile := ctx.Path(RunDebugInfoFlag.Name); debugInfoFile != "" {
+		vm.EnableStats()
 	}
 
 	proofFmt := ctx.String(RunProofFmtFlag.Name)

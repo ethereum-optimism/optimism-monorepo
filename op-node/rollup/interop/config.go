@@ -47,6 +47,7 @@ func (cfg *Config) Setup(ctx context.Context, logger log.Logger) (SubSystem, err
 		}
 		out := &ManagedMode{}
 		out.srv = rpc.NewServer(cfg.RPCAddr, cfg.RPCPort, "v0.0.0",
+			rpc.WithLogger(logger),
 			rpc.WithWebsocketEnabled(), rpc.WithJWTSecret(jwtSecret[:]))
 		return out, nil
 	} else {

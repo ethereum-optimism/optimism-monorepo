@@ -105,6 +105,24 @@ func TestInterop_IsolatedChains(t *testing.T) {
 	setupAndRun(t, config, test)
 }
 
+// TestInterop_SupervisorFinality tests that the supervisor updates its finality
+// It waits for the finalized block to advance past the genesis block.
+func TestInterop_SupervisorFinality(t *testing.T) {
+	test := func(t *testing.T, s2 SuperSystem) {
+		supervisor := s2.SupervisorClient()
+		require.Eventually(t, func() bool {
+			final, err := supervisor.FinalizedL1(context.Background())
+			require.NoError(t, err)
+			return final.Number > 0
+			// this test takes about 30 seconds, with a longer Eventually timeout for CI
+		}, time.Second*60, time.Second, "wait for finalized block to be greater than 0")
+	}
+	config := SuperSystemConfig{
+		mempoolFiltering: false,
+	}
+	setupAndRun(t, config, test)
+}
+
 // TestInterop_EmitLogs tests a simple interop scenario
 // Chains A and B exist, but no messages are sent between them.
 // A contract is deployed on each chain, and logs are emitted repeatedly.

@@ -33,7 +33,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/safego"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncsrc"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 // L2Verifier is an actor that functions like a rollup node,
@@ -219,11 +219,11 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	return rollupNode
 }
 
-func (v *L2Verifier) InteropSyncSource(t Testing) syncsrc.SyncSource {
+func (v *L2Verifier) InteropSyncNode(t Testing) syncnode.SyncNode {
 	require.NotNil(t, v.interopRPC, "interop rpc must be running")
 	cl := rpc.DialInProc(v.interopRPC)
 	bCl := client.NewBaseRPCClient(cl)
-	return syncsrc.NewRPCSyncSource("action-tests-l2-verifier", bCl)
+	return syncnode.NewRPCSyncNode("action-tests-l2-verifier", bCl)
 }
 
 type l2VerifierBackend struct {
