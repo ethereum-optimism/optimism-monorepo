@@ -321,85 +321,72 @@ contract OptimismPortal2_Test is CommonTest {
         // TODO(opcm upgrades): remove skip once upgrade path is implemented
         skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
 
-        vm.expectEmit(address(optimismPortal2));
-        emit TransactionDeposited(
-            0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001,
-            Predeploys.L1_BLOCK_ATTRIBUTES,
-            0,
-            abi.encodePacked(
-                uint256(0), // mint
-                uint256(0), // value
-                uint64(200_000), // gasLimit
-                false, // isCreation,
-                abi.encodeCall(IL1Block.setGasPayingToken, (_token, _decimals, _name, _symbol))
-            )
-        );
-
         vm.prank(address(systemConfig));
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
     }
 
-    /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
-    ///         code path that manually emits a deposit transaction outside of the
-    ///         `depositTransaction` function. This is a simple differential test.
-    function test_setGasPayingToken_correctEvent_succeeds(
-        address _token,
-        string calldata _name,
-        string calldata _symbol
-    )
-        external
-    {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+    // /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
+    // ///         code path that manually emits a deposit transaction outside of the
+    // ///         `depositTransaction` function. This is a simple differential test.
+    // function test_setGasPayingToken_correctEvent_succeeds(
+    //     address _token,
+    //     string calldata _name,
+    //     string calldata _symbol
+    // )
+    //     external
+    // {
+    //     // TODO(opcm upgrades): remove skip once upgrade path is implemented
+    //     skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
 
-        if (bytes(_name).length > 32) {
-            _name = _name[0:32];
-        }
-        if (bytes(_symbol).length > 32) {
-            _symbol = _symbol[0:32];
-        }
+    //     if (bytes(_name).length > 32) {
+    //         _name = _name[0:32];
+    //     }
+    //     if (bytes(_symbol).length > 32) {
+    //         _symbol = _symbol[0:32];
+    //     }
 
-        bytes32 name = GasPayingToken.sanitize(_name);
-        bytes32 symbol = GasPayingToken.sanitize(_symbol);
+    //     bytes32 name = GasPayingToken.sanitize(_name);
+    //     bytes32 symbol = GasPayingToken.sanitize(_symbol);
 
-        vm.recordLogs();
+    //     vm.recordLogs();
 
-        vm.deal(address(systemConfig), 100 ether);
-        vm.prank(address(systemConfig));
-        optimismPortal2.setGasPayingToken(_token, 18, name, symbol);
+    //     vm.deal(address(systemConfig), 100 ether);
+    //     vm.prank(address(systemConfig));
+    //     optimismPortal2.setGasPayingToken(_token, 18, name, symbol);
 
-        vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
-        optimismPortal2.depositTransaction({
-            _to: Predeploys.L1_BLOCK_ATTRIBUTES,
-            _value: 0,
-            _gasLimit: 200_000,
-            _isCreation: false,
-            _data: abi.encodeCall(IL1Block.setGasPayingToken, (_token, 18, name, symbol))
-        });
+    //     vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
+    //     optimismPortal2.depositTransaction({
+    //         _to: Predeploys.L1_BLOCK_ATTRIBUTES,
+    //         _value: 0,
+    //         _gasLimit: 200_000,
+    //         _isCreation: false,
+    //         _data: abi.encodeCall(IL1Block.setGasPayingToken, (_token, 18, name, symbol))
+    //     });
 
-        VmSafe.Log[] memory logs = vm.getRecordedLogs();
-        assertEq(logs.length, 2);
+    //     VmSafe.Log[] memory logs = vm.getRecordedLogs();
+    //     assertEq(logs.length, 2);
 
-        VmSafe.Log memory systemPath = logs[0];
-        VmSafe.Log memory userPath = logs[1];
+    //     VmSafe.Log memory systemPath = logs[0];
+    //     VmSafe.Log memory userPath = logs[1];
 
-        assertEq(systemPath.topics.length, 4);
-        assertEq(systemPath.topics.length, userPath.topics.length);
-        assertEq(systemPath.topics[0], userPath.topics[0]);
-        assertEq(systemPath.topics[1], userPath.topics[1]);
-        assertEq(systemPath.topics[2], userPath.topics[2]);
-        assertEq(systemPath.topics[3], userPath.topics[3]);
-        assertEq(systemPath.data, userPath.data);
-    }
+    //     assertEq(systemPath.topics.length, 4);
+    //     assertEq(systemPath.topics.length, userPath.topics.length);
+    //     assertEq(systemPath.topics[0], userPath.topics[0]);
+    //     assertEq(systemPath.topics[1], userPath.topics[1]);
+    //     assertEq(systemPath.topics[2], userPath.topics[2]);
+    //     assertEq(systemPath.topics[3], userPath.topics[3]);
+    //     assertEq(systemPath.data, userPath.data);
+    // }
 
-    /// @dev Tests that the gas paying token cannot be set by a non-system config.
+    /// @dev Tests that the gas paying token cannot be set to any token other than Ether.
     function test_setGasPayingToken_notSystemConfig_fails(address _caller) external {
         // TODO(opcm upgrades): remove skip once upgrade path is implemented
         skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
 
         vm.assume(_caller != address(systemConfig));
         vm.prank(_caller);
-        vm.expectRevert(Unauthorized.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.setGasPayingToken(address(0), 0, "", "");
     }
 
@@ -412,22 +399,23 @@ contract OptimismPortal2_Test is CommonTest {
         (address token,) = systemConfig.gasPayingToken();
         assertEq(token, Constants.ETHER);
 
-        vm.expectRevert(OnlyCustomGasToken.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.depositERC20Transaction(address(0), 0, 0, 0, false, "");
     }
 
-    function test_depositERC20Transaction_balanceOverflow_reverts() external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
-        vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(42), 18));
+    // function test_depositERC20Transaction_balanceOverflow_reverts() external {
+    //     // TODO(opcm upgrades): remove skip once upgrade path is implemented
+    //     skipIfForkTest("OptimismPortal2_Test: gas paying token functionality DNE on op mainnet");
+    //     vm.mockCall(address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(42),
+    // 18));
 
-        // The balance slot
-        vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(type(uint256).max));
-        assertEq(optimismPortal2.balance(), type(uint256).max);
+    //     // The balance slot
+    //     vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(type(uint256).max));
+    //     assertEq(optimismPortal2.balance(), type(uint256).max);
 
-        vm.expectRevert(stdError.arithmeticError);
-        optimismPortal2.depositERC20Transaction(address(0), 1, 1, 10_000, false, "");
-    }
+    //     vm.expectRevert(stdError.arithmeticError);
+    //     optimismPortal2.depositERC20Transaction(address(0), 1, 1, 10_000, false, "");
+    // }
 
     /// @dev Tests that `balance()` returns the correct balance when the gas paying token is ether.
     function testFuzz_balance_ether_succeeds(uint256 _amount) external {
@@ -961,76 +949,76 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty and with a custom gas token.
     function test_finalizeWithdrawalTransaction_noTxDataNonEtherGasToken_succeeds() external {
-        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
-            nonce: 0,
-            sender: alice,
-            target: bob,
-            value: 100,
-            gasLimit: 100_000,
-            data: hex""
-        });
-        // Get withdrawal proof data we can use for testing.
-        (
-            bytes32 _stateRoot_noData,
-            bytes32 _storageRoot_noData,
-            bytes32 _outputRoot_noData,
-            bytes32 _withdrawalHash_noData,
-            bytes[] memory _withdrawalProof_noData
-        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
-        // Setup a dummy output root proof for reuse.
-        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
-            version: bytes32(uint256(0)),
-            stateRoot: _stateRoot_noData,
-            messagePasserStorageRoot: _storageRoot_noData,
-            latestBlockhash: bytes32(uint256(0))
-        });
-        uint256 _proposedBlockNumber_noData = 0xFF;
-        IFaultDisputeGame game_noData = IFaultDisputeGame(
-            payable(
-                address(
-                    disputeGameFactory.create(
-                        optimismPortal2.respectedGameType(),
-                        Claim.wrap(_outputRoot_noData),
-                        abi.encode(_proposedBlockNumber_noData)
-                    )
-                )
-            )
-        );
-        uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
-        // Warp beyond the chess clocks and finalize the game.
-        vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
-        // Fund the portal so that we can withdraw ETH.
-        vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
-        deal(address(L1Token), address(optimismPortal2), 0xFFFFFFFF);
+        // Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
+        //     nonce: 0,
+        //     sender: alice,
+        //     target: bob,
+        //     value: 100,
+        //     gasLimit: 100_000,
+        //     data: hex""
+        // });
+        // // Get withdrawal proof data we can use for testing.
+        // (
+        //     bytes32 _stateRoot_noData,
+        //     bytes32 _storageRoot_noData,
+        //     bytes32 _outputRoot_noData,
+        //     bytes32 _withdrawalHash_noData,
+        //     bytes[] memory _withdrawalProof_noData
+        // ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        // // Setup a dummy output root proof for reuse.
+        // Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
+        //     version: bytes32(uint256(0)),
+        //     stateRoot: _stateRoot_noData,
+        //     messagePasserStorageRoot: _storageRoot_noData,
+        //     latestBlockhash: bytes32(uint256(0))
+        // });
+        // uint256 _proposedBlockNumber_noData = 0xFF;
+        // IFaultDisputeGame game_noData = IFaultDisputeGame(
+        //     payable(
+        //         address(
+        //             disputeGameFactory.create(
+        //                 optimismPortal2.respectedGameType(),
+        //                 Claim.wrap(_outputRoot_noData),
+        //                 abi.encode(_proposedBlockNumber_noData)
+        //             )
+        //         )
+        //     )
+        // );
+        // uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
+        // // Warp beyond the chess clocks and finalize the game.
+        // vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
+        // // Fund the portal so that we can withdraw ETH.
+        // vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
+        // deal(address(L1Token), address(optimismPortal2), 0xFFFFFFFF);
 
-        // modify the gas token to be non ether
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
-        );
+        // // modify the gas token to be non ether
+        // vm.mockCall(
+        //     address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
+        // );
 
-        uint256 bobBalanceBefore = L1Token.balanceOf(bob);
+        // uint256 bobBalanceBefore = L1Token.balanceOf(bob);
 
-        vm.expectEmit(address(optimismPortal2));
-        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
-        vm.expectEmit(address(optimismPortal2));
-        emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
-        optimismPortal2.proveWithdrawalTransaction({
-            _tx: _defaultTx_noData,
-            _disputeGameIndex: _proposedGameIndex_noData,
-            _outputRootProof: _outputRootProof_noData,
-            _withdrawalProof: _withdrawalProof_noData
-        });
+        // vm.expectEmit(address(optimismPortal2));
+        // emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
+        // vm.expectEmit(address(optimismPortal2));
+        // emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
+        // optimismPortal2.proveWithdrawalTransaction({
+        //     _tx: _defaultTx_noData,
+        //     _disputeGameIndex: _proposedGameIndex_noData,
+        //     _outputRootProof: _outputRootProof_noData,
+        //     _withdrawalProof: _withdrawalProof_noData
+        // });
 
-        // Warp and resolve the dispute game.
-        game_noData.resolveClaim(0, 0);
-        game_noData.resolve();
-        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1 seconds);
+        // // Warp and resolve the dispute game.
+        // game_noData.resolveClaim(0, 0);
+        // game_noData.resolve();
+        // vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1 seconds);
 
-        vm.expectEmit(true, true, false, true);
-        emit WithdrawalFinalized(_withdrawalHash_noData, true);
-        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx_noData);
+        // vm.expectEmit(true, true, false, true);
+        // emit WithdrawalFinalized(_withdrawalHash_noData, true);
+        // optimismPortal2.finalizeWithdrawalTransaction(_defaultTx_noData);
 
-        assert(L1Token.balanceOf(bob) == bobBalanceBefore + 100);
+        // assert(L1Token.balanceOf(bob) == bobBalanceBefore + 100);
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
@@ -1121,7 +1109,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         assert(address(bob).balance == bobBalanceBefore + 100);
     }
 
-    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
+    /// @dev Tests that `finalizeWithdrawalTransaction` fails when using a custom gas token.
     function test_finalizeWithdrawalTransaction_provenWithdrawalHashNonEtherTargetToken_reverts() external {
         vm.mockCall(
             address(systemConfig),
@@ -1141,7 +1129,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         game.resolve();
         vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
 
-        vm.expectRevert(BadTarget.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
     }
 
@@ -1826,68 +1814,72 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         assertEq(optimismPortal2.balance(), _mint);
     }
 
-    /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender == tx.origin.
-    function testFuzz_depositERC20Transaction_senderIsOrigin_succeeds(
-        address _to,
-        uint256 _mint,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes calldata _data
-    )
-        external
-    {
-        // Ensure that msg.sender == tx.origin
-        vm.startPrank(address(this), address(this));
+    // /// @dev Tests that `depositERC20Transaction` reverts when msg.sender == tx.origin since custom gas token is not
+    // /// supported.
+    // function testFuzz_depositERC20Transaction_senderIsOrigin_reverts(
+    //     address _to,
+    //     uint256 _mint,
+    //     uint256 _value,
+    //     uint64 _gasLimit,
+    //     bool _isCreation,
+    //     bytes calldata _data
+    // )
+    //     external
+    // {
+    //     // Ensure that msg.sender == tx.origin
+    //     vm.startPrank(address(this), address(this));
 
-        depositERC20Transaction({
-            _from: address(this),
-            _to: _to,
-            _mint: _mint,
-            _value: _value,
-            _gasLimit: _gasLimit,
-            _isCreation: _isCreation,
-            _data: _data
-        });
-    }
+    //     depositERC20Transaction({
+    //         _from: address(this),
+    //         _to: _to,
+    //         _mint: _mint,
+    //         _value: _value,
+    //         _gasLimit: _gasLimit,
+    //         _isCreation: _isCreation,
+    //         _data: _data
+    //     });
+    // }
 
-    /// @dev Tests that `depositERC20Transaction` succeeds when msg.sender != tx.origin.
-    function testFuzz_depositERC20Transaction_senderNotOrigin_succeeds(
-        address _to,
-        uint256 _mint,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes calldata _data
-    )
-        external
-    {
-        // Ensure that msg.sender != tx.origin
-        vm.startPrank(address(this), address(1));
+    // /// @dev Tests that `depositERC20Transaction` reverts when msg.sender != tx.origin since custom gas token is
+    // /// not supported.
+    // function testFuzz_depositERC20Transaction_senderNotOrigin_reverts(
+    //     address _to,
+    //     uint256 _mint,
+    //     uint256 _value,
+    //     uint64 _gasLimit,
+    //     bool _isCreation,
+    //     bytes calldata _data
+    // )
+    //     external
+    // {
+    //     // Ensure that msg.sender != tx.origin
+    //     vm.startPrank(address(this), address(1));
 
-        depositERC20Transaction({
-            _from: AddressAliasHelper.applyL1ToL2Alias(address(this)),
-            _to: _to,
-            _mint: _mint,
-            _value: _value,
-            _gasLimit: _gasLimit,
-            _isCreation: _isCreation,
-            _data: _data
-        });
-    }
+    //     depositERC20Transaction({
+    //         _from: AddressAliasHelper.applyL1ToL2Alias(address(this)),
+    //         _to: _to,
+    //         _mint: _mint,
+    //         _value: _value,
+    //         _gasLimit: _gasLimit,
+    //         _isCreation: _isCreation,
+    //         _data: _data
+    //     });
+    // }
 
-    /// @dev Tests that `depositERC20Transaction` reverts when not enough of the token is approved.
+    /// @dev Tests that `depositERC20Transaction` reverts when not enough of the token is approved since custom gas
+    /// token is not supported.
     function test_depositERC20Transaction_notEnoughAmount_reverts() external {
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
         );
-        vm.expectRevert(stdError.arithmeticError);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         // Deposit the token into the portal
         optimismPortal2.depositERC20Transaction(address(0), 1, 0, 0, false, "");
     }
 
-    /// @dev Tests that `depositERC20Transaction` reverts when token balance does not update correctly after transfer.
+    /// @dev Tests that `depositERC20Transaction` reverts when token balance does not update correctly after transfer
+    /// since custom gas token is not supported.
     function test_depositERC20Transaction_incorrectTokenBalance_reverts() external {
         // Mint the token to the contract and approve the token for the portal
         token.mint(address(this), 100);
@@ -1904,13 +1896,14 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         // Call minimumGasLimit(0) before vm.expectRevert to ensure vm.expectRevert is for depositERC20Transaction
         uint64 gasLimit = optimismPortal2.minimumGasLimit(0);
 
-        vm.expectRevert(TransferFailed.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
 
         // Deposit the token into the portal
         optimismPortal2.depositERC20Transaction(address(1), 100, 0, gasLimit, false, "");
     }
 
-    /// @dev Tests that `depositERC20Transaction` reverts when creating a contract with a non-zero target.
+    /// @dev Tests that `depositERC20Transaction` reverts when creating a contract with a non-zero target since custom
+    /// gas token is not supported.
     function test_depositERC20Transaction_isCreationNotZeroTarget_reverts() external {
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
@@ -1920,7 +1913,7 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         // Call minimumGasLimit(0) before vm.expectRevert to ensure vm.expectRevert is for depositERC20Transaction
         uint64 gasLimit = optimismPortal2.minimumGasLimit(0);
 
-        vm.expectRevert(BadTarget.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         // Deposit the token into the portal
         optimismPortal2.depositERC20Transaction(address(1), 0, 0, gasLimit, true, "");
     }
@@ -1932,12 +1925,13 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
         );
 
-        vm.expectRevert(SmallGasLimit.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         // Deposit the token into the portal
         optimismPortal2.depositERC20Transaction(address(0), 0, 0, 0, false, "");
     }
 
-    /// @dev Tests that `depositERC20Transaction` reverts when the data is too large.
+    /// @dev Tests that `depositERC20Transaction` reverts when the data is too large since custom gas token is not
+    /// supported.
     function test_depositERC20Transaction_dataTooLarge_reverts() external {
         bytes memory data = new bytes(120_001);
         data[120_000] = 0x01;
@@ -1948,73 +1942,74 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         );
 
         uint64 gasLimit = optimismPortal2.minimumGasLimit(120_001);
-        vm.expectRevert(LargeCalldata.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         // Deposit the token into the portal
         optimismPortal2.depositERC20Transaction(address(0), 0, 0, gasLimit, false, data);
     }
 
-    /// @dev Tests that `balance()` returns the correct balance when the gas paying token is not ether.
-    function testFuzz_balance_nonEther_succeeds(uint256 _amount) external {
-        // Mint the token to the contract and approve the token for the portal
-        token.mint(address(this), _amount);
-        token.approve(address(optimismPortal2), _amount);
+    // /// @dev Tests that `balance()` reverts since custom gas token is not supported.
+    // function testFuzz_balance_nonEther_reverts() external {
+    //     // Mint the token to the contract and approve the token for the portal
+    //     token.mint(address(this), _amount);
+    //     token.approve(address(optimismPortal2), _amount);
 
-        // Mock the gas paying token to be the ERC20 token
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
-        );
+    //     // Mock the gas paying token to be the ERC20 token
+    //     vm.mockCall(
+    //         address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
+    //     );
 
-        // Deposit the token into the portal
-        optimismPortal2.depositERC20Transaction(address(0), _amount, 0, optimismPortal2.minimumGasLimit(0), false, "");
+    //     // Deposit the token into the portal
+    //     optimismPortal2.depositERC20Transaction(address(0), _amount, 0, optimismPortal2.minimumGasLimit(0), false,
+    // "");
 
-        // Check that the balance has been correctly updated
-        assertEq(optimismPortal2.balance(), _amount);
-    }
+    //     // Check that the balance has been correctly updated
+    //     assertEq(optimismPortal2.balance(), _amount);
+    // }
 
-    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHashWithNonEther_succeeds() external {
-        // Mint the token to the contract and approve the token for the portal
-        token.mint(address(this), _defaultTx.value);
-        token.approve(address(optimismPortal2), _defaultTx.value);
+    // /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
+    // function test_finalizeWithdrawalTransaction_provenWithdrawalHashWithNonEther_succeeds() external {
+    //     // Mint the token to the contract and approve the token for the portal
+    //     token.mint(address(this), _defaultTx.value);
+    //     token.approve(address(optimismPortal2), _defaultTx.value);
 
-        // Mock the gas paying token to be the ERC20 token
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
-        );
+    //     // Mock the gas paying token to be the ERC20 token
+    //     vm.mockCall(
+    //         address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
+    //     );
 
-        // Deposit the token into the portal
-        optimismPortal2.depositERC20Transaction(
-            address(bob), _defaultTx.value, 0, optimismPortal2.minimumGasLimit(0), false, ""
-        );
+    //     // Deposit the token into the portal
+    //     optimismPortal2.depositERC20Transaction(
+    //         address(bob), _defaultTx.value, 0, optimismPortal2.minimumGasLimit(0), false, ""
+    //     );
 
-        assertEq(optimismPortal2.balance(), _defaultTx.value);
+    //     assertEq(optimismPortal2.balance(), _defaultTx.value);
 
-        vm.expectEmit(address(optimismPortal2));
-        emit WithdrawalProven(_withdrawalHash, alice, bob);
-        optimismPortal2.proveWithdrawalTransaction({
-            _tx: _defaultTx,
-            _disputeGameIndex: _proposedGameIndex,
-            _outputRootProof: _outputRootProof,
-            _withdrawalProof: _withdrawalProof
-        });
+    //     vm.expectEmit(address(optimismPortal2));
+    //     emit WithdrawalProven(_withdrawalHash, alice, bob);
+    //     optimismPortal2.proveWithdrawalTransaction({
+    //         _tx: _defaultTx,
+    //         _disputeGameIndex: _proposedGameIndex,
+    //         _outputRootProof: _outputRootProof,
+    //         _withdrawalProof: _withdrawalProof
+    //     });
 
-        // Warp past the finalization period.
-        game.resolveClaim(0, 0);
-        game.resolve();
-        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
+    //     // Warp past the finalization period.
+    //     game.resolveClaim(0, 0);
+    //     game.resolve();
+    //     vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
 
-        vm.expectEmit(address(optimismPortal2));
-        emit WithdrawalFinalized(_withdrawalHash, true);
+    //     vm.expectEmit(address(optimismPortal2));
+    //     emit WithdrawalFinalized(_withdrawalHash, true);
 
-        vm.expectCall(_defaultTx.target, 0, _defaultTx.data);
+    //     vm.expectCall(_defaultTx.target, 0, _defaultTx.data);
 
-        vm.expectCall(address(token), 0, abi.encodeCall(token.transfer, (_defaultTx.target, _defaultTx.value)));
+    //     vm.expectCall(address(token), 0, abi.encodeCall(token.transfer, (_defaultTx.target, _defaultTx.value)));
 
-        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
+    //     optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
 
-        assertEq(optimismPortal2.balance(), 0);
-        assertEq(token.balanceOf(address(bob)), 100);
-    }
+    //     assertEq(optimismPortal2.balance(), 0);
+    //     assertEq(token.balanceOf(address(bob)), 100);
+    // }
 
     /// @dev Helper for depositing a transaction.
     function depositTransaction(
@@ -2061,60 +2056,63 @@ contract OptimismPortal2WithMockERC20_Test is OptimismPortal2_FinalizeWithdrawal
         assertEq(optimismPortal2.balance(), 0);
     }
 
-    /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_succeeds(
-        address _to,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes calldata _data
-    )
-        external
-    {
-        // Ensure that msg.sender == tx.origin
-        vm.startPrank(address(this), address(this));
+    // /// @dev Tests that `depositTransaction` reverts when a custom gas token is used but the msg.value is zero since
+    // /// custom gas token is not supported.
+    // function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderIsOrigin_reverts(
+    //     address _to,
+    //     uint256 _value,
+    //     uint64 _gasLimit,
+    //     bool _isCreation,
+    //     bytes calldata _data
+    // )
+    //     external
+    // {
+    //     // Ensure that msg.sender == tx.origin
+    //     vm.startPrank(address(this), address(this));
 
-        depositTransaction({
-            _from: address(this),
-            _to: _to,
-            _value: _value,
-            _gasLimit: _gasLimit,
-            _isCreation: _isCreation,
-            _data: _data
-        });
-    }
+    //     depositTransaction({
+    //         _from: address(this),
+    //         _to: _to,
+    //         _value: _value,
+    //         _gasLimit: _gasLimit,
+    //         _isCreation: _isCreation,
+    //         _data: _data
+    //     });
+    // }
 
-    /// @dev Tests that `depositTransaction` succeeds when a custom gas token is used but the msg.value is zero.
-    function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_succeeds(
-        address _to,
-        uint256 _value,
-        uint64 _gasLimit,
-        bool _isCreation,
-        bytes calldata _data
-    )
-        external
-    {
-        // Ensure that msg.sender != tx.origin
-        vm.startPrank(address(this), address(1));
+    // /// @dev Tests that `depositTransaction` reverts when a custom gas token is used but the msg.value is zero since
+    // /// custom gas token is not supported.
+    // function testFuzz_depositTransaction_customGasTokenWithNoValueAndSenderNotOrigin_reverts(
+    //     address _to,
+    //     uint256 _value,
+    //     uint64 _gasLimit,
+    //     bool _isCreation,
+    //     bytes calldata _data
+    // )
+    //     external
+    // {
+    //     // Ensure that msg.sender != tx.origin
+    //     vm.startPrank(address(this), address(1));
 
-        depositTransaction({
-            _from: AddressAliasHelper.applyL1ToL2Alias(address(this)),
-            _to: _to,
-            _value: _value,
-            _gasLimit: _gasLimit,
-            _isCreation: _isCreation,
-            _data: _data
-        });
-    }
+    //     depositTransaction({
+    //         _from: AddressAliasHelper.applyL1ToL2Alias(address(this)),
+    //         _to: _to,
+    //         _value: _value,
+    //         _gasLimit: _gasLimit,
+    //         _isCreation: _isCreation,
+    //         _data: _data
+    //     });
+    // }
 
-    /// @dev Tests that `depositTransaction` fails when a custom gas token is used and msg.value is non-zero.
+    /// @dev Tests that `depositTransaction` fails when a custom gas token is used and msg.value is non-zero since
+    /// custom gas token is not supported.
     function test_depositTransaction_customGasTokenWithValue_reverts() external {
         // Mock the gas paying token to be the ERC20 token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(token), 18)
         );
 
-        vm.expectRevert(NoValue.selector);
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
 
         // Deposit the token into the portal
         optimismPortal2.depositTransaction{ value: 100 }(address(0), 0, 0, false, "");

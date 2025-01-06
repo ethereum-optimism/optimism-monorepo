@@ -26,7 +26,7 @@ contract SystemConfigInterop_Test is CommonTest {
         super.setUp();
     }
 
-    /// @dev Tests that when the decimals is not 18, initialization reverts.
+    /// @dev Tests that when the decimals is not 18, initialization reverts. Custom gas tokens are not supported.
     function test_initialize_decimalsIsNot18_reverts(uint8 decimals) external {
         vm.assume(decimals != 18);
         address _token = address(L1Token);
@@ -35,7 +35,7 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode("TKN"));
         vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(decimals));
 
-        vm.expectRevert("SystemConfig: bad decimals of gas paying token");
+        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
         _cleanStorageAndInit(_token);
     }
 
