@@ -28,7 +28,7 @@ op-batcher-image TAG='op-batcher:devnet': (_docker_build_stack TAG "op-batcher-t
 # TODO: this is a temporary hack to get the kona version right.
 # Ideally the Dockerfile should be self-sufficient (right now we depend on
 # docker-bake.hcl to do the right thing).
-op-challenger-image TAG='op-challenger:devnet': (_docker_build_stack TAG "op-challenger-target" "--build-arg" "KONA_VERSION=kona-client-v0.1.0-beta.5")
+op-challenger-image TAG='op-challenger:devnet': (_docker_build_stack TAG "op-challenger-target" "--build-arg" "KONA_VERSION=kona-client-v0.1.0-beta.6")
 op-conductor-image TAG='op-conductor:devnet': (_docker_build_stack TAG "op-conductor-target")
 op-deployer-image TAG='op-deployer:devnet': (_docker_build_stack TAG "op-deployer-target")
 op-dispute-mon-image TAG='op-dispute-mon:devnet': (_docker_build_stack TAG "op-dispute-mon-target")
