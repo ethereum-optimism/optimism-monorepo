@@ -286,12 +286,12 @@ contract OPContractsManager is ISemver {
         // -------- Set and Initialize Proxy Implementations --------
         bytes memory data;
 
-        data = encodeL1ERC721BridgeInitializer(IL1ERC721Bridge.initialize.selector, output);
+        data = encodeL1ERC721BridgeInitializer(output);
         upgradeAndCall(
             output.opChainProxyAdmin, address(output.l1ERC721BridgeProxy), implementation.l1ERC721BridgeImpl, data
         );
 
-        data = encodeOptimismPortalInitializer(IOptimismPortal2.initialize.selector, output);
+        data = encodeOptimismPortalInitializer(output);
         upgradeAndCall(
             output.opChainProxyAdmin, address(output.optimismPortalProxy), implementation.optimismPortalImpl, data
         );
@@ -304,7 +304,7 @@ contract OPContractsManager is ISemver {
             output.opChainProxyAdmin, address(output.systemConfigProxy), implementation.systemConfigImpl, data
         );
 
-        data = encodeOptimismMintableERC20FactoryInitializer(IOptimismMintableERC20Factory.initialize.selector, output);
+        data = encodeOptimismMintableERC20FactoryInitializer(output);
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.optimismMintableERC20FactoryProxy),
@@ -312,7 +312,7 @@ contract OPContractsManager is ISemver {
             data
         );
 
-        data = encodeL1CrossDomainMessengerInitializer(IL1CrossDomainMessenger.initialize.selector, output);
+        data = encodeL1CrossDomainMessengerInitializer(output);
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.l1CrossDomainMessengerProxy),
@@ -320,12 +320,12 @@ contract OPContractsManager is ISemver {
             data
         );
 
-        data = encodeL1StandardBridgeInitializer(IL1StandardBridge.initialize.selector, output);
+        data = encodeL1StandardBridgeInitializer(output);
         upgradeAndCall(
             output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), implementation.l1StandardBridgeImpl, data
         );
 
-        data = encodeDelayedWETHInitializer(IDelayedWETH.initialize.selector, _input);
+        data = encodeDelayedWETHInitializer(_input);
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
         upgradeAndCall(
             output.opChainProxyAdmin,
@@ -335,7 +335,7 @@ contract OPContractsManager is ISemver {
         );
 
         // We set the initial owner to this contract, set game implementations, then transfer ownership.
-        data = encodeDisputeGameFactoryInitializer(IDisputeGameFactory.initialize.selector, _input);
+        data = encodeDisputeGameFactoryInitializer();
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.disputeGameFactoryProxy),
@@ -347,7 +347,7 @@ contract OPContractsManager is ISemver {
         );
         output.disputeGameFactoryProxy.transferOwnership(address(_input.roles.opChainProxyAdminOwner));
 
-        data = encodeAnchorStateRegistryInitializer(IAnchorStateRegistry.initialize.selector, _input);
+        data = encodeAnchorStateRegistryInitializer(_input);
         upgradeAndCall(
             output.opChainProxyAdmin,
             address(output.anchorStateRegistryProxy),
@@ -394,7 +394,7 @@ contract OPContractsManager is ISemver {
     /// @notice Helper method for computing a salt that's used in CREATE2 deployments.
     /// Including the contract name ensures that the resultant address from CREATE2 is unique
     /// across our smart contract system. For example, we deploy multiple proxy contracts
-    /// with the same bytecode from this contract, so they need different salts to avoid an address collision
+    /// with the same bytecode from this contract, so they each require a unique salt for determinism.
     function computeSalt(
         uint256 _l2ChainId,
         string memory _saltMixer,
@@ -426,34 +426,30 @@ contract OPContractsManager is ISemver {
     // -------- Initializer Encoding --------
 
     /// @notice Helper method for encoding the L1ERC721Bridge initializer data.
-    function encodeL1ERC721BridgeInitializer(
-        bytes4 _selector,
-        DeployOutput memory _output
-    )
+    function encodeL1ERC721BridgeInitializer(DeployOutput memory _output)
         internal
         view
         virtual
         returns (bytes memory)
     {
-        return abi.encodeWithSelector(_selector, _output.l1CrossDomainMessengerProxy, superchainConfig);
+        return abi.encodeCall(IL1ERC721Bridge.initialize, (_output.l1CrossDomainMessengerProxy, superchainConfig));
     }
 
     /// @notice Helper method for encoding the OptimismPortal initializer data.
-    function encodeOptimismPortalInitializer(
-        bytes4 _selector,
-        DeployOutput memory _output
-    )
+    function encodeOptimismPortalInitializer(DeployOutput memory _output)
         internal
         view
         virtual
         returns (bytes memory)
     {
-        return abi.encodeWithSelector(
-            _selector,
-            _output.disputeGameFactoryProxy,
-            _output.systemConfigProxy,
-            superchainConfig,
-            GameTypes.PERMISSIONED_CANNON
+        return abi.encodeCall(
+            IOptimismPortal2.initialize,
+            (
+                _output.disputeGameFactoryProxy,
+                _output.systemConfigProxy,
+                superchainConfig,
+                GameTypes.PERMISSIONED_CANNON
+            )
         );
     }
 
@@ -487,65 +483,48 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Helper method for encoding the OptimismMintableERC20Factory initializer data.
-    function encodeOptimismMintableERC20FactoryInitializer(
-        bytes4 _selector,
-        DeployOutput memory _output
-    )
+    function encodeOptimismMintableERC20FactoryInitializer(DeployOutput memory _output)
         internal
         pure
         virtual
         returns (bytes memory)
     {
-        return abi.encodeWithSelector(_selector, _output.l1StandardBridgeProxy);
+        return abi.encodeCall(IOptimismMintableERC20Factory.initialize, (address(_output.l1StandardBridgeProxy)));
     }
 
     /// @notice Helper method for encoding the L1CrossDomainMessenger initializer data.
-    function encodeL1CrossDomainMessengerInitializer(
-        bytes4 _selector,
-        DeployOutput memory _output
-    )
+    function encodeL1CrossDomainMessengerInitializer(DeployOutput memory _output)
         internal
         view
         virtual
         returns (bytes memory)
     {
-        return
-            abi.encodeWithSelector(_selector, superchainConfig, _output.optimismPortalProxy, _output.systemConfigProxy);
-    }
-
-    /// @notice Helper method for encoding the L1StandardBridge initializer data.
-    function encodeL1StandardBridgeInitializer(
-        bytes4 _selector,
-        DeployOutput memory _output
-    )
-        internal
-        view
-        virtual
-        returns (bytes memory)
-    {
-        return abi.encodeWithSelector(
-            _selector, _output.l1CrossDomainMessengerProxy, superchainConfig, _output.systemConfigProxy
+        return abi.encodeCall(
+            IL1CrossDomainMessenger.initialize,
+            (superchainConfig, _output.optimismPortalProxy, _output.systemConfigProxy)
         );
     }
 
-    function encodeDisputeGameFactoryInitializer(
-        bytes4 _selector,
-        DeployInput memory
-    )
+    /// @notice Helper method for encoding the L1StandardBridge initializer data.
+    function encodeL1StandardBridgeInitializer(DeployOutput memory _output)
         internal
         view
         virtual
         returns (bytes memory)
     {
-        // This contract must be the initial owner so we can set game implementations, then
-        // ownership is transferred after.
-        return abi.encodeWithSelector(_selector, address(this));
+        return abi.encodeCall(
+            IL1StandardBridge.initialize,
+            (_output.l1CrossDomainMessengerProxy, superchainConfig, _output.systemConfigProxy)
+        );
     }
 
-    function encodeAnchorStateRegistryInitializer(
-        bytes4 _selector,
-        DeployInput memory _input
-    )
+    function encodeDisputeGameFactoryInitializer() internal view virtual returns (bytes memory) {
+        // This contract must be the initial owner so we can set game implementations, then
+        // ownership is transferred after.
+        return abi.encodeCall(IDisputeGameFactory.initialize, (address(this)));
+    }
+
+    function encodeAnchorStateRegistryInitializer(DeployInput memory _input)
         internal
         view
         virtual
@@ -553,19 +532,11 @@ contract OPContractsManager is ISemver {
     {
         IAnchorStateRegistry.StartingAnchorRoot[] memory startingAnchorRoots =
             abi.decode(_input.startingAnchorRoots, (IAnchorStateRegistry.StartingAnchorRoot[]));
-        return abi.encodeWithSelector(_selector, startingAnchorRoots, superchainConfig);
+        return abi.encodeCall(IAnchorStateRegistry.initialize, (startingAnchorRoots, superchainConfig));
     }
 
-    function encodeDelayedWETHInitializer(
-        bytes4 _selector,
-        DeployInput memory _input
-    )
-        internal
-        view
-        virtual
-        returns (bytes memory)
-    {
-        return abi.encodeWithSelector(_selector, _input.roles.opChainProxyAdminOwner, superchainConfig);
+    function encodeDelayedWETHInitializer(DeployInput memory _input) internal view virtual returns (bytes memory) {
+        return abi.encodeCall(IDelayedWETH.initialize, (_input.roles.opChainProxyAdminOwner, superchainConfig));
     }
 
     function encodePermissionedDisputeGameConstructor(
