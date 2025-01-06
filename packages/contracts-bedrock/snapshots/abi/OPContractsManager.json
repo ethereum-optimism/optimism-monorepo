@@ -501,6 +501,24 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "contract ISystemConfig[]",
+        "name": "_systemConfigs",
+        "type": "address[]"
+      },
+      {
+        "internalType": "contract IProxyAdmin[]",
+        "name": "_proxyAdmins",
+        "type": "address[]"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "version",
     "outputs": [
@@ -542,6 +560,31 @@
       }
     ],
     "name": "Deployed",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "uint256",
+        "name": "l2ChainId",
+        "type": "uint256"
+      },
+      {
+        "indexed": true,
+        "internalType": "contract ISystemConfig",
+        "name": "systemConfig",
+        "type": "address"
+      },
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "upgrader",
+        "type": "address"
+      }
+    ],
+    "name": "Upgraded",
     "type": "event"
   },
   {
