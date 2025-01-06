@@ -6,6 +6,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/run"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/wrappers"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 )
@@ -55,8 +58,7 @@ type KurtosisDeployer struct {
 	enclaveSpec      EnclaveSpecifier
 	enclaveInspecter EnclaveInspecter
 	enclaveObserver  EnclaveObserver
-	kurtosisCtx      kurtosisContextInterface
-	runHandlers      []MessageHandler
+	kurtosisCtx      interfaces.KurtosisContextInterface
 }
 
 type KurtosisDeployerOptions func(*KurtosisDeployer)
@@ -103,14 +105,14 @@ func WithKurtosisEnclaveObserver(enclaveObserver EnclaveObserver) KurtosisDeploy
 	}
 }
 
-func WithKurtosisRunHandlers(runHandlers []MessageHandler) KurtosisDeployerOptions {
+func WithKurtosisKurtosisContext(kurtosisCtx interfaces.KurtosisContextInterface) KurtosisDeployerOptions {
 	return func(d *KurtosisDeployer) {
-		d.runHandlers = runHandlers
+		d.kurtosisCtx = kurtosisCtx
 	}
 }
 
 // NewKurtosisDeployer creates a new KurtosisDeployer instance
-func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) *KurtosisDeployer {
+func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) (*KurtosisDeployer, error) {
 	d := &KurtosisDeployer{
 		baseDir:     ".",
 		packageName: DefaultPackageName,
@@ -126,7 +128,15 @@ func NewKurtosisDeployer(opts ...KurtosisDeployerOptions) *KurtosisDeployer {
 		opt(d)
 	}
 
-	return d
+	if d.kurtosisCtx == nil {
+		var err error
+		d.kurtosisCtx, err = wrappers.GetDefaultKurtosisContext()
+		if err != nil {
+			return nil, fmt.Errorf("failed to create Kurtosis context: %w", err)
+		}
+	}
+
+	return d, nil
 }
 
 func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
@@ -202,7 +212,16 @@ func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*Kurtos
 	}
 
 	// Run kurtosis command
-	if err := d.runKurtosis(ctx, inputCopy); err != nil {
+	kurtosisRunner, err := run.NewKurtosisRunner(
+		run.WithKurtosisRunnerDryRun(d.dryRun),
+		run.WithKurtosisRunnerEnclave(d.enclave),
+		run.WithKurtosisRunnerKurtosisContext(d.kurtosisCtx),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create Kurtosis runner: %w", err)
+	}
+
+	if err := kurtosisRunner.Run(ctx, d.packageName, inputCopy); err != nil {
 		return nil, err
 	}
 

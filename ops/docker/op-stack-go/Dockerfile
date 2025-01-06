@@ -148,7 +148,7 @@ COPY --from=op-node-builder /app/op-node/bin/op-node /usr/local/bin/
 CMD ["op-node"]
 
 # Make the kona docker image published by upstream available as a source to copy kona and asterisc from.
-FROM --platform=$TARGETPLATFORM ghcr.io/anton-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
+FROM --platform=$TARGETPLATFORM ghcr.io/op-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
 
 # Also produce an op-challenger loaded with kona and asterisc using ubuntu
 FROM --platform=$TARGETPLATFORM $UBUNTU_TARGET_BASE_IMAGE AS op-challenger-target
