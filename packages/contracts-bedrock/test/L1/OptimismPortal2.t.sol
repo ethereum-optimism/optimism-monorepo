@@ -336,7 +336,7 @@ contract OptimismPortal2_Test is CommonTest {
         );
 
         vm.prank(address(systemConfig));
-        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: _name, _symbol: _symbol });
+        optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
     }
 
     /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
@@ -366,7 +366,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         vm.deal(address(systemConfig), 100 ether);
         vm.prank(address(systemConfig));
-        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: 18, _name: name, _symbol: symbol });
+        optimismPortal2.setGasPayingToken(_token, 18, name, symbol);
 
         vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
         optimismPortal2.depositTransaction({
@@ -400,7 +400,7 @@ contract OptimismPortal2_Test is CommonTest {
         vm.assume(_caller != address(systemConfig));
         vm.prank(_caller);
         vm.expectRevert(Unauthorized.selector);
-        optimismPortal2.setGasPayingToken({ _token: address(0), _decimals: 0, _name: "", _symbol: "" });
+        optimismPortal2.setGasPayingToken(address(0), 0, "", "");
     }
 
     /// @dev Tests that `depositERC20Transaction` reverts when the gas paying token is ether.
@@ -426,14 +426,7 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(optimismPortal2.balance(), type(uint256).max);
 
         vm.expectRevert(stdError.arithmeticError);
-        optimismPortal2.depositERC20Transaction({
-            _to: address(0),
-            _mint: 1,
-            _value: 1,
-            _gasLimit: 10_000,
-            _isCreation: false,
-            _data: ""
-        });
+        optimismPortal2.depositERC20Transaction(address(0), 1, 1, 10_000, false, "");
     }
 
     /// @dev Tests that `balance()` returns the correct balance when the gas paying token is ether.

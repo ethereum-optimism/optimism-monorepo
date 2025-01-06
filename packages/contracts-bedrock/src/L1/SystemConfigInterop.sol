@@ -2,12 +2,10 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import { SystemConfig } from "src/L1/SystemConfig.sol";
 
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
-import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Storage } from "src/libraries/Storage.sol";
 
@@ -15,6 +13,9 @@ import { Storage } from "src/libraries/Storage.sol";
 import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
+
+/// @notice This is temporary. Error thrown when a chain uses a custom gas token.
+error CustomGasTokenNotSupported();
 
 /// @custom:proxied true
 /// @title SystemConfigInterop
@@ -68,9 +69,9 @@ contract SystemConfigInterop is SystemConfig {
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop-beta.8
+    /// @custom:semver +interop-beta.9
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.8");
+        return string.concat(super.version(), "+interop-beta.9");
     }
 
     /// @notice Internal setter for the gas paying token address, includes validation.
@@ -80,25 +81,9 @@ contract SystemConfigInterop is SystemConfig {
     ///         OptimismPortal's address must be non zero, since otherwise the call to set the
     ///         config for the gas paying token to OptimismPortal will fail.
     /// @param _token Address of the gas paying token.
-    function _setGasPayingToken(address _token) internal override {
+    function _setGasPayingToken(address _token) internal view override {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
-            require(
-                ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
-            );
-            bytes32 name = GasPayingToken.sanitize(ERC20(_token).name());
-            bytes32 symbol = GasPayingToken.sanitize(ERC20(_token).symbol());
-
-            // Set the gas paying token in storage and in the OptimismPortal.
-            GasPayingToken.set({ _token: _token, _decimals: GAS_PAYING_TOKEN_DECIMALS, _name: name, _symbol: symbol });
-            IOptimismPortal(payable(optimismPortal())).setConfig(
-                ConfigType.SET_GAS_PAYING_TOKEN,
-                StaticConfig.encodeSetGasPayingToken({
-                    _token: _token,
-                    _decimals: GAS_PAYING_TOKEN_DECIMALS,
-                    _name: name,
-                    _symbol: symbol
-                })
-            );
+            revert CustomGasTokenNotSupported();
         }
     }
 
