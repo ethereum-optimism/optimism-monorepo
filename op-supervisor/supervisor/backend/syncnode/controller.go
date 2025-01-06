@@ -65,8 +65,8 @@ func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl Sync
 		return nil, fmt.Errorf("failed to get anchor point: %w", err)
 	}
 	snc.maybeInitSafeDB(id, anchor)
+	snc.maybeInitEventsDB(id, anchor)
 	node.Start()
-	snc.maybeInitEventsDB(id, anchor, node)
 	return node, nil
 }
 
@@ -76,10 +76,6 @@ func (snc *SyncNodesController) maybeInitSafeDB(id types.ChainID, anchor types.D
 	_, err := snc.db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
 		snc.logger.Debug("initializing chain database", "chain", id)
-		if err != nil {
-			snc.logger.Warn("failed to get anchor point", "chain", id, "error", err)
-			return
-		}
 		if err := snc.db.UpdateCrossSafe(id, anchor.DerivedFrom, anchor.Derived); err != nil {
 			snc.logger.Warn("failed to initialize cross safe", "chain", id, "error", err)
 		}
@@ -94,11 +90,11 @@ func (snc *SyncNodesController) maybeInitSafeDB(id types.ChainID, anchor types.D
 	}
 }
 
-func (snc *SyncNodesController) maybeInitEventsDB(id types.ChainID, anchor types.DerivedBlockRefPair, node *ManagedNode) {
+func (snc *SyncNodesController) maybeInitEventsDB(id types.ChainID, anchor types.DerivedBlockRefPair) {
 	_, _, _, err := snc.db.OpenBlock(id, 0)
 	if errors.Is(err, types.ErrFuture) {
 		snc.logger.Debug("initializing events database", "chain", id)
-		err := node.backend.UpdateLocalUnsafe(context.Background(), id, anchor.Derived)
+		err := snc.backend.UpdateLocalUnsafe(context.Background(), id, anchor.Derived)
 		if err != nil {
 			snc.logger.Warn("failed to seal initial block", "chain", id, "error", err)
 		}

@@ -1,11 +1,11 @@
 package syncnode
 
-/*
 import (
 	"context"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum"
@@ -15,9 +15,21 @@ import (
 )
 
 type mockChainsDB struct {
-	localSafeFn       func(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error)
+	localSafeFn       func(chainID types.ChainID) (types.DerivedBlockSealPair, error)
 	updateLocalSafeFn func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error
 	updateCrossSafeFn func(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error
+	openBlockFn       func(chainID types.ChainID, i uint64) (seal eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+
+	subscribeCrossUnsafe gethevent.FeedOf[types.BlockSeal]
+	subscribeCrosSafe    gethevent.FeedOf[types.DerivedBlockSealPair]
+	subscribeFinalized   gethevent.FeedOf[types.BlockSeal]
+}
+
+func (m *mockChainsDB) OpenBlock(chainID types.ChainID, i uint64) (seal eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+	if m.openBlockFn != nil {
+		return m.openBlockFn(chainID, i)
+	}
+	return eth.BlockRef{}, 0, nil, nil
 }
 
 func (m *mockChainsDB) UpdateLocalSafe(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
@@ -27,11 +39,11 @@ func (m *mockChainsDB) UpdateLocalSafe(chainID types.ChainID, ref eth.BlockRef, 
 	return nil
 }
 
-func (m *mockChainsDB) LocalSafe(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error) {
+func (m *mockChainsDB) LocalSafe(chainID types.ChainID) (types.DerivedBlockSealPair, error) {
 	if m.localSafeFn != nil {
 		return m.localSafeFn(chainID)
 	}
-	return types.BlockSeal{}, types.BlockSeal{}, nil
+	return types.DerivedBlockSealPair{}, nil
 }
 
 func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, derived eth.BlockRef) error {
@@ -41,13 +53,19 @@ func (m *mockChainsDB) UpdateCrossSafe(chainID types.ChainID, ref eth.BlockRef, 
 	return nil
 }
 
-func (m *mockChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedBlockRefPair) (gethevent.Subscription, error) {
-	return nil, nil
+func (m *mockChainsDB) SubscribeCrossUnsafe(chainID types.ChainID, c chan<- types.BlockSeal) (gethevent.Subscription, error) {
+	return m.subscribeCrossUnsafe.Subscribe(c), nil
 }
 
-func (m *mockChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- eth.BlockID) (gethevent.Subscription, error) {
-	return nil, nil
+func (m *mockChainsDB) SubscribeCrossSafe(chainID types.ChainID, c chan<- types.DerivedBlockSealPair) (gethevent.Subscription, error) {
+	return m.subscribeCrosSafe.Subscribe(c), nil
 }
+
+func (m *mockChainsDB) SubscribeFinalized(chainID types.ChainID, c chan<- types.BlockSeal) (gethevent.Subscription, error) {
+	return m.subscribeFinalized.Subscribe(c), nil
+}
+
+var _ chainsDB = (*mockChainsDB)(nil)
 
 type mockSyncControl struct {
 	anchorPointFn       func(ctx context.Context) (types.DerivedBlockRefPair, error)
@@ -56,11 +74,9 @@ type mockSyncControl struct {
 	updateCrossSafeFn   func(ctx context.Context, derived, derivedFrom eth.BlockID) error
 	updateCrossUnsafeFn func(ctx context.Context, derived eth.BlockID) error
 	updateFinalizedFn   func(ctx context.Context, id eth.BlockID) error
+	pullEventFn         func(ctx context.Context) (*types.ManagedEvent, error)
 
-	subscribeDerivationUpdates gethevent.FeedOf[types.DerivedBlockRefPair]
-	subscribeExhaustL1Events   gethevent.FeedOf[types.DerivedBlockRefPair]
-	subscribeUnsafeBlocks      gethevent.FeedOf[eth.L1BlockRef]
-	subscribeResetEvents       gethevent.FeedOf[string]
+	subscribeEvents gethevent.FeedOf[*types.ManagedEvent]
 }
 
 func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error) {
@@ -84,20 +100,15 @@ func (m *mockSyncControl) Reset(ctx context.Context, unsafe, safe, finalized eth
 	return nil
 }
 
-func (m *mockSyncControl) SubscribeDerivationUpdates(ctx context.Context, c chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
-	return m.subscribeDerivationUpdates.Subscribe(c), nil
+func (m *mockSyncControl) PullEvent(ctx context.Context) (*types.ManagedEvent, error) {
+	if m.pullEventFn != nil {
+		return m.pullEventFn(ctx)
+	}
+	return nil, nil
 }
 
-func (m *mockSyncControl) SubscribeExhaustL1Events(ctx context.Context, c chan types.DerivedBlockRefPair) (ethereum.Subscription, error) {
-	return m.subscribeExhaustL1Events.Subscribe(c), nil
-}
-
-func (m *mockSyncControl) SubscribeUnsafeBlocks(ctx context.Context, c chan eth.L1BlockRef) (ethereum.Subscription, error) {
-	return m.subscribeUnsafeBlocks.Subscribe(c), nil
-}
-
-func (m *mockSyncControl) SubscribeResetEvents(ctx context.Context, c chan string) (ethereum.Subscription, error) {
-	return m.subscribeResetEvents.Subscribe(c), nil
+func (m *mockSyncControl) SubscribeEvents(ctx context.Context, ch chan *types.ManagedEvent) (ethereum.Subscription, error) {
+	return m.subscribeEvents.Subscribe(ch), nil
 }
 
 func (m *mockSyncControl) UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error {
@@ -121,11 +132,19 @@ func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) e
 	return nil
 }
 
+var _ SyncControl = (*mockSyncControl)(nil)
+
 type mockBackend struct {
+	updateLocalUnsafeFn func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
+	updateLocalSafeFn   func(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
 }
 
-func (m *mockBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (derivedFrom eth.BlockID, derived eth.BlockID, err error) {
-	return eth.BlockID{}, eth.BlockID{}, nil
+func (m *mockBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (pair types.DerivedIDPair, err error) {
+	return types.DerivedIDPair{}, nil
+}
+
+func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
 }
 
 func (m *mockBackend) LatestUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
@@ -141,10 +160,16 @@ func (m *mockBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth
 }
 
 func (m *mockBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
+	if m.updateLocalSafeFn != nil {
+		return m.updateLocalSafeFn(ctx, chainID, derivedFrom, lastDerived)
+	}
 	return nil
 }
 
 func (m *mockBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
+	if m.updateLocalUnsafeFn != nil {
+		return m.updateLocalUnsafeFn(ctx, chainID, head)
+	}
 	return nil
 }
 
@@ -174,7 +199,7 @@ func sampleDepSet(t *testing.T) depset.DependencySet {
 
 // TestInitFromAnchorPoint tests that the SyncNodesController uses the Anchor Point to initialize databases
 func TestInitFromAnchorPoint(t *testing.T) {
-	logger := log.New()
+	logger := testlog.Logger(t, log.LvlInfo)
 	depSet := sampleDepSet(t)
 	controller := NewSyncNodesController(logger, depSet, &mockChainsDB{}, &mockBackend{})
 
@@ -191,8 +216,8 @@ func TestInitFromAnchorPoint(t *testing.T) {
 	}
 
 	// have the local safe return an error to trigger the initialization
-	controller.db.(*mockChainsDB).localSafeFn = func(chainID types.ChainID) (types.BlockSeal, types.BlockSeal, error) {
-		return types.BlockSeal{}, types.BlockSeal{}, types.ErrFuture
+	controller.db.(*mockChainsDB).localSafeFn = func(chainID types.ChainID) (types.DerivedBlockSealPair, error) {
+		return types.DerivedBlockSealPair{}, types.ErrFuture
 	}
 	// record when the updateLocalSafe function is called
 	localCalled := 0
@@ -207,21 +232,36 @@ func TestInitFromAnchorPoint(t *testing.T) {
 		return nil
 	}
 
+	// have OpenBlock return an error to trigger the initialization
+	controller.db.(*mockChainsDB).openBlockFn = func(chainID types.ChainID, i uint64) (seal eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+		return eth.BlockRef{}, 0, nil, types.ErrFuture
+	}
+	unsafeCalled := 0
+	controller.backend.(*mockBackend).updateLocalUnsafeFn = func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
+		unsafeCalled++
+		return nil
+	}
+
 	// after the first attach, both databases are called for update
-	err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl)
+	_, err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl, false)
+
 	require.NoError(t, err)
 	require.Equal(t, 1, localCalled, "local safe should have been updated once")
 	require.Equal(t, 1, crossCalled, "cross safe should have been updated twice")
+	require.Equal(t, 1, unsafeCalled, "local unsafe should have been updated once")
 
 	// reset the local safe function to return no error
 	controller.db.(*mockChainsDB).localSafeFn = nil
+	// reset the open block function to return no error
+	controller.db.(*mockChainsDB).openBlockFn = nil
 
 	// after the second attach, there are no additional updates (no empty signal from the DB)
 	ctrl2 := mockSyncControl{}
-	err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2)
+	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2, false)
 	require.NoError(t, err)
 	require.Equal(t, 1, localCalled, "local safe should have been updated once")
-	require.Equal(t, 1, crossCalled, "cross safe should have been updated twice")
+	require.Equal(t, 1, crossCalled, "cross safe should have been updated once")
+	require.Equal(t, 1, unsafeCalled, "local unsafe should have been updated once")
 }
 
 // TestAttachNodeController tests the AttachNodeController function of the SyncNodesController.
@@ -235,22 +275,21 @@ func TestAttachNodeController(t *testing.T) {
 
 	// Attach a controller for chain 900
 	ctrl := mockSyncControl{}
-	err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl)
+	_, err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl, false)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, controller.controllers.Len(), "controllers should have 1 entry")
 
 	// Attach a controller for chain 901
 	ctrl2 := mockSyncControl{}
-	err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2)
+	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2, false)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, controller.controllers.Len(), "controllers should have 2 entries")
 
 	// Attach a controller for chain 902 (which is not in the dependency set)
 	ctrl3 := mockSyncControl{}
-	err = controller.AttachNodeController(types.ChainIDFromUInt64(902), &ctrl3)
+	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(902), &ctrl3, false)
 	require.Error(t, err)
 	require.Equal(t, 2, controller.controllers.Len(), "controllers should still have 2 entries")
 }
-*/
