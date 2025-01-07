@@ -489,9 +489,20 @@ contract FFIInterface {
         cmds[0] = "scripts/go-ffi/go-ffi";
         cmds[1] = "diff";
         cmds[2] = "decodeProtocolVersion";
-        cmds[3] = vm.toString(version);
+        cmds[3] = Strings.toHexString(uint256(version));
 
         bytes memory result = Process.run(cmds);
-        return abi.decode(result, (bytes8, uint32, uint32, uint32, uint32));
+        require(result.length > 0, "FFI call returned empty result");
+        
+        // The Go implementation returns the values in a different format
+        // We need to decode them properly
+        (bytes memory buildBytes, uint32 maj, uint32 min, uint32 pat, uint32 pre) = 
+            abi.decode(result, (bytes, uint32, uint32, uint32, uint32));
+        
+        build = bytes8(buildBytes);
+        major = maj;
+        minor = min;
+        patch = pat;
+        preRelease = pre;
     }
 }
