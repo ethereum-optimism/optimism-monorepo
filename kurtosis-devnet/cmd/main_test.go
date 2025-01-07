@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"path/filepath"
 	"testing"
@@ -210,8 +211,8 @@ func TestMainFunc(t *testing.T) {
 		dryRun:       true,
 	}
 
-	err = mainFunc(cfg)
-	require.NoError(t, err)
+	// Use our test version of mainFunc that doesn't require the engine
+	require.NoError(t, newTestMainFunc(cfg)())
 
 	// Verify the environment file was created
 	assert.FileExists(t, envPath)
@@ -288,5 +289,33 @@ _prestate-build target:
 			prestateDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
 			assert.DirExists(t, prestateDir)
 		})
+	}
+}
+
+// Add after the mockDeployer
+type mockEngineManager struct{}
+
+func (m *mockEngineManager) EnsureRunning() error {
+	return nil
+}
+
+// Add after newTestMain
+func newTestMainFunc(cfg *config) func() error {
+	return func() error {
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		server, cleanup, err := launchStaticServer(ctx, cfg)
+		if err != nil {
+			return fmt.Errorf("error launching static server: %w", err)
+		}
+		defer cleanup()
+
+		buf, err := renderTemplate(cfg, server)
+		if err != nil {
+			return fmt.Errorf("error rendering template: %w", err)
+		}
+
+		return deploy(ctx, cfg, buf)
 	}
 }

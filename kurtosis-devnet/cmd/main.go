@@ -14,6 +14,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/build"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/engine"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/serve"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/urfave/cli/v2"
@@ -28,6 +29,7 @@ type config struct {
 	dryRun          bool
 	localHostName   string
 	baseDir         string
+	kurtosisBinary  string
 }
 
 func newConfig(c *cli.Context) (*config, error) {
@@ -39,6 +41,7 @@ func newConfig(c *cli.Context) (*config, error) {
 		environment:     c.String("environment"),
 		dryRun:          c.Bool("dry-run"),
 		localHostName:   c.String("local-hostname"),
+		kurtosisBinary:  c.String("kurtosis-binary"),
 	}
 
 	// Validate required flags
@@ -286,6 +289,11 @@ func mainFunc(cfg *config) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	engineManager := engine.NewEngineManager(engine.WithKurtosisBinary(cfg.kurtosisBinary))
+	if err := engineManager.EnsureRunning(); err != nil {
+		return fmt.Errorf("error ensuring kurtosis engine is running: %w", err)
+	}
+
 	server, cleanup, err := launchStaticServer(ctx, cfg)
 	if err != nil {
 		return fmt.Errorf("error launching static server: %w", err)
@@ -375,6 +383,11 @@ func getFlags() []cli.Flag {
 			Name:  "local-hostname",
 			Usage: "DNS for localhost from Kurtosis perspective (optional)",
 			Value: defaultDockerHost(),
+		},
+		&cli.StringFlag{
+			Name:  "kurtosis-binary",
+			Usage: "Path to kurtosis binary (optional)",
+			Value: "kurtosis",
 		},
 	}
 }
