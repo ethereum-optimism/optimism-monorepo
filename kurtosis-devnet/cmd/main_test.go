@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -14,6 +15,18 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
 )
+
+type mockDeployer struct {
+	dryRun bool
+}
+
+func (m *mockDeployer) Deploy(ctx context.Context, input io.Reader) (*kurtosis.KurtosisEnvironment, error) {
+	return &kurtosis.KurtosisEnvironment{}, nil
+}
+
+func newMockDeployer(...kurtosis.KurtosisDeployerOptions) (deployer, error) {
+	return &mockDeployer{dryRun: true}, nil
+}
 
 func TestParseFlags(t *testing.T) {
 	tests := []struct {
@@ -93,13 +106,23 @@ func TestParseFlags(t *testing.T) {
 	}
 }
 
+func newTestMain(cfg *config) *Main {
+	return &Main{
+		cfg: cfg,
+		newDeployer: func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error) {
+			return newMockDeployer(opts...)
+		},
+	}
+}
+
 func TestLaunchStaticServer(t *testing.T) {
 	cfg := &config{
 		localHostName: "test.local",
 	}
 
+	m := newTestMain(cfg)
 	ctx := context.Background()
-	server, cleanup, err := launchStaticServer(ctx, cfg)
+	server, cleanup, err := m.launchStaticServer(ctx)
 	require.NoError(t, err)
 	defer cleanup()
 
@@ -142,12 +165,13 @@ artifacts: {{localContractArtifacts "l1"}}`
 		dryRun:       true, // Important for tests
 	}
 
+	m := newTestMain(cfg)
 	ctx := context.Background()
-	server, cleanup, err := launchStaticServer(ctx, cfg)
+	server, cleanup, err := m.launchStaticServer(ctx)
 	require.NoError(t, err)
 	defer cleanup()
 
-	buf, err := renderTemplate(cfg, server)
+	buf, err := m.renderTemplate(server)
 	require.NoError(t, err)
 
 	// Verify template rendering
@@ -174,7 +198,8 @@ func TestDeploy(t *testing.T) {
 	// Create a simple deployment configuration
 	deployConfig := bytes.NewBufferString(`{"test": "config"}`)
 
-	err = deploy(ctx, cfg, deployConfig)
+	m := newTestMain(cfg)
+	err = m.deploy(ctx, deployConfig)
 	require.NoError(t, err)
 
 	// Verify the environment file was created
@@ -189,7 +214,6 @@ func TestDeploy(t *testing.T) {
 	require.NoError(t, err)
 }
 
-// TestMainFunc performs an integration test of the main function
 func TestMainFunc(t *testing.T) {
 	// Create a temporary directory for test files
 	tmpDir, err := os.MkdirTemp("", "main-test")
@@ -210,7 +234,8 @@ func TestMainFunc(t *testing.T) {
 		dryRun:       true,
 	}
 
-	err = mainFunc(cfg)
+	m := newTestMain(cfg)
+	err = m.run()
 	require.NoError(t, err)
 
 	// Verify the environment file was created
@@ -254,13 +279,14 @@ _prestate-build target:
 				dryRun:  tt.dryRun,
 			}
 
+			m := newTestMain(cfg)
 			ctx := context.Background()
-			server, cleanup, err := launchStaticServer(ctx, cfg)
+			server, cleanup, err := m.launchStaticServer(ctx)
 			require.NoError(t, err)
 			defer cleanup()
 
 			// Create template context with just the prestate function
-			tmplCtx := tmpl.NewTemplateContext(localPrestateOption(cfg, server))
+			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(server))
 
 			// Test template
 			template := `{"prestate": "{{localPrestate}}"}`
