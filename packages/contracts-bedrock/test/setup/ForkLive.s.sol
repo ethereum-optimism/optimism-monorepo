@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { console } from "forge-std/console.sol";
 // Testing
 import { stdJson } from "forge-std/StdJson.sol";
 import { DelegateCaller } from "test/mocks/Callers.sol";
