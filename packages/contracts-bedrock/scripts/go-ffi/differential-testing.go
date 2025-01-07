@@ -551,20 +551,14 @@ func DiffTestUtils() {
 		patch := parseUint32(args[4])
 		preRelease := parseUint32(args[5])
 
-		version := params.ProtocolVersionV0{
-			Build:      build,
-			Major:      major,
-			Minor:      minor,
-			Patch:      patch,
-			PreRelease: preRelease,
-		}
 		// Create a 32-byte array with the build ID at the start
 		var encoded [32]byte
 		copy(encoded[:8], build[:])
-		binary.BigEndian.PutUint32(encoded[24:28], major)
-		binary.BigEndian.PutUint32(encoded[28:32], minor)
-		binary.BigEndian.PutUint32(encoded[32:36], patch)
-		binary.BigEndian.PutUint32(encoded[36:40], preRelease)
+		// Place version components after 16 bytes of padding
+		binary.BigEndian.PutUint32(encoded[16:20], major)
+		binary.BigEndian.PutUint32(encoded[20:24], minor)
+		binary.BigEndian.PutUint32(encoded[24:28], patch)
+		binary.BigEndian.PutUint32(encoded[28:32], preRelease)
 		
 		// Pack encoded version
 		packed, err := bytesArgs.Pack(encoded[:])
@@ -574,24 +568,41 @@ func DiffTestUtils() {
 		if len(args) != 2 {
 			panic("decodeProtocolVersion requires 1 argument: version")
 		}
-		var version params.ProtocolVersion
-		if err := version.UnmarshalText([]byte(args[1])); err != nil {
-			panic(fmt.Sprintf("failed to decode version: %w", err))
-		}
+		versionBytes := common.FromHex(args[1])
 		decoded := params.ProtocolVersionV0{}
-		copy(decoded.Build[:], version[:8])
-		decoded.Major = binary.BigEndian.Uint32(version[8:12])
-		decoded.Minor = binary.BigEndian.Uint32(version[12:16])
-		decoded.Patch = binary.BigEndian.Uint32(version[16:20])
-		decoded.PreRelease = binary.BigEndian.Uint32(version[20:24])
+		// Convert to uint256 like Solidity does
+		var version big.Int
+		version.SetBytes(versionBytes)
+		
+		// Match Solidity's bit shifts
+		var tmp big.Int
+		
+		// build = bytes8(uint64(version >> 192))
+		tmp.Rsh(&version, 192)
+		copy(decoded.Build[:], tmp.Bytes())
+		
+		// major = uint32(version >> 96)
+		tmp.Rsh(&version, 96)
+		decoded.Major = uint32(tmp.Uint64())
+		
+		// minor = uint32(version >> 64)
+		tmp.Rsh(&version, 64)
+		decoded.Minor = uint32(tmp.Uint64())
+		
+		// patch = uint32(version >> 32)
+		tmp.Rsh(&version, 32)
+		decoded.Patch = uint32(tmp.Uint64())
+		
+		// preRelease = uint32(version)
+		decoded.PreRelease = uint32(version.Uint64())
 		
 		// Pack decoded version components
 		result := []interface{}{
 			decoded.Build[:],
 			decoded.Major,
 			decoded.Minor,
-				decoded.Patch,
-				decoded.PreRelease,
+			decoded.Patch,
+			decoded.PreRelease,
 		}
 		packed, err := abi.Arguments{
 			{Type: bytesType},
