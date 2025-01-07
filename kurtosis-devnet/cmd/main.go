@@ -12,6 +12,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/build"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/engine"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/backend"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/serve"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
@@ -27,6 +28,7 @@ type config struct {
 	dryRun          bool
 	localHostName   string
 	baseDir         string
+	kurtosisBinary  string
 }
 
 func newConfig(c *cli.Context) (*config, error) {
@@ -38,6 +40,7 @@ func newConfig(c *cli.Context) (*config, error) {
 		environment:     c.String("environment"),
 		dryRun:          c.Bool("dry-run"),
 		localHostName:   c.String("local-hostname"),
+		kurtosisBinary:  c.String("kurtosis-binary"),
 	}
 
 	// Validate required flags
@@ -54,9 +57,14 @@ type staticServer struct {
 	*serve.Server
 }
 
+type engineManager interface {
+	EnsureRunning() error
+}
+
 type Main struct {
-	cfg         *config
-	newDeployer func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error)
+	cfg           *config
+	newDeployer   func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error)
+	engineManager engineManager
 }
 
 func (m *Main) launchStaticServer(ctx context.Context) (*staticServer, func(), error) {
@@ -303,6 +311,12 @@ func (m *Main) run() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	if !m.cfg.dryRun {
+		if err := m.engineManager.EnsureRunning(); err != nil {
+			return fmt.Errorf("error ensuring kurtosis engine is running: %w", err)
+		}
+	}
+
 	server, cleanup, err := m.launchStaticServer(ctx)
 	if err != nil {
 		return fmt.Errorf("error launching static server: %w", err)
@@ -327,6 +341,7 @@ func mainAction(c *cli.Context) error {
 		newDeployer: func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error) {
 			return kurtosis.NewKurtosisDeployer(opts...)
 		},
+		engineManager: engine.NewEngineManager(engine.WithKurtosisBinary(cfg.kurtosisBinary)),
 	}
 	return m.run()
 }
@@ -364,6 +379,11 @@ func getFlags() []cli.Flag {
 			Name:  "local-hostname",
 			Usage: "DNS for localhost from Kurtosis perspective (optional)",
 			Value: backend.DefaultDockerHost(),
+		},
+		&cli.StringFlag{
+			Name:  "kurtosis-binary",
+			Usage: "Path to kurtosis binary (optional)",
+			Value: "kurtosis",
 		},
 	}
 }
