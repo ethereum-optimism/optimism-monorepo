@@ -121,6 +121,9 @@ error BlockNumberMatches();
 /// @notice Thrown when the L2 block number claim has already been challenged.
 error L2BlockNumberChallenged();
 
+/// @notice Thrown when the game is not yet finalized.
+error GameNotFinalized();
+
 ////////////////////////////////////////////////////////////////
 //              `PermissionedDisputeGame` Errors              //
 ////////////////////////////////////////////////////////////////

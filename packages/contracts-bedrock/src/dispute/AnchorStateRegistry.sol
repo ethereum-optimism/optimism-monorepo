@@ -58,13 +58,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
 
     GameType public respectedGameType;
 
-    IFaultDisputeGame[] public anchorGameCandidates;
-
-    uint256 internal _anchorGameCandidateIndex;
-
     IFaultDisputeGame internal _anchorGame;
-
-    uint256 public tryUpdateAnchorStateGas;
 
     constructor() {
         _disableInitializers();
@@ -76,13 +70,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// considered finalized.
     /// @param _authorizedGame An authorized dispute game.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
-    /// @param _tryUpdateAnchorStateGas The approximate gas limit for the tryUpdateAnchorState loop.
     function initialize(
         IDisputeGameFactory _disputeGameFactory,
         uint256 _disputeGameFinalityDelaySeconds,
         IFaultDisputeGame _authorizedGame,
-        ISuperchainConfig _superchainConfig,
-        uint256 _tryUpdateAnchorStateGas
+        ISuperchainConfig _superchainConfig
     )
         external
         initializer
@@ -91,7 +83,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
         disputeGameFinalityDelaySeconds = _disputeGameFinalityDelaySeconds;
         _anchorGame = _authorizedGame;
         superchainConfig = _superchainConfig;
-        tryUpdateAnchorStateGas = _tryUpdateAnchorStateGas;
     }
 
     /// @notice Returns the output root of the anchor game, or an authorized anchor state if no such game exists.
@@ -101,70 +92,15 @@ contract AnchorStateRegistry is Initializable, ISemver {
             OutputRoot({ l2BlockNumber: _anchorGame.l2BlockNumber(), root: Hash.wrap(_anchorGame.rootClaim().raw()) });
     }
 
-    function pokeAnchorState(uint256 _candidateGameIndex) external {
-        IFaultDisputeGame _game = anchorGameCandidates[_candidateGameIndex];
-        _anchorGameCandidateIndex = _candidateGameIndex + 1;
-        _updateAnchorState(_game);
-    }
-
-    function _updateAnchorState(IFaultDisputeGame _game) internal {
+    function setAnchorState(IFaultDisputeGame _game) internal {
         uint256 _anchorL2BlockNumber = _anchorGame.l2BlockNumber();
         uint256 _gameL2BlockNumber = _game.l2BlockNumber();
         if (!isGameValid(_game)) revert InvalidGame();
         if (_gameL2BlockNumber <= _anchorL2BlockNumber) {
             revert AnchorGameIsNewer(_anchorL2BlockNumber, _gameL2BlockNumber);
         }
-        _updateAnchorStateWithValidNewerGame(_game);
-    }
-
-    function _updateAnchorStateWithValidNewerGame(IFaultDisputeGame _game) internal {
         _anchorGame = _game;
         emit AnchorGameSet(_game);
-    }
-
-    function _maybeRegisterAnchorGameCandidate() internal {
-        IFaultDisputeGame _game = IFaultDisputeGame(msg.sender);
-        // game must not be invalid
-        if (!isGameMaybeValid(_game)) return;
-        // if the game is older than the anchor game, we don't need it
-        if (_game.l2BlockNumber() < _anchorGame.l2BlockNumber()) {
-            return;
-        }
-        anchorGameCandidates.push(_game);
-    }
-
-    /// @notice Callable by FaultDisputeGame contracts to update the anchor state.
-    function tryUpdateAnchorState() external {
-        _maybeRegisterAnchorGameCandidate();
-        uint256 _anchorGameBlockNumber = _anchorGame.l2BlockNumber();
-        uint256 _gasStart = gasleft();
-        // TODO: add padding to ensure we don't run out of gas
-        while (_gasStart - gasleft() < tryUpdateAnchorStateGas) {
-            // if there are no candidates to consider, break
-            if (_anchorGameCandidateIndex == anchorGameCandidates.length) break;
-            // If the game's l2BlockNumber is older than that of anchorGame, seek ahead.
-            IFaultDisputeGame _anchorCandidate = anchorGameCandidates[_anchorGameCandidateIndex];
-            if (_anchorCandidate.l2BlockNumber() <= _anchorGameBlockNumber) {
-                // We can confidently seek past games that don't increase the anchor game l2BlockNumber.
-                _anchorGameCandidateIndex++;
-            } else {
-                if (_isGameFinalized(_anchorCandidate)) {
-                    // If the game is finalized but invalid, we should move past it
-                    if (!isGameValid(_anchorCandidate)) {
-                        _anchorGameCandidateIndex++;
-                    } else {
-                        // If the game is finalized and valid, let's use it.
-                        _updateAnchorStateWithValidNewerGame(_anchorCandidate);
-                        _anchorGameCandidateIndex++;
-                        _anchorGameBlockNumber = _anchorCandidate.l2BlockNumber();
-                    }
-                } else {
-                    // If the game is not finalized, we could consider checking some games ahead of it, but for draft
-                    // impl we'll pause.
-                    break;
-                }
-            }
-        }
     }
 
     function retireAllExistingGames() external {
@@ -188,6 +124,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
         if (msg.sender != _guardian()) revert Unauthorized();
         respectedGameType = _gameType;
         emit RespectedGameTypeSet(_gameType);
+    }
+
+    function isGameRetired(IFaultDisputeGame _game) public view returns (bool) {
+        // Must be created after the gameRetirementTimestamp.
+        return _game.createdAt().raw() <= gameRetirementTimestamp;
     }
 
     function isGameMaybeValid(IFaultDisputeGame _game) public view returns (bool) {
@@ -214,16 +155,16 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Must be created after the gameRetirementTimestamp.
-        if (_game.createdAt().raw() <= gameRetirementTimestamp) return false;
+        if (!isGameRetired(_game)) return false;
 
         return true;
     }
 
     function isGameValid(IFaultDisputeGame _game) public view returns (bool) {
-        return isGameMaybeValid(_game) && _isGameFinalized(_game);
+        return isGameMaybeValid(_game) && isGameFinalized(_game);
     }
 
-    function _isGameFinalized(IFaultDisputeGame _game) internal view returns (bool) {
+    function isGameFinalized(IFaultDisputeGame _game) public view returns (bool) {
         // - Game status is CHALLENGER_WINS or DEFENDER_WINS
         if (_game.status() != GameStatus.DEFENDER_WINS && _game.status() != GameStatus.CHALLENGER_WINS) {
             return false;
