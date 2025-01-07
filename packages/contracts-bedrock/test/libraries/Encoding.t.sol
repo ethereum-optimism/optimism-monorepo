@@ -105,6 +105,105 @@ contract Encoding_Test is CommonTest {
 
         assertEq(txn, _txn);
     }
+
+    /// @notice Test that decoding and re-encoding preserves all components
+    function testFuzz_encodeDecodeProtocolVersion(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        public
+        pure
+    {
+        bytes32 encoded = Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease);
+
+        (bytes8 decodedBuild, uint32 decodedMajor, uint32 decodedMinor, uint32 decodedPatch, uint32 decodedPreRelease) =
+            Encoding.decodeProtocolVersion(encoded);
+
+        assertEq(_build, decodedBuild);
+        assertEq(_major, decodedMajor);
+        assertEq(_minor, decodedMinor);
+        assertEq(_patch, decodedPatch);
+        assertEq(_preRelease, decodedPreRelease);
+    }
+
+    /// @notice Test specific known values for verification
+    function test_protocolVersion_specific() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 4);
+
+        (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease) =
+            Encoding.decodeProtocolVersion(encoded);
+
+        assertEq(bytes8(hex"0123456789abcdef"), build);
+        assertEq(1, major);
+        assertEq(2, minor);
+        assertEq(3, patch);
+        assertEq(4, preRelease);
+    }
+
+    /// @notice Test encoding with no prerelease version
+    function test_protocolVersion_noPrerelease() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 0);
+
+        (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease) =
+            Encoding.decodeProtocolVersion(encoded);
+
+        assertEq(bytes8(hex"0123456789abcdef"), build);
+        assertEq(1, major);
+        assertEq(2, minor);
+        assertEq(3, patch);
+        assertEq(0, preRelease);
+    }
+
+    /// @notice Test specific known values for verification with Go implementation
+    function testDiff_protocolVersion_specific() public {
+        bytes32 encoded = Encoding.encodeProtocolVersion(
+            bytes8(hex"0123456789abcdef"),  // build
+            1,                               // major
+            2,                               // minor
+            3,                               // patch
+            4                                // prerelease
+        );
+
+        bytes memory goEncoded = ffi.encodeProtocolVersion(
+            hex"0123456789abcdef",  // build
+            1,                      // major
+            2,                      // minor
+            3,                      // patch
+            4                       // prerelease
+        );
+
+        assertEq(encoded, bytes32(goEncoded));
+    }
+
+    /// @notice Test protocol version decoding matches Go implementation
+    function testDiff_decodeProtocolVersion() public {
+        bytes32 version = bytes32(hex"0123456789abcdef0000000100000002000000030000000400000000");
+
+        (
+            bytes8 build,
+            uint32 major,
+            uint32 minor,
+            uint32 patch,
+            uint32 preRelease
+        ) = Encoding.decodeProtocolVersion(version);
+
+        (
+            bytes8 goBuild,
+            uint32 goMajor,
+            uint32 goMinor,
+            uint32 goPatch,
+            uint32 goPreRelease
+        ) = ffi.decodeProtocolVersion(version);
+
+        assertEq(build, goBuild);
+        assertEq(major, goMajor);
+        assertEq(minor, goMinor);
+        assertEq(patch, goPatch);
+        assertEq(preRelease, goPreRelease);
+    }
 }
 
 contract EncodingContract {
