@@ -113,48 +113,34 @@ contract Encoding_Test is CommonTest {
         uint32 _minor,
         uint32 _patch,
         uint32 _preRelease
-    )
-        public
-        pure
-    {
+    ) public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease);
 
-        (bytes8 decodedBuild, uint32 decodedMajor, uint32 decodedMinor, uint32 decodedPatch, uint32 decodedPreRelease) =
-            Encoding.decodeProtocolVersion(encoded);
-
-        assertEq(_build, decodedBuild);
-        assertEq(_major, decodedMajor);
-        assertEq(_minor, decodedMinor);
-        assertEq(_patch, decodedPatch);
-        assertEq(_preRelease, decodedPreRelease);
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = string(abi.encodePacked(
+            _build, ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
+        ));
+        assertEq(decoded, expected);
     }
 
     /// @notice Test specific known values for verification
     function test_protocolVersion_specific() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 4);
-
-        (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease) =
-            Encoding.decodeProtocolVersion(encoded);
-
-        assertEq(bytes8(hex"0123456789abcdef"), build);
-        assertEq(1, major);
-        assertEq(2, minor);
-        assertEq(3, patch);
-        assertEq(4, preRelease);
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = string(abi.encodePacked(
+            bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "4"
+        ));
+        assertEq(decoded, expected);
     }
 
     /// @notice Test encoding with no prerelease version
     function test_protocolVersion_noPrerelease() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 0);
-
-        (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease) =
-            Encoding.decodeProtocolVersion(encoded);
-
-        assertEq(bytes8(hex"0123456789abcdef"), build);
-        assertEq(1, major);
-        assertEq(2, minor);
-        assertEq(3, patch);
-        assertEq(0, preRelease);
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = string(abi.encodePacked(
+            bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "0"
+        ));
+        assertEq(decoded, expected);
     }
 
     /// @notice Test specific known values for verification with Go implementation
@@ -178,31 +164,31 @@ contract Encoding_Test is CommonTest {
         assertEq(encoded, bytes32(goEncoded));
     }
 
-    /// @notice Test protocol version decoding matches Go implementation
+    /// @notice Test that Go and Solidity implementations match for decoding
     function testDiff_decodeProtocolVersion_matchesGo() public {
         bytes32 version = bytes32(hex"0123456789abcdef0000000100000002000000030000000400000000");
 
-        (
-            bytes8 build,
-            uint32 major,
-            uint32 minor,
-            uint32 patch,
-            uint32 preRelease
-        ) = Encoding.decodeProtocolVersion(version);
+        string memory solString = Encoding.decodeProtocolVersion(version);
+        string memory goString = ffi.decodeProtocolVersion(version);
 
-        (
-            bytes8 goBuild,
-            uint32 goMajor,
-            uint32 goMinor,
-            uint32 goPatch,
-            uint32 goPreRelease
-        ) = ffi.decodeProtocolVersion(version);
+        assertEq(solString, goString);
+    }
 
-        assertEq(build, goBuild);
-        assertEq(major, goMajor);
-        assertEq(minor, goMinor);
-        assertEq(patch, goPatch);
-        assertEq(preRelease, goPreRelease);
+    function uint2str(uint32 _i) internal pure returns (string memory) {
+        if (_i == 0) return "0";
+        uint j = _i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        while (_i != 0) {
+            len -= 1;
+            bstr[len] = bytes1(uint8(48 + _i % 10));
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }
 
