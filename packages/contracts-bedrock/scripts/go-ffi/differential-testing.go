@@ -2,12 +2,12 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"math/big"
 	"os"
 	"strconv"
-	"encoding/hex"
-	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -15,10 +15,10 @@ import (
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
-	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
@@ -33,6 +33,12 @@ var (
 	dynBytes, _ = abi.NewType("bytes", "", nil)
 	bytesArgs   = abi.Arguments{
 		{Type: dynBytes},
+	}
+
+	// String type for protocol version
+	stringType, _ = abi.NewType("string", "", nil)
+	stringArgs    = abi.Arguments{
+		{Type: stringType},
 	}
 
 	// Plain fixed bytes32 type
@@ -107,9 +113,6 @@ var (
 
 	// Dependency tuple (uint256)
 	dependencyArgs = abi.Arguments{{Name: "chainId", Type: uint256Type}}
-
-	// Plain bytes type
-	bytesType, _ = abi.NewType("bytes", "", nil)
 )
 
 func parseUint32(s string) uint32 {
@@ -545,7 +548,7 @@ func DiffTestUtils() {
 		if _, err := hex.Decode(build[:], []byte(buildHex[2:])); err != nil {
 			panic(fmt.Sprintf("failed to decode build: %v", err))
 		}
-		
+
 		major := parseUint32(args[2])
 		minor := parseUint32(args[3])
 		patch := parseUint32(args[4])
@@ -559,7 +562,7 @@ func DiffTestUtils() {
 		binary.BigEndian.PutUint32(encoded[20:24], minor)
 		binary.BigEndian.PutUint32(encoded[24:28], patch)
 		binary.BigEndian.PutUint32(encoded[28:32], preRelease)
-		
+
 		// Pack encoded version
 		packed, err := bytesArgs.Pack(encoded[:])
 		checkErr(err, "Error encoding output")
@@ -569,51 +572,45 @@ func DiffTestUtils() {
 			panic("decodeProtocolVersion requires 1 argument: version")
 		}
 		versionBytes := common.FromHex(args[1])
+		fmt.Fprintf(os.Stderr, "Input bytes: %x\n", versionBytes)
 		decoded := params.ProtocolVersionV0{}
-		// Convert to uint256 like Solidity does
 		var version big.Int
 		version.SetBytes(versionBytes)
-		
-		// Match Solidity's bit shifts
+
+		// Decode components
 		var tmp big.Int
-		
-		// build = bytes8(uint64(version >> 192))
-		tmp.Rsh(&version, 192)
-		copy(decoded.Build[:], tmp.Bytes())
-		
-		// major = uint32(version >> 96)
-		tmp.Rsh(&version, 96)
-		decoded.Major = uint32(tmp.Uint64())
-		
-		// minor = uint32(version >> 64)
-		tmp.Rsh(&version, 64)
-		decoded.Minor = uint32(tmp.Uint64())
-		
-		// patch = uint32(version >> 32)
-		tmp.Rsh(&version, 32)
-		decoded.Patch = uint32(tmp.Uint64())
-		
-		// preRelease = uint32(version)
-		decoded.PreRelease = uint32(version.Uint64())
-		
-		// Pack decoded version components
-		result := []interface{}{
-			decoded.Build[:],
+		tmp.Set(&version)
+		// Get build (first 8 bytes)
+		var buildInt big.Int
+		buildInt.Rsh(&version, 192)
+		buildBytes := buildInt.Bytes()
+		decoded.Build = [8]byte{}
+		copy(decoded.Build[8-len(buildBytes):], buildBytes) // Right-align the bytes
+
+		// Get remaining components
+		tmp.Set(&version)
+		decoded.Major = uint32(new(big.Int).Rsh(&tmp, 96).Uint64())
+		tmp.Set(&version)
+		decoded.Minor = uint32(new(big.Int).Rsh(&tmp, 64).Uint64())
+		tmp.Set(&version)
+		decoded.Patch = uint32(new(big.Int).Rsh(&tmp, 32).Uint64())
+		tmp.Set(&version)
+		decoded.PreRelease = uint32(tmp.Uint64())
+
+		// Format string
+		result := fmt.Sprintf("%s.%d.%d.%d-%d",
+			hex.EncodeToString(decoded.Build[:]),
 			decoded.Major,
 			decoded.Minor,
 			decoded.Patch,
 			decoded.PreRelease,
-		}
-		packed, err := abi.Arguments{
-			{Type: bytesType},
-			{Type: uint32Type},
-			{Type: uint32Type},
-			{Type: uint32Type},
-			{Type: uint32Type},
-		}.Pack(result...)
+		)
+
+		// Pack string using stringArgs instead of bytesArgs
+		packed, err := stringArgs.Pack(result)
 		checkErr(err, "Error encoding output")
 		fmt.Print(hexutil.Encode(packed))
 	default:
-		panic(fmt.Errorf("Unknown command: %s", args[0]))
+		panic(fmt.Errorf("unknown command: %s", args[0]))
 	}
 }
