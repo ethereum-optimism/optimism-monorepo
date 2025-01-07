@@ -50,7 +50,6 @@ import { IL1Block } from "interfaces/L2/IL1Block.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-
 contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Allows for interactions with non standard ERC20 tokens.
     using SafeERC20 for IERC20;
@@ -65,10 +64,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice The delay between when a withdrawal transaction is proven and when it may be finalized.
     uint256 internal immutable PROOF_MATURITY_DELAY_SECONDS;
-
-    /// @notice The delay between when a dispute game is resolved and when a withdrawal proven against it may be
-    ///         finalized.
-    // uint256 internal immutable DISPUTE_GAME_FINALITY_DELAY_SECONDS;
 
     /// @notice Version of the deposit event.
     uint256 internal constant DEPOSIT_VERSION = 0;

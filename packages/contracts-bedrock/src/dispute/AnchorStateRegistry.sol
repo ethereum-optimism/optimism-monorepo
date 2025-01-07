@@ -36,9 +36,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
     string public constant version = "2.0.1-beta.6";
 
     /// @notice DisputeGameFactory address.
+    // TODO: find storage slot
     IDisputeGameFactory public disputeGameFactory;
 
     /// @notice The delay between when a dispute game is resolved and when it can be considered finalized.
+    // TODO: find storage slot
     uint256 public disputeGameFinalityDelaySeconds;
 
     // TODO: storage slot issue
@@ -92,7 +94,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
             OutputRoot({ l2BlockNumber: _anchorGame.l2BlockNumber(), root: Hash.wrap(_anchorGame.rootClaim().raw()) });
     }
 
-    function setAnchorState(IFaultDisputeGame _game) internal {
+    function setAnchorState(IFaultDisputeGame _game) external {
         uint256 _anchorL2BlockNumber = _anchorGame.l2BlockNumber();
         uint256 _gameL2BlockNumber = _game.l2BlockNumber();
         if (!isGameValid(_game)) revert InvalidGame();
@@ -155,7 +157,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Must be created after the gameRetirementTimestamp.
-        if (!isGameRetired(_game)) return false;
+        if (isGameRetired(_game)) return false;
 
         return true;
     }
@@ -165,12 +167,12 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     function isGameFinalized(IFaultDisputeGame _game) public view returns (bool) {
-        // - Game status is CHALLENGER_WINS or DEFENDER_WINS
+        // Game status must be CHALLENGER_WINS or DEFENDER_WINS
         if (_game.status() != GameStatus.DEFENDER_WINS && _game.status() != GameStatus.CHALLENGER_WINS) {
             return false;
         }
-        // - Game resolvedAt timestamp must be non-zero
-        // - Game resolvedAt timestamp must be more than airgap period seconds ago
+        // Game resolvedAt timestamp must be non-zero
+        // Game resolvedAt timestamp must be more than airgap period seconds ago
         uint256 _resolvedAt = _game.resolvedAt().raw();
         if (_resolvedAt == 0 || _resolvedAt <= block.timestamp - disputeGameFinalityDelaySeconds) {
             return false;

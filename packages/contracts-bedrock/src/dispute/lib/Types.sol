@@ -27,7 +27,7 @@ enum GameStatus {
 }
 
 /// @notice The game's bond distribution type. Games are expected to start in the `UNDECIDED` state, and then choose
-/// either `NORMAL` or `REFUNDING`.
+/// either `NORMAL` or `REFUND`.
 enum BondDistributionMode {
     // Bond distribution strategy has not been chosen.
     UNDECIDED,
