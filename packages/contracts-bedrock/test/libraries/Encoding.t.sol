@@ -158,7 +158,7 @@ contract Encoding_Test is CommonTest {
     }
 
     /// @notice Test specific known values for verification with Go implementation
-    function testDiff_protocolVersion_specific() public {
+    function testDiff_encodeProtocolVersion_matchesGo() public {
         bytes32 encoded = Encoding.encodeProtocolVersion(
             bytes8(hex"0123456789abcdef"),  // build
             1,                               // major
@@ -179,7 +179,7 @@ contract Encoding_Test is CommonTest {
     }
 
     /// @notice Test protocol version decoding matches Go implementation
-    function testDiff_decodeProtocolVersion() public {
+    function testDiff_decodeProtocolVersion_matchesGo() public {
         bytes32 version = bytes32(hex"0123456789abcdef0000000100000002000000030000000400000000");
 
         (
