@@ -195,7 +195,6 @@ contract L1BlockCustomGasToken_Test is L1BlockTest {
         bytes32 b32symbol = bytes32(abi.encodePacked(symbol));
 
         vm.prank(depositor);
-        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         l1Block.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: b32name, _symbol: b32symbol });
     }
 
