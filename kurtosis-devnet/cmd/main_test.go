@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -20,7 +21,11 @@ type mockDeployer struct {
 	dryRun bool
 }
 
-func (m *mockDeployer) Deploy(ctx context.Context, input io.Reader) (*kurtosis.KurtosisEnvironment, error) {
+func (m *mockDeployer) Deploy(ctx context.Context, input io.Reader) (*spec.EnclaveSpec, error) {
+	return &spec.EnclaveSpec{}, nil
+}
+
+func (m *mockDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*kurtosis.KurtosisEnvironment, error) {
 	return &kurtosis.KurtosisEnvironment{}, nil
 }
 
@@ -218,6 +223,26 @@ func TestDeploy(t *testing.T) {
 
 	var env map[string]interface{}
 	err = json.Unmarshal(content, &env)
+	require.NoError(t, err)
+}
+
+func TestDeployFileserver(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tmpDir, err := os.MkdirTemp("", "deploy-fileserver-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	envPath := filepath.Join(tmpDir, "env.json")
+	cfg := &config{
+		baseDir:     tmpDir,
+		environment: envPath,
+		dryRun:      true,
+	}
+
+	m := newTestMain(cfg)
+	err = m.deployFileserver(ctx, filepath.Join(tmpDir, "fileserver"))
 	require.NoError(t, err)
 }
 

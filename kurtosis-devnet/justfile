@@ -9,7 +9,7 @@ _contracts-build BUNDLE='contracts-bundle.tar.gz':
     tar -czf {{BUNDLE}} -C ../packages/contracts-bedrock artifacts forge-artifacts cache
 
 _prestate-build PATH='.':
-    docker buildx build --output {{PATH}} --target export-stage-proofs --progress plain -f ../op-program/Dockerfile.repro ../
+    docker buildx build --output {{PATH}} --progress plain -f ../op-program/Dockerfile.repro ../
 
 _docker_build TAG TARGET CONTEXT DOCKERFILE *ARGS:
     docker buildx build -t {{TAG}} \

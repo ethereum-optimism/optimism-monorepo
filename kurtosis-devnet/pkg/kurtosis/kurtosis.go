@@ -151,7 +151,7 @@ func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) WalletMap {
 }
 
 // getEnvironmentInfo parses the input spec and inspect output to create KurtosisEnvironment
-func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*KurtosisEnvironment, error) {
+func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*KurtosisEnvironment, error) {
 	inspectResult, err := d.enclaveInspecter.EnclaveInspect(ctx, d.enclave)
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse inspect output: %w", err)
@@ -210,7 +210,7 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 }
 
 // Deploy executes the Kurtosis deployment command with the provided input
-func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*KurtosisEnvironment, error) {
+func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*spec.EnclaveSpec, error) {
 	// Parse the input spec first
 	inputCopy := new(bytes.Buffer)
 	tee := io.TeeReader(input, inputCopy)
@@ -236,9 +236,9 @@ func (d *KurtosisDeployer) Deploy(ctx context.Context, input io.Reader) (*Kurtos
 
 	// If dry run, return empty environment
 	if d.dryRun {
-		return &KurtosisEnvironment{}, nil
+		return spec, nil
 	}
 
 	// Get environment information
-	return d.getEnvironmentInfo(ctx, spec)
+	return spec, nil
 }

@@ -1,17 +1,17 @@
-{{- $local_images := dict 
+{{- $local_images := dict
   "op_node" (localDockerImage "op-node")
-  "op_batcher" (localDockerImage "op-batcher") 
-  "op_challenger" (localDockerImage "op-challenger") 
-  "op_proposer" (localDockerImage "op-proposer") 
-  "op_deployer" (localDockerImage "op-deployer") 
-  "op_supervisor" (localDockerImage "op-supervisor") 
+  "op_batcher" (localDockerImage "op-batcher")
+  "op_challenger" (localDockerImage "op-challenger")
+  "op_proposer" (localDockerImage "op-proposer")
+  "op_deployer" (localDockerImage "op-deployer")
+  "op_supervisor" (localDockerImage "op-supervisor")
 -}}
-{{- $urls := dict 
-  "prestate" (localPrestate)
+{{- $urls := dict
+  "prestate" "http://fileserver/proofs/op-program/cannon"
   "l1_artifacts" (localContractArtifacts "l1")
   "l2_artifacts" (localContractArtifacts "l2")
 -}}
-{{- $flags := dict 
+{{- $flags := dict
   "log_level" "--log.level=info"
 -}}
 ---
@@ -160,6 +160,8 @@ optimism_package:
     image: {{ $local_images.op_deployer }}
     l1_artifacts_locator: {{ $urls.l1_artifacts }}
     l2_artifacts_locator: {{ $urls.l2_artifacts }}
+    global_deploy_overrides:
+      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
   global_log_level: "info"
   global_node_selectors: {}
   global_tolerations: []
