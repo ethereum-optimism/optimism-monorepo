@@ -478,13 +478,7 @@ contract FFIInterface {
     }
 
     /// @notice Decodes a protocol version using the Go implementation
-    function decodeProtocolVersion(bytes32 version) external returns (
-        bytes8 build,
-        uint32 major,
-        uint32 minor,
-        uint32 patch,
-        uint32 preRelease
-    ) {
+    function decodeProtocolVersion(bytes32 version) external returns (string memory) {
         string[] memory cmds = new string[](4);
         cmds[0] = "scripts/go-ffi/go-ffi";
         cmds[1] = "diff";
@@ -494,15 +488,7 @@ contract FFIInterface {
         bytes memory result = Process.run(cmds);
         require(result.length > 0, "FFI call returned empty result");
         
-        // The Go implementation returns the values in a different format
-        // We need to decode them properly
-        (bytes memory buildBytes, uint32 maj, uint32 min, uint32 pat, uint32 pre) = 
-            abi.decode(result, (bytes, uint32, uint32, uint32, uint32));
-        
-        build = bytes8(buildBytes);
-        major = maj;
-        minor = min;
-        patch = pat;
-        preRelease = pre;
+        string memory decoded = abi.decode(result, (string));
+        return decoded;
     }
 }
