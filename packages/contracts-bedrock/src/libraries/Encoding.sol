@@ -243,21 +243,57 @@ library Encoding {
 
     /// @notice Decodes a protocol version from bytes32
     /// @param _versionBytes The protocol version to decode
-    /// @return build The build identifier (8 bytes)
-    /// @return major The major version
-    /// @return minor The minor version
-    /// @return patch The patch version
-    /// @return preRelease The pre-release version
+    /// @return The decoded protocol version as a string
     function decodeProtocolVersion(bytes32 _versionBytes)
         internal
         pure
-        returns (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease)
+        returns (string memory)
     {
         uint256 version = uint256(_versionBytes);
-        build = bytes8(uint64(version >> 192));
-        major = uint32(version >> 96);
-        minor = uint32(version >> 64);
-        patch = uint32(version >> 32);
-        preRelease = uint32(version);
+        bytes8 build = bytes8(uint64(version >> 192));
+        uint32 major = uint32(version >> 96);
+        uint32 minor = uint32(version >> 64);
+        uint32 patch = uint32(version >> 32);
+        uint32 preRelease = uint32(version);
+        
+        // Format string like Go implementation
+        return string(abi.encodePacked(
+            bytes2hex(build),
+            ".",
+            uint2str(major),
+            ".",
+            uint2str(minor),
+            ".",
+            uint2str(patch),
+            "-",
+            uint2str(preRelease)
+        ));
+    }
+
+    function bytes2hex(bytes8 data) internal pure returns (bytes memory) {
+        bytes memory alphabet = "0123456789abcdef";
+        bytes memory str = new bytes(16);
+        for (uint256 i = 0; i < 8; i++) {
+            str[i*2] = alphabet[uint8(data[i] >> 4)];
+            str[i*2+1] = alphabet[uint8(data[i] & 0x0f)];
+        }
+        return str;
+    }
+
+    function uint2str(uint32 _i) internal pure returns (string memory) {
+        if (_i == 0) return "0";
+        uint j = _i;
+        uint len;
+        while (j != 0) {
+            len++;
+            j /= 10;
+        }
+        bytes memory bstr = new bytes(len);
+        while (_i != 0) {
+            len -= 1;
+            bstr[len] = bytes1(uint8(48 + _i % 10));
+            _i /= 10;
+        }
+        return string(bstr);
     }
 }
