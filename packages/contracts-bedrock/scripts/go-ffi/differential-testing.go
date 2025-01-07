@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"os"
 	"strconv"
+	"encoding/hex"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -16,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/ethereum/go-ethereum/triedb/hashdb"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
@@ -520,6 +522,64 @@ func DiffTestUtils() {
 		packed, err := bytesArgs.Pack(&encoded)
 		checkErr(err, "Error encoding output")
 
+		fmt.Print(hexutil.Encode(packed))
+	case "encodeProtocolVersion":
+		if len(args) != 6 {
+			panic("encodeProtocolVersion requires 5 arguments: build, major, minor, patch, preRelease")
+		}
+		buildHex := args[1]
+		if len(buildHex) != 18 { // "0x" + 16 hex chars
+			panic("build must be 16 hex characters with 0x prefix")
+		}
+		var build [8]byte
+		if _, err := hex.Decode(build[:], []byte(buildHex[2:])); err != nil {
+			panic(fmt.Sprintf("failed to decode build: %v", err))
+		}
+		
+		major := parseUint32(args[2])
+		minor := parseUint32(args[3])
+		patch := parseUint32(args[4])
+		preRelease := parseUint32(args[5])
+
+		version := params.ProtocolVersionV0{
+			Build:      build,
+			Major:      major,
+			Minor:      minor,
+			Patch:      patch,
+			PreRelease: preRelease,
+		}
+		encoded := version.Encode()
+		
+		// Pack encoded version
+		packed, err := bytesArgs.Pack(encoded[:])
+		checkErr(err, "Error encoding output")
+		fmt.Print(hexutil.Encode(packed))
+	case "decodeProtocolVersion":
+		if len(args) != 2 {
+			panic("decodeProtocolVersion requires 1 argument: version")
+		}
+		var version params.ProtocolVersion
+		if err := version.UnmarshalText([]byte(args[1])); err != nil {
+			panic(fmt.Sprintf("failed to decode version: %v", err))
+		}
+		decoded := params.DecodeProtocolVersion(version)
+		
+		// Pack decoded version components
+		result := []interface{}{
+			decoded.Build[:],
+			decoded.Major,
+			decoded.Minor,
+			decoded.Patch,
+			decoded.PreRelease,
+		}
+		packed, err := abi.Arguments{
+			{Type: bytesType},
+			{Type: uint32Type},
+			{Type: uint32Type},
+			{Type: uint32Type},
+			{Type: uint32Type},
+		}.Pack(result...)
+		checkErr(err, "Error encoding output")
 		fmt.Print(hexutil.Encode(packed))
 	default:
 		panic(fmt.Errorf("Unknown command: %s", args[0]))
