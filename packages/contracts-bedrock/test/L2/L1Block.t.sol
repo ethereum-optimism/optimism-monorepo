@@ -4,9 +4,6 @@ pragma solidity 0.8.15;
 // Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
 
-// Interfaces
-import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
-
 // Libraries
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Constants } from "src/libraries/Constants.sol";
