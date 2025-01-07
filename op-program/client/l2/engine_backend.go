@@ -52,28 +52,39 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	}
 	head := oracle.BlockByHash(outputV0.BlockHash)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
-	return &OracleBackedL2Chain{
+	return NewOracleBackedL2ChainFromHeader(logger, oracle, precompileOracle, chainCfg, head.Header())
+}
+
+func NewOracleBackedL2ChainFromHeader(
+	logger log.Logger,
+	oracle Oracle,
+	precompileOracle engineapi.PrecompileOracle,
+	chainCfg *params.ChainConfig,
+	head *types.Header,
+) (*OracleBackedL2Chain, error) {
+	chain := &OracleBackedL2Chain{
 		log:      logger,
 		oracle:   oracle,
 		chainCfg: chainCfg,
 		engine:   beacon.New(nil),
 
 		hashByNum: map[uint64]common.Hash{
-			head.NumberU64(): head.Hash(),
+			head.Number.Uint64(): head.Hash(),
 		},
-		earliestIndexedBlock: head.Header(),
+		earliestIndexedBlock: head,
 
 		// Treat the agreed starting head as finalized - nothing before it can be disputed
-		head:       head.Header(),
-		safe:       head.Header(),
-		finalized:  head.Header(),
-		oracleHead: head.Header(),
+		head:       head,
+		safe:       head,
+		finalized:  head,
+		oracleHead: head,
 		blocks:     make(map[common.Hash]*types.Block),
 		db:         NewOracleBackedDB(oracle),
-		vmCfg: vm.Config{
-			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
-		},
-	}, nil
+	}
+	if precompileOracle != nil {
+		chain.vmCfg.PrecompileOverrides = engineapi.CreatePrecompileOverrides(precompileOracle)
+	}
+	return chain, nil
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {

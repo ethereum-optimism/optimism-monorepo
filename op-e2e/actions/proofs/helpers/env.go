@@ -218,7 +218,7 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			require.NoError(t, err, "failed to create L2 client")
 			l2DebugCl := host.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv), nil
+			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config), nil
 		})
 		err = host.FaultProofProgram(t.Ctx(), env.log, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)

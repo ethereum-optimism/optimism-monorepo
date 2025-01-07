@@ -64,15 +64,18 @@ type Prefetcher struct {
 	l2Fetcher     L2Source
 	lastHint      string
 	kvStore       kvstore.KV
+	chainConfig   *params.ChainConfig
 }
 
-func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSource, l2Fetcher L2Source, kvStore kvstore.KV) *Prefetcher {
+func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSource, l2Fetcher L2Source, kvStore kvstore.KV, l2ChainConfig *params.ChainConfig) *Prefetcher {
 	return &Prefetcher{
 		logger:        logger,
 		l1Fetcher:     NewRetryingL1Source(logger, l1Fetcher),
 		l1BlobFetcher: NewRetryingL1BlobSource(logger, l1BlobFetcher),
 		l2Fetcher:     NewRetryingL2Source(logger, l2Fetcher),
 		kvStore:       kvStore,
+		// TODO: replace with block exec oracle to avoid having to setup chain config in unit tests
+		chainConfig: l2ChainConfig,
 	}
 }
 
@@ -288,6 +291,16 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to fetch L2 output root %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
+	case l2.HintL2ReplacementBlockReceipts:
+		if len(hintBytes) != 32 {
+			return fmt.Errorf("invalid L2 block receipts hint: %x", hint)
+		}
+		hash := common.Hash(hintBytes)
+		_, receipts, err := ReExecuteDepositBlock(ctx, p.logger, p.l2Fetcher, p.chainConfig, hash)
+		if err != nil {
+			return fmt.Errorf("failed to re-execute deposit block: %w", err)
+		}
+		return p.storeReceipts(receipts)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }

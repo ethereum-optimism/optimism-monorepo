@@ -246,7 +246,7 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 		return nil, fmt.Errorf("failed to create L2 source: %w", err)
 	}
 
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, cfg.L2ChainConfig), nil
 }
 
 func routeHints(logger log.Logger, hHostRW io.ReadWriter, hinter preimage.HintHandler) chan error {
