@@ -14,6 +14,7 @@ interface IL1CrossDomainMessenger is ICrossDomainMessenger {
         ISystemConfig _systemConfig
     )
         external;
+    function upgrade(ISystemConfig _systemConfig) external;
     function portal() external view returns (IOptimismPortal);
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);

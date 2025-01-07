@@ -399,9 +399,17 @@ contract OPContractsManager is ISemver {
 
             IProxyAdmin proxyAdmin = _opChains[i].proxyAdmin;
             proxyAdmin.upgrade(payable(address(systemConfig)), impls.systemConfigImpl);
-            proxyAdmin.upgrade(payable(opChainAddrs.l1CrossDomainMessenger), impls.l1CrossDomainMessengerImpl);
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.l1CrossDomainMessenger),
+                impls.l1CrossDomainMessengerImpl,
+                abi.encodeCall(IL1CrossDomainMessenger.upgrade, (systemConfig))
+            );
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.l1StandardBridge),
+                impls.l1StandardBridgeImpl,
+                abi.encodeCall(IL1StandardBridge.upgrade, (systemConfig))
+            );
             proxyAdmin.upgrade(payable(opChainAddrs.l1ERC721Bridge), impls.l1ERC721BridgeImpl);
-            proxyAdmin.upgrade(payable(opChainAddrs.l1StandardBridge), impls.l1StandardBridgeImpl);
             proxyAdmin.upgrade(payable(opChainAddrs.disputeGameFactory), impls.disputeGameFactoryImpl);
             proxyAdmin.upgrade(payable(opChainAddrs.optimismPortal), impls.optimismPortalImpl);
             proxyAdmin.upgrade(

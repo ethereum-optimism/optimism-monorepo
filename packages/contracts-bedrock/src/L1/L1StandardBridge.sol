@@ -108,6 +108,10 @@ contract L1StandardBridge is StandardBridge, ISemver {
         });
     }
 
+    function upgrade(ISystemConfig _systemConfig) external {
+        systemConfig = _systemConfig;
+    }
+
     /// @inheritdoc StandardBridge
     function paused() public view override returns (bool) {
         return superchainConfig.paused();

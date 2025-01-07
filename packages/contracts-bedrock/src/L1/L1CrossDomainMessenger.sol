@@ -56,6 +56,10 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
         __CrossDomainMessenger_init({ _otherMessenger: CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER) });
     }
 
+    function upgrade(ISystemConfig _systemConfig) external {
+        systemConfig = _systemConfig;
+    }
+
     /// @inheritdoc CrossDomainMessenger
     function gasPayingToken() internal view override returns (address addr_, uint8 decimals_) {
         (addr_, decimals_) = systemConfig.gasPayingToken();
