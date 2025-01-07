@@ -216,4 +216,48 @@ library Encoding {
             _batcherHash
         );
     }
+
+    /// @notice Encodes a protocol version into bytes32
+    /// @param _build The build identifier (8 bytes)
+    /// @param _major The major version
+    /// @param _minor The minor version
+    /// @param _patch The patch version
+    /// @param _preRelease The pre-release version
+    /// @return The encoded protocol version
+    function encodeProtocolVersion(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        internal
+        pure
+        returns (bytes32)
+    {
+        return bytes32(
+            (uint256(uint64(_build)) << 192) | (uint256(_major) << 96) | (uint256(_minor) << 64)
+                | (uint256(_patch) << 32) | uint256(_preRelease)
+        );
+    }
+
+    /// @notice Decodes a protocol version from bytes32
+    /// @param _versionBytes The protocol version to decode
+    /// @return build The build identifier (8 bytes)
+    /// @return major The major version
+    /// @return minor The minor version
+    /// @return patch The patch version
+    /// @return preRelease The pre-release version
+    function decodeProtocolVersion(bytes32 _versionBytes)
+        internal
+        pure
+        returns (bytes8 build, uint32 major, uint32 minor, uint32 patch, uint32 preRelease)
+    {
+        uint256 version = uint256(_versionBytes);
+        build = bytes8(uint64(version >> 192));
+        major = uint32(version >> 96);
+        minor = uint32(version >> 64);
+        patch = uint32(version >> 32);
+        preRelease = uint32(version);
+    }
 }
