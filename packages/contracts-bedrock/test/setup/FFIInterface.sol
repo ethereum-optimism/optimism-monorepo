@@ -462,7 +462,10 @@ contract FFIInterface {
         uint32 minor,
         uint32 patch,
         uint32 preRelease
-    ) external returns (bytes memory) {
+    )
+        external
+        returns (bytes memory)
+    {
         string[] memory cmds = new string[](8);
         cmds[0] = "scripts/go-ffi/go-ffi";
         cmds[1] = "diff";
@@ -487,7 +490,7 @@ contract FFIInterface {
 
         bytes memory result = Process.run(cmds);
         require(result.length > 0, "FFI call returned empty result");
-        
+
         string memory decoded = abi.decode(result, (string));
         return decoded;
     }

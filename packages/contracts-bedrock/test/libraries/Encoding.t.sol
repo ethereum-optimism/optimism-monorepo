@@ -113,13 +113,18 @@ contract Encoding_Test is CommonTest {
         uint32 _minor,
         uint32 _patch,
         uint32 _preRelease
-    ) public pure {
+    )
+        public
+        pure
+    {
         bytes32 encoded = Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease);
 
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
-        string memory expected = string(abi.encodePacked(
-            _build, ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
-        ));
+        string memory expected = string(
+            abi.encodePacked(
+                _build, ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
+            )
+        );
         assertEq(decoded, expected);
     }
 
@@ -127,9 +132,8 @@ contract Encoding_Test is CommonTest {
     function test_protocolVersion_specific() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 4);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
-        string memory expected = string(abi.encodePacked(
-            bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "4"
-        ));
+        string memory expected =
+            string(abi.encodePacked(bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "4"));
         assertEq(decoded, expected);
     }
 
@@ -137,28 +141,27 @@ contract Encoding_Test is CommonTest {
     function test_protocolVersion_noPrerelease() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 0);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
-        string memory expected = string(abi.encodePacked(
-            bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "0"
-        ));
+        string memory expected =
+            string(abi.encodePacked(bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "0"));
         assertEq(decoded, expected);
     }
 
     /// @notice Test specific known values for verification with Go implementation
     function testDiff_encodeProtocolVersion_matchesGo() public {
         bytes32 encoded = Encoding.encodeProtocolVersion(
-            bytes8(hex"0123456789abcdef"),  // build
-            1,                               // major
-            2,                               // minor
-            3,                               // patch
-            4                                // prerelease
+            bytes8(hex"0123456789abcdef"), // build
+            1, // major
+            2, // minor
+            3, // patch
+            4 // prerelease
         );
 
         bytes memory goEncoded = ffi.encodeProtocolVersion(
-            hex"0123456789abcdef",  // build
-            1,                      // major
-            2,                      // minor
-            3,                      // patch
-            4                       // prerelease
+            hex"0123456789abcdef", // build
+            1, // major
+            2, // minor
+            3, // patch
+            4 // prerelease
         );
 
         assertEq(encoded, bytes32(goEncoded));
@@ -176,8 +179,8 @@ contract Encoding_Test is CommonTest {
 
     function uint2str(uint32 _i) internal pure returns (string memory) {
         if (_i == 0) return "0";
-        uint j = _i;
-        uint len;
+        uint256 j = _i;
+        uint256 len;
         while (j != 0) {
             len++;
             j /= 10;
