@@ -28,6 +28,7 @@ type Chain struct {
 	Services  EndpointMap                  `json:"services,omitempty"`
 	Nodes     []Node                       `json:"nodes"`
 	Addresses deployer.DeploymentAddresses `json:"addresses,omitempty"`
+	Wallets   WalletMap                    `json:"wallets,omitempty"`
 }
 
 type Wallet struct {
@@ -39,9 +40,8 @@ type WalletMap map[string]Wallet
 
 // KurtosisEnvironment represents the output of a Kurtosis deployment
 type KurtosisEnvironment struct {
-	L1      *Chain    `json:"l1"`
-	L2      []*Chain  `json:"l2"`
-	Wallets WalletMap `json:"wallets"`
+	L1 *Chain   `json:"l1"`
+	L2 []*Chain `json:"l2"`
 }
 
 // KurtosisDeployer handles deploying packages using Kurtosis
@@ -164,8 +164,7 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 	}
 
 	env := &KurtosisEnvironment{
-		L2:      make([]*Chain, 0, len(spec.Chains)),
-		Wallets: d.getWallets(deployerState.Wallets),
+		L2: make([]*Chain, 0, len(spec.Chains)),
 	}
 
 	// Find L1 endpoint
@@ -178,6 +177,7 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 		}
 		if deployerState.State != nil {
 			chain.Addresses = deployerState.State.Addresses
+			chain.Wallets = d.getWallets(deployerState.Wallets)
 		}
 		env.L1 = chain
 	}
@@ -196,7 +196,10 @@ func (d *KurtosisDeployer) getEnvironmentInfo(ctx context.Context, spec *spec.En
 		// Add contract addresses if available
 		if deployerState.State != nil && deployerState.State.Deployments != nil {
 			if addresses, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
-				chain.Addresses = addresses
+				chain.Addresses = addresses.Addresses
+			}
+			if wallets, ok := deployerState.State.Deployments[chainSpec.NetworkID]; ok {
+				chain.Wallets = d.getWallets(wallets.Wallets)
 			}
 		}
 
