@@ -7,6 +7,7 @@ import (
 	"os"
 	"strconv"
 	"encoding/hex"
+	"encoding/binary"
 
 	"github.com/ethereum/go-ethereum/accounts/abi"
 	"github.com/ethereum/go-ethereum/common"
@@ -106,7 +107,16 @@ var (
 
 	// Dependency tuple (uint256)
 	dependencyArgs = abi.Arguments{{Name: "chainId", Type: uint256Type}}
+
+	// Plain bytes type
+	bytesType, _ = abi.NewType("bytes", "", nil)
 )
+
+func parseUint32(s string) uint32 {
+	val, err := strconv.ParseUint(s, 10, 32)
+	checkErr(err, "Error parsing uint32")
+	return uint32(val)
+}
 
 func DiffTestUtils() {
 	args := os.Args[2:]
@@ -548,7 +558,13 @@ func DiffTestUtils() {
 			Patch:      patch,
 			PreRelease: preRelease,
 		}
-		encoded := version.Encode()
+		// Create a 32-byte array with the build ID at the start
+		var encoded [32]byte
+		copy(encoded[:8], build[:])
+		binary.BigEndian.PutUint32(encoded[24:28], major)
+		binary.BigEndian.PutUint32(encoded[28:32], minor)
+		binary.BigEndian.PutUint32(encoded[32:36], patch)
+		binary.BigEndian.PutUint32(encoded[36:40], preRelease)
 		
 		// Pack encoded version
 		packed, err := bytesArgs.Pack(encoded[:])
@@ -560,17 +576,22 @@ func DiffTestUtils() {
 		}
 		var version params.ProtocolVersion
 		if err := version.UnmarshalText([]byte(args[1])); err != nil {
-			panic(fmt.Sprintf("failed to decode version: %v", err))
+			panic(fmt.Sprintf("failed to decode version: %w", err))
 		}
-		decoded := params.DecodeProtocolVersion(version)
+		decoded := params.ProtocolVersionV0{}
+		copy(decoded.Build[:], version[:8])
+		decoded.Major = binary.BigEndian.Uint32(version[8:12])
+		decoded.Minor = binary.BigEndian.Uint32(version[12:16])
+		decoded.Patch = binary.BigEndian.Uint32(version[16:20])
+		decoded.PreRelease = binary.BigEndian.Uint32(version[20:24])
 		
 		// Pack decoded version components
 		result := []interface{}{
 			decoded.Build[:],
 			decoded.Major,
 			decoded.Minor,
-			decoded.Patch,
-			decoded.PreRelease,
+				decoded.Patch,
+				decoded.PreRelease,
 		}
 		packed, err := abi.Arguments{
 			{Type: bytesType},
