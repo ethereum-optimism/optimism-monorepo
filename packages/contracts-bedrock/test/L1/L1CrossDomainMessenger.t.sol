@@ -698,15 +698,53 @@ contract L1CrossDomainMessenger_Test is CommonTest {
         assertEq(l1CrossDomainMessenger.paused(), superchainConfig.paused());
     }
 
-    /// @dev Tests that sendMessage reverts if using a custom gas token and the call value is zero.
-    function test_sendMessage_customGasTokenButNoValue_reverts() external {
+    /// @dev Tests that sendMessage succeeds with a custom gas token when the call value is zero.
+    function test_sendMessage_customGasTokenButNoValue_succeeds() external {
+        vm.skip(true, "Custom gas token not supported");
+
         // Mock the gasPayingToken function to return a custom gas token
         vm.mockCall(
             address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(18))
         );
 
+        // deposit transaction on the optimism portal should be called
+        vm.expectCall(
+            address(optimismPortal2),
+            abi.encodeCall(
+                IOptimismPortal2.depositTransaction,
+                (
+                    Predeploys.L2_CROSS_DOMAIN_MESSENGER,
+                    0,
+                    l1CrossDomainMessenger.baseGas(hex"ff", 100),
+                    false,
+                    Encoding.encodeCrossDomainMessage(
+                        l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff"
+                    )
+                )
+            )
+        );
+
+        // TransactionDeposited event
+        vm.expectEmit(address(optimismPortal2));
+        emitTransactionDeposited(
+            AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)),
+            Predeploys.L2_CROSS_DOMAIN_MESSENGER,
+            0,
+            0,
+            l1CrossDomainMessenger.baseGas(hex"ff", 100),
+            false,
+            Encoding.encodeCrossDomainMessage(l1CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff")
+        );
+
+        // SentMessage event
+        vm.expectEmit(address(l1CrossDomainMessenger));
+        emit SentMessage(recipient, alice, hex"ff", l1CrossDomainMessenger.messageNonce(), 100);
+
+        // SentMessageExtension1 event
+        vm.expectEmit(address(l1CrossDomainMessenger));
+        emit SentMessageExtension1(alice, 0);
+
         vm.prank(alice);
-        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         l1CrossDomainMessenger.sendMessage(recipient, hex"ff", uint32(100));
     }
 

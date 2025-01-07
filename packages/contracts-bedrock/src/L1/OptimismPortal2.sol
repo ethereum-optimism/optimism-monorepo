@@ -55,7 +55,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Represents a proven withdrawal.
     /// @custom:field disputeGameProxy The address of the dispute game proxy that the withdrawal was proven against.
-    /// @custom:field timestamp        Timestamp at whcih the withdrawal was proven.
+    /// @custom:field timestamp        Timestamp at which the withdrawal was proven.
     struct ProvenWithdrawal {
         IDisputeGame disputeGameProxy;
         uint64 timestamp;
@@ -287,7 +287,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Returns the gas paying token and its decimals.
-    function gasPayingToken() private view returns (address addr_, uint8 decimals_) {
+    function gasPayingToken() internal view returns (address addr_, uint8 decimals_) {
         (addr_, decimals_) = systemConfig.gasPayingToken();
     }
 
@@ -535,7 +535,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Sets the gas paying token for the L2 system. This token is used as the
     ///         L2 native asset. Only the SystemConfig contract can call this function.
-    function setGasPayingToken(address, uint8, bytes32, bytes32) external pure {
+    function setGasPayingToken(address, uint8, bytes32, bytes32) public pure {
         revert CustomGasTokenNotSupported();
     }
 

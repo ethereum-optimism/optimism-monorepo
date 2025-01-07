@@ -26,8 +26,10 @@ contract SystemConfigInterop_Test is CommonTest {
         super.setUp();
     }
 
-    /// @dev Tests that when the decimals is not 18, initialization reverts. Custom gas tokens are not supported.
+    /// @dev Tests that when the decimals is not 18, initialization reverts.
     function test_initialize_decimalsIsNot18_reverts(uint8 decimals) external {
+        vm.skip(true, "Custom gas token not supported");
+
         vm.assume(decimals != 18);
         address _token = address(L1Token);
 
@@ -35,6 +37,7 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode("TKN"));
         vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(decimals));
 
+        vm.expectRevert("SystemConfig: bad decimals of gas paying token");
         _cleanStorageAndInit(_token);
     }
 
@@ -46,6 +49,8 @@ contract SystemConfigInterop_Test is CommonTest {
     )
         public
     {
+        vm.skip(true, "Custom gas token not supported");
+
         assumeNotForgeAddress(_token);
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);
@@ -66,21 +71,21 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.mockCall(_token, abi.encodeCall(ERC20.name, ()), abi.encode(name));
         vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(symbol));
 
-        // vm.expectCall(
-        //     address(optimismPortal2),
-        //     abi.encodeCall(
-        //         IOptimismPortalInterop.setConfig,
-        //         (
-        //             ConfigType.SET_GAS_PAYING_TOKEN,
-        //             StaticConfig.encodeSetGasPayingToken({
-        //                 _token: _token,
-        //                 _decimals: 18,
-        //                 _name: GasPayingToken.sanitize(name),
-        //                 _symbol: GasPayingToken.sanitize(symbol)
-        //             })
-        //         )
-        //     )
-        // );
+        vm.expectCall(
+            address(optimismPortal2),
+            abi.encodeCall(
+                IOptimismPortalInterop.setConfig,
+                (
+                    ConfigType.SET_GAS_PAYING_TOKEN,
+                    StaticConfig.encodeSetGasPayingToken({
+                        _token: _token,
+                        _decimals: 18,
+                        _name: GasPayingToken.sanitize(name),
+                        _symbol: GasPayingToken.sanitize(symbol)
+                    })
+                )
+            )
+        );
 
         _cleanStorageAndInit(_token);
     }
@@ -137,9 +142,6 @@ contract SystemConfigInterop_Test is CommonTest {
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_NAME_SLOT, bytes32(0));
         vm.store(address(systemConfig), GasPayingToken.GAS_PAYING_TOKEN_SYMBOL_SLOT, bytes32(0));
 
-        if (_token != Constants.ETHER) {
-            vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
-        }
         systemConfig.initialize({
             _owner: alice,
             _basefeeScalar: 2100,

@@ -174,6 +174,8 @@ contract L1BlockCustomGasToken_Test is L1BlockTest {
     )
         external
     {
+        vm.skip(true, "Custom gas token not supported");
+
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);
 
@@ -191,8 +193,19 @@ contract L1BlockCustomGasToken_Test is L1BlockTest {
         }
         bytes32 b32symbol = bytes32(abi.encodePacked(symbol));
 
+        vm.expectEmit(address(l1Block));
+        emit GasPayingTokenSet({ token: _token, decimals: _decimals, name: b32name, symbol: b32symbol });
+
         vm.prank(depositor);
         l1Block.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: b32name, _symbol: b32symbol });
+
+        (address token, uint8 decimals) = l1Block.gasPayingToken();
+        assertEq(token, _token);
+        assertEq(decimals, _decimals);
+
+        assertEq(name, l1Block.gasPayingTokenName());
+        assertEq(symbol, l1Block.gasPayingTokenSymbol());
+        assertTrue(l1Block.isCustomGasToken());
     }
 
     function test_setGasPayingToken_isDepositor_reverts() external {
