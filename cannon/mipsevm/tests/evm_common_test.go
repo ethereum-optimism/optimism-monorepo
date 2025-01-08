@@ -973,8 +973,7 @@ func TestEVM_HelloProgram(t *testing.T) {
 				_ = stepWitness
 				_ = validator
 				_ = step
-				// Disabled for now since the onchain VM doesn't support SIMPLE_FUTEX
-				//validator.ValidateEVM(t, stepWitness, step, goVm)
+				validator.ValidateEVM(t, stepWitness, step, goVm)
 			}
 			end := time.Now()
 			delta := end.Sub(start)
