@@ -122,7 +122,8 @@ contract Encoding_Test is CommonTest {
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         string memory expected = string(
             abi.encodePacked(
-                _build, ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
+                Encoding.bytes2hex(_build),
+                ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
             )
         );
         assertEq(decoded, expected);
@@ -133,7 +134,7 @@ contract Encoding_Test is CommonTest {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 4);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         string memory expected =
-            string(abi.encodePacked(bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "4"));
+            string(abi.encodePacked(Encoding.bytes2hex(bytes8(hex"0123456789abcdef")), ".", "1", ".", "2", ".", "3", "-", "4"));
         assertEq(decoded, expected);
     }
 
@@ -142,7 +143,7 @@ contract Encoding_Test is CommonTest {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 0);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         string memory expected =
-            string(abi.encodePacked(bytes8(hex"0123456789abcdef"), ".", "1", ".", "2", ".", "3", "-", "0"));
+            string(abi.encodePacked(Encoding.bytes2hex(bytes8(hex"0123456789abcdef")), ".", "1", ".", "2", ".", "3", "-", "0"));
         assertEq(decoded, expected);
     }
 
