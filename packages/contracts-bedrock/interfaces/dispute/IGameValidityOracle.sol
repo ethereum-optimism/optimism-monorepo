@@ -6,7 +6,7 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
-interface IAnchorStateRegistry {
+interface IGameValidityOracle {
     error InvalidGameStatus();
     error Unauthorized();
     error UnregisteredGame();

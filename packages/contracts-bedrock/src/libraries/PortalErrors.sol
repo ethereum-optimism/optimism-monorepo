@@ -38,3 +38,7 @@ error Unproven();
 error ProposalNotValidated();
 /// @notice Error for when a withdrawal has already been finalized.
 error AlreadyFinalized();
+/// @notice Error for when a game is invalid.
+error GameInvalid(string reason);
+/// @notice Error for when a game is not finalized.
+error GameNotFinalized(string reason);

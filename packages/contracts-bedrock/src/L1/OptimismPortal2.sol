@@ -41,7 +41,7 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
-import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IGameValidityOracle } from "interfaces/dispute/IGameValidityOracle.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @custom:proxied true
@@ -141,8 +141,8 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     ///         It is not safe to trust `ERC20.balanceOf` as it may lie.
     uint256 internal _balance;
 
-    /// @notice Address of the AnchorStateRegistry.
-    IAnchorStateRegistry public anchorStateRegistry;
+    /// @notice Address of the GameValidityOracle.
+    IGameValidityOracle public gameValidityOracle;
 
     /// @notice Emitted when a transaction is deposited from L1 to L2.
     ///         The parameters of this event are read by the rollup node and used to derive deposit
@@ -193,12 +193,12 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _disputeGameFactory Contract of the DisputeGameFactory.
     /// @param _systemConfig Contract of the SystemConfig.
     /// @param _superchainConfig Contract of the SuperchainConfig.
-    /// @param _anchorStateRegistry Contract of the AnchorStateRegistry.
+    /// @param _gameValidityOracle Contract of the GameValidityOracle.
     function initialize(
         IDisputeGameFactory _disputeGameFactory,
         ISystemConfig _systemConfig,
         ISuperchainConfig _superchainConfig,
-        IAnchorStateRegistry _anchorStateRegistry
+        IGameValidityOracle _gameValidityOracle
     )
         external
         initializer
@@ -206,7 +206,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         disputeGameFactory = _disputeGameFactory;
         systemConfig = _systemConfig;
         superchainConfig = _superchainConfig;
-        anchorStateRegistry = _anchorStateRegistry;
+        gameValidityOracle = _gameValidityOracle;
 
         // Set the `l2Sender` slot, only if it is currently empty. This signals the first initialization of the
         // contract.
@@ -316,7 +316,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
-        anchorStateRegistry.assertGameMaybeValid(gameProxy);
+        // Check that the game is potentially valid.
+        (bool maybeValid, string memory notMaybeValidReason) = gameValidityOracle.isGameMaybeValid(gameProxy);
+        if (!maybeValid) {
+            revert GameInvalid(notMaybeValidReason);
+        }
 
         // Compute the storage slot of the withdrawal hash in the L2ToL1MessagePasser contract.
         // Refer to the Solidity documentation for more information on how storage layouts are
@@ -632,7 +636,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             "OptimismPortal: proven withdrawal has not matured yet"
         );
 
-        anchorStateRegistry.assertGameValid(disputeGameProxy);
+        // Check that the game is valid.
+        (bool valid, string memory notValidReason) = gameValidityOracle.isGameValid(disputeGameProxy);
+        if (!valid) {
+            revert GameInvalid(notValidReason);
+        }
 
         // Check that this withdrawal has not already been finalized, this is replay protection.
         if (finalizedWithdrawals[_withdrawalHash]) revert AlreadyFinalized();

@@ -58,9 +58,9 @@ import {
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
-import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IManagedWETH } from "interfaces/dispute/IManagedWETH.sol";
 import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
-import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IGameValidityOracle } from "interfaces/dispute/IGameValidityOracle.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @title FaultDisputeGame
@@ -99,8 +99,8 @@ contract FaultDisputeGame is Clone, ISemver {
         Duration clockExtension;
         Duration maxClockDuration;
         IBigStepper vm;
-        IDelayedWETH weth;
-        IAnchorStateRegistry anchorStateRegistry;
+        IManagedWETH weth;
+        IGameValidityOracle gameValidityOracle;
         uint256 l2ChainId;
     }
 
@@ -143,10 +143,10 @@ contract FaultDisputeGame is Clone, ISemver {
     GameType internal immutable GAME_TYPE;
 
     /// @notice WETH contract for holding ETH.
-    IDelayedWETH internal immutable WETH;
+    IManagedWETH internal immutable WETH;
 
-    /// @notice The anchor state registry.
-    IAnchorStateRegistry internal immutable ANCHOR_STATE_REGISTRY;
+    /// @notice The GameValidityOracle contract.
+    IGameValidityOracle internal immutable GAME_VALIDITY_ORACLE;
 
     /// @notice The chain ID of the L2 network this contract argues about.
     uint256 internal immutable L2_CHAIN_ID;
@@ -260,7 +260,7 @@ contract FaultDisputeGame is Clone, ISemver {
         MAX_CLOCK_DURATION = _params.maxClockDuration;
         VM = _params.vm;
         WETH = _params.weth;
-        ANCHOR_STATE_REGISTRY = _params.anchorStateRegistry;
+        GAME_VALIDITY_ORACLE = _params.gameValidityOracle;
         L2_CHAIN_ID = _params.l2ChainId;
     }
 
@@ -282,7 +282,7 @@ contract FaultDisputeGame is Clone, ISemver {
         if (initialized) revert AlreadyInitialized();
 
         // Grab the latest anchor root.
-        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.anchors(GAME_TYPE);
+        (Hash root, uint256 rootBlockNumber) = GAME_VALIDITY_ORACLE.getAnchorState();
 
         // Should only happen if this is a new game type that hasn't been set up yet.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
@@ -340,7 +340,7 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Set whether the game type was respected when the game was created.
         wasRespectedGameTypeWhenCreated =
-            GameType.unwrap(ANCHOR_STATE_REGISTRY.respectedGameType()) == GameType.unwrap(GAME_TYPE);
+            GameType.unwrap(GAME_VALIDITY_ORACLE.respectedGameType()) == GameType.unwrap(GAME_TYPE);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -936,16 +936,19 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
         // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
-        ANCHOR_STATE_REGISTRY.assertGameFinalized(IDisputeGame(address(this)));
+        (bool finalized, string memory notFinalizedReason) = GAME_VALIDITY_ORACLE.isGameFinalized(IDisputeGame(address(this)));
+        if (!finalized) {
+            revert GameNotFinalized(notFinalizedReason);
+        }
 
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
             // If the game is finalized, try updating anchor state...
-            try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
+            try GAME_VALIDITY_ORACLE.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
             // and determine the bond distribution mode.
             if (
-                ANCHOR_STATE_REGISTRY.isGameBlacklisted(IDisputeGame(address(this)))
-                    || ANCHOR_STATE_REGISTRY.isGameRetired(IDisputeGame(address(this)))
+                GAME_VALIDITY_ORACLE.isGameBlacklisted(IDisputeGame(address(this)))
+                    || GAME_VALIDITY_ORACLE.isGameRetired(IDisputeGame(address(this)))
             ) {
                 // If the game is blacklisted or retired, the bonds should be refunded.
                 bondDistributionMode = BondDistributionMode.REFUND;
@@ -1044,13 +1047,13 @@ contract FaultDisputeGame is Clone, ISemver {
     }
 
     /// @notice Returns the WETH contract for holding ETH.
-    function weth() external view returns (IDelayedWETH weth_) {
+    function weth() external view returns (IManagedWETH weth_) {
         weth_ = WETH;
     }
 
-    /// @notice Returns the anchor state registry contract.
-    function anchorStateRegistry() external view returns (IAnchorStateRegistry registry_) {
-        registry_ = ANCHOR_STATE_REGISTRY;
+    /// @notice Returns the GameValidityOracle contract.
+    function gameValidityOracle() external view returns (IGameValidityOracle oracle_) {
+        oracle_ = GAME_VALIDITY_ORACLE;
     }
 
     /// @notice Returns the chain ID of the L2 network this contract argues about.

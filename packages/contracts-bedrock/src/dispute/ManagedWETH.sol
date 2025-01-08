@@ -11,11 +11,12 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
 /// @title ManagedWETH
+/// @notice Version of WETH98 that allows an owner address to hold WETH from specific addresses or
+/// from the entire contract and prevents withdrawals if the Superchain-wide pause is active.
 contract ManagedWETH is OwnableUpgradeable, WETH98, ISemver {
-    /// @notice Emitted when an unwrap is started.
-    /// @param src The address that started the unwrap.
-    /// @param wad The amount of WETH that was unwrapped.
-    event Unwrap(address indexed src, uint256 wad);
+    error ManagedWETH_ContractIsPaused();
+    error ManagedWETH_NotOwner();
+    error ManagedWETH_RecoverFailed();
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.0-beta.1
@@ -24,6 +25,7 @@ contract ManagedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public config;
 
+    /// @notice Constructor.
     constructor() {
         _disableInitializers();
     }
@@ -40,17 +42,17 @@ contract ManagedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Withdraws an amount of ETH.
     /// @param _wad The amount of ETH to withdraw.
     function withdraw(uint256 _wad) public override {
-        require(!config.paused(), "DelayedWETH: contract is paused");
+        if (config.paused()) revert ManagedWETH_ContractIsPaused();
         super.withdraw(_wad);
     }
 
     /// @notice Allows the owner to recover from error cases by pulling ETH out of the contract.
     /// @param _wad The amount of WETH to recover.
     function recover(uint256 _wad) external {
-        require(msg.sender == owner(), "DelayedWETH: not owner");
+        if (msg.sender != owner()) revert ManagedWETH_NotOwner();
         uint256 amount = _wad < address(this).balance ? _wad : address(this).balance;
         (bool success,) = payable(msg.sender).call{ value: amount }(hex"");
-        require(success, "DelayedWETH: recover failed");
+        if (!success) revert ManagedWETH_RecoverFailed();
     }
 
     /// @notice Allows the owner to recover from error cases by pulling all WETH from a specific owner.
@@ -63,7 +65,7 @@ contract ManagedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param _guy The address to recover the WETH from.
     /// @param _wad The amount of WETH to recover.
     function hold(address _guy, uint256 _wad) public {
-        require(msg.sender == owner(), "DelayedWETH: not owner");
+        if (msg.sender != owner()) revert ManagedWETH_NotOwner();
         _allowance[_guy][msg.sender] = _wad;
         emit Approval(_guy, msg.sender, _wad);
         transferFrom(_guy, msg.sender, _wad);
