@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -30,8 +31,10 @@ type backend interface {
 }
 
 const (
-	internalTimeout = time.Second * 30
-	nodeTimeout     = time.Second * 10
+	internalTimeout            = time.Second * 30
+	nodeTimeout                = time.Second * 10
+	BlockNotFoundRPCErrCode    = -39001
+	ConflictingBlockRPCErrCode = -39002
 )
 
 type ManagedNode struct {
@@ -271,13 +274,13 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	// TODO: keep synchronous local-safe DB update feedback?
 	// We'll still need more async ways of doing this for reorg handling.
 
-	//ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	//defer cancel()
-	//if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
+	// ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	// defer cancel()
+	// if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
 	//	m.log.Warn("Backend failed to process local-safe update",
 	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
 	//	m.resetSignal(err, pair.DerivedFrom)
-	//}
+	// }
 }
 
 func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
@@ -307,22 +310,17 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	// TODO: errors.As switch
 	switch errSignal {
 	case types.ErrConflict:
-		s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
-		if err != nil {
-			m.log.Warn("Failed to retrieve cross-safe", "err", err)
+		if err := m.resolveConflict(ctx, l1Ref, u, f); err != nil {
+			m.log.Warn("Failed to resolve conflict", "unsafe", u, "finalized", f)
 			return
 		}
-		log.Debug("Node detected conflict, resetting", "unsafe", u, "safe", s, "finalized", f)
-		err = m.Node.Reset(ctx, u, s, f)
-		if err != nil {
-			m.log.Warn("Node failed to reset", "err", err)
-		}
+
 	case types.ErrFuture:
 		s, err := m.backend.LocalSafe(ctx, m.chainID)
 		if err != nil {
 			m.log.Warn("Failed to retrieve local-safe", "err", err)
 		}
-		log.Debug("Node detected future block, resetting", "unsafe", u, "safe", s, "finalized", f)
+		m.log.Debug("Node detected future block, resetting", "unsafe", u, "safe", s, "finalized", f)
 		err = m.Node.Reset(ctx, u, s.Derived, f)
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
@@ -330,6 +328,52 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	case types.ErrOutOfOrder:
 		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
 	}
+}
+
+func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u eth.BlockID, f eth.BlockID) error {
+	// First try to reset to the last known safe block
+	// Return if reset succeeds or fails with a non-walkable error
+	s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
+	if err != nil {
+		return fmt.Errorf("failed to retrieve safe block for %v: %w", l1Ref.ID(), err)
+	}
+	m.log.Debug("Node detected conflict, resetting", "unsafe", u, "safe", s, "finalized", f)
+	if err = m.Node.Reset(ctx, u, s, f); err == nil {
+		return nil
+	} else if !errCanBeWalkedBack(err) {
+		return fmt.Errorf("error during reset: %w", err)
+	}
+
+	// If that fails we try to walk back until:
+	// - we find a common ancestor
+	// - we have found a non-walkable error
+	// - we run into a finalized block
+	// - we have exhausted attempts
+	const maxAttempts = 300
+	currentBlock := s.Number
+	for i := 0; i < maxAttempts; i++ {
+		currentBlock--
+		if currentBlock <= f.Number {
+			return errors.New("failed to find common ancestor")
+		}
+
+		// Try to reset to the previous block
+		l1ID := eth.BlockID{Number: currentBlock}
+		s, err = m.backend.SafeDerivedAt(ctx, m.chainID, l1ID)
+		if err != nil {
+			return fmt.Errorf("failed to retrieve safe block for %v: %w", l1ID, err)
+		}
+		err = m.Node.Reset(ctx, u, s, f)
+		if err == nil {
+			return nil
+		}
+
+		// Continue walking back if there is still a conflict or an unknown block
+		if !errCanBeWalkedBack(err) {
+			return fmt.Errorf("error during reset: %w", err)
+		}
+	}
+	return errors.New("failed to find common ancestor")
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
@@ -367,4 +411,12 @@ func (m *ManagedNode) Close() error {
 		sub.Unsubscribe()
 	}
 	return nil
+}
+
+func errCanBeWalkedBack(err error) bool {
+	var rpcErr *gethrpc.JsonError
+	if errors.As(err, &rpcErr) {
+		return rpcErr.Code == BlockNotFoundRPCErrCode || rpcErr.Code == ConflictingBlockRPCErrCode
+	}
+	return false
 }
