@@ -115,3 +115,28 @@ func CheckRecentTxs(
 	}
 	return oldestBlock.Uint64(), false, nil
 }
+
+type GenericTx interface {
+	// Transaction tries to interpret into a typed tx.
+	// This will return types.ErrTxTypeNotSupported if the transaction-type is not supported.
+	Transaction() (*types.Transaction, error)
+
+	// TxType returns the EIP-2718 type.
+	TxType() uint8
+
+	// TxHash returns the transaction hash.
+	TxHash() common.Hash
+
+	// MarshalJSON into RPC tx definition.
+	// Block metadata may or may not be included.
+	MarshalJSON() ([]byte, error)
+
+	// UnmarshalJSON into RPC tx definition.
+	// Block metadata is ignored.
+	UnmarshalJSON([]byte) error
+
+	// MarshalBinary as EIP-2718 opaque tx (including version byte).
+	MarshalBinary() ([]byte, error)
+	// UnmarshalBinary as EIP-2718 opaque tx (including version byte).
+	UnmarshalBinary(b []byte) error
+}
