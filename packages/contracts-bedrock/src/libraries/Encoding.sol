@@ -272,8 +272,9 @@ library Encoding {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(16);
         for (uint256 i = 0; i < 8; i++) {
-            str[i * 2] = alphabet[uint8(data[i] >> 4)];
-            str[i * 2 + 1] = alphabet[uint8(data[i] & 0x0f)];
+            uint8 b = uint8(data[i]);
+            str[i * 2] = alphabet[b >> 4];
+            str[i * 2 + 1] = alphabet[b & 0x0f];
         }
         return str;
     }
