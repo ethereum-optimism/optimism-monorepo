@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
@@ -11,9 +12,10 @@ import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
-/// @notice This is temporary. Error thrown when a chain uses a custom gas token.
+/// @dev This is temporary. Error thrown when a chain uses a custom gas token.
 error CustomGasTokenNotSupported();
 
 /// @custom:proxied true
@@ -295,7 +297,23 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @param _token Address of the gas paying token.
     function _setGasPayingToken(address _token) internal virtual {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
-            revert CustomGasTokenNotSupported();
+            // Temporary revert till we support custom gas tokens
+            if (false) revert CustomGasTokenNotSupported();
+
+            require(
+                ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
+            );
+            bytes32 name = GasPayingToken.sanitize(ERC20(_token).name());
+            bytes32 symbol = GasPayingToken.sanitize(ERC20(_token).symbol());
+
+            // Set the gas paying token in storage and in the OptimismPortal.
+            GasPayingToken.set({ _token: _token, _decimals: GAS_PAYING_TOKEN_DECIMALS, _name: name, _symbol: symbol });
+            IOptimismPortal2(payable(optimismPortal())).setGasPayingToken({
+                _token: _token,
+                _decimals: GAS_PAYING_TOKEN_DECIMALS,
+                _name: name,
+                _symbol: symbol
+            });
         }
     }
 

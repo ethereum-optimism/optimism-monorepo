@@ -67,38 +67,38 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "_to",
         "type": "address"
       },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "_mint",
         "type": "uint256"
       },
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "_value",
         "type": "uint256"
       },
       {
         "internalType": "uint64",
-        "name": "",
+        "name": "_gasLimit",
         "type": "uint64"
       },
       {
         "internalType": "bool",
-        "name": "",
+        "name": "_isCreation",
         "type": "bool"
       },
       {
         "internalType": "bytes",
-        "name": "",
+        "name": "_data",
         "type": "bytes"
       }
     ],
     "name": "depositERC20Transaction",
     "outputs": [],
-    "stateMutability": "pure",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -624,28 +624,28 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "_token",
         "type": "address"
       },
       {
         "internalType": "uint8",
-        "name": "",
+        "name": "_decimals",
         "type": "uint8"
       },
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "_name",
         "type": "bytes32"
       },
       {
         "internalType": "bytes32",
-        "name": "",
+        "name": "_symbol",
         "type": "bytes32"
       }
     ],
     "name": "setGasPayingToken",
     "outputs": [],
-    "stateMutability": "pure",
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -916,7 +916,17 @@
   },
   {
     "inputs": [],
+    "name": "NoValue",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NonReentrant",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyCustomGasToken",
     "type": "error"
   },
   {
@@ -932,6 +942,11 @@
   {
     "inputs": [],
     "name": "SmallGasLimit",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "TransferFailed",
     "type": "error"
   },
   {

@@ -25,10 +25,13 @@ interface IOptimismPortalInterop {
     error InvalidMerkleProof();
     error InvalidProof();
     error LargeCalldata();
+    error NoValue();
     error NonReentrant();
+    error OnlyCustomGasToken();
     error OutOfGas();
     error ProposalNotValidated();
     error SmallGasLimit();
+    error TransferFailed();
     error Unauthorized();
     error UnexpectedList();
     error UnexpectedString();
@@ -47,7 +50,15 @@ interface IOptimismPortalInterop {
     function balance() external view returns (uint256);
     function blacklistDisputeGame(IDisputeGame _disputeGame) external;
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
-    function depositERC20Transaction(address, uint256, uint256, uint64, bool, bytes memory) external pure;
+    function depositERC20Transaction(
+        address _to,
+        uint256 _mint,
+        uint256 _value,
+        uint64 _gasLimit,
+        bool _isCreation,
+        bytes memory _data
+    )
+        external;
     function depositTransaction(
         address _to,
         uint256 _value,
@@ -100,7 +111,7 @@ interface IOptimismPortalInterop {
     function respectedGameType() external view returns (GameType);
     function respectedGameTypeUpdatedAt() external view returns (uint64);
     function setConfig(ConfigType _type, bytes memory _value) external;
-    function setGasPayingToken(address, uint8, bytes32, bytes32) external pure;
+    function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external;
     function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);
