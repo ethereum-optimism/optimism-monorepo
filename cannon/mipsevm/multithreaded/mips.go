@@ -3,6 +3,8 @@ package multithreaded
 import (
 	"context"
 	"fmt"
+	"os"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -14,6 +16,18 @@ import (
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/program"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/register"
 )
+
+var SimpleFutex = func() bool {
+	v := os.Getenv("SIMPLE_FUTEX")
+	if strings.ToLower(v) == "true"{
+		println("using SIMPLE_FUTEX")
+		return true
+	} else {
+		println("not using SIMPLE_FUTEX")
+		return false
+	}
+}()
+
 
 type Word = arch.Word
 
@@ -119,15 +133,18 @@ func (m *InstrumentedState) handleSyscall() error {
 				v0 = exec.SysErrorSignal
 				v1 = exec.MipsEAGAIN
 			} else {
-				thread.FutexAddr = effFutexAddr
-				thread.FutexVal = targetVal
-				if a3 == 0 {
-					thread.FutexTimeoutStep = exec.FutexNoTimeout
-				} else {
-					thread.FutexTimeoutStep = m.state.Step + exec.FutexTimeoutSteps
+				m.preemptThread(thread)
+				if !SimpleFutex {
+					thread.FutexAddr = effFutexAddr
+					thread.FutexVal = targetVal
+					if a3 == 0 {
+						thread.FutexTimeoutStep = exec.FutexNoTimeout
+					} else {
+						thread.FutexTimeoutStep = m.state.Step + exec.FutexTimeoutSteps
+					}
+					// Leave cpu scalars as-is. This instruction will be completed by `onWaitComplete`
+					return nil
 				}
-				// Leave cpu scalars as-is. This instruction will be completed by `onWaitComplete`
-				return nil
 			}
 		case exec.FutexWakePrivate:
 			// Trigger a wakeup traversal
@@ -249,24 +266,26 @@ func (m *InstrumentedState) doMipsStep() error {
 	m.state.Step += 1
 	thread := m.state.GetCurrentThread()
 
-	// During wakeup traversal, search for the first thread blocked on the wakeup address.
-	// Don't allow regular execution until we have found such a thread or else we have visited all threads.
-	if m.state.Wakeup != exec.FutexEmptyAddr {
-		// We are currently performing a wakeup traversal
-		if m.state.Wakeup == thread.FutexAddr {
-			// We found a target thread, resume normal execution and process this thread
-			m.state.Wakeup = exec.FutexEmptyAddr
-		} else {
-			// This is not the thread we're looking for, move on
-			traversingRight := m.state.TraverseRight
-			changedDirections := m.preemptThread(thread)
-			if traversingRight && changedDirections {
-				// We started the wakeup traversal walking left and we've now walked all the way right
-				// We have therefore visited all threads and can resume normal thread execution
+	if !SimpleFutex {
+		// During wakeup traversal, search for the first thread blocked on the wakeup address.
+		// Don't allow regular execution until we have found such a thread or else we have visited all threads.
+		if m.state.Wakeup != exec.FutexEmptyAddr {
+			// We are currently performing a wakeup traversal
+			if m.state.Wakeup == thread.FutexAddr {
+				// We found a target thread, resume normal execution and process this thread
 				m.state.Wakeup = exec.FutexEmptyAddr
+			} else {
+				// This is not the thread we're looking for, move on
+				traversingRight := m.state.TraverseRight
+				changedDirections := m.preemptThread(thread)
+				if traversingRight && changedDirections {
+					// We started the wakeup traversal walking left and we've now walked all the way right
+					// We have therefore visited all threads and can resume normal thread execution
+					m.state.Wakeup = exec.FutexEmptyAddr
+				}
 			}
+			return nil
 		}
-		return nil
 	}
 
 	if thread.Exited {
@@ -275,26 +294,28 @@ func (m *InstrumentedState) doMipsStep() error {
 		return nil
 	}
 
-	// check if thread is blocked on a futex
-	if thread.FutexAddr != exec.FutexEmptyAddr {
-		// if set, then check futex
-		// check timeout first
-		if m.state.Step > thread.FutexTimeoutStep {
-			// timeout! Allow execution
-			m.onWaitComplete(thread, true)
-			return nil
-		} else {
-			futexVal := m.getFutexValue(thread.FutexAddr)
-			if thread.FutexVal == futexVal {
-				// still got expected value, continue sleeping, try next thread.
-				m.preemptThread(thread)
-				m.statsTracker.trackWakeupFail()
+	if !SimpleFutex {
+		// check if thread is blocked on a futex
+		if thread.FutexAddr != exec.FutexEmptyAddr {
+			// if set, then check futex
+			// check timeout first
+			if m.state.Step > thread.FutexTimeoutStep {
+				// timeout! Allow execution
+				m.onWaitComplete(thread, true)
 				return nil
 			} else {
-				// wake thread up, the value at its address changed!
-				// Userspace can turn thread back to sleep if it was too sporadic.
-				m.onWaitComplete(thread, false)
-				return nil
+				futexVal := m.getFutexValue(thread.FutexAddr)
+				if thread.FutexVal == futexVal {
+					// still got expected value, continue sleeping, try next thread.
+					m.preemptThread(thread)
+					m.statsTracker.trackWakeupFail()
+					return nil
+				} else {
+					// wake thread up, the value at its address changed!
+					// Userspace can turn thread back to sleep if it was too sporadic.
+					m.onWaitComplete(thread, false)
+					return nil
+				}
 			}
 		}
 	}
