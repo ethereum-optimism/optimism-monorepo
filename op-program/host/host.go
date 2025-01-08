@@ -94,5 +94,29 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 		return nil, fmt.Errorf("failed to create L2 source: %w", err)
 	}
 
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, cfg.L2ChainConfig, cfg), nil
+	executor := MakeProgramExecutor(logger, cfg)
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, cfg.L2ChainConfig, executor), nil
+}
+
+type programExecutor struct {
+	logger log.Logger
+	cfg    *config.Config
+}
+
+func (p *programExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNum uint64) error {
+	newCfg := *p.cfg
+	newCfg.L2ClaimBlockNumber = blockNum
+	withPrefetcher := hostcommon.WithPrefetcher(
+		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
+			// TODO: prevent recursive block execution
+			return prefetcher, nil
+		})
+	return hostcommon.FaultProofProgram(ctx, p.logger, &newCfg, withPrefetcher, hostcommon.WithSkipValidation(true))
+}
+
+func MakeProgramExecutor(logger log.Logger, cfg *config.Config) prefetcher.ProgramExecutor {
+	return &programExecutor{
+		logger: logger,
+		cfg:    cfg,
+	}
 }

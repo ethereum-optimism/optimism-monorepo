@@ -20,6 +20,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -512,14 +513,24 @@ func TestFetchL2Code(t *testing.T) {
 	})
 }
 
-func TestFetchL2BlockDataNoBlockExecution(t *testing.T) {
-	prefetcher, _, _, _, _ := createPrefetcher(t)
-	hinter := func(v preimage.Hint) {
-		err := prefetcher.Hint(v.Hint())
+func TestFetchL2BlockData(t *testing.T) {
+	t.Run("exec", func(t *testing.T) {
+		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
+		rng := rand.New(rand.NewSource(123))
+		block, _ := testutils.RandomBlock(rng, 10)
+
+		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xad}, eth.BlockToInfo(block), block.Transactions(), nil)
+		defer l2Client.MockDebugClient.AssertExpectations(t)
+		prefetcher.executor = &mockExecutor{}
+		err := prefetcher.Hint(l2.L2BlockDataHint(common.Hash{0xad}).Hint())
+		require.NoError(t, err)
+		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
+	})
+	t.Run("no exec", func(t *testing.T) {
+		prefetcher, _, _, _, _ := createPrefetcher(t)
+		err := prefetcher.Hint(l2.L2BlockDataHint(common.Hash{0xad}).Hint())
 		require.ErrorContains(t, err, "this prefetcher does not support native block execution")
-	}
-	oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), preimage.HinterFn(hinter))
-	_ = oracle.BlockDataByHash(common.Hash{0xad})
+	})
 }
 
 func TestBadHints(t *testing.T) {
@@ -732,4 +743,13 @@ func (o *legacyPrecompileOracle) Precompile(address common.Address, input []byte
 		panic(fmt.Errorf("unexpected precompile oracle behavior, got result: %x", result))
 	}
 	return result[1:], result[0] == 1
+}
+
+type mockExecutor struct {
+	invoked bool
+}
+
+func (m *mockExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64) error {
+	m.invoked = true
+	return nil
 }

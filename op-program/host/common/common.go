@@ -22,25 +22,32 @@ type Prefetcher interface {
 	GetPreimage(ctx context.Context, key common.Hash) ([]byte, error)
 }
 type PrefetcherCreator func(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (Prefetcher, error)
-type creatorsCfg struct {
-	prefetcher PrefetcherCreator
+type programCfg struct {
+	prefetcher     PrefetcherCreator
+	skipValidation bool
 }
 
-type ProgramOpt func(c *creatorsCfg)
+type ProgramOpt func(c *programCfg)
 
 func WithPrefetcher(creator PrefetcherCreator) ProgramOpt {
-	return func(c *creatorsCfg) {
+	return func(c *programCfg) {
 		c.prefetcher = creator
+	}
+}
+
+func WithSkipValidation(skip bool) ProgramOpt {
+	return func(c *programCfg) {
+		c.skipValidation = skip
 	}
 }
 
 // FaultProofProgram is the programmatic entry-point for the fault proof program
 func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Config, opts ...ProgramOpt) error {
-	creators := &creatorsCfg{}
+	programConfig := &programCfg{}
 	for _, opt := range opts {
-		opt(creators)
+		opt(programConfig)
 	}
-	if creators.prefetcher == nil {
+	if programConfig.prefetcher == nil {
 		panic("prefetcher creator is not set")
 	}
 	var (
@@ -79,7 +86,7 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 	serverErr = make(chan error)
 	go func() {
 		defer close(serverErr)
-		serverErr <- PreimageServer(ctx, logger, cfg, pHostRW, hHostRW, creators.prefetcher)
+		serverErr <- PreimageServer(ctx, logger, cfg, pHostRW, hHostRW, programConfig.prefetcher)
 	}()
 
 	var cmd *exec.Cmd
@@ -103,7 +110,11 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		logger.Debug("Client program completed successfully")
 		return nil
 	} else {
-		return cl.RunProgram(logger, pClientRW, hClientRW)
+		runFlag := cl.RunProgramFlagsValidate
+		if programConfig.skipValidation {
+			runFlag = cl.RunProgramFlagsSkipValidation
+		}
+		return cl.RunProgram(logger, pClientRW, hClientRW, runFlag)
 	}
 }
 

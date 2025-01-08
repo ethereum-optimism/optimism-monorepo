@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
+	"github.com/ethereum-optimism/optimism/op-program/host"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
@@ -218,7 +219,8 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			require.NoError(t, err, "failed to create L2 client")
 			l2DebugCl := hostcommon.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config, programCfg), nil
+			executor := host.MakeProgramExecutor(env.log, programCfg)
+			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config, executor), nil
 		})
 		err = hostcommon.FaultProofProgram(t.Ctx(), env.log, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)

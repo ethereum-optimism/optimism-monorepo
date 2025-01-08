@@ -12,7 +12,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
-	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
@@ -63,7 +62,7 @@ type Prefetcher struct {
 	chainConfig   *params.ChainConfig
 
 	// Used to run the program for native block execution
-	hostConfig *config.Config
+	executor ProgramExecutor
 }
 
 func NewPrefetcher(
@@ -73,7 +72,7 @@ func NewPrefetcher(
 	l2Fetcher L2Source,
 	kvStore kvstore.KV,
 	l2ChainConfig *params.ChainConfig,
-	hostConfig *config.Config,
+	executor ProgramExecutor,
 ) *Prefetcher {
 	return &Prefetcher{
 		logger:        logger,
@@ -83,18 +82,18 @@ func NewPrefetcher(
 		kvStore:       kvStore,
 		// TODO: replace with block exec oracle to avoid having to setup chain config in unit tests
 		chainConfig: l2ChainConfig,
-		hostConfig:  hostConfig,
+		executor:    executor,
 	}
 }
 
 func (p *Prefetcher) Hint(hint string) error {
 	p.logger.Trace("Received hint", "hint", hint)
+	p.lastHint = hint
 
 	// This is a special case to force block execution in order to populate the cache with preimage data
 	if hintType, _, err := parseHint(hint); err == nil && hintType == l2.HintL2BlockData {
 		return p.prefetch(context.Background(), hint)
 	}
-	p.lastHint = hint
 	return nil
 }
 
@@ -305,7 +304,7 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
 	case l2.HintL2BlockData:
-		if p.hostConfig == nil {
+		if p.executor == nil {
 			return fmt.Errorf("this prefetcher does not support native block execution")
 		}
 		if len(hintBytes) != 32 {
@@ -316,7 +315,7 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if _, err := p.kvStore.Get(key.Key()); err == nil {
 			return nil
 		}
-		if err := p.NativeReExecuteBlock(ctx, blockHash); err != nil {
+		if err := p.nativeReExecuteBlock(ctx, blockHash); err != nil {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
 		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
