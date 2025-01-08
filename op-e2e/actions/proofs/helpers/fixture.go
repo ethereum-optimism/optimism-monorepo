@@ -11,8 +11,10 @@ import (
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/naoina/toml"
 	"github.com/stretchr/testify/require"
 )
@@ -51,7 +53,8 @@ func tryDumpTestFixture(
 	t helpers.Testing,
 	result error,
 	name string,
-	env *L2FaultProofEnv,
+	rollupCfg *rollup.Config,
+	l2Genesis *core.Genesis,
 	inputs FixtureInputs,
 	workDir string,
 ) {
@@ -60,8 +63,6 @@ func tryDumpTestFixture(
 	}
 
 	name = convertToKebabCase(name)
-	rollupCfg := env.Sd.RollupCfg
-	l2Genesis := env.Sd.L2Cfg
 
 	var expectedStatus uint8
 	if result == nil {

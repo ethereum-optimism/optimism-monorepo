@@ -16,17 +16,9 @@ type OutputRootSource interface {
 }
 
 type chainInfo struct {
-	chainID     *big.Int
-	source      OutputRootSource
-	blockTime   uint64
-	genesisTime uint64
-}
-
-func (c *chainInfo) blockNumberAtTime(timestamp uint64) uint64 {
-	if timestamp < c.genesisTime {
-		return 0
-	}
-	return (timestamp - c.genesisTime) / c.blockTime
+	chainID *big.Int
+	source  OutputRootSource
+	config  *rollup.Config
 }
 
 type SuperRootSource struct {
@@ -42,10 +34,9 @@ func NewSuperRootSource(ctx context.Context, sources ...OutputRootSource) (*Supe
 		}
 		chainID := config.L2ChainID
 		chains = append(chains, &chainInfo{
-			chainID:     chainID,
-			source:      source,
-			blockTime:   config.BlockTime,
-			genesisTime: config.Genesis.L2Time,
+			chainID: chainID,
+			source:  source,
+			config:  config,
 		})
 	}
 	slices.SortFunc(chains, func(a, b *chainInfo) int {
@@ -57,7 +48,10 @@ func NewSuperRootSource(ctx context.Context, sources ...OutputRootSource) (*Supe
 func (s *SuperRootSource) CreateSuperRoot(ctx context.Context, timestamp uint64) (*eth.OutputV1, error) {
 	chainOutputs := make([]eth.Bytes32, len(s.chains))
 	for i, chain := range s.chains {
-		blockNum := chain.blockNumberAtTime(timestamp)
+		blockNum, err := chain.config.TargetBlockNumber(timestamp)
+		if err != nil {
+			return nil, err
+		}
 		output, err := chain.source.OutputAtBlock(ctx, blockNum)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load output root for chain %v at block %v: %w", chain.chainID, blockNum, err)
