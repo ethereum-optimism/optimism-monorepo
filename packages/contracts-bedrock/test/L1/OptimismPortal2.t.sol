@@ -320,9 +320,7 @@ contract OptimismPortal2_Test is CommonTest {
     )
         external
     {
-        if (vm.envOr("FORK_TEST", false) == true) {
-            vm.skip(true, "Custom gas token is still supported on forked tests");
-        }
+        skipIfForkTest("Custom gas token is still supported on forked tests");
 
         vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
@@ -433,9 +431,7 @@ contract OptimismPortal2_Test is CommonTest {
     /// with the expected error.
     /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
     function test_depositERC20Transaction_customGasToken_reverts() external {
-        if (vm.envOr("FORK_TEST", false) == true) {
-            vm.skip(true, "Custom gas token is still supported on forked tests");
-        }
+        skipIfForkTest("Custom gas token is still supported on forked tests");
 
         vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
         optimismPortal2.depositERC20Transaction(address(0), 0, 0, 0, false, "");

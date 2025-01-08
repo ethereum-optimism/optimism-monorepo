@@ -702,9 +702,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     /// expected error.
     /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
     function test_sendMessage_customGasToken_reverts() external {
-        if (vm.envOr("FORK_TEST", false) == true) {
-            vm.skip(true, "Custom gas token is still supported on forked tests");
-        }
+        skipIfForkTest("Custom gas token is still supported on forked tests");
 
         // Mock the gasPayingToken function to return a custom gas token
         vm.mockCall(
