@@ -66,7 +66,6 @@ contract ForkLive is Deployer {
         // Bridge contracts
         address optimismPortal = vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy");
         save("OptimismPortalProxy", optimismPortal);
-        save("OptimismPortalImpl", EIP1967Helper.getImplementation(optimismPortal));
         save("OptimismPortal2Impl", EIP1967Helper.getImplementation(optimismPortal));
 
         address addressManager = vm.parseTomlAddress(opToml, ".addresses.AddressManager");

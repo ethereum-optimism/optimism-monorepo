@@ -130,8 +130,8 @@ contract Deploy is Deployer {
     }
 
     /// @notice Returns the impl addresses, not reverting if any are unset.
-    function _impls() internal view returns (Types.ContractSet memory proxies_) {
-        proxies_ = Types.ContractSet({
+    function _impls() internal view returns (Types.ContractSet memory impls_) {
+        impls_ = Types.ContractSet({
             L1CrossDomainMessenger: getAddress("L1CrossDomainMessengerImpl"),
             L1StandardBridge: getAddress("L1StandardBridgeImpl"),
             L2OutputOracle: getAddress("L2OutputOracleImpl"),
@@ -311,7 +311,6 @@ contract Deploy is Deployer {
         save("L1ERC721BridgeImpl", address(dio.l1ERC721BridgeImpl()));
 
         // Fault proofs
-        save("OptimismPortalImpl", address(dio.optimismPortalImpl()));
         save("OptimismPortal2Impl", address(dio.optimismPortalImpl()));
         save("DisputeGameFactoryImpl", address(dio.disputeGameFactoryImpl()));
         save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
