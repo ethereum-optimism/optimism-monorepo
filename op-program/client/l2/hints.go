@@ -7,12 +7,12 @@ import (
 )
 
 const (
-	HintL2BlockHeader              = "l2-block-header"
-	HintL2Transactions             = "l2-transactions"
-	HintL2Code                     = "l2-code"
-	HintL2StateNode                = "l2-state-node"
-	HintL2Output                   = "l2-output"
-	HintL2ReplacementBlockReceipts = "l2-replacement-block-receipts"
+	HintL2BlockHeader  = "l2-block-header"
+	HintL2Transactions = "l2-transactions"
+	HintL2Code         = "l2-code"
+	HintL2StateNode    = "l2-state-node"
+	HintL2Output       = "l2-output"
+	HintL2BlockData    = "l2-block-data"
 )
 
 type BlockHeaderHint common.Hash
@@ -55,10 +55,10 @@ func (l L2OutputHint) Hint() string {
 	return HintL2Output + " " + (common.Hash)(l).String()
 }
 
-type L2ReplacementBlockReceiptsHint common.Hash
+type L2BlockDataHint common.Hash
 
-var _ preimage.Hint = L2ReplacementBlockReceiptsHint{}
+var _ preimage.Hint = L2BlockDataHint{}
 
-func (l L2ReplacementBlockReceiptsHint) Hint() string {
-	return HintL2ReplacementBlockReceipts + " " + (common.Hash)(l).String()
+func (l L2BlockDataHint) Hint() string {
+	return HintL2BlockData + " " + (common.Hash)(l).String()
 }

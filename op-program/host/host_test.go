@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -37,7 +38,7 @@ func TestServerMode(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelTrace)
 	result := make(chan error)
 	go func() {
-		result <- PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, makeDefaultPrefetcher)
+		result <- hostcommon.PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, makeDefaultPrefetcher)
 	}()
 
 	pClient := preimage.NewOracleClient(preimageClient)

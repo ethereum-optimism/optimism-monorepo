@@ -12,7 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
-	"github.com/ethereum-optimism/optimism/op-program/host"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-program/host/prefetcher"
@@ -206,7 +206,7 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			env,
 			fixtureInputs,
 		)
-		withInProcessPrefetcher := host.WithPrefetcher(func(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (host.Prefetcher, error) {
+		withInProcessPrefetcher := hostcommon.WithPrefetcher(func(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (hostcommon.Prefetcher, error) {
 			// Set up in-process L1 sources
 			l1Cl := env.Miner.L1Client(t, env.Sd.RollupCfg)
 			l1BlobFetcher := env.Miner.BlobSource()
@@ -214,13 +214,13 @@ func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlock
 			// Set up in-process L2 source
 			l2ClCfg := sources.L2ClientDefaultConfig(env.Sd.RollupCfg, true)
 			l2RPC := env.Engine.RPCClient()
-			l2Client, err := host.NewL2Client(l2RPC, env.log, nil, &host.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
+			l2Client, err := hostcommon.NewL2Client(l2RPC, env.log, nil, &hostcommon.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
 			require.NoError(t, err, "failed to create L2 client")
-			l2DebugCl := host.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
+			l2DebugCl := hostcommon.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config), nil
+			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config, programCfg), nil
 		})
-		err = host.FaultProofProgram(t.Ctx(), env.log, programCfg, withInProcessPrefetcher)
+		err = hostcommon.FaultProofProgram(t.Ctx(), env.log, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)
 	}
 	tryDumpTestFixture(t, err, t.Name(), env, *fixtureInputs, workDir)

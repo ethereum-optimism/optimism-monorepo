@@ -6,6 +6,9 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
+	"github.com/ethereum-optimism/optimism/op-program/host/config"
+	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,9 +17,35 @@ import (
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
-func ReExecuteDepositBlock(
+func NativeReExecuteBlock(
+	ctx context.Context, prefetcher *Prefetcher, blockHash common.Hash) error {
+	header, _, err := prefetcher.l2Fetcher.InfoAndTxsByHash(ctx, blockHash)
+	if err != nil {
+		return err
+	}
+	newCfg := *prefetcher.hostConfig
+	newCfg.L2ClaimBlockNumber = header.NumberU64()
+	// No need to set a L2CLaim. The program will derive the blockHash even for an invalid claim.
+	// Thus, the kv store is populated with the data we need
+
+	withPrefetcher := hostcommon.WithPrefetcher(
+		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
+			return NewPrefetcher(
+				prefetcher.logger,
+				prefetcher.l1Fetcher,
+				prefetcher.l1BlobFetcher,
+				prefetcher.l2Fetcher,
+				prefetcher.kvStore,
+				prefetcher.chainConfig,
+				nil, // disable recursive block execution
+			), nil
+		})
+	return hostcommon.FaultProofProgram(ctx, prefetcher.logger, &newCfg, withPrefetcher)
+}
+
+func ReExecuteBlock(
 	ctx context.Context, logger log.Logger, l2Source L2Source, chainCfg *params.ChainConfig, blockHash common.Hash) (*types.Block, []*types.Receipt, error) {
-	headerInfo, txs, err := l2Source.InfoAndTxsByHash(context.Background(), blockHash)
+	headerInfo, txs, err := l2Source.InfoAndTxsByHash(ctx, blockHash)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -39,18 +68,16 @@ func ReExecuteDepositBlock(
 		return nil, nil, err
 	}
 	for _, tx := range txs {
-		if tx.Type() == types.DepositTxType {
-			err := processor.AddTx(tx)
-			if err != nil {
-				return nil, nil, err
-			}
+		err := processor.AddTx(tx)
+		if err != nil {
+			return nil, nil, err
 		}
 	}
-	depositBlock, err := processor.Assemble()
+	block, err := processor.Assemble()
 	if err != nil {
 		return nil, nil, err
 	}
-	return depositBlock, processor.Receipts(), nil
+	return block, processor.Receipts(), nil
 }
 
 type l2Oracle struct {

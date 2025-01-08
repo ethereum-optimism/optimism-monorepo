@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
@@ -26,11 +27,6 @@ import (
 var (
 	precompileSuccess = [1]byte{1}
 	precompileFailure = [1]byte{0}
-)
-
-var (
-	ErrExperimentalPrefetchFailed   = errors.New("experimental prefetch failed")
-	ErrExperimentalPrefetchDisabled = errors.New("experimental prefetch disabled")
 )
 
 var acceleratedPrecompiles = []common.Address{
@@ -65,9 +61,20 @@ type Prefetcher struct {
 	lastHint      string
 	kvStore       kvstore.KV
 	chainConfig   *params.ChainConfig
+
+	// Used to run the program for native block execution
+	hostConfig *config.Config
 }
 
-func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSource, l2Fetcher L2Source, kvStore kvstore.KV, l2ChainConfig *params.ChainConfig) *Prefetcher {
+func NewPrefetcher(
+	logger log.Logger,
+	l1Fetcher L1Source,
+	l1BlobFetcher L1BlobSource,
+	l2Fetcher L2Source,
+	kvStore kvstore.KV,
+	l2ChainConfig *params.ChainConfig,
+	hostConfig *config.Config,
+) *Prefetcher {
 	return &Prefetcher{
 		logger:        logger,
 		l1Fetcher:     NewRetryingL1Source(logger, l1Fetcher),
@@ -76,6 +83,7 @@ func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSo
 		kvStore:       kvStore,
 		// TODO: replace with block exec oracle to avoid having to setup chain config in unit tests
 		chainConfig: l2ChainConfig,
+		hostConfig:  hostConfig,
 	}
 }
 
@@ -291,16 +299,24 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to fetch L2 output root %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
-	case l2.HintL2ReplacementBlockReceipts:
+	case l2.HintL2BlockData:
+		if p.hostConfig == nil {
+			return fmt.Errorf("this prefetcher does not support native block execution")
+		}
 		if len(hintBytes) != 32 {
 			return fmt.Errorf("invalid L2 block receipts hint: %x", hint)
 		}
 		hash := common.Hash(hintBytes)
-		_, receipts, err := ReExecuteDepositBlock(ctx, p.logger, p.l2Fetcher, p.chainConfig, hash)
-		if err != nil {
-			return fmt.Errorf("failed to re-execute deposit block: %w", err)
+		if err := NativeReExecuteBlock(ctx, p, hash); err != nil {
+			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
-		return p.storeReceipts(receipts)
+		/*
+			_, receipts, err := ReExecuteBlock(ctx, p.logger, p.l2Fetcher, p.chainConfig, hash)
+			if err != nil {
+				return fmt.Errorf("failed to re-execute block: %w", err)
+			}
+			return p.storeReceipts(receipts)
+		*/
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }

@@ -1,17 +1,22 @@
-package host
+package common
 
 import (
 	"context"
+	"errors"
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
-	"github.com/ethereum-optimism/optimism/op-program/host/prefetcher"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
+)
+
+var (
+	ErrExperimentalPrefetchFailed   = errors.New("experimental prefetch failed")
+	ErrExperimentalPrefetchDisabled = errors.New("experimental prefetch disabled")
 )
 
 // L2Source is a source of L2 data, it abstracts away the details of how to fetch L2 data between canonical and experimental sources.
@@ -28,7 +33,8 @@ type L2Source struct {
 	experimentalClient *L2Client
 }
 
-var _ prefetcher.L2Source = &L2Source{}
+// TODO: fix this
+//var _ prefetcher.L2Source = &L2Source{}
 
 // NewL2SourceWithClient creates a new L2 source with the given client as the canonical client.
 // This doesn't configure the experimental source, but is useful for testing.
@@ -125,14 +131,14 @@ func (l *L2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Outp
 func (l *L2Source) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
 	if !l.ExperimentalEnabled() {
 		l.logger.Error("Experimental source is not enabled, cannot fetch execution witness", "blockNum", blockNum)
-		return nil, prefetcher.ErrExperimentalPrefetchDisabled
+		return nil, ErrExperimentalPrefetchDisabled
 	}
 
 	// log errors, but return standard error so we know to retry with legacy source
 	witness, err := l.experimentalClient.ExecutionWitness(ctx, blockNum)
 	if err != nil {
 		l.logger.Error("Failed to fetch execution witness from experimental source", "blockNum", blockNum, "err", err)
-		return nil, prefetcher.ErrExperimentalPrefetchFailed
+		return nil, ErrExperimentalPrefetchFailed
 	}
 	return witness, nil
 }
@@ -145,7 +151,7 @@ func (l *L2Source) GetProof(ctx context.Context, address common.Address, storage
 	proof, err := l.canonicalEthClient.GetProof(ctx, address, storage, blockTag)
 	if err != nil {
 		l.logger.Error("Failed to fetch proof from canonical source", "address", address, "storage", storage, "blockTag", blockTag, "err", err)
-		return nil, prefetcher.ErrExperimentalPrefetchFailed
+		return nil, ErrExperimentalPrefetchFailed
 	}
 	return proof, nil
 }

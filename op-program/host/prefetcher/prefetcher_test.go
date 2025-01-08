@@ -569,7 +569,7 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	_, l1Source, l1BlobSource, l2Cl, kv := createPrefetcher(t)
 	putsToIgnore := 2
 	kv = &unreliableKvStore{KV: kv, putsToIgnore: putsToIgnore}
-	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv, nil)
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv, nil, nil)
 
 	// Expect one call for each ignored put, plus one more request for when the put succeeds
 	for i := 0; i < putsToIgnore+1; i++ {
@@ -621,7 +621,7 @@ func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *test
 		MockDebugClient: new(testutils.MockDebugClient),
 	}
 
-	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil)
+	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, nil)
 	return prefetcher, l1Source, l1BlobSource, l2Source, kv
 }
 
