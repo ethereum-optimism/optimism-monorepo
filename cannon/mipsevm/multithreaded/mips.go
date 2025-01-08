@@ -356,24 +356,6 @@ func (m *InstrumentedState) handleRMWOps(insn, opcode uint32) error {
 	return exec.HandleRd(m.state.getCpuRef(), m.state.GetRegistersRef(), rtReg, retVal, true)
 }
 
-func (m *InstrumentedState) onWaitComplete(thread *ThreadState, isTimedOut bool) {
-	// Note: no need to reset m.state.Wakeup.  If we're here, the Wakeup field has already been reset
-	// Clear the futex state
-	thread.FutexAddr = exec.FutexEmptyAddr
-	thread.FutexVal = 0
-	thread.FutexTimeoutStep = 0
-
-	// Complete the FUTEX_WAIT syscall
-	v0 := Word(0)
-	v1 := Word(0)
-	if isTimedOut {
-		v0 = exec.SysErrorSignal
-		v1 = exec.MipsETIMEDOUT
-	}
-	exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
-	m.statsTracker.trackWakeup()
-}
-
 func (m *InstrumentedState) preemptThread(thread *ThreadState) bool {
 	// Pop thread from the current stack and push to the other stack
 	if m.state.TraverseRight {
