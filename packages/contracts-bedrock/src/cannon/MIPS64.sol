@@ -67,8 +67,8 @@ contract MIPS64 is ISemver {
     }
 
     /// @notice The semantic version of the MIPS64 contract.
-    /// @custom:semver 1.0.0-beta.9
-    string public constant version = "1.0.0-beta.9";
+    /// @custom:semver 1.0.0-beta.10
+    string public constant version = "1.0.0-beta.10";
 
     /// @notice The preimage oracle contract.
     IPreimageOracle internal immutable ORACLE;
@@ -220,50 +220,9 @@ contract MIPS64 is ISemver {
             setThreadStateFromCalldata(thread);
             validateCalldataThreadWitness(state, thread);
 
-            // Search for the first thread blocked by the wakeup call, if wakeup is set
-            // Don't allow regular execution until we resolved if we have woken up any thread.
-            if (state.wakeup != sys.FUTEX_EMPTY_ADDR) {
-                if (state.wakeup == thread.futexAddr) {
-                    // completed wake traversal
-                    // resume execution on woken up thread
-                    state.wakeup = sys.FUTEX_EMPTY_ADDR;
-                    return outputState();
-                } else {
-                    bool traversingRight = state.traverseRight;
-                    bool changedDirections = preemptThread(state, thread);
-                    if (traversingRight && changedDirections) {
-                        // then we've completed wake traversal
-                        // resume thread execution
-                        state.wakeup = sys.FUTEX_EMPTY_ADDR;
-                    }
-                    return outputState();
-                }
-            }
-
             if (thread.exited) {
                 popThread(state);
                 return outputState();
-            }
-
-            // check if thread is blocked on a futex
-            if (thread.futexAddr != sys.FUTEX_EMPTY_ADDR) {
-                // if set, then check futex
-                // check timeout first
-                if (state.step > thread.futexTimeoutStep) {
-                    // timeout! Allow execution
-                    return onWaitComplete(thread, true);
-                } else {
-                    uint32 futexVal = getFutexValue(thread.futexAddr);
-                    if (thread.futexVal == futexVal) {
-                        // still got expected value, continue sleeping, try next thread.
-                        preemptThread(state, thread);
-                        return outputState();
-                    } else {
-                        // wake thread up, the value at its address changed!
-                        // Userspace can turn thread back to sleep if it was too sporadic.
-                        return onWaitComplete(thread, false);
-                    }
-                }
             }
 
             if (state.stepsSinceLastContextSwitch >= sys.SCHED_QUANTUM) {
@@ -434,7 +393,7 @@ contract MIPS64 is ISemver {
             }
 
             // Load the syscall numbers and args from the registers
-            (uint64 syscall_no, uint64 a0, uint64 a1, uint64 a2, uint64 a3) = sys.getSyscallArgs(thread.registers);
+            (uint64 syscall_no, uint64 a0, uint64 a1, uint64 a2) = sys.getSyscallArgs(thread.registers);
             // Syscalls that are unimplemented but known return with v0=0 and v1=0
             uint64 v0 = 0;
             uint64 v1 = 0;
@@ -535,39 +494,16 @@ contract MIPS64 is ISemver {
                         v0 = sys.SYS_ERROR_SIGNAL;
                         v1 = sys.EAGAIN;
                     } else {
-                        thread.futexAddr = effFutexAddr;
-                        thread.futexVal = targetVal;
-                        thread.futexTimeoutStep = a3 == 0 ? sys.FUTEX_NO_TIMEOUT : state.step + sys.FUTEX_TIMEOUT_STEPS;
-                        // Leave cpu scalars as-is. This instruction will be completed by `onWaitComplete`
-                        updateCurrentThreadRoot();
-                        return outputState();
+                        return syscallYield(state, thread);
                     }
                 } else if (a1 == sys.FUTEX_WAKE_PRIVATE) {
-                    // Trigger thread traversal starting from the left stack until we find one waiting on the wakeup
-                    // address
-                    state.wakeup = effFutexAddr;
-                    // Don't indicate to the program that we've woken up a waiting thread, as there are no guarantees.
-                    // The woken up thread should indicate this in userspace.
-                    v0 = 0;
-                    v1 = 0;
-                    st.CpuScalars memory cpu0 = getCpuScalars(thread);
-                    sys.handleSyscallUpdates(cpu0, thread.registers, v0, v1);
-                    setStateCpuScalars(thread, cpu0);
-                    preemptThread(state, thread);
-                    state.traverseRight = state.leftThreadStack == EMPTY_THREAD_ROOT;
-                    return outputState();
+                    return syscallYield(state, thread);
                 } else {
                     v0 = sys.SYS_ERROR_SIGNAL;
                     v1 = sys.EINVAL;
                 }
             } else if (syscall_no == sys.SYS_SCHED_YIELD || syscall_no == sys.SYS_NANOSLEEP) {
-                v0 = 0;
-                v1 = 0;
-                st.CpuScalars memory cpu0 = getCpuScalars(thread);
-                sys.handleSyscallUpdates(cpu0, thread.registers, v0, v1);
-                setStateCpuScalars(thread, cpu0);
-                preemptThread(state, thread);
-                return outputState();
+                return syscallYield(state, thread);
             } else if (syscall_no == sys.SYS_OPEN) {
                 v0 = sys.SYS_ERROR_SIGNAL;
                 v1 = sys.EBADF;
@@ -687,6 +623,17 @@ contract MIPS64 is ISemver {
         }
     }
 
+    function syscallYield(State memory _state, ThreadState memory _thread) internal returns (bytes32 out_) {
+        uint64 v0 = 0;
+        uint64 v1 = 0;
+        st.CpuScalars memory cpu = getCpuScalars(_thread);
+        sys.handleSyscallUpdates(cpu, _thread.registers, v0, v1);
+        setStateCpuScalars(_thread, cpu);
+        preemptThread(_state, _thread);
+
+        return outputState();
+    }
+
     function execSysRead(
         State memory _state,
         sys.SysReadParams memory _args
@@ -785,26 +732,6 @@ contract MIPS64 is ISemver {
         } else {
             state.leftThreadStack = updatedRoot;
         }
-    }
-
-    /// @notice Completes the FUTEX_WAIT syscall.
-    function onWaitComplete(ThreadState memory _thread, bool _isTimedOut) internal returns (bytes32 out_) {
-        // Note: no need to reset State.wakeup.  If we're here, the wakeup field has already been reset
-        // Clear the futex state
-        _thread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-        _thread.futexVal = 0;
-        _thread.futexTimeoutStep = 0;
-
-        // Complete the FUTEX_WAIT syscall
-        uint64 v0 = _isTimedOut ? sys.SYS_ERROR_SIGNAL : 0;
-        // set errno
-        uint64 v1 = _isTimedOut ? sys.ETIMEDOUT : 0;
-        st.CpuScalars memory cpu = getCpuScalars(_thread);
-        sys.handleSyscallUpdates(cpu, _thread.registers, v0, v1);
-        setStateCpuScalars(_thread, cpu);
-
-        updateCurrentThreadRoot();
-        out_ = outputState();
     }
 
     /// @notice Preempts the current thread for another and updates the VM state.

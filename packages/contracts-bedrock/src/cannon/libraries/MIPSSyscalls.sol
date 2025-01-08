@@ -173,11 +173,10 @@ library MIPSSyscalls {
     /// @return a0_ The first argument available to the syscall operation.
     /// @return a1_ The second argument available to the syscall operation.
     /// @return a2_ The third argument available to the syscall operation.
-    /// @return a3_ The fourth argument available to the syscall operation.
     function getSyscallArgs(uint32[32] memory _registers)
         internal
         pure
-        returns (uint32 sysCallNum_, uint32 a0_, uint32 a1_, uint32 a2_, uint32 a3_)
+        returns (uint32 sysCallNum_, uint32 a0_, uint32 a1_, uint32 a2_)
     {
         unchecked {
             sysCallNum_ = _registers[REG_SYSCALL_NUM];
@@ -185,9 +184,8 @@ library MIPSSyscalls {
             a0_ = _registers[REG_SYSCALL_PARAM1];
             a1_ = _registers[REG_SYSCALL_PARAM2];
             a2_ = _registers[REG_SYSCALL_PARAM3];
-            a3_ = _registers[REG_SYSCALL_PARAM4];
 
-            return (sysCallNum_, a0_, a1_, a2_, a3_);
+            return (sysCallNum_, a0_, a1_, a2_);
         }
     }
 
