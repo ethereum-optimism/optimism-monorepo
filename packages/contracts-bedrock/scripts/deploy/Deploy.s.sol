@@ -324,8 +324,7 @@ contract Deploy is Deployer {
         artifacts.save(string.concat("MipsSingleton", _suffix), address(dio.mipsSingleton()));
         artifacts.save(string.concat("OPContractsManager", _suffix), address(dio.opcm()));
 
-        // Get a contract set from the implementation addresses with the suffix.
-        // Get a contract set from the implementation addresses just deployed
+        // Get a contract set from the implementation addresses which were just deployed.
         Types.ContractSet memory contracts = Types.ContractSet({
             L1CrossDomainMessenger: mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
             L1StandardBridge: mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
