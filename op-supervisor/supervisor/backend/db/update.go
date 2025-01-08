@@ -157,3 +157,82 @@ func (db *ChainsDB) onFinalizedL1(finalized eth.BlockRef) {
 		db.emitter.Emit(superevents.FinalizedL2UpdateEvent{ChainID: chain, FinalizedL2: fin})
 	}
 }
+
+func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
+	// Get databases to invalidate data in.
+	eventsDB, ok := db.logDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+	localSafeDB, ok := db.localDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find local-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+
+	// Now invalidate the local-safe data.
+	// We insert a marker, so we don't build on top of the invalidated block, until it is replaced.
+	// And we won't index unsafe blocks, until it is replaced.
+	if err := localSafeDB.RewindAndInvalidate(candidate); err != nil {
+		return fmt.Errorf("failed to invalidate entry in local-safe DB: %w", err)
+	}
+
+	// Change cross-unsafe, if it's equal or past the invalidated block.
+	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Derived.Number); err != nil {
+		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
+	}
+
+	// Drop the events of the invalidated block and after,
+	// by rewinding to only keep the parent-block.
+	if err := eventsDB.Rewind(candidate.Derived.ParentID()); err != nil {
+		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
+	}
+
+	// Create an event, that subscribed sync-nodes can listen to,
+	// to start finding the replacement block.
+	db.emitter.Emit(superevents.InvalidateLocalSafeEvent{
+		ChainID:   chainID,
+		Candidate: candidate,
+	})
+	return nil
+}
+
+func (db *ChainsDB) ResetCrossUnsafeIfNewerThan(chainID eth.ChainID, number uint64) error {
+	crossUnsafe, ok := db.crossUnsafe.Get(chainID)
+	if !ok {
+		return nil
+	}
+
+	crossSafeDB, ok := db.crossDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find cross-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+	crossSafe, err := crossSafeDB.Latest()
+	if err != nil {
+		return fmt.Errorf("cannot get cross-safe of chain %s: %w", chainID, err)
+	}
+
+	// Reset cross-unsafe if it's equal or newer than the given block number
+	crossUnsafe.Lock()
+	x := crossUnsafe.Value
+	defer crossUnsafe.Unlock()
+	if x.Number >= number {
+		db.logger.Warn("Resetting cross-unsafe to cross-safe, since prior block was invalidated",
+			"crossUnsafe", x, "crossSafe", crossSafe, "number", number)
+		crossUnsafe.Value = crossSafe.Derived
+	}
+	return nil
+}
+
+func (db *ChainsDB) ReplaceBlock(chainID eth.ChainID, replacement eth.BlockRef, invalidated common.Hash) error {
+	localSafeDB, ok := db.localDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find local-safe DB of chain %s for block replacement work: %w", chainID, types.ErrUnknownChain)
+	}
+
+	if err := localSafeDB.ReplaceInvalidatedBlock(replacement, invalidated); err != nil {
+		return fmt.Errorf("cannot replace invalidated block %s with %s in local-safe DB: %w", invalidated, replacement, err)
+	}
+
+	// TODO Make sure the events-DB has a matching block-hash with the replacement, roll it back otherwise.
+	return nil
+}

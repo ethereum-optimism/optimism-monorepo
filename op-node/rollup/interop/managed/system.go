@@ -23,6 +23,7 @@ import (
 type L2Source interface {
 	L2BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L2BlockRef, error)
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
+	BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
@@ -183,6 +184,20 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	m.emitter.Emit(engine.PromoteFinalizedEvent{Ref: l2Ref})
 	// We return early: there is no point waiting for the finalized engine-update synchronously.
 	// All error-feedback comes to the supervisor by aborting derivation tasks with an error.
+	return nil
+}
+
+func (m *ManagedMode) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
+	m.log.Info("Invalidating block", "block", seal)
+	l2Ref, err := m.l2.BlockRefByHash(ctx, seal.Hash)
+	if err != nil { // cannot invalidate if it wasn't there.
+		return fmt.Errorf("failed to get L2BlockRef: %w", err)
+	}
+
+	// TODO: build deposit-only attributes
+
+	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: l2Ref})
+	// The node will send an event once the replacement is ready
 	return nil
 }
 

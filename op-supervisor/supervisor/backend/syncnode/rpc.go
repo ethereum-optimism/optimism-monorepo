@@ -116,6 +116,10 @@ func (rs *RPCSyncNode) UpdateFinalized(ctx context.Context, id eth.BlockID) erro
 	return rs.cl.CallContext(ctx, nil, "interop_updateFinalized", id)
 }
 
+func (rs *RPCSyncNode) InvalidateBlock(ctx context.Context, seal types.BlockSeal) error {
+	return rs.cl.CallContext(ctx, nil, "interop_invalidateBlock", seal)
+}
+
 func (rs *RPCSyncNode) Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error {
 	return rs.cl.CallContext(ctx, nil, "interop_reset", unsafe, safe, finalized)
 }

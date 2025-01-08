@@ -67,9 +67,10 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{Number: 3}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{},
-				eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+					DerivedFrom: eth.BlockRef{},
+					Derived:     eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})}},
 				errors.New("some error")
 		}
 		l1DerivedFrom := eth.BlockID{}
@@ -85,10 +86,11 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{},
-				eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
-				nil
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: eth.BlockRef{},
+				Derived:     eth.BlockRef{Number: 3, Hash: common.BytesToHash([]byte{0x01})},
+			}, nil
 		}
 		l1DerivedFrom := eth.BlockID{}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {Number: 3, Hash: common.BytesToHash([]byte{0x02})}}
@@ -104,9 +106,10 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, types.ErrFuture
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{Number: 9},
-				eth.BlockRef{},
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+					DerivedFrom: eth.BlockRef{Number: 9},
+					Derived:     eth.BlockRef{}},
 				nil
 		}
 		l1DerivedFrom := eth.BlockID{Number: 8}
@@ -122,10 +125,11 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 		sfcd.crossDerivedFromFn = func() (types.BlockSeal, error) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
-		sfcd.candidateCrossSafeFn = func() (derivedFromScope, crossSafe eth.BlockRef, err error) {
-			return eth.BlockRef{Number: 9},
-				eth.BlockRef{},
-				nil
+		sfcd.candidateCrossSafeFn = func() (candidate types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: eth.BlockRef{Number: 9},
+				Derived:     eth.BlockRef{},
+			}, nil
 		}
 		l1DerivedFrom := eth.BlockID{Number: 8}
 		hazards := map[types.ChainIndex]types.BlockSeal{types.ChainIndex(0): {Number: 3, Hash: common.BytesToHash([]byte{0x02})}}
@@ -139,15 +143,15 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 
 type mockSafeFrontierCheckDeps struct {
 	deps                 mockDependencySet
-	candidateCrossSafeFn func() (derivedFromScope, crossSafe eth.BlockRef, err error)
+	candidateCrossSafeFn func() (candidate types.DerivedBlockRefPair, err error)
 	crossDerivedFromFn   func() (derivedFrom types.BlockSeal, err error)
 }
 
-func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error) {
+func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (candidate types.DerivedBlockRefPair, err error) {
 	if m.candidateCrossSafeFn != nil {
 		return m.candidateCrossSafeFn()
 	}
-	return eth.BlockRef{}, eth.BlockRef{}, nil
+	return types.DerivedBlockRefPair{}, nil
 }
 
 func (m *mockSafeFrontierCheckDeps) CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {

@@ -300,4 +300,5 @@ type ManagedEvent struct {
 	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
 	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
 	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock     *eth.BlockRef        `json:"replaceBlock,omitempty"`
 }

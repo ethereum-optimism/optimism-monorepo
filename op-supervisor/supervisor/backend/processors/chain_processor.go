@@ -31,6 +31,7 @@ type LogProcessor interface {
 type DatabaseRewinder interface {
 	Rewind(chain eth.ChainID, headBlock eth.BlockID) error
 	LatestBlockNum(chain eth.ChainID) (num uint64, ok bool)
+	AcceptedBlock(chainID eth.ChainID, id eth.BlockID) error
 }
 
 type BlockProcessorFn func(ctx context.Context, block eth.BlockRef) error
@@ -174,17 +175,16 @@ func (s *ChainProcessor) rangeUpdate(target uint64) (int, error) {
 
 		// fetch the block ref
 		ctx, cancel := context.WithTimeout(s.systemContext, time.Second*10)
-		nextL1, err := s.client.BlockRefByNumber(ctx, num)
+		next, err := s.client.BlockRefByNumber(ctx, num)
 		cancel()
 		if err != nil {
 			result.err = err
 			return
 		}
-		next := eth.BlockRef{
-			Hash:       nextL1.Hash,
-			ParentHash: nextL1.ParentHash,
-			Number:     nextL1.Number,
-			Time:       nextL1.Time,
+		if err := s.rewinder.AcceptedBlock(s.chain, next.ID()); err != nil {
+			s.log.Warn("Cannot accept next block into events DB", "err", err)
+			result.err = err
+			return
 		}
 		result.blockRef = &next
 

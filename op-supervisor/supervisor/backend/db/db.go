@@ -53,8 +53,12 @@ type LogStorage interface {
 type LocalDerivedFromStorage interface {
 	First() (pair types.DerivedBlockSealPair, err error)
 	Latest() (pair types.DerivedBlockSealPair, err error)
+	Invalidated() (pair types.DerivedBlockSealPair, err error)
 	AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error
+	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) error
+	RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error
 	LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
+	IsDerived(derived eth.BlockID) error
 	DerivedFrom(derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 	FirstAfter(derivedFrom, derived eth.BlockID) (next types.DerivedBlockSealPair, err error)
 	NextDerivedFrom(derivedFrom eth.BlockID) (nextDerivedFrom types.BlockSeal, err error)

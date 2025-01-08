@@ -316,6 +316,15 @@ func (ev CrossUpdateRequestEvent) String() string {
 	return "cross-update-request"
 }
 
+type InteropInvalidateBlockEvent struct {
+	Invalidated eth.BlockRef
+	Attributes  *derive.AttributesWithParent
+}
+
+func (ev InteropInvalidateBlockEvent) String() string {
+	return "interop-invalidate-block"
+}
+
 type EngDeriver struct {
 	metrics Metrics
 
@@ -526,6 +535,8 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 				LocalSafe: d.ec.LocalSafeL2Head(),
 			})
 		}
+	case InteropInvalidateBlockEvent:
+		d.emitter.Emit(BuildStartEvent{})
 	case BuildStartEvent:
 		d.onBuildStart(x)
 	case BuildStartedEvent:
