@@ -1,6 +1,9 @@
 package l2
 
 import (
+	"encoding/binary"
+	"fmt"
+
 	"github.com/ethereum/go-ethereum/common"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
@@ -55,10 +58,16 @@ func (l L2OutputHint) Hint() string {
 	return HintL2Output + " " + (common.Hash)(l).String()
 }
 
-type L2BlockDataHint common.Hash
+type L2BlockDataHint struct {
+	BlockHash common.Hash
+	ChainID   uint64
+}
 
 var _ preimage.Hint = L2BlockDataHint{}
 
 func (l L2BlockDataHint) Hint() string {
-	return HintL2BlockData + " " + (common.Hash)(l).String()
+	hintBytes := make([]byte, 32+32)
+	copy(hintBytes[:32], (common.Hash)(l.BlockHash).Bytes())
+	binary.BigEndian.PutUint64(hintBytes[32:], l.ChainID)
+	return fmt.Sprintf("%s 0x%s", HintL2BlockData, common.Bytes2Hex(hintBytes))
 }

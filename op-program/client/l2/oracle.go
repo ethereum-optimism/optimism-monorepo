@@ -108,7 +108,9 @@ func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash) eth.Output {
 }
 
 func (p *PreimageOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
-	p.hint.Hint(L2BlockDataHint(blockHash))
+	// TODO: fetch chainID from oracle
+	chainID := uint64(1)
+	p.hint.Hint(L2BlockDataHint{blockHash, chainID})
 	header := p.headerByBlockHash(blockHash)
 	txs := p.LoadTransactions(blockHash, header.TxHash)
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})

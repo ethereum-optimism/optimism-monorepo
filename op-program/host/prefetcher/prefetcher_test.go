@@ -514,6 +514,7 @@ func TestFetchL2Code(t *testing.T) {
 }
 
 func TestFetchL2BlockData(t *testing.T) {
+	chainID := uint64(0xdead)
 	t.Run("exec", func(t *testing.T) {
 		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
 		rng := rand.New(rand.NewSource(123))
@@ -522,13 +523,13 @@ func TestFetchL2BlockData(t *testing.T) {
 		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xad}, eth.BlockToInfo(block), block.Transactions(), nil)
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
-		err := prefetcher.Hint(l2.L2BlockDataHint(common.Hash{0xad}).Hint())
+		err := prefetcher.Hint(l2.L2BlockDataHint{BlockHash: common.Hash{0xad}, ChainID: chainID}.Hint())
 		require.NoError(t, err)
 		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
 	})
 	t.Run("no exec", func(t *testing.T) {
 		prefetcher, _, _, _, _ := createPrefetcher(t)
-		err := prefetcher.Hint(l2.L2BlockDataHint(common.Hash{0xad}).Hint())
+		err := prefetcher.Hint(l2.L2BlockDataHint{BlockHash: common.Hash{0xad}, ChainID: chainID}.Hint())
 		require.ErrorContains(t, err, "this prefetcher does not support native block execution")
 	})
 }
@@ -749,7 +750,7 @@ type mockExecutor struct {
 	invoked bool
 }
 
-func (m *mockExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64) error {
+func (m *mockExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
 	m.invoked = true
 	return nil
 }

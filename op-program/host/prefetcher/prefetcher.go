@@ -307,15 +307,16 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if p.executor == nil {
 			return fmt.Errorf("this prefetcher does not support native block execution")
 		}
-		if len(hintBytes) != 32 {
+		if len(hintBytes) != 32+32 {
 			return fmt.Errorf("invalid L2 block receipts hint: %x", hint)
 		}
-		blockHash := common.Hash(hintBytes)
+		blockHash := common.Hash(hintBytes[:32])
+		chainID := binary.BigEndian.Uint64(hintBytes[32:])
 		key := BlockDataKey(blockHash)
 		if _, err := p.kvStore.Get(key.Key()); err == nil {
 			return nil
 		}
-		if err := p.nativeReExecuteBlock(ctx, blockHash); err != nil {
+		if err := p.nativeReExecuteBlock(ctx, blockHash, chainID); err != nil {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
 		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})

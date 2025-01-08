@@ -8,14 +8,14 @@ import (
 )
 
 type ProgramExecutor interface {
-	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64) error
+	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error
 }
 
 // NativeReExecuteBlock is a helper function that re-executes a block natively.
 // It is used to populate the kv store with the data needed for the program to
 // re-derive the block.
 func (p *Prefetcher) nativeReExecuteBlock(
-	ctx context.Context, blockHash common.Hash) error {
+	ctx context.Context, blockHash common.Hash, chainID uint64) error {
 	header, _, err := p.l2Fetcher.InfoAndTxsByHash(ctx, blockHash)
 	if err != nil {
 		return err
@@ -23,5 +23,5 @@ func (p *Prefetcher) nativeReExecuteBlock(
 	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64())
 	// No need to set a L2CLaim. The program will derive the blockHash even for an invalid claim.
 	// Thus, the kv store is populated with the data we need
-	return p.executor.RunProgram(ctx, p, header.NumberU64())
+	return p.executor.RunProgram(ctx, p, header.NumberU64(), chainID)
 }
