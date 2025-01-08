@@ -41,7 +41,6 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
-import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
@@ -317,9 +316,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
-        if (!anchorStateRegistry.isGameMaybeValid(IFaultDisputeGame(address(gameProxy)))) {
-            revert InvalidDisputeGame();
-        }
+        anchorStateRegistry.assertGameMaybeValid(gameProxy);
 
         // Compute the storage slot of the withdrawal hash in the L2ToL1MessagePasser contract.
         // Refer to the Solidity documentation for more information on how storage layouts are
@@ -635,10 +632,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             "OptimismPortal: proven withdrawal has not matured yet"
         );
 
-        require(
-            anchorStateRegistry.isGameValid(IFaultDisputeGame(address(disputeGameProxy))),
-            "OptimismPortal: dispute game not valid"
-        );
+        anchorStateRegistry.assertGameValid(disputeGameProxy);
 
         // Check that this withdrawal has not already been finalized, this is replay protection.
         if (finalizedWithdrawals[_withdrawalHash]) revert AlreadyFinalized();

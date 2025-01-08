@@ -3,6 +3,7 @@ pragma solidity ^0.8.15;
 
 // Libraries
 import { GameType, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 ////////////////////////////////////////////////////////////////
 //                `DisputeGameFactory` Errors                 //
@@ -140,3 +141,12 @@ error UnregisteredGame();
 
 /// @notice Thrown when attempting to set an anchor state using an invalid game result.
 error InvalidGameStatus();
+
+error AnchorStateRegistry_AnchorGameIsNewer(uint256 anchorGameL2BlockNumber, uint256 candidateGameL2BlockNumber);
+error AnchorStateRegistry_GameNotResolved(IDisputeGame game);
+error AnchorStateRegistry_GameMustWaitFinalityDelay(IDisputeGame game);
+error AnchorStateRegistry_GameNotFactoryRegistered(IDisputeGame game);
+error AnchorStateRegistry_GameBlacklisted(IDisputeGame game);
+error AnchorStateRegistry_GameRespectedGameTypeMismatch(IDisputeGame game);
+error AnchorStateRegistry_GameChallengerWins(IDisputeGame game);
+error AnchorStateRegistry_GameRetired(IDisputeGame game);

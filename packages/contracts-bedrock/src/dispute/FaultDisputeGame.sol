@@ -61,7 +61,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
-import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @title FaultDisputeGame
 /// @notice An implementation of the `IFaultDisputeGame` interface.
@@ -936,16 +936,16 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
         // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
-        if (!ANCHOR_STATE_REGISTRY.isGameFinalized(IFaultDisputeGame(address(this)))) revert GameNotFinalized();
+        ANCHOR_STATE_REGISTRY.assertGameFinalized(IDisputeGame(address(this)));
 
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
             // If the game is finalized, try updating anchor state...
-            try ANCHOR_STATE_REGISTRY.setAnchorState(IFaultDisputeGame(address(this))) { } catch { }
+            try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
             // and determine the bond distribution mode.
             if (
-                ANCHOR_STATE_REGISTRY.isGameBlacklisted(IFaultDisputeGame(address(this)))
-                    || ANCHOR_STATE_REGISTRY.isGameRetired(IFaultDisputeGame(address(this)))
+                ANCHOR_STATE_REGISTRY.isGameBlacklisted(IDisputeGame(address(this)))
+                    || ANCHOR_STATE_REGISTRY.isGameRetired(IDisputeGame(address(this)))
             ) {
                 // If the game is blacklisted or retired, the bonds should be refunded.
                 bondDistributionMode = BondDistributionMode.REFUND;
