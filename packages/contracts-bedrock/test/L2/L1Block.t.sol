@@ -174,8 +174,6 @@ contract L1BlockCustomGasToken_Test is L1BlockTest {
     )
         external
     {
-        vm.skip(true, "Custom gas token not supported");
-
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);
 

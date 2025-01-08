@@ -309,6 +309,21 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(address(optimismPortal2).balance, balanceBefore + _mint);
     }
 
+    /// @dev Temporary test that checks that correct calls to setGasPayingToken when using a custom gas token revert
+    /// with the expected error.
+    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
+    function test_setGasPayingToken_customGasToken_reverts(
+        address _token,
+        uint8 _decimals,
+        bytes32 _name,
+        bytes32 _symbol
+    )
+        external
+    {
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
+        optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
+    }
+
     /// @dev Tests that the gas paying token can be set.
     function testFuzz_setGasPayingToken_succeeds(
         address _token,
@@ -407,6 +422,15 @@ contract OptimismPortal2_Test is CommonTest {
         vm.prank(_caller);
         vm.expectRevert(Unauthorized.selector);
         optimismPortal2.setGasPayingToken(address(0), 0, "", "");
+    }
+
+    /// @dev Temporary test that checks that correct calls to depositERC20Transaction when using a custom gas token
+    /// revert
+    /// with the expected error.
+    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
+    function test_depositERC20Transaction_customGasToken_reverts() external {
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
+        optimismPortal2.depositERC20Transaction(address(0), 0, 0, 0, false, "");
     }
 
     /// @dev Tests that `depositERC20Transaction` reverts when the gas paying token is ether.
@@ -967,6 +991,76 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx_noData);
 
         assert(bob.balance == bobBalanceBefore + 100);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` reverts when using a custom gas token.
+    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
+    function test_finalizeWithdrawalTransaction_customGasToken_reverts() external {
+        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
+            nonce: 0,
+            sender: alice,
+            target: bob,
+            value: 100,
+            gasLimit: 100_000,
+            data: hex""
+        });
+        // Get withdrawal proof data we can use for testing.
+        (
+            bytes32 _stateRoot_noData,
+            bytes32 _storageRoot_noData,
+            bytes32 _outputRoot_noData,
+            bytes32 _withdrawalHash_noData,
+            bytes[] memory _withdrawalProof_noData
+        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
+        // Setup a dummy output root proof for reuse.
+        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: _stateRoot_noData,
+            messagePasserStorageRoot: _storageRoot_noData,
+            latestBlockhash: bytes32(uint256(0))
+        });
+        uint256 _proposedBlockNumber_noData = 0xFF;
+        IFaultDisputeGame game_noData = IFaultDisputeGame(
+            payable(
+                address(
+                    disputeGameFactory.create(
+                        optimismPortal2.respectedGameType(),
+                        Claim.wrap(_outputRoot_noData),
+                        abi.encode(_proposedBlockNumber_noData)
+                    )
+                )
+            )
+        );
+        uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
+        // Warp beyond the chess clocks and finalize the game.
+        vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
+        // Fund the portal so that we can withdraw ETH.
+        vm.store(address(optimismPortal2), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
+        deal(address(L1Token), address(optimismPortal2), 0xFFFFFFFF);
+
+        // modify the gas token to be non ether
+        vm.mockCall(
+            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
+        );
+
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx_noData,
+            _disputeGameIndex: _proposedGameIndex_noData,
+            _outputRootProof: _outputRootProof_noData,
+            _withdrawalProof: _withdrawalProof_noData
+        });
+
+        // Warp and resolve the dispute game.
+        game_noData.resolveClaim(0, 0);
+        game_noData.resolve();
+        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1 seconds);
+
+        vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
+        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx_noData);
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty and with a custom gas token.
