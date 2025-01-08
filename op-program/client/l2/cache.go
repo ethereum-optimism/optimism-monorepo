@@ -74,3 +74,13 @@ func (o *CachingOracle) OutputByRoot(root common.Hash) eth.Output {
 	o.outputs.Add(root, output)
 	return output
 }
+
+func (o *CachingOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
+	block, ok := o.blocks.Get(blockHash)
+	if ok {
+		return block
+	}
+	block = o.oracle.BlockDataByHash(blockHash)
+	o.blocks.Add(blockHash, block)
+	return block
+}

@@ -34,6 +34,10 @@ type Oracle interface {
 	BlockByHash(blockHash common.Hash) *types.Block
 
 	OutputByRoot(root common.Hash) eth.Output
+
+	// BlockDataByHash retrieves the block, including all data used to construct it.
+	// TODO: Return receipts as well as an optimization
+	BlockDataByHash(blockHash common.Hash) *types.Block
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -101,4 +105,11 @@ func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash) eth.Output {
 		panic(fmt.Errorf("invalid L2 output data for root %s: %w", l2OutputRoot, err))
 	}
 	return output
+}
+
+func (p *PreimageOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
+	p.hint.Hint(L2BlockDataHint(blockHash))
+	header := p.headerByBlockHash(blockHash)
+	txs := p.LoadTransactions(blockHash, header.TxHash)
+	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
 }

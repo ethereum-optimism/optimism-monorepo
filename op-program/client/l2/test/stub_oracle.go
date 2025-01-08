@@ -69,6 +69,14 @@ func (o StubBlockOracle) OutputByRoot(root common.Hash) eth.Output {
 	return output
 }
 
+func (o StubBlockOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
+	block, ok := o.Blocks[blockHash]
+	if !ok {
+		o.t.Fatalf("requested unknown block %s", blockHash)
+	}
+	return block
+}
+
 // KvStateOracle loads data from a source ethdb.KeyValueStore
 type KvStateOracle struct {
 	t      *testing.T

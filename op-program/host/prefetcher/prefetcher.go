@@ -310,13 +310,6 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if err := NativeReExecuteBlock(ctx, p, hash); err != nil {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
-		/*
-			_, receipts, err := ReExecuteBlock(ctx, p.logger, p.l2Fetcher, p.chainConfig, hash)
-			if err != nil {
-				return fmt.Errorf("failed to re-execute block: %w", err)
-			}
-			return p.storeReceipts(receipts)
-		*/
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }
