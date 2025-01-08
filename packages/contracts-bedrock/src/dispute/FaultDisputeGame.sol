@@ -11,6 +11,7 @@ import { RLPReader } from "src/libraries/rlp/RLPReader.sol";
 import {
     GameStatus,
     GameType,
+    BondDistributionMode,
     Claim,
     Clock,
     Duration,
@@ -51,14 +52,17 @@ import {
     BondTransferFailed,
     NoCreditToClaim,
     InvalidOutputRootProof,
-    ClaimAboveSplit
+    ClaimAboveSplit,
+    GameNotFinalized,
+    InvalidBondDistributionMode
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
-import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
+import { IManagedWETH } from "interfaces/dispute/IManagedWETH.sol";
 import { IBigStepper, IPreimageOracle } from "interfaces/dispute/IBigStepper.sol";
-import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IGameValidityOracle } from "interfaces/dispute/IGameValidityOracle.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 
 /// @title FaultDisputeGame
 /// @notice An implementation of the `IFaultDisputeGame` interface.
@@ -96,8 +100,8 @@ contract FaultDisputeGame is Clone, ISemver {
         Duration clockExtension;
         Duration maxClockDuration;
         IBigStepper vm;
-        IDelayedWETH weth;
-        IAnchorStateRegistry anchorStateRegistry;
+        IManagedWETH weth;
+        IGameValidityOracle gameValidityOracle;
         uint256 l2ChainId;
     }
 
@@ -140,10 +144,10 @@ contract FaultDisputeGame is Clone, ISemver {
     GameType internal immutable GAME_TYPE;
 
     /// @notice WETH contract for holding ETH.
-    IDelayedWETH internal immutable WETH;
+    IManagedWETH internal immutable WETH;
 
-    /// @notice The anchor state registry.
-    IAnchorStateRegistry internal immutable ANCHOR_STATE_REGISTRY;
+    /// @notice The GameValidityOracle contract.
+    IGameValidityOracle internal immutable GAME_VALIDITY_ORACLE;
 
     /// @notice The chain ID of the L2 network this contract argues about.
     uint256 internal immutable L2_CHAIN_ID;
@@ -161,8 +165,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.9
-    string public constant version = "1.3.1-beta.9";
+    /// @custom:semver 1.4.0-beta.1
+    string public constant version = "1.4.0-beta.1";
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;
@@ -203,6 +207,15 @@ contract FaultDisputeGame is Clone, ISemver {
 
     /// @notice The latest finalized output root, serving as the anchor for output bisection.
     OutputRoot public startingOutputRoot;
+
+    /// @notice A boolean for whether or not the game type was respected when the game was created.
+    bool public wasRespectedGameTypeWhenCreated;
+
+    /// @notice A mapping of each claimant's refund mode credit.
+    mapping(address => uint256) public refundModeCredit;
+
+    /// @notice The bond distribution mode of the game.
+    BondDistributionMode public bondDistributionMode;
 
     /// @param _params Parameters for creating a new FaultDisputeGame.
     constructor(GameConstructorParams memory _params) {
@@ -248,7 +261,7 @@ contract FaultDisputeGame is Clone, ISemver {
         MAX_CLOCK_DURATION = _params.maxClockDuration;
         VM = _params.vm;
         WETH = _params.weth;
-        ANCHOR_STATE_REGISTRY = _params.anchorStateRegistry;
+        GAME_VALIDITY_ORACLE = _params.gameValidityOracle;
         L2_CHAIN_ID = _params.l2ChainId;
     }
 
@@ -270,7 +283,7 @@ contract FaultDisputeGame is Clone, ISemver {
         if (initialized) revert AlreadyInitialized();
 
         // Grab the latest anchor root.
-        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.anchors(GAME_TYPE);
+        (Hash root, uint256 rootBlockNumber) = GAME_VALIDITY_ORACLE.getAnchorRoot();
 
         // Should only happen if this is a new game type that hasn't been set up yet.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
@@ -320,10 +333,15 @@ contract FaultDisputeGame is Clone, ISemver {
         initialized = true;
 
         // Deposit the bond.
+        refundModeCredit[gameCreator()] += msg.value;
         WETH.deposit{ value: msg.value }();
 
         // Set the game's starting timestamp
         createdAt = Timestamp.wrap(uint64(block.timestamp));
+
+        // Set whether the game type was respected when the game was created.
+        wasRespectedGameTypeWhenCreated =
+            GameType.unwrap(GAME_VALIDITY_ORACLE.respectedGameType()) == GameType.unwrap(GAME_TYPE);
     }
 
     ////////////////////////////////////////////////////////////////
@@ -531,6 +549,7 @@ contract FaultDisputeGame is Clone, ISemver {
         subgames[_challengeIndex].push(claimData.length - 1);
 
         // Deposit the bond.
+        refundModeCredit[msg.sender] += msg.value;
         WETH.deposit{ value: msg.value }();
 
         // Emit the appropriate event for the attack or defense.
@@ -695,9 +714,6 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Update the status and emit the resolved event, note that we're performing an assignment here.
         emit Resolved(status = status_);
-
-        // Try to update the anchor state, this should not revert.
-        ANCHOR_STATE_REGISTRY.tryUpdateAnchorState();
     }
 
     /// @notice Resolves the subgame rooted at the given claim index. `_numToResolve` specifies how many children of
@@ -706,7 +722,7 @@ contract FaultDisputeGame is Clone, ISemver {
     ///         subgame.
     /// @dev This function must be called bottom-up in the DAG
     ///      A subgame is a tree of claims that has a maximum depth of 1.
-    ///      A subgame root claims is valid if, and only if, all of its child claims are invalid.
+    ///      A subgame root claim is valid if, and only if, all of its child claims are invalid.
     ///      At the deepest level in the DAG, a claim is invalid if there's a successful step against it.
     /// @param _claimIndex The index of the subgame root claim to resolve.
     /// @param _numToResolve The number of subgames to resolve in this call. If the input is `0`, and this is the first
@@ -913,12 +929,50 @@ contract FaultDisputeGame is Clone, ISemver {
         requiredBond_ = assumedBaseFee * requiredGas;
     }
 
-    /// @notice Claim the credit belonging to the recipient address.
+    /// @notice Claim the credit belonging to the recipient address. Reverts if the game isn't
+    ///         finalized, if the recipient has no credit to claim, or if the bond transfer
+    ///         fails. If the game is finalized but no bond has been paid out yet, this method
+    ///         will determine the bond distribution mode and also try to update anchor game.
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
-        // Remove the credit from the recipient prior to performing the external call.
-        uint256 recipientCredit = credit[_recipient];
-        credit[_recipient] = 0;
+        // Game must be finalized before any credit can be claimed.
+        (bool finalized, string memory notFinalizedReason) =
+            GAME_VALIDITY_ORACLE.isGameFinalized(IDisputeGame(address(this)));
+        if (!finalized) {
+            revert GameNotFinalized(notFinalizedReason);
+        }
+
+        // Determine the bond distribution mode if we haven't done so already.
+        if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
+            // Try to update the anchor game first. Won't always succeed because delays can lead
+            // to situations in which this game might not be eligible to be a new anchor game.
+            try GAME_VALIDITY_ORACLE.setAnchorGame(IDisputeGame(address(this))) { } catch { }
+
+            // Determine the bond distribution mode based on the game's status. Here we're looking
+            // for the validity conditions that would invalidate a game other than the game
+            // resolving in favor of the challenger.
+            if (
+                GAME_VALIDITY_ORACLE.isGameBlacklisted(IDisputeGame(address(this)))
+                    || GAME_VALIDITY_ORACLE.isGameRetired(IDisputeGame(address(this)))
+            ) {
+                bondDistributionMode = BondDistributionMode.REFUND;
+            } else {
+                bondDistributionMode = BondDistributionMode.NORMAL;
+            }
+        }
+
+        // Either normal or refund mode credits will be assigned
+        uint256 recipientCredit;
+        if (bondDistributionMode == BondDistributionMode.REFUND) {
+            recipientCredit = refundModeCredit[_recipient];
+            refundModeCredit[_recipient] = 0;
+        } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
+            recipientCredit = credit[_recipient];
+            credit[_recipient] = 0;
+        } else {
+            // We shouldn't get here, but sanity check just in case.
+            revert InvalidBondDistributionMode();
+        }
 
         // Revert if the recipient has no credit to claim.
         if (recipientCredit == 0) revert NoCreditToClaim();
@@ -996,13 +1050,13 @@ contract FaultDisputeGame is Clone, ISemver {
     }
 
     /// @notice Returns the WETH contract for holding ETH.
-    function weth() external view returns (IDelayedWETH weth_) {
+    function weth() external view returns (IManagedWETH weth_) {
         weth_ = WETH;
     }
 
-    /// @notice Returns the anchor state registry contract.
-    function anchorStateRegistry() external view returns (IAnchorStateRegistry registry_) {
-        registry_ = ANCHOR_STATE_REGISTRY;
+    /// @notice Returns the GameValidityOracle contract.
+    function gameValidityOracle() external view returns (IGameValidityOracle oracle_) {
+        oracle_ = GAME_VALIDITY_ORACLE;
     }
 
     /// @notice Returns the chain ID of the L2 network this contract argues about.
@@ -1018,14 +1072,8 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The recipient of the bond.
     /// @param _bonded The claim to pay out the bond of.
     function _distributeBond(address _recipient, ClaimData storage _bonded) internal {
-        // Set all bits in the bond value to indicate that the bond has been paid out.
-        uint256 bond = _bonded.bond;
-
         // Increase the recipient's credit.
-        credit[_recipient] += bond;
-
-        // Unlock the bond.
-        WETH.unlock(_recipient, bond);
+        credit[_recipient] += _bonded.bond;
     }
 
     /// @notice Verifies the integrity of an execution bisection subgame's root claim. Reverts if the claim

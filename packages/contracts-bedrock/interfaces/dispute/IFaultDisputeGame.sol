@@ -124,6 +124,7 @@ interface IFaultDisputeGame is IDisputeGame {
     function subgames(uint256, uint256) external view returns (uint256);
     function version() external view returns (string memory);
     function vm() external view returns (IBigStepper vm_);
+    function wasRespectedGameTypeWhenCreated() external view returns (bool);
     function weth() external view returns (IDelayedWETH weth_);
 
     function __constructor__(GameConstructorParams memory _params) external;
