@@ -31,36 +31,31 @@ contract AnchorStateRegistry is Initializable, ISemver {
     event GameRetirementTimestampSet(uint64 timestamp);
 
     /// @notice Semantic version.
-    // TODO: update?
-    /// @custom:semver 2.0.1-beta.6
-    string public constant version = "2.0.1-beta.6";
+    /// @custom:semver 3.0.0-beta.1
+    string public constant version = "3.0.0-beta.1";
 
-    /// @notice DisputeGameFactory address.
-    // TODO: find storage slot
-    IDisputeGameFactory public disputeGameFactory;
-
-    /// @notice The delay between when a dispute game is resolved and when it can be considered finalized.
-    // TODO: find storage slot
-    uint256 public disputeGameFinalityDelaySeconds;
-
-    // TODO: storage slot issue
-    // / @notice Returns the anchor state for the given game type.
-    // mapping(GameType => OutputRoot) public anchors;
-
-    // TODO: determine if this belongs
-    // uint256 __gap0;
+    /// @custom:legacy
+    /// @custom:spacer anchors
+    /// @notice Spacer taking up the legacy `anchors` mapping slot.
+    bytes32 private spacer_1_0_32;
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
-    /// @notice Returns whether a game is blacklisted.
-    mapping(IDisputeGame => bool) public isGameBlacklisted;
+    /// @notice DisputeGameFactory address.
+    IDisputeGameFactory public disputeGameFactory;
+
+    /// @notice The delay between when a dispute game is resolved and when it can be considered finalized.
+    uint256 public disputeGameFinalityDelaySeconds;
 
     uint64 public gameRetirementTimestamp;
 
     GameType public respectedGameType;
 
     IFaultDisputeGame internal _anchorGame;
+
+    /// @notice Returns whether a game is blacklisted.
+    mapping(IDisputeGame => bool) public isGameBlacklisted;
 
     constructor() {
         _disableInitializers();
@@ -174,7 +169,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Game resolvedAt timestamp must be non-zero
         // Game resolvedAt timestamp must be more than airgap period seconds ago
         uint256 _resolvedAt = _game.resolvedAt().raw();
-        if (_resolvedAt == 0 || _resolvedAt <= block.timestamp - disputeGameFinalityDelaySeconds) {
+        if (_resolvedAt == 0 || block.timestamp - _resolvedAt <= disputeGameFinalityDelaySeconds) {
             return false;
         }
         return true;

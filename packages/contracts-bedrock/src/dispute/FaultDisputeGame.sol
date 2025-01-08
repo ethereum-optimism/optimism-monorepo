@@ -164,8 +164,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.9
-    string public constant version = "1.3.1-beta.9";
+    /// @custom:semver 1.4.0-beta.1
+    string public constant version = "1.4.0-beta.1";
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;
@@ -332,7 +332,6 @@ contract FaultDisputeGame is Clone, ISemver {
         initialized = true;
 
         // Deposit the bond.
-        // TODO: make sure crediting to gameCreator is correct
         refundModeCredit[gameCreator()] += msg.value;
         WETH.deposit{ value: msg.value }();
 
@@ -929,10 +928,6 @@ contract FaultDisputeGame is Clone, ISemver {
         requiredBond_ = assumedBaseFee * requiredGas;
     }
 
-    function _tryUpdateAnchorState() internal {
-        try ANCHOR_STATE_REGISTRY.setAnchorState(IFaultDisputeGame(address(this))) { } catch { }
-    }
-
     /// @notice Claim the credit belonging to the recipient address.
     /// @dev Reverts if the game isn't finalized, if the recipient has no credit to claim, or if the bond transfer
     /// fails.
@@ -940,13 +935,14 @@ contract FaultDisputeGame is Clone, ISemver {
     /// distribution mode and also try to update the anchor state registry's anchor game.
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
+        // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
+        if (!ANCHOR_STATE_REGISTRY.isGameFinalized(IFaultDisputeGame(address(this)))) revert GameNotFinalized();
+
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
-            // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
-            if (!ANCHOR_STATE_REGISTRY.isGameFinalized(IFaultDisputeGame(address(this)))) revert GameNotFinalized();
+            // If the game is finalized, try updating anchor state...
+            try ANCHOR_STATE_REGISTRY.setAnchorState(IFaultDisputeGame(address(this))) { } catch { }
 
-            // If the game is finalized, update the anchor state and determine the bond distribution mode.
-            _tryUpdateAnchorState();
-
+            // and determine the bond distribution mode.
             if (
                 ANCHOR_STATE_REGISTRY.isGameBlacklisted(IFaultDisputeGame(address(this)))
                     || ANCHOR_STATE_REGISTRY.isGameRetired(IFaultDisputeGame(address(this)))
@@ -1070,15 +1066,8 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The recipient of the bond.
     /// @param _bonded The claim to pay out the bond of.
     function _distributeBond(address _recipient, ClaimData storage _bonded) internal {
-        // TODO: is below comment true?
-        // Set all bits in the bond value to indicate that the bond has been paid out.
-        uint256 bond = _bonded.bond;
-
         // Increase the recipient's credit.
-        credit[_recipient] += bond;
-
-        // Unlock the bond.
-        WETH.unlock(_recipient, bond);
+        credit[_recipient] += _bonded.bond;
     }
 
     /// @notice Verifies the integrity of an execution bisection subgame's root claim. Reverts if the claim

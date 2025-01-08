@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
-interface IDelayedWETH {
+interface IManagedWETH {
     struct WithdrawalRequest {
         uint256 amount;
         uint256 timestamp;
@@ -17,16 +17,13 @@ interface IDelayedWETH {
     receive() external payable;
 
     function config() external view returns (ISuperchainConfig);
-    function delay() external view returns (uint256);
+    function hold(address _guy) external;
     function hold(address _guy, uint256 _wad) external;
     function initialize(address _owner, ISuperchainConfig _config) external;
     function owner() external view returns (address);
     function recover(uint256 _wad) external;
     function transferOwnership(address newOwner) external; // nosemgrep
     function renounceOwnership() external;
-    function unlock(address _guy, uint256 _wad) external;
-    function withdraw(address _guy, uint256 _wad) external;
-    function withdrawals(address, address) external view returns (uint256 amount, uint256 timestamp);
     function version() external view returns (string memory);
 
     function withdraw(uint256 _wad) external;

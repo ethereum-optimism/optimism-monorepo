@@ -31,7 +31,7 @@ import {
     Unauthorized,
     Unproven
 } from "src/libraries/PortalErrors.sol";
-import { Claim } from "src/dispute/lib/Types.sol";
+import { Claim, GameType } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -111,17 +111,20 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice A mapping of withdrawal hashes to proof submitters to `ProvenWithdrawal` data.
     mapping(bytes32 => mapping(address => ProvenWithdrawal)) public provenWithdrawals;
 
-    /// @notice A mapping of dispute game addresses to whether or not they are blacklisted.
-    // TODO: storage slot
-    // mapping(IDisputeGame => bool) public disputeGameBlacklist;
+    /// @custom:legacy
+    /// @custom:spacer disputeGameBlacklist
+    /// @notice Spacer taking up the legacy `disputeGameBlacklist` mapping slot.
+    bytes32 private spacer_58_0_32;
 
-    /// @notice The game type that the OptimismPortal consults for output proposals.
-    // TODO: storage slot
-    // GameType public respectedGameType;
+    /// @custom:legacy
+    /// @custom:spacer respectedGameType
+    /// @notice Spacer taking up the legacy `respectedGameType` GameType slot.
+    GameType private spacer_59_0_4;
 
-    /// @notice The timestamp at which the respected game type was last updated.
-    // TODO: storage slot
-    // uint64 public respectedGameTypeUpdatedAt;
+    /// @custom:legacy
+    /// @custom:spacer respectedGameTypeUpdatedAt
+    /// @notice Spacer taking up the legacy `respectedGameTypeUpdatedAt` uint64 slot.
+    uint64 private spacer_59_4_8;
 
     /// @notice Mapping of withdrawal hashes to addresses that have submitted a proof for the
     ///         withdrawal. Original OptimismPortal contract only allowed one proof to be submitted
@@ -139,6 +142,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     ///         It is not safe to trust `ERC20.balanceOf` as it may lie.
     uint256 internal _balance;
 
+    /// @notice Address of the AnchorStateRegistry.
     IAnchorStateRegistry public anchorStateRegistry;
 
     /// @notice Emitted when a transaction is deposited from L1 to L2.
@@ -175,13 +179,12 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Semantic version.
     // TODO: update?
-    /// @custom:semver 3.11.0-beta.9
+    /// @custom:semver 4.0.0-beta.1
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.9";
+        return "4.0.0-beta.1";
     }
 
     /// @notice Constructs the OptimismPortal contract.
-    // TODO: move maturity delay to initializer?
     constructor(uint256 _proofMaturityDelaySeconds) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         _disableInitializers();
