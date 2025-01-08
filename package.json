@@ -80,5 +80,6 @@
   },
   "dependencies": {
     "@changesets/cli": "^2.27.1"
-  }
+  },
+  "packageManager": "pnpm@8.15.9"
 }
