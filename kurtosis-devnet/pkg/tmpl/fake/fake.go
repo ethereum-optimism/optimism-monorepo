@@ -14,5 +14,8 @@ func NewFakeTemplateContext(enclave string) *tmpl.TemplateContext {
 		tmpl.WithFunction("localContractArtifacts", func(layer string) (string, error) {
 			return fmt.Sprintf("http://host.docker.internal:0/contracts-bundle-%s.tar.gz", enclave), nil
 		}),
+		tmpl.WithFunction("localPrestate", func() (string, error) {
+			return "http://host.docker.internal:0/proofs/op-program/cannon", nil
+		}),
 	)
 }
