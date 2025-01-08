@@ -23,12 +23,6 @@ interface ICrossL2Inbox {
     /// @notice Thrown when a non-written transient storage slot is attempted to be read from.
     error NotEntered();
 
-    /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier timestamp.
-    error InvalidTimestamp();
-
-    /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier chain ID.
-    error InvalidChainId();
-
     /// @notice Thrown when trying to execute a cross chain message on a deposit transaction.
     error NoExecutingDeposits();
 

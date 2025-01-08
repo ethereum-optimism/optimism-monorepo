@@ -14,8 +14,6 @@ import {
     Identifier,
     NotEntered,
     NoExecutingDeposits,
-    InvalidTimestamp,
-    InvalidChainId,
     NotDepositor,
     InteropStartAlreadySet
 } from "src/L2/CrossL2Inbox.sol";
@@ -175,92 +173,6 @@ contract CrossL2InboxTest is Test {
 
         // Expect a revert with the NoExecutingDeposits selector
         vm.expectRevert(NoExecutingDeposits.selector);
-
-        // Call the validateMessage function
-        crossL2Inbox.validateMessage(_id, _messageHash);
-    }
-
-    /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp later
-    /// than current block.timestamp.
-    function testFuzz_validateMessage_invalidTimestamp_reverts(
-        Identifier memory _id,
-        bytes32 _messageHash
-    )
-        external
-        setInteropStart
-    {
-        // Ensure is not a deposit transaction
-        vm.mockCall({
-            callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
-            returnData: abi.encode(false)
-        });
-
-        // Ensure that the id's timestamp is invalid (greater than the current block timestamp)
-        _id.timestamp = bound(_id.timestamp, block.timestamp + 1, type(uint256).max);
-
-        // Expect a revert with the InvalidTimestamp selector
-        vm.expectRevert(InvalidTimestamp.selector);
-
-        // Call the validateMessage function
-        crossL2Inbox.validateMessage(_id, _messageHash);
-    }
-
-    /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a timestamp earlier
-    /// than INTEROP_START timestamp
-    function testFuzz_validateMessage_invalidTimestampInteropStart_reverts(
-        Identifier memory _id,
-        bytes32 _messageHash
-    )
-        external
-        setInteropStart
-    {
-        // Ensure that the id's timestamp is invalid (less than or equal to interopStartTime)
-        _id.timestamp = bound(_id.timestamp, 0, crossL2Inbox.interopStart());
-
-        // Ensure is not a deposit transaction
-        vm.mockCall({
-            callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
-            returnData: abi.encode(false)
-        });
-
-        // Expect a revert with the InvalidTimestamp selector
-        vm.expectRevert(InvalidTimestamp.selector);
-
-        // Call the validateMessage function
-        crossL2Inbox.validateMessage(_id, _messageHash);
-    }
-
-    /// @dev Tests that the `validateMessage` function reverts when called with an identifier with a chain ID not in the
-    /// dependency set.
-    function testFuzz_validateMessage_invalidChainId_reverts(
-        Identifier memory _id,
-        bytes32 _messageHash
-    )
-        external
-        setInteropStart
-    {
-        // Ensure that the timestamp is valid (less than or equal to the current block timestamp and greater than
-        // interopStartTime)
-        _id.timestamp = bound(_id.timestamp, interopStartTime + 1, block.timestamp);
-
-        // Ensure that the chain ID is NOT in the dependency set.
-        vm.mockCall({
-            callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeCall(IL1BlockInterop.isInDependencySet, (_id.chainId)),
-            returnData: abi.encode(false)
-        });
-
-        // Ensure is not a deposit transaction
-        vm.mockCall({
-            callee: Predeploys.L1_BLOCK_ATTRIBUTES,
-            data: abi.encodeCall(IL1BlockInterop.isDeposit, ()),
-            returnData: abi.encode(false)
-        });
-
-        // Expect a revert with the InvalidChainId selector
-        vm.expectRevert(InvalidChainId.selector);
 
         // Call the validateMessage function
         crossL2Inbox.validateMessage(_id, _messageHash);

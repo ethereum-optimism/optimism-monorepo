@@ -43,8 +43,7 @@ func TestDecodeExecutingMessageLog(t *testing.T) {
 	//     uint256 timestamp;
 	//     uint256 chainId;
 	// }
-	// function executeMessage(Identifier calldata _id,
-	//     address _target, bytes calldata _message) external payable;
+	// event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
 
 	originAddr := common.HexToAddress("0x5fbdb2315678afecb367f032d93f642f64180aa3")
 	payloadHash := common.HexToHash("0xc3f57e1f0dd62a4f77787d834029bfeaab8894022c47edbe13b044fb658c9190")

@@ -106,14 +106,13 @@ type SuperSystem interface {
 	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
 	// AddDependency adds a dependency (by chain ID) to the given chain
 	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
-	// ExecuteMessage calls the CrossL2Inbox executeMessage function
-	ExecuteMessage(
+	// ValidateMessage calls the CrossL2Inbox ValidateMessage function
+	ValidateMessage(
 		ctx context.Context,
 		id string,
 		sender string,
 		msgIdentifier supervisortypes.Identifier,
-		target common.Address,
-		message []byte,
+		msgHash [32]byte,
 		expectedError error,
 	) (*types.Receipt, error)
 	// Access a contract on a network by name
@@ -733,17 +732,16 @@ func (s *interopE2ESystem) SendL2Tx(
 		newApply)
 }
 
-// ExecuteMessage calls the CrossL2Inbox executeMessage function
+// ValidateMessage calls the CrossL2Inbox ValidateMessage function
 // it uses the L2's chain ID, username key, and geth client.
-// expectedError represents the error returned by `ExecuteMessage` if it is expected.
+// expectedError represents the error returned by `ValidateMessage` if it is expected.
 // the returned err is related to `WaitMined`
-func (s *interopE2ESystem) ExecuteMessage(
+func (s *interopE2ESystem) ValidateMessage(
 	ctx context.Context,
 	id string,
 	sender string,
 	msgIdentifier supervisortypes.Identifier,
-	target common.Address,
-	message []byte,
+	msgHash [32]byte,
 	expectedError error,
 ) (*types.Receipt, error) {
 	secret := s.UserKey(id, sender)
@@ -762,14 +760,14 @@ func (s *interopE2ESystem) ExecuteMessage(
 		Timestamp:   new(big.Int).SetUint64(msgIdentifier.Timestamp),
 		ChainId:     msgIdentifier.ChainID.ToBig(),
 	}
-	tx, err := contract.InboxTransactor.ExecuteMessage(auth, identifier, target, message)
+	tx, err := contract.InboxTransactor.ValidateMessage(auth, identifier, msgHash)
 	if expectedError != nil {
 		require.ErrorContains(s.t, err, expectedError.Error())
 		return nil, err
 	} else {
 		require.NoError(s.t, err)
 	}
-	s.logger.Info("Executing message", "tx", tx.Hash(), "to", tx.To(), "target", target, "data", hexutil.Bytes(tx.Data()))
+	s.logger.Info("Validating message", "tx", tx.Hash(), "to", tx.To(), "data", hexutil.Bytes(tx.Data()))
 	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
 }
 
