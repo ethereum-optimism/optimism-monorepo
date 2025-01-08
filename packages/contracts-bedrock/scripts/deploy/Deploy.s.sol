@@ -140,7 +140,7 @@ contract Deploy is Deployer {
             PermissionedDelayedWETH: getAddress("PermissionedDelayedWETHImpl"),
             AnchorStateRegistry: getAddress("AnchorStateRegistryImpl"),
             OptimismMintableERC20Factory: getAddress("OptimismMintableERC20FactoryImpl"),
-            OptimismPortal: getAddress("OptimismPortalImpl"),
+            OptimismPortal: getAddress("OptimismPortal2Impl"),
             SystemConfig: getAddress("SystemConfigImpl"),
             L1ERC721Bridge: getAddress("L1ERC721BridgeImpl"),
             ProtocolVersions: getAddress("ProtocolVersionsImpl"),
