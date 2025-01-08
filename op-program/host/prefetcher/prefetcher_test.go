@@ -512,6 +512,16 @@ func TestFetchL2Code(t *testing.T) {
 	})
 }
 
+func TestFetchL2BlockDataNoBlockExecution(t *testing.T) {
+	prefetcher, _, _, _, _ := createPrefetcher(t)
+	hinter := func(v preimage.Hint) {
+		err := prefetcher.Hint(v.Hint())
+		require.ErrorContains(t, err, "this prefetcher does not support native block execution")
+	}
+	oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), preimage.HinterFn(hinter))
+	_ = oracle.BlockDataByHash(common.Hash{0xad})
+}
+
 func TestBadHints(t *testing.T) {
 	prefetcher, _, _, _, kv := createPrefetcher(t)
 	hash := common.Hash{0xad}

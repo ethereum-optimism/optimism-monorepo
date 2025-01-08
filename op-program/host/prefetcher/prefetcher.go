@@ -89,6 +89,11 @@ func NewPrefetcher(
 
 func (p *Prefetcher) Hint(hint string) error {
 	p.logger.Trace("Received hint", "hint", hint)
+
+	// This is a special case to force block execution in order to populate the cache with preimage data
+	if hintType, _, err := parseHint(hint); err == nil && hintType == l2.HintL2BlockData {
+		return p.prefetch(context.Background(), hint)
+	}
 	p.lastHint = hint
 	return nil
 }
@@ -306,12 +311,23 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if len(hintBytes) != 32 {
 			return fmt.Errorf("invalid L2 block receipts hint: %x", hint)
 		}
-		hash := common.Hash(hintBytes)
-		if err := NativeReExecuteBlock(ctx, p, hash); err != nil {
+		blockHash := common.Hash(hintBytes)
+		key := BlockDataKey(blockHash)
+		if _, err := p.kvStore.Get(key.Key()); err == nil {
+			return nil
+		}
+		if err := p.NativeReExecuteBlock(ctx, blockHash); err != nil {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
+		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
+}
+
+type BlockDataKey [32]byte
+
+func (p BlockDataKey) Key() [32]byte {
+	return crypto.Keccak256Hash([]byte("block_data"), p[:])
 }
 
 func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {
