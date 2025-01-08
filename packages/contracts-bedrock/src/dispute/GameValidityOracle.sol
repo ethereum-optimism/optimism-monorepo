@@ -20,12 +20,24 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 /// not valid. The GameValidityOracle also provides the anchor state previously provided by the
 /// AnchorStateRegistry that can be used to create new dispute games.
 contract GameValidityOracle is Initializable, ISemver {
-    error GameValidityOracle_AnchorGameIsNewer(uint256 anchorGameL2BlockNumber, uint256 candidateGameL2BlockNumber);
+    error GameValidityOracle_CandidateGameNotValid(string reason);
+    error GameValidityOracle_AnchorGameIsNewer();
+    error GameValidityOracle_OnlyGuardian();
 
-    // TODO: comment these
+    /// @notice Emitted when a new anchor game is set.
+    /// @param newAnchorGame The new anchor game.
     event AnchorGameSet(IDisputeGame newAnchorGame);
+
+    /// @notice Emitted when the respected game type is set.
+    /// @param gameType The new respected game type.
     event RespectedGameTypeSet(GameType gameType);
+
+    /// @notice Emitted when a dispute game is blacklisted.
+    /// @param game The blacklisted game.
     event DisputeGameBlacklisted(IDisputeGame game);
+
+    /// @notice Emitted when the game retirement timestamp is set.
+    /// @param timestamp The new game retirement timestamp.
     event GameRetirementTimestampSet(uint64 timestamp);
 
     /// @notice Semantic version.
@@ -38,92 +50,123 @@ contract GameValidityOracle is Initializable, ISemver {
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory public disputeGameFactory;
 
-    /// @notice The delay between when a dispute game is resolved and when it can be considered finalized.
+    /// @notice Delay between game resolution and finalization.
     uint256 public disputeGameFinalityDelaySeconds;
 
+    /// @notice Timestamp after which games are considered retired.
     uint64 public gameRetirementTimestamp;
 
+    /// @notice The game type that is respected for output proposals.
     GameType public respectedGameType;
 
+    /// @notice The current anchor game.
     IDisputeGame internal anchorGame;
 
+    /// @notice The initial anchor root.
     OutputRoot internal initialAnchorRoot;
 
     /// @notice Returns whether a game is blacklisted.
     mapping(IDisputeGame => bool) public isGameBlacklisted;
 
+    /// @notice Constructor to disable initializers.
     constructor() {
         _disableInitializers();
     }
 
     /// @notice Initializes the contract.
-    /// @param _startingAnchorRoot A starting anchor root.
-    /// @param _disputeGameFactory DisputeGameFactory address.
-    /// @param _disputeGameFinalityDelaySeconds The delay between when a dispute game is resolved and when it can be
-    /// considered finalized.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
+    /// @param _initialAnchorRoot A starting anchor root.
+    /// @param _disputeGameFactory DisputeGameFactory address.
+    /// @param _disputeGameFinalityDelaySeconds Delay between game resolution and finalization.
     function initialize(
-        OutputRoot memory _startingAnchorRoot,
+        ISuperchainConfig _superchainConfig,
+        OutputRoot memory _initialAnchorRoot,
         IDisputeGameFactory _disputeGameFactory,
-        uint256 _disputeGameFinalityDelaySeconds,
-        ISuperchainConfig _superchainConfig
+        uint256 _disputeGameFinalityDelaySeconds
     )
         external
         initializer
     {
-        initialAnchorRoot = _startingAnchorRoot;
+        superchainConfig = _superchainConfig;
+        initialAnchorRoot = _initialAnchorRoot;
         disputeGameFactory = _disputeGameFactory;
         disputeGameFinalityDelaySeconds = _disputeGameFinalityDelaySeconds;
-        superchainConfig = _superchainConfig;
     }
 
-    function getAnchorState() public view returns (OutputRoot memory) {
-        if (anchorGame == IDisputeGame(address(0))) return initialAnchorRoot;
-        if (isGameBlacklisted[anchorGame]) revert GameValidityOracle_GameBlacklisted(anchorGame);
-        return
-            OutputRoot({ l2BlockNumber: anchorGame.l2BlockNumber(), root: Hash.wrap(anchorGame.rootClaim().raw()) });
-    }
-
-    function setAnchorState(IDisputeGame _game) external {
-        assertGameValid(_game);
-
-        uint256 anchorL2BlockNumber = anchorGame.l2BlockNumber();
-        uint256 gameL2BlockNumber = _game.l2BlockNumber();
-        if (gameL2BlockNumber <= anchorL2BlockNumber) {
-            revert GameValidityOracle_AnchorGameIsNewer(anchorL2BlockNumber, gameL2BlockNumber);
+    /// @notice Returns the current anchor root.
+    /// @return The current anchor root.
+    function getAnchorRoot() public view returns (OutputRoot memory) {
+        // If we don't have an anchor game yet, return the initial anchor root.
+        if (anchorGame == IDisputeGame(address(0))) {
+            return initialAnchorRoot;
         }
+
+        // Revert if the anchor game is blacklisted.
+        if (isGameBlacklisted[anchorGame]) {
+            revert GameValidityOracle_GameBlacklisted(anchorGame);
+        }
+
+        // Otherwise, return the anchor root.
+        // We don't revert if the anchor game is retired because it's very likely that this
+        // scenario could happen in practice. If you want to stop the current anchor game from
+        // being used, blacklist it.
+        return OutputRoot({ l2BlockNumber: anchorGame.l2BlockNumber(), root: Hash.wrap(anchorGame.rootClaim().raw()) });
+    }
+
+    /// @notice Updates the anchor game.
+    /// @param _game New candidate anchor game.
+    function setAnchorGame(IDisputeGame _game) external {
+        // Check if the candidate game is valid.
+        (bool valid, string memory reason) = isGameValid(_game);
+        if (!valid) {
+            revert GameValidityOracle_CandidateGameNotValid(reason);
+        }
+
+        // Check if the candidate game is newer than the current anchor game.
+        if (_game.l2BlockNumber() <= anchorGame.l2BlockNumber()) {
+            revert GameValidityOracle_AnchorGameIsNewer();
+        }
+
+        // Update the anchor game.
         anchorGame = _game;
         emit AnchorGameSet(_game);
     }
 
+    /// @notice Allows the Guardian to retire all existing games.
     function retireAllExistingGames() external {
-        if (msg.sender != _guardian()) revert Unauthorized();
+        if (msg.sender != superchainConfig.guardian()) revert GameValidityOracle_OnlyGuardian();
         gameRetirementTimestamp = uint64(block.timestamp);
         emit GameRetirementTimestampSet(gameRetirementTimestamp);
     }
 
-    /// @notice Blacklists a dispute game. Should only be used in the event that a dispute game resolves incorrectly.
+    /// @notice Allows the Guardian to blacklist a dispute game.
     /// @param _disputeGame Dispute game to blacklist.
     function setGameBlacklisted(IDisputeGame _disputeGame) external {
-        if (msg.sender != _guardian()) revert Unauthorized();
+        if (msg.sender != superchainConfig.guardian()) revert GameValidityOracle_OnlyGuardian();
         isGameBlacklisted[_disputeGame] = true;
         emit DisputeGameBlacklisted(_disputeGame);
     }
 
-    /// @notice Sets the respected game type. Changing this value can alter the security properties of the system,
-    ///         depending on the new game's behavior.
+    /// @notice Allows the Guardian to set the respected game type.
     /// @param _gameType The game type to consult for output proposals.
     function setRespectedGameType(GameType _gameType) external {
-        if (msg.sender != _guardian()) revert Unauthorized();
+        if (msg.sender != superchainConfig.guardian()) revert GameValidityOracle_OnlyGuardian();
         respectedGameType = _gameType;
         emit RespectedGameTypeSet(_gameType);
     }
 
+    /// @notice Returns whether a game is retired.
+    /// @param _game The game to check.
+    /// @return Whether the game is retired.
     function isGameRetired(IDisputeGame _game) public view returns (bool) {
         // Must be created after the gameRetirementTimestamp.
         return _game.createdAt().raw() <= gameRetirementTimestamp;
     }
 
+    /// @notice Returns whether a game is maybe valid.
+    /// @param _game The game to check.
+    /// @return Whether the game is maybe valid.
+    /// @return Reason why the game is not maybe valid.
     function isGameMaybeValid(IDisputeGame _game) public view returns (bool, string memory) {
         // Grab the game and game data.
         (GameType gameType, Claim rootClaim, bytes memory extraData) = _game.gameData();
@@ -160,6 +203,18 @@ contract GameValidityOracle is Initializable, ISemver {
         return (true, "");
     }
 
+    /// @notice Returns whether a game is maybe valid.
+    /// @param _game The game to check.
+    /// @return Whether the game is maybe valid.
+    function isGameMaybeValid(IDisputeGame _game) public view returns (bool) {
+        (bool ret,) = isGameMaybeValid(_game);
+        return ret;
+    }
+
+    /// @notice Returns whether a game is valid.
+    /// @param _game The game to check.
+    /// @return Whether the game is valid.
+    /// @return Reason why the game is not valid.
     function isGameValid(IDisputeGame _game) public view returns (bool, string memory) {
         // Game must be maybe valid.
         (bool maybeValid, string memory notMaybeValidReason) = isGameMaybeValid(_game);
@@ -176,6 +231,18 @@ contract GameValidityOracle is Initializable, ISemver {
         return (true, "");
     }
 
+    /// @notice Returns whether a game is valid.
+    /// @param _game The game to check.
+    /// @return Whether the game is valid.
+    function isGameValid(IDisputeGame _game) public view returns (bool) {
+        (bool ret,) = isGameValid(_game);
+        return ret;
+    }
+
+    /// @notice Returns whether a game is finalized.
+    /// @param _game The game to check.
+    /// @return Whether the game is finalized.
+    /// @return Reason why the game is not finalized.
     function isGameFinalized(IDisputeGame _game) public view returns (bool, string memory) {
         // Game status must be CHALLENGER_WINS or DEFENDER_WINS
         if (_game.status() != GameStatus.DEFENDER_WINS && _game.status() != GameStatus.CHALLENGER_WINS) {
@@ -196,7 +263,11 @@ contract GameValidityOracle is Initializable, ISemver {
         return (true, "");
     }
 
-    function _guardian() internal view returns (address) {
-        return superchainConfig.guardian();
+    /// @notice Returns whether a game is finalized.
+    /// @param _game The game to check.
+    /// @return Whether the game is finalized.
+    function isGameFinalized(IDisputeGame _game) public view returns (bool) {
+        (bool ret,) = isGameFinalized(_game);
+        return ret;
     }
 }
