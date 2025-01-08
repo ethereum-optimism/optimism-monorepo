@@ -185,6 +185,8 @@ func (c Config) TraceTypeEnabled(t types.TraceType) bool {
 	return slices.Contains(c.TraceTypes, t)
 }
 
+var IS_TEST = false
+
 func (c Config) Check() error {
 	if c.L1EthRpc == "" {
 		return ErrMissingL1EthRPC
@@ -214,15 +216,18 @@ func (c Config) Check() error {
 		if c.Cannon.VmBin == "" {
 			return ErrMissingCannonBin
 		}
-		if _, err := os.Stat(c.Cannon.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingCannonBin, err)
-		}
 		if c.Cannon.Server == "" {
 			return ErrMissingCannonServer
 		}
-		if _, err := os.Stat(c.Cannon.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingCannonServer, err)
+		if !IS_TEST {
+			if _, err := os.Stat(c.Cannon.VmBin); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingCannonBin, err)
+			}
+			if _, err := os.Stat(c.Cannon.Server); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingCannonServer, err)
+			}
 		}
+
 		if c.Cannon.Network == "" {
 			if c.Cannon.RollupConfigPath == "" {
 				return ErrMissingCannonRollupConfig
@@ -258,15 +263,18 @@ func (c Config) Check() error {
 		if c.Asterisc.VmBin == "" {
 			return ErrMissingAsteriscBin
 		}
-		if _, err := os.Stat(c.Asterisc.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscBin, err)
-		}
 		if c.Asterisc.Server == "" {
 			return ErrMissingAsteriscServer
 		}
-		if _, err := os.Stat(c.Asterisc.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscServer, err)
+		if !IS_TEST {
+			if _, err := os.Stat(c.Asterisc.VmBin); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingAsteriscBin, err)
+			}
+			if _, err := os.Stat(c.Asterisc.Server); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingAsteriscServer, err)
+			}
 		}
+
 		if c.Asterisc.Network == "" {
 			if c.Asterisc.RollupConfigPath == "" {
 				return ErrMissingAsteriscRollupConfig
@@ -299,15 +307,18 @@ func (c Config) Check() error {
 		if c.AsteriscKona.VmBin == "" {
 			return ErrMissingAsteriscKonaBin
 		}
-		if _, err := os.Stat(c.AsteriscKona.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaBin, err)
-		}
 		if c.AsteriscKona.Server == "" {
 			return ErrMissingAsteriscKonaServer
 		}
-		if _, err := os.Stat(c.AsteriscKona.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaServer, err)
+		if !IS_TEST {
+			if _, err := os.Stat(c.AsteriscKona.VmBin); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaBin, err)
+			}
+			if _, err := os.Stat(c.AsteriscKona.Server); err != nil {
+				return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaServer, err)
+			}
 		}
+
 		if c.AsteriscKona.Network == "" {
 			if c.AsteriscKona.RollupConfigPath == "" {
 				return ErrMissingAsteriscKonaRollupConfig

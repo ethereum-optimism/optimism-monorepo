@@ -43,6 +43,10 @@ var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypeP
 var asteriscTraceTypes = []types.TraceType{types.TraceTypeAsterisc}
 var asteriscKonaTraceTypes = []types.TraceType{types.TraceTypeAsteriscKona}
 
+func init() {
+	IS_TEST = true
+}
+
 func applyValidConfigForCannon(cfg *Config) {
 	cfg.Cannon.VmBin = validCannonBin
 	cfg.Cannon.Server = validCannonOpProgramBin
