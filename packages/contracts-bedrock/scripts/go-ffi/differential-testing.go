@@ -556,8 +556,8 @@ func DiffTestUtils() {
 
 		// Create a 32-byte array with the build ID at the start
 		var encoded [32]byte
-		copy(encoded[:8], build[:])
-		// Place version components after 16 bytes of padding
+		// First 8 bytes are zeros
+		copy(encoded[8:16], build[:])  // build after zeros
 		binary.BigEndian.PutUint32(encoded[16:20], major)
 		binary.BigEndian.PutUint32(encoded[20:24], minor)
 		binary.BigEndian.PutUint32(encoded[24:28], patch)
@@ -573,36 +573,19 @@ func DiffTestUtils() {
 		}
 		versionBytes := common.FromHex(args[1])
 		fmt.Fprintf(os.Stderr, "Input version bytes: %x\n", versionBytes)
-		decoded := params.ProtocolVersionV0{}
-		var version big.Int
-		version.SetBytes(versionBytes)
-
-		// Get build (first 8 bytes)
-		var buildInt big.Int
-		buildInt.Rsh(&version, 192)
-		buildBytes := buildInt.Bytes()
-		decoded.Build = [8]byte{}
-		copy(decoded.Build[8-len(buildBytes):], buildBytes)
-
-		var tmp big.Int
-		// Get remaining components
-		tmp.Set(&version)
-		decoded.Major = uint32(new(big.Int).Rsh(&tmp, 96).Uint64())
-		tmp.Set(&version)
-		decoded.Minor = uint32(new(big.Int).Rsh(&tmp, 64).Uint64())
-		tmp.Set(&version)
-		decoded.Patch = uint32(new(big.Int).Rsh(&tmp, 32).Uint64())
-		tmp.Set(&version)
-		decoded.PreRelease = uint32(tmp.Uint64())
-
-		fmt.Fprintf(os.Stderr, "Decoded build: %x\n", decoded.Build[:])
-		result := fmt.Sprintf("%s.%d.%d.%d-%d",
-			hex.EncodeToString(decoded.Build[:]),
-			decoded.Major,
-			decoded.Minor,
-			decoded.Patch,
-			decoded.PreRelease,
-		)
+		var v params.ProtocolVersionV0
+		v.Build = [8]byte(versionBytes[0:8])
+		v.Major = binary.BigEndian.Uint32(versionBytes[8:12])
+		v.Minor = binary.BigEndian.Uint32(versionBytes[12:16])
+		v.Patch = binary.BigEndian.Uint32(versionBytes[16:20])
+		v.PreRelease = binary.BigEndian.Uint32(versionBytes[20:24])
+		result := fmt.Sprintf("v%d.%d.%d", v.Major, v.Minor, v.Patch)
+		if v.PreRelease != 0 {
+			result = fmt.Sprintf("%s-%d", result, v.PreRelease)
+		}
+		if !bytes.Equal(v.Build[:], make([]byte, 8)) {
+			result = fmt.Sprintf("%s+0x%s", result, hex.EncodeToString(v.Build[:]))
+		}
 
 		// Pack string using stringArgs instead of bytesArgs
 		packed, err := stringArgs.Pack(result)
