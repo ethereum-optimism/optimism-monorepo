@@ -236,8 +236,7 @@ library Encoding {
         returns (bytes32)
     {
         return bytes32(
-            (uint256(uint64(_build)) << 192) | (uint256(_major) << 96) | (uint256(_minor) << 64)
-                | (uint256(_patch) << 32) | uint256(_preRelease)
+            (uint256(uint64(_build)) << 128) | (uint256(_major) << 96) | (uint256(_minor) << 64) | (uint256(_patch) << 32) | uint256(_preRelease)
         );
     }
 
@@ -246,26 +245,32 @@ library Encoding {
     /// @return The decoded protocol version as a string
     function decodeProtocolVersion(bytes32 _versionBytes) internal pure returns (string memory) {
         uint256 version = uint256(_versionBytes);
-        bytes8 build = bytes8(uint64(version >> 192));
+        bytes8 build = bytes8(uint64(version >> 128));
         uint32 major = uint32(version >> 96);
         uint32 minor = uint32(version >> 64);
         uint32 patch = uint32(version >> 32);
         uint32 preRelease = uint32(version);
 
-        // Format string like Go implementation
-        return string(
+        // Base version string
+        string memory result = string(
             abi.encodePacked(
-                bytes2hex(build),
-                ".",
-                uint2str(major),
-                ".",
-                uint2str(minor),
-                ".",
-                uint2str(patch),
-                "-",
-                uint2str(preRelease)
+                "v", uint2str(major),
+                ".", uint2str(minor),
+                ".", uint2str(patch)
             )
         );
+
+        // Add prerelease if non-zero
+        if (preRelease != 0) {
+            result = string(abi.encodePacked(result, "-", uint2str(preRelease)));
+        }
+
+        // Add build if not all zeros
+        if (uint64(build) != 0) {
+            result = string(abi.encodePacked(result, "+0x", bytes2hex(build)));
+        }
+
+        return result;
     }
 
     function bytes2hex(bytes8 data) internal pure returns (bytes memory) {
