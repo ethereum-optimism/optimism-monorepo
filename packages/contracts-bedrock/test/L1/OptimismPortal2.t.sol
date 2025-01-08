@@ -323,7 +323,7 @@ contract OptimismPortal2_Test is CommonTest {
         skipIfForkTest("Custom gas token is still supported on forked tests");
 
         vm.expectRevert(IOptimismPortal2.CustomGasTokenNotSupported.selector);
-        optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
+        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: _name, _symbol: _symbol });
     }
 
     /// @dev Tests that the gas paying token can be set.
@@ -355,7 +355,7 @@ contract OptimismPortal2_Test is CommonTest {
         );
 
         vm.prank(address(systemConfig));
-        optimismPortal2.setGasPayingToken(_token, _decimals, _name, _symbol);
+        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: _name, _symbol: _symbol });
     }
 
     /// @notice Ensures that the deposit event is correct for the `setGasPayingToken`
@@ -387,7 +387,7 @@ contract OptimismPortal2_Test is CommonTest {
 
         vm.deal(address(systemConfig), 100 ether);
         vm.prank(address(systemConfig));
-        optimismPortal2.setGasPayingToken(_token, 18, name, symbol);
+        optimismPortal2.setGasPayingToken({ _token: _token, _decimals: 18, _name: name, _symbol: symbol });
 
         vm.prank(Constants.DEPOSITOR_ACCOUNT, Constants.DEPOSITOR_ACCOUNT);
         optimismPortal2.depositTransaction({
@@ -423,7 +423,7 @@ contract OptimismPortal2_Test is CommonTest {
         vm.assume(_caller != address(systemConfig));
         vm.prank(_caller);
         vm.expectRevert(Unauthorized.selector);
-        optimismPortal2.setGasPayingToken(address(0), 0, "", "");
+        optimismPortal2.setGasPayingToken({ _token: address(0), _decimals: 0, _name: "", _symbol: "" });
     }
 
     /// @dev Temporary test that checks that correct calls to depositERC20Transaction when using a custom gas token
@@ -464,7 +464,14 @@ contract OptimismPortal2_Test is CommonTest {
         assertEq(optimismPortal2.balance(), type(uint256).max);
 
         vm.expectRevert(stdError.arithmeticError);
-        optimismPortal2.depositERC20Transaction(address(0), 1, 1, 10_000, false, "");
+        optimismPortal2.depositERC20Transaction({
+            _to: address(0),
+            _mint: 1,
+            _value: 1,
+            _gasLimit: 10_000,
+            _isCreation: false,
+            _data: ""
+        });
     }
 
     /// @dev Tests that `balance()` returns the correct balance when the gas paying token is ether.

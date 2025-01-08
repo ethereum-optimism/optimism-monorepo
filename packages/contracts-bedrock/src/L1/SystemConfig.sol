@@ -298,7 +298,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     function _setGasPayingToken(address _token) internal virtual {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
             // Temporary revert till we support custom gas tokens
-            if (false) revert CustomGasTokenNotSupported();
+            if (true) revert CustomGasTokenNotSupported();
 
             require(
                 ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
