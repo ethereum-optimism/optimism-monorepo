@@ -45,6 +45,7 @@ fs_permissions = [
   { access='read-write', path='./.testdata/' },
   { access='read', path='./kout-deployment' },
   { access='read', path='./test/fixtures' },
+  { access='read', path='./lib/superchain-registry/superchain/configs/' },
 ]
 
 # 5159 error code is selfdestruct error code

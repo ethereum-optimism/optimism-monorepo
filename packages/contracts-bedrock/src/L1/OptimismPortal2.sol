@@ -34,7 +34,7 @@ import {
     ProposalNotValidated,
     AlreadyFinalized
 } from "src/libraries/PortalErrors.sol";
-import { GameStatus, GameType, Claim, Timestamp, Hash } from "src/dispute/lib/Types.sol";
+import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -183,9 +183,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.7
+    /// @custom:semver 3.11.0-beta.9
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.7";
+        return "3.11.0-beta.9";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -193,12 +193,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
         DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
 
-        initialize({
-            _disputeGameFactory: IDisputeGameFactory(address(0)),
-            _systemConfig: ISystemConfig(address(0)),
-            _superchainConfig: ISuperchainConfig(address(0)),
-            _initialRespectedGameType: GameType.wrap(0)
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
@@ -211,7 +206,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         ISuperchainConfig _superchainConfig,
         GameType _initialRespectedGameType
     )
-        public
+        external
         initializer
     {
         disputeGameFactory = _disputeGameFactory;

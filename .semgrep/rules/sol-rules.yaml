@@ -178,7 +178,7 @@ rules:
       - pattern-not: require($ERR, $MSG);
     paths:
       exclude:
-        - packages/contracts-bedrock/
+        - packages/contracts-bedrock/src/universal/WETH98.sol
 
   - id: sol-style-no-bare-imports
     languages: [solidity]
@@ -188,3 +188,46 @@ rules:
     paths:
       exclude:
         - packages/contracts-bedrock/test
+
+  - id: sol-safety-use-disable-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts (excluding predeploys) must disable initializers in constructor
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - pattern-not-regex: "///\\s*@custom:predeploy.*(?P<REST>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          constructor(...) {
+            ...
+          }
+      - pattern-not: |
+          constructor(...) {
+            ...
+            _disableInitializers();
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+        - packages/contracts-bedrock/src/L1/OptimismPortalInterop.sol
+
+  - id: sol-safety-proper-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts must have an initialize function with the initializer modifier and external visibility
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          function initialize(...) {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) external initializer {
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfig.sol
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol

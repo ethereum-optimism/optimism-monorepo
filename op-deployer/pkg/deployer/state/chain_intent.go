@@ -17,12 +17,12 @@ const (
 )
 
 type ChainProofParams struct {
-	DisputeGameType                         uint32      `json:"disputeGameType" toml:"disputeGameType"`
-	DisputeAbsolutePrestate                 common.Hash `json:"disputeAbsolutePrestate" toml:"disputeAbsolutePrestate"`
-	DisputeMaxGameDepth                     uint64      `json:"disputeMaxGameDepth" toml:"disputeMaxGameDepth"`
-	DisputeSplitDepth                       uint64      `json:"disputeSplitDepth" toml:"disputeSplitDepth"`
-	DisputeClockExtension                   uint64      `json:"disputeClockExtension" toml:"disputeClockExtension"`
-	DisputeMaxClockDuration                 uint64      `json:"disputeMaxClockDuration" toml:"disputeMaxClockDuration"`
+	DisputeGameType                         uint32      `json:"respectedGameType" toml:"respectedGameType"`
+	DisputeAbsolutePrestate                 common.Hash `json:"faultGameAbsolutePrestate" toml:"faultGameAbsolutePrestate"`
+	DisputeMaxGameDepth                     uint64      `json:"faultGameMaxDepth" toml:"faultGameMaxDepth"`
+	DisputeSplitDepth                       uint64      `json:"faultGameSplitDepth" toml:"faultGameSplitDepth"`
+	DisputeClockExtension                   uint64      `json:"faultGameClockExtension" toml:"faultGameClockExtension"`
+	DisputeMaxClockDuration                 uint64      `json:"faultGameMaxClockDuration" toml:"faultGameMaxClockDuration"`
 	DangerouslyAllowCustomDisputeParameters bool        `json:"dangerouslyAllowCustomDisputeParameters" toml:"dangerouslyAllowCustomDisputeParameters"`
 }
 

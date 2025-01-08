@@ -75,8 +75,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.4
-    string public constant version = "2.2.1-beta.4";
+    /// @custom:semver 2.2.1-beta.5
+    string public constant version = "2.2.1-beta.5";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -86,11 +86,7 @@ contract L1StandardBridge is StandardBridge, ISemver {
 
     /// @notice Constructs the L1StandardBridge contract.
     constructor() StandardBridge() {
-        initialize({
-            _messenger: ICrossDomainMessenger(address(0)),
-            _superchainConfig: ISuperchainConfig(address(0)),
-            _systemConfig: ISystemConfig(address(0))
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
@@ -101,7 +97,7 @@ contract L1StandardBridge is StandardBridge, ISemver {
         ISuperchainConfig _superchainConfig,
         ISystemConfig _systemConfig
     )
-        public
+        external
         initializer
     {
         superchainConfig = _superchainConfig;

@@ -65,13 +65,13 @@ func (lc *limitClient) CallContext(ctx context.Context, result any, method strin
 	return lc.c.CallContext(ctx, result, method, args...)
 }
 
-func (lc *limitClient) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
+func (lc *limitClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
 	if !lc.joinWaitGroup() {
 		return nil, net.ErrClosed
 	}
 	defer lc.wg.Done()
 	// subscription doesn't count towards request limit
-	return lc.c.EthSubscribe(ctx, channel, args...)
+	return lc.c.Subscribe(ctx, namespace, channel, args...)
 }
 
 func (lc *limitClient) Close() {

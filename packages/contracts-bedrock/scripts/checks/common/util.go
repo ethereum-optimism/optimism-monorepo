@@ -48,13 +48,13 @@ func ProcessFiles[T any](files map[string]string, processor FileProcessor[T]) (m
 	reporter := NewErrorReporter()
 	results := sync.Map{}
 
-	for name, path := range files {
-		name, path := name, path // Capture loop variables
+	for _, path := range files {
+		path := path // Capture loop variables
 		g.Go(func() error {
 			result, errs := processor(path)
 			if len(errs) > 0 {
 				for _, err := range errs {
-					reporter.Fail("%s: %v", name, err)
+					reporter.Fail("%s: %v", path, err)
 				}
 			} else {
 				results.Store(path, result)

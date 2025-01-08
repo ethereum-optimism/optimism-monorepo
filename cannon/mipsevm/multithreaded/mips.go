@@ -109,17 +109,18 @@ func (m *InstrumentedState) handleSyscall() error {
 		return nil
 	case arch.SysFutex:
 		// args: a0 = addr, a1 = op, a2 = val, a3 = timeout
-		effAddr := a0 & arch.AddressMask
+		// Futex value is 32-bit, so clear the lower 2 bits to get an effective address targeting a 4-byte value
+		effFutexAddr := a0 & ^Word(0x3)
 		switch a1 {
 		case exec.FutexWaitPrivate:
-			m.memoryTracker.TrackMemAccess(effAddr)
-			mem := m.state.Memory.GetWord(effAddr)
-			if mem != a2 {
+			futexVal := m.getFutexValue(effFutexAddr)
+			targetVal := uint32(a2)
+			if futexVal != targetVal {
 				v0 = exec.SysErrorSignal
 				v1 = exec.MipsEAGAIN
 			} else {
-				thread.FutexAddr = effAddr
-				thread.FutexVal = a2
+				thread.FutexAddr = effFutexAddr
+				thread.FutexVal = targetVal
 				if a3 == 0 {
 					thread.FutexTimeoutStep = exec.FutexNoTimeout
 				} else {
@@ -130,7 +131,7 @@ func (m *InstrumentedState) handleSyscall() error {
 			}
 		case exec.FutexWakePrivate:
 			// Trigger a wakeup traversal
-			m.state.Wakeup = effAddr
+			m.state.Wakeup = effFutexAddr
 			// Don't indicate to the program that we've woken up a waiting thread, as there are no guarantees.
 			// The woken up thread should indicate this in userspace.
 			v0 = 0
@@ -212,7 +213,7 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysLseek:
 	default:
 		// These syscalls have the same values on 64-bit. So we use if-stmts here to avoid "duplicate case" compiler error for the cannon64 build
-		if arch.IsMips32 && syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek {
+		if arch.IsMips32 && (syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek) {
 			// noop
 		} else {
 			m.Traceback()
@@ -283,10 +284,8 @@ func (m *InstrumentedState) doMipsStep() error {
 			m.onWaitComplete(thread, true)
 			return nil
 		} else {
-			effAddr := thread.FutexAddr & arch.AddressMask
-			m.memoryTracker.TrackMemAccess(effAddr)
-			mem := m.state.Memory.GetWord(effAddr)
-			if thread.FutexVal == mem {
+			futexVal := m.getFutexValue(thread.FutexAddr)
+			if thread.FutexVal == futexVal {
 				// still got expected value, continue sleeping, try next thread.
 				m.preemptThread(thread)
 				m.statsTracker.trackWakeupFail()
@@ -487,4 +486,9 @@ func (m *InstrumentedState) popThread() {
 
 func (m *InstrumentedState) lastThreadRemaining() bool {
 	return m.state.ThreadCount() == 1
+}
+
+func (m *InstrumentedState) getFutexValue(vAddr Word) uint32 {
+	subword := exec.LoadSubWord(m.state.GetMemory(), vAddr, Word(4), false, m.memoryTracker)
+	return uint32(subword)
 }

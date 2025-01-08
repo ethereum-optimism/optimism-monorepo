@@ -550,10 +550,10 @@ func TestChannelManager_PruneBlocks(t *testing.T) {
 			m.blocks = tc.initialQ
 			m.blockCursor = tc.initialBlockCursor
 			if tc.expectedQ != nil {
-				m.pruneSafeBlocks(tc.numChannelsToPrune)
+				m.PruneSafeBlocks(tc.numChannelsToPrune)
 				require.Equal(t, tc.expectedQ, m.blocks)
 			} else {
-				require.Panics(t, func() { m.pruneSafeBlocks(tc.numChannelsToPrune) })
+				require.Panics(t, func() { m.PruneSafeBlocks(tc.numChannelsToPrune) })
 			}
 		})
 	}
@@ -618,11 +618,11 @@ func TestChannelManager_PruneChannels(t *testing.T) {
 			m.channelQueue = tc.initialQ
 			m.currentChannel = tc.initialCurrentChannel
 			if tc.expectedQ != nil {
-				m.pruneChannels(tc.numChannelsToPrune)
+				m.PruneChannels(tc.numChannelsToPrune)
 				require.Equal(t, tc.expectedQ, m.channelQueue)
 				require.Equal(t, tc.expectedCurrentChannel, m.currentChannel)
 			} else {
-				require.Panics(t, func() { m.pruneChannels(tc.numChannelsToPrune) })
+				require.Panics(t, func() { m.PruneChannels(tc.numChannelsToPrune) })
 			}
 		})
 	}

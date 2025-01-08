@@ -11,7 +11,7 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
 
 /// @custom:proxied true
 /// @title L1CrossDomainMessenger
@@ -30,16 +30,12 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     ISystemConfig public systemConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.1-beta.3
-    string public constant version = "2.4.1-beta.3";
+    /// @custom:semver 2.4.1-beta.5
+    string public constant version = "2.4.1-beta.5";
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
-    constructor() CrossDomainMessenger() {
-        initialize({
-            _superchainConfig: ISuperchainConfig(address(0)),
-            _portal: IOptimismPortal(payable(address(0))),
-            _systemConfig: ISystemConfig(address(0))
-        });
+    constructor() {
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
@@ -51,7 +47,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
         IOptimismPortal _portal,
         ISystemConfig _systemConfig
     )
-        public
+        external
         initializer
     {
         superchainConfig = _superchainConfig;

@@ -17,6 +17,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum/go-ethereum"
+	"github.com/ethereum/go-ethereum/rpc"
+	"github.com/lmittmann/w3"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/env"
@@ -58,6 +62,7 @@ participants:
     el_extra_params:
       - "--gcmode=archive"
       - "--rpc.txfeecap=0"
+      - "--netrestrict=172.17.0.0/16"
     cl_type: lighthouse
 network_params:
   prefunded_accounts: '{ "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": { "balance": "1000000ETH" } }'
@@ -77,6 +82,8 @@ network_params:
 
 const defaultL1ChainID uint64 = 77799777
 
+var versionFunc = w3.MustNewFunc("version()", "string")
+
 type deployerKey struct{}
 
 func (d *deployerKey) HDPath() string {
@@ -89,7 +96,6 @@ func (d *deployerKey) String() string {
 
 func TestEndToEndApply(t *testing.T) {
 	op_e2e.InitParallel(t)
-	kurtosisutil.Test(t)
 
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -174,17 +180,144 @@ func TestEndToEndApply(t *testing.T) {
 	})
 }
 
-func TestApplyExistingOPCM(t *testing.T) {
-	t.Run("mainnet", func(t *testing.T) {
-		testApplyExistingOPCM(t, 1, os.Getenv("MAINNET_RPC_URL"), standard.L1VersionsMainnet)
-	})
-	t.Run("sepolia", func(t *testing.T) {
-		testApplyExistingOPCM(t, 11155111, os.Getenv("SEPOLIA_RPC_URL"), standard.L1VersionsSepolia)
-	})
+type existingOPCMTest struct {
+	name         string
+	network      string
+	l1Release    string
+	l2Release    string
+	l2AllocsFile string
+	l1Semvers    *expectedL1Semvers
+	l2Semvers    *inspect.L2PredeploySemvers
 }
 
-func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, versions standard.L1Versions) {
+type expectedL1Semvers struct {
+	SystemConfig            string
+	PermissionedDisputeGame string
+	MIPS                    string
+	OptimismPortal          string
+	AnchorStateRegistry     string
+	DelayedWETH             string
+	DisputeGameFactory      string
+	PreimageOracle          string
+	L1CrossDomainMessenger  string
+	L1ERC721Bridge          string
+	L1StandardBridge        string
+	OptimismMintableERC20   string
+}
+
+func TestApplyExistingOPCM(t *testing.T) {
+	expectedL2SemversV160 := &inspect.L2PredeploySemvers{
+		L2ToL1MessagePasser:           "1.1.1-beta.1",
+		DeployerWhitelist:             "1.1.1-beta.1",
+		WETH:                          "1.0.0-beta.1",
+		L2CrossDomainMessenger:        "2.1.1-beta.1",
+		L2StandardBridge:              "1.11.1-beta.1",
+		SequencerFeeVault:             "1.5.0-beta.2",
+		OptimismMintableERC20Factory:  "1.10.1-beta.2",
+		L1BlockNumber:                 "1.1.1-beta.1",
+		GasPriceOracle:                "1.3.1-beta.1",
+		L1Block:                       "1.5.1-beta.1",
+		LegacyMessagePasser:           "1.1.1-beta.1",
+		L2ERC721Bridge:                "1.7.1-beta.2",
+		OptimismMintableERC721Factory: "1.4.1-beta.1",
+		BaseFeeVault:                  "1.5.0-beta.2",
+		L1FeeVault:                    "1.5.0-beta.2",
+		SchemaRegistry:                "1.3.1-beta.1",
+		EAS:                           "1.4.1-beta.1",
+		CrossL2Inbox:                  "",
+		L2toL2CrossDomainMessenger:    "",
+		SuperchainWETH:                "",
+		ETHLiquidity:                  "",
+		SuperchainTokenBridge:         "",
+		OptimismMintableERC20:         "1.4.0-beta.1",
+		OptimismMintableERC721:        "1.3.1-beta.1",
+	}
+
+	expectedL1SemversV160 := &expectedL1Semvers{
+		SystemConfig:            "2.2.0",
+		PermissionedDisputeGame: "1.3.1-beta.3", // Deployment bug
+		MIPS:                    "1.1.0",
+		OptimismPortal:          "3.10.0",
+		AnchorStateRegistry:     "2.0.1-beta.3", // Deployment bug
+		DelayedWETH:             "1.1.0",
+		DisputeGameFactory:      "1.0.0",
+		PreimageOracle:          "1.1.2",
+		L1CrossDomainMessenger:  "2.3.0",
+		L1ERC721Bridge:          "2.1.0",
+		L1StandardBridge:        "2.1.0",
+		OptimismMintableERC20:   "1.9.0",
+	}
+
+	expectedL1SemversV180 := &expectedL1Semvers{
+		SystemConfig:            "2.3.0",
+		PermissionedDisputeGame: "1.3.1",
+		MIPS:                    "1.2.1",
+		OptimismPortal:          "3.10.0",
+		AnchorStateRegistry:     "2.0.1-beta.3", // Deployment bug persisting across releases
+		DelayedWETH:             "1.1.0",
+		DisputeGameFactory:      "1.0.0",
+		PreimageOracle:          "1.1.2",
+		L1CrossDomainMessenger:  "2.3.0",
+		L1ERC721Bridge:          "2.1.0",
+		L1StandardBridge:        "2.1.0",
+		OptimismMintableERC20:   "1.9.0",
+	}
+
+	tests := []existingOPCMTest{
+		{
+			"mainnet v1.6.0",
+			"mainnet",
+			"op-contracts/v1.6.0",
+			"op-contracts/v1.7.0-beta.1+l2-contracts",
+			"allocs-l2-v160-1.json.gz",
+			expectedL1SemversV160,
+			expectedL2SemversV160,
+		},
+		{
+			"sepolia v1.6.0",
+			"sepolia",
+			"op-contracts/v1.6.0",
+			"op-contracts/v1.7.0-beta.1+l2-contracts",
+			"allocs-l2-v160-11155111.json.gz",
+			expectedL1SemversV160,
+			expectedL2SemversV160,
+		},
+		{
+			"sepolia v1.8.0-rc.4",
+			"sepolia",
+			"op-contracts/v1.8.0-rc.4",
+			// The L2 predeploys need to still be the v1.7.0 beta contracts.
+			"op-contracts/v1.7.0-beta.1+l2-contracts",
+			// The L2 predeploys do not change in version 1.8.0.
+			"allocs-l2-v160-11155111.json.gz",
+			expectedL1SemversV180,
+			expectedL2SemversV160,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			testApplyExistingOPCM(t, tt)
+		})
+	}
+}
+
+func testApplyExistingOPCM(t *testing.T, testInfo existingOPCMTest) {
 	op_e2e.InitParallel(t)
+
+	var forkRPCUrl string
+	var l1Versions standard.L1Versions
+	var l1ChainID uint64
+	if testInfo.network == "mainnet" {
+		forkRPCUrl = os.Getenv("MAINNET_RPC_URL")
+		l1Versions = standard.L1VersionsMainnet
+		l1ChainID = 1
+	} else if testInfo.network == "sepolia" {
+		forkRPCUrl = os.Getenv("SEPOLIA_RPC_URL")
+		l1Versions = standard.L1VersionsSepolia
+		l1ChainID = 11155111
+	} else {
+		t.Fatalf("invalid network: %s", testInfo.network)
+	}
 
 	require.NotEmpty(t, forkRPCUrl, "no fork RPC URL provided")
 
@@ -210,7 +343,9 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		require.NoError(t, runner.Stop())
 	})
 
-	l1Client, err := ethclient.Dial(runner.RPCUrl())
+	l1RPC, err := rpc.Dial(runner.RPCUrl())
+	require.NoError(t, err)
+	l1Client := ethclient.NewClient(l1RPC)
 	require.NoError(t, err)
 
 	l1ChainIDBig := new(big.Int).SetUint64(l1ChainID)
@@ -229,8 +364,8 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		l1ChainIDBig,
 		dk,
 		l2ChainID,
-		artifacts.MustNewLocatorFromTag("op-contracts/v1.6.0"),
-		artifacts.MustNewLocatorFromTag("op-contracts/v1.7.0-beta.1+l2-contracts"),
+		artifacts.MustNewLocatorFromTag(testInfo.l1Release),
+		artifacts.MustNewLocatorFromTag(testInfo.l2Release),
 	)
 	// NOTE: the reference allocs for version 1.6 contain the gov token, so we need to enable it
 	// via override here.
@@ -256,7 +391,7 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 
 	validateOPChainDeployment(t, ethClientCodeGetter(ctx, l1Client), st, intent, true)
 
-	releases := versions.Releases["op-contracts/v1.6.0"]
+	releases := l1Versions[testInfo.l1Release]
 
 	implTests := []struct {
 		name    string
@@ -276,6 +411,39 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	}
 	for _, tt := range implTests {
 		require.Equal(t, tt.expAddr, tt.actAddr, "unexpected address for %s", tt.name)
+	}
+
+	chainState := st.Chains[0]
+	versionTests := []struct {
+		name       string
+		expVersion string
+		addr       common.Address
+	}{
+		{"SystemConfig", testInfo.l1Semvers.SystemConfig, chainState.SystemConfigProxyAddress},
+		{"PermissionedDisputeGame", testInfo.l1Semvers.PermissionedDisputeGame, chainState.PermissionedDisputeGameAddress},
+		{"MIPS", testInfo.l1Semvers.MIPS, st.ImplementationsDeployment.MipsSingletonAddress},
+		{"OptimismPortal", testInfo.l1Semvers.OptimismPortal, chainState.OptimismPortalProxyAddress},
+		{"AnchorStateRegistry", testInfo.l1Semvers.AnchorStateRegistry, chainState.AnchorStateRegistryProxyAddress},
+		{"DelayedWETH", testInfo.l1Semvers.DelayedWETH, chainState.DelayedWETHPermissionedGameProxyAddress},
+		{"DisputeGameFactory", testInfo.l1Semvers.DisputeGameFactory, chainState.DisputeGameFactoryProxyAddress},
+		{"PreimageOracle", testInfo.l1Semvers.PreimageOracle, st.ImplementationsDeployment.PreimageOracleSingletonAddress},
+		{"L1CrossDomainMessenger", testInfo.l1Semvers.L1CrossDomainMessenger, chainState.L1CrossDomainMessengerProxyAddress},
+		{"L1ERC721Bridge", testInfo.l1Semvers.L1ERC721Bridge, chainState.L1ERC721BridgeProxyAddress},
+		{"L1StandardBridge", testInfo.l1Semvers.L1StandardBridge, chainState.L1StandardBridgeProxyAddress},
+		{"OptimismMintableERC20", testInfo.l1Semvers.OptimismMintableERC20, chainState.OptimismMintableERC20FactoryProxyAddress},
+	}
+	versionArgs, err := versionFunc.EncodeArgs()
+	require.NoError(t, err)
+	for _, tt := range versionTests {
+		ret, err := l1Client.CallContract(ctx, ethereum.CallMsg{
+			To:   &tt.addr,
+			Data: versionArgs,
+		}, nil)
+		require.NoError(t, err)
+
+		var actVersion string
+		require.NoError(t, versionFunc.DecodeReturns(ret, &actVersion))
+		require.Equal(t, tt.expVersion, actVersion, "unexpected version for %s", tt.name)
 	}
 
 	superchain, err := standard.SuperchainFor(l1ChainIDBig.Uint64())
@@ -307,7 +475,6 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 		require.NoError(t, cleanupL2())
 	})
 
-	chainState := st.Chains[0]
 	chainIntent := intent.Chains[0]
 
 	semvers, err := inspect.L2Semvers(inspect.L2SemversConfig{
@@ -317,36 +484,9 @@ func testApplyExistingOPCM(t *testing.T, l1ChainID uint64, forkRPCUrl string, ve
 	})
 	require.NoError(t, err)
 
-	expectedSemversL2 := &inspect.L2PredeploySemvers{
-		L2ToL1MessagePasser:           "1.1.1-beta.1",
-		DeployerWhitelist:             "1.1.1-beta.1",
-		WETH:                          "1.0.0-beta.1",
-		L2CrossDomainMessenger:        "2.1.1-beta.1",
-		L2StandardBridge:              "1.11.1-beta.1",
-		SequencerFeeVault:             "1.5.0-beta.2",
-		OptimismMintableERC20Factory:  "1.10.1-beta.2",
-		L1BlockNumber:                 "1.1.1-beta.1",
-		GasPriceOracle:                "1.3.1-beta.1",
-		L1Block:                       "1.5.1-beta.1",
-		LegacyMessagePasser:           "1.1.1-beta.1",
-		L2ERC721Bridge:                "1.7.1-beta.2",
-		OptimismMintableERC721Factory: "1.4.1-beta.1",
-		BaseFeeVault:                  "1.5.0-beta.2",
-		L1FeeVault:                    "1.5.0-beta.2",
-		SchemaRegistry:                "1.3.1-beta.1",
-		EAS:                           "1.4.1-beta.1",
-		CrossL2Inbox:                  "",
-		L2toL2CrossDomainMessenger:    "",
-		SuperchainWETH:                "",
-		ETHLiquidity:                  "",
-		SuperchainTokenBridge:         "",
-		OptimismMintableERC20:         "1.4.0-beta.1",
-		OptimismMintableERC721:        "1.3.1-beta.1",
-	}
+	require.EqualValues(t, testInfo.l2Semvers, semvers)
 
-	require.EqualValues(t, expectedSemversL2, semvers)
-
-	f, err := os.Open(fmt.Sprintf("./testdata/allocs-l2-v160-%d.json.gz", l1ChainID))
+	f, err := os.Open(fmt.Sprintf("./testdata/%s", testInfo.l2AllocsFile))
 	require.NoError(t, err)
 	defer f.Close()
 	gzr, err := gzip.NewReader(f)
@@ -510,12 +650,12 @@ func TestProofParamOverrides(t *testing.T) {
 		"proofMaturityDelaySeconds":               standard.ProofMaturityDelaySeconds + 1,
 		"disputeGameFinalityDelaySeconds":         standard.DisputeGameFinalityDelaySeconds + 1,
 		"mipsVersion":                             standard.MIPSVersion + 1,
-		"disputeGameType":                         standard.DisputeGameType, // This must be set to the permissioned game
-		"disputeAbsolutePrestate":                 common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
-		"disputeMaxGameDepth":                     standard.DisputeMaxGameDepth + 1,
-		"disputeSplitDepth":                       standard.DisputeSplitDepth + 1,
-		"disputeClockExtension":                   standard.DisputeClockExtension + 1,
-		"disputeMaxClockDuration":                 standard.DisputeMaxClockDuration + 1,
+		"respectedGameType":                       standard.DisputeGameType, // This must be set to the permissioned game
+		"faultGameAbsolutePrestate":               common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"faultGameMaxDepth":                       standard.DisputeMaxGameDepth + 1,
+		"faultGameSplitDepth":                     standard.DisputeSplitDepth + 1,
+		"faultGameClockExtension":                 standard.DisputeClockExtension + 1,
+		"faultGameMaxClockDuration":               standard.DisputeMaxClockDuration + 1,
 		"dangerouslyAllowCustomDisputeParameters": true,
 	}
 
@@ -559,29 +699,29 @@ func TestProofParamOverrides(t *testing.T) {
 			st.ImplementationsDeployment.OptimismPortalImplAddress,
 		},
 		{
-			"disputeAbsolutePrestate",
+			"faultGameAbsolutePrestate",
 			func(t *testing.T, val any) common.Hash {
 				return val.(common.Hash)
 			},
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxGameDepth",
+			"faultGameMaxDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeSplitDepth",
+			"faultGameSplitDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeClockExtension",
+			"faultGameClockExtension",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxClockDuration",
+			"faultGameMaxClockDuration",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},

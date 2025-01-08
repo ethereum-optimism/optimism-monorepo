@@ -271,7 +271,7 @@ Full support for chain reorgs (detecting them, and resolving them) is the
 next priority after the above architecture and data changes.
 
 Further background on the design-choices of op-supervisor can be found in the
-[superchain backend desgin-doc](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md).
+[superchain backend design-doc](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md).
 
 ## Design principles
 

@@ -58,19 +58,19 @@ contract L2StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.11.1-beta.6
+    /// @custom:semver 1.11.1-beta.7
     function version() public pure virtual returns (string memory) {
-        return "1.11.1-beta.6";
+        return "1.11.1-beta.7";
     }
 
     /// @notice Constructs the L2StandardBridge contract.
     constructor() StandardBridge() {
-        initialize({ _otherBridge: StandardBridge(payable(address(0))) });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _otherBridge Contract for the corresponding bridge on the other chain.
-    function initialize(StandardBridge _otherBridge) public initializer {
+    function initialize(StandardBridge _otherBridge) external initializer {
         __StandardBridge_init({
             _messenger: ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER),
             _otherBridge: _otherBridge

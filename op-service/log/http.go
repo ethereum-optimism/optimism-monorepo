@@ -20,6 +20,7 @@ func NewLoggingMiddleware(lgr log.Logger, next http.Handler) http.Handler {
 			"path", r.URL.EscapedPath(),
 			"duration", time.Since(start),
 			"remote_addr", r.RemoteAddr,
+			"upgrade_attempt", ww.UpgradeAttempt,
 		)
 	})
 }

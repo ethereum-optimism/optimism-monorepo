@@ -14,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	gethevent "github.com/ethereum/go-ethereum/event"
 )
 
 type LogStorage interface {
@@ -86,6 +87,12 @@ type ChainsDB struct {
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
 	crossDBs locks.RWMap[types.ChainID, CrossDerivedFromStorage]
 
+	localUnsafeFeeds locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
+	crossUnsafeFeeds locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
+	localSafeFeeds   locks.RWMap[types.ChainID, *gethevent.FeedOf[types.DerivedBlockSealPair]]
+	crossSafeFeeds   locks.RWMap[types.ChainID, *gethevent.FeedOf[types.DerivedBlockSealPair]]
+	l2FinalityFeeds  locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
+
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
 	// an error until it has this L1 finality to work with.
@@ -134,6 +141,14 @@ func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
 		db.logger.Warn("overwriting existing cross-unsafe tracker for chain", "chain", chainID)
 	}
 	db.crossUnsafe.Set(chainID, &locks.RWValue[types.BlockSeal]{})
+}
+
+func (db *ChainsDB) AddSubscriptions(chainID types.ChainID) {
+	locks.InitPtrMaybe(&db.l2FinalityFeeds, chainID)
+	locks.InitPtrMaybe(&db.crossSafeFeeds, chainID)
+	locks.InitPtrMaybe(&db.localSafeFeeds, chainID)
+	locks.InitPtrMaybe(&db.crossUnsafeFeeds, chainID)
+	locks.InitPtrMaybe(&db.localUnsafeFeeds, chainID)
 }
 
 // ResumeFromLastSealedBlock prepares the chains db to resume recording events after a restart.

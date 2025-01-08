@@ -34,10 +34,11 @@ enum Fork {
     ECOTONE,
     FJORD,
     GRANITE,
-    HOLOCENE
+    HOLOCENE,
+    ISTHMUS
 }
 
-Fork constant LATEST_FORK = Fork.HOLOCENE;
+Fork constant LATEST_FORK = Fork.ISTHMUS;
 
 library ForkUtils {
     function toString(Fork _fork) internal pure returns (string memory) {
@@ -53,6 +54,8 @@ library ForkUtils {
             return "granite";
         } else if (_fork == Fork.HOLOCENE) {
             return "holocene";
+        } else if (_fork == Fork.ISTHMUS) {
+            return "isthmus";
         } else {
             return "unknown";
         }
@@ -168,6 +171,8 @@ library Config {
             return Fork.GRANITE;
         } else if (forkHash == keccak256(bytes("holocene"))) {
             return Fork.HOLOCENE;
+        } else if (forkHash == keccak256(bytes("isthmus"))) {
+            return Fork.ISTHMUS;
         } else {
             revert(string.concat("Config: unknown fork: ", forkStr));
         }
