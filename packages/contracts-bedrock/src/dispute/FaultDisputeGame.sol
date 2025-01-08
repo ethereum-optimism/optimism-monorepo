@@ -51,7 +51,8 @@ import {
     BondTransferFailed,
     NoCreditToClaim,
     InvalidOutputRootProof,
-    ClaimAboveSplit
+    ClaimAboveSplit,
+    L2BlockNumberExceeded
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
@@ -302,6 +303,10 @@ contract FaultDisputeGame is Clone, ISemver {
         // Do not allow the game to be initialized if the root claim corresponds to a block at or before the
         // configured starting block number.
         if (l2BlockNumber() <= rootBlockNumber) revert UnexpectedRootClaim(rootClaim());
+
+        // Do not allow the game to be initialized if the root claim corresponds to a block after the
+        // configured starting block number + 2^splitDepth.
+        if (l2BlockNumber() > rootBlockNumber + 1 << SPLIT_DEPTH) revert L2BlockNumberExceeded(l2BlockNumber());
 
         // Set the root claim
         claimData.push(

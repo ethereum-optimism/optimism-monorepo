@@ -121,6 +121,10 @@ error BlockNumberMatches();
 /// @notice Thrown when the L2 block number claim has already been challenged.
 error L2BlockNumberChallenged();
 
+/// @notice Thrown when a game is attempted to be initialized with a l2blockNumber that is large than latest anchor
+/// root's block number + 2^splitDepth.
+error L2BlockNumberExceeded(uint256 number);
+
 ////////////////////////////////////////////////////////////////
 //              `PermissionedDisputeGame` Errors              //
 ////////////////////////////////////////////////////////////////
