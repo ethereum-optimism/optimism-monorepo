@@ -572,21 +572,19 @@ func DiffTestUtils() {
 			panic("decodeProtocolVersion requires 1 argument: version")
 		}
 		versionBytes := common.FromHex(args[1])
-		fmt.Fprintf(os.Stderr, "Input bytes: %x\n", versionBytes)
+		fmt.Fprintf(os.Stderr, "Input version bytes: %x\n", versionBytes)
 		decoded := params.ProtocolVersionV0{}
 		var version big.Int
 		version.SetBytes(versionBytes)
 
-		// Decode components
-		var tmp big.Int
-		tmp.Set(&version)
 		// Get build (first 8 bytes)
 		var buildInt big.Int
 		buildInt.Rsh(&version, 192)
 		buildBytes := buildInt.Bytes()
 		decoded.Build = [8]byte{}
-		copy(decoded.Build[8-len(buildBytes):], buildBytes) // Right-align the bytes
+		copy(decoded.Build[8-len(buildBytes):], buildBytes)
 
+		var tmp big.Int
 		// Get remaining components
 		tmp.Set(&version)
 		decoded.Major = uint32(new(big.Int).Rsh(&tmp, 96).Uint64())
@@ -597,7 +595,7 @@ func DiffTestUtils() {
 		tmp.Set(&version)
 		decoded.PreRelease = uint32(tmp.Uint64())
 
-		// Format string
+		fmt.Fprintf(os.Stderr, "Decoded build: %x\n", decoded.Build[:])
 		result := fmt.Sprintf("%s.%d.%d.%d-%d",
 			hex.EncodeToString(decoded.Build[:]),
 			decoded.Major,
