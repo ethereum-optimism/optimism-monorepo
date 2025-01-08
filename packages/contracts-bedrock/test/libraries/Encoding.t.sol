@@ -107,25 +107,25 @@ contract Encoding_Test is CommonTest {
     }
 
     /// @notice Test that decoding and re-encoding preserves all components
-    function testFuzz_encodeDecodeProtocolVersion(
-        bytes8 _build,
-        uint32 _major,
-        uint32 _minor,
-        uint32 _patch,
-        uint32 _preRelease
-    )
-        public
-        pure
-    {
+    function testFuzz_encodeDecodeProtocolVersion(bytes8 _build, uint32 _major, uint32 _minor, uint32 _patch, uint32 _preRelease) public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease);
-
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        // Base version string
         string memory expected = string(
             abi.encodePacked(
-                Encoding.bytes2hex(_build),
-                ".", uint2str(_major), ".", uint2str(_minor), ".", uint2str(_patch), "-", uint2str(_preRelease)
+                "v", Encoding.uint2str(_major),
+                ".", Encoding.uint2str(_minor),
+                ".", Encoding.uint2str(_patch)
             )
         );
+        // Add prerelease if non-zero
+        if (_preRelease != 0) {
+            expected = string(abi.encodePacked(expected, "-", Encoding.uint2str(_preRelease)));
+        }
+        // Add build if not all zeros
+        if (uint64(_build) != 0) {
+            expected = string(abi.encodePacked(expected, "+0x", Encoding.bytes2hex(_build)));
+        }
         assertEq(decoded, expected);
     }
 
@@ -133,8 +133,7 @@ contract Encoding_Test is CommonTest {
     function test_protocolVersion_specific() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 4);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
-        string memory expected =
-            string(abi.encodePacked(Encoding.bytes2hex(bytes8(hex"0123456789abcdef")), ".", "1", ".", "2", ".", "3", "-", "4"));
+        string memory expected = "v1.2.3-4+0x0123456789abcdef";
         assertEq(decoded, expected);
     }
 
@@ -142,8 +141,14 @@ contract Encoding_Test is CommonTest {
     function test_protocolVersion_noPrerelease() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0123456789abcdef"), 1, 2, 3, 0);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
-        string memory expected =
-            string(abi.encodePacked(Encoding.bytes2hex(bytes8(hex"0123456789abcdef")), ".", "1", ".", "2", ".", "3", "-", "0"));
+        string memory expected = "v1.2.3+0x0123456789abcdef";
+        assertEq(decoded, expected);
+    }
+
+    function test_protocolVersion_allZeros() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(0), 0, 0, 0, 0);
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = "v0.0.0"; // No prerelease or build
         assertEq(decoded, expected);
     }
 
@@ -156,6 +161,7 @@ contract Encoding_Test is CommonTest {
             3, // patch
             4 // prerelease
         );
+        emit log_bytes32(encoded);
 
         bytes memory goEncoded = ffi.encodeProtocolVersion(
             hex"0123456789abcdef", // build
@@ -164,13 +170,14 @@ contract Encoding_Test is CommonTest {
             3, // patch
             4 // prerelease
         );
+        emit log_bytes(goEncoded);
 
         assertEq(encoded, bytes32(goEncoded));
     }
 
     /// @notice Test that Go and Solidity implementations match for decoding
     function testDiff_decodeProtocolVersion_matchesGo() public {
-        bytes32 version = bytes32(hex"0123456789abcdef0000000100000002000000030000000400000000");
+        bytes32 version = bytes32(hex"00000000000000000123456789abcdef00000001000000020000000300000004");
 
         string memory solString = Encoding.decodeProtocolVersion(version);
         string memory goString = ffi.decodeProtocolVersion(version);
@@ -178,21 +185,46 @@ contract Encoding_Test is CommonTest {
         assertEq(solString, goString);
     }
 
-    function uint2str(uint32 _i) internal pure returns (string memory) {
-        if (_i == 0) return "0";
-        uint256 j = _i;
-        uint256 len;
-        while (j != 0) {
-            len++;
-            j /= 10;
-        }
-        bytes memory bstr = new bytes(len);
-        while (_i != 0) {
-            len -= 1;
-            bstr[len] = bytes1(uint8(48 + _i % 10));
-            _i /= 10;
-        }
-        return string(bstr);
+    /// @notice Test maximum values for all fields
+    function test_protocolVersion_maxValues() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(
+            bytes8(hex"ffffffffffffffff"),
+            type(uint32).max,  // 4294967295
+            type(uint32).max,
+            type(uint32).max,
+            type(uint32).max
+        );
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = "v4294967295.4294967295.4294967295-4294967295+0xffffffffffffffff";
+        assertEq(decoded, expected);
+    }
+
+    /// @notice Test minimal non-zero build ID
+    function test_protocolVersion_minimalBuild() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(
+            bytes8(hex"0000000000000001"),
+            1,
+            0,
+            0,
+            0
+        );
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = "v1.0.0+0x0000000000000001";
+        assertEq(decoded, expected);
+    }
+
+    /// @notice Test prerelease without build
+    function test_protocolVersion_onlyPrerelease() public pure {
+        bytes32 encoded = Encoding.encodeProtocolVersion(
+            bytes8(0),
+            1,
+            0,
+            0,
+            1
+        );
+        string memory decoded = Encoding.decodeProtocolVersion(encoded);
+        string memory expected = "v1.0.0-1";
+        assertEq(decoded, expected);
     }
 }
 
