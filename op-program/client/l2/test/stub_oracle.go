@@ -79,7 +79,7 @@ func (o StubBlockOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 	return output
 }
 
-func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
+func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *gethTypes.Block {
 	block, ok := o.Blocks[blockHash]
 	if !ok {
 		o.t.Fatalf("requested unknown block %s", blockHash)
