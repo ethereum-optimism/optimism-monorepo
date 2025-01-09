@@ -169,11 +169,11 @@ func (db *ChainsDB) FinalizedL1() eth.BlockRef {
 func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
 	finalizedL1 := db.finalizedL1.Get()
 	if finalizedL1 == (eth.L1BlockRef{}) {
-		return types.BlockSeal{}, errors.New("no finalized L1 signal, cannot determine L2 finality yet")
+		return types.BlockSeal{}, fmt.Errorf("no finalized L1 signal, cannot determine L2 finality of chain %s yet", chainID)
 	}
 	derived, err := db.LastDerivedFrom(chainID, finalizedL1.ID())
 	if err != nil {
-		return types.BlockSeal{}, errors.New("could not find what was last derived from the finalized L1 block")
+		return types.BlockSeal{}, fmt.Errorf("could not find what was last derived in L2 chain %s from the finalized L1 block %s: %w", chainID, finalizedL1, err)
 	}
 	return derived, nil
 }

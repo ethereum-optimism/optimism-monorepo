@@ -114,7 +114,7 @@ func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
 	db.finalizedL1.Unlock()
 
-	// whenver the L1 Finalized changes, the L2 Finalized may change, notify subscribers
+	// whenever the L1 Finalized changes, the L2 Finalized may change, notify subscribers
 	db.NotifyL2Finalized()
 
 	return nil
