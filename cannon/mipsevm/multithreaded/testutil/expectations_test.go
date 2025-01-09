@@ -38,7 +38,6 @@ func TestValidate_shouldCatchMutations(t *testing.T) {
 		{name: "LastHint", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.LastHint = []byte{7, 8, 9, 10} }},
 		{name: "MemoryRoot", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.MemoryRoot = emptyHash }},
 		{name: "StepsSinceLastContextSwitch", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.StepsSinceLastContextSwitch += 1 }},
-		{name: "Wakeup", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.Wakeup += 1 }},
 		{name: "TraverseRight", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.TraverseRight = !e.TraverseRight }},
 		{name: "NextThreadId", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.NextThreadId += 1 }},
 		{name: "ThreadCount", mut: func(e *ExpectedMTState, st *multithreaded.State) { e.ThreadCount += 1 }},

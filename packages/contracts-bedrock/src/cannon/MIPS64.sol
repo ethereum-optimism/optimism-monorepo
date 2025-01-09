@@ -45,7 +45,7 @@ contract MIPS64 is ISemver {
     uint8 internal constant LL_STATUS_ACTIVE_64_BIT = 0x2;
 
     /// @notice Stores the VM state.
-    ///         Total state size: 32 + 32 + 8 + 8 + 1 + 8 + 8 + 1 + 1 + 8 + 8 + 8 + 1 + 32 + 32 + 8 = 196 bytes
+    ///         Total state size: 32 + 32 + 8 + 8 + 1 + 8 + 8 + 1 + 1 + 8 + 8 + 1 + 32 + 32 + 8 = 188 bytes
     ///         If nextPC != pc + 4, then the VM is executing a branch/jump delay slot.
     struct State {
         bytes32 memRoot;
@@ -59,7 +59,6 @@ contract MIPS64 is ISemver {
         bool exited;
         uint64 step;
         uint64 stepsSinceLastContextSwitch;
-        uint64 wakeup;
         bool traverseRight;
         bytes32 leftThreadStack;
         bytes32 rightThreadStack;
@@ -74,7 +73,7 @@ contract MIPS64 is ISemver {
     IPreimageOracle internal immutable ORACLE;
 
     // The offset of the start of proof calldata (_threadWitness.offset) in the step() function
-    uint256 internal constant THREAD_PROOF_OFFSET = 388;
+    uint256 internal constant THREAD_PROOF_OFFSET = 356;
 
     // The offset of the start of proof calldata (_memProof.offset) in the step() function
     uint256 internal constant MEM_PROOF_OFFSET = THREAD_PROOF_OFFSET + PACKED_THREAD_STATE_SIZE + 32;
@@ -86,7 +85,7 @@ contract MIPS64 is ISemver {
     uint256 internal constant STATE_MEM_OFFSET = 0x80;
 
     // ThreadState memory offset allocated during step
-    uint256 internal constant TC_MEM_OFFSET = 0x280;
+    uint256 internal constant TC_MEM_OFFSET = 0x260;
 
     /// @param _oracle The address of the preimage oracle contract.
     constructor(IPreimageOracle _oracle) {
@@ -153,10 +152,13 @@ contract MIPS64 is ISemver {
                 }
                 if iszero(eq(thread, TC_MEM_OFFSET)) {
                     // expected thread mem offset check
+                    // STATE_MEM_OFFSET = 0x80 = 128
+                    // 32 bytes per state field = 32 * 15 = 480
+                    // TC_MEM_OFFSET = 480 + 128 = 608 = 0x260
                     revert(0, 0)
                 }
-                if iszero(eq(mload(0x40), shl(5, 63))) {
-                    // 4 + 16 state slots + 43 thread slots = 63 expected memory check
+                if iszero(eq(mload(0x40), shl(5, 62))) {
+                    // 4 + 15 state slots + 43 thread slots = 62 expected memory check
                     revert(0, 0)
                 }
                 if iszero(eq(_stateData.offset, 132)) {
@@ -165,10 +167,9 @@ contract MIPS64 is ISemver {
                 }
                 if iszero(eq(_proof.offset, THREAD_PROOF_OFFSET)) {
                     // _stateData.offset = 132
-                    // stateData.length = 196
-                    // 32-byte align padding = 28
+                    // stateData.length = ceil(stateSize / 32) * 32 = 6 * 32 = 192
                     // _proof size prefix = 32
-                    // expected thread proof offset equals the sum of the above is 388
+                    // expected thread proof offset equals the sum of the above is 356
                     revert(0, 0)
                 }
 
@@ -195,7 +196,6 @@ contract MIPS64 is ISemver {
                 exited := mload(sub(m, 32))
                 c, m := putField(c, m, 8) // step
                 c, m := putField(c, m, 8) // stepsSinceLastContextSwitch
-                c, m := putField(c, m, 8) // wakeup
                 c, m := putField(c, m, 1) // traverseRight
                 c, m := putField(c, m, 32) // leftThreadStack
                 c, m := putField(c, m, 32) // rightThreadStack
@@ -683,7 +683,6 @@ contract MIPS64 is ISemver {
             from, to := copyMem(from, to, 1) // exited
             from, to := copyMem(from, to, 8) // step
             from, to := copyMem(from, to, 8) // stepsSinceLastContextSwitch
-            from, to := copyMem(from, to, 8) // wakeup
             from, to := copyMem(from, to, 1) // traverseRight
             from, to := copyMem(from, to, 32) // leftThreadStack
             from, to := copyMem(from, to, 32) // rightThreadStack

@@ -31,7 +31,6 @@ type ExpectedMTState struct {
 	expectedMemory      *memory.Memory
 	// Threading-related expectations
 	StepsSinceLastContextSwitch uint64
-	Wakeup                      arch.Word
 	TraverseRight               bool
 	NextThreadId                arch.Word
 	ThreadCount                 int
@@ -81,7 +80,6 @@ func NewExpectedMTState(fromState *multithreaded.State) *ExpectedMTState {
 		MemoryRoot:          fromState.GetMemory().MerkleRoot(),
 		// Thread-related global fields
 		StepsSinceLastContextSwitch: fromState.StepsSinceLastContextSwitch,
-		Wakeup:                      fromState.Wakeup,
 		TraverseRight:               fromState.TraverseRight,
 		NextThreadId:                fromState.NextThreadId,
 		ThreadCount:                 fromState.ThreadCount(),
@@ -193,7 +191,6 @@ func (e *ExpectedMTState) Validate(t require.TestingT, actualState *multithreade
 	require.Equalf(t, e.MemoryRoot, common.Hash(actualState.GetMemory().MerkleRoot()), "Expect memory root = %v", e.MemoryRoot)
 	// Thread-related global fields
 	require.Equalf(t, e.StepsSinceLastContextSwitch, actualState.StepsSinceLastContextSwitch, "Expect StepsSinceLastContextSwitch = %v", e.StepsSinceLastContextSwitch)
-	require.Equalf(t, e.Wakeup, actualState.Wakeup, "Expect Wakeup = %v", e.Wakeup)
 	require.Equalf(t, e.TraverseRight, actualState.TraverseRight, "Expect TraverseRight = %v", e.TraverseRight)
 	require.Equalf(t, e.NextThreadId, actualState.NextThreadId, "Expect NextThreadId = %v", e.NextThreadId)
 	require.Equalf(t, e.ThreadCount, actualState.ThreadCount(), "Expect thread count = %v", e.ThreadCount)

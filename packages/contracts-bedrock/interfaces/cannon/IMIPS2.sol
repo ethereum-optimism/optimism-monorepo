@@ -33,7 +33,6 @@ interface IMIPS2 is ISemver {
         bool exited;
         uint64 step;
         uint64 stepsSinceLastContextSwitch;
-        uint32 wakeup;
         bool traverseRight;
         bytes32 leftThreadStack;
         bytes32 rightThreadStack;
