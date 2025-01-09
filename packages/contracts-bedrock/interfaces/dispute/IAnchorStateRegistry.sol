@@ -25,9 +25,9 @@ interface IAnchorStateRegistry {
         external;
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
     function isGameRetired(IDisputeGame _game) external view returns (bool);
-    function isGameMaybeValid(IDisputeGame _game) external view returns (bool, string memory);
     function isGameFinalized(IDisputeGame _game) external view returns (bool, string memory);
-    function isGameValid(IDisputeGame _game) external view returns (bool, string memory);
+    function isClaimValid(IDisputeGame _game) external view returns (bool, string memory);
+    function isProperGame(IDisputeGame _game) external view returns (bool, string memory);
     function respectedGameType() external view returns (GameType);
     function retireAllExistingGames() external;
     function setAnchorGame(IDisputeGame _game) external;

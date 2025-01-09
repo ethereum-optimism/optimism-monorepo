@@ -31,7 +31,7 @@ import {
     Unauthorized,
     Unproven
 } from "src/libraries/PortalErrors.sol";
-import { Claim, GameType } from "src/dispute/lib/Types.sol";
+import { Claim, GameType, GameStatus } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -315,16 +315,15 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
-        // Check that the game is potentially valid.
-        // Games are considered "maybe valid" if there is nothing that has explicitly shown that
-        // the game is invalid.
-        // Examples of things that could invalidate a game include:
-        //   - Game being resolved in favor of the challenger.
-        //   - Game being blacklisted.
-        //   - Game being retired.
-        (bool maybeValid, string memory notMaybeValidReason) = anchorStateRegistry.isGameMaybeValid(gameProxy);
-        if (!maybeValid) {
-            revert GameInvalid(notMaybeValidReason);
+        // Check that the game is proper and has not been invalidated for any reason.
+        (bool properGame, string memory notProperGameReason) = anchorStateRegistry.isProperGame(gameProxy);
+        if (!properGame) {
+            revert GameInvalid(notProperGameReason);
+        }
+
+        // Check that the game has not resolved in favor of the challenger.
+        if (gameProxy.status() == GameStatus.CHALLENGER_WINS) {
+            revert GameInvalid("game resolved in favor of the challenger");
         }
 
         // Compute the storage slot of the withdrawal hash in the L2ToL1MessagePasser contract.
@@ -639,10 +638,10 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             "OptimismPortal: proven withdrawal has not matured yet"
         );
 
-        // Check that the game is valid.
-        // Games are considered valid if they meet all of the conditions of a "maybe valid" game
-        // and the game has passed the finalization delay.
-        (bool valid, string memory notValidReason) = anchorStateRegistry.isGameValid(disputeGameProxy);
+        // Check that the claim being used is valid.
+        // Claims are considered valid if they come from proper games that have finalized and
+        // resolved in favor of the root claim (defender wins).
+        (bool valid, string memory notValidReason) = anchorStateRegistry.isClaimValid(disputeGameProxy);
         if (!valid) {
             revert GameInvalid(notValidReason);
         }

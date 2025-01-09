@@ -1010,18 +1010,15 @@ contract FaultDisputeGame is Clone, ISemver {
         // to situations in which this game might not be eligible to be a new anchor game.
         try ANCHOR_STATE_REGISTRY.setAnchorGame(IDisputeGame(address(this))) { } catch { }
 
-        // Determine the bond distribution mode based on the game's status. Here we're looking
-        // for the validity conditions that would invalidate a game other than the game
-        // resolving in favor of the challenger.
-        if (
-            ANCHOR_STATE_REGISTRY.isGameBlacklisted(IDisputeGame(address(this)))
-                || ANCHOR_STATE_REGISTRY.isGameRetired(IDisputeGame(address(this)))
-        ) {
-            // If the game is blacklisted or retired, the bonds should be refunded.
-            bondDistributionMode = BondDistributionMode.REFUND;
-        } else {
-            // Otherwise, the bonds should be distributed normally.
+        // Check if the game is a proper game, which will determine the bond distribution mode.
+        (bool properGame,) = ANCHOR_STATE_REGISTRY.isProperGame(IDisputeGame(address(this)));
+
+        // If the game is a proper game, the bonds should be distributed normally. Otherwise, go
+        // into refund mode and distribute bonds back to their original depositors.
+        if (properGame) {
             bondDistributionMode = BondDistributionMode.NORMAL;
+        } else {
+            bondDistributionMode = BondDistributionMode.REFUND;
         }
 
         // Emit an event to signal that the game has been closed.

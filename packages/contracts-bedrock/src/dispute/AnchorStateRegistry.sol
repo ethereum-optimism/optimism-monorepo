@@ -118,7 +118,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param _game New candidate anchor game.
     function setAnchorGame(IDisputeGame _game) external {
         // Check if the candidate game is valid.
-        (bool valid, string memory reason) = isGameValid(_game);
+        (bool valid, string memory reason) = isClaimValid(_game);
         if (!valid) {
             revert AnchorStateRegistry_CandidateGameNotValid(reason);
         }
@@ -164,11 +164,13 @@ contract AnchorStateRegistry is Initializable, ISemver {
         return _game.createdAt().raw() <= gameRetirementTimestamp;
     }
 
-    /// @notice Returns whether a game is maybe valid.
+    /// @notice Determines whether a game resolved properly and the game was not subject to any
+    ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
+    ///         valid. The root claim of a proper game CAN BE incorrect and still be a proper game.
     /// @param _game The game to check.
-    /// @return Whether the game is maybe valid.
-    /// @return Reason why the game is not maybe valid.
-    function isGameMaybeValid(IDisputeGame _game) public view returns (bool, string memory) {
+    /// @return Whether the game is a proper game.
+    /// @return Reason why the game is not a proper game.
+    function isProperGame(IDisputeGame _game) public view returns (bool, string memory) {
         // Grab the game and game data.
         (GameType gameType, Claim rootClaim, bytes memory extraData) = _game.gameData();
 
@@ -193,37 +195,12 @@ contract AnchorStateRegistry is Initializable, ISemver {
                 return (false, "game respected game type mismatch");
             }
         } catch {
-            return (false, "legacy game");
-        }
-
-        // Must be a game with a status other than CHALLENGER_WINS.
-        if (_game.status() == GameStatus.CHALLENGER_WINS) {
-            return (false, "game challenger wins");
+            return (false, "legacy games not supported");
         }
 
         // Must be created after the gameRetirementTimestamp.
         if (isGameRetired(_game)) {
             return (false, "game retired");
-        }
-
-        return (true, "");
-    }
-
-    /// @notice Returns whether a game is valid.
-    /// @param _game The game to check.
-    /// @return Whether the game is valid.
-    /// @return Reason why the game is not valid.
-    function isGameValid(IDisputeGame _game) public view returns (bool, string memory) {
-        // Game must be maybe valid.
-        (bool maybeValid, string memory notMaybeValidReason) = isGameMaybeValid(_game);
-        if (!maybeValid) {
-            return (false, notMaybeValidReason);
-        }
-
-        // Game must be finalized.
-        (bool finalized, string memory notFinalizedReason) = isGameFinalized(_game);
-        if (!finalized) {
-            return (false, notFinalizedReason);
         }
 
         return (true, "");
@@ -236,7 +213,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     function isGameFinalized(IDisputeGame _game) public view returns (bool, string memory) {
         // Game status must be CHALLENGER_WINS or DEFENDER_WINS
         if (_game.status() != GameStatus.DEFENDER_WINS && _game.status() != GameStatus.CHALLENGER_WINS) {
-            return (false, "game not resolved");
+            return (false, "game not defender wins or challenger wins");
         }
 
         // Game resolvedAt timestamp must be non-zero
@@ -248,6 +225,31 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Game resolvedAt timestamp must be more than airgap period seconds ago
         if (block.timestamp - _resolvedAt <= disputeGameFinalityDelaySeconds) {
             return (false, "game must wait finality delay");
+        }
+
+        return (true, "");
+    }
+
+    /// @notice Returns whether a game is valid.
+    /// @param _game The game to check.
+    /// @return Whether the game is valid.
+    /// @return Reason why the game is not valid.
+    function isClaimValid(IDisputeGame _game) public view returns (bool, string memory) {
+        // Game must be a proper game.
+        (bool properGame, string memory notProperGameReason) = isProperGame(_game);
+        if (!properGame) {
+            return (false, notProperGameReason);
+        }
+
+        // Game must be finalized.
+        (bool finalized, string memory notFinalizedReason) = isGameFinalized(_game);
+        if (!finalized) {
+            return (false, notFinalizedReason);
+        }
+
+        // Game must be resolved in favor of the defender.
+        if (_game.status() != GameStatus.DEFENDER_WINS) {
+            return (false, "game resolved in favor of challenger");
         }
 
         return (true, "");
