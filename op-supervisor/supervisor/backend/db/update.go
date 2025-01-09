@@ -125,7 +125,7 @@ func (db *ChainsDB) NotifyL2Finalized() {
 	for _, chain := range db.depSet.Chains() {
 		f, err := db.Finalized(chain)
 		if err != nil {
-			db.logger.Error("Failed to get finalized L1 block", "chain", chain, "err", err)
+			db.logger.Error("Failed to get finalized L2 block", "chain", chain, "err", err)
 			continue
 		}
 		sub, ok := db.l2FinalityFeeds.Get(chain)
