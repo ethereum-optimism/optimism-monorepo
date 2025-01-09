@@ -874,7 +874,7 @@ jobs:
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
             FORK_OP_CHAIN: <<parameters.fork_op_chain>>
-            FORK_BASE_CHAIN: <<parameters.fork_base_chain>
+            FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
             FORK_BLOCK_NUMBER: <<parameters.fork_block_number>>
           working_directory: packages/contracts-bedrock
           when: on_fail
