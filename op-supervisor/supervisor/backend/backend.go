@@ -7,6 +7,7 @@ import (
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -495,6 +496,15 @@ func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types
 
 func (su *SupervisorBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
 	return su.l1Accessor.L1BlockRefByNumber(ctx, number)
+}
+
+func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+	//TODO implement me
+	panic("implement me")
+	// For each chain:
+	// * Convert timestamp to block number
+	// * Load canonical output root for block number
+
 }
 
 // Update methods

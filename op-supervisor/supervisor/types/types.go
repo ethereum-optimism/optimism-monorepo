@@ -352,3 +352,48 @@ type ManagedEvent struct {
 	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
 	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
 }
+
+type SuperRootResponse struct {
+	Timestamp uint64 `json:"timestamp"`
+
+	// Canonical is the list of output roots of the latest canonical block at or before Timestamp on each chain in the
+	// dependency set, ordered by chain ID.
+	Canonical []eth.Bytes32 `json:"canonical"`
+
+	// Pending is the list of output root preimages for the latest block at or before Timestamp on each chain
+	// prior to validation of executing messages. If the original block was valid, this will be the preimage of the
+	// output root from the Canonical array. If it was invalid, it will be the output root preimage from the
+	// Optimistic Block Deposited Transaction added to the deposit-only block.
+	Pending [][]byte `json:"pending"`
+}
+
+type superRootResponseMarshalling struct {
+	Timestamp hexutil.Uint64  `json:"timestamp"`
+	Canonical []eth.Bytes32   `json:"canonical"`
+	Pending   []hexutil.Bytes `json:"pending"`
+}
+
+func (r SuperRootResponse) MarshalJSON() ([]byte, error) {
+	var enc superRootResponseMarshalling
+	enc.Timestamp = hexutil.Uint64(r.Timestamp)
+	enc.Canonical = r.Canonical
+	enc.Pending = make([]hexutil.Bytes, len(r.Pending))
+	for i := range r.Pending {
+		enc.Pending[i] = r.Pending[i]
+	}
+	return json.Marshal(&enc)
+}
+
+func (r *SuperRootResponse) UnmarshalJSON(input []byte) error {
+	var dec superRootResponseMarshalling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	r.Timestamp = uint64(dec.Timestamp)
+	r.Canonical = dec.Canonical
+	r.Pending = make([][]byte, len(dec.Pending))
+	for i := range dec.Pending {
+		r.Pending[i] = dec.Pending[i]
+	}
+	return nil
+}
