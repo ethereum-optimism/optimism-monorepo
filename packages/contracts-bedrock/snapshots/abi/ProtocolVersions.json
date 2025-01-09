@@ -94,6 +94,19 @@
   },
   {
     "inputs": [],
+    "name": "recommendedVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "out_",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "renounceOwnership",
     "outputs": [],
     "stateMutability": "nonpayable",
@@ -107,6 +120,19 @@
         "internalType": "ProtocolVersion",
         "name": "out_",
         "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "requiredVersion",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "out_",
+        "type": "string"
       }
     ],
     "stateMutability": "view",
