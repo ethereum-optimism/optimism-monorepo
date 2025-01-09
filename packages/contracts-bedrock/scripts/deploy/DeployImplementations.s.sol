@@ -843,8 +843,18 @@ contract DeployImplementations is Script {
 
     function etchIOContracts() public returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         (dii_, dio_) = getIOContracts();
-        vm.etch(address(dii_), type(DeployImplementationsInput).runtimeCode);
-        vm.etch(address(dio_), type(DeployImplementationsOutput).runtimeCode);
+
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(dii_),
+            _cname: "DeployImplementationsInput",
+            _artifactPath: "DeployImplementations.s.sol:DeployImplementationsInput"
+        });
+
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(dio_),
+            _cname: "DeployImplementationsOutput",
+            _artifactPath: "DeployImplementations.s.sol:DeployImplementationsOutput"
+        });
     }
 
     function getIOContracts() public view returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {

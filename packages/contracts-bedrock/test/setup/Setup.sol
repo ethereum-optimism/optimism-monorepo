@@ -12,6 +12,8 @@ import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 import { Artifacts } from "scripts/Artifacts.s.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";

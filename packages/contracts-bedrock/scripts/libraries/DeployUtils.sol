@@ -368,10 +368,19 @@ library DeployUtils {
     /// @notice Etches a contract, labels it, and allows cheatcodes for it.
     /// @param _etchTo Address of the contract to etch.
     /// @param _cname The contract name (also used to label the contract).
-    function etchLabelAndAllowCheatcodes(address _etchTo, string memory _cname) internal {
-        string memory artifactPath = string.concat(_cname, ".s.sol:", _cname);
-        vm.etch(address(_etchTo), vm.getDeployedCode(artifactPath));
+    /// @param _artifactPath The path to the artifact to etch.
+    function etchLabelAndAllowCheatcodes(address _etchTo, string memory _cname, string memory _artifactPath) internal {
+        vm.etch(address(_etchTo), vm.getDeployedCode(_artifactPath));
         vm.label(address(_etchTo), _cname);
         vm.allowCheatcodes(address(_etchTo));
+    }
+
+    /// @notice Etches a contract, labels it, and allows cheatcodes for it.
+    /// @param _etchTo Address of the contract to etch.
+    /// @param _cname The contract name (also used to label the contract). MUST be the name of both the file and the
+    ///               contract.
+    function etchLabelAndAllowCheatcodes(address _etchTo, string memory _cname) internal {
+        string memory artifactPath = string.concat(_cname, ".s.sol:", _cname);
+        etchLabelAndAllowCheatcodes(_etchTo, _cname, artifactPath);
     }
 }
