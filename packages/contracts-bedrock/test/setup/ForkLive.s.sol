@@ -117,11 +117,8 @@ contract ForkLive is Deployer {
     ///         and deploys new implementations with a "_NextVersion" suffix. This suffix is necessary to avoid
     ///         naming collisions with the implementations saved above.
     function _deployNewImplementations() internal {
-        Deploy deployNew = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy.new"))))));
-        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(deployNew), _cname: "DeployNew" });
-
-        deployNew.setUp();
-        deployNew.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });
+        Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
+        deploy.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
