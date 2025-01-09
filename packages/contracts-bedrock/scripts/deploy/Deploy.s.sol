@@ -283,8 +283,6 @@ contract Deploy is Deployer {
 
         console.log("Deploying implementations");
 
-        // TODO: Deploy implementations using create2 to avoid replacing existing identical implementations
-        // (https://github.com/ethereum-optimism/optimism/issues/13644)
         DeployImplementations di = new DeployImplementations();
         (DeployImplementationsInput dii, DeployImplementationsOutput dio) = di.etchIOContracts();
 
@@ -309,7 +307,9 @@ contract Deploy is Deployer {
         di.run(dii, dio);
 
         // Fault proofs
-        // When called in a fork test, this will
+        // When called in a fork test, this will overwrite the existing implementations.
+        // TODO: Deploy implementations using create2 to avoid replacing existing identical implementations
+        // (https://github.com/ethereum-optimism/optimism/issues/13644)
         artifacts.save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
         artifacts.save("MipsSingleton", address(dio.mipsSingleton()));
         artifacts.save("OPContractsManager", address(dio.opcm()));
