@@ -65,6 +65,8 @@ contract Setup {
     ///         mutating any nonces. MUST not have constructor logic.
     Deploy internal constant deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
 
+    /// @notice The address of the Artifacts contract. Set into state by Deployer.setUp() with `etch` to avoid
+    ///         mutating any nonces. MUST not have constructor logic.
     Artifacts public constant artifacts =
         Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
 
@@ -135,10 +137,6 @@ contract Setup {
         vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         vm.label(address(deploy), "Deploy");
         vm.allowCheatcodes(address(deploy));
-
-        vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
-        vm.label(address(artifacts), "Artifacts");
-        vm.allowCheatcodes(address(artifacts));
 
         _isForkTest = vm.envOr("FORK_TEST", false);
         if (_isForkTest) {
