@@ -28,6 +28,8 @@ func TestEventResponse(t *testing.T) {
 	nodeUnsafe := 0
 	nodeDerivation := 0
 	nodeExhausted := 0
+	// recordL1 is called along with nodeExhausted
+	recordL1 := 0
 
 	// the node will call UpdateCrossUnsafe when a cross-unsafe event is received from the database
 	syncCtrl.updateCrossUnsafeFn = func(ctx context.Context, id eth.BlockID) error {
@@ -61,6 +63,10 @@ func TestEventResponse(t *testing.T) {
 		nodeExhausted++
 		return nil
 	}
+	backend.recordL1Fn = func(ctx context.Context, chainID types.ChainID, ref eth.L1BlockRef) error {
+		recordL1++
+		return nil
+	}
 	// TODO(#13595): rework node-reset, and include testing for it here
 
 	node.Start()
@@ -85,4 +91,7 @@ func TestEventResponse(t *testing.T) {
 			nodeDerivation >= 1 &&
 			nodeExhausted >= 1
 	}, 4*time.Second, 250*time.Millisecond)
+
+	// recordL1 is called every time nodeExhausted is called
+	require.Equal(t, nodeExhausted, recordL1)
 }

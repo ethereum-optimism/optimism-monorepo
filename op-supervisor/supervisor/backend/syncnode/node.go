@@ -363,7 +363,10 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 	// as RecordNewL1 will insert the new L1 block with the latest L2 block
 	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
-	m.backend.RecordNewL1(ctx, m.chainID, nextL1)
+	err = m.backend.RecordNewL1(ctx, m.chainID, nextL1)
+	if err != nil {
+		m.log.Warn("Failed to record new L1 block", "l1Block", nextL1, "err", err)
+	}
 }
 
 func (m *ManagedNode) AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error {
