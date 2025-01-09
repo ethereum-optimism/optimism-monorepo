@@ -522,14 +522,15 @@ func TestFetchL2BlockData(t *testing.T) {
 		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
 		rng := rand.New(rand.NewSource(123))
 		block, _ := testutils.RandomBlock(rng, 10)
+		disputedBlockHash := common.Hash{0xab}
 
 		l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
-		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xab}, eth.BlockToInfo(nil), nil, err)
+		l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, err)
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
 		hint := l2.L2BlockDataHint{
 			AgreedBlockHash: block.Hash(),
-			BlockHash:       common.Hash{0xab},
+			BlockHash:       disputedBlockHash,
 			ChainID:         chainID,
 		}.Hint()
 
@@ -537,6 +538,15 @@ func TestFetchL2BlockData(t *testing.T) {
 		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
 		require.Equal(t, prefetcher.executor.(*mockExecutor).blockNumber, block.NumberU64()+1)
 		require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
+
+		data, err := prefetcher.kvStore.Get(BlockDataKey(disputedBlockHash).Key())
+		require.NoError(t, err)
+		require.Equal(t, data, []byte{1})
+
+		// ensure executor isn't used on a cache hit
+		prefetcher.executor.(*mockExecutor).invoked = false
+		require.NoError(t, prefetcher.Hint(hint))
+		require.False(t, prefetcher.executor.(*mockExecutor).invoked)
 	}
 	t.Run("exec block not found", func(t *testing.T) {
 		testBlockExec(t, ethereum.NotFound)
