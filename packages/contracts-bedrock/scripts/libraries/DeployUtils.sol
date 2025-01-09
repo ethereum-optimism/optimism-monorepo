@@ -364,4 +364,14 @@ library DeployUtils {
             require(val == type(uint8).max, "DeployUtils: storage value is not 0xff at the given slot and offset");
         }
     }
+
+    /// @notice Etches a contract, labels it, and allows cheatcodes for it.
+    /// @param _etchTo Address of the contract to etch.
+    /// @param _cname The contract name (also used to label the contract).
+    function etchLabelAndAllowCheatcodes(address _etchTo, string memory _cname) internal {
+        string memory artifactPath = string.concat("Deploy", _cname, ".s.sol:", _cname);
+        vm.etch(address(_etchTo), vm.getDeployedCode(artifactPath));
+        vm.label(address(_etchTo), _cname);
+        vm.allowCheatcodes(address(_etchTo));
+    }
 }

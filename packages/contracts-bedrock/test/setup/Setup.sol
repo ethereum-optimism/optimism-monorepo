@@ -134,9 +134,7 @@ contract Setup {
         console.log("Setup: L1 setup start!");
 
         // Optimistically etch, label and allow cheatcodes for the Deploy.s.sol contract
-        vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
-        vm.label(address(deploy), "Deploy");
-        vm.allowCheatcodes(address(deploy));
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(deploy), _cname: "Deploy" });
 
         _isForkTest = vm.envOr("FORK_TEST", false);
         if (_isForkTest) {
@@ -147,8 +145,7 @@ contract Setup {
             );
 
             // Overwrite the Deploy.s.sol contract with the ForkLive.s.sol contract
-            vm.etch(address(deploy), vm.getDeployedCode("ForkLive.s.sol:ForkLive"));
-            vm.label(address(deploy), "ForkLive");
+            DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(deploy), _cname: "ForkLive" });
         }
 
         // deploy.setUp() will either:
