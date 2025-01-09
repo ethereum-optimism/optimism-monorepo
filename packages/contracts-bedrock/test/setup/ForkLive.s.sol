@@ -7,6 +7,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
 import { GameTypes } from "src/dispute/lib/Types.sol";
@@ -20,9 +21,9 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 /// @title ForkLive
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
 ///         alternative to Deploy.s.sol, when `FORK_TEST=true` is set in the env.
-///         Like Deploy.s.sol this script saves the system addresses to disk so that they can be read into memory later
-///         on, however rather than deploying new contracts from the local source code, it simply reads the addresses
-///         from the superchain-registry.
+///         Like Deploy.s.sol this script saves the system addresses to the Artifacts contract so that they can be
+///         read by other contracts. However, rather than deploying new contracts from the local source code, it
+///         simply reads the addresses from the superchain-registry.
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
@@ -41,17 +42,29 @@ contract ForkLive is Deployer {
         return vm.envOr("FORK_OP_CHAIN", string("op"));
     }
 
-    /// @notice Reads a standard chains addresses from the superchain-registry and saves them to disk.
+    /// @notice Forks, upgrades and tests a production network.
+    /// @dev This function sets up the system to test by:
+    ///      1. reading the superchain-registry to get the contract addresses we wish to test from that network.
+    ///      2. deploying the updated OPCM and implementations of the contracts.
+    ///      3. upgrading the system using the OPCM.upgrade() function.
     function run() public {
+        // Read the superchain registry and save the addresses to the Artifacts contract.
+        _readSuperchainRegistry();
+
+        // Now deploy the updated OPCM and implementations of the contracts
+        _deployNewImplementations();
+    }
+
+    /// @notice Reads the superchain config files and saves the addresses to disk.
+    /// @dev During development of an upgrade which adds a new contract, the contract will not yet be present in the
+    ///      superchain-registry. In this case, the contract will be deployed by the upgrade process, and will need to
+    ///      be stored by artifacts.save() after the call to opcm.upgrade().
+    ///      After the upgrade is complete, the superchain-registry will be updated and the contract will be present. At
+    ///      that point, this function will need to be updated to read the new contract from the superchain-registry
+    ///      using either the `saveProxyAndImpl` or `artifacts.save()` functions.
+    function _readSuperchainRegistry() internal {
         string memory superchainBasePath = "./lib/superchain-registry/superchain/configs/";
 
-        // Read the superchain config files
-        // During development of an upgrade which adds a new contract, the contract will not yet be present in the
-        // superchain-registry. In this case, the contract will be deployed by the upgrade process, and will need to
-        // be saved by after the call to opcm.upgrade().
-        // After the upgrade is complete, the superchain-registry will be updated and the contract will be present.
-        // At this point, the test will need to be updated to read the new contract from the superchain-registry using
-        // either the `saveProxyAndImpl` or `save` functions.
         string memory superchainToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/superchain.toml"));
         string memory opToml = vm.readFile(string.concat(superchainBasePath, baseChain(), "/", opChain(), ".toml"));
 
@@ -98,9 +111,6 @@ contract ForkLive is Deployer {
             IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
         artifacts.save("PermissionedDisputeGame", address(permissionedDisputeGame));
         artifacts.save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
-
-        // Now deploy the updated OPCM and implementations of the contracts
-        _deployNewImplementations();
     }
 
     /// @notice Etches a new Deploy.s.sol contract at a deterministic address, sets up the environment,
