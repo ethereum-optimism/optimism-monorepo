@@ -6,7 +6,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
-
+import { Encoding } from "src/libraries/Encoding.sol";
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
 
@@ -66,6 +66,12 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
         out_ = ProtocolVersion.wrap(Storage.getUint(REQUIRED_SLOT));
     }
 
+    /// @notice High level getter for the required protocol version.
+    /// @return out_ Required protocol version to sync to the head of the chain as a string.
+    function requiredVersion() external view returns (string memory out_) {
+        out_ = Encoding.decodeProtocolVersion(bytes32(Storage.getUint(REQUIRED_SLOT)));
+    }
+
     /// @notice Updates the required protocol version. Can only be called by the owner.
     /// @param _required New required protocol version.
     function setRequired(ProtocolVersion _required) external onlyOwner {
@@ -85,6 +91,12 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
     /// @return out_ Recommended protocol version to sync to the head of the chain.
     function recommended() external view returns (ProtocolVersion out_) {
         out_ = ProtocolVersion.wrap(Storage.getUint(RECOMMENDED_SLOT));
+    }
+
+    /// @notice High level getter for the recommended protocol version.
+    /// @return out_ Recommended protocol version to sync to the head of the chain as a string.
+    function recommendedVersion() external view returns (string memory out_) {
+        out_ = Encoding.decodeProtocolVersion(bytes32(Storage.getUint(RECOMMENDED_SLOT)));
     }
 
     /// @notice Updates the recommended protocol version. Can only be called by the owner.
