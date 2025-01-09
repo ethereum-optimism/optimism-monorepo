@@ -33,11 +33,11 @@ type taskExecutor interface {
 		l2Oracle l2.Oracle) (tasks.DerivationResult, error)
 }
 
-func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validate bool) error {
-	return runInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, validate, &interopTaskExecutor{})
+func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
+	return runInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, validateClaim, &interopTaskExecutor{})
 }
 
-func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validate bool, tasks taskExecutor) error {
+func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, tasks taskExecutor) error {
 	logger.Info("Interop Program Bootstrapped", "bootInfo", bootInfo)
 
 	// For the first step in a timestamp, we would get a SuperRoot as the agreed claim - TransitionStateByRoot will
@@ -88,7 +88,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 	if err != nil {
 		return err
 	}
-	if !validate {
+	if !validateClaim {
 		return nil
 	}
 	return claim.ValidateClaim(logger, derivationResult.SafeHead, eth.Bytes32(bootInfo.L2Claim), eth.Bytes32(expected))

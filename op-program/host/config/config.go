@@ -77,6 +77,9 @@ type Config struct {
 	// ServerMode indicates that the program should run in pre-image server mode and wait for requests.
 	// No client program is run.
 	ServerMode bool
+
+	// InteropEnabled enables interop fault proof rules when running the client in-process
+	InteropEnabled bool
 }
 
 func (c *Config) Check() error {
