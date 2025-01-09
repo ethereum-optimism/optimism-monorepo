@@ -269,11 +269,11 @@ library Encoding {
         return result;
     }
 
-    function bytes2hex(bytes8 data) internal pure returns (bytes memory) {
+    function bytes2hex(bytes8 _data) internal pure returns (bytes memory) {
         bytes memory alphabet = "0123456789abcdef";
         bytes memory str = new bytes(16);
         for (uint256 i = 0; i < 8; i++) {
-            uint8 b = uint8(data[i]);
+            uint8 b = uint8(_data[i]);
             str[i * 2] = alphabet[b >> 4];
             str[i * 2 + 1] = alphabet[b & 0x0f];
         }

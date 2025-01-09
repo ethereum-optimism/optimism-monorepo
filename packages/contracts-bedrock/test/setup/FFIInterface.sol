@@ -489,7 +489,9 @@ contract FFIInterface {
         cmds[3] = Strings.toHexString(uint256(version));
 
         bytes memory result = Process.run(cmds);
-        require(result.length > 0, "FFI call returned empty result");
+        if (result.length == 0) {
+            revert("FFI call returned empty result");
+        }
 
         string memory decoded = abi.decode(result, (string));
         return decoded;
