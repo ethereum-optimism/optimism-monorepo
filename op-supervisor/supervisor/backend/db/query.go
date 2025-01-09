@@ -103,6 +103,18 @@ func (db *ChainsDB) IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) erro
 	return nil
 }
 
+func (db *ChainsDB) SafeDerivedAt(chainID types.ChainID, derivedFrom eth.BlockID) (types.BlockSeal, error) {
+	lDB, ok := db.localDBs.Get(chainID)
+	if !ok {
+		return types.BlockSeal{}, types.ErrUnknownChain
+	}
+	derived, err := lDB.LastDerivedAt(derivedFrom)
+	if err != nil {
+		return types.BlockSeal{}, fmt.Errorf("failed to find derived block %s: %w", derivedFrom, err)
+	}
+	return derived, nil
+}
+
 func (db *ChainsDB) LocalUnsafe(chainID types.ChainID) (types.BlockSeal, error) {
 	eventsDB, ok := db.logDBs.Get(chainID)
 	if !ok {
@@ -123,29 +135,31 @@ func (db *ChainsDB) CrossUnsafe(chainID types.ChainID) (types.BlockSeal, error) 
 	crossUnsafe := result.Get()
 	// Fall back to cross-safe if cross-unsafe is not known yet
 	if crossUnsafe == (types.BlockSeal{}) {
-		_, crossSafe, err := db.CrossSafe(chainID)
+		crossSafe, err := db.CrossSafe(chainID)
 		if err != nil {
 			return types.BlockSeal{}, fmt.Errorf("no cross-unsafe known for chain %s, and failed to fall back to cross-safe value: %w", chainID, err)
 		}
-		return crossSafe, nil
+		return crossSafe.Derived, nil
 	}
 	return crossUnsafe, nil
 }
 
-func (db *ChainsDB) LocalSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error) {
+func (db *ChainsDB) LocalSafe(chainID types.ChainID) (pair types.DerivedBlockSealPair, err error) {
 	localDB, ok := db.localDBs.Get(chainID)
 	if !ok {
-		return types.BlockSeal{}, types.BlockSeal{}, types.ErrUnknownChain
+		return types.DerivedBlockSealPair{}, types.ErrUnknownChain
 	}
-	return localDB.Latest()
+	df, d, err := localDB.Latest()
+	return types.DerivedBlockSealPair{DerivedFrom: df, Derived: d}, err
 }
 
-func (db *ChainsDB) CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error) {
+func (db *ChainsDB) CrossSafe(chainID types.ChainID) (pair types.DerivedBlockSealPair, err error) {
 	crossDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
-		return types.BlockSeal{}, types.BlockSeal{}, types.ErrUnknownChain
+		return types.DerivedBlockSealPair{}, types.ErrUnknownChain
 	}
-	return crossDB.Latest()
+	df, d, err := crossDB.Latest()
+	return types.DerivedBlockSealPair{DerivedFrom: df, Derived: d}, err
 }
 
 func (db *ChainsDB) FinalizedL1() eth.BlockRef {
@@ -369,11 +383,11 @@ func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32)
 			return types.Finalized, nil
 		}
 	}
-	_, crossSafe, err := db.CrossSafe(chainID)
+	crossSafe, err := db.CrossSafe(chainID)
 	if err != nil {
 		return types.Invalid, err
 	}
-	if crossSafe.Number >= blockNum {
+	if crossSafe.Derived.Number >= blockNum {
 		return types.CrossSafe, nil
 	}
 	crossUnsafe, err := db.CrossUnsafe(chainID)
@@ -385,11 +399,11 @@ func (db *ChainsDB) Safest(chainID types.ChainID, blockNum uint64, index uint32)
 	if blockNum <= crossUnsafe.Number {
 		return types.CrossUnsafe, nil
 	}
-	_, localSafe, err := db.LocalSafe(chainID)
+	localSafe, err := db.LocalSafe(chainID)
 	if err != nil {
 		return types.Invalid, err
 	}
-	if blockNum <= localSafe.Number {
+	if blockNum <= localSafe.Derived.Number {
 		return types.LocalSafe, nil
 	}
 	return types.LocalUnsafe, nil

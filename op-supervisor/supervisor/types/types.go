@@ -310,3 +310,44 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 	msg = append(msg, l.Data...)
 	return msg
 }
+
+// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockRefPair struct {
+	DerivedFrom eth.BlockRef
+	Derived     eth.BlockRef
+}
+
+func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: refs.DerivedFrom.ID(),
+		Derived:     refs.Derived.ID(),
+	}
+}
+
+// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockSealPair struct {
+	DerivedFrom BlockSeal
+	Derived     BlockSeal
+}
+
+func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: seals.DerivedFrom.ID(),
+		Derived:     seals.Derived.ID(),
+	}
+}
+
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedIDPair struct {
+	DerivedFrom eth.BlockID
+	Derived     eth.BlockID
+}
+
+// ManagedEvent is an event sent by the managed node to the supervisor,
+// to share an update. One of the fields will be non-null; different kinds of updates may be sent.
+type ManagedEvent struct {
+	Reset            *string              `json:"reset,omitempty"`
+	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+}

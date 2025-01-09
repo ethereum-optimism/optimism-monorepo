@@ -1,7 +1,6 @@
 package deployer
 
 import (
-	"os"
 	"sort"
 	"strings"
 	"testing"
@@ -67,7 +66,7 @@ func TestParseStateFile(t *testing.T) {
 		require.True(t, ok, "Chain %s not found in result", tt.chainID)
 
 		for key, expected := range tt.expected {
-			actual := chain[key]
+			actual := chain.Addresses[key]
 			require.Equal(t, expected, actual, "Chain %s, %s: expected %s, got %s", tt.chainID, key, expected, actual)
 		}
 	}
@@ -138,56 +137,52 @@ func TestParseStateFileErrors(t *testing.T) {
 	}
 }
 
-func TestDownloadArtifact(t *testing.T) {
-	// Create a temporary directory for testing
-	tmpDir, err := os.MkdirTemp("", "test-artifact-*")
-	require.NoError(t, err, "Failed to create temp dir")
-	defer os.RemoveAll(tmpDir)
-
-	// Test with invalid enclave
-	err = downloadArtifact("invalid-enclave", "invalid-artifact", tmpDir)
-	require.Error(t, err, "Expected error for invalid enclave")
-}
-
 func TestParseWalletsFile(t *testing.T) {
 	tests := []struct {
 		name    string
 		input   string
-		want    WalletList
+		want    map[string]WalletList
 		wantErr bool
 	}{
 		{
 			name: "successful parse",
 			input: `{
-				"proposerPrivateKey": "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531",
-				"proposerAddress": "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
-				"batcherPrivateKey": "0x557313b816b8fb354340883edf86627b3de680a9f3e15aa1f522cbe6f9c7b967",
-				"batcherAddress": "0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11"
+				"chain1": {
+					"proposerPrivateKey": "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531",
+					"proposerAddress": "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+					"batcherPrivateKey": "0x557313b816b8fb354340883edf86627b3de680a9f3e15aa1f522cbe6f9c7b967",
+					"batcherAddress": "0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11"
+				}
 			}`,
-			want: WalletList{
-				{
-					Name:       "proposer",
-					Address:    "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
-					PrivateKey: "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531",
-				},
-				{
-					Name:       "batcher",
-					Address:    "0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11",
-					PrivateKey: "0x557313b816b8fb354340883edf86627b3de680a9f3e15aa1f522cbe6f9c7b967",
+			want: map[string]WalletList{
+				"chain1": {
+					{
+						Name:       "proposer",
+						Address:    "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+						PrivateKey: "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531",
+					},
+					{
+						Name:       "batcher",
+						Address:    "0x6bd90c2a1AE00384AD9F4BcD76310F54A9CcdA11",
+						PrivateKey: "0x557313b816b8fb354340883edf86627b3de680a9f3e15aa1f522cbe6f9c7b967",
+					},
 				},
 			},
-
 			wantErr: false,
 		},
 		{
 			name: "address only",
 			input: `{
-				"proposerAddress": "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F"
+				"chain1": {
+					"proposerAddress": "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F"
+				}
 			}`,
-			want: WalletList{
-				{
-					Name:    "proposer",
-					Address: "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+			want: map[string]WalletList{
+				"chain1": {
+					{
+						Name:    "proposer",
+						Address: "0xDFfA3C478Be83a91286c04721d2e5DF9A133b93F",
+					},
 				},
 			},
 			wantErr: false,
@@ -195,9 +190,13 @@ func TestParseWalletsFile(t *testing.T) {
 		{
 			name: "private key only - should be ignored",
 			input: `{
-				"proposerPrivateKey": "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531"
+				"chain1": {
+					"proposerPrivateKey": "0xe1ec816e9ad0372e458c474a06e1e6d9e7f7985cbf642a5e5fa44be639789531"
+				}
 			}`,
-			want:    WalletList{},
+			want: map[string]WalletList{
+				"chain1": {},
+			},
 			wantErr: false,
 		},
 		{
@@ -209,7 +208,7 @@ func TestParseWalletsFile(t *testing.T) {
 		{
 			name:    "empty input",
 			input:   `{}`,
-			want:    WalletList{},
+			want:    map[string]WalletList{},
 			wantErr: false,
 		},
 	}
@@ -234,10 +233,12 @@ func TestParseWalletsFile(t *testing.T) {
 				})
 			}
 
-			sortWallets(got)
-			sortWallets(tt.want)
-
-			require.Equal(t, tt.want, got)
+			for chainID, wallets := range got {
+				sortWallets(wallets)
+				wantWallets := tt.want[chainID]
+				sortWallets(wantWallets)
+				require.Equal(t, wantWallets, wallets)
+			}
 		})
 	}
 }

@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
@@ -29,10 +30,27 @@ type SyncSource interface {
 }
 
 type SyncControl interface {
-	TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
+	SubscribeEvents(ctx context.Context, c chan *types.ManagedEvent) (ethereum.Subscription, error)
+	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
+
+	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
+	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
+	UpdateFinalized(ctx context.Context, id eth.BlockID) error
+
+	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
+	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
+	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
 }
 
 type SyncNode interface {
 	SyncSource
 	SyncControl
+}
+
+type Node interface {
+	PullEvents(ctx context.Context) (pulledAny bool, err error)
+
+	AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error
+	AwaitSentCrossSafeUpdate(ctx context.Context, minNum uint64) error
+	AwaitSentFinalizedUpdate(ctx context.Context, minNum uint64) error
 }

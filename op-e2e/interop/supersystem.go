@@ -318,10 +318,10 @@ func (s *interopE2ESystem) newNodeForL2(
 			EnableAdmin: true,
 		},
 		InteropConfig: &interop.Config{
-			SupervisorAddr:   s.supervisor.RPC(),
+			//SupervisorAddr:   s.supervisor.RPC(),
 			RPCAddr:          "127.0.0.1",
 			RPCPort:          0,
-			RPCJwtSecretPath: "",
+			RPCJwtSecretPath: "jwt.secret",
 		},
 		P2P:                         nil, // disabled P2P setup for now
 		L1EpochPollInterval:         time.Second * 2,

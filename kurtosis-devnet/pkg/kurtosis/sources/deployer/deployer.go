@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os/exec"
 	"strings"
 )
 
@@ -25,9 +24,14 @@ type DeploymentAddresses map[string]string
 // DeploymentStateAddresses maps chain IDs to their contract addresses
 type DeploymentStateAddresses map[string]DeploymentAddresses
 
+type DeploymentState struct {
+	Addresses DeploymentAddresses `json:"addresses"`
+	Wallets   WalletList          `json:"wallets"`
+}
+
 type DeployerState struct {
-	Deployments DeploymentStateAddresses `json:"l2s"`
-	Addresses   DeploymentAddresses      `json:"superchain"`
+	Deployments map[string]DeploymentState `json:"l2s"`
+	Addresses   DeploymentAddresses        `json:"superchain"`
 }
 
 // StateFile represents the structure of the state.json file
@@ -111,7 +115,9 @@ func NewDeployer(enclave string, opts ...DeployerOption) *Deployer {
 }
 
 // parseWalletsFile parses a JSON file containing wallet information
-func parseWalletsFile(r io.Reader) (WalletList, error) {
+func parseWalletsFile(r io.Reader) (map[string]WalletList, error) {
+	result := make(map[string]WalletList)
+
 	// Read all data from reader
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -119,52 +125,46 @@ func parseWalletsFile(r io.Reader) (WalletList, error) {
 	}
 
 	// Unmarshal into a map first
-	var rawData map[string]string
+	var rawData map[string]map[string]string
 	if err := json.Unmarshal(data, &rawData); err != nil {
 		return nil, fmt.Errorf("failed to decode wallet file: %w", err)
 	}
 
-	// Create a map to store wallets by name
-	walletMap := make(map[string]Wallet)
+	for id, chain := range rawData {
+		// Create a map to store wallets by name
+		walletMap := make(map[string]Wallet)
 
-	// Process each key-value pair
-	for key, value := range rawData {
-		if strings.HasSuffix(key, "Address") {
-			name := strings.TrimSuffix(key, "Address")
-			wallet := walletMap[name]
-			wallet.Address = value
-			wallet.Name = name
-			walletMap[name] = wallet
-		} else if strings.HasSuffix(key, "PrivateKey") {
-			name := strings.TrimSuffix(key, "PrivateKey")
-			wallet := walletMap[name]
-			wallet.PrivateKey = value
-			wallet.Name = name
-			walletMap[name] = wallet
+		// Process each key-value pair
+		for key, value := range chain {
+			if strings.HasSuffix(key, "Address") {
+				name := strings.TrimSuffix(key, "Address")
+				wallet := walletMap[name]
+				wallet.Address = value
+				wallet.Name = name
+				walletMap[name] = wallet
+			} else if strings.HasSuffix(key, "PrivateKey") {
+				name := strings.TrimSuffix(key, "PrivateKey")
+				wallet := walletMap[name]
+				wallet.PrivateKey = value
+				wallet.Name = name
+				walletMap[name] = wallet
+			}
 		}
-	}
 
-	// Convert map to list
-	result := make(WalletList, 0, len(walletMap))
+		// Convert map to list
+		wl := make(WalletList, 0, len(walletMap))
 
-	for _, wallet := range walletMap {
-		// Only include wallets that have at least an address
-		if wallet.Address != "" {
-			result = append(result, &wallet)
+		for _, wallet := range walletMap {
+			// Only include wallets that have at least an address
+			if wallet.Address != "" {
+				wl = append(wl, &wallet)
+			}
 		}
+
+		result[id] = wl
 	}
 
 	return result, nil
-}
-
-// downloadArtifact downloads a kurtosis artifact to a temporary directory
-// TODO: reimplement this using the kurtosis SDK
-func downloadArtifact(enclave, artifact, destDir string) error {
-	cmd := exec.Command("kurtosis", "files", "download", enclave, artifact, destDir)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to download artifact %s: %w", artifact, err)
-	}
-	return nil
 }
 
 // hexToDecimal converts a hex string (with or without 0x prefix) to a decimal string
@@ -190,7 +190,7 @@ func parseStateFile(r io.Reader) (*DeployerState, error) {
 	}
 
 	result := &DeployerState{
-		Deployments: make(DeploymentStateAddresses),
+		Deployments: make(map[string]DeploymentState),
 		Addresses:   make(DeploymentAddresses),
 	}
 
@@ -225,7 +225,9 @@ func parseStateFile(r io.Reader) (*DeployerState, error) {
 		addresses := mapDeployment(deployment)
 
 		if len(addresses) > 0 {
-			result.Deployments[id] = addresses
+			result.Deployments[id] = DeploymentState{
+				Addresses: addresses,
+			}
 		}
 	}
 
@@ -269,12 +271,17 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 		return nil, err
 	}
 
+	for id, wallets := range wallets {
+		if deployment, exists := state.Deployments[id]; exists {
+			deployment.Wallets = wallets
+			state.Deployments[id] = deployment
+		}
+	}
+
 	knownWallets, err := d.getKnownWallets(ctx, fs)
 	if err != nil {
 		return nil, err
 	}
 
-	wallets = append(wallets, knownWallets...)
-
-	return &DeployerData{State: state, Wallets: wallets}, nil
+	return &DeployerData{State: state, Wallets: knownWallets}, nil
 }

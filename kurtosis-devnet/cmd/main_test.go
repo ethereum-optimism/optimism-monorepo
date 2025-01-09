@@ -28,6 +28,22 @@ func newMockDeployer(...kurtosis.KurtosisDeployerOptions) (deployer, error) {
 	return &mockDeployer{dryRun: true}, nil
 }
 
+type mockEngineManager struct{}
+
+func (m *mockEngineManager) EnsureRunning() error {
+	return nil
+}
+
+func newTestMain(cfg *config) *Main {
+	return &Main{
+		cfg: cfg,
+		newDeployer: func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error) {
+			return newMockDeployer(opts...)
+		},
+		engineManager: &mockEngineManager{},
+	}
+}
+
 func TestParseFlags(t *testing.T) {
 	tests := []struct {
 		name      string
@@ -103,15 +119,6 @@ func TestParseFlags(t *testing.T) {
 				assert.Equal(t, tt.wantCfg.dataFile, cfg.dataFile)
 			}
 		})
-	}
-}
-
-func newTestMain(cfg *config) *Main {
-	return &Main{
-		cfg: cfg,
-		newDeployer: func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error) {
-			return newMockDeployer(opts...)
-		},
 	}
 }
 

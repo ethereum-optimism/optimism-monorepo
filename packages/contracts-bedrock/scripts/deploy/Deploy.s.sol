@@ -130,21 +130,21 @@ contract Deploy is Deployer {
     }
 
     /// @notice Returns the impl addresses, not reverting if any are unset.
-    function _impls() internal view returns (Types.ContractSet memory proxies_) {
-        proxies_ = Types.ContractSet({
-            L1CrossDomainMessenger: getAddress("L1CrossDomainMessenger"),
-            L1StandardBridge: getAddress("L1StandardBridge"),
-            L2OutputOracle: getAddress("L2OutputOracle"),
-            DisputeGameFactory: getAddress("DisputeGameFactory"),
-            DelayedWETH: getAddress("DelayedWETH"),
-            PermissionedDelayedWETH: getAddress("PermissionedDelayedWETH"),
-            AnchorStateRegistry: getAddress("AnchorStateRegistry"),
-            OptimismMintableERC20Factory: getAddress("OptimismMintableERC20Factory"),
-            OptimismPortal: getAddress("OptimismPortal2"),
-            SystemConfig: getAddress("SystemConfig"),
-            L1ERC721Bridge: getAddress("L1ERC721Bridge"),
-            ProtocolVersions: getAddress("ProtocolVersions"),
-            SuperchainConfig: getAddress("SuperchainConfig")
+    function _impls() internal view returns (Types.ContractSet memory impls_) {
+        impls_ = Types.ContractSet({
+            L1CrossDomainMessenger: getAddress("L1CrossDomainMessengerImpl"),
+            L1StandardBridge: getAddress("L1StandardBridgeImpl"),
+            L2OutputOracle: getAddress("L2OutputOracleImpl"),
+            DisputeGameFactory: getAddress("DisputeGameFactoryImpl"),
+            DelayedWETH: getAddress("DelayedWETHImpl"),
+            PermissionedDelayedWETH: getAddress("PermissionedDelayedWETHImpl"),
+            AnchorStateRegistry: getAddress("AnchorStateRegistryImpl"),
+            OptimismMintableERC20Factory: getAddress("OptimismMintableERC20FactoryImpl"),
+            OptimismPortal: getAddress("OptimismPortal2Impl"),
+            SystemConfig: getAddress("SystemConfigImpl"),
+            L1ERC721Bridge: getAddress("L1ERC721BridgeImpl"),
+            ProtocolVersions: getAddress("ProtocolVersionsImpl"),
+            SuperchainConfig: getAddress("SuperchainConfigImpl")
         });
     }
 
@@ -170,11 +170,11 @@ contract Deploy is Deployer {
         console.log("Deploying a fresh OP Stack with existing SuperchainConfig and ProtocolVersions");
 
         IProxy scProxy = IProxy(_superchainConfigProxy);
-        save("SuperchainConfig", scProxy.implementation());
+        save("SuperchainConfigImpl", scProxy.implementation());
         save("SuperchainConfigProxy", _superchainConfigProxy);
 
         IProxy pvProxy = IProxy(_protocolVersionsProxy);
-        save("ProtocolVersions", pvProxy.implementation());
+        save("ProtocolVersionsImpl", pvProxy.implementation());
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
         _run({ _needsSuperchain: false });
@@ -258,9 +258,9 @@ contract Deploy is Deployer {
         ds.run(dsi, dso);
         save("SuperchainProxyAdmin", address(dso.superchainProxyAdmin()));
         save("SuperchainConfigProxy", address(dso.superchainConfigProxy()));
-        save("SuperchainConfig", address(dso.superchainConfigImpl()));
+        save("SuperchainConfigImpl", address(dso.superchainConfigImpl()));
         save("ProtocolVersionsProxy", address(dso.protocolVersionsProxy()));
-        save("ProtocolVersions", address(dso.protocolVersionsImpl()));
+        save("ProtocolVersionsImpl", address(dso.protocolVersionsImpl()));
 
         // First run assertions for the ProtocolVersions and SuperchainConfig proxy contracts.
         Types.ContractSet memory contracts = _proxies();
@@ -268,11 +268,11 @@ contract Deploy is Deployer {
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isProxy: true, _isPaused: false });
 
         // Then replace the ProtocolVersions proxy with the implementation address and run assertions on it.
-        contracts.ProtocolVersions = mustGetAddress("ProtocolVersions");
+        contracts.ProtocolVersions = mustGetAddress("ProtocolVersionsImpl");
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
         // Finally replace the SuperchainConfig proxy with the implementation address and run assertions on it.
-        contracts.SuperchainConfig = mustGetAddress("SuperchainConfig");
+        contracts.SuperchainConfig = mustGetAddress("SuperchainConfigImpl");
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isPaused: false, _isProxy: false });
     }
 
@@ -304,19 +304,18 @@ contract Deploy is Deployer {
         }
         di.run(dii, dio);
 
-        save("L1CrossDomainMessenger", address(dio.l1CrossDomainMessengerImpl()));
-        save("OptimismMintableERC20Factory", address(dio.optimismMintableERC20FactoryImpl()));
-        save("SystemConfig", address(dio.systemConfigImpl()));
-        save("L1StandardBridge", address(dio.l1StandardBridgeImpl()));
-        save("L1ERC721Bridge", address(dio.l1ERC721BridgeImpl()));
+        save("L1CrossDomainMessengerImpl", address(dio.l1CrossDomainMessengerImpl()));
+        save("OptimismMintableERC20FactoryImpl", address(dio.optimismMintableERC20FactoryImpl()));
+        save("SystemConfigImpl", address(dio.systemConfigImpl()));
+        save("L1StandardBridgeImpl", address(dio.l1StandardBridgeImpl()));
+        save("L1ERC721BridgeImpl", address(dio.l1ERC721BridgeImpl()));
 
         // Fault proofs
-        save("OptimismPortal", address(dio.optimismPortalImpl()));
-        save("OptimismPortal2", address(dio.optimismPortalImpl()));
-        save("DisputeGameFactory", address(dio.disputeGameFactoryImpl()));
-        save("DelayedWETH", address(dio.delayedWETHImpl()));
-        save("PreimageOracle", address(dio.preimageOracleSingleton()));
-        save("Mips", address(dio.mipsSingleton()));
+        save("OptimismPortal2Impl", address(dio.optimismPortalImpl()));
+        save("DisputeGameFactoryImpl", address(dio.disputeGameFactoryImpl()));
+        save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
+        save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
+        save("MipsSingleton", address(dio.mipsSingleton()));
         save("OPContractsManager", address(dio.opcm()));
 
         Types.ContractSet memory contracts = _impls();
@@ -343,7 +342,7 @@ contract Deploy is Deployer {
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
             _opcm: OPContractsManager(mustGetAddress("OPContractsManager")),
-            _mips: IMIPS(mustGetAddress("Mips"))
+            _mips: IMIPS(mustGetAddress("MipsSingleton"))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
@@ -376,7 +375,7 @@ contract Deploy is Deployer {
         save("DisputeGameFactoryProxy", address(deployOutput.disputeGameFactoryProxy));
         save("PermissionedDelayedWETHProxy", address(deployOutput.delayedWETHPermissionedGameProxy));
         save("AnchorStateRegistryProxy", address(deployOutput.anchorStateRegistryProxy));
-        save("AnchorStateRegistry", address(deployOutput.anchorStateRegistryImpl));
+        save("AnchorStateRegistryImpl", address(deployOutput.anchorStateRegistryImpl));
         save("PermissionedDisputeGame", address(deployOutput.permissionedDisputeGame));
         save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
         save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
@@ -391,7 +390,7 @@ contract Deploy is Deployer {
             permissionlessGameImpl == address(0),
             "Deploy: The PermissionlessDelayedWETH is already set by the OPCM, it is no longer necessary to deploy it separately."
         );
-        address delayedWETHImpl = mustGetAddress("DelayedWETH");
+        address delayedWETHImpl = mustGetAddress("DelayedWETHImpl");
         address delayedWETHPermissionlessGameProxy = deployERC1967ProxyWithOwner("DelayedWETHProxy", msg.sender);
         vm.broadcast(msg.sender);
         IProxy(payable(delayedWETHPermissionlessGameProxy)).upgradeToAndCall({
@@ -481,6 +480,7 @@ contract Deploy is Deployer {
                 _save: this,
                 _salt: _implSalt(),
                 _name: "DataAvailabilityChallenge",
+                _nick: "DataAvailabilityChallengeImpl",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IDataAvailabilityChallenge.__constructor__, ()))
             })
         );
@@ -495,7 +495,7 @@ contract Deploy is Deployer {
     function initializeSystemConfig() public broadcast {
         console.log("Upgrading and initializing SystemConfig proxy");
         address systemConfigProxy = mustGetAddress("SystemConfigProxy");
-        address systemConfig = mustGetAddress("SystemConfig");
+        address systemConfig = mustGetAddress("SystemConfigImpl");
 
         bytes32 batcherHash = bytes32(uint256(uint160(cfg.batchSenderAddress())));
 
@@ -543,7 +543,7 @@ contract Deploy is Deployer {
     function initializeDataAvailabilityChallenge() public broadcast {
         console.log("Upgrading and initializing DataAvailabilityChallenge proxy");
         address dataAvailabilityChallengeProxy = mustGetAddress("DataAvailabilityChallengeProxy");
-        address dataAvailabilityChallenge = mustGetAddress("DataAvailabilityChallenge");
+        address dataAvailabilityChallenge = mustGetAddress("DataAvailabilityChallengeImpl");
 
         address finalSystemOwner = cfg.finalSystemOwner();
         uint256 daChallengeWindow = cfg.daChallengeWindow();
@@ -727,7 +727,7 @@ contract Deploy is Deployer {
                 splitDepth: cfg.faultGameSplitDepth(),
                 clockExtension: Duration.wrap(uint64(cfg.faultGameClockExtension())),
                 maxClockDuration: Duration.wrap(uint64(cfg.faultGameMaxClockDuration())),
-                vm: IBigStepper(mustGetAddress("Mips")),
+                vm: IBigStepper(mustGetAddress("MipsSingleton")),
                 weth: weth,
                 anchorStateRegistry: IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")),
                 l2ChainId: cfg.l2ChainID()

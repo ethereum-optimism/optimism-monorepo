@@ -42,7 +42,21 @@ KURTOSIS_PACKAGE := "github.com/ethpandaops/optimism-package"
 
 # Devnet template recipe
 devnet TEMPLATE_FILE DATA_FILE="":
-    go run cmd/main.go -kurtosis-package {{KURTOSIS_PACKAGE}} -template "{{TEMPLATE_FILE}}" -data "{{DATA_FILE}}" -enclave `basename {{TEMPLATE_FILE}} .yaml`-devnet
+    go run cmd/main.go -kurtosis-package {{KURTOSIS_PACKAGE}} \
+        -environment tests/`basename {{TEMPLATE_FILE}} .yaml`-devnet.json \
+        -template "{{TEMPLATE_FILE}}" \
+        -data "{{DATA_FILE}}" \
+        -enclave `basename {{TEMPLATE_FILE}} .yaml`-devnet
+    cat tests/`basename {{TEMPLATE_FILE}} .yaml`-devnet.json
+
+devnet-test DEVNET *TEST:
+    #!/usr/bin/env bash
+    export TESTS=({{TEST}})
+    # we need a timestamp in there to force kurtosis to not cache the test solely based on its name!
+    export ARGS=$(printf '%s\n' "${TESTS[@]}" | jq -R . | jq -s . | jq -s '{devnet: "{{DEVNET}}", timestamp: "{{datetime("%s")}}", tests: add}')
+    kurtosis run --enclave {{DEVNET}} \
+        --show-enclave-inspect=false \
+        ./tests/ "$ARGS"
 
 # Devnet recipes
 
@@ -54,3 +68,4 @@ simple-devnet: (devnet "simple.yaml")
 
 # Interop devnet
 interop-devnet: (devnet "interop.yaml")
+interop-devnet-test: (devnet-test "interop-devnet" "interop-smoke-test.sh")

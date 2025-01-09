@@ -1,10 +1,10 @@
 package common
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -100,8 +100,7 @@ func FindFiles(includes, excludes []string) (map[string]string, error) {
 			return nil, fmt.Errorf("glob pattern error: %w", err)
 		}
 		for _, match := range matches {
-			name := filepath.Base(match)
-			included[name] = match
+			included[match] = match
 		}
 	}
 
@@ -112,7 +111,7 @@ func FindFiles(includes, excludes []string) (map[string]string, error) {
 			return nil, fmt.Errorf("glob pattern error: %w", err)
 		}
 		for _, match := range matches {
-			excluded[filepath.Base(match)] = struct{}{}
+			excluded[match] = struct{}{}
 		}
 	}
 
@@ -136,4 +135,23 @@ func ReadForgeArtifact(path string) (*solc.ForgeArtifact, error) {
 	}
 
 	return &artifact, nil
+}
+
+func WriteJSON(data interface{}, path string) error {
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(data)
+	if err != nil {
+		return fmt.Errorf("failed to encode data: %w", err)
+	}
+	jsonData := out.Bytes()
+	if len(jsonData) > 0 && jsonData[len(jsonData)-1] == '\n' { // strip newline
+		jsonData = jsonData[:len(jsonData)-1]
+	}
+	if err := os.WriteFile(path, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	return nil
 }

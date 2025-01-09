@@ -5,6 +5,8 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 /// @notice This interface corresponds to the Custom Gas Token version of the SystemConfig contract.
 interface ISystemConfig {
+    error CustomGasTokenNotSupported();
+
     enum UpdateType {
         BATCHER,
         FEE_SCALARS,

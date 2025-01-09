@@ -38,7 +38,7 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() external virtual {
-        IL1StandardBridge impl = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridge"));
+        IL1StandardBridge impl = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridgeImpl"));
         assertEq(address(impl.superchainConfig()), address(0));
 
         // The constructor now uses _disableInitializers, whereas OP Mainnet has these values in storage

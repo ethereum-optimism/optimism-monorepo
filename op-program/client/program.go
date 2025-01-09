@@ -2,15 +2,14 @@ package client
 
 import (
 	"errors"
-	"fmt"
 	"io"
 	"os"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
-	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
+	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -49,24 +48,21 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 
 	bootInfo := NewBootstrapClient(pClient).BootInfo()
 	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
-
-	l1Source := l1.NewOracleL1Client(logger, l1PreimageOracle, bootInfo.L1Head)
-	l1BlobsSource := l1.NewBlobFetcher(logger, l1PreimageOracle)
-	engineBackend, err := l2.NewOracleBackedL2Chain(
-		logger, l2PreimageOracle, l1PreimageOracle /* kzg oracle */, bootInfo.L2ChainConfig, bootInfo.L2OutputRoot)
+	safeHead, outputRoot, err := tasks.RunDerivation(
+		logger,
+		bootInfo.RollupConfig,
+		bootInfo.L2ChainConfig,
+		bootInfo.L1Head,
+		bootInfo.L2OutputRoot,
+		bootInfo.L2ClaimBlockNumber,
+		l1PreimageOracle,
+		l2PreimageOracle,
+	)
 	if err != nil {
-		return fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
+		return err
 	}
-	l2Source := l2.NewOracleEngine(bootInfo.RollupConfig, logger, engineBackend)
-
-	logger.Info("Starting derivation")
-	d := cldr.NewDriver(logger, bootInfo.RollupConfig, l1Source, l1BlobsSource, l2Source, bootInfo.L2ClaimBlockNumber)
-	if err := d.RunComplete(); err != nil {
-		return fmt.Errorf("failed to run program to completion: %w", err)
-	}
-
 	if flags == RunProgramFlagsValidate {
-		return claim.ValidateClaim(logger, bootInfo.L2ClaimBlockNumber, eth.Bytes32(bootInfo.L2Claim), l2Source)
+		return claim.ValidateClaim(logger, safeHead, eth.Bytes32(bootInfo.L2Claim), outputRoot)
 	}
 	return nil
 }
