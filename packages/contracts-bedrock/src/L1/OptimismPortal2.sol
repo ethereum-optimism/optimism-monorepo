@@ -625,13 +625,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // a timestamp of zero.
         if (provenWithdrawal.timestamp == 0) revert Unproven();
 
-        uint64 createdAt = disputeGameProxy.createdAt().raw();
-
         // As a sanity check, we make sure that the proven withdrawal's timestamp is greater than
         // starting timestamp inside the Dispute Game. Not strictly necessary but extra layer of
         // safety against weird bugs in the proving step.
         require(
-            provenWithdrawal.timestamp > createdAt,
+            provenWithdrawal.timestamp > disputeGameProxy.createdAt().raw(),
             "OptimismPortal: withdrawal timestamp less than dispute game creation timestamp"
         );
 
