@@ -1,8 +1,22 @@
+{{- $local_images := dict 
+  "op_node" (localDockerImage "op-node")
+  "op_batcher" (localDockerImage "op-batcher") 
+  "op_challenger" (localDockerImage "op-challenger") 
+  "op_proposer" (localDockerImage "op-proposer") 
+  "op_deployer" (localDockerImage "op-deployer") 
+  "op_supervisor" (localDockerImage "op-supervisor") 
+-}}
+{{ $urls := dict 
+  "prestate" (localPrestate)
+  "l1_artifacts" (localContractArtifacts "l1")
+  "l2_artifacts" (localContractArtifacts "l2")
+-}}
+---
 optimism_package:
   interop:
     enabled: true
     supervisor_params:
-      image: {{ localDockerImage "op-supervisor" }}
+      image: {{ $local_images.op_supervisor }}
       dependency_set: |
         {
           "dependencies": {
@@ -34,7 +48,7 @@ optimism_package:
         el_min_mem: 0
         el_max_mem: 0
         cl_type: op-node
-        cl_image: {{ localDockerImage "op-node" }}
+        cl_image: {{ $local_images.op_node }}
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
@@ -59,15 +73,15 @@ optimism_package:
         interop_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
-        image: {{ localDockerImage "op-batcher" }}
+        image: {{ $local_images.op_batcher }}
         extra_params: []
       challenger_params:
-        image: {{ localDockerImage "op-challenger" }}
+        image: {{ $local_images.op_challenger }}
         cannon_prestate_path: ""
-        cannon_prestates_url: {{ localPrestate }}
+        cannon_prestates_url: {{ $urls.prestate }}
         extra_params: []
       proposer_params:
-        image: {{ localDockerImage "op-proposer" }}
+        image: {{ $local_images.op_proposer }}
         extra_params: []
         game_type: 1
         proposal_interval: 10m
@@ -90,7 +104,7 @@ optimism_package:
         el_min_mem: 0
         el_max_mem: 0
         cl_type: op-node
-        cl_image: {{ localDockerImage "op-node" }}
+        cl_image: {{ $local_images.op_node }}
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
@@ -115,15 +129,15 @@ optimism_package:
         interop_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
-        image: {{ localDockerImage "op-batcher" }}
+        image: {{ $local_images.op_batcher }}
         extra_params: []
       challenger_params:
-        image: {{ localDockerImage "op-challenger" }}
+        image: {{ $local_images.op_challenger }}
         cannon_prestate_path: ""
-        cannon_prestates_url: {{ localPrestate }}
+        cannon_prestates_url: {{ $urls.prestate }}
         extra_params: []
       proposer_params:
-        image: {{ localDockerImage "op-proposer" }}
+        image: {{ $local_images.op_proposer }}
         extra_params: []
         game_type: 1
         proposal_interval: 10m
@@ -133,9 +147,9 @@ optimism_package:
         builder_port: ""
       additional_services: []
   op_contract_deployer_params:
-    image: {{ localDockerImage "op-deployer" }}
-    l1_artifacts_locator: {{ localContractArtifacts "l1" }}
-    l2_artifacts_locator: {{ localContractArtifacts "l2" }}
+    image: {{ $local_images.op_deployer }}
+    l1_artifacts_locator: {{ $urls.l1_artifacts }}
+    l2_artifacts_locator: {{ $urls.l2_artifacts }}
   global_log_level: "info"
   global_node_selectors: {}
   global_tolerations: []
