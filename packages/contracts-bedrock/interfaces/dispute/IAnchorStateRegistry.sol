@@ -7,26 +7,31 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
 interface IAnchorStateRegistry {
-    error InvalidGameStatus();
-    error Unauthorized();
-    error UnregisteredGame();
+    error AnchorStateRegistry_AnchorGameBlacklisted(IDisputeGame game);
+    error AnchorStateRegistry_AnchorGameIsNewer();
+    error AnchorStateRegistry_CandidateGameNotValid(string reason);
+    error AnchorStateRegistry_OnlyGuardian();
 
+    event AnchorGameSet(IDisputeGame newAnchorGame);
+    event DisputeGameBlacklisted(IDisputeGame game);
+    event GameRetirementTimestampSet(uint64 timestamp);
     event Initialized(uint8 version);
+    event RespectedGameTypeSet(GameType gameType);
 
-    function anchors(GameType) external view returns (Hash root, uint256 l2BlockNumber); // nosemgrep
     function disputeGameFactory() external view returns (IDisputeGameFactory);
-    function getAnchorState() external view returns (Hash root, uint256 l2BlockNumber);
+    function disputeGameFinalityDelaySeconds() external view returns (uint256);
+    function gameRetirementTimestamp() external view returns (uint64);
+    function getAnchorRoot() external view returns (Hash, uint256);
     function initialize(
         ISuperchainConfig _superchainConfig,
-        OutputRoot calldata _startingAnchorRoot,
         IDisputeGameFactory _disputeGameFactory,
-        uint256 _disputeGameFinalityDelaySeconds
-    )
-        external;
-    function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
+        OutputRoot calldata _initialAnchorRoot,
+        GameType _initialRespectedGameType
+    ) external;
+    function isClaimValid(IDisputeGame _game) external view returns (bool, string memory);
+    function isGameBlacklisted(IDisputeGame) external view returns (bool);
     function isGameRetired(IDisputeGame _game) external view returns (bool);
     function isGameFinalized(IDisputeGame _game) external view returns (bool, string memory);
-    function isClaimValid(IDisputeGame _game) external view returns (bool, string memory);
     function isProperGame(IDisputeGame _game) external view returns (bool, string memory);
     function respectedGameType() external view returns (GameType);
     function retireAllExistingGames() external;
@@ -36,5 +41,5 @@ interface IAnchorStateRegistry {
     function superchainConfig() external view returns (ISuperchainConfig);
     function version() external view returns (string memory);
 
-    function __constructor__(IDisputeGameFactory _disputeGameFactory) external;
+    function __constructor__(uint256 _disputeGameFinalityDelaySeconds) external;
 }

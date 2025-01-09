@@ -290,9 +290,9 @@ contract FaultDisputeGame is Clone, ISemver {
         if (initialized) revert AlreadyInitialized();
 
         // Grab the latest anchor root.
-        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.anchors(GAME_TYPE);
+        (Hash root, uint256 rootBlockNumber) = ANCHOR_STATE_REGISTRY.getAnchorRoot();
 
-        // Should only happen if this is a new game type that hasn't been set up yet.
+        // Legacy check, should not happen, leaving in as sanity check.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
 
         // Set the starting output root.

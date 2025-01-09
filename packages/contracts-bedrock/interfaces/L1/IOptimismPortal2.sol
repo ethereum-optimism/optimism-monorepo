@@ -30,6 +30,7 @@ interface IOptimismPortal2 {
     error UnexpectedList();
     error UnexpectedString();
     error Unproven();
+    error GameInvalid(string reason);
 
     event Initialized(uint8 version);
     event TransactionDeposited(address indexed from, address indexed to, uint256 indexed version, bytes opaqueData);
@@ -39,6 +40,7 @@ interface IOptimismPortal2 {
 
     receive() external payable;
 
+    function anchorStateRegistry() external view returns (IAnchorStateRegistry);
     function balance() external view returns (uint256);
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
     function depositERC20Transaction(
@@ -102,5 +104,5 @@ interface IOptimismPortal2 {
     function systemConfig() external view returns (ISystemConfig);
     function version() external pure returns (string memory);
 
-    function __constructor__(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) external;
+    function __constructor__(uint256 _proofMaturityDelaySeconds) external;
 }

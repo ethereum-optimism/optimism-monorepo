@@ -114,49 +114,33 @@ contract DeputyGuardianModule is ISemver {
     }
 
     /// @notice Calls the Security Council Safe's `execTransactionFromModuleReturnData()`, with the arguments
-    ///      necessary to call `setAnchorState()` on the `AnchorStateRegistry` contract.
+    ///      necessary to call `setGameBlacklisted()` on the `AnchorStateRegistry` contract.
     ///      Only the deputy guardian can call this function.
     /// @param _registry The `IAnchorStateRegistry` contract instance.
-    /// @param _game The `IFaultDisputeGame` contract instance.
-    function setAnchorState(IAnchorStateRegistry _registry, IFaultDisputeGame _game) external {
+    /// @param _game The `IDisputeGame` contract instance.
+    function blacklistDisputeGame(IAnchorStateRegistry _registry, IDisputeGame _game) external {
         _onlyDeputyGuardian();
 
-        bytes memory data = abi.encodeCall(IAnchorStateRegistry.setAnchorState, (_game));
+        bytes memory data = abi.encodeCall(IAnchorStateRegistry.setGameBlacklisted, (_game));
         (bool success, bytes memory returnData) =
             SAFE.execTransactionFromModuleReturnData(address(_registry), 0, data, Enum.Operation.Call);
-        if (!success) {
-            revert ExecutionFailed(string(returnData));
-        }
-    }
-
-    /// @notice Calls the Security Council Safe's `execTransactionFromModuleReturnData()`, with the arguments
-    ///      necessary to call `blacklistDisputeGame()` on the `OptimismPortal2` contract.
-    ///      Only the deputy guardian can call this function.
-    /// @param _portal The `OptimismPortal2` contract instance.
-    /// @param _game The `IDisputeGame` contract instance.
-    function blacklistDisputeGame(IOptimismPortal2 _portal, IDisputeGame _game) external {
-        _onlyDeputyGuardian();
-
-        bytes memory data = abi.encodeCall(IOptimismPortal2.blacklistDisputeGame, (_game));
-        (bool success, bytes memory returnData) =
-            SAFE.execTransactionFromModuleReturnData(address(_portal), 0, data, Enum.Operation.Call);
         if (!success) {
             revert ExecutionFailed(string(returnData));
         }
         emit DisputeGameBlacklisted(_game);
     }
 
-    /// @notice Calls the Security Council Safe's `execTransactionFromModuleReturnData()`, with the arguments
-    ///      necessary to call `setRespectedGameType()` on the `OptimismPortal2` contract.
-    ///      Only the deputy guardian can call this function.
-    /// @param _portal The `OptimismPortal2` contract instance.
+    /// @notice Calls the Security Council Safe's `execTransactionFromModuleReturnData()`, with
+    ///      the arguments necessary to call `setRespectedGameType()` on the `AnchorStateRegistry`
+    ///      contract. Only the deputy guardian can call this function.
+    /// @param _registry The `IAnchorStateRegistry` contract instance.
     /// @param _gameType The `GameType` to set as the respected game type.
-    function setRespectedGameType(IOptimismPortal2 _portal, GameType _gameType) external {
+    function setRespectedGameType(IAnchorStateRegistry _registry, GameType _gameType) external {
         _onlyDeputyGuardian();
 
-        bytes memory data = abi.encodeCall(IOptimismPortal2.setRespectedGameType, (_gameType));
+        bytes memory data = abi.encodeCall(IAnchorStateRegistry.setRespectedGameType, (_gameType));
         (bool success, bytes memory returnData) =
-            SAFE.execTransactionFromModuleReturnData(address(_portal), 0, data, Enum.Operation.Call);
+            SAFE.execTransactionFromModuleReturnData(address(_registry), 0, data, Enum.Operation.Call);
         if (!success) {
             revert ExecutionFailed(string(returnData));
         }

@@ -469,7 +469,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// @dev Tests that startingOutputRoot and it's getters are set correctly.
     function test_startingOutputRootGetters_succeeds() public view {
         (Hash root, uint256 l2BlockNumber) = gameProxy.startingOutputRoot();
-        (Hash anchorRoot, uint256 anchorRootBlockNumber) = anchorStateRegistry.anchors(GAME_TYPE);
+        (Hash anchorRoot, uint256 anchorRootBlockNumber) = anchorStateRegistry.getAnchorRoot();
 
         assertEq(gameProxy.startingBlockNumber(), l2BlockNumber);
         assertEq(gameProxy.startingBlockNumber(), anchorRootBlockNumber);
@@ -1713,7 +1713,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// favor of the defender and the anchor state is older than the game state.
     function test_resolve_validNewerStateUpdatesAnchor_succeeds() public {
         // Confirm that the anchor state is older than the game state.
-        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assert(l2BlockNumber < gameProxy.l2BlockNumber());
 
         // Resolve the game.
@@ -1722,7 +1722,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));
 
         // Confirm that the anchor state is now the same as the game state.
-        (root, l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (root, l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assertEq(l2BlockNumber, gameProxy.l2BlockNumber());
         assertEq(root.raw(), gameProxy.rootClaim().raw());
     }
@@ -1734,7 +1734,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(0));
 
         // Confirm that the anchor state is newer than the game state.
-        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assert(l2BlockNumber >= gameProxy.l2BlockNumber());
 
         // Resolve the game.
@@ -1744,7 +1744,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));
 
         // Confirm that the anchor state is the same as the initial anchor state.
-        (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
     }
@@ -1753,7 +1753,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// resolves in favor of the challenger, even if the game state is newer than the anchor.
     function test_resolve_invalidStateSameAnchor_succeeds() public {
         // Confirm that the anchor state is older than the game state.
-        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assert(l2BlockNumber < gameProxy.l2BlockNumber());
 
         // Challenge the claim and resolve it.
@@ -1765,7 +1765,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.CHALLENGER_WINS));
 
         // Confirm that the anchor state is the same as the initial anchor state.
-        (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
+        (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
     }

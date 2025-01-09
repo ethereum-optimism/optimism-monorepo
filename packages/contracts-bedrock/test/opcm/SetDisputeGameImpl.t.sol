@@ -4,12 +4,12 @@ pragma solidity ^0.8.0;
 import { Test } from "forge-std/Test.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
-import { GameType } from "src/dispute/lib/Types.sol";
+import { GameType, OutputRoot, Hash } from "src/dispute/lib/Types.sol";
 import { SetDisputeGameImpl, SetDisputeGameImplInput } from "scripts/deploy/SetDisputeGameImpl.s.sol";
 import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
 import { Proxy } from "src/universal/Proxy.sol";
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
-import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
+import { AnchorStateRegistry } from "src/dispute/AnchorStateRegistry.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { SuperchainConfig } from "src/L1/SuperchainConfig.sol";
@@ -70,7 +70,7 @@ contract SetDisputeGameImpl_Test is Test {
     SetDisputeGameImpl script;
     SetDisputeGameImplInput input;
     IDisputeGameFactory factory;
-    IOptimismPortal2 portal;
+    IAnchorStateRegistry registry;
     address mockImpl;
     uint32 gameType;
 
@@ -78,7 +78,7 @@ contract SetDisputeGameImpl_Test is Test {
         script = new SetDisputeGameImpl();
         input = new SetDisputeGameImplInput();
         DisputeGameFactory dgfImpl = new DisputeGameFactory();
-        OptimismPortal2 portalImpl = new OptimismPortal2(0, 0);
+        AnchorStateRegistry registryImpl = new AnchorStateRegistry(0);
         SuperchainConfig supConfigImpl = new SuperchainConfig();
 
         Proxy supConfigProxy = new Proxy(address(1));
@@ -92,21 +92,21 @@ contract SetDisputeGameImpl_Test is Test {
         factoryProxy.upgradeToAndCall(address(dgfImpl), abi.encodeCall(dgfImpl.initialize, (address(this))));
         factory = IDisputeGameFactory(address(factoryProxy));
 
-        Proxy portalProxy = new Proxy(address(1));
+        Proxy registryProxy = new Proxy(address(1));
         vm.prank(address(1));
-        portalProxy.upgradeToAndCall(
-            address(portalImpl),
+        registryProxy.upgradeToAndCall(
+            address(registryImpl),
             abi.encodeCall(
-                portalImpl.initialize,
+                IAnchorStateRegistry.initialize,
                 (
-                    factory,
-                    ISystemConfig(makeAddr("sysConfig")),
                     ISuperchainConfig(address(supConfigProxy)),
+                    IDisputeGameFactory(address(factoryProxy)),
+                    OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 }),
                     GameType.wrap(100)
                 )
             )
         );
-        portal = IOptimismPortal2(payable(address(portalProxy)));
+        registry = IAnchorStateRegistry(payable(address(registryProxy)));
 
         mockImpl = makeAddr("impl");
         gameType = 999;
@@ -115,7 +115,7 @@ contract SetDisputeGameImpl_Test is Test {
     function test_run_succeeds() public {
         input.set(input.factory.selector, address(factory));
         input.set(input.impl.selector, mockImpl);
-        input.set(input.portal.selector, address(portal));
+        input.set(input.registry.selector, address(registry));
         input.set(input.gameType.selector, gameType);
 
         script.run(input);
@@ -124,7 +124,7 @@ contract SetDisputeGameImpl_Test is Test {
     function test_run_whenImplAlreadySet_reverts() public {
         input.set(input.factory.selector, address(factory));
         input.set(input.impl.selector, mockImpl);
-        input.set(input.portal.selector, address(portal));
+        input.set(input.registry.selector, address(registry));
         input.set(input.gameType.selector, gameType);
 
         // First run should succeed

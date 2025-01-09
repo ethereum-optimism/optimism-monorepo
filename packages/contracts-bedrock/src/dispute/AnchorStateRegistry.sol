@@ -45,14 +45,14 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @custom:semver 3.0.0-beta.1
     string public constant version = "3.0.0-beta.1";
 
+    /// @notice Delay between game resolution and finalization.
+    uint256 internal immutable DISPUTE_GAME_FINALITY_DELAY_SECONDS;
+
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory public disputeGameFactory;
-
-    /// @notice Delay between game resolution and finalization.
-    uint256 public disputeGameFinalityDelaySeconds;
 
     /// @notice Timestamp after which games are considered retired.
     uint64 public gameRetirementTimestamp;
@@ -69,21 +69,22 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Returns whether a game is blacklisted.
     mapping(IDisputeGame => bool) public isGameBlacklisted;
 
-    /// @notice Constructor to disable initializers.
-    constructor() {
+    /// @param _disputeGameFinalityDelaySeconds Delay between game resolution and finalization.
+    constructor(uint256 _disputeGameFinalityDelaySeconds) {
+        DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
         _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
-    /// @param _initialAnchorRoot A starting anchor root.
     /// @param _disputeGameFactory DisputeGameFactory address.
-    /// @param _disputeGameFinalityDelaySeconds Delay between game resolution and finalization.
+    /// @param _initialAnchorRoot A starting anchor root.
+    /// @param _initialRespectedGameType The initial respected game type.
     function initialize(
         ISuperchainConfig _superchainConfig,
-        OutputRoot memory _initialAnchorRoot,
         IDisputeGameFactory _disputeGameFactory,
-        uint256 _disputeGameFinalityDelaySeconds
+        OutputRoot memory _initialAnchorRoot,
+        GameType _initialRespectedGameType
     )
         external
         initializer
@@ -91,15 +92,22 @@ contract AnchorStateRegistry is Initializable, ISemver {
         superchainConfig = _superchainConfig;
         initialAnchorRoot = _initialAnchorRoot;
         disputeGameFactory = _disputeGameFactory;
-        disputeGameFinalityDelaySeconds = _disputeGameFinalityDelaySeconds;
+        respectedGameType = _initialRespectedGameType;
+    }
+
+    /// @notice Returns the dispute game finality delay seconds.
+    /// @return The dispute game finality delay seconds.
+    function disputeGameFinalityDelaySeconds() public view returns (uint256) {
+        return DISPUTE_GAME_FINALITY_DELAY_SECONDS;
     }
 
     /// @notice Returns the current anchor root.
-    /// @return The current anchor root.
-    function getAnchorRoot() public view returns (OutputRoot memory) {
+    /// @return Hash of the current anchor root.
+    /// @return L2 block number of the current anchor root.
+    function getAnchorRoot() public view returns (Hash, uint256) {
         // If we don't have an anchor game yet, return the initial anchor root.
         if (anchorGame == IDisputeGame(address(0))) {
-            return initialAnchorRoot;
+            return (initialAnchorRoot.root, initialAnchorRoot.l2BlockNumber);
         }
 
         // Revert if the anchor game is blacklisted.
@@ -111,7 +119,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // We don't revert if the anchor game is retired because it's very likely that this
         // scenario could happen in practice. If you want to stop the current anchor game from
         // being used, blacklist it.
-        return OutputRoot({ l2BlockNumber: anchorGame.l2BlockNumber(), root: Hash.wrap(anchorGame.rootClaim().raw()) });
+        return (Hash.wrap(anchorGame.rootClaim().raw()), anchorGame.l2BlockNumber());
     }
 
     /// @notice Updates the anchor game.
@@ -141,11 +149,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     /// @notice Allows the Guardian to blacklist a dispute game.
-    /// @param _disputeGame Dispute game to blacklist.
-    function setGameBlacklisted(IDisputeGame _disputeGame) external {
+    /// @param _game Game to blacklist.
+    function setGameBlacklisted(IDisputeGame _game) external {
         if (msg.sender != superchainConfig.guardian()) revert AnchorStateRegistry_OnlyGuardian();
-        isGameBlacklisted[_disputeGame] = true;
-        emit DisputeGameBlacklisted(_disputeGame);
+        isGameBlacklisted[_game] = true;
+        emit DisputeGameBlacklisted(_game);
     }
 
     /// @notice Allows the Guardian to set the respected game type.
@@ -223,7 +231,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Game resolvedAt timestamp must be more than airgap period seconds ago
-        if (block.timestamp - _resolvedAt <= disputeGameFinalityDelaySeconds) {
+        if (block.timestamp - _resolvedAt <= DISPUTE_GAME_FINALITY_DELAY_SECONDS) {
             return (false, "game must wait finality delay");
         }
 

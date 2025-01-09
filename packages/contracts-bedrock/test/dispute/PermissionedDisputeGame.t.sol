@@ -98,7 +98,7 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.mockCall(
             address(anchorStateRegistry),
-            abi.encodeCall(anchorStateRegistry.anchors, (GAME_TYPE)),
+            abi.encodeCall(anchorStateRegistry.getAnchorRoot, ()),
             abi.encode(rootClaim, 0)
         );
         vm.prank(PROPOSER, PROPOSER);

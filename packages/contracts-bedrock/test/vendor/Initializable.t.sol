@@ -11,7 +11,7 @@ import { Process } from "scripts/libraries/Process.sol";
 // Libraries
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
-import { GameType } from "src/dispute/lib/Types.sol";
+import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -19,6 +19,7 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 
 /// @title Initializer_Test
 /// @dev Ensures that the `initialize()` function on contracts cannot be called more than
@@ -123,13 +124,7 @@ contract Initializer_Test is CommonTest {
                 name: "OptimismPortal2",
                 target: deploy.mustGetAddress("OptimismPortal2"),
                 initCalldata: abi.encodeCall(
-                    optimismPortal2.initialize,
-                    (
-                        disputeGameFactory,
-                        systemConfig,
-                        superchainConfig,
-                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
-                    )
+                    optimismPortal2.initialize, (disputeGameFactory, systemConfig, superchainConfig, anchorStateRegistry)
                 )
             })
         );
@@ -139,13 +134,7 @@ contract Initializer_Test is CommonTest {
                 name: "OptimismPortal2Proxy",
                 target: address(optimismPortal2),
                 initCalldata: abi.encodeCall(
-                    optimismPortal2.initialize,
-                    (
-                        disputeGameFactory,
-                        systemConfig,
-                        superchainConfig,
-                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
-                    )
+                    optimismPortal2.initialize, (disputeGameFactory, systemConfig, superchainConfig, anchorStateRegistry)
                 )
             })
         );
@@ -348,7 +337,12 @@ contract Initializer_Test is CommonTest {
                 target: address(anchorStateRegistry),
                 initCalldata: abi.encodeCall(
                     anchorStateRegistry.initialize,
-                    (new IAnchorStateRegistry.StartingAnchorRoot[](1), ISuperchainConfig(address(0)))
+                    (
+                        ISuperchainConfig(address(0)),
+                        IDisputeGameFactory(address(0)),
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 }),
+                        GameType.wrap(100)
+                    )
                 )
             })
         );
@@ -359,7 +353,12 @@ contract Initializer_Test is CommonTest {
                 target: address(anchorStateRegistry),
                 initCalldata: abi.encodeCall(
                     anchorStateRegistry.initialize,
-                    (new IAnchorStateRegistry.StartingAnchorRoot[](1), ISuperchainConfig(address(0)))
+                    (
+                        ISuperchainConfig(address(0)),
+                        IDisputeGameFactory(address(0)),
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 }),
+                        GameType.wrap(100)
+                    )
                 )
             })
         );

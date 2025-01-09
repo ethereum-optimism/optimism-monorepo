@@ -4,7 +4,7 @@ pragma solidity 0.8.15;
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
-import { Claim, Duration, GameType, GameTypes } from "src/dispute/lib/Types.sol";
+import { Claim, Duration, GameType, GameTypes, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -48,9 +48,8 @@ contract OPContractsManager is ISemver {
         uint32 basefeeScalar;
         uint32 blobBasefeeScalar;
         uint256 l2ChainId;
-        // The correct type is AnchorStateRegistry.StartingAnchorRoot[] memory,
-        // but OP Deployer does not yet support structs.
-        bytes startingAnchorRoots;
+        Hash startingAnchorRootHash;
+        uint256 startingAnchorRootL2BlockNumber;
         // The salt mixer is used as part of making the resulting salt unique.
         string saltMixer;
         uint64 gasLimit;
@@ -94,7 +93,6 @@ contract OPContractsManager is ISemver {
         address proxyAdmin;
         address l1ChugSplashProxy;
         address resolvedDelegateProxy;
-        address anchorStateRegistry;
         address permissionedDisputeGame1;
         address permissionedDisputeGame2;
     }
@@ -108,6 +106,7 @@ contract OPContractsManager is ISemver {
         address l1CrossDomainMessengerImpl;
         address l1StandardBridgeImpl;
         address disputeGameFactoryImpl;
+        address anchorStateRegistryImpl;
         address delayedWETHImpl;
         address mipsImpl;
     }
@@ -170,8 +169,11 @@ contract OPContractsManager is ISemver {
     /// @notice Thrown when the latest release is not set upon initialization.
     error LatestReleaseNotSet();
 
-    /// @notice Thrown when the starting anchor roots are not provided.
-    error InvalidStartingAnchorRoots();
+    /// @notice Thrown when the starting anchor root hash is not valid.
+    error InvalidStartingAnchorRootHash();
+
+    /// @notice Thrown when the starting anchor root L2 block number is not valid.
+    error InvalidStartingAnchorRootL2BlockNumber();
 
     // -------- Methods --------
 
@@ -258,15 +260,6 @@ contract OPContractsManager is ISemver {
         output.opChainProxyAdmin.setImplementationName(address(output.l1CrossDomainMessengerProxy), contractName);
         // Now that all proxies are deployed, we can transfer ownership of the AddressManager to the ProxyAdmin.
         output.addressManager.transferOwnership(address(output.opChainProxyAdmin));
-        // The AnchorStateRegistry Implementation is not MCP Ready, and therefore requires an implementation per chain.
-        // It must be deployed after the DisputeGameFactoryProxy so that it can be provided as a constructor argument.
-        output.anchorStateRegistryImpl = IAnchorStateRegistry(
-            Blueprint.deployFrom(
-                blueprint.anchorStateRegistry,
-                computeSalt(l2ChainId, saltMixer, "AnchorStateRegistry"),
-                abi.encode(output.disputeGameFactoryProxy)
-            )
-        );
 
         // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
         output.delayedWETHPermissionedGameProxy = IDelayedWETH(
@@ -285,6 +278,36 @@ contract OPContractsManager is ISemver {
 
         // -------- Set and Initialize Proxy Implementations --------
         bytes memory data;
+
+        data = encodeDelayedWETHInitializer(_input);
+        // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.delayedWETHPermissionedGameProxy),
+            implementation.delayedWETHImpl,
+            data
+        );
+
+        // We set the initial owner to this contract, set game implementations, then transfer ownership.
+        data = encodeDisputeGameFactoryInitializer();
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.disputeGameFactoryProxy),
+            implementation.disputeGameFactoryImpl,
+            data
+        );
+        output.disputeGameFactoryProxy.setImplementation(
+            GameTypes.PERMISSIONED_CANNON, IDisputeGame(address(output.permissionedDisputeGame))
+        );
+        output.disputeGameFactoryProxy.transferOwnership(address(_input.roles.opChainProxyAdminOwner));
+
+        data = encodeAnchorStateRegistryInitializer(_input, output);
+        upgradeAndCall(
+            output.opChainProxyAdmin,
+            address(output.anchorStateRegistryProxy),
+            address(output.anchorStateRegistryImpl),
+            data
+        );
 
         data = encodeL1ERC721BridgeInitializer(output);
         upgradeAndCall(
@@ -325,36 +348,6 @@ contract OPContractsManager is ISemver {
             output.opChainProxyAdmin, address(output.l1StandardBridgeProxy), implementation.l1StandardBridgeImpl, data
         );
 
-        data = encodeDelayedWETHInitializer(_input);
-        // Eventually we will switch from DelayedWETHPermissionedGameProxy to DelayedWETHPermissionlessGameProxy.
-        upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.delayedWETHPermissionedGameProxy),
-            implementation.delayedWETHImpl,
-            data
-        );
-
-        // We set the initial owner to this contract, set game implementations, then transfer ownership.
-        data = encodeDisputeGameFactoryInitializer();
-        upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.disputeGameFactoryProxy),
-            implementation.disputeGameFactoryImpl,
-            data
-        );
-        output.disputeGameFactoryProxy.setImplementation(
-            GameTypes.PERMISSIONED_CANNON, IDisputeGame(address(output.permissionedDisputeGame))
-        );
-        output.disputeGameFactoryProxy.transferOwnership(address(_input.roles.opChainProxyAdminOwner));
-
-        data = encodeAnchorStateRegistryInitializer(_input);
-        upgradeAndCall(
-            output.opChainProxyAdmin,
-            address(output.anchorStateRegistryProxy),
-            address(output.anchorStateRegistryImpl),
-            data
-        );
-
         // -------- Finalize Deployment --------
         // Transfer ownership of the ProxyAdmin from this contract to the specified owner.
         output.opChainProxyAdmin.transferOwnership(_input.roles.opChainProxyAdminOwner);
@@ -377,7 +370,8 @@ contract OPContractsManager is ISemver {
         if (_input.roles.proposer == address(0)) revert InvalidRoleAddress("proposer");
         if (_input.roles.challenger == address(0)) revert InvalidRoleAddress("challenger");
 
-        if (_input.startingAnchorRoots.length == 0) revert InvalidStartingAnchorRoots();
+        if (_input.startingAnchorRootHash.raw() == bytes32(0)) revert InvalidStartingAnchorRootHash();
+        if (_input.startingAnchorRootL2BlockNumber == 0) revert InvalidStartingAnchorRootL2BlockNumber();
     }
 
     /// @notice Maps an L2 chain ID to an L1 batch inbox address as defined by the standard
@@ -448,7 +442,7 @@ contract OPContractsManager is ISemver {
                 _output.disputeGameFactoryProxy,
                 _output.systemConfigProxy,
                 superchainConfig,
-                GameTypes.PERMISSIONED_CANNON
+                _output.anchorStateRegistryProxy
             )
         );
     }
@@ -524,15 +518,24 @@ contract OPContractsManager is ISemver {
         return abi.encodeCall(IDisputeGameFactory.initialize, (address(this)));
     }
 
-    function encodeAnchorStateRegistryInitializer(DeployInput memory _input)
+    function encodeAnchorStateRegistryInitializer(
+        DeployInput memory _input,
+        DeployOutput memory _output
+    )
         internal
         view
         virtual
         returns (bytes memory)
     {
-        IAnchorStateRegistry.StartingAnchorRoot[] memory startingAnchorRoots =
-            abi.decode(_input.startingAnchorRoots, (IAnchorStateRegistry.StartingAnchorRoot[]));
-        return abi.encodeCall(IAnchorStateRegistry.initialize, (startingAnchorRoots, superchainConfig));
+        return abi.encodeCall(
+            IAnchorStateRegistry.initialize,
+            (
+                superchainConfig,
+                _output.disputeGameFactoryProxy,
+                OutputRoot({ root: _input.startingAnchorRootHash, l2BlockNumber: _input.startingAnchorRootL2BlockNumber }),
+                GameTypes.PERMISSIONED_CANNON
+            )
+        );
     }
 
     function encodeDelayedWETHInitializer(DeployInput memory _input) internal view virtual returns (bytes memory) {

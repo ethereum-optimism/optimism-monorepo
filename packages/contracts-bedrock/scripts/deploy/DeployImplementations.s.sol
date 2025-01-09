@@ -15,6 +15,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
@@ -165,6 +166,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
     IL1StandardBridge internal _l1StandardBridgeImpl;
     IOptimismMintableERC20Factory internal _optimismMintableERC20FactoryImpl;
     IDisputeGameFactory internal _disputeGameFactoryImpl;
+    IAnchorStateRegistry internal _anchorStateRegistryImpl;
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
@@ -181,6 +183,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         else if (_sel == this.l1StandardBridgeImpl.selector) _l1StandardBridgeImpl = IL1StandardBridge(payable(_addr));
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = IOptimismMintableERC20Factory(_addr);
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = IDisputeGameFactory(_addr);
+        else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = IAnchorStateRegistry(_addr);
         else revert("DeployImplementationsOutput: unknown selector");
         // forgefmt: disable-end
     }
@@ -202,7 +205,8 @@ contract DeployImplementationsOutput is BaseDeployIO {
             address(this.l1ERC721BridgeImpl()),
             address(this.l1StandardBridgeImpl()),
             address(this.optimismMintableERC20FactoryImpl()),
-            address(this.disputeGameFactoryImpl())
+            address(this.disputeGameFactoryImpl()),
+            address(this.anchorStateRegistryImpl())
         );
 
         DeployUtils.assertValidContractAddresses(Solarray.extend(addrs1, addrs2));
@@ -263,6 +267,11 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function disputeGameFactoryImpl() public view returns (IDisputeGameFactory) {
         DeployUtils.assertValidContractAddress(address(_disputeGameFactoryImpl));
         return _disputeGameFactoryImpl;
+    }
+
+    function anchorStateRegistryImpl() public view returns (IAnchorStateRegistry) {
+        DeployUtils.assertValidContractAddress(address(_anchorStateRegistryImpl));
+        return _anchorStateRegistryImpl;
     }
 
     // -------- Deployment Assertions --------
@@ -459,6 +468,7 @@ contract DeployImplementations is Script {
             l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
             l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
+            anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
             mipsImpl: address(_dio.mipsSingleton())
         });
@@ -499,7 +509,6 @@ contract DeployImplementations is Script {
             blueprints.proxyAdmin = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("ProxyAdmin")), salt);
             blueprints.l1ChugSplashProxy = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("L1ChugSplashProxy")), salt);
             blueprints.resolvedDelegateProxy = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("ResolvedDelegateProxy")), salt);
-            blueprints.anchorStateRegistry = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("AnchorStateRegistry")), salt);
             (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2)  = deployBigBytecode(vm.getCode("PermissionedDisputeGame"), salt);
             vm.stopBroadcast();
             // forgefmt: disable-end
@@ -708,15 +717,12 @@ contract DeployImplementations is Script {
             impl = IOptimismPortal2(payable(existingImplementation));
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
-            uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
             vm.broadcast(msg.sender);
             impl = IOptimismPortal2(
                 DeployUtils.create1({
                     _name: "OptimismPortal2",
                     _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
-                        )
+                        abi.encodeCall(IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds))
                     )
                 })
             );
@@ -839,6 +845,38 @@ contract DeployImplementations is Script {
         _dio.set(_dio.disputeGameFactoryImpl.selector, address(impl));
     }
 
+    function deployAnchorStateRegistryImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        virtual
+    {
+        string memory release = _dii.l1ContractsRelease();
+        string memory stdVerToml = _dii.standardVersionsToml();
+        string memory contractName = "anchor_state_registry";
+        IAnchorStateRegistry impl;
+
+        address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
+        if (existingImplementation != address(0)) {
+            impl = IAnchorStateRegistry(payable(existingImplementation));
+        } else {
+            uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
+            vm.broadcast(msg.sender);
+            impl = IAnchorStateRegistry(
+                DeployUtils.create1({
+                    _name: "AnchorStateRegistry",
+                    _args: DeployUtils.encodeConstructor(
+                        abi.encodeCall(IAnchorStateRegistry.__constructor__, (disputeGameFinalityDelaySeconds))
+                    )
+                })
+            );
+        }
+
+        vm.label(address(impl), "AnchorStateRegistryImpl");
+        _dio.set(_dio.anchorStateRegistryImpl.selector, address(impl));
+    }
+
     // -------- Utilities --------
 
     function etchIOContracts() public returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
@@ -959,6 +997,7 @@ contract DeployImplementationsInterop is DeployImplementations {
             l1CrossDomainMessengerImpl: address(_dio.l1CrossDomainMessengerImpl()),
             l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
+            anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
             mipsImpl: address(_dio.mipsSingleton())
         });
@@ -989,16 +1028,12 @@ contract DeployImplementationsInterop is DeployImplementations {
             impl = IOptimismPortalInterop(payable(existingImplementation));
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
-            uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
             vm.broadcast(msg.sender);
             impl = IOptimismPortalInterop(
                 DeployUtils.create1({
                     _name: "OptimismPortalInterop",
                     _args: DeployUtils.encodeConstructor(
-                        abi.encodeCall(
-                            IOptimismPortalInterop.__constructor__,
-                            (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
-                        )
+                        abi.encodeCall(IOptimismPortalInterop.__constructor__, (proofMaturityDelaySeconds))
                     )
                 })
             );

@@ -209,7 +209,7 @@ contract Deploy is Deployer {
 
         // Set the respected game type according to the deploy config
         vm.startPrank(ISuperchainConfig(mustGetAddress("SuperchainConfigProxy")).guardian());
-        IOptimismPortal2(mustGetAddress("OptimismPortalProxy")).setRespectedGameType(
+        IAnchorStateRegistry(mustGetAddress("AnchorStateRegistryProxy")).setRespectedGameType(
             GameType.wrap(uint32(cfg.respectedGameType()))
         );
         vm.stopPrank();
@@ -847,24 +847,6 @@ contract Deploy is Deployer {
 
     /// @notice Get the DeployInput struct to use for testing
     function getDeployInput() public view returns (OPContractsManager.DeployInput memory) {
-        OutputRoot memory testOutputRoot = OutputRoot({
-            root: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
-            l2BlockNumber: cfg.faultGameGenesisBlock()
-        });
-        IAnchorStateRegistry.StartingAnchorRoot[] memory startingAnchorRoots =
-            new IAnchorStateRegistry.StartingAnchorRoot[](5);
-        startingAnchorRoots[0] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.CANNON, outputRoot: testOutputRoot });
-        startingAnchorRoots[1] = IAnchorStateRegistry.StartingAnchorRoot({
-            gameType: GameTypes.PERMISSIONED_CANNON,
-            outputRoot: testOutputRoot
-        });
-        startingAnchorRoots[2] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.ASTERISC, outputRoot: testOutputRoot });
-        startingAnchorRoots[3] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.FAST, outputRoot: testOutputRoot });
-        startingAnchorRoots[4] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.ALPHABET, outputRoot: testOutputRoot });
         string memory saltMixer = "salt mixer";
         return OPContractsManager.DeployInput({
             roles: OPContractsManager.Roles({
@@ -878,7 +860,8 @@ contract Deploy is Deployer {
             basefeeScalar: cfg.basefeeScalar(),
             blobBasefeeScalar: cfg.blobbasefeeScalar(),
             l2ChainId: cfg.l2ChainID(),
-            startingAnchorRoots: abi.encode(startingAnchorRoots),
+            startingAnchorRootHash: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
+            startingAnchorRootL2BlockNumber: cfg.faultGameGenesisBlock(),
             saltMixer: saltMixer,
             gasLimit: uint64(cfg.l2GenesisBlockGasLimit()),
             disputeGameType: GameTypes.PERMISSIONED_CANNON,

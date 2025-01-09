@@ -159,19 +159,12 @@ contract DeployOPChainInput is BaseDeployIO {
         return _l2ChainId;
     }
 
-    function startingAnchorRoots() public pure returns (bytes memory) {
-        // WARNING: For now always hardcode the starting permissioned game anchor root to 0xdead,
-        // and we do not set anything for the permissioned game. This is because we currently only
-        // support deploying straight to permissioned games, and the starting root does not
-        // matter for that, as long as it is non-zero, since no games will be played. We do not
-        // deploy the permissionless game (and therefore do not set a starting root for it here)
-        // because to to update to the permissionless game, we will need to update its starting
-        // anchor root and deploy a new permissioned dispute game contract anyway.
-        //
-        // You can `console.logBytes(abi.encode(ScriptConstants.DEFAULT_STARTING_ANCHOR_ROOTS()))` to get the bytes that
-        // are hardcoded into `op-chain-ops/deployer/opcm/opchain.go`
+    function startingAnchorRootHash() public pure returns (Hash) {
+        return ScriptConstants.DEFAULT_OUTPUT_ROOT().root;
+    }
 
-        return abi.encode(ScriptConstants.DEFAULT_STARTING_ANCHOR_ROOTS());
+    function startingAnchorRootL2BlockNumber() public pure returns (uint256) {
+        return ScriptConstants.DEFAULT_OUTPUT_ROOT().l2BlockNumber;
     }
 
     function opcm() public view returns (OPContractsManager) {
@@ -361,7 +354,8 @@ contract DeployOPChain is Script {
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),
             l2ChainId: _doi.l2ChainId(),
-            startingAnchorRoots: _doi.startingAnchorRoots(),
+            startingAnchorRootHash: _doi.startingAnchorRootHash(),
+            startingAnchorRootL2BlockNumber: _doi.startingAnchorRootL2BlockNumber(),
             saltMixer: _doi.saltMixer(),
             gasLimit: _doi.gasLimit(),
             disputeGameType: _doi.disputeGameType(),
@@ -516,7 +510,7 @@ contract DeployOPChain is Script {
             "ANCHORP-30"
         );
 
-        (Hash actualRoot,) = _doo.anchorStateRegistryProxy().anchors(GameTypes.PERMISSIONED_CANNON);
+        (Hash actualRoot,) = _doo.anchorStateRegistryProxy().getAnchorRoot();
         bytes32 expectedRoot = 0xdead000000000000000000000000000000000000000000000000000000000000;
         require(Hash.unwrap(actualRoot) == expectedRoot, "ANCHORP-40");
     }

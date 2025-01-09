@@ -124,7 +124,9 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
             payable(
                 address(
                     disputeGameFactory.create(
-                        optimismPortal2.respectedGameType(), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
+                        anchorStateRegistry.respectedGameType(),
+                        Claim.wrap(_outputRoot),
+                        abi.encode(_proposedBlockNumber)
                     )
                 )
             )
