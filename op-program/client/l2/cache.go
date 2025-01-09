@@ -1,6 +1,7 @@
 package l2
 
 import (
+	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -14,11 +15,12 @@ const nodeCacheSize = 100_000
 const codeCacheSize = 10_000
 
 type CachingOracle struct {
-	oracle  Oracle
-	blocks  *simplelru.LRU[common.Hash, *types.Block]
-	nodes   *simplelru.LRU[common.Hash, []byte]
-	codes   *simplelru.LRU[common.Hash, []byte]
-	outputs *simplelru.LRU[common.Hash, eth.Output]
+	oracle           Oracle
+	blocks           *simplelru.LRU[common.Hash, *types.Block]
+	nodes            *simplelru.LRU[common.Hash, []byte]
+	codes            *simplelru.LRU[common.Hash, []byte]
+	outputs          *simplelru.LRU[common.Hash, eth.Output]
+	transitionStates *simplelru.LRU[common.Hash, *interopTypes.TransitionState]
 }
 
 func NewCachingOracle(oracle Oracle) *CachingOracle {
@@ -80,4 +82,14 @@ func (o *CachingOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, 
 	block := o.oracle.BlockDataByHash(agreedBlockHash, blockHash, chainID)
 	o.blocks.Add(blockHash, block)
 	return block
+}
+
+func (o *CachingOracle) TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState {
+	state, ok := o.transitionStates.Get(root)
+	if ok {
+		return state
+	}
+	state = o.oracle.TransitionStateByRoot(root)
+	o.transitionStates.Add(root, state)
+	return state
 }

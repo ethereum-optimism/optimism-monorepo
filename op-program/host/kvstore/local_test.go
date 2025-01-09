@@ -7,7 +7,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
-	"github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
@@ -55,7 +55,7 @@ func TestLocalPreimageSource(t *testing.T) {
 func TestGetCustomChainConfigPreimages(t *testing.T) {
 	cfg := &config.Config{
 		Rollup:             chaincfg.OPSepolia(),
-		L2ChainID:          client.CustomChainIDIndicator,
+		L2ChainID:          boot.CustomChainIDIndicator,
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),

@@ -1,4 +1,4 @@
-package client
+package boot
 
 import (
 	"encoding/binary"

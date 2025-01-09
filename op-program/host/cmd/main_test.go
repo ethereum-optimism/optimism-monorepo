@@ -9,7 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
-	"github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
@@ -181,7 +181,7 @@ func TestL2ChainID(t *testing.T) {
 			"--rollup.config", rollupCfgFile,
 			"--l2.genesis", genesisFile,
 			"--l2.custom"))
-		require.Equal(t, client.CustomChainIDIndicator, cfg.L2ChainID)
+		require.Equal(t, boot.CustomChainIDIndicator, cfg.L2ChainID)
 	})
 }
 
