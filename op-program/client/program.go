@@ -14,12 +14,10 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type RunProgramFlag bool
-
-const (
-	RunProgramFlagSkipValidation RunProgramFlag = false
-	RunProgramFlagValidate       RunProgramFlag = true
-)
+type Config struct {
+	SkipValidation bool
+	InteropEnabled bool
+}
 
 // Main executes the client program in a detached context and exits the current process.
 // The client runtime environment must be preset before calling this function.
@@ -27,7 +25,10 @@ func Main(logger log.Logger) {
 	log.Info("Starting fault proof program client")
 	preimageOracle := preimage.ClientPreimageChannel()
 	preimageHinter := preimage.ClientHinterChannel()
-	if err := RunProgram(logger, preimageOracle, preimageHinter, RunProgramFlagValidate); errors.Is(err, claim.ErrClaimNotValid) {
+	config := Config{
+		InteropEnabled: os.Getenv("OP_PROGRAM_USE_INTEROP") == "true",
+	}
+	if err := RunProgram(logger, preimageOracle, preimageHinter, config); errors.Is(err, claim.ErrClaimNotValid) {
 		log.Error("Claim is invalid", "err", err)
 		os.Exit(1)
 	} else if err != nil {
@@ -40,15 +41,15 @@ func Main(logger log.Logger) {
 }
 
 // RunProgram executes the Program, while attached to an IO based pre-image oracle, to be served by a host.
-func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter io.ReadWriter, flags RunProgramFlag) error {
+func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter io.ReadWriter, cfg Config) error {
 	pClient := preimage.NewOracleClient(preimageOracle)
 	hClient := preimage.NewHintWriter(preimageHinter)
 	l1PreimageOracle := l1.NewCachingOracle(l1.NewPreimageOracle(pClient, hClient))
 	l2PreimageOracle := l2.NewCachingOracle(l2.NewPreimageOracle(pClient, hClient))
 
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
-	if os.Getenv("OP_PROGRAM_USE_INTEROP") == "true" {
-		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, flags == RunProgramFlagValidate)
+	if cfg.InteropEnabled {
+		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, !cfg.SkipValidation)
 	}
 	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 }

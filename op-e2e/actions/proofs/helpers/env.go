@@ -157,6 +157,12 @@ func WithL2BlockNumber(num uint64) FixtureInputParam {
 	}
 }
 
+func WithInteropEnabled() FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.InteropEnabled = true
+	}
+}
+
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
 	RunFaultProofProgram(t, env.log, env.Miner, env.Sequencer.L2Verifier, env.Engine, env.Sd.L2Cfg, l2ClaimBlockNum, checkResult, fixtureInputParams...)
 }
@@ -195,14 +201,11 @@ func NewBatcherCfg(params ...BatcherCfgParam) *helpers.BatcherCfg {
 	return dfault
 }
 
-type OpProgramCfgParam func(p *config.Config)
-
 func NewOpProgramCfg(
 	t helpers.Testing,
 	rollupCfg *rollup.Config,
 	l2Genesis *params.ChainConfig,
 	fi *FixtureInputs,
-	params ...OpProgramCfgParam,
 ) *config.Config {
 	dfault := config.NewConfig(rollupCfg, l2Genesis, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
 
@@ -210,9 +213,6 @@ func NewOpProgramCfg(
 		dfault.DataDir = t.TempDir()
 		dfault.DataFormat = hostTypes.DataFormatPebble
 	}
-
-	for _, apply := range params {
-		apply(dfault)
-	}
+	dfault.InteropEnabled = fi.InteropEnabled
 	return dfault
 }

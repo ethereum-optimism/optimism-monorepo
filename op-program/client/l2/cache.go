@@ -28,12 +28,14 @@ func NewCachingOracle(oracle Oracle) *CachingOracle {
 	nodeLRU, _ := simplelru.NewLRU[common.Hash, []byte](nodeCacheSize, nil)
 	codeLRU, _ := simplelru.NewLRU[common.Hash, []byte](codeCacheSize, nil)
 	outputLRU, _ := simplelru.NewLRU[common.Hash, eth.Output](codeCacheSize, nil)
+	transitionStates, _ := simplelru.NewLRU[common.Hash, *interopTypes.TransitionState](codeCacheSize, nil)
 	return &CachingOracle{
-		oracle:  oracle,
-		blocks:  blockLRU,
-		nodes:   nodeLRU,
-		codes:   codeLRU,
-		outputs: outputLRU,
+		oracle:           oracle,
+		blocks:           blockLRU,
+		nodes:            nodeLRU,
+		codes:            codeLRU,
+		outputs:          outputLRU,
+		transitionStates: transitionStates,
 	}
 }
 

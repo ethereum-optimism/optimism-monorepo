@@ -38,12 +38,13 @@ type TestFixture struct {
 }
 
 type FixtureInputs struct {
-	L2BlockNumber uint64      `toml:"l2-block-number"`
-	L2Claim       common.Hash `toml:"l2-claim"`
-	L2Head        common.Hash `toml:"l2-head"`
-	L2OutputRoot  common.Hash `toml:"l2-output-root"`
-	L2ChainID     uint64      `toml:"l2-chain-id"`
-	L1Head        common.Hash `toml:"l1-head"`
+	L2BlockNumber  uint64      `toml:"l2-block-number"`
+	L2Claim        common.Hash `toml:"l2-claim"`
+	L2Head         common.Hash `toml:"l2-head"`
+	L2OutputRoot   common.Hash `toml:"l2-output-root"`
+	L2ChainID      uint64      `toml:"l2-chain-id"`
+	L1Head         common.Hash `toml:"l1-head"`
+	InteropEnabled bool        `toml:"use-interop"`
 }
 
 // Dumps a `fp-tests` test fixture to disk if the `OP_E2E_FPP_FIXTURE_DIR` environment variable is set.

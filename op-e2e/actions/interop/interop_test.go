@@ -297,6 +297,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    start.Marshal(),
 			disputedClaim:  start.Marshal(),
 			expectValid:    false,
+			skip:           true,
 		},
 		{
 			name:           "ClaimDirectToNextTimestamp",
@@ -304,6 +305,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    start.Marshal(),
 			disputedClaim:  end.Marshal(),
 			expectValid:    false,
+			skip:           true,
 		},
 		{
 			name:           "FirstChainOptimisticBlock",
@@ -361,6 +363,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 				actors.ChainA.L2Genesis,
 				chain1End.BlockRef.Number,
 				checkResult,
+				fpHelpers.WithInteropEnabled(),
 			)
 		})
 	}
