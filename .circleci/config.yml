@@ -822,6 +822,9 @@ jobs:
         description: Fork Base RPC
         type: string
         default: "https://ci-mainnet-l1-archive.optimism.io"
+      fork_block_number:
+        description: Fork Block Number
+        type: integer
     steps:
       - utils/checkout-with-mise
       - attach_workspace: { at: "." }
@@ -859,6 +862,7 @@ jobs:
             ETH_RPC_URL: <<parameters.fork_base_rpc>>
             FORK_OP_CHAIN: <<parameters.fork_op_chain>>
             FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
+            FORK_BLOCK_NUMBER: <<parameters.fork_block_number>>
           working_directory: packages/contracts-bedrock
           no_output_timeout: 15m
       - run:
@@ -1458,15 +1462,17 @@ workflows:
           requires:
             - contracts-bedrock-build
       - contracts-bedrock-tests-upgrade:
-          name: contracts-bedrock-tests-upgrade
+          name: contracts-bedrock-tests-upgrade op-mainnet
           fork_op_chain: op
           fork_base_chain: mainnet
           fork_base_rpc: https://ci-mainnet-l1-archive.optimism.io
+          fork_block_number: 21589296
       - contracts-bedrock-tests-upgrade:
-          name: contracts-bedrock-tests-upgrade
+          name: contracts-bedrock-tests-upgrade op-sepolia
           fork_op_chain: op
           fork_base_chain: sepolia
           fork_base_rpc: https://ci-sepolia-l1-archive.optimism.io
+          fork_block_number: 7456138
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
