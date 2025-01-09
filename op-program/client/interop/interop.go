@@ -30,7 +30,7 @@ type taskExecutor interface {
 		agreedOutputRoot eth.Bytes32,
 		claimedBlockNumber uint64,
 		l1Oracle l1.Oracle,
-		l2Oracle l2.Oracle) (eth.L2BlockRef, eth.Bytes32, error)
+		l2Oracle l2.Oracle) (tasks.DerivationResult, error)
 }
 
 func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle) error {
@@ -59,7 +59,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 	if err != nil {
 		return err
 	}
-	safeHead, outputRoot, err := tasks.RunDerivation(
+	derivationResult, err := tasks.RunDerivation(
 		logger,
 		bootInfo.RollupConfig,
 		bootInfo.L2ChainConfig,
@@ -72,7 +72,23 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 	if err != nil {
 		return err
 	}
-	return claim.ValidateClaim(logger, safeHead, eth.Bytes32(bootInfo.L2Claim), outputRoot)
+
+	newPendingProgress := make([]types.OptimisticBlock, len(transitionState.PendingProgress)+1)
+	copy(newPendingProgress, transitionState.PendingProgress)
+	newPendingProgress[len(newPendingProgress)-1] = types.OptimisticBlock{
+		BlockHash:  derivationResult.BlockHash,
+		OutputRoot: derivationResult.OutputRoot,
+	}
+	finalState := &types.TransitionState{
+		SuperRoot:       transitionState.SuperRoot,
+		PendingProgress: newPendingProgress,
+		Step:            transitionState.Step + 1,
+	}
+	expected, err := finalState.Hash()
+	if err != nil {
+		return err
+	}
+	return claim.ValidateClaim(logger, derivationResult.SafeHead, eth.Bytes32(bootInfo.L2Claim), eth.Bytes32(expected))
 }
 
 type interopTaskExecutor struct {
@@ -86,7 +102,7 @@ func (t *interopTaskExecutor) RunDerivation(
 	agreedOutputRoot eth.Bytes32,
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
-	l2Oracle l2.Oracle) (eth.L2BlockRef, eth.Bytes32, error) {
+	l2Oracle l2.Oracle) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
 		rollupCfg,

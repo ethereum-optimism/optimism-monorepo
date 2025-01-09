@@ -36,20 +36,25 @@ func NewOracleEngine(rollupCfg *rollup.Config, logger log.Logger, backend engine
 	}
 }
 
-func (o *OracleEngine) L2OutputRoot(l2ClaimBlockNum uint64) (eth.Bytes32, error) {
+// L2OutputRoot returns the block hash and output root at the specified block number
+func (o *OracleEngine) L2OutputRoot(l2ClaimBlockNum uint64) (common.Hash, eth.Bytes32, error) {
 	outBlock := o.backend.GetHeaderByNumber(l2ClaimBlockNum)
 	if outBlock == nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to get L2 block at %d", l2ClaimBlockNum)
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 block at %d", l2ClaimBlockNum)
 	}
 	stateDB, err := o.backend.StateAt(outBlock.Root)
 	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("failed to open L2 state db at block %s: %w", outBlock.Hash(), err)
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to open L2 state db at block %s: %w", outBlock.Hash(), err)
 	}
 	withdrawalsTrie, err := stateDB.OpenStorageTrie(predeploys.L2ToL1MessagePasserAddr)
 	if err != nil {
-		return eth.Bytes32{}, fmt.Errorf("withdrawals trie unavailable at block %v: %w", outBlock.Hash(), err)
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("withdrawals trie unavailable at block %v: %w", outBlock.Hash(), err)
 	}
-	return rollup.ComputeL2OutputRootV0(eth.HeaderBlockInfo(outBlock), withdrawalsTrie.Hash())
+	output, err := rollup.ComputeL2OutputRootV0(eth.HeaderBlockInfo(outBlock), withdrawalsTrie.Hash())
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, err
+	}
+	return outBlock.Hash(), output, nil
 }
 
 func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadInfo) (*eth.ExecutionPayloadEnvelope, error) {

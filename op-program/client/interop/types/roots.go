@@ -1,8 +1,11 @@
 package types
 
 import (
+	"fmt"
+
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/rlp"
 )
 
@@ -21,6 +24,10 @@ type TransitionState struct {
 	Step            uint64
 }
 
+func (t *TransitionState) String() string {
+	return fmt.Sprintf("{SuperRoot: %x, PendingProgress: %v, Step: %d}", t.SuperRoot, t.PendingProgress, t.Step)
+}
+
 func (i *TransitionState) Version() byte {
 	return IntermediateTransitionVersion
 }
@@ -31,6 +38,14 @@ func (i *TransitionState) Marshal() ([]byte, error) {
 		panic(err)
 	}
 	return append([]byte{IntermediateTransitionVersion}, rlpData...), nil
+}
+
+func (i *TransitionState) Hash() (common.Hash, error) {
+	data, err := i.Marshal()
+	if err != nil {
+		return common.Hash{}, err
+	}
+	return crypto.Keccak256Hash(data), nil
 }
 
 func UnmarshalProofsState(data []byte) (*TransitionState, error) {
