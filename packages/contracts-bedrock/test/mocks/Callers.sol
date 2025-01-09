@@ -30,6 +30,7 @@ contract Reverter {
     }
 }
 
+/// @dev Can be etched in to any address to test making a delegatecall from that address.
 contract DelegateCaller {
     function dcForward(address _target, bytes calldata _data) external {
         (bool success,) = _target.delegatecall(_data);

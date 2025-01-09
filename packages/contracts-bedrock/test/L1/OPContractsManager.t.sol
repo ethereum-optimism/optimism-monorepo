@@ -165,6 +165,7 @@ contract OPContractsManager_Upgrade_Test is CommonTest {
         }
     }
 
+    // Note: this test happens after the system is already upgraded. Not sure how to test the event is emitted.
     function test_upgrade_succeeds() public view {
         OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
         OPContractsManager.Implementations memory impls = opcm.implementations();

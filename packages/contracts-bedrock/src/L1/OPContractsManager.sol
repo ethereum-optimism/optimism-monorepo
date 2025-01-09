@@ -112,6 +112,12 @@ contract OPContractsManager is ISemver {
         address mipsImpl;
     }
 
+    /// @notice The input required to identify a chain for upgrading.
+    struct OpChain {
+        ISystemConfig systemConfig;
+        IProxyAdmin proxyAdmin;
+    }
+
     // -------- Constants and Variables --------
 
     /// @custom:semver 1.0.0-beta.28
@@ -155,10 +161,9 @@ contract OPContractsManager is ISemver {
     );
 
     /// @notice Emitted when a chain is upgraded
-    /// @param l2ChainId Chain ID of the upgraded chain
     /// @param systemConfig Address of the chain's SystemConfig contract
     /// @param upgrader Address that initiated the upgrade
-    event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
+    event Upgraded(ISystemConfig indexed systemConfig, address indexed upgrader);
 
     // -------- Errors --------
 
@@ -182,6 +187,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice Thrown when the starting anchor roots are not provided.
     error InvalidStartingAnchorRoots();
+
+    /// @notice Thrown when a function which should be delegatecalled is called.
+    error OnlyDelegatecall();
 
     // -------- Methods --------
 
@@ -375,27 +383,18 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Upgrades a set of chains to the latest implementation contracts
-    /// @param _systemConfigs Array of SystemConfig contracts, one per chain to upgrade
-    /// @param _proxyAdmins Array of ProxyAdmin contracts, one per chain to upgrade
+    /// @param _opChains Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(ISystemConfig[] calldata _systemConfigs, IProxyAdmin[] calldata _proxyAdmins) external {
-        // TODO: emit the Upgraded event
-        // TODO: enforce delegatecalling
+    function upgrade(OpChain[] memory _opChains) external {
+        if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
+
         Implementations memory impls = thisOPCM.implementations();
 
-        for (uint256 i = 0; i < _systemConfigs.length; i++) {
-            ISystemConfig systemConfig = _systemConfigs[i];
-            ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
-                l1CrossDomainMessenger: systemConfig.l1CrossDomainMessenger(),
-                l1ERC721Bridge: systemConfig.l1ERC721Bridge(),
-                l1StandardBridge: systemConfig.l1StandardBridge(),
-                disputeGameFactory: systemConfig.disputeGameFactory(),
-                optimismPortal: systemConfig.optimismPortal(),
-                optimismMintableERC20Factory: systemConfig.optimismMintableERC20Factory(),
-                gasPayingToken: address(0)
-            });
+        for (uint256 i = 0; i < _opChains.length; i++) {
+            ISystemConfig systemConfig = _opChains[i].systemConfig;
+            ISystemConfig.Addresses memory opChainAddrs = getAddresses(systemConfig);
 
-            IProxyAdmin proxyAdmin = _proxyAdmins[i];
+            IProxyAdmin proxyAdmin = _opChains[i].proxyAdmin;
             proxyAdmin.upgrade(payable(address(systemConfig)), impls.systemConfigImpl);
             proxyAdmin.upgrade(payable(opChainAddrs.l1CrossDomainMessenger), impls.l1CrossDomainMessengerImpl);
             proxyAdmin.upgrade(payable(opChainAddrs.l1ERC721Bridge), impls.l1ERC721BridgeImpl);
@@ -405,6 +404,10 @@ contract OPContractsManager is ISemver {
             proxyAdmin.upgrade(
                 payable(opChainAddrs.optimismMintableERC20Factory), impls.optimismMintableERC20FactoryImpl
             );
+
+            // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
+            // the caller will be the value of the ADDRESS opcode.
+            emit Upgraded(systemConfig, address(this));
         }
     }
 
@@ -675,5 +678,17 @@ contract OPContractsManager is ISemver {
     /// @notice Returns the implementation contract addresses.
     function implementations() public view returns (Implementations memory) {
         return implementation;
+    }
+
+    function getAddresses(ISystemConfig _systemConfig) public view returns (ISystemConfig.Addresses memory) {
+        return ISystemConfig.Addresses({
+            l1CrossDomainMessenger: _systemConfig.l1CrossDomainMessenger(),
+            l1ERC721Bridge: _systemConfig.l1ERC721Bridge(),
+            l1StandardBridge: _systemConfig.l1StandardBridge(),
+            disputeGameFactory: _systemConfig.disputeGameFactory(),
+            optimismPortal: _systemConfig.optimismPortal(),
+            optimismMintableERC20Factory: _systemConfig.optimismMintableERC20Factory(),
+            gasPayingToken: address(0)
+        });
     }
 }

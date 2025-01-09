@@ -135,14 +135,15 @@ contract ForkLive is Deployer {
         address upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        ISystemConfig[] memory systemConfigs = new ISystemConfig[](1);
-        systemConfigs[0] = systemConfig;
-        IProxyAdmin[] memory proxyAdmins = new IProxyAdmin[](1);
-        proxyAdmins[0] = proxyAdmin;
+        OPContractsManager.OpChain[] memory opChains = new OPContractsManager.OpChain[](1);
+        opChains[0] = OPContractsManager.OpChain({
+            systemConfig: systemConfig,
+            proxyAdmin: proxyAdmin
+        });
 
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(upgrader).dcForward(
-            address(opcm), abi.encodeCall(OPContractsManager.upgrade, (systemConfigs, proxyAdmins))
+            address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains))
         );
     }
 
