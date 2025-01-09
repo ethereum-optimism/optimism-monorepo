@@ -154,7 +154,7 @@ contract Setup {
         // deploy.setUp() will either:
         // 1. deploy a fresh system or
         // 2. fork from L1
-        // It will then save the appropriate name/address pairs to disk using Artifacts.artifacts.save()
+        // It will then save the appropriate name/address pairs to disk using artifacts.save()
         deploy.setUp();
         console.log("Setup: L1 setup done!");
 
