@@ -932,21 +932,28 @@ contract FaultDisputeGame is Clone, ISemver {
         requiredBond_ = assumedBaseFee * requiredGas;
     }
 
-    /// @notice Claim the credit belonging to the recipient address.
-    /// @dev Reverts if the game isn't finalized, if the recipient has no credit to claim, or if the bond transfer
-    /// fails.
-    /// @dev If the game is finalized but no bond has been paid out yet, this method will determine the bond
-    /// distribution mode and also try to update the anchor state registry's anchor game.
+    /// @notice Claim the credit belonging to the recipient address. Reverts if the game isn't
+    ///         finalized, if the recipient has no credit to claim, or if the bond transfer
+    ///         fails. If the game is finalized but no bond has been paid out yet, this method
+    ///         will determine the bond distribution mode and also try to update anchor game.
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
-        // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
-        ANCHOR_STATE_REGISTRY.assertGameFinalized(IDisputeGame(address(this)));
+        // Game must be finalized before any credit can be claimed.
+        (bool finalized, string memory notFinalizedReason) =
+            ANCHOR_STATE_REGISTRY.isGameFinalized(IDisputeGame(address(this)));
+        if (!finalized) {
+            revert GameNotFinalized(notFinalizedReason);
+        }
 
+        // Determine the bond distribution mode if we haven't done so already.
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
-            // If the game is finalized, try updating anchor state...
+            // Try to update the anchor game first. Won't always succeed because delays can lead
+            // to situations in which this game might not be eligible to be a new anchor game.
             try ANCHOR_STATE_REGISTRY.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
-            // and determine the bond distribution mode.
+            // Determine the bond distribution mode based on the game's status. Here we're looking
+            // for the validity conditions that would invalidate a game other than the game
+            // resolving in favor of the challenger.
             if (
                 ANCHOR_STATE_REGISTRY.isGameBlacklisted(IDisputeGame(address(this)))
                     || ANCHOR_STATE_REGISTRY.isGameRetired(IDisputeGame(address(this)))
@@ -972,16 +979,14 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Either normal or refund mode credits will be assigned
         uint256 recipientCredit;
-
         if (bondDistributionMode == BondDistributionMode.REFUND) {
-            // Remove the refundModeCredit from the recipient prior to performing the external call.
             recipientCredit = refundModeCredit[_recipient];
             refundModeCredit[_recipient] = 0;
         } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
-            // Remove the normal mode credit from the recipient prior to performing the external call.
             recipientCredit = credit[_recipient];
             credit[_recipient] = 0;
         } else {
+            // We shouldn't get here, but sanity check just in case.
             revert InvalidBondDistributionMode();
         }
 

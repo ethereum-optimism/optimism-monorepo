@@ -123,7 +123,7 @@ error BlockNumberMatches();
 error L2BlockNumberChallenged();
 
 /// @notice Thrown when the game is not yet finalized.
-error GameNotFinalized();
+error GameNotFinalized(string reason);
 
 /// @notice Thrown when an invalid bond distribution mode is supplied.
 error InvalidBondDistributionMode();
