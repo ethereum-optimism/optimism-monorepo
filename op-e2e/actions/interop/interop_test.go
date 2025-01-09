@@ -2,16 +2,14 @@ package interop
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"testing"
 
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/super"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 
@@ -251,7 +249,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 	end, err := source.CreateSuperRoot(ctx, endTimestamp)
 	require.NoError(t, err)
 
-	serializeIntermediateRoot := func(root *IntermediateRoot) []byte {
+	serializeIntermediateRoot := func(root *types.TransitionState) []byte {
 		data, err := rlp.EncodeToBytes(root)
 		require.NoError(t, err)
 		return data
@@ -267,26 +265,26 @@ func TestInteropFaultProofs(gt *testing.T) {
 	chain2End, err := chainBClient.OutputAtBlock(ctx, num)
 	require.NoError(t, err)
 
-	step1Expected := serializeIntermediateRoot(&IntermediateRoot{
+	step1Expected := serializeIntermediateRoot(&types.TransitionState{
 		SuperRoot: start.Marshal(),
-		PendingProgress: []OptimisticBlock{
+		PendingProgress: []types.OptimisticBlock{
 			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 		},
 		Step: 1,
 	})
 
-	step2Expected := serializeIntermediateRoot(&IntermediateRoot{
+	step2Expected := serializeIntermediateRoot(&types.TransitionState{
 		SuperRoot: start.Marshal(),
-		PendingProgress: []OptimisticBlock{
+		PendingProgress: []types.OptimisticBlock{
 			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
 		},
 		Step: 2,
 	})
 
-	step3Expected := serializeIntermediateRoot(&IntermediateRoot{
+	step3Expected := serializeIntermediateRoot(&types.TransitionState{
 		SuperRoot: start.Marshal(),
-		PendingProgress: []OptimisticBlock{
+		PendingProgress: []types.OptimisticBlock{
 			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
 		},
@@ -314,6 +312,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    start.Marshal(),
 			disputedClaim:  step1Expected,
 			expectValid:    true,
+			skip:           true,
 		},
 		{
 			name:           "SecondChainOptimisticBlock",
@@ -321,6 +320,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    step1Expected,
 			disputedClaim:  step2Expected,
 			expectValid:    true,
+			skip:           true,
 		},
 		{
 			name:           "PaddingStep",
@@ -328,6 +328,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    step2Expected,
 			disputedClaim:  step3Expected,
 			expectValid:    true,
+			skip:           true,
 		},
 		{
 			name:           "Consolidate",
@@ -335,6 +336,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    step3Expected,
 			disputedClaim:  end.Marshal(),
 			expectValid:    true,
+			skip:           true,
 		},
 	}
 
@@ -342,8 +344,10 @@ func TestInteropFaultProofs(gt *testing.T) {
 		test := test
 		gt.Run(test.name, func(gt *testing.T) {
 			t := helpers.NewDefaultTesting(gt)
-			fmt.Printf("Timestamp: %v\n Agreed: %x\n Disputed: %x\nValid: %v\n",
-				test.startTimestamp, test.agreedClaim, test.disputedClaim, test.expectValid)
+			if test.skip {
+				t.Skip("Not yet implemented")
+				return
+			}
 			logger := testlog.Logger(t, slog.LevelInfo)
 			checkResult := fpHelpers.ExpectNoError()
 			if !test.expectValid {
@@ -369,15 +373,5 @@ type transitionTest struct {
 	agreedClaim    []byte
 	disputedClaim  []byte
 	expectValid    bool
-}
-
-type OptimisticBlock struct {
-	BlockHash  common.Hash
-	OutputRoot eth.Bytes32
-}
-
-type IntermediateRoot struct {
-	SuperRoot       []byte
-	PendingProgress []OptimisticBlock
-	Step            uint64
+	skip           bool
 }

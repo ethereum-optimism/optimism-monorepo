@@ -5,6 +5,7 @@ import (
 	"math/rand"
 	"testing"
 
+	types2 "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -137,6 +138,59 @@ func TestPreimageOracleOutputByRoot(t *testing.T) {
 			gotOutput := po.OutputByRoot(h)
 			hints.AssertExpectations(t)
 			require.Equal(t, hexutil.Bytes(output.Marshal()), hexutil.Bytes(gotOutput.Marshal()), "output matches")
+		})
+	}
+}
+
+func TestPreimageOracleTransitionStateByRoot(t *testing.T) {
+	rng := rand.New(rand.NewSource(123))
+
+	for i := 0; i < 10; i++ {
+		t.Run(fmt.Sprintf("super_root_%d", i), func(t *testing.T) {
+			po, hints, preimages := mockPreimageOracle(t)
+			output := testutils.RandomSuperV1(rng)
+			transitionState := types2.TransitionState{SuperRoot: output.Marshal()}
+			expected, err := transitionState.Marshal()
+			require.NoError(t, err)
+
+			h := common.Hash(eth.SuperRoot(output))
+			preimages[preimage.Keccak256Key(h).PreimageKey()] = output.Marshal()
+			hints.On("hint", AgreedPrestateHint(h).Hint()).Once().Return()
+			gotOutput := po.TransitionStateByRoot(h)
+			hints.AssertExpectations(t)
+			actual, err := gotOutput.Marshal()
+			require.NoError(t, err)
+			require.Equal(t, hexutil.Bytes(expected), hexutil.Bytes(actual), "output matches")
+		})
+
+		t.Run(fmt.Sprintf("state_%d", i), func(t *testing.T) {
+			po, hints, preimages := mockPreimageOracle(t)
+			output := testutils.RandomSuperV1(rng)
+			transitionState := types2.TransitionState{
+				SuperRoot: output.Marshal(),
+				PendingProgress: []types2.OptimisticBlock{
+					{
+						BlockHash:  testutils.RandomHash(rng),
+						OutputRoot: eth.Bytes32(testutils.RandomHash(rng)),
+					},
+					{
+						BlockHash:  testutils.RandomHash(rng),
+						OutputRoot: eth.Bytes32(testutils.RandomHash(rng)),
+					},
+				},
+				Step: 2,
+			}
+			expected, err := transitionState.Marshal()
+			require.NoError(t, err)
+
+			h := crypto.Keccak256Hash(expected)
+			preimages[preimage.Keccak256Key(h).PreimageKey()] = expected
+			hints.On("hint", AgreedPrestateHint(h).Hint()).Once().Return()
+			gotOutput := po.TransitionStateByRoot(h)
+			hints.AssertExpectations(t)
+			actual, err := gotOutput.Marshal()
+			require.NoError(t, err)
+			require.Equal(t, hexutil.Bytes(expected), hexutil.Bytes(actual), "output matches")
 		})
 	}
 }

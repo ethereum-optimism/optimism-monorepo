@@ -6,11 +6,11 @@ import (
 	"os"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
+	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
-	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -46,23 +46,12 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 	l1PreimageOracle := l1.NewCachingOracle(l1.NewPreimageOracle(pClient, hClient))
 	l2PreimageOracle := l2.NewCachingOracle(l2.NewPreimageOracle(pClient, hClient))
 
-	bootInfo := NewBootstrapClient(pClient).BootInfo()
-	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
-	safeHead, outputRoot, err := tasks.RunDerivation(
-		logger,
-		bootInfo.RollupConfig,
-		bootInfo.L2ChainConfig,
-		bootInfo.L1Head,
-		bootInfo.L2OutputRoot,
-		bootInfo.L2ClaimBlockNumber,
-		l1PreimageOracle,
-		l2PreimageOracle,
-	)
-	if err != nil {
-		return err
+	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
+	if os.Getenv("USE_INTEROP") == "true" {
+		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 	}
 	if flags == RunProgramFlagValidate {
-		return claim.ValidateClaim(logger, safeHead, eth.Bytes32(bootInfo.L2Claim), outputRoot)
+		return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 	}
 	return nil
 }

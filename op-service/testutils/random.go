@@ -355,3 +355,14 @@ func RandomOutputV0(rng *rand.Rand) *eth.OutputV0 {
 		BlockHash:                RandomHash(rng),
 	}
 }
+
+func RandomSuperV1(rng *rand.Rand) *eth.SuperV1 {
+	return &eth.SuperV1{
+		Timestamp: uint64(rng.Int()),
+		Outputs: []eth.Bytes32{
+			eth.OutputRoot(RandomOutputV0(rng)),
+			eth.OutputRoot(RandomOutputV0(rng)),
+			eth.OutputRoot(RandomOutputV0(rng)),
+		},
+	}
+}

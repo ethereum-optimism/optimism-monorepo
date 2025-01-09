@@ -4,7 +4,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 
-	"github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -18,13 +18,13 @@ func NewLocalPreimageSource(config *config.Config) *LocalPreimageSource {
 }
 
 var (
-	l1HeadKey             = client.L1HeadLocalIndex.PreimageKey()
-	l2OutputRootKey       = client.L2OutputRootLocalIndex.PreimageKey()
-	l2ClaimKey            = client.L2ClaimLocalIndex.PreimageKey()
-	l2ClaimBlockNumberKey = client.L2ClaimBlockNumberLocalIndex.PreimageKey()
-	l2ChainIDKey          = client.L2ChainIDLocalIndex.PreimageKey()
-	l2ChainConfigKey      = client.L2ChainConfigLocalIndex.PreimageKey()
-	rollupKey             = client.RollupConfigLocalIndex.PreimageKey()
+	l1HeadKey             = boot.L1HeadLocalIndex.PreimageKey()
+	l2OutputRootKey       = boot.L2OutputRootLocalIndex.PreimageKey()
+	l2ClaimKey            = boot.L2ClaimLocalIndex.PreimageKey()
+	l2ClaimBlockNumberKey = boot.L2ClaimBlockNumberLocalIndex.PreimageKey()
+	l2ChainIDKey          = boot.L2ChainIDLocalIndex.PreimageKey()
+	l2ChainConfigKey      = boot.L2ChainConfigLocalIndex.PreimageKey()
+	rollupKey             = boot.RollupConfigLocalIndex.PreimageKey()
 )
 
 func (s *LocalPreimageSource) Get(key common.Hash) ([]byte, error) {
@@ -40,12 +40,12 @@ func (s *LocalPreimageSource) Get(key common.Hash) ([]byte, error) {
 	case l2ChainIDKey:
 		return binary.BigEndian.AppendUint64(nil, s.config.L2ChainID), nil
 	case l2ChainConfigKey:
-		if s.config.L2ChainID != client.CustomChainIDIndicator {
+		if s.config.L2ChainID != boot.CustomChainIDIndicator {
 			return nil, ErrNotFound
 		}
 		return json.Marshal(s.config.L2ChainConfig)
 	case rollupKey:
-		if s.config.L2ChainID != client.CustomChainIDIndicator {
+		if s.config.L2ChainID != boot.CustomChainIDIndicator {
 			return nil, ErrNotFound
 		}
 		return json.Marshal(s.config.Rollup)

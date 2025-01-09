@@ -10,7 +10,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
-	"github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -134,7 +134,7 @@ func NewConfig(
 	_, err := params.LoadOPStackChainConfig(l2ChainID)
 	if err != nil {
 		// Unknown chain ID so assume it is custom
-		l2ChainID = client.CustomChainIDIndicator
+		l2ChainID = boot.CustomChainIDIndicator
 	}
 	return &Config{
 		L2ChainID:          l2ChainID,
@@ -217,7 +217,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		l2ChainID = l2ChainConfig.ChainID.Uint64()
 		if ctx.Bool(flags.L2Custom.Name) {
 			log.Warn("Using custom chain configuration via preimage oracle. This is not compatible with on-chain execution.")
-			l2ChainID = client.CustomChainIDIndicator
+			l2ChainID = boot.CustomChainIDIndicator
 		}
 	}
 

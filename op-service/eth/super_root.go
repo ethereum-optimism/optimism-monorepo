@@ -3,6 +3,8 @@ package eth
 import (
 	"encoding/binary"
 	"errors"
+
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 var (
@@ -22,16 +24,21 @@ type Super interface {
 	Marshal() []byte
 }
 
-type SuperRootV1 struct {
+func SuperRoot(super Super) Bytes32 {
+	marshaled := super.Marshal()
+	return Bytes32(crypto.Keccak256Hash(marshaled))
+}
+
+type SuperV1 struct {
 	Timestamp uint64
 	Outputs   []Bytes32
 }
 
-func (o *SuperRootV1) Version() byte {
+func (o *SuperV1) Version() byte {
 	return SuperRootVersionV1
 }
 
-func (o *SuperRootV1) Marshal() []byte {
+func (o *SuperV1) Marshal() []byte {
 	buf := make([]byte, 0, 9+len(o.Outputs)*32)
 	version := o.Version()
 	buf = append(buf, version)
@@ -55,7 +62,7 @@ func UnmarshalSuperRoot(data []byte) (Super, error) {
 	}
 }
 
-func unmarshalSuperRootV1(data []byte) (*SuperRootV1, error) {
+func unmarshalSuperRootV1(data []byte) (*SuperV1, error) {
 	// Must contain the version, timestamp and at least one output root.
 	if len(data) < SuperRootVersionV1MinLen {
 		return nil, ErrInvalidSuperRoot
@@ -64,7 +71,7 @@ func unmarshalSuperRootV1(data []byte) (*SuperRootV1, error) {
 	if (len(data)-9)%32 != 0 {
 		return nil, ErrInvalidSuperRoot
 	}
-	var output SuperRootV1
+	var output SuperV1
 	// data[:32] is the version
 	output.Timestamp = binary.BigEndian.Uint64(data[1:9])
 	for i := 9; i < len(data); i += 32 {

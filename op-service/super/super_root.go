@@ -45,7 +45,7 @@ func NewSuperRootSource(ctx context.Context, sources ...OutputRootSource) (*Supe
 	return &SuperRootSource{chains: chains}, nil
 }
 
-func (s *SuperRootSource) CreateSuperRoot(ctx context.Context, timestamp uint64) (*eth.OutputV1, error) {
+func (s *SuperRootSource) CreateSuperRoot(ctx context.Context, timestamp uint64) (*eth.SuperV1, error) {
 	chainOutputs := make([]eth.Bytes32, len(s.chains))
 	for i, chain := range s.chains {
 		blockNum, err := chain.config.TargetBlockNumber(timestamp)
@@ -58,7 +58,7 @@ func (s *SuperRootSource) CreateSuperRoot(ctx context.Context, timestamp uint64)
 		}
 		chainOutputs[i] = output.OutputRoot
 	}
-	output := eth.OutputV1{
+	output := eth.SuperV1{
 		Timestamp: timestamp,
 		Outputs:   chainOutputs,
 	}

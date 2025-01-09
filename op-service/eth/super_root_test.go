@@ -22,14 +22,14 @@ func TestSuperRootV1Codec(t *testing.T) {
 		chainA := Bytes32{0x01}
 		chainB := Bytes32{0x02}
 		chainC := Bytes32{0x03}
-		superRoot := SuperRootV1{
+		superRoot := SuperV1{
 			Timestamp: 7000,
 			Outputs:   []Bytes32{chainA, chainB, chainC},
 		}
 		marshaled := superRoot.Marshal()
 		unmarshaled, err := UnmarshalSuperRoot(marshaled)
 		require.NoError(t, err)
-		unmarshaledV1 := unmarshaled.(*SuperRootV1)
+		unmarshaledV1 := unmarshaled.(*SuperV1)
 		require.Equal(t, superRoot, *unmarshaledV1)
 	})
 
