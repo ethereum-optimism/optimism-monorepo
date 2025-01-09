@@ -57,21 +57,25 @@ contract ForkLive is Deployer {
         // Superchain shared contracts
         saveProxyAndImpl("SuperchainConfig", superchainToml, ".superchain_config_addr");
         saveProxyAndImpl("ProtocolVersions", superchainToml, ".protocol_versions_addr");
-        save("OPContractsManager", vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
+        artifacts.save("OPContractsManager", vm.parseTomlAddress(superchainToml, ".op_contracts_manager_proxy_addr"));
 
         // Core contracts
-        save("ProxyAdmin", vm.parseTomlAddress(opToml, ".addresses.ProxyAdmin"));
+        artifacts.save("ProxyAdmin", vm.parseTomlAddress(opToml, ".addresses.ProxyAdmin"));
         saveProxyAndImpl("SystemConfig", opToml, ".addresses.SystemConfigProxy");
 
         // Bridge contracts
         address optimismPortal = vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy");
-        save("OptimismPortalProxy", optimismPortal);
-        save("OptimismPortal2Impl", EIP1967Helper.getImplementation(optimismPortal));
+        artifacts.save("OptimismPortalProxy", optimismPortal);
+        artifacts.save("OptimismPortal2Impl", EIP1967Helper.getImplementation(optimismPortal));
 
         address addressManager = vm.parseTomlAddress(opToml, ".addresses.AddressManager");
-        save("AddressManager", addressManager);
-        save("L1CrossDomainMessengerImpl", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger"));
-        save("L1CrossDomainMessengerProxy", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy"));
+        artifacts.save("AddressManager", addressManager);
+        artifacts.save(
+            "L1CrossDomainMessengerImpl", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger")
+        );
+        artifacts.save(
+            "L1CrossDomainMessengerProxy", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy")
+        );
         saveProxyAndImpl("OptimismMintableERC20Factory", opToml, ".addresses.OptimismMintableERC20FactoryProxy");
         saveProxyAndImpl("L1StandardBridge", opToml, ".addresses.L1StandardBridgeProxy");
         saveProxyAndImpl("L1ERC721Bridge", opToml, ".addresses.L1ERC721BridgeProxy");
@@ -82,16 +86,17 @@ contract ForkLive is Deployer {
         saveProxyAndImpl("DelayedWETH", opToml, ".addresses.DelayedWETHProxy");
 
         // Fault proof non-proxied contracts
-        save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
-        save("MipsSingleton", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
-        IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
-        save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
+        artifacts.save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
+        artifacts.save("MipsSingleton", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
+        IDisputeGameFactory disputeGameFactory =
+            IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        artifacts.save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
         // The PermissionedDisputeGame and PermissionedDelayedWETHProxy are not listed in the registry for OP, so we
         // look it up onchain
         IFaultDisputeGame permissionedDisputeGame =
             IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
-        save("PermissionedDisputeGame", address(permissionedDisputeGame));
-        save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
+        artifacts.save("PermissionedDisputeGame", address(permissionedDisputeGame));
+        artifacts.save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
@@ -100,9 +105,9 @@ contract ForkLive is Deployer {
     /// @param _tomlKey The key in the superchain config file to get the proxy address
     function saveProxyAndImpl(string memory _contractName, string memory _tomlPath, string memory _tomlKey) internal {
         address proxy = vm.parseTomlAddress(_tomlPath, _tomlKey);
-        save(string.concat(_contractName, "Proxy"), proxy);
+        artifacts.save(string.concat(_contractName, "Proxy"), proxy);
         address impl = EIP1967Helper.getImplementation(proxy);
         require(impl != address(0), "Upgrade: Implementation address is zero");
-        save(string.concat(_contractName, "Impl"), impl);
+        artifacts.save(string.concat(_contractName, "Impl"), impl);
     }
 }

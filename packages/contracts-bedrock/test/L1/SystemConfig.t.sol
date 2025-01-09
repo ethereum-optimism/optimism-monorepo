@@ -42,8 +42,8 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         batcherHash = bytes32(uint256(uint160(deploy.cfg().batchSenderAddress())));
         gasLimit = uint64(deploy.cfg().l2GenesisBlockGasLimit());
         unsafeBlockSigner = deploy.cfg().p2pSequencerAddress();
-        systemConfigImpl = deploy.mustGetAddress("SystemConfigImpl");
-        optimismMintableERC20Factory = deploy.mustGetAddress("OptimismMintableERC20FactoryProxy");
+        systemConfigImpl = artifacts.mustGetAddress("SystemConfigImpl");
+        optimismMintableERC20Factory = artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy");
     }
 
     /// @dev Tests that constructor sets the correct values.

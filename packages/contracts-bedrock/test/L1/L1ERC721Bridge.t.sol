@@ -69,7 +69,7 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() public virtual {
-        IL1ERC721Bridge impl = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721BridgeImpl"));
+        IL1ERC721Bridge impl = IL1ERC721Bridge(artifacts.mustGetAddress("L1ERC721BridgeImpl"));
         assertEq(address(impl.MESSENGER()), address(0));
         assertEq(address(impl.messenger()), address(0));
         assertEq(address(impl.superchainConfig()), address(0));

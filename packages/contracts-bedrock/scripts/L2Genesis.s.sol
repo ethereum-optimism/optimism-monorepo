@@ -100,9 +100,9 @@ contract L2Genesis is Deployer {
 
     function artifactDependencies() internal view returns (L1Dependencies memory l1Dependencies_) {
         return L1Dependencies({
-            l1CrossDomainMessengerProxy: mustGetAddress("L1CrossDomainMessengerProxy"),
-            l1StandardBridgeProxy: mustGetAddress("L1StandardBridgeProxy"),
-            l1ERC721BridgeProxy: mustGetAddress("L1ERC721BridgeProxy")
+            l1CrossDomainMessengerProxy: artifacts.mustGetAddress("L1CrossDomainMessengerProxy"),
+            l1StandardBridgeProxy: artifacts.mustGetAddress("L1StandardBridgeProxy"),
+            l1ERC721BridgeProxy: artifacts.mustGetAddress("L1ERC721BridgeProxy")
         });
     }
 

@@ -11,13 +11,17 @@ import { Process } from "scripts/libraries/Process.sol";
 /// @title Deployer
 /// @author tynes
 /// @notice A contract that can make deploying and interacting with deployments easy.
-abstract contract Deployer is Script, Artifacts {
+abstract contract Deployer is Script {
     DeployConfig public constant cfg =
         DeployConfig(address(uint160(uint256(keccak256(abi.encode("optimism.deployconfig"))))));
 
+    Artifacts public constant artifacts =
+        Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
+
     /// @notice Sets up the artifacts contract.
-    function setUp() public virtual override {
-        Artifacts.setUp();
+    function setUp() public virtual {
+        vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
+        artifacts.setUp();
 
         console.log("Commit hash: %s", gitCommitHash());
 

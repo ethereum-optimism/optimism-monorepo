@@ -11,7 +11,7 @@ import { ForkLive } from "test/setup/ForkLive.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
-
+import { Artifacts } from "scripts/Artifacts.s.sol";
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
@@ -64,6 +64,9 @@ contract Setup {
     /// @notice The address of the Deploy contract. Set into state with `etch` to avoid
     ///         mutating any nonces. MUST not have constructor logic.
     Deploy internal constant deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
+
+    Artifacts public constant artifacts =
+        Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
 
     L2Genesis internal constant l2Genesis =
         L2Genesis(address(uint160(uint256(keccak256(abi.encode("optimism.l2genesis"))))));
@@ -133,6 +136,10 @@ contract Setup {
         vm.label(address(deploy), "Deploy");
         vm.allowCheatcodes(address(deploy));
 
+        vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
+        vm.label(address(artifacts), "Artifacts");
+        vm.allowCheatcodes(address(artifacts));
+
         _isForkTest = vm.envOr("FORK_TEST", false);
         if (_isForkTest) {
             vm.createSelectFork(vm.envString("FORK_RPC_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
@@ -149,7 +156,7 @@ contract Setup {
         // deploy.setUp() will either:
         // 1. deploy a fresh system or
         // 2. fork from L1
-        // It will then save the appropriate name/address pairs to disk using Artifacts.save()
+        // It will then save the appropriate name/address pairs to disk using Artifacts.artifacts.save()
         deploy.setUp();
         console.log("Setup: L1 setup done!");
 
@@ -197,26 +204,26 @@ contract Setup {
         deploy.run();
         console.log("Setup: completed L1 deployment, registering addresses now");
 
-        optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
-        systemConfig = ISystemConfig(deploy.mustGetAddress("SystemConfigProxy"));
-        l1StandardBridge = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridgeProxy"));
-        l1CrossDomainMessenger = IL1CrossDomainMessenger(deploy.mustGetAddress("L1CrossDomainMessengerProxy"));
+        optimismPortal2 = IOptimismPortal2(artifacts.mustGetAddress("OptimismPortalProxy"));
+        systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
+        l1StandardBridge = IL1StandardBridge(artifacts.mustGetAddress("L1StandardBridgeProxy"));
+        l1CrossDomainMessenger = IL1CrossDomainMessenger(artifacts.mustGetAddress("L1CrossDomainMessengerProxy"));
         vm.label(
             AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessengerProxy_aliased"
         );
-        addressManager = IAddressManager(deploy.mustGetAddress("AddressManager"));
-        l1ERC721Bridge = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721BridgeProxy"));
+        addressManager = IAddressManager(artifacts.mustGetAddress("AddressManager"));
+        l1ERC721Bridge = IL1ERC721Bridge(artifacts.mustGetAddress("L1ERC721BridgeProxy"));
         l1OptimismMintableERC20Factory =
-            IOptimismMintableERC20Factory(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"));
-        protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
-        superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
-        anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
-        disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
-        delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
+            IOptimismMintableERC20Factory(artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy"));
+        protocolVersions = IProtocolVersions(artifacts.mustGetAddress("ProtocolVersionsProxy"));
+        superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
+        anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
+        disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
-                IDataAvailabilityChallenge(deploy.mustGetAddress("DataAvailabilityChallengeProxy"));
+                IDataAvailabilityChallenge(artifacts.mustGetAddress("DataAvailabilityChallengeProxy"));
         }
         console.log("Setup: registered L1 deployments");
     }
