@@ -50,28 +50,6 @@ contract Artifacts {
 
         uint256 chainId = Config.chainID();
         console.log("Connected to network with chainid %s", chainId);
-
-        // Load addresses from a JSON file if the CONTRACT_ADDRESSES_PATH environment variable
-        // is set. Great for loading addresses from `superchain-registry`.
-        string memory addresses = Config.contractAddressesPath();
-        if (bytes(addresses).length > 0) {
-            console.log("Loading addresses from %s", addresses);
-            _loadAddresses(addresses);
-        }
-    }
-
-    /// @notice Populates the addresses to be used in a script based on a JSON file.
-    ///         The format of the JSON file is the same that it output by this script
-    ///         as well as the JSON files that contain addresses in the `superchain-registry`
-    ///         repo. The JSON key is the name of the contract and the value is an address.
-    function _loadAddresses(string memory _path) internal {
-        string memory json = Process.bash(string.concat("jq -cr < ", _path));
-        string[] memory keys = vm.parseJsonKeys(json, "");
-        for (uint256 i; i < keys.length; i++) {
-            string memory key = keys[i];
-            address addr = stdJson.readAddress(json, string.concat("$.", key));
-            save(key, addr);
-        }
     }
 
     /// @notice Returns all of the deployments done in the current context.
