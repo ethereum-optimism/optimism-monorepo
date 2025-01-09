@@ -87,3 +87,6 @@ func (t *TestDerivationMetrics) SetDerivationIdle(idle bool) {}
 
 func (t *TestDerivationMetrics) RecordPipelineReset() {
 }
+
+func (t *TestDerivationMetrics) SetBatchQueueSize(int) {
+}

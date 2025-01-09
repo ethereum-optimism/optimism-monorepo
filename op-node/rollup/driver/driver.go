@@ -56,6 +56,7 @@ type Metrics interface {
 	L1FetcherMetrics
 	event.Metrics
 	sequencing.Metrics
+	derive.Metrics
 }
 
 type L1Chain interface {

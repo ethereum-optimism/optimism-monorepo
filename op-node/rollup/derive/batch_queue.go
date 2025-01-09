@@ -89,6 +89,8 @@ type BatchQueue struct {
 
 	// batches in order of when we've first seen them
 	batches []*BatchWithL1InclusionBlock
+
+	metrics Metrics
 }
 
 var _ SingularBatchProvider = (*BatchQueue)(nil)
@@ -264,6 +266,7 @@ func (bs *baseBatchStage) reset(base eth.L1BlockRef) {
 func (bq *BatchQueue) Reset(_ context.Context, base eth.L1BlockRef, _ eth.SystemConfig) error {
 	bq.baseBatchStage.reset(base)
 	bq.batches = bq.batches[:0]
+	bq.metrics.SetBatchQueueSize(0)
 	return io.EOF
 }
 
@@ -287,6 +290,7 @@ func (bq *BatchQueue) AddBatch(ctx context.Context, batch Batch, parent eth.L2Bl
 	}
 	batch.LogContext(bq.log).Debug("Adding batch")
 	bq.batches = append(bq.batches, &data)
+	bq.metrics.SetBatchQueueSize(len(bq.batches))
 }
 
 // deriveNextBatch derives the next batch to apply on top of the current L2 safe head,
@@ -337,12 +341,14 @@ batchLoop:
 		case BatchUndecided:
 			remaining = append(remaining, bq.batches[i:]...)
 			bq.batches = remaining
+			bq.metrics.SetBatchQueueSize(len(bq.batches))
 			return nil, io.EOF
 		default:
 			return nil, NewCriticalError(fmt.Errorf("unknown batch validity type: %d", validity))
 		}
 	}
 	bq.batches = remaining
+	bq.metrics.SetBatchQueueSize(len(bq.batches))
 
 	if nextBatch != nil {
 		nextBatch.Batch.LogContext(bq.log).Info("Found next batch")

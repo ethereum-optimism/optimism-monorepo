@@ -25,6 +25,7 @@ type Metrics interface {
 	RecordDerivedBatches(batchType string)
 	SetDerivationIdle(idle bool)
 	RecordPipelineReset()
+	SetBatchQueueSize(int)
 }
 
 type L1Fetcher interface {

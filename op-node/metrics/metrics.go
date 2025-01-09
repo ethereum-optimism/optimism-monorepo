@@ -50,6 +50,7 @@ type Metricer interface {
 	RecordUnsafePayloadsBuffer(length uint64, memSize uint64, next eth.BlockID)
 	RecordDerivedBatches(batchType string)
 	CountSequencedTxsInBlock(txns int, deposits int)
+	SetBatchQueueSize(int)
 	RecordL1ReorgDepth(d uint64)
 	RecordSequencerInconsistentL1Origin(from eth.BlockID, to eth.BlockID)
 	RecordSequencerReset()
@@ -136,6 +137,7 @@ type Metrics struct {
 	L1ReorgDepth prometheus.Histogram
 
 	TransactionsSequencedTotal *prometheus.CounterVec
+	BatchQueueSize             prometheus.Gauge
 
 	AltDAMetrics altda.Metricer
 
@@ -273,6 +275,13 @@ func NewMetrics(procName string) *Metrics {
 			Name:      "transactions_sequenced_total",
 			Help:      "Count of total transactions sequenced",
 		}, []string{"type"}),
+
+		BatchQueueSize: factory.NewGauge(prometheus.GaugeOpts{
+			Namespace: ns,
+			Name:      "batch_queue_size",
+			Help:      "Size of the batch queue",
+		}),
+
 		PeerCount: factory.NewGauge(prometheus.GaugeOpts{
 			Namespace: ns,
 			Subsystem: "p2p",
@@ -535,6 +544,10 @@ func (m *Metrics) CountSequencedTxsInBlock(txns int, deposits int) {
 	m.TransactionsSequencedTotal.WithLabelValues("txns").Add(float64(txns - deposits))
 }
 
+func (m *Metrics) SetBatchQueueSize(size int) {
+	m.BatchQueueSize.Set(float64(size))
+}
+
 func (m *Metrics) RecordL1ReorgDepth(d uint64) {
 	m.L1ReorgDepth.Observe(float64(d))
 }
@@ -746,6 +759,9 @@ func (n *noopMetricer) RecordDerivedBatches(batchType string) {
 func (n *noopMetricer) CountSequencedTxsInBlock(txns int, deposits int) {
 }
 
+func (m *noopMetricer) SetBatchQueueSize(size int) {
+}
+
 func (n *noopMetricer) RecordL1ReorgDepth(d uint64) {
 }
 
@@ -818,5 +834,6 @@ func (n *noopMetricer) RecordDial(allow bool) {
 
 func (n *noopMetricer) RecordAccept(allow bool) {
 }
+
 func (n *noopMetricer) ReportProtocolVersions(local, engine, recommended, required params.ProtocolVersion) {
 }
