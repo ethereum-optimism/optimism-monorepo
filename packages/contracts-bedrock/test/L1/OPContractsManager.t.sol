@@ -166,7 +166,7 @@ contract OPContractsManager_Upgrade_Test is CommonTest {
     }
 
     function test_upgrade_succeeds() public view {
-        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager_NextVersion"));
+        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
         OPContractsManager.Implementations memory impls = opcm.implementations();
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
