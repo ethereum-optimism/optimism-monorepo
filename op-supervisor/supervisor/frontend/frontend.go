@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type AdminBackend interface {
@@ -22,6 +23,7 @@ type QueryBackend interface {
 	CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 	FinalizedL1() eth.BlockRef
+	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error)
 }
 
 type Backend interface {
@@ -67,6 +69,10 @@ func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
 
 func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
+}
+
+func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+	return q.Supervisor.SuperRootAtTimestamp(ctx, timestamp)
 }
 
 type AdminFrontend struct {
