@@ -219,7 +219,7 @@ Method 1: GitHub's `gh` CLI tool
 
 Method 2: [Github API](https://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28)
 List the artifacts for a run:
-- GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts -- See [documentaiton](httpshttps://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28#list-workflow-run-artifacts) for more details
+- GET /repos/{owner}/{repo}/actions/runs/{run_id}/artifacts -- See [documentation](httpshttps://docs.github.com/en/rest/actions/artifacts?apiVersion=2022-11-28#list-workflow-run-artifacts) for more details
 ```bash
 curl -L \
   -H "Accept: application/vnd.github+json" \
