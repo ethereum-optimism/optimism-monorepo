@@ -283,7 +283,7 @@ contract FaultDisputeGame is Clone, ISemver {
         if (initialized) revert AlreadyInitialized();
 
         // Grab the latest anchor root.
-        (Hash root, uint256 rootBlockNumber) = GAME_VALIDITY_ORACLE.getAnchorRoot();
+        (Hash root, uint256 rootBlockNumber) = GAME_VALIDITY_ORACLE.getAnchorState();
 
         // Should only happen if this is a new game type that hasn't been set up yet.
         if (root.raw() == bytes32(0)) revert AnchorRootNotFound();
@@ -943,9 +943,9 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Determine the bond distribution mode if we haven't done so already.
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
-            // Try to update the anchor game first. Won't always succeed because delays can lead
+            // Try to update the anchor state first. Won't always succeed because delays can lead
             // to situations in which this game might not be eligible to be a new anchor game.
-            try GAME_VALIDITY_ORACLE.setAnchorGame(IDisputeGame(address(this))) { } catch { }
+            try GAME_VALIDITY_ORACLE.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
             // Determine the bond distribution mode based on the game's status. Here we're looking
             // for the validity conditions that would invalidate a game other than the game

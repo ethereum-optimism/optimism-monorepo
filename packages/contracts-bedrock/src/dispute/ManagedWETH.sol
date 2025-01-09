@@ -25,7 +25,7 @@ contract ManagedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public config;
 
-    /// @notice Constructor to disable initializers.
+    /// @notice Constructor.
     constructor() {
         _disableInitializers();
     }
