@@ -108,9 +108,7 @@ contract ForkLive is Deployer {
     ///         naming collisions with the implementations saved above.
     function _deployNewImplementations() internal {
         Deploy deployNew = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy.new"))))));
-        vm.etch(address(deployNew), vm.getDeployedCode("Deploy.s.sol:Deploy"));
-        vm.label(address(deployNew), "DeployNew");
-        vm.allowCheatcodes(address(deployNew));
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(deployNew), _cname: "DeployNew" });
 
         deployNew.setUp();
         deployNew.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });

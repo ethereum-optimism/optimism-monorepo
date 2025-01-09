@@ -339,8 +339,8 @@ contract Deploy is Deployer {
             OptimismPortal: artifacts.mustGetAddress(string.concat("OptimismPortal2Impl", _suffix)),
             SystemConfig: artifacts.mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
             L1ERC721Bridge: artifacts.mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
-            // We didn't deploy a new version of these so we don't append a suffix
-            // We didn't deploy these in this function so we don't need to append a suffix.
+
+            // We didn't deploy new versions of these in this function so we don't need to append a suffix.
             ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
             SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
         });
