@@ -57,6 +57,16 @@
             "internalType": "address",
             "name": "permissionedDisputeGame2",
             "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionlessDisputeGame1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionlessDisputeGame2",
+            "type": "address"
           }
         ],
         "internalType": "struct OPContractsManager.Blueprints",
@@ -133,6 +143,104 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "components": [
+          {
+            "internalType": "string",
+            "name": "saltMixer",
+            "type": "string"
+          },
+          {
+            "internalType": "contract ISystemConfig",
+            "name": "systemConfig",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IProxyAdmin",
+            "name": "proxyAdmin",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IDelayedWETH",
+            "name": "delayedWETH",
+            "type": "address"
+          },
+          {
+            "internalType": "GameType",
+            "name": "disputeGameType",
+            "type": "uint32"
+          },
+          {
+            "internalType": "Claim",
+            "name": "disputeAbsolutePrestate",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "uint256",
+            "name": "disputeMaxGameDepth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "disputeSplitDepth",
+            "type": "uint256"
+          },
+          {
+            "internalType": "Duration",
+            "name": "disputeClockExtension",
+            "type": "uint64"
+          },
+          {
+            "internalType": "Duration",
+            "name": "disputeMaxClockDuration",
+            "type": "uint64"
+          },
+          {
+            "internalType": "uint256",
+            "name": "initialBond",
+            "type": "uint256"
+          },
+          {
+            "internalType": "contract IBigStepper",
+            "name": "vm",
+            "type": "address"
+          },
+          {
+            "internalType": "bool",
+            "name": "permissioned",
+            "type": "bool"
+          }
+        ],
+        "internalType": "struct OPContractsManager.AddGameInput[]",
+        "name": "_gameConfigs",
+        "type": "tuple[]"
+      }
+    ],
+    "name": "addGameType",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "contract IDelayedWETH",
+            "name": "delayedWETH",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IFaultDisputeGame",
+            "name": "faultDisputeGame",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct OPContractsManager.AddGameOutput[]",
+        "name": "",
+        "type": "tuple[]"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "blueprints",
     "outputs": [
@@ -176,6 +284,16 @@
           {
             "internalType": "address",
             "name": "permissionedDisputeGame2",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionlessDisputeGame1",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "permissionlessDisputeGame2",
             "type": "address"
           }
         ],
@@ -597,6 +715,11 @@
     "type": "error"
   },
   {
+    "inputs": [],
+    "name": "InvalidGameConfigs",
+    "type": "error"
+  },
+  {
     "inputs": [
       {
         "internalType": "string",
@@ -620,6 +743,11 @@
   {
     "inputs": [],
     "name": "NotABlueprint",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyDelegatecall",
     "type": "error"
   },
   {
