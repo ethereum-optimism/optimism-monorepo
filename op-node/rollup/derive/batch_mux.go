@@ -19,6 +19,8 @@ type BatchMux struct {
 	prev NextBatchProvider
 	l2   SafeBlockFetcher
 
+	metrics Metrics
+
 	// embedded active stage
 	SingularBatchProvider
 }
@@ -27,8 +29,8 @@ var _ SingularBatchProvider = (*BatchMux)(nil)
 
 // NewBatchMux returns an uninitialized BatchMux. Reset has to be called before
 // calling other methods, to activate the right stage for a given L1 origin.
-func NewBatchMux(lgr log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) *BatchMux {
-	return &BatchMux{log: lgr, cfg: cfg, prev: prev, l2: l2}
+func NewBatchMux(lgr log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher, metrics Metrics) *BatchMux {
+	return &BatchMux{log: lgr, cfg: cfg, prev: prev, l2: l2, metrics: metrics}
 }
 
 func (b *BatchMux) Reset(ctx context.Context, base eth.L1BlockRef, sysCfg eth.SystemConfig) error {
@@ -37,7 +39,7 @@ func (b *BatchMux) Reset(ctx context.Context, base eth.L1BlockRef, sysCfg eth.Sy
 	default:
 		if _, ok := b.SingularBatchProvider.(*BatchQueue); !ok {
 			b.log.Info("BatchMux: activating pre-Holocene stage during reset", "origin", base)
-			b.SingularBatchProvider = NewBatchQueue(b.log, b.cfg, b.prev, b.l2)
+			b.SingularBatchProvider = NewBatchQueue(b.log, b.cfg, b.prev, b.l2, b.metrics)
 		}
 	case b.cfg.IsHolocene(base.Time):
 		if _, ok := b.SingularBatchProvider.(*BatchStage); !ok {

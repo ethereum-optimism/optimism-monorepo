@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum-optimism/optimism/op-node/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -22,7 +23,7 @@ func TestBatchMux_LaterHolocene(t *testing.T) {
 	cfg := &rollup.Config{
 		HoloceneTime: &l1B.Time,
 	}
-	b := NewBatchMux(log, cfg, nil, nil)
+	b := NewBatchMux(log, cfg, nil, nil, metrics.NoopMetrics)
 
 	require.Nil(t, b.SingularBatchProvider)
 
@@ -55,7 +56,7 @@ func TestBatchMux_ActiveHolocene(t *testing.T) {
 	}
 	// without the fake input, the panic check later would panic because of the Origin() call
 	prev := &fakeBatchQueueInput{origin: l1A}
-	b := NewBatchMux(log, cfg, prev, nil)
+	b := NewBatchMux(log, cfg, prev, nil, metrics.NoopMetrics)
 
 	require.Nil(t, b.SingularBatchProvider)
 

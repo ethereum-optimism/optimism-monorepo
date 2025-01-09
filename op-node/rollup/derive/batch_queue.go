@@ -96,8 +96,8 @@ type BatchQueue struct {
 var _ SingularBatchProvider = (*BatchQueue)(nil)
 
 // NewBatchQueue creates a BatchQueue, which should be Reset(origin) before use.
-func NewBatchQueue(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) *BatchQueue {
-	return &BatchQueue{baseBatchStage: newBaseBatchStage(log, cfg, prev, l2)}
+func NewBatchQueue(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher, metrics Metrics) *BatchQueue {
+	return &BatchQueue{baseBatchStage: newBaseBatchStage(log, cfg, prev, l2), metrics: metrics}
 }
 
 func (bs *baseBatchStage) Origin() eth.L1BlockRef {

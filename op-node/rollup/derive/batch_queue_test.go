@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum-optimism/optimism/op-node/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -170,7 +171,7 @@ type testableBatchStage interface {
 
 func TestBatchStages(t *testing.T) {
 	newBatchQueue := func(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) testableBatchStage {
-		return NewBatchQueue(log, cfg, prev, l2)
+		return NewBatchQueue(log, cfg, prev, l2, metrics.NoopMetrics)
 	}
 	newBatchStage := func(log log.Logger, cfg *rollup.Config, prev NextBatchProvider, l2 SafeBlockFetcher) testableBatchStage {
 		return NewBatchStage(log, cfg, prev, l2)
@@ -579,7 +580,7 @@ func testBatchQueue_Missing(t *testing.T, batchType int) {
 		origin:  l1[0],
 	}
 
-	bq := NewBatchQueue(log, cfg, input, nil)
+	bq := NewBatchQueue(log, cfg, input, nil, metrics.NoopMetrics)
 	_ = bq.Reset(context.Background(), l1[0], eth.SystemConfig{})
 
 	for i := 0; i < len(expectedOutputBatches); i++ {
@@ -797,7 +798,7 @@ func testBatchQueue_Shuffle(t *testing.T, batchType int) {
 		origin:  l1[inputOriginNumber],
 	}
 
-	bq := NewBatchQueue(log, cfg, input, nil)
+	bq := NewBatchQueue(log, cfg, input, nil, metrics.NoopMetrics)
 	_ = bq.Reset(context.Background(), l1[1], eth.SystemConfig{})
 
 	for i := 0; i < len(expectedOutputBatches); i++ {
@@ -912,7 +913,7 @@ func TestBatchQueueOverlappingSpanBatch(t *testing.T) {
 		}
 	}
 
-	bq := NewBatchQueue(log, cfg, input, &l2Client)
+	bq := NewBatchQueue(log, cfg, input, &l2Client, metrics.NoopMetrics)
 	_ = bq.Reset(context.Background(), l1[0], eth.SystemConfig{})
 	// Advance the origin
 	input.origin = l1[1]
@@ -1018,7 +1019,7 @@ func TestBatchQueueComplex(t *testing.T) {
 		}
 	}
 
-	bq := NewBatchQueue(log, cfg, input, &l2Client)
+	bq := NewBatchQueue(log, cfg, input, &l2Client, metrics.NoopMetrics)
 	_ = bq.Reset(context.Background(), l1[1], eth.SystemConfig{})
 
 	for i := 0; i < len(expectedOutputBatches); i++ {
@@ -1088,7 +1089,7 @@ func TestBatchQueueResetSpan(t *testing.T) {
 		origin:  l1[2],
 	}
 	l2Client := testutils.MockL2Client{}
-	bq := NewBatchQueue(log, cfg, input, &l2Client)
+	bq := NewBatchQueue(log, cfg, input, &l2Client, metrics.NoopMetrics)
 	bq.l1Blocks = l1 // Set enough l1 blocks to derive span batch
 
 	// This NextBatch() will derive the span batch, return the first singular batch and save rest of batches in span.

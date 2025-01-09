@@ -113,7 +113,7 @@ func NewDerivationPipeline(log log.Logger, rollupCfg *rollup.Config, l1Fetcher L
 	frameQueue := NewFrameQueue(log, rollupCfg, l1Src)
 	channelMux := NewChannelMux(log, spec, frameQueue, metrics)
 	chInReader := NewChannelInReader(rollupCfg, log, channelMux, metrics)
-	batchMux := NewBatchMux(log, rollupCfg, chInReader, l2Source)
+	batchMux := NewBatchMux(log, rollupCfg, chInReader, l2Source, metrics)
 	attrBuilder := NewFetchingAttributesBuilder(rollupCfg, l1Fetcher, l2Source)
 	attributesQueue := NewAttributesQueue(log, rollupCfg, attrBuilder, batchMux)
 
