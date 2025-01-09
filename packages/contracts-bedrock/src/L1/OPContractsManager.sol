@@ -379,6 +379,8 @@ contract OPContractsManager is ISemver {
     /// @param _proxyAdmins Array of ProxyAdmin contracts, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
     function upgrade(ISystemConfig[] calldata _systemConfigs, IProxyAdmin[] calldata _proxyAdmins) external {
+        // TODO: emit the Upgraded event
+        // TODO: enforce delegatecalling
         Implementations memory impls = thisOPCM.implementations();
 
         for (uint256 i = 0; i < _systemConfigs.length; i++) {

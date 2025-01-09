@@ -20,6 +20,9 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 
+// Contracts (TODO: move to interfaces)
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+
 // Interfaces
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -97,6 +100,7 @@ contract Setup {
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
+    OPContractsManager opcm;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
