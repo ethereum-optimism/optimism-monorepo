@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -45,13 +46,6 @@ type L1BlobSource interface {
 	GetBlobs(ctx context.Context, ref eth.L1BlockRef, hashes []eth.IndexedBlobHash) ([]*eth.Blob, error)
 }
 
-type L2Source interface {
-	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error)
-	NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error)
-}
-
 type Prefetcher struct {
 	logger        log.Logger
 	l1Fetcher     L1Source
@@ -68,7 +62,7 @@ func NewPrefetcher(
 	logger log.Logger,
 	l1Fetcher L1Source,
 	l1BlobFetcher L1BlobSource,
-	l2Fetcher L2Source,
+	l2Fetcher hosttypes.L2Source,
 	kvStore kvstore.KV,
 	l2ChainConfig *params.ChainConfig,
 	executor ProgramExecutor,

@@ -36,7 +36,6 @@ type Oracle interface {
 	OutputByRoot(root common.Hash) eth.Output
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
-	// TODO: Return receipts as well as an optimization
 	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
 }
 

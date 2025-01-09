@@ -112,7 +112,7 @@ func (p *programExecutor) RunProgram(
 	newCfg := *p.cfg
 	newCfg.L2ChainID = chainID
 	newCfg.L2ClaimBlockNumber = blockNum
-	// TODO: configure the chainID and RPC endpoints
+	// TODO(interop): Configure the chainID and RPC endpoints
 
 	withPrefetcher := hostcommon.WithPrefetcher(
 		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {

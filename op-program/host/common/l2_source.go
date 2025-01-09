@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
@@ -33,8 +34,7 @@ type L2Source struct {
 	experimentalClient *L2Client
 }
 
-// TODO: fix this
-//var _ prefetcher.L2Source = &L2Source{}
+var _ hosttypes.L2Source = &L2Source{}
 
 // NewL2SourceWithClient creates a new L2 source with the given client as the canonical client.
 // This doesn't configure the experimental source, but is useful for testing.
