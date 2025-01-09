@@ -17,17 +17,17 @@ interface IAnchorStateRegistry {
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function getAnchorState() external view returns (Hash root, uint256 l2BlockNumber);
     function initialize(
+        ISuperchainConfig _superchainConfig,
         OutputRoot calldata _startingAnchorRoot,
         IDisputeGameFactory _disputeGameFactory,
-        uint256 _disputeGameFinalityDelaySeconds,
-        ISuperchainConfig _superchainConfig
+        uint256 _disputeGameFinalityDelaySeconds
     )
         external;
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
     function isGameRetired(IDisputeGame _game) external view returns (bool);
-    function isGameMaybeValid(IDisputeGame _game) external view returns (bool);
-    function isGameFinalized(IDisputeGame _game) external view returns (bool);
-    function isGameValid(IDisputeGame _game) external view returns (bool);
+    function isGameMaybeValid(IDisputeGame _game) external view returns (bool, string memory);
+    function isGameFinalized(IDisputeGame _game) external view returns (bool, string memory);
+    function isGameValid(IDisputeGame _game) external view returns (bool, string memory);
     function respectedGameType() external view returns (GameType);
     function retireAllExistingGames() external;
     function setAnchorState(IDisputeGame _game) external;
