@@ -127,9 +127,9 @@ contract ForkLive is Deployer {
     }
 
     function _upgrade() internal {
-        OPContractsManager opcm = OPContractsManager(mustGetAddress("OPContractsManager_NextVersion"));
+        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager_NextVersion"));
 
-        ISystemConfig systemConfig = ISystemConfig(mustGetAddress("SystemConfigProxy"));
+        ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
         IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
 
         address upgrader = proxyAdmin.owner();
