@@ -213,6 +213,9 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @notice A mapping of each claimant's refund mode credit.
     mapping(address => uint256) public refundModeCredit;
 
+    /// @notice A mapping of whether a claimant has unlocked their refund mode credit.
+    mapping(address => bool) public hasUnlockedRefundCredit;
+
     /// @notice The bond distribution mode of the game.
     BondDistributionMode public bondDistributionMode;
 
@@ -955,6 +958,17 @@ contract FaultDisputeGame is Clone, ISemver {
             }
         }
 
+        // If the game is in refund mode, and the recipient has not unlocked their refund mode credit, we unlock it and
+        // return early.
+        if (bondDistributionMode == BondDistributionMode.REFUND && !hasUnlockedRefundCredit[_recipient]) {
+            // If the recipient has not unlocked the refund mode credit, we need to unlock it.
+            hasUnlockedRefundCredit[_recipient] = true;
+            WETH.unlock(_recipient, refundModeCredit[_recipient]);
+            return;
+        }
+
+        // From here, we proceed to WETH withdrawal
+
         // Either normal or refund mode credits will be assigned
         uint256 recipientCredit;
 
@@ -1066,8 +1080,13 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The recipient of the bond.
     /// @param _bonded The claim to pay out the bond of.
     function _distributeBond(address _recipient, ClaimData storage _bonded) internal {
+        uint256 bond = _bonded.bond;
+
         // Increase the recipient's credit.
-        credit[_recipient] += _bonded.bond;
+        credit[_recipient] += bond;
+
+        // Unlock the bond.
+        WETH.unlock(_recipient, bond);
     }
 
     /// @notice Verifies the integrity of an execution bisection subgame's root claim. Reverts if the claim
