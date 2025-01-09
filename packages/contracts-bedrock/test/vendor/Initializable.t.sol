@@ -417,16 +417,9 @@ contract Initializer_Test is CommonTest {
             InitializeableContract memory _contract = contracts[i];
             string memory deploymentName = _getRealContractName(_contract.name);
 
-            // Grab the value of the "initialized" storage slot.
-            uint8 initializedSlotVal = artifacts.loadInitializedSlot({
-                _sourceName: _removeSuffix(deploymentName),
-                _deploymentName: deploymentName
-            });
-
             // Assert that the contract is already initialized.
             assertTrue(
-                // Either 1 for initialized or type(uint8).max for initializer disabled.
-                initializedSlotVal == 1 || initializedSlotVal == type(uint8).max,
+                ForgeArtifacts.isInitialized({ _name: _removeSuffix(deploymentName), _address: _contract.target }),
                 "Initializable: contract is not initialized"
             );
 

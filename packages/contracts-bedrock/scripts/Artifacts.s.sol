@@ -210,20 +210,4 @@ contract Artifacts {
         _namedDeployments[_name] = deployment;
     }
 
-    /// @notice Returns the value of the internal `_initialized` storage slot for a given contract.
-    /// @param _sourceName The name of the contract in the source code
-    /// @param _deploymentName The name used to save() the deployed contract
-    function loadInitializedSlot(
-        string memory _sourceName,
-        string memory _deploymentName
-    )
-        public
-        returns (uint8 initialized_)
-    {
-        address contractAddress = mustGetAddress(_deploymentName);
-
-        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_sourceName);
-        bytes32 slotVal = vm.load(contractAddress, bytes32(slot.slot));
-        initialized_ = uint8((uint256(slotVal) >> (slot.offset * 8)) & 0xFF);
-    }
 }
