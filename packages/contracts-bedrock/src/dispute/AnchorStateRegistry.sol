@@ -187,8 +187,13 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Must have been the respected game type when the game was created.
-        if (!_game.wasRespectedGameTypeWhenCreated()) {
-            return (false, "game respected game type mismatch");
+        // We use a try/catch to gracefully fail for legacy DisputeGame contracts.
+        try _game.wasRespectedGameTypeWhenCreated() returns (bool wasRespected) {
+            if (!wasRespected) {
+                return (false, "game respected game type mismatch");
+            }
+        } catch {
+            return (false, "legacy game");
         }
 
         // Must be a game with a status other than CHALLENGER_WINS.
