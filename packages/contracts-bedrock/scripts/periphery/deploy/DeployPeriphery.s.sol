@@ -86,7 +86,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         ProxyAdmin admin = ProxyAdmin(addr_);
-        require(admin.owner() == msg.sender);
+        require(admin.owner() == msg.sender, "DeployPeriphery: ProxyAdmin owner mismatch");
     }
 
     /// @notice Deploy FaucetProxy.
@@ -98,7 +98,10 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Proxy proxy = Proxy(payable(addr_));
-        require(EIP1967Helper.getAdmin(address(proxy)) == mustGetAddress("ProxyAdmin"));
+        require(
+            EIP1967Helper.getAdmin(address(proxy)) == mustGetAddress("ProxyAdmin"),
+            "DeployPeriphery: FaucetProxy admin mismatch"
+        );
     }
 
     /// @notice Deploy the Faucet contract.
@@ -110,7 +113,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Faucet faucet = Faucet(payable(addr_));
-        require(faucet.ADMIN() == cfg.faucetAdmin());
+        require(faucet.ADMIN() == cfg.faucetAdmin(), "DeployPeriphery: Faucet admin mismatch");
     }
 
     /// @notice Deploy the Drippie contract.
@@ -122,7 +125,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Drippie drippie = Drippie(payable(addr_));
-        require(drippie.owner() == cfg.faucetDrippieOwner());
+        require(drippie.owner() == cfg.faucetDrippieOwner(), "DeployPeriphery: FaucetDrippie owner mismatch");
     }
 
     /// @notice Deploy the Drippie contract for standard operations.
@@ -134,7 +137,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Drippie drippie = Drippie(payable(addr_));
-        require(drippie.owner() == cfg.operationsDrippieOwner());
+        require(drippie.owner() == cfg.operationsDrippieOwner(), "DeployPeriphery: OperationsDrippie owner mismatch");
     }
 
     /// @notice Deploy On-Chain Authentication Module.
@@ -146,7 +149,9 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         AdminFaucetAuthModule module = AdminFaucetAuthModule(addr_);
-        require(module.ADMIN() == cfg.faucetOnchainAuthModuleAdmin());
+        require(
+            module.ADMIN() == cfg.faucetOnchainAuthModuleAdmin(), "DeployPeriphery: OnChainAuthModule admin mismatch"
+        );
     }
 
     /// @notice Deploy Off-Chain Authentication Module.
@@ -158,7 +163,9 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         AdminFaucetAuthModule module = AdminFaucetAuthModule(addr_);
-        require(module.ADMIN() == cfg.faucetOffchainAuthModuleAdmin());
+        require(
+            module.ADMIN() == cfg.faucetOffchainAuthModuleAdmin(), "DeployPeriphery: OffChainAuthModule admin mismatch"
+        );
     }
 
     /// @notice Deploy CheckTrue contract.
@@ -209,7 +216,10 @@ contract DeployPeriphery is Script, Artifacts {
             proxyAdmin.upgrade({ _proxy: payable(faucetProxy), _implementation: faucet });
         }
 
-        require(Faucet(payable(faucetProxy)).ADMIN() == Faucet(payable(faucet)).ADMIN());
+        require(
+            Faucet(payable(faucetProxy)).ADMIN() == Faucet(payable(faucet)).ADMIN(),
+            "DeployPeriphery: Faucet admin mismatch"
+        );
     }
 
     /// @notice Installs the OnChain AuthModule on the Faucet contract.

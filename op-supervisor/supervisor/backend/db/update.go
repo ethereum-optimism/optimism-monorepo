@@ -33,6 +33,10 @@ func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
 		return fmt.Errorf("failed to seal block %v: %w", block, err)
 	}
 	db.logger.Info("Updated local unsafe", "chain", chain, "block", block)
+	feed, ok := db.localUnsafeFeeds.Get(chain)
+	if ok {
+		feed.Send(types.BlockSealFromRef(block))
+	}
 	return nil
 }
 
@@ -50,7 +54,17 @@ func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRe
 		return fmt.Errorf("cannot UpdateLocalSafe: %w: %v", types.ErrUnknownChain, chain)
 	}
 	db.logger.Debug("Updating local safe", "chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
-	return localDB.AddDerived(derivedFrom, lastDerived)
+	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
+		return err
+	}
+	feed, ok := db.localSafeFeeds.Get(chain)
+	if ok {
+		feed.Send(types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSealFromRef(derivedFrom),
+			Derived:     types.BlockSealFromRef(lastDerived),
+		})
+	}
+	return nil
 }
 
 func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error {
@@ -59,6 +73,10 @@ func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.Blo
 		return fmt.Errorf("cannot UpdateCrossUnsafe: %w: %s", types.ErrUnknownChain, chain)
 	}
 	v.Set(crossUnsafe)
+	feed, ok := db.crossUnsafeFeeds.Get(chain)
+	if ok {
+		feed.Send(crossUnsafe)
+	}
 	db.logger.Info("Updated cross-unsafe", "chain", chain, "crossUnsafe", crossUnsafe)
 	return nil
 }
@@ -72,20 +90,49 @@ func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, la
 		return err
 	}
 	db.logger.Info("Updated cross-safe", "chain", chain, "l1View", l1View, "lastCrossDerived", lastCrossDerived)
+	// notify subscribers
+	sub, ok := db.crossSafeFeeds.Get(chain)
+	if ok {
+		sub.Send(types.DerivedBlockSealPair{
+			DerivedFrom: types.BlockSealFromRef(l1View),
+			Derived:     types.BlockSealFromRef(lastCrossDerived),
+		})
+	}
 	return nil
 }
 
 func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	// Lock, so we avoid race-conditions in-between getting (for comparison) and setting.
+	// Unlock is managed explicitly, in this function so we can call NotifyL2Finalized after releasing the lock.
 	db.finalizedL1.Lock()
-	defer db.finalizedL1.Unlock()
 
 	if v := db.finalizedL1.Value; v.Number > finalized.Number {
+		db.finalizedL1.Unlock()
 		return fmt.Errorf("cannot rewind finalized L1 head from %s to %s", v, finalized)
 	}
 	db.finalizedL1.Value = finalized
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
+	db.finalizedL1.Unlock()
+
+	// whenver the L1 Finalized changes, the L2 Finalized may change, notify subscribers
+	db.NotifyL2Finalized()
+
 	return nil
+}
+
+// NotifyL2Finalized notifies all L2 finality subscribers of the latest L2 finalized block, per chain.
+func (db *ChainsDB) NotifyL2Finalized() {
+	for _, chain := range db.depSet.Chains() {
+		f, err := db.Finalized(chain)
+		if err != nil {
+			db.logger.Error("Failed to get finalized L1 block", "chain", chain, "err", err)
+			continue
+		}
+		sub, ok := db.l2FinalityFeeds.Get(chain)
+		if ok {
+			sub.Send(f)
+		}
+	}
 }
 
 // RecordNewL1 records a new L1 block in the database.

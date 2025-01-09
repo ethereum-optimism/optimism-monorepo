@@ -7,7 +7,6 @@ import { Vm } from "forge-std/Vm.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Config } from "scripts/libraries/Config.sol";
 import { StorageSlot } from "scripts/libraries/ForgeArtifacts.sol";
-import { LibString } from "@solady/utils/LibString.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 import { Process } from "scripts/libraries/Process.sol";
 
@@ -191,6 +190,8 @@ abstract contract Artifacts {
         _namedDeployments[_name] = deployment;
         _newDeployments.push(deployment);
         _appendDeployment(_name, _deployed);
+
+        vm.label(_deployed, _name);
     }
 
     /// @notice Adds a deployment to the temp deployments file
@@ -211,16 +212,18 @@ abstract contract Artifacts {
     }
 
     /// @notice Returns the value of the internal `_initialized` storage slot for a given contract.
-    function loadInitializedSlot(string memory _contractName) public returns (uint8 initialized_) {
-        address contractAddress = mustGetAddress(_contractName);
+    /// @param _sourceName The name of the contract in the source code
+    /// @param _deploymentName The name used to save() the deployed contract
+    function loadInitializedSlot(
+        string memory _sourceName,
+        string memory _deploymentName
+    )
+        public
+        returns (uint8 initialized_)
+    {
+        address contractAddress = mustGetAddress(_deploymentName);
 
-        // Check if the contract name ends with `Proxy` and, if so override the contract name which is used to
-        // retrieve the storage layout.
-        if (LibString.endsWith(_contractName, "Proxy")) {
-            _contractName = LibString.slice(_contractName, 0, bytes(_contractName).length - 5);
-        }
-
-        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_contractName);
+        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_sourceName);
         bytes32 slotVal = vm.load(contractAddress, bytes32(slot.slot));
         initialized_ = uint8((uint256(slotVal) >> (slot.offset * 8)) & 0xFF);
     }

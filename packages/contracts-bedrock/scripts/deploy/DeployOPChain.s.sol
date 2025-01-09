@@ -631,7 +631,7 @@ contract DeployOPChain is Script {
 
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
-        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0));
+        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-70");
     }
 
     function assertValidDisputeGameFactory(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {

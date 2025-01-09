@@ -14,6 +14,9 @@ import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { IOptimismPortalInterop as IOptimismPortal } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
+/// @dev This is temporary. Error thrown when a chain uses a custom gas token.
+error CustomGasTokenNotSupported();
+
 /// @custom:proxied true
 /// @title SystemConfigInterop
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
@@ -34,6 +37,9 @@ contract SystemConfigInterop is SystemConfig {
     /// @param _token Address of the gas paying token.
     function _setGasPayingToken(address _token) internal override {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
+            // Temporary revert till we support custom gas tokens
+            if (true) revert CustomGasTokenNotSupported();
+
             require(
                 ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
             );

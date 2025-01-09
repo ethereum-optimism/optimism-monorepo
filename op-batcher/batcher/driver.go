@@ -413,8 +413,8 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 	if syncActions.clearState != nil {
 		l.channelMgr.Clear(*syncActions.clearState)
 	} else {
-		l.channelMgr.pruneSafeBlocks(syncActions.blocksToPrune)
-		l.channelMgr.pruneChannels(syncActions.channelsToPrune)
+		l.channelMgr.PruneSafeBlocks(syncActions.blocksToPrune)
+		l.channelMgr.PruneChannels(syncActions.channelsToPrune)
 	}
 	return syncActions.blocksToLoad
 }
@@ -892,6 +892,8 @@ func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txRef]) {
 }
 
 func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	if err != nil {
 		l.Log.Warn("DA request failed", logFields(id, err)...)
 	}

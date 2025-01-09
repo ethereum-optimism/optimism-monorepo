@@ -4,9 +4,9 @@
 
 # This Dockerfile builds all the dependencies needed by the smart-contracts, excluding Go and Python.
 
-FROM --platform=linux/amd64 us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:latest as foundry
+FROM --platform=linux/amd64 us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:latest AS foundry
 
-FROM --platform=linux/amd64 debian:bookworm-20240812-slim as base
+FROM --platform=linux/amd64 debian:bookworm-20240812-slim AS base
 
 # Base: install deps
 RUN apt-get update && apt-get install -y \

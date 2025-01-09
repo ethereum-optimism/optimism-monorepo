@@ -11,6 +11,7 @@ import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 interface IOptimismPortalInterop {
+    error CustomGasTokenNotSupported();
     error AlreadyFinalized();
     error BadTarget();
     error Blacklisted();

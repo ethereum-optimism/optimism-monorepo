@@ -178,7 +178,7 @@ rules:
       - pattern-not: require($ERR, $MSG);
     paths:
       exclude:
-        - packages/contracts-bedrock/
+        - packages/contracts-bedrock/src/universal/WETH98.sol
 
   - id: sol-style-no-bare-imports
     languages: [solidity]

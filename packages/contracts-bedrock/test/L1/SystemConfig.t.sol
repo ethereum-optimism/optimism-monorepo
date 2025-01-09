@@ -42,7 +42,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
         batcherHash = bytes32(uint256(uint160(deploy.cfg().batchSenderAddress())));
         gasLimit = uint64(deploy.cfg().l2GenesisBlockGasLimit());
         unsafeBlockSigner = deploy.cfg().p2pSequencerAddress();
-        systemConfigImpl = deploy.mustGetAddress("SystemConfig");
+        systemConfigImpl = deploy.mustGetAddress("SystemConfigImpl");
         optimismMintableERC20Factory = deploy.mustGetAddress("OptimismMintableERC20FactoryProxy");
     }
 
@@ -325,6 +325,8 @@ contract SystemConfig_Init_CustomGasToken is SystemConfig_Init {
     ERC20 token;
 
     function setUp() public override {
+        vm.skip(true, "Custom gas token not supported");
+
         token = new ERC20("Silly", "SIL");
         super.enableCustomGasToken(address(token));
 

@@ -167,6 +167,9 @@ func NewServer(host string, port int, appVersion string, opts ...ServerOption) *
 
 // Endpoint returns the HTTP endpoint without http / ws protocol prefix.
 func (b *Server) Endpoint() string {
+	if b.listener == nil {
+		panic("Server has not started yet, no endpoint is known")
+	}
 	return b.listener.Addr().String()
 }
 
