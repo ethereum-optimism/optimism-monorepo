@@ -14,11 +14,11 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-type RunProgramFlags bool
+type RunProgramFlag bool
 
 const (
-	RunProgramFlagsSkipValidation RunProgramFlags = false
-	RunProgramFlagsValidate       RunProgramFlags = true
+	RunProgramFlagSkipValidation RunProgramFlag = false
+	RunProgramFlagValidate       RunProgramFlag = true
 )
 
 // Main executes the client program in a detached context and exits the current process.
@@ -27,7 +27,7 @@ func Main(logger log.Logger) {
 	log.Info("Starting fault proof program client")
 	preimageOracle := preimage.ClientPreimageChannel()
 	preimageHinter := preimage.ClientHinterChannel()
-	if err := RunProgram(logger, preimageOracle, preimageHinter, false); errors.Is(err, claim.ErrClaimNotValid) {
+	if err := RunProgram(logger, preimageOracle, preimageHinter, RunProgramFlagValidate); errors.Is(err, claim.ErrClaimNotValid) {
 		log.Error("Claim is invalid", "err", err)
 		os.Exit(1)
 	} else if err != nil {
@@ -40,7 +40,7 @@ func Main(logger log.Logger) {
 }
 
 // RunProgram executes the Program, while attached to an IO based pre-image oracle, to be served by a host.
-func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter io.ReadWriter, flags RunProgramFlags) error {
+func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter io.ReadWriter, flags RunProgramFlag) error {
 	pClient := preimage.NewOracleClient(preimageOracle)
 	hClient := preimage.NewHintWriter(preimageHinter)
 	l1PreimageOracle := l1.NewCachingOracle(l1.NewPreimageOracle(pClient, hClient))
@@ -61,7 +61,7 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 	if err != nil {
 		return err
 	}
-	if flags == RunProgramFlagsValidate {
+	if flags == RunProgramFlagValidate {
 		return claim.ValidateClaim(logger, safeHead, eth.Bytes32(bootInfo.L2Claim), outputRoot)
 	}
 	return nil

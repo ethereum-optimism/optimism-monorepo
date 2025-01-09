@@ -110,9 +110,9 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		logger.Debug("Client program completed successfully")
 		return nil
 	} else {
-		runFlag := cl.RunProgramFlagsValidate
+		runFlag := cl.RunProgramFlagValidate
 		if programConfig.skipValidation {
-			runFlag = cl.RunProgramFlagsSkipValidation
+			runFlag = cl.RunProgramFlagSkipValidation
 		}
 		return cl.RunProgram(logger, pClientRW, hClientRW, runFlag)
 	}

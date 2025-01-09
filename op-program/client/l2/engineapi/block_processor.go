@@ -156,7 +156,3 @@ func (b *BlockProcessor) Commit() error {
 	}
 	return nil
 }
-
-func (b *BlockProcessor) Receipts() types.Receipts {
-	return b.receipts
-}
