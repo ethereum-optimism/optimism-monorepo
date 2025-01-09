@@ -7,7 +7,6 @@ import { stdJson } from "forge-std/StdJson.sol";
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
-import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
 import { GameTypes } from "src/dispute/lib/Types.sol";
