@@ -188,7 +188,7 @@ contract Deploy is Deployer {
         save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
         IProxy slProxy = IProxy(_sharedLockboxProxy);
-        save("SharedLockbox", slProxy.implementation());
+        save("SharedLockboxImpl", slProxy.implementation());
         save("SharedLockboxProxy", _sharedLockboxProxy);
 
         _run({ _needsSuperchain: false });
@@ -293,7 +293,7 @@ contract Deploy is Deployer {
         });
 
         // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
-        contracts.SharedLockbox = mustGetAddress("SharedLockbox");
+        contracts.SharedLockbox = mustGetAddress("SharedLockboxImpl");
         ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: false });
 
         // Then replace the ProtocolVersions proxy with the implementation address and run assertions on it.
