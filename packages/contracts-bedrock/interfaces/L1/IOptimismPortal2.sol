@@ -10,6 +10,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 interface IOptimismPortal2 {
+    error CustomGasTokenNotSupported();
     error AlreadyFinalized();
     error BadTarget();
     error Blacklisted();

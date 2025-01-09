@@ -15,6 +15,9 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
+/// @dev This is temporary. Error thrown when a chain uses a custom gas token.
+error CustomGasTokenNotSupported();
+
 /// @custom:proxied true
 /// @title SystemConfig
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
@@ -137,9 +140,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.9
+    /// @custom:semver 2.3.0-beta.10
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.9";
+        return "2.3.0-beta.10";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -294,6 +297,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @param _token Address of the gas paying token.
     function _setGasPayingToken(address _token) internal virtual {
         if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
+            // Temporary revert till we support custom gas tokens
+            if (true) revert CustomGasTokenNotSupported();
+
             require(
                 ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
             );

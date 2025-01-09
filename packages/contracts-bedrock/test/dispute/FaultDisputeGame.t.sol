@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { DisputeGameFactory_Init } from "test/dispute/DisputeGameFactory.t.sol";
 import { AlphabetVM } from "test/mocks/AlphabetVM.sol";

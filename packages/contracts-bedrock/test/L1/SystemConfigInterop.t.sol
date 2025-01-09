@@ -26,8 +26,18 @@ contract SystemConfigInterop_Test is CommonTest {
         super.setUp();
     }
 
+    /// @dev Temporary test that checks that correct calls to initialize when using a custom gas token revert with the
+    /// expected error.
+    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
+    function test_initialize_customGasToken_reverts() external {
+        vm.expectRevert(ISystemConfig.CustomGasTokenNotSupported.selector);
+        _cleanStorageAndInit(address(L1Token));
+    }
+
     /// @dev Tests that when the decimals is not 18, initialization reverts.
     function test_initialize_decimalsIsNot18_reverts(uint8 decimals) external {
+        vm.skip(true, "Custom gas token not supported");
+
         vm.assume(decimals != 18);
         address _token = address(L1Token);
 
@@ -39,6 +49,40 @@ contract SystemConfigInterop_Test is CommonTest {
         _cleanStorageAndInit(_token);
     }
 
+    /// @dev Temporary test that checks that correct calls to setGasPayingToken when using a custom gas token revert
+    /// with the expected error.
+    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
+    function test_setGasPayingToken_customGasToken_reverts(
+        address _token,
+        string calldata _name,
+        string calldata _symbol
+    )
+        external
+    {
+        assumeNotForgeAddress(_token);
+        vm.assume(_token != address(0));
+        vm.assume(_token != Constants.ETHER);
+
+        // Using vm.assume() would cause too many test rejections.
+        string memory name = _name;
+        if (bytes(_name).length > 32) {
+            name = _name[:32];
+        }
+
+        // Using vm.assume() would cause too many test rejections.
+        string memory symbol = _symbol;
+        if (bytes(_symbol).length > 32) {
+            symbol = _symbol[:32];
+        }
+
+        vm.mockCall(_token, abi.encodeCall(ERC20.decimals, ()), abi.encode(18));
+        vm.mockCall(_token, abi.encodeCall(ERC20.name, ()), abi.encode(name));
+        vm.mockCall(_token, abi.encodeCall(ERC20.symbol, ()), abi.encode(symbol));
+
+        vm.expectRevert(ISystemConfig.CustomGasTokenNotSupported.selector);
+        _cleanStorageAndInit(_token);
+    }
+
     /// @dev Tests that the gas paying token can be set.
     function testFuzz_setGasPayingToken_succeeds(
         address _token,
@@ -47,6 +91,8 @@ contract SystemConfigInterop_Test is CommonTest {
     )
         public
     {
+        vm.skip(true, "Custom gas token not supported");
+
         assumeNotForgeAddress(_token);
         vm.assume(_token != address(0));
         vm.assume(_token != Constants.ETHER);

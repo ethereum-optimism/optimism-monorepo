@@ -861,6 +861,11 @@
   },
   {
     "inputs": [],
+    "name": "CustomGasTokenNotSupported",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "EmptyItem",
     "type": "error"
   },

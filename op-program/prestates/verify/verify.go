@@ -90,5 +90,5 @@ func main() {
 }
 
 func formatRelease(release prestates.Release) string {
-	return fmt.Sprintf("%-13v %s %s", release.Version, release.Hash, release.Type)
+	return fmt.Sprintf("%-13v %s %-10v", release.Version, release.Hash, release.Type)
 }

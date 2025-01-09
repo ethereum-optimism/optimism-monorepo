@@ -166,17 +166,20 @@ func (s *ChainProcessor) rangeUpdate() (int, error) {
 	// [next, last] inclusive with a max of s.fetcherThreads blocks
 	next := s.nextNum()
 	last := s.lastHead.Load()
-	// next is already beyond the end, nothing to do
-	if next > last {
-		return 0, nil
-	}
-	nums := make([]uint64, 0)
+
+	nums := make([]uint64, 0, s.maxFetcherThreads)
 	for i := next; i <= last; i++ {
 		nums = append(nums, i)
-		// only collect as many blocks as we can fetch in parallel
+		// only attempt as many blocks as we can fetch in parallel
 		if len(nums) >= s.maxFetcherThreads {
+			s.log.Debug("Fetching up to max threads", "chain", s.chain.String(), "next", next, "last", last, "count", len(nums))
 			break
 		}
+	}
+
+	if len(nums) == 0 {
+		s.log.Debug("No blocks to fetch", "chain", s.chain.String(), "next", next, "last", last)
+		return 0, nil
 	}
 
 	s.log.Debug("Fetching blocks", "chain", s.chain.String(), "next", next, "last", last, "count", len(nums))

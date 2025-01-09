@@ -51,7 +51,7 @@ func DeployAltDA(
 	implContract := "DeployAltDA"
 	deployScript, cleanupDeploy, err := script.WithScript[DeployAltDAScript](host, "DeployAltDA.s.sol", implContract)
 	if err != nil {
-		return output, fmt.Errorf("failed to laod %s script: %w", implContract, err)
+		return output, fmt.Errorf("failed to load %s script: %w", implContract, err)
 	}
 	defer cleanupDeploy()
 

@@ -62,6 +62,7 @@ participants:
     el_extra_params:
       - "--gcmode=archive"
       - "--rpc.txfeecap=0"
+      - "--netrestrict=172.17.0.0/16"
     cl_type: lighthouse
 network_params:
   prefunded_accounts: '{ "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266": { "balance": "1000000ETH" } }'
@@ -95,7 +96,6 @@ func (d *deployerKey) String() string {
 
 func TestEndToEndApply(t *testing.T) {
 	op_e2e.InitParallel(t)
-	kurtosisutil.Test(t)
 
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -650,12 +650,12 @@ func TestProofParamOverrides(t *testing.T) {
 		"proofMaturityDelaySeconds":               standard.ProofMaturityDelaySeconds + 1,
 		"disputeGameFinalityDelaySeconds":         standard.DisputeGameFinalityDelaySeconds + 1,
 		"mipsVersion":                             standard.MIPSVersion + 1,
-		"disputeGameType":                         standard.DisputeGameType, // This must be set to the permissioned game
-		"disputeAbsolutePrestate":                 common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
-		"disputeMaxGameDepth":                     standard.DisputeMaxGameDepth + 1,
-		"disputeSplitDepth":                       standard.DisputeSplitDepth + 1,
-		"disputeClockExtension":                   standard.DisputeClockExtension + 1,
-		"disputeMaxClockDuration":                 standard.DisputeMaxClockDuration + 1,
+		"respectedGameType":                       standard.DisputeGameType, // This must be set to the permissioned game
+		"faultGameAbsolutePrestate":               common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"faultGameMaxDepth":                       standard.DisputeMaxGameDepth + 1,
+		"faultGameSplitDepth":                     standard.DisputeSplitDepth + 1,
+		"faultGameClockExtension":                 standard.DisputeClockExtension + 1,
+		"faultGameMaxClockDuration":               standard.DisputeMaxClockDuration + 1,
 		"dangerouslyAllowCustomDisputeParameters": true,
 	}
 
@@ -699,29 +699,29 @@ func TestProofParamOverrides(t *testing.T) {
 			st.ImplementationsDeployment.OptimismPortalImplAddress,
 		},
 		{
-			"disputeAbsolutePrestate",
+			"faultGameAbsolutePrestate",
 			func(t *testing.T, val any) common.Hash {
 				return val.(common.Hash)
 			},
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxGameDepth",
+			"faultGameMaxDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeSplitDepth",
+			"faultGameSplitDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeClockExtension",
+			"faultGameClockExtension",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxClockDuration",
+			"faultGameMaxClockDuration",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},

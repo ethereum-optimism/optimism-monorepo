@@ -191,6 +191,9 @@ func (db *DB) OpenBlock(blockNum uint64) (ref eth.BlockRef, logCount uint32, exe
 			retErr = err
 			return
 		}
+		if seal.Number != 0 {
+			db.log.Warn("The first block is not block 0", "block", seal.Number)
+		}
 		ref = eth.BlockRef{
 			Hash:       seal.Hash,
 			Number:     seal.Number,

@@ -90,7 +90,7 @@ contract DeployOwnership is Deploy {
             safeConfig: SafeConfig({ threshold: 1, owners: exampleGuardianOwners }),
             deputyGuardianModuleConfig: DeputyGuardianModuleConfig({
                 deputyGuardian: mustGetAddress("FoundationOperationsSafe"),
-                superchainConfig: ISuperchainConfig(mustGetAddress("SuperchainConfig"))
+                superchainConfig: ISuperchainConfig(mustGetAddress("SuperchainConfigImpl"))
             })
         });
     }
@@ -323,13 +323,14 @@ contract DeployOwnership is Deploy {
                 _save: this,
                 _salt: _implSalt(),
                 _name: "SuperchainConfig",
+                _nick: "SuperchainConfigImpl",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, (address(0))))
             })
         );
 
-        require(superchainConfig.guardian() == address(0));
+        require(superchainConfig.guardian() == address(0), "SuperchainConfig: guardian must be address(0)");
         bytes32 initialized = vm.load(address(superchainConfig), bytes32(0));
-        require(initialized != 0);
+        require(initialized != 0, "SuperchainConfig: must be initialized");
     }
 
     /// @notice Configure the Guardian Safe with the DeputyGuardianModule.

@@ -46,7 +46,7 @@ library ChainAssertions {
         console.log("Running post-deploy assertions");
         IResourceMetering.ResourceConfig memory rcfg = ISystemConfig(_prox.SystemConfig).resourceConfig();
         IResourceMetering.ResourceConfig memory dflt = Constants.DEFAULT_RESOURCE_CONFIG();
-        require(keccak256(abi.encode(rcfg)) == keccak256(abi.encode(dflt)));
+        require(keccak256(abi.encode(rcfg)) == keccak256(abi.encode(dflt)), "CHECK-RCFG-10");
 
         checkSystemConfig({ _contracts: _prox, _cfg: _cfg, _isProxy: true });
         checkL1CrossDomainMessenger({ _contracts: _prox, _vm: _vm, _isProxy: true });

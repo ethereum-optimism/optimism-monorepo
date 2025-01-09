@@ -12,7 +12,7 @@ import (
 )
 
 type CrossSafeDeps interface {
-	CrossSafe(chainID types.ChainID) (derivedFrom types.BlockSeal, derived types.BlockSeal, err error)
+	CrossSafe(chainID types.ChainID) (pair types.DerivedBlockSealPair, err error)
 
 	SafeFrontierCheckDeps
 	SafeStartDeps
@@ -36,7 +36,7 @@ func CrossSafeUpdate(ctx context.Context, logger log.Logger, chainID types.Chain
 		return nil
 	}
 	if !errors.Is(err, types.ErrOutOfScope) {
-		return err
+		return fmt.Errorf("failed to determine cross-safe update scope of chain %s: %w", chainID, err)
 	}
 	// candidateScope is expected to be set if ErrOutOfScope is returned.
 	if candidateScope == (eth.BlockRef{}) {
@@ -48,16 +48,16 @@ func CrossSafeUpdate(ctx context.Context, logger log.Logger, chainID types.Chain
 	if err != nil {
 		return fmt.Errorf("failed to identify new L1 scope to expand to after %s: %w", candidateScope, err)
 	}
-	_, currentCrossSafe, err := d.CrossSafe(chainID)
+	currentCrossSafe, err := d.CrossSafe(chainID)
 	if err != nil {
 		// TODO: if genesis isn't cross-safe by default, then we can't register something as cross-safe here
 		return fmt.Errorf("failed to identify cross-safe scope to repeat: %w", err)
 	}
-	parent, err := d.PreviousDerived(chainID, currentCrossSafe.ID())
+	parent, err := d.PreviousDerived(chainID, currentCrossSafe.Derived.ID())
 	if err != nil {
 		return fmt.Errorf("cannot find parent-block of cross-safe: %w", err)
 	}
-	crossSafeRef := currentCrossSafe.MustWithParent(parent.ID())
+	crossSafeRef := currentCrossSafe.Derived.MustWithParent(parent.ID())
 	logger.Debug("Bumping cross-safe scope", "scope", newScope, "crossSafe", crossSafeRef)
 	if err := d.UpdateCrossSafe(chainID, newScope, crossSafeRef); err != nil {
 		return fmt.Errorf("failed to update cross-safe head with L1 scope increment to %s and repeat of L2 block %s: %w", candidateScope, crossSafeRef, err)

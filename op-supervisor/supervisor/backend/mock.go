@@ -50,12 +50,12 @@ func (m *MockBackend) CheckMessages(messages []types.Message, minSafety types.Sa
 	return nil
 }
 
-func (m *MockBackend) UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-	return types.ReferenceView{}, nil
+func (m *MockBackend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+	return eth.BlockID{}, nil
 }
 
-func (m *MockBackend) SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
-	return types.ReferenceView{}, nil
+func (m *MockBackend) CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+	return types.DerivedIDPair{}, nil
 }
 
 func (m *MockBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
@@ -68,18 +68,6 @@ func (m *MockBackend) FinalizedL1() eth.BlockRef {
 
 func (m *MockBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return eth.BlockRef{}, nil
-}
-
-func (m *MockBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
-	return nil
-}
-
-func (m *MockBackend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
-	return nil
-}
-
-func (m *MockBackend) UpdateFinalizedL1(ctx context.Context, chainID types.ChainID, finalized eth.BlockRef) error {
-	return nil
 }
 
 func (m *MockBackend) Close() error {

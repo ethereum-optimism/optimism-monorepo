@@ -47,6 +47,9 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
+/// @notice This is temporary. Error thrown when a chain uses a custom gas token.
+error CustomGasTokenNotSupported();
+
 /// @custom:proxied true
 /// @title OptimismPortal2
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
@@ -58,7 +61,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     /// @notice Represents a proven withdrawal.
     /// @custom:field disputeGameProxy The address of the dispute game proxy that the withdrawal was proven against.
-    /// @custom:field timestamp        Timestamp at whcih the withdrawal was proven.
+    /// @custom:field timestamp        Timestamp at which the withdrawal was proven.
     struct ProvenWithdrawal {
         IDisputeGame disputeGameProxy;
         uint64 timestamp;
@@ -183,9 +186,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.10
+    /// @custom:semver 3.11.0-beta.11
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.10";
+        return "3.11.0-beta.11";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -235,6 +238,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         if (token == Constants.ETHER) {
             return address(this).balance;
         } else {
+            // Temporary revert till we support custom gas tokens
+            if (true) revert CustomGasTokenNotSupported();
+
             return _balance;
         }
     }
@@ -439,6 +445,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             //      to accomplish this, `callWithMinGas` will revert.
             success = SafeCall.callWithMinGas(_tx.target, _tx.gasLimit, _tx.value, _tx.data);
         } else {
+            // Temporary revert till we support custom gas tokens
+            if (true) revert CustomGasTokenNotSupported();
+
             // Cannot call the token contract directly from the portal. This would allow an attacker
             // to call approve from a withdrawal and drain the balance of the portal.
             if (_tx.target == token) revert BadTarget();
@@ -508,6 +517,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         public
         metered(_gasLimit)
     {
+        // Temporary revert till we support custom gas tokens
+        if (true) revert CustomGasTokenNotSupported();
+
         // Can only be called if an ERC20 token is used for gas paying on L2
         (address token,) = gasPayingToken();
         if (token == Constants.ETHER) revert OnlyCustomGasToken();
@@ -557,6 +569,10 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         metered(_gasLimit)
     {
         (address token,) = gasPayingToken();
+
+        // Temporary revert till we support custom gas tokens
+        if (token != Constants.ETHER) revert CustomGasTokenNotSupported();
+
         if (token != Constants.ETHER && msg.value != 0) revert NoValue();
 
         if (token == Constants.ETHER && msg.value != 0) {
@@ -624,6 +640,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Sets the gas paying token for the L2 system. This token is used as the
     ///         L2 native asset. Only the SystemConfig contract can call this function.
     function setGasPayingToken(address _token, uint8 _decimals, bytes32 _name, bytes32 _symbol) external {
+        // Temporary revert till we support custom gas tokens
+        if (true) revert CustomGasTokenNotSupported();
+
         if (msg.sender != address(systemConfig)) revert Unauthorized();
 
         // Set L2 deposit gas as used without paying burning gas. Ensures that deposits cannot use too much L2 gas.

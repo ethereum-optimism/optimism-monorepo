@@ -66,12 +66,11 @@ contract ForkLive is Deployer {
         // Bridge contracts
         address optimismPortal = vm.parseTomlAddress(opToml, ".addresses.OptimismPortalProxy");
         save("OptimismPortalProxy", optimismPortal);
-        save("OptimismPortal", EIP1967Helper.getImplementation(optimismPortal));
-        save("OptimismPortal2", EIP1967Helper.getImplementation(optimismPortal));
+        save("OptimismPortal2Impl", EIP1967Helper.getImplementation(optimismPortal));
 
         address addressManager = vm.parseTomlAddress(opToml, ".addresses.AddressManager");
         save("AddressManager", addressManager);
-        save("L1CrossDomainMessenger", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger"));
+        save("L1CrossDomainMessengerImpl", IAddressManager(addressManager).getAddress("OVM_L1CrossDomainMessenger"));
         save("L1CrossDomainMessengerProxy", vm.parseTomlAddress(opToml, ".addresses.L1CrossDomainMessengerProxy"));
         saveProxyAndImpl("OptimismMintableERC20Factory", opToml, ".addresses.OptimismMintableERC20FactoryProxy");
         saveProxyAndImpl("L1StandardBridge", opToml, ".addresses.L1StandardBridgeProxy");
@@ -84,7 +83,7 @@ contract ForkLive is Deployer {
 
         // Fault proof non-proxied contracts
         save("PreimageOracle", vm.parseTomlAddress(opToml, ".addresses.PreimageOracle"));
-        save("Mips", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
+        save("MipsSingleton", vm.parseTomlAddress(opToml, ".addresses.MIPS"));
         IDisputeGameFactory disputeGameFactory = IDisputeGameFactory(mustGetAddress("DisputeGameFactoryProxy"));
         save("FaultDisputeGame", vm.parseTomlAddress(opToml, ".addresses.FaultDisputeGame"));
         // The PermissionedDisputeGame and PermissionedDelayedWETHProxy are not listed in the registry for OP, so we
@@ -104,6 +103,6 @@ contract ForkLive is Deployer {
         save(string.concat(_contractName, "Proxy"), proxy);
         address impl = EIP1967Helper.getImplementation(proxy);
         require(impl != address(0), "Upgrade: Implementation address is zero");
-        save(_contractName, impl);
+        save(string.concat(_contractName, "Impl"), impl);
     }
 }

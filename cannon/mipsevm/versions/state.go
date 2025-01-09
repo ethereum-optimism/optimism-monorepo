@@ -22,7 +22,9 @@ const (
 	VersionMultiThreaded
 	// VersionSingleThreaded2 is based on VersionSingleThreaded with the addition of support for fcntl(F_GETFD) syscall
 	VersionSingleThreaded2
+	// VersionMultiThreaded64 is the original 64-bit MTCannon implementation (pre-audit), tagged at cannon/v1.2.0
 	VersionMultiThreaded64
+	VersionMultiThreaded64_v2
 )
 
 var (
@@ -31,7 +33,7 @@ var (
 	ErrUnsupportedMipsArch = errors.New("mips architecture is not supported")
 )
 
-var StateVersionTypes = []StateVersion{VersionSingleThreaded, VersionMultiThreaded, VersionSingleThreaded2, VersionMultiThreaded64}
+var StateVersionTypes = []StateVersion{VersionSingleThreaded, VersionMultiThreaded, VersionSingleThreaded2, VersionMultiThreaded64, VersionMultiThreaded64_v2}
 
 func LoadStateFromFile(path string) (*VersionedState, error) {
 	if !serialize.IsBinaryFile(path) {
@@ -63,7 +65,7 @@ func NewFromState(state mipsevm.FPVMState) (*VersionedState, error) {
 			}, nil
 		} else {
 			return &VersionedState{
-				Version:   VersionMultiThreaded64,
+				Version:   VersionMultiThreaded64_v2,
 				FPVMState: state,
 			}, nil
 		}
@@ -114,7 +116,7 @@ func (s *VersionedState) Deserialize(in io.Reader) error {
 		}
 		s.FPVMState = state
 		return nil
-	case VersionMultiThreaded64:
+	case VersionMultiThreaded64_v2:
 		if arch.IsMips32 {
 			return ErrUnsupportedMipsArch
 		}
@@ -151,6 +153,8 @@ func (s StateVersion) String() string {
 		return "singlethreaded-2"
 	case VersionMultiThreaded64:
 		return "multithreaded64"
+	case VersionMultiThreaded64_v2:
+		return "multithreaded64-2"
 	default:
 		return "unknown"
 	}
@@ -166,6 +170,8 @@ func ParseStateVersion(ver string) (StateVersion, error) {
 		return VersionSingleThreaded2, nil
 	case "multithreaded64":
 		return VersionMultiThreaded64, nil
+	case "multithreaded64-2":
+		return VersionMultiThreaded64_v2, nil
 	default:
 		return StateVersion(0), errors.New("unknown state version")
 	}
