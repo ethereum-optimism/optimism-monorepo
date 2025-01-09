@@ -244,7 +244,7 @@ func TestCrossUnsafeHazards(t *testing.T) {
 		usd.deps = mockDependencySet{}
 		chainID := types.ChainIDFromUInt64(0)
 		candidate := types.BlockSeal{Timestamp: 2}
-		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
+		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 0}
 		execMsgs := []*types.ExecutingMessage{em1}
 		// when there is one execMsg, and the timestamp is less than the candidate,
 		// and IsCrossUnsafe returns no error,
