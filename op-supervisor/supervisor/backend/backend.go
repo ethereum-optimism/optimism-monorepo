@@ -517,6 +517,10 @@ func (su *SupervisorBackend) UpdateLocalSafe(ctx context.Context, chainID types.
 	return nil
 }
 
+func (su *SupervisorBackend) RecordNewL1(ctx context.Context, chain types.ChainID, ref eth.BlockRef) error {
+	return su.chainDBs.RecordNewL1(chain, ref)
+}
+
 // Access to synchronous processing for tests
 // ----------------------------
 

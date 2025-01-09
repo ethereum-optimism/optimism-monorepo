@@ -177,6 +177,10 @@ func (m *mockBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (et
 	return eth.L1BlockRef{}, nil
 }
 
+func (m *mockBackend) RecordNewL1(ctx context.Context, chain types.ChainID, ref eth.BlockRef) error {
+	return nil
+}
+
 var _ backend = (*mockBackend)(nil)
 
 func sampleDepSet(t *testing.T) depset.DependencySet {

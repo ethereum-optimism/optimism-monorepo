@@ -114,60 +114,62 @@ func (db *ChainsDB) UpdateFinalizedL1(finalized eth.BlockRef) error {
 	db.logger.Info("Updated finalized L1", "finalizedL1", finalized)
 	db.finalizedL1.Unlock()
 
-	// whenever the L1 Finalized changes, the L2 Finalized may change, notify subscribers
-	db.NotifyL2Finalized()
+	// whenver the L1 Finalized changes, the L2 Finalized may change, notify subscribers
+	for _, chain := range db.depSet.Chains() {
+		db.NotifyL2Finalized(chain)
+	}
 
 	return nil
 }
 
-// NotifyL2Finalized notifies all L2 finality subscribers of the latest L2 finalized block, per chain.
-func (db *ChainsDB) NotifyL2Finalized() {
-	for _, chain := range db.depSet.Chains() {
-		f, err := db.Finalized(chain)
-		if err != nil {
-			db.logger.Error("Failed to get finalized L2 block", "chain", chain, "err", err)
-			continue
-		}
-		sub, ok := db.l2FinalityFeeds.Get(chain)
-		if ok {
-			sub.Send(f)
-		}
+// NotifyL2Finalized notifies all L2 finality subscribers of the latest L2 finalized block for the given chain.
+func (db *ChainsDB) NotifyL2Finalized(chain types.ChainID) {
+	f, err := db.Finalized(chain)
+	if err != nil {
+		db.logger.Error("Failed to get finalized L1 block", "chain", chain, "err", err)
+		return
+	}
+	sub, ok := db.l2FinalityFeeds.Get(chain)
+	if ok {
+		sub.Send(f)
 	}
 }
 
-// RecordNewL1 records a new L1 block in the database.
+// RecordNewL1 records a new L1 block in the database for a given chain.
 // it uses the latest derived L2 block as the derived block for the new L1 block.
-func (db *ChainsDB) RecordNewL1(ref eth.BlockRef) error {
-	for _, chain := range db.depSet.Chains() {
-		// get local derivation database
-		ldb, ok := db.localDBs.Get(chain)
-		if !ok {
-			return fmt.Errorf("cannot RecordNewL1 to chain %s: %w", chain, types.ErrUnknownChain)
-		}
-		// get the latest derived and derivedFrom blocks
-		derivedFrom, derived, err := ldb.Latest()
-		if err != nil {
-			return fmt.Errorf("failed to get latest derivedFrom for chain %s: %w", chain, err)
-		}
-		// make a ref from the latest derived block
-		derivedParent, err := ldb.PreviousDerived(derived.ID())
-		if errors.Is(err, types.ErrFuture) {
-			db.logger.Warn("Empty DB, Recording first L1 block", "chain", chain, "err", err)
-		} else if err != nil {
-			db.logger.Warn("Failed to get latest derivedfrom to insert new L1 block", "chain", chain, "err", err)
-			return err
-		}
-		derivedRef := derived.MustWithParent(derivedParent.ID())
-		// don't push the new L1 block if it's not newer than the latest derived block
-		if derivedFrom.Number >= ref.Number {
-			db.logger.Warn("L1 block has already been processed for this height", "chain", chain, "block", ref, "latest", derivedFrom)
-			continue
-		}
-		// the database is extended with the new L1 and the existing L2
-		if err = db.UpdateLocalSafe(chain, ref, derivedRef); err != nil {
-			db.logger.Error("Failed to update local safe", "chain", chain, "block", ref, "derived", derived, "err", err)
-			return err
-		}
+// once done, it notifies the L2 finality subscribers, as a new L1 in the database
+// may update the L2 finalized block.
+func (db *ChainsDB) RecordNewL1(chain types.ChainID, ref eth.BlockRef) error {
+	// get local derivation database
+	ldb, ok := db.localDBs.Get(chain)
+	if !ok {
+		return fmt.Errorf("cannot RecordNewL1 to chain %s: %w", chain, types.ErrUnknownChain)
 	}
+	// get the latest derived and derivedFrom blocks
+	derivedFrom, derived, err := ldb.Latest()
+	if err != nil {
+		return fmt.Errorf("failed to get latest derivedFrom for chain %s: %w", chain, err)
+	}
+	// make a ref from the latest derived block
+	derivedParent, err := ldb.PreviousDerived(derived.ID())
+	if errors.Is(err, types.ErrFuture) {
+		db.logger.Warn("Empty DB, Recording first L1 block", "chain", chain, "err", err)
+	} else if err != nil {
+		db.logger.Warn("Failed to get latest derivedfrom to insert new L1 block", "chain", chain, "err", err)
+		return err
+	}
+	derivedRef := derived.MustWithParent(derivedParent.ID())
+	// don't push the new L1 block if it's not newer than the latest derived block
+	if derivedFrom.Number >= ref.Number {
+		db.logger.Warn("L1 block has already been processed for this height", "chain", chain, "block", ref, "latest", derivedFrom)
+		return nil
+	}
+	// the database is extended with the new L1 and the existing L2
+	if err = db.UpdateLocalSafe(chain, ref, derivedRef); err != nil {
+		db.logger.Error("Failed to update local safe", "chain", chain, "block", ref, "derived", derived, "err", err)
+		return err
+	}
+	// now tht the db has the new L1, we can attempt to to notify the L2 finality subscribers
+	db.NotifyL2Finalized(chain)
 	return nil
 }
