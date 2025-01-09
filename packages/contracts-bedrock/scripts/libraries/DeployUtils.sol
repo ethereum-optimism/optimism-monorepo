@@ -370,9 +370,9 @@ library DeployUtils {
     /// @param _cname The contract name (also used to label the contract).
     /// @param _artifactPath The path to the artifact to etch.
     function etchLabelAndAllowCheatcodes(address _etchTo, string memory _cname, string memory _artifactPath) internal {
-        vm.etch(address(_etchTo), vm.getDeployedCode(_artifactPath));
-        vm.label(address(_etchTo), _cname);
-        vm.allowCheatcodes(address(_etchTo));
+        vm.etch(_etchTo, vm.getDeployedCode(_artifactPath));
+        vm.label(_etchTo, _cname);
+        vm.allowCheatcodes(_etchTo);
     }
 
     /// @notice Etches a contract, labels it, and allows cheatcodes for it.
