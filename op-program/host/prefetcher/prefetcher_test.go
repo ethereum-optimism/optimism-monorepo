@@ -523,18 +523,20 @@ func TestFetchL2BlockData(t *testing.T) {
 		rng := rand.New(rand.NewSource(123))
 		block, _ := testutils.RandomBlock(rng, 10)
 
-		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xab}, eth.BlockToInfo(block), block.Transactions(), err)
-		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xaa}, eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xab}, eth.BlockToInfo(nil), nil, err)
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
 		hint := l2.L2BlockDataHint{
-			AgreedBlockHash: common.Hash{0xaa},
+			AgreedBlockHash: block.Hash(),
 			BlockHash:       common.Hash{0xab},
 			ChainID:         chainID,
 		}.Hint()
 
 		require.NoError(t, prefetcher.Hint(hint))
 		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
+		require.Equal(t, prefetcher.executor.(*mockExecutor).blockNumber, block.NumberU64()+1)
+		require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
 	}
 	t.Run("exec block not found", func(t *testing.T) {
 		testBlockExec(t, ethereum.NotFound)
@@ -768,11 +770,15 @@ func (o *legacyPrecompileOracle) Precompile(address common.Address, input []byte
 }
 
 type mockExecutor struct {
-	invoked bool
+	invoked     bool
+	blockNumber uint64
+	chainID     uint64
 }
 
 func (m *mockExecutor) RunProgram(
 	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
 	m.invoked = true
+	m.blockNumber = blockNumber
+	m.chainID = chainID
 	return nil
 }

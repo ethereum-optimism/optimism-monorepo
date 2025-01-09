@@ -112,11 +112,10 @@ func (p *programExecutor) RunProgram(
 	newCfg := *p.cfg
 	newCfg.L2ChainID = chainID
 	newCfg.L2ClaimBlockNumber = blockNum
-	// TODO(interop): Configure the chainID and RPC endpoints
 
 	withPrefetcher := hostcommon.WithPrefetcher(
 		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
-			// TODO: prevent recursive block execution
+			// TODO(#13663): prevent recursive block execution
 			return prefetcher, nil
 		})
 	return hostcommon.FaultProofProgram(ctx, p.logger, &newCfg, withPrefetcher, hostcommon.WithSkipValidation(true))

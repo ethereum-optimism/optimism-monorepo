@@ -298,12 +298,12 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if p.executor == nil {
 			return fmt.Errorf("this prefetcher does not support native block execution")
 		}
-		if len(hintBytes) != 32+32+32 {
+		if len(hintBytes) != 32+32+8 {
 			return fmt.Errorf("invalid L2 block data hint: %x", hint)
 		}
 		agreedBlockHash := common.Hash(hintBytes[:32])
 		blockHash := common.Hash(hintBytes[32:64])
-		chainID := binary.BigEndian.Uint64(hintBytes[64:])
+		chainID := binary.BigEndian.Uint64(hintBytes[64:72])
 		key := BlockDataKey(blockHash)
 		if _, err := p.kvStore.Get(key.Key()); err == nil {
 			return nil

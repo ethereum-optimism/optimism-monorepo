@@ -67,7 +67,7 @@ type L2BlockDataHint struct {
 var _ preimage.Hint = L2BlockDataHint{}
 
 func (l L2BlockDataHint) Hint() string {
-	hintBytes := make([]byte, 32+32+32)
+	hintBytes := make([]byte, 32+32+8)
 	copy(hintBytes[:32], (common.Hash)(l.AgreedBlockHash).Bytes())
 	copy(hintBytes[32:64], (common.Hash)(l.BlockHash).Bytes())
 	binary.BigEndian.PutUint64(hintBytes[64:], l.ChainID)
