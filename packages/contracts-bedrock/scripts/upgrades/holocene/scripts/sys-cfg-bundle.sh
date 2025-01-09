@@ -48,8 +48,9 @@ OPTIMISM_PORTAL_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "optimismPortal()(
 OPTIMISM_MINTABLE_ERC20_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "optimismMintableERC20Factory()(address)")
 
 # 2.3.0 is the first release to have a gasPayingToken. Therefore we set it to
-# the zero address, since we are upgrading chains which are by definition not custom gas token chains
-GAS_PAYING_TOKEN=0x0000000000000000000000000000000000000000
+# the magic address denoting Ether, since we are upgrading chains which are
+# by definition not custom gas token chains
+GAS_PAYING_TOKEN=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 
 # Handle DisputeGameFactory in a version-specific way:
 SYSTEM_CONFIG_VERSION=$(cast abi-decode "version()(string)" $(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "version()") | tr -d '"')
