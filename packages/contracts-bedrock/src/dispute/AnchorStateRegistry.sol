@@ -45,11 +45,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @custom:semver 3.0.0-beta.1
     string public constant version = "3.0.0-beta.1";
 
-    /// @custom:legacy
-    /// @custom:spacer anchors
-    /// @notice Spacer taking up the legacy `anchors` mapping slot.
-    bytes32 private spacer_1_0_32;
-
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
@@ -117,13 +112,6 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // scenario could happen in practice. If you want to stop the current anchor game from
         // being used, blacklist it.
         return OutputRoot({ l2BlockNumber: anchorGame.l2BlockNumber(), root: Hash.wrap(anchorGame.rootClaim().raw()) });
-    }
-
-    /// @custom:legacy
-    /// @notice Returns the current anchor root.
-    /// @return The current anchor root.
-    function anchors(GameType /* _gameType */ ) external view returns (OutputRoot memory) {
-        return getAnchorRoot();
     }
 
     /// @notice Updates the anchor game.
