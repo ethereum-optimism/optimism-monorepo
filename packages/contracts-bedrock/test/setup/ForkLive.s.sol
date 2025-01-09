@@ -111,7 +111,6 @@ contract ForkLive is Deployer {
         vm.etch(address(deployNew), vm.getDeployedCode("Deploy.s.sol:Deploy"));
         vm.label(address(deployNew), "DeployNew");
         vm.allowCheatcodes(address(deployNew));
-        vm.setEnv("CONTRACT_ADDRESSES_PATH", string.concat(vm.projectRoot(), "/deployments/1-deploy.json"));
 
         deployNew.setUp();
         deployNew.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });

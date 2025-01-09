@@ -326,21 +326,23 @@ contract Deploy is Deployer {
 
         // Get a contract set from the implementation addresses which were just deployed.
         Types.ContractSet memory contracts = Types.ContractSet({
-            L1CrossDomainMessenger: mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
-            L1StandardBridge: mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
+            L1CrossDomainMessenger: artifacts.mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
+            L1StandardBridge: artifacts.mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
             L2OutputOracle: address(0),
-            DisputeGameFactory: mustGetAddress(string.concat("DisputeGameFactoryImpl", _suffix)),
-            DelayedWETH: mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
-            PermissionedDelayedWETH: mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
+            DisputeGameFactory: artifacts.mustGetAddress(string.concat("DisputeGameFactoryImpl", _suffix)),
+            DelayedWETH: artifacts.mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
+            PermissionedDelayedWETH: artifacts.mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
             AnchorStateRegistry: address(0),
-            OptimismMintableERC20Factory: mustGetAddress(string.concat("OptimismMintableERC20FactoryImpl", _suffix)),
-            OptimismPortal: mustGetAddress(string.concat("OptimismPortal2Impl", _suffix)),
-            SystemConfig: mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
-            L1ERC721Bridge: mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
+            OptimismMintableERC20Factory: artifacts.mustGetAddress(
+                string.concat("OptimismMintableERC20FactoryImpl", _suffix)
+            ),
+            OptimismPortal: artifacts.mustGetAddress(string.concat("OptimismPortal2Impl", _suffix)),
+            SystemConfig: artifacts.mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
+            L1ERC721Bridge: artifacts.mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
             // We didn't deploy a new version of these so we don't append a suffix
             // We didn't deploy these in this function so we don't need to append a suffix.
-            ProtocolVersions: mustGetAddress("ProtocolVersionsImpl"),
-            SuperchainConfig: mustGetAddress("SuperchainConfigImpl")
+            ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
+            SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
         });
 
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
