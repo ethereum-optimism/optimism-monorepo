@@ -69,7 +69,7 @@ func (o StubBlockOracle) OutputByRoot(root common.Hash) eth.Output {
 	return output
 }
 
-func (o StubBlockOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
+func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
 	block, ok := o.Blocks[blockHash]
 	if !ok {
 		o.t.Fatalf("requested unknown block %s", blockHash)

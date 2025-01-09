@@ -4,10 +4,12 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"testing"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -515,21 +517,40 @@ func TestFetchL2Code(t *testing.T) {
 
 func TestFetchL2BlockData(t *testing.T) {
 	chainID := uint64(0xdead)
-	t.Run("exec", func(t *testing.T) {
+
+	testBlockExec := func(t *testing.T, err error) {
 		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
 		rng := rand.New(rand.NewSource(123))
 		block, _ := testutils.RandomBlock(rng, 10)
 
-		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xad}, eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xab}, eth.BlockToInfo(block), block.Transactions(), err)
+		l2Client.ExpectInfoAndTxsByHash(common.Hash{0xaa}, eth.BlockToInfo(block), block.Transactions(), nil)
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
-		err := prefetcher.Hint(l2.L2BlockDataHint{BlockHash: common.Hash{0xad}, ChainID: chainID}.Hint())
-		require.NoError(t, err)
+		hint := l2.L2BlockDataHint{
+			AgreedBlockHash: common.Hash{0xaa},
+			BlockHash:       common.Hash{0xab},
+			ChainID:         chainID,
+		}.Hint()
+
+		require.NoError(t, prefetcher.Hint(hint))
 		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
+	}
+	t.Run("exec block not found", func(t *testing.T) {
+		testBlockExec(t, ethereum.NotFound)
 	})
+	t.Run("exec block fetch error", func(t *testing.T) {
+		testBlockExec(t, errors.New("fetch error"))
+	})
+
 	t.Run("no exec", func(t *testing.T) {
 		prefetcher, _, _, _, _ := createPrefetcher(t)
-		err := prefetcher.Hint(l2.L2BlockDataHint{BlockHash: common.Hash{0xad}, ChainID: chainID}.Hint())
+		hint := l2.L2BlockDataHint{
+			AgreedBlockHash: common.Hash{0xaa},
+			BlockHash:       common.Hash{0xab},
+			ChainID:         chainID,
+		}.Hint()
+		err := prefetcher.Hint(hint)
 		require.ErrorContains(t, err, "this prefetcher does not support native block execution")
 	})
 }
@@ -750,7 +771,8 @@ type mockExecutor struct {
 	invoked bool
 }
 
-func (m *mockExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
+func (m *mockExecutor) RunProgram(
+	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
 	m.invoked = true
 	return nil
 }

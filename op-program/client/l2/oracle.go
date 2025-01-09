@@ -37,7 +37,7 @@ type Oracle interface {
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
 	// TODO: Return receipts as well as an optimization
-	BlockDataByHash(blockHash common.Hash) *types.Block
+	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -107,10 +107,13 @@ func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash) eth.Output {
 	return output
 }
 
-func (p *PreimageOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
-	// TODO: fetch chainID from oracle
-	chainID := uint64(1)
-	p.hint.Hint(L2BlockDataHint{blockHash, chainID})
+func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
+	hint := L2BlockDataHint{
+		AgreedBlockHash: agreedBlockHash,
+		BlockHash:       blockHash,
+		ChainID:         chainID,
+	}
+	p.hint.Hint(hint)
 	header := p.headerByBlockHash(blockHash)
 	txs := p.LoadTransactions(blockHash, header.TxHash)
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})

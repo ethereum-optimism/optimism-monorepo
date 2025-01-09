@@ -103,10 +103,17 @@ type programExecutor struct {
 	cfg    *config.Config
 }
 
-func (p *programExecutor) RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNum uint64, chainID uint64) error {
+func (p *programExecutor) RunProgram(
+	ctx context.Context,
+	prefetcher hostcommon.Prefetcher,
+	blockNum uint64,
+	chainID uint64,
+) error {
 	newCfg := *p.cfg
+	newCfg.L2ChainID = chainID
 	newCfg.L2ClaimBlockNumber = blockNum
 	// TODO: configure the chainID and RPC endpoints
+
 	withPrefetcher := hostcommon.WithPrefetcher(
 		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
 			// TODO: prevent recursive block execution

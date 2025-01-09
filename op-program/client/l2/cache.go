@@ -75,9 +75,9 @@ func (o *CachingOracle) OutputByRoot(root common.Hash) eth.Output {
 	return output
 }
 
-func (o *CachingOracle) BlockDataByHash(blockHash common.Hash) *types.Block {
+func (o *CachingOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
 	// Always request from the oracle even on cache hit. as we want the effects of the host oracle hinting
-	block := o.oracle.BlockDataByHash(blockHash)
+	block := o.oracle.BlockDataByHash(agreedBlockHash, blockHash, chainID)
 	o.blocks.Add(blockHash, block)
 	return block
 }

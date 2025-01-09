@@ -59,15 +59,17 @@ func (l L2OutputHint) Hint() string {
 }
 
 type L2BlockDataHint struct {
-	BlockHash common.Hash
-	ChainID   uint64
+	AgreedBlockHash common.Hash
+	BlockHash       common.Hash
+	ChainID         uint64
 }
 
 var _ preimage.Hint = L2BlockDataHint{}
 
 func (l L2BlockDataHint) Hint() string {
-	hintBytes := make([]byte, 32+32)
-	copy(hintBytes[:32], (common.Hash)(l.BlockHash).Bytes())
-	binary.BigEndian.PutUint64(hintBytes[32:], l.ChainID)
+	hintBytes := make([]byte, 32+32+32)
+	copy(hintBytes[:32], (common.Hash)(l.AgreedBlockHash).Bytes())
+	copy(hintBytes[32:64], (common.Hash)(l.BlockHash).Bytes())
+	binary.BigEndian.PutUint64(hintBytes[64:], l.ChainID)
 	return fmt.Sprintf("%s 0x%s", HintL2BlockData, common.Bytes2Hex(hintBytes))
 }

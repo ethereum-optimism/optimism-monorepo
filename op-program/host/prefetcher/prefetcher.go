@@ -56,10 +56,9 @@ type Prefetcher struct {
 	logger        log.Logger
 	l1Fetcher     L1Source
 	l1BlobFetcher L1BlobSource
-	l2Fetcher     L2Source
+	l2Fetcher     *RetryingL2Source
 	lastHint      string
 	kvStore       kvstore.KV
-	chainConfig   *params.ChainConfig
 
 	// Used to run the program for native block execution
 	executor ProgramExecutor
@@ -80,9 +79,7 @@ func NewPrefetcher(
 		l1BlobFetcher: NewRetryingL1BlobSource(logger, l1BlobFetcher),
 		l2Fetcher:     NewRetryingL2Source(logger, l2Fetcher),
 		kvStore:       kvStore,
-		// TODO: replace with block exec oracle to avoid having to setup chain config in unit tests
-		chainConfig: l2ChainConfig,
-		executor:    executor,
+		executor:      executor,
 	}
 }
 
@@ -307,16 +304,17 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if p.executor == nil {
 			return fmt.Errorf("this prefetcher does not support native block execution")
 		}
-		if len(hintBytes) != 32+32 {
-			return fmt.Errorf("invalid L2 block receipts hint: %x", hint)
+		if len(hintBytes) != 32+32+32 {
+			return fmt.Errorf("invalid L2 block data hint: %x", hint)
 		}
-		blockHash := common.Hash(hintBytes[:32])
-		chainID := binary.BigEndian.Uint64(hintBytes[32:])
+		agreedBlockHash := common.Hash(hintBytes[:32])
+		blockHash := common.Hash(hintBytes[32:64])
+		chainID := binary.BigEndian.Uint64(hintBytes[64:])
 		key := BlockDataKey(blockHash)
 		if _, err := p.kvStore.Get(key.Key()); err == nil {
 			return nil
 		}
-		if err := p.nativeReExecuteBlock(ctx, blockHash, chainID); err != nil {
+		if err := p.nativeReExecuteBlock(ctx, agreedBlockHash, blockHash, chainID); err != nil {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
 		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
