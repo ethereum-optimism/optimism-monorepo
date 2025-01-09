@@ -39,9 +39,6 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public config;
 
-    /// @notice Flag that indicates whether withdrawals and transfers are paused.
-    bool public delayedWethPaused;
-
     /// @param _delay The delay for withdrawals in seconds.
     constructor(uint256 _delay) {
         DELAY_SECONDS = _delay;
