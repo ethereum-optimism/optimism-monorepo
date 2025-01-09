@@ -1,4 +1,4 @@
-package super
+package interop
 
 import (
 	"context"
@@ -21,6 +21,7 @@ type chainInfo struct {
 	config  *rollup.Config
 }
 
+// SuperRootSource is a testing helper to create a Super Root from a set of rollup clients
 type SuperRootSource struct {
 	chains []*chainInfo
 }

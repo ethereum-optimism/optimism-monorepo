@@ -8,7 +8,6 @@ import (
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
-	"github.com/ethereum-optimism/optimism/op-service/super"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
@@ -242,7 +241,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 	ctx := context.Background()
 	startTimestamp := actors.ChainA.RollupCfg.Genesis.L2Time
 	endTimestamp := startTimestamp + actors.ChainA.RollupCfg.BlockTime
-	source, err := super.NewSuperRootSource(ctx, chainAClient, chainBClient)
+	source, err := NewSuperRootSource(ctx, chainAClient, chainBClient)
 	require.NoError(t, err)
 	start, err := source.CreateSuperRoot(ctx, startTimestamp)
 	require.NoError(t, err)
