@@ -24,7 +24,8 @@
   },
   {
     "version": "1.4.0",
-    "hash": "0x03f89406817db1ed7fd8b31e13300444652cdb0b9c509a674de43483b2f83568"
+    "hash": "0x03f89406817db1ed7fd8b31e13300444652cdb0b9c509a674de43483b2f83568",
+    "governanceApproved": true
   },
   {
     "version": "1.4.0-rc.3",
