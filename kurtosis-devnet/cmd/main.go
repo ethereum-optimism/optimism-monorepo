@@ -22,6 +22,8 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
+const FILESERVER_PACKAGE = "fileserver"
+
 type config struct {
 	templateFile    string
 	dataFile        string
@@ -316,11 +318,11 @@ func (m *Main) deploy(ctx context.Context, r io.Reader) error {
 
 func (m *Main) deployFileserver(ctx context.Context, sourceDir string) error {
 	// Create a temp dir in the fileserver package
-	baseDir := filepath.Join(m.cfg.baseDir, "fileserver")
+	baseDir := filepath.Join(m.cfg.baseDir, FILESERVER_PACKAGE)
 	if err := os.MkdirAll(baseDir, 0755); err != nil {
 		return fmt.Errorf("error creating base directory: %w", err)
 	}
-	tempDir, err := os.MkdirTemp(baseDir, "fileserver-content")
+	tempDir, err := os.MkdirTemp(baseDir, "upload-content")
 	if err != nil {
 		return fmt.Errorf("error creating temporary directory: %w", err)
 	}
@@ -337,7 +339,7 @@ func (m *Main) deployFileserver(ctx context.Context, sourceDir string) error {
 	opts := []kurtosis.KurtosisDeployerOptions{
 		kurtosis.WithKurtosisBaseDir(m.cfg.baseDir),
 		kurtosis.WithKurtosisDryRun(m.cfg.dryRun),
-		kurtosis.WithKurtosisPackageName("fileserver/"),
+		kurtosis.WithKurtosisPackageName(FILESERVER_PACKAGE),
 		kurtosis.WithKurtosisEnclave(m.cfg.enclave),
 	}
 
