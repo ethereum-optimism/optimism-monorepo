@@ -21,6 +21,8 @@ abstract contract Deployer is Script {
     /// @notice Sets up the artifacts contract.
     function setUp() public virtual {
         vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
+        vm.label(address(cfg), "Artifacts");
+        vm.allowCheatcodes(address(artifacts));
         artifacts.setUp();
 
         console.log("Commit hash: %s", gitCommitHash());
