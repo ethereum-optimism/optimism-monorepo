@@ -2,6 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Types } from "src/libraries/Types.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -15,7 +16,6 @@ interface IOptimismPortal2 {
     error EmptyItem();
     error GasEstimation();
     error InvalidDataRemainder();
-    error InvalidDisputeGame();
     error InvalidHeader();
     error InvalidMerkleProof();
     error InvalidProof();

@@ -18,8 +18,8 @@ import {
     AlreadyFinalized,
     BadTarget,
     CallPaused,
+    GameInvalid,
     GasEstimation,
-    InvalidDisputeGame,
     InvalidMerkleProof,
     InvalidProof,
     LargeCalldata,
@@ -177,7 +177,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    // TODO: update?
     /// @custom:semver 4.0.0-beta.1
     function version() public pure virtual returns (string memory) {
         return "4.0.0-beta.1";
@@ -316,7 +315,17 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // Load the ProvenWithdrawal into memory, using the withdrawal hash as a unique identifier.
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
-        anchorStateRegistry.assertGameMaybeValid(gameProxy);
+        // Check that the game is potentially valid.
+        // Games are considered "maybe valid" if there is nothing that has explicitly shown that
+        // the game is invalid.
+        // Examples of things that could invalidate a game include:
+        //   - Game being resolved in favor of the challenger.
+        //   - Game being blacklisted.
+        //   - Game being retired.
+        (bool maybeValid, string memory notMaybeValidReason) = anchorStateRegistry.isGameMaybeValid(gameProxy);
+        if (!maybeValid) {
+            revert GameInvalid(notMaybeValidReason);
+        }
 
         // Compute the storage slot of the withdrawal hash in the L2ToL1MessagePasser contract.
         // Refer to the Solidity documentation for more information on how storage layouts are
@@ -632,7 +641,13 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             "OptimismPortal: proven withdrawal has not matured yet"
         );
 
-        anchorStateRegistry.assertGameValid(disputeGameProxy);
+        // Check that the game is valid.
+        // Games are considered valid if they meet all of the conditions of a "maybe valid" game
+        // and the game has passed the finalization delay.
+        (bool valid, string memory notValidReason) = anchorStateRegistry.isGameValid(disputeGameProxy);
+        if (!valid) {
+            revert GameInvalid(notValidReason);
+        }
 
         // Check that this withdrawal has not already been finalized, this is replay protection.
         if (finalizedWithdrawals[_withdrawalHash]) revert AlreadyFinalized();

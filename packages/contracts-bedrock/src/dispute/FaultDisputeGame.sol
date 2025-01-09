@@ -53,7 +53,8 @@ import {
     NoCreditToClaim,
     InvalidOutputRootProof,
     ClaimAboveSplit,
-    GameNotFinalized
+    GameNotFinalized,
+    InvalidBondDistributionMode
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
@@ -976,10 +977,12 @@ contract FaultDisputeGame is Clone, ISemver {
             // Remove the refundModeCredit from the recipient prior to performing the external call.
             recipientCredit = refundModeCredit[_recipient];
             refundModeCredit[_recipient] = 0;
-        } else {
+        } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
             // Remove the normal mode credit from the recipient prior to performing the external call.
             recipientCredit = credit[_recipient];
             credit[_recipient] = 0;
+        } else {
+            revert InvalidBondDistributionMode();
         }
 
         // Revert if the recipient has no credit to claim.

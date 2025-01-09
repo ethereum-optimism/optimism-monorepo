@@ -17,7 +17,7 @@ interface IAnchorStateRegistry {
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function getAnchorState() external view returns (Hash root, uint256 l2BlockNumber);
     function initialize(
-        OutputRoot _startingAnchorRoot,
+        OutputRoot calldata _startingAnchorRoot,
         IDisputeGameFactory _disputeGameFactory,
         uint256 _disputeGameFinalityDelaySeconds,
         ISuperchainConfig _superchainConfig
