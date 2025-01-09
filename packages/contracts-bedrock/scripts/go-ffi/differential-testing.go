@@ -557,7 +557,7 @@ func DiffTestUtils() {
 		// Create a 32-byte array with the build ID at the start
 		var encoded [32]byte
 		// First 8 bytes are zeros
-		copy(encoded[8:16], build[:])  // build after zeros
+		copy(encoded[8:16], build[:]) // build after zeros
 		binary.BigEndian.PutUint32(encoded[16:20], major)
 		binary.BigEndian.PutUint32(encoded[20:24], minor)
 		binary.BigEndian.PutUint32(encoded[24:28], patch)
