@@ -44,11 +44,6 @@ func (input *DeployOPChainInputV160) InputSet() bool {
 	return true
 }
 
-type DeployOPChainInputIsthmus struct {
-	DeployOPChainInputV160
-	SystemConfigFeeAdmin common.Address
-}
-
 type DeployOPChainOutput struct {
 	OpChainProxyAdmin                 common.Address
 	AddressManager                    common.Address
@@ -77,15 +72,7 @@ type DeployOPChainScript struct {
 }
 
 func DeployOPChainV160(host *script.Host, input DeployOPChainInputV160) (DeployOPChainOutput, error) {
-	return deployOPChain(host, input)
-}
-
-func DeployOPChainIsthmus(host *script.Host, input DeployOPChainInputIsthmus) (DeployOPChainOutput, error) {
-	return deployOPChain(host, input)
-}
-
-func deployOPChain[T any](host *script.Host, input T) (DeployOPChainOutput, error) {
-	return RunScriptSingle[T, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
+	return RunScriptSingle[DeployOPChainInputV160, DeployOPChainOutput](host, input, "DeployOPChain.s.sol", "DeployOPChain")
 }
 
 type ReadImplementationAddressesInput struct {
