@@ -985,7 +985,8 @@ contract FaultDisputeGame is Clone, ISemver {
     ///         the game as the anchor game, and emits an event.
     function closeGame() public {
         // If the bond distribution mode has already been determined, we can return early.
-        if (bondDistributionMode == BondDistributionMode.REFUND || bondDistributionMode == BondDistributionMode.NORMAL) {
+        if (bondDistributionMode == BondDistributionMode.REFUND || bondDistributionMode == BondDistributionMode.NORMAL)
+        {
             // We can't revert or we'd break claimCredit().
             return;
         } else if (bondDistributionMode != BondDistributionMode.UNDECIDED) {
