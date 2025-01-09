@@ -33,6 +33,7 @@ type backend interface {
 const (
 	internalTimeout            = time.Second * 30
 	nodeTimeout                = time.Second * 10
+	maxWalkBackAttempts        = 300 // Maximum number of blocks to walk back (approximately 10 minutes of blocks)
 	BlockNotFoundRPCErrCode    = -39001
 	ConflictingBlockRPCErrCode = -39002
 )
@@ -332,48 +333,45 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 
 func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u eth.BlockID, f eth.BlockID) error {
 	// First try to reset to the last known safe block
-	// Return if reset succeeds or fails with a non-walkable error
 	s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
 	if err != nil {
 		return fmt.Errorf("failed to retrieve safe block for %v: %w", l1Ref.ID(), err)
 	}
-	m.log.Debug("Node detected conflict, resetting", "unsafe", u, "safe", s, "finalized", f)
-	if err = m.Node.Reset(ctx, u, s, f); err == nil {
+	if err := m.attemptReset(ctx, u, s, f); err == nil {
 		return nil
 	} else if !errCanBeWalkedBack(err) {
 		return fmt.Errorf("error during reset: %w", err)
 	}
 
-	// If that fails we try to walk back until:
-	// - we find a common ancestor
-	// - we have found a non-walkable error
-	// - we run into a finalized block
-	// - we have exhausted attempts
-	const maxAttempts = 300
-	currentBlock := s.Number
-	for i := 0; i < maxAttempts; i++ {
+	// If initial attempt fails, try walking back
+	return m.walkBackToCommonAncestor(ctx, s.Number, u, f)
+}
+
+func (m *ManagedNode) walkBackToCommonAncestor(ctx context.Context, start uint64, unsafe, finalized eth.BlockID) error {
+	currentBlock := start
+	for i := 0; i < maxWalkBackAttempts; i++ {
 		currentBlock--
-		if currentBlock <= f.Number {
-			return errors.New("failed to find common ancestor")
+		if currentBlock <= finalized.Number {
+			return fmt.Errorf("reached finalized block %d without finding common ancestor", finalized.Number)
 		}
 
-		// Try to reset to the previous block
-		l1ID := eth.BlockID{Number: currentBlock}
-		s, err = m.backend.SafeDerivedAt(ctx, m.chainID, l1ID)
+		safe, err := m.backend.SafeDerivedAt(ctx, m.chainID, eth.BlockID{Number: currentBlock})
 		if err != nil {
-			return fmt.Errorf("failed to retrieve safe block for %v: %w", l1ID, err)
-		}
-		err = m.Node.Reset(ctx, u, s, f)
-		if err == nil {
-			return nil
+			return fmt.Errorf("failed to retrieve safe block %d: %w", currentBlock, err)
 		}
 
-		// Continue walking back if there is still a conflict or an unknown block
-		if !errCanBeWalkedBack(err) {
-			return fmt.Errorf("error during reset: %w", err)
+		if err := m.attemptReset(ctx, unsafe, safe, finalized); err == nil {
+			return nil
+		} else if !errCanBeWalkedBack(err) {
+			return fmt.Errorf("error during reset at block %d: %w", currentBlock, err)
 		}
 	}
-	return errors.New("failed to find common ancestor")
+	return fmt.Errorf("exceeded maximum walk-back attempts (%d)", maxWalkBackAttempts)
+}
+
+func (m *ManagedNode) attemptReset(ctx context.Context, unsafe eth.BlockID, safe eth.BlockID, finalized eth.BlockID) error {
+	m.log.Debug("Attempting reset", "unsafe", unsafe, "safe", safe, "finalized", finalized)
+	return m.Node.Reset(ctx, unsafe, safe, finalized)
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {

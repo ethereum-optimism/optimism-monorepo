@@ -85,7 +85,9 @@ func (m *mockSyncControl) UpdateFinalized(ctx context.Context, id eth.BlockID) e
 
 var _ SyncControl = (*mockSyncControl)(nil)
 
-type mockBackend struct{}
+type mockBackend struct {
+	safeDerivedAtFn func(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error)
+}
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
 	return types.DerivedIDPair{}, nil
@@ -96,6 +98,9 @@ func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth
 }
 
 func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
+	if m.safeDerivedAtFn != nil {
+		return m.safeDerivedAtFn(ctx, chainID, derivedFrom)
+	}
 	return eth.BlockID{}, nil
 }
 
