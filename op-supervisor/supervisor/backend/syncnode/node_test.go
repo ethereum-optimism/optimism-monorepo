@@ -113,8 +113,8 @@ func TestResetConflict(t *testing.T) {
 		{
 			name: "walks_back_on_block_not_found",
 			resetErrors: []error{
-				&gethrpc.JsonError{Code: BlockNotFoundRPCErrCode},
-				&gethrpc.JsonError{Code: BlockNotFoundRPCErrCode},
+				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
+				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
 				nil,
 			},
 			expectAttempts: 3,
@@ -125,7 +125,7 @@ func TestResetConflict(t *testing.T) {
 		{
 			name: "handles_finalized_boundary",
 			resetErrors: []error{
-				&gethrpc.JsonError{Code: BlockNotFoundRPCErrCode},
+				&gethrpc.JsonError{Code: blockNotFoundRPCErrCode},
 			},
 			expectAttempts: 1,
 			expectError:    true,
