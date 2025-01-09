@@ -34,7 +34,5 @@ func (p *Prefetcher) nativeReExecuteBlock(
 		return err
 	}
 	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64())
-	// No need to set a L2Claim. The program will derive the blockHash even for an invalid claim.
-	// Thus, the kv store is populated with the data we need
 	return p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID)
 }
