@@ -6,28 +6,45 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
+import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+import {
+    AnchorStateRegistry_AnchorGameIsNewer,
+    AnchorStateRegistry_GameNotResolved,
+    AnchorStateRegistry_GameMustWaitFinalityDelay,
+    AnchorStateRegistry_GameNotFactoryRegistered,
+    AnchorStateRegistry_GameBlacklisted,
+    AnchorStateRegistry_GameRespectedGameTypeMismatch,
+    AnchorStateRegistry_GameChallengerWins,
+    AnchorStateRegistry_GameRetired
+} from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
+import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
-/// @title GameValidityOracle
-/// @notice TODO: add a comment here
-contract GameValidityOracle is Initializable, ISemver {
-    error GameValidityOracle_AnchorGameIsNewer(uint256 anchorGameL2BlockNumber, uint256 candidateGameL2BlockNumber);
-
-    // TODO: comment these
+/// @title AnchorStateRegistry
+/// @notice The AnchorStateRegistry is a contract that stores the latest "anchor" state for each available
+///         FaultDisputeGame type. The anchor state is the latest state that has been proposed on L1 and was not
+///         challenged within the challenge period. By using stored anchor states, new FaultDisputeGame instances can
+///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
+contract AnchorStateRegistry is Initializable, ISemver {
     event AnchorGameSet(IDisputeGame newAnchorGame);
     event RespectedGameTypeSet(GameType gameType);
     event DisputeGameBlacklisted(IDisputeGame game);
     event GameRetirementTimestampSet(uint64 timestamp);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.1
-    string public constant version = "1.0.0-beta.1";
+    /// @custom:semver 3.0.0-beta.1
+    string public constant version = "3.0.0-beta.1";
+
+    /// @custom:legacy
+    /// @custom:spacer anchors
+    /// @notice Spacer taking up the legacy `anchors` mapping slot.
+    bytes32 private spacer_1_0_32;
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -42,9 +59,9 @@ contract GameValidityOracle is Initializable, ISemver {
 
     GameType public respectedGameType;
 
-    IDisputeGame internal anchorGame;
+    IDisputeGame internal _anchorGame;
 
-    OutputRoot internal initialAnchorRoot;
+    OutputRoot internal _initialAnchorRoot;
 
     /// @notice Returns whether a game is blacklisted.
     mapping(IDisputeGame => bool) public isGameBlacklisted;
@@ -68,28 +85,32 @@ contract GameValidityOracle is Initializable, ISemver {
         external
         initializer
     {
-        initialAnchorRoot = _startingAnchorRoot;
+        _initialAnchorRoot = _startingAnchorRoot;
         disputeGameFactory = _disputeGameFactory;
         disputeGameFinalityDelaySeconds = _disputeGameFinalityDelaySeconds;
         superchainConfig = _superchainConfig;
     }
 
+    /// @notice Returns the output root of the anchor game, or an authorized anchor state if no such game exists.
+    function anchors(GameType /* unused */ ) public view returns (OutputRoot memory) {
+        return getAnchorState();
+    }
+
     function getAnchorState() public view returns (OutputRoot memory) {
-        if (anchorGame == IDisputeGame(address(0))) return initialAnchorRoot;
-        if (isGameBlacklisted[anchorGame]) revert GameValidityOracle_GameBlacklisted(anchorGame);
+        if (_anchorGame == IDisputeGame(address(0))) return _initialAnchorRoot;
+        if (isGameBlacklisted[_anchorGame]) revert AnchorStateRegistry_GameBlacklisted(_anchorGame);
         return
-            OutputRoot({ l2BlockNumber: anchorGame.l2BlockNumber(), root: Hash.wrap(anchorGame.rootClaim().raw()) });
+            OutputRoot({ l2BlockNumber: _anchorGame.l2BlockNumber(), root: Hash.wrap(_anchorGame.rootClaim().raw()) });
     }
 
     function setAnchorState(IDisputeGame _game) external {
+        uint256 _anchorL2BlockNumber = _anchorGame.l2BlockNumber();
+        uint256 _gameL2BlockNumber = _game.l2BlockNumber();
         assertGameValid(_game);
-
-        uint256 anchorL2BlockNumber = anchorGame.l2BlockNumber();
-        uint256 gameL2BlockNumber = _game.l2BlockNumber();
-        if (gameL2BlockNumber <= anchorL2BlockNumber) {
-            revert GameValidityOracle_AnchorGameIsNewer(anchorL2BlockNumber, gameL2BlockNumber);
+        if (_gameL2BlockNumber <= _anchorL2BlockNumber) {
+            revert AnchorStateRegistry_AnchorGameIsNewer(_anchorL2BlockNumber, _gameL2BlockNumber);
         }
-        anchorGame = _game;
+        _anchorGame = _game;
         emit AnchorGameSet(_game);
     }
 
@@ -121,76 +142,56 @@ contract GameValidityOracle is Initializable, ISemver {
         return _game.createdAt().raw() <= gameRetirementTimestamp;
     }
 
-    function isGameMaybeValid(IDisputeGame _game) public view returns (bool, string memory) {
+    function assertGameMaybeValid(IDisputeGame _game) public view returns (bool) {
         // Grab the game and game data.
         (GameType gameType, Claim rootClaim, bytes memory extraData) = _game.gameData();
 
         // Grab the verified address of the game based on the game data.
+        // slither-disable-next-line unused-return
         (IDisputeGame _factoryRegisteredGame,) =
             disputeGameFactory.games({ _gameType: gameType, _rootClaim: rootClaim, _extraData: extraData });
 
         // Must be a game created by the factory.
         if (address(_factoryRegisteredGame) != address(_game)) {
-            return (false, "game not factory registered");
+            revert AnchorStateRegistry_GameNotFactoryRegistered(_game);
         }
 
         // Must not be blacklisted.
-        if (isGameBlacklisted[_game]) {
-            return (false, "game blacklisted");
-        }
+        if (isGameBlacklisted[_game]) revert AnchorStateRegistry_GameBlacklisted(_game);
 
-        // Must have been the respected game type when the game was created.
-        if (!_game.wasRespectedGameTypeWhenCreated()) {
-            return (false, "game respected game type mismatch");
-        }
+        // The game type of the dispute game must have been the respected game type when it was created.
+        if (!_game.wasRespectedGameTypeWhenCreated()) revert AnchorStateRegistry_GameRespectedGameTypeMismatch(_game);
 
-        // Must be a game with a status other than CHALLENGER_WINS.
+        // Must be a game with a status other than `CHALLENGER_WINS`.
         if (_game.status() == GameStatus.CHALLENGER_WINS) {
-            return (false, "game challenger wins");
+            revert AnchorStateRegistry_GameChallengerWins(_game);
         }
 
         // Must be created after the gameRetirementTimestamp.
-        if (isGameRetired(_game)) {
-            return (false, "game retired");
-        }
+        if (isGameRetired(_game)) revert AnchorStateRegistry_GameRetired(_game);
 
-        return (true, "");
+        return true;
     }
 
-    function isGameValid(IDisputeGame _game) public view returns (bool, string memory) {
-        // Game must be maybe valid.
-        (bool maybeValid, string memory notMaybeValidReason) = isGameMaybeValid(_game);
-        if (!maybeValid) {
-            return (false, notMaybeValidReason);
-        }
-
-        // Game must be finalized.
-        (bool finalized, string memory notFinalizedReason) = isGameFinalized(_game);
-        if (!finalized) {
-            return (false, notFinalizedReason);
-        }
-
-        return (true, "");
+    function assertGameValid(IDisputeGame _game) public view returns (bool) {
+        return assertGameMaybeValid(_game) && assertGameFinalized(_game);
     }
 
-    function isGameFinalized(IDisputeGame _game) public view returns (bool, string memory) {
+    function assertGameFinalized(IDisputeGame _game) public view returns (bool) {
         // Game status must be CHALLENGER_WINS or DEFENDER_WINS
         if (_game.status() != GameStatus.DEFENDER_WINS && _game.status() != GameStatus.CHALLENGER_WINS) {
-            return (false, "game not resolved");
+            revert AnchorStateRegistry_GameNotResolved(_game);
         }
-
-        // Game resolvedAt timestamp must be non-zero
         uint256 _resolvedAt = _game.resolvedAt().raw();
+        // Game resolvedAt timestamp must be non-zero
         if (_resolvedAt == 0) {
-            return (false, "game not resolved");
+            revert AnchorStateRegistry_GameNotResolved(_game);
         }
-
         // Game resolvedAt timestamp must be more than airgap period seconds ago
         if (block.timestamp - _resolvedAt <= disputeGameFinalityDelaySeconds) {
-            return (false, "game must wait finality delay");
+            revert AnchorStateRegistry_GameMustWaitFinalityDelay(_game);
         }
-
-        return (true, "");
+        return true;
     }
 
     function _guardian() internal view returns (address) {
