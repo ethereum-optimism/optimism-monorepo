@@ -15,10 +15,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 /// @custom:proxied true
 /// @title GameValidityOracle
-/// @notice The GameValidityOracle is responsible for determining the validity of a dispute game.
-/// Other contracts can rely on the assertions made by this contract to ensure that a game is or is
-/// not valid. The GameValidityOracle also provides the anchor state previously provided by the
-/// AnchorStateRegistry that can be used to create new dispute games.
+/// @notice TODO: add a comment here
 contract GameValidityOracle is Initializable, ISemver {
     error GameValidityOracle_AnchorGameIsNewer(uint256 anchorGameL2BlockNumber, uint256 candidateGameL2BlockNumber);
 

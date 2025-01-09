@@ -177,6 +177,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
+    // TODO: update?
     /// @custom:semver 4.0.0-beta.1
     function version() public pure virtual returns (string memory) {
         return "4.0.0-beta.1";
@@ -316,12 +317,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         bytes32 withdrawalHash = Hashing.hashWithdrawal(_tx);
 
         // Check that the game is potentially valid.
-        // Games are considered "maybe valid" if there is nothing that has explicitly shown that
-        // the game is invalid.
-        // Examples of things that could invalidate a game include:
-        //   - Game being resolved in favor of the challenger.
-        //   - Game being blacklisted.
-        //   - Game being retired.
         (bool maybeValid, string memory notMaybeValidReason) = gameValidityOracle.isGameMaybeValid(gameProxy);
         if (!maybeValid) {
             revert GameInvalid(notMaybeValidReason);
@@ -642,8 +637,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         );
 
         // Check that the game is valid.
-        // Games are considered valid if they meet all of the conditions of a "maybe valid" game
-        // and the game has passed the finalization delay.
         (bool valid, string memory notValidReason) = gameValidityOracle.isGameValid(disputeGameProxy);
         if (!valid) {
             revert GameInvalid(notValidReason);

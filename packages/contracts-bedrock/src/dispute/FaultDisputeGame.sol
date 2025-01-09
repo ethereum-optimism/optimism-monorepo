@@ -53,8 +53,7 @@ import {
     NoCreditToClaim,
     InvalidOutputRootProof,
     ClaimAboveSplit,
-    GameNotFinalized,
-    InvalidBondDistributionMode
+    GameNotFinalized
 } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
@@ -929,48 +928,47 @@ contract FaultDisputeGame is Clone, ISemver {
         requiredBond_ = assumedBaseFee * requiredGas;
     }
 
-    /// @notice Claim the credit belonging to the recipient address. Reverts if the game isn't
-    ///         finalized, if the recipient has no credit to claim, or if the bond transfer
-    ///         fails. If the game is finalized but no bond has been paid out yet, this method
-    ///         will determine the bond distribution mode and also try to update anchor game.
+    /// @notice Claim the credit belonging to the recipient address.
+    /// @dev Reverts if the game isn't finalized, if the recipient has no credit to claim, or if the bond transfer
+    /// fails.
+    /// @dev If the game is finalized but no bond has been paid out yet, this method will determine the bond
+    /// distribution mode and also try to update the anchor state registry's anchor game.
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
-        // Game must be finalized before any credit can be claimed.
+        // If the game is not finalized, bond claiming is not allowed; we defer a decision on distribution mode.
         (bool finalized, string memory notFinalizedReason) = GAME_VALIDITY_ORACLE.isGameFinalized(IDisputeGame(address(this)));
         if (!finalized) {
             revert GameNotFinalized(notFinalizedReason);
         }
 
-        // Determine the bond distribution mode if we haven't done so already.
         if (bondDistributionMode == BondDistributionMode.UNDECIDED) {
-            // Try to update the anchor state first. Won't always succeed because delays can lead
-            // to situations in which this game might not be eligible to be a new anchor game.
+            // If the game is finalized, try updating anchor state...
             try GAME_VALIDITY_ORACLE.setAnchorState(IDisputeGame(address(this))) { } catch { }
 
-            // Determine the bond distribution mode based on the game's status. Here we're looking
-            // for the validity conditions that would invalidate a game other than the game
-            // resolving in favor of the challenger.
+            // and determine the bond distribution mode.
             if (
                 GAME_VALIDITY_ORACLE.isGameBlacklisted(IDisputeGame(address(this)))
                     || GAME_VALIDITY_ORACLE.isGameRetired(IDisputeGame(address(this)))
             ) {
+                // If the game is blacklisted or retired, the bonds should be refunded.
                 bondDistributionMode = BondDistributionMode.REFUND;
             } else {
+                // Otherwise, the bonds should be distributed normally.
                 bondDistributionMode = BondDistributionMode.NORMAL;
             }
         }
 
         // Either normal or refund mode credits will be assigned
         uint256 recipientCredit;
+
         if (bondDistributionMode == BondDistributionMode.REFUND) {
+            // Remove the refundModeCredit from the recipient prior to performing the external call.
             recipientCredit = refundModeCredit[_recipient];
             refundModeCredit[_recipient] = 0;
-        } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
+        } else {
+            // Remove the normal mode credit from the recipient prior to performing the external call.
             recipientCredit = credit[_recipient];
             credit[_recipient] = 0;
-        } else {
-            // We shouldn't get here, but sanity check just in case.
-            revert InvalidBondDistributionMode();
         }
 
         // Revert if the recipient has no credit to claim.
