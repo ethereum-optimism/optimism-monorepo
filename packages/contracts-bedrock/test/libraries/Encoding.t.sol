@@ -107,15 +107,22 @@ contract Encoding_Test is CommonTest {
     }
 
     /// @notice Test that decoding and re-encoding preserves all components
-    function testFuzz_encodeDecodeProtocolVersion(bytes8 _build, uint32 _major, uint32 _minor, uint32 _patch, uint32 _preRelease) public pure {
+    function testFuzz_encodeDecodeProtocolVersion(
+        bytes8 _build,
+        uint32 _major,
+        uint32 _minor,
+        uint32 _patch,
+        uint32 _preRelease
+    )
+        public
+        pure
+    {
         bytes32 encoded = Encoding.encodeProtocolVersion(_build, _major, _minor, _patch, _preRelease);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         // Base version string
         string memory expected = string(
             abi.encodePacked(
-                "v", Encoding.uint2str(_major),
-                ".", Encoding.uint2str(_minor),
-                ".", Encoding.uint2str(_patch)
+                "v", Encoding.uint2str(_major), ".", Encoding.uint2str(_minor), ".", Encoding.uint2str(_patch)
             )
         );
         // Add prerelease if non-zero
@@ -189,7 +196,7 @@ contract Encoding_Test is CommonTest {
     function test_protocolVersion_maxValues() public pure {
         bytes32 encoded = Encoding.encodeProtocolVersion(
             bytes8(hex"ffffffffffffffff"),
-            type(uint32).max,  // 4294967295
+            type(uint32).max, // 4294967295
             type(uint32).max,
             type(uint32).max,
             type(uint32).max
@@ -201,13 +208,7 @@ contract Encoding_Test is CommonTest {
 
     /// @notice Test minimal non-zero build ID
     function test_protocolVersion_minimalBuild() public pure {
-        bytes32 encoded = Encoding.encodeProtocolVersion(
-            bytes8(hex"0000000000000001"),
-            1,
-            0,
-            0,
-            0
-        );
+        bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(hex"0000000000000001"), 1, 0, 0, 0);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         string memory expected = "v1.0.0+0x0000000000000001";
         assertEq(decoded, expected);
@@ -215,13 +216,7 @@ contract Encoding_Test is CommonTest {
 
     /// @notice Test prerelease without build
     function test_protocolVersion_onlyPrerelease() public pure {
-        bytes32 encoded = Encoding.encodeProtocolVersion(
-            bytes8(0),
-            1,
-            0,
-            0,
-            1
-        );
+        bytes32 encoded = Encoding.encodeProtocolVersion(bytes8(0), 1, 0, 0, 1);
         string memory decoded = Encoding.decodeProtocolVersion(encoded);
         string memory expected = "v1.0.0-1";
         assertEq(decoded, expected);

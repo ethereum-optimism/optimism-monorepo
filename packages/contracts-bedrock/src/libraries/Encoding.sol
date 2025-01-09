@@ -236,7 +236,8 @@ library Encoding {
         returns (bytes32)
     {
         return bytes32(
-            (uint256(uint64(_build)) << 128) | (uint256(_major) << 96) | (uint256(_minor) << 64) | (uint256(_patch) << 32) | uint256(_preRelease)
+            (uint256(uint64(_build)) << 128) | (uint256(_major) << 96) | (uint256(_minor) << 64)
+                | (uint256(_patch) << 32) | uint256(_preRelease)
         );
     }
 
@@ -252,13 +253,8 @@ library Encoding {
         uint32 preRelease = uint32(version);
 
         // Base version string
-        string memory result = string(
-            abi.encodePacked(
-                "v", uint2str(major),
-                ".", uint2str(minor),
-                ".", uint2str(patch)
-            )
-        );
+        string memory result =
+            string(abi.encodePacked("v", uint2str(major), ".", uint2str(minor), ".", uint2str(patch)));
 
         // Add prerelease if non-zero
         if (preRelease != 0) {
