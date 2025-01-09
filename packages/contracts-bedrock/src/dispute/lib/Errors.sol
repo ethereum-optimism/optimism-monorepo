@@ -128,6 +128,9 @@ error GameNotFinalized(string reason);
 /// @notice Thrown when an invalid bond distribution mode is supplied.
 error InvalidBondDistributionMode();
 
+/// @notice Thrown when the game is not yet resolved.
+error GameNotResolved();
+
 ////////////////////////////////////////////////////////////////
 //              `PermissionedDisputeGame` Errors              //
 ////////////////////////////////////////////////////////////////

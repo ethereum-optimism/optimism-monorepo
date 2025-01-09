@@ -84,7 +84,7 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     /// @param _guy Sub-account to withdraw from.
     /// @param _wad The amount of WETH to withdraw.
     function withdraw(address _guy, uint256 _wad) public {
-        require(!config.paused(), "DelayedWETH: system is paused");
+        require(!config.paused(), "DelayedWETH: contract is paused");
         WithdrawalRequest storage wd = withdrawals[msg.sender][_guy];
         require(wd.amount >= _wad, "DelayedWETH: insufficient unlocked withdrawal");
         require(wd.timestamp > 0, "DelayedWETH: withdrawal not unlocked");

@@ -30,7 +30,7 @@ interface IAnchorStateRegistry {
     function isGameValid(IDisputeGame _game) external view returns (bool, string memory);
     function respectedGameType() external view returns (GameType);
     function retireAllExistingGames() external;
-    function setAnchorState(IDisputeGame _game) external;
+    function setAnchorGame(IDisputeGame _game) external;
     function setGameBlacklisted(IDisputeGame _game) external;
     function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
