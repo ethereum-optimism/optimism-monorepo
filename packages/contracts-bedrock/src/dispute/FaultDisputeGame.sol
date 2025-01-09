@@ -936,8 +936,7 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The owner and recipient of the credit.
     function claimCredit(address _recipient) external {
         // Game must be finalized before any credit can be claimed.
-        (bool finalized, string memory notFinalizedReason) =
-            GAME_VALIDITY_ORACLE.isGameFinalized(IDisputeGame(address(this)));
+        (bool finalized, string memory notFinalizedReason) = GAME_VALIDITY_ORACLE.isGameFinalized(IDisputeGame(address(this)));
         if (!finalized) {
             revert GameNotFinalized(notFinalizedReason);
         }
