@@ -202,7 +202,7 @@ contract Deploy is Deployer {
 
         // Deploy the implementations, with no suffix. The suffix is only used when deploying a new set of
         // implementations to test upgrades.
-        deployImplementations({ _isInterop: cfg.useInterop(), _suffix: "" });
+        deployImplementations({ _isInterop: cfg.useInterop() });
 
         // Deploy Current OPChain Contracts
         deployOpChain();
@@ -278,13 +278,13 @@ contract Deploy is Deployer {
 
     /// @notice Deploy all of the implementations
     /// @param _isInterop Whether to use interop
-    /// @param _suffix    An optional suffix to append to the implementation names. Used in the ForkLive script to
-    ///                   distinguish between implementations already in production and new implementations deployed by
-    ///                   this script.
-    function deployImplementations(bool _isInterop, string memory _suffix) public {
+    function deployImplementations(bool _isInterop) public {
         require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
 
         console.log("Deploying implementations");
+
+        // TODO: Deploy implementations using create2 to avoid replacing existing identical implementations
+        // (https://github.com/ethereum-optimism/optimism/issues/13644)
         DeployImplementations di = new DeployImplementations();
         (DeployImplementationsInput dii, DeployImplementationsOutput dio) = di.etchIOContracts();
 
@@ -308,37 +308,25 @@ contract Deploy is Deployer {
         }
         di.run(dii, dio);
 
-        artifacts.save(string.concat("L1CrossDomainMessengerImpl", _suffix), address(dio.l1CrossDomainMessengerImpl()));
-        artifacts.save(
-            string.concat("OptimismMintableERC20FactoryImpl", _suffix), address(dio.optimismMintableERC20FactoryImpl())
-        );
-        artifacts.save(string.concat("SystemConfigImpl", _suffix), address(dio.systemConfigImpl()));
-        artifacts.save(string.concat("L1StandardBridgeImpl", _suffix), address(dio.l1StandardBridgeImpl()));
-        artifacts.save(string.concat("L1ERC721BridgeImpl", _suffix), address(dio.l1ERC721BridgeImpl()));
-
         // Fault proofs
-        artifacts.save(string.concat("OptimismPortal2Impl", _suffix), address(dio.optimismPortalImpl()));
-        artifacts.save(string.concat("DisputeGameFactoryImpl", _suffix), address(dio.disputeGameFactoryImpl()));
-        artifacts.save(string.concat("DelayedWETHImpl", _suffix), address(dio.delayedWETHImpl()));
-        artifacts.save(string.concat("PreimageOracleSingleton", _suffix), address(dio.preimageOracleSingleton()));
-        artifacts.save(string.concat("MipsSingleton", _suffix), address(dio.mipsSingleton()));
-        artifacts.save(string.concat("OPContractsManager", _suffix), address(dio.opcm()));
+        // When called in a fork test, this will
+        artifacts.save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
+        artifacts.save("MipsSingleton", address(dio.mipsSingleton()));
+        artifacts.save("OPContractsManager", address(dio.opcm()));
 
         // Get a contract set from the implementation addresses which were just deployed.
         Types.ContractSet memory contracts = Types.ContractSet({
-            L1CrossDomainMessenger: artifacts.mustGetAddress(string.concat("L1CrossDomainMessengerImpl", _suffix)),
-            L1StandardBridge: artifacts.mustGetAddress(string.concat("L1StandardBridgeImpl", _suffix)),
+            L1CrossDomainMessenger: address(dio.l1CrossDomainMessengerImpl()),
+            L1StandardBridge: address(dio.l1StandardBridgeImpl()),
             L2OutputOracle: address(0),
-            DisputeGameFactory: artifacts.mustGetAddress(string.concat("DisputeGameFactoryImpl", _suffix)),
-            DelayedWETH: artifacts.mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
-            PermissionedDelayedWETH: artifacts.mustGetAddress(string.concat("DelayedWETHImpl", _suffix)),
+            DisputeGameFactory: address(dio.disputeGameFactoryImpl()),
+            DelayedWETH: address(dio.delayedWETHImpl()),
+            PermissionedDelayedWETH: address(dio.delayedWETHImpl()),
             AnchorStateRegistry: address(0),
-            OptimismMintableERC20Factory: artifacts.mustGetAddress(
-                string.concat("OptimismMintableERC20FactoryImpl", _suffix)
-            ),
-            OptimismPortal: artifacts.mustGetAddress(string.concat("OptimismPortal2Impl", _suffix)),
-            SystemConfig: artifacts.mustGetAddress(string.concat("SystemConfigImpl", _suffix)),
-            L1ERC721Bridge: artifacts.mustGetAddress(string.concat("L1ERC721BridgeImpl", _suffix)),
+            OptimismMintableERC20Factory: address(dio.optimismMintableERC20FactoryImpl()),
+            OptimismPortal: address(dio.optimismPortalImpl()),
+            SystemConfig: address(dio.systemConfigImpl()),
+            L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
             // We didn't deploy new versions of these in this function so we don't need to append a suffix.
             ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
             SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
@@ -366,8 +354,8 @@ contract Deploy is Deployer {
         });
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
-            _opcm: OPContractsManager(artifacts.mustGetAddress(string.concat("OPContractsManager", _suffix))),
-            _mips: IMIPS(artifacts.mustGetAddress(string.concat("MipsSingleton", _suffix)))
+            _opcm: OPContractsManager(artifacts.mustGetAddress("OPContractsManager")),
+            _mips: IMIPS(artifacts.mustGetAddress("MipsSingleton"))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });

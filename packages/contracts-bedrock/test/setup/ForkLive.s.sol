@@ -112,12 +112,11 @@ contract ForkLive is Deployer {
         artifacts.save("PermissionedDelayedWETHProxy", address(permissionedDisputeGame.weth()));
     }
 
-    /// @notice Etches a new Deploy.s.sol contract at a deterministic address, sets up the environment,
-    ///         and deploys new implementations with a "_NextVersion" suffix. This suffix is necessary to avoid
-    ///         naming collisions with the implementations saved above.
+    /// @notice Calls to the Deploy.s.sol contract etched by Setup.sol to a deterministic address, sets up the
+    /// environment, and deploys new implementations.
     function _deployNewImplementations() internal {
         Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
-        deploy.deployImplementations({ _isInterop: false, _suffix: "_NextVersion" });
+        deploy.deployImplementations({ _isInterop: false });
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
