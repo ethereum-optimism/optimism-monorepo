@@ -37,6 +37,9 @@ contract CommonTest is Test, Setup, Events {
     address customGasToken;
     bool useInteropOverride;
 
+    /// @dev When running a forked test, the default is to perform the upgrade.
+    bool useUpgradedFork = true;
+
     ERC20 L1Token;
     ERC20 BadL1Token;
     IOptimismMintableERC20Full L2Token;
@@ -64,6 +67,9 @@ contract CommonTest is Test, Setup, Events {
         }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
+        }
+        if (useUpgradedFork) {
+            deploy.cfg().setUseUpgradedFork(true);
         }
 
         if (isForkTest()) {
@@ -192,6 +198,15 @@ contract CommonTest is Test, Setup, Events {
     function enableInterop() public {
         _checkNotDeployed("interop");
         useInteropOverride = true;
+    }
+
+    /// @dev Disables upgrade mode for testing. By default the fork testing env will be upgraded to the latest
+    ///      implementation. This can be used to disable the upgrade which, is useful for tests targetting the upgrade
+    ///      process itself.
+    function disableUpgradedFork() public {
+        _checkNotDeployed("upgraded fork");
+
+        useUpgradedFork = false;
     }
 }
 

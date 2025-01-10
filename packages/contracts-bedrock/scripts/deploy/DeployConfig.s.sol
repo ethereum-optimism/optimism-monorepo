@@ -89,6 +89,7 @@ contract DeployConfig is Script {
     address public customGasTokenAddress;
 
     bool public useInterop;
+    bool public useUpgradedFork;
 
     function read(string memory _path) public {
         console.log("DeployConfig: reading file %s", _path);
@@ -174,6 +175,7 @@ contract DeployConfig is Script {
         customGasTokenAddress = _readOr(_json, "$.customGasTokenAddress", address(0));
 
         useInterop = _readOr(_json, "$.useInterop", false);
+        useUpgradedFork = true;
     }
 
     function fork() public view returns (Fork fork_) {
@@ -234,6 +236,13 @@ contract DeployConfig is Script {
     function setUseCustomGasToken(address _token) public {
         useCustomGasToken = true;
         customGasTokenAddress = _token;
+    }
+
+    /// @notice Allow the `useUpgradedFork` config to be overridden in testing environments
+    /// @dev This is used to test the fork upgrade process, it does not exist in the deploy config, but
+    ///      is being added here for testing purposes following the same pattern as the other custom configs.
+    function setUseUpgradedFork(bool _useUpgradedFork) public {
+        useUpgradedFork = _useUpgradedFork;
     }
 
     function latestGenesisFork() internal view returns (Fork) {

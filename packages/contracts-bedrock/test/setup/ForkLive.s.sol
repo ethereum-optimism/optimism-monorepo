@@ -57,8 +57,10 @@ contract ForkLive is Deployer {
         // Now deploy the updated OPCM and implementations of the contracts
         _deployNewImplementations();
 
-        // Now upgrade the contracts
-        _upgrade();
+        // Now upgrade the contracts (if the config is set to do so)
+        if (cfg.useUpgradedFork()) {
+            _upgrade();
+        }
     }
 
     /// @notice Reads the superchain config files and saves the addresses to disk.
@@ -126,6 +128,7 @@ contract ForkLive is Deployer {
         deploy.deployImplementations({ _isInterop: false });
     }
 
+    /// @notice Upgrades the contracts using the OPCM.
     function _upgrade() internal {
         OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
