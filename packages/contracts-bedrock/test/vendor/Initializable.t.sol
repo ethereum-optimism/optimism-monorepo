@@ -12,7 +12,6 @@ import { Process } from "scripts/libraries/Process.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { GameType } from "src/dispute/lib/Types.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -74,7 +73,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1CrossDomainMessengerImpl",
-                target: EIP1967Helper.getImplementation(address(l1CrossDomainMessenger)),
+                target: addressManager.getAddress("OVM_L1CrossDomainMessenger"),
                 initCalldata: abi.encodeCall(
                     l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
                 )
