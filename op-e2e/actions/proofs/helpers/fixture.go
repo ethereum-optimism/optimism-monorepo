@@ -44,6 +44,7 @@ type FixtureInputs struct {
 	L2OutputRoot   common.Hash `toml:"l2-output-root"`
 	L2ChainID      uint64      `toml:"l2-chain-id"`
 	L1Head         common.Hash `toml:"l1-head"`
+	AgreedPrestate []byte      `toml:"agreed-prestate"`
 	InteropEnabled bool        `toml:"use-interop"`
 }
 

@@ -95,7 +95,7 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, cfg.L2ChainConfig, executor), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, executor, cfg.AgreedPrestate), nil
 }
 
 type programExecutor struct {
