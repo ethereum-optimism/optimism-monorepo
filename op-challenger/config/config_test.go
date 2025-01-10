@@ -63,8 +63,9 @@ func ensureExists(path string) error {
 
 func applyValidConfigForCannon(t *testing.T, cfg *Config) {
 
-	vmBin := filepath.Join(t.TempDir(), validCannonBin)
-	server := filepath.Join(t.TempDir(), validCannonOpProgramBin)
+	tmpDir := t.TempDir()
+	vmBin := filepath.Join(tmpDir, validCannonBin)
+	server := filepath.Join(tmpDir, validCannonOpProgramBin)
 	err := ensureExists(vmBin)
 	require.NoError(t, err)
 	err = ensureExists(server)
@@ -76,8 +77,9 @@ func applyValidConfigForCannon(t *testing.T, cfg *Config) {
 }
 
 func applyValidConfigForAsterisc(t *testing.T, cfg *Config) {
-	vmBin := filepath.Join(t.TempDir(), validAsteriscBin)
-	server := filepath.Join(t.TempDir(), validAsteriscOpProgramBin)
+	tmpDir := t.TempDir()
+	vmBin := filepath.Join(tmpDir, validAsteriscBin)
+	server := filepath.Join(tmpDir, validAsteriscOpProgramBin)
 	err := ensureExists(vmBin)
 	require.NoError(t, err)
 	err = ensureExists(server)
@@ -89,8 +91,9 @@ func applyValidConfigForAsterisc(t *testing.T, cfg *Config) {
 }
 
 func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
-	vmBin := filepath.Join(t.TempDir(), validAsteriscKonaBin)
-	server := filepath.Join(t.TempDir(), validAsteriscKonaServerBin)
+	tmpDir := t.TempDir()
+	vmBin := filepath.Join(tmpDir, validAsteriscKonaBin)
+	server := filepath.Join(tmpDir, validAsteriscKonaServerBin)
 	err := ensureExists(vmBin)
 	require.NoError(t, err)
 	err = ensureExists(server)
@@ -597,7 +600,8 @@ func TestRequireConfigForMultipleTraceTypesForCannonAndAsterisc(t *testing.T) {
 	// Require cannon specific args
 	cfg.Cannon.VmBin = ""
 	require.ErrorIs(t, cfg.Check(), ErrMissingCannonBin)
-	vmBin := filepath.Join(t.TempDir(), validCannonBin)
+	tmpDir := t.TempDir()
+	vmBin := filepath.Join(tmpDir, validCannonBin)
 	err := ensureExists(vmBin)
 	require.NoError(t, err)
 	cfg.Cannon.VmBin = vmBin
@@ -611,7 +615,7 @@ func TestRequireConfigForMultipleTraceTypesForCannonAndAsterisc(t *testing.T) {
 	// Require cannon specific args
 	cfg.Asterisc.Server = ""
 	require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscServer)
-	server := filepath.Join(t.TempDir(), validAsteriscOpProgramBin)
+	server := filepath.Join(tmpDir, validAsteriscOpProgramBin)
 	err = ensureExists(server)
 	require.NoError(t, err)
 	cfg.Asterisc.Server = server
