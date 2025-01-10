@@ -186,6 +186,13 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 }
 
 contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
+    function setUp() public override {
+        super.setUp();
+        // For tests which are specifically testing the upgrade, we want do not want the contracts to have been
+        // upgraded yet.
+        super.disableUpgradedFork();
+    }
+
     function test_upgrade_succeeds() public {
         OPContractsManager.OpChain[] memory opChains = _getOpChains();
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
