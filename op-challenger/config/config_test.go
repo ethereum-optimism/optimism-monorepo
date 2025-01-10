@@ -288,6 +288,18 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			require.True(t, cfg.Cannon.DebugInfo)
 		})
+
+		t.Run(fmt.Sprintf("TestCannonVMBinExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.Cannon.VmBin = validCannonBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingCannonBin)
+		})
+
+		t.Run(fmt.Sprintf("TestCannonServerExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.Cannon.Server = validCannonOpProgramBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingCannonServer)
+		})
 	}
 }
 
@@ -400,6 +412,18 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			require.False(t, cfg.Asterisc.DebugInfo)
 		})
+
+		t.Run(fmt.Sprintf("TestAsteriscVMBinExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.Asterisc.VmBin = validAsteriscBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscBin)
+		})
+
+		t.Run(fmt.Sprintf("TestAsteriscServerExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.Asterisc.Server = validAsteriscOpProgramBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscServer)
+		})
 	}
 }
 
@@ -511,6 +535,18 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestDebugInfoDisabled-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			require.False(t, cfg.AsteriscKona.DebugInfo)
+		})
+
+		t.Run(fmt.Sprintf("TestAsteriscKonaVMBinExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.AsteriscKona.VmBin = validAsteriscKonaBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaBin)
+		})
+
+		t.Run(fmt.Sprintf("TestAsteriscKonaServerExists-%v", traceType), func(t *testing.T) {
+			cfg := validConfig(t, traceType)
+			cfg.AsteriscKona.Server = validAsteriscKonaServerBin
+			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaServer)
 		})
 	}
 }
