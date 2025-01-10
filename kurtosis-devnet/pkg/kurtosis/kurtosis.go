@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/run"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/wrappers"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 )
 
@@ -18,14 +19,23 @@ const (
 	DefaultEnclave     = "devnet"
 )
 
-type EndpointMap map[string]string
+type EndpointMap map[string]inspect.PortInfo
 
-type Node = EndpointMap
+type ServiceMap map[string]Service
+
+type Service struct {
+	Name      string      `json:"name"`
+	Endpoints EndpointMap `json:"endpoints"`
+}
+
+type Node struct {
+	Services ServiceMap `json:"services"`
+}
 
 type Chain struct {
 	Name      string                       `json:"name"`
 	ID        string                       `json:"id,omitempty"`
-	Services  EndpointMap                  `json:"services,omitempty"`
+	Services  ServiceMap                   `json:"services,omitempty"`
 	Nodes     []Node                       `json:"nodes"`
 	Addresses deployer.DeploymentAddresses `json:"addresses,omitempty"`
 	Wallets   WalletMap                    `json:"wallets,omitempty"`
@@ -169,10 +179,10 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 
 	// Find L1 endpoint
 	finder := NewServiceFinder(inspectResult.UserServices)
-	if nodes, endpoints := finder.FindL1Endpoints(); len(nodes) > 0 {
+	if nodes, services := finder.FindL1Services(); len(nodes) > 0 {
 		chain := &Chain{
 			Name:     "Ethereum",
-			Services: endpoints,
+			Services: services,
 			Nodes:    nodes,
 		}
 		if deployerState.State != nil {
@@ -184,12 +194,12 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 
 	// Find L2 endpoints
 	for _, chainSpec := range spec.Chains {
-		nodes, endpoints := finder.FindL2Endpoints(chainSpec.Name)
+		nodes, services := finder.FindL2Services(chainSpec.Name)
 
 		chain := &Chain{
 			Name:     chainSpec.Name,
 			ID:       chainSpec.NetworkID,
-			Services: endpoints,
+			Services: services,
 			Nodes:    nodes,
 		}
 

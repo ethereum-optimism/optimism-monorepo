@@ -8,8 +8,8 @@ import (
 
 // PortInfo contains the host and port number for a service port
 type PortInfo struct {
-	Host string
-	Port int
+	Host string `json:"host"`
+	Port int    `json:"port"`
 }
 
 type PortMap map[string]PortInfo
