@@ -432,8 +432,39 @@ contract OPContractsManager is ISemver {
                 abi.encodeCall(IOptimismMintableERC20Factory.upgrade, ())
             );
 
-            // TODO:  discover and update the implementations for the ASR and DelayedWeth (but not the dispute games
+            // TODO: discover and update the implementations for the ASR and DelayedWeth (but not the dispute games
             // themselves).
+            IFaultDisputeGame disputeGame = IFaultDisputeGame(
+                address(
+                    IDisputeGameFactory(opChainAddrs.disputeGameFactory).gameImpls(
+                        GameTypes.CANNON
+                    )
+                )
+            );
+            IPermissionedDisputeGame permissionedDisputeGame = IPermissionedDisputeGame(
+                address(
+                    IDisputeGameFactory(opChainAddrs.disputeGameFactory).gameImpls(
+                        GameTypes.PERMISSIONED_CANNON
+                    )
+                )
+            );
+            uint256 l2ChainId = permissionedDisputeGame.l2ChainId();
+
+            // TODO: discover these addresses in a util function.
+            address anchorStateRegistryImpl =
+                Blueprint.deployFrom(
+                    blueprint.anchorStateRegistry,
+                    computeSalt(l2ChainId, string(bytes.concat(bytes32(l2ChainId))), "AnchorStateRegistry"),
+                    abi.encode(opChainAddrs.disputeGameFactory)
+            );
+            IAnchorStateRegistry anchorStateRegistry = permissionedDisputeGame.anchorStateRegistry();
+            proxyAdmin.upgradeAndCall(payable(address(anchorStateRegistry)), anchorStateRegistryImpl, abi.encodeCall(IAnchorStateRegistry.upgrade, ()));
+
+            IDelayedWETH permissionedDelayedWETH = permissionedDisputeGame.weth();
+            proxyAdmin.upgradeAndCall(payable(address(permissionedDelayedWETH)), impls.delayedWETHImpl, abi.encodeCall(IDelayedWETH.upgrade, ()));
+
+            IDelayedWETH delayedWETH = disputeGame.weth();
+            proxyAdmin.upgradeAndCall(payable(address(delayedWETH)), impls.delayedWETHImpl, abi.encodeCall(IDelayedWETH.upgrade, ()));
 
             // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
             // the caller will be the value of the ADDRESS opcode.
