@@ -26,9 +26,8 @@ type Driver struct {
 
 	events []event.Event
 
-	end         EndCondition
-	deriver     event.Deriver
-	engineDeriv *engine.EngDeriver
+	end     EndCondition
+	deriver event.Deriver
 }
 
 func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
@@ -64,7 +63,6 @@ func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
 		engResetDeriv,
 	}
 	d.end = prog
-	d.engineDeriv = engineDeriv
 
 	return d
 }
