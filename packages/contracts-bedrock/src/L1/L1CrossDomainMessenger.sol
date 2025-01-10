@@ -28,7 +28,7 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     IOptimismPortal public portal;
 
     /// @notice Address of the SystemConfig contract.
-    ISystemConfig internal systemConfig;
+    ISystemConfig public systemConfig;
 
     /// @notice Semantic version.
     /// @custom:semver 2.4.1-beta.6
@@ -58,6 +58,8 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     }
 
     /// @inheritdoc CrossDomainMessenger
+    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
+    /// return the ether address and 18 decimals.
     function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
         return (Constants.ETHER, 18);
     }

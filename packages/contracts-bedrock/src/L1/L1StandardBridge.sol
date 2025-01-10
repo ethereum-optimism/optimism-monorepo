@@ -83,7 +83,7 @@ contract L1StandardBridge is StandardBridge, ISemver {
     ISuperchainConfig public superchainConfig;
 
     /// @notice Address of the SystemConfig contract.
-    ISystemConfig internal systemConfig;
+    ISystemConfig public systemConfig;
 
     /// @notice Constructs the L1StandardBridge contract.
     constructor() StandardBridge() {
@@ -120,6 +120,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     }
 
     /// @inheritdoc StandardBridge
+    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
+    /// return the ether address and 18 decimals.
     function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
         return (Constants.ETHER, 18);
     }

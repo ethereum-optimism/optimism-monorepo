@@ -83,9 +83,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     bytes32 public constant DISPUTE_GAME_FACTORY_SLOT =
         bytes32(uint256(keccak256("systemconfig.disputegamefactory")) - 1);
 
-    /// @notice The number of decimals that the gas paying token has.
-    uint8 internal constant GAS_PAYING_TOKEN_DECIMALS = 18;
-
     /// @notice The maximum gas limit that can be set for L2 blocks. This limit is used to enforce that the blocks
     ///         on L2 are not too large to process and prove. Over time, this value can be increased as various
     ///         optimizations and improvements are made to the system at large.
