@@ -20,22 +20,21 @@ import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 ///         It differs from MIPS.sol in that it supports multi-threading.
 contract MIPS2 is ISemver {
     /// @notice The thread context.
-    ///         Total state size: 4 + 1 + 1 + 4 + 4 + 8 + 4 + 4 + 4 + 4 + 32 * 4 = 166 bytes
+    ///         Total state size: 4 + 1 + 1 + 4 + 4 + 4 + 4 + 32 * 4 = 150 bytes
     struct ThreadState {
         // metadata
         uint32 threadID;
         uint8 exitCode;
         bool exited;
         // state
-        uint32 futexAddr;
-        uint32 futexVal;
-        uint64 futexTimeoutStep;
         uint32 pc;
         uint32 nextPC;
         uint32 lo;
         uint32 hi;
         uint32[32] registers;
     }
+
+    uint32 internal constant PACKED_THREAD_STATE_SIZE = 150;
 
     uint8 internal constant LL_STATUS_NONE = 0;
     uint8 internal constant LL_STATUS_ACTIVE = 1;
@@ -72,7 +71,7 @@ contract MIPS2 is ISemver {
     uint256 internal constant THREAD_PROOF_OFFSET = 356;
 
     // The offset of the start of proof calldata (_memProof.offset) in the step() function
-    uint256 internal constant MEM_PROOF_OFFSET = THREAD_PROOF_OFFSET + 166 + 32;
+    uint256 internal constant MEM_PROOF_OFFSET = THREAD_PROOF_OFFSET + PACKED_THREAD_STATE_SIZE + 32;
 
     // The empty thread root - keccak256(bytes32(0) ++ bytes32(0))
     bytes32 internal constant EMPTY_THREAD_ROOT = hex"ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5";
@@ -153,8 +152,8 @@ contract MIPS2 is ISemver {
                     // TC_MEM_OFFSET = 480 + 128 = 608 = 0x260
                     revert(0, 0)
                 }
-                if iszero(eq(mload(0x40), shl(5, 62))) {
-                    // 4 + 15 state slots + 43 thread slots = 62 expected memory check
+                if iszero(eq(mload(0x40), shl(5, 59))) {
+                    // 4 + 15 state slots + 40 thread slots = 59 expected memory check
                     revert(0, 0)
                 }
                 if iszero(eq(_stateData.offset, 132)) {
@@ -379,9 +378,6 @@ contract MIPS2 is ISemver {
                 newThread.threadID = state.nextThreadID;
                 newThread.exitCode = 0;
                 newThread.exited = false;
-                newThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-                newThread.futexVal = 0;
-                newThread.futexTimeoutStep = 0;
                 newThread.pc = thread.nextPC;
                 newThread.nextPC = thread.nextPC + 4;
                 newThread.lo = thread.lo;
@@ -785,9 +781,6 @@ contract MIPS2 is ISemver {
             from, to := copyMem(from, to, 4) // threadID
             from, to := copyMem(from, to, 1) // exitCode
             from, to := copyMem(from, to, 1) // exited
-            from, to := copyMem(from, to, 4) // futexAddr
-            from, to := copyMem(from, to, 4) // futexVal
-            from, to := copyMem(from, to, 8) // futexTimeoutStep
             from, to := copyMem(from, to, 4) // pc
             from, to := copyMem(from, to, 4) // nextPC
             from, to := copyMem(from, to, 4) // lo
@@ -829,7 +822,7 @@ contract MIPS2 is ISemver {
             s := calldatasize()
         }
         // verify we have enough calldata
-        require(s >= (THREAD_PROOF_OFFSET + 166), "insufficient calldata for thread witness");
+        require(s >= (THREAD_PROOF_OFFSET + PACKED_THREAD_STATE_SIZE), "insufficient calldata for thread witness");
 
         unchecked {
             assembly {
@@ -846,9 +839,6 @@ contract MIPS2 is ISemver {
                 c, m := putField(c, m, 4) // threadID
                 c, m := putField(c, m, 1) // exitCode
                 c, m := putField(c, m, 1) // exited
-                c, m := putField(c, m, 4) // futexAddr
-                c, m := putField(c, m, 4) // futexVal
-                c, m := putField(c, m, 8) // futexTimeoutStep
                 c, m := putField(c, m, 4) // pc
                 c, m := putField(c, m, 4) // nextPC
                 c, m := putField(c, m, 4) // lo
@@ -865,10 +855,10 @@ contract MIPS2 is ISemver {
         uint256 s = 0;
         assembly {
             s := calldatasize()
-            innerThreadRoot_ := calldataload(add(THREAD_PROOF_OFFSET, 166))
+            innerThreadRoot_ := calldataload(add(THREAD_PROOF_OFFSET, PACKED_THREAD_STATE_SIZE))
         }
         // verify we have enough calldata
-        require(s >= (THREAD_PROOF_OFFSET + 198), "insufficient calldata for thread witness"); // 166 + 32
+        require(s >= (THREAD_PROOF_OFFSET + PACKED_THREAD_STATE_SIZE + 32), "insufficient calldata for thread witness");
     }
 
     /// @notice Loads a 32-bit futex value at _vAddr

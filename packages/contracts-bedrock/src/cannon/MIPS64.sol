@@ -21,16 +21,13 @@ import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 ///         It differs from MIPS.sol in that it supports MIPS64 instructions and multi-tasking.
 contract MIPS64 is ISemver {
     /// @notice The thread context.
-    ///         Total state size: 8 + 1 + 1 + 8 + 4 + 8 + 8 + 8 + 8 + 8 + 32 * 8 = 318 bytes
+    ///         Total state size: 8 + 1 + 1 + 8 + 8 + 8 + 8 + 32 * 8 = 298 bytes
     struct ThreadState {
         // metadata
         uint64 threadID;
         uint8 exitCode;
         bool exited;
         // state
-        uint64 futexAddr;
-        uint32 futexVal;
-        uint64 futexTimeoutStep;
         uint64 pc;
         uint64 nextPC;
         uint64 lo;
@@ -38,7 +35,7 @@ contract MIPS64 is ISemver {
         uint64[32] registers;
     }
 
-    uint32 internal constant PACKED_THREAD_STATE_SIZE = 318;
+    uint32 internal constant PACKED_THREAD_STATE_SIZE = 298;
 
     uint8 internal constant LL_STATUS_NONE = 0;
     uint8 internal constant LL_STATUS_ACTIVE_32_BIT = 0x1;
@@ -157,8 +154,8 @@ contract MIPS64 is ISemver {
                     // TC_MEM_OFFSET = 480 + 128 = 608 = 0x260
                     revert(0, 0)
                 }
-                if iszero(eq(mload(0x40), shl(5, 62))) {
-                    // 4 + 15 state slots + 43 thread slots = 62 expected memory check
+                if iszero(eq(mload(0x40), shl(5, 59))) {
+                    // 4 + 15 state slots + 40 thread slots = 59 expected memory check
                     revert(0, 0)
                 }
                 if iszero(eq(_stateData.offset, 132)) {
@@ -415,9 +412,6 @@ contract MIPS64 is ISemver {
                 newThread.threadID = state.nextThreadID;
                 newThread.exitCode = 0;
                 newThread.exited = false;
-                newThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-                newThread.futexVal = 0;
-                newThread.futexTimeoutStep = 0;
                 newThread.pc = thread.nextPC;
                 newThread.nextPC = thread.nextPC + 4;
                 newThread.lo = thread.lo;
@@ -818,9 +812,6 @@ contract MIPS64 is ISemver {
             from, to := copyMem(from, to, 8) // threadID
             from, to := copyMem(from, to, 1) // exitCode
             from, to := copyMem(from, to, 1) // exited
-            from, to := copyMem(from, to, 8) // futexAddr
-            from, to := copyMem(from, to, 4) // futexVal
-            from, to := copyMem(from, to, 8) // futexTimeoutStep
             from, to := copyMem(from, to, 8) // pc
             from, to := copyMem(from, to, 8) // nextPC
             from, to := copyMem(from, to, 8) // lo
@@ -881,9 +872,6 @@ contract MIPS64 is ISemver {
                 c, m := putField(c, m, 8) // threadID
                 c, m := putField(c, m, 1) // exitCode
                 c, m := putField(c, m, 1) // exited
-                c, m := putField(c, m, 8) // futexAddr
-                c, m := putField(c, m, 4) // futexVal
-                c, m := putField(c, m, 8) // futexTimeoutStep
                 c, m := putField(c, m, 8) // pc
                 c, m := putField(c, m, 8) // nextPC
                 c, m := putField(c, m, 8) // lo

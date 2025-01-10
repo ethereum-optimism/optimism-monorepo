@@ -119,9 +119,6 @@ library MIPS64Syscalls {
 
     uint64 internal constant FUTEX_WAIT_PRIVATE = 128;
     uint64 internal constant FUTEX_WAKE_PRIVATE = 129;
-    uint64 internal constant FUTEX_TIMEOUT_STEPS = 10000;
-    uint64 internal constant FUTEX_NO_TIMEOUT = type(uint64).max;
-    uint64 internal constant FUTEX_EMPTY_ADDR = U64_MASK;
 
     uint64 internal constant SCHED_QUANTUM = 100_000;
     uint64 internal constant HZ = 10_000_000;

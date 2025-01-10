@@ -42,11 +42,8 @@ const (
 
 // SysFutex-related constants
 const (
-	FutexWaitPrivate  = 128
-	FutexWakePrivate  = 129
-	FutexTimeoutSteps = 10_000
-	FutexNoTimeout    = ^uint64(0)
-	FutexEmptyAddr    = ^Word(0)
+	FutexWaitPrivate = 128
+	FutexWakePrivate = 129
 )
 
 // SysClone flags

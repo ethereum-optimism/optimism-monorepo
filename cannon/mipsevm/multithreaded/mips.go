@@ -43,12 +43,9 @@ func (m *InstrumentedState) handleSyscall() error {
 		v0 = m.state.NextThreadId
 		v1 = 0
 		newThread := &ThreadState{
-			ThreadId:         m.state.NextThreadId,
-			ExitCode:         0,
-			Exited:           false,
-			FutexAddr:        exec.FutexEmptyAddr,
-			FutexVal:         0,
-			FutexTimeoutStep: 0,
+			ThreadId: m.state.NextThreadId,
+			ExitCode: 0,
+			Exited:   false,
 			Cpu: mipsevm.CpuScalars{
 				PC:     thread.Cpu.NextPC,
 				NextPC: thread.Cpu.NextPC + 4,

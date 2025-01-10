@@ -195,12 +195,9 @@ func TestSerializeStateRoundTrip(t *testing.T) {
 		TraverseRight:               true,
 		LeftThreadStack: []*ThreadState{
 			{
-				ThreadId:         45,
-				ExitCode:         46,
-				Exited:           true,
-				FutexAddr:        47,
-				FutexVal:         48,
-				FutexTimeoutStep: 49,
+				ThreadId: 45,
+				ExitCode: 46,
+				Exited:   true,
 				Cpu: mipsevm.CpuScalars{
 					PC:     0xFF,
 					NextPC: 0xFF + 4,
@@ -218,12 +215,9 @@ func TestSerializeStateRoundTrip(t *testing.T) {
 				},
 			},
 			{
-				ThreadId:         55,
-				ExitCode:         56,
-				Exited:           false,
-				FutexAddr:        57,
-				FutexVal:         58,
-				FutexTimeoutStep: 59,
+				ThreadId: 55,
+				ExitCode: 56,
+				Exited:   false,
 				Cpu: mipsevm.CpuScalars{
 					PC:     0xEE,
 					NextPC: 0xEE + 4,
@@ -238,12 +232,9 @@ func TestSerializeStateRoundTrip(t *testing.T) {
 		},
 		RightThreadStack: []*ThreadState{
 			{
-				ThreadId:         65,
-				ExitCode:         66,
-				Exited:           false,
-				FutexAddr:        67,
-				FutexVal:         68,
-				FutexTimeoutStep: 69,
+				ThreadId: 65,
+				ExitCode: 66,
+				Exited:   false,
 				Cpu: mipsevm.CpuScalars{
 					PC:     0xdd,
 					NextPC: 0xdd + 4,
@@ -255,12 +246,9 @@ func TestSerializeStateRoundTrip(t *testing.T) {
 				},
 			},
 			{
-				ThreadId:         75,
-				ExitCode:         76,
-				Exited:           true,
-				FutexAddr:        77,
-				FutexVal:         78,
-				FutexTimeoutStep: 79,
+				ThreadId: 75,
+				ExitCode: 76,
+				Exited:   true,
 				Cpu: mipsevm.CpuScalars{
 					PC:     0xcc,
 					NextPC: 0xcc + 4,
@@ -388,9 +376,9 @@ func TestStateWitnessSize(t *testing.T) {
 }
 
 func TestThreadStateWitnessSize(t *testing.T) {
-	expectedWitnessSize := 166
+	expectedWitnessSize := 150
 	if !arch.IsMips32 {
-		expectedWitnessSize = 318
+		expectedWitnessSize = 298
 	}
 	require.Equal(t, expectedWitnessSize, SERIALIZED_THREAD_SIZE)
 }
