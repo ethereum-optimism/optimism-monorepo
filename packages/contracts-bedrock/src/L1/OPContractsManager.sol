@@ -390,6 +390,9 @@ contract OPContractsManager is ISemver {
 
         Implementations memory impls = thisOPCM.implementations();
 
+        // TODO: upgrading the SuperchainConfig and ProtocolVersions
+        // TODO: Check that all chains have the same SuperchainConfig
+
         for (uint256 i = 0; i < _opChains.length; i++) {
             ISystemConfig systemConfig = _opChains[i].systemConfig;
             ISystemConfig.Addresses memory opChainAddrs = getAddresses(systemConfig);
@@ -404,6 +407,9 @@ contract OPContractsManager is ISemver {
             proxyAdmin.upgrade(
                 payable(opChainAddrs.optimismMintableERC20Factory), impls.optimismMintableERC20FactoryImpl
             );
+
+            // TODO:  discover and update the implementations for the ASR and DelayedWeth (but not the dispute games
+            // themselves).
 
             // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
             // the caller will be the value of the ADDRESS opcode.
@@ -681,6 +687,8 @@ contract OPContractsManager is ISemver {
     }
 
     function getAddresses(ISystemConfig _systemConfig) public view returns (ISystemConfig.Addresses memory) {
+        // TODO: add a getter to the system config which returns this struct to make future upgrades cleaner and more
+        // efficient.
         return ISystemConfig.Addresses({
             l1CrossDomainMessenger: _systemConfig.l1CrossDomainMessenger(),
             l1ERC721Bridge: _systemConfig.l1ERC721Bridge(),
