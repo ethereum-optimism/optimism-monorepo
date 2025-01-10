@@ -25,7 +25,7 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 	chain1Output := &eth.OutputV0{}
 	agreedSuperRoot := &eth.SuperV1{
 		Timestamp: rollupCfg.Genesis.L2Time + 1234,
-		Outputs:   []eth.Bytes32{eth.OutputRoot(chain1Output)},
+		Chains:    []eth.ChainIDAndOutput{{ChainID: rollupCfg.L2ChainID.Uint64(), Output: eth.OutputRoot(chain1Output)}},
 	}
 	outputRootHash := common.Hash(eth.SuperRoot(agreedSuperRoot))
 	l2PreimageOracle, _ := test.NewStubOracle(t)
