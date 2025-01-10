@@ -44,7 +44,7 @@ type State struct {
 	L1StateDump *GzipData[foundry.ForgeAllocs] `json:"l1StateDump"`
 
 	// DeploymentCalldata contains the calldata of each transaction in the deployment. This is only
-	// populated if apply is called with --deployment-target=genesis.
+	// populated if apply is called with --deployment-target=calldata.
 	DeploymentCalldata []broadcaster.CalldataDump
 }
 
