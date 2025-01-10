@@ -27,6 +27,8 @@ import (
 var (
 	precompileSuccess = [1]byte{1}
 	precompileFailure = [1]byte{0}
+
+	ErrAgreedPrestateUnavailable = errors.New("agreed prestate unavailable")
 )
 
 var acceleratedPrecompiles = []common.Address{
@@ -55,7 +57,8 @@ type Prefetcher struct {
 	kvStore       kvstore.KV
 
 	// Used to run the program for native block execution
-	executor ProgramExecutor
+	executor       ProgramExecutor
+	agreedPrestate []byte
 }
 
 func NewPrefetcher(
@@ -64,16 +67,17 @@ func NewPrefetcher(
 	l1BlobFetcher L1BlobSource,
 	l2Fetcher hosttypes.L2Source,
 	kvStore kvstore.KV,
-	l2ChainConfig *params.ChainConfig,
 	executor ProgramExecutor,
+	agreedPrestate []byte,
 ) *Prefetcher {
 	return &Prefetcher{
-		logger:        logger,
-		l1Fetcher:     NewRetryingL1Source(logger, l1Fetcher),
-		l1BlobFetcher: NewRetryingL1BlobSource(logger, l1BlobFetcher),
-		l2Fetcher:     NewRetryingL2Source(logger, l2Fetcher),
-		kvStore:       kvStore,
-		executor:      executor,
+		logger:         logger,
+		l1Fetcher:      NewRetryingL1Source(logger, l1Fetcher),
+		l1BlobFetcher:  NewRetryingL1BlobSource(logger, l1BlobFetcher),
+		l2Fetcher:      NewRetryingL2Source(logger, l2Fetcher),
+		kvStore:        kvStore,
+		executor:       executor,
+		agreedPrestate: agreedPrestate,
 	}
 }
 
@@ -312,6 +316,12 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to re-execute block: %w", err)
 		}
 		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
+	case l2.HintAgreedPrestate:
+		if len(p.agreedPrestate) == 0 {
+			return ErrAgreedPrestateUnavailable
+		}
+		hash := crypto.Keccak256Hash(p.agreedPrestate)
+		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), p.agreedPrestate)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }
