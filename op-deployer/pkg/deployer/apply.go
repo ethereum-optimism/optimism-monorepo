@@ -40,7 +40,7 @@ type ApplyConfig struct {
 	privateKeyECDSA *ecdsa.PrivateKey
 }
 
-func (a *ApplyConfig) Check() error {
+func (a *ApplyConfig) Check(intent *state.Intent) error {
 	if a.Workdir == "" {
 		return fmt.Errorf("workdir must be specified")
 	}
@@ -55,6 +55,16 @@ func (a *ApplyConfig) Check() error {
 
 	if a.Logger == nil {
 		return fmt.Errorf("logger must be specified")
+	}
+
+	if intent.DeploymentStrategy == state.DeploymentStrategyGenesis {
+		if a.L1RPCUrl != "" {
+			return fmt.Errorf("l1-rpc-url should not be specified when deployment-strategy is genesis")
+		}
+	} else {
+		if a.L1RPCUrl == "" {
+			return fmt.Errorf("l1-rpc-url should be specified when deployment-strategy is live")
+		}
 	}
 
 	return nil
@@ -94,13 +104,14 @@ func ApplyCLI() func(cliCtx *cli.Context) error {
 }
 
 func Apply(ctx context.Context, cfg ApplyConfig) error {
-	if err := cfg.Check(); err != nil {
-		return fmt.Errorf("invalid config for apply: %w", err)
-	}
 
 	intent, err := pipeline.ReadIntent(cfg.Workdir)
 	if err != nil {
 		return fmt.Errorf("failed to read intent: %w", err)
+	}
+
+	if err := cfg.Check(intent); err != nil {
+		return fmt.Errorf("invalid config for apply: %w", err)
 	}
 
 	st, err := pipeline.ReadState(cfg.Workdir)
