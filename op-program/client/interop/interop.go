@@ -91,7 +91,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 	if !validateClaim {
 		return nil
 	}
-	return claim.ValidateClaim(logger, derivationResult.SafeHead, eth.Bytes32(bootInfo.L2Claim), eth.Bytes32(expected))
+	return claim.ValidateClaim(logger, derivationResult.Head, eth.Bytes32(bootInfo.L2Claim), eth.Bytes32(expected))
 }
 
 type interopTaskExecutor struct {

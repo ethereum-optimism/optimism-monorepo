@@ -311,7 +311,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    start.Marshal(),
 			disputedClaim:  step1Expected,
 			expectValid:    true,
-			skip:           true,
 		},
 		{
 			name:           "SecondChainOptimisticBlock",

@@ -1,7 +1,6 @@
 package tasks
 
 import (
-	"context"
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -15,12 +14,11 @@ import (
 )
 
 type L2Source interface {
-	L2BlockRefByLabel(ctx context.Context, label eth.BlockLabel) (eth.L2BlockRef, error)
 	L2OutputRoot(uint64) (common.Hash, eth.Bytes32, error)
 }
 
 type DerivationResult struct {
-	SafeHead   eth.L2BlockRef
+	Head       eth.L2BlockRef
 	BlockHash  common.Hash
 	OutputRoot eth.Bytes32
 }
@@ -49,23 +47,20 @@ func RunDerivation(
 
 	logger.Info("Starting derivation")
 	d := cldr.NewDriver(logger, cfg, l1Source, l1BlobsSource, l2Source, l2ClaimBlockNum)
-	if err := d.RunComplete(); err != nil {
+	result, err := d.RunComplete()
+	if err != nil {
 		return DerivationResult{}, fmt.Errorf("failed to run program to completion: %w", err)
 	}
-	return loadOutputRoot(l2ClaimBlockNum, l2Source)
+	return loadOutputRoot(l2ClaimBlockNum, result, l2Source)
 }
 
-func loadOutputRoot(l2ClaimBlockNum uint64, src L2Source) (DerivationResult, error) {
-	l2Head, err := src.L2BlockRefByLabel(context.Background(), eth.Safe)
-	if err != nil {
-		return DerivationResult{}, fmt.Errorf("cannot retrieve safe head: %w", err)
-	}
-	blockHash, outputRoot, err := src.L2OutputRoot(min(l2ClaimBlockNum, l2Head.Number))
+func loadOutputRoot(l2ClaimBlockNum uint64, head eth.L2BlockRef, src L2Source) (DerivationResult, error) {
+	blockHash, outputRoot, err := src.L2OutputRoot(min(l2ClaimBlockNum, head.Number))
 	if err != nil {
 		return DerivationResult{}, fmt.Errorf("calculate L2 output root: %w", err)
 	}
 	return DerivationResult{
-		SafeHead:   l2Head,
+		Head:       head,
 		BlockHash:  blockHash,
 		OutputRoot: outputRoot,
 	}, nil
