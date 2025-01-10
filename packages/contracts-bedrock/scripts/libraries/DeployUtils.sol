@@ -97,19 +97,11 @@ library DeployUtils {
     /// @param _args ABI-encoded constructor arguments.
     /// @param _salt Salt for the CREATE2 operation.
     /// @return addr_ Address of the deployed contract.
-    function create2(string memory _name, bytes memory _args, bytes32 _salt) internal returns (address payable addr_) {
+    function create2(string memory _name, bytes memory _args, bytes32 _salt) internal returns (address payable) {
         bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
         address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
         require(preComputedAddress.code.length == 0, "DeployUtils: contract already deployed");
-        assembly {
-            addr_ := create2(0, add(initCode, 0x20), mload(initCode), _salt)
-            if iszero(addr_) {
-                let size := returndatasize()
-                returndatacopy(0, 0, size)
-                revert(0, size)
-            }
-        }
-        assertValidContractAddress(addr_);
+        return create2asm(initCode, _salt);
     }
 
     /// @notice Deploys a contract with the given name via CREATE2.
@@ -118,6 +110,18 @@ library DeployUtils {
     /// @return Address of the deployed contract.
     function create2(string memory _name, bytes32 _salt) internal returns (address payable) {
         return create2(_name, hex"", _salt);
+    }
+
+    function create2asm(bytes memory _initCode, bytes32 _salt) internal returns (address payable addr_) {
+        assembly {
+            addr_ := create2(0, add(_initCode, 0x20), mload(_initCode), _salt)
+            if iszero(addr_) {
+                let size := returndatasize()
+                returndatacopy(0, 0, size)
+                revert(0, size)
+            }
+        }
+        assertValidContractAddress(addr_);
     }
 
     /// @notice Deploys a contract with the given name and arguments via CREATE2 and saves the result.

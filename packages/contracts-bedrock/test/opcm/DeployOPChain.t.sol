@@ -398,11 +398,6 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
-        // End users of the DeployImplementations contract will need to set the `standardVersionsToml`.
-        string memory standardVersionsTomlPath =
-            string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml");
-        string memory standardVersionsToml = vm.readFile(standardVersionsTomlPath);
-        dii.set(dii.standardVersionsToml.selector, standardVersionsToml);
 
         deployImplementations.run(dii, dio);
 
