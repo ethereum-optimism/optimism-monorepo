@@ -200,8 +200,6 @@ contract Deploy is Deployer {
             deploySuperchain();
         }
 
-        // Deploy the implementations, with no suffix. The suffix is only used when deploying a new set of
-        // implementations to test upgrades.
         deployImplementations({ _isInterop: cfg.useInterop() });
 
         // Deploy Current OPChain Contracts
