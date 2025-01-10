@@ -75,7 +75,7 @@ func (t *stubTasks) RunDerivation(
 	_ l1.Oracle,
 	_ l2.Oracle) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
-		SafeHead:   t.l2SafeHead,
+		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,
 		OutputRoot: t.outputRoot,
 	}, t.err
