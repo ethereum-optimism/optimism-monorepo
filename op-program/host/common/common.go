@@ -99,6 +99,9 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		cmd.ExtraFiles[cl.PClientWFd-3] = pClientRW.Writer()
 		cmd.Stdout = os.Stdout // for debugging
 		cmd.Stderr = os.Stderr // for debugging
+		if cfg.InteropEnabled {
+			cmd.Env = append(os.Environ(), "OP_PROGRAM_CLIENT_USE_INTEROP=true")
+		}
 
 		err := cmd.Start()
 		if err != nil {

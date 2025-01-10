@@ -26,7 +26,7 @@ func Main(logger log.Logger) {
 	preimageOracle := preimage.ClientPreimageChannel()
 	preimageHinter := preimage.ClientHinterChannel()
 	config := Config{
-		InteropEnabled: os.Getenv("OP_PROGRAM_USE_INTEROP") == "true",
+		InteropEnabled: os.Getenv("OP_PROGRAM_CLIENT_USE_INTEROP") == "true",
 	}
 	if err := RunProgram(logger, preimageOracle, preimageHinter, config); errors.Is(err, claim.ErrClaimNotValid) {
 		log.Error("Claim is invalid", "err", err)
