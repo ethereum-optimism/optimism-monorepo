@@ -12,6 +12,9 @@ import { Unauthorized } from "src/libraries/PortalErrors.sol";
 // Interfaces
 import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 
+/// @notice Error thrown when attempting to use custom gas token specific actions.
+error CustomGasTokenNotSupported();
+
 /// @custom:proxied true
 /// @title OptimismPortalInterop
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
@@ -35,6 +38,7 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @param _value Encoded value of the configuration.
     function setConfig(ConfigType _type, bytes memory _value) external {
         if (msg.sender != address(systemConfig)) revert Unauthorized();
+        if (_type == ConfigType.SET_GAS_PAYING_TOKEN) revert CustomGasTokenNotSupported();
 
         // Set L2 deposit gas as used without paying burning gas. Ensures that deposits cannot use too much L2 gas.
         // This value must be large enough to cover the cost of calling `L1Block.setConfig`.
