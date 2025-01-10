@@ -45,11 +45,11 @@ func (c *InitConfig) Check() error {
 
 func InitCLI() func(ctx *cli.Context) error {
 	return func(ctx *cli.Context) error {
-		deploymentStrategy := ctx.String(DeploymentStrategyFlagName)
-		l1ChainID := ctx.Uint64(L1ChainIDFlagName)
+		deploymentStrategy := ctx.String(DeploymentStrategyFlag.Name)
+		l1ChainID := ctx.Uint64(L1ChainIDFlag.Name)
 		outdir := ctx.String(OutdirFlagName)
-		l2ChainIDsRaw := ctx.String(L2ChainIDsFlagName)
-		intentConfigType := ctx.String(IntentConfigTypeFlagName)
+		l2ChainIDsRaw := ctx.String(L2ChainIDsFlag.Name)
+		intentConfigType := ctx.String(IntentConfigTypeFlag.Name)
 
 		if len(l2ChainIDsRaw) == 0 {
 			return fmt.Errorf("must specify at least one L2 chain ID")

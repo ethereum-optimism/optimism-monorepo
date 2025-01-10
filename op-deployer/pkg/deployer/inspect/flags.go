@@ -93,7 +93,7 @@ func readConfig(cliCtx *cli.Context) (cliConfig, error) {
 		return cfg, fmt.Errorf("outfile flag is required")
 	}
 
-	workdir := cliCtx.String(deployer.WorkdirFlagName)
+	workdir := cliCtx.String(deployer.WorkdirFlag.Name)
 	if workdir == "" {
 		return cfg, fmt.Errorf("workdir flag is required")
 	}
@@ -109,7 +109,7 @@ func readConfig(cliCtx *cli.Context) (cliConfig, error) {
 	}
 
 	return cliConfig{
-		Workdir: cliCtx.String(deployer.WorkdirFlagName),
+		Workdir: cliCtx.String(deployer.WorkdirFlag.Name),
 		Outfile: cliCtx.String(OutfileFlagName),
 		ChainID: chainID,
 	}, nil
