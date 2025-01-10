@@ -27,7 +27,7 @@ func TestTransitionStateCodec(t *testing.T) {
 		}
 		data, err := state.Marshal()
 		require.NoError(t, err)
-		actual, err := UnmarshalProofsState(data)
+		actual, err := UnmarshalTransitionState(data)
 		require.NoError(t, err)
 		require.Equal(t, state, actual)
 	})
@@ -44,7 +44,7 @@ func TestTransitionStateCodec(t *testing.T) {
 			SuperRoot: superRoot.Marshal(),
 		}
 		data := superRoot.Marshal()
-		actual, err := UnmarshalProofsState(data)
+		actual, err := UnmarshalTransitionState(data)
 		require.NoError(t, err)
 		require.Equal(t, expected, actual)
 	})
