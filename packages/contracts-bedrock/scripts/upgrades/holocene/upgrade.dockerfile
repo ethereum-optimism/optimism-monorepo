@@ -44,7 +44,7 @@ RUN go mod download
 WORKDIR /app
 
 # Install correct foundry version
-RUN just update-foundry
+RUN foundryup -i nightly-143abd6a768eeb52a5785240b763d72a56987b4a
 
 # Set the working directory to the root of the contracts package
 WORKDIR /app/packages/contracts-bedrock
