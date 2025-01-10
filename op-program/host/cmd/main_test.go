@@ -234,6 +234,10 @@ func TestL2AgreedPrestate(t *testing.T) {
 		require.Equal(t, prestateBytes, cfg.AgreedPrestate)
 	})
 
+	t.Run("MustNotSpecifyWithL2OutputRoot", func(t *testing.T) {
+		verifyArgsInvalid(t, "flag l2.outputroot and l2.agreed-prestate must not be specified together", addRequiredArgs("--l2.agreed-prestate", "0x1234"))
+	})
+
 	t.Run("Invalid", func(t *testing.T) {
 		verifyArgsInvalid(t, config.ErrInvalidAgreedPrestate.Error(), addRequiredArgsExcept("--l2.outputroot", "--l2.agreed-prestate", "something"))
 	})
