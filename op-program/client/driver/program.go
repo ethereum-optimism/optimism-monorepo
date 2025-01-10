@@ -66,9 +66,11 @@ func (d *ProgramDeriver) OnEvent(ev event.Event) bool {
 			d.result = x.SafeL2Head
 		}
 	case engine.LocalSafeUpdateEvent:
-		d.logger.Info("Derivation complete: reached L2 block as local safe", "head", x.Ref)
-		d.result = x.Ref
-		d.closing = true
+		if x.Ref.Number >= d.targetBlockNum {
+			d.logger.Info("Derivation complete: reached L2 block as local safe", "head", x.Ref)
+			d.result = x.Ref
+			d.closing = true
+		}
 	case derive.DeriverIdleEvent:
 		// We don't close the deriver yet, as the engine may still be processing events to reach
 		// the target. A ForkchoiceUpdateEvent will close the deriver when the target is reached.
