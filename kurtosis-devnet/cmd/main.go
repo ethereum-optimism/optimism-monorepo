@@ -272,6 +272,8 @@ func (m *Main) deploy(ctx context.Context, r io.Reader) error {
 		return fmt.Errorf("error writing environment: %w", err)
 	}
 
+	env.Print()
+
 	return nil
 }
 
@@ -329,6 +331,7 @@ func writeEnvironment(path string, env *kurtosis.KurtosisEnvironment) error {
 			return fmt.Errorf("error creating environment file: %w", err)
 		}
 		defer out.Close()
+		fmt.Printf("Writing kurtosis environment json to: %s\n", path)
 	}
 
 	enc := json.NewEncoder(out)
