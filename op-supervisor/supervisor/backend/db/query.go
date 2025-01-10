@@ -220,7 +220,12 @@ func (db *ChainsDB) Check(chain types.ChainID, blockNum uint64, timestamp uint64
 		return types.BlockSeal{}, err
 	}
 	if includedIn.Timestamp != timestamp {
-		return types.BlockSeal{}, fmt.Errorf("identified block %s, but have timestamp %d: %w", includedIn, timestamp, types.ErrConflict)
+		return types.BlockSeal{},
+			fmt.Errorf("log exists in block %s, but block timestamp %d does not match %d: %w",
+				includedIn,
+				includedIn.Timestamp,
+				timestamp,
+				types.ErrConflict)
 	}
 	return includedIn, nil
 }
