@@ -45,7 +45,8 @@ kontrol_prove() {
     --no-log-rewrites \
     --smt-timeout 16000 \
     --smt-retry-limit 0 \
-    --no-stack-checks
+    --no-stack-checks \
+    --remove-old-proofs
   return $?
 }
 
