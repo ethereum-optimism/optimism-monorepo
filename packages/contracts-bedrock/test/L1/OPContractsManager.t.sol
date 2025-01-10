@@ -180,10 +180,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
     function _getOpChains() internal view returns (OPContractsManager.OpChain[] memory) {
         OPContractsManager.OpChain[] memory opChains = new OPContractsManager.OpChain[](1);
-        opChains[0] = OPContractsManager.OpChain({
-            systemConfig: systemConfig,
-            proxyAdmin: proxyAdmin
-        });
+        opChains[0] = OPContractsManager.OpChain({ systemConfig: systemConfig, proxyAdmin: proxyAdmin });
         return opChains;
     }
 }
@@ -195,9 +192,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
 
         vm.expectEmit(true, true, true, false);
         emit Upgraded(opChains[0].systemConfig, address(upgrader));
-        DelegateCaller(upgrader).dcForward(
-            address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains))
-        );
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
 
         OPContractsManager.Implementations memory impls = opcm.implementations();
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
@@ -219,5 +214,4 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
         vm.expectRevert(OPContractsManager.OnlyDelegatecall.selector);
         opcm.upgrade(_getOpChains());
     }
-
 }

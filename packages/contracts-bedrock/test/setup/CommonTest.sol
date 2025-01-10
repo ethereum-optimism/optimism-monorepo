@@ -172,12 +172,13 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
-
     /// @dev Checks if the system has already been deployed, based off of the heuristic that alice and bob have not been
     ///      set by the `setUp` function yet.
     function _checkNotDeployed(string memory _feature) internal view {
         if (alice != address(0) && bob != address(0)) {
-            revert(string.concat("CommonTest: Cannot enable ", _feature, " after deployment. Consider overriding `setUp`."));
+            revert(
+                string.concat("CommonTest: Cannot enable ", _feature, " after deployment. Consider overriding `setUp`.")
+            );
         }
     }
 
@@ -209,4 +210,3 @@ contract CommonTest is Test, Setup, Events {
         useUpgradedFork = false;
     }
 }
-

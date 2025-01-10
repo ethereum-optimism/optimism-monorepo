@@ -402,6 +402,62 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "contract ISystemConfig",
+        "name": "_systemConfig",
+        "type": "address"
+      }
+    ],
+    "name": "getAddresses",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessenger",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1ERC721Bridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20Factory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "gasPayingToken",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct ISystemConfig.Addresses",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "implementations",
     "outputs": [
@@ -503,14 +559,21 @@
   {
     "inputs": [
       {
-        "internalType": "contract ISystemConfig[]",
-        "name": "_systemConfigs",
-        "type": "address[]"
-      },
-      {
-        "internalType": "contract IProxyAdmin[]",
-        "name": "_proxyAdmins",
-        "type": "address[]"
+        "components": [
+          {
+            "internalType": "contract ISystemConfig",
+            "name": "systemConfig",
+            "type": "address"
+          },
+          {
+            "internalType": "contract IProxyAdmin",
+            "name": "proxyAdmin",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct OPContractsManager.OpChain[]",
+        "name": "_opChains",
+        "type": "tuple[]"
       }
     ],
     "name": "upgrade",
@@ -565,12 +628,6 @@
   {
     "anonymous": false,
     "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "l2ChainId",
-        "type": "uint256"
-      },
       {
         "indexed": true,
         "internalType": "contract ISystemConfig",
@@ -663,6 +720,11 @@
   {
     "inputs": [],
     "name": "NotABlueprint",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyDelegatecall",
     "type": "error"
   },
   {
