@@ -12,6 +12,7 @@ import { Process } from "scripts/libraries/Process.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { GameType } from "src/dispute/lib/Types.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
