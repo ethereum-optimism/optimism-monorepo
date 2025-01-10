@@ -10,7 +10,6 @@ import { Process } from "scripts/libraries/Process.sol";
 
 // Libraries
 import { LibString } from "@solady/utils/LibString.sol";
-import { Constants } from "src/libraries/Constants.sol";
 import { GameType } from "src/dispute/lib/Types.sol";
 
 // Interfaces
@@ -182,8 +181,7 @@ contract Initializer_Test is CommonTest {
                             l1StandardBridge: address(0),
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
-                            optimismMintableERC20Factory: address(0),
-                            gasPayingToken: Constants.ETHER
+                            optimismMintableERC20Factory: address(0)
                         })
                     )
                 )
@@ -218,8 +216,7 @@ contract Initializer_Test is CommonTest {
                             l1StandardBridge: address(0),
                             disputeGameFactory: address(0),
                             optimismPortal: address(0),
-                            optimismMintableERC20Factory: address(0),
-                            gasPayingToken: Constants.ETHER
+                            optimismMintableERC20Factory: address(0)
                         })
                     )
                 )

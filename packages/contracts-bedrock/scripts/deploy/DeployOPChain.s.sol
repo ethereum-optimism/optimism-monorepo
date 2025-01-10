@@ -563,8 +563,6 @@ contract DeployOPChain is Script {
             systemConfig.optimismMintableERC20Factory() == address(_doo.optimismMintableERC20FactoryProxy()),
             "SYSCON-210"
         );
-        (address gasPayingToken,) = systemConfig.gasPayingToken();
-        require(gasPayingToken == Constants.ETHER, "SYSCON-220");
     }
 
     function assertValidL1CrossDomainMessenger(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {

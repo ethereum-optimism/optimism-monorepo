@@ -6,6 +6,7 @@ import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -27,11 +28,11 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     IOptimismPortal public portal;
 
     /// @notice Address of the SystemConfig contract.
-    ISystemConfig public systemConfig;
+    ISystemConfig internal systemConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.1-beta.5
-    string public constant version = "2.4.1-beta.5";
+    /// @custom:semver 2.4.1-beta.6
+    string public constant version = "2.4.1-beta.6";
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() {
@@ -57,8 +58,8 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     }
 
     /// @inheritdoc CrossDomainMessenger
-    function gasPayingToken() internal view override returns (address addr_, uint8 decimals_) {
-        (addr_, decimals_) = systemConfig.gasPayingToken();
+    function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
+        return (Constants.ETHER, 18);
     }
 
     /// @notice Getter function for the OptimismPortal contract on this chain.
