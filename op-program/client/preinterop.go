@@ -25,5 +25,5 @@ func RunPreInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1Preimage
 	if err != nil {
 		return err
 	}
-	return claim.ValidateClaim(logger, result.SafeHead, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
+	return claim.ValidateClaim(logger, result.Head, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
 }
