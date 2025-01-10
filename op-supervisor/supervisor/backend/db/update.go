@@ -136,9 +136,12 @@ func (db *ChainsDB) NotifyL2Finalized(chain types.ChainID) {
 }
 
 // RecordNewL1 records a new L1 block in the database for a given chain.
-// it uses the latest derived L2 block as the derived block for the new L1 block.
-// once done, it notifies the L2 finality subscribers, as a new L1 in the database
-// may update the L2 finalized block.
+// It uses the latest derived L2 block as the derived block for the new L1 block.
+// It also triggers L2 Finality Notifications, as a new L1 may change L2 finality.
+// NOTE: callers to this function are responsible for ensuring that advancing the L1 block is correct
+// (ie that no further L2 blocks need to be recorded) because if the L1 block is recorded with a gap in derived blocks,
+// the database is considered corrupted and the supervisor will not be able to proceed without pruning the database.
+// The database cannot protect against this because it is does not know how many L2 blocks to expect for a given L1 block.
 func (db *ChainsDB) RecordNewL1(chain types.ChainID, ref eth.BlockRef) error {
 	// get local derivation database
 	ldb, ok := db.localDBs.Get(chain)
