@@ -159,7 +159,7 @@ contract DeployOPChainInput is BaseDeployIO {
         return _l2ChainId;
     }
 
-    function startingAnchorRoots() public pure returns (bytes memory) {
+    function startingAnchorRoot() public pure returns (bytes memory) {
         // WARNING: For now always hardcode the starting permissioned game anchor root to 0xdead,
         // and we do not set anything for the permissioned game. This is because we currently only
         // support deploying straight to permissioned games, and the starting root does not
@@ -168,10 +168,10 @@ contract DeployOPChainInput is BaseDeployIO {
         // because to to update to the permissionless game, we will need to update its starting
         // anchor root and deploy a new permissioned dispute game contract anyway.
         //
-        // You can `console.logBytes(abi.encode(ScriptConstants.DEFAULT_STARTING_ANCHOR_ROOTS()))` to get the bytes that
+        // You can `console.logBytes(abi.encode(ScriptConstants.DEFAULT_OUTPUT_ROOT()))` to get the bytes that
         // are hardcoded into `op-chain-ops/deployer/opcm/opchain.go`
 
-        return abi.encode(ScriptConstants.DEFAULT_STARTING_ANCHOR_ROOTS());
+        return abi.encode(ScriptConstants.DEFAULT_OUTPUT_ROOT());
     }
 
     function opcm() public view returns (OPContractsManager) {
@@ -228,7 +228,6 @@ contract DeployOPChainOutput is BaseDeployIO {
     IOptimismPortal2 internal _optimismPortalProxy;
     IDisputeGameFactory internal _disputeGameFactoryProxy;
     IAnchorStateRegistry internal _anchorStateRegistryProxy;
-    IAnchorStateRegistry internal _anchorStateRegistryImpl;
     IFaultDisputeGame internal _faultDisputeGame;
     IPermissionedDisputeGame internal _permissionedDisputeGame;
     IDelayedWETH internal _delayedWETHPermissionedGameProxy;
@@ -247,7 +246,6 @@ contract DeployOPChainOutput is BaseDeployIO {
         else if (_sel == this.optimismPortalProxy.selector) _optimismPortalProxy = IOptimismPortal2(payable(_addr)) ;
         else if (_sel == this.disputeGameFactoryProxy.selector) _disputeGameFactoryProxy = IDisputeGameFactory(_addr) ;
         else if (_sel == this.anchorStateRegistryProxy.selector) _anchorStateRegistryProxy = IAnchorStateRegistry(_addr) ;
-        else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = IAnchorStateRegistry(_addr) ;
         else if (_sel == this.faultDisputeGame.selector) _faultDisputeGame = IFaultDisputeGame(_addr) ;
         else if (_sel == this.permissionedDisputeGame.selector) _permissionedDisputeGame = IPermissionedDisputeGame(_addr) ;
         else if (_sel == this.delayedWETHPermissionedGameProxy.selector) _delayedWETHPermissionedGameProxy = IDelayedWETH(payable(_addr)) ;
@@ -314,11 +312,6 @@ contract DeployOPChainOutput is BaseDeployIO {
         return _anchorStateRegistryProxy;
     }
 
-    function anchorStateRegistryImpl() public view returns (IAnchorStateRegistry) {
-        DeployUtils.assertValidContractAddress(address(_anchorStateRegistryImpl));
-        return _anchorStateRegistryImpl;
-    }
-
     function faultDisputeGame() public view returns (IFaultDisputeGame) {
         DeployUtils.assertValidContractAddress(address(_faultDisputeGame));
         return _faultDisputeGame;
@@ -361,7 +354,7 @@ contract DeployOPChain is Script {
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),
             l2ChainId: _doi.l2ChainId(),
-            startingAnchorRoots: _doi.startingAnchorRoots(),
+            startingAnchorRoot: _doi.startingAnchorRoot(),
             saltMixer: _doi.saltMixer(),
             gasLimit: _doi.gasLimit(),
             disputeGameType: _doi.disputeGameType(),
@@ -385,7 +378,6 @@ contract DeployOPChain is Script {
         vm.label(address(deployOutput.optimismPortalProxy), "optimismPortalProxy");
         vm.label(address(deployOutput.disputeGameFactoryProxy), "disputeGameFactoryProxy");
         vm.label(address(deployOutput.anchorStateRegistryProxy), "anchorStateRegistryProxy");
-        vm.label(address(deployOutput.anchorStateRegistryImpl), "anchorStateRegistryImpl");
         // vm.label(address(deployOutput.faultDisputeGame), "faultDisputeGame");
         vm.label(address(deployOutput.permissionedDisputeGame), "permissionedDisputeGame");
         vm.label(address(deployOutput.delayedWETHPermissionedGameProxy), "delayedWETHPermissionedGameProxy");
@@ -404,7 +396,6 @@ contract DeployOPChain is Script {
         _doo.set(_doo.optimismPortalProxy.selector, address(deployOutput.optimismPortalProxy));
         _doo.set(_doo.disputeGameFactoryProxy.selector, address(deployOutput.disputeGameFactoryProxy));
         _doo.set(_doo.anchorStateRegistryProxy.selector, address(deployOutput.anchorStateRegistryProxy));
-        _doo.set(_doo.anchorStateRegistryImpl.selector, address(deployOutput.anchorStateRegistryImpl));
         // _doo.set(_doo.faultDisputeGame.selector, address(deployOutput.faultDisputeGame));
         _doo.set(_doo.permissionedDisputeGame.selector, address(deployOutput.permissionedDisputeGame));
         _doo.set(_doo.delayedWETHPermissionedGameProxy.selector, address(deployOutput.delayedWETHPermissionedGameProxy));
@@ -433,7 +424,6 @@ contract DeployOPChain is Script {
             address(_doo.optimismPortalProxy()),
             address(_doo.disputeGameFactoryProxy()),
             address(_doo.anchorStateRegistryProxy()),
-            address(_doo.anchorStateRegistryImpl()),
             address(_doo.permissionedDisputeGame()),
             // address(_doo.faultDisputeGame()),
             address(_doo.delayedWETHPermissionedGameProxy())
@@ -447,7 +437,6 @@ contract DeployOPChain is Script {
 
     // -------- Deployment Assertions --------
     function assertValidDeploy(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
-        assertValidAnchorStateRegistryImpl(_doi, _doo);
         assertValidAnchorStateRegistryProxy(_doi, _doo);
         assertValidDelayedWETH(_doi, _doo);
         assertValidDisputeGameFactory(_doi, _doo);
@@ -508,9 +497,6 @@ contract DeployOPChain is Script {
             _offset: 0
         });
 
-        vm.prank(address(0));
-        address impl = proxy.implementation();
-        require(impl == address(_doo.anchorStateRegistryImpl()), "ANCHORP-20");
         require(
             address(_doo.anchorStateRegistryProxy().disputeGameFactory()) == address(_doo.disputeGameFactoryProxy()),
             "ANCHORP-30"
@@ -519,14 +505,6 @@ contract DeployOPChain is Script {
         (Hash actualRoot,) = _doo.anchorStateRegistryProxy().anchors(GameTypes.PERMISSIONED_CANNON);
         bytes32 expectedRoot = 0xdead000000000000000000000000000000000000000000000000000000000000;
         require(Hash.unwrap(actualRoot) == expectedRoot, "ANCHORP-40");
-    }
-
-    function assertValidAnchorStateRegistryImpl(DeployOPChainInput, DeployOPChainOutput _doo) internal {
-        IAnchorStateRegistry registry = _doo.anchorStateRegistryImpl();
-
-        DeployUtils.assertInitialized({ _contractAddress: address(registry), _isProxy: false, _slot: 0, _offset: 0 });
-
-        require(address(registry.disputeGameFactory()) == address(_doo.disputeGameFactoryProxy()), "ANCHORI-10");
     }
 
     function assertValidSystemConfig(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {

@@ -22,7 +22,6 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _proxyAdminBlueprint;
     address internal _l1ChugSplashProxyBlueprint;
     address internal _resolvedDelegateProxyBlueprint;
-    address internal _anchorStateRegistryBlueprint;
     address internal _permissionedDisputeGame1Blueprint;
     address internal _permissionedDisputeGame2Blueprint;
 
@@ -33,6 +32,7 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _l1CrossDomainMessengerImpl;
     address internal _l1StandardBridgeImpl;
     address internal _disputeGameFactoryImpl;
+    address internal _anchorStateRegistryImpl;
     address internal _delayedWETHImpl;
     address internal _mipsImpl;
 
@@ -47,7 +47,6 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
         else if (_sel == this.l1ChugSplashProxyBlueprint.selector) _l1ChugSplashProxyBlueprint = _addr;
         else if (_sel == this.resolvedDelegateProxyBlueprint.selector) _resolvedDelegateProxyBlueprint = _addr;
-        else if (_sel == this.anchorStateRegistryBlueprint.selector) _anchorStateRegistryBlueprint = _addr;
         else if (_sel == this.permissionedDisputeGame1Blueprint.selector) _permissionedDisputeGame1Blueprint = _addr;
         else if (_sel == this.permissionedDisputeGame2Blueprint.selector) _permissionedDisputeGame2Blueprint = _addr;
         else if (_sel == this.l1ERC721BridgeImpl.selector) _l1ERC721BridgeImpl = _addr;
@@ -57,6 +56,7 @@ contract DeployOPCMInput is BaseDeployIO {
         else if (_sel == this.l1CrossDomainMessengerImpl.selector) _l1CrossDomainMessengerImpl = _addr;
         else if (_sel == this.l1StandardBridgeImpl.selector) _l1StandardBridgeImpl = _addr;
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = _addr;
+        else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = _addr;
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = _addr;
         else if (_sel == this.mipsImpl.selector) _mipsImpl = _addr;
         else revert("DeployOPCMInput: unknown selector");
@@ -110,11 +110,6 @@ contract DeployOPCMInput is BaseDeployIO {
         return _resolvedDelegateProxyBlueprint;
     }
 
-    function anchorStateRegistryBlueprint() public view returns (address) {
-        require(_anchorStateRegistryBlueprint != address(0), "DeployOPCMInput: not set");
-        return _anchorStateRegistryBlueprint;
-    }
-
     function permissionedDisputeGame1Blueprint() public view returns (address) {
         require(_permissionedDisputeGame1Blueprint != address(0), "DeployOPCMInput: not set");
         return _permissionedDisputeGame1Blueprint;
@@ -160,6 +155,11 @@ contract DeployOPCMInput is BaseDeployIO {
         return _disputeGameFactoryImpl;
     }
 
+    function anchorStateRegistryImpl() public view returns (address) {
+        require(_anchorStateRegistryImpl != address(0), "DeployOPCMInput: not set");
+        return _anchorStateRegistryImpl;
+    }
+
     function delayedWETHImpl() public view returns (address) {
         require(_delayedWETHImpl != address(0), "DeployOPCMInput: not set");
         return _delayedWETHImpl;
@@ -196,7 +196,6 @@ contract DeployOPCM is Script {
             proxyAdmin: _doi.proxyAdminBlueprint(),
             l1ChugSplashProxy: _doi.l1ChugSplashProxyBlueprint(),
             resolvedDelegateProxy: _doi.resolvedDelegateProxyBlueprint(),
-            anchorStateRegistry: _doi.anchorStateRegistryBlueprint(),
             permissionedDisputeGame1: _doi.permissionedDisputeGame1Blueprint(),
             permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
             permissionlessDisputeGame1: address(0),
@@ -210,6 +209,7 @@ contract DeployOPCM is Script {
             l1CrossDomainMessengerImpl: address(_doi.l1CrossDomainMessengerImpl()),
             l1StandardBridgeImpl: address(_doi.l1StandardBridgeImpl()),
             disputeGameFactoryImpl: address(_doi.disputeGameFactoryImpl()),
+            anchorStateRegistryImpl: address(_doi.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_doi.delayedWETHImpl()),
             mipsImpl: address(_doi.mipsImpl())
         });
@@ -251,7 +251,6 @@ contract DeployOPCM is Script {
         require(blueprints.proxyAdmin == _doi.proxyAdminBlueprint(), "OPCMI-60");
         require(blueprints.l1ChugSplashProxy == _doi.l1ChugSplashProxyBlueprint(), "OPCMI-70");
         require(blueprints.resolvedDelegateProxy == _doi.resolvedDelegateProxyBlueprint(), "OPCMI-80");
-        require(blueprints.anchorStateRegistry == _doi.anchorStateRegistryBlueprint(), "OPCMI-90");
         require(blueprints.permissionedDisputeGame1 == _doi.permissionedDisputeGame1Blueprint(), "OPCMI-100");
         require(blueprints.permissionedDisputeGame2 == _doi.permissionedDisputeGame2Blueprint(), "OPCMI-110");
 
@@ -265,8 +264,9 @@ contract DeployOPCM is Script {
         require(implementations.l1CrossDomainMessengerImpl == _doi.l1CrossDomainMessengerImpl(), "OPCMI-160");
         require(implementations.l1StandardBridgeImpl == _doi.l1StandardBridgeImpl(), "OPCMI-170");
         require(implementations.disputeGameFactoryImpl == _doi.disputeGameFactoryImpl(), "OPCMI-180");
-        require(implementations.delayedWETHImpl == _doi.delayedWETHImpl(), "OPCMI-190");
-        require(implementations.mipsImpl == _doi.mipsImpl(), "OPCMI-200");
+        require(implementations.anchorStateRegistryImpl == _doi.anchorStateRegistryImpl(), "OPCMI-190");
+        require(implementations.delayedWETHImpl == _doi.delayedWETHImpl(), "OPCMI-200");
+        require(implementations.mipsImpl == _doi.mipsImpl(), "OPCMI-210");
     }
 
     function etchIOContracts() public returns (DeployOPCMInput doi_, DeployOPCMOutput doo_) {

@@ -8,6 +8,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -92,6 +93,7 @@ contract DeployImplementationsOutput_Test is Test {
         IOptimismMintableERC20Factory optimismMintableERC20FactoryImpl =
             IOptimismMintableERC20Factory(makeAddr("optimismMintableERC20FactoryImpl"));
         IDisputeGameFactory disputeGameFactoryImpl = IDisputeGameFactory(makeAddr("disputeGameFactoryImpl"));
+        IAnchorStateRegistry anchorStateRegistryImpl = IAnchorStateRegistry(makeAddr("anchorStateRegistryImpl"));
 
         vm.etch(address(opcm), hex"01");
         vm.etch(address(optimismPortalImpl), hex"01");
@@ -104,6 +106,7 @@ contract DeployImplementationsOutput_Test is Test {
         vm.etch(address(l1StandardBridgeImpl), hex"01");
         vm.etch(address(optimismMintableERC20FactoryImpl), hex"01");
         vm.etch(address(disputeGameFactoryImpl), hex"01");
+        vm.etch(address(anchorStateRegistryImpl), hex"01");
         dio.set(dio.opcm.selector, address(opcm));
         dio.set(dio.optimismPortalImpl.selector, address(optimismPortalImpl));
         dio.set(dio.delayedWETHImpl.selector, address(delayedWETHImpl));
@@ -115,6 +118,7 @@ contract DeployImplementationsOutput_Test is Test {
         dio.set(dio.l1StandardBridgeImpl.selector, address(l1StandardBridgeImpl));
         dio.set(dio.optimismMintableERC20FactoryImpl.selector, address(optimismMintableERC20FactoryImpl));
         dio.set(dio.disputeGameFactoryImpl.selector, address(disputeGameFactoryImpl));
+        dio.set(dio.anchorStateRegistryImpl.selector, address(anchorStateRegistryImpl));
 
         assertEq(address(opcm), address(dio.opcm()), "50");
         assertEq(address(optimismPortalImpl), address(dio.optimismPortalImpl()), "100");
@@ -127,6 +131,7 @@ contract DeployImplementationsOutput_Test is Test {
         assertEq(address(l1StandardBridgeImpl), address(dio.l1StandardBridgeImpl()), "800");
         assertEq(address(optimismMintableERC20FactoryImpl), address(dio.optimismMintableERC20FactoryImpl()), "900");
         assertEq(address(disputeGameFactoryImpl), address(dio.disputeGameFactoryImpl()), "950");
+        assertEq(address(anchorStateRegistryImpl), address(dio.anchorStateRegistryImpl()), "960");
     }
 
     function test_getters_whenNotSet_reverts() public {
@@ -161,6 +166,9 @@ contract DeployImplementationsOutput_Test is Test {
 
         vm.expectRevert(expectedErr);
         dio.disputeGameFactoryImpl();
+
+        vm.expectRevert(expectedErr);
+        dio.anchorStateRegistryImpl();
     }
 
     function test_getters_whenAddrHasNoCode_reverts() public {

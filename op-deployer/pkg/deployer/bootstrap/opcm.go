@@ -213,7 +213,6 @@ func DeployOPCMInputForChain(release string, chainID uint64) (opcm.DeployOPCMInp
 		ProxyAdminBlueprint:               blueprints.ProxyAdmin,
 		L1ChugSplashProxyBlueprint:        blueprints.L1ChugSplashProxy,
 		ResolvedDelegateProxyBlueprint:    blueprints.ResolvedDelegateProxy,
-		AnchorStateRegistryBlueprint:      blueprints.AnchorStateRegistry,
 		PermissionedDisputeGame1Blueprint: blueprints.PermissionedDisputeGame1,
 		PermissionedDisputeGame2Blueprint: blueprints.PermissionedDisputeGame2,
 
@@ -224,6 +223,7 @@ func DeployOPCMInputForChain(release string, chainID uint64) (opcm.DeployOPCMInp
 		L1CrossDomainMessengerImpl:       releases.L1CrossDomainMessenger.ImplementationAddress,
 		L1StandardBridgeImpl:             releases.L1StandardBridge.ImplementationAddress,
 		DisputeGameFactoryImpl:           releases.DisputeGameFactory.ImplementationAddress,
+		AnchorStateRegistryImpl:          releases.AnchorStateRegistry.ImplementationAddress,
 		DelayedWETHImpl:                  releases.DelayedWETH.ImplementationAddress,
 		MipsImpl:                         releases.MIPS.Address,
 	}, nil

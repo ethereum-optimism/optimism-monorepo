@@ -132,8 +132,5 @@ error BadAuth();
 //              `AnchorStateRegistry` Errors                  //
 ////////////////////////////////////////////////////////////////
 
-/// @notice Thrown when attempting to set an anchor state using an unregistered game.
-error UnregisteredGame();
-
-/// @notice Thrown when attempting to set an anchor state using an invalid game result.
-error InvalidGameStatus();
+/// @notice Thrown when an invalid anchor game is provided.
+error InvalidAnchorGame(string reason);
