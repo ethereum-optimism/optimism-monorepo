@@ -12,6 +12,7 @@ import { Process } from "scripts/libraries/Process.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { GameType } from "src/dispute/lib/Types.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -57,7 +58,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "SuperchainConfigImpl",
-                target: artifacts.mustGetAddress("SuperchainConfigImpl"),
+                target: EIP1967Helper.getImplementation(address(superchainConfig)),
                 initCalldata: abi.encodeCall(superchainConfig.initialize, (address(0), false))
             })
         );
@@ -73,7 +74,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1CrossDomainMessengerImpl",
-                target: artifacts.mustGetAddress("L1CrossDomainMessengerImpl"),
+                target: EIP1967Helper.getImplementation(address(l1CrossDomainMessenger)),
                 initCalldata: abi.encodeCall(
                     l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
                 )
@@ -93,7 +94,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DisputeGameFactoryImpl",
-                target: artifacts.mustGetAddress("DisputeGameFactoryImpl"),
+                target: EIP1967Helper.getImplementation(address(disputeGameFactory)),
                 initCalldata: abi.encodeCall(disputeGameFactory.initialize, (address(0)))
             })
         );
@@ -109,7 +110,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DelayedWETHImpl",
-                target: artifacts.mustGetAddress("DelayedWETHImpl"),
+                target: EIP1967Helper.getImplementation(address(delayedWeth)),
                 initCalldata: abi.encodeCall(delayedWeth.initialize, (address(0), ISuperchainConfig(address(0))))
             })
         );
@@ -125,7 +126,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "OptimismPortal2Impl",
-                target: artifacts.mustGetAddress("OptimismPortal2Impl"),
+                target: EIP1967Helper.getImplementation(address(optimismPortal2)),
                 initCalldata: abi.encodeCall(
                     optimismPortal2.initialize,
                     (
@@ -157,7 +158,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "SystemConfigImpl",
-                target: artifacts.mustGetAddress("SystemConfigImpl"),
+                target: EIP1967Helper.getImplementation(address(systemConfig)),
                 initCalldata: abi.encodeCall(
                     systemConfig.initialize,
                     (
@@ -229,7 +230,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "ProtocolVersionsImpl",
-                target: artifacts.mustGetAddress("ProtocolVersionsImpl"),
+                target: EIP1967Helper.getImplementation(address(protocolVersions)),
                 initCalldata: abi.encodeCall(
                     protocolVersions.initialize, (address(0), ProtocolVersion.wrap(1), ProtocolVersion.wrap(2))
                 )
@@ -249,7 +250,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1StandardBridgeImpl",
-                target: artifacts.mustGetAddress("L1StandardBridgeImpl"),
+                target: EIP1967Helper.getImplementation(address(l1StandardBridge)),
                 initCalldata: abi.encodeCall(
                     l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig, systemConfig)
                 )
@@ -269,7 +270,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "L1ERC721BridgeImpl",
-                target: artifacts.mustGetAddress("L1ERC721BridgeImpl"),
+                target: EIP1967Helper.getImplementation(address(l1ERC721Bridge)),
                 initCalldata: abi.encodeCall(l1ERC721Bridge.initialize, (l1CrossDomainMessenger, superchainConfig))
             })
         );
@@ -285,7 +286,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "OptimismMintableERC20FactoryImpl",
-                target: artifacts.mustGetAddress("OptimismMintableERC20FactoryImpl"),
+                target: EIP1967Helper.getImplementation(address(l1OptimismMintableERC20Factory)),
                 initCalldata: abi.encodeCall(l1OptimismMintableERC20Factory.initialize, (address(l1StandardBridge)))
             })
         );
@@ -301,7 +302,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "DataAvailabilityChallengeImpl",
-                target: artifacts.mustGetAddress("DataAvailabilityChallengeImpl"),
+                target: EIP1967Helper.getImplementation(address(dataAvailabilityChallenge)),
                 initCalldata: abi.encodeCall(dataAvailabilityChallenge.initialize, (address(0), 0, 0, 0, 0))
             })
         );
@@ -317,7 +318,7 @@ contract Initializer_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "AnchorStateRegistryImpl",
-                target: address(anchorStateRegistry),
+                target: EIP1967Helper.getImplementation(address(anchorStateRegistry)),
                 initCalldata: abi.encodeCall(
                     anchorStateRegistry.initialize,
                     (new IAnchorStateRegistry.StartingAnchorRoot[](1), ISuperchainConfig(address(0)))

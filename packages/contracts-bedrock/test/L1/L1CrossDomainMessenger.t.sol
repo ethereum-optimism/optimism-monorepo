@@ -11,6 +11,7 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Target contract dependencies
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -29,7 +30,8 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() external virtual {
-        IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(artifacts.mustGetAddress("L1CrossDomainMessengerImpl"));
+        IL1CrossDomainMessenger impl =
+            IL1CrossDomainMessenger(payable(EIP1967Helper.getImplementation(address(l1CrossDomainMessenger))));
         assertEq(address(impl.superchainConfig()), address(0));
         assertEq(address(impl.PORTAL()), address(0));
         assertEq(address(impl.portal()), address(0));
