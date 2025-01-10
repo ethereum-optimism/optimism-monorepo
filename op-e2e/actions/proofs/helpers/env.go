@@ -221,7 +221,9 @@ func NewOpProgramCfg(
 		dfault.DataDir = t.TempDir()
 		dfault.DataFormat = hostTypes.DataFormatPebble
 	}
-	dfault.AgreedPrestate = fi.AgreedPrestate
+	if fi.InteropEnabled {
+		dfault.AgreedPrestate = fi.AgreedPrestate
+	}
 	dfault.InteropEnabled = fi.InteropEnabled
 	return dfault
 }
