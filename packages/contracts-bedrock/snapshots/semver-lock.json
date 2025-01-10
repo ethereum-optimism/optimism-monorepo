@@ -21,7 +21,7 @@
   },
   "src/L1/OptimismPortal2.sol": {
     "initCodeHash": "0x32ba32dce7717119f4f868925140e2c92d010ea5378c8923d40dc83e299fd961",
-    "sourceCodeHash": "0x8db762caddc1ef283ae70e6111d560aefde427ce5f8b57703100d708d268f6f8"
+    "sourceCodeHash": "0x258b7edfe6c8be55ca8d14df30512233f1b443c3a858d38ef33f6bbad1be38d3"
   },
   "src/L1/OptimismPortalInterop.sol": {
     "initCodeHash": "0x70ce9058c15f9fbddc4a3df14dbdad2a734845260cbe05f4eceba9d3239a033a",
