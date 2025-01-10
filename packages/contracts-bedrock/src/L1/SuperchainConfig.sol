@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { Initializable } from "src/vendor/Initializable-v5.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
@@ -20,6 +20,9 @@ contract SuperchainConfig is Initializable, ISemver {
     enum UpdateType {
         GUARDIAN
     }
+
+    /// @notice Gap for legacy Initializable, _initialized (uint8) and _initializing (bool) packed in one slot
+    uint256 private __gap_0;
 
     /// @notice Whether or not the Superchain is paused.
     bytes32 public constant PAUSED_SLOT = bytes32(uint256(keccak256("superchainConfig.paused")) - 1);

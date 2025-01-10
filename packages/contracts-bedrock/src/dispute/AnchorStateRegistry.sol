@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { Initializable } from "src/vendor/Initializable-v5.sol";
 
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
@@ -35,6 +35,9 @@ contract AnchorStateRegistry is Initializable, ISemver {
 
     /// @notice DisputeGameFactory address.
     IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;
+
+    /// @notice Gap for legacy Initializable, _initialized (uint8) and _initializing (bool) packed in one slot
+    uint256 private __gap_0;
 
     /// @notice Returns the anchor state for the given game type.
     mapping(GameType => OutputRoot) public anchors;
