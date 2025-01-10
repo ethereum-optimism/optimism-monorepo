@@ -29,9 +29,21 @@ func SuperRoot(super Super) Bytes32 {
 	return Bytes32(crypto.Keccak256Hash(marshaled))
 }
 
+type ChainIdOutputPair struct {
+	ChainID uint64
+	Output  Bytes32
+}
+
+func (c *ChainIdOutputPair) Marshal() []byte {
+	d := make([]byte, 64)
+	binary.BigEndian.PutUint64(d[24:32], c.ChainID)
+	copy(d[32:], c.Output[:])
+	return d
+}
+
 type SuperV1 struct {
 	Timestamp uint64
-	Outputs   []Bytes32
+	Chains    []ChainIdOutputPair
 }
 
 func (o *SuperV1) Version() byte {
@@ -39,12 +51,12 @@ func (o *SuperV1) Version() byte {
 }
 
 func (o *SuperV1) Marshal() []byte {
-	buf := make([]byte, 0, 9+len(o.Outputs)*32)
+	buf := make([]byte, 0, 9+len(o.Chains)*64)
 	version := o.Version()
 	buf = append(buf, version)
 	buf = binary.BigEndian.AppendUint64(buf, o.Timestamp)
-	for _, o := range o.Outputs {
-		buf = append(buf, o[:]...)
+	for _, o := range o.Chains {
+		buf = append(buf, o.Marshal()...)
 	}
 	return buf
 }
@@ -72,12 +84,14 @@ func unmarshalSuperRootV1(data []byte) (*SuperV1, error) {
 		return nil, ErrInvalidSuperRoot
 	}
 	var output SuperV1
-	// data[:32] is the version
+	// data[:1] is the version
 	output.Timestamp = binary.BigEndian.Uint64(data[1:9])
-	for i := 9; i < len(data); i += 32 {
-		chainOutput := Bytes32{}
-		copy(chainOutput[:], data[i:i+32])
-		output.Outputs = append(output.Outputs, chainOutput)
+	for i := 9; i < len(data); i += 64 {
+		chainOutput := ChainIdOutputPair{
+			ChainID: binary.BigEndian.Uint64(data[i+24 : i+32]),
+			Output:  Bytes32(data[i+32 : i+64]),
+		}
+		output.Chains = append(output.Chains, chainOutput)
 	}
 	return &output, nil
 }
