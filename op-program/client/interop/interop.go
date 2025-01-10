@@ -64,7 +64,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 		bootInfo.RollupConfig,
 		bootInfo.L2ChainConfig,
 		bootInfo.L1Head,
-		superRoot.Chains[0].Output,
+		superRoot.Chains[transitionState.Step].Output,
 		claimedBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
