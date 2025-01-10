@@ -44,6 +44,10 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
         __ERC721Bridge_init({ _messenger: _messenger, _otherBridge: ERC721Bridge(payable(Predeploys.L2_ERC721_BRIDGE)) });
     }
 
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract and set initializer value.
+    function upgrade() external reinitializer(32) {}
+
     /// @inheritdoc ERC721Bridge
     function paused() public view override returns (bool) {
         return superchainConfig.paused();

@@ -398,7 +398,11 @@ contract OPContractsManager is ISemver {
             ISystemConfig.Addresses memory opChainAddrs = getAddresses(systemConfig);
 
             IProxyAdmin proxyAdmin = _opChains[i].proxyAdmin;
-            proxyAdmin.upgrade(payable(address(systemConfig)), impls.systemConfigImpl);
+            proxyAdmin.upgradeAndCall(
+                payable(address(systemConfig)),
+                impls.systemConfigImpl,
+                abi.encodeCall(ISystemConfig.upgrade, ())
+            );
             proxyAdmin.upgradeAndCall(
                 payable(opChainAddrs.l1CrossDomainMessenger),
                 impls.l1CrossDomainMessengerImpl,
@@ -409,11 +413,25 @@ contract OPContractsManager is ISemver {
                 impls.l1StandardBridgeImpl,
                 abi.encodeCall(IL1StandardBridge.upgrade, (systemConfig))
             );
-            proxyAdmin.upgrade(payable(opChainAddrs.l1ERC721Bridge), impls.l1ERC721BridgeImpl);
-            proxyAdmin.upgrade(payable(opChainAddrs.disputeGameFactory), impls.disputeGameFactoryImpl);
-            proxyAdmin.upgrade(payable(opChainAddrs.optimismPortal), impls.optimismPortalImpl);
-            proxyAdmin.upgrade(
-                payable(opChainAddrs.optimismMintableERC20Factory), impls.optimismMintableERC20FactoryImpl
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.l1ERC721Bridge),
+                impls.l1ERC721BridgeImpl,
+                abi.encodeCall(IL1ERC721Bridge.upgrade, ())
+            );
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.disputeGameFactory),
+                impls.disputeGameFactoryImpl,
+                abi.encodeCall(IDisputeGameFactory.upgrade, ())
+            );
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.optimismPortal),
+                impls.optimismPortalImpl,
+                abi.encodeCall(IOptimismPortal2.upgrade, ())
+            );
+            proxyAdmin.upgradeAndCall(
+                payable(opChainAddrs.optimismMintableERC20Factory),
+                impls.optimismMintableERC20FactoryImpl,
+                abi.encodeCall(IOptimismMintableERC20Factory.upgrade, ())
             );
 
             // TODO:  discover and update the implementations for the ASR and DelayedWeth (but not the dispute games

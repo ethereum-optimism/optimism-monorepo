@@ -25,6 +25,7 @@ interface IAnchorStateRegistry {
         ISuperchainConfig _superchainConfig
     )
         external;
+    function upgrade() external;
     function setAnchorState(IFaultDisputeGame _game) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function tryUpdateAnchorState() external;

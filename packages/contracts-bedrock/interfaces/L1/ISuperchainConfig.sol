@@ -15,6 +15,7 @@ interface ISuperchainConfig {
     function PAUSED_SLOT() external view returns (bytes32);
     function guardian() external view returns (address guardian_);
     function initialize(address _guardian, bool _paused) external;
+    function upgrade() external;
     function pause(string memory _identifier) external;
     function paused() external view returns (bool paused_);
     function unpause() external;

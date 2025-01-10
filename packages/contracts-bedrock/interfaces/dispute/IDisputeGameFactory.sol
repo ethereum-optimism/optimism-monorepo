@@ -63,6 +63,7 @@ interface IDisputeGameFactory {
         returns (Hash uuid_);
     function initBonds(GameType) external view returns (uint256);
     function initialize(address _owner) external;
+    function upgrade() external;
     function owner() external view returns (address);
     function renounceOwnership() external;
     function setImplementation(GameType _gameType, IDisputeGame _impl) external;

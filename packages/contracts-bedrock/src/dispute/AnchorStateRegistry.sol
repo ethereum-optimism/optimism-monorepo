@@ -65,6 +65,10 @@ contract AnchorStateRegistry is Initializable, ISemver {
         superchainConfig = _superchainConfig;
     }
 
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract.
+    function upgrade() external reinitializer(32) {}
+
     /// @notice Returns the DisputeGameFactory address.
     /// @return DisputeGameFactory address.
     function disputeGameFactory() external view returns (IDisputeGameFactory) {

@@ -17,6 +17,7 @@ interface IProtocolVersions {
     function REQUIRED_SLOT() external view returns (bytes32);
     function VERSION() external view returns (uint256);
     function initialize(address _owner, ProtocolVersion _required, ProtocolVersion _recommended) external;
+    function upgrade() external;
     function owner() external view returns (address);
     function recommended() external view returns (ProtocolVersion out_);
     function renounceOwnership() external;

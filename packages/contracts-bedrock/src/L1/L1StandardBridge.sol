@@ -108,7 +108,10 @@ contract L1StandardBridge is StandardBridge, ISemver {
         });
     }
 
-    function upgrade(ISystemConfig _systemConfig) external {
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract.
+    /// @param _systemConfig The new SystemConfig contract.
+    function upgrade(ISystemConfig _systemConfig) external reinitializer(32) {
         systemConfig = _systemConfig;
     }
 

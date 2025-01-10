@@ -65,6 +65,10 @@ contract OptimismMintableERC20Factory is ISemver, Initializable, IOptimismERC20F
         bridge = _bridge;
     }
 
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract and set initializer value.
+    function upgrade() external reinitializer(32) {}
+
     /// @notice Getter function for the address of the StandardBridge on this chain.
     ///         Public getter is legacy and will be removed in the future. Use `bridge` instead.
     /// @return Address of the StandardBridge on this chain.

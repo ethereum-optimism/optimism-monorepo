@@ -62,6 +62,7 @@ interface ISystemConfig {
         Addresses memory _addresses
     )
         external;
+    function upgrade() external;
     function isCustomGasToken() external view returns (bool);
     function l1CrossDomainMessenger() external view returns (address addr_);
     function l1ERC721Bridge() external view returns (address addr_);

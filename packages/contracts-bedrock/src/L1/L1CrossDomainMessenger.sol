@@ -56,7 +56,10 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
         __CrossDomainMessenger_init({ _otherMessenger: CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER) });
     }
 
-    function upgrade(ISystemConfig _systemConfig) external {
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract.
+    /// @param _systemConfig The new SystemConfig contract.
+    function upgrade(ISystemConfig _systemConfig) external reinitializer(32) {
         systemConfig = _systemConfig;
     }
 

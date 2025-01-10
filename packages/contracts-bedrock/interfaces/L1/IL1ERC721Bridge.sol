@@ -34,6 +34,7 @@ interface IL1ERC721Bridge is IERC721Bridge {
     )
         external;
     function initialize(ICrossDomainMessenger _messenger, ISuperchainConfig _superchainConfig) external;
+    function upgrade() external;
     function paused() external view returns (bool);
     function superchainConfig() external view returns (ISuperchainConfig);
     function version() external view returns (string memory);

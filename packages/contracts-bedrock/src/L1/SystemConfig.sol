@@ -202,6 +202,10 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         _setResourceConfig(_config);
     }
 
+    // TODO: Replace version passed to reinitializer with a semver based uin64 value.
+    /// @notice Upgrades the contract and set initializer value.
+    function upgrade() external reinitializer(32) {}
+
     /// @notice Returns the minimum L2 gas limit that can be safely set for the system to
     ///         operate. The L2 gas limit must be larger than or equal to the amount of
     ///         gas that is allocated for deposits per block plus the amount of gas that
