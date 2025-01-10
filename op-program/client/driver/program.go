@@ -60,15 +60,23 @@ func (d *ProgramDeriver) OnEvent(ev event.Event) bool {
 		// and continue with the next.
 		d.Emitter.Emit(engine.PendingSafeRequestEvent{})
 	case engine.ForkchoiceUpdateEvent:
+		// Track latest head.
+		if x.SafeL2Head.Number >= d.result.Number {
+			d.result = x.SafeL2Head
+		}
+		// Stop if we have reached the target block
 		if x.SafeL2Head.Number >= d.targetBlockNum {
 			d.logger.Info("Derivation complete: reached L2 block as safe", "head", x.SafeL2Head)
 			d.closing = true
-			d.result = x.SafeL2Head
 		}
 	case engine.LocalSafeUpdateEvent:
+		// Track latest head.
+		if x.Ref.Number >= d.result.Number {
+			d.result = x.Ref
+		}
+		// Stop if we have reached the target block
 		if x.Ref.Number >= d.targetBlockNum {
 			d.logger.Info("Derivation complete: reached L2 block as local safe", "head", x.Ref)
-			d.result = x.Ref
 			d.closing = true
 		}
 	case derive.DeriverIdleEvent:
