@@ -325,7 +325,7 @@ contract Deploy is Deployer {
             OptimismPortal: address(dio.optimismPortalImpl()),
             SystemConfig: address(dio.systemConfigImpl()),
             L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
-            // We didn't deploy new versions of these in this function so we don't need to append a suffix.
+            // We didn't deploy new versions of these in this function, so just read the existing ones.
             ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
             SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
         });
