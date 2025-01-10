@@ -54,7 +54,7 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 		L2ClaimBlockNumber: agreedSuperRoot.Timestamp + 1,
 		L2Claim:            expectedClaim,
 	}
-	err = runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, &tasks)
+	err = runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, &tasks)
 	require.NoError(t, err)
 }
 

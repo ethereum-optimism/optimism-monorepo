@@ -47,11 +47,8 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 	l2PreimageOracle := l2.NewCachingOracle(l2.NewPreimageOracle(pClient, hClient))
 
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
-	if os.Getenv("USE_INTEROP") == "true" {
-		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
+	if os.Getenv("OP_PROGRAM_USE_INTEROP") == "true" {
+		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, flags == RunProgramFlagValidate)
 	}
-	if flags == RunProgramFlagValidate {
-		return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
-	}
-	return nil
+	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 }
