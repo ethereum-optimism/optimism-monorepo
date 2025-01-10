@@ -60,4 +60,6 @@ interface IDelayedWETH {
     function transferFrom(address src, address dst, uint256 wad) external returns (bool);
 
     function __constructor__(uint256 _delay) external;
+
+    function upgrade() external;
 }

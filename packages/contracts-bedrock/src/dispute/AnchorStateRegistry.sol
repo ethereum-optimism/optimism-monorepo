@@ -67,7 +67,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
 
     // TODO: Replace version passed to reinitializer with a semver based uin64 value.
     /// @notice Upgrades the contract.
-    function upgrade() external reinitializer(32) {}
+    function upgrade() external reinitializer(32) { }
 
     /// @notice Returns the DisputeGameFactory address.
     /// @return DisputeGameFactory address.

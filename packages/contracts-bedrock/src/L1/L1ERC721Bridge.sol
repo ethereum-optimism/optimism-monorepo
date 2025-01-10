@@ -46,7 +46,7 @@ contract L1ERC721Bridge is ERC721Bridge, ISemver {
 
     // TODO: Replace version passed to reinitializer with a semver based uin64 value.
     /// @notice Upgrades the contract and set initializer value.
-    function upgrade() external reinitializer(32) {}
+    function upgrade() external reinitializer(32) { }
 
     /// @inheritdoc ERC721Bridge
     function paused() public view override returns (bool) {

@@ -87,6 +87,8 @@ interface IOptimismPortalInterop {
         GameType _initialRespectedGameType
     )
         external;
+    function upgrade() external;
+
     function l2Sender() external view returns (address);
     function minimumGasLimit(uint64 _byteCount) external pure returns (uint64);
     function numProofSubmitters(bytes32 _withdrawalHash) external view returns (uint256);

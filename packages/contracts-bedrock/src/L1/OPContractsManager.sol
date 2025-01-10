@@ -399,9 +399,7 @@ contract OPContractsManager is ISemver {
 
             IProxyAdmin proxyAdmin = _opChains[i].proxyAdmin;
             proxyAdmin.upgradeAndCall(
-                payable(address(systemConfig)),
-                impls.systemConfigImpl,
-                abi.encodeCall(ISystemConfig.upgrade, ())
+                payable(address(systemConfig)), impls.systemConfigImpl, abi.encodeCall(ISystemConfig.upgrade, ())
             );
             proxyAdmin.upgradeAndCall(
                 payable(opChainAddrs.l1CrossDomainMessenger),

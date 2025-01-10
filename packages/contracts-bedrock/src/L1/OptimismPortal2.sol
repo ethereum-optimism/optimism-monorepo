@@ -234,7 +234,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
     // TODO: Replace version passed to reinitializer with a semver based uin64 value.
     /// @notice Upgrades the contract and set initializer value.
-    function upgrade() external reinitializer(32) {}
+    function upgrade() external reinitializer(32) { }
 
     /// @notice Getter for the balance of the contract.
     function balance() public view returns (uint256) {

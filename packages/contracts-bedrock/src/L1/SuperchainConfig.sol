@@ -61,7 +61,7 @@ contract SuperchainConfig is Initializable, ISemver {
 
     // TODO: Replace version passed to reinitializer with a semver based uin64 value.
     /// @notice Upgrades the contract and set initializer value.
-    function upgrade() external reinitializer(32) {}
+    function upgrade() external reinitializer(32) { }
 
     /// @notice Getter for the guardian address.
     function guardian() public view returns (address guardian_) {

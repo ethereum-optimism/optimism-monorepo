@@ -62,7 +62,7 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
 
     // TODO: Replace version passed to reinitializer with a semver based uin64 value.
     /// @notice Upgrades the contract and set initializer value.
-    function upgrade() external reinitializer(32) {}
+    function upgrade() external reinitializer(32) { }
 
     /// @notice High level getter for the required protocol version.
     /// @return out_ Required protocol version to sync to the head of the chain.
