@@ -113,7 +113,7 @@ on_failure() {
 # empty assignment to activate/deactivate the corresponding flag
 lemmas=test/kontrol/pausability-lemmas.md
 base_module=PAUSABILITY-LEMMAS
-module=OptimismPortalKontrol:$base_module
+module=OptimismPortal2Kontrol:$base_module
 rekompile=--rekompile
 # rekompile=
 regen=--regen
@@ -122,19 +122,6 @@ regen=--regen
 #################################
 # Tests to symbolically execute #
 #################################
-# Temporarily unexecuted tests
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused0" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused1(" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused2" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused3" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused4" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused5" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused6" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused7" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused8" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused9" \
-# "OptimismPortalKontrol.prove_proveWithdrawalTransaction_paused10" \
-
 test_list=()
 if [ "$SCRIPT_TESTS" == true ]; then
   test_list=(
