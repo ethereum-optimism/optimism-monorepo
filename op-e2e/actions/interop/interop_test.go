@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
@@ -250,7 +249,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 	require.NoError(t, err)
 
 	serializeIntermediateRoot := func(root *types.TransitionState) []byte {
-		data, err := rlp.EncodeToBytes(root)
+		data, err := root.Marshal()
 		require.NoError(t, err)
 		return data
 	}
