@@ -194,5 +194,8 @@ func CheckRequired(ctx *cli.Context) error {
 	if !ctx.IsSet(L2OutputRoot.Name) && !ctx.IsSet(L2AgreedPrestate.Name) {
 		return fmt.Errorf("flag %s or %s is required", L2OutputRoot.Name, L2AgreedPrestate.Name)
 	}
+	if ctx.IsSet(L2OutputRoot.Name) && ctx.IsSet(L2AgreedPrestate.Name) {
+		return fmt.Errorf("flag %s and %s must not be specified together", L2OutputRoot.Name, L2AgreedPrestate.Name)
+	}
 	return nil
 }
