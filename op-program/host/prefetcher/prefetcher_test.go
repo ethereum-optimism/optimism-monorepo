@@ -583,7 +583,7 @@ func TestFetchAgreedPrestate(t *testing.T) {
 		hash := crypto.Keccak256Hash(prestate)
 		hint := l2.AgreedPrestateHint(hash).Hint()
 		require.NoError(t, prefetcher.Hint(hint))
-		actual, err := prefetcher.GetPreimage(context.Background(), hash)
+		actual, err := prefetcher.GetPreimage(context.Background(), preimage.Keccak256Key(hash).PreimageKey())
 		require.NoError(t, err)
 		require.Equal(t, prestate, actual)
 	})
