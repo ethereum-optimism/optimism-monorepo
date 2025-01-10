@@ -24,7 +24,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 	var standardVersionsTOML string
 	var contractsRelease string
 	var err error
-	if intent.L1ContractsLocator.IsTag() && intent.DeploymentStrategy == state.DeploymentStrategyLive {
+	if intent.L1ContractsLocator.IsTag() {
 		standardVersionsTOML, err = standard.L1VersionsDataFor(intent.L1ChainID)
 		if err == nil {
 			contractsRelease = intent.L1ContractsLocator.Tag

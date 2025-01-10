@@ -309,6 +309,7 @@ func initAllocType(root string, allocType AllocType) {
 			if err := deployer.ApplyPipeline(
 				context.Background(),
 				deployer.ApplyPipelineOpts{
+					DeploymentTarget:   deployer.DeploymentTargetGenesis,
 					L1RPCUrl:           "",
 					DeployerPrivateKey: pk,
 					Intent:             intent,
@@ -360,9 +361,8 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 	defaultPrestate := common.HexToHash("0x03c7ae758795765c6664a5d39bf63841c71ff191e9189522bad8ebff5d4eca98")
 	genesisOutputRoot := common.HexToHash("0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF")
 	return &state.Intent{
-		ConfigType:         state.IntentConfigTypeCustom,
-		DeploymentStrategy: state.DeploymentStrategyGenesis,
-		L1ChainID:          900,
+		ConfigType: state.IntentConfigTypeCustom,
+		L1ChainID:  900,
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       deployer,
 			ProtocolVersionsOwner: deployer,

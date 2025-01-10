@@ -132,6 +132,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -148,6 +149,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -169,6 +171,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.ErrorIs(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -177,6 +180,25 @@ func TestEndToEndApply(t *testing.T) {
 				StateWriter:        pipeline.NoopStateWriter(),
 			},
 		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
+	})
+
+	t.Run("with calldata broadcasts", func(t *testing.T) {
+		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+
+		require.NoError(t, deployer.ApplyPipeline(
+			ctx,
+			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetCalldata,
+				L1RPCUrl:           rpcURL,
+				DeployerPrivateKey: pk,
+				Intent:             intent,
+				State:              st,
+				Logger:             lgr,
+				StateWriter:        pipeline.NoopStateWriter(),
+			},
+		))
+
+		require.Greater(t, len(st.DeploymentCalldata), 0)
 	})
 }
 
@@ -380,6 +402,7 @@ func testApplyExistingOPCM(t *testing.T, testInfo existingOPCMTest) {
 	require.NoError(t, deployer.ApplyPipeline(
 		ctx,
 		deployer.ApplyPipelineOpts{
+			DeploymentTarget:   deployer.DeploymentTargetLive,
 			L1RPCUrl:           runner.RPCUrl(),
 			DeployerPrivateKey: pk,
 			Intent:             intent,
@@ -836,7 +859,6 @@ func TestInvalidL2Genesis(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts, intent, _ := setupGenesisChain(t, defaultL1ChainID)
-			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 			intent.GlobalDeployOverrides = tt.overrides
 
 			err := deployer.ApplyPipeline(ctx, opts)
@@ -1001,9 +1023,9 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 	loc, _ := testutil.LocalArtifacts(t)
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
-	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 
 	opts := deployer.ApplyPipelineOpts{
+		DeploymentTarget:   deployer.DeploymentTargetGenesis,
 		DeployerPrivateKey: priv,
 		Intent:             intent,
 		State:              st,
@@ -1029,9 +1051,8 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
-		ConfigType:         state.IntentConfigTypeCustom,
-		DeploymentStrategy: state.DeploymentStrategyLive,
-		L1ChainID:          l1ChainID.Uint64(),
+		ConfigType: state.IntentConfigTypeCustom,
+		L1ChainID:  l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       addrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainID)),
 			ProtocolVersionsOwner: addrFor(t, dk, devkeys.SuperchainDeployerKey.Key(l1ChainID)),

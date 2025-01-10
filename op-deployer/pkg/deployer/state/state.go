@@ -3,6 +3,8 @@ package state
 import (
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
@@ -40,6 +42,10 @@ type State struct {
 
 	// L1StateDump contains the complete L1 state dump of the deployment.
 	L1StateDump *GzipData[foundry.ForgeAllocs] `json:"l1StateDump"`
+
+	// DeploymentCalldata contains the calldata of each transaction in the deployment. This is only
+	// populated if apply is called with --deployment-target=genesis.
+	DeploymentCalldata []broadcaster.CalldataDump
 }
 
 func (s *State) WriteToFile(path string) error {
