@@ -306,13 +306,11 @@ contract Deploy is Deployer {
         }
         di.run(dii, dio);
 
-        // Fault proofs
+        // Save the implementation addresses which are needed outside of this function or script.
         // When called in a fork test, this will overwrite the existing implementations.
-        // TODO: Deploy implementations using create2 to avoid replacing existing identical implementations
-        // (https://github.com/ethereum-optimism/optimism/issues/13644)
-        artifacts.save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
         artifacts.save("MipsSingleton", address(dio.mipsSingleton()));
         artifacts.save("OPContractsManager", address(dio.opcm()));
+        artifacts.save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
 
         // Get a contract set from the implementation addresses which were just deployed.
         Types.ContractSet memory contracts = Types.ContractSet({
@@ -354,8 +352,8 @@ contract Deploy is Deployer {
         });
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
-            _opcm: OPContractsManager(artifacts.mustGetAddress("OPContractsManager")),
-            _mips: IMIPS(artifacts.mustGetAddress("MipsSingleton"))
+            _opcm: OPContractsManager(address(dio.opcm())),
+            _mips: IMIPS(address(dio.mipsSingleton()))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
