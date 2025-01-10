@@ -38,6 +38,7 @@ type backend interface {
 	SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
+	RecordNewL1(ctx context.Context, chainID types.ChainID, l1 eth.BlockRef) error
 }
 
 const (
@@ -356,6 +357,15 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 		// which is fired if the provided L1 block was received successfully,
 		// but does not fit on the derivation state.
 		return
+	}
+	// now that the node has the next L1 block, we can add it to the database
+	// this ensures that only the L1 *or* the L2 ever increments in the derivation database,
+	// as RecordNewL1 will insert the new L1 block with the latest L2 block
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+	err = m.backend.RecordNewL1(ctx, m.chainID, nextL1)
+	if err != nil {
+		m.log.Warn("Failed to record new L1 block", "l1Block", nextL1, "err", err)
 	}
 }
 

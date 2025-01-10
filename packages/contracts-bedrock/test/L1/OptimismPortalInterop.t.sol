@@ -21,20 +21,10 @@ contract OptimismPortalInterop_Test is CommonTest {
         super.setUp();
     }
 
-    /// @dev Tests that the config for the gas paying token can be set.
-    function testFuzz_setConfig_gasPayingToken_succeeds(bytes calldata _value) public {
-        vm.expectEmit(address(optimismPortal2));
-        emitTransactionDeposited({
-            _from: Constants.DEPOSITOR_ACCOUNT,
-            _to: Predeploys.L1_BLOCK_ATTRIBUTES,
-            _value: 0,
-            _mint: 0,
-            _gasLimit: 200_000,
-            _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.SET_GAS_PAYING_TOKEN, _value))
-        });
-
+    /// @dev Tests that the config for the gas paying token cannot be set.
+    function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
         vm.prank(address(_optimismPortalInterop().systemConfig()));
+        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
         _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
 

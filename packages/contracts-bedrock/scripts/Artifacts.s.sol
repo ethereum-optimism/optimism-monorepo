@@ -158,8 +158,10 @@ contract Artifacts {
         if (bytes(_name).length == 0) {
             revert InvalidDeployment("EmptyName");
         }
-        if (bytes(_namedDeployments[_name].name).length > 0) {
-            revert InvalidDeployment("AlreadyExists");
+        Deployment memory existing = _namedDeployments[_name];
+        if (bytes(existing.name).length > 0) {
+            console.log("Warning: Deployment already exists for %s.", _name);
+            console.log("Overwriting %s with %s", existing.addr, _deployed);
         }
 
         Deployment memory deployment = Deployment({ name: _name, addr: payable(_deployed) });

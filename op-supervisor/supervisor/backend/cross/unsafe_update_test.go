@@ -146,7 +146,7 @@ func TestCrossUnsafeUpdate(t *testing.T) {
 		usd.openBlockFn = func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
 			return bl, 3, map[uint32]*types.ExecutingMessage{1: em1, 2: em2}, nil
 		}
-		usd.checkFn = func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+		usd.checkFn = func(chainID types.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
 			return types.BlockSeal{Number: 1, Timestamp: 1}, nil
 		}
 		usd.deps = mockDependencySet{}
@@ -193,7 +193,7 @@ type mockCrossUnsafeDeps struct {
 	crossUnsafeFn       func(chainID types.ChainID) (types.BlockSeal, error)
 	openBlockFn         func(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 	updateCrossUnsafeFn func(chain types.ChainID, crossUnsafe types.BlockSeal) error
-	checkFn             func(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
+	checkFn             func(chainID types.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
 }
 
 func (m *mockCrossUnsafeDeps) CrossUnsafe(chainID types.ChainID) (derived types.BlockSeal, err error) {
@@ -207,9 +207,9 @@ func (m *mockCrossUnsafeDeps) DependencySet() depset.DependencySet {
 	return m.deps
 }
 
-func (m *mockCrossUnsafeDeps) Check(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+func (m *mockCrossUnsafeDeps) Check(chainID types.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
 	if m.checkFn != nil {
-		return m.checkFn(chainID, blockNum, logIdx, logHash)
+		return m.checkFn(chainID, blockNum, timestamp, logIdx, logHash)
 	}
 	return types.BlockSeal{}, nil
 }

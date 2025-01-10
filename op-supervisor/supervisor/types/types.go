@@ -105,9 +105,10 @@ func (lvl SafetyLevel) String() string {
 	return string(lvl)
 }
 
-func (lvl SafetyLevel) Valid() bool {
+// Validate returns true if the SafetyLevel is one of the recognized levels
+func (lvl SafetyLevel) Validate() bool {
 	switch lvl {
-	case Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
+	case Invalid, Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
 		return true
 	default:
 		return false
@@ -123,7 +124,7 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 		return errors.New("cannot unmarshal into nil SafetyLevel")
 	}
 	x := SafetyLevel(text)
-	if !x.Valid() {
+	if !x.Validate() {
 		return fmt.Errorf("unrecognized safety level: %q", text)
 	}
 	*lvl = x

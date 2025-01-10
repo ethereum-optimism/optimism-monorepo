@@ -137,6 +137,7 @@ var _ SyncControl = (*mockSyncControl)(nil)
 type mockBackend struct {
 	updateLocalUnsafeFn func(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
 	updateLocalSafeFn   func(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
+	recordL1Fn          func(ctx context.Context, chain types.ChainID, ref eth.BlockRef) error
 }
 
 func (m *mockBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (pair types.DerivedIDPair, err error) {
@@ -175,6 +176,13 @@ func (m *mockBackend) UpdateLocalUnsafe(ctx context.Context, chainID types.Chain
 
 func (m *mockBackend) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
 	return eth.L1BlockRef{}, nil
+}
+
+func (m *mockBackend) RecordNewL1(ctx context.Context, chain types.ChainID, ref eth.BlockRef) error {
+	if m.recordL1Fn != nil {
+		return m.recordL1Fn(ctx, chain, ref)
+	}
+	return nil
 }
 
 var _ backend = (*mockBackend)(nil)

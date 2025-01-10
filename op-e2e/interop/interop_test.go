@@ -174,9 +174,8 @@ func TestInterop_EmitLogs(t *testing.T) {
 
 		supervisor := s2.SupervisorClient()
 
-		// requireMessage checks the safety level of a log against the supervisor
-		// it also checks that the error is as expected
-		requireMessage := func(chainID string, log gethTypes.Log, expectedSafety types.SafetyLevel, expectedError error) {
+		// helper function to turn a log into an identifier and the expected hash of the payload
+		logToIdentifier := func(chainID string, log gethTypes.Log) (types.Identifier, common.Hash) {
 			client := s2.L2GethClient(chainID)
 			// construct the expected hash of the log's payload
 			// (topics concatenated with data)
@@ -201,23 +200,35 @@ func TestInterop_EmitLogs(t *testing.T) {
 				Timestamp:   block.Time(),
 				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
 			}
-
-			safety, err := supervisor.CheckMessage(context.Background(),
-				identifier,
-				expectedHash,
-			)
-			require.ErrorIs(t, err, expectedError)
-			// the supervisor could progress the safety level more quickly than we expect,
-			// which is why we check for a minimum safety level
-			require.True(t, safety.AtLeastAsSafe(expectedSafety), "log: %v should be at least %s, but is %s", log, expectedSafety.String(), safety.String())
+			return identifier, expectedHash
 		}
+
 		// all logs should be cross-safe
 		for _, log := range logsA {
-			requireMessage(chainA, log, types.CrossSafe, nil)
+			identifier, expectedHash := logToIdentifier(chainA, log)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			require.NoError(t, err)
+			// the supervisor could progress the safety level more quickly than we expect,
+			// which is why we check for a minimum safety level
+			require.True(t, safety.AtLeastAsSafe(types.CrossSafe), "log: %v should be at least Cross-Safe, but is %s", log, safety.String())
 		}
 		for _, log := range logsB {
-			requireMessage(chainB, log, types.CrossSafe, nil)
+			identifier, expectedHash := logToIdentifier(chainB, log)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			require.NoError(t, err)
+			// the supervisor could progress the safety level more quickly than we expect,
+			// which is why we check for a minimum safety level
+			require.True(t, safety.AtLeastAsSafe(types.CrossSafe), "log: %v should be at least Cross-Safe, but is %s", log, safety.String())
 		}
+
+		// a log should be invalid if the timestamp is incorrect
+		identifier, expectedHash := logToIdentifier(chainA, logsA[0])
+		// make the timestamp incorrect
+		identifier.Timestamp = 333
+		safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+		require.NoError(t, err)
+		require.Equal(t, types.Invalid, safety)
+
 	}
 	config := SuperSystemConfig{
 		mempoolFiltering: false,

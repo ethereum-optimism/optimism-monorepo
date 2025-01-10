@@ -12,6 +12,7 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
@@ -38,7 +39,7 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() external virtual {
-        IL1StandardBridge impl = IL1StandardBridge(artifacts.mustGetAddress("L1StandardBridgeImpl"));
+        IL1StandardBridge impl = IL1StandardBridge(payable(EIP1967Helper.getImplementation(address(l1StandardBridge))));
         assertEq(address(impl.superchainConfig()), address(0));
 
         // The constructor now uses _disableInitializers, whereas OP Mainnet has these values in storage

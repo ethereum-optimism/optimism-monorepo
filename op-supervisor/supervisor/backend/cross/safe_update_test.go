@@ -406,7 +406,7 @@ func (m *mockCrossSafeDeps) CrossDerivedFrom(chainID types.ChainID, derived eth.
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockCrossSafeDeps) Check(chainID types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
+func (m *mockCrossSafeDeps) Check(chainID types.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error) {
 	if m.checkFn != nil {
 		return m.checkFn(chainID, blockNum, logIdx, logHash)
 	}

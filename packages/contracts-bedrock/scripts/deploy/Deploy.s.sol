@@ -275,10 +275,12 @@ contract Deploy is Deployer {
     }
 
     /// @notice Deploy all of the implementations
+    /// @param _isInterop Whether to use interop
     function deployImplementations(bool _isInterop) public {
         require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
 
         console.log("Deploying implementations");
+
         DeployImplementations di = new DeployImplementations();
         (DeployImplementationsInput dii, DeployImplementationsOutput dio) = di.etchIOContracts();
 
@@ -302,21 +304,30 @@ contract Deploy is Deployer {
         }
         di.run(dii, dio);
 
-        artifacts.save("L1CrossDomainMessengerImpl", address(dio.l1CrossDomainMessengerImpl()));
-        artifacts.save("OptimismMintableERC20FactoryImpl", address(dio.optimismMintableERC20FactoryImpl()));
-        artifacts.save("SystemConfigImpl", address(dio.systemConfigImpl()));
-        artifacts.save("L1StandardBridgeImpl", address(dio.l1StandardBridgeImpl()));
-        artifacts.save("L1ERC721BridgeImpl", address(dio.l1ERC721BridgeImpl()));
-
-        // Fault proofs
-        artifacts.save("OptimismPortal2Impl", address(dio.optimismPortalImpl()));
-        artifacts.save("DisputeGameFactoryImpl", address(dio.disputeGameFactoryImpl()));
-        artifacts.save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
-        artifacts.save("PreimageOracleSingleton", address(dio.preimageOracleSingleton()));
+        // Save the implementation addresses which are needed outside of this function or script.
+        // When called in a fork test, this will overwrite the existing implementations.
         artifacts.save("MipsSingleton", address(dio.mipsSingleton()));
         artifacts.save("OPContractsManager", address(dio.opcm()));
+        artifacts.save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
 
-        Types.ContractSet memory contracts = _impls();
+        // Get a contract set from the implementation addresses which were just deployed.
+        Types.ContractSet memory contracts = Types.ContractSet({
+            L1CrossDomainMessenger: address(dio.l1CrossDomainMessengerImpl()),
+            L1StandardBridge: address(dio.l1StandardBridgeImpl()),
+            L2OutputOracle: address(0),
+            DisputeGameFactory: address(dio.disputeGameFactoryImpl()),
+            DelayedWETH: address(dio.delayedWETHImpl()),
+            PermissionedDelayedWETH: address(dio.delayedWETHImpl()),
+            AnchorStateRegistry: address(0),
+            OptimismMintableERC20Factory: address(dio.optimismMintableERC20FactoryImpl()),
+            OptimismPortal: address(dio.optimismPortalImpl()),
+            SystemConfig: address(dio.systemConfigImpl()),
+            L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
+            // We didn't deploy new versions of these in this function, so just read the existing ones.
+            ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
+            SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
+        });
+
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
         ChainAssertions.checkL1StandardBridge({ _contracts: contracts, _isProxy: false });
         ChainAssertions.checkL1ERC721Bridge({ _contracts: contracts, _isProxy: false });
@@ -339,8 +350,8 @@ contract Deploy is Deployer {
         });
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
-            _opcm: OPContractsManager(artifacts.mustGetAddress("OPContractsManager")),
-            _mips: IMIPS(artifacts.mustGetAddress("MipsSingleton"))
+            _opcm: OPContractsManager(address(dio.opcm())),
+            _mips: IMIPS(address(dio.mipsSingleton()))
         });
         if (_isInterop) {
             ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
