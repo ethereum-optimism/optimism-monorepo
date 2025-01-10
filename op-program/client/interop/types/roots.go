@@ -48,7 +48,7 @@ func (i *TransitionState) Hash() (common.Hash, error) {
 	return crypto.Keccak256Hash(data), nil
 }
 
-func UnmarshalProofsState(data []byte) (*TransitionState, error) {
+func UnmarshalTransitionState(data []byte) (*TransitionState, error) {
 	if len(data) == 0 {
 		return nil, eth.ErrInvalidSuperRoot
 	}

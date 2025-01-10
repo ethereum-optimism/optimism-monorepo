@@ -124,7 +124,7 @@ func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 func (p *PreimageOracle) TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState {
 	p.hint.Hint(AgreedPrestateHint(root))
 	data := p.oracle.Get(preimage.Keccak256Key(root))
-	output, err := interopTypes.UnmarshalProofsState(data)
+	output, err := interopTypes.UnmarshalTransitionState(data)
 	if err != nil {
 		panic(fmt.Errorf("invalid agreed prestate data for root %s: %w", root, err))
 	}
