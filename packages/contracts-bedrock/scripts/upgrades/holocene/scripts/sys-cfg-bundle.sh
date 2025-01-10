@@ -53,7 +53,7 @@ OPTIMISM_MINTABLE_ERC20_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "o
 GAS_PAYING_TOKEN=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
 
 # Handle DisputeGameFactory in a version-specific way:
-SYSTEM_CONFIG_VERSION=$(cast abi-decode "version()(string)" $(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "version()") | tr -d '"')
+SYSTEM_CONFIG_VERSION=$(cast abi-decode "version()(string)" "$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "version()")" | tr -d '"')
 MCPver=1.12.0 # e.g. if on MCP op-contracts/v1.3.0
 FPver=2.2.0 # e.g. if on op-contracts/v1.6.0
 case "$SYSTEM_CONFIG_VERSION" in
