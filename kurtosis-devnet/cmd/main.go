@@ -199,6 +199,7 @@ func (m *Main) renderTemplate(dir string) (*bytes.Buffer, error) {
 		m.localDockerImageOption(),
 		m.localContractArtifactsOption(dir),
 		m.localPrestateOption(dir),
+		tmpl.WithBaseDir(m.cfg.baseDir),
 	}
 
 	// Read and parse the data file if provided
