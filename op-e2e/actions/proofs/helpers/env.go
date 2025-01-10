@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	e2ecfg "github.com/ethereum-optimism/optimism/op-e2e/config"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -151,6 +152,13 @@ func WithL2Claim(claim common.Hash) FixtureInputParam {
 	}
 }
 
+func WithAgreedPrestate(prestate []byte) FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.AgreedPrestate = prestate
+		f.L2OutputRoot = crypto.Keccak256Hash(prestate)
+	}
+}
+
 func WithL2BlockNumber(num uint64) FixtureInputParam {
 	return func(f *FixtureInputs) {
 		f.L2BlockNumber = num
@@ -213,6 +221,7 @@ func NewOpProgramCfg(
 		dfault.DataDir = t.TempDir()
 		dfault.DataFormat = hostTypes.DataFormatPebble
 	}
+	dfault.AgreedPrestate = fi.AgreedPrestate
 	dfault.InteropEnabled = fi.InteropEnabled
 	return dfault
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
+	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/host/flags"
@@ -24,17 +25,19 @@ import (
 )
 
 var (
-	ErrMissingRollupConfig = errors.New("missing rollup config")
-	ErrMissingL2Genesis    = errors.New("missing l2 genesis")
-	ErrInvalidL1Head       = errors.New("invalid l1 head")
-	ErrInvalidL2Head       = errors.New("invalid l2 head")
-	ErrInvalidL2OutputRoot = errors.New("invalid l2 output root")
-	ErrL1AndL2Inconsistent = errors.New("l1 and l2 options must be specified together or both omitted")
-	ErrInvalidL2Claim      = errors.New("invalid l2 claim")
-	ErrInvalidL2ClaimBlock = errors.New("invalid l2 claim block number")
-	ErrDataDirRequired     = errors.New("datadir must be specified when in non-fetching mode")
-	ErrNoExecInServerMode  = errors.New("exec command must not be set when in server mode")
-	ErrInvalidDataFormat   = errors.New("invalid data format")
+	ErrMissingRollupConfig   = errors.New("missing rollup config")
+	ErrMissingL2Genesis      = errors.New("missing l2 genesis")
+	ErrInvalidL1Head         = errors.New("invalid l1 head")
+	ErrInvalidL2Head         = errors.New("invalid l2 head")
+	ErrInvalidL2OutputRoot   = errors.New("invalid l2 output root")
+	ErrInvalidAgreedPrestate = errors.New("invalid l2 agreed prestate")
+	ErrL1AndL2Inconsistent   = errors.New("l1 and l2 options must be specified together or both omitted")
+	ErrInvalidL2Claim        = errors.New("invalid l2 claim")
+	ErrInvalidL2ClaimBlock   = errors.New("invalid l2 claim block number")
+	ErrDataDirRequired       = errors.New("datadir must be specified when in non-fetching mode")
+	ErrNoExecInServerMode    = errors.New("exec command must not be set when in server mode")
+	ErrInvalidDataFormat     = errors.New("invalid data format")
+	ErrMissingAgreedPrestate = errors.New("missing agreed prestate")
 )
 
 type Config struct {
@@ -80,6 +83,8 @@ type Config struct {
 
 	// InteropEnabled enables interop fault proof rules when running the client in-process
 	InteropEnabled bool
+	// AgreedPrestate is the preimage of the agreed prestate claim. Required for interop.
+	AgreedPrestate []byte
 }
 
 func (c *Config) Check() error {
@@ -115,6 +120,9 @@ func (c *Config) Check() error {
 	}
 	if c.DataDir != "" && !slices.Contains(types.SupportedDataFormats, c.DataFormat) {
 		return ErrInvalidDataFormat
+	}
+	if c.InteropEnabled && len(c.AgreedPrestate) == 0 {
+		return ErrMissingAgreedPrestate
 	}
 	return nil
 }
@@ -162,7 +170,18 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	if l2Head == (common.Hash{}) {
 		return nil, ErrInvalidL2Head
 	}
-	l2OutputRoot := common.HexToHash(ctx.String(flags.L2OutputRoot.Name))
+	var l2OutputRoot common.Hash
+	var agreedPrestate []byte
+	if ctx.IsSet(flags.L2OutputRoot.Name) {
+		l2OutputRoot = common.HexToHash(ctx.String(flags.L2OutputRoot.Name))
+	} else if ctx.IsSet(flags.L2AgreedPrestate.Name) {
+		prestateStr := ctx.String(flags.L2AgreedPrestate.Name)
+		agreedPrestate = common.FromHex(prestateStr)
+		if len(agreedPrestate) == 0 {
+			return nil, ErrInvalidAgreedPrestate
+		}
+		l2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
+	}
 	if l2OutputRoot == (common.Hash{}) {
 		return nil, ErrInvalidL2OutputRoot
 	}
@@ -238,6 +257,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		L2ChainConfig:      l2ChainConfig,
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
+		AgreedPrestate:     agreedPrestate,
 		L2Claim:            l2Claim,
 		L2ClaimBlockNumber: l2ClaimBlockNum,
 		L1Head:             l1Head,

@@ -174,7 +174,36 @@ func TestCustomL2ChainID(t *testing.T) {
 		cfg := NewConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
 		require.Equal(t, cfg.L2ChainID, boot.CustomChainIDIndicator)
 	})
+}
 
+func TestAgreedPrestate(t *testing.T) {
+	t.Run("requiredWithInterop-nil", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.InteropEnabled = true
+		cfg.AgreedPrestate = nil
+		err := cfg.Check()
+		require.ErrorIs(t, err, ErrMissingAgreedPrestate)
+	})
+	t.Run("requiredWithInterop-empty", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.InteropEnabled = true
+		cfg.AgreedPrestate = []byte{}
+		err := cfg.Check()
+		require.ErrorIs(t, err, ErrMissingAgreedPrestate)
+	})
+
+	t.Run("notRequiredWithoutInterop", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.AgreedPrestate = nil
+		require.NoError(t, cfg.Check())
+	})
+
+	t.Run("valid", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.InteropEnabled = true
+		cfg.AgreedPrestate = []byte{1}
+		require.NoError(t, cfg.Check())
+	})
 }
 
 func TestDBFormat(t *testing.T) {

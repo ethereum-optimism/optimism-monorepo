@@ -83,7 +83,7 @@ func RunFaultProofProgram(t helpers.Testing, logger log.Logger, l1 *helpers.L1Mi
 			l2DebugCl := hostcommon.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
 			executor := host.MakeProgramExecutor(logger, programCfg)
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, l2ChainConfig.Config, executor), nil
+			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, executor, cfg.AgreedPrestate), nil
 		})
 		err = hostcommon.FaultProofProgram(t.Ctx(), logger, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)
