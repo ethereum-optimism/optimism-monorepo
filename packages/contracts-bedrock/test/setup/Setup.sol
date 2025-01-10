@@ -222,6 +222,7 @@ contract Setup {
         anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
         disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
+        opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =

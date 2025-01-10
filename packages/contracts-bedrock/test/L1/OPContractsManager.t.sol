@@ -5,6 +5,7 @@ pragma solidity 0.8.15;
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
+import { DelegateCaller } from "test/mocks/Callers.sol";
 
 // Scripts
 import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
@@ -16,6 +17,8 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 // Exposes internal functions for testing.
 contract OPContractsManager_Harness is OPContractsManager {
@@ -156,18 +159,46 @@ contract OPContractsManager_InternalMethods_Test is Test {
     }
 }
 
-contract OPContractsManager_Upgrade_Test is CommonTest {
+contract OPContractsManager_Upgrade_Harness is CommonTest {
+    event Upgraded(ISystemConfig indexed systemConfig, address indexed upgrader);
+
+    IProxyAdmin proxyAdmin;
+    address upgrader;
+
     function setUp() public override {
+        super.disableUpgradedFork();
         super.setUp();
         if (!isForkTest()) {
             // This test is only supported in forked tests, as we are testing the upgrade.
             vm.skip(true);
         }
+
+        proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
+        upgrader = proxyAdmin.owner();
+        vm.label(upgrader, "ProxyAdmin Owner");
     }
 
-    // Note: this test happens after the system is already upgraded. Not sure how to test the event is emitted.
-    function test_upgrade_succeeds() public view {
-        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
+    function _getOpChains() internal view returns (OPContractsManager.OpChain[] memory) {
+        OPContractsManager.OpChain[] memory opChains = new OPContractsManager.OpChain[](1);
+        opChains[0] = OPContractsManager.OpChain({
+            systemConfig: systemConfig,
+            proxyAdmin: proxyAdmin
+        });
+        return opChains;
+    }
+}
+
+contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
+    function test_upgrade_succeeds() public {
+        OPContractsManager.OpChain[] memory opChains = _getOpChains();
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        vm.expectEmit(true, true, true, false);
+        emit Upgraded(opChains[0].systemConfig, address(upgrader));
+        DelegateCaller(upgrader).dcForward(
+            address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains))
+        );
+
         OPContractsManager.Implementations memory impls = opcm.implementations();
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
@@ -178,7 +209,15 @@ contract OPContractsManager_Upgrade_Test is CommonTest {
             EIP1967Helper.getImplementation(address(l1OptimismMintableERC20Factory))
         );
         assertEq(impls.l1StandardBridgeImpl, EIP1967Helper.getImplementation(address(l1StandardBridge)));
-
         assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
     }
+}
+
+contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harness {
+    function test_upgrade_notDelegateCalled_reverts() public {
+        vm.prank(upgrader);
+        vm.expectRevert(OPContractsManager.OnlyDelegatecall.selector);
+        opcm.upgrade(_getOpChains());
+    }
+
 }
