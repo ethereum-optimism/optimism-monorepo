@@ -6,7 +6,6 @@ import {
     SafeConfig,
     SecurityCouncilConfig,
     GuardianConfig,
-    DeputyGuardianModuleConfig,
     LivenessModuleConfig
 } from "scripts/deploy/DeployOwnership.s.sol";
 import { Test } from "forge-std/Test.sol";

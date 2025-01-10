@@ -148,8 +148,8 @@
     "sourceCodeHash": "0xdb771f1b92c7612b120e0bce31967f0c8a7ce332dbb426bc9cfc52b47be21c4d"
   },
   "src/cannon/PreimageOracle.sol": {
-    "initCodeHash": "0xf08736a5af9277a4f3498dfee84a40c9b05f1a2ba3177459bebe2b0b54f99343",
-    "sourceCodeHash": "0x14b952b2a00bc4ec5e149bb5fb2a973bb255f0fd3f4a42b6bd05bc3bbe51f2b1"
+    "initCodeHash": "0x17d3b3df1aaaf7a705b8d48de8a05e6511b910fdafdbe5eb7f7f95ec944fba9a",
+    "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
     "initCodeHash": "0x2d831d6afc62df024eb2df22eaca3c7378171e63d87c608bb53c0020d30c3dee",
@@ -212,8 +212,8 @@
     "sourceCodeHash": "0x02025b303a8f37b4e541f8c7936a8651402a60ea0147a53176e06b51b15a1f84"
   },
   "src/vendor/eas/EAS.sol": {
-    "initCodeHash": "0xce1700cfc0a8e346b0a8e8c64b6570ba731d874b434b4798fe3176f3903c404b",
-    "sourceCodeHash": "0xde4c41139672fc0581ba77425ab1d822a8123ceaa3ad0655be869fcc722b8add"
+    "initCodeHash": "0xbd79d6fff128b3da3e09ead84b805b7540740190488f2791a6b4e5b7aabf9cff",
+    "sourceCodeHash": "0x3512c3a1b5871341346f6646a04c0895dd563e9824f2ab7ab965b6a81a41ad2e"
   },
   "src/vendor/eas/SchemaRegistry.sol": {
     "initCodeHash": "0x2bfce526f82622288333d53ca3f43a0a94306ba1bab99241daa845f8f4b18bd4",
