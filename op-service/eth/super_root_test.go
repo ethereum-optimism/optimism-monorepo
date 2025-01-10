@@ -19,12 +19,12 @@ func TestUnmarshalSuperRoot_TooShortForVersion(t *testing.T) {
 
 func TestSuperRootV1Codec(t *testing.T) {
 	t.Run("Valid", func(t *testing.T) {
-		chainA := ChainIdOutputPair{ChainID: 11, Output: Bytes32{0x01}}
-		chainB := ChainIdOutputPair{ChainID: 12, Output: Bytes32{0x02}}
-		chainC := ChainIdOutputPair{ChainID: 13, Output: Bytes32{0x03}}
+		chainA := ChainIDAndOutput{ChainID: 11, Output: Bytes32{0x01}}
+		chainB := ChainIDAndOutput{ChainID: 12, Output: Bytes32{0x02}}
+		chainC := ChainIDAndOutput{ChainID: 13, Output: Bytes32{0x03}}
 		superRoot := SuperV1{
 			Timestamp: 7000,
-			Chains:    []ChainIdOutputPair{chainA, chainB, chainC},
+			Chains:    []ChainIDAndOutput{chainA, chainB, chainC},
 		}
 		marshaled := superRoot.Marshal()
 		unmarshaled, err := UnmarshalSuperRoot(marshaled)
