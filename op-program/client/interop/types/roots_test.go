@@ -12,7 +12,10 @@ func TestTransitionStateCodec(t *testing.T) {
 	t.Run("TransitionState", func(t *testing.T) {
 		superRoot := &eth.SuperV1{
 			Timestamp: 9842494,
-			Outputs:   []eth.Bytes32{{0x01}, {0x02}},
+			Chains: []eth.ChainIDAndOutput{
+				{ChainID: 34, Output: eth.Bytes32{0x01}},
+				{ChainID: 35, Output: eth.Bytes32{0x02}},
+			},
 		}
 		state := &TransitionState{
 			SuperRoot: superRoot.Marshal(),
@@ -32,7 +35,10 @@ func TestTransitionStateCodec(t *testing.T) {
 	t.Run("SuperRoot", func(t *testing.T) {
 		superRoot := &eth.SuperV1{
 			Timestamp: 9842494,
-			Outputs:   []eth.Bytes32{{0x01}, {0x02}},
+			Chains: []eth.ChainIDAndOutput{
+				{ChainID: 34, Output: eth.Bytes32{0x01}},
+				{ChainID: 35, Output: eth.Bytes32{0x02}},
+			},
 		}
 		expected := &TransitionState{
 			SuperRoot: superRoot.Marshal(),
