@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
 )
@@ -202,7 +203,16 @@ func TestAgreedPrestate(t *testing.T) {
 		cfg := validConfig()
 		cfg.InteropEnabled = true
 		cfg.AgreedPrestate = []byte{1}
+		cfg.L2OutputRoot = crypto.Keccak256Hash(cfg.AgreedPrestate)
 		require.NoError(t, cfg.Check())
+	})
+
+	t.Run("mustMatchL2OutputRoot", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.InteropEnabled = true
+		cfg.AgreedPrestate = []byte{1}
+		cfg.L2OutputRoot = common.Hash{0xaa}
+		require.ErrorIs(t, cfg.Check(), ErrInvalidAgreedPrestate)
 	})
 }
 

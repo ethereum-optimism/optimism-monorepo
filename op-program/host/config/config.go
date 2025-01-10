@@ -121,8 +121,13 @@ func (c *Config) Check() error {
 	if c.DataDir != "" && !slices.Contains(types.SupportedDataFormats, c.DataFormat) {
 		return ErrInvalidDataFormat
 	}
-	if c.InteropEnabled && len(c.AgreedPrestate) == 0 {
-		return ErrMissingAgreedPrestate
+	if c.InteropEnabled {
+		if len(c.AgreedPrestate) == 0 {
+			return ErrMissingAgreedPrestate
+		}
+		if crypto.Keccak256Hash(c.AgreedPrestate) != c.L2OutputRoot {
+			return fmt.Errorf("%w: must be preimage of L2 output root", ErrInvalidAgreedPrestate)
+		}
 	}
 	return nil
 }
