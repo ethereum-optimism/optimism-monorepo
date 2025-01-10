@@ -6,7 +6,6 @@ import { console2 as console } from "forge-std/console2.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Scripts
-import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Config, OutputMode, OutputModeUtils, Fork, ForkUtils, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { Process } from "scripts/libraries/Process.sol";
 import { SetPreinstalls } from "scripts/SetPreinstalls.s.sol";
@@ -45,7 +44,7 @@ struct L1Dependencies {
 ///         effects in the constructor and no immutables in the bytecode.
 ///         2. A contract must be deployed using the `new` syntax if there are immutables in the code.
 ///         Any other side effects from the init code besides setting the immutables must be cleaned up afterwards.
-contract L2Genesis is Deployer {
+contract L2Genesis is Script {
     using ForkUtils for Fork;
     using OutputModeUtils for OutputMode;
 
@@ -95,7 +94,6 @@ contract L2Genesis is Deployer {
     /// @notice Sets up the script and ensures the deployer account is used to make calls.
     function setUp() public override {
         deployer = makeAddr("deployer");
-        super.setUp();
     }
 
     function artifactDependencies() internal view returns (L1Dependencies memory l1Dependencies_) {

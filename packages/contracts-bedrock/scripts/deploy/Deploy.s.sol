@@ -9,7 +9,6 @@ import { AlphabetVM } from "test/mocks/AlphabetVM.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Scripts
-import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 import { Config } from "scripts/libraries/Config.sol";
 import { StateDiff } from "scripts/libraries/StateDiff.sol";
@@ -57,7 +56,7 @@ import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 ///         Then add a call to that function inside of `run`. Be sure to call the `save` function after each
 ///         deployment so that hardhat-deploy style artifacts can be generated using a call to `sync()`.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
-contract Deploy is Deployer {
+contract Deploy is Script {
     using stdJson for string;
 
     ////////////////////////////////////////////////////////////////

@@ -5,7 +5,6 @@ pragma solidity ^0.8.0;
 import { stdJson } from "forge-std/StdJson.sol";
 
 // Scripts
-import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
@@ -26,7 +25,7 @@ import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
-contract ForkLive is Deployer {
+contract ForkLive is Script {
     using stdJson for string;
 
     /// @notice Returns the base chain name to use for forking

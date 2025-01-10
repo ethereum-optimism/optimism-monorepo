@@ -13,6 +13,9 @@ import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
 import { Artifacts } from "scripts/Artifacts.s.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { Config } from "scripts/libraries/Config.sol";
+import { Process } from "scripts/libraries/Process.sol";
+import { DeployConfig } from "scripts/deploy/DeployConfig.s.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -77,6 +80,11 @@ contract Setup {
     Artifacts public constant artifacts =
         Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
 
+    /// @notice The address of the DeployConfig contract. Set into state with `etch` to avoid
+    ///         mutating any nonces. MUST not have constructor logic.
+    DeployConfig public constant cfg =
+        DeployConfig(address(uint160(uint256(keccak256(abi.encode("optimism.deployconfig"))))));
+
     L2Genesis internal constant l2Genesis =
         L2Genesis(address(uint160(uint256(keccak256(abi.encode("optimism.l2genesis"))))));
 
@@ -127,15 +135,27 @@ contract Setup {
         return vm.envOr("FORK_TEST", false);
     }
 
-    /// @dev Deploys either the Deploy.s.sol or Fork.s.sol contract, by fetching the bytecode dynamically using
-    ///      `vm.getDeployedCode()` and etching it into the state.
-    ///      This enables us to avoid including the bytecode of those contracts in the bytecode of this contract.
-    ///      If the bytecode of those contracts was included in this contract, then it will double
-    ///      the compile time and bloat all of the test contract artifacts since they
-    ///      will also need to include the bytecode for the Deploy contract.
-    ///      This is a hack as we are pushing solidity to the edge.
+    /// @notice Returns the commit hash of HEAD. If no git repository is
+    /// found, it will return the contents of the .gitcommit file. Otherwise,
+    /// it will return an error. The .gitcommit file is used to store the
+    /// git commit of the contracts when they are packaged into docker images
+    /// in order to avoid the need to have a git repository in the image.
+    function gitCommitHash() internal returns (string memory) {
+        return Process.bash("cast abi-encode 'f(string)' $(git rev-parse HEAD || cat .gitcommit)");
+    }
+
+    /// @dev Sets up the artifacts contract.
     function setUp() public virtual {
+        console.log("Commit hash: %s", gitCommitHash());
         console.log("Setup: L1 setup start!");
+
+        // Set up the artifacts contract
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(artifacts), _cname: "Artifacts" });
+        artifacts.setUp();
+
+        // Set up the deploy config
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(cfg), _cname: "DeployConfig" });
+        cfg.read(Config.deployConfigPath());
 
         if (isForkTest()) {
             vm.createSelectFork(vm.envString("FORK_RPC_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
