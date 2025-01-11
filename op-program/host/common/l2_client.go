@@ -2,7 +2,6 @@ package common
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -30,17 +29,6 @@ func NewL2Client(client client.RPC, log log.Logger, metrics caching.Metrics, con
 	}, nil
 }
 
-func (s *L2Client) OutputByRoot(ctx context.Context, l2OutputRoot common.Hash, blockRoot common.Hash) (eth.Output, error) {
-	output, err := s.OutputV0AtBlock(ctx, blockRoot)
-	if err != nil {
-		return nil, err
-	}
-	actualOutputRoot := eth.OutputRoot(output)
-	if actualOutputRoot != eth.Bytes32(l2OutputRoot) {
-		// For fault proofs, we only reference outputs at the l2 head at boot time
-		// The caller shouldn't be requesting outputs at any other block
-		// If they are, there is no chance of recovery and we should panic to avoid retrying forever
-		panic(fmt.Errorf("output root %v from specified L2 block %v does not match requested output root %v", actualOutputRoot, blockRoot, l2OutputRoot))
-	}
-	return output, nil
+func (s *L2Client) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
+	return s.OutputV0AtBlock(ctx, blockRoot)
 }

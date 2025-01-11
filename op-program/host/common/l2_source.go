@@ -120,11 +120,11 @@ func (l *L2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) 
 }
 
 // OutputByRoot implements prefetcher.L2Source.
-func (l *L2Source) OutputByRoot(ctx context.Context, root common.Hash, blockRoot common.Hash) (eth.Output, error) {
+func (l *L2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
 	if l.ExperimentalEnabled() {
-		return l.experimentalClient.OutputByRoot(ctx, root, blockRoot)
+		return l.experimentalClient.OutputByRoot(ctx, blockRoot)
 	}
-	return l.canonicalEthClient.OutputByRoot(ctx, root, blockRoot)
+	return l.canonicalEthClient.OutputByRoot(ctx, blockRoot)
 }
 
 // ExecutionWitness implements prefetcher.L2Source.

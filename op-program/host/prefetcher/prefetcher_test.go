@@ -678,13 +678,13 @@ type l2Client struct {
 	*testutils.MockDebugClient
 }
 
-func (m *l2Client) OutputByRoot(ctx context.Context, root common.Hash, blockHash common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root, blockHash)
+func (m *l2Client) OutputByRoot(ctx context.Context, blockHash common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", blockHash)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
-func (m *l2Client) ExpectOutputByRoot(root common.Hash, output eth.Output, err error) {
-	m.Mock.On("OutputByRoot", root).Once().Return(output, &err)
+func (m *l2Client) ExpectOutputByRoot(blockRoot common.Hash, output eth.Output, err error) {
+	m.Mock.On("OutputByRoot", blockRoot).Once().Return(output, &err)
 }
 
 func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
