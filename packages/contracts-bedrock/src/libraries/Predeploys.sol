@@ -101,9 +101,16 @@ library Predeploys {
     /// @notice Address of the OptimismSuperchainERC20Beacon predeploy.
     address internal constant OPTIMISM_SUPERCHAIN_ERC20_BEACON = 0x4200000000000000000000000000000000000027;
 
-    // TODO: Precalculate the address of the implementation contract
-    /// @notice Arbitrary address of the OptimismSuperchainERC20 implementation contract.
-    address internal constant OPTIMISM_SUPERCHAIN_ERC20 = 0xB9415c6cA93bdC545D4c5177512FCC22EFa38F28;
+    /// @notice Address of the OptimismSuperchainERC20 implementation contract.
+    /// @dev This address is deterministically computed using CREATE2 with:
+    ///      1. Salt: keccak256("OptimismSuperchainERC20")
+    ///      2. Init code hash: keccak256(type(OptimismSuperchainERC20).creationCode)
+    address internal constant OPTIMISM_SUPERCHAIN_ERC20 = address(uint160(uint256(keccak256(abi.encodePacked(
+        bytes1(0xff),
+        OPTIMISM_SUPERCHAIN_ERC20_BEACON,
+        keccak256("OptimismSuperchainERC20"),
+        hex"c5d2460186f7233c927e7db2dcc703c0e500b653ca82273b7bfad8045d85a470" // keccak256 of init code
+    )))));
 
     /// @notice Address of the SuperchainTokenBridge predeploy.
     address internal constant SUPERCHAIN_TOKEN_BRIDGE = 0x4200000000000000000000000000000000000028;
