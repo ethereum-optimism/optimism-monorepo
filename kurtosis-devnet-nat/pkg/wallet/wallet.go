@@ -1,74 +1,89 @@
 package wallet
 
 import (
-	// metrics "github.com/ethereum-optimism/optimism/op-node/metrics"
-	// "github.com/ethereum-optimism/optimism/op-service/ethclient"
-	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/ethclient"
+	"crypto/ecdsa"
+
+	"fmt"
+	"math/big"
+	"strings"
+
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/network"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	// rpc "github.com/ethereum/go-ethereum/rpc"
 	"golang.org/x/net/context"
 )
-
-type Network struct {
-	ChainID hexutil.Big
-	Name    string
-	addr    string
-	RPC     *ethclient.Client
-	log     log.Logger
-}
-
-func NewNetwork(ctx context.Context, log log.Logger, addr, name string) (*Network, error) {
-	// rpc, err := dial.DialRPCClientWithTimeout(ctx, time.Second*10, log, addr)
-	client, err := ethclient.Dial(addr)
-	if err != nil {
-		return nil, err
-	}
-	return &Network{
-		RPC:  client,
-		addr: addr,
-		Name: name,
-		log:  log,
-	}, nil
-
-}
-
-func (n *Network) DumpInfo(ctx context.Context) error {
-	block, err := n.RPC.BlockNumber(ctx)
-	if err != nil {
-		n.log.Error("error retreving block",
-			"network", n.Name,
-			"err", err)
-	}
-	chainID, err := n.RPC.ChainID(ctx)
-	if err != nil {
-		n.log.Error("error retreving block",
-			"network", n.Name,
-			"err", err)
-	}
-	log.Info("Network Dump", "network", n.Name)
-	log.Info("Current block", "block", block)
-	log.Info("ChainID", "chain-id", chainID.String())
-	return nil
-}
 
 type Wallet struct {
 	privateKey string
 	publicKey  string
+	address    common.Address
+	name       string
+}
+
+// func NewWallet(privateKey, publicKey, name string) (*Wallet, error) {
+//
+// 	return &Wallet{
+// 		privateKey: privateKey,
+// 		publicKey:  publicKey,
+// 		address:    common.BytesToAddress([]byte(privateKey)),
+// 		name:       name,
+// 	}, nil
+// }
+
+// NewWallet creates a new wallet.
+func NewWallet(privateKeyHex, name string) (*Wallet, error) {
+
+	privateKeyHex = strings.TrimPrefix(privateKeyHex, "0x")
+	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %v", err)
+	}
+
+	publicKey := privateKey.Public().(*ecdsa.PublicKey)
+	address := crypto.PubkeyToAddress(*publicKey)
+
+	// Correctly format the public key to a hex string without the 0x prefix.
+	publicKeyHex := common.Bytes2Hex(crypto.FromECDSAPub(publicKey))[2:]
+
+	return &Wallet{
+		privateKey: privateKeyHex,
+		publicKey:  publicKeyHex,
+		address:    address,
+		name:       name,
+	}, nil
 }
 
 type WalletInterface interface {
-	GetBalance(network Network) (int error)
-	Send(network Network, to string) error
+	GetBalance(context.Context, network.Network) (int error)
+	Send(network.Network, string) error
 }
 
-func (w *Wallet) GetBalance(ctx context.Context, network Network) string {
-	return w.publicKey
-	// if err := network.RPC.CallContext(ctx, &idResult, "eth_chainId"); err != nil {
-	// 	return nil, fmt.Errorf("failed to retrieve chain ID: %w", err)
-	// }
+func (w *Wallet) GetBalance(ctx context.Context, network network.Network) (*big.Int, error) {
+	return network.RPC.BalanceAt(ctx, w.address, nil)
 }
 
 func (w *Wallet) Send() string {
 	return w.privateKey
+}
+
+func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Network) {
+
+	balances := []string{}
+	for _, n := range networks {
+		bal, err := w.GetBalance(ctx, n)
+		if err != nil {
+			log.Error("Error dumping wallet", "wallet", w.name, "network", n.Name, "err", err)
+		}
+		balances = append(balances, fmt.Sprintf("%s     : %s", n.Name, bal.String()))
+	}
+
+	log.Info(fmt.Sprintf("-------------- Wallet: %s ---------------", w.name))
+	log.Info(fmt.Sprintf("private key: %s", w.privateKey))
+	log.Info(fmt.Sprintf("public key : %s", w.publicKey))
+	log.Info(fmt.Sprintf("address    : %s", w.address))
+	for b := range balances {
+		log.Info(balances[b])
+	}
+	log.Info("----------------------------------------")
 }

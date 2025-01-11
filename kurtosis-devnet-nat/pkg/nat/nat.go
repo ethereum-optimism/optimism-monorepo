@@ -3,7 +3,8 @@ package nat
 import (
 	"context"
 
-	wallet "github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/wallet"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/network"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/wallet"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -11,9 +12,12 @@ type NetworkTester struct {
 	ctx context.Context
 	log log.Logger
 
-	L1  wallet.Network
-	L2A wallet.Network
-	L2B wallet.Network
+	L1  network.Network
+	L2A network.Network
+	L2B network.Network
+
+	user0 wallet.Wallet
+	user1 wallet.Wallet
 }
 
 func (n *NetworkTester) Start(ctx context.Context) error {
@@ -22,6 +26,12 @@ func (n *NetworkTester) Start(ctx context.Context) error {
 	_ = n.L1.DumpInfo(ctx)
 	_ = n.L2A.DumpInfo(ctx)
 	_ = n.L2B.DumpInfo(ctx)
+
+	networks := []network.Network{n.L1, n.L2A, n.L2B}
+
+	n.user0.Dump(ctx, n.log, networks)
+	n.user1.Dump(ctx, n.log, networks)
+
 	return nil
 }
 
@@ -34,29 +44,49 @@ func (n *NetworkTester) Stopped() bool {
 }
 
 func New(ctx context.Context, log log.Logger) (*NetworkTester, error) {
-	l1, err := wallet.NewNetwork(ctx, log, "http://127.0.0.1:60370", "kurtosis-l1")
+	l1, err := network.NewNetwork(ctx, log, "http://127.0.0.1:60370", "kurtosis-l1")
 	if err != nil {
 		log.Error("error creating l1 network", "err", err)
 		return nil, err
 	}
 
-	l2A, err := wallet.NewNetwork(ctx, log, "http://127.0.0.1:60403", "kurtosis-1")
+	l2A, err := network.NewNetwork(ctx, log, "http://127.0.0.1:60403", "kurtosis-1")
 	if err != nil {
 		log.Error("error creating l2a network", "err", err)
 		return nil, err
 	}
 
-	l2B, err := wallet.NewNetwork(ctx, log, "http://127.0.0.1:60418", "kurtosis-2")
+	l2B, err := network.NewNetwork(ctx, log, "http://127.0.0.1:60418", "kurtosis-2")
 	if err != nil {
 		log.Error("error creating l2b network", "err", err)
 		return nil, err
 	}
 
+	user0, err := wallet.NewWallet(
+		"0xbcdf20249abf0ed6d944c0288fad489e33f66b3960d9e6229c1cd214ed3bbe31",
+		"user0",
+	)
+	if err != nil {
+		log.Error("error creating user0 wallet", "err", err)
+		return nil, err
+	}
+
+	user1, err := wallet.NewWallet(
+		"0x39725efee3fb28614de3bacaffe4cc4bd8c436257e2c8bb887c4b5c4be45e76d",
+		"user1",
+	)
+	if err != nil {
+		log.Error("error creating user1 wallet", "err", err)
+		return nil, err
+	}
+
 	return &NetworkTester{
-		log: log,
-		ctx: ctx,
-		L1:  *l1,
-		L2A: *l2A,
-		L2B: *l2B,
+		log:   log,
+		ctx:   ctx,
+		L1:    *l1,
+		L2A:   *l2A,
+		L2B:   *l2B,
+		user0: *user0,
+		user1: *user1,
 	}, nil
 }
