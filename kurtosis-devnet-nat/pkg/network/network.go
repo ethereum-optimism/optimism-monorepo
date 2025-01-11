@@ -1,12 +1,9 @@
 package network
 
 import (
-	// metrics "github.com/ethereum-optimism/optimism/op-node/metrics"
-	// "github.com/ethereum-optimism/optimism/op-service/ethclient"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
-	// rpc "github.com/ethereum/go-ethereum/rpc"
 	"golang.org/x/net/context"
 )
 
@@ -19,7 +16,6 @@ type Network struct {
 }
 
 func NewNetwork(ctx context.Context, log log.Logger, addr, name string) (*Network, error) {
-	// rpc, err := dial.DialRPCClientWithTimeout(ctx, time.Second*10, log, addr)
 	client, err := ethclient.Dial(addr)
 	if err != nil {
 		return nil, err

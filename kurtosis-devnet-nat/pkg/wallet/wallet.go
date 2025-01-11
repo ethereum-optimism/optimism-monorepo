@@ -32,7 +32,7 @@ func NewWallet(privateKeyHex, name string) (*Wallet, error) {
 
 	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %v", err)
+		return nil, fmt.Errorf("invalid private key: %w", err)
 	}
 
 	publicKey := privateKey.Public().(*ecdsa.PublicKey)
@@ -62,7 +62,7 @@ func (w *Wallet) Send(ctx context.Context, network network.Network, to common.Ad
 	// 2. Get the nonce (transaction count) for the sender's address:
 	nonce, err := network.RPC.PendingNonceAt(ctx, w.address)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %v", err)
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
 	log.Info("wallet pending nonce", "name", w.name, "nonce", nonce)
 
@@ -71,7 +71,7 @@ func (w *Wallet) Send(ctx context.Context, network network.Network, to common.Ad
 	// 5. Suggest a gas price:
 	gasPrice, err := network.RPC.SuggestGasPrice(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+		return nil, fmt.Errorf("failed to suggest gas price: %w", err)
 	}
 	log.Info("current gas price", "network", network.Name, "gasPrice", gasPrice)
 
