@@ -730,6 +730,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("delay()") });
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("deposit()") });
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("hold(address,uint256)"), _auth: Role.DELAYEDWETHOWNER });
+        _addSpec({ _name: "DelayedWETH", _sel: _getSel("hold(address)"), _auth: Role.DELAYEDWETHOWNER });
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("initialize(address,address)") });
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("name()") });
         _addSpec({ _name: "DelayedWETH", _sel: _getSel("owner()") });

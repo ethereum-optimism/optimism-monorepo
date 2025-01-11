@@ -476,9 +476,16 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _gameType The game type to consult for output proposals.
     function setRespectedGameType(GameType _gameType) external {
         if (msg.sender != guardian()) revert Unauthorized();
-        respectedGameType = _gameType;
-        respectedGameTypeUpdatedAt = uint64(block.timestamp);
-        emit RespectedGameTypeSet(_gameType, Timestamp.wrap(respectedGameTypeUpdatedAt));
+        // respectedGameTypeUpdatedAt is now no longer set by default. We want to avoid modifying
+        // this function's signature as that would result in changes to the DeputyGuardianModule.
+        // We use type(uint32).max as a temporary solution to allow us to update the
+        // respectedGameTypeUpdatedAt timestamp without modifying this function's signature.
+        if (_gameType.raw() == type(uint32).max) {
+            respectedGameTypeUpdatedAt = uint64(block.timestamp);
+        } else {
+            respectedGameType = _gameType;
+            emit RespectedGameTypeSet(_gameType, Timestamp.wrap(respectedGameTypeUpdatedAt));
+        }
     }
 
     /// @notice Checks if a withdrawal can be finalized. This function will revert if the withdrawal cannot be
@@ -518,10 +525,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // from finalizing withdrawals proven against non-finalized output roots.
         if (disputeGameProxy.status() != GameStatus.DEFENDER_WINS) revert ProposalNotValidated();
 
-        // The game type of the dispute game must be the respected game type. This was also checked in
-        // `proveWithdrawalTransaction`, but we check it again in case the respected game type has changed since
-        // the withdrawal was proven.
-        if (disputeGameProxy.gameType().raw() != respectedGameType.raw()) revert InvalidGameType();
+        // The game type of the dispute game must have been the respected game type at creation
+        // time. We check that the game type is the respected game type at proving time, but it's
+        // possible that the respected game type has since changed. Users can still use this game
+        // to finalize a withdrawal as long as it has not been otherwise invalidated.
+        if (!disputeGameProxy.wasRespectedGameTypeWhenCreated()) revert InvalidGameType();
 
         // The game must have been created after `respectedGameTypeUpdatedAt`. This is to prevent users from creating
         // invalid disputes against a deployed game type while the off-chain challenge agents are not watching.

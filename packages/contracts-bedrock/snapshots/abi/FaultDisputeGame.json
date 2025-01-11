@@ -135,6 +135,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "bondDistributionMode",
+    "outputs": [
+      {
+        "internalType": "enum BondDistributionMode",
+        "name": "",
+        "type": "uint8"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "components": [
@@ -279,6 +292,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "closeGame",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -456,6 +476,25 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "hasUnlockedCredit",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "initialize",
     "outputs": [],
@@ -579,6 +618,25 @@
     "name": "move",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "refundModeCredit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -841,6 +899,19 @@
   },
   {
     "inputs": [],
+    "name": "wasRespectedGameTypeWhenCreated",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "weth",
     "outputs": [
       {
@@ -851,6 +922,19 @@
     ],
     "stateMutability": "view",
     "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "enum BondDistributionMode",
+        "name": "bondDistributionMode",
+        "type": "uint8"
+      }
+    ],
+    "name": "GameClosed",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -961,13 +1045,34 @@
     "type": "error"
   },
   {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "reason",
+        "type": "string"
+      }
+    ],
+    "name": "GameNotFinalized",
+    "type": "error"
+  },
+  {
     "inputs": [],
     "name": "GameNotInProgress",
     "type": "error"
   },
   {
     "inputs": [],
+    "name": "GameNotResolved",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "IncorrectBondAmount",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidBondDistributionMode",
     "type": "error"
   },
   {
@@ -1043,6 +1148,11 @@
   {
     "inputs": [],
     "name": "OutOfOrderResolution",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ReservedGameType",
     "type": "error"
   },
   {

@@ -11,7 +11,7 @@ build_info_path = 'artifacts/build-info'
 snapshots = 'notarealpath' # workaround for foundry#9477
 
 optimizer = true
-optimizer_runs = 999999
+optimizer_runs = 5000
 
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
 bytecode_hash = 'none'

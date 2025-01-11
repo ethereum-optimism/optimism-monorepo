@@ -26,6 +26,17 @@ enum GameStatus {
     DEFENDER_WINS
 }
 
+/// @notice The game's bond distribution type. Games are expected to start in the `UNDECIDED`
+///         state, and then choose either `NORMAL` or `REFUND`.
+enum BondDistributionMode {
+    // Bond distribution strategy has not been chosen.
+    UNDECIDED,
+    // Bonds should be distributed as normal.
+    NORMAL,
+    // Bonds should be refunded to claimants.
+    REFUND
+}
+
 /// @notice Represents an L2 output root and the L2 block number at which it was generated.
 /// @custom:field root The output root.
 /// @custom:field l2BlockNumber The L2 block number at which the output root was generated.
