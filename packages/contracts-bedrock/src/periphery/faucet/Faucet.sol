@@ -113,7 +113,7 @@ contract Faucet {
             "Faucet: drip parameters could not be verified by security module"
         );
 
-        // Verify recepient is not the faucet address.
+        // Verify recipient is not the faucet address.
         require(_params.recipient != address(this), "Faucet: cannot drip to itself");
 
         // Set the next timestamp at which this auth id can be used.
