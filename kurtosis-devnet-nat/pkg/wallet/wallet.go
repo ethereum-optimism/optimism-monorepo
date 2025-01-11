@@ -9,16 +9,22 @@ import (
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/network"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"golang.org/x/net/context"
 )
 
 type Wallet struct {
-	privateKey string
-	publicKey  string
-	address    common.Address
-	name       string
+	privateKeyESCDA *ecdsa.PrivateKey
+	privateKey      string
+	publicKey       string
+	address         common.Address
+	name            string
+}
+
+func (w *Wallet) Address() common.Address {
+	return w.address
 }
 
 // NewWallet creates a new wallet.
@@ -33,10 +39,11 @@ func NewWallet(privateKeyHex, name string) (*Wallet, error) {
 	address := crypto.PubkeyToAddress(*publicKey)
 
 	return &Wallet{
-		privateKey: privateKeyHex,
-		publicKey:  address.String(),
-		address:    address,
-		name:       name,
+		privateKeyESCDA: privateKey,
+		privateKey:      privateKeyHex,
+		publicKey:       address.String(),
+		address:         address,
+		name:            name,
 	}, nil
 }
 
@@ -50,8 +57,52 @@ func (w *Wallet) GetBalance(ctx context.Context, network network.Network) (*big.
 	return network.RPC.BalanceAt(ctx, w.address, nil)
 }
 
-func (w *Wallet) Send() string {
-	return w.privateKey
+func (w *Wallet) Send(ctx context.Context, network network.Network, to common.Address) (*types.Transaction, error) {
+
+	// 2. Get the nonce (transaction count) for the sender's address:
+	nonce, err := network.RPC.PendingNonceAt(ctx, w.address)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce: %v", err)
+	}
+	log.Info("wallet pending nonce", "name", w.name, "nonce", nonce)
+
+	value := big.NewInt(100000)
+
+	// 5. Suggest a gas price:
+	gasPrice, err := network.RPC.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to suggest gas price: %v", err)
+	}
+	log.Info("current gas price", "network", network.Name, "gasPrice", gasPrice)
+
+	// 6. Estimate the gas limit:
+	gasLimit := uint64(21000) // Standard gas limit for a simple ETH transfer
+
+	// 7. Create the transaction:
+	tx := types.NewTransaction(nonce, to, value, gasLimit, gasPrice, nil)
+
+	// 8. Sign the transaction:
+	chainID, err := network.RPC.NetworkID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get network ID: %v", err)
+	}
+	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), w.privateKeyESCDA)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+	}
+
+	// 9. Send the transaction:
+	log.Info("sending transaction")
+	err = network.RPC.SendTransaction(ctx, signedTx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to send transaction: %v", err)
+	}
+	log.Info("transcaction sent successfully",
+		"tx_hash", signedTx.Hash().Hex(),
+	)
+
+	// 10. Return the transaction hash:
+	return signedTx, nil
 }
 
 func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Network) {

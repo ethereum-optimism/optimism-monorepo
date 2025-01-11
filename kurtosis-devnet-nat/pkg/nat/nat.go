@@ -2,6 +2,7 @@ package nat
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/network"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet-nat/pkg/wallet"
@@ -31,6 +32,16 @@ func (n *NetworkTester) Start(ctx context.Context) error {
 
 	n.user0.Dump(ctx, n.log, networks)
 	n.user1.Dump(ctx, n.log, networks)
+
+	_, err := n.user1.Send(ctx, n.L2A, n.user0.Address())
+	if err != nil {
+		log.Error("error sending transcation", "err", err)
+	}
+
+	time.Sleep(5 * time.Second)
+	_ = n.L1.DumpInfo(ctx)
+	_ = n.L2A.DumpInfo(ctx)
+	_ = n.L2B.DumpInfo(ctx)
 
 	return nil
 }
