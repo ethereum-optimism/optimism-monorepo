@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
@@ -89,13 +90,17 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	l1BlobFetcher := sources.NewL1BeaconClient(l1Beacon, sources.L1BeaconClientConfig{FetchAllSidecars: false})
 
 	logger.Info("Initializing L2 clients")
-	l2Client, err := hostcommon.NewL2Source(ctx, logger, cfg)
+	var experimentalURLs []string
+	if cfg.L2ExperimentalURL != "" {
+		experimentalURLs = append(experimentalURLs, cfg.L2ExperimentalURL)
+	}
+	sources, err := prefetcher.NewRetryingL2SourcesFromURLs(ctx, logger, []*rollup.Config{cfg.Rollup}, []string{cfg.L2URL}, experimentalURLs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create L2 source: %w", err)
+		return nil, fmt.Errorf("failed to create L2 sources: %w", err)
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, cfg.L2ChainID, sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 }
 
 type programExecutor struct {

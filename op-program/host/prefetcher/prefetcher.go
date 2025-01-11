@@ -49,12 +49,13 @@ type L1BlobSource interface {
 }
 
 type Prefetcher struct {
-	logger        log.Logger
-	l1Fetcher     L1Source
-	l1BlobFetcher L1BlobSource
-	l2Fetcher     *RetryingL2Source
-	lastHint      string
-	kvStore       kvstore.KV
+	logger         log.Logger
+	l1Fetcher      L1Source
+	l1BlobFetcher  L1BlobSource
+	defaultChainID uint64
+	l2Sources      hosttypes.L2Sources
+	lastHint       string
+	kvStore        kvstore.KV
 	// l2Head is the L2 block hash to retrieve output root from if interop is disabled
 	l2Head common.Hash
 
@@ -67,7 +68,8 @@ func NewPrefetcher(
 	logger log.Logger,
 	l1Fetcher L1Source,
 	l1BlobFetcher L1BlobSource,
-	l2Fetcher hosttypes.L2Source,
+	defaultChainID uint64,
+	l2Sources hosttypes.L2Sources,
 	kvStore kvstore.KV,
 	executor ProgramExecutor,
 	l2Head common.Hash,
@@ -77,7 +79,8 @@ func NewPrefetcher(
 		logger:         logger,
 		l1Fetcher:      NewRetryingL1Source(logger, l1Fetcher),
 		l1BlobFetcher:  NewRetryingL1BlobSource(logger, l1BlobFetcher),
-		l2Fetcher:      NewRetryingL2Source(logger, l2Fetcher),
+		defaultChainID: defaultChainID,
+		l2Sources:      l2Sources,
 		kvStore:        kvStore,
 		executor:       executor,
 		l2Head:         l2Head,
@@ -259,7 +262,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("invalid L2 header/tx hint: %x", hint)
 		}
 		hash := common.Hash(hintBytes)
-		header, txs, err := p.l2Fetcher.InfoAndTxsByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		if err != nil {
+			return err
+		}
+		header, txs, err := source.InfoAndTxsByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 block %s: %w", hash, err)
 		}
@@ -277,7 +284,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("invalid L2 state node hint: %x", hint)
 		}
 		hash := common.Hash(hintBytes)
-		node, err := p.l2Fetcher.NodeByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		if err != nil {
+			return err
+		}
+		node, err := source.NodeByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 state node %s: %w", hash, err)
 		}
@@ -287,7 +298,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("invalid L2 code hint: %x", hint)
 		}
 		hash := common.Hash(hintBytes)
-		code, err := p.l2Fetcher.CodeByHash(ctx, hash)
+		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		if err != nil {
+			return err
+		}
+		code, err := source.CodeByHash(ctx, hash)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 contract code %s: %w", hash, err)
 		}
@@ -297,7 +312,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("invalid L2 output hint: %x", hint)
 		}
 		requestedHash := common.Hash(hintBytes)
-		output, err := p.l2Fetcher.OutputByRoot(ctx, p.l2Head)
+		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		if err != nil {
+			return err
+		}
+		output, err := source.OutputByRoot(ctx, p.l2Head)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 output root for block %s: %w", p.l2Head, err)
 		}

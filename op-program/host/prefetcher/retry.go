@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
@@ -100,6 +101,14 @@ type RetryingL2Source struct {
 	logger   log.Logger
 	source   hosttypes.L2Source
 	strategy retry.Strategy
+}
+
+func (s *RetryingL2Source) RollupConfig() *rollup.Config {
+	return s.source.RollupConfig()
+}
+
+func (s *RetryingL2Source) ExperimentalEnabled() bool {
+	return s.source.ExperimentalEnabled()
 }
 
 func (s *RetryingL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {

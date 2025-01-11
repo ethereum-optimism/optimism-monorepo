@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -337,6 +338,16 @@ func createL2Source(t *testing.T) (*RetryingL2Source, *MockL2Source) {
 
 type MockL2Source struct {
 	mock.Mock
+}
+
+func (m *MockL2Source) ExperimentalEnabled() bool {
+	out := m.Mock.MethodCalled("ExperimentalEnabled")
+	return out[0].(bool)
+}
+
+func (m *MockL2Source) RollupConfig() *rollup.Config {
+	out := m.Mock.MethodCalled("RollupConfig")
+	return out[0].(*rollup.Config)
 }
 
 func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {

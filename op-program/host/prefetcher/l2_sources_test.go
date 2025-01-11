@@ -1,4 +1,4 @@
-package common
+package prefetcher
 
 import (
 	"context"
@@ -19,14 +19,14 @@ import (
 func TestNewL2Sources(t *testing.T) {
 	t.Run("NoSources", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelInfo)
-		_, err := NewL2Sources(context.Background(), logger, nil, nil, nil)
+		_, err := NewRetryingL2Sources(context.Background(), logger, nil, nil, nil)
 		require.ErrorIs(t, err, ErrNoSources)
 	})
 
 	t.Run("SingleSource", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		config, l2Rpc, experimentalRpc := chain(4)
-		src, err := NewL2Sources(context.Background(), logger,
+		src, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config},
 			[]client.RPC{l2Rpc},
 			[]client.RPC{experimentalRpc})
@@ -39,7 +39,7 @@ func TestNewL2Sources(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		config1, l2Rpc1, experimentalRpc1 := chain(1)
 		config2, l2Rpc2, experimentalRpc2 := chain(2)
-		src, err := NewL2Sources(context.Background(), logger,
+		src, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config1, config2},
 			[]client.RPC{l2Rpc1, l2Rpc2},
 			[]client.RPC{experimentalRpc1, experimentalRpc2})
@@ -53,7 +53,7 @@ func TestNewL2Sources(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		config1, l2Rpc1, _ := chain(1)
 		config2, l2Rpc2, experimentalRpc2 := chain(2)
-		src, err := NewL2Sources(context.Background(), logger,
+		src, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config1, config2},
 			[]client.RPC{l2Rpc1, l2Rpc2},
 			[]client.RPC{experimentalRpc2})
@@ -70,7 +70,7 @@ func TestNewL2Sources(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		config1, _, _ := chain(1)
 		config2, l2Rpc2, experimentalRpc2 := chain(2)
-		_, err := NewL2Sources(context.Background(), logger,
+		_, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config1, config2},
 			[]client.RPC{l2Rpc2},
 			[]client.RPC{experimentalRpc2})
@@ -81,7 +81,7 @@ func TestNewL2Sources(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		_, l2Rpc1, _ := chain(1)
 		config2, l2Rpc2, experimentalRpc2 := chain(2)
-		_, err := NewL2Sources(context.Background(), logger,
+		_, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config2},
 			[]client.RPC{l2Rpc1, l2Rpc2},
 			[]client.RPC{experimentalRpc2})
@@ -92,7 +92,7 @@ func TestNewL2Sources(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		_, _, experimentalRpc1 := chain(1)
 		config2, l2Rpc2, experimentalRpc2 := chain(2)
-		_, err := NewL2Sources(context.Background(), logger,
+		_, err := NewRetryingL2Sources(context.Background(), logger,
 			[]*rollup.Config{config2},
 			[]client.RPC{l2Rpc2},
 			[]client.RPC{experimentalRpc1, experimentalRpc2})

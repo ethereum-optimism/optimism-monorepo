@@ -20,7 +20,12 @@ type ProgramExecutor interface {
 func (p *Prefetcher) nativeReExecuteBlock(
 	ctx context.Context, agreedBlockHash, blockHash common.Hash, chainID uint64) error {
 	// Avoid retries as the block may not be canonical and unavailable
-	_, _, err := p.l2Fetcher.source.InfoAndTxsByHash(ctx, blockHash)
+
+	source, err := p.l2Sources.ForChainIDWithoutRetries(p.defaultChainID)
+	if err != nil {
+		return err
+	}
+	_, _, err = source.InfoAndTxsByHash(ctx, blockHash)
 	if err == nil {
 		// we already have the data needed for the program to re-execute
 		return nil
@@ -29,7 +34,11 @@ func (p *Prefetcher) nativeReExecuteBlock(
 		p.logger.Error("Failed to fetch block", "block_hash", blockHash, "err", err)
 	}
 
-	header, _, err := p.l2Fetcher.InfoAndTxsByHash(ctx, agreedBlockHash)
+	retrying, err := p.l2Sources.ForChainID(p.defaultChainID)
+	if err != nil {
+		return err
+	}
+	header, _, err := retrying.InfoAndTxsByHash(ctx, agreedBlockHash)
 	if err != nil {
 		return err
 	}

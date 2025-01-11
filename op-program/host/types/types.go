@@ -3,6 +3,7 @@ package types
 import (
 	"context"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -23,4 +24,11 @@ type L2Source interface {
 	NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
 	CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
 	OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error)
+	RollupConfig() *rollup.Config
+	ExperimentalEnabled() bool
+}
+
+type L2Sources interface {
+	ForChainID(chainID uint64) (L2Source, error)
+	ForChainIDWithoutRetries(chainID uint64) (L2Source, error)
 }

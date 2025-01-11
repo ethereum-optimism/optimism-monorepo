@@ -1,4 +1,4 @@
-package common
+package prefetcher
 
 import (
 	"context"
@@ -8,6 +8,8 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-program/host/common"
+	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
@@ -20,20 +22,20 @@ var (
 	ErrNoRollupForExperimental = errors.New("no rollup config available for L2 experimental RPC")
 )
 
-type L2Sources struct {
-	Sources map[uint64]*L2Source
+type RetryingL2Sources struct {
+	Sources map[uint64]*RetryingL2Source
 }
 
-func NewL2SourcesFromURLs(ctx context.Context, logger log.Logger, configs []*rollup.Config, l2URLs []string, l2ExperimentalURLs []string) (*L2Sources, error) {
+func NewRetryingL2SourcesFromURLs(ctx context.Context, logger log.Logger, configs []*rollup.Config, l2URLs []string, l2ExperimentalURLs []string) (*RetryingL2Sources, error) {
 	l2Clients, err := connectRPCs(ctx, logger, l2URLs)
 	if err != nil {
 		return nil, err
 	}
-	l2ExperimentalClients, err := connectRPCs(ctx, logger, l2URLs)
+	l2ExperimentalClients, err := connectRPCs(ctx, logger, l2ExperimentalURLs)
 	if err != nil {
 		return nil, err
 	}
-	return NewL2Sources(ctx, logger, configs, l2Clients, l2ExperimentalClients)
+	return NewRetryingL2Sources(ctx, logger, configs, l2Clients, l2ExperimentalClients)
 }
 
 func connectRPCs(ctx context.Context, logger log.Logger, urls []string) ([]client.RPC, error) {
@@ -50,7 +52,7 @@ func connectRPCs(ctx context.Context, logger log.Logger, urls []string) ([]clien
 	return l2Clients, nil
 }
 
-func NewL2Sources(ctx context.Context, logger log.Logger, configs []*rollup.Config, l2Clients []client.RPC, l2ExperimentalClients []client.RPC) (*L2Sources, error) {
+func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rollup.Config, l2Clients []client.RPC, l2ExperimentalClients []client.RPC) (*RetryingL2Sources, error) {
 	if len(configs) == 0 {
 		return nil, ErrNoSources
 	}
@@ -82,7 +84,7 @@ func NewL2Sources(ctx context.Context, logger log.Logger, configs []*rollup.Conf
 		}
 	}
 
-	sources := make(map[uint64]*L2Source)
+	sources := make(map[uint64]*RetryingL2Source, len(configs))
 	for _, rollupCfg := range rollupConfigs {
 		chainID := rollupCfg.L2ChainID.Uint64()
 		l2RPC, ok := l2RPCs[chainID]
@@ -90,16 +92,32 @@ func NewL2Sources(ctx context.Context, logger log.Logger, configs []*rollup.Conf
 			return nil, fmt.Errorf("%w: %v", ErrNoL2ForRollup, chainID)
 		}
 		l2ExperimentalRPC := l2ExperimentalRPCs[chainID] // Allowed to be nil
-		source, err := NewL2SourceFromRPC(logger, rollupCfg, l2RPC, l2ExperimentalRPC)
+		source, err := common.NewL2SourceFromRPC(logger, rollupCfg, l2RPC, l2ExperimentalRPC)
 		if err != nil {
 			return nil, fmt.Errorf("failed to create l2 source for chain ID %v: %w", chainID, err)
 		}
-		sources[chainID] = source
+		sources[chainID] = NewRetryingL2Source(logger, source)
 	}
 
-	return &L2Sources{
+	return &RetryingL2Sources{
 		Sources: sources,
 	}, nil
+}
+
+func (s *RetryingL2Sources) ForChainID(chainID uint64) (types.L2Source, error) {
+	source, ok := s.Sources[chainID]
+	if !ok {
+		return nil, fmt.Errorf("no source available for chain ID: %v", chainID)
+	}
+	return source, nil
+}
+
+func (s *RetryingL2Sources) ForChainIDWithoutRetries(chainID uint64) (types.L2Source, error) {
+	retrying, ok := s.Sources[chainID]
+	if !ok {
+		return nil, fmt.Errorf("no source available for chain ID: %v", chainID)
+	}
+	return retrying.source, nil
 }
 
 func loadChainID(ctx context.Context, rpc client.RPC) (uint64, error) {
