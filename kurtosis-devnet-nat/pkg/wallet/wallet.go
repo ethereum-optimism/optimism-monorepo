@@ -57,6 +57,7 @@ func (w *Wallet) GetBalance(ctx context.Context, network network.Network) (*big.
 	return network.RPC.BalanceAt(ctx, w.address, nil)
 }
 
+// Send will send a small amount of eth across the network
 func (w *Wallet) Send(ctx context.Context, network network.Network, to common.Address) (*types.Transaction, error) {
 
 	// 2. Get the nonce (transaction count) for the sender's address:
@@ -105,6 +106,7 @@ func (w *Wallet) Send(ctx context.Context, network network.Network, to common.Ad
 	return signedTx, nil
 }
 
+// Dump will print a wallets balances across all networks
 func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Network) {
 
 	balances := []string{}
@@ -113,7 +115,7 @@ func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Ne
 		if err != nil {
 			log.Error("Error dumping wallet", "wallet", w.name, "network", n.Name, "err", err)
 		}
-		balances = append(balances, fmt.Sprintf("%s     : %s", n.Name, bal.String()))
+		balances = append(balances, fmt.Sprintf("%s    : %s", n.Name, bal.String()))
 	}
 
 	log.Info(fmt.Sprintf("-------------- Wallet: %s ---------------", w.name))
@@ -123,5 +125,5 @@ func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Ne
 	for b := range balances {
 		log.Info(balances[b])
 	}
-	log.Info("----------------------------------------")
+	log.Info("--------------------------------------------")
 }

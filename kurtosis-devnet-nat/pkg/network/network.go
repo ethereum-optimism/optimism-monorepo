@@ -29,6 +29,7 @@ func NewNetwork(ctx context.Context, log log.Logger, addr, name string) (*Networ
 
 }
 
+// DumpInfo will print a current networks information
 func (n *Network) DumpInfo(ctx context.Context) error {
 	block, err := n.RPC.BlockNumber(ctx)
 	if err != nil {

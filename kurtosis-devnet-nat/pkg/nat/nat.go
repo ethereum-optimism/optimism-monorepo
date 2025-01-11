@@ -13,6 +13,7 @@ type NetworkTester struct {
 	ctx context.Context
 	log log.Logger
 
+	// TODO: rename l2 networks to make more sense
 	L1  network.Network
 	L2A network.Network
 	L2B network.Network
@@ -39,9 +40,12 @@ func (n *NetworkTester) Start(ctx context.Context) error {
 	}
 
 	time.Sleep(5 * time.Second)
-	_ = n.L1.DumpInfo(ctx)
-	_ = n.L2A.DumpInfo(ctx)
-	_ = n.L2B.DumpInfo(ctx)
+	n.user0.Dump(ctx, n.log, networks)
+	n.user1.Dump(ctx, n.log, networks)
+
+	// _ = n.L1.DumpInfo(ctx)
+	// _ = n.L2A.DumpInfo(ctx)
+	// _ = n.L2B.DumpInfo(ctx)
 
 	return nil
 }
