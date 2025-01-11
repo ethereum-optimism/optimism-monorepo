@@ -132,9 +132,9 @@ func (s *RetryingL2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]
 	})
 }
 
-func (s *RetryingL2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
+func (s *RetryingL2Source) OutputByRoot(ctx context.Context, root common.Hash, l2Head common.Hash) (eth.Output, error) {
 	return retry.Do(ctx, maxAttempts, s.strategy, func() (eth.Output, error) {
-		o, err := s.source.OutputByRoot(ctx, root)
+		o, err := s.source.OutputByRoot(ctx, root, l2Head)
 		if err != nil {
 			s.logger.Warn("Failed to fetch l2 output", "root", root, "err", err)
 			return o, err

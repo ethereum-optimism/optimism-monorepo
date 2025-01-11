@@ -59,7 +59,7 @@ func NewL2Source(ctx context.Context, logger log.Logger, config *config.Config) 
 	canonicalDebugClient := sources.NewDebugClient(canonicalL2RPC.CallContext)
 
 	canonicalL2ClientCfg := sources.L2ClientDefaultConfig(config.Rollup, true)
-	canonicalL2Client, err := NewL2Client(canonicalL2RPC, logger, nil, &L2ClientConfig{L2ClientConfig: canonicalL2ClientCfg, L2Head: config.L2Head})
+	canonicalL2Client, err := NewL2Client(canonicalL2RPC, logger, nil, &L2ClientConfig{L2ClientConfig: canonicalL2ClientCfg})
 	if err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func NewL2Source(ctx context.Context, logger log.Logger, config *config.Config) 
 		return nil, err
 	}
 	experimentalL2ClientCfg := sources.L2ClientDefaultConfig(config.Rollup, true)
-	experimentalL2Client, err := NewL2Client(experimentalRPC, logger, nil, &L2ClientConfig{L2ClientConfig: experimentalL2ClientCfg, L2Head: config.L2Head})
+	experimentalL2Client, err := NewL2Client(experimentalRPC, logger, nil, &L2ClientConfig{L2ClientConfig: experimentalL2ClientCfg})
 	if err != nil {
 		return nil, err
 	}
@@ -120,11 +120,11 @@ func (l *L2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) 
 }
 
 // OutputByRoot implements prefetcher.L2Source.
-func (l *L2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
+func (l *L2Source) OutputByRoot(ctx context.Context, root common.Hash, blockRoot common.Hash) (eth.Output, error) {
 	if l.ExperimentalEnabled() {
-		return l.experimentalClient.OutputByRoot(ctx, root)
+		return l.experimentalClient.OutputByRoot(ctx, root, blockRoot)
 	}
-	return l.canonicalEthClient.OutputByRoot(ctx, root)
+	return l.canonicalEthClient.OutputByRoot(ctx, root, blockRoot)
 }
 
 // ExecutionWitness implements prefetcher.L2Source.

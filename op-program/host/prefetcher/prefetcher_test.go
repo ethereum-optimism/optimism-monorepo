@@ -646,7 +646,7 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	_, l1Source, l1BlobSource, l2Cl, kv := createPrefetcher(t)
 	putsToIgnore := 2
 	kv = &unreliableKvStore{KV: kv, putsToIgnore: putsToIgnore}
-	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv, nil, nil)
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv, nil, common.Hash{}, nil)
 
 	// Expect one call for each ignored put, plus one more request for when the put succeeds
 	for i := 0; i < putsToIgnore+1; i++ {
@@ -678,8 +678,8 @@ type l2Client struct {
 	*testutils.MockDebugClient
 }
 
-func (m *l2Client) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root)
+func (m *l2Client) OutputByRoot(ctx context.Context, root common.Hash, blockHash common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", root, blockHash)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
@@ -701,7 +701,7 @@ func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte) (*P
 		MockDebugClient: new(testutils.MockDebugClient),
 	}
 
-	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, agreedPrestate)
+	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, common.Hash{0xdd}, agreedPrestate)
 	return prefetcher, l1Source, l1BlobSource, l2Source, kv
 }
 

@@ -14,14 +14,10 @@ import (
 
 type L2Client struct {
 	*sources.L2Client
-
-	// l2Head is the L2 block hash that we use to fetch L2 output
-	l2Head common.Hash
 }
 
 type L2ClientConfig struct {
 	*sources.L2ClientConfig
-	L2Head common.Hash
 }
 
 func NewL2Client(client client.RPC, log log.Logger, metrics caching.Metrics, config *L2ClientConfig) (*L2Client, error) {
@@ -31,12 +27,11 @@ func NewL2Client(client client.RPC, log log.Logger, metrics caching.Metrics, con
 	}
 	return &L2Client{
 		L2Client: l2Client,
-		l2Head:   config.L2Head,
 	}, nil
 }
 
-func (s *L2Client) OutputByRoot(ctx context.Context, l2OutputRoot common.Hash) (eth.Output, error) {
-	output, err := s.OutputV0AtBlock(ctx, s.l2Head)
+func (s *L2Client) OutputByRoot(ctx context.Context, l2OutputRoot common.Hash, blockRoot common.Hash) (eth.Output, error) {
+	output, err := s.OutputV0AtBlock(ctx, blockRoot)
 	if err != nil {
 		return nil, err
 	}
@@ -45,7 +40,7 @@ func (s *L2Client) OutputByRoot(ctx context.Context, l2OutputRoot common.Hash) (
 		// For fault proofs, we only reference outputs at the l2 head at boot time
 		// The caller shouldn't be requesting outputs at any other block
 		// If they are, there is no chance of recovery and we should panic to avoid retrying forever
-		panic(fmt.Errorf("output root %v from specified L2 block %v does not match requested output root %v", actualOutputRoot, s.l2Head, l2OutputRoot))
+		panic(fmt.Errorf("output root %v from specified L2 block %v does not match requested output root %v", actualOutputRoot, blockRoot, l2OutputRoot))
 	}
 	return output, nil
 }
