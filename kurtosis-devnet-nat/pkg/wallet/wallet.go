@@ -21,21 +21,10 @@ type Wallet struct {
 	name       string
 }
 
-// func NewWallet(privateKey, publicKey, name string) (*Wallet, error) {
-//
-// 	return &Wallet{
-// 		privateKey: privateKey,
-// 		publicKey:  publicKey,
-// 		address:    common.BytesToAddress([]byte(privateKey)),
-// 		name:       name,
-// 	}, nil
-// }
-
 // NewWallet creates a new wallet.
 func NewWallet(privateKeyHex, name string) (*Wallet, error) {
 
-	privateKeyHex = strings.TrimPrefix(privateKeyHex, "0x")
-	privateKey, err := crypto.HexToECDSA(privateKeyHex)
+	privateKey, err := crypto.HexToECDSA(strings.TrimPrefix(privateKeyHex, "0x"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid private key: %v", err)
 	}
@@ -43,12 +32,9 @@ func NewWallet(privateKeyHex, name string) (*Wallet, error) {
 	publicKey := privateKey.Public().(*ecdsa.PublicKey)
 	address := crypto.PubkeyToAddress(*publicKey)
 
-	// Correctly format the public key to a hex string without the 0x prefix.
-	publicKeyHex := common.Bytes2Hex(crypto.FromECDSAPub(publicKey))[2:]
-
 	return &Wallet{
 		privateKey: privateKeyHex,
-		publicKey:  publicKeyHex,
+		publicKey:  address.String(),
 		address:    address,
 		name:       name,
 	}, nil
@@ -59,6 +45,7 @@ type WalletInterface interface {
 	Send(network.Network, string) error
 }
 
+// GetBalance will get the balance of a wallet given a network
 func (w *Wallet) GetBalance(ctx context.Context, network network.Network) (*big.Int, error) {
 	return network.RPC.BalanceAt(ctx, w.address, nil)
 }
