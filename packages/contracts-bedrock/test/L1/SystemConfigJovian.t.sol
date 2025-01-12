@@ -6,17 +6,17 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
-import { ISystemConfigIsthmus } from "interfaces/L1/ISystemConfigIsthmus.sol";
+import { ISystemConfigJovian } from "interfaces/L1/ISystemConfigJovian.sol";
 
 contract SystemConfig_Init is CommonTest {
     event ConfigUpdate(uint256 indexed nonceAndVersion, ISystemConfig.UpdateType indexed updateType, bytes data);
 }
 
-contract SystemConfigIsthmus_Test is SystemConfig_Init {
+contract SystemConfigJovian_Test is SystemConfig_Init {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function setUp() public virtual override {
-        super.enableIsthmus();
+        super.enableJovian();
         super.setUp();
         systemConfig.version();
     }
@@ -33,7 +33,7 @@ contract SystemConfigIsthmus_Test is SystemConfig_Init {
 
     function test_configUpdateNonce_works() external {
         // genesis emits 3 logs, so nonce starts at 3
-        uint64 nonce = ISystemConfigIsthmus(payable(address(systemConfig))).configUpdateNonce();
+        uint64 nonce = ISystemConfigJovian(payable(address(systemConfig))).configUpdateNonce();
         assertEq(3, nonce);
 
         for (uint64 i = 1; i <= 2; i++) {
@@ -41,16 +41,16 @@ contract SystemConfigIsthmus_Test is SystemConfig_Init {
             systemConfig.setBatcherHash(bytes32(0));
         }
 
-        nonce = ISystemConfigIsthmus(payable(address(systemConfig))).configUpdateNonce();
+        nonce = ISystemConfigJovian(payable(address(systemConfig))).configUpdateNonce();
         assertEq(5, nonce);
     }
 }
 
-contract SystemConfigIsthmus_Setters_Test is SystemConfig_Init {
+contract SystemConfigJovian_Setters_Test is SystemConfig_Init {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function setUp() public virtual override {
-        super.enableIsthmus();
+        super.enableJovian();
         super.setUp();
     }
 

@@ -177,7 +177,7 @@ library Encoding {
         );
     }
 
-    /// @notice Returns an appropriately encoded call to L1Block.setL1BlockValuesIsthmus
+    /// @notice Returns an appropriately encoded call to L1Block.setL1BlockValuesJovian
     /// @param _baseFeeScalar       L1 base fee Scalar
     /// @param _blobBaseFeeScalar   L1 blob base fee Scalar
     /// @param _sequenceNumber      Number of L2 blocks since epoch start.
@@ -189,7 +189,7 @@ library Encoding {
     /// @param _batcherHash         Versioned hash to authenticate batcher by.
     /// @param _depositNonce        Nonce of the latest TransactionDeposited event processed up to this block.
     /// @param _configUpdateNonce   Nonce of the latest ConfigUpdate event processed up to this block.
-    function encodeSetL1BlockValuesIsthmus(
+    function encodeSetL1BlockValuesJovian(
         uint32 _baseFeeScalar,
         uint32 _blobBaseFeeScalar,
         uint64 _sequenceNumber,
@@ -206,7 +206,7 @@ library Encoding {
         pure
         returns (bytes memory)
     {
-        bytes4 functionSignature = bytes4(keccak256("setL1BlockValuesIsthmus()"));
+        bytes4 functionSignature = bytes4(keccak256("setL1BlockValuesJovian()"));
         return abi.encodePacked(
             functionSignature,
             _baseFeeScalar,

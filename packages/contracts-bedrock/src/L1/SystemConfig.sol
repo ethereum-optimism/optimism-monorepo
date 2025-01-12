@@ -140,9 +140,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed nonceAndVersion, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.10
+    /// @custom:semver 2.3.0-beta.11
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.10";
+        return "2.3.0-beta.11";
     }
 
     /// @notice Constructs the SystemConfig contract.

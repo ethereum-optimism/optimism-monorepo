@@ -5,11 +5,11 @@ pragma solidity 0.8.15;
 import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
 
 /// @custom:proxied true
-/// @title OptimismPortalIsthmus
+/// @title OptimismPortalJovian
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortalIsthmus is OptimismPortal2 {
+contract OptimismPortalJovian is OptimismPortal2 {
     /// @notice Version of the deposit event.
     uint256 internal constant DEPOSIT_VERSION_1 = 1;
 
@@ -24,9 +24,9 @@ contract OptimismPortalIsthmus is OptimismPortal2 {
         OptimismPortal2(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
-    /// @custom:semver +isthmus-beta.1
+    /// @custom:semver +jovian-beta.1
     function version() public pure virtual override returns (string memory) {
-        return string.concat(super.version(), "+isthmus-beta.1");
+        return string.concat(super.version(), "+jovian-beta.1");
     }
 
     /// @notice Nonce incremented for each TransactionDeposited event

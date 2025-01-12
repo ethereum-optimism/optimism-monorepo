@@ -706,7 +706,7 @@ contract L1CrossDomainMessenger_Test is CommonTest {
 
         // Mock the gasPayingToken function to return a custom gas token
         vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(18))
+            address(systemConfig), abi.encodeCall(systemConfig.gasPayingTokenAddress, ()), abi.encode(address(1))
         );
 
         vm.prank(alice);

@@ -5,13 +5,13 @@ pragma solidity 0.8.15;
 import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Interfaces
-import { IOptimismPortalIsthmus } from "interfaces/L1/IOptimismPortalIsthmus.sol";
+import { IOptimismPortalJovian } from "interfaces/L1/IOptimismPortalJovian.sol";
 
-contract OptimismPortalIsthmus_Test is CommonTest {
+contract OptimismPortalJovian_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function setUp() public virtual override {
-        super.enableIsthmus();
+        super.enableJovian();
         super.setUp();
         optimismPortal2.version();
     }
@@ -22,7 +22,7 @@ contract OptimismPortalIsthmus_Test is CommonTest {
         _value = bound(_value, 0, type(uint256).max - balanceBefore);
 
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDepositedIsthmus(alice, alice, _value, _value, 100_000, false, hex"", 1);
+        emitTransactionDepositedJovian(alice, alice, _value, _value, 100_000, false, hex"", 1);
 
         // give alice money and send as an eoa
         vm.deal(alice, _value);
@@ -39,7 +39,7 @@ contract OptimismPortalIsthmus_Test is CommonTest {
         uint256 value = 2;
         for (uint64 i = 1; i <= 10; i++) {
             vm.expectEmit(address(optimismPortal2));
-            emitTransactionDepositedIsthmus(alice, alice, value, value, 100_000, false, hex"", i);
+            emitTransactionDepositedJovian(alice, alice, value, value, 100_000, false, hex"", i);
             vm.prank(alice, alice);
             (bool s,) = address(optimismPortal2).call{ value: value }(hex"");
             assertTrue(s);
@@ -49,7 +49,7 @@ contract OptimismPortalIsthmus_Test is CommonTest {
     function test_depositNonce_works() external {
         vm.deal(alice, 100_000_000);
 
-        uint64 nonce = IOptimismPortalIsthmus(payable(address(optimismPortal2))).depositNonce();
+        uint64 nonce = IOptimismPortalJovian(payable(address(optimismPortal2))).depositNonce();
         assertEq(0, nonce);
 
         uint256 value = 2;
@@ -59,7 +59,7 @@ contract OptimismPortalIsthmus_Test is CommonTest {
             assertTrue(s);
         }
 
-        nonce = IOptimismPortalIsthmus(payable(address(optimismPortal2))).depositNonce();
+        nonce = IOptimismPortalJovian(payable(address(optimismPortal2))).depositNonce();
         assertEq(2, nonce);
     }
 }

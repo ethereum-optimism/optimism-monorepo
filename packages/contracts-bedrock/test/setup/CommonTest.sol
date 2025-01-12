@@ -35,7 +35,7 @@ contract CommonTest is Test, Setup, Events {
 
     bool useAltDAOverride;
     address customGasToken;
-    bool useIsthmus;
+    bool useJovian;
     bool useInteropOverride;
 
     ERC20 L1Token;
@@ -63,8 +63,8 @@ contract CommonTest is Test, Setup, Events {
         if (customGasToken != address(0)) {
             deploy.cfg().setUseCustomGasToken(customGasToken);
         }
-        if (useIsthmus) {
-            deploy.cfg().setL2GenesisIsthmusTimeOffset(0);
+        if (useJovian) {
+            deploy.cfg().setL2GenesisJovianTimeOffset(0);
         }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
@@ -172,7 +172,7 @@ contract CommonTest is Test, Setup, Events {
 
     /// @dev Helper function that wraps `TransactionDeposited` event.
     ///      The magic `nonce << 128 | 1` is the nonce | version.
-    function emitTransactionDepositedIsthmus(
+    function emitTransactionDepositedJovian(
         address _from,
         address _to,
         uint256 _mint,
@@ -210,14 +210,14 @@ contract CommonTest is Test, Setup, Events {
         customGasToken = _token;
     }
 
-    function enableIsthmus() public {
+    function enableJovian() public {
         // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
         // set by the `setUp` function yet.
         if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable interop after deployment. Consider overriding `setUp`.");
+            revert("CommonTest: Cannot enable jovian after deployment. Consider overriding `setUp`.");
         }
 
-        useIsthmus = true;
+        useJovian = true;
     }
 
     function enableInterop() public {
