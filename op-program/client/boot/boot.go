@@ -6,22 +6,9 @@ import (
 	"math"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
-)
-
-const (
-	L1HeadLocalIndex preimage.LocalIndexKey = iota + 1
-	L2OutputRootLocalIndex
-	L2ClaimLocalIndex
-	L2ClaimBlockNumberLocalIndex
-	L2ChainIDLocalIndex
-
-	// These local keys are only used for custom chains
-	L2ChainConfigLocalIndex
-	RollupConfigLocalIndex
 )
 
 // CustomChainIDIndicator is used to detect when the program should load custom chain configuration
@@ -36,10 +23,6 @@ type BootInfo struct {
 
 	L2ChainConfig *params.ChainConfig
 	RollupConfig  *rollup.Config
-}
-
-type oracleClient interface {
-	Get(key preimage.Key) []byte
 }
 
 type BootstrapClient struct {
