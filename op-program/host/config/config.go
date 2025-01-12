@@ -41,8 +41,8 @@ var (
 )
 
 type Config struct {
-	L2ChainID uint64
-	Rollup    *rollup.Config
+	L2ChainID uint64 // TODO: Forbid for interop
+	Rollups   []*rollup.Config
 	// DataDir is the directory to read/write pre-image data from/to.
 	// If not set, an in-memory key-value store is used and fetching data must be enabled
 	DataDir string
@@ -57,22 +57,26 @@ type Config struct {
 	L1TrustRPC  bool
 	L1RPCKind   sources.RPCProviderKind
 
-	// L2Head is the l2 block hash contained in the L2 Output referenced by the L2OutputRoot
-	L2Head common.Hash
+	// L2Head is the l2 block hash contained in the L2 Output referenced by the L2OutputRoot for pre-interop mode
+	L2Head common.Hash // TODO: Forbid for interop
 	// L2OutputRoot is the agreed L2 output root to start derivation from
 	L2OutputRoot common.Hash
-	// L2URL is the URL of the L2 node to fetch L2 data from, this is the canonical URL for L2 data
-	// This URL is used as a fallback for L2ExperimentalURL if the experimental URL fails or cannot retrieve the desired data
-	L2URL string
-	// L2ExperimentalURL is the URL of the L2 node (non hash db archival node, for example, reth archival node) to fetch L2 data from
-	L2ExperimentalURL string
+	// L2URLs are the URLs of the L2 nodes to fetch L2 data from, these are the canonical URL for L2 data
+	// These URLs are used as a fallback for L2ExperimentalURL if the experimental URL fails or cannot retrieve the desired data
+	// Must have one L2URL for each chain in Rollups
+	L2URLs []string
+	// L2ExperimentalURLs are the URLs of the L2 nodes (non hash db archival node, for example, reth archival node) to fetch L2 data from
+	// Must have one url for each chain in Rollups
+	L2ExperimentalURLs []string
 	// L2Claim is the claimed L2 output root to verify
 	L2Claim common.Hash
 	// L2ClaimBlockNumber is the block number the claimed L2 output root is from
 	// Must be above 0 and to be a valid claim needs to be above the L2Head block.
+	// For interop this is the superchain root timestamp
 	L2ClaimBlockNumber uint64
-	// L2ChainConfig is the op-geth chain config for the L2 execution engine
-	L2ChainConfig *params.ChainConfig
+	// L2ChainConfigs are the op-geth chain config for the L2 execution engines
+	// Must have one chain config for each rollup config
+	L2ChainConfigs []*params.ChainConfig
 	// ExecCmd specifies the client program to execute in a separate process.
 	// If unset, the fault proof client is run in the same process.
 	ExecCmd string
@@ -88,11 +92,13 @@ type Config struct {
 }
 
 func (c *Config) Check() error {
-	if c.Rollup == nil {
+	if len(c.Rollups) == 0 {
 		return ErrMissingRollupConfig
 	}
-	if err := c.Rollup.Check(); err != nil {
-		return err
+	for _, rollupCfg := range c.Rollups {
+		if err := rollupCfg.Check(); err != nil {
+			return fmt.Errorf("invalid rollup config for chain %v: %w", rollupCfg.L2ChainID, err)
+		}
 	}
 	if c.L1Head == (common.Hash{}) {
 		return ErrInvalidL1Head
@@ -106,10 +112,10 @@ func (c *Config) Check() error {
 	if c.L2ClaimBlockNumber == 0 {
 		return ErrInvalidL2ClaimBlock
 	}
-	if c.L2ChainConfig == nil {
+	if len(c.L2ChainConfigs) == 0 {
 		return ErrMissingL2Genesis
 	}
-	if (c.L1URL != "") != (c.L2URL != "") {
+	if (c.L1URL != "") != (len(c.L2URLs) > 0) {
 		return ErrL1AndL2Inconsistent
 	}
 	if !c.FetchingEnabled() && c.DataDir == "" {
@@ -133,7 +139,7 @@ func (c *Config) Check() error {
 }
 
 func (c *Config) FetchingEnabled() bool {
-	return c.L1URL != "" && c.L2URL != "" && c.L1BeaconURL != ""
+	return c.L1URL != "" && len(c.L2URLs) > 0 && c.L1BeaconURL != ""
 }
 
 // NewConfig creates a Config with all optional values set to the CLI default value
@@ -154,8 +160,8 @@ func NewConfig(
 	}
 	return &Config{
 		L2ChainID:          l2ChainID,
-		Rollup:             rollupCfg,
-		L2ChainConfig:      l2Genesis,
+		Rollups:            []*rollup.Config{rollupCfg},
+		L2ChainConfigs:     []*params.ChainConfig{l2Genesis},
 		L1Head:             l1Head,
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
@@ -252,14 +258,22 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	if !slices.Contains(types.SupportedDataFormats, dbFormat) {
 		return nil, fmt.Errorf("invalid %w: %v", ErrInvalidDataFormat, dbFormat)
 	}
+	var l2URLs []string
+	if ctx.IsSet(flags.L2NodeAddr.Name) {
+		l2URLs = append(l2URLs, ctx.String(flags.L2NodeAddr.Name))
+	}
+	var l2ExperimentalURLs []string
+	if ctx.IsSet(flags.L2NodeExperimentalAddr.Name) {
+		l2ExperimentalURLs = append(l2ExperimentalURLs, ctx.String(flags.L2NodeExperimentalAddr.Name))
+	}
 	return &Config{
 		L2ChainID:          l2ChainID,
-		Rollup:             rollupCfg,
+		Rollups:            []*rollup.Config{rollupCfg},
 		DataDir:            ctx.String(flags.DataDir.Name),
 		DataFormat:         dbFormat,
-		L2URL:              ctx.String(flags.L2NodeAddr.Name),
-		L2ExperimentalURL:  ctx.String(flags.L2NodeExperimentalAddr.Name),
-		L2ChainConfig:      l2ChainConfig,
+		L2URLs:             l2URLs,
+		L2ExperimentalURLs: l2ExperimentalURLs,
+		L2ChainConfigs:     []*params.ChainConfig{l2ChainConfig},
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
 		AgreedPrestate:     agreedPrestate,

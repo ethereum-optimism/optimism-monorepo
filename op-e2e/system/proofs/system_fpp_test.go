@@ -287,7 +287,7 @@ func testFaultProofProgramScenario(t *testing.T, ctx context.Context, sys *e2esy
 	preimageDir := t.TempDir()
 	fppConfig := oppconf.NewConfig(sys.RollupConfig, sys.L2GenesisCfg.Config, s.L1Head, s.L2Head, s.L2OutputRoot, common.Hash(s.L2Claim), s.L2ClaimBlockNumber)
 	fppConfig.L1URL = sys.NodeEndpoint("l1").RPC()
-	fppConfig.L2URL = sys.NodeEndpoint("sequencer").RPC()
+	fppConfig.L2URLs = []string{sys.NodeEndpoint("sequencer").RPC()}
 	fppConfig.L1BeaconURL = sys.L1BeaconEndpoint().RestHTTP()
 	fppConfig.DataDir = preimageDir
 	if s.Detached {
@@ -314,7 +314,7 @@ func testFaultProofProgramScenario(t *testing.T, ctx context.Context, sys *e2esy
 	t.Log("Running fault proof in offline mode")
 	// Should be able to rerun in offline mode using the pre-fetched images
 	fppConfig.L1URL = ""
-	fppConfig.L2URL = ""
+	fppConfig.L2URLs = nil
 	err = opp.FaultProofProgramWithDefaultPrefecher(ctx, log, fppConfig)
 	require.NoError(t, err)
 

@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
@@ -17,12 +18,12 @@ import (
 func TestLocalPreimageSource(t *testing.T) {
 	cfg := &config.Config{
 		L2ChainID:          86,
-		Rollup:             chaincfg.OPSepolia(),
+		Rollups:            []*rollup.Config{chaincfg.OPSepolia()},
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1234,
-		L2ChainConfig:      params.SepoliaChainConfig,
+		L2ChainConfigs:     []*params.ChainConfig{params.SepoliaChainConfig},
 	}
 	source := NewLocalPreimageSource(cfg)
 	tests := []struct {
@@ -54,21 +55,21 @@ func TestLocalPreimageSource(t *testing.T) {
 
 func TestGetCustomChainConfigPreimages(t *testing.T) {
 	cfg := &config.Config{
-		Rollup:             chaincfg.OPSepolia(),
+		Rollups:            []*rollup.Config{chaincfg.OPSepolia()},
 		L2ChainID:          boot.CustomChainIDIndicator,
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1234,
-		L2ChainConfig:      params.SepoliaChainConfig,
+		L2ChainConfigs:     []*params.ChainConfig{params.SepoliaChainConfig},
 	}
 	source := NewLocalPreimageSource(cfg)
 	actualRollup, err := source.Get(rollupKey)
 	require.NoError(t, err)
-	require.Equal(t, asJson(t, cfg.Rollup), actualRollup)
+	require.Equal(t, asJson(t, cfg.Rollups), actualRollup)
 	actualChainConfig, err := source.Get(l2ChainConfigKey)
 	require.NoError(t, err)
-	require.Equal(t, asJson(t, cfg.L2ChainConfig), actualChainConfig)
+	require.Equal(t, asJson(t, cfg.L2ChainConfigs), actualChainConfig)
 }
 
 func asJson(t *testing.T, v any) []byte {

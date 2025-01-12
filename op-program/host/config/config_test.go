@@ -35,14 +35,14 @@ func TestValidConfigIsValid(t *testing.T) {
 func TestRollupConfig(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
 		config := validConfig()
-		config.Rollup = nil
+		config.Rollups = nil
 		err := config.Check()
 		require.ErrorIs(t, err, ErrMissingRollupConfig)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
 		config := validConfig()
-		config.Rollup = &rollup.Config{}
+		config.Rollups = []*rollup.Config{&rollup.Config{}}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
 	})
@@ -85,7 +85,7 @@ func TestL2ClaimBlockNumberRequired(t *testing.T) {
 
 func TestL2GenesisRequired(t *testing.T) {
 	config := validConfig()
-	config.L2ChainConfig = nil
+	config.L2ChainConfigs = nil
 	err := config.Check()
 	require.ErrorIs(t, err, ErrMissingL2Genesis)
 }
@@ -98,19 +98,25 @@ func TestFetchingArgConsistency(t *testing.T) {
 	})
 	t.Run("RequireL1WhenL2Set", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.ErrorIs(t, cfg.Check(), ErrL1AndL2Inconsistent)
 	})
 	t.Run("AllowNeitherSet", func(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = ""
-		cfg.L2URL = ""
+		cfg.L2URLs = []string{}
+		require.NoError(t, cfg.Check())
+	})
+	t.Run("AllowNeitherSetNil", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.L1URL = ""
+		cfg.L2URLs = nil
 		require.NoError(t, cfg.Check())
 	})
 	t.Run("AllowBothSet", func(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = "https://example.com:1234"
-		cfg.L2URL = "https://example.com:4678"
+		cfg.L2URLs = []string{"https://example.com:4678"}
 		require.NoError(t, cfg.Check())
 	})
 }
@@ -123,13 +129,13 @@ func TestFetchingEnabled(t *testing.T) {
 
 	t.Run("FetchingEnabledWhenFetcherUrlsSpecified", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.False(t, cfg.FetchingEnabled(), "Should not enable fetching when node URL not supplied")
 	})
 
 	t.Run("FetchingNotEnabledWhenNoL1UrlSpecified", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.False(t, cfg.FetchingEnabled(), "Should not enable L1 fetching when L1 node URL not supplied")
 	})
 
@@ -143,7 +149,7 @@ func TestFetchingEnabled(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = "https://example.com:1234"
 		cfg.L1BeaconURL = "https://example.com:5678"
-		cfg.L2URL = "https://example.com:91011"
+		cfg.L2URLs = []string{"https://example.com:91011"}
 		require.True(t, cfg.FetchingEnabled(), "Should enable fetching when node URL supplied")
 	})
 }
@@ -152,7 +158,7 @@ func TestRequireDataDirInNonFetchingMode(t *testing.T) {
 	cfg := validConfig()
 	cfg.DataDir = ""
 	cfg.L1URL = ""
-	cfg.L2URL = ""
+	cfg.L2URLs = nil
 	err := cfg.Check()
 	require.ErrorIs(t, err, ErrDataDirRequired)
 }

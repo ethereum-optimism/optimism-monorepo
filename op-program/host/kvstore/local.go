@@ -43,12 +43,12 @@ func (s *LocalPreimageSource) Get(key common.Hash) ([]byte, error) {
 		if s.config.L2ChainID != boot.CustomChainIDIndicator {
 			return nil, ErrNotFound
 		}
-		return json.Marshal(s.config.L2ChainConfig)
+		return json.Marshal(s.config.L2ChainConfigs)
 	case rollupKey:
 		if s.config.L2ChainID != boot.CustomChainIDIndicator {
 			return nil, ErrNotFound
 		}
-		return json.Marshal(s.config.Rollup)
+		return json.Marshal(s.config.Rollups)
 	default:
 		return nil, ErrNotFound
 	}
