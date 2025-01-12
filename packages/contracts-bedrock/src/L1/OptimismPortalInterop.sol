@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { OptimismPortalIsthmus } from "src/L1/OptimismPortalIsthmus.sol";
+import { OptimismPortalJovian } from "src/L1/OptimismPortalJovian.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -17,12 +17,12 @@ import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortalInterop is OptimismPortalIsthmus {
+contract OptimismPortalInterop is OptimismPortalJovian {
     constructor(
         uint256 _proofMaturityDelaySeconds,
         uint256 _disputeGameFinalityDelaySeconds
     )
-        OptimismPortalIsthmus(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
+        OptimismPortalJovian(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
     { }
 
     /// @custom:semver +interop-beta.1

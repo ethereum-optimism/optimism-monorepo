@@ -158,7 +158,7 @@ contract L1Block is ISemver {
         }
     }
 
-    /// @notice Updates the L1 block values for an Isthmus upgraded chain.
+    /// @notice Updates the L1 block values for an Jovian upgraded chain.
     /// Params are packed and passed in as raw msg.data instead of ABI to reduce calldata size.
     /// Params are expected to be in the following order:
     ///   1. _baseFeeScalar      L1 base fee scalar
@@ -172,11 +172,11 @@ contract L1Block is ISemver {
     ///   9. _batcherHash        Versioned hash to authenticate batcher by.
     ///  10. _depositNonce       Nonce of the latest TransactionDeposited event processed up to this block.
     ///  11. _configUpdateNonce  Nonce of the latest ConfigUpdate event processed up to this block.
-    function setL1BlockValuesIsthmus() external {
-        _setL1BlockValuesIsthmus();
+    function setL1BlockValuesJovian() external {
+        _setL1BlockValuesJovian();
     }
 
-    function _setL1BlockValuesIsthmus() internal {
+    function _setL1BlockValuesJovian() internal {
         address depositor = DEPOSITOR_ACCOUNT();
         assembly {
             // Revert if the caller is not the depositor account.

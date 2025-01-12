@@ -33,7 +33,7 @@ contract OptimismPortalInterop_Test is CommonTest {
     /// @dev Tests that the config for adding a dependency can be set.
     function testFuzz_setConfig_addDependency_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDepositedIsthmus({
+        emitTransactionDepositedJovian({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
             _value: 0,
@@ -57,7 +57,7 @@ contract OptimismPortalInterop_Test is CommonTest {
     /// @dev Tests that the config for removing a dependency can be set.
     function testFuzz_setConfig_removeDependency_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDepositedIsthmus({
+        emitTransactionDepositedJovian({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
             _value: 0,

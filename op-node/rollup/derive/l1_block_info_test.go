@@ -169,12 +169,12 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.Equal(t, L1InfoEcotoneLen, len(depTx.Data))
 		assertInfo(&rollupCfg, info, depTx, rollupCfg.Genesis.L2Time, seqNr, l1Cfg)
 	})
-	t.Run("isthmus", func(t *testing.T) {
+	t.Run("jovian", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(1234))
 		info := testutils.MakeBlockInfo(nil)(rng)
 		rollupCfg := rollup.Config{BlockTime: 2, Genesis: rollup.Genesis{L2Time: 1000}}
-		rollupCfg.ActivateAtGenesis(rollup.Isthmus)
-		// run 1 block after isthmus transition
+		rollupCfg.ActivateAtGenesis(rollup.Jovian)
+		// run 1 block after jovian transition
 		timestamp := rollupCfg.Genesis.L2Time + rollupCfg.BlockTime
 		l1Cfg := randomL1Cfg(rng, info)
 		seqNr := randomSeqNr(rng)
@@ -182,40 +182,40 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data), "the length is same in isthmus")
-		require.Equal(t, L1InfoFuncIsthmusBytes4, depTx.Data[:4], "upgrade is active, need isthmus signature")
+		require.Equal(t, L1InfoJovianLen, len(depTx.Data), "the length is same in jovian")
+		require.Equal(t, L1InfoFuncJovianBytes4, depTx.Data[:4], "upgrade is active, need jovian signature")
 		assertInfo(&rollupCfg, info, depTx, timestamp, seqNr, l1Cfg)
 	})
-	t.Run("activation-block isthmus", func(t *testing.T) {
+	t.Run("activation-block jovian", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(1234))
 		info := testutils.MakeBlockInfo(nil)(rng)
 		rollupCfg := rollup.Config{BlockTime: 2, Genesis: rollup.Genesis{L2Time: 1000}}
 		rollupCfg.ActivateAtGenesis(rollup.Holocene)
-		isthmusTime := rollupCfg.Genesis.L2Time + rollupCfg.BlockTime // activate isthmus just after genesis
-		rollupCfg.IsthmusTime = &isthmusTime
+		jovianTime := rollupCfg.Genesis.L2Time + rollupCfg.BlockTime // activate jovian just after genesis
+		rollupCfg.JovianTime = &jovianTime
 		l1Cfg := randomL1Cfg(rng, info)
 		seqNr := randomSeqNr(rng)
-		depTx, err := L1InfoDeposit(&rollupCfg, l1Cfg, seqNr, info, isthmusTime)
+		depTx, err := L1InfoDeposit(&rollupCfg, l1Cfg, seqNr, info, jovianTime)
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		// Isthmus activates, but ecotone L1 info is still used at this upgrade block
+		// Jovian activates, but ecotone L1 info is still used at this upgrade block
 		require.Equal(t, L1InfoEcotoneLen, len(depTx.Data))
 		require.Equal(t, L1InfoFuncEcotoneBytes4, depTx.Data[:4])
-		assertInfo(&rollupCfg, info, depTx, isthmusTime, seqNr, l1Cfg)
+		assertInfo(&rollupCfg, info, depTx, jovianTime, seqNr, l1Cfg)
 	})
-	t.Run("genesis-block isthmus", func(t *testing.T) {
+	t.Run("genesis-block jovian", func(t *testing.T) {
 		rng := rand.New(rand.NewSource(1234))
 		info := testutils.MakeBlockInfo(nil)(rng)
 		rollupCfg := rollup.Config{BlockTime: 2, Genesis: rollup.Genesis{L2Time: 1000}}
-		rollupCfg.ActivateAtGenesis(rollup.Isthmus)
+		rollupCfg.ActivateAtGenesis(rollup.Jovian)
 		l1Cfg := randomL1Cfg(rng, info)
 		seqNr := randomSeqNr(rng)
 		depTx, err := L1InfoDeposit(&rollupCfg, l1Cfg, seqNr, info, rollupCfg.Genesis.L2Time)
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data))
+		require.Equal(t, L1InfoJovianLen, len(depTx.Data))
 		assertInfo(&rollupCfg, info, depTx, rollupCfg.Genesis.L2Time, seqNr, l1Cfg)
 	})
 	t.Run("interop", func(t *testing.T) {
@@ -231,7 +231,7 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data), "the length is same in interop")
+		require.Equal(t, L1InfoJovianLen, len(depTx.Data), "the length is same in interop")
 		require.Equal(t, L1InfoFuncInteropBytes4, depTx.Data[:4], "upgrade is active, need interop signature")
 		assertInfo(&rollupCfg, info, depTx, timestamp, seqNr, l1Cfg)
 	})
@@ -264,7 +264,7 @@ func TestParseL1InfoDepositTxData(t *testing.T) {
 		require.NoError(t, err)
 		require.False(t, depTx.IsSystemTransaction)
 		require.Equal(t, depTx.Gas, uint64(RegolithSystemTxGas))
-		require.Equal(t, L1InfoIsthmusLen, len(depTx.Data))
+		require.Equal(t, L1InfoJovianLen, len(depTx.Data))
 		assertInfo(&rollupCfg, info, depTx, rollupCfg.Genesis.L2Time, seqNr, l1Cfg)
 	})
 }

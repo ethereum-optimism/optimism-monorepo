@@ -585,9 +585,9 @@ func (sysCfg *SystemConfig) EcotoneScalars() (EcotoneScalars, error) {
 	return DecodeScalar(sysCfg.Scalar)
 }
 
-func (sysCfg *SystemConfig) IncrementGenesisNonces(isthmusTime *uint64, customGasToken bool) {
-	// if Isthmus is active at genesis, we must ensure the nonces are set correctly
-	if isthmusTime != nil && *isthmusTime == 0 {
+func (sysCfg *SystemConfig) IncrementGenesisNonces(jovianTime *uint64, customGasToken bool) {
+	// if Jovian is active at genesis, we must ensure the nonces are set correctly
+	if jovianTime != nil && *jovianTime == 0 {
 		// SystemConfig emits 3 ConfigUpdate events which increments the nonce by 3
 		sysCfg.ConfigUpdateNonce += 3
 		// If a custom gas token is in use, a TransactionDeposited event is emitted from

@@ -5,7 +5,9 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 /// @notice This interface corresponds to the Custom Gas Token version of the SystemConfig contract.
-interface ISystemConfigIsthmus {
+interface ISystemConfigJovian {
+    error CustomGasTokenNotSupported();
+
     event ConfigUpdate(uint256 indexed nonceAndVersion, ISystemConfig.UpdateType indexed updateType, bytes data);
     event Initialized(uint8 version);
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);

@@ -20,13 +20,13 @@ import (
 const (
 	L1InfoFuncBedrockSignature = "setL1BlockValues(uint64,uint64,uint256,bytes32,uint64,bytes32,uint256,uint256)"
 	L1InfoFuncEcotoneSignature = "setL1BlockValuesEcotone()"
-	L1InfoFuncIsthmusSignature = "setL1BlockValuesIsthmus()"
+	L1InfoFuncJovianSignature  = "setL1BlockValuesJovian()"
 	L1InfoFuncInteropSignature = "setL1BlockValuesInterop()"
 	DepositsCompleteSignature  = "depositsComplete()"
 	L1InfoArguments            = 8
 	L1InfoBedrockLen           = 4 + 32*L1InfoArguments
 	L1InfoEcotoneLen           = 4 + 32*5      // after Ecotone upgrade, args are packed into 5 32-byte slots
-	L1InfoIsthmusLen           = 4 + 32*5 + 16 // after Isthmus upgrade, args are packed into 5 32-byte slots and 1 16-byte slot
+	L1InfoJovianLen            = 4 + 32*5 + 16 // after Jovian upgrade, args are packed into 5 32-byte slots and 1 16-byte slot
 	DepositsCompleteLen        = 4             // only the selector
 	// DepositsCompleteGas allocates 21k gas for intrinsic tx costs, and
 	// an additional 15k to ensure that the DepositsComplete call does not run out of gas.
@@ -39,7 +39,7 @@ const (
 var (
 	L1InfoFuncBedrockBytes4 = crypto.Keccak256([]byte(L1InfoFuncBedrockSignature))[:4]
 	L1InfoFuncEcotoneBytes4 = crypto.Keccak256([]byte(L1InfoFuncEcotoneSignature))[:4]
-	L1InfoFuncIsthmusBytes4 = crypto.Keccak256([]byte(L1InfoFuncIsthmusSignature))[:4]
+	L1InfoFuncJovianBytes4  = crypto.Keccak256([]byte(L1InfoFuncJovianSignature))[:4]
 	L1InfoFuncInteropBytes4 = crypto.Keccak256([]byte(L1InfoFuncInteropSignature))[:4]
 	DepositsCompleteBytes4  = crypto.Keccak256([]byte(DepositsCompleteSignature))[:4]
 	L1InfoDepositerAddress  = common.HexToAddress("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0001")
@@ -70,8 +70,8 @@ type L1BlockInfo struct {
 	BaseFeeScalar     uint32   // added by Ecotone upgrade
 	BlobBaseFeeScalar uint32   // added by Ecotone upgrade
 
-	DepositNonce      uint64 // added by the Isthmus upgrade
-	ConfigUpdateNonce uint64 // added by the Isthmus upgrade
+	DepositNonce      uint64 // added by the Jovian upgrade
+	ConfigUpdateNonce uint64 // added by the Jovian upgrade
 }
 
 // Bedrock Binary Format
@@ -177,7 +177,7 @@ func (info *L1BlockInfo) unmarshalBinaryBedrock(data []byte) error {
 // | 32      | BatcherHash              |
 // +---------+--------------------------+
 
-// Isthmus & Interop Binary Format
+// Jovian & Interop Binary Format
 // +---------+--------------------------+
 // | Bytes   | Field                    |
 // +---------+--------------------------+
@@ -203,10 +203,10 @@ func (info *L1BlockInfo) marshalBinaryEcotone() ([]byte, error) {
 	return out, nil
 }
 
-func (info *L1BlockInfo) marshalBinaryIsthmus() ([]byte, error) {
-	out, err := marshalBinaryWithSignature(info, L1InfoFuncIsthmusBytes4, true)
+func (info *L1BlockInfo) marshalBinaryJovian() ([]byte, error) {
+	out, err := marshalBinaryWithSignature(info, L1InfoFuncJovianBytes4, true)
 	if err != nil {
-		return nil, fmt.Errorf("failed to marshal Isthmus l1 block info: %w", err)
+		return nil, fmt.Errorf("failed to marshal Jovian l1 block info: %w", err)
 	}
 	return out, nil
 }
@@ -222,7 +222,7 @@ func (info *L1BlockInfo) marshalBinaryInterop() ([]byte, error) {
 func marshalBinaryWithSignature(info *L1BlockInfo, signature []byte, includeNonces bool) ([]byte, error) {
 	var w *bytes.Buffer
 	if includeNonces {
-		w = bytes.NewBuffer(make([]byte, 0, L1InfoIsthmusLen)) // Isthmus and Interop have the same length
+		w = bytes.NewBuffer(make([]byte, 0, L1InfoJovianLen)) // Jovian and Interop have the same length
 	} else {
 		w = bytes.NewBuffer(make([]byte, 0, L1InfoEcotoneLen))
 	}
@@ -276,8 +276,8 @@ func (info *L1BlockInfo) unmarshalBinaryEcotone(data []byte) error {
 	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncEcotoneBytes4, data, false)
 }
 
-func (info *L1BlockInfo) unmarshalBinaryIsthmus(data []byte) error {
-	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncIsthmusBytes4, data, true)
+func (info *L1BlockInfo) unmarshalBinaryJovian(data []byte) error {
+	return unmarshalBinaryWithSignatureAndData(info, L1InfoFuncJovianBytes4, data, true)
 }
 
 func (info *L1BlockInfo) unmarshalBinaryInterop(data []byte) error {
@@ -287,7 +287,7 @@ func (info *L1BlockInfo) unmarshalBinaryInterop(data []byte) error {
 func unmarshalBinaryWithSignatureAndData(info *L1BlockInfo, signature []byte, data []byte, includeNonces bool) error {
 	expectedLength := L1InfoEcotoneLen
 	if includeNonces {
-		expectedLength = L1InfoIsthmusLen
+		expectedLength = L1InfoJovianLen
 	}
 	if len(data) != expectedLength {
 		return fmt.Errorf("data is unexpected length: %d", len(data))
@@ -346,10 +346,10 @@ func isEcotoneButNotFirstBlock(rollupCfg *rollup.Config, l2Timestamp uint64) boo
 	return rollupCfg.IsEcotone(l2Timestamp) && !rollupCfg.IsEcotoneActivationBlock(l2Timestamp)
 }
 
-// isIsthmusButNotFirstBlock returns whether the specified block is subject to the Isthmus upgrade,
+// isJovianButNotFirstBlock returns whether the specified block is subject to the Jovian upgrade,
 // but is not the activation block itself.
-func isIsthmusButNotFirstBlock(rollupCfg *rollup.Config, l2Timestamp uint64) bool {
-	return rollupCfg.IsIsthmus(l2Timestamp) && !rollupCfg.IsIsthmusActivationBlock(l2Timestamp)
+func isJovianButNotFirstBlock(rollupCfg *rollup.Config, l2Timestamp uint64) bool {
+	return rollupCfg.IsJovian(l2Timestamp) && !rollupCfg.IsJovianActivationBlock(l2Timestamp)
 }
 
 // isInteropButNotFirstBlock returns whether the specified block is subject to the Interop upgrade,
@@ -369,8 +369,8 @@ func L1BlockInfoFromBytes(rollupCfg *rollup.Config, l2BlockTime uint64, data []b
 	if isInteropButNotFirstBlock(rollupCfg, l2BlockTime) {
 		return &info, info.unmarshalBinaryInterop(data)
 	}
-	if isIsthmusButNotFirstBlock(rollupCfg, l2BlockTime) {
-		return &info, info.unmarshalBinaryIsthmus(data)
+	if isJovianButNotFirstBlock(rollupCfg, l2BlockTime) {
+		return &info, info.unmarshalBinaryJovian(data)
 	}
 	if isEcotoneButNotFirstBlock(rollupCfg, l2BlockTime) {
 		return &info, info.unmarshalBinaryEcotone(data)
@@ -389,13 +389,13 @@ func L1InfoDeposit(rollupCfg *rollup.Config, sysCfg eth.SystemConfig, seqNumber 
 		SequenceNumber: seqNumber,
 		BatcherAddr:    sysCfg.BatcherAddr,
 	}
-	isthmus := isIsthmusButNotFirstBlock(rollupCfg, l2Timestamp)
-	if !isthmus {
+	jovian := isJovianButNotFirstBlock(rollupCfg, l2Timestamp)
+	if !jovian {
 		if sysCfg.DepositNonce != 0 {
-			return nil, fmt.Errorf("found non-zero deposit nonce for non-Isthmus block")
+			return nil, fmt.Errorf("found non-zero deposit nonce for non-Jovian block")
 		}
 		if sysCfg.ConfigUpdateNonce != 0 {
-			return nil, fmt.Errorf("found non-zero config update nonce for non-Isthmus block")
+			return nil, fmt.Errorf("found non-zero config update nonce for non-Jovian block")
 		}
 	}
 	var data []byte
@@ -411,7 +411,7 @@ func L1InfoDeposit(rollupCfg *rollup.Config, sysCfg eth.SystemConfig, seqNumber 
 		}
 		l1BlockInfo.BlobBaseFeeScalar = scalars.BlobBaseFeeScalar
 		l1BlockInfo.BaseFeeScalar = scalars.BaseFeeScalar
-		if isthmus {
+		if jovian {
 			l1BlockInfo.DepositNonce = sysCfg.DepositNonce
 			l1BlockInfo.ConfigUpdateNonce = sysCfg.ConfigUpdateNonce
 			if isInteropButNotFirstBlock(rollupCfg, l2Timestamp) {
@@ -420,9 +420,9 @@ func L1InfoDeposit(rollupCfg *rollup.Config, sysCfg eth.SystemConfig, seqNumber 
 					return nil, fmt.Errorf("failed to marshal Interop l1 block info: %w", err)
 				}
 			} else {
-				data, err = l1BlockInfo.marshalBinaryIsthmus()
+				data, err = l1BlockInfo.marshalBinaryJovian()
 				if err != nil {
-					return nil, fmt.Errorf("failed to marshal Isthmus l1 block info: %w", err)
+					return nil, fmt.Errorf("failed to marshal Jovian l1 block info: %w", err)
 				}
 			}
 		} else {

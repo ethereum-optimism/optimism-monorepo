@@ -20,7 +20,7 @@ import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from 
 import {
     DeployImplementationsInput,
     DeployImplementations,
-    DeployImplementationsIsthmus,
+    DeployImplementationsJovian,
     DeployImplementationsInterop,
     DeployImplementationsOutput
 } from "scripts/deploy/DeployImplementations.s.sol";
@@ -295,8 +295,8 @@ contract Deploy is Deployer {
 
         if (cfg.useInterop()) {
             di = DeployImplementations(new DeployImplementationsInterop());
-        } else if (cfg.l2GenesisIsthmusTimeOffset() == 0) {
-            di = DeployImplementations(new DeployImplementationsIsthmus());
+        } else if (cfg.l2GenesisJovianTimeOffset() == 0) {
+            di = DeployImplementations(new DeployImplementationsJovian());
         }
         di.run(dii, dio);
 

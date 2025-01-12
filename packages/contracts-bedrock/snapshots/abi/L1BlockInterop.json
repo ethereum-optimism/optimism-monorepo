@@ -359,7 +359,7 @@
   },
   {
     "inputs": [],
-    "name": "setL1BlockValuesIsthmus",
+    "name": "setL1BlockValuesJovian",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"

@@ -847,5 +847,10 @@
     ],
     "name": "OwnershipTransferred",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "CustomGasTokenNotSupported",
+    "type": "error"
   }
 ]

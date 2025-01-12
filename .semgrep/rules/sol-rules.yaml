@@ -243,9 +243,9 @@ rules:
           }
     paths:
       exclude:
-        - packages/contracts-bedrock/src/L1/SystemConfigIsthmus.sol
+        - packages/contracts-bedrock/src/L1/SystemConfigJovian.sol
         - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
-        - packages/contracts-bedrock/src/L1/OptimismPortalIsthmus.sol
+        - packages/contracts-bedrock/src/L1/OptimismPortalJovian.sol
         - packages/contracts-bedrock/src/L1/OptimismPortalInterop.sol
 
   - id: sol-safety-proper-initializer

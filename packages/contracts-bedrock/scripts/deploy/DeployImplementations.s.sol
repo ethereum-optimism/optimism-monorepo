@@ -25,8 +25,8 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
-import { IOptimismPortalIsthmus } from "interfaces/L1/IOptimismPortalIsthmus.sol";
-import { ISystemConfigIsthmus } from "interfaces/L1/ISystemConfigIsthmus.sol";
+import { IOptimismPortalJovian } from "interfaces/L1/IOptimismPortalJovian.sol";
+import { ISystemConfigJovian } from "interfaces/L1/ISystemConfigJovian.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -817,19 +817,19 @@ contract DeployImplementations is Script {
 // Using the base scripts and contracts (DeploySuperchain, DeployImplementations, DeployOPChain, and
 // the corresponding OPContractsManager) deploys a standard chain. For nonstandard and in-development
 // features we need to modify some or all of those contracts, and we do that via inheritance. Using
-// Isthmus as an example, we've made the following changes to L1 contracts:
-//   - `OptimismPortalIsthmus is OptimismPortal`: A different portal implementation is used, and
+// Jovian as an example, we've made the following changes to L1 contracts:
+//   - `OptimismPortalJovian is OptimismPortal`: A different portal implementation is used, and
 //     it has an additional method for retrieving the TransactionDeposited nonce.
-//   - `SystemConfigIsthmus is SystemConfig`: A different system config implementation is used, and
+//   - `SystemConfigJovian is SystemConfig`: A different system config implementation is used, and
 //     it has an additional method for retrieving the ConfigUpdate nonce.
 //
 // Similar to how inheritance was used to develop the new portal and system config contracts, we use
-// inheritance to modify up to all of the deployer contracts. For this isthmus example, what this
+// inheritance to modify up to all of the deployer contracts. For this Jovian example, what this
 // means is we need:
-//   - A `DeployImplementationsIsthmus is DeployImplementations` that:
-//     - Deploys OptimismPortalIsthmus instead of OptimismPortal.
-//     - Deploys SystemConfigIsthmus instead of SystemConfig.
-contract DeployImplementationsIsthmus is DeployImplementations {
+//   - A `DeployImplementationsJovian is DeployImplementations` that:
+//     - Deploys OptimismPortalJovian instead of OptimismPortal.
+//     - Deploys SystemConfigJovian instead of SystemConfig.
+contract DeployImplementationsJovian is DeployImplementations {
     function deployOptimismPortalImpl(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio
@@ -840,21 +840,21 @@ contract DeployImplementationsIsthmus is DeployImplementations {
         string memory release = _dii.l1ContractsRelease();
         string memory stdVerToml = _dii.standardVersionsToml();
         string memory contractName = "optimism_portal";
-        IOptimismPortalIsthmus impl;
+        IOptimismPortalJovian impl;
 
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
-            impl = IOptimismPortalIsthmus(payable(existingImplementation));
+            impl = IOptimismPortalJovian(payable(existingImplementation));
         } else {
             uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
             uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
             vm.broadcast(msg.sender);
-            impl = IOptimismPortalIsthmus(
+            impl = IOptimismPortalJovian(
                 DeployUtils.create1({
-                    _name: "OptimismPortalIsthmus",
+                    _name: "OptimismPortalJovian",
                     _args: DeployUtils.encodeConstructor(
                         abi.encodeCall(
-                            IOptimismPortalIsthmus.__constructor__,
+                            IOptimismPortalJovian.__constructor__,
                             (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                         )
                     )
@@ -877,17 +877,17 @@ contract DeployImplementationsIsthmus is DeployImplementations {
         string memory stdVerToml = _dii.standardVersionsToml();
 
         string memory contractName = "system_config";
-        ISystemConfigIsthmus impl;
+        ISystemConfigJovian impl;
 
         address existingImplementation = getReleaseAddress(release, contractName, stdVerToml);
         if (existingImplementation != address(0)) {
-            impl = ISystemConfigIsthmus(existingImplementation);
+            impl = ISystemConfigJovian(existingImplementation);
         } else {
             vm.broadcast(msg.sender);
-            impl = ISystemConfigIsthmus(
+            impl = ISystemConfigJovian(
                 DeployUtils.create1({
-                    _name: "SystemConfigIsthmus",
-                    _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigIsthmus.__constructor__, ()))
+                    _name: "SystemConfigJovian",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigJovian.__constructor__, ()))
                 })
             );
         }
