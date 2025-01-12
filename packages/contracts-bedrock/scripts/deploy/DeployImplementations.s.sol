@@ -505,6 +505,8 @@ contract DeployImplementations is Script {
             require(checkAddress == address(0), "OPCM-50");
             (blueprints.anchorStateRegistry, checkAddress) = Blueprint.create(vm.getCode("AnchorStateRegistry"), salt);
             require(checkAddress == address(0), "OPCM-60");
+            // The max initcode/runtimecode size is 48KB/24KB.
+            // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
             (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = Blueprint.create(vm.getCode("PermissionedDisputeGame"), salt);
             (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = Blueprint.create(vm.getCode("FaultDisputeGame"), salt);
             vm.stopBroadcast();
