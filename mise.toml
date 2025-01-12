@@ -10,6 +10,7 @@ yq = "4.44.5"
 shellcheck = "0.10.0"
 direnv = "2.35.0"
 just = "1.37.0"
+kurtosis = "1.4.3"
 
 # Cargo dependencies
 "cargo:just" = "1.37.0"
@@ -47,6 +48,10 @@ binary_signer = "1.0.4"
 forge = "ubi:foundry-rs/foundry[exe=forge]"
 cast = "ubi:foundry-rs/foundry[exe=cast]"
 anvil = "ubi:foundry-rs/foundry[exe=anvil]"
+# aqua backend is currently broken
+shellcheck = "ubi:koalaman/shellcheck"
+# custom asdf plugin for now
+kurtosis = "asdf:ethereum-optimism/asdf-kurtosis"
 
 [settings]
 experimental = true
