@@ -9,6 +9,8 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
+import { Bytes } from "src/libraries/Bytes.sol";
+
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
@@ -93,8 +95,37 @@ contract DeployImplementationsInput is BaseDeployIO {
     }
 
     function salt() public view returns (bytes32) {
-        // TODO check if implementations are deployed based on code+salt and skip deploy if so.
-        return _salt;
+        // Check if implementations are already deployed based on code+salt
+        // We can use the CREATE2 address computation to check if contracts are already deployed
+        // at the expected addresses. If they are, we can skip deployment.
+        bytes32 saltToUse = _salt;
+        if (saltToUse == bytes32(0)) {
+            // If no salt is provided, we should still deploy
+            return bytes32(0);
+        }
+
+        // Check if OPCM is already deployed at the expected address
+        address expectedOPCMAddress = _computeCreate2Address(saltToUse, type(OPContractsManager).creationCode);
+        if (expectedOPCMAddress.code.length == 0) {
+            // If any of the required contracts is not deployed, we should proceed with deployment
+            return saltToUse;
+        }
+
+        // If we reach here, the implementations are already deployed
+        revert("DeployImplementationsInput: implementations already deployed with this salt");
+    }
+
+    /// @dev Computes the CREATE2 address for a contract
+    function _computeCreate2Address(bytes32 salt, bytes memory bytecode) internal view returns (address) {
+        bytes32 hash = keccak256(
+            abi.encodePacked(
+                bytes1(0xff),
+                address(this),
+                salt,
+                keccak256(bytecode)
+            )
+        );
+        return address(uint160(uint256(hash)));
     }
 
     function withdrawalDelaySeconds() public view returns (uint256) {
@@ -491,24 +522,14 @@ contract DeployImplementations is Script {
             bytes32 salt = _dii.salt();
             OPContractsManager.Blueprints memory blueprints;
 
-            address checkAddress;
             vm.startBroadcast(msg.sender);
-            (blueprints.addressManager, checkAddress) = Blueprint.create(vm.getCode("AddressManager"), salt);
-            require(checkAddress == address(0), "OPCM-10");
-            (blueprints.proxy, checkAddress) = Blueprint.create(vm.getCode("Proxy"), salt);
-            require(checkAddress == address(0), "OPCM-20");
-            (blueprints.proxyAdmin, checkAddress) = Blueprint.create(vm.getCode("ProxyAdmin"), salt);
-            require(checkAddress == address(0), "OPCM-30");
-            (blueprints.l1ChugSplashProxy, checkAddress) = Blueprint.create(vm.getCode("L1ChugSplashProxy"), salt);
-            require(checkAddress == address(0), "OPCM-40");
-            (blueprints.resolvedDelegateProxy, checkAddress) = Blueprint.create(vm.getCode("ResolvedDelegateProxy"), salt);
-            require(checkAddress == address(0), "OPCM-50");
-            (blueprints.anchorStateRegistry, checkAddress) = Blueprint.create(vm.getCode("AnchorStateRegistry"), salt);
-            require(checkAddress == address(0), "OPCM-60");
-            // The max initcode/runtimecode size is 48KB/24KB.
-            // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-            (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = Blueprint.create(vm.getCode("PermissionedDisputeGame"), salt);
-            (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = Blueprint.create(vm.getCode("FaultDisputeGame"), salt);
+            blueprints.addressManager = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("AddressManager")), salt);
+            blueprints.proxy = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("Proxy")), salt);
+            blueprints.proxyAdmin = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("ProxyAdmin")), salt);
+            blueprints.l1ChugSplashProxy = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("L1ChugSplashProxy")), salt);
+            blueprints.resolvedDelegateProxy = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("ResolvedDelegateProxy")), salt);
+            blueprints.anchorStateRegistry = deployBytecode(Blueprint.blueprintDeployerBytecode(vm.getCode("AnchorStateRegistry")), salt);
+            (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2)  = deployBigBytecode(vm.getCode("PermissionedDisputeGame"), salt);
             vm.stopBroadcast();
             // forgefmt: disable-end
 
@@ -851,23 +872,40 @@ contract DeployImplementations is Script {
 
     function etchIOContracts() public returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         (dii_, dio_) = getIOContracts();
-
-        DeployUtils.etchLabelAndAllowCheatcodes({
-            _etchTo: address(dii_),
-            _cname: "DeployImplementationsInput",
-            _artifactPath: "DeployImplementations.s.sol:DeployImplementationsInput"
-        });
-
-        DeployUtils.etchLabelAndAllowCheatcodes({
-            _etchTo: address(dio_),
-            _cname: "DeployImplementationsOutput",
-            _artifactPath: "DeployImplementations.s.sol:DeployImplementationsOutput"
-        });
+        vm.etch(address(dii_), type(DeployImplementationsInput).runtimeCode);
+        vm.etch(address(dio_), type(DeployImplementationsOutput).runtimeCode);
     }
 
     function getIOContracts() public view returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         dii_ = DeployImplementationsInput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsInput"));
         dio_ = DeployImplementationsOutput(DeployUtils.toIOAddress(msg.sender, "optimism.DeployImplementationsOutput"));
+    }
+
+    function deployBytecode(bytes memory _bytecode, bytes32 _salt) public returns (address newContract_) {
+        assembly ("memory-safe") {
+            newContract_ := create2(0, add(_bytecode, 0x20), mload(_bytecode), _salt)
+        }
+        require(newContract_ != address(0), "DeployImplementations: create2 failed");
+    }
+
+    function deployBigBytecode(
+        bytes memory _bytecode,
+        bytes32 _salt
+    )
+        public
+        returns (address newContract1_, address newContract2_)
+    {
+        // Preamble needs 3 bytes.
+        uint256 maxInitCodeSize = 24576 - 3;
+        require(_bytecode.length > maxInitCodeSize, "DeployImplementations: Use deployBytecode instead");
+
+        bytes memory part1Slice = Bytes.slice(_bytecode, 0, maxInitCodeSize);
+        bytes memory part1 = Blueprint.blueprintDeployerBytecode(part1Slice);
+        bytes memory part2Slice = Bytes.slice(_bytecode, maxInitCodeSize, _bytecode.length - maxInitCodeSize);
+        bytes memory part2 = Blueprint.blueprintDeployerBytecode(part2Slice);
+
+        newContract1_ = deployBytecode(part1, _salt);
+        newContract2_ = deployBytecode(part2, _salt);
     }
 
     // Zero address is returned if the address is not found in '_standardVersionsToml'.
