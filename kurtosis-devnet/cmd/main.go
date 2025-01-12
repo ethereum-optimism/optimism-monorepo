@@ -110,87 +110,114 @@ type PrestateInfo struct {
 	Hashes map[string]string `json:"hashes"`
 }
 
+type localPrestateHolder struct {
+	info     *PrestateInfo
+	baseDir  string
+	buildDir string
+	dryRun   bool
+	builder  *build.PrestateBuilder
+}
+
+func newLocalPrestateHolder(baseDir string, buildDir string, dryRun bool) *localPrestateHolder {
+	return &localPrestateHolder{
+		baseDir:  baseDir,
+		buildDir: buildDir,
+		dryRun:   dryRun,
+		builder: build.NewPrestateBuilder(
+			build.WithPrestateBaseDir(baseDir),
+			build.WithPrestateDryRun(dryRun),
+		),
+	}
+}
+
+func (h *localPrestateHolder) GetPrestateInfo() (*PrestateInfo, error) {
+	if h.info != nil {
+		return h.info, nil
+	}
+
+	prestatePath := []string{"proofs", "op-program", "cannon"}
+	prestateURL := fileserverURL(prestatePath...)
+
+	// Create build directory with the final path structure
+	buildDir := filepath.Join(append([]string{h.buildDir}, prestatePath...)...)
+	if err := os.MkdirAll(buildDir, 0755); err != nil {
+		return nil, fmt.Errorf("failed to create prestate build directory: %w", err)
+	}
+
+	info := &PrestateInfo{
+		URL:    prestateURL,
+		Hashes: make(map[string]string),
+	}
+
+	if h.dryRun {
+		h.info = info
+		return info, nil
+	}
+
+	// Map of known file prefixes to their keys
+	fileToKey := map[string]string{
+		"prestate-proof.json":      "prestate",
+		"prestate-proof-mt64.json": "prestate-mt64",
+		"prestate-proof-mt.json":   "prestate-mt",
+	}
+
+	// Build all prestate files directly in the target directory
+	if err := h.builder.Build(buildDir); err != nil {
+		return nil, fmt.Errorf("failed to build prestates: %w", err)
+	}
+
+	// Find and process all prestate files
+	matches, err := filepath.Glob(filepath.Join(buildDir, "prestate-proof*.json"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to find prestate files: %w", err)
+	}
+
+	// Process each file to rename it to its hash
+	for _, filePath := range matches {
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read prestate %s: %w", filepath.Base(filePath), err)
+		}
+
+		var data struct {
+			Pre string `json:"pre"`
+		}
+		if err := json.Unmarshal(content, &data); err != nil {
+			return nil, fmt.Errorf("failed to parse prestate %s: %w", filepath.Base(filePath), err)
+		}
+
+		// Store hash with its corresponding key
+		if key, exists := fileToKey[filepath.Base(filePath)]; exists {
+			info.Hashes[key] = data.Pre
+		}
+
+		// Rename files to hash-based names
+		newFileName := data.Pre + ".json"
+		hashedPath := filepath.Join(buildDir, newFileName)
+		if err := os.Rename(filePath, hashedPath); err != nil {
+			return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(filePath), err)
+		}
+		log.Printf("%s available at: %s/%s\n", filepath.Base(filePath), prestateURL, newFileName)
+
+		// Rename the corresponding binary file
+		binFilePath := strings.Replace(strings.TrimSuffix(filePath, ".json"), "-proof", "", 1) + ".bin.gz"
+		newBinFileName := data.Pre + ".bin.gz"
+		binHashedPath := filepath.Join(buildDir, newBinFileName)
+		if err := os.Rename(binFilePath, binHashedPath); err != nil {
+			return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(binFilePath), err)
+		}
+		log.Printf("%s available at: %s/%s\n", filepath.Base(binFilePath), prestateURL, newBinFileName)
+	}
+
+	h.info = info
+	return info, nil
+}
+
 func (m *Main) localPrestateOption(dir string) tmpl.TemplateContextOptions {
-	prestateBuilder := build.NewPrestateBuilder(
-		build.WithPrestateBaseDir(m.cfg.baseDir),
-		build.WithPrestateDryRun(m.cfg.dryRun),
-	)
+	holder := newLocalPrestateHolder(m.cfg.baseDir, dir, m.cfg.dryRun)
 
 	return tmpl.WithFunction("localPrestate", func() (*PrestateInfo, error) {
-		prestatePath := []string{"proofs", "op-program", "cannon"}
-		prestateURL := fileserverURL(prestatePath...)
-
-		// Create build directory with the final path structure
-		buildDir := filepath.Join(append([]string{dir}, prestatePath...)...)
-		if err := os.MkdirAll(buildDir, 0755); err != nil {
-			return nil, fmt.Errorf("failed to create prestate build directory: %w", err)
-		}
-
-		info := &PrestateInfo{
-			URL:    prestateURL,
-			Hashes: make(map[string]string),
-		}
-
-		if m.cfg.dryRun {
-			return info, nil
-		}
-
-		// Map of known file prefixes to their keys
-		fileToKey := map[string]string{
-			"prestate-proof.json":      "prestate",
-			"prestate-proof-mt64.json": "prestate-mt64",
-			"prestate-proof-mt.json":   "prestate-mt",
-		}
-
-		// Build all prestate files directly in the target directory
-		if err := prestateBuilder.Build(buildDir); err != nil {
-			return nil, fmt.Errorf("failed to build prestates: %w", err)
-		}
-
-		// Find and process all prestate files
-		matches, err := filepath.Glob(filepath.Join(buildDir, "prestate-proof*.json"))
-		if err != nil {
-			return nil, fmt.Errorf("failed to find prestate files: %w", err)
-		}
-
-		// Process each file to rename it to its hash
-		for _, filePath := range matches {
-			content, err := os.ReadFile(filePath)
-			if err != nil {
-				return nil, fmt.Errorf("failed to read prestate %s: %w", filepath.Base(filePath), err)
-			}
-
-			var data struct {
-				Pre string `json:"pre"`
-			}
-			if err := json.Unmarshal(content, &data); err != nil {
-				return nil, fmt.Errorf("failed to parse prestate %s: %w", filepath.Base(filePath), err)
-			}
-
-			// Store hash with its corresponding key
-			if key, exists := fileToKey[filepath.Base(filePath)]; exists {
-				info.Hashes[key] = data.Pre
-			}
-
-			// Rename files to hash-based names
-			newFileName := data.Pre + ".json"
-			hashedPath := filepath.Join(buildDir, newFileName)
-			if err := os.Rename(filePath, hashedPath); err != nil {
-				return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(filePath), err)
-			}
-			log.Printf("%s available at: %s/%s\n", filepath.Base(filePath), prestateURL, newFileName)
-
-			// Rename the corresponding binary file
-			binFilePath := strings.Replace(strings.TrimSuffix(filePath, ".json"), "-proof", "", 1) + ".bin.gz"
-			newBinFileName := data.Pre + ".bin.gz"
-			binHashedPath := filepath.Join(buildDir, newBinFileName)
-			if err := os.Rename(binFilePath, binHashedPath); err != nil {
-				return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(binFilePath), err)
-			}
-			log.Printf("%s available at: %s/%s\n", filepath.Base(binFilePath), prestateURL, newBinFileName)
-		}
-
-		return info, nil
+		return holder.GetPrestateInfo()
 	})
 }
 

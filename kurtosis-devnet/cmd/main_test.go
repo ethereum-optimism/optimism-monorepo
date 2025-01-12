@@ -15,6 +15,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type mockDeployer struct {
@@ -290,8 +291,17 @@ _prestate-build target:
 			// Create template context with just the prestate function
 			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(tmpDir))
 
-			// Test template
-			template := `prestate_url: {{(localPrestate).URL}}`
+			// Test template with multiple calls to localPrestate
+			template := `first:
+  url: {{(localPrestate).URL}}
+  hashes:
+    game: {{index (localPrestate).Hashes "game"}}
+    proof: {{index (localPrestate).Hashes "proof"}}
+second:
+  url: {{(localPrestate).URL}}
+  hashes:
+    game: {{index (localPrestate).Hashes "game"}}
+    proof: {{index (localPrestate).Hashes "proof"}}`
 			buf := bytes.NewBuffer(nil)
 			err = tmplCtx.InstantiateTemplate(bytes.NewBufferString(template), buf)
 
@@ -305,7 +315,25 @@ _prestate-build target:
 			output := buf.String()
 			assert.Contains(t, output, "url: http://fileserver/proofs/op-program/cannon")
 
-			// Verify the directory was created
+			// Verify both calls return the same values
+			var result struct {
+				First struct {
+					URL    string            `yaml:"url"`
+					Hashes map[string]string `yaml:"hashes"`
+				} `yaml:"first"`
+				Second struct {
+					URL    string            `yaml:"url"`
+					Hashes map[string]string `yaml:"hashes"`
+				} `yaml:"second"`
+			}
+			err = yaml.Unmarshal(buf.Bytes(), &result)
+			require.NoError(t, err)
+
+			// Check that both calls returned identical results
+			assert.Equal(t, result.First.URL, result.Second.URL, "URLs should match")
+			assert.Equal(t, result.First.Hashes, result.Second.Hashes, "Hashes should match")
+
+			// Verify the directory was created only once
 			prestateDir := filepath.Join(tmpDir, "proofs", "op-program", "cannon")
 			assert.DirExists(t, prestateDir)
 		})
