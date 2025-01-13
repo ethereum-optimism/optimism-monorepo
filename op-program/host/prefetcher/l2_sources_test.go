@@ -88,6 +88,17 @@ func TestNewL2Sources(t *testing.T) {
 		require.ErrorIs(t, err, ErrNoRollupForL2)
 	})
 
+	t.Run("DuplicateL2URLsForSameChain", func(t *testing.T) {
+		logger := testlog.Logger(t, log.LevelDebug)
+		config1, l2Rpc1, _ := chain(1)
+		_, l2Rpc2, _ := chain(1)
+		_, err := NewRetryingL2Sources(context.Background(), logger,
+			[]*rollup.Config{config1},
+			[]client.RPC{l2Rpc1, l2Rpc2},
+			nil)
+		require.ErrorIs(t, err, ErrDuplicateL2URLs)
+	})
+
 	t.Run("ExperimentalURLWithoutConfig", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		_, _, experimentalRpc1 := chain(1)
@@ -97,6 +108,17 @@ func TestNewL2Sources(t *testing.T) {
 			[]client.RPC{l2Rpc2},
 			[]client.RPC{experimentalRpc1, experimentalRpc2})
 		require.ErrorIs(t, err, ErrNoRollupForExperimental)
+	})
+
+	t.Run("DuplicateExperimentalURLsForSameChain", func(t *testing.T) {
+		logger := testlog.Logger(t, log.LevelDebug)
+		config1, l2RPC, experimentalRpc1 := chain(1)
+		_, _, experimentalRpc2 := chain(1)
+		_, err := NewRetryingL2Sources(context.Background(), logger,
+			[]*rollup.Config{config1},
+			[]client.RPC{l2RPC},
+			[]client.RPC{experimentalRpc1, experimentalRpc2})
+		require.ErrorIs(t, err, ErrDuplicateExperimentsURLs)
 	})
 }
 

@@ -16,10 +16,12 @@ import (
 )
 
 var (
-	ErrNoSources               = errors.New("no sources specified")
-	ErrNoL2ForRollup           = errors.New("no L2 RPC available for rollup")
-	ErrNoRollupForL2           = errors.New("no rollup config available for L2 RPC")
-	ErrNoRollupForExperimental = errors.New("no rollup config available for L2 experimental RPC")
+	ErrNoSources                = errors.New("no sources specified")
+	ErrNoL2ForRollup            = errors.New("no L2 RPC available for rollup")
+	ErrNoRollupForL2            = errors.New("no rollup config available for L2 RPC")
+	ErrDuplicateL2URLs          = errors.New("multiple L2 URLs provided for chain")
+	ErrNoRollupForExperimental  = errors.New("no rollup config available for L2 experimental RPC")
+	ErrDuplicateExperimentsURLs = errors.New("multiple experimental URLs provided for chain")
 )
 
 type RetryingL2Sources struct {
@@ -66,6 +68,9 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 		if err != nil {
 			return nil, fmt.Errorf("failed to load chain ID: %w", err)
 		}
+		if _, ok := l2RPCs[chainID]; ok {
+			return nil, fmt.Errorf("%w %v", ErrDuplicateL2URLs, chainID)
+		}
 		l2RPCs[chainID] = rpc
 		if _, ok := rollupConfigs[chainID]; !ok {
 			return nil, fmt.Errorf("%w: %v", ErrNoRollupForL2, chainID)
@@ -77,6 +82,9 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 		chainID, err := loadChainID(ctx, rpc)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load chain ID: %w", err)
+		}
+		if _, ok := l2ExperimentalRPCs[chainID]; ok {
+			return nil, fmt.Errorf("%w %v", ErrDuplicateExperimentsURLs, chainID)
 		}
 		l2ExperimentalRPCs[chainID] = rpc
 		if _, ok := rollupConfigs[chainID]; !ok {

@@ -21,7 +21,7 @@ func (p *Prefetcher) nativeReExecuteBlock(
 	ctx context.Context, agreedBlockHash, blockHash common.Hash, chainID uint64) error {
 	// Avoid retries as the block may not be canonical and unavailable
 
-	source, err := p.l2Sources.ForChainIDWithoutRetries(p.defaultChainID)
+	source, err := p.l2Sources.ForChainIDWithoutRetries(chainID)
 	if err != nil {
 		return err
 	}
@@ -34,7 +34,7 @@ func (p *Prefetcher) nativeReExecuteBlock(
 		p.logger.Error("Failed to fetch block", "block_hash", blockHash, "err", err)
 	}
 
-	retrying, err := p.l2Sources.ForChainID(p.defaultChainID)
+	retrying, err := p.l2Sources.ForChainID(chainID)
 	if err != nil {
 		return err
 	}
