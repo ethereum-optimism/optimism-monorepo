@@ -238,6 +238,9 @@ contract DeploySuperchain_Test is Test {
         deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
         address originalConfig = address(dso.superchainConfigImpl());
         address originalProtocolVersions = address(dso.protocolVersionsImpl());
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        assertEq(address(dso.superchainConfigImpl()), originalConfig, "100");
+        assertEq(address(dso.protocolVersionsImpl()), originalProtocolVersions, "200");
     }
 
     function zeroOutSlotForSelector(bytes4 _selector) internal returns (uint256 slot_) {
