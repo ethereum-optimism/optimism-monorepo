@@ -44,7 +44,7 @@ contract InitializablePublic_Test is Test {
         for (uint256 i; i < contracts.length; ++i) {
             bytes32 slotVal = vm.load(contracts[i].target, Constants.INITIALIZABLE_STORAGE);
             uint64 initialized = uint64(uint256(slotVal));
-            // Uint64 max means intialized and _disableInitializers called
+            // Uint64 max means initialized and _disableInitializers called
             assertEq(initialized, type(uint64).max);
         }
     }
