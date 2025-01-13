@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/predeploys"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/stretchr/testify/require"
+
 	"github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 var logProcessorChainID = types.ChainIDFromUInt64(4)
@@ -23,9 +26,15 @@ func TestLogProcessor(t *testing.T) {
 		Hash:       common.Hash{0x11},
 		Time:       1111,
 	}
+	depSet := &testDepSet{
+		mapping: map[types.ChainID]types.ChainIndex{
+			types.ChainIDFromUInt64(100): 4,
+		},
+	}
+
 	t.Run("NoOutputWhenLogsAreEmpty", func(t *testing.T) {
 		store := &stubLogStorage{}
-		processor := NewLogProcessor(logProcessorChainID, store)
+		processor := NewLogProcessor(logProcessorChainID, store, depSet)
 
 		err := processor.ProcessLogs(ctx, block1, ethTypes.Receipts{})
 		require.NoError(t, err)
@@ -59,7 +68,7 @@ func TestLogProcessor(t *testing.T) {
 			},
 		}
 		store := &stubLogStorage{}
-		processor := NewLogProcessor(logProcessorChainID, store)
+		processor := NewLogProcessor(logProcessorChainID, store, depSet)
 
 		err := processor.ProcessLogs(ctx, block1, rcpts)
 		require.NoError(t, err)
@@ -108,15 +117,15 @@ func TestLogProcessor(t *testing.T) {
 			},
 		}
 		execMsg := &types.ExecutingMessage{
-			Chain:     4, // TODO(#11105): translate chain ID to chain index
+			Chain:     4,
 			BlockNum:  6,
 			LogIdx:    8,
 			Timestamp: 10,
 			Hash:      common.Hash{0xaa},
 		}
 		store := &stubLogStorage{}
-		processor := NewLogProcessor(types.ChainID{4}, store).(*logProcessor)
-		processor.eventDecoder = func(l *ethTypes.Log) (*types.ExecutingMessage, error) {
+		processor := NewLogProcessor(types.ChainID{4}, store, depSet).(*logProcessor)
+		processor.eventDecoder = func(l *ethTypes.Log, translator depset.ChainIndexFromID) (*types.ExecutingMessage, error) {
 			require.Equal(t, rcpts[0].Logs[0], l)
 			return execMsg, nil
 		}
