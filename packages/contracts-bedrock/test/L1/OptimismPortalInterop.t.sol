@@ -21,6 +21,12 @@ contract OptimismPortalInterop_Test is CommonTest {
         super.setUp();
     }
 
+    /// @notice Tests that the version function returns a valid string. We avoid testing the
+    ///         specific value of the string as it changes frequently.
+    function test_version_succeeds() external view {
+        assert(bytes(l2StandardBridge.version()).length > 0);
+    }
+
     /// @dev Tests that the config for the gas paying token cannot be set.
     function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
         vm.prank(address(_optimismPortalInterop().systemConfig()));

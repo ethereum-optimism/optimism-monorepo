@@ -20,6 +20,12 @@ contract SystemConfigInterop_Test is CommonTest {
         super.setUp();
     }
 
+    /// @notice Tests that the version function returns a valid string. We avoid testing the
+    ///         specific value of the string as it changes frequently.
+    function test_version_succeeds() external view {
+        assert(bytes(l2StandardBridge.version()).length > 0);
+    }
+
     /// @dev Tests that a dependency can be added.
     function testFuzz_addDependency_succeeds(uint256 _chainId) public {
         vm.expectCall(
