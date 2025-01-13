@@ -39,32 +39,32 @@ func NewCachingOracle(oracle Oracle) *CachingOracle {
 	}
 }
 
-func (o *CachingOracle) NodeByHash(nodeHash common.Hash) []byte {
+func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
 	node, ok := o.nodes.Get(nodeHash)
 	if ok {
 		return node
 	}
-	node = o.oracle.NodeByHash(nodeHash)
+	node = o.oracle.NodeByHash(nodeHash, chainID)
 	o.nodes.Add(nodeHash, node)
 	return node
 }
 
-func (o *CachingOracle) CodeByHash(codeHash common.Hash) []byte {
+func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {
 	code, ok := o.codes.Get(codeHash)
 	if ok {
 		return code
 	}
-	code = o.oracle.CodeByHash(codeHash)
+	code = o.oracle.CodeByHash(codeHash, chainID)
 	o.codes.Add(codeHash, code)
 	return code
 }
 
-func (o *CachingOracle) BlockByHash(blockHash common.Hash) *types.Block {
+func (o *CachingOracle) BlockByHash(blockHash common.Hash, chainID uint64) *types.Block {
 	block, ok := o.blocks.Get(blockHash)
 	if ok {
 		return block
 	}
-	block = o.oracle.BlockByHash(blockHash)
+	block = o.oracle.BlockByHash(blockHash, chainID)
 	o.blocks.Add(blockHash, block)
 	return block
 }

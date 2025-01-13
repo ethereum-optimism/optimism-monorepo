@@ -15,6 +15,7 @@ import (
 var _ Oracle = (*CachingOracle)(nil)
 
 func TestBlockByHash(t *testing.T) {
+	chainID := uint64(48294)
 	stub, _ := test.NewStubOracle(t)
 	oracle := NewCachingOracle(stub)
 
@@ -23,12 +24,12 @@ func TestBlockByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stub.Blocks[block.Hash()] = block
-	actual := oracle.BlockByHash(block.Hash())
+	actual := oracle.BlockByHash(block.Hash(), chainID)
 	require.Equal(t, block, actual)
 
-	// Later calls should retrieve from cache
+	// Later calls should retrieve from cache (even if chain ID is different)
 	delete(stub.Blocks, block.Hash())
-	actual = oracle.BlockByHash(block.Hash())
+	actual = oracle.BlockByHash(block.Hash(), 9982)
 	require.Equal(t, block, actual)
 }
 
@@ -41,12 +42,12 @@ func TestNodeByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stateStub.Data[hash] = node
-	actual := oracle.NodeByHash(hash)
+	actual := oracle.NodeByHash(hash, 1234)
 	require.Equal(t, node, actual)
 
-	// Later calls should retrieve from cache
+	// Later calls should retrieve from cache (even if chain ID is different)
 	delete(stateStub.Data, hash)
-	actual = oracle.NodeByHash(hash)
+	actual = oracle.NodeByHash(hash, 997845)
 	require.Equal(t, node, actual)
 }
 
@@ -59,12 +60,12 @@ func TestCodeByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stateStub.Code[hash] = node
-	actual := oracle.CodeByHash(hash)
+	actual := oracle.CodeByHash(hash, 342)
 	require.Equal(t, node, actual)
 
-	// Later calls should retrieve from cache
+	// Later calls should retrieve from cache (even if the chain ID is different)
 	delete(stateStub.Code, hash)
-	actual = oracle.CodeByHash(hash)
+	actual = oracle.CodeByHash(hash, 986776)
 	require.Equal(t, node, actual)
 }
 

@@ -258,11 +258,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.PrecompileKey(inputHash).PreimageKey(), result)
 	case l2.HintL2BlockHeader, l2.HintL2Transactions:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 header/tx hint: %x", hint)
+		hash, chainID, err := p.parseHashAndChainID("L2 header/tx", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		source, err := p.l2Sources.ForChainID(chainID)
 		if err != nil {
 			return err
 		}
@@ -280,11 +280,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.storeTransactions(txs)
 	case l2.HintL2StateNode:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 state node hint: %x", hint)
+		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		source, err := p.l2Sources.ForChainID(chainID)
 		if err != nil {
 			return err
 		}
@@ -294,11 +294,11 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
 	case l2.HintL2Code:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 code hint: %x", hint)
+		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
+		if err != nil {
+			return err
 		}
-		hash := common.Hash(hintBytes)
-		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		source, err := p.l2Sources.ForChainID(chainID)
 		if err != nil {
 			return err
 		}
@@ -351,6 +351,17 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), p.agreedPrestate)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
+}
+
+func (p *Prefetcher) parseHashAndChainID(hintType string, hintBytes []byte) (common.Hash, uint64, error) {
+	switch len(hintBytes) {
+	case 32:
+		return common.Hash(hintBytes), p.defaultChainID, nil
+	case 40:
+		return common.Hash(hintBytes[0:32]), binary.BigEndian.Uint64(hintBytes[32:]), nil
+	default:
+		return common.Hash{}, 0, fmt.Errorf("invalid %s hint: %x", hintType, hintBytes)
+	}
 }
 
 type BlockDataKey [32]byte

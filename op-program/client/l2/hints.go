@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 )
@@ -19,35 +20,79 @@ const (
 	HintAgreedPrestate = "agreed-pre-state"
 )
 
-type BlockHeaderHint common.Hash
+type LegacyBlockHeaderHint common.Hash
+
+var _ preimage.Hint = LegacyBlockHeaderHint{}
+
+func (l LegacyBlockHeaderHint) Hint() string {
+	return HintL2BlockHeader + " " + (common.Hash)(l).String()
+}
+
+type HashAndChainID struct {
+	Hash    common.Hash
+	ChainID uint64
+}
+
+func (h HashAndChainID) Marshal() []byte {
+	d := make([]byte, 32+8)
+	copy(d[:32], h.Hash[:])
+	binary.BigEndian.PutUint64(d[32:], h.ChainID)
+	return d
+}
+
+type BlockHeaderHint HashAndChainID
 
 var _ preimage.Hint = BlockHeaderHint{}
 
 func (l BlockHeaderHint) Hint() string {
-	return HintL2BlockHeader + " " + (common.Hash)(l).String()
+	return HintL2BlockHeader + " " + hexutil.Encode(HashAndChainID(l).Marshal())
 }
 
-type TransactionsHint common.Hash
+type LegacyTransactionsHint common.Hash
+
+var _ preimage.Hint = LegacyTransactionsHint{}
+
+func (l LegacyTransactionsHint) Hint() string {
+	return HintL2Transactions + " " + (common.Hash)(l).String()
+}
+
+type TransactionsHint HashAndChainID
 
 var _ preimage.Hint = TransactionsHint{}
 
 func (l TransactionsHint) Hint() string {
-	return HintL2Transactions + " " + (common.Hash)(l).String()
+	return HintL2Transactions + " " + hexutil.Encode(HashAndChainID(l).Marshal())
 }
 
-type CodeHint common.Hash
+type CodeHint HashAndChainID
 
 var _ preimage.Hint = CodeHint{}
 
 func (l CodeHint) Hint() string {
+	return HintL2Code + " " + hexutil.Encode(HashAndChainID(l).Marshal())
+}
+
+type LegacyCodeHint common.Hash
+
+var _ preimage.Hint = LegacyCodeHint{}
+
+func (l LegacyCodeHint) Hint() string {
 	return HintL2Code + " " + (common.Hash)(l).String()
 }
 
-type StateNodeHint common.Hash
+type StateNodeHint HashAndChainID
 
 var _ preimage.Hint = StateNodeHint{}
 
 func (l StateNodeHint) Hint() string {
+	return HintL2StateNode + " " + hexutil.Encode(HashAndChainID(l).Marshal())
+}
+
+type LegacyStateNodeHint common.Hash
+
+var _ preimage.Hint = LegacyStateNodeHint{}
+
+func (l LegacyStateNodeHint) Hint() string {
 	return HintL2StateNode + " " + (common.Hash)(l).String()
 }
 

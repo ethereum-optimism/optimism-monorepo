@@ -50,7 +50,7 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	if !ok {
 		return nil, fmt.Errorf("unsupported L2 output version: %d", output.Version())
 	}
-	head := oracle.BlockByHash(outputV0.BlockHash)
+	head := oracle.BlockByHash(outputV0.BlockHash, chainCfg.ChainID.Uint64())
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
 	return &OracleBackedL2Chain{
 		log:      logger,
@@ -69,7 +69,7 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 		finalized:  head.Header(),
 		oracleHead: head.Header(),
 		blocks:     make(map[common.Hash]*types.Block),
-		db:         NewOracleBackedDB(oracle),
+		db:         NewOracleBackedDB(oracle, chainCfg.ChainID.Uint64()),
 		vmCfg: vm.Config{
 			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
 		},
@@ -122,7 +122,7 @@ func (o *OracleBackedL2Chain) GetBlockByHash(hash common.Hash) *types.Block {
 		return block
 	}
 	// Retrieve from the oracle
-	return o.oracle.BlockByHash(hash)
+	return o.oracle.BlockByHash(hash, o.chainCfg.ChainID.Uint64())
 }
 
 func (o *OracleBackedL2Chain) GetBlock(hash common.Hash, number uint64) *types.Block {
