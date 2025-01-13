@@ -12,16 +12,25 @@ interface IAnchorStateRegistry {
     error AnchorStateRegistry_Unauthorized();
     error AnchorStateRegistry_ImproperAnchorGame();
     error AnchorStateRegistry_InvalidAnchorGame();
+    error InvalidInitialization();
+    error NotInitializing();
 
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
-    event Initialized(uint8 version);
+    event Initialized(uint64 version);
 
     function anchorGame() external view returns (IFaultDisputeGame);
     function anchors(GameType) external view returns (Hash, uint256);
     function getAnchorRoot() external view returns (Hash, uint256);
     function disputeGameFactory() external view returns (IDisputeGameFactory);
-    function initialize(ISuperchainConfig _superchainConfig, IDisputeGameFactory _disputeGameFactory, IOptimismPortal2 _portal, OutputRoot memory _startingAnchorRoot) external;
+    function getInitializedVersion() external view returns (uint64);
+    function initialize(
+        ISuperchainConfig _superchainConfig,
+        IDisputeGameFactory _disputeGameFactory,
+        IOptimismPortal2 _portal,
+        OutputRoot memory _startingAnchorRoot
+    )
+        external;
     function isGameRegistered(IDisputeGame _game) external view returns (bool);
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
     function isGameRespected(IDisputeGame _game) external view returns (bool);

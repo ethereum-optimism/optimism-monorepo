@@ -2,12 +2,16 @@
 pragma solidity ^0.8.0;
 
 interface ICrossDomainMessenger {
+    error InvalidInitialization();
+    error NotInitializing();
+
+    event Initialized(uint64 version);
     event FailedRelayedMessage(bytes32 indexed msgHash);
-    event Initialized(uint8 version);
     event RelayedMessage(bytes32 indexed msgHash);
     event SentMessage(address indexed target, address sender, bytes message, uint256 messageNonce, uint256 gasLimit);
     event SentMessageExtension1(address indexed sender, uint256 value);
 
+    function getInitializedVersion() external view returns (uint64);
     function MESSAGE_VERSION() external view returns (uint16);
     function MIN_GAS_CALLDATA_OVERHEAD() external view returns (uint64);
     function MIN_GAS_DYNAMIC_OVERHEAD_DENOMINATOR() external view returns (uint64);

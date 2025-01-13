@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "src/vendor/Initializable-v5.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
@@ -21,19 +21,13 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 ///         FaultDisputeGame type. The anchor state is the latest state that has been proposed on L1 and was not
 ///         challenged within the challenge period. By using stored anchor states, new FaultDisputeGame instances can
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
-contract AnchorStateRegistry is Initializable, ISemver {
+contract AnchorStateRegistry is InitializablePublic, ISemver {
     /// @notice Semantic version.
     /// @custom:semver 2.0.1-beta.7
     string public constant version = "2.0.1-beta.7";
 
-    /// @notice DisputeGameFactory address.
-    IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;
-
     /// @notice Gap for legacy Initializable, _initialized (uint8) and _initializing (bool) packed in one slot
-    uint256 private __gap_0;
-
-    /// @notice Returns the anchor state for the given game type.
-    mapping(GameType => OutputRoot) public anchors;
+    bytes32 private spacer_0_0_32;
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;

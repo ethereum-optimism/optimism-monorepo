@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
@@ -46,7 +46,7 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
+contract OptimismPortal2 is InitializablePublic, ResourceMetering, ISemver {
     /// @notice Allows for interactions with non standard ERC20 tokens.
     using SafeERC20 for IERC20;
 

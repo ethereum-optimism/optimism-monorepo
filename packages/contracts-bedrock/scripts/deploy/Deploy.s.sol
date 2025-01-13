@@ -884,11 +884,6 @@ contract Deploy is Deployer {
     function resetInitializedProxy(string memory _contractName) internal {
         console.log("resetting initialized value on %s Proxy", _contractName);
         address proxy = artifacts.mustGetAddress(string.concat(_contractName, "Proxy"));
-        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_contractName);
-        bytes32 slotVal = vm.load(proxy, bytes32(slot.slot));
-        uint256 value = uint256(slotVal);
-        value = value & ~(0xFF << (slot.offset * 8));
-        slotVal = bytes32(value);
-        vm.store(proxy, bytes32(slot.slot), slotVal);
+        vm.store(proxy, Constants.INITIALIZABLE_STORAGE, 0);
     }
 }

@@ -18,9 +18,12 @@ interface IResourceMetering {
     }
 
     error OutOfGas();
+    error InvalidInitialization();
+    error NotInitializing();
 
-    event Initialized(uint8 version);
+    event Initialized(uint64 version);
 
+    function getInitializedVersion() external view returns (uint64);
     function params() external view returns (uint128 prevBaseFee, uint64 prevBoughtGas, uint64 prevBlockNum); // nosemgrep
 
     function __constructor__() external;

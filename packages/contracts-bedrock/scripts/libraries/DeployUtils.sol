@@ -421,6 +421,7 @@ library DeployUtils {
     ///      A call to `initialize` will set proxies to 1 and a call to _disableInitializers will set implementations to
     ///      type(uint8).max.
     function assertInitialized(address _contractAddress, bool _isProxy, uint256 _slot, uint256 _offset) internal view {
+        //TODO: check this
         bytes32 slotVal = vm.load(_contractAddress, bytes32(_slot));
         uint8 val = uint8((uint256(slotVal) >> (_offset * 8)) & 0xFF);
         if (_isProxy) {

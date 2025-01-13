@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "src/vendor/Initializable-v5.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
@@ -14,7 +14,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 /// @custom:audit none This contracts is not yet audited.
 /// @title SuperchainConfig
 /// @notice The SuperchainConfig contract is used to manage configuration of global superchain values.
-contract SuperchainConfig is Initializable, ISemver {
+contract SuperchainConfig is InitializablePublic, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
     enum UpdateType {
@@ -22,7 +22,7 @@ contract SuperchainConfig is Initializable, ISemver {
     }
 
     /// @notice Gap for legacy Initializable, _initialized (uint8) and _initializing (bool) packed in one slot
-    uint256 private __gap_0;
+    bytes32 private spacer_0_0_32;
 
     /// @notice Whether or not the Superchain is paused.
     bytes32 public constant PAUSED_SLOT = bytes32(uint256(keccak256("superchainConfig.paused")) - 1);

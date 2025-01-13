@@ -110,8 +110,8 @@ contract PredeploysBaseTest is CommonTest {
             }
 
             if (_isInitializable(addr)) {
-                assertTrue(ForgeArtifacts.isInitialized({ _name: cname, _address: addr }));
-                assertTrue(ForgeArtifacts.isInitialized({ _name: cname, _address: implAddr }));
+                assertTrue(ForgeArtifacts.isInitialized({ _address: addr }));
+                assertTrue(ForgeArtifacts.isInitialized({ _address: implAddr }));
             }
         }
     }

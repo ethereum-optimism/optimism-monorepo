@@ -7,20 +7,6 @@
     "type": "address"
   },
   {
-    "bytes": "1",
-    "label": "_initialized",
-    "offset": 20,
-    "slot": "0",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 21,
-    "slot": "0",
-    "type": "bool"
-  },
-  {
     "bytes": "1600",
     "label": "spacer_1_0_1600",
     "offset": 0,

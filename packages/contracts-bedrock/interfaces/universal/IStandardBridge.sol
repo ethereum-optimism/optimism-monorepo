@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 
 interface IStandardBridge {
+    error InvalidInitialization();
+    error NotInitializing();
+
+    event Initialized(uint64 version);
     event ERC20BridgeFinalized(
         address indexed localToken,
         address indexed remoteToken,
@@ -22,10 +26,10 @@ interface IStandardBridge {
     );
     event ETHBridgeFinalized(address indexed from, address indexed to, uint256 amount, bytes extraData);
     event ETHBridgeInitiated(address indexed from, address indexed to, uint256 amount, bytes extraData);
-    event Initialized(uint8 version);
 
     receive() external payable;
 
+    function getInitializedVersion() external view returns (uint64);
     function MESSENGER() external view returns (ICrossDomainMessenger);
     function OTHER_BRIDGE() external view returns (IStandardBridge);
     function bridgeERC20(

@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 // Contracts
-import { Initializable } from "src/vendor/Initializable-v5.sol";
+import { Initializable } from "@openzeppelin/contracts-v5/proxy/utils/Initializable.sol";
 import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
 
 // Libraries

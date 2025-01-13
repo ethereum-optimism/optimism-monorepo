@@ -428,7 +428,7 @@ contract Initializer_Test is CommonTest {
 
             // Assert that the contract is already initialized.
             assertTrue(
-                ForgeArtifacts.isInitialized({ _name: _removeSuffix(deploymentName), _address: _contract.target }),
+                ForgeArtifacts.isInitialized({ _address: _contract.target }),
                 "Initializable: contract is not initialized"
             );
 

@@ -33,9 +33,11 @@ interface IOptimismPortalInterop {
     error UnexpectedList();
     error UnexpectedString();
     error Unproven();
+    error InvalidInitialization();
+    error NotInitializing();
 
+    event Initialized(uint64 version);
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
-    event Initialized(uint8 version);
     event RespectedGameTypeSet(GameType indexed newGameType, Timestamp indexed updatedAt);
     event TransactionDeposited(address indexed from, address indexed to, uint256 indexed version, bytes opaqueData);
     event WithdrawalFinalized(bytes32 indexed withdrawalHash, bool success);
@@ -44,6 +46,7 @@ interface IOptimismPortalInterop {
 
     receive() external payable;
 
+    function getInitializedVersion() external view returns (uint64);
     function blacklistDisputeGame(IDisputeGame _disputeGame) external;
     function checkWithdrawal(bytes32 _withdrawalHash, address _proofSubmitter) external view;
     function depositTransaction(

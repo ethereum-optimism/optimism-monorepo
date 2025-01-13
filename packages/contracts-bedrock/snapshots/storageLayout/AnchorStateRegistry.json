@@ -1,51 +1,44 @@
 [
   {
-    "bytes": "1",
-    "label": "_initialized",
+    "bytes": "32",
+    "label": "spacer_0_0_32",
     "offset": 0,
     "slot": "0",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 1,
-    "slot": "0",
-    "type": "bool"
+    "type": "bytes32"
   },
   {
     "bytes": "20",
     "label": "superchainConfig",
-    "offset": 2,
-    "slot": "0",
+    "offset": 0,
+    "slot": "1",
     "type": "contract ISuperchainConfig"
   },
   {
     "bytes": "20",
     "label": "disputeGameFactory",
     "offset": 0,
-    "slot": "1",
+    "slot": "2",
     "type": "contract IDisputeGameFactory"
   },
   {
     "bytes": "20",
     "label": "portal",
     "offset": 0,
-    "slot": "2",
+    "slot": "3",
     "type": "contract IOptimismPortal2"
   },
   {
     "bytes": "20",
     "label": "anchorGame",
     "offset": 0,
-    "slot": "3",
+    "slot": "4",
     "type": "contract IFaultDisputeGame"
   },
   {
     "bytes": "64",
     "label": "startingAnchorRoot",
     "offset": 0,
-    "slot": "4",
+    "slot": "5",
     "type": "struct OutputRoot"
   }
 ]

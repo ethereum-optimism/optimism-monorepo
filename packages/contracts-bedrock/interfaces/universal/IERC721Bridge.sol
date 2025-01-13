@@ -4,6 +4,10 @@ pragma solidity ^0.8.0;
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 
 interface IERC721Bridge {
+    error InvalidInitialization();
+    error NotInitializing();
+
+    event Initialized(uint64 version);
     event ERC721BridgeFinalized(
         address indexed localToken,
         address indexed remoteToken,
@@ -20,8 +24,8 @@ interface IERC721Bridge {
         uint256 tokenId,
         bytes extraData
     );
-    event Initialized(uint8 version);
 
+    function getInitializedVersion() external view returns (uint64);
     function MESSENGER() external view returns (ICrossDomainMessenger);
     function OTHER_BRIDGE() external view returns (IERC721Bridge);
     function bridgeERC721(
