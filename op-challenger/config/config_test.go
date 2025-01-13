@@ -34,6 +34,7 @@ var (
 	validAsteriscAbsolutePreState           = "pre.json"
 	validAsteriscAbsolutePreStateBaseURL, _ = url.Parse("http://localhost/bar/")
 
+	nonExistingFile                             = "path/to/nonexistent/file"
 	validAsteriscKonaBin                        = "./bin/asterisc"
 	validAsteriscKonaServerBin                  = "./bin/kona-host"
 	validAsteriscKonaNetwork                    = "mainnet"
@@ -289,15 +290,15 @@ func TestCannonRequiredArgs(t *testing.T) {
 			require.True(t, cfg.Cannon.DebugInfo)
 		})
 
-		t.Run(fmt.Sprintf("TestCannonVMBinExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.VmBin = validCannonBin
+			cfg.Cannon.VmBin = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingCannonBin)
 		})
 
-		t.Run(fmt.Sprintf("TestCannonServerExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Server = validCannonOpProgramBin
+			cfg.Cannon.Server = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingCannonServer)
 		})
 	}
@@ -413,15 +414,15 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			require.False(t, cfg.Asterisc.DebugInfo)
 		})
 
-		t.Run(fmt.Sprintf("TestAsteriscVMBinExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.VmBin = validAsteriscBin
+			cfg.Asterisc.VmBin = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscBin)
 		})
 
-		t.Run(fmt.Sprintf("TestAsteriscServerExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Server = validAsteriscOpProgramBin
+			cfg.Asterisc.Server = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscServer)
 		})
 	}
@@ -537,15 +538,15 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 			require.False(t, cfg.AsteriscKona.DebugInfo)
 		})
 
-		t.Run(fmt.Sprintf("TestAsteriscKonaVMBinExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.VmBin = validAsteriscKonaBin
+			cfg.AsteriscKona.VmBin = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaBin)
 		})
 
-		t.Run(fmt.Sprintf("TestAsteriscKonaServerExists-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Server = validAsteriscKonaServerBin
+			cfg.AsteriscKona.Server = nonExistingFile
 			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaServer)
 		})
 	}

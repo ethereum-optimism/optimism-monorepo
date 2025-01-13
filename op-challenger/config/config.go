@@ -219,10 +219,10 @@ func (c Config) Check() error {
 		}
 
 		if _, err := os.Stat(c.Cannon.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingCannonBin, err)
+			return fmt.Errorf("%w: %w", ErrMissingCannonBin, err)
 		}
 		if _, err := os.Stat(c.Cannon.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingCannonServer, err)
+			return fmt.Errorf("%w: %w", ErrMissingCannonServer, err)
 		}
 
 		if c.Cannon.Network == "" {
@@ -265,10 +265,10 @@ func (c Config) Check() error {
 		}
 
 		if _, err := os.Stat(c.Asterisc.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscBin, err)
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscBin, err)
 		}
 		if _, err := os.Stat(c.Asterisc.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscServer, err)
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscServer, err)
 		}
 
 		if c.Asterisc.Network == "" {
@@ -308,10 +308,10 @@ func (c Config) Check() error {
 		}
 
 		if _, err := os.Stat(c.AsteriscKona.VmBin); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaBin, err)
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscKonaBin, err)
 		}
 		if _, err := os.Stat(c.AsteriscKona.Server); err != nil {
-			return fmt.Errorf("%w: %v", ErrMissingAsteriscKonaServer, err)
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscKonaServer, err)
 		}
 
 		if c.AsteriscKona.Network == "" {
