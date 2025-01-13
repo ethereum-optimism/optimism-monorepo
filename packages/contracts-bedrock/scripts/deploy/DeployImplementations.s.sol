@@ -26,12 +26,9 @@ import { OPContractsManagerInterop } from "src/L1/OPContractsManagerInterop.sol"
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
-import { Blueprint } from "src/libraries/Blueprint.sol";
-
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
-import { Bytes } from "src/libraries/Bytes.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
