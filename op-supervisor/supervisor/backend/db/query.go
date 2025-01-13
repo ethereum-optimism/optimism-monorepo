@@ -184,6 +184,11 @@ func (db *ChainsDB) Finalized(chainID types.ChainID) (types.BlockSeal, error) {
 	// if the finalized L1 block is newer than the latest L1 block used to derive L2 blocks,
 	// the finality signal automatically applies to all previous blocks, including the latest derived block
 	if finalizedL1.Number > latestDerivedFrom.Number {
+		db.logger.Warn("Finalized L1 block is newer than the latest L1 for this chain. Assuming latest L2 is finalized",
+			"chain", chainID,
+			"finalizedL1", finalizedL1.Number,
+			"latestDerivedFrom", latestDerivedFrom.Number,
+			"latestDerived", latestDerivedFrom)
 		return latestDerived, nil
 	}
 
