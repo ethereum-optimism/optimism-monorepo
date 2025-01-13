@@ -518,12 +518,12 @@ func (su *SupervisorBackend) L1BlockRefByNumber(ctx context.Context, number uint
 }
 
 func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
-	var response types.SuperRootResponse
 	chains := su.depSet.Chains()
 	slices.SortFunc(chains, func(a, b types.ChainID) int {
 		return a.Cmp(b)
 	})
-	response.Chains = make([]types.ChainRootInfo, len(chains))
+	chainInfos := make([]types.ChainRootInfo, len(chains))
+	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
 		if !ok {
@@ -538,13 +538,23 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return types.SuperRootResponse{}, err
 		}
-		response.Chains[i] = types.ChainRootInfo{
+		canonicalRoot := eth.OutputRoot(output)
+		chainInfos[i] = types.ChainRootInfo{
 			ChainID:   chainID,
-			Canonical: eth.OutputRoot(output),
+			Canonical: canonicalRoot,
 			Pending:   pending.Marshal(),
 		}
+		superRootChains[i] = eth.ChainIDAndOutput{ChainID: chainID.ToBig().Uint64(), Output: canonicalRoot}
 	}
-	return response, nil
+	superRoot := eth.SuperRoot(&eth.SuperV1{
+		Timestamp: uint64(timestamp),
+		Chains:    superRootChains,
+	})
+	return types.SuperRootResponse{
+		Timestamp: uint64(timestamp),
+		SuperRoot: superRoot,
+		Chains:    chainInfos,
+	}, nil
 }
 
 // Update methods
