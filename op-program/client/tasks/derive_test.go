@@ -18,7 +18,7 @@ func TestLoadOutputRoot(t *testing.T) {
 		}
 		result, err := loadOutputRoot(uint64(0), safeHead, l2)
 		require.NoError(t, err)
-		assertDerivationResult(t, result, safeHead, l2.blockHash, l2.outputRoot)
+		assertDerivationResult(t, result, l2.blockHash, l2.outputRoot)
 	})
 
 	t.Run("Success-PriorToSafeHead", func(t *testing.T) {
@@ -33,7 +33,7 @@ func TestLoadOutputRoot(t *testing.T) {
 		result, err := loadOutputRoot(uint64(20), safeHead, l2)
 		require.NoError(t, err)
 		require.Equal(t, uint64(10), l2.requestedOutputRoot)
-		assertDerivationResult(t, result, safeHead, l2.blockHash, l2.outputRoot)
+		assertDerivationResult(t, result, l2.blockHash, l2.outputRoot)
 	})
 
 	t.Run("Error-OutputRoot", func(t *testing.T) {
@@ -49,8 +49,7 @@ func TestLoadOutputRoot(t *testing.T) {
 	})
 }
 
-func assertDerivationResult(t *testing.T, actual DerivationResult, safeHead eth.L2BlockRef, blockHash common.Hash, outputRoot eth.Bytes32) {
-	require.Equal(t, safeHead, actual.Head)
+func assertDerivationResult(t *testing.T, actual DerivationResult, blockHash common.Hash, outputRoot eth.Bytes32) {
 	require.Equal(t, blockHash, actual.BlockHash)
 	require.Equal(t, outputRoot, actual.OutputRoot)
 }

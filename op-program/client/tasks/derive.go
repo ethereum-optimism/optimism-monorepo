@@ -45,12 +45,13 @@ func RunDerivation(
 	}
 	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
 
-	logger.Info("Starting derivation")
+	logger.Info("Starting derivation", "chainID", cfg.L2ChainID)
 	d := cldr.NewDriver(logger, cfg, l1Source, l1BlobsSource, l2Source, l2ClaimBlockNum)
 	result, err := d.RunComplete()
 	if err != nil {
 		return DerivationResult{}, fmt.Errorf("failed to run program to completion: %w", err)
 	}
+	logger.Info("Derivation complete", "head", result)
 	return loadOutputRoot(l2ClaimBlockNum, result, l2Source)
 }
 
@@ -60,7 +61,6 @@ func loadOutputRoot(l2ClaimBlockNum uint64, head eth.L2BlockRef, src L2Source) (
 		return DerivationResult{}, fmt.Errorf("calculate L2 output root: %w", err)
 	}
 	return DerivationResult{
-		Head:       head,
 		BlockHash:  blockHash,
 		OutputRoot: outputRoot,
 	}, nil
