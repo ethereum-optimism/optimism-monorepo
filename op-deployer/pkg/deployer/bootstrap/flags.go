@@ -224,13 +224,6 @@ var (
 	}
 )
 
-var OPCMFlags = []cli.Flag{
-	deployer.L1RPCURLFlag,
-	deployer.PrivateKeyFlag,
-	ReleaseFlag,
-	OutfileFlag,
-}
-
 var ImplementationsFlags = []cli.Flag{
 	MIPSVersionFlag,
 	WithdrawalDelaySecondsFlag,
@@ -302,12 +295,6 @@ var SuperchainFlags = []cli.Flag{
 }
 
 var Commands = []*cli.Command{
-	{
-		Name:   "opcm",
-		Usage:  "Bootstrap an instance of OPCM.",
-		Flags:  cliapp.ProtectFlags(OPCMFlags),
-		Action: OPCMCLI,
-	},
 	{
 		Name:  "implementations",
 		Usage: "Bootstraps implementations.",

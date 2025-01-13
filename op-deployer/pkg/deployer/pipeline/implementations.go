@@ -84,6 +84,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 		L1StandardBridgeImplAddress:             dio.L1StandardBridgeImpl,
 		OptimismMintableERC20FactoryImplAddress: dio.OptimismMintableERC20FactoryImpl,
 		DisputeGameFactoryImplAddress:           dio.DisputeGameFactoryImpl,
+		AnchorStateRegistryImplAddress:          dio.AnchorStateRegistryImpl,
 	}
 
 	return nil

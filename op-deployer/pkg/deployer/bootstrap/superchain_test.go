@@ -18,6 +18,10 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+var networks = []string{"mainnet", "sepolia"}
+
+var versions = []string{"v1.8.0-rc.4", "v1.6.0"}
+
 func TestSuperchain(t *testing.T) {
 	for _, network := range networks {
 		for _, version := range versions {

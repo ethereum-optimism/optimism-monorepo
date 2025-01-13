@@ -42,6 +42,7 @@ type DeployImplementationsOutput struct {
 	L1StandardBridgeImpl             common.Address
 	OptimismMintableERC20FactoryImpl common.Address
 	DisputeGameFactoryImpl           common.Address
+	AnchorStateRegistryImpl          common.Address
 }
 
 func (output *DeployImplementationsOutput) CheckOutput(input common.Address) error {

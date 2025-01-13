@@ -199,7 +199,7 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 
 	l1Host.SetTxOrigin(cfg.Deployer)
 
-	output, err := opcm.DeployOPChainV160(l1Host, opcm.DeployOPChainInputV160{
+	output, err := opcm.DeployOPChain(l1Host, opcm.DeployOPChainInput{
 		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
 		SystemConfigOwner:       cfg.SystemConfigOwner,
 		Batcher:                 cfg.BatchSenderAddress,
@@ -218,7 +218,6 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 		DisputeSplitDepth:       cfg.DisputeSplitDepth,
 		DisputeClockExtension:   cfg.DisputeClockExtension,
 		DisputeMaxClockDuration: cfg.DisputeMaxClockDuration,
-		StartingAnchorRoots:     opcm.PermissionedGameStartingAnchorRoots,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy L2 OP chain: %w", err)
