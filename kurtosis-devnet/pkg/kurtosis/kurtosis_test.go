@@ -50,7 +50,21 @@ func TestKurtosisDeployer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d, err := NewKurtosisDeployer(tt.opts...)
+			// Create a fake Kurtosis context
+			fakeCtx := &fake.KurtosisContext{
+				EnclaveCtx: &fake.EnclaveContext{
+					Responses: []interfaces.StarlarkResponse{
+						&fake.StarlarkResponse{
+							IsSuccessful: true,
+						},
+					},
+				},
+			}
+
+			// Add the fake context to the options
+			opts := append(tt.opts, WithKurtosisKurtosisContext(fakeCtx))
+
+			d, err := NewKurtosisDeployer(opts...)
 			require.NoError(t, err)
 			assert.Equal(t, tt.wantBaseDir, d.baseDir)
 			assert.Equal(t, tt.wantPkg, d.packageName)
