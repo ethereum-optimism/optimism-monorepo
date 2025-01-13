@@ -355,11 +355,10 @@ type ManagedEvent struct {
 
 type ChainRootInfo struct {
 	ChainID ChainID `json:"chainID"`
-	// Canonical is the list of output roots of the latest canonical block at or before Timestamp on each chain in the
-	// dependency set.
+	// Canonical is the output root of the latest canonical block at a particular Timestamp.
 	Canonical eth.Bytes32 `json:"canonical"`
-	// Pending is the list of output root preimages for the latest block at or before Timestamp on each chain
-	// prior to validation of executing messages. If the original block was valid, this will be the preimage of the
+	// Pending is the output root preimage for the latest block at a particular Timestamp prior to validation of
+	// executing messages. If the original block was valid, this will be the preimage of the
 	// output root from the Canonical array. If it was invalid, it will be the output root preimage from the
 	// Optimistic Block Deposited Transaction added to the deposit-only block.
 	Pending []byte `json:"pending"`
@@ -391,8 +390,10 @@ func (i *ChainRootInfo) UnmarshalJSON(input []byte) error {
 }
 
 type SuperRootResponse struct {
-	Timestamp uint64          `json:"timestamp"`
-	Chains    []ChainRootInfo `json:"chains"`
+	Timestamp uint64 `json:"timestamp"`
+	// Chains is the list of ChainRootInfo for each chain in the dependency set.
+	// It represents the state of the chain at or before the Timestamp.
+	Chains []ChainRootInfo `json:"chains"`
 }
 
 type superRootResponseMarshalling struct {
