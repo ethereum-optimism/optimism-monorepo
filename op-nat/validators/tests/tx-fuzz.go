@@ -40,7 +40,7 @@ func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int) er
 	// Make sure the accounts are unstuck before sending any transactions
 	spammer.Unstuck(config)
 
-	for nSlots := 0; nSlots < 3; nSlots++ {
+	for nSlots := 0; nSlots < 12; nSlots++ {
 		if err := spammer.Airdrop(config, airdropValue); err != nil {
 			return err
 		}
@@ -56,21 +56,24 @@ func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int) er
 func newConfig(c nat.Config) (*spammer.Config, error) {
 	txPerAccount := uint64(1)
 	genAccessList := false
+	rpcURL := c.RPCURL
+	senderSecretKey := c.SenderSecretKey
+	receiverPublicKeys := c.ReceiverPublicKeys
 
 	// Faucet
-	faucet, err := crypto.ToECDSA(common.FromHex(c.SenderSecretKey))
+	faucet, err := crypto.ToECDSA(common.FromHex(senderSecretKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert sender secret key to ECDSA")
 	}
 
 	// Private keys
-	keys := c.ReceiverPublicKeys
+	keys := receiverPublicKeys
 	var privateKeys []*ecdsa.PrivateKey
 	for i := 0; i < len(keys); i++ {
 		privateKeys = append(privateKeys, crypto.ToECDSAUnsafe(common.FromHex(keys[i])))
 	}
 
-	cfg, err := spammer.NewDefaultConfig(c.RPCURL, txPerAccount, genAccessList, rand.New(rand.NewSource(time.Now().UnixNano())))
+	cfg, err := spammer.NewDefaultConfig(rpcURL, txPerAccount, genAccessList, rand.New(rand.NewSource(time.Now().UnixNano())))
 	if err != nil {
 		return nil, err
 	}

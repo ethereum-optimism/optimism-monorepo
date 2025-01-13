@@ -26,14 +26,19 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 		return nil, fmt.Errorf("missing required flags: %w", err)
 	}
 
-	rpcURL := ctx.String(flags.ExecutionRPC.Name)
-	senderSecretKey := ctx.String(flags.SenderSecretKey.Name)
-	receiverPublicKeys := ctx.StringSlice(flags.ReceiverPublicKeys.Name)
-
 	// Parse kurtosis-devnet manifest
 	manifest, err := parseManifest(ctx.String(flags.KurtosisDevnetManifest.Name))
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse kurtosis-devnet manifest: %w", err)
+	}
+
+	firstL2 := manifest.L2[0]
+	rpcURL := fmt.Sprintf("http://%s:%d", firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Host, firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Port)
+	senderSecretKey := firstL2.Wallets["l2Faucet"].PrivateKey
+	receiverPublicKeys := []string{
+		manifest.L1.Wallets["user-key-0"].Address,
+		manifest.L1.Wallets["user-key-1"].Address,
+		manifest.L1.Wallets["user-key-2"].Address,
 	}
 
 	return &Config{
