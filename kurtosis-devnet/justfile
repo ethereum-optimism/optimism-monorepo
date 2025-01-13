@@ -1,5 +1,8 @@
 set shell := ["/bin/bash", "-c"]
 
+test:
+    go test --tags=testonly ./...
+
 _kurtosis-run PACKAGE_NAME ARG_FILE ENCLAVE:
 	kurtosis run {{PACKAGE_NAME}} --args-file {{ARG_FILE}} --enclave {{ENCLAVE}} --show-enclave-inspect=false --image-download=missing
 
