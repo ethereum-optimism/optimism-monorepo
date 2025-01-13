@@ -44,7 +44,7 @@ contract SystemConfig_Initialize_Test is SystemConfig_Init {
     /// @notice Tests that the version function returns a valid string. We avoid testing the
     ///         specific value of the string as it changes frequently.
     function test_version_succeeds() external view {
-        assert(bytes(l2StandardBridge.version()).length > 0);
+        assert(bytes(systemConfig.version()).length > 0);
     }
 
     /// @dev Tests that constructor sets the correct values.

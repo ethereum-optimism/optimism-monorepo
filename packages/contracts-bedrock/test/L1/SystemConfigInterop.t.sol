@@ -23,7 +23,7 @@ contract SystemConfigInterop_Test is CommonTest {
     /// @notice Tests that the version function returns a valid string. We avoid testing the
     ///         specific value of the string as it changes frequently.
     function test_version_succeeds() external view {
-        assert(bytes(l2StandardBridge.version()).length > 0);
+        assert(bytes(_systemConfigInterop().version()).length > 0);
     }
 
     /// @dev Tests that a dependency can be added.
