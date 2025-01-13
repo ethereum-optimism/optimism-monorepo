@@ -62,9 +62,8 @@ func TestDependencies(t *testing.T) {
 	deployerAddr := crypto.PubkeyToAddress(deployerPriv.PublicKey)
 
 	intent := &state.Intent{
-		ConfigType:         state.IntentConfigTypeCustom,
-		DeploymentStrategy: state.DeploymentStrategyLive,
-		L1ChainID:          l1ChainID,
+		ConfigType: state.IntentConfigTypeCustom,
+		L1ChainID:  l1ChainID,
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       addrFor(devkeys.L1ProxyAdminOwnerRole),
 			ProtocolVersionsOwner: addrFor(devkeys.SuperchainDeployerKey),
@@ -101,6 +100,7 @@ func TestDependencies(t *testing.T) {
 	}
 
 	opts := deployer.ApplyPipelineOpts{
+		DeploymentTarget:   deployer.DeploymentTargetLive,
 		L1RPCUrl:           runner.RPCUrl(),
 		DeployerPrivateKey: deployerPriv,
 		Intent:             intent,

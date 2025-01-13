@@ -61,12 +61,10 @@ func TestParseFlags(t *testing.T) {
 			args: []string{
 				"--template", "path/to/template.yaml",
 				"--enclave", "test-enclave",
-				"--local-hostname", "test.local",
 			},
 			wantCfg: &config{
 				templateFile:    "path/to/template.yaml",
 				enclave:         "test-enclave",
-				localHostName:   "test.local",
 				kurtosisPackage: kurtosis.DefaultPackageName,
 			},
 			wantError: false,
@@ -86,7 +84,6 @@ func TestParseFlags(t *testing.T) {
 			wantCfg: &config{
 				templateFile:    "path/to/template.yaml",
 				dataFile:        "path/to/data.json",
-				localHostName:   "host.docker.internal",
 				enclave:         kurtosis.DefaultEnclave,
 				kurtosisPackage: kurtosis.DefaultPackageName,
 			},
@@ -118,34 +115,12 @@ func TestParseFlags(t *testing.T) {
 			require.NotNil(t, cfg)
 			assert.Equal(t, tt.wantCfg.templateFile, cfg.templateFile)
 			assert.Equal(t, tt.wantCfg.enclave, cfg.enclave)
-			assert.Equal(t, tt.wantCfg.localHostName, cfg.localHostName)
 			assert.Equal(t, tt.wantCfg.kurtosisPackage, cfg.kurtosisPackage)
 			if tt.wantCfg.dataFile != "" {
 				assert.Equal(t, tt.wantCfg.dataFile, cfg.dataFile)
 			}
 		})
 	}
-}
-
-func TestLaunchStaticServer(t *testing.T) {
-	cfg := &config{
-		localHostName: "test.local",
-	}
-
-	m := newTestMain(cfg)
-	ctx := context.Background()
-	server, cleanup, err := m.launchStaticServer(ctx)
-	require.NoError(t, err)
-	defer cleanup()
-
-	// Verify server properties
-	assert.NotEmpty(t, server.dir)
-	assert.DirExists(t, server.dir)
-	assert.NotNil(t, server.Server)
-
-	// Verify cleanup works
-	cleanup()
-	assert.NoDirExists(t, server.dir)
 }
 
 func TestRenderTemplate(t *testing.T) {
@@ -178,18 +153,13 @@ artifacts: {{localContractArtifacts "l1"}}`
 	}
 
 	m := newTestMain(cfg)
-	ctx := context.Background()
-	server, cleanup, err := m.launchStaticServer(ctx)
-	require.NoError(t, err)
-	defer cleanup()
 
-	buf, err := m.renderTemplate(server)
+	buf, err := m.renderTemplate(tmpDir)
 	require.NoError(t, err)
 
 	// Verify template rendering
 	assert.Contains(t, buf.String(), "test-deployment")
 	assert.Contains(t, buf.String(), "test-project:test-enclave")
-	assert.Contains(t, buf.String(), server.URL())
 }
 
 func TestDeploy(t *testing.T) {
@@ -312,16 +282,16 @@ _prestate-build target:
 			}
 
 			m := newTestMain(cfg)
-			ctx := context.Background()
-			server, cleanup, err := m.launchStaticServer(ctx)
+
+			tmpDir, err := os.MkdirTemp("", "prestate-test")
 			require.NoError(t, err)
-			defer cleanup()
+			defer os.RemoveAll(tmpDir)
 
 			// Create template context with just the prestate function
-			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(server))
+			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(tmpDir))
 
 			// Test template
-			template := `{"prestate": "{{localPrestate}}"}`
+			template := `prestate_url: {{(localPrestate).URL}}`
 			buf := bytes.NewBuffer(nil)
 			err = tmplCtx.InstantiateTemplate(bytes.NewBufferString(template), buf)
 
@@ -331,19 +301,12 @@ _prestate-build target:
 			}
 			require.NoError(t, err)
 
-			// Parse the output
-			var output struct {
-				Prestate string `json:"prestate"`
-			}
-			err = json.Unmarshal(buf.Bytes(), &output)
-			require.NoError(t, err)
-
-			// Verify the URL structure
-			assert.Contains(t, output.Prestate, server.URL())
-			assert.Contains(t, output.Prestate, "/proofs/op-program/cannon")
+			// Verify the output is valid YAML and contains the static path
+			output := buf.String()
+			assert.Contains(t, output, "url: http://fileserver/proofs/op-program/cannon")
 
 			// Verify the directory was created
-			prestateDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
+			prestateDir := filepath.Join(tmpDir, "proofs", "op-program", "cannon")
 			assert.DirExists(t, prestateDir)
 		})
 	}

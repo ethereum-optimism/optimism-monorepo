@@ -6,10 +6,10 @@ import (
 	"testing"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/disputegame"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
-	"github.com/ethereum-optimism/optimism/op-program/client"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
@@ -19,10 +19,10 @@ func TestLocalPreimages(t *testing.T) {
 	tests := []struct {
 		key preimage.Key
 	}{
-		{key: client.L1HeadLocalIndex},
-		{key: client.L2OutputRootLocalIndex},
-		{key: client.L2ClaimLocalIndex},
-		{key: client.L2ClaimBlockNumberLocalIndex},
+		{key: boot.L1HeadLocalIndex},
+		{key: boot.L2OutputRootLocalIndex},
+		{key: boot.L2ClaimLocalIndex},
+		{key: boot.L2ClaimBlockNumberLocalIndex},
 		// We don't check client.L2ChainIDLocalIndex because e2e tests use a custom chain configuration
 		// which requires using a custom chain ID indicator so op-program will load the full rollup config and
 		// genesis from the preimage oracle

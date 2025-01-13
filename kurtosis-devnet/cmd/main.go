@@ -14,15 +14,17 @@ import (
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/build"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/engine"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/backend"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/serve"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/util"
 	"github.com/urfave/cli/v2"
 )
 
 const FILESERVER_PACKAGE = "fileserver"
+
+func fileserverURL(path ...string) string {
+	return fmt.Sprintf("http://%s/%s", FILESERVER_PACKAGE, strings.Join(path, "/"))
+}
 
 type config struct {
 	templateFile    string
@@ -31,7 +33,6 @@ type config struct {
 	enclave         string
 	environment     string
 	dryRun          bool
-	localHostName   string
 	baseDir         string
 	kurtosisBinary  string
 }
@@ -44,7 +45,6 @@ func newConfig(c *cli.Context) (*config, error) {
 		enclave:         c.String("enclave"),
 		environment:     c.String("environment"),
 		dryRun:          c.Bool("dry-run"),
-		localHostName:   c.String("local-hostname"),
 		kurtosisBinary:  c.String("kurtosis-binary"),
 	}
 
@@ -57,11 +57,6 @@ func newConfig(c *cli.Context) (*config, error) {
 	return cfg, nil
 }
 
-type staticServer struct {
-	dir string
-	*serve.Server
-}
-
 type engineManager interface {
 	EnsureRunning() error
 }
@@ -70,34 +65,6 @@ type Main struct {
 	cfg           *config
 	newDeployer   func(opts ...kurtosis.KurtosisDeployerOptions) (deployer, error)
 	engineManager engineManager
-}
-
-func (m *Main) launchStaticServer(ctx context.Context) (*staticServer, func(), error) {
-	// we will serve content from this tmpDir for the duration of the devnet creation
-	tmpDir, err := os.MkdirTemp("", m.cfg.enclave)
-	if err != nil {
-		return nil, nil, fmt.Errorf("error creating temporary directory: %w", err)
-	}
-
-	server := serve.NewServer(
-		serve.WithStaticDir(tmpDir),
-		serve.WithHostname(m.cfg.localHostName),
-	)
-	if err := server.Start(ctx); err != nil {
-		return nil, nil, fmt.Errorf("error starting server: %w", err)
-	}
-
-	return &staticServer{
-			dir:    tmpDir,
-			Server: server,
-		}, func() {
-			if err := server.Stop(ctx); err != nil {
-				log.Printf("Error stopping server: %v\n", err)
-			}
-			if err := os.RemoveAll(tmpDir); err != nil {
-				log.Printf("Error removing temporary directory: %v\n", err)
-			}
-		}, nil
 }
 
 func (m *Main) localDockerImageOption() tmpl.TemplateContextOptions {
@@ -115,11 +82,12 @@ func (m *Main) localDockerImageOption() tmpl.TemplateContextOptions {
 	})
 }
 
-func (m *Main) localContractArtifactsOption(server *staticServer) tmpl.TemplateContextOptions {
+func (m *Main) localContractArtifactsOption(dir string) tmpl.TemplateContextOptions {
 	contractsBundle := fmt.Sprintf("contracts-bundle-%s.tar.gz", m.cfg.enclave)
 	contractsBundlePath := func(_ string) string {
-		return filepath.Join(server.dir, contractsBundle)
+		return filepath.Join(dir, contractsBundle)
 	}
+	contractsURL := fileserverURL(contractsBundle)
 
 	contractBuilder := build.NewContractBuilder(
 		build.WithContractBaseDir(m.cfg.baseDir),
@@ -128,18 +96,12 @@ func (m *Main) localContractArtifactsOption(server *staticServer) tmpl.TemplateC
 
 	return tmpl.WithFunction("localContractArtifacts", func(layer string) (string, error) {
 		bundlePath := contractsBundlePath(layer)
-		// we're in a temp dir, so we can skip the build if the file already
-		// exists: it'll be the same file! In particular, since we're ignoring
-		// layer for now, skip the 2nd build.
-		if _, err := os.Stat(bundlePath); err != nil {
-			if err := contractBuilder.Build(layer, bundlePath); err != nil {
-				return "", err
-			}
+		if err := contractBuilder.Build(layer, bundlePath); err != nil {
+			return "", err
 		}
 
-		url := fmt.Sprintf("%s/%s", server.URL(), contractsBundle)
-		log.Printf("%s: contract artifacts available at: %s\n", layer, url)
-		return url, nil
+		log.Printf("%s: contract artifacts available at: %s\n", layer, contractsURL)
+		return contractsURL, nil
 	})
 }
 
@@ -148,27 +110,24 @@ type PrestateInfo struct {
 	Hashes map[string]string `json:"hashes"`
 }
 
-func (m *Main) localPrestateOption(server *staticServer) tmpl.TemplateContextOptions {
+func (m *Main) localPrestateOption(dir string) tmpl.TemplateContextOptions {
 	prestateBuilder := build.NewPrestateBuilder(
 		build.WithPrestateBaseDir(m.cfg.baseDir),
 		build.WithPrestateDryRun(m.cfg.dryRun),
 	)
 
 	return tmpl.WithFunction("localPrestate", func() (*PrestateInfo, error) {
+		prestatePath := []string{"proofs", "op-program", "cannon"}
+		prestateURL := fileserverURL(prestatePath...)
+
 		// Create build directory with the final path structure
-		buildDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
+		buildDir := filepath.Join(append([]string{dir}, prestatePath...)...)
 		if err := os.MkdirAll(buildDir, 0755); err != nil {
 			return nil, fmt.Errorf("failed to create prestate build directory: %w", err)
 		}
 
-		// Get the relative path from server.dir to buildDir for the URL
-		relPath, err := filepath.Rel(server.dir, buildDir)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get relative path: %w", err)
-		}
-
 		info := &PrestateInfo{
-			URL:    fmt.Sprintf("%s/%s", server.URL(), relPath),
+			URL:    prestateURL,
 			Hashes: make(map[string]string),
 		}
 
@@ -219,7 +178,7 @@ func (m *Main) localPrestateOption(server *staticServer) tmpl.TemplateContextOpt
 			if err := os.Rename(filePath, hashedPath); err != nil {
 				return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(filePath), err)
 			}
-			log.Printf("%s available at: %s/%s/%s\n", filepath.Base(filePath), server.URL(), relPath, newFileName)
+			log.Printf("%s available at: %s/%s\n", filepath.Base(filePath), prestateURL, newFileName)
 
 			// Rename the corresponding binary file
 			binFilePath := strings.Replace(strings.TrimSuffix(filePath, ".json"), "-proof", "", 1) + ".bin.gz"
@@ -228,18 +187,18 @@ func (m *Main) localPrestateOption(server *staticServer) tmpl.TemplateContextOpt
 			if err := os.Rename(binFilePath, binHashedPath); err != nil {
 				return nil, fmt.Errorf("failed to rename prestate %s: %w", filepath.Base(binFilePath), err)
 			}
-			log.Printf("%s available at: %s/%s/%s\n", filepath.Base(binFilePath), server.URL(), relPath, newBinFileName)
+			log.Printf("%s available at: %s/%s\n", filepath.Base(binFilePath), prestateURL, newBinFileName)
 		}
 
 		return info, nil
 	})
 }
 
-func (m *Main) renderTemplate(server *staticServer) (*bytes.Buffer, error) {
+func (m *Main) renderTemplate(dir string) (*bytes.Buffer, error) {
 	opts := []tmpl.TemplateContextOptions{
 		m.localDockerImageOption(),
-		m.localContractArtifactsOption(server),
-		m.localPrestateOption(server),
+		m.localContractArtifactsOption(dir),
+		m.localPrestateOption(dir),
 	}
 
 	// Read and parse the data file if provided
@@ -391,19 +350,19 @@ func (m *Main) run() error {
 		}
 	}
 
-	server, cleanup, err := m.launchStaticServer(ctx)
+	tmpDir, err := os.MkdirTemp("", m.cfg.enclave)
 	if err != nil {
-		return fmt.Errorf("error launching static server: %w", err)
+		return fmt.Errorf("error creating temporary directory: %w", err)
 	}
-	defer cleanup()
+	defer os.RemoveAll(tmpDir)
 
-	buf, err := m.renderTemplate(server)
+	buf, err := m.renderTemplate(tmpDir)
 	if err != nil {
 		return fmt.Errorf("error rendering template: %w", err)
 	}
 
 	// TODO: clean up consumers of static server and replace with fileserver
-	err = m.deployFileserver(ctx, server.dir)
+	err = m.deployFileserver(ctx, tmpDir)
 	if err != nil {
 		return fmt.Errorf("error deploying fileserver: %w", err)
 	}
@@ -454,11 +413,6 @@ func getFlags() []cli.Flag {
 		&cli.BoolFlag{
 			Name:  "dry-run",
 			Usage: "Dry run mode (optional)",
-		},
-		&cli.StringFlag{
-			Name:  "local-hostname",
-			Usage: "DNS for localhost from Kurtosis perspective (optional)",
-			Value: backend.DefaultDockerHost(),
 		},
 		&cli.StringFlag{
 			Name:  "kurtosis-binary",

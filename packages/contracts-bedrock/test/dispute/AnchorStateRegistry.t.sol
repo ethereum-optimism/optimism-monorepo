@@ -8,6 +8,8 @@ import { FaultDisputeGame_Init, _changeClaimStatus } from "test/dispute/FaultDis
 import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
 
+import { Hash } from "src/dispute/lib/Types.sol";
+
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
     function setUp() public virtual override {
         // Duplicating the initialization/setup logic of FaultDisputeGame_Test.

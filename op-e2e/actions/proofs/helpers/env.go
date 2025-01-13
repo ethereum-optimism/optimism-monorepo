@@ -1,22 +1,19 @@
 package helpers
 
 import (
-	"context"
 	"math/rand"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	e2ecfg "github.com/ethereum-optimism/optimism/op-e2e/config"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
-	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
-	"github.com/ethereum-optimism/optimism/op-program/host"
-	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
-	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
-	"github.com/ethereum-optimism/optimism/op-program/host/prefetcher"
 	hostTypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -155,76 +152,27 @@ func WithL2Claim(claim common.Hash) FixtureInputParam {
 	}
 }
 
+func WithAgreedPrestate(prestate []byte) FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.AgreedPrestate = prestate
+		f.L2OutputRoot = crypto.Keccak256Hash(prestate)
+	}
+}
+
 func WithL2BlockNumber(num uint64) FixtureInputParam {
 	return func(f *FixtureInputs) {
 		f.L2BlockNumber = num
 	}
 }
 
+func WithInteropEnabled() FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.InteropEnabled = true
+	}
+}
+
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
-	// Fetch the pre and post output roots for the fault proof.
-	l2PreBlockNum := l2ClaimBlockNum - 1
-	if l2ClaimBlockNum == 0 {
-		// If we are at genesis, we assert that we don't move the chain at all.
-		l2PreBlockNum = 0
-	}
-	preRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2PreBlockNum)
-	require.NoError(t, err)
-	claimRoot, err := env.Sequencer.RollupClient().OutputAtBlock(t.Ctx(), l2ClaimBlockNum)
-	require.NoError(t, err)
-	l1Head := env.Miner.L1Chain().CurrentBlock()
-
-	fixtureInputs := &FixtureInputs{
-		L2BlockNumber: l2ClaimBlockNum,
-		L2Claim:       common.Hash(claimRoot.OutputRoot),
-		L2Head:        preRoot.BlockRef.Hash,
-		L2OutputRoot:  common.Hash(preRoot.OutputRoot),
-		L2ChainID:     env.Sd.RollupCfg.L2ChainID.Uint64(),
-		L1Head:        l1Head.Hash(),
-	}
-	for _, apply := range fixtureInputParams {
-		apply(fixtureInputs)
-	}
-
-	// Run the fault proof program from the state transition from L2 block l2ClaimBlockNum - 1 -> l2ClaimBlockNum.
-	workDir := t.TempDir()
-	if IsKonaConfigured() {
-		fakeBeacon := fakebeacon.NewBeacon(
-			env.log,
-			env.Miner.BlobStore(),
-			env.Sd.L1Cfg.Timestamp,
-			12,
-		)
-		require.NoError(t, fakeBeacon.Start("127.0.0.1:0"))
-		defer fakeBeacon.Close()
-
-		err = RunKonaNative(t, workDir, env, env.Miner.HTTPEndpoint(), fakeBeacon.BeaconAddr(), env.Engine.HTTPEndpoint(), *fixtureInputs)
-		checkResult(t, err)
-	} else {
-		programCfg := NewOpProgramCfg(
-			t,
-			env,
-			fixtureInputs,
-		)
-		withInProcessPrefetcher := hostcommon.WithPrefetcher(func(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (hostcommon.Prefetcher, error) {
-			// Set up in-process L1 sources
-			l1Cl := env.Miner.L1Client(t, env.Sd.RollupCfg)
-			l1BlobFetcher := env.Miner.BlobSource()
-
-			// Set up in-process L2 source
-			l2ClCfg := sources.L2ClientDefaultConfig(env.Sd.RollupCfg, true)
-			l2RPC := env.Engine.RPCClient()
-			l2Client, err := hostcommon.NewL2Client(l2RPC, env.log, nil, &hostcommon.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
-			require.NoError(t, err, "failed to create L2 client")
-			l2DebugCl := hostcommon.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
-
-			executor := host.MakeProgramExecutor(env.log, programCfg)
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, env.Sd.L2Cfg.Config, executor), nil
-		})
-		err = hostcommon.FaultProofProgram(t.Ctx(), env.log, programCfg, withInProcessPrefetcher)
-		checkResult(t, err)
-	}
-	tryDumpTestFixture(t, err, t.Name(), env, *fixtureInputs, workDir)
+	RunFaultProofProgram(t, env.log, env.Miner, env.Sequencer.L2Verifier, env.Engine, env.Sd.L2Cfg, l2ClaimBlockNum, checkResult, fixtureInputParams...)
 }
 
 type TestParam func(p *e2eutils.TestParams)
@@ -261,23 +209,21 @@ func NewBatcherCfg(params ...BatcherCfgParam) *helpers.BatcherCfg {
 	return dfault
 }
 
-type OpProgramCfgParam func(p *config.Config)
-
 func NewOpProgramCfg(
 	t helpers.Testing,
-	env *L2FaultProofEnv,
+	rollupCfg *rollup.Config,
+	l2Genesis *params.ChainConfig,
 	fi *FixtureInputs,
-	params ...OpProgramCfgParam,
 ) *config.Config {
-	dfault := config.NewConfig(env.Sd.RollupCfg, env.Sd.L2Cfg.Config, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
+	dfault := config.NewConfig(rollupCfg, l2Genesis, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
 
 	if dumpFixtures {
 		dfault.DataDir = t.TempDir()
 		dfault.DataFormat = hostTypes.DataFormatPebble
 	}
-
-	for _, apply := range params {
-		apply(dfault)
+	if fi.InteropEnabled {
+		dfault.AgreedPrestate = fi.AgreedPrestate
 	}
+	dfault.InteropEnabled = fi.InteropEnabled
 	return dfault
 }

@@ -99,6 +99,9 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		cmd.ExtraFiles[cl.PClientWFd-3] = pClientRW.Writer()
 		cmd.Stdout = os.Stdout // for debugging
 		cmd.Stderr = os.Stderr // for debugging
+		if cfg.InteropEnabled {
+			cmd.Env = append(os.Environ(), "OP_PROGRAM_CLIENT_USE_INTEROP=true")
+		}
 
 		err := cmd.Start()
 		if err != nil {
@@ -110,11 +113,12 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		logger.Debug("Client program completed successfully")
 		return nil
 	} else {
-		runFlag := cl.RunProgramFlagValidate
+		var clientCfg cl.Config
 		if programConfig.skipValidation {
-			runFlag = cl.RunProgramFlagSkipValidation
+			clientCfg.SkipValidation = true
 		}
-		return cl.RunProgram(logger, pClientRW, hClientRW, runFlag)
+		clientCfg.InteropEnabled = cfg.InteropEnabled
+		return cl.RunProgram(logger, pClientRW, hClientRW, clientCfg)
 	}
 }
 

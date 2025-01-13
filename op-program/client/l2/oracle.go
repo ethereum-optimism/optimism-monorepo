@@ -3,6 +3,7 @@ package l2
 import (
 	"fmt"
 
+	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rlp"
@@ -37,6 +38,8 @@ type Oracle interface {
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
 	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
+
+	TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -116,4 +119,14 @@ func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 	header := p.headerByBlockHash(blockHash)
 	txs := p.LoadTransactions(blockHash, header.TxHash)
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
+}
+
+func (p *PreimageOracle) TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState {
+	p.hint.Hint(AgreedPrestateHint(root))
+	data := p.oracle.Get(preimage.Keccak256Key(root))
+	output, err := interopTypes.UnmarshalTransitionState(data)
+	if err != nil {
+		panic(fmt.Errorf("invalid agreed prestate data for root %s: %w", root, err))
+	}
+	return output
 }

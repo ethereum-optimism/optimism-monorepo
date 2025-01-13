@@ -5,12 +5,9 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
@@ -30,6 +27,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -42,7 +41,7 @@ type Chain struct {
 	ChainID types.ChainID
 
 	RollupCfg   *rollup.Config
-	ChainCfg    *params.ChainConfig
+	L2Genesis   *core.Genesis
 	BatcherAddr common.Address
 
 	Sequencer       *helpers.L2Sequencer
@@ -242,7 +241,7 @@ func createL2Services(
 	return &Chain{
 		ChainID:         types.ChainIDFromBig(output.Genesis.Config.ChainID),
 		RollupCfg:       output.RollupCfg,
-		ChainCfg:        output.Genesis.Config,
+		L2Genesis:       output.Genesis,
 		BatcherAddr:     crypto.PubkeyToAddress(batcherKey.PublicKey),
 		Sequencer:       seq,
 		SequencerEngine: eng,

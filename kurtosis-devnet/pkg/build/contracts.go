@@ -17,6 +17,8 @@ type ContractBuilder struct {
 
 	// Dry run mode
 	dryRun bool
+
+	builtContracts map[string]interface{}
 }
 
 const (
@@ -52,9 +54,10 @@ func WithContractDryRun(dryRun bool) ContractBuilderOptions {
 // NewContractBuilder creates a new ContractBuilder instance
 func NewContractBuilder(opts ...ContractBuilderOptions) *ContractBuilder {
 	b := &ContractBuilder{
-		baseDir:     ".",
-		cmdTemplate: defaultContractTemplate,
-		dryRun:      false,
+		baseDir:        ".",
+		cmdTemplate:    defaultContractTemplate,
+		dryRun:         false,
+		builtContracts: make(map[string]interface{}),
 	}
 
 	for _, opt := range opts {
@@ -66,17 +69,21 @@ func NewContractBuilder(opts ...ContractBuilderOptions) *ContractBuilder {
 
 // templateData holds the data for the command template
 type contractTemplateData struct {
-	Layer      string
 	BundlePath string
 }
 
 // Build executes the contract build command
-func (b *ContractBuilder) Build(layer string, bundlePath string) error {
+func (b *ContractBuilder) Build(_layer string, bundlePath string) error {
+	// since we ignore layer for now, we can skip the build if the file already
+	// exists: it'll be the same file!
+	if _, ok := b.builtContracts[bundlePath]; ok {
+		return nil
+	}
+
 	log.Printf("Building contracts bundle: %s", bundlePath)
 
 	// Prepare template data
 	data := contractTemplateData{
-		Layer:      layer,
 		BundlePath: bundlePath,
 	}
 
@@ -97,5 +104,6 @@ func (b *ContractBuilder) Build(layer string, bundlePath string) error {
 		}
 	}
 
+	b.builtContracts[bundlePath] = struct{}{}
 	return nil
 }

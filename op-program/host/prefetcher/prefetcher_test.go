@@ -567,6 +567,28 @@ func TestFetchL2BlockData(t *testing.T) {
 	})
 }
 
+func TestFetchAgreedPrestate(t *testing.T) {
+	t.Run("unavailable", func(t *testing.T) {
+		prefetcher, _, _, _, _ := createPrefetcher(t)
+		hash := common.Hash{0xaa}
+		hint := l2.AgreedPrestateHint(hash).Hint()
+		require.NoError(t, prefetcher.Hint(hint))
+		_, err := prefetcher.GetPreimage(context.Background(), hash)
+		require.ErrorIs(t, err, ErrAgreedPrestateUnavailable)
+	})
+
+	t.Run("available", func(t *testing.T) {
+		prestate := []byte{1, 2, 3, 6}
+		prefetcher, _, _, _, _ := createPrefetcherWithAgreedPrestate(t, prestate)
+		hash := crypto.Keccak256Hash(prestate)
+		hint := l2.AgreedPrestateHint(hash).Hint()
+		require.NoError(t, prefetcher.Hint(hint))
+		actual, err := prefetcher.GetPreimage(context.Background(), preimage.Keccak256Key(hash).PreimageKey())
+		require.NoError(t, err)
+		require.Equal(t, prestate, actual)
+	})
+}
+
 func TestBadHints(t *testing.T) {
 	prefetcher, _, _, _, kv := createPrefetcher(t)
 	hash := common.Hash{0xad}
@@ -666,6 +688,9 @@ func (m *l2Client) ExpectOutputByRoot(root common.Hash, output eth.Output, err e
 }
 
 func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
+	return createPrefetcherWithAgreedPrestate(t, nil)
+}
+func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
 	logger := testlog.Logger(t, log.LevelDebug)
 	kv := kvstore.NewMemKV()
 
@@ -676,7 +701,7 @@ func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *test
 		MockDebugClient: new(testutils.MockDebugClient),
 	}
 
-	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, nil)
+	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, agreedPrestate)
 	return prefetcher, l1Source, l1BlobSource, l2Source, kv
 }
 

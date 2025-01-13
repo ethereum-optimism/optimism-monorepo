@@ -60,7 +60,7 @@ func Main(logger log.Logger, cfg *config.Config) error {
 	return nil
 }
 
-// FaultProofProgram is the programmatic entry-point for the fault proof program
+// FaultProofProgramWithDefaultPrefecher is the programmatic entry-point for the fault proof program
 func FaultProofProgramWithDefaultPrefecher(ctx context.Context, logger log.Logger, cfg *config.Config, opts ...hostcommon.ProgramOpt) error {
 	var newopts []hostcommon.ProgramOpt
 	newopts = append(newopts, hostcommon.WithPrefetcher(makeDefaultPrefetcher))
@@ -95,7 +95,7 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, cfg.L2ChainConfig, executor), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, executor, cfg.AgreedPrestate), nil
 }
 
 type programExecutor struct {

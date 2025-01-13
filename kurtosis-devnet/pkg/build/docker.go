@@ -16,6 +16,8 @@ type DockerBuilder struct {
 	cmdTemplate *template.Template
 	// Dry run mode
 	dryRun bool
+
+	builtImages map[string]string
 }
 
 const cmdTemplateStr = "just {{.ProjectName}}-image {{.ImageTag}}"
@@ -52,6 +54,7 @@ func NewDockerBuilder(opts ...DockerBuilderOptions) *DockerBuilder {
 		baseDir:     ".",
 		cmdTemplate: defaultCmdTemplate,
 		dryRun:      false,
+		builtImages: make(map[string]string),
 	}
 
 	for _, opt := range opts {
@@ -69,6 +72,10 @@ type templateData struct {
 
 // Build executes the docker build command for the given project and image tag
 func (b *DockerBuilder) Build(projectName, imageTag string) (string, error) {
+	if builtImage, ok := b.builtImages[projectName]; ok {
+		return builtImage, nil
+	}
+
 	log.Printf("Building docker image for project: %s with tag: %s", projectName, imageTag)
 	// Prepare template data
 	data := templateData{
@@ -94,5 +101,6 @@ func (b *DockerBuilder) Build(projectName, imageTag string) (string, error) {
 	}
 
 	// Return the image tag as confirmation of successful build
+	b.builtImages[projectName] = imageTag
 	return imageTag, nil
 }

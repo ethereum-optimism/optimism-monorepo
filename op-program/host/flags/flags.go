@@ -72,8 +72,14 @@ var (
 	}
 	L2OutputRoot = &cli.StringFlag{
 		Name:    "l2.outputroot",
-		Usage:   "Agreed L2 Output Root to start derivation from",
+		Usage:   "Agreed L2 Output Root to start derivation from. Used for non-interop games.",
 		EnvVars: prefixEnvVars("L2_OUTPUT_ROOT"),
+	}
+	L2AgreedPrestate = &cli.StringFlag{
+		Name: "l2.agreed-prestate",
+		Usage: "Agreed L2 pre state pre-image to start derivation from. " +
+			"l2.outputroot will be automatically set to the hash of the prestate. Used for interop-enabled games.",
+		EnvVars: prefixEnvVars("L2_AGREED_PRESTATE"),
 	}
 	L2Claim = &cli.StringFlag{
 		Name:    "l2.claim",
@@ -133,12 +139,13 @@ var Flags []cli.Flag
 var requiredFlags = []cli.Flag{
 	L1Head,
 	L2Head,
-	L2OutputRoot,
 	L2Claim,
 	L2BlockNumber,
 }
 
 var programFlags = []cli.Flag{
+	L2OutputRoot,
+	L2AgreedPrestate,
 	L2Custom,
 	RollupConfig,
 	Network,
@@ -183,6 +190,12 @@ func CheckRequired(ctx *cli.Context) error {
 		if !ctx.IsSet(flag.Names()[0]) {
 			return fmt.Errorf("flag %s is required", flag.Names()[0])
 		}
+	}
+	if !ctx.IsSet(L2OutputRoot.Name) && !ctx.IsSet(L2AgreedPrestate.Name) {
+		return fmt.Errorf("flag %s or %s is required", L2OutputRoot.Name, L2AgreedPrestate.Name)
+	}
+	if ctx.IsSet(L2OutputRoot.Name) && ctx.IsSet(L2AgreedPrestate.Name) {
+		return fmt.Errorf("flag %s and %s must not be specified together", L2OutputRoot.Name, L2AgreedPrestate.Name)
 	}
 	return nil
 }
