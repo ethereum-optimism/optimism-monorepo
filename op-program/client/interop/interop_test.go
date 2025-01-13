@@ -22,7 +22,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func setupTwoChains(t *testing.T) (*staticConfigSource, *eth.SuperV1, stubTasks) {
+func setupTwoChains() (*staticConfigSource, *eth.SuperV1, stubTasks) {
 	rollupCfg1 := chaincfg.OPSepolia()
 	chainCfg1 := chainconfig.OPSepoliaChainConfig()
 
@@ -51,7 +51,7 @@ func setupTwoChains(t *testing.T) (*staticConfigSource, *eth.SuperV1, stubTasks)
 
 func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelError)
-	configSource, agreedSuperRoot, tasksStub := setupTwoChains(t)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
 
 	outputRootHash := common.Hash(eth.SuperRoot(agreedSuperRoot))
 	l2PreimageOracle, _ := test.NewStubOracle(t)
@@ -73,7 +73,7 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 
 func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelError)
-	configSource, agreedSuperRoot, tasksStub := setupTwoChains(t)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
 	agreedTransitionState := &types.TransitionState{
 		SuperRoot: agreedSuperRoot.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
@@ -101,7 +101,7 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 
 func TestNoOpStep(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelError)
-	configSource, agreedSuperRoot, tasksStub := setupTwoChains(t)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
 	agreedTransitionState := &types.TransitionState{
 		SuperRoot: agreedSuperRoot.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
@@ -134,6 +134,7 @@ func verifyResult(t *testing.T, logger log.Logger, tasks stubTasks, configSource
 }
 
 type stubTasks struct {
+	l2SafeHead eth.L2BlockRef
 	blockHash  common.Hash
 	outputRoot eth.Bytes32
 	err        error
@@ -149,6 +150,7 @@ func (t *stubTasks) RunDerivation(
 	_ l1.Oracle,
 	_ l2.Oracle) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
+		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,
 		OutputRoot: t.outputRoot,
 	}, t.err

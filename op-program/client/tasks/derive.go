@@ -61,6 +61,7 @@ func loadOutputRoot(l2ClaimBlockNum uint64, head eth.L2BlockRef, src L2Source) (
 		return DerivationResult{}, fmt.Errorf("calculate L2 output root: %w", err)
 	}
 	return DerivationResult{
+		Head:       head,
 		BlockHash:  blockHash,
 		OutputRoot: outputRoot,
 	}, nil
