@@ -21,6 +21,8 @@ import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy
 library DeployUtils {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
+    bytes32 internal constant defaultSalt = keccak256("op-stack-contract-impls-salt-v0");
+
     /// @notice Deploys a contract with the given name and arguments via CREATE.
     /// @param _name Name of the contract to deploy.
     /// @param _args ABI-encoded constructor arguments.

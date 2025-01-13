@@ -292,6 +292,8 @@ contract DeploySuperchainOutput is BaseDeployIO {
 // default sender would be the broadcaster during test, but the broadcaster needs to be the deployer
 // since they are set to the initial proxy admin owner.
 contract DeploySuperchain is Script {
+    bytes32 internal _salt = DeployUtils.defaultSalt;
+
     // -------- Core Deployment Methods --------
 
     function run(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
@@ -340,20 +342,20 @@ contract DeploySuperchain is Script {
 
     function deploySuperchainImplementationContracts(DeploySuperchainInput, DeploySuperchainOutput _dso) public {
         // Deploy implementation contracts.
-        vm.startBroadcast(msg.sender);
         ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "SuperchainConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
+                _salt: _salt
             })
         );
         IProtocolVersions protocolVersionsImpl = IProtocolVersions(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "ProtocolVersions",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
+                _salt: _salt
             })
         );
-        vm.stopBroadcast();
 
         vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
         vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");

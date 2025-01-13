@@ -390,7 +390,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
 }
 
 contract DeployImplementations is Script {
-    bytes32 internal constant _salt = keccak256("op-stack-contract-impls-salt-v0");
+    bytes32 internal _salt = DeployUtils.defaultSalt;
 
     // -------- Core Deployment Methods --------
 
