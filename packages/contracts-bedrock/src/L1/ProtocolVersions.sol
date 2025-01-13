@@ -6,6 +6,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
+import { Release } from "src/universal/Release.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -16,7 +17,7 @@ type ProtocolVersion is uint256;
 /// @custom:proxied true
 /// @title ProtocolVersions
 /// @notice The ProtocolVersions contract is used to manage superchain protocol version information.
-contract ProtocolVersions is OwnableUpgradeable, ISemver {
+contract ProtocolVersions is OwnableUpgradeable, Release, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value REQUIRED_PROTOCOL_VERSION              Represents an update to the required protocol version.
     /// @custom:value RECOMMENDED_PROTOCOL_VERSION           Represents an update to the recommended protocol version.
@@ -41,8 +42,8 @@ contract ProtocolVersions is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.6
-    string public constant version = "1.0.1-beta.6";
+    /// @custom:semver 1.0.1-beta.7
+    string public constant version = "1.0.1-beta.7";
 
     /// @notice Constructs the ProtocolVersion contract.
     constructor() {

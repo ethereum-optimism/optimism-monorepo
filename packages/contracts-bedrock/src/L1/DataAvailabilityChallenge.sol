@@ -6,6 +6,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 
 // Libraries
 import { SafeCall } from "src/libraries/SafeCall.sol";
+import { Release } from "src/universal/Release.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -45,7 +46,7 @@ struct Challenge {
 ///         expired.
 ///         If a challenge is expired, the challenger's bond is unlocked and the challenged commitment is added to the
 ///         chain of expired challenges.
-contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
+contract DataAvailabilityChallenge is OwnableUpgradeable, Release, ISemver {
     /// @notice Error for when the provided resolver refund percentage exceeds 100%.
     error InvalidResolverRefundPercentage(uint256 invalidResolverRefundPercentage);
 
@@ -95,8 +96,8 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     event BalanceChanged(address account, uint256 balance);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.5
-    string public constant version = "1.0.1-beta.5";
+    /// @custom:semver 1.0.1-beta.6
+    string public constant version = "1.0.1-beta.6";
 
     /// @notice The fixed cost of resolving a challenge.
     /// @dev The value is estimated by measuring the cost of resolving with `bytes(0)`

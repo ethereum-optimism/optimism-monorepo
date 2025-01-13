@@ -116,6 +116,8 @@ interface IOptimismPortalInterop {
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);
     function version() external pure returns (string memory);
+    function release() external pure returns (uint32, uint16, uint16);
+    function releaseUint64() external pure returns (uint64);
 
     function __constructor__(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) external;
 }

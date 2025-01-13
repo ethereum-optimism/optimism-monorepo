@@ -89,6 +89,8 @@ interface IDataAvailabilityChallenge {
     function variableResolutionCostPrecision() external view returns (uint256);
     function version() external view returns (string memory);
     function withdraw() external;
+    function release() external pure returns (uint32, uint16, uint16);
+    function releaseUint64() external pure returns (uint64);
 
     function __constructor__() external;
 }

@@ -6,6 +6,7 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
+import { Release } from "src/universal/Release.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -14,7 +15,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 /// @custom:audit none This contracts is not yet audited.
 /// @title SuperchainConfig
 /// @notice The SuperchainConfig contract is used to manage configuration of global superchain values.
-contract SuperchainConfig is Initializable, ISemver {
+contract SuperchainConfig is Initializable, Release, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value GUARDIAN            Represents an update to the guardian.
     enum UpdateType {
@@ -41,8 +42,8 @@ contract SuperchainConfig is Initializable, ISemver {
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.4
-    string public constant version = "1.1.1-beta.4";
+    /// @custom:semver 1.1.1-beta.5
+    string public constant version = "1.1.1-beta.5";
 
     /// @notice Constructs the SuperchainConfig contract.
     constructor() {

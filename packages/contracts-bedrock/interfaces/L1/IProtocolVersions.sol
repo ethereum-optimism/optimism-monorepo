@@ -25,6 +25,8 @@ interface IProtocolVersions {
     function setRequired(ProtocolVersion _required) external;
     function transferOwnership(address newOwner) external; // nosemgrep
     function version() external view returns (string memory);
+    function release() external pure returns (uint32, uint16, uint16);
+    function releaseUint64() external pure returns (uint64);
 
     function __constructor__() external;
 }

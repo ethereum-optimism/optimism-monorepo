@@ -14,12 +14,12 @@ abstract contract Release {
     uint16 private constant PATCH = 0;
 
     /// @notice Converts release components to a uint64 with padding
-    function release() internal pure returns (uint64) {
+    function releaseUint64() public pure returns (uint64) {
         return (MAJOR * SPACING ** 2) + (MINOR * SPACING) + PATCH;
     }
 
     /// @notice Getter for the version components.
-    function getVersion() internal pure returns (uint32, uint16, uint16) {
+    function release() public pure returns (uint32, uint16, uint16) {
         return (MAJOR, MINOR, PATCH);
     }
 }

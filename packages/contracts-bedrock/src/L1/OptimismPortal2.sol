@@ -35,6 +35,7 @@ import {
     AlreadyFinalized
 } from "src/libraries/PortalErrors.sol";
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
+import { Release } from "src/universal/Release.sol";
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -54,7 +55,7 @@ error CustomGasTokenNotSupported();
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
+contract OptimismPortal2 is Initializable, ResourceMetering, Release, ISemver {
     /// @notice Allows for interactions with non standard ERC20 tokens.
     using SafeERC20 for IERC20;
 
@@ -186,9 +187,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.10
+    /// @custom:semver 3.11.0-beta.11
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.10";
+        return "3.11.0-beta.11";
     }
 
     /// @notice Constructs the OptimismPortal contract.
