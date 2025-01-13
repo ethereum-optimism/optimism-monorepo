@@ -28,6 +28,9 @@ var (
 	ErrMissingL2ChainID      = errors.New("missing l2 chain id")
 	ErrMissingRollupConfig   = errors.New("missing rollup config")
 	ErrMissingL2Genesis      = errors.New("missing l2 genesis")
+	ErrNoRollupForGenesis    = errors.New("no rollup config matching l2 genesis")
+	ErrNoGenesisForRollup    = errors.New("no l2 genesis for rollup")
+	ErrDuplicateGenesis      = errors.New("duplicate l2 genesis")
 	ErrInvalidL1Head         = errors.New("invalid l1 head")
 	ErrInvalidL2Head         = errors.New("invalid l2 head")
 	ErrInvalidL2OutputRoot   = errors.New("invalid l2 output root")
@@ -118,6 +121,25 @@ func (c *Config) Check() error {
 	}
 	if len(c.L2ChainConfigs) == 0 {
 		return ErrMissingL2Genesis
+	}
+	// Make of known rollup chain IDs to whether we have the L2 chain config for it
+	chainIDToHasChainConfig := make(map[uint64]bool, len(c.Rollups))
+	for _, config := range c.Rollups {
+		chainIDToHasChainConfig[config.L2ChainID.Uint64()] = false
+	}
+	for _, config := range c.L2ChainConfigs {
+		if _, ok := chainIDToHasChainConfig[config.ChainID.Uint64()]; !ok {
+			return fmt.Errorf("%w for chain ID %v", ErrNoRollupForGenesis, config.ChainID)
+		}
+		if chainIDToHasChainConfig[config.ChainID.Uint64()] {
+			return fmt.Errorf("%w for chain ID %v", ErrDuplicateGenesis, config.ChainID)
+		}
+		chainIDToHasChainConfig[config.ChainID.Uint64()] = true
+	}
+	for chainID, hasChainConfig := range chainIDToHasChainConfig {
+		if !hasChainConfig {
+			return fmt.Errorf("%w for chain ID %v", ErrNoGenesisForRollup, chainID)
+		}
 	}
 	if (c.L1URL != "") != (len(c.L2URLs) > 0) {
 		return ErrL1AndL2Inconsistent

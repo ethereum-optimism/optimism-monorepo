@@ -111,6 +111,26 @@ func TestL2GenesisRequired(t *testing.T) {
 	require.ErrorIs(t, err, ErrMissingL2Genesis)
 }
 
+func TestL2Genesis_ExtraGenesisProvided(t *testing.T) {
+	config := validConfig()
+	config.L2ChainConfigs = append(config.L2ChainConfigs, &params.ChainConfig{ChainID: big.NewInt(422142)})
+	require.ErrorIs(t, config.Check(), ErrNoRollupForGenesis)
+}
+
+func TestL2Genesis_GenesisMissingForChain(t *testing.T) {
+	config := validConfig()
+	secondConfig := *chaincfg.OPSepolia()
+	secondConfig.L2ChainID = big.NewInt(422142)
+	config.Rollups = append(config.Rollups, &secondConfig)
+	require.ErrorIs(t, config.Check(), ErrNoGenesisForRollup)
+}
+
+func TestL2Genesis_Duplicate(t *testing.T) {
+	config := validConfig()
+	config.L2ChainConfigs = append(config.L2ChainConfigs, validL2Genesis)
+	require.ErrorIs(t, config.Check(), ErrDuplicateGenesis)
+}
+
 func TestFetchingArgConsistency(t *testing.T) {
 	t.Run("RequireL2WhenL1Set", func(t *testing.T) {
 		cfg := validConfig()
