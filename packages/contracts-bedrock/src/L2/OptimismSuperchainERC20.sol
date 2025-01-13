@@ -2,7 +2,7 @@
 pragma solidity 0.8.25;
 
 // Contracts
-import { Initializable } from "src/vendor/Initializable-v5.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 import { SuperchainERC20 } from "src/L2/SuperchainERC20.sol";
 
 // Libraries
@@ -20,7 +20,7 @@ import { IOptimismSuperchainERC20 } from "interfaces/L2/IOptimismSuperchainERC20
 ///         OptimismSuperchainERC20 token, turning it fungible and interoperable across the superchain. Likewise, it
 ///         also enables the inverse conversion path.
 ///         Moreover, it builds on top of the L2ToL2CrossDomainMessenger for both replay protection and domain binding.
-contract OptimismSuperchainERC20 is SuperchainERC20, Initializable {
+contract OptimismSuperchainERC20 is SuperchainERC20, InitializablePublic {
     /// @notice Emitted whenever tokens are minted for an account.
     /// @param to Address of the account tokens are being minted for.
     /// @param amount  Amount of tokens minted.

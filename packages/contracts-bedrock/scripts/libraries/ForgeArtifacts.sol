@@ -5,6 +5,7 @@ import { Vm } from "forge-std/Vm.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Process } from "scripts/libraries/Process.sol";
+import { Constants } from "src/libraries/Constants.sol";
 
 /// @notice Contains information about a storage slot. Mirrors the layout of the storage
 ///         slot object in Forge artifacts so that we can deserialize JSON into this struct.
@@ -150,48 +151,11 @@ library ForgeArtifacts {
         out_ = vm.readFile(forgeArtifactPath);
     }
 
-    /// @notice Pulls the `_initialized` storage slot information from the Forge artifacts for a given contract.
-    function getInitializedSlot(string memory _contractName) internal returns (StorageSlot memory slot_) {
-        string memory storageLayout = getStorageLayout(_contractName);
-
-        // FaultDisputeGame and PermissionedDisputeGame use a different name for the initialized storage slot.
-        string memory slotName = "_initialized";
-        string memory slotType = "t_uint8";
-        if (LibString.eq(_contractName, "FaultDisputeGame") || LibString.eq(_contractName, "PermissionedDisputeGame")) {
-            slotName = "initialized";
-            slotType = "t_bool";
-        }
-
-        bytes memory rawSlot = vm.parseJson(
-            Process.bash(
-                string.concat(
-                    "echo '",
-                    storageLayout,
-                    "' | jq '.storage[] | select(.label == \"",
-                    slotName,
-                    "\" and .type == \"",
-                    slotType,
-                    "\")'"
-                )
-            )
-        );
-        ForgeStorageSlot memory slot = abi.decode(rawSlot, (ForgeStorageSlot));
-        slot_ = StorageSlot({
-            astId: slot.astId,
-            _contract: slot._contract,
-            label: slot.label,
-            offset: slot.offset,
-            slot: vm.parseUint(slot.slot),
-            _type: slot._type
-        });
-    }
-
     /// @notice Returns whether or not a contract is initialized.
     ///         Needs the name to get the storage layout.
-    function isInitialized(string memory _name, address _address) internal returns (bool initialized_) {
-        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_name);
-        bytes32 slotVal = vm.load(_address, bytes32(slot.slot));
-        initialized_ = uint8((uint256(slotVal) >> (slot.offset * 8)) & 0xFF) != 0;
+    function isInitialized(address _address) internal view returns (bool initialized_) {
+        bytes32 slotVal = vm.load(_address, Constants.INITIALIZABLE_STORAGE);
+        initialized_ = (uint64(uint256(slotVal)) == type(uint64).max);
     }
 
     /// @notice Returns the names of all contracts in a given directory.

@@ -1,17 +1,10 @@
 [
   {
-    "bytes": "1",
-    "label": "_initialized",
+    "bytes": "32",
+    "label": "spacer_0_0_32",
     "offset": 0,
     "slot": "0",
-    "type": "uint8"
-  },
-  {
-    "bytes": "1",
-    "label": "_initializing",
-    "offset": 1,
-    "slot": "0",
-    "type": "bool"
+    "type": "bytes32"
   },
   {
     "bytes": "32",

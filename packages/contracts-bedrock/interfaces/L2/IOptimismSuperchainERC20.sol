@@ -17,6 +17,8 @@ interface IOptimismSuperchainERC20 is ISuperchainERC20 {
 
     event Burn(address indexed from, uint256 amount);
 
+    function getInitializedVersion() external view returns (uint64);
+
     function initialize(address _remoteToken, string memory _name, string memory _symbol, uint8 _decimals) external;
 
     function mint(address _to, uint256 _amount) external;

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Libraries
-import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 import { SafeCall } from "src/libraries/SafeCall.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
@@ -87,7 +87,7 @@ contract CrossDomainMessengerLegacySpacer1 {
 ///         Any changes to this contract MUST result in a semver bump for contracts that inherit it.
 abstract contract CrossDomainMessenger is
     CrossDomainMessengerLegacySpacer0,
-    Initializable,
+    InitializablePublic,
     CrossDomainMessengerLegacySpacer1
 {
     /// @notice Current message version identifier.

@@ -165,6 +165,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getInitializedVersion",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "contract CrossDomainMessenger",
@@ -353,9 +366,9 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint8",
+        "internalType": "uint64",
         "name": "version",
-        "type": "uint8"
+        "type": "uint64"
       }
     ],
     "name": "Initialized",
@@ -429,5 +442,15 @@
     ],
     "name": "SentMessageExtension1",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidInitialization",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "NotInitializing",
+    "type": "error"
   }
 ]

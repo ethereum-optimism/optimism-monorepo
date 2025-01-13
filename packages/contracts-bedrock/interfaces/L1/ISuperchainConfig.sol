@@ -5,12 +5,15 @@ interface ISuperchainConfig {
     enum UpdateType {
         GUARDIAN
     }
+    error InvalidInitialization();
+    error NotInitializing();
 
+    event Initialized(uint64 version);
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
-    event Initialized(uint8 version);
     event Paused(string identifier);
     event Unpaused();
 
+    function getInitializedVersion() external view returns (uint64);
     function GUARDIAN_SLOT() external view returns (bytes32);
     function PAUSED_SLOT() external view returns (bytes32);
     function guardian() external view returns (address guardian_);

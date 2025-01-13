@@ -2,10 +2,14 @@
 pragma solidity ^0.8.0;
 
 interface IOptimismMintableERC20Factory {
-    event Initialized(uint8 version);
+    error InvalidInitialization();
+    error NotInitializing();
+
+    event Initialized(uint64 version);
     event OptimismMintableERC20Created(address indexed localToken, address indexed remoteToken, address deployer);
     event StandardL2TokenCreated(address indexed remoteToken, address indexed localToken);
 
+    function getInitializedVersion() external view returns (uint64);
     function BRIDGE() external view returns (address);
     function bridge() external view returns (address);
     function createOptimismMintableERC20(

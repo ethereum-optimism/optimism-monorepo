@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
+import { InitializablePublic } from "src/universal/InitializablePublic.sol";
 
 // Libraries
 import { Math } from "@openzeppelin/contracts/utils/math/Math.sol";
@@ -13,7 +13,7 @@ import { Arithmetic } from "src/libraries/Arithmetic.sol";
 /// @title ResourceMetering
 /// @notice ResourceMetering implements an EIP-1559 style resource metering system where pricing
 ///         updates automatically based on current demand.
-abstract contract ResourceMetering is Initializable {
+abstract contract ResourceMetering is InitializablePublic {
     /// @notice Error returned when too much gas resource is consumed.
     error OutOfGas();
 

@@ -15,9 +15,12 @@ interface IAnchorStateRegistry {
     error InvalidGameStatus();
     error Unauthorized();
     error UnregisteredGame();
+    error InvalidInitialization();
+    error NotInitializing();
 
-    event Initialized(uint8 version);
+    event Initialized(uint64 version);
 
+    function getInitializedVersion() external view returns (uint64);
     function anchors(GameType) external view returns (Hash root, uint256 l2BlockNumber); // nosemgrep
     function disputeGameFactory() external view returns (IDisputeGameFactory);
     function initialize(
