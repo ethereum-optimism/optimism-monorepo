@@ -3,8 +3,8 @@
 
 ## Building and Running
 
-1. ```just op-nat```
-1. ```./bin/op-nat```
+1. `just op-nat`
+1. `./bin/op-nat --kurtosis.devnet.manifest=../kurtosis-devnet/tests/interop-devnet.json`
 
 ## TODOs
 
@@ -19,3 +19,9 @@
 #### P1
 
  1. Remove hardcodes / Read json file
+ 2. Aggregate results and output them to stdout
+
+
+#### P2
+
+ 1. A nice way to add per-validator config/params
