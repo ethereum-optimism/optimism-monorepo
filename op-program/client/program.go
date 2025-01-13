@@ -47,9 +47,10 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 	l1PreimageOracle := l1.NewCachingOracle(l1.NewPreimageOracle(pClient, hClient))
 	l2PreimageOracle := l2.NewCachingOracle(l2.NewPreimageOracle(pClient, hClient))
 
-	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
 	if cfg.InteropEnabled {
+		bootInfo := boot.BootstrapInterop(pClient)
 		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, !cfg.SkipValidation)
 	}
+	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
 	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
 }

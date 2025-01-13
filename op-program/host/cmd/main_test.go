@@ -15,6 +15,7 @@ import (
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/params"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core"
@@ -73,7 +74,7 @@ func TestDefaultCLIOptionsMatchDefaultConfig(t *testing.T) {
 	cfg := configForArgs(t, addRequiredArgs())
 	rollupCfg, err := chaincfg.GetRollupConfig("op-sepolia")
 	require.NoError(t, err)
-	defaultCfg := config.NewConfig(
+	defaultCfg := config.NewSingleChainConfig(
 		rollupCfg,
 		chainconfig.OPSepoliaChainConfig(),
 		common.HexToHash(l1HeadValue),
@@ -102,7 +103,8 @@ func TestNetwork(t *testing.T) {
 		genesisFile := writeValidGenesis(t)
 
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", configFile, "--l2.genesis", genesisFile))
-		require.Equal(t, *chaincfg.OPSepolia(), *cfg.Rollup)
+		require.Len(t, cfg.Rollups, 1)
+		require.Equal(t, *chaincfg.OPSepolia(), *cfg.Rollups[0])
 	})
 
 	for _, name := range chaincfg.AvailableNetworks() {
@@ -112,7 +114,8 @@ func TestNetwork(t *testing.T) {
 		t.Run("Network_"+name, func(t *testing.T) {
 			args := replaceRequiredArg("--network", name)
 			cfg := configForArgs(t, args)
-			require.Equal(t, *expected, *cfg.Rollup)
+			require.Len(t, cfg.Rollups, 1)
+			require.Equal(t, *expected, *cfg.Rollups[0])
 		})
 	}
 }
@@ -140,7 +143,7 @@ func TestDataFormat(t *testing.T) {
 func TestL2(t *testing.T) {
 	expected := "https://example.com:8545"
 	cfg := configForArgs(t, addRequiredArgs("--l2", expected))
-	require.Equal(t, expected, cfg.L2URL)
+	require.Equal(t, []string{expected}, cfg.L2URLs)
 }
 
 func TestL2Genesis(t *testing.T) {
@@ -153,12 +156,12 @@ func TestL2Genesis(t *testing.T) {
 		rollupCfgFile := writeValidRollupConfig(t)
 		genesisFile := writeValidGenesis(t)
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
-		require.Equal(t, l2GenesisConfig, cfg.L2ChainConfig)
+		require.Equal(t, []*params.ChainConfig{l2GenesisConfig}, cfg.L2ChainConfigs)
 	})
 
 	t.Run("NotRequiredForSepolia", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--network", "sepolia"))
-		require.Equal(t, chainconfig.OPSepoliaChainConfig(), cfg.L2ChainConfig)
+		require.Equal(t, []*params.ChainConfig{chainconfig.OPSepoliaChainConfig()}, cfg.L2ChainConfigs)
 	})
 }
 
@@ -334,13 +337,13 @@ func TestL2Claim(t *testing.T) {
 func TestL2Experimental(t *testing.T) {
 	t.Run("DefaultEmpty", func(t *testing.T) {
 		cfg := configForArgs(t, addRequiredArgs())
-		require.Equal(t, cfg.L2ExperimentalURL, "")
+		require.Len(t, cfg.L2ExperimentalURLs, 0)
 	})
 
 	t.Run("Valid", func(t *testing.T) {
 		expected := "https://example.com:8545"
-		cfg := configForArgs(t, replaceRequiredArg("--l2.experimental", expected))
-		require.EqualValues(t, expected, cfg.L2ExperimentalURL)
+		cfg := configForArgs(t, addRequiredArgs("--l2.experimental", expected))
+		require.EqualValues(t, []string{expected}, cfg.L2ExperimentalURLs)
 	})
 }
 

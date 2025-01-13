@@ -9,6 +9,8 @@ import (
 	"math/rand"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	hostTypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -516,7 +518,7 @@ func TestFetchL2Code(t *testing.T) {
 }
 
 func TestFetchL2BlockData(t *testing.T) {
-	chainID := uint64(0xdead)
+	chainID := uint64(14)
 
 	testBlockExec := func(t *testing.T, err error) {
 		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
@@ -646,7 +648,8 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	_, l1Source, l1BlobSource, l2Cl, kv := createPrefetcher(t)
 	putsToIgnore := 2
 	kv = &unreliableKvStore{KV: kv, putsToIgnore: putsToIgnore}
-	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv, nil, nil)
+	sources := &l2Clients{sources: map[uint64]hostTypes.L2Source{6: l2Cl}}
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, 6, sources, kv, nil, common.Hash{}, nil)
 
 	// Expect one call for each ignored put, plus one more request for when the put succeeds
 	for i := 0; i < putsToIgnore+1; i++ {
@@ -673,18 +676,42 @@ func (s *unreliableKvStore) Put(k common.Hash, v []byte) error {
 	return s.KV.Put(k, v)
 }
 
+type l2Clients struct {
+	sources map[uint64]hostTypes.L2Source
+}
+
+func (l *l2Clients) ForChainID(id uint64) (hostTypes.L2Source, error) {
+	source, ok := l.sources[id]
+	if !ok {
+		return nil, fmt.Errorf("no such source for chain %d", id)
+	}
+	return source, nil
+}
+
+func (l *l2Clients) ForChainIDWithoutRetries(id uint64) (hostTypes.L2Source, error) {
+	return l.ForChainID(id)
+}
+
 type l2Client struct {
 	*testutils.MockL2Client
 	*testutils.MockDebugClient
 }
 
-func (m *l2Client) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root)
+func (m *l2Client) RollupConfig() *rollup.Config {
+	panic("implement me")
+}
+
+func (m *l2Client) ExperimentalEnabled() bool {
+	panic("implement me")
+}
+
+func (m *l2Client) OutputByRoot(ctx context.Context, blockHash common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", blockHash)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
-func (m *l2Client) ExpectOutputByRoot(root common.Hash, output eth.Output, err error) {
-	m.Mock.On("OutputByRoot", root).Once().Return(output, &err)
+func (m *l2Client) ExpectOutputByRoot(blockRoot common.Hash, output eth.Output, err error) {
+	m.Mock.On("OutputByRoot", blockRoot).Once().Return(output, &err)
 }
 
 func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
@@ -700,8 +727,11 @@ func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte) (*P
 		MockL2Client:    new(testutils.MockL2Client),
 		MockDebugClient: new(testutils.MockDebugClient),
 	}
+	l2Sources := &l2Clients{
+		sources: map[uint64]hostTypes.L2Source{14: l2Source},
+	}
 
-	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv, nil, agreedPrestate)
+	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, 14, l2Sources, kv, nil, common.Hash{0xdd}, agreedPrestate)
 	return prefetcher, l1Source, l1BlobSource, l2Source, kv
 }
 

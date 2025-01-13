@@ -183,29 +183,23 @@ trap clean_docker EXIT
 conditionally_start_docker
 
 results=()
+
 # Run kontrol_build and store the result
 kontrol_build
 results[0]=$?
+if [ "${results[0]}" -ne 0 ]; then
+  echo "Kontrol Build Failed"
+  exit 1
+fi
 
 # Run kontrol_prove and store the result
 kontrol_prove
 results[1]=$?
-
-get_log_results
-
-# Now you can use ${results[0]} and ${results[1]}
-# to check the results of kontrol_build and kontrol_prove, respectively
-if [ "${results[0]}" -ne 0 ] && [ "${results[1]}" -ne 0 ]; then
-  echo "Kontrol Build and Prove Failed"
-  exit 1
-elif [ "${results[0]}" -ne 0 ]; then
-  echo "Kontrol Build Failed"
-  exit 1
-elif [ "${results[1]}" -ne 0 ]; then
+if [ "${results[1]}" -ne 0 ]; then
   echo "Kontrol Prove Failed"
   exit 2
-else
-  echo "Kontrol Passed"
 fi
 
+get_log_results
+echo "Kontrol Passed"
 notif "DONE"

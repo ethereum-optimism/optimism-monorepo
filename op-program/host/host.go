@@ -42,7 +42,9 @@ func Main(logger log.Logger, cfg *config.Config) error {
 		return fmt.Errorf("invalid config: %w", err)
 	}
 	opservice.ValidateEnvVars(flags.EnvVarPrefix, flags.Flags, logger)
-	cfg.Rollup.LogDescription(logger, chaincfg.L2ChainIDToNetworkDisplayName)
+	for _, r := range cfg.Rollups {
+		r.LogDescription(logger, chaincfg.L2ChainIDToNetworkDisplayName)
+	}
 
 	hostCtx, stop := ctxinterrupt.WithSignalWaiter(context.Background())
 	defer stop()
@@ -78,7 +80,8 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 		return nil, fmt.Errorf("failed to setup L1 RPC: %w", err)
 	}
 
-	l1ClCfg := sources.L1ClientDefaultConfig(cfg.Rollup, cfg.L1TrustRPC, cfg.L1RPCKind)
+	// Small cache because we store everything to the KV store, but 0 isn't allowed.
+	l1ClCfg := sources.L1ClientSimpleConfig(cfg.L1TrustRPC, cfg.L1RPCKind, 100)
 	l1Cl, err := sources.NewL1Client(l1RPC, logger, nil, l1ClCfg)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create L1 client: %w", err)
@@ -89,13 +92,13 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	l1BlobFetcher := sources.NewL1BeaconClient(l1Beacon, sources.L1BeaconClientConfig{FetchAllSidecars: false})
 
 	logger.Info("Initializing L2 clients")
-	l2Client, err := hostcommon.NewL2Source(ctx, logger, cfg)
+	sources, err := prefetcher.NewRetryingL2SourcesFromURLs(ctx, logger, cfg.Rollups, cfg.L2URLs, cfg.L2ExperimentalURLs)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create L2 source: %w", err)
+		return nil, fmt.Errorf("failed to create L2 sources: %w", err)
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2Client, kv, executor, cfg.AgreedPrestate), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, cfg.Rollups[0].L2ChainID.Uint64(), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 }
 
 type programExecutor struct {

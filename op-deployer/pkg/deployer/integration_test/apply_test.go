@@ -315,6 +315,17 @@ func TestApplyExistingOPCM(t *testing.T) {
 			expectedL1SemversV180,
 			expectedL2SemversV160,
 		},
+		{
+			"mainnet v1.8.0-rc.4",
+			"mainnet",
+			"op-contracts/v1.8.0-rc.4",
+			// The L2 predeploys need to still be the v1.7.0 beta contracts.
+			"op-contracts/v1.7.0-beta.1+l2-contracts",
+			// The L2 predeploys do not change in version 1.8.0.
+			"allocs-l2-v160-1.json.gz",
+			expectedL1SemversV180,
+			expectedL2SemversV160,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {

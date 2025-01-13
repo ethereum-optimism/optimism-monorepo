@@ -10,6 +10,7 @@ import { Artifacts } from "scripts/Artifacts.s.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
 import { Constants } from "src/libraries/Constants.sol";
+import { Blueprint } from "src/libraries/Blueprint.sol";
 
 // Interfaces
 import { IProxy } from "interfaces/universal/IProxy.sol";
@@ -19,6 +20,8 @@ import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy
 
 library DeployUtils {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
+
+    bytes32 internal constant DEFAULT_SALT = keccak256("op-stack-contract-impls-salt-v0");
 
     /// @notice Deploys a contract with the given name and arguments via CREATE.
     /// @param _name Name of the contract to deploy.
@@ -97,19 +100,11 @@ library DeployUtils {
     /// @param _args ABI-encoded constructor arguments.
     /// @param _salt Salt for the CREATE2 operation.
     /// @return addr_ Address of the deployed contract.
-    function create2(string memory _name, bytes memory _args, bytes32 _salt) internal returns (address payable addr_) {
+    function create2(string memory _name, bytes memory _args, bytes32 _salt) internal returns (address payable) {
         bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
         address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
         require(preComputedAddress.code.length == 0, "DeployUtils: contract already deployed");
-        assembly {
-            addr_ := create2(0, add(initCode, 0x20), mload(initCode), _salt)
-            if iszero(addr_) {
-                let size := returndatasize()
-                returndatacopy(0, 0, size)
-                revert(0, size)
-            }
-        }
-        assertValidContractAddress(addr_);
+        return create2asm(initCode, _salt);
     }
 
     /// @notice Deploys a contract with the given name via CREATE2.
@@ -118,6 +113,18 @@ library DeployUtils {
     /// @return Address of the deployed contract.
     function create2(string memory _name, bytes32 _salt) internal returns (address payable) {
         return create2(_name, hex"", _salt);
+    }
+
+    function create2asm(bytes memory _initCode, bytes32 _salt) internal returns (address payable addr_) {
+        assembly {
+            addr_ := create2(0, add(_initCode, 0x20), mload(_initCode), _salt)
+            if iszero(addr_) {
+                let size := returndatasize()
+                returndatacopy(0, 0, size)
+                revert(0, size)
+            }
+        }
+        assertValidContractAddress(addr_);
     }
 
     /// @notice Deploys a contract with the given name and arguments via CREATE2 and saves the result.
@@ -193,6 +200,64 @@ library DeployUtils {
         returns (address payable addr_)
     {
         return create2AndSave(_save, _name, _name, hex"", _salt);
+    }
+
+    /// @notice Deploys a contract with the given name using CREATE2. If the contract is already deployed, this method
+    /// does nothing.
+    /// @param _name Name of the contract to deploy.
+    /// @param _args ABI-encoded constructor arguments.
+    function createDeterministic(
+        string memory _name,
+        bytes memory _args,
+        bytes32 _salt
+    )
+        internal
+        returns (address payable addr_)
+    {
+        bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
+        address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
+        if (preComputedAddress.code.length > 0) {
+            addr_ = payable(preComputedAddress);
+        } else {
+            addr_ = DeployUtils.create2asm(initCode, _salt);
+        }
+    }
+
+    /// @notice Deploys a blueprint contract with the given name using CREATE2. If the contract is already deployed,
+    /// this method does nothing.
+    /// @param _rawBytecode Raw bytecode of the contract the blueprint will deploy.
+    function createDeterministicBlueprint(
+        bytes memory _rawBytecode,
+        bytes32 _salt
+    )
+        internal
+        returns (address newContract1_, address newContract2_)
+    {
+        uint32 maxSize = Blueprint.maxInitCodeSize();
+        if (_rawBytecode.length <= maxSize) {
+            bytes memory bpBytecode = Blueprint.blueprintDeployerBytecode(_rawBytecode);
+            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bpBytecode));
+            if (newContract1_.code.length == 0) {
+                (address deployedContract) = Blueprint.deploySmallBytecode(bpBytecode, _salt);
+                require(deployedContract == newContract1_, "DeployUtils: unexpected blueprint address");
+            }
+            newContract2_ = address(0);
+        } else {
+            bytes memory part1Slice = Bytes.slice(_rawBytecode, 0, maxSize);
+            bytes memory part2Slice = Bytes.slice(_rawBytecode, maxSize, _rawBytecode.length - maxSize);
+            bytes memory bp1Bytecode = Blueprint.blueprintDeployerBytecode(part1Slice);
+            bytes memory bp2Bytecode = Blueprint.blueprintDeployerBytecode(part2Slice);
+            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bp1Bytecode));
+            if (newContract1_.code.length == 0) {
+                address deployedContract = Blueprint.deploySmallBytecode(bp1Bytecode, _salt);
+                require(deployedContract == newContract1_, "DeployUtils: unexpected part 1 blueprint address");
+            }
+            newContract2_ = vm.computeCreate2Address(_salt, keccak256(bp2Bytecode));
+            if (newContract2_.code.length == 0) {
+                address deployedContract = Blueprint.deploySmallBytecode(bp2Bytecode, _salt);
+                require(deployedContract == newContract2_, "DeployUtils: unexpected part 2 blueprint address");
+            }
+        }
     }
 
     /// @notice Takes a sender and an identifier and returns a deterministic address based on the

@@ -83,9 +83,12 @@ func (f *ServiceFinder) findRPCEndpoints(matchService func(string) (string, int,
 			for _, service := range f.nodeServices {
 				if serviceIdentifier == service {
 					if num > len(nodes) {
-						nodes = append(nodes, Node{
-							Services: make(ServiceMap),
-						})
+						// Extend the slice to accommodate the required index
+						for i := len(nodes); i < num; i++ {
+							nodes = append(nodes, Node{
+								Services: make(ServiceMap),
+							})
+						}
 					}
 					endpoints := make(EndpointMap)
 					for portName, portInfo := range ports {

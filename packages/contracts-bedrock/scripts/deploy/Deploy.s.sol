@@ -292,12 +292,8 @@ contract Deploy is Deployer {
         dii.set(dii.mipsVersion.selector, Config.useMultithreadedCannon() ? 2 : 1);
         string memory release = "dev";
         dii.set(dii.l1ContractsRelease.selector, release);
-        dii.set(
-            dii.standardVersionsToml.selector, string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml")
-        );
         dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
-        dii.set(dii.salt.selector, _implSalt());
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());

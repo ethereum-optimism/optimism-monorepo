@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/require"
 
@@ -355,17 +356,32 @@ func TestInteropFaultProofs(gt *testing.T) {
 				t,
 				logger,
 				actors.L1Miner,
-				actors.ChainA.Sequencer.L2Verifier,
-				actors.ChainA.SequencerEngine,
-				actors.ChainA.L2Genesis,
-				chain1End.BlockRef.Number,
 				checkResult,
-				fpHelpers.WithInteropEnabled(),
-				fpHelpers.WithAgreedPrestate(test.agreedClaim),
-				fpHelpers.WithL2Claim(crypto.Keccak256Hash(test.disputedClaim)),
-				fpHelpers.WithL2BlockNumber(endBlockNumA),
+				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
 			)
 		})
+	}
+}
+
+func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedClaim common.Hash, claimTimestamp uint64) fpHelpers.FixtureInputParam {
+	return func(f *fpHelpers.FixtureInputs) {
+		f.InteropEnabled = true
+		f.AgreedPrestate = agreedPrestate
+		f.L2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
+		f.L2Claim = disputedClaim
+		f.L2BlockNumber = claimTimestamp
+
+		// TODO: Remove these once hints all specify the L2 chain ID
+		f.L2ChainID = actors.ChainA.ChainID.ToBig().Uint64()
+		f.L2Head = actors.ChainA.SequencerEngine.L2Chain().CurrentHeader().ParentHash
+
+		for _, chain := range []*Chain{actors.ChainA, actors.ChainB} {
+			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{
+				Node:        chain.Sequencer.L2Verifier,
+				Engine:      chain.SequencerEngine,
+				ChainConfig: chain.L2Genesis.Config,
+			})
+		}
 	}
 }
 

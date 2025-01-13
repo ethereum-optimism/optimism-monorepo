@@ -1,10 +1,12 @@
 package interop
 
 import (
+	"fmt"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
@@ -22,6 +24,7 @@ import (
 func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelError)
 	rollupCfg := chaincfg.OPSepolia()
+	chainCfg := chainconfig.OPSepoliaChainConfig()
 	chain1Output := &eth.OutputV0{}
 	agreedSuperRoot := &eth.SuperV1{
 		Timestamp: rollupCfg.Genesis.L2Time + 1234,
@@ -48,11 +51,14 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 
 	expectedClaim, err := expectedIntermediateRoot.Hash()
 	require.NoError(t, err)
-	bootInfo := &boot.BootInfo{
-		L2OutputRoot:       outputRootHash,
-		RollupConfig:       rollupCfg,
-		L2ClaimBlockNumber: agreedSuperRoot.Timestamp + 1,
-		L2Claim:            expectedClaim,
+	bootInfo := &boot.BootInfoInterop{
+		AgreedPrestate: outputRootHash,
+		ClaimTimestamp: agreedSuperRoot.Timestamp + 1,
+		Claim:          expectedClaim,
+		Configs: &staticConfigSource{
+			rollupCfgs:   []*rollup.Config{rollupCfg},
+			chainConfigs: []*params.ChainConfig{chainCfg},
+		},
 	}
 	err = runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, &tasks)
 	require.NoError(t, err)
@@ -79,4 +85,27 @@ func (t *stubTasks) RunDerivation(
 		BlockHash:  t.blockHash,
 		OutputRoot: t.outputRoot,
 	}, t.err
+}
+
+type staticConfigSource struct {
+	rollupCfgs   []*rollup.Config
+	chainConfigs []*params.ChainConfig
+}
+
+func (s *staticConfigSource) RollupConfig(chainID uint64) (*rollup.Config, error) {
+	for _, cfg := range s.rollupCfgs {
+		if cfg.L2ChainID.Uint64() == chainID {
+			return cfg, nil
+		}
+	}
+	return nil, fmt.Errorf("no rollup config found for chain %d", chainID)
+}
+
+func (s *staticConfigSource) ChainConfig(chainID uint64) (*params.ChainConfig, error) {
+	for _, cfg := range s.chainConfigs {
+		if cfg.ChainID.Uint64() == chainID {
+			return cfg, nil
+		}
+	}
+	return nil, fmt.Errorf("no chain config found for chain %d", chainID)
 }
