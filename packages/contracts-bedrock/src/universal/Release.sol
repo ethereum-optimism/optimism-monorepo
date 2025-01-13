@@ -15,7 +15,7 @@ abstract contract Release {
 
     /// @notice Converts release components to a uint64 with padding
     function toUint64() internal pure returns (uint64) {
-        return (MAJOR * SPACING * 2) + (MINOR * SPACING) + PATCH;
+        return (MAJOR * SPACING ** 2) + (MINOR * SPACING) + PATCH;
     }
 
     /// @notice Getter for the version components.
