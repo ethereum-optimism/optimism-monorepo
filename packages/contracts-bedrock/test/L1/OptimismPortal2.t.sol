@@ -36,7 +36,7 @@ contract OptimismPortal2_Test is CommonTest {
 
     /// @notice Tests that the version function returns a valid string. We avoid testing the
     ///         specific value of the string as it changes frequently.
-    function test_version_succeeds() external {
+    function test_version_succeeds() external view {
         assert(bytes(optimismPortal2.version()).length > 0);
     }
 
