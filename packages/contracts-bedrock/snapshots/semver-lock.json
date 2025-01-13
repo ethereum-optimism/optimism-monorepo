@@ -20,11 +20,11 @@
     "sourceCodeHash": "0x819e5e9867e09d16346daf81cfc9c129bf9026308055d1fbb6623b4f8818e613"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x32ba32dce7717119f4f868925140e2c92d010ea5378c8923d40dc83e299fd961",
-    "sourceCodeHash": "0x258b7edfe6c8be55ca8d14df30512233f1b443c3a858d38ef33f6bbad1be38d3"
+    "initCodeHash": "0x2121a97875875150106a54a71c6c4c03afe90b3364e416be047f55fdeab57204",
+    "sourceCodeHash": "0x9a5722f32a683565922704db0c87dfac41e61fa634d8dc8cde3706ef48915f78"
   },
   "src/L1/OptimismPortalInterop.sol": {
-    "initCodeHash": "0x358745851c6c177e25d511d3eae710beee2f12b6b563a5b3c7534e073385f6c0",
+    "initCodeHash": "0x09ffe45f91bf59315b9fd4a2941b819ed8b1bb0d8643a630c6193bd67acea0ed",
     "sourceCodeHash": "0xbb6acc3e88af9594ffcb8a2f30860511b76e09024330e70052316668fe55fd1f"
   },
   "src/L1/ProtocolVersions.sol": {
