@@ -1,6 +1,7 @@
 package tests
 
 import (
+	"context"
 	"crypto/ecdsa"
 	"math/big"
 	"math/rand"
@@ -9,6 +10,7 @@ import (
 	nat "github.com/ethereum-optimism/optimism/op-nat"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 	"github.com/scharissis/tx-fuzz/spammer"
@@ -18,7 +20,7 @@ import (
 // It runs 3 slots of spam, with 1 transaction per account.
 var TxFuzz = nat.Test{
 	ID: "tx-fuzz",
-	Fn: func(cfg nat.Config) (bool, error) {
+	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config) (bool, error) {
 		err := runBasicSpam(cfg)
 		if err != nil {
 			return false, err

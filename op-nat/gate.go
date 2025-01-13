@@ -1,5 +1,10 @@
 package nat
 
+import (
+	"context"
+	"github.com/ethereum/go-ethereum/log"
+)
+
 var _ Validator = &Gate{}
 
 // A Gate is a collection of suites and/or tests.
@@ -9,9 +14,9 @@ type Gate struct {
 }
 
 // Run runs all the tests in the suite.
-func (s Gate) Run(cfg Config) (bool, error) {
+func (s Gate) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
 	for _, validator := range s.Validators {
-		ok, err := validator.Run(cfg)
+		ok, err := validator.Run(ctx, log, cfg)
 		if err != nil || !ok {
 			return false, err
 		}
