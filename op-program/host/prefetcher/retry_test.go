@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -338,6 +340,16 @@ type MockL2Source struct {
 	mock.Mock
 }
 
+func (m *MockL2Source) ExperimentalEnabled() bool {
+	out := m.Mock.MethodCalled("ExperimentalEnabled")
+	return out[0].(bool)
+}
+
+func (m *MockL2Source) RollupConfig() *rollup.Config {
+	out := m.Mock.MethodCalled("RollupConfig")
+	return out[0].(*rollup.Config)
+}
+
 func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
 	out := m.Mock.MethodCalled("InfoAndTxsByHash", blockHash)
 	return out[0].(eth.BlockInfo), out[1].(types.Transactions), *out[2].(*error)
@@ -353,8 +365,8 @@ func (m *MockL2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte
 	return out[0].([]byte), *out[1].(*error)
 }
 
-func (m *MockL2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root)
+func (m *MockL2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", blockRoot)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
@@ -370,8 +382,8 @@ func (m *MockL2Source) ExpectCodeByHash(hash common.Hash, code []byte, err error
 	m.Mock.On("CodeByHash", hash).Once().Return(code, &err)
 }
 
-func (m *MockL2Source) ExpectOutputByRoot(root common.Hash, output eth.Output, err error) {
-	m.Mock.On("OutputByRoot", root).Once().Return(output, &err)
+func (m *MockL2Source) ExpectOutputByRoot(blockHash common.Hash, output eth.Output, err error) {
+	m.Mock.On("OutputByRoot", blockHash).Once().Return(output, &err)
 }
 
-var _ L2Source = (*MockL2Source)(nil)
+var _ hosttypes.L2Source = (*MockL2Source)(nil)

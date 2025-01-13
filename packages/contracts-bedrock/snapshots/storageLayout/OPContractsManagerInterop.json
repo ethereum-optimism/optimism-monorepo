@@ -7,7 +7,7 @@
     "type": "string"
   },
   {
-    "bytes": "256",
+    "bytes": "320",
     "label": "blueprint",
     "offset": 0,
     "slot": "1",
@@ -17,7 +17,7 @@
     "bytes": "288",
     "label": "implementation",
     "offset": 0,
-    "slot": "9",
+    "slot": "11",
     "type": "struct OPContractsManager.Implementations"
   }
 ]

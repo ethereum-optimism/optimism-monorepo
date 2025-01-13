@@ -12,7 +12,6 @@ import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 // Interfaces
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -210,68 +209,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("version()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("systemConfig()") });
 
-        // L2OutputOracle
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("CHALLENGER()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("FINALIZATION_PERIOD_SECONDS()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("L2_BLOCK_TIME()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("PROPOSER()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("SUBMISSION_INTERVAL()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("challenger()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("computeL2Timestamp(uint256)") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("deleteL2Outputs(uint256)"), _auth: Role.CHALLENGER });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("finalizationPeriodSeconds()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("getL2Output(uint256)") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("getL2OutputAfter(uint256)") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("getL2OutputIndexAfter(uint256)") });
-        _addSpec({
-            _name: "L2OutputOracle",
-            _sel: _getSel("initialize(uint256,uint256,uint256,uint256,address,address,uint256)")
-        });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("l2BlockTime()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("latestBlockNumber()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("latestOutputIndex()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("nextBlockNumber()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("nextOutputIndex()") });
-        _addSpec({
-            _name: "L2OutputOracle",
-            _sel: _getSel("proposeL2Output(bytes32,uint256,bytes32,uint256)"),
-            _auth: Role.PROPOSER
-        });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("proposer()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("startingBlockNumber()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("startingTimestamp()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("submissionInterval()") });
-        _addSpec({ _name: "L2OutputOracle", _sel: _getSel("version()") });
-
-        // OptimismPortal
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("donateETH()") });
-        _addSpec({
-            _name: "OptimismPortal",
-            _sel: IOptimismPortal.finalizeWithdrawalTransaction.selector,
-            _pausable: true
-        });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("finalizedWithdrawals(bytes32)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("initialize(address,address,address)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("isOutputFinalized(uint256)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("l2Oracle()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("l2Sender()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("minimumGasLimit(uint64)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("params()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("paused()") });
-        _addSpec({ _name: "OptimismPortal", _sel: IOptimismPortal.proveWithdrawalTransaction.selector, _pausable: true });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("provenWithdrawals(bytes32)") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("superchainConfig()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("systemConfig()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("version()") });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("balance()") });
-        _addSpec({
-            _name: "OptimismPortal",
-            _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
-        });
-        _addSpec({ _name: "OptimismPortal", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
-
         // OptimismPortalInterop
         _addSpec({
             _name: "OptimismPortalInterop",
@@ -324,12 +261,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("balance()") });
-        _addSpec({
-            _name: "OptimismPortalInterop",
-            _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
-        });
-        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
         _addSpec({
             _name: "OptimismPortalInterop",
             _sel: IOptimismPortalInterop.setConfig.selector,
@@ -376,12 +307,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("balance()") });
-        _addSpec({
-            _name: "OptimismPortal2",
-            _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
-        });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -458,10 +383,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("OPTIMISM_PORTAL_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("BATCH_INBOX_SLOT()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("gasPayingToken()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("gasPayingTokenName()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("gasPayingTokenSymbol()") });
-        _addSpec({ _name: "SystemConfig", _sel: _getSel("isCustomGasToken()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("disputeGameFactory()") });
         _addSpec({
@@ -534,10 +455,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("OPTIMISM_PORTAL_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("BATCH_INBOX_SLOT()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasPayingToken()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasPayingTokenName()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("gasPayingTokenSymbol()") });
-        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("isCustomGasToken()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("DISPUTE_GAME_FACTORY_SLOT()") });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("disputeGameFactory()") });
         _addSpec({
@@ -844,6 +761,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
@@ -855,6 +773,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.addGameType.selector });
 
         // DeputyGuardianModule
         _addSpec({

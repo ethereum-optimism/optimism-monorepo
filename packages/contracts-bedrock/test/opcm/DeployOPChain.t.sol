@@ -133,7 +133,7 @@ contract DeployOPChainOutput_Test is Test {
         (IL1ChugSplashProxy l1StandardBridgeProxy) = DeployUtils.buildL1ChugSplashProxyWithImpl("l1StandardBridgeProxy");
         (IResolvedDelegateProxy l1CrossDomainMessengerProxy) =
             DeployUtils.buildResolvedDelegateProxyWithImpl(addressManager, "OVM_L1CrossDomainMessenger");
-        (IProxy optimismPortalProxy) = DeployUtils.buildERC1967ProxyWithImpl("optimismPortalProxy");
+        (IProxy optimismPortalProxy) = DeployUtils.buildERC1967ProxyWithImpl("OptimismPortalProxy");
         (IProxy disputeGameFactoryProxy) = DeployUtils.buildERC1967ProxyWithImpl("disputeGameFactoryProxy");
         (IProxy anchorStateRegistryProxy) = DeployUtils.buildERC1967ProxyWithImpl("anchorStateRegistryProxy");
         vm.etch(address(anchorStateRegistryImpl), hex"01");
@@ -398,11 +398,6 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
-        // End users of the DeployImplementations contract will need to set the `standardVersionsToml`.
-        string memory standardVersionsTomlPath =
-            string.concat(vm.projectRoot(), "/test/fixtures/standard-versions.toml");
-        string memory standardVersionsToml = vm.readFile(standardVersionsTomlPath);
-        dii.set(dii.standardVersionsToml.selector, standardVersionsToml);
 
         deployImplementations.run(dii, dio);
 

@@ -29,7 +29,7 @@ func SetupSequencerTest(t Testing, sd *e2eutils.SetupData, log log.Logger, opts 
 	l2Cl, err := sources.NewEngineClient(engine.RPCClient(), log, nil, sources.EngineClientDefaultConfig(sd.RollupCfg))
 	require.NoError(t, err)
 
-	sequencer := NewL2Sequencer(t, log.New("role", "sequencer"), l1F, miner.BlobStore(), altda.Disabled, l2Cl, sd.RollupCfg, 0, cfg.InteropBackend)
+	sequencer := NewL2Sequencer(t, log.New("role", "sequencer"), l1F, miner.BlobStore(), altda.Disabled, l2Cl, sd.RollupCfg, 0)
 	return miner, engine, sequencer
 }
 
@@ -42,7 +42,7 @@ func SetupVerifier(t Testing, sd *e2eutils.SetupData, log log.Logger,
 	jwtPath := e2eutils.WriteDefaultJWT(t)
 	engine := NewL2Engine(t, log.New("role", "verifier-engine"), sd.L2Cfg, jwtPath, EngineWithP2P())
 	engCl := engine.EngineClient(t, sd.RollupCfg)
-	verifier := NewL2Verifier(t, log.New("role", "verifier"), l1F, blobSrc, altda.Disabled, engCl, sd.RollupCfg, syncCfg, cfg.SafeHeadListener, cfg.InteropBackend)
+	verifier := NewL2Verifier(t, log.New("role", "verifier"), l1F, blobSrc, altda.Disabled, engCl, sd.RollupCfg, syncCfg, cfg.SafeHeadListener)
 	return engine, verifier
 }
 

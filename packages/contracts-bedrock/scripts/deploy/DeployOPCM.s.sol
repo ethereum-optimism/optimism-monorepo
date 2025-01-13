@@ -198,7 +198,9 @@ contract DeployOPCM is Script {
             resolvedDelegateProxy: _doi.resolvedDelegateProxyBlueprint(),
             anchorStateRegistry: _doi.anchorStateRegistryBlueprint(),
             permissionedDisputeGame1: _doi.permissionedDisputeGame1Blueprint(),
-            permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint()
+            permissionedDisputeGame2: _doi.permissionedDisputeGame2Blueprint(),
+            permissionlessDisputeGame1: address(0),
+            permissionlessDisputeGame2: address(0)
         });
         OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_doi.l1ERC721BridgeImpl()),
@@ -241,7 +243,7 @@ contract DeployOPCM is Script {
         OPContractsManager impl = OPContractsManager(address(_doo.opcm()));
         require(address(impl.superchainConfig()) == address(_doi.superchainConfig()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPCMI-20");
-        require(LibString.eq(impl.l1ContractsRelease(), _doi.l1ContractsRelease()));
+        require(LibString.eq(impl.l1ContractsRelease(), _doi.l1ContractsRelease()), "OPCMI-30");
 
         OPContractsManager.Blueprints memory blueprints = impl.blueprints();
         require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-40");

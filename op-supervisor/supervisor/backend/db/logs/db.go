@@ -191,6 +191,9 @@ func (db *DB) OpenBlock(blockNum uint64) (ref eth.BlockRef, logCount uint32, exe
 			retErr = err
 			return
 		}
+		if seal.Number != 0 {
+			db.log.Warn("The first block is not block 0", "block", seal.Number)
+		}
 		ref = eth.BlockRef{
 			Hash:       seal.Hash,
 			Number:     seal.Number,
@@ -312,7 +315,10 @@ func (db *DB) Contains(blockNum uint64, logIdx uint32, logHash common.Hash) (typ
 		panic("expected iterator to stop with error")
 	}
 	if errors.Is(err, types.ErrStop) {
-		h, n, _ := iter.SealedBlock()
+		h, n, ok := iter.SealedBlock()
+		if !ok {
+			return types.BlockSeal{}, fmt.Errorf("iterator stopped but no sealed block found")
+		}
 		timestamp, _ := iter.SealedTimestamp()
 		return types.BlockSeal{
 			Hash:      h,

@@ -452,8 +452,8 @@ func l2BlockRefFromBlockAndL1Info(block *types.Block, l1info *derive.L1BlockInfo
 
 var ErrPendingAfterClose = errors.New("pending channels remain after closing channel-manager")
 
-// pruneSafeBlocks dequeues the provided number of blocks from the internal blocks queue
-func (s *channelManager) pruneSafeBlocks(num int) {
+// PruneSafeBlocks dequeues the provided number of blocks from the internal blocks queue
+func (s *channelManager) PruneSafeBlocks(num int) {
 	_, ok := s.blocks.DequeueN(int(num))
 	if !ok {
 		panic("tried to prune more blocks than available")
@@ -464,8 +464,8 @@ func (s *channelManager) pruneSafeBlocks(num int) {
 	}
 }
 
-// pruneChannels dequeues the provided number of channels from the internal channels queue
-func (s *channelManager) pruneChannels(num int) {
+// PruneChannels dequeues the provided number of channels from the internal channels queue
+func (s *channelManager) PruneChannels(num int) {
 	clearCurrentChannel := false
 	for i := 0; i < num; i++ {
 		if s.channelQueue[i] == s.currentChannel {

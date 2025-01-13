@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/log"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
@@ -17,7 +18,7 @@ import (
 
 type EndCondition interface {
 	Closing() bool
-	Result() error
+	Result() (eth.L2BlockRef, error)
 }
 
 type Driver struct {
@@ -36,7 +37,7 @@ func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
 		logger: logger,
 	}
 
-	pipeline := derive.NewDerivationPipeline(logger, cfg, l1Source, l1BlobsSource, altda.Disabled, l2Source, metrics.NoopMetrics)
+	pipeline := derive.NewDerivationPipeline(logger, cfg, l1Source, l1BlobsSource, altda.Disabled, l2Source, metrics.NoopMetrics, false)
 	pipelineDeriver := derive.NewPipelineDeriver(context.Background(), pipeline)
 	pipelineDeriver.AttachEmitter(d)
 
@@ -51,7 +52,7 @@ func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
 		logger:         logger,
 		Emitter:        d,
 		closing:        false,
-		result:         nil,
+		result:         eth.L2BlockRef{},
 		targetBlockNum: targetBlockNum,
 	}
 
@@ -73,7 +74,7 @@ func (d *Driver) Emit(ev event.Event) {
 	d.events = append(d.events, ev)
 }
 
-func (d *Driver) RunComplete() error {
+func (d *Driver) RunComplete() (eth.L2BlockRef, error) {
 	// Initial reset
 	d.Emit(engine.ResetEngineRequestEvent{})
 
@@ -83,7 +84,7 @@ func (d *Driver) RunComplete() error {
 			return d.end.Result()
 		}
 		if len(d.events) > 10000 { // sanity check, in case of bugs. Better than going OOM.
-			return errors.New("way too many events queued up, something is wrong")
+			return eth.L2BlockRef{}, errors.New("way too many events queued up, something is wrong")
 		}
 		ev := d.events[0]
 		d.events = d.events[1:]

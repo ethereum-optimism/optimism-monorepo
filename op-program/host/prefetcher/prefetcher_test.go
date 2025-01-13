@@ -4,10 +4,14 @@ import (
 	"context"
 	"crypto/sha256"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"math/rand"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	hostTypes "github.com/ethereum-optimism/optimism/op-program/host/types"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -20,6 +24,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -512,6 +517,80 @@ func TestFetchL2Code(t *testing.T) {
 	})
 }
 
+func TestFetchL2BlockData(t *testing.T) {
+	chainID := uint64(14)
+
+	testBlockExec := func(t *testing.T, err error) {
+		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
+		rng := rand.New(rand.NewSource(123))
+		block, _ := testutils.RandomBlock(rng, 10)
+		disputedBlockHash := common.Hash{0xab}
+
+		l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, err)
+		defer l2Client.MockDebugClient.AssertExpectations(t)
+		prefetcher.executor = &mockExecutor{}
+		hint := l2.L2BlockDataHint{
+			AgreedBlockHash: block.Hash(),
+			BlockHash:       disputedBlockHash,
+			ChainID:         chainID,
+		}.Hint()
+
+		require.NoError(t, prefetcher.Hint(hint))
+		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
+		require.Equal(t, prefetcher.executor.(*mockExecutor).blockNumber, block.NumberU64()+1)
+		require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
+
+		data, err := prefetcher.kvStore.Get(BlockDataKey(disputedBlockHash).Key())
+		require.NoError(t, err)
+		require.Equal(t, data, []byte{1})
+
+		// ensure executor isn't used on a cache hit
+		prefetcher.executor.(*mockExecutor).invoked = false
+		require.NoError(t, prefetcher.Hint(hint))
+		require.False(t, prefetcher.executor.(*mockExecutor).invoked)
+	}
+	t.Run("exec block not found", func(t *testing.T) {
+		testBlockExec(t, ethereum.NotFound)
+	})
+	t.Run("exec block fetch error", func(t *testing.T) {
+		testBlockExec(t, errors.New("fetch error"))
+	})
+
+	t.Run("no exec", func(t *testing.T) {
+		prefetcher, _, _, _, _ := createPrefetcher(t)
+		hint := l2.L2BlockDataHint{
+			AgreedBlockHash: common.Hash{0xaa},
+			BlockHash:       common.Hash{0xab},
+			ChainID:         chainID,
+		}.Hint()
+		err := prefetcher.Hint(hint)
+		require.ErrorContains(t, err, "this prefetcher does not support native block execution")
+	})
+}
+
+func TestFetchAgreedPrestate(t *testing.T) {
+	t.Run("unavailable", func(t *testing.T) {
+		prefetcher, _, _, _, _ := createPrefetcher(t)
+		hash := common.Hash{0xaa}
+		hint := l2.AgreedPrestateHint(hash).Hint()
+		require.NoError(t, prefetcher.Hint(hint))
+		_, err := prefetcher.GetPreimage(context.Background(), hash)
+		require.ErrorIs(t, err, ErrAgreedPrestateUnavailable)
+	})
+
+	t.Run("available", func(t *testing.T) {
+		prestate := []byte{1, 2, 3, 6}
+		prefetcher, _, _, _, _ := createPrefetcherWithAgreedPrestate(t, prestate)
+		hash := crypto.Keccak256Hash(prestate)
+		hint := l2.AgreedPrestateHint(hash).Hint()
+		require.NoError(t, prefetcher.Hint(hint))
+		actual, err := prefetcher.GetPreimage(context.Background(), preimage.Keccak256Key(hash).PreimageKey())
+		require.NoError(t, err)
+		require.Equal(t, prestate, actual)
+	})
+}
+
 func TestBadHints(t *testing.T) {
 	prefetcher, _, _, _, kv := createPrefetcher(t)
 	hash := common.Hash{0xad}
@@ -569,7 +648,8 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	_, l1Source, l1BlobSource, l2Cl, kv := createPrefetcher(t)
 	putsToIgnore := 2
 	kv = &unreliableKvStore{KV: kv, putsToIgnore: putsToIgnore}
-	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, l2Cl, kv)
+	sources := &l2Clients{sources: map[uint64]hostTypes.L2Source{6: l2Cl}}
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, 6, sources, kv, nil, common.Hash{}, nil)
 
 	// Expect one call for each ignored put, plus one more request for when the put succeeds
 	for i := 0; i < putsToIgnore+1; i++ {
@@ -596,21 +676,48 @@ func (s *unreliableKvStore) Put(k common.Hash, v []byte) error {
 	return s.KV.Put(k, v)
 }
 
+type l2Clients struct {
+	sources map[uint64]hostTypes.L2Source
+}
+
+func (l *l2Clients) ForChainID(id uint64) (hostTypes.L2Source, error) {
+	source, ok := l.sources[id]
+	if !ok {
+		return nil, fmt.Errorf("no such source for chain %d", id)
+	}
+	return source, nil
+}
+
+func (l *l2Clients) ForChainIDWithoutRetries(id uint64) (hostTypes.L2Source, error) {
+	return l.ForChainID(id)
+}
+
 type l2Client struct {
 	*testutils.MockL2Client
 	*testutils.MockDebugClient
 }
 
-func (m *l2Client) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root)
+func (m *l2Client) RollupConfig() *rollup.Config {
+	panic("implement me")
+}
+
+func (m *l2Client) ExperimentalEnabled() bool {
+	panic("implement me")
+}
+
+func (m *l2Client) OutputByRoot(ctx context.Context, blockHash common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", blockHash)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
-func (m *l2Client) ExpectOutputByRoot(root common.Hash, output eth.Output, err error) {
-	m.Mock.On("OutputByRoot", root).Once().Return(output, &err)
+func (m *l2Client) ExpectOutputByRoot(blockRoot common.Hash, output eth.Output, err error) {
+	m.Mock.On("OutputByRoot", blockRoot).Once().Return(output, &err)
 }
 
 func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
+	return createPrefetcherWithAgreedPrestate(t, nil)
+}
+func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Client, kvstore.KV) {
 	logger := testlog.Logger(t, log.LevelDebug)
 	kv := kvstore.NewMemKV()
 
@@ -620,8 +727,11 @@ func createPrefetcher(t *testing.T) (*Prefetcher, *testutils.MockL1Source, *test
 		MockL2Client:    new(testutils.MockL2Client),
 		MockDebugClient: new(testutils.MockDebugClient),
 	}
+	l2Sources := &l2Clients{
+		sources: map[uint64]hostTypes.L2Source{14: l2Source},
+	}
 
-	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, l2Source, kv)
+	prefetcher := NewPrefetcher(logger, l1Source, l1BlobSource, 14, l2Sources, kv, nil, common.Hash{0xdd}, agreedPrestate)
 	return prefetcher, l1Source, l1BlobSource, l2Source, kv
 }
 
@@ -722,4 +832,18 @@ func (o *legacyPrecompileOracle) Precompile(address common.Address, input []byte
 		panic(fmt.Errorf("unexpected precompile oracle behavior, got result: %x", result))
 	}
 	return result[1:], result[0] == 1
+}
+
+type mockExecutor struct {
+	invoked     bool
+	blockNumber uint64
+	chainID     uint64
+}
+
+func (m *mockExecutor) RunProgram(
+	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
+	m.invoked = true
+	m.blockNumber = blockNumber
+	m.chainID = chainID
+	return nil
 }

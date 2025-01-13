@@ -81,7 +81,7 @@ ENTRYPOINT ["/bin/bash", "-c"]
 #                              CI BUILDER (RUST)                              #
 ###############################################################################
 
-FROM base-builder as rust-builder
+FROM base-builder AS rust-builder
 
 # Install clang & lld
 RUN apt-get update && apt-get install -y clang lld

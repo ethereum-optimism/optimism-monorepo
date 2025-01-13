@@ -137,7 +137,7 @@
     "label": "portal",
     "offset": 0,
     "slot": "252",
-    "type": "contract IOptimismPortal"
+    "type": "contract IOptimismPortal2"
   },
   {
     "bytes": "20",

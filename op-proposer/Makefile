@@ -1,3 +1,3 @@
 DEPRECATED_TARGETS := op-proposer clean test
 
-include ../just/deprecated.mk
+include ../justfiles/deprecated.mk

@@ -2,12 +2,13 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { FaultDisputeGame_Init, _changeClaimStatus } from "test/dispute/FaultDisputeGame.t.sol";
 
 // Libraries
 import "src/dispute/lib/Types.sol";
 import "src/dispute/lib/Errors.sol";
+
+import { Hash } from "src/dispute/lib/Types.sol";
 
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
     function setUp() public virtual override {

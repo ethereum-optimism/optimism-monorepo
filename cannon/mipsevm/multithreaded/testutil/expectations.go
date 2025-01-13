@@ -48,7 +48,7 @@ type ExpectedThreadState struct {
 	ExitCode         uint8
 	Exited           bool
 	FutexAddr        arch.Word
-	FutexVal         arch.Word
+	FutexVal         uint32
 	FutexTimeoutStep uint64
 	PC               arch.Word
 	NextPC           arch.Word

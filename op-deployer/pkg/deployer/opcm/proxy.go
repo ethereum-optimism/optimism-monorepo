@@ -18,10 +18,6 @@ type DeployProxyOutput struct {
 	Proxy common.Address
 }
 
-type DeployProxyScript struct {
-	Run func(input, output common.Address) error
-}
-
 func DeployProxy(
 	host *script.Host,
 	input DeployProxyInput,

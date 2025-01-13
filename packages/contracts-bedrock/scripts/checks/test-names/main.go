@@ -41,7 +41,7 @@ func processFile(path string) (*common.Void, []error) {
 
 func extractTestNames(artifact *solc.ForgeArtifact) []string {
 	isTest := false
-	for _, entry := range artifact.Abi.Methods {
+	for _, entry := range artifact.Abi.Parsed.Methods {
 		if entry.Name == "IS_TEST" {
 			isTest = true
 			break
@@ -52,7 +52,7 @@ func extractTestNames(artifact *solc.ForgeArtifact) []string {
 	}
 
 	names := []string{}
-	for _, entry := range artifact.Abi.Methods {
+	for _, entry := range artifact.Abi.Parsed.Methods {
 		if !strings.HasPrefix(entry.Name, "test") {
 			continue
 		}

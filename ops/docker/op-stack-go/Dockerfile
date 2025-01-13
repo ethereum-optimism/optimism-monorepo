@@ -63,11 +63,15 @@ ARG TARGETARCH
 # The "id" defaults to the value of "target", the cache will thus be reused during this build.
 # "sharing" defaults to "shared", the cache will thus be available to other concurrent docker builds.
 
-FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.0.0 AS cannon-builder-0
+FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.0.0 AS cannon-builder-v1-0-0
+FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.2.0 AS cannon-builder-v1-2-0
 
 FROM --platform=$BUILDPLATFORM builder AS cannon-builder
 ARG CANNON_VERSION=v0.0.0
-COPY --from=cannon-builder-0 /usr/local/bin/cannon ./cannon/multicannon/embeds/cannon-0
+# Copy cannon binaries from previous versions
+COPY --from=cannon-builder-v1-0-0 /usr/local/bin/cannon ./cannon/multicannon/embeds/cannon-0
+COPY --from=cannon-builder-v1-2-0 /usr/local/bin/cannon-3 ./cannon/multicannon/embeds/cannon-3
+# Build current binaries
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build cd cannon && make cannon  \
   GOOS=$TARGETOS GOARCH=$TARGETARCH GITCOMMIT=$GIT_COMMIT GITDATE=$GIT_DATE VERSION="$CANNON_VERSION"
 
@@ -144,7 +148,7 @@ COPY --from=op-node-builder /app/op-node/bin/op-node /usr/local/bin/
 CMD ["op-node"]
 
 # Make the kona docker image published by upstream available as a source to copy kona and asterisc from.
-FROM --platform=$TARGETPLATFORM ghcr.io/anton-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
+FROM --platform=$TARGETPLATFORM ghcr.io/op-rs/kona/kona-fpp-asterisc:$KONA_VERSION AS kona
 
 # Also produce an op-challenger loaded with kona and asterisc using ubuntu
 FROM --platform=$TARGETPLATFORM $UBUNTU_TARGET_BASE_IMAGE AS op-challenger-target
