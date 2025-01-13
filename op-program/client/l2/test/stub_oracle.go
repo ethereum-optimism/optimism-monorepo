@@ -64,7 +64,7 @@ func (o StubBlockOracle) BlockByHash(blockHash common.Hash, chainID uint64) *get
 	return block
 }
 
-func (o StubBlockOracle) OutputByRoot(root common.Hash) eth.Output {
+func (o StubBlockOracle) OutputByRoot(root common.Hash, chainID uint64) eth.Output {
 	output, ok := o.Outputs[root]
 	if !ok {
 		o.t.Fatalf("requested unknown output root %s", root)

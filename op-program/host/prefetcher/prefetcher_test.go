@@ -571,6 +571,56 @@ func TestFetchL2Code(t *testing.T) {
 	})
 }
 
+func TestFetchL2Output(t *testing.T) {
+	rng := rand.New(rand.NewSource(123))
+	output := testutils.RandomOutputV0(rng)
+	hash := common.Hash(eth.OutputRoot(output))
+	key := preimage.Keccak256Key(hash).PreimageKey()
+	t.Run("AlreadyKnown", func(t *testing.T) {
+		prefetcher, _, _, _, kv := createPrefetcher(t)
+		require.NoError(t, kv.Put(key, output.Marshal()))
+
+		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), false)
+		result := oracle.OutputByRoot(hash, rng.Uint64())
+		require.EqualValues(t, output, result)
+	})
+
+	t.Run("Unknown", func(t *testing.T) {
+		prefetcher, _, _, l2Cls, _ := createPrefetcher(t)
+
+		l2Cl := l2Cls.sources[defaultChainID]
+		l2Cl.ExpectOutputByRoot(prefetcher.l2Head, output, nil)
+		defer assertAllClientExpectations(t, l2Cls)
+		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), false)
+		result := oracle.OutputByRoot(hash, rng.Uint64())
+		require.EqualValues(t, output, result)
+	})
+
+	t.Run("WithChainID", func(t *testing.T) {
+		chain6Output := testutils.RandomOutputV0(rng)
+		chain99Output := testutils.RandomOutputV0(rng)
+		timestamp := uint64(4567882)
+		superV1 := eth.SuperV1{
+			Timestamp: timestamp,
+			Chains: []eth.ChainIDAndOutput{
+				{ChainID: 6, Output: eth.OutputRoot(chain6Output)},
+				{ChainID: 78, Output: eth.OutputRoot(output)},
+				{ChainID: 99, Output: eth.OutputRoot(chain99Output)},
+			},
+		}
+		prefetcher, _, _, l2Cls, _ := createPrefetcherWithAgreedPrestate(t, superV1.Marshal(), 6, 78, 99)
+
+		l2Cl := l2Cls.sources[78]
+		blockNum, err := l2Cls.sources[78].RollupConfig().TargetBlockNumber(timestamp)
+		require.NoError(t, err)
+		l2Cl.ExpectOutputByNumber(blockNum, output, nil)
+		defer assertAllClientExpectations(t, l2Cls)
+		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
+		result := oracle.OutputByRoot(hash, 78)
+		require.EqualValues(t, output, result)
+	})
+}
+
 func TestFetchL2BlockData(t *testing.T) {
 	chainID := uint64(14)
 
@@ -752,10 +802,11 @@ func (l *l2Clients) ForChainIDWithoutRetries(id uint64) (hostTypes.L2Source, err
 type l2Client struct {
 	*testutils.MockL2Client
 	*testutils.MockDebugClient
+	rollupCfg *rollup.Config
 }
 
 func (m *l2Client) RollupConfig() *rollup.Config {
-	panic("implement me")
+	return m.rollupCfg
 }
 
 func (m *l2Client) ExperimentalEnabled() bool {
@@ -769,6 +820,15 @@ func (m *l2Client) OutputByRoot(ctx context.Context, blockHash common.Hash) (eth
 
 func (m *l2Client) ExpectOutputByRoot(blockRoot common.Hash, output eth.Output, err error) {
 	m.Mock.On("OutputByRoot", blockRoot).Once().Return(output, &err)
+}
+
+func (m *l2Client) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByNumber", blockNum)
+	return out[0].(eth.Output), *out[1].(*error)
+}
+
+func (m *l2Client) ExpectOutputByNumber(blockNum uint64, output eth.Output, err error) {
+	m.Mock.On("OutputByNumber", blockNum).Once().Return(output, &err)
 }
 
 func createPrefetcher(t *testing.T, chainIDs ...uint64) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Clients, kvstore.KV) {
@@ -788,8 +848,13 @@ func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte, cha
 	}
 
 	l2Sources := &l2Clients{sources: make(map[uint64]*l2Client)}
-	for _, chainID := range chainIDs {
+	for i, chainID := range chainIDs {
 		l2Source := &l2Client{
+			rollupCfg: &rollup.Config{
+				// Make the block numbers for each chain differ at each timestamp
+				Genesis:   rollup.Genesis{L2Time: 500 + uint64(2*i)},
+				BlockTime: 1,
+			},
 			MockL2Client:    new(testutils.MockL2Client),
 			MockDebugClient: new(testutils.MockDebugClient),
 		}

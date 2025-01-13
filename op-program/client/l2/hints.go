@@ -96,11 +96,19 @@ func (l LegacyStateNodeHint) Hint() string {
 	return HintL2StateNode + " " + (common.Hash)(l).String()
 }
 
-type L2OutputHint common.Hash
+type L2OutputHint HashAndChainID
 
 var _ preimage.Hint = L2OutputHint{}
 
 func (l L2OutputHint) Hint() string {
+	return HintL2Output + " " + hexutil.Encode(HashAndChainID(l).Marshal())
+}
+
+type LegacyL2OutputHint common.Hash
+
+var _ preimage.Hint = LegacyL2OutputHint{}
+
+func (l LegacyL2OutputHint) Hint() string {
 	return HintL2Output + " " + (common.Hash)(l).String()
 }
 

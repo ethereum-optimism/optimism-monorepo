@@ -19,8 +19,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
 
-// TODO: Add tests for sending hints with chain ID
-
 func mockPreimageOracle(t *testing.T, hintL2ChainIDs bool) (po *PreimageOracle, hintsMock *mock.Mock, preimages map[common.Hash][]byte) {
 	// Prepare the pre-images
 	preimages = make(map[common.Hash][]byte)
@@ -170,14 +168,26 @@ func TestPreimageOracleOutputByRoot(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 
 	for i := 0; i < 10; i++ {
-		t.Run(fmt.Sprintf("output_%d", i), func(t *testing.T) {
+		chainID := rng.Uint64()
+		t.Run(fmt.Sprintf("legacy_output_%d", i), func(t *testing.T) {
 			po, hints, preimages := mockPreimageOracle(t, false)
 			output := testutils.RandomOutputV0(rng)
 
 			h := common.Hash(eth.OutputRoot(output))
 			preimages[preimage.Keccak256Key(h).PreimageKey()] = output.Marshal()
-			hints.On("hint", L2OutputHint(h).Hint()).Once().Return()
-			gotOutput := po.OutputByRoot(h)
+			hints.On("hint", LegacyL2OutputHint(h).Hint()).Once().Return()
+			gotOutput := po.OutputByRoot(h, chainID)
+			hints.AssertExpectations(t)
+			require.Equal(t, hexutil.Bytes(output.Marshal()), hexutil.Bytes(gotOutput.Marshal()), "output matches")
+		})
+		t.Run(fmt.Sprintf("output_%d", i), func(t *testing.T) {
+			po, hints, preimages := mockPreimageOracle(t, true)
+			output := testutils.RandomOutputV0(rng)
+
+			h := common.Hash(eth.OutputRoot(output))
+			preimages[preimage.Keccak256Key(h).PreimageKey()] = output.Marshal()
+			hints.On("hint", L2OutputHint{Hash: h, ChainID: chainID}.Hint()).Once().Return()
+			gotOutput := po.OutputByRoot(h, chainID)
 			hints.AssertExpectations(t)
 			require.Equal(t, hexutil.Bytes(output.Marshal()), hexutil.Bytes(gotOutput.Marshal()), "output matches")
 		})

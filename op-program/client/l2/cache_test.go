@@ -79,11 +79,11 @@ func TestOutputByRoot(t *testing.T) {
 	// Initial call retrieves from the stub
 	root := common.Hash(eth.OutputRoot(output))
 	stub.Outputs[root] = output
-	actual := oracle.OutputByRoot(root)
+	actual := oracle.OutputByRoot(root, 59284)
 	require.Equal(t, output, actual)
 
-	// Later calls should retrieve from cache
+	// Later calls should retrieve from cache (even if the chain ID is different)
 	delete(stub.Outputs, root)
-	actual = oracle.OutputByRoot(root)
+	actual = oracle.OutputByRoot(root, 9193)
 	require.Equal(t, output, actual)
 }

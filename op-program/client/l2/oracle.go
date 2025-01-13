@@ -34,7 +34,7 @@ type Oracle interface {
 	// BlockByHash retrieves the block with the given hash.
 	BlockByHash(blockHash common.Hash, chainID uint64) *types.Block
 
-	OutputByRoot(root common.Hash) eth.Output
+	OutputByRoot(root common.Hash, chainID uint64) eth.Output
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
 	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
@@ -117,8 +117,12 @@ func (p *PreimageOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte
 	return p.oracle.Get(preimage.Keccak256Key(codeHash))
 }
 
-func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash) eth.Output {
-	p.hint.Hint(L2OutputHint(l2OutputRoot))
+func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash, chainID uint64) eth.Output {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(L2OutputHint{Hash: l2OutputRoot, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyL2OutputHint(l2OutputRoot))
+	}
 	data := p.oracle.Get(preimage.Keccak256Key(l2OutputRoot))
 	output, err := eth.UnmarshalOutput(data)
 	if err != nil {

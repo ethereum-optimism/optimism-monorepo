@@ -69,12 +69,12 @@ func (o *CachingOracle) BlockByHash(blockHash common.Hash, chainID uint64) *type
 	return block
 }
 
-func (o *CachingOracle) OutputByRoot(root common.Hash) eth.Output {
+func (o *CachingOracle) OutputByRoot(root common.Hash, chainID uint64) eth.Output {
 	output, ok := o.outputs.Get(root)
 	if ok {
 		return output
 	}
-	output = o.oracle.OutputByRoot(root)
+	output = o.oracle.OutputByRoot(root, chainID)
 	o.outputs.Add(root, output)
 	return output
 }

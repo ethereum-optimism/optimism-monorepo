@@ -9,6 +9,7 @@ import (
 	"strings"
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	clientTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
@@ -308,23 +309,47 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), code)
 	case l2.HintL2Output:
-		if len(hintBytes) != 32 {
-			return fmt.Errorf("invalid L2 output hint: %x", hint)
-		}
-		requestedHash := common.Hash(hintBytes)
-		source, err := p.l2Sources.ForChainID(p.defaultChainID)
+		requestedHash, chainID, err := p.parseHashAndChainID("L2 output", hintBytes)
 		if err != nil {
 			return err
 		}
-		output, err := source.OutputByRoot(ctx, p.l2Head)
+		source, err := p.l2Sources.ForChainID(chainID)
 		if err != nil {
-			return fmt.Errorf("failed to fetch L2 output root for block %s: %w", p.l2Head, err)
+			return err
 		}
-		hash := common.Hash(eth.OutputRoot(output))
-		if requestedHash != hash {
-			return fmt.Errorf("output root %v from block %v does not match requested root: %v", hash, p.l2Head, requestedHash)
+		if len(p.agreedPrestate) == 0 {
+			output, err := source.OutputByRoot(ctx, p.l2Head)
+			if err != nil {
+				return fmt.Errorf("failed to fetch L2 output root for block %s: %w", p.l2Head, err)
+			}
+			hash := common.Hash(eth.OutputRoot(output))
+			if requestedHash != hash {
+				return fmt.Errorf("output root %v from block %v does not match requested root: %v", hash, p.l2Head, requestedHash)
+			}
+			return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
+		} else {
+			prestate, err := clientTypes.UnmarshalTransitionState(p.agreedPrestate)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, invalid agreed prestate: %w", err)
+			}
+			superRoot, err := eth.UnmarshalSuperRoot(prestate.SuperRoot)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, invalid super root in prestate: %w", err)
+			}
+			superV1, ok := superRoot.(*eth.SuperV1)
+			if !ok {
+				return fmt.Errorf("cannot fetch output root, unsupported super root version in prestate: %v", superRoot.Version())
+			}
+			blockNum, err := source.RollupConfig().TargetBlockNumber(superV1.Timestamp)
+			if err != nil {
+				return fmt.Errorf("cannot fetch output root, failed to calculate block number at timestamp %v: %w", superV1.Timestamp, err)
+			}
+			output, err := source.OutputByNumber(ctx, blockNum)
+			if err != nil {
+				return fmt.Errorf("failed to fetch L2 output root for block %v: %w", blockNum, err)
+			}
+			return p.kvStore.Put(preimage.Keccak256Key(eth.OutputRoot(output)).PreimageKey(), output.Marshal())
 		}
-		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
 	case l2.HintL2BlockData:
 		if p.executor == nil {
 			return fmt.Errorf("this prefetcher does not support native block execution")

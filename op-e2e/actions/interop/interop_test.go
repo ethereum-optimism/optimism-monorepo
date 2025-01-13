@@ -319,7 +319,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    step1Expected,
 			disputedClaim:  step2Expected,
 			expectValid:    true,
-			skip:           true,
 		},
 		{
 			name:           "PaddingStep",
