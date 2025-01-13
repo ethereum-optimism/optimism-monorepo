@@ -231,6 +231,8 @@ type ExecutionPayload struct {
 	BlobGasUsed *Uint64Quantity `json:"blobGasUsed,omitempty"`
 	// Nil if not present (Bedrock, Canyon, Delta)
 	ExcessBlobGas *Uint64Quantity `json:"excessBlobGas,omitempty"`
+	// Nil if not present (Bedrock, Canyon, Delta, Ecotone, Fjord, Granite, Holocene)
+	WithdrawalsRoot *common.Hash `json:"withdrawalsRoot,omitempty"`
 }
 
 func (payload *ExecutionPayload) ID() BlockID {
@@ -307,22 +309,23 @@ func BlockAsPayload(bl *types.Block, shanghaiTime *uint64) (*ExecutionPayload, e
 	}
 
 	payload := &ExecutionPayload{
-		ParentHash:    bl.ParentHash(),
-		FeeRecipient:  bl.Coinbase(),
-		StateRoot:     Bytes32(bl.Root()),
-		ReceiptsRoot:  Bytes32(bl.ReceiptHash()),
-		LogsBloom:     Bytes256(bl.Bloom()),
-		PrevRandao:    Bytes32(bl.MixDigest()),
-		BlockNumber:   Uint64Quantity(bl.NumberU64()),
-		GasLimit:      Uint64Quantity(bl.GasLimit()),
-		GasUsed:       Uint64Quantity(bl.GasUsed()),
-		Timestamp:     Uint64Quantity(bl.Time()),
-		ExtraData:     bl.Extra(),
-		BaseFeePerGas: Uint256Quantity(*baseFee),
-		BlockHash:     bl.Hash(),
-		Transactions:  opaqueTxs,
-		ExcessBlobGas: (*Uint64Quantity)(bl.ExcessBlobGas()),
-		BlobGasUsed:   (*Uint64Quantity)(bl.BlobGasUsed()),
+		ParentHash:      bl.ParentHash(),
+		FeeRecipient:    bl.Coinbase(),
+		StateRoot:       Bytes32(bl.Root()),
+		ReceiptsRoot:    Bytes32(bl.ReceiptHash()),
+		LogsBloom:       Bytes256(bl.Bloom()),
+		PrevRandao:      Bytes32(bl.MixDigest()),
+		BlockNumber:     Uint64Quantity(bl.NumberU64()),
+		GasLimit:        Uint64Quantity(bl.GasLimit()),
+		GasUsed:         Uint64Quantity(bl.GasUsed()),
+		Timestamp:       Uint64Quantity(bl.Time()),
+		ExtraData:       bl.Extra(),
+		BaseFeePerGas:   Uint256Quantity(*baseFee),
+		BlockHash:       bl.Hash(),
+		Transactions:    opaqueTxs,
+		ExcessBlobGas:   (*Uint64Quantity)(bl.ExcessBlobGas()),
+		BlobGasUsed:     (*Uint64Quantity)(bl.BlobGasUsed()),
+		WithdrawalsRoot: bl.WithdrawalsRoot(),
 	}
 
 	if shanghaiTime != nil && uint64(payload.Timestamp) >= *shanghaiTime {
