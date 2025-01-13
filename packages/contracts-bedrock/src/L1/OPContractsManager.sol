@@ -6,6 +6,7 @@ import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
 import { Claim, Duration, GameType, GameTypes } from "src/dispute/lib/Types.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -138,8 +139,8 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.28
-    string public constant version = "1.0.0-beta.28";
+    /// @custom:semver 1.0.0-beta.29
+    string public constant version = "1.0.0-beta.29";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
@@ -216,8 +217,8 @@ contract OPContractsManager is ISemver {
         Blueprints memory _blueprints,
         Implementations memory _implementations
     ) {
-        assertValidContractAddress(address(_superchainConfig));
-        assertValidContractAddress(address(_protocolVersions));
+        DeployUtils.assertValidContractAddress(address(_superchainConfig));
+        DeployUtils.assertValidContractAddress(address(_protocolVersions));
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
         l1ContractsRelease = _l1ContractsRelease;
@@ -754,12 +755,12 @@ contract OPContractsManager is ISemver {
             gasPayingToken: Constants.ETHER
         });
 
-        assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);
-        assertValidContractAddress(opChainAddrs_.l1ERC721Bridge);
-        assertValidContractAddress(opChainAddrs_.l1StandardBridge);
-        assertValidContractAddress(opChainAddrs_.disputeGameFactory);
-        assertValidContractAddress(opChainAddrs_.optimismPortal);
-        assertValidContractAddress(opChainAddrs_.optimismMintableERC20Factory);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.l1CrossDomainMessenger);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.l1ERC721Bridge);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.l1StandardBridge);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.disputeGameFactory);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.optimismPortal);
+        DeployUtils.assertValidContractAddress(opChainAddrs_.optimismMintableERC20Factory);
     }
 
     /// @notice Makes an external call to the target to initialize the proxy with the specified data.
@@ -772,16 +773,11 @@ contract OPContractsManager is ISemver {
     )
         internal
     {
-        assertValidContractAddress(address(_proxyAdmin));
-        assertValidContractAddress(_target);
-        assertValidContractAddress(_implementation);
+        DeployUtils.assertValidContractAddress(address(_proxyAdmin));
+        DeployUtils.assertValidContractAddress(_target);
+        DeployUtils.assertValidContractAddress(_implementation);
 
         _proxyAdmin.upgradeAndCall(payable(address(_target)), _implementation, _data);
-    }
-
-    function assertValidContractAddress(address _who) internal view {
-        if (_who == address(0)) revert AddressNotFound(_who);
-        if (_who.code.length == 0) revert AddressHasNoCode(_who);
     }
 
     /// @notice Returns the blueprint contract addresses.
