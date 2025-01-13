@@ -292,7 +292,7 @@ contract DeploySuperchainOutput is BaseDeployIO {
 // default sender would be the broadcaster during test, but the broadcaster needs to be the deployer
 // since they are set to the initial proxy admin owner.
 contract DeploySuperchain is Script {
-    bytes32 internal _salt = DeployUtils.defaultSalt;
+    bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
 
     // -------- Core Deployment Methods --------
 

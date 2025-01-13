@@ -21,7 +21,7 @@ import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy
 library DeployUtils {
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    bytes32 internal constant defaultSalt = keccak256("op-stack-contract-impls-salt-v0");
+    bytes32 internal constant DEFAULT_SALT = keccak256("op-stack-contract-impls-salt-v0");
 
     /// @notice Deploys a contract with the given name and arguments via CREATE.
     /// @param _name Name of the contract to deploy.
@@ -219,7 +219,6 @@ library DeployUtils {
         if (preComputedAddress.code.length > 0) {
             addr_ = payable(preComputedAddress);
         } else {
-            vm.broadcast(msg.sender);
             addr_ = DeployUtils.create2asm(initCode, _salt);
         }
     }
@@ -239,7 +238,6 @@ library DeployUtils {
             bytes memory bpBytecode = Blueprint.blueprintDeployerBytecode(_rawBytecode);
             newContract1_ = vm.computeCreate2Address(_salt, keccak256(bpBytecode));
             if (newContract1_.code.length == 0) {
-                vm.broadcast(msg.sender);
                 (address deployedContract) = Blueprint.deploySmallBytecode(bpBytecode, _salt);
                 require(deployedContract == newContract1_, "DeployUtils: unexpected blueprint address");
             }
@@ -251,13 +249,11 @@ library DeployUtils {
             bytes memory bp2Bytecode = Blueprint.blueprintDeployerBytecode(part2Slice);
             newContract1_ = vm.computeCreate2Address(_salt, keccak256(bp1Bytecode));
             if (newContract1_.code.length == 0) {
-                vm.broadcast(msg.sender);
                 address deployedContract = Blueprint.deploySmallBytecode(bp1Bytecode, _salt);
                 require(deployedContract == newContract1_, "DeployUtils: unexpected part 1 blueprint address");
             }
             newContract2_ = vm.computeCreate2Address(_salt, keccak256(bp2Bytecode));
             if (newContract2_.code.length == 0) {
-                vm.broadcast(msg.sender);
                 address deployedContract = Blueprint.deploySmallBytecode(bp2Bytecode, _salt);
                 require(deployedContract == newContract2_, "DeployUtils: unexpected part 2 blueprint address");
             }
