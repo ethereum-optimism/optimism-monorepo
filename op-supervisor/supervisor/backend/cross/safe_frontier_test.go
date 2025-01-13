@@ -185,11 +185,17 @@ func (m mockDependencySet) ChainIDFromIndex(index types.ChainIndex) (types.Chain
 	if m.chainIDFromIndexfn != nil {
 		return m.chainIDFromIndexfn()
 	}
-	return types.ChainID{}, nil
+	id := types.ChainIDFromUInt64(uint64(index) - 1000)
+	return id, nil
 }
 
 func (m mockDependencySet) ChainIndexFromID(chain types.ChainID) (types.ChainIndex, error) {
-	return types.ChainIndex(0), nil
+	v, err := chain.ToUInt32()
+	if err != nil {
+		return 0, err
+	}
+	// offset, so we catch improper manual conversion that doesn't apply this offset
+	return types.ChainIndex(v + 1000), nil
 }
 
 func (m mockDependencySet) Chains() []types.ChainID {
