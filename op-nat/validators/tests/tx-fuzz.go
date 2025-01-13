@@ -38,14 +38,15 @@ func runBasicSpam(config nat.Config) error {
 
 func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int) error {
 	// Make sure the accounts are unstuck before sending any transactions
-	spammer.Unstuck(config)
+	if err := spammer.Unstuck(config); err != nil {
+		return err
+	}
 
 	for nSlots := 0; nSlots < 12; nSlots++ {
 		if err := spammer.Airdrop(config, airdropValue); err != nil {
 			return err
 		}
-		err := spammer.SpamTransactions(config, spamFn)
-		if err != nil {
+		if err := spammer.SpamTransactions(config, spamFn); err != nil {
 			return err
 		}
 		time.Sleep(time.Duration(config.SlotTime) * time.Second)

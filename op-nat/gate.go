@@ -19,6 +19,11 @@ func (s Gate) Run(cfg Config) (bool, error) {
 	return true, nil
 }
 
+// Type returns the type name of the gate.
+func (g Gate) Type() string {
+	return "Gate"
+}
+
 // Name returns the id of the gate.
 func (g Gate) Name() string {
 	return g.ID
