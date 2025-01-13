@@ -131,9 +131,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
         return _game.createdAt().raw() < portal.respectedGameTypeUpdatedAt();
     }
 
-    /// @notice Determines whether a game resolved properly and the game was not subject to any
+    /// @notice **READ THIS FUNCTION DOCUMENTATION CAREFULLY.**
+    ///         Determines whether a game resolved properly and the game was not subject to any
     ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
     ///         valid. The root claim of a proper game CAN BE incorrect and still be a proper game.
+    ///         DO NOT USE THIS FUNCTION ALONE TO DETERMINE IF A ROOT CLAIM IS VALID.
     /// @param _game The game to check.
     /// @return Whether the game is a proper game.
     /// @return Reason why the game is not a proper game.
@@ -152,7 +154,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
             return (false, "game blacklisted");
         }
 
-        // Must be created after the gameRetirementTimestamp.
+        // Must be created at or after the respectedGameTypeUpdatedAt timestamp.
         if (isGameRetired(_game)) {
             return (false, "game retired");
         }
