@@ -24,12 +24,33 @@ var (
 	validL2Claim         = common.Hash{0xcc}
 	validL2OutputRoot    = common.Hash{0xdd}
 	validL2ClaimBlockNum = uint64(15)
+	validAgreedPrestate  = []byte{1}
 )
 
 // TestValidConfigIsValid checks that the config provided by validConfig is actually valid
 func TestValidConfigIsValid(t *testing.T) {
 	err := validConfig().Check()
 	require.NoError(t, err)
+}
+
+// TestValidInteropConfigIsValid checks that the config provided by validInteropConfig is actually valid
+func TestValidInteropConfigIsValid(t *testing.T) {
+	err := validInteropConfig().Check()
+	require.NoError(t, err)
+}
+
+func TestL2BlockNum(t *testing.T) {
+	t.Run("RequiredForPreInterop", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.L2ChainID = 0
+		require.ErrorIs(t, cfg.Check(), ErrMissingL2ChainID)
+	})
+
+	t.Run("NotRequiredForInterop", func(t *testing.T) {
+		cfg := validInteropConfig()
+		cfg.L2ChainID = 0
+		require.NoError(t, cfg.Check())
+	})
 }
 
 func TestRollupConfig(t *testing.T) {
@@ -42,7 +63,7 @@ func TestRollupConfig(t *testing.T) {
 
 	t.Run("Invalid", func(t *testing.T) {
 		config := validConfig()
-		config.Rollups = []*rollup.Config{&rollup.Config{}}
+		config.Rollups = []*rollup.Config{{}}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
 	})
@@ -178,7 +199,7 @@ func TestCustomL2ChainID(t *testing.T) {
 	})
 	t.Run("custom", func(t *testing.T) {
 		customChainConfig := &params.ChainConfig{ChainID: big.NewInt(0x1212121212)}
-		cfg := NewConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
+		cfg := NewSingleChainConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
 		require.Equal(t, cfg.L2ChainID, boot.CustomChainIDIndicator)
 	})
 }
@@ -239,7 +260,15 @@ func TestDBFormat(t *testing.T) {
 }
 
 func validConfig() *Config {
-	cfg := NewConfig(validRollupConfig, validL2Genesis, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
+	cfg := NewSingleChainConfig(validRollupConfig, validL2Genesis, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
 	cfg.DataDir = "/tmp/configTest"
+	return cfg
+}
+
+func validInteropConfig() *Config {
+	cfg := validConfig()
+	cfg.InteropEnabled = true
+	cfg.AgreedPrestate = validAgreedPrestate
+	cfg.L2OutputRoot = crypto.Keccak256Hash(cfg.AgreedPrestate)
 	return cfg
 }

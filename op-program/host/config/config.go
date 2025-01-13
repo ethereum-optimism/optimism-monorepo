@@ -25,6 +25,7 @@ import (
 )
 
 var (
+	ErrMissingL2ChainID      = errors.New("missing l2 chain id")
 	ErrMissingRollupConfig   = errors.New("missing rollup config")
 	ErrMissingL2Genesis      = errors.New("missing l2 genesis")
 	ErrInvalidL1Head         = errors.New("invalid l1 head")
@@ -92,6 +93,9 @@ type Config struct {
 }
 
 func (c *Config) Check() error {
+	if !c.InteropEnabled && c.L2ChainID == 0 {
+		return ErrMissingL2ChainID
+	}
 	if len(c.Rollups) == 0 {
 		return ErrMissingRollupConfig
 	}
@@ -142,26 +146,46 @@ func (c *Config) FetchingEnabled() bool {
 	return c.L1URL != "" && len(c.L2URLs) > 0 && c.L1BeaconURL != ""
 }
 
-// NewConfig creates a Config with all optional values set to the CLI default value
-func NewConfig(
+func NewSingleChainConfig(
 	rollupCfg *rollup.Config,
-	l2Genesis *params.ChainConfig,
+	l2ChainConfig *params.ChainConfig,
 	l1Head common.Hash,
 	l2Head common.Hash,
 	l2OutputRoot common.Hash,
 	l2Claim common.Hash,
 	l2ClaimBlockNum uint64,
 ) *Config {
-	l2ChainID := l2Genesis.ChainID.Uint64()
+	l2ChainID := l2ChainConfig.ChainID.Uint64()
 	_, err := params.LoadOPStackChainConfig(l2ChainID)
 	if err != nil {
 		// Unknown chain ID so assume it is custom
 		l2ChainID = boot.CustomChainIDIndicator
 	}
+	cfg := NewConfig(
+		[]*rollup.Config{rollupCfg},
+		[]*params.ChainConfig{l2ChainConfig},
+		l1Head,
+		l2Head,
+		l2OutputRoot,
+		l2Claim,
+		l2ClaimBlockNum)
+	cfg.L2ChainID = l2ChainID
+	return cfg
+}
+
+// NewConfig creates a Config with all optional values set to the CLI default value
+func NewConfig(
+	rollupCfgs []*rollup.Config,
+	l2ChainConfigs []*params.ChainConfig,
+	l1Head common.Hash,
+	l2Head common.Hash,
+	l2OutputRoot common.Hash,
+	l2Claim common.Hash,
+	l2ClaimBlockNum uint64,
+) *Config {
 	return &Config{
-		L2ChainID:          l2ChainID,
-		Rollups:            []*rollup.Config{rollupCfg},
-		L2ChainConfigs:     []*params.ChainConfig{l2Genesis},
+		Rollups:            rollupCfgs,
+		L2ChainConfigs:     l2ChainConfigs,
 		L1Head:             l1Head,
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,

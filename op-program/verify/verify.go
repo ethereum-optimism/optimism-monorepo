@@ -209,7 +209,7 @@ func (r *Runner) run(ctx context.Context, l1Head common.Hash, agreedBlockInfo et
 	fmt.Printf("Configuration: %s\n", argsStr)
 
 	if r.runInProcess {
-		offlineCfg := config.NewConfig(
+		offlineCfg := config.NewSingleChainConfig(
 			r.rollupCfg, r.chainCfg, l1Head, agreedBlockInfo.Hash(), agreedOutputRoot, claimedOutputRoot, claimedBlockInfo.NumberU64())
 		offlineCfg.DataDir = r.dataDir
 
