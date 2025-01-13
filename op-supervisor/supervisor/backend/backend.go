@@ -523,7 +523,8 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	slices.SortFunc(chains, func(a, b types.ChainID) int {
 		return a.Cmp(b)
 	})
-	for _, chainID := range chains {
+	response.Chains = make([]types.ChainRootInfo, len(chains))
+	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
 		if !ok {
 			su.logger.Error("bug: unknown chain %s, cannot get sync source", chainID)
@@ -537,8 +538,11 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		if err != nil {
 			return types.SuperRootResponse{}, err
 		}
-		response.Canonical = append(response.Canonical, eth.OutputRoot(output))
-		response.Pending = append(response.Pending, pending.Marshal())
+		response.Chains[i] = types.ChainRootInfo{
+			ChainID:   chainID,
+			Canonical: eth.OutputRoot(output),
+			Pending:   pending.Marshal(),
+		}
 	}
 	return response, nil
 }
