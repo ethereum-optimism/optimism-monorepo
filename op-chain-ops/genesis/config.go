@@ -1038,14 +1038,12 @@ func (d *DeployConfig) RollupConfig(l1StartBlock *types.Header, l2GenesisBlockHa
 // GenesisSystemConfig converts a DeployConfig to a eth.SystemConfig. If Ecotone is active at genesis, the
 // Overhead value is considered a noop.
 func (d *DeployConfig) GenesisSystemConfig() eth.SystemConfig {
-	cfg := eth.SystemConfig{
+	return eth.SystemConfig{
 		BatcherAddr: d.BatchSenderAddress,
 		Overhead:    eth.Bytes32(common.BigToHash(new(big.Int).SetUint64(d.GasPriceOracleOverhead))),
 		Scalar:      d.FeeScalar(),
 		GasLimit:    uint64(d.L2GenesisBlockGasLimit),
 	}
-	cfg.IncrementGenesisNonces((*uint64)(d.L2GenesisIsthmusTimeOffset), d.UseCustomGasToken)
-	return cfg
 }
 
 // NewDeployConfig reads a config file given a path on the filesystem.

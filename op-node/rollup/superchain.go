@@ -35,7 +35,6 @@ func LoadOPStackRollupConfig(chainID uint64) (*Config, error) {
 			Scalar:      eth.Bytes32(sysCfg.Scalar),
 			GasLimit:    sysCfg.GasLimit,
 		}
-		genesisSysConfig.IncrementGenesisNonces(chConfig.IsthmusTime, chConfig.GasPayingToken != nil)
 	} else {
 		return nil, fmt.Errorf("unable to retrieve genesis SystemConfig of chain %d", chainID)
 	}
