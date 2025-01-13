@@ -13,6 +13,7 @@ import (
 
 type Config struct {
 	SC         SuperchainManifest
+	L1RPCUrl   string
 	RPCURL     string
 	Validators []Validator
 
@@ -34,6 +35,8 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse kurtosis-devnet manifest: %w", err)
 	}
 
+	l1RpcUrl := fmt.Sprintf("http://%s:%d", manifest.L1.Nodes[0].Services.EL.Endpoints["rpc"].Host, manifest.L1.Nodes[0].Services.EL.Endpoints["rpc"].Port)
+
 	firstL2 := manifest.L2[0]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Host, firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Port)
 	senderSecretKey := firstL2.Wallets["l2Faucet"].PrivateKey
@@ -50,6 +53,7 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 
 	return &Config{
 		SC:                  *manifest,
+		L1RPCUrl:            l1RpcUrl,
 		RPCURL:              rpcURL,
 		SenderSecretKey:     senderSecretKey,
 		ReceiverPublicKeys:  receiverPublicKeys,
