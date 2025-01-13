@@ -20,3 +20,8 @@ func (t Test) Run(cfg Config) (bool, error) {
 func (t Test) Name() string {
 	return t.ID
 }
+
+// Type returns the type name of the test.
+func (t Test) Type() string {
+	return "Test"
+}

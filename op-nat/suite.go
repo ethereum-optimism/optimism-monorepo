@@ -23,3 +23,8 @@ func (s Suite) Run(cfg Config) (bool, error) {
 func (s Suite) Name() string {
 	return s.ID
 }
+
+// Type returns the type name of the suite.
+func (s Suite) Type() string {
+	return "Suite"
+}
