@@ -256,7 +256,7 @@ func setCustomGasToken(t *testing.T, cfg e2esys.SystemConfig, sys *e2esys.System
 
 	depositEvent, err := receipts.FindLog(receipt.Logs, optimismPortal.ParseTransactionDeposited)
 	require.NoError(t, err, "Should emit deposit event")
-	depositTx, err := derive.UnmarshalDepositLogEvent(&depositEvent.Raw)
+	depositTx, err := derive.UnmarshalDepositLogEventIgnoreNonce(&depositEvent.Raw)
 
 	require.NoError(t, err)
 	l2Client := sys.NodeClient("sequencer")
@@ -327,7 +327,7 @@ func checkDeposit(t *testing.T, gto gasTokenTestOpts, enabled bool) {
 		// compute the deposit transaction hash + poll for it
 		depositEvent, err := receipts.FindLog(receipt.Logs, optimismPortal.ParseTransactionDeposited)
 		require.NoError(t, err, "Should emit deposit event")
-		depositTx, err := derive.UnmarshalDepositLogEvent(&depositEvent.Raw)
+		depositTx, err := derive.UnmarshalDepositLogEventIgnoreNonce(&depositEvent.Raw)
 		require.NoError(t, err)
 		_, err = wait.ForReceiptOK(context.Background(), l2Client, types.NewTx(depositTx).Hash())
 		require.NoError(t, err)
@@ -497,7 +497,7 @@ func checkFeeWithdrawal(t *testing.T, gto gasTokenTestOpts, enabled bool) {
 	// Compute the deposit transaction hash + poll for it
 	depositEvent, err := receipts.FindLog(receipt.Logs, optimismPortal.ParseTransactionDeposited)
 	require.NoError(t, err, "Should emit deposit event")
-	depositTx, err := derive.UnmarshalDepositLogEvent(&depositEvent.Raw)
+	depositTx, err := derive.UnmarshalDepositLogEventIgnoreNonce(&depositEvent.Raw)
 	require.NoError(t, err)
 	_, err = wait.ForReceiptOK(context.Background(), l2Client, types.NewTx(depositTx).Hash())
 	require.NoError(t, err)

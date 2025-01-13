@@ -21,6 +21,19 @@
   },
   {
     "inputs": [],
+    "name": "DEPOSIT_NONCE_SLOT",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "balance",
     "outputs": [
       {
@@ -99,6 +112,19 @@
     "name": "depositERC20Transaction",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "depositNonce",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "nonce_",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {

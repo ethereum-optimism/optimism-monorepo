@@ -116,7 +116,7 @@ contract ForkLive is Deployer {
     /// environment, and deploys new implementations.
     function _deployNewImplementations() internal {
         Deploy deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
-        deploy.deployImplementations({ _isInterop: false });
+        deploy.deployImplementations();
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name

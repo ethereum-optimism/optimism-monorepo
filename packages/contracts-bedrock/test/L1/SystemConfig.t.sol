@@ -19,7 +19,7 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 contract SystemConfig_Init is CommonTest {
-    event ConfigUpdate(uint256 indexed version, ISystemConfig.UpdateType indexed updateType, bytes data);
+    event ConfigUpdate(uint256 indexed nonceAndVersion, ISystemConfig.UpdateType indexed updateType, bytes data);
 }
 
 contract SystemConfig_Initialize_Test is SystemConfig_Init {

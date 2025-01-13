@@ -134,15 +134,15 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     uint32 public eip1559Elasticity;
 
     /// @notice Emitted when configuration is updated.
-    /// @param version    SystemConfig version.
-    /// @param updateType Type of update.
-    /// @param data       Encoded update data.
-    event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
+    /// @param nonceAndVersion Nonce (first 128-bits) and version (second 128-bits).
+    /// @param updateType      Type of update.
+    /// @param data            Encoded update data.
+    event ConfigUpdate(uint256 indexed nonceAndVersion, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.10
+    /// @custom:semver 2.3.0-beta.11
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.10";
+        return "2.3.0-beta.11";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -268,9 +268,14 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         startBlock_ = Storage.getUint(START_BLOCK_SLOT);
     }
 
-    /// @notice Getter for the gas paying asset address.
+    /// @notice Getter for the gas paying asset address + decimals.
     function gasPayingToken() public view returns (address addr_, uint8 decimals_) {
         (addr_, decimals_) = GasPayingToken.getToken();
+    }
+
+    /// @notice Getter for the gas paying asset address.
+    function gasPayingTokenAddress() public view returns (address addr_) {
+        (addr_,) = GasPayingToken.getToken();
     }
 
     /// @notice Getter for custom gas token paying networks. Returns true if the
@@ -329,7 +334,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         Storage.setAddress(UNSAFE_BLOCK_SIGNER_SLOT, _unsafeBlockSigner);
 
         bytes memory data = abi.encode(_unsafeBlockSigner);
-        emit ConfigUpdate(VERSION, UpdateType.UNSAFE_BLOCK_SIGNER, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.UNSAFE_BLOCK_SIGNER, data);
     }
 
     /// @notice Updates the batcher hash. Can only be called by the owner.
@@ -344,7 +349,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         batcherHash = _batcherHash;
 
         bytes memory data = abi.encode(_batcherHash);
-        emit ConfigUpdate(VERSION, UpdateType.BATCHER, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.BATCHER, data);
     }
 
     /// @notice Updates gas config. Can only be called by the owner.
@@ -365,7 +370,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         scalar = _scalar;
 
         bytes memory data = abi.encode(_overhead, _scalar);
-        emit ConfigUpdate(VERSION, UpdateType.FEE_SCALARS, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.FEE_SCALARS, data);
     }
 
     /// @notice Updates gas config as of the Ecotone upgrade. Can only be called by the owner.
@@ -385,7 +390,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         scalar = (uint256(0x01) << 248) | (uint256(_blobbasefeeScalar) << 32) | _basefeeScalar;
 
         bytes memory data = abi.encode(overhead, scalar);
-        emit ConfigUpdate(VERSION, UpdateType.FEE_SCALARS, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.FEE_SCALARS, data);
     }
 
     /// @notice Updates the L2 gas limit. Can only be called by the owner.
@@ -402,7 +407,7 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         gasLimit = _gasLimit;
 
         bytes memory data = abi.encode(_gasLimit);
-        emit ConfigUpdate(VERSION, UpdateType.GAS_LIMIT, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.GAS_LIMIT, data);
     }
 
     /// @notice Updates the EIP-1559 parameters of the chain. Can only be called by the owner.
@@ -421,7 +426,11 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         eip1559Elasticity = _elasticity;
 
         bytes memory data = abi.encode(uint256(_denominator) << 32 | uint64(_elasticity));
-        emit ConfigUpdate(VERSION, UpdateType.EIP_1559_PARAMS, data);
+        emit ConfigUpdate(_configUpdateNonceAndVersion(), UpdateType.EIP_1559_PARAMS, data);
+    }
+
+    function _configUpdateNonceAndVersion() internal virtual returns (uint256) {
+        return VERSION;
     }
 
     /// @notice Sets the start block in a backwards compatible way. Proxies

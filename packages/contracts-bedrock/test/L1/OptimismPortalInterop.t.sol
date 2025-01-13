@@ -19,19 +19,21 @@ contract OptimismPortalInterop_Test is CommonTest {
     function setUp() public virtual override {
         super.enableInterop();
         super.setUp();
+        optimismPortal2.version();
     }
 
     /// @dev Tests that the config for the gas paying token can be set.
     function testFuzz_setConfig_gasPayingToken_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDeposited({
+        emitTransactionDepositedJovian({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
             _value: 0,
             _mint: 0,
             _gasLimit: 200_000,
             _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.SET_GAS_PAYING_TOKEN, _value))
+            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.SET_GAS_PAYING_TOKEN, _value)),
+            _nonce: 1
         });
 
         vm.prank(address(_optimismPortalInterop().systemConfig()));
@@ -47,14 +49,15 @@ contract OptimismPortalInterop_Test is CommonTest {
     /// @dev Tests that the config for adding a dependency can be set.
     function testFuzz_setConfig_addDependency_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDeposited({
+        emitTransactionDepositedJovian({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
             _value: 0,
             _mint: 0,
             _gasLimit: 200_000,
             _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.ADD_DEPENDENCY, _value))
+            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.ADD_DEPENDENCY, _value)),
+            _nonce: 1
         });
 
         vm.prank(address(_optimismPortalInterop().systemConfig()));
@@ -70,14 +73,15 @@ contract OptimismPortalInterop_Test is CommonTest {
     /// @dev Tests that the config for removing a dependency can be set.
     function testFuzz_setConfig_removeDependency_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));
-        emitTransactionDeposited({
+        emitTransactionDepositedJovian({
             _from: Constants.DEPOSITOR_ACCOUNT,
             _to: Predeploys.L1_BLOCK_ATTRIBUTES,
             _value: 0,
             _mint: 0,
             _gasLimit: 200_000,
             _isCreation: false,
-            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.REMOVE_DEPENDENCY, _value))
+            _data: abi.encodeCall(IL1BlockInterop.setConfig, (ConfigType.REMOVE_DEPENDENCY, _value)),
+            _nonce: 1
         });
 
         vm.prank(address(_optimismPortalInterop().systemConfig()));

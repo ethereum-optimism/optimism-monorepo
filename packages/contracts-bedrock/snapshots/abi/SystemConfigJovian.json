@@ -156,19 +156,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_chainId",
-        "type": "uint256"
-      }
-    ],
-    "name": "addDependency",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "basefeeScalar",
     "outputs": [
@@ -228,19 +215,6 @@
         "internalType": "uint64",
         "name": "nonce_",
         "type": "uint64"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "dependencyManager",
-    "outputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
       }
     ],
     "stateMutability": "view",
@@ -353,133 +327,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_owner",
-        "type": "address"
-      },
-      {
-        "internalType": "uint32",
-        "name": "_basefeeScalar",
-        "type": "uint32"
-      },
-      {
-        "internalType": "uint32",
-        "name": "_blobbasefeeScalar",
-        "type": "uint32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_batcherHash",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "uint64",
-        "name": "_gasLimit",
-        "type": "uint64"
-      },
-      {
-        "internalType": "address",
-        "name": "_unsafeBlockSigner",
-        "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "uint32",
-            "name": "maxResourceLimit",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint8",
-            "name": "elasticityMultiplier",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint8",
-            "name": "baseFeeMaxChangeDenominator",
-            "type": "uint8"
-          },
-          {
-            "internalType": "uint32",
-            "name": "minimumBaseFee",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint32",
-            "name": "systemTxMaxGas",
-            "type": "uint32"
-          },
-          {
-            "internalType": "uint128",
-            "name": "maximumBaseFee",
-            "type": "uint128"
-          }
-        ],
-        "internalType": "struct IResourceMetering.ResourceConfig",
-        "name": "_config",
-        "type": "tuple"
-      },
-      {
-        "internalType": "address",
-        "name": "_batchInbox",
-        "type": "address"
-      },
-      {
-        "components": [
-          {
-            "internalType": "address",
-            "name": "l1CrossDomainMessenger",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1ERC721Bridge",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "l1StandardBridge",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "disputeGameFactory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismPortal",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "optimismMintableERC20Factory",
-            "type": "address"
-          },
-          {
-            "internalType": "address",
-            "name": "gasPayingToken",
-            "type": "address"
-          }
-        ],
-        "internalType": "struct SystemConfig.Addresses",
-        "name": "_addresses",
-        "type": "tuple"
-      },
-      {
-        "internalType": "address",
-        "name": "_dependencyManager",
-        "type": "address"
-      }
-    ],
-    "name": "initialize",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -732,19 +579,6 @@
       }
     ],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_chainId",
-        "type": "uint256"
-      }
-    ],
-    "name": "removeDependency",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {

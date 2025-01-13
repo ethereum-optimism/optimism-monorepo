@@ -35,6 +35,7 @@ contract CommonTest is Test, Setup, Events {
 
     bool useAltDAOverride;
     address customGasToken;
+    bool useJovian;
     bool useInteropOverride;
 
     ERC20 L1Token;
@@ -61,6 +62,9 @@ contract CommonTest is Test, Setup, Events {
         }
         if (customGasToken != address(0)) {
             deploy.cfg().setUseCustomGasToken(customGasToken);
+        }
+        if (useJovian) {
+            deploy.cfg().setL2GenesisJovianTimeOffset(0);
         }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
@@ -166,6 +170,25 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
+    /// @dev Helper function that wraps `TransactionDeposited` event.
+    ///      The magic `nonce << 128 | 1` is the nonce | version.
+    function emitTransactionDepositedJovian(
+        address _from,
+        address _to,
+        uint256 _mint,
+        uint256 _value,
+        uint64 _gasLimit,
+        bool _isCreation,
+        bytes memory _data,
+        uint64 _nonce
+    )
+        internal
+    {
+        emit TransactionDeposited(
+            _from, _to, uint256(_nonce) << 128 | 1, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data)
+        );
+    }
+
     function enableAltDA() public {
         // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
         // set by the `setUp` function yet.
@@ -185,6 +208,16 @@ contract CommonTest is Test, Setup, Events {
         require(_token != Constants.ETHER, "CommonTest: Cannot set gas token to ETHER");
 
         customGasToken = _token;
+    }
+
+    function enableJovian() public {
+        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
+        // set by the `setUp` function yet.
+        if (!(alice == address(0) && bob == address(0))) {
+            revert("CommonTest: Cannot enable jovian after deployment. Consider overriding `setUp`.");
+        }
+
+        useJovian = true;
     }
 
     function enableInterop() public {
