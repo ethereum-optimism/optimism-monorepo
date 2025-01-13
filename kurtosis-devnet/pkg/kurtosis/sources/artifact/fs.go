@@ -8,12 +8,16 @@ import (
 	"io"
 	"path/filepath"
 
-	"github.com/kurtosis-tech/kurtosis/api/golang/core/lib/enclaves"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
+// EnclaveContextIface abstracts the EnclaveContext for testing
+type EnclaveContextIface interface {
+	DownloadFilesArtifact(ctx context.Context, name string) ([]byte, error)
+}
+
 type EnclaveFS struct {
-	enclaveCtx *enclaves.EnclaveContext
+	enclaveCtx EnclaveContextIface
 }
 
 func NewEnclaveFS(ctx context.Context, enclave string) (*EnclaveFS, error) {
@@ -28,6 +32,11 @@ func NewEnclaveFS(ctx context.Context, enclave string) (*EnclaveFS, error) {
 	}
 
 	return &EnclaveFS{enclaveCtx: enclaveCtx}, nil
+}
+
+// NewEnclaveFSWithContext creates an EnclaveFS with a provided context (useful for testing)
+func NewEnclaveFSWithContext(ctx EnclaveContextIface) *EnclaveFS {
+	return &EnclaveFS{enclaveCtx: ctx}
 }
 
 type Artifact struct {
