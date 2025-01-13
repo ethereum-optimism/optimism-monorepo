@@ -47,6 +47,7 @@ var testConfig = Config{
 	GraniteTime:             u64ptr(60),
 	HoloceneTime:            u64ptr(70),
 	IsthmusTime:             u64ptr(80),
+	JovianTime:              u64ptr(90),
 	InteropTime:             nil,
 	BatchInboxAddress:       common.HexToAddress("0xff00000000000000000000000000000000000010"),
 	DepositContractAddress:  common.HexToAddress("0xbEb5Fc579115071764c7423A4f12eDde41f106Ed"),
@@ -192,9 +193,15 @@ func TestCheckForkActivation(t *testing.T) {
 			expectedLog:         "Detected hardfork activation block",
 		},
 		{
+			name:                "Jovian activation",
+			block:               eth.L2BlockRef{Time: 90, Number: 11, Hash: common.Hash{0xb}},
+			expectedCurrentFork: Jovian,
+			expectedLog:         "Detected hardfork activation block",
+		},
+		{
 			name:                "No more hardforks",
-			block:               eth.L2BlockRef{Time: 700, Number: 11, Hash: common.Hash{0xb}},
-			expectedCurrentFork: Isthmus,
+			block:               eth.L2BlockRef{Time: 700, Number: 12, Hash: common.Hash{0xc}},
+			expectedCurrentFork: Jovian,
 			expectedLog:         "",
 		},
 	}
