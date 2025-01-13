@@ -6,6 +6,7 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -75,8 +76,8 @@ contract L1StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.5
-    string public constant version = "2.2.1-beta.5";
+    /// @custom:semver 2.2.1-beta.6
+    string public constant version = "2.2.1-beta.6";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -119,8 +120,10 @@ contract L1StandardBridge is StandardBridge, ISemver {
     }
 
     /// @inheritdoc StandardBridge
-    function gasPayingToken() internal view override returns (address addr_, uint8 decimals_) {
-        (addr_, decimals_) = systemConfig.gasPayingToken();
+    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
+    /// return the ether address and 18 decimals.
+    function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
+        return (Constants.ETHER, 18);
     }
 
     /// @custom:legacy

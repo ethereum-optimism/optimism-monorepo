@@ -3,27 +3,20 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
-import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
-import { Constants } from "src/libraries/Constants.sol";
-import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
-import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
-
-/// @dev This is temporary. Error thrown when a chain uses a custom gas token.
-error CustomGasTokenNotSupported();
 
 /// @custom:proxied true
 /// @title SystemConfig
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
-contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
+contract SystemConfig is OwnableUpgradeable, ISemver {
     /// @notice Enum representing different types of updates.
     /// @custom:value BATCHER              Represents an update to the batcher hash.
     /// @custom:value FEE_SCALARS          Represents an update to l1 data fee scalars.
@@ -48,7 +41,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         address disputeGameFactory;
         address optimismPortal;
         address optimismMintableERC20Factory;
-        address gasPayingToken;
     }
 
     /// @notice Version identifier, used for upgrades.
@@ -90,9 +82,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @notice Storage slot for the DisputeGameFactory address.
     bytes32 public constant DISPUTE_GAME_FACTORY_SLOT =
         bytes32(uint256(keccak256("systemconfig.disputegamefactory")) - 1);
-
-    /// @notice The number of decimals that the gas paying token has.
-    uint8 internal constant GAS_PAYING_TOKEN_DECIMALS = 18;
 
     /// @notice The maximum gas limit that can be set for L2 blocks. This limit is used to enforce that the blocks
     ///         on L2 are not too large to process and prove. Over time, this value can be increased as various
@@ -140,9 +129,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.10
+    /// @custom:semver 2.3.0-beta.11
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.10";
+        return "2.3.0-beta.11";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -197,7 +186,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
         Storage.setAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT, _addresses.optimismMintableERC20Factory);
 
         _setStartBlock();
-        _setGasPayingToken(_addresses.gasPayingToken);
 
         _setResourceConfig(_config);
     }
@@ -266,55 +254,6 @@ contract SystemConfig is OwnableUpgradeable, ISemver, IGasToken {
     /// @notice Getter for the StartBlock number.
     function startBlock() external view returns (uint256 startBlock_) {
         startBlock_ = Storage.getUint(START_BLOCK_SLOT);
-    }
-
-    /// @notice Getter for the gas paying asset address.
-    function gasPayingToken() public view returns (address addr_, uint8 decimals_) {
-        (addr_, decimals_) = GasPayingToken.getToken();
-    }
-
-    /// @notice Getter for custom gas token paying networks. Returns true if the
-    ///         network uses a custom gas token.
-    function isCustomGasToken() public view returns (bool) {
-        (address token,) = gasPayingToken();
-        return token != Constants.ETHER;
-    }
-
-    /// @notice Getter for the gas paying token name.
-    function gasPayingTokenName() external view returns (string memory name_) {
-        name_ = GasPayingToken.getName();
-    }
-
-    /// @notice Getter for the gas paying token symbol.
-    function gasPayingTokenSymbol() external view returns (string memory symbol_) {
-        symbol_ = GasPayingToken.getSymbol();
-    }
-
-    /// @notice Internal setter for the gas paying token address, includes validation.
-    ///         The token must not already be set and must be non zero and not the ether address
-    ///         to set the token address. This prevents the token address from being changed
-    ///         and makes it explicitly opt-in to use custom gas token.
-    /// @param _token Address of the gas paying token.
-    function _setGasPayingToken(address _token) internal virtual {
-        if (_token != address(0) && _token != Constants.ETHER && !isCustomGasToken()) {
-            // Temporary revert till we support custom gas tokens
-            if (true) revert CustomGasTokenNotSupported();
-
-            require(
-                ERC20(_token).decimals() == GAS_PAYING_TOKEN_DECIMALS, "SystemConfig: bad decimals of gas paying token"
-            );
-            bytes32 name = GasPayingToken.sanitize(ERC20(_token).name());
-            bytes32 symbol = GasPayingToken.sanitize(ERC20(_token).symbol());
-
-            // Set the gas paying token in storage and in the OptimismPortal.
-            GasPayingToken.set({ _token: _token, _decimals: GAS_PAYING_TOKEN_DECIMALS, _name: name, _symbol: symbol });
-            IOptimismPortal2(payable(optimismPortal())).setGasPayingToken({
-                _token: _token,
-                _decimals: GAS_PAYING_TOKEN_DECIMALS,
-                _name: name,
-                _symbol: symbol
-            });
-        }
     }
 
     /// @notice Updates the unsafe block signer address. Can only be called by the owner.
