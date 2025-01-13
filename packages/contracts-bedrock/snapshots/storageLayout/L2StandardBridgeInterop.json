@@ -1,10 +1,10 @@
 [
   {
-    "bytes": "30",
-    "label": "spacer_0_2_30",
+    "bytes": "32",
+    "label": "spacer_0_0_32",
     "offset": 0,
     "slot": "0",
-    "type": "bytes30"
+    "type": "bytes32"
   },
   {
     "bytes": "20",
