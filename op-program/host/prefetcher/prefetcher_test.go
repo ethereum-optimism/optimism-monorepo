@@ -518,7 +518,7 @@ func TestFetchL2Code(t *testing.T) {
 }
 
 func TestFetchL2BlockData(t *testing.T) {
-	chainID := uint64(0xdead)
+	chainID := uint64(14)
 
 	testBlockExec := func(t *testing.T, err error) {
 		prefetcher, _, _, l2Client, _ := createPrefetcher(t)
