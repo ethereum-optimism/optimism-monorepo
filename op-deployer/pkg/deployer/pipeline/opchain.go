@@ -27,7 +27,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 	var dco opcm.DeployOPChainOutput
 	lgr.Info("deploying OP chain using local allocs", "id", chainID.Hex())
 
-	dci, err := makeDCIV160(intent, thisIntent, chainID, st)
+	dci, err := makeDCI(intent, thisIntent, chainID, st)
 	if err != nil {
 		return fmt.Errorf("error making deploy OP chain input: %w", err)
 	}
@@ -70,7 +70,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 	return nil
 }
 
-func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
+func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
 	proofParams, err := jsonutil.MergeJSON(
 		state.ChainProofParams{
 			DisputeGameType:         standard.DisputeGameType,
