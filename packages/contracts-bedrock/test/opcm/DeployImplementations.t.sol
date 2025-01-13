@@ -275,6 +275,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.deployPreimageOracleSingleton(dii, dio);
         deployImplementations.deployMipsSingleton(dii, dio);
         deployImplementations.deployDisputeGameFactoryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dio);
         deployImplementations.deployOPContractsManager(dii, dio);
 
         // Store the original addresses.
@@ -288,6 +289,7 @@ contract DeployImplementations_Test is Test {
         address preimageOracleSingleton = address(dio.preimageOracleSingleton());
         address mipsSingleton = address(dio.mipsSingleton());
         address disputeGameFactoryImpl = address(dio.disputeGameFactoryImpl());
+        address anchorStateRegistryImpl = address(dio.anchorStateRegistryImpl());
         address opcm = address(dio.opcm());
 
         // Do the deployments again. Thi should be a noop.
@@ -301,6 +303,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.deployPreimageOracleSingleton(dii, dio);
         deployImplementations.deployMipsSingleton(dii, dio);
         deployImplementations.deployDisputeGameFactoryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dio);
         deployImplementations.deployOPContractsManager(dii, dio);
 
         // Assert that the addresses did not change.
@@ -314,7 +317,8 @@ contract DeployImplementations_Test is Test {
         assertEq(preimageOracleSingleton, address(dio.preimageOracleSingleton()), "800");
         assertEq(mipsSingleton, address(dio.mipsSingleton()), "900");
         assertEq(disputeGameFactoryImpl, address(dio.disputeGameFactoryImpl()), "1000");
-        assertEq(opcm, address(dio.opcm()), "1100");
+        assertEq(anchorStateRegistryImpl, address(dio.anchorStateRegistryImpl()), "1100");
+        assertEq(opcm, address(dio.opcm()), "1200");
     }
 
     function testFuzz_run_memory_succeeds(bytes32 _seed) public {
