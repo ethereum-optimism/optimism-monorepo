@@ -157,6 +157,12 @@ func WithL2BlockNumber(num uint64) FixtureInputParam {
 	}
 }
 
+func WithL1Head(head common.Hash) FixtureInputParam {
+	return func(f *FixtureInputs) {
+		f.L1Head = head
+	}
+}
+
 func (env *L2FaultProofEnv) RunFaultProofProgram(t helpers.Testing, l2ClaimBlockNum uint64, checkResult CheckResult, fixtureInputParams ...FixtureInputParam) {
 	defaultParam := WithPreInteropDefaults(t, l2ClaimBlockNum, env.Sequencer.L2Verifier, env.Engine)
 	combinedParams := []FixtureInputParam{defaultParam}
