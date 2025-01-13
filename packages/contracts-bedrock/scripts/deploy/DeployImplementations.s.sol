@@ -446,7 +446,7 @@ contract DeployImplementations is Script {
         });
 
         opcm_ = OPContractsManager(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
                 _args: abi.encode(
                     superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
@@ -472,22 +472,22 @@ contract DeployImplementations is Script {
         OPContractsManager.Blueprints memory blueprints;
 
         address checkAddress;
-        (blueprints.addressManager, checkAddress) = createDeterministicBlueprint(vm.getCode("AddressManager"));
+        (blueprints.addressManager, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AddressManager"));
         require(checkAddress == address(0), "OPCM-10");
-        (blueprints.proxy, checkAddress) = createDeterministicBlueprint(vm.getCode("Proxy"));
+        (blueprints.proxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("Proxy"));
         require(checkAddress == address(0), "OPCM-20");
-        (blueprints.proxyAdmin, checkAddress) = createDeterministicBlueprint(vm.getCode("ProxyAdmin"));
+        (blueprints.proxyAdmin, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ProxyAdmin"));
         require(checkAddress == address(0), "OPCM-30");
-        (blueprints.l1ChugSplashProxy, checkAddress) = createDeterministicBlueprint(vm.getCode("L1ChugSplashProxy"));
+        (blueprints.l1ChugSplashProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("L1ChugSplashProxy"));
         require(checkAddress == address(0), "OPCM-40");
-        (blueprints.resolvedDelegateProxy, checkAddress) = createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"));
+        (blueprints.resolvedDelegateProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"));
         require(checkAddress == address(0), "OPCM-50");
-        (blueprints.anchorStateRegistry, checkAddress) = createDeterministicBlueprint(vm.getCode("AnchorStateRegistry"));
+        (blueprints.anchorStateRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AnchorStateRegistry"));
         require(checkAddress == address(0), "OPCM-60");
             // The max initcode/runtimecode size is 48KB/24KB.
             // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"));
-        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = createDeterministicBlueprint(vm.getCode("FaultDisputeGame"));
+        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"));
+        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"));
         // forgefmt: disable-end
 
         OPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
@@ -500,7 +500,7 @@ contract DeployImplementations is Script {
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public virtual {
         ISystemConfig impl = ISystemConfig(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "SystemConfig",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
             })
@@ -511,7 +511,7 @@ contract DeployImplementations is Script {
 
     function deployL1CrossDomainMessengerImpl(DeployImplementationsOutput _dio) public virtual {
         IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "L1CrossDomainMessenger",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ()))
             })
@@ -522,7 +522,7 @@ contract DeployImplementations is Script {
 
     function deployL1ERC721BridgeImpl(DeployImplementationsOutput _dio) public virtual {
         IL1ERC721Bridge impl = IL1ERC721Bridge(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "L1ERC721Bridge",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
             })
@@ -533,7 +533,7 @@ contract DeployImplementations is Script {
 
     function deployL1StandardBridgeImpl(DeployImplementationsOutput _dio) public virtual {
         IL1StandardBridge impl = IL1StandardBridge(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "L1StandardBridge",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
             })
@@ -544,7 +544,7 @@ contract DeployImplementations is Script {
 
     function deployOptimismMintableERC20FactoryImpl(DeployImplementationsOutput _dio) public virtual {
         IOptimismMintableERC20Factory impl = IOptimismMintableERC20Factory(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "OptimismMintableERC20Factory",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
             })
@@ -600,7 +600,7 @@ contract DeployImplementations is Script {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
         uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
         IOptimismPortal2 impl = IOptimismPortal2(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "OptimismPortal2",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
@@ -616,7 +616,7 @@ contract DeployImplementations is Script {
     function deployDelayedWETHImpl(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
         uint256 withdrawalDelaySeconds = _dii.withdrawalDelaySeconds();
         IDelayedWETH impl = IDelayedWETH(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "DelayedWETH",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (withdrawalDelaySeconds)))
             })
@@ -635,7 +635,7 @@ contract DeployImplementations is Script {
         uint256 minProposalSizeBytes = _dii.minProposalSizeBytes();
         uint256 challengePeriodSeconds = _dii.challengePeriodSeconds();
         IPreimageOracle singleton = IPreimageOracle(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "PreimageOracle",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(IPreimageOracle.__constructor__, (minProposalSizeBytes, challengePeriodSeconds))
@@ -650,7 +650,7 @@ contract DeployImplementations is Script {
         uint256 mipsVersion = _dii.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
         IMIPS singleton = IMIPS(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
             })
@@ -661,7 +661,7 @@ contract DeployImplementations is Script {
 
     function deployDisputeGameFactoryImpl(DeployImplementationsOutput _dio) public virtual {
         IDisputeGameFactory impl = IDisputeGameFactory(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "DisputeGameFactory",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ()))
             })
@@ -671,51 +671,6 @@ contract DeployImplementations is Script {
     }
 
     // -------- Utilities --------
-
-    function createDeterministic(string memory _name, bytes memory _args) internal returns (address payable addr_) {
-        bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
-        address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
-        if (preComputedAddress.code.length > 0) {
-            addr_ = payable(preComputedAddress);
-        } else {
-            vm.broadcast(msg.sender);
-            addr_ = DeployUtils.create2asm(initCode, _salt);
-        }
-    }
-
-    function createDeterministicBlueprint(bytes memory _rawBytecode)
-        internal
-        returns (address newContract1_, address newContract2_)
-    {
-        uint32 maxSize = Blueprint.maxInitCodeSize();
-        if (_rawBytecode.length <= maxSize) {
-            bytes memory bpBytecode = Blueprint.blueprintDeployerBytecode(_rawBytecode);
-            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bpBytecode));
-            if (newContract1_.code.length == 0) {
-                vm.broadcast(msg.sender);
-                (address deployedContract) = Blueprint.deploySmallBytecode(bpBytecode, _salt);
-                require(deployedContract == newContract1_, "DeployImplementations: unexpected blueprint address");
-            }
-            newContract2_ = address(0);
-        } else {
-            bytes memory part1Slice = Bytes.slice(_rawBytecode, 0, maxSize);
-            bytes memory part2Slice = Bytes.slice(_rawBytecode, maxSize, _rawBytecode.length - maxSize);
-            bytes memory bp1Bytecode = Blueprint.blueprintDeployerBytecode(part1Slice);
-            bytes memory bp2Bytecode = Blueprint.blueprintDeployerBytecode(part2Slice);
-            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bp1Bytecode));
-            if (newContract1_.code.length == 0) {
-                vm.broadcast(msg.sender);
-                address deployedContract = Blueprint.deploySmallBytecode(bp1Bytecode, _salt);
-                require(deployedContract == newContract1_, "DeployImplementations: unexpected part 1 blueprint address");
-            }
-            newContract2_ = vm.computeCreate2Address(_salt, keccak256(bp2Bytecode));
-            if (newContract2_.code.length == 0) {
-                vm.broadcast(msg.sender);
-                address deployedContract = Blueprint.deploySmallBytecode(bp2Bytecode, _salt);
-                require(deployedContract == newContract2_, "DeployImplementations: unexpected part 2 blueprint address");
-            }
-        }
-    }
 
     function etchIOContracts() public returns (DeployImplementationsInput dii_, DeployImplementationsOutput dio_) {
         (dii_, dio_) = getIOContracts();
@@ -799,7 +754,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         });
 
         opcm_ = OPContractsManagerInterop(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "OPContractsManagerInterop",
                 _args: abi.encode(
                     superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
@@ -821,7 +776,7 @@ contract DeployImplementationsInterop is DeployImplementations {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
         uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
         IOptimismPortalInterop impl = IOptimismPortalInterop(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "OptimismPortalInterop",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
@@ -837,7 +792,7 @@ contract DeployImplementationsInterop is DeployImplementations {
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
         ISystemConfigInterop impl = ISystemConfigInterop(
-            createDeterministic({
+            DeployUtils.createDeterministic({
                 _name: "SystemConfigInterop",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ()))
             })

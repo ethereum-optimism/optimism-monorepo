@@ -199,6 +199,58 @@ library DeployUtils {
         return create2AndSave(_save, _name, _name, hex"", _salt);
     }
 
+    /// @notice Deploys a contract with the given name using CREATE2. If the contract is already deployed, this method
+    /// does nothing.
+    /// @param _name Name of the contract to deploy.
+    /// @param _args ABI-encoded constructor arguments.
+    function createDeterministic(string memory _name, bytes memory _args) internal returns (address payable addr_) {
+        bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
+        address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
+        if (preComputedAddress.code.length > 0) {
+            addr_ = payable(preComputedAddress);
+        } else {
+            vm.broadcast(msg.sender);
+            addr_ = DeployUtils.create2asm(initCode, _salt);
+        }
+    }
+
+    /// @notice Deploys a blueprint contract with the given name using CREATE2. If the contract is already deployed,
+    /// this method does nothing.
+    /// @param _rawBytecode Raw bytecode of the contract the blueprint will deploy.
+    function createDeterministicBlueprint(bytes memory _rawBytecode)
+        internal
+        returns (address newContract1_, address newContract2_)
+    {
+        uint32 maxSize = Blueprint.maxInitCodeSize();
+        if (_rawBytecode.length <= maxSize) {
+            bytes memory bpBytecode = Blueprint.blueprintDeployerBytecode(_rawBytecode);
+            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bpBytecode));
+            if (newContract1_.code.length == 0) {
+                vm.broadcast(msg.sender);
+                (address deployedContract) = Blueprint.deploySmallBytecode(bpBytecode, _salt);
+                require(deployedContract == newContract1_, "DeployUtils: unexpected blueprint address");
+            }
+            newContract2_ = address(0);
+        } else {
+            bytes memory part1Slice = Bytes.slice(_rawBytecode, 0, maxSize);
+            bytes memory part2Slice = Bytes.slice(_rawBytecode, maxSize, _rawBytecode.length - maxSize);
+            bytes memory bp1Bytecode = Blueprint.blueprintDeployerBytecode(part1Slice);
+            bytes memory bp2Bytecode = Blueprint.blueprintDeployerBytecode(part2Slice);
+            newContract1_ = vm.computeCreate2Address(_salt, keccak256(bp1Bytecode));
+            if (newContract1_.code.length == 0) {
+                vm.broadcast(msg.sender);
+                address deployedContract = Blueprint.deploySmallBytecode(bp1Bytecode, _salt);
+                require(deployedContract == newContract1_, "DeployUtils: unexpected part 1 blueprint address");
+            }
+            newContract2_ = vm.computeCreate2Address(_salt, keccak256(bp2Bytecode));
+            if (newContract2_.code.length == 0) {
+                vm.broadcast(msg.sender);
+                address deployedContract = Blueprint.deploySmallBytecode(bp2Bytecode, _salt);
+                require(deployedContract == newContract2_, "DeployUtils: unexpected part 2 blueprint address");
+            }
+        }
+    }
+
     /// @notice Takes a sender and an identifier and returns a deterministic address based on the
     ///         two. The result is used to etch the input and output contracts to a deterministic
     ///         address based on those two values, where the identifier represents the input or
