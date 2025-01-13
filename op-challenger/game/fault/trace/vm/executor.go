@@ -146,7 +146,6 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 			e.metrics.RecordMaxStepsBetweenLLAndSC(uint64(info.MaxStepsBetweenLLAndSC))
 			e.metrics.RecordReservationInvalidationCount(uint64(info.ReservationInvalidationCount))
 			e.metrics.RecordForcedPreemptionCount(uint64(info.ForcedPreemptionCount))
-			e.metrics.RecordFailedWakeupCount(uint64(info.FailedWakeupCount))
 			e.metrics.RecordIdleStepCountThread0(uint64(info.IdleStepCountThread0))
 		}
 	}
@@ -162,6 +161,5 @@ type debugInfo struct {
 	MaxStepsBetweenLLAndSC       uint64         `json:"max_steps_between_ll_and_sc"`
 	ReservationInvalidationCount uint64         `json:"reservation_invalidation_count"`
 	ForcedPreemptionCount        uint64         `json:"forced_preemption_count"`
-	FailedWakeupCount            uint64         `json:"failed_wakeup_count"`
 	IdleStepCountThread0         uint64         `json:"idle_step_count_thread_0"`
 }
