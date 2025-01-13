@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"slices"
 	"sync/atomic"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -46,6 +47,7 @@ type SupervisorBackend struct {
 	// crossProcessors are used to index cross-chain dependency validity data once the log events are indexed
 	crossSafeProcessors   locks.RWMap[types.ChainID, *cross.Worker]
 	crossUnsafeProcessors locks.RWMap[types.ChainID, *cross.Worker]
+	syncSources           locks.RWMap[types.ChainID, syncnode.SyncSource]
 
 	// syncNodesController controls the derivation or reset of the sync nodes
 	syncNodesController *syncnode.SyncNodesController
@@ -152,6 +154,10 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		chainProcessor := processors.NewChainProcessor(su.logger, chainID, logProcessor, su.chainDBs, su.onIndexedLocalUnsafeData)
 		su.chainProcessors.Set(chainID, chainProcessor)
 	}
+	// initialize sync sources
+	for _, chainID := range chains {
+		su.syncSources.Set(chainID, nil)
+	}
 
 	if cfg.L1RPC != "" {
 		if err := su.attachL1RPC(ctx, cfg.L1RPC); err != nil {
@@ -252,6 +258,10 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to processor: %w", err)
 	}
+	err = su.AttachSyncSource(chainID, src)
+	if err != nil {
+		return nil, fmt.Errorf("failed to attach sync source to node: %w", err)
+	}
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 
@@ -261,6 +271,15 @@ func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src pr
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
 	}
 	proc.SetSource(src)
+	return nil
+}
+
+func (su *SupervisorBackend) AttachSyncSource(chainID types.ChainID, src syncnode.SyncSource) error {
+	_, ok := su.syncSources.Get(chainID)
+	if !ok {
+		return fmt.Errorf("unknown chain %s, cannot attach RPC to sync source", chainID)
+	}
+	su.syncSources.Set(chainID, src)
 	return nil
 }
 
@@ -499,12 +518,29 @@ func (su *SupervisorBackend) L1BlockRefByNumber(ctx context.Context, number uint
 }
 
 func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
-	//TODO implement me
-	panic("implement me")
-	// For each chain:
-	// * Convert timestamp to block number
-	// * Load canonical output root for block number
-
+	var response types.SuperRootResponse
+	chains := su.depSet.Chains()
+	slices.SortFunc(chains, func(a, b types.ChainID) int {
+		return a.Cmp(b)
+	})
+	for _, chainID := range chains {
+		src, ok := su.syncSources.Get(chainID)
+		if !ok {
+			su.logger.Error("bug: unknown chain %s, cannot get sync source", chainID)
+			return types.SuperRootResponse{}, fmt.Errorf("unknown chain %s, cannot get sync source", chainID)
+		}
+		output, err := src.OutputV0AtTimestamp(ctx, uint64(timestamp))
+		if err != nil {
+			return types.SuperRootResponse{}, err
+		}
+		pending, err := src.PendingOutputV0AtTimestamp(ctx, uint64(timestamp))
+		if err != nil {
+			return types.SuperRootResponse{}, err
+		}
+		response.Canonical = append(response.Canonical, eth.OutputRoot(output))
+		response.Pending = append(response.Pending, pending.Marshal())
+	}
+	return response, nil
 }
 
 // Update methods

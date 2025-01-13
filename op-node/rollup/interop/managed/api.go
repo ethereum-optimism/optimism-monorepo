@@ -55,6 +55,14 @@ func (ib *InteropAPI) ChainID(ctx context.Context) (supervisortypes.ChainID, err
 	return ib.backend.ChainID(ctx)
 }
 
+func (ib *InteropAPI) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	return ib.backend.OutputV0AtTimestamp(ctx, timestamp)
+}
+
+func (ib *InteropAPI) PendingOutputV0ATTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	return ib.backend.PendingOutputV0AtTimestamp(ctx, timestamp)
+}
+
 func (ib *InteropAPI) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
 	return ib.backend.ProvideL1(ctx, nextL1)
 }
