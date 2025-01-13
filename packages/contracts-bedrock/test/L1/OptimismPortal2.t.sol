@@ -455,13 +455,29 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     }
 
     /// @dev Tests that the guardian role can set the respected game type to anything they want.
-    function testFuzz_setRespectedGameType_guardian_succeeds(GameType _ty) external {
+    function testFuzz_setRespectedGameType_guardianCanSetRespectedGameType_succeeds(GameType _ty) external {
+        vm.assume(_ty.raw() != type(uint32).max);
+        uint64 respectedGameTypeUpdatedAt = optimismPortal2.respectedGameTypeUpdatedAt();
         vm.expectEmit(address(optimismPortal2));
-        emit RespectedGameTypeSet(_ty, Timestamp.wrap(uint64(block.timestamp)));
+        emit RespectedGameTypeSet(_ty, Timestamp.wrap(respectedGameTypeUpdatedAt));
         vm.prank(optimismPortal2.guardian());
         optimismPortal2.setRespectedGameType(_ty);
 
         assertEq(optimismPortal2.respectedGameType().raw(), _ty.raw());
+    }
+
+    /// @dev Tests that the guardian can set the `respectedGameTypeUpdatedAt` timestamp to current timestamp.
+    function testFuzz_setRespectedGameType_guardianCanSetRespectedGameTypeUpdatedAt_succeeds(uint64 _elapsed)
+        external
+    {
+        _elapsed = uint64(bound(_elapsed, 0, type(uint64).max - uint64(block.timestamp)));
+        GameType _ty = GameType.wrap(type(uint32).max);
+        uint64 _timestamp = uint64(block.timestamp) + _elapsed;
+        vm.warp(_timestamp);
+        // TODO: event?
+        vm.prank(optimismPortal2.guardian());
+        optimismPortal2.setRespectedGameType(_ty);
+        assertEq(optimismPortal2.respectedGameTypeUpdatedAt(), _timestamp);
     }
 
     /// @dev Tests that `proveWithdrawalTransaction` reverts when paused.
@@ -1293,35 +1309,6 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         assertTrue(optimismPortal2.finalizedWithdrawals(_withdrawalHash));
     }
 
-    /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the respected game type has changed since the
-    ///      withdrawal was proven.
-    function test_finalizeWithdrawalTransaction_respectedTypeChangedSinceProving_reverts() external {
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawalProven(_withdrawalHash, alice, bob);
-        vm.expectEmit(true, true, true, true);
-        emit WithdrawalProvenExtension1(_withdrawalHash, address(this));
-        optimismPortal2.proveWithdrawalTransaction({
-            _tx: _defaultTx,
-            _disputeGameIndex: _proposedGameIndex,
-            _outputRootProof: _outputRootProof,
-            _withdrawalProof: _withdrawalProof
-        });
-
-        // Warp past the finalization period.
-        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
-
-        // Resolve the dispute game.
-        game.resolveClaim(0, 0);
-        game.resolve();
-
-        // Change the respected game type in the portal.
-        vm.prank(optimismPortal2.guardian());
-        optimismPortal2.setRespectedGameType(GameType.wrap(0xFF));
-
-        vm.expectRevert(InvalidGameType.selector);
-        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
-    }
-
     /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the respected game type was updated after the
     ///      dispute game was created.
     function test_finalizeWithdrawalTransaction_gameOlderThanRespectedGameTypeUpdate_reverts() external {
@@ -1343,12 +1330,12 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         game.resolveClaim(0, 0);
         game.resolve();
 
-        // Change the respected game type in the portal.
-        vm.prank(optimismPortal2.guardian());
-        optimismPortal2.setRespectedGameType(GameType.wrap(0xFF));
+        // Warp past the dispute game finality delay.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds() + 1);
 
-        // Mock the game's type so that we pass the correct game type check.
-        vm.mockCall(address(game), abi.encodeCall(game.gameType, ()), abi.encode(GameType.wrap(0xFF)));
+        // Set respectedGameTypeUpdatedAt.
+        vm.prank(optimismPortal2.guardian());
+        optimismPortal2.setRespectedGameType(GameType.wrap(type(uint32).max));
 
         vm.expectRevert("OptimismPortal: dispute game created before respected game type was updated");
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);

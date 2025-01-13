@@ -27,13 +27,14 @@ interface IAnchorStateRegistry {
         OutputRoot memory _startingAnchorRoot
     )
         external;
-    function isGameRegistered(IDisputeGame _game) external view returns (bool);
+
+    function isGameBeyondAirgap(IDisputeGame _game) external view returns (bool);
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
+    function isGameProper(IDisputeGame _game) external view returns (bool);
+    function isGameRegistered(IDisputeGame _game) external view returns (bool);
+    function isGameResolved(IDisputeGame _game) external view returns (bool);
     function isGameRespected(IDisputeGame _game) external view returns (bool);
     function isGameRetired(IDisputeGame _game) external view returns (bool);
-    function isGameResolved(IDisputeGame _game) external view returns (bool);
-    function isGameBeyondAirgap(IDisputeGame _game) external view returns (bool);
-    function isGameProper(IDisputeGame _game) external view returns (bool);
     function isGameFinalized(IDisputeGame _game) external view returns (bool);
     function isGameClaimValid(IDisputeGame _game) external view returns (bool);
     function portal() external view returns (IOptimismPortal2);

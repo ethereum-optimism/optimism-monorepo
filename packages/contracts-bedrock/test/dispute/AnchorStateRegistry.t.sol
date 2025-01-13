@@ -338,6 +338,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
     }
+}
 
 contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init {
     /// @notice Tests that setAnchorState will revert if the sender is not the guardian.
