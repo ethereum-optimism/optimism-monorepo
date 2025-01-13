@@ -16,6 +16,12 @@ import (
 const EnvVarPrefix = "OP_NAT"
 
 var (
+	KurtosisDevnetManifest = &cli.StringFlag{
+		Name:    "kurtosis.devnet.manifest",
+		Value:   "",
+		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "KURTOSIS_DEVNET_MANIFEST"),
+		Usage:   "Path to the kurtosis-devnet manifest",
+	}
 	ExecutionRPC = &cli.StringFlag{
 		Name:    "rpc.execution",
 		Value:   "http://127.0.0.1:8545",
@@ -37,6 +43,7 @@ var (
 )
 
 var requiredFlags = []cli.Flag{
+	KurtosisDevnetManifest,
 	SenderSecretKey,
 }
 

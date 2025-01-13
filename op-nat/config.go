@@ -1,9 +1,9 @@
 package nat
 
 import (
-	"errors"
+	"encoding/json"
 	"fmt"
-	"strings"
+	"os"
 
 	"github.com/urfave/cli/v2"
 
@@ -11,6 +11,7 @@ import (
 )
 
 type Config struct {
+	SC         SuperchainManifest
 	RPCURL     string
 	Validators []Validator
 
@@ -29,11 +30,14 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 	senderSecretKey := ctx.String(flags.SenderSecretKey.Name)
 	receiverPublicKeys := ctx.StringSlice(flags.ReceiverPublicKeys.Name)
 
-	if !strings.Contains(rpcURL, "http") {
-		return nil, errors.New("RPC URL is malformed")
+	// Parse kurtosis-devnet manifest
+	manifest, err := parseManifest(ctx.String(flags.KurtosisDevnetManifest.Name))
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse kurtosis-devnet manifest: %w", err)
 	}
 
 	return &Config{
+		SC:                 *manifest,
 		RPCURL:             rpcURL,
 		SenderSecretKey:    senderSecretKey,
 		ReceiverPublicKeys: receiverPublicKeys,
@@ -49,4 +53,17 @@ func (c Config) Check() error {
 		return fmt.Errorf("missing receiver public keys")
 	}
 	return nil
+}
+
+func parseManifest(manifestPath string) (*SuperchainManifest, error) {
+	manifest, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read manifest file: %w", err)
+	}
+
+	var superchainManifest SuperchainManifest
+	if err := json.Unmarshal(manifest, &superchainManifest); err != nil {
+		return nil, fmt.Errorf("failed to unmarshal manifest: %w", err)
+	}
+	return &superchainManifest, nil
 }
