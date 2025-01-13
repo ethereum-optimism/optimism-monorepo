@@ -33,16 +33,16 @@ type taskExecutor interface {
 		l2Oracle l2.Oracle) (tasks.DerivationResult, error)
 }
 
-func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
+func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
 	return runInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, validateClaim, &interopTaskExecutor{})
 }
 
-func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, tasks taskExecutor) error {
+func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool, tasks taskExecutor) error {
 	logger.Info("Interop Program Bootstrapped", "bootInfo", bootInfo)
 
 	// For the first step in a timestamp, we would get a SuperRoot as the agreed claim - TransitionStateByRoot will
 	// automatically convert it to a TransitionState with Step: 0.
-	transitionState := l2PreimageOracle.TransitionStateByRoot(bootInfo.L2OutputRoot)
+	transitionState := l2PreimageOracle.TransitionStateByRoot(bootInfo.AgreedPrestate)
 	if transitionState.Version() != types.IntermediateTransitionVersion {
 		return fmt.Errorf("%w: %v", ErrIncorrectOutputRootType, transitionState.Version())
 	}
@@ -55,16 +55,25 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 		return fmt.Errorf("%w: %v", ErrIncorrectOutputRootType, super.Version())
 	}
 	superRoot := super.(*eth.SuperV1)
-	claimedBlockNumber, err := bootInfo.RollupConfig.TargetBlockNumber(superRoot.Timestamp + 1)
+	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
+	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
+	if err != nil {
+		return fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+	}
+	l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
+	if err != nil {
+		return fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+	}
+	claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
 	if err != nil {
 		return err
 	}
 	derivationResult, err := tasks.RunDerivation(
 		logger,
-		bootInfo.RollupConfig,
-		bootInfo.L2ChainConfig,
+		rollupCfg,
+		l2ChainConfig,
 		bootInfo.L1Head,
-		superRoot.Chains[transitionState.Step].Output,
+		chainAgreedPrestate.Output,
 		claimedBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
@@ -91,7 +100,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfo, l1PreimageOra
 	if !validateClaim {
 		return nil
 	}
-	return claim.ValidateClaim(logger, derivationResult.Head, eth.Bytes32(bootInfo.L2Claim), eth.Bytes32(expected))
+	return claim.ValidateClaim(logger, derivationResult.Head, eth.Bytes32(bootInfo.Claim), eth.Bytes32(expected))
 }
 
 type interopTaskExecutor struct {

@@ -24,6 +24,7 @@ var (
 	validL2Claim         = common.Hash{0xcc}
 	validL2OutputRoot    = common.Hash{0xdd}
 	validL2ClaimBlockNum = uint64(15)
+	validAgreedPrestate  = []byte{1}
 )
 
 // TestValidConfigIsValid checks that the config provided by validConfig is actually valid
@@ -32,17 +33,37 @@ func TestValidConfigIsValid(t *testing.T) {
 	require.NoError(t, err)
 }
 
+// TestValidInteropConfigIsValid checks that the config provided by validInteropConfig is actually valid
+func TestValidInteropConfigIsValid(t *testing.T) {
+	err := validInteropConfig().Check()
+	require.NoError(t, err)
+}
+
+func TestL2BlockNum(t *testing.T) {
+	t.Run("RequiredForPreInterop", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.L2ChainID = 0
+		require.ErrorIs(t, cfg.Check(), ErrMissingL2ChainID)
+	})
+
+	t.Run("NotRequiredForInterop", func(t *testing.T) {
+		cfg := validInteropConfig()
+		cfg.L2ChainID = 0
+		require.NoError(t, cfg.Check())
+	})
+}
+
 func TestRollupConfig(t *testing.T) {
 	t.Run("Required", func(t *testing.T) {
 		config := validConfig()
-		config.Rollup = nil
+		config.Rollups = nil
 		err := config.Check()
 		require.ErrorIs(t, err, ErrMissingRollupConfig)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
 		config := validConfig()
-		config.Rollup = &rollup.Config{}
+		config.Rollups = []*rollup.Config{{}}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
 	})
@@ -85,7 +106,7 @@ func TestL2ClaimBlockNumberRequired(t *testing.T) {
 
 func TestL2GenesisRequired(t *testing.T) {
 	config := validConfig()
-	config.L2ChainConfig = nil
+	config.L2ChainConfigs = nil
 	err := config.Check()
 	require.ErrorIs(t, err, ErrMissingL2Genesis)
 }
@@ -98,19 +119,25 @@ func TestFetchingArgConsistency(t *testing.T) {
 	})
 	t.Run("RequireL1WhenL2Set", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.ErrorIs(t, cfg.Check(), ErrL1AndL2Inconsistent)
 	})
 	t.Run("AllowNeitherSet", func(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = ""
-		cfg.L2URL = ""
+		cfg.L2URLs = []string{}
+		require.NoError(t, cfg.Check())
+	})
+	t.Run("AllowNeitherSetNil", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.L1URL = ""
+		cfg.L2URLs = nil
 		require.NoError(t, cfg.Check())
 	})
 	t.Run("AllowBothSet", func(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = "https://example.com:1234"
-		cfg.L2URL = "https://example.com:4678"
+		cfg.L2URLs = []string{"https://example.com:4678"}
 		require.NoError(t, cfg.Check())
 	})
 }
@@ -123,13 +150,13 @@ func TestFetchingEnabled(t *testing.T) {
 
 	t.Run("FetchingEnabledWhenFetcherUrlsSpecified", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.False(t, cfg.FetchingEnabled(), "Should not enable fetching when node URL not supplied")
 	})
 
 	t.Run("FetchingNotEnabledWhenNoL1UrlSpecified", func(t *testing.T) {
 		cfg := validConfig()
-		cfg.L2URL = "https://example.com:1234"
+		cfg.L2URLs = []string{"https://example.com:1234"}
 		require.False(t, cfg.FetchingEnabled(), "Should not enable L1 fetching when L1 node URL not supplied")
 	})
 
@@ -143,7 +170,7 @@ func TestFetchingEnabled(t *testing.T) {
 		cfg := validConfig()
 		cfg.L1URL = "https://example.com:1234"
 		cfg.L1BeaconURL = "https://example.com:5678"
-		cfg.L2URL = "https://example.com:91011"
+		cfg.L2URLs = []string{"https://example.com:91011"}
 		require.True(t, cfg.FetchingEnabled(), "Should enable fetching when node URL supplied")
 	})
 }
@@ -152,7 +179,7 @@ func TestRequireDataDirInNonFetchingMode(t *testing.T) {
 	cfg := validConfig()
 	cfg.DataDir = ""
 	cfg.L1URL = ""
-	cfg.L2URL = ""
+	cfg.L2URLs = nil
 	err := cfg.Check()
 	require.ErrorIs(t, err, ErrDataDirRequired)
 }
@@ -172,7 +199,7 @@ func TestCustomL2ChainID(t *testing.T) {
 	})
 	t.Run("custom", func(t *testing.T) {
 		customChainConfig := &params.ChainConfig{ChainID: big.NewInt(0x1212121212)}
-		cfg := NewConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
+		cfg := NewSingleChainConfig(validRollupConfig, customChainConfig, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
 		require.Equal(t, cfg.L2ChainID, boot.CustomChainIDIndicator)
 	})
 }
@@ -233,7 +260,15 @@ func TestDBFormat(t *testing.T) {
 }
 
 func validConfig() *Config {
-	cfg := NewConfig(validRollupConfig, validL2Genesis, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
+	cfg := NewSingleChainConfig(validRollupConfig, validL2Genesis, validL1Head, validL2Head, validL2OutputRoot, validL2Claim, validL2ClaimBlockNum)
 	cfg.DataDir = "/tmp/configTest"
+	return cfg
+}
+
+func validInteropConfig() *Config {
+	cfg := validConfig()
+	cfg.InteropEnabled = true
+	cfg.AgreedPrestate = validAgreedPrestate
+	cfg.L2OutputRoot = crypto.Keccak256Hash(cfg.AgreedPrestate)
 	return cfg
 }

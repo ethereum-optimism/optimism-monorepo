@@ -3,10 +3,8 @@ package common
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -47,27 +45,6 @@ func NewL2SourceWithClient(logger log.Logger, canonicalL2Client *L2Client, canon
 	}
 
 	return source
-}
-
-func NewL2Source(ctx context.Context, logger log.Logger, config *config.Config) (*L2Source, error) {
-	logger.Info("Connecting to canonical L2 source", "url", config.L2URL)
-	// eth_getProof calls are expensive and takes time, so we use a longer timeout
-	canonicalL2RPC, err := client.NewRPC(ctx, logger, config.L2URL, client.WithDialAttempts(10), client.WithCallTimeout(5*time.Minute))
-	if err != nil {
-		return nil, err
-	}
-
-	var experimentalRPC client.RPC
-
-	if len(config.L2ExperimentalURL) != 0 {
-		logger.Info("Connecting to experimental L2 source", "url", config.L2ExperimentalURL)
-		// debug_executionWitness calls are expensive and takes time, so we use a longer timeout
-		experimentalRPC, err = client.NewRPC(ctx, logger, config.L2ExperimentalURL, client.WithDialAttempts(10), client.WithCallTimeout(5*time.Minute))
-		if err != nil {
-			return nil, err
-		}
-	}
-	return NewL2SourceFromRPC(logger, config.Rollup, canonicalL2RPC, experimentalRPC)
 }
 
 func NewL2SourceFromRPC(logger log.Logger, rollupCfg *rollup.Config, canonicalL2RPC client.RPC, experimentalRPC client.RPC) (*L2Source, error) {
