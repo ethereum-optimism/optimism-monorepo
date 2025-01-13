@@ -315,9 +315,8 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	if ctx.Bool(flags.L2Custom.Name) {
 		log.Warn("Using custom chain configuration via preimage oracle. This is not compatible with on-chain execution.")
 		l2ChainID = boot.CustomChainIDIndicator
-	}
-	if len(rollupCfgs) > 1 {
-		// L2ChainID is not applicable when multiple L2 sources are used
+	} else if len(rollupCfgs) > 1 {
+		// L2ChainID is not applicable when multiple L2 sources are used and not using custom configs
 		l2ChainID = 0
 	}
 
