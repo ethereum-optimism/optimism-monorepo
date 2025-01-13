@@ -54,7 +54,7 @@ func (n *nat) Start(ctx context.Context) error {
 	n.running.Store(true)
 	for _, validator := range n.config.Validators {
 		n.log.Info("Running validator", "validator", validator.Name(), "type", validator.Type())
-		passed, err := validator.Run(*n.config)
+		passed, err := validator.Run(ctx, n.log, *n.config)
 		n.log.Info("Completedvalidator", "validator", validator.Name(), "type", validator.Type(), "passed", passed, "error", err)
 		if err != nil {
 			n.log.Error("Error running validator", "validator", validator.Name(), "error", err)
