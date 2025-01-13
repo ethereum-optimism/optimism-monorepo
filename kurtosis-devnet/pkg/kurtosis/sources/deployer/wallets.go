@@ -7,6 +7,8 @@ import (
 	"io"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -60,10 +62,11 @@ func (d *Deployer) getKnownWallets(ctx context.Context, fs *EnclaveFS) ([]*Walle
 	for _, key := range keys {
 		addr, _ := m.Address(key)
 		sec, _ := m.Secret(key)
+
 		knownWallets = append(knownWallets, &Wallet{
 			Name:       key.String(),
 			Address:    addr.Hex(),
-			PrivateKey: fmt.Sprintf("%x", sec.D),
+			PrivateKey: hexutil.Bytes(crypto.FromECDSA(sec)).String(),
 		})
 	}
 

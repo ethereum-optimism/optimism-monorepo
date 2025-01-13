@@ -96,7 +96,6 @@ func (d *deployerKey) String() string {
 
 func TestEndToEndApply(t *testing.T) {
 	op_e2e.InitParallel(t)
-	kurtosisutil.Test(t)
 
 	lgr := testlog.Logger(t, slog.LevelDebug)
 
@@ -133,6 +132,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -149,6 +149,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.NoError(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -170,6 +171,7 @@ func TestEndToEndApply(t *testing.T) {
 		require.ErrorIs(t, deployer.ApplyPipeline(
 			ctx,
 			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetLive,
 				L1RPCUrl:           rpcURL,
 				DeployerPrivateKey: pk,
 				Intent:             intent,
@@ -178,6 +180,25 @@ func TestEndToEndApply(t *testing.T) {
 				StateWriter:        pipeline.NoopStateWriter(),
 			},
 		), pipeline.ErrRefusingToDeployTaggedReleaseWithoutOPCM)
+	})
+
+	t.Run("with calldata broadcasts", func(t *testing.T) {
+		intent, st := newIntent(t, l1ChainID, dk, l2ChainID1, loc, loc)
+
+		require.NoError(t, deployer.ApplyPipeline(
+			ctx,
+			deployer.ApplyPipelineOpts{
+				DeploymentTarget:   deployer.DeploymentTargetCalldata,
+				L1RPCUrl:           rpcURL,
+				DeployerPrivateKey: pk,
+				Intent:             intent,
+				State:              st,
+				Logger:             lgr,
+				StateWriter:        pipeline.NoopStateWriter(),
+			},
+		))
+
+		require.Greater(t, len(st.DeploymentCalldata), 0)
 	})
 }
 
@@ -381,6 +402,7 @@ func testApplyExistingOPCM(t *testing.T, testInfo existingOPCMTest) {
 	require.NoError(t, deployer.ApplyPipeline(
 		ctx,
 		deployer.ApplyPipelineOpts{
+			DeploymentTarget:   deployer.DeploymentTargetLive,
 			L1RPCUrl:           runner.RPCUrl(),
 			DeployerPrivateKey: pk,
 			Intent:             intent,
@@ -651,12 +673,12 @@ func TestProofParamOverrides(t *testing.T) {
 		"proofMaturityDelaySeconds":               standard.ProofMaturityDelaySeconds + 1,
 		"disputeGameFinalityDelaySeconds":         standard.DisputeGameFinalityDelaySeconds + 1,
 		"mipsVersion":                             standard.MIPSVersion + 1,
-		"disputeGameType":                         standard.DisputeGameType, // This must be set to the permissioned game
-		"disputeAbsolutePrestate":                 common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
-		"disputeMaxGameDepth":                     standard.DisputeMaxGameDepth + 1,
-		"disputeSplitDepth":                       standard.DisputeSplitDepth + 1,
-		"disputeClockExtension":                   standard.DisputeClockExtension + 1,
-		"disputeMaxClockDuration":                 standard.DisputeMaxClockDuration + 1,
+		"respectedGameType":                       standard.DisputeGameType, // This must be set to the permissioned game
+		"faultGameAbsolutePrestate":               common.Hash{'A', 'B', 'S', 'O', 'L', 'U', 'T', 'E'},
+		"faultGameMaxDepth":                       standard.DisputeMaxGameDepth + 1,
+		"faultGameSplitDepth":                     standard.DisputeSplitDepth + 1,
+		"faultGameClockExtension":                 standard.DisputeClockExtension + 1,
+		"faultGameMaxClockDuration":               standard.DisputeMaxClockDuration + 1,
 		"dangerouslyAllowCustomDisputeParameters": true,
 	}
 
@@ -700,29 +722,29 @@ func TestProofParamOverrides(t *testing.T) {
 			st.ImplementationsDeployment.OptimismPortalImplAddress,
 		},
 		{
-			"disputeAbsolutePrestate",
+			"faultGameAbsolutePrestate",
 			func(t *testing.T, val any) common.Hash {
 				return val.(common.Hash)
 			},
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxGameDepth",
+			"faultGameMaxDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeSplitDepth",
+			"faultGameSplitDepth",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeClockExtension",
+			"faultGameClockExtension",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
 		{
-			"disputeMaxClockDuration",
+			"faultGameMaxClockDuration",
 			uint64Caster,
 			chainState.PermissionedDisputeGameAddress,
 		},
@@ -837,7 +859,6 @@ func TestInvalidL2Genesis(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			opts, intent, _ := setupGenesisChain(t, defaultL1ChainID)
-			intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 			intent.GlobalDeployOverrides = tt.overrides
 
 			err := deployer.ApplyPipeline(ctx, opts)
@@ -1002,9 +1023,9 @@ func setupGenesisChain(t *testing.T, l1ChainID uint64) (deployer.ApplyPipelineOp
 	loc, _ := testutil.LocalArtifacts(t)
 
 	intent, st := newIntent(t, l1ChainIDBig, dk, l2ChainID1, loc, loc)
-	intent.DeploymentStrategy = state.DeploymentStrategyGenesis
 
 	opts := deployer.ApplyPipelineOpts{
+		DeploymentTarget:   deployer.DeploymentTargetGenesis,
 		DeployerPrivateKey: priv,
 		Intent:             intent,
 		State:              st,
@@ -1030,9 +1051,8 @@ func newIntent(
 	l2Loc *artifacts.Locator,
 ) (*state.Intent, *state.State) {
 	intent := &state.Intent{
-		ConfigType:         state.IntentConfigTypeCustom,
-		DeploymentStrategy: state.DeploymentStrategyLive,
-		L1ChainID:          l1ChainID.Uint64(),
+		ConfigType: state.IntentConfigTypeCustom,
+		L1ChainID:  l1ChainID.Uint64(),
 		SuperchainRoles: &state.SuperchainRoles{
 			ProxyAdminOwner:       addrFor(t, dk, devkeys.L1ProxyAdminOwnerRole.Key(l1ChainID)),
 			ProtocolVersionsOwner: addrFor(t, dk, devkeys.SuperchainDeployerKey.Key(l1ChainID)),

@@ -22,8 +22,11 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ///         Superchain-wide pause functionality. Significantly simplifies the process of triggering
 ///         a Superchain-wide pause without changing the existing security model.
 contract DeputyPauseModule is ISemver, EIP712 {
-    /// @notice Error message for invalid deputy.
+    /// @notice Error message for deputy being invalid.
     error DeputyPauseModule_InvalidDeputy();
+
+    /// @notice Error message for the DeputyGuardianModule being invalid.
+    error DeputyPauseModule_InvalidDeputyGuardianModule();
 
     /// @notice Error message for unauthorized calls.
     error DeputyPauseModule_Unauthorized();
@@ -83,8 +86,8 @@ contract DeputyPauseModule is ISemver, EIP712 {
     mapping(bytes32 => bool) public usedNonces;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.1
-    string public constant version = "1.0.0-beta.1";
+    /// @custom:semver 1.0.0-beta.2
+    string public constant version = "1.0.0-beta.2";
 
     /// @param _foundationSafe Address of the Foundation Safe.
     /// @param _deputyGuardianModule Address of the DeputyGuardianModule used by the SC Safe.
@@ -101,7 +104,7 @@ contract DeputyPauseModule is ISemver, EIP712 {
         EIP712("DeputyPauseModule", "1")
     {
         _setDeputy(_deputy, _deputySignature);
-        deputyGuardianModule = _deputyGuardianModule;
+        _setDeputyGuardianModule(_deputyGuardianModule);
         FOUNDATION_SAFE = _foundationSafe;
         SUPERCHAIN_CONFIG = _superchainConfig;
     }
@@ -146,11 +149,13 @@ contract DeputyPauseModule is ISemver, EIP712 {
     /// @notice Sets the DeputyGuardianModule.
     /// @param _deputyGuardianModule DeputyGuardianModule address.
     function setDeputyGuardianModule(IDeputyGuardianModule _deputyGuardianModule) external {
+        // Can only be called by the Foundation Safe itself.
         if (msg.sender != address(FOUNDATION_SAFE)) {
             revert DeputyPauseModule_NotFromSafe();
         }
-        deputyGuardianModule = _deputyGuardianModule;
-        emit DeputyGuardianModuleSet(_deputyGuardianModule);
+
+        // Set the DeputyGuardianModule.
+        _setDeputyGuardianModule(_deputyGuardianModule);
     }
 
     /// @notice Calls the Foundation Safe's `execTransactionFromModuleReturnData()` function with
@@ -161,7 +166,7 @@ contract DeputyPauseModule is ISemver, EIP712 {
     /// @param _signature ECDSA signature.
     function pause(bytes32 _nonce, bytes memory _signature) external {
         // Verify the signature.
-        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(PAUSE_MESSAGE_TYPEHASH, PauseMessage(_nonce))));
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(PAUSE_MESSAGE_TYPEHASH, _nonce)));
         if (ECDSA.recover(digest, _signature) != deputy) {
             revert DeputyPauseModule_Unauthorized();
         }
@@ -175,6 +180,7 @@ contract DeputyPauseModule is ISemver, EIP712 {
         usedNonces[_nonce] = true;
 
         // Attempt to trigger the call.
+        // Will succeed if the DeputyGuardianModule has no code.
         (bool success, bytes memory returnData) = FOUNDATION_SAFE.execTransactionFromModuleReturnData(
             address(deputyGuardianModule), 0, abi.encodeCall(IDeputyGuardianModule.pause, ()), Enum.Operation.Call
         );
@@ -198,8 +204,7 @@ contract DeputyPauseModule is ISemver, EIP712 {
     /// @param _deputySignature Deputy signature.
     function _setDeputy(address _deputy, bytes memory _deputySignature) internal {
         // Check that the deputy signature is valid.
-        bytes32 digest =
-            _hashTypedDataV4(keccak256(abi.encode(DEPUTY_AUTH_MESSAGE_TYPEHASH, DeputyAuthMessage(_deputy))));
+        bytes32 digest = _hashTypedDataV4(keccak256(abi.encode(DEPUTY_AUTH_MESSAGE_TYPEHASH, _deputy)));
         if (ECDSA.recover(digest, _deputySignature) != _deputy) {
             revert DeputyPauseModule_InvalidDeputy();
         }
@@ -209,5 +214,27 @@ contract DeputyPauseModule is ISemver, EIP712 {
 
         // Emit the DeputySet event.
         emit DeputySet(_deputy);
+    }
+
+    /// @notice Internal function to set the DeputyGuardianModule.
+    /// @param _deputyGuardianModule DeputyGuardianModule address.
+    function _setDeputyGuardianModule(IDeputyGuardianModule _deputyGuardianModule) internal {
+        // Cannot set the DeputyGuardianModule to be the Foundation Safe. This prevents the
+        // Foundation Safe from unexpectedly triggering itself if there's some important function
+        // that happens to have the "pause()" selector.
+        if (address(_deputyGuardianModule) == address(FOUNDATION_SAFE)) {
+            revert DeputyPauseModule_InvalidDeputyGuardianModule();
+        }
+
+        // Make sure that the DeputyGuardianModule actually has code.
+        if (address(_deputyGuardianModule).code.length == 0) {
+            revert DeputyPauseModule_InvalidDeputyGuardianModule();
+        }
+
+        // Set the DeputyGuardianModule.
+        deputyGuardianModule = _deputyGuardianModule;
+
+        // Emit the DeputyGuardianModuleSet event.
+        emit DeputyGuardianModuleSet(_deputyGuardianModule);
     }
 }

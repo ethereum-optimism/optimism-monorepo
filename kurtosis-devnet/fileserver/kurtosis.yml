@@ -1,0 +1,4 @@
+name: github.com/ethereum-optimism/optimism/kurtosis-devnet/fileserver
+description: |-
+  Kurtosis package for serving files from the build directory
+replace: {}

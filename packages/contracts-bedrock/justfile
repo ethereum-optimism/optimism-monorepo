@@ -91,6 +91,8 @@ anvil-fork:
 # Use anvil-fork in a separate terminal before running this command.
 # Helpful for debugging.
 test-upgrade-against-anvil *ARGS: build-go-ffi
+  #!/bin/bash
+  export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   FORK_RPC_URL=http://127.0.0.1:8545 \
     FORK_TEST=true \
     forge test {{ARGS}}

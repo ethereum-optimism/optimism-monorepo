@@ -7,6 +7,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/fake"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
@@ -48,7 +50,8 @@ func TestKurtosisDeployer(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			d := NewKurtosisDeployer(tt.opts...)
+			d, err := NewKurtosisDeployer(tt.opts...)
+			require.NoError(t, err)
 			assert.Equal(t, tt.wantBaseDir, d.baseDir)
 			assert.Equal(t, tt.wantPkg, d.packageName)
 			assert.Equal(t, tt.wantDryRun, d.dryRun)
@@ -88,7 +91,7 @@ func (f *fakeEnclaveSpecifier) EnclaveSpec(r io.Reader) (*spec.EnclaveSpec, erro
 }
 
 func TestDeploy(t *testing.T) {
-	testSpecWithL2 := &spec.EnclaveSpec{
+	testSpec := &spec.EnclaveSpec{
 		Chains: []spec.ChainSpec{
 			{
 				Name:      "op-kurtosis",
@@ -97,31 +100,9 @@ func TestDeploy(t *testing.T) {
 		},
 	}
 
-	testSpecNoL2 := &spec.EnclaveSpec{
-		Chains: []spec.ChainSpec{},
-	}
-
-	// Define successful responses that will be used in multiple test cases
-	successResponses := []fakeStarlarkResponse{
-		{progressMsg: []string{"Starting deployment..."}},
-		{info: "Preparing environment"},
-		{instruction: "Executing package"},
-		{progressMsg: []string{"Deployment complete"}},
-		{isSuccessful: true},
-	}
-
 	testServices := make(inspect.ServiceMap)
 	testServices["el-1-geth-lighthouse"] = inspect.PortMap{
 		"rpc": {Port: 52645},
-	}
-	testServices["op-el-1-op-geth-op-node-op-kurtosis"] = inspect.PortMap{
-		"rpc": {Port: 53402},
-	}
-	testServices["op-cl-1-op-node-op-geth-op-kurtosis"] = inspect.PortMap{
-		"http": {Port: 53503},
-	}
-	testServices["op-batcher-op-kurtosis"] = inspect.PortMap{
-		"http": {Port: 53572},
 	}
 
 	testWallets := deployer.WalletList{
@@ -132,211 +113,82 @@ func TestDeploy(t *testing.T) {
 		},
 	}
 
-	testAddresses := deployer.DeploymentAddresses{
-		"contract1": "0xdef",
-	}
-
 	tests := []struct {
-		name           string
-		input          string
-		spec           *spec.EnclaveSpec
-		specErr        error
-		inspectResult  *inspect.InspectData
-		inspectErr     error
-		deployerState  *deployer.DeployerData
-		deployerErr    error
-		kurtosisErr    error
-		responses      []fakeStarlarkResponse
-		wantL1Nodes    []Node
-		wantL2Nodes    []Node
-		wantL2Services EndpointMap
-		wantWallets    WalletMap
-		wantErr        bool
+		name        string
+		specErr     error
+		inspectErr  error
+		deployerErr error
+		kurtosisErr error
+		wantErr     bool
 	}{
 		{
-			name:  "successful deployment",
-			input: "test input",
-			spec:  testSpecWithL2,
-			inspectResult: &inspect.InspectData{
-				UserServices: testServices,
-			},
-			deployerState: &deployer.DeployerData{
-				Wallets: testWallets,
-				State: map[string]deployer.DeploymentAddresses{
-					"1234": testAddresses,
-				},
-			},
-			responses: successResponses,
-			wantL1Nodes: []Node{
-				{
-					"el": "http://localhost:52645",
-				},
-			},
-			wantL2Nodes: []Node{
-				{
-					"el": "http://localhost:53402",
-					"cl": "http://localhost:53503",
-				},
-			},
-			wantL2Services: EndpointMap{
-				"batcher": "http://localhost:53572",
-			},
-			wantWallets: WalletMap{
-				"test-wallet": {
-					Address:    "0x123",
-					PrivateKey: "0xabc",
-				},
-			},
+			name: "successful deployment",
 		},
 		{
 			name:    "spec error",
-			input:   "test input",
-			spec:    testSpecWithL2,
 			specErr: fmt.Errorf("spec failed"),
 			wantErr: true,
 		},
 		{
 			name:       "inspect error",
-			input:      "test input",
-			spec:       testSpecWithL2,
 			inspectErr: fmt.Errorf("inspect failed"),
 			wantErr:    true,
 		},
 		{
 			name:        "kurtosis error",
-			input:       "test input",
-			spec:        testSpecWithL2,
 			kurtosisErr: fmt.Errorf("kurtosis failed"),
 			wantErr:     true,
 		},
 		{
-			name:  "deployer error",
-			input: "test input",
-			spec:  testSpecWithL2,
-			inspectResult: &inspect.InspectData{
-				UserServices: testServices,
-			},
+			name:        "deployer error",
 			deployerErr: fmt.Errorf("deployer failed"),
 			wantErr:     true,
-		},
-		{
-			name:  "successful deployment with no L1",
-			input: "test input",
-			spec:  testSpecWithL2,
-			inspectResult: &inspect.InspectData{
-				UserServices: inspect.ServiceMap{
-					"op-el-1-op-geth-op-node-op-kurtosis": inspect.PortMap{
-						"rpc": {Port: 53402},
-					},
-					"op-cl-1-op-node-op-geth-op-kurtosis": inspect.PortMap{
-						"http": {Port: 53503},
-					},
-				},
-			},
-			deployerState: &deployer.DeployerData{
-				Wallets: testWallets,
-				State: map[string]deployer.DeploymentAddresses{
-					"1234": testAddresses,
-				},
-			},
-			responses: successResponses,
-			wantL2Nodes: []Node{
-				{
-					"el": "http://localhost:53402",
-					"cl": "http://localhost:53503",
-				},
-			},
-			wantWallets: WalletMap{
-				"test-wallet": {
-					Address:    "0x123",
-					PrivateKey: "0xabc",
-				},
-			},
-		},
-		{
-			name:  "successful deployment with no L2",
-			input: "test input",
-			spec:  testSpecNoL2,
-			inspectResult: &inspect.InspectData{
-				UserServices: inspect.ServiceMap{
-					"el-1-geth-lighthouse": inspect.PortMap{
-						"rpc": {Port: 52645},
-					},
-				},
-			},
-			deployerState: &deployer.DeployerData{
-				Wallets: testWallets,
-			},
-			responses: successResponses,
-			wantL1Nodes: []Node{
-				{
-					"el": "http://localhost:52645",
-				},
-			},
-			wantWallets: WalletMap{
-				"test-wallet": {
-					Address:    "0x123",
-					PrivateKey: "0xabc",
-				},
-			},
 		},
 	}
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			// Create a fake Kurtosis context
-			fakeCtx := &fakeKurtosisContext{
-				enclaveCtx: &fakeEnclaveContext{
-					runErr:    tt.kurtosisErr,
-					responses: tt.responses,
+			// Create a fake Kurtosis context that will return the test error
+			fakeCtx := &fake.KurtosisContext{
+				EnclaveCtx: &fake.EnclaveContext{
+					RunErr: tt.kurtosisErr,
+					// Send a successful run finished event for successful cases
+					Responses: []interfaces.StarlarkResponse{
+						&fake.StarlarkResponse{
+							IsSuccessful: !tt.wantErr,
+						},
+					},
 				},
 			}
 
-			d := NewKurtosisDeployer(
+			d, err := NewKurtosisDeployer(
 				WithKurtosisEnclaveSpec(&fakeEnclaveSpecifier{
-					spec: tt.spec,
+					spec: testSpec,
 					err:  tt.specErr,
 				}),
 				WithKurtosisEnclaveInspecter(&fakeEnclaveInspecter{
-					result: tt.inspectResult,
-					err:    tt.inspectErr,
+					result: &inspect.InspectData{
+						UserServices: testServices,
+					},
+					err: tt.inspectErr,
 				}),
 				WithKurtosisEnclaveObserver(&fakeEnclaveObserver{
-					state: tt.deployerState,
-					err:   tt.deployerErr,
+					state: &deployer.DeployerData{
+						Wallets: testWallets,
+					},
+					err: tt.deployerErr,
 				}),
+				WithKurtosisKurtosisContext(fakeCtx),
 			)
+			require.NoError(t, err)
 
-			// Set the fake Kurtosis context
-			d.kurtosisCtx = fakeCtx
-
-			env, err := d.Deploy(context.Background(), strings.NewReader(tt.input))
+			_, err = d.Deploy(context.Background(), strings.NewReader("test input"))
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
 			require.NoError(t, err)
-			assert.NotNil(t, env)
-
-			if tt.wantL1Nodes != nil {
-				require.NotNil(t, env.L1)
-				assert.Equal(t, tt.wantL1Nodes, env.L1.Nodes)
-			} else {
-				assert.Nil(t, env.L1)
-			}
-
-			if tt.wantL2Nodes != nil {
-				require.Len(t, env.L2, 1)
-				assert.Equal(t, tt.wantL2Nodes, env.L2[0].Nodes)
-				if tt.wantL2Services != nil {
-					assert.Equal(t, tt.wantL2Services, env.L2[0].Services)
-				}
-			} else {
-				assert.Empty(t, env.L2)
-			}
-
-			assert.Equal(t, tt.wantWallets, env.Wallets)
 		})
 	}
 }

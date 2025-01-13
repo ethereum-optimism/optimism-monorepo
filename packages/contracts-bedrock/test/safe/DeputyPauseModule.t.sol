@@ -646,6 +646,14 @@ contract DeputyPauseModule_SetDeputyGuardianModule_Test is DeputyPauseModule_Tes
     function testFuzz_setDeputyGuardianModule_fromSafe_succeeds(address _newModule) external {
         vm.assume(_newModule != address(0));
         vm.assume(_newModule != address(deputyGuardianModule));
+        vm.assume(_newModule != address(foundationSafeInstance.safe));
+        assumeNotPrecompile(_newModule);
+
+        // Write code to the module address if it has no code.
+        // vm.assume would throw out too many inputs.
+        if (_newModule.code.length == 0) {
+            vm.etch(_newModule, hex"FF");
+        }
 
         // Set the new DeputyGuardianModule
         vm.expectEmit(address(deputyPauseModule));
@@ -673,5 +681,23 @@ contract DeputyPauseModule_SetDeputyGuardianModule_TestFail is DeputyPauseModule
 
         // Make sure DeputyGuardianModule has not changed
         assertEq(address(deputyPauseModule.deputyGuardianModule()), address(deputyGuardianModule));
+    }
+
+    /// @notice Tests that setDeputyGuardianModule() reverts when the DeputyGuardianModule has no code.
+    /// @param _newModule The new DeputyGuardianModule.
+    function testFuzz_setDeputyGuardianModule_hasNoCode_reverts(address _newModule) external {
+        vm.assume(_newModule.code.length == 0);
+
+        // Expect a revert.
+        vm.expectRevert(IDeputyPauseModule.DeputyPauseModule_InvalidDeputyGuardianModule.selector);
+        vm.prank(address(foundationSafeInstance.safe));
+        deputyPauseModule.setDeputyGuardianModule(IDeputyGuardianModule(_newModule));
+    }
+
+    /// @notice Tests that setDeputyGuardianModule() reverts when the DeputyGuardianModule is the Foundation Safe.
+    function test_setDeputyGuardianModule_isFoundationSafe_reverts() external {
+        vm.expectRevert(IDeputyPauseModule.DeputyPauseModule_InvalidDeputyGuardianModule.selector);
+        vm.prank(address(foundationSafeInstance.safe));
+        deputyPauseModule.setDeputyGuardianModule(IDeputyGuardianModule(address(foundationSafeInstance.safe)));
     }
 }

@@ -24,7 +24,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that the implementation is initialized correctly.
     function test_constructor_succeeds() external view {
         IL2CrossDomainMessenger impl =
-            IL2CrossDomainMessenger(EIP1967Helper.getImplementation(deploy.mustGetAddress("L2CrossDomainMessenger")));
+            IL2CrossDomainMessenger(EIP1967Helper.getImplementation(artifacts.mustGetAddress("L2CrossDomainMessenger")));
         assertEq(address(impl.OTHER_MESSENGER()), address(0));
         assertEq(address(impl.otherMessenger()), address(0));
         assertEq(address(impl.l1CrossDomainMessenger()), address(0));

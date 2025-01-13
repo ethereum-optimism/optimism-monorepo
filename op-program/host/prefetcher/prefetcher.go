@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -26,11 +27,8 @@ import (
 var (
 	precompileSuccess = [1]byte{1}
 	precompileFailure = [1]byte{0}
-)
 
-var (
-	ErrExperimentalPrefetchFailed   = errors.New("experimental prefetch failed")
-	ErrExperimentalPrefetchDisabled = errors.New("experimental prefetch disabled")
+	ErrAgreedPrestateUnavailable = errors.New("agreed prestate unavailable")
 )
 
 var acceleratedPrecompiles = []common.Address{
@@ -50,35 +48,47 @@ type L1BlobSource interface {
 	GetBlobs(ctx context.Context, ref eth.L1BlockRef, hashes []eth.IndexedBlobHash) ([]*eth.Blob, error)
 }
 
-type L2Source interface {
-	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error)
-	NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
-	OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error)
-}
-
 type Prefetcher struct {
 	logger        log.Logger
 	l1Fetcher     L1Source
 	l1BlobFetcher L1BlobSource
-	l2Fetcher     L2Source
+	l2Fetcher     *RetryingL2Source
 	lastHint      string
 	kvStore       kvstore.KV
+
+	// Used to run the program for native block execution
+	executor       ProgramExecutor
+	agreedPrestate []byte
 }
 
-func NewPrefetcher(logger log.Logger, l1Fetcher L1Source, l1BlobFetcher L1BlobSource, l2Fetcher L2Source, kvStore kvstore.KV) *Prefetcher {
+func NewPrefetcher(
+	logger log.Logger,
+	l1Fetcher L1Source,
+	l1BlobFetcher L1BlobSource,
+	l2Fetcher hosttypes.L2Source,
+	kvStore kvstore.KV,
+	executor ProgramExecutor,
+	agreedPrestate []byte,
+) *Prefetcher {
 	return &Prefetcher{
-		logger:        logger,
-		l1Fetcher:     NewRetryingL1Source(logger, l1Fetcher),
-		l1BlobFetcher: NewRetryingL1BlobSource(logger, l1BlobFetcher),
-		l2Fetcher:     NewRetryingL2Source(logger, l2Fetcher),
-		kvStore:       kvStore,
+		logger:         logger,
+		l1Fetcher:      NewRetryingL1Source(logger, l1Fetcher),
+		l1BlobFetcher:  NewRetryingL1BlobSource(logger, l1BlobFetcher),
+		l2Fetcher:      NewRetryingL2Source(logger, l2Fetcher),
+		kvStore:        kvStore,
+		executor:       executor,
+		agreedPrestate: agreedPrestate,
 	}
 }
 
 func (p *Prefetcher) Hint(hint string) error {
 	p.logger.Trace("Received hint", "hint", hint)
 	p.lastHint = hint
+
+	// This is a special case to force block execution in order to populate the cache with preimage data
+	if hintType, _, err := parseHint(hint); err == nil && hintType == l2.HintL2BlockData {
+		return p.prefetch(context.Background(), hint)
+	}
 	return nil
 }
 
@@ -288,8 +298,38 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to fetch L2 output root %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
+	case l2.HintL2BlockData:
+		if p.executor == nil {
+			return fmt.Errorf("this prefetcher does not support native block execution")
+		}
+		if len(hintBytes) != 32+32+8 {
+			return fmt.Errorf("invalid L2 block data hint: %x", hint)
+		}
+		agreedBlockHash := common.Hash(hintBytes[:32])
+		blockHash := common.Hash(hintBytes[32:64])
+		chainID := binary.BigEndian.Uint64(hintBytes[64:72])
+		key := BlockDataKey(blockHash)
+		if _, err := p.kvStore.Get(key.Key()); err == nil {
+			return nil
+		}
+		if err := p.nativeReExecuteBlock(ctx, agreedBlockHash, blockHash, chainID); err != nil {
+			return fmt.Errorf("failed to re-execute block: %w", err)
+		}
+		return p.kvStore.Put(BlockDataKey(blockHash).Key(), []byte{1})
+	case l2.HintAgreedPrestate:
+		if len(p.agreedPrestate) == 0 {
+			return ErrAgreedPrestateUnavailable
+		}
+		hash := crypto.Keccak256Hash(p.agreedPrestate)
+		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), p.agreedPrestate)
 	}
 	return fmt.Errorf("unknown hint type: %v", hintType)
+}
+
+type BlockDataKey [32]byte
+
+func (p BlockDataKey) Key() [32]byte {
+	return crypto.Keccak256Hash([]byte("block_data"), p[:])
 }
 
 func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {

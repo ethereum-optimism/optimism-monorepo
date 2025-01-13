@@ -4,6 +4,7 @@ import (
 	"context"
 	"math"
 
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum/go-ethereum/common"
@@ -97,7 +98,7 @@ var _ L1BlobSource = (*RetryingL1BlobSource)(nil)
 
 type RetryingL2Source struct {
 	logger   log.Logger
-	source   L2Source
+	source   hosttypes.L2Source
 	strategy retry.Strategy
 }
 
@@ -142,7 +143,7 @@ func (s *RetryingL2Source) OutputByRoot(ctx context.Context, root common.Hash) (
 	})
 }
 
-func NewRetryingL2Source(logger log.Logger, source L2Source) *RetryingL2Source {
+func NewRetryingL2Source(logger log.Logger, source hosttypes.L2Source) *RetryingL2Source {
 	return &RetryingL2Source{
 		logger:   logger,
 		source:   source,
@@ -150,4 +151,4 @@ func NewRetryingL2Source(logger log.Logger, source L2Source) *RetryingL2Source {
 	}
 }
 
-var _ L2Source = (*RetryingL2Source)(nil)
+var _ hosttypes.L2Source = (*RetryingL2Source)(nil)

@@ -1,19 +1,17 @@
 package kurtosis
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/inspect"
 )
 
-// ServiceFinder is the main entry point for finding service endpoints
+// ServiceFinder is the main entry point for finding services and their endpoints
 type ServiceFinder struct {
-	services         inspect.ServiceMap
-	nodeServices     []string
-	interestingPorts []string
-	l2ServicePrefix  string
+	services        inspect.ServiceMap
+	nodeServices    []string
+	l2ServicePrefix string
 }
 
 // ServiceFinderOption configures a ServiceFinder
@@ -23,13 +21,6 @@ type ServiceFinderOption func(*ServiceFinder)
 func WithNodeServices(services []string) ServiceFinderOption {
 	return func(f *ServiceFinder) {
 		f.nodeServices = services
-	}
-}
-
-// WithInterestingPorts sets the ports to look for
-func WithInterestingPorts(ports []string) ServiceFinderOption {
-	return func(f *ServiceFinder) {
-		f.interestingPorts = ports
 	}
 }
 
@@ -43,10 +34,9 @@ func WithL2ServicePrefix(prefix string) ServiceFinderOption {
 // NewServiceFinder creates a new ServiceFinder with the given options
 func NewServiceFinder(services inspect.ServiceMap, opts ...ServiceFinderOption) *ServiceFinder {
 	f := &ServiceFinder{
-		services:         services,
-		nodeServices:     []string{"cl", "el"},
-		interestingPorts: []string{"rpc", "http"},
-		l2ServicePrefix:  "op-",
+		services:        services,
+		nodeServices:    []string{"cl", "el"},
+		l2ServicePrefix: "op-",
 	}
 	for _, opt := range opts {
 		opt(f)
@@ -54,8 +44,8 @@ func NewServiceFinder(services inspect.ServiceMap, opts ...ServiceFinderOption) 
 	return f
 }
 
-// FindL1Endpoints finds L1 nodes. Currently returns empty endpoints as specified.
-func (f *ServiceFinder) FindL1Endpoints() ([]Node, EndpointMap) {
+// FindL1Services finds L1 nodes.
+func (f *ServiceFinder) FindL1Services() ([]Node, ServiceMap) {
 	return f.findRPCEndpoints(func(serviceName string) (string, int, bool) {
 		// Only match services that start with one of the node service identifiers.
 		// We might have to change this if we need to support L1 services beyond nodes.
@@ -69,8 +59,8 @@ func (f *ServiceFinder) FindL1Endpoints() ([]Node, EndpointMap) {
 	})
 }
 
-// FindL2Endpoints finds L2 nodes and endpoints for a specific network
-func (f *ServiceFinder) FindL2Endpoints(network string) ([]Node, EndpointMap) {
+// FindL2Services finds L2 nodes and services for a specific network
+func (f *ServiceFinder) FindL2Services(network string) ([]Node, ServiceMap) {
 	networkSuffix := "-" + network
 	return f.findRPCEndpoints(func(serviceName string) (string, int, bool) {
 		if strings.HasSuffix(serviceName, networkSuffix) {
@@ -83,47 +73,44 @@ func (f *ServiceFinder) FindL2Endpoints(network string) ([]Node, EndpointMap) {
 }
 
 // findRPCEndpoints looks for services matching the given predicate that have an RPC port
-func (f *ServiceFinder) findRPCEndpoints(matchService func(string) (string, int, bool)) ([]Node, EndpointMap) {
-	endpointMap := make(EndpointMap)
+func (f *ServiceFinder) findRPCEndpoints(matchService func(string) (string, int, bool)) ([]Node, ServiceMap) {
+	serviceMap := make(ServiceMap)
 	var nodes []Node
 
 	for serviceName, ports := range f.services {
-		var portInfo *inspect.PortInfo
-		for _, interestingPort := range f.interestingPorts {
-			if p, ok := ports[interestingPort]; ok {
-				portInfo = &p
-				break
-			}
-		}
-		if portInfo == nil {
-			continue
-		}
-
 		if serviceIdentifier, num, ok := matchService(serviceName); ok {
 			var allocated bool
 			for _, service := range f.nodeServices {
 				if serviceIdentifier == service {
 					if num > len(nodes) {
-						nodes = append(nodes, make(Node))
+						nodes = append(nodes, Node{
+							Services: make(ServiceMap),
+						})
 					}
-					host := portInfo.Host
-					if host == "" {
-						host = "localhost"
+					endpoints := make(EndpointMap)
+					for portName, portInfo := range ports {
+						endpoints[portName] = portInfo
 					}
-					nodes[num-1][serviceIdentifier] = fmt.Sprintf("http://%s:%d", host, portInfo.Port)
+					nodes[num-1].Services[serviceIdentifier] = Service{
+						Name:      serviceName,
+						Endpoints: endpoints,
+					}
 					allocated = true
 				}
 			}
 			if !allocated {
-				host := portInfo.Host
-				if host == "" {
-					host = "localhost"
+				endpoints := make(EndpointMap)
+				for portName, portInfo := range ports {
+					endpoints[portName] = portInfo
 				}
-				endpointMap[serviceIdentifier] = fmt.Sprintf("http://%s:%d", host, portInfo.Port)
+				serviceMap[serviceIdentifier] = Service{
+					Name:      serviceName,
+					Endpoints: endpoints,
+				}
 			}
 		}
 	}
-	return nodes, endpointMap
+	return nodes, serviceMap
 }
 
 // serviceTag returns the shorthand service tag and index if it's a service with multiple instances
