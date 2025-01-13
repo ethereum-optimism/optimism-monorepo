@@ -55,6 +55,9 @@ abstract contract ResourceMetering is InitializablePublic {
         uint128 maximumBaseFee;
     }
 
+    /// @notice Legacy Initializable gap
+    bytes32 private spacer_0_0_32;
+
     /// @notice EIP-1559 style gas parameters.
     ResourceParams public params;
 
