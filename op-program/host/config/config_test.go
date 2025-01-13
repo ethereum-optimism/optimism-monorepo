@@ -58,7 +58,7 @@ func TestRollupConfig(t *testing.T) {
 		config := validConfig()
 		config.Rollups = nil
 		err := config.Check()
-		require.ErrorIs(t, err, ErrMissingRollupConfig)
+		require.ErrorIs(t, err, ErrNoL2Chains)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
@@ -66,6 +66,12 @@ func TestRollupConfig(t *testing.T) {
 		config.Rollups = []*rollup.Config{{}}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
+	})
+
+	t.Run("DisallowDuplicates", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.Rollups = append(cfg.Rollups, validRollupConfig)
+		require.ErrorIs(t, cfg.Check(), ErrDuplicateRollup)
 	})
 }
 

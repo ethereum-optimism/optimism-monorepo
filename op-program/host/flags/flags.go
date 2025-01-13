@@ -29,12 +29,12 @@ var (
 		Value:   false,
 		Hidden:  true,
 	}
-	RollupConfig = &cli.StringFlag{
+	RollupConfig = &cli.StringSliceFlag{
 		Name:    "rollup.config",
 		Usage:   "Rollup chain parameters",
 		EnvVars: prefixEnvVars("ROLLUP_CONFIG"),
 	}
-	Network = &cli.StringFlag{
+	Network = &cli.StringSliceFlag{
 		Name:    "network",
 		Usage:   fmt.Sprintf("Predefined network selection. Available networks: %s", strings.Join(chaincfg.AvailableNetworks(), ", ")),
 		EnvVars: prefixEnvVars("NETWORK"),
@@ -50,12 +50,12 @@ var (
 		EnvVars: prefixEnvVars("DATA_FORMAT"),
 		Value:   string(types.DataFormatDirectory),
 	}
-	L2NodeAddr = &cli.StringFlag{
+	L2NodeAddr = &cli.StringSliceFlag{
 		Name:    "l2",
 		Usage:   "Address of L2 JSON-RPC endpoint to use (eth and debug namespace required)",
 		EnvVars: prefixEnvVars("L2_RPC"),
 	}
-	L2NodeExperimentalAddr = &cli.StringFlag{
+	L2NodeExperimentalAddr = &cli.StringSliceFlag{
 		Name:    "l2.experimental",
 		Usage:   "Address of L2 JSON-RPC endpoint to use for experimental features (debug_executionWitness)",
 		EnvVars: prefixEnvVars("L2_RPC_EXPERIMENTAL_RPC"),
@@ -91,7 +91,7 @@ var (
 		Usage:   "Number of the L2 block that the claim is from",
 		EnvVars: prefixEnvVars("L2_BLOCK_NUM"),
 	}
-	L2GenesisPath = &cli.StringFlag{
+	L2GenesisPath = &cli.StringSliceFlag{
 		Name:    "l2.genesis",
 		Usage:   "Path to the op-geth genesis file",
 		EnvVars: prefixEnvVars("L2_GENESIS"),
@@ -138,12 +138,12 @@ var Flags []cli.Flag
 
 var requiredFlags = []cli.Flag{
 	L1Head,
-	L2Head,
 	L2Claim,
 	L2BlockNumber,
 }
 
 var programFlags = []cli.Flag{
+	L2Head,
 	L2OutputRoot,
 	L2AgreedPrestate,
 	L2Custom,
@@ -169,21 +169,7 @@ func init() {
 }
 
 func CheckRequired(ctx *cli.Context) error {
-	rollupConfig := ctx.String(RollupConfig.Name)
-	network := ctx.String(Network.Name)
-	if rollupConfig == "" && network == "" {
-		return fmt.Errorf("flag %s or %s is required", RollupConfig.Name, Network.Name)
-	}
-	if rollupConfig != "" && network != "" {
-		return fmt.Errorf("cannot specify both %s and %s", RollupConfig.Name, Network.Name)
-	}
-	if network == "" && ctx.String(L2GenesisPath.Name) == "" {
-		return fmt.Errorf("flag %s is required for custom networks", L2GenesisPath.Name)
-	}
-	if ctx.String(L2GenesisPath.Name) != "" && network != "" {
-		return fmt.Errorf("cannot specify both %s and %s", L2GenesisPath.Name, Network.Name)
-	}
-	if ctx.Bool(L2Custom.Name) && rollupConfig == "" {
+	if ctx.Bool(L2Custom.Name) && ctx.IsSet(Network.Name) {
 		return fmt.Errorf("flag %s cannot be used with named networks", L2Custom.Name)
 	}
 	for _, flag := range requiredFlags {
@@ -196,6 +182,12 @@ func CheckRequired(ctx *cli.Context) error {
 	}
 	if ctx.IsSet(L2OutputRoot.Name) && ctx.IsSet(L2AgreedPrestate.Name) {
 		return fmt.Errorf("flag %s and %s must not be specified together", L2OutputRoot.Name, L2AgreedPrestate.Name)
+	}
+	if ctx.IsSet(L2Head.Name) && ctx.IsSet(L2AgreedPrestate.Name) {
+		return fmt.Errorf("flag %s and %s must not be specified together", L2Head.Name, L2AgreedPrestate.Name)
+	}
+	if !ctx.IsSet(L2Head.Name) && ctx.IsSet(L2OutputRoot.Name) {
+		return fmt.Errorf("flag %s is required when %s is specified", L2Head.Name, L2OutputRoot.Name)
 	}
 	return nil
 }
