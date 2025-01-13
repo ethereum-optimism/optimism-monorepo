@@ -10,6 +10,7 @@ import { Artifacts } from "scripts/Artifacts.s.sol";
 import { LibString } from "@solady/utils/LibString.sol";
 import { Bytes } from "src/libraries/Bytes.sol";
 import { Constants } from "src/libraries/Constants.sol";
+import { Blueprint } from "src/libraries/Blueprint.sol";
 
 // Interfaces
 import { IProxy } from "interfaces/universal/IProxy.sol";
@@ -203,7 +204,14 @@ library DeployUtils {
     /// does nothing.
     /// @param _name Name of the contract to deploy.
     /// @param _args ABI-encoded constructor arguments.
-    function createDeterministic(string memory _name, bytes memory _args) internal returns (address payable addr_) {
+    function createDeterministic(
+        string memory _name,
+        bytes memory _args,
+        bytes32 _salt
+    )
+        internal
+        returns (address payable addr_)
+    {
         bytes memory initCode = abi.encodePacked(vm.getCode(_name), _args);
         address preComputedAddress = vm.computeCreate2Address(_salt, keccak256(initCode));
         if (preComputedAddress.code.length > 0) {
@@ -217,7 +225,10 @@ library DeployUtils {
     /// @notice Deploys a blueprint contract with the given name using CREATE2. If the contract is already deployed,
     /// this method does nothing.
     /// @param _rawBytecode Raw bytecode of the contract the blueprint will deploy.
-    function createDeterministicBlueprint(bytes memory _rawBytecode)
+    function createDeterministicBlueprint(
+        bytes memory _rawBytecode,
+        bytes32 _salt
+    )
         internal
         returns (address newContract1_, address newContract2_)
     {

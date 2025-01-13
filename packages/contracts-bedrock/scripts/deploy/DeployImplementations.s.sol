@@ -450,7 +450,8 @@ contract DeployImplementations is Script {
                 _name: "OPContractsManager",
                 _args: abi.encode(
                     superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
-                )
+                ),
+                _salt: _salt
             })
         );
 
@@ -472,22 +473,22 @@ contract DeployImplementations is Script {
         OPContractsManager.Blueprints memory blueprints;
 
         address checkAddress;
-        (blueprints.addressManager, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AddressManager"));
+        (blueprints.addressManager, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AddressManager"), _salt);
         require(checkAddress == address(0), "OPCM-10");
-        (blueprints.proxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("Proxy"));
+        (blueprints.proxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("Proxy"), _salt);
         require(checkAddress == address(0), "OPCM-20");
-        (blueprints.proxyAdmin, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ProxyAdmin"));
+        (blueprints.proxyAdmin, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ProxyAdmin"), _salt);
         require(checkAddress == address(0), "OPCM-30");
-        (blueprints.l1ChugSplashProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("L1ChugSplashProxy"));
+        (blueprints.l1ChugSplashProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("L1ChugSplashProxy"), _salt);
         require(checkAddress == address(0), "OPCM-40");
-        (blueprints.resolvedDelegateProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"));
+        (blueprints.resolvedDelegateProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"), _salt);
         require(checkAddress == address(0), "OPCM-50");
-        (blueprints.anchorStateRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AnchorStateRegistry"));
+        (blueprints.anchorStateRegistry, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AnchorStateRegistry"), _salt);
         require(checkAddress == address(0), "OPCM-60");
             // The max initcode/runtimecode size is 48KB/24KB.
             // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"));
-        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"));
+        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
+        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
         // forgefmt: disable-end
 
         OPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
@@ -502,7 +503,8 @@ contract DeployImplementations is Script {
         ISystemConfig impl = ISystemConfig(
             DeployUtils.createDeterministic({
                 _name: "SystemConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfig.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "SystemConfigImpl");
@@ -513,7 +515,8 @@ contract DeployImplementations is Script {
         IL1CrossDomainMessenger impl = IL1CrossDomainMessenger(
             DeployUtils.createDeterministic({
                 _name: "L1CrossDomainMessenger",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1CrossDomainMessenger.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "L1CrossDomainMessengerImpl");
@@ -524,7 +527,8 @@ contract DeployImplementations is Script {
         IL1ERC721Bridge impl = IL1ERC721Bridge(
             DeployUtils.createDeterministic({
                 _name: "L1ERC721Bridge",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1ERC721Bridge.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "L1ERC721BridgeImpl");
@@ -535,7 +539,8 @@ contract DeployImplementations is Script {
         IL1StandardBridge impl = IL1StandardBridge(
             DeployUtils.createDeterministic({
                 _name: "L1StandardBridge",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IL1StandardBridge.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "L1StandardBridgeImpl");
@@ -546,7 +551,8 @@ contract DeployImplementations is Script {
         IOptimismMintableERC20Factory impl = IOptimismMintableERC20Factory(
             DeployUtils.createDeterministic({
                 _name: "OptimismMintableERC20Factory",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IOptimismMintableERC20Factory.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "OptimismMintableERC20FactoryImpl");
@@ -606,7 +612,8 @@ contract DeployImplementations is Script {
                     abi.encodeCall(
                         IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                     )
-                )
+                ),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "OptimismPortalImpl");
@@ -618,7 +625,8 @@ contract DeployImplementations is Script {
         IDelayedWETH impl = IDelayedWETH(
             DeployUtils.createDeterministic({
                 _name: "DelayedWETH",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (withdrawalDelaySeconds)))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDelayedWETH.__constructor__, (withdrawalDelaySeconds))),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "DelayedWETHImpl");
@@ -639,7 +647,8 @@ contract DeployImplementations is Script {
                 _name: "PreimageOracle",
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(IPreimageOracle.__constructor__, (minProposalSizeBytes, challengePeriodSeconds))
-                )
+                ),
+                _salt: _salt
             })
         );
         vm.label(address(singleton), "PreimageOracleSingleton");
@@ -652,7 +661,8 @@ contract DeployImplementations is Script {
         IMIPS singleton = IMIPS(
             DeployUtils.createDeterministic({
                 _name: mipsVersion == 1 ? "MIPS" : "MIPS64",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle)))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IMIPS.__constructor__, (preimageOracle))),
+                _salt: _salt
             })
         );
         vm.label(address(singleton), "MIPSSingleton");
@@ -663,7 +673,8 @@ contract DeployImplementations is Script {
         IDisputeGameFactory impl = IDisputeGameFactory(
             DeployUtils.createDeterministic({
                 _name: "DisputeGameFactory",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IDisputeGameFactory.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "DisputeGameFactoryImpl");
@@ -758,7 +769,8 @@ contract DeployImplementationsInterop is DeployImplementations {
                 _name: "OPContractsManagerInterop",
                 _args: abi.encode(
                     superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
-                )
+                ),
+                _salt: _salt
             })
         );
 
@@ -782,7 +794,8 @@ contract DeployImplementationsInterop is DeployImplementations {
                     abi.encodeCall(
                         IOptimismPortalInterop.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
                     )
-                )
+                ),
+                _salt: _salt
             })
         );
 
@@ -794,7 +807,8 @@ contract DeployImplementationsInterop is DeployImplementations {
         ISystemConfigInterop impl = ISystemConfigInterop(
             DeployUtils.createDeterministic({
                 _name: "SystemConfigInterop",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.label(address(impl), "SystemConfigImpl");
