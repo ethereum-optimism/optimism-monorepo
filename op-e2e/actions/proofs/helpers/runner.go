@@ -78,12 +78,12 @@ func RunFaultProofProgram(t helpers.Testing, logger log.Logger, l1 *helpers.L1Mi
 			// Set up in-process L2 source
 			l2ClCfg := sources.L2ClientDefaultConfig(l2.RollupCfg, true)
 			l2RPC := l2Eng.RPCClient()
-			l2Client, err := hostcommon.NewL2Client(l2RPC, logger, nil, &hostcommon.L2ClientConfig{L2ClientConfig: l2ClCfg, L2Head: cfg.L2Head})
+			l2Client, err := hostcommon.NewL2Client(l2RPC, logger, nil, &hostcommon.L2ClientConfig{L2ClientConfig: l2ClCfg})
 			require.NoError(t, err, "failed to create L2 client")
 			l2DebugCl := hostcommon.NewL2SourceWithClient(logger, l2Client, sources.NewDebugClient(l2RPC.CallContext))
 
 			executor := host.MakeProgramExecutor(logger, programCfg)
-			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, executor, cfg.AgreedPrestate), nil
+			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, l2DebugCl, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 		})
 		err = hostcommon.FaultProofProgram(t.Ctx(), logger, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)

@@ -55,6 +55,8 @@ type Prefetcher struct {
 	l2Fetcher     *RetryingL2Source
 	lastHint      string
 	kvStore       kvstore.KV
+	// l2Head is the L2 block hash to retrieve output root from if interop is disabled
+	l2Head common.Hash
 
 	// Used to run the program for native block execution
 	executor       ProgramExecutor
@@ -68,6 +70,7 @@ func NewPrefetcher(
 	l2Fetcher hosttypes.L2Source,
 	kvStore kvstore.KV,
 	executor ProgramExecutor,
+	l2Head common.Hash,
 	agreedPrestate []byte,
 ) *Prefetcher {
 	return &Prefetcher{
@@ -77,6 +80,7 @@ func NewPrefetcher(
 		l2Fetcher:      NewRetryingL2Source(logger, l2Fetcher),
 		kvStore:        kvStore,
 		executor:       executor,
+		l2Head:         l2Head,
 		agreedPrestate: agreedPrestate,
 	}
 }
@@ -292,10 +296,14 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if len(hintBytes) != 32 {
 			return fmt.Errorf("invalid L2 output hint: %x", hint)
 		}
-		hash := common.Hash(hintBytes)
-		output, err := p.l2Fetcher.OutputByRoot(ctx, hash)
+		requestedHash := common.Hash(hintBytes)
+		output, err := p.l2Fetcher.OutputByRoot(ctx, p.l2Head)
 		if err != nil {
-			return fmt.Errorf("failed to fetch L2 output root %s: %w", hash, err)
+			return fmt.Errorf("failed to fetch L2 output root for block %s: %w", p.l2Head, err)
+		}
+		hash := eth.OutputRoot(output)
+		if requestedHash != common.Hash(hash) {
+			return fmt.Errorf("output root %x from block %v does not match requested root: %x", hash, p.l2Head, requestedHash)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), output.Marshal())
 	case l2.HintL2BlockData:
