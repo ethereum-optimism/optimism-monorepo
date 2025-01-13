@@ -9,7 +9,7 @@ import (
 	opflags "github.com/ethereum-optimism/optimism/op-service/flags"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
-	"github.com/ethereum-optimism/optimism/op-service/oppprof"
+	// "github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 )
 
@@ -34,8 +34,8 @@ func init() {
 	optionalFlags = append(optionalFlags, oprpc.CLIFlags(EnvVarPrefix)...)
 	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
 	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
-	optionalFlags = append(optionalFlags, opflags.CLIFlags(EnvVarPrefix, "")...)
+	// optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
+	// optionalFlags = append(optionalFlags, opflags.CLIFlags(EnvVarPrefix, "")...)
 
 	Flags = append(requiredFlags, optionalFlags...)
 }

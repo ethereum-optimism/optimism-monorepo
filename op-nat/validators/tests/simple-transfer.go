@@ -26,7 +26,7 @@ var SimpleTransfer = nat.Test{
 
 func SetupSimpleTransferTest(ctx context.Context, log log.Logger, config nat.Config) (*network.Network, *wallet.Wallet, *wallet.Wallet, error) {
 
-	network, err := network.NewNetwork(ctx, log, config.RPCURL, "network-1")
+	network, err := network.NewNetwork(ctx, log, config.L1RPCUrl, "network-1")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("SetupSimpleTransfer failed to setup network")
 	}
@@ -55,10 +55,6 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 		return false, errors.Wrap(err, "error getting walletA balance")
 	}
 
-	if walletABalancePre.Cmp(big.NewInt(10000000)) < 0 {
-		return false, errors.New("error walletA balance post transfer was incorrect")
-	}
-
 	walletBBalancePre, err := walletB.GetBalance(ctx, network)
 	if err != nil {
 		return false, errors.Wrap(err, "error getting walletB balance")
@@ -69,7 +65,17 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 		"walletB", walletBBalancePre,
 	)
 
+	if walletABalancePre.Cmp(big.NewInt(10000000)) > 0 {
+		return false, errors.New("error walletA balance post transfer was incorrect")
+	}
+
 	transferValue := big.NewInt(100000)
+
+	log.Info("sending transfer from A to B",
+		"wallet_a", walletABalancePre,
+		"wallet_b", walletBBalancePre,
+		"transfer_value", transferValue.String(),
+	)
 
 	_, err = walletA.Send(ctx, network, transferValue, walletB.Address())
 	if err != nil {
@@ -94,14 +100,14 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 	}
 
 	log.Info("user balances post simple transfer test",
-		"walletA", walletABalancePost,
-		"walletB", walletBBalancePost,
+		"wallet_a", walletABalancePost,
+		"wallet_b", walletBBalancePost,
 	)
 
 	walletAPostExpected := new(big.Int)
 	walletAPostExpected.Sub(transferValue, transferValue)
 
-	if walletABalancePost.Cmp(walletAPostExpected) < 0 {
+	if walletABalancePost.Cmp(walletAPostExpected) > 0 {
 		return false, errors.New("error walletA balance post transfer was incorrect")
 	}
 
