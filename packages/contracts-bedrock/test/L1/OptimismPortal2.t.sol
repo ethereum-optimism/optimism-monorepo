@@ -1427,6 +1427,36 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
     }
 
+    /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the game was not the respected game type when it was
+    /// created. `proveWithdrawalTransaction` should already prevent this, but we remove that assumption here.
+    function test_finalizeWithdrawalTransaction_gameWasNotRespectedGameType_reverts() external {
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProven(_withdrawalHash, alice, bob);
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProvenExtension1(_withdrawalHash, address(this));
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+
+        // Warp past the finalization period.
+        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
+
+        // Resolve the dispute game.
+        game.resolveClaim(0, 0);
+        game.resolve();
+
+        // Warp past the dispute game finality delay.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds() + 1);
+
+        vm.mockCall(address(game), abi.encodeCall(game.wasRespectedGameTypeWhenCreated, ()), abi.encode(false));
+
+        vm.expectRevert(InvalidGameType.selector);
+        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
+    }
+
     /// @dev Tests an e2e prove -> finalize path, checking the edges of each delay for correctness.
     function test_finalizeWithdrawalTransaction_delayEdges_succeeds() external {
         // Prove the withdrawal transaction.
