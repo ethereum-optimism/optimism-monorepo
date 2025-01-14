@@ -81,7 +81,7 @@ var (
 	}
 	L2EthRpcFlag = &cli.StringFlag{
 		Name:    "l2-eth-rpc",
-		Usage:   "L2 Address of L2 JSON-RPC endpoint to use (eth and debug namespace required)  (cannon/asterisc trace type only)",
+		Usage:   "L2 Address of L2 JSON-RPC endpoint to use (eth and debug namespace required)",
 		EnvVars: prefixEnvVars("L2_ETH_RPC"),
 	}
 	MaxPendingTransactionsFlag = &cli.Uint64Flag{
@@ -146,11 +146,6 @@ var (
 		Name:    "cannon-prestate",
 		Usage:   "Path to absolute prestate to use when generating trace data (cannon trace type only)",
 		EnvVars: prefixEnvVars("CANNON_PRESTATE"),
-	}
-	CannonL2Flag = &cli.StringFlag{
-		Name:    "cannon-l2",
-		Usage:   fmt.Sprintf("Deprecated: Use %v instead", L2EthRpcFlag.Name),
-		EnvVars: prefixEnvVars("CANNON_L2"),
 	}
 	CannonSnapshotFreqFlag = &cli.UintFlag{
 		Name:    "cannon-snapshot-freq",
@@ -244,7 +239,6 @@ var optionalFlags = []cli.Flag{
 	CannonBinFlag,
 	CannonServerFlag,
 	CannonPreStateFlag,
-	CannonL2Flag,
 	CannonSnapshotFreqFlag,
 	CannonInfoFreqFlag,
 	AsteriscBinFlag,
@@ -349,8 +343,7 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			return fmt.Errorf("flag %s is required", f.Names()[0])
 		}
 	}
-	// CannonL2Flag is checked because it is an alias with L2EthRpcFlag
-	if !ctx.IsSet(CannonL2Flag.Name) && !ctx.IsSet(L2EthRpcFlag.Name) {
+	if !ctx.IsSet(L2EthRpcFlag.Name) {
 		return fmt.Errorf("flag %s is required", L2EthRpcFlag.Name)
 	}
 	for _, traceType := range traceTypes {
@@ -387,21 +380,6 @@ func parseTraceTypes(ctx *cli.Context) ([]types.TraceType, error) {
 		}
 	}
 	return traceTypes, nil
-}
-
-func getL2Rpc(ctx *cli.Context, logger log.Logger) (string, error) {
-	if ctx.IsSet(CannonL2Flag.Name) && ctx.IsSet(L2EthRpcFlag.Name) {
-		return "", fmt.Errorf("flag %v and %v must not be both set", CannonL2Flag.Name, L2EthRpcFlag.Name)
-	}
-	l2Rpc := ""
-	if ctx.IsSet(CannonL2Flag.Name) {
-		logger.Warn(fmt.Sprintf("flag %v is deprecated, please use %v", CannonL2Flag.Name, L2EthRpcFlag.Name))
-		l2Rpc = ctx.String(CannonL2Flag.Name)
-	}
-	if ctx.IsSet(L2EthRpcFlag.Name) {
-		l2Rpc = ctx.String(L2EthRpcFlag.Name)
-	}
-	return l2Rpc, nil
 }
 
 func FactoryAddress(ctx *cli.Context) (common.Address, error) {
@@ -501,13 +479,10 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 	if err != nil {
 		return nil, err
 	}
-	l2Rpc, err := getL2Rpc(ctx, logger)
-	if err != nil {
-		return nil, err
-	}
 	network := ctx.String(flags.NetworkFlagName)
 	l1EthRpc := ctx.String(L1EthRpcFlag.Name)
 	l1Beacon := ctx.String(L1BeaconFlag.Name)
+	l2Rpc := ctx.String(L2EthRpcFlag.Name)
 	return &config.Config{
 		// Required Flags
 		L1EthRpc:                l1EthRpc,

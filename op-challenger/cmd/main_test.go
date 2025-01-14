@@ -447,18 +447,9 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 				verifyArgsInvalid(t, "flag l2-eth-rpc is required", addRequiredArgsExcept(traceType, "--l2-eth-rpc"))
 			})
 
-			t.Run("ValidLegacy", func(t *testing.T) {
-				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--l2-eth-rpc", fmt.Sprintf("--cannon-l2=%s", l2EthRpc)))
-				require.Equal(t, l2EthRpc, cfg.L2Rpc)
-			})
-
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgs(traceType))
 				require.Equal(t, l2EthRpc, cfg.L2Rpc)
-			})
-
-			t.Run("InvalidUsingBothFlags", func(t *testing.T) {
-				verifyArgsInvalid(t, "flag cannon-l2 and l2-eth-rpc must not be both set", addRequiredArgsExcept(traceType, "", fmt.Sprintf("--cannon-l2=%s", l2EthRpc)))
 			})
 		})
 
@@ -573,11 +564,6 @@ func TestAlphabetRequiredArgs(t *testing.T) {
 			verifyArgsInvalid(t, "flag l2-eth-rpc is required", addRequiredArgsExcept(types.TraceTypeAlphabet, "--l2-eth-rpc"))
 		})
 
-		t.Run("ValidLegacy", func(t *testing.T) {
-			cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--l2-eth-rpc", fmt.Sprintf("--cannon-l2=%s", l2EthRpc)))
-			require.Equal(t, l2EthRpc, cfg.L2Rpc)
-		})
-
 		t.Run("Valid", func(t *testing.T) {
 			cfg := configForArgs(t, addRequiredArgs(types.TraceTypeAlphabet))
 			require.Equal(t, l2EthRpc, cfg.L2Rpc)
@@ -680,11 +666,6 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestL2Rpc-%v", traceType), func(t *testing.T) {
 			t.Run("RequiredForCannonTrace", func(t *testing.T) {
 				verifyArgsInvalid(t, "flag l2-eth-rpc is required", addRequiredArgsExcept(traceType, "--l2-eth-rpc"))
-			})
-
-			t.Run("ValidLegacy", func(t *testing.T) {
-				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--l2-eth-rpc", fmt.Sprintf("--cannon-l2=%s", l2EthRpc)))
-				require.Equal(t, l2EthRpc, cfg.L2Rpc)
 			})
 
 			t.Run("Valid", func(t *testing.T) {
