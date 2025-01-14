@@ -10,10 +10,6 @@ type DeployProxyInput struct {
 	Owner common.Address
 }
 
-func (input *DeployProxyInput) InputSet() bool {
-	return true
-}
-
 type DeployProxyOutput struct {
 	Proxy common.Address
 }

@@ -26,10 +26,6 @@ type DeployImplementationsInput struct {
 	StandardVersionsToml string // contents of 'standard-versions-mainnet.toml' or 'standard-versions-sepolia.toml' file
 }
 
-func (input *DeployImplementationsInput) InputSet() bool {
-	return true
-}
-
 type DeployImplementationsOutput struct {
 	Opcm                             common.Address
 	DelayedWETHImpl                  common.Address

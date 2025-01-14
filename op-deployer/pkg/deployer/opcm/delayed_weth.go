@@ -17,10 +17,6 @@ type DeployDelayedWETHInput struct {
 	DelayedWethDelay      *big.Int
 }
 
-func (input *DeployDelayedWETHInput) InputSet() bool {
-	return true
-}
-
 type DeployDelayedWETHOutput struct {
 	DelayedWethImpl  common.Address
 	DelayedWethProxy common.Address

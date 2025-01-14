@@ -40,10 +40,6 @@ type DeployOPChainInputV160 struct {
 	AllowCustomDisputeParameters bool
 }
 
-func (input *DeployOPChainInputV160) InputSet() bool {
-	return true
-}
-
 type DeployOPChainOutput struct {
 	OpChainProxyAdmin                 common.Address
 	AddressManager                    common.Address
