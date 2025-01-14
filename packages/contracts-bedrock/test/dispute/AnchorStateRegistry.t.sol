@@ -286,13 +286,11 @@ contract AnchorStateRegistry_TryUpdateAnchorState_Test is AnchorStateRegistry_In
         IFaultDisputeGame anchorGame = anchorStateRegistry.anchorGame();
         assertEq(address(anchorGame), address(gameProxy));
     }
-}
 
-contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistry_Init {
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game block
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game block
     ///         number is less than or equal to the current anchor root block number.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_validOlderState_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_validOlderStateNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -324,9 +322,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is not registered.
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game is not
+    ///         registered.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_notFactoryRegisteredGame_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_notFactoryRegisteredGameNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -367,10 +366,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game status
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game status
     ///         is CHALLENGER_WINS.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_challengerWins_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_challengerWinsNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -402,10 +401,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game status
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game status
     ///         is IN_PROGRESS.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_inProgress_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_inProgressNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -437,10 +436,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game type
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game type
     ///         is not the respected game type.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_notRespectedGameType_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_notRespectedGameTypeNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
 
@@ -468,10 +467,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game is
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game is
     ///         blacklisted.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_blacklistedGame_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_blacklistedGameNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -510,10 +509,10 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         assertEq(updatedRoot.raw(), root.raw());
     }
 
-    /// @notice Tests that tryUpdateAnchorState will revert if the game is valid and the game is
+    /// @notice Tests that tryUpdateAnchorState will not update the anchor state if the game is
     ///         retired.
     /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_tryUpdateAnchorState_retiredGame_fails(uint256 _l2BlockNumber) public {
+    function testFuzz_tryUpdateAnchorState_retiredGameNoUpdate_succeeds(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
 
@@ -558,9 +557,6 @@ contract AnchorStateRegistry_SetAnchorState_Test is AnchorStateRegistry_Init {
     ///         as the game is valid and is the currently respected game type.
     /// @param _l2BlockNumber The L2 block number to use for the game.
     function testFuzz_setAnchorState_anyL2BlockNumber_succeeds(uint256 _l2BlockNumber) public {
-        // Mock the l2BlockNumber call.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
-
         // Mock the l2BlockNumber call.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
 
@@ -732,9 +728,6 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         // Mock the l2BlockNumber call.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
 
-        // Mock the l2BlockNumber call.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
-
         // Mock the DEFENDER_WINS state.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
 
@@ -768,9 +761,6 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
     function test_setAnchorState_retiredGame_fails(uint256 _l2BlockNumber) public {
         // Grab block number of the existing anchor root.
         (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
-
-        // Mock the l2BlockNumber call.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
 
         // Mock the l2BlockNumber call.
         vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
