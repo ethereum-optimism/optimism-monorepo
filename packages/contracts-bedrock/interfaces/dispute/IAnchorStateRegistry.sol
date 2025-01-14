@@ -11,6 +11,7 @@ import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 interface IAnchorStateRegistry {
     error AnchorStateRegistry_Unauthorized();
     error AnchorStateRegistry_InvalidAnchorGame();
+    error AnchorStateRegistry_AnchorGameBlacklisted();
 
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);

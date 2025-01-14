@@ -55,6 +55,9 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Thrown when an invalid anchor game is provided.
     error AnchorStateRegistry_InvalidAnchorGame();
 
+    /// @notice Thrown when an anchor game is blacklisted.
+    error AnchorStateRegistry_AnchorGameBlacklisted();
+
     /// @notice Constructor to disable initializers.
     constructor() {
         _disableInitializers();
@@ -101,6 +104,10 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Return the starting anchor root if there is no anchor game.
         if (address(anchorGame) == address(0)) {
             return (startingAnchorRoot.root, startingAnchorRoot.l2BlockNumber);
+        }
+
+        if (isGameBlacklisted(anchorGame)) {
+            revert AnchorStateRegistry_AnchorGameBlacklisted();
         }
 
         // Otherwise, return the anchor root.
