@@ -183,6 +183,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
 	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
 	actors.L1Miner.ActL1EndBlock(t)
+	actors.Supervisor.SignalLatestL1(t)
 	// The node will exhaust L1 data,
 	// it needs the supervisor to see the L1 block first, and provide it to the node.
 	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
