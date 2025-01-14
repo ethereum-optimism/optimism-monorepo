@@ -25,6 +25,7 @@ type L2Source interface {
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
+	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
 }
 
 type L1Source interface {
@@ -274,4 +275,31 @@ func (m *ManagedMode) BlockRefByNumber(ctx context.Context, num uint64) (eth.Blo
 
 func (m *ManagedMode) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
 	return supervisortypes.ChainIDFromBig(m.cfg.L2ChainID), nil
+}
+
+func (m *ManagedMode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	num, err := m.cfg.TargetBlockNumber(timestamp)
+	if err != nil {
+		return nil, err
+	}
+	ref, err := m.l2.L2BlockRefByNumber(ctx, num)
+	if err != nil {
+		return nil, err
+	}
+	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+}
+
+func (m *ManagedMode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	num, err := m.cfg.TargetBlockNumber(timestamp)
+	if err != nil {
+		return nil, err
+	}
+	ref, err := m.l2.L2BlockRefByNumber(ctx, num)
+	if err != nil {
+		return nil, err
+	}
+	// TODO: Once interop reorgs are supported (see #13645), replace with the output root preimage of an actual pending
+	// block contained in the optimistic block deposited transaction - https://github.com/ethereum-optimism/specs/pull/489
+	// For now, we use the output at timestamp as-if it didn't contain invalid messages for happy path testing.
+	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
 }
