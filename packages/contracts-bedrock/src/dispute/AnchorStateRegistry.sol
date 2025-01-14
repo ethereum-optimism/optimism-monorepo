@@ -61,6 +61,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Thrown when an invalid anchor game is provided.
     error AnchorStateRegistry_InvalidAnchorGame();
 
+    /// @notice Returns the nonce for the reinitializer modifier.
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
+    }
+
     /// @notice Constructor to disable initializers.
     constructor() {
         _disableInitializers();
@@ -78,7 +83,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         OutputRoot memory _startingAnchorRoot
     )
         external
-        initializer
+        reinitializer(reinitValue())
     {
         superchainConfig = _superchainConfig;
         disputeGameFactory = _disputeGameFactory;

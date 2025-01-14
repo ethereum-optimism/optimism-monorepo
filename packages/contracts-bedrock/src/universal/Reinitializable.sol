@@ -11,7 +11,7 @@ import { Initializable } from "src/vendor/Initializable-v5.sol";
 ///      should be expanded to L2 contracts in the future.
 ///      On upgradeable contracts:
 ///       - Both the initialize() and upgrade() functions should have the reinitializer(reinitValue()) modifier.
-///       - The reinitNonce() function must be implemented on each contract. Its return value is used to determine if
+///       - The _reinitNonce() function must be implemented on each contract. Its return value is used to determine if
 ///         the upgrade() function should be called during an upgrade.
 ///       When to call upgrade():
 ///       - The upgrade() function should be called if and only if it is updating storage which will create a difference
@@ -26,11 +26,11 @@ abstract contract Reinitializable is Initializable {
     uint64 private constant SPACING = 100;
 
     /// @notice Getter for the nonce of the contract. This must be implemented on each contract.
-    function reinitNonce() internal pure virtual returns (uint64);
+    function _reinitNonce() internal view virtual returns (uint64);
 
     /// @notice Converts a contact's semver to a uint64 with padding for use with the reinitializer modifier.
-    function reinitValue() public pure returns (uint64) {
-        return SPACING * reinitNonce();
+    function reinitValue() public view returns (uint64) {
+        return SPACING * _reinitNonce();
     }
 
     /// @notice Getter for the initialized version of the contract.

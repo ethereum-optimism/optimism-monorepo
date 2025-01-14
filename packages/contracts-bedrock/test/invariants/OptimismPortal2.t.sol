@@ -32,7 +32,11 @@ contract OptimismPortal2_Depositor is StdUtils, ResourceMetering {
         initialize();
     }
 
-    function initialize() internal initializer {
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
+    }
+
+    function initialize() internal reinitializer(reinitValue()) {
         __ResourceMetering_init();
     }
 

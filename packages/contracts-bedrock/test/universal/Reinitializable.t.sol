@@ -14,13 +14,9 @@ contract MockReinitializable is Reinitializable {
     }
 
     /// @notice Returns a fixed nonce for testing
-    function reinitNonce() public view override returns (uint64) {
+    function _reinitNonce() internal view override returns (uint64) {
         return NONCE;
     }
-
-    function initialize() reinitializer(reinitValue()) { }
-
-    function upgrade() reinitializer(reinitValue()) { }
 }
 
 /// @title ReinitializableTest
@@ -35,20 +31,20 @@ contract ReinitializableTest is Test {
     }
 
     /// @notice Tests that reinitializerValue returns the correct value
-    function test_reinitializerValue_succeeds() external {
-        // Should return SPACING * reinitNonce() = 10 * 5 = 50
-        assertEq(mockReinitializable.reinitializerValue(), 50);
+    function test_reinitValue_succeeds() external view {
+        // Should return SPACING * _reinitNonce() = 100 * 5 = 500
+        assertEq(mockReinitializable.reinitValue(), 500);
     }
 
-    /// @notice Tests that reinitializerValue returns the correct values for different nonces
-    function testFuzz_reinitializerValue_differentNonces(uint64 _nonce) external {
-        _nonce = uint64(bound(uint256(_nonce), 1, uint256(type(uint64).max / 10 - 1)));
+    /// @notice Tests that reinitValue returns the correct values for different nonces
+    function testFuzz_reinitValue_differentNonces(uint64 _nonce) external {
+        _nonce = uint64(bound(uint256(_nonce), 1, uint256(type(uint64).max / 100 - 1)));
 
         // Create a new test contract that returns the fuzzed nonce
         MockReinitializable implementation = new MockReinitializable(_nonce);
-        uint64 value = implementation.reinitializerValue();
+        uint64 value = implementation.reinitValue();
 
-        // Value should be _nonce * 10
-        assertEq(value, uint64(10) * _nonce);
+        // Value should be _nonce * 100
+        assertEq(value, uint64(100) * _nonce);
     }
 }

@@ -29,7 +29,11 @@ contract MeterUser is ResourceMetering {
         });
     }
 
-    function initialize() public initializer {
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
+    }
+
+    function initialize() public reinitializer(reinitValue()) {
         __ResourceMetering_init();
     }
 
@@ -237,6 +241,10 @@ contract CustomMeterUser is ResourceMetering {
             prevBoughtGas: _prevBoughtGas,
             prevBlockNum: _prevBlockNum
         });
+    }
+
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
     }
 
     function _resourceConfig() internal pure override returns (ResourceMetering.ResourceConfig memory) {

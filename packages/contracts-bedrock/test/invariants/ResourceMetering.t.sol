@@ -22,11 +22,15 @@ contract ResourceMetering_User is StdUtils, ResourceMetering {
     // in the test contracts, not the target contracts themselves.
     bool public underflow;
 
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
+    }
+
     constructor() {
         initialize();
     }
 
-    function initialize() internal initializer {
+    function initialize() internal reinitializer(reinitValue()) {
         __ResourceMetering_init();
     }
 

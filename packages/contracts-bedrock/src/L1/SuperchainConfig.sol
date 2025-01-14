@@ -47,6 +47,11 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @custom:semver 1.1.1-beta.4
     string public constant version = "1.1.1-beta.4";
 
+    /// @notice Returns the nonce for the reinitializer modifier.
+    function _reinitNonce() internal view override returns (uint64) {
+        return 1;
+    }
+
     /// @notice Constructs the SuperchainConfig contract.
     constructor() {
         _disableInitializers();
@@ -55,12 +60,17 @@ contract SuperchainConfig is Initializable, ISemver {
     /// @notice Initializer.
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, bool _paused) external initializer {
+    function initialize(address _guardian, bool _paused) external reinitializer(reinitValue()) {
         _setGuardian(_guardian);
         if (_paused) {
             _pause("Initializer paused");
         }
     }
+
+    /// @notice Upgrade function.
+    /// @dev This function is empty because the SuperchainConfig contract does not require any storage changes, however
+    ///      it must be called during the upgrade to ensure that the initialized version is updated.
+    function upgrade() external reinitializer(reinitValue()) { }
 
     /// @notice Getter for the guardian address.
     function guardian() public view returns (address guardian_) {

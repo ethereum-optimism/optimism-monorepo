@@ -182,7 +182,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Returns the nonce for the reinitializer.
-    function reinitNonce() internal pure override returns (uint64) {
+    function _reinitNonce() internal pure override returns (uint64) {
         return 1;
     }
 
