@@ -25,7 +25,6 @@ var SimpleTransfer = nat.Test{
 }
 
 func SetupSimpleTransferTest(ctx context.Context, log log.Logger, config nat.Config) (*network.Network, *wallet.Wallet, *wallet.Wallet, error) {
-
 	network, err := network.NewNetwork(ctx, log, config.L1RPCUrl, "kurtosis-l1")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("SetupSimpleTransfer failed to setup network")
@@ -60,7 +59,7 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 		return false, errors.Wrap(err, "error getting walletB balance")
 	}
 
-	log.Info("user balances pre simple transfer test",
+	log.Debug("user balances pre simple transfer test",
 		"wallet_a", walletABalancePre.String(),
 		"wallet_a_addr", walletA.Address(),
 		"wallet_b", walletBBalancePre.String(),
@@ -75,7 +74,7 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 
 	transferValue := big.NewInt(100000)
 
-	log.Info("sending transfer from A to B",
+	log.Debug("sending transfer from A to B",
 		"wallet_a", walletABalancePre.String(),
 		"wallet_b", walletBBalancePre.String(),
 		"transfer_value", transferValue.String(),
@@ -103,7 +102,7 @@ func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Ne
 		return false, errors.Wrap(err, "error getting walletB balance")
 	}
 
-	log.Info("user balances post simple transfer test",
+	log.Debug("user balances post simple transfer test",
 		"wallet_a", walletABalancePost.String(),
 		"wallet_b", walletBBalancePost.String(),
 	)

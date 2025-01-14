@@ -37,14 +37,14 @@ func SetupSimpleDepositTest(ctx context.Context, log log.Logger, config nat.Conf
 	l2Addr := config.SC.L2[0].Nodes[0].Services.EL.Endpoints["rpc"].Host
 	l2RPC := fmt.Sprintf("http://%s:%d", l2Addr, l2port)
 
-	log.Info("rpc info", "l1_rpc", config.L1RPCUrl, "l2_rpc", l2RPC)
+	log.Debug("rpc info", "l1_rpc", config.L1RPCUrl, "l2_rpc", l2RPC)
 
 	l2, err := network.NewNetwork(ctx, log, l2RPC, "kurtosis-l2")
 	if err != nil {
 		return nil, nil, nil, fmt.Errorf("SetupSimpleDepositTest failed to setup network")
 	}
 	wallet, err := wallet.NewWallet(config.SC.L1.Wallets["user-key-13"].PrivateKey, "user-13")
-	log.Info("wallet",
+	log.Debug("wallet",
 		"public", wallet.Address(),
 	)
 	if err != nil {
@@ -55,7 +55,6 @@ func SetupSimpleDepositTest(ctx context.Context, log log.Logger, config nat.Conf
 }
 
 func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Network, wallet *wallet.Wallet, portal common.Address) (bool, error) {
-
 	if l1 == nil || wallet == nil || l2 == nil || len(portal) == 0 {
 		return false, errors.New("error empty arguments provided for SimpleDepositTest")
 	}
@@ -69,7 +68,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 		return false, errors.Wrap(err, "error getting l2 balance")
 	}
 
-	log.Info("user balances pre simple deposit test",
+	log.Debug("user balances pre simple deposit test",
 		"address", wallet.Address().String(),
 		"l1_pre_deposit", l1Pre.String(),
 		"l2_pre_deposit", l2Pre.String(),
@@ -82,7 +81,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 
 	transferValue := big.NewInt(100000)
 
-	log.Info("sending deposit",
+	log.Debug("sending deposit",
 		"deposit_value", transferValue.String(),
 		"portal", portal,
 	)
@@ -98,7 +97,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 			wallet.Address(),
 		))
 	}
-	log.Info("sent deposit",
+	log.Debug("sent deposit",
 		"tx_hash", tx.Hash(),
 		"to", tx.To(),
 		"nonce", tx.Nonce(),
@@ -111,7 +110,6 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 	l2Diff := false
 
 	for i := 0; i < 12; i++ {
-
 		l1Post, err = wallet.GetBalance(ctx, l1)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting l1 balance")
@@ -122,7 +120,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 			return false, errors.Wrap(err, "error getting l2 balance")
 		}
 
-		log.Info("polling balance post simple deposit test",
+		log.Debug("polling balance post simple deposit test",
 			"l1_post", l1Post.String(),
 			"l2_post", l2Post.String(),
 		)
@@ -132,7 +130,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 
 		// Expect walletA post to be less than walletAPre - transfer value due to gas as well
 		if l1Post.Cmp(l1PostExpected) < 0 && !l1Diff {
-			log.Info("l1 balance has been subtracted")
+			log.Debug("l1 balance has been subtracted")
 			l1Diff = true
 		}
 
@@ -140,7 +138,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 		l2PostExpected.Add(transferValue, l2Pre)
 
 		if l2PostExpected.Cmp(l2Post) == 0 && !l2Diff {
-			log.Info("l2 balance has increased")
+			log.Debug("l2 balance has increased")
 			l2Diff = true
 		}
 

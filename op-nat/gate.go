@@ -15,14 +15,17 @@ type Gate struct {
 }
 
 // Run runs all the tests in the suite.
-func (s Gate) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
-	for _, validator := range s.Validators {
+func (g Gate) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
+	log.Info("", "type", g.Type(), "id", g.Name())
+	allPassed := true
+	for _, validator := range g.Validators {
+		//log.Info("", "type", validator.Type(), "validator", validator.Name())
 		ok, err := validator.Run(ctx, log, cfg)
 		if err != nil || !ok {
-			return false, err
+			allPassed = false
 		}
 	}
-	return true, nil
+	return allPassed, nil
 }
 
 // Type returns the type name of the gate.

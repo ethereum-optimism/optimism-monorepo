@@ -18,6 +18,7 @@ func (t Test) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error)
 	if t.Fn == nil {
 		return false, fmt.Errorf("test function is nil")
 	}
+	log.Info("", "type", t.Type(), "id", t.Name())
 	return t.Fn(ctx, log, cfg)
 }
 

@@ -60,7 +60,7 @@ func (w *Wallet) Send(ctx context.Context, network *network.Network, amount *big
 	if err != nil {
 		return nil, fmt.Errorf("failed to get nonce: %w", err)
 	}
-	log.Info("wallet pending nonce", "name", w.name, "nonce", nonce)
+	log.Debug("wallet pending nonce", "name", w.name, "nonce", nonce)
 
 	// value := big.NewInt(100000)
 
@@ -69,7 +69,7 @@ func (w *Wallet) Send(ctx context.Context, network *network.Network, amount *big
 	if err != nil {
 		return nil, fmt.Errorf("failed to suggest gas price: %w", err)
 	}
-	log.Info("current gas price", "network", network.Name, "gasPrice", gasPrice)
+	log.Debug("current gas price", "network", network.Name, "gasPrice", gasPrice)
 
 	// 6. Estimate the gas limit:
 	gasLimit := uint64(2100000) // Standard gas limit for a simple ETH transfer
@@ -88,12 +88,12 @@ func (w *Wallet) Send(ctx context.Context, network *network.Network, amount *big
 	}
 
 	// 9. Send the transaction:
-	log.Info("sending transaction")
+	log.Debug("sending transaction")
 	err = network.RPC.SendTransaction(ctx, signedTx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
-	log.Info("transcaction sent successfully",
+	log.Debug("transcaction sent successfully",
 		"tx_hash", signedTx.Hash().Hex(),
 	)
 
@@ -113,12 +113,12 @@ func (w *Wallet) Dump(ctx context.Context, log log.Logger, networks []network.Ne
 		balances = append(balances, fmt.Sprintf("%s    : %s", n.Name, bal.String()))
 	}
 
-	log.Info(fmt.Sprintf("-------------- Wallet: %s ---------------", w.name))
-	log.Info(fmt.Sprintf("private key: %s", w.privateKey))
-	log.Info(fmt.Sprintf("public key : %s", w.publicKey))
-	log.Info(fmt.Sprintf("address    : %s", w.address))
+	log.Debug(fmt.Sprintf("-------------- Wallet: %s ---------------", w.name))
+	log.Debug(fmt.Sprintf("private key: %s", w.privateKey))
+	log.Debug(fmt.Sprintf("public key : %s", w.publicKey))
+	log.Debug(fmt.Sprintf("address    : %s", w.address))
 	for b := range balances {
-		log.Info(balances[b])
+		log.Debug(balances[b])
 	}
-	log.Info("--------------------------------------------")
+	log.Debug("--------------------------------------------")
 }
