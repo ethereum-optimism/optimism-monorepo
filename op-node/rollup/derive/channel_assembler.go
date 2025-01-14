@@ -96,6 +96,7 @@ func (ca *ChannelAssembler) NextRawChannel(ctx context.Context) ([]byte, error) 
 		if frame.FrameNumber == 0 {
 			ca.metrics.RecordHeadChannelOpened()
 			ca.channel = NewChannel(frame.ID, origin, true)
+			lgr.Info("created new channel")
 		}
 		if frame.FrameNumber > 0 && ca.channel == nil {
 			lgr.Warn("dropping non-first frame without channel",
