@@ -15,8 +15,8 @@ import (
 
 // Same as l2.StateOracle but need to use our own copy to avoid dependency loops
 type stateOracle interface {
-	NodeByHash(nodeHash common.Hash) []byte
-	CodeByHash(codeHash common.Hash) []byte
+	NodeByHash(nodeHash common.Hash, chainID uint64) []byte
+	CodeByHash(codeHash common.Hash, chainID uint64) []byte
 }
 
 type StubBlockOracle struct {
@@ -56,7 +56,7 @@ func NewStubOracleWithBlocks(t *testing.T, chain []*gethTypes.Block, outputs []e
 	}
 }
 
-func (o StubBlockOracle) BlockByHash(blockHash common.Hash) *gethTypes.Block {
+func (o StubBlockOracle) BlockByHash(blockHash common.Hash, chainID uint64) *gethTypes.Block {
 	block, ok := o.Blocks[blockHash]
 	if !ok {
 		o.t.Fatalf("requested unknown block %s", blockHash)
@@ -64,7 +64,7 @@ func (o StubBlockOracle) BlockByHash(blockHash common.Hash) *gethTypes.Block {
 	return block
 }
 
-func (o StubBlockOracle) OutputByRoot(root common.Hash) eth.Output {
+func (o StubBlockOracle) OutputByRoot(root common.Hash, chainID uint64) eth.Output {
 	output, ok := o.Outputs[root]
 	if !ok {
 		o.t.Fatalf("requested unknown output root %s", root)
@@ -100,7 +100,7 @@ func NewKvStateOracle(t *testing.T, db ethdb.KeyValueStore) *KvStateOracle {
 	}
 }
 
-func (o *KvStateOracle) NodeByHash(nodeHash common.Hash) []byte {
+func (o *KvStateOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
 	val, err := o.Source.Get(nodeHash.Bytes())
 	if err != nil {
 		o.t.Fatalf("error retrieving node %v: %v", nodeHash, err)
@@ -108,7 +108,7 @@ func (o *KvStateOracle) NodeByHash(nodeHash common.Hash) []byte {
 	return val
 }
 
-func (o *KvStateOracle) CodeByHash(hash common.Hash) []byte {
+func (o *KvStateOracle) CodeByHash(hash common.Hash, chainID uint64) []byte {
 	return rawdb.ReadCode(o.Source, hash)
 }
 
@@ -127,7 +127,7 @@ type StubStateOracle struct {
 	Code map[common.Hash][]byte
 }
 
-func (o *StubStateOracle) NodeByHash(nodeHash common.Hash) []byte {
+func (o *StubStateOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
 	data, ok := o.Data[nodeHash]
 	if !ok {
 		o.t.Fatalf("no value for node %v", nodeHash)
@@ -135,7 +135,7 @@ func (o *StubStateOracle) NodeByHash(nodeHash common.Hash) []byte {
 	return data
 }
 
-func (o *StubStateOracle) CodeByHash(hash common.Hash) []byte {
+func (o *StubStateOracle) CodeByHash(hash common.Hash, chainID uint64) []byte {
 	data, ok := o.Code[hash]
 	if !ok {
 		o.t.Fatalf("no value for code %v", hash)

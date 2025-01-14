@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type SupervisorClient struct {
@@ -151,6 +152,16 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.C
 		chainID,
 		derivedFrom,
 		lastDerived)
+}
+
+func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+	var result types.SuperRootResponse
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_superRootAtTimestamp",
+		timestamp)
+	return result, err
 }
 
 func (cl *SupervisorClient) Close() {

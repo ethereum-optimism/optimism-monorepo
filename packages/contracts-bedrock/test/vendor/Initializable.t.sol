@@ -10,15 +10,16 @@ import { Process } from "scripts/libraries/Process.sol";
 
 // Libraries
 import { LibString } from "@solady/utils/LibString.sol";
-import { GameType } from "src/dispute/lib/Types.sol";
+import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
-import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 /// @title Initializer_Test
 /// @dev Ensures that the `initialize()` function on contracts cannot be called more than
@@ -318,7 +319,12 @@ contract Initializer_Test is CommonTest {
                 target: EIP1967Helper.getImplementation(address(anchorStateRegistry)),
                 initCalldata: abi.encodeCall(
                     anchorStateRegistry.initialize,
-                    (new IAnchorStateRegistry.StartingAnchorRoot[](1), ISuperchainConfig(address(0)))
+                    (
+                        ISuperchainConfig(address(0)),
+                        IDisputeGameFactory(address(0)),
+                        IOptimismPortal2(payable(0)),
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 })
+                    )
                 )
             })
         );
@@ -329,7 +335,12 @@ contract Initializer_Test is CommonTest {
                 target: address(anchorStateRegistry),
                 initCalldata: abi.encodeCall(
                     anchorStateRegistry.initialize,
-                    (new IAnchorStateRegistry.StartingAnchorRoot[](1), ISuperchainConfig(address(0)))
+                    (
+                        ISuperchainConfig(address(0)),
+                        IDisputeGameFactory(address(0)),
+                        IOptimismPortal2(payable(0)),
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 })
+                    )
                 )
             })
         );

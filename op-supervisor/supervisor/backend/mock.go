@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type MockBackend struct {
@@ -68,6 +69,10 @@ func (m *MockBackend) FinalizedL1() eth.BlockRef {
 
 func (m *MockBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return eth.BlockRef{}, nil
+}
+
+func (m *MockBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+	return types.SuperRootResponse{}, nil
 }
 
 func (m *MockBackend) Close() error {
