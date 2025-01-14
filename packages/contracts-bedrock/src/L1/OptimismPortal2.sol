@@ -482,6 +482,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // respectedGameTypeUpdatedAt timestamp without modifying this function's signature.
         if (_gameType.raw() == type(uint32).max) {
             respectedGameTypeUpdatedAt = uint64(block.timestamp);
+            emit RespectedGameTypeSet(respectedGameType, Timestamp.wrap(respectedGameTypeUpdatedAt));
         } else {
             respectedGameType = _gameType;
             emit RespectedGameTypeSet(_gameType, Timestamp.wrap(respectedGameTypeUpdatedAt));

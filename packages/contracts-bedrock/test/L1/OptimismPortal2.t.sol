@@ -462,8 +462,9 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         emit RespectedGameTypeSet(_ty, Timestamp.wrap(respectedGameTypeUpdatedAt));
         vm.prank(optimismPortal2.guardian());
         optimismPortal2.setRespectedGameType(_ty);
-
+        // GameType changes, but the timestamp doesn't.
         assertEq(optimismPortal2.respectedGameType().raw(), _ty.raw());
+        assertEq(optimismPortal2.respectedGameTypeUpdatedAt(), respectedGameTypeUpdatedAt);
     }
 
     /// @dev Tests that the guardian can set the `respectedGameTypeUpdatedAt` timestamp to current timestamp.
@@ -472,12 +473,15 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     {
         _elapsed = uint64(bound(_elapsed, 0, type(uint64).max - uint64(block.timestamp)));
         GameType _ty = GameType.wrap(type(uint32).max);
-        uint64 _timestamp = uint64(block.timestamp) + _elapsed;
-        vm.warp(_timestamp);
-        // TODO: event?
+        uint64 _newRespectedGameTypeUpdatedAt = uint64(block.timestamp) + _elapsed;
+        GameType _existingGameType = optimismPortal2.respectedGameType();
+        vm.warp(_newRespectedGameTypeUpdatedAt);
+        emit RespectedGameTypeSet(_existingGameType, Timestamp.wrap(_newRespectedGameTypeUpdatedAt));
         vm.prank(optimismPortal2.guardian());
         optimismPortal2.setRespectedGameType(_ty);
-        assertEq(optimismPortal2.respectedGameTypeUpdatedAt(), _timestamp);
+        // GameType doesn't change, but the timestamp does.
+        assertEq(optimismPortal2.respectedGameType().raw(), _existingGameType.raw());
+        assertEq(optimismPortal2.respectedGameTypeUpdatedAt(), _newRespectedGameTypeUpdatedAt);
     }
 
     /// @dev Tests that `proveWithdrawalTransaction` reverts when paused.
@@ -1247,6 +1251,88 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
 
         // Finalize the withdrawal transaction
+        vm.expectCallMinGas(_tx.target, _tx.value, uint64(_tx.gasLimit), _tx.data);
+        optimismPortal2.finalizeWithdrawalTransaction(_tx);
+        assertTrue(optimismPortal2.finalizedWithdrawals(withdrawalHash));
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds even if the respected game type is changed.
+    function test_finalizeWithdrawalTransaction_wasRespectedGameType_succeeds(
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes memory _data,
+        GameType _newGameType
+    )
+        external
+    {
+        vm.assume(
+            _target != address(optimismPortal2) // Cannot call the optimism portal or a contract
+                && _target.code.length == 0 // No accounts with code
+                && _target != CONSOLE // The console has no code but behaves like a contract
+                && uint160(_target) > 9 // No precompiles (or zero address)
+        );
+
+        // Bound to prevent changes in respectedGameTypeUpdatedAt
+        _newGameType = GameType.wrap(uint32(bound(_newGameType.raw(), 0, type(uint32).max - 1)));
+
+        // Total ETH supply is currently about 120M ETH.
+        uint256 value = bound(_value, 0, 200_000_000 ether);
+        vm.deal(address(optimismPortal2), value);
+
+        uint256 gasLimit = bound(_gasLimit, 0, 50_000_000);
+        uint256 nonce = l2ToL1MessagePasser.messageNonce();
+
+        // Get a withdrawal transaction and mock proof from the differential testing script.
+        Types.WithdrawalTransaction memory _tx = Types.WithdrawalTransaction({
+            nonce: nonce,
+            sender: _sender,
+            target: _target,
+            value: value,
+            gasLimit: gasLimit,
+            data: _data
+        });
+        (
+            bytes32 stateRoot,
+            bytes32 storageRoot,
+            bytes32 outputRoot,
+            bytes32 withdrawalHash,
+            bytes[] memory withdrawalProof
+        ) = ffi.getProveWithdrawalTransactionInputs(_tx);
+
+        // Create the output root proof
+        Types.OutputRootProof memory proof = Types.OutputRootProof({
+            version: bytes32(uint256(0)),
+            stateRoot: stateRoot,
+            messagePasserStorageRoot: storageRoot,
+            latestBlockhash: bytes32(uint256(0))
+        });
+
+        // Ensure the values returned from ffi are correct
+        assertEq(outputRoot, Hashing.hashOutputRootProof(proof));
+        assertEq(withdrawalHash, Hashing.hashWithdrawal(_tx));
+
+        // Setup the dispute game to return the output root
+        vm.mockCall(address(game), abi.encodeCall(game.rootClaim, ()), abi.encode(outputRoot));
+
+        // Prove the withdrawal transaction
+        optimismPortal2.proveWithdrawalTransaction(_tx, _proposedGameIndex, proof, withdrawalProof);
+        (IDisputeGame _game,) = optimismPortal2.provenWithdrawals(withdrawalHash, address(this));
+        assertTrue(_game.rootClaim().raw() != bytes32(0));
+
+        // Resolve the dispute game
+        game.resolveClaim(0, 0);
+        game.resolve();
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
+
+        // Change the respectedGameType
+        vm.prank(optimismPortal2.guardian());
+        optimismPortal2.setRespectedGameType(_newGameType);
+
+        // Withdrawal transaction still finalizable
         vm.expectCallMinGas(_tx.target, _tx.value, uint64(_tx.gasLimit), _tx.data);
         optimismPortal2.finalizeWithdrawalTransaction(_tx);
         assertTrue(optimismPortal2.finalizedWithdrawals(withdrawalHash));
