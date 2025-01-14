@@ -267,6 +267,7 @@ check:
   @just gas-snapshot-check-no-build \
   semgrep-test-validity-check \
   unused-imports-check-no-build \
+  snapshots-check-no-build \
   lint-check \
   semver-diff-check-no-build \
   validate-deploy-configs \
