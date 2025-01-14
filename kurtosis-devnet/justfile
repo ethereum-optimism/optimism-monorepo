@@ -86,3 +86,7 @@ interop-devnet-test: (devnet-test "interop-devnet" "interop-smoke-test.sh")
 # User devnet
 user-devnet DATA_FILE:
     {{just_executable()}} devnet "user.yaml" {{DATA_FILE}} {{file_stem(DATA_FILE)}}
+
+# subshells
+enter-devnet DEVNET CHAIN='Ethereum':
+    exec go run pkg/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}
