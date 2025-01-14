@@ -55,7 +55,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Thrown when an invalid anchor game is provided.
     error AnchorStateRegistry_InvalidAnchorGame();
 
-    /// @notice Thrown when an anchor game is blacklisted.
+    /// @notice Thrown when the anchor root is requested, but the anchor game is blacklisted.
     error AnchorStateRegistry_AnchorGameBlacklisted();
 
     /// @notice Constructor to disable initializers.
