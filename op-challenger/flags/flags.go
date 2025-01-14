@@ -477,29 +477,29 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			claimants = append(claimants, claimant)
 		}
 	}
-	var cannonPreStatesURL *url.URL
-	if PreStatesURLFlag.IsSet(ctx, types.TraceTypeCannon) {
-		val := PreStatesURLFlag.String(ctx, types.TraceTypeCannon)
-		cannonPreStatesURL, err = url.Parse(val)
-		if err != nil {
-			return nil, fmt.Errorf("invalid %v (%v): %w", PreStatesURLFlag.SourceFlagName(ctx, types.TraceTypeCannon), val, err)
+
+	getPrestatesUrl := func(traceType types.TraceType) (*url.URL, error) {
+		var preStatesURL *url.URL
+		if PreStatesURLFlag.IsSet(ctx, traceType) {
+			val := PreStatesURLFlag.String(ctx, traceType)
+			preStatesURL, err = url.Parse(val)
+			if err != nil {
+				return nil, fmt.Errorf("invalid %v (%v): %w", PreStatesURLFlag.SourceFlagName(ctx, traceType), val, err)
+			}
 		}
+		return preStatesURL, nil
 	}
-	var asteriscPreStatesURL *url.URL
-	if PreStatesURLFlag.IsSet(ctx, types.TraceTypeAsterisc) {
-		val := PreStatesURLFlag.String(ctx, types.TraceTypeAsterisc)
-		asteriscPreStatesURL, err = url.Parse(val)
-		if err != nil {
-			return nil, fmt.Errorf("invalid %v (%v): %w", PreStatesURLFlag.SourceFlagName(ctx, types.TraceTypeAsterisc), val, err)
-		}
+	cannonPreStatesURL, err := getPrestatesUrl(types.TraceTypeCannon)
+	if err != nil {
+		return nil, err
 	}
-	var asteriscKonaPreStatesURL *url.URL
-	if PreStatesURLFlag.IsSet(ctx, types.TraceTypeAsteriscKona) {
-		val := PreStatesURLFlag.String(ctx, types.TraceTypeAsteriscKona)
-		asteriscKonaPreStatesURL, err = url.Parse(val)
-		if err != nil {
-			return nil, fmt.Errorf("invalid %v (%v): %w", PreStatesURLFlag.SourceFlagName(ctx, types.TraceTypeAsteriscKona), val, err)
-		}
+	asteriscPreStatesURL, err := getPrestatesUrl(types.TraceTypeAsterisc)
+	if err != nil {
+		return nil, err
+	}
+	asteriscKonaPreStatesURL, err := getPrestatesUrl(types.TraceTypeAsteriscKona)
+	if err != nil {
+		return nil, err
 	}
 	l2Rpc, err := getL2Rpc(ctx, logger)
 	if err != nil {
