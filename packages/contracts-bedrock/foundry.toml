@@ -93,6 +93,7 @@ depth = 32
 
 [profile.cicoverage]
 optimizer = false
+compilation_restrictions = []
 
 [profile.cicoverage.fuzz]
 runs = 1
@@ -120,6 +121,8 @@ timeout = 300
 
 [profile.lite]
 optimizer = false
+compilation_restrictions = []
+
 
 ################################################################
 #                         PROFILE: KONTROL                     #
