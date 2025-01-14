@@ -110,6 +110,20 @@ var (
 			EnvVars: envVars,
 		}
 	})
+	RollupConfigFlag = NewVMFlag("rollup-config", EnvVarPrefix, faultDisputeVMs, func(name string, envVars []string, traceTypeInfo string) cli.Flag {
+		return &cli.StringFlag{
+			Name:    name,
+			Usage:   "Rollup chain parameters " + traceTypeInfo,
+			EnvVars: envVars,
+		}
+	})
+	L2GenesisFlag = NewVMFlag("l2-genesis", EnvVarPrefix, faultDisputeVMs, func(name string, envVars []string, traceTypeInfo string) cli.Flag {
+		return &cli.StringFlag{
+			Name:    name,
+			Usage:   "Path to the op-geth genesis file " + traceTypeInfo,
+			EnvVars: envVars,
+		}
+	})
 	CannonL2CustomFlag = &cli.BoolFlag{
 		Name: "cannon-l2-custom",
 		Usage: "Notify the op-program host that the L2 chain uses custom config to be loaded via the preimage oracle. " +
@@ -117,16 +131,6 @@ var (
 		EnvVars: prefixEnvVars("CANNON_L2_CUSTOM"),
 		Value:   false,
 		Hidden:  true,
-	}
-	CannonRollupConfigFlag = &cli.StringFlag{
-		Name:    "cannon-rollup-config",
-		Usage:   "Rollup chain parameters (cannon trace type only)",
-		EnvVars: prefixEnvVars("CANNON_ROLLUP_CONFIG"),
-	}
-	CannonL2GenesisFlag = &cli.StringFlag{
-		Name:    "cannon-l2-genesis",
-		Usage:   "Path to the op-geth genesis file (cannon trace type only)",
-		EnvVars: prefixEnvVars("CANNON_L2_GENESIS"),
 	}
 	CannonBinFlag = &cli.StringFlag{
 		Name:    "cannon-bin",
@@ -159,16 +163,6 @@ var (
 		Usage:   "Frequency of cannon info log messages to generate in VM steps (cannon trace type only)",
 		EnvVars: prefixEnvVars("CANNON_INFO_FREQ"),
 		Value:   config.DefaultCannonInfoFreq,
-	}
-	AsteriscRollupConfigFlag = &cli.StringFlag{
-		Name:    "asterisc-rollup-config",
-		Usage:   "Rollup chain parameters (asterisc trace type only)",
-		EnvVars: prefixEnvVars("ASTERISC_ROLLUP_CONFIG"),
-	}
-	AsteriscL2GenesisFlag = &cli.StringFlag{
-		Name:    "asterisc-l2-genesis",
-		Usage:   "Path to the op-geth genesis file (asterisc trace type only)",
-		EnvVars: prefixEnvVars("ASTERISC_L2_GENESIS"),
 	}
 	AsteriscBinFlag = &cli.StringFlag{
 		Name:    "asterisc-bin",
@@ -247,16 +241,12 @@ var optionalFlags = []cli.Flag{
 	AdditionalBondClaimants,
 	GameAllowlistFlag,
 	CannonL2CustomFlag,
-	CannonRollupConfigFlag,
-	CannonL2GenesisFlag,
 	CannonBinFlag,
 	CannonServerFlag,
 	CannonPreStateFlag,
 	CannonL2Flag,
 	CannonSnapshotFreqFlag,
 	CannonInfoFreqFlag,
-	AsteriscRollupConfigFlag,
-	AsteriscL2GenesisFlag,
 	AsteriscBinFlag,
 	AsteriscServerFlag,
 	AsteriscKonaServerFlag,
@@ -272,6 +262,8 @@ var optionalFlags = []cli.Flag{
 func init() {
 	optionalFlags = append(optionalFlags, oplog.CLIFlags(EnvVarPrefix)...)
 	optionalFlags = append(optionalFlags, PreStatesURLFlag.Flags()...)
+	optionalFlags = append(optionalFlags, RollupConfigFlag.Flags()...)
+	optionalFlags = append(optionalFlags, L2GenesisFlag.Flags()...)
 	optionalFlags = append(optionalFlags, txmgr.CLIFlagsWithDefaults(EnvVarPrefix, txmgr.DefaultChallengerFlagValues)...)
 	optionalFlags = append(optionalFlags, opmetrics.CLIFlags(EnvVarPrefix)...)
 	optionalFlags = append(optionalFlags, oppprof.CLIFlags(EnvVarPrefix)...)
@@ -284,17 +276,17 @@ var Flags []cli.Flag
 
 func CheckCannonFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(flags.NetworkFlagName) &&
-		!(ctx.IsSet(CannonRollupConfigFlag.Name) && ctx.IsSet(CannonL2GenesisFlag.Name)) {
+		!(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) && L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
-			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name)
+			flags.NetworkFlagName, RollupConfigFlag.DefaultName(), L2GenesisFlag.DefaultName())
 	}
 	if ctx.IsSet(flags.NetworkFlagName) &&
-		(ctx.IsSet(CannonRollupConfigFlag.Name) || ctx.IsSet(CannonL2GenesisFlag.Name) || ctx.Bool(CannonL2CustomFlag.Name)) {
+		(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) || L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon) || ctx.Bool(CannonL2CustomFlag.Name)) {
 		return fmt.Errorf("flag %v can not be used with %v, %v or %v",
-			flags.NetworkFlagName, CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2CustomFlag.Name)
+			flags.NetworkFlagName, RollupConfigFlag.SourceFlagName(ctx, types.TraceTypeCannon), L2GenesisFlag.SourceFlagName(ctx, types.TraceTypeCannon), CannonL2CustomFlag.Name)
 	}
-	if ctx.Bool(CannonL2CustomFlag.Name) && !(ctx.IsSet(CannonRollupConfigFlag.Name) && ctx.IsSet(CannonL2GenesisFlag.Name)) {
-		return fmt.Errorf("flag %v and %v must be set when %v is true", CannonRollupConfigFlag.Name, CannonL2GenesisFlag.Name, CannonL2CustomFlag.Name)
+	if ctx.Bool(CannonL2CustomFlag.Name) && !(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) && L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon)) {
+		return fmt.Errorf("flag %v and %v must be set when %v is true", RollupConfigFlag.DefaultName(), L2GenesisFlag.DefaultName(), CannonL2CustomFlag.Name)
 	}
 	if !ctx.IsSet(CannonBinFlag.Name) {
 		return fmt.Errorf("flag %s is required", CannonBinFlag.Name)
@@ -308,16 +300,16 @@ func CheckCannonFlags(ctx *cli.Context) error {
 	return nil
 }
 
-func CheckAsteriscBaseFlags(ctx *cli.Context) error {
+func CheckAsteriscBaseFlags(ctx *cli.Context, traceType types.TraceType) error {
 	if !ctx.IsSet(flags.NetworkFlagName) &&
-		!(ctx.IsSet(AsteriscRollupConfigFlag.Name) && ctx.IsSet(AsteriscL2GenesisFlag.Name)) {
+		!(RollupConfigFlag.IsSet(ctx, traceType) && L2GenesisFlag.IsSet(ctx, traceType)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
-			flags.NetworkFlagName, AsteriscRollupConfigFlag.Name, AsteriscL2GenesisFlag.Name)
+			flags.NetworkFlagName, RollupConfigFlag.DefaultName(), L2GenesisFlag.DefaultName())
 	}
 	if ctx.IsSet(flags.NetworkFlagName) &&
-		(ctx.IsSet(AsteriscRollupConfigFlag.Name) || ctx.IsSet(AsteriscL2GenesisFlag.Name)) {
+		(RollupConfigFlag.IsSet(ctx, traceType) || L2GenesisFlag.IsSet(ctx, traceType)) {
 		return fmt.Errorf("flag %v can not be used with %v and %v",
-			flags.NetworkFlagName, AsteriscRollupConfigFlag.Name, AsteriscL2GenesisFlag.Name)
+			flags.NetworkFlagName, RollupConfigFlag.SourceFlagName(ctx, traceType), L2GenesisFlag.SourceFlagName(ctx, traceType))
 	}
 	if !ctx.IsSet(AsteriscBinFlag.Name) {
 		return fmt.Errorf("flag %s is required", AsteriscBinFlag.Name)
@@ -326,7 +318,7 @@ func CheckAsteriscBaseFlags(ctx *cli.Context) error {
 }
 
 func CheckAsteriscFlags(ctx *cli.Context) error {
-	if err := CheckAsteriscBaseFlags(ctx); err != nil {
+	if err := CheckAsteriscBaseFlags(ctx, types.TraceTypeAsterisc); err != nil {
 		return err
 	}
 	if !ctx.IsSet(AsteriscServerFlag.Name) {
@@ -339,7 +331,7 @@ func CheckAsteriscFlags(ctx *cli.Context) error {
 }
 
 func CheckAsteriscKonaFlags(ctx *cli.Context) error {
-	if err := CheckAsteriscBaseFlags(ctx); err != nil {
+	if err := CheckAsteriscBaseFlags(ctx, types.TraceTypeAsteriscKona); err != nil {
 		return err
 	}
 	if !ctx.IsSet(AsteriscKonaServerFlag.Name) {
@@ -539,8 +531,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			Server:           ctx.String(CannonServerFlag.Name),
 			Network:          network,
 			L2Custom:         ctx.Bool(CannonL2CustomFlag.Name),
-			RollupConfigPath: ctx.String(CannonRollupConfigFlag.Name),
-			L2GenesisPath:    ctx.String(CannonL2GenesisFlag.Name),
+			RollupConfigPath: RollupConfigFlag.String(ctx, types.TraceTypeCannon),
+			L2GenesisPath:    L2GenesisFlag.String(ctx, types.TraceTypeCannon),
 			SnapshotFreq:     ctx.Uint(CannonSnapshotFreqFlag.Name),
 			InfoFreq:         ctx.Uint(CannonInfoFreqFlag.Name),
 			DebugInfo:        true,
@@ -557,8 +549,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:            ctx.String(AsteriscBinFlag.Name),
 			Server:           ctx.String(AsteriscServerFlag.Name),
 			Network:          network,
-			RollupConfigPath: ctx.String(AsteriscRollupConfigFlag.Name),
-			L2GenesisPath:    ctx.String(AsteriscL2GenesisFlag.Name),
+			RollupConfigPath: RollupConfigFlag.String(ctx, types.TraceTypeAsterisc),
+			L2GenesisPath:    L2GenesisFlag.String(ctx, types.TraceTypeAsterisc),
 			SnapshotFreq:     ctx.Uint(AsteriscSnapshotFreqFlag.Name),
 			InfoFreq:         ctx.Uint(AsteriscInfoFreqFlag.Name),
 			BinarySnapshots:  true,
@@ -573,8 +565,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:            ctx.String(AsteriscBinFlag.Name),
 			Server:           ctx.String(AsteriscKonaServerFlag.Name),
 			Network:          network,
-			RollupConfigPath: ctx.String(AsteriscRollupConfigFlag.Name),
-			L2GenesisPath:    ctx.String(AsteriscL2GenesisFlag.Name),
+			RollupConfigPath: RollupConfigFlag.String(ctx, types.TraceTypeAsteriscKona),
+			L2GenesisPath:    L2GenesisFlag.String(ctx, types.TraceTypeAsteriscKona),
 			SnapshotFreq:     ctx.Uint(AsteriscSnapshotFreqFlag.Name),
 			InfoFreq:         ctx.Uint(AsteriscInfoFreqFlag.Name),
 			BinarySnapshots:  true,
