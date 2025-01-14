@@ -948,14 +948,14 @@ contract Specification_Test is CommonTest {
 
     /// @notice Ensures that the DeputyGuardian is authorized to take all Guardian actions.
     function test_deputyGuardianAuth_works() public view {
-        // Additional 2 roles for the DeputyPauseModule.
-        assertEq(specsByRole[Role.GUARDIAN].length, 5);
-        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 2);
+        // Additional 2 roles for the DeputyPauseModule
+        // Additional role for `setAnchorState` which is in DGM but no longer role-restricted.
+        assertEq(specsByRole[Role.GUARDIAN].length, 4);
+        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 3);
 
         mapping(bytes4 => Spec) storage dgmFuncSpecs = specs["DeputyGuardianModule"];
         mapping(bytes4 => Spec) storage superchainConfigFuncSpecs = specs["SuperchainConfig"];
         mapping(bytes4 => Spec) storage portal2FuncSpecs = specs["OptimismPortal2"];
-        mapping(bytes4 => Spec) storage anchorRegFuncSpecs = specs["AnchorStateRegistry"];
 
         // Ensure that for each of the DeputyGuardianModule's methods there is a corresponding method on another
         // system contract authed to the Guardian role.
@@ -972,6 +972,5 @@ contract Specification_Test is CommonTest {
         _assertRolesEq(portal2FuncSpecs[_getSel("setRespectedGameType(uint32)")].auth, Role.GUARDIAN);
 
         _assertRolesEq(dgmFuncSpecs[_getSel("setAnchorState(address,address)")].auth, Role.DEPUTYGUARDIAN);
-        _assertRolesEq(anchorRegFuncSpecs[_getSel("setAnchorState(address)")].auth, Role.GUARDIAN);
     }
 }

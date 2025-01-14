@@ -120,7 +120,7 @@
         "type": "address"
       }
     ],
-    "name": "isGameBeyondAirgap",
+    "name": "isGameAirgapped",
     "outputs": [
       {
         "internalType": "bool",
