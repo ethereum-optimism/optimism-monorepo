@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { InitializablePublic } from "src/universal/InitializablePublic.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 
 // Interfaces
@@ -16,10 +16,10 @@ import { IOptimismERC20Factory } from "interfaces/L2/IOptimismERC20Factory.sol";
 ///         contracts on the network it's deployed to. Simplifies the deployment process for users
 ///         who may be less familiar with deploying smart contracts. Designed to be backwards
 ///         compatible with the older StandardL2ERC20Factory contract.
-contract OptimismMintableERC20Factory is ISemver, InitializablePublic, IOptimismERC20Factory {
+contract OptimismMintableERC20Factory is ISemver, Initializable, IOptimismERC20Factory {
     /// @custom:spacer OptimismMintableERC20Factory's initializer slot spacing
     /// @notice Spacer to avoid packing into the initializer slot
-    bytes32 private spacer_0_0_32;
+    bytes30 private spacer_0_2_30;
 
     /// @notice Address of the StandardBridge on this chain.
     /// @custom:network-specific

@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { InitializablePublic } from "src/universal/InitializablePublic.sol";
+import { Reinitializable as Initializable } from "src/universal/Reinitializable.sol";
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
 
 // Libraries
@@ -46,7 +46,7 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortal2 is InitializablePublic, ResourceMetering, ISemver {
+contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @notice Allows for interactions with non standard ERC20 tokens.
     using SafeERC20 for IERC20;
 
@@ -181,6 +181,11 @@ contract OptimismPortal2 is InitializablePublic, ResourceMetering, ISemver {
         return "3.11.0-beta.11";
     }
 
+    /// @notice Returns the nonce for the reinitializer.
+    function reinitNonce() internal pure override returns (uint64) {
+        return 1;
+    }
+
     /// @notice Constructs the OptimismPortal contract.
     constructor(uint256 _proofMaturityDelaySeconds, uint256 _disputeGameFinalityDelaySeconds) {
         PROOF_MATURITY_DELAY_SECONDS = _proofMaturityDelaySeconds;
@@ -200,7 +205,7 @@ contract OptimismPortal2 is InitializablePublic, ResourceMetering, ISemver {
         GameType _initialRespectedGameType
     )
         external
-        initializer
+        reinitializer(reinitValue())
     {
         disputeGameFactory = _disputeGameFactory;
         systemConfig = _systemConfig;

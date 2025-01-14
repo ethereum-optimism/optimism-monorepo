@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { InitializablePublic } from "src/universal/InitializablePublic.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -12,10 +12,10 @@ import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenge
 
 /// @title ERC721Bridge
 /// @notice ERC721Bridge is a base contract for the L1 and L2 ERC721 bridges.
-abstract contract ERC721Bridge is InitializablePublic {
+abstract contract ERC721Bridge is Initializable {
     /// @custom:spacer ERC721Bridge's initializer slot spacing
     /// @notice Spacer to avoid packing into the initializer slot
-    bytes32 private spacer_0_0_32;
+    bytes30 private spacer_0_2_30;
 
     /// @notice Messenger contract on this domain.
     /// @custom:network-specific

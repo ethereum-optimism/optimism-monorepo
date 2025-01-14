@@ -2,7 +2,7 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { InitializablePublic } from "src/universal/InitializablePublic.sol";
+import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 
 // Libraries
 import { Address } from "@openzeppelin/contracts/utils/Address.sol";
@@ -22,7 +22,7 @@ import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenge
 /// @notice StandardBridge is a base contract for the L1 and L2 standard ERC20 bridges. It handles
 ///         the core bridging logic, including escrowing tokens that are native to the local chain
 ///         and minting/burning tokens that are native to the remote chain.
-abstract contract StandardBridge is InitializablePublic {
+abstract contract StandardBridge is Initializable {
     using SafeERC20 for IERC20;
 
     /// @notice The L2 gas limit set when eth is depoisited using the receive() function.
@@ -31,7 +31,7 @@ abstract contract StandardBridge is InitializablePublic {
     /// @custom:legacy
     /// @custom:spacer messenger
     /// @notice Spacer for backwards compatibility.
-    bytes32 private spacer_0_0_32;
+    bytes30 private spacer_0_2_30;
 
     /// @custom:legacy
     /// @custom:spacer l2TokenBridge
