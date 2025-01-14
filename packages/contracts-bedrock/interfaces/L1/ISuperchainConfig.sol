@@ -18,7 +18,8 @@ interface ISuperchainConfig {
     function pause(string memory _identifier) external;
     function paused() external view returns (bool paused_);
     function unpause() external;
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

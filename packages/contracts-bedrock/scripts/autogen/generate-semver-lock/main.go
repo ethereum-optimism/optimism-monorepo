@@ -82,9 +82,14 @@ func processFile(file string) (*SemverLockResult, []error) {
 		return nil, nil
 	}
 
-	// Check if the contract uses semver.
-	semverRegex := regexp.MustCompile(`custom:semver`)
-	semver := semverRegex.FindStringSubmatch(artifact.RawMetadata)
+	// Check if the contract uses semver by searching through the stringified artifact
+	artifactBytes, err := json.Marshal(artifact.Ast)
+	if err != nil {
+		return nil, []error{fmt.Errorf("failed to marshal artifact: %w", err)}
+	}
+	artifactStr := string(artifactBytes)
+	semverRegex := regexp.MustCompile(`@custom:semver`)
+	semver := semverRegex.FindStringSubmatch(artifactStr)
 	if len(semver) == 0 {
 		return nil, nil
 	}

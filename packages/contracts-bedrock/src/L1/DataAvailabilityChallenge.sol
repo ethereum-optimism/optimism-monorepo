@@ -3,12 +3,10 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { SafeCall } from "src/libraries/SafeCall.sol";
-
-// Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @dev An enum representing the status of a DA challenge.
 enum ChallengeStatus {
@@ -45,7 +43,7 @@ struct Challenge {
 ///         expired.
 ///         If a challenge is expired, the challenger's bond is unlocked and the challenged commitment is added to the
 ///         chain of expired challenges.
-contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
+contract DataAvailabilityChallenge is OwnableUpgradeable, Semver {
     /// @notice Error for when the provided resolver refund percentage exceeds 100%.
     error InvalidResolverRefundPercentage(uint256 invalidResolverRefundPercentage);
 
@@ -94,10 +92,6 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     /// @notice An event that is emitted when a user's bond balance changes.
     event BalanceChanged(address account, uint256 balance);
 
-    /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.5
-    string public constant version = "1.0.1-beta.5";
-
     /// @notice The fixed cost of resolving a challenge.
     /// @dev The value is estimated by measuring the cost of resolving with `bytes(0)`
     uint256 public constant fixedResolutionCost = 72925;
@@ -128,6 +122,12 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
 
     /// @notice A mapping from challenged block numbers to challenged commitments to challenges.
     mapping(uint256 => mapping(bytes => Challenge)) internal challenges;
+
+    /// @notice Semantic version.
+    /// @custom:semver 1.0.2
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 2, suffix: "" });
+    }
 
     /// @notice Constructs the DataAvailabilityChallenge contract.
     constructor() OwnableUpgradeable() {

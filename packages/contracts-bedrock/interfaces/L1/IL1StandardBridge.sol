@@ -71,7 +71,8 @@ interface IL1StandardBridge is IStandardBridge {
     function l2TokenBridge() external view returns (address);
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

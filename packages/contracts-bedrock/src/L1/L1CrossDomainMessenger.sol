@@ -3,13 +3,13 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
@@ -19,7 +19,7 @@ import { IOptimismPortal2 as IOptimismPortal } from "interfaces/L1/IOptimismPort
 /// @notice The L1CrossDomainMessenger is a message passing interface between L1 and L2 responsible
 ///         for sending and receiving data on the L1 side. Users are encouraged to use this
 ///         interface instead of interacting with lower-level contracts directly.
-contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
+contract L1CrossDomainMessenger is CrossDomainMessenger, Semver {
     /// @notice Contract of the SuperchainConfig.
     ISuperchainConfig public superchainConfig;
 
@@ -31,8 +31,10 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     ISystemConfig public systemConfig;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.1-beta.6
-    string public constant version = "2.4.1-beta.6";
+    /// @custom:semver 2.4.2
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 2, minor: 4, patch: 2, suffix: "" });
+    }
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() {

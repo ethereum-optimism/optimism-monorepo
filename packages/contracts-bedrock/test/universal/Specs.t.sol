@@ -106,6 +106,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.challenge.selector });
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.resolve.selector });
         _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.unlockBond.selector });
+        _addSpec({ _name: "DataAvailabilityChallenge", _sel: IDataAvailabilityChallenge.reinitializerValue.selector });
 
         // L1CrossDomainMessenger
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("MESSAGE_VERSION()") });
@@ -136,6 +137,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("version()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("xDomainMessageSender()") });
+        _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("reinitializerValue()") });
 
         // L1ERC721Bridge
         _addSpec({ _name: "L1ERC721Bridge", _sel: _getSel("MESSENGER()") });
@@ -157,6 +159,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1ERC721Bridge", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "L1ERC721Bridge", _sel: _getSel("paused()") });
         _addSpec({ _name: "L1ERC721Bridge", _sel: _getSel("initialize(address,address)") });
+        _addSpec({ _name: "L1ERC721Bridge", _sel: _getSel("reinitializerValue()") });
 
         // L1StandardBridge
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("MESSENGER()") });
@@ -208,7 +211,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("version()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("systemConfig()") });
-
+        _addSpec({ _name: "L1StandardBridge", _sel: _getSel("reinitializerValue()") });
         // OptimismPortalInterop
         _addSpec({
             _name: "OptimismPortalInterop",
@@ -266,6 +269,7 @@ contract Specification_Test is CommonTest {
             _sel: IOptimismPortalInterop.setConfig.selector,
             _auth: Role.SYSTEMCONFIGOWNER
         });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("reinitializerValue()") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -307,6 +311,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("numProofSubmitters(bytes32)") });
+        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("reinitializerValue()") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -329,6 +334,7 @@ contract Specification_Test is CommonTest {
         });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("transferOwnership(address)") });
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("version()") });
+        _addSpec({ _name: "ProtocolVersions", _sel: _getSel("reinitializerValue()") });
 
         // ResourceMetering
         _addSpec({ _name: "ResourceMetering", _sel: _getSel("params()") });
@@ -342,6 +348,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("reinitializerValue()") });
 
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -393,6 +400,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("reinitializerValue()") });
 
         // SystemConfigInterop
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -472,6 +480,7 @@ contract Specification_Test is CommonTest {
             _auth: Role.DEPENDENCYMANAGER
         });
         _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("dependencyManager()") });
+        _addSpec({ _name: "SystemConfigInterop", _sel: _getSel("reinitializerValue()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });
@@ -762,6 +771,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("reinitializerValue()") });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
@@ -774,6 +784,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("reinitializerValue()") });
 
         // DeputyGuardianModule
         _addSpec({

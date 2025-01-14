@@ -65,9 +65,11 @@ contract SystemConfigInterop is SystemConfig {
         Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
-    /// @custom:semver +interop-beta.10
-    function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.10");
+    /// @custom:semver +interop
+    function _version() internal pure override returns (Versions memory) {
+        Versions memory v = super._version();
+        v.suffix = "+interop";
+        return v;
     }
 
     /// @notice Adds a chain to the interop dependency set. Can only be called by the dependency manager.

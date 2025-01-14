@@ -3,13 +3,13 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -24,7 +24,7 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
 ///         of some token types that may not be properly supported by this contract include, but are
 ///         not limited to: tokens with transfer fees, rebasing tokens, and tokens with blocklists.
-contract L1StandardBridge is StandardBridge, ISemver {
+contract L1StandardBridge is StandardBridge, Semver {
     /// @custom:legacy
     /// @notice Emitted whenever a deposit of ETH from L1 into L2 is initiated.
     /// @param from      Address of the depositor.
@@ -75,15 +75,17 @@ contract L1StandardBridge is StandardBridge, ISemver {
         bytes extraData
     );
 
-    /// @notice Semantic version.
-    /// @custom:semver 2.2.1-beta.6
-    string public constant version = "2.2.1-beta.6";
-
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
     /// @notice Address of the SystemConfig contract.
     ISystemConfig public systemConfig;
+
+    /// @notice Semantic version.
+    /// @custom:semver 2.2.2
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 2, minor: 2, patch: 2, suffix: "" });
+    }
 
     /// @notice Constructs the L1StandardBridge contract.
     constructor() StandardBridge() {

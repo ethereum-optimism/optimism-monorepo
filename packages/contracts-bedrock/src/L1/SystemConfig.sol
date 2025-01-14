@@ -3,12 +3,12 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
 /// @custom:proxied true
@@ -16,7 +16,7 @@ import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 /// @notice The SystemConfig contract is used to manage configuration of an Optimism network.
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
-contract SystemConfig is OwnableUpgradeable, ISemver {
+contract SystemConfig is OwnableUpgradeable, Semver {
     /// @notice Enum representing different types of updates.
     /// @custom:value BATCHER              Represents an update to the batcher hash.
     /// @custom:value FEE_SCALARS          Represents an update to l1 data fee scalars.
@@ -129,9 +129,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.11
-    function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.11";
+    /// @custom:semver 2.3.1
+    function _version() internal pure virtual override returns (Versions memory) {
+        return Versions({ major: 2, minor: 3, patch: 1, suffix: "" });
     }
 
     /// @notice Constructs the SystemConfig contract.

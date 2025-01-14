@@ -7,7 +7,7 @@ import { Semver } from "src/universal/Semver.sol";
 /// @notice A mock contract that implements Semver
 contract MockSemver is Semver {
     function _version() internal pure override returns (Semver.Versions memory) {
-        return Semver.Versions(1, 2, 3);
+        return Semver.Versions({ major: 1, minor: 2, patch: 3, suffix: "" });
     }
 }
 
@@ -23,12 +23,12 @@ contract SemverTest is Test {
     }
 
     /// @notice Test that the version is returned correctly
-    function test_version() public {
+    function test_version() public view {
         assertEq(semver.version(), "1.2.3");
     }
 
     /// @notice Test that the reinitializerValue function returns the correct uint64
-    function test_reinitializerValue() public {
+    function test_reinitializerValue() public view {
         assertEq(uint256(semver.reinitializerValue()), 1000002000003);
     }
 }

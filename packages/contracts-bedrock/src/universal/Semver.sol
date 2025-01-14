@@ -15,6 +15,7 @@ abstract contract Semver {
         uint16 major;
         uint16 minor;
         uint16 patch;
+        string suffix;
     }
 
     /// @notice Getter for the semantic version of the contract. This must be implemented on each contract.
@@ -24,10 +25,10 @@ abstract contract Semver {
     ///         meant to be used onchain but instead meant to be used by offchain
     ///         tooling.
     /// @return Semver contract version as a string.
-    function version() external view returns (string memory) {
+    function version() external pure returns (string memory) {
         Versions memory v = _version();
         return string.concat(
-            LibString.toString(v.major), ".", LibString.toString(v.minor), ".", LibString.toString(v.patch)
+            LibString.toString(v.major), ".", LibString.toString(v.minor), ".", LibString.toString(v.patch), v.suffix
         );
     }
 

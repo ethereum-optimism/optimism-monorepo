@@ -616,6 +616,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "reinitializerValue",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "uint256",

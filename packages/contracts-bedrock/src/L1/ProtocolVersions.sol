@@ -3,12 +3,10 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Storage } from "src/libraries/Storage.sol";
-
-// Interfaces
-import { Semver } from "src/universal/Semver.sol";
 
 /// @notice ProtocolVersion is a numeric identifier of the protocol version.
 type ProtocolVersion is uint256;
@@ -43,7 +41,7 @@ contract ProtocolVersions is OwnableUpgradeable, Semver {
     /// @notice Semantic version.
     /// @custom:semver 1.0.2
     function _version() internal pure override returns (Versions memory) {
-        return Versions(1, 0, 2);
+        return Versions({ major: 1, minor: 0, patch: 2, suffix: "" });
     }
 
     /// @notice Constructs the ProtocolVersion contract.

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
+import { Semver } from "src/universal/Semver.sol";
+
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -8,7 +11,6 @@ import { Bytes } from "src/libraries/Bytes.sol";
 import { Claim, Duration, GameType, GameTypes } from "src/dispute/lib/Types.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
@@ -30,7 +32,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 
-contract OPContractsManager is ISemver {
+contract OPContractsManager is Semver {
     // -------- Structs --------
 
     /// @notice Represents the roles that can be set when deploying a standard OP Stack chain.
@@ -138,9 +140,6 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.29
-    string public constant version = "1.0.0-beta.29";
-
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
     uint256 public constant OUTPUT_VERSION = 0;
@@ -208,6 +207,11 @@ contract OPContractsManager is ISemver {
     error InvalidGameConfigs();
 
     // -------- Methods --------
+
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     constructor(
         ISuperchainConfig _superchainConfig,

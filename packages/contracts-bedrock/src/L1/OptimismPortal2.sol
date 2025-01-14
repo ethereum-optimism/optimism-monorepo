@@ -4,6 +4,7 @@ pragma solidity 0.8.15;
 // Contracts
 import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable.sol";
 import { ResourceMetering } from "src/L1/ResourceMetering.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -34,7 +35,6 @@ import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.so
 
 // Interfaces
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
@@ -46,7 +46,7 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 /// @notice The OptimismPortal is a low-level contract responsible for passing messages between L1
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
-contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
+contract OptimismPortal2 is Initializable, ResourceMetering, Semver {
     /// @notice Allows for interactions with non standard ERC20 tokens.
     using SafeERC20 for IERC20;
 
@@ -176,9 +176,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.11
-    function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.11";
+    /// @custom:semver 3.11.1
+    function _version() internal pure virtual override returns (Versions memory) {
+        return Versions({ major: 3, minor: 11, patch: 1, suffix: "" });
     }
 
     /// @notice Constructs the OptimismPortal contract.

@@ -66,6 +66,7 @@ interface ISystemConfigInterop {
     )
         external;
     function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

@@ -87,8 +87,9 @@ interface IDataAvailabilityChallenge {
     function validateCommitment(bytes memory _commitment) external pure;
     function variableResolutionCost() external view returns (uint256);
     function variableResolutionCostPrecision() external view returns (uint256);
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
     function withdraw() external;
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }
