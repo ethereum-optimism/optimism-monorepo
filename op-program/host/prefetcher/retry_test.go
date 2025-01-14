@@ -388,6 +388,11 @@ func (m *MockL2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte
 	return out[0].([]byte), *out[1].(*error)
 }
 
+func (m *MockL2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
+	out := m.Mock.MethodCalled("FetchReceipts", blockHash)
+	return out[0].(eth.BlockInfo), out[1].(types.Receipts), *out[2].(*error)
+}
+
 func (m *MockL2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
 	out := m.Mock.MethodCalled("OutputByRoot", blockRoot)
 	return out[0].(eth.Output), *out[1].(*error)

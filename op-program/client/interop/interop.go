@@ -21,6 +21,10 @@ var (
 	ErrIncorrectOutputRootType = errors.New("incorrect output root type")
 )
 
+const (
+	ConsolidateStep = 1023
+)
+
 type taskExecutor interface {
 	RunDerivation(
 		logger log.Logger,
@@ -89,7 +93,26 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Prei
 			BlockHash:  derivationResult.BlockHash,
 			OutputRoot: derivationResult.OutputRoot,
 		})
+	} else if transitionState.Step == uint64(ConsolidateStep) {
+		// sanity check
+		if len(transitionState.PendingProgress) >= ConsolidateStep {
+			return fmt.Errorf("pending progress length does not match the expected step")
+		}
+		deps := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
+		expectedSuperRoot, err := Consolidate(deps, l2PreimageOracle, transitionState, superRoot)
+		if err != nil {
+			return err
+		}
+		if validateClaim {
+			claimedSuperRoot := eth.SuperRoot(superRoot)
+			logger.Info("Validating super root", "expected", expectedSuperRoot, "claim", claimedSuperRoot)
+			if expectedSuperRoot != claimedSuperRoot {
+				return fmt.Errorf("expected root %s does not match claim %s", expectedSuperRoot, claimedSuperRoot)
+			}
+		}
+		return nil
 	}
+
 	finalState := &types.TransitionState{
 		SuperRoot:       transitionState.SuperRoot,
 		PendingProgress: expectedPendingProgress,

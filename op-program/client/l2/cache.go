@@ -13,11 +13,13 @@ import (
 const blockCacheSize = 3_000
 const nodeCacheSize = 100_000
 const codeCacheSize = 10_000
+const receiptsCacheSize = 100
 
 type CachingOracle struct {
 	oracle  Oracle
 	blocks  *simplelru.LRU[common.Hash, *types.Block]
 	nodes   *simplelru.LRU[common.Hash, []byte]
+	rcpts   *simplelru.LRU[common.Hash, types.Receipts]
 	codes   *simplelru.LRU[common.Hash, []byte]
 	outputs *simplelru.LRU[common.Hash, eth.Output]
 }
@@ -25,11 +27,13 @@ type CachingOracle struct {
 func NewCachingOracle(oracle Oracle) *CachingOracle {
 	blockLRU, _ := simplelru.NewLRU[common.Hash, *types.Block](blockCacheSize, nil)
 	nodeLRU, _ := simplelru.NewLRU[common.Hash, []byte](nodeCacheSize, nil)
+	rcptsLRU, _ := simplelru.NewLRU[common.Hash, types.Receipts](receiptsCacheSize, nil)
 	codeLRU, _ := simplelru.NewLRU[common.Hash, []byte](codeCacheSize, nil)
 	outputLRU, _ := simplelru.NewLRU[common.Hash, eth.Output](codeCacheSize, nil)
 	return &CachingOracle{
 		oracle:  oracle,
 		blocks:  blockLRU,
+		rcpts:   rcptsLRU,
 		nodes:   nodeLRU,
 		codes:   codeLRU,
 		outputs: outputLRU,
@@ -44,6 +48,16 @@ func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte 
 	node = o.oracle.NodeByHash(nodeHash, chainID)
 	o.nodes.Add(nodeHash, node)
 	return node
+}
+
+func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts {
+	rcpts, ok := o.rcpts.Get(blockHash)
+	if ok {
+		return rcpts
+	}
+	rcpts = o.oracle.ReceiptsByBlockHash(blockHash, chainID)
+	o.rcpts.Add(blockHash, rcpts)
+	return rcpts
 }
 
 func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {

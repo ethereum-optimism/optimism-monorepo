@@ -22,6 +22,7 @@ type stateOracle interface {
 type StubBlockOracle struct {
 	t                *testing.T
 	Blocks           map[common.Hash]*gethTypes.Block
+	Receipts         map[common.Hash]gethTypes.Receipts
 	Outputs          map[common.Hash]eth.Output
 	TransitionStates map[common.Hash]*interopTypes.TransitionState
 	stateOracle
@@ -34,6 +35,7 @@ func NewStubOracle(t *testing.T) (*StubBlockOracle, *StubStateOracle) {
 		Blocks:           make(map[common.Hash]*gethTypes.Block),
 		Outputs:          make(map[common.Hash]eth.Output),
 		TransitionStates: make(map[common.Hash]*interopTypes.TransitionState),
+		Receipts:         make(map[common.Hash]gethTypes.Receipts),
 		stateOracle:      stateOracle,
 	}
 	return &blockOracle, stateOracle
@@ -85,6 +87,14 @@ func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 		o.t.Fatalf("requested unknown block %s", blockHash)
 	}
 	return block
+}
+
+func (o StubBlockOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) gethTypes.Receipts {
+	receipts, ok := o.Receipts[blockHash]
+	if !ok {
+		o.t.Fatalf("requested unknown receipts for block %s", blockHash)
+	}
+	return receipts
 }
 
 // KvStateOracle loads data from a source ethdb.KeyValueStore

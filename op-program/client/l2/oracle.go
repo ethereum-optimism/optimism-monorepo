@@ -40,6 +40,8 @@ type Oracle interface {
 	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
 
 	TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState
+
+	ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -151,4 +153,21 @@ func (p *PreimageOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 		panic(fmt.Errorf("invalid agreed prestate data for root %s: %w", root, err))
 	}
 	return output
+}
+
+func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts {
+	block := p.BlockByHash(blockHash, chainID)
+	p.hint.Hint(ReceiptsHint{Hash: blockHash, ChainID: chainID})
+	opaqueReceipts := mpt.ReadTrie(block.ReceiptHash(), func(key common.Hash) []byte {
+		return p.oracle.Get(preimage.Keccak256Key(key))
+	})
+	txHashes := make([]common.Hash, len(block.Transactions()))
+	for i, tx := range block.Transactions() {
+		txHashes[i] = tx.Hash()
+	}
+	receipts, err := eth.DecodeRawReceipts(eth.ToBlockID(block), opaqueReceipts, txHashes)
+	if err != nil {
+		panic(fmt.Errorf("failed to decode receipts for block %v: %w", block.Hash(), err))
+	}
+	return receipts
 }
