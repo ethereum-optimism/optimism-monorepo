@@ -80,18 +80,18 @@ func (w *Wallet) Send(ctx context.Context, network *network.Network, amount *big
 	// 8. Sign the transaction:
 	chainID, err := network.RPC.NetworkID(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get network ID: %v", err)
+		return nil, fmt.Errorf("failed to get network ID: %w", err)
 	}
 	signedTx, err := types.SignTx(tx, types.NewEIP155Signer(chainID), w.privateKeyESCDA)
 	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %v", err)
+		return nil, fmt.Errorf("failed to sign transaction: %w", err)
 	}
 
 	// 9. Send the transaction:
 	log.Info("sending transaction")
 	err = network.RPC.SendTransaction(ctx, signedTx)
 	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %v", err)
+		return nil, fmt.Errorf("failed to send transaction: %w", err)
 	}
 	log.Info("transcaction sent successfully",
 		"tx_hash", signedTx.Hash().Hex(),

@@ -2,6 +2,7 @@ package nat
 
 import (
 	"context"
+
 	"github.com/ethereum/go-ethereum/log"
 )
 
