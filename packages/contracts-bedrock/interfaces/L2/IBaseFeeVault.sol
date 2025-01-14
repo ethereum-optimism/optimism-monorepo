@@ -18,7 +18,8 @@ interface IBaseFeeVault {
     function withdraw() external;
     function withdrawalNetwork() external view returns (Types.WithdrawalNetwork network_);
 
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__(
         address _recipient,

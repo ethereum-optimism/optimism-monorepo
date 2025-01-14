@@ -19,7 +19,8 @@ interface IGasPriceOracle {
     function scalar() external view returns (uint256);
     function setEcotone() external;
     function setFjord() external;
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

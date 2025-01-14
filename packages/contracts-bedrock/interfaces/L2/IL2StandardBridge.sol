@@ -26,6 +26,7 @@ interface IL2StandardBridge is IStandardBridge {
     function initialize(IStandardBridge _otherBridge) external;
     function l1TokenBridge() external view returns (address);
     function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
     function withdraw(
         address _l2Token,
         uint256 _amount,

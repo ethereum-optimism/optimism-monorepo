@@ -54,7 +54,9 @@ interface IOptimismMintableERC721 {
 
     function tokenURI(uint256 tokenId) external view returns (string memory);
 
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+
+    function reinitializerValue() external pure returns (uint64);
 
     function safeMint(address _to, uint256 _tokenId) external;
 

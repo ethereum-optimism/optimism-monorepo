@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { WETH98 } from "src/universal/WETH98.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
@@ -11,7 +12,6 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { SafeSend } from "src/universal/SafeSend.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
@@ -24,7 +24,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 /// @notice SuperchainWETH is a version of WETH that can be freely transfrered between chains
 ///         within the superchain. SuperchainWETH can be converted into native ETH on chains that
 ///         do not use a custom gas token.
-contract SuperchainWETH is WETH98, IERC7802, ISemver {
+contract SuperchainWETH is WETH98, IERC7802, Semver {
     /// @notice Thrown when attempting to relay a message and the cross domain message sender is not SuperchainWETH.
     error InvalidCrossDomainSender();
 
@@ -43,8 +43,10 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     event RelayETH(address indexed from, address indexed to, uint256 amount, uint256 source);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.13
-    string public constant version = "1.0.0-beta.13";
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @inheritdoc WETH98
     function deposit() public payable override {

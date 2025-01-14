@@ -3,12 +3,12 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { StandardBridge } from "src/universal/StandardBridge.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
@@ -22,7 +22,7 @@ import { IL1Block } from "interfaces/L2/IL1Block.sol";
 ///         NOTE: this contract is not intended to support all variations of ERC20 tokens. Examples
 ///         of some token types that may not be properly supported by this contract include, but are
 ///         not limited to: tokens with transfer fees, rebasing tokens, and tokens with blocklists.
-contract L2StandardBridge is StandardBridge, ISemver {
+contract L2StandardBridge is StandardBridge, Semver {
     /// @custom:legacy
     /// @notice Emitted whenever a withdrawal from L2 to L1 is initiated.
     /// @param l1Token   Address of the token on L1.
@@ -58,9 +58,9 @@ contract L2StandardBridge is StandardBridge, ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.11.1-beta.7
-    function version() public pure virtual returns (string memory) {
-        return "1.11.1-beta.7";
+    /// @custom:semver 1.11.2
+    function _version() internal pure virtual override returns (Versions memory) {
+        return Versions({ major: 1, minor: 11, patch: 2, suffix: "" });
     }
 
     /// @notice Constructs the L2StandardBridge contract.

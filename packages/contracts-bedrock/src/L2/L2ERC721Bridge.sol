@@ -3,6 +3,7 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { ERC721Bridge } from "src/universal/ERC721Bridge.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { ERC165Checker } from "@openzeppelin/contracts/utils/introspection/ERC165Checker.sol";
@@ -12,7 +13,6 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IOptimismMintableERC721 } from "interfaces/L2/IOptimismMintableERC721.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
-import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000014
@@ -23,9 +23,11 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 ///         This contract also acts as a burner for tokens being withdrawn.
 ///         **WARNING**: Do not bridge an ERC721 that was originally deployed on Optimism. This
 ///         bridge ONLY supports ERC721s originally deployed on Ethereum.
-contract L2ERC721Bridge is ERC721Bridge, ISemver {
-    /// @custom:semver 1.8.0-beta.5
-    string public constant version = "1.8.0-beta.5";
+contract L2ERC721Bridge is ERC721Bridge, Semver {
+    /// @custom:semver 1.8.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 8, patch: 1, suffix: "" });
+    }
 
     /// @notice Constructs the L2ERC721Bridge contract.
     constructor() ERC721Bridge() {

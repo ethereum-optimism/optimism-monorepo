@@ -28,7 +28,8 @@ interface ICrossL2Inbox {
 
     event ExecutingMessage(bytes32 indexed msgHash, Identifier id);
 
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     /// @notice Returns the interop start timestamp.
     /// @return interopStart_ interop start timestamp.

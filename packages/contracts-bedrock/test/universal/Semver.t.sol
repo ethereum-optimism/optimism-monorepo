@@ -23,12 +23,12 @@ contract SemverTest is Test {
     }
 
     /// @notice Test that the version is returned correctly
-    function test_version() public view {
+    function test_version_works() public view {
         assertEq(semver.version(), "1.2.3");
     }
 
     /// @notice Test that the reinitializerValue function returns the correct uint64
-    function test_reinitializerValue() public view {
+    function test_reinitializerValue_works() public view {
         assertEq(uint256(semver.reinitializerValue()), 1000002000003);
     }
 }

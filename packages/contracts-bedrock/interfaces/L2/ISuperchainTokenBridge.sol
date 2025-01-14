@@ -1,11 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import { ISemver } from "interfaces/universal/ISemver.sol";
-
 /// @title ISuperchainTokenBridge
 /// @notice Interface for the SuperchainTokenBridge contract.
-interface ISuperchainTokenBridge is ISemver {
+interface ISuperchainTokenBridge {
     error ZeroAddress();
     error Unauthorized();
     error InvalidCrossDomainSender();
@@ -27,6 +25,10 @@ interface ISuperchainTokenBridge is ISemver {
         returns (bytes32 msgHash_);
 
     function relayERC20(address _token, address _from, address _to, uint256 _amount) external;
+
+    function version() external pure returns (string memory);
+
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

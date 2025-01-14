@@ -4,20 +4,18 @@ pragma solidity 0.8.25;
 // Contracts
 import { BeaconProxy } from "@openzeppelin/contracts-v5/proxy/beacon/BeaconProxy.sol";
 import { OptimismSuperchainERC20 } from "src/L2/OptimismSuperchainERC20.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { CREATE3 } from "@rari-capital/solmate/src/utils/CREATE3.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-
-// Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied
 /// @custom:predeployed 0x4200000000000000000000000000000000000026
 /// @title OptimismSuperchainERC20Factory
 /// @notice OptimismSuperchainERC20Factory is a factory contract that deploys OptimismSuperchainERC20 Beacon Proxies
 ///         using CREATE3.
-contract OptimismSuperchainERC20Factory is ISemver {
+contract OptimismSuperchainERC20Factory is Semver {
     /// @notice Emitted when an OptimismSuperchainERC20 is deployed.
     /// @param superchainToken  Address of the OptimismSuperchainERC20 deployment.
     /// @param remoteToken      Address of the corresponding token on the remote chain.
@@ -27,8 +25,10 @@ contract OptimismSuperchainERC20Factory is ISemver {
     );
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.6
-    string public constant version = "1.0.0-beta.6";
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @notice Mapping of the deployed OptimismSuperchainERC20 to the remote token address.
     ///         This is used to keep track of the token deployments.

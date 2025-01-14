@@ -1,12 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+// Contracts
+import { Semver } from "src/universal/Semver.sol";
+
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { TransientContext, TransientReentrancyAware } from "src/libraries/TransientContext.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL1BlockInterop } from "interfaces/L2/IL1BlockInterop.sol";
 
 /// @notice Thrown when the caller is not DEPOSITOR_ACCOUNT when calling `setInteropStart()`
@@ -35,7 +37,7 @@ struct Identifier {
 /// @title CrossL2Inbox
 /// @notice The CrossL2Inbox is responsible for executing a cross chain message on the destination
 ///         chain. It is permissionless to execute a cross chain message on behalf of any user.
-contract CrossL2Inbox is ISemver, TransientReentrancyAware {
+contract CrossL2Inbox is Semver, TransientReentrancyAware {
     /// @notice Storage slot that the interop start timestamp is stored at.
     ///         Equal to bytes32(uint256(keccak256("crossl2inbox.interopstart")) - 1)
     bytes32 internal constant INTEROP_START_SLOT = 0x5c769ee0ee8887661922049dc52480bb60322d765161507707dd9b190af5c149;
@@ -65,8 +67,10 @@ contract CrossL2Inbox is ISemver, TransientReentrancyAware {
     address internal constant DEPOSITOR_ACCOUNT = 0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAd0001;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.12
-    string public constant version = "1.0.0-beta.12";
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @notice Emitted when a cross chain message is being executed.
     /// @param msgHash Hash of message payload being executed.

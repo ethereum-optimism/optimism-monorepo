@@ -3,19 +3,19 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { SafeSend } from "src/universal/SafeSend.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErrors.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @title ETHLiquidity
 /// @notice The ETHLiquidity contract allows other contracts to access ETH liquidity without
 ///         needing to modify the EVM to generate new ETH.
-contract ETHLiquidity is ISemver {
+contract ETHLiquidity is Semver {
     /// @notice Emitted when an address burns ETH liquidity.
     event LiquidityBurned(address indexed caller, uint256 value);
 
@@ -23,8 +23,10 @@ contract ETHLiquidity is ISemver {
     event LiquidityMinted(address indexed caller, uint256 value);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @notice Allows an address to lock ETH liquidity into this contract.
     function burn() external payable {

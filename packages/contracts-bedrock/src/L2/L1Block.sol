@@ -1,13 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
+import { Semver } from "src/universal/Semver.sol";
+
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { GasPayingToken, IGasToken } from "src/libraries/GasPayingToken.sol";
 import { NotDepositor } from "src/libraries/L1BlockErrors.sol";
-
-// Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000015
@@ -16,7 +16,7 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 ///         Values within this contract are updated once per epoch (every L1 block) and can only be
 ///         set by the "depositor" account, a special system address. Depositor account transactions
 ///         are created by the protocol whenever we move to a new epoch.
-contract L1Block is ISemver, IGasToken {
+contract L1Block is Semver, IGasToken {
     /// @notice Event emitted when the gas paying token is set.
     event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);
 
@@ -60,9 +60,9 @@ contract L1Block is ISemver, IGasToken {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
-    /// @custom:semver 1.5.1-beta.5
-    function version() public pure virtual returns (string memory) {
-        return "1.5.1-beta.5";
+    /// @custom:semver 1.5.2
+    function _version() internal pure virtual override returns (Versions memory) {
+        return Versions({ major: 1, minor: 5, patch: 2, suffix: "" });
     }
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.

@@ -1,13 +1,15 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Contracts
+import { Semver } from "src/universal/Semver.sol";
+
 // Libraries
 import { LibZip } from "@solady/utils/LibZip.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @custom:proxied true
@@ -24,13 +26,15 @@ import { IL1Block } from "interfaces/L2/IL1Block.sol";
 ///         - event OverheadUpdated(uint256 overhead);
 ///         - event ScalarUpdated(uint256 scalar);
 ///         - event DecimalsUpdated(uint256 decimals);
-contract GasPriceOracle is ISemver {
+contract GasPriceOracle is Semver {
     /// @notice Number of decimals used in the scalar.
     uint256 public constant DECIMALS = 6;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.4
-    string public constant version = "1.3.1-beta.4";
+    /// @custom:semver 1.3.2
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 3, patch: 2, suffix: "" });
+    }
 
     /// @notice This is the intercept value for the linear regression used to estimate the final size of the
     ///         compressed transaction.

@@ -1,6 +1,9 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.25;
 
+// Contracts
+import { Semver } from "src/universal/Semver.sol";
+
 // Libraries
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
@@ -8,7 +11,6 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { TransientReentrancyAware } from "src/libraries/TransientContext.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IDependencySet } from "interfaces/L2/IDependencySet.sol";
 import { ICrossL2Inbox, Identifier } from "interfaces/L2/ICrossL2Inbox.sol";
 
@@ -51,7 +53,7 @@ error InvalidChainId();
 /// @notice The L2ToL2CrossDomainMessenger is a higher level abstraction on top of the CrossL2Inbox that provides
 ///         features necessary for secure transfers ERC20 tokens between L2 chains. Messages sent through the
 ///         L2ToL2CrossDomainMessenger on the source chain receive both replay protection as well as domain binding.
-contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
+contract L2ToL2CrossDomainMessenger is Semver, TransientReentrancyAware {
     /// @notice Storage slot for the sender of the current cross domain message.
     ///         Equal to bytes32(uint256(keccak256("l2tol2crossdomainmessenger.sender")) - 1)
     bytes32 internal constant CROSS_DOMAIN_MESSAGE_SENDER_SLOT =
@@ -71,8 +73,10 @@ contract L2ToL2CrossDomainMessenger is ISemver, TransientReentrancyAware {
     uint16 public constant messageVersion = uint16(0);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.14
-    string public constant version = "1.0.0-beta.14";
+    /// @custom:semver 1.0.1
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @notice Mapping of message hashes to boolean receipt values. Note that a message will only be present in this
     ///         mapping if it has successfully been relayed on this chain, and can therefore not be relayed again.

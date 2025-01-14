@@ -3,9 +3,8 @@ pragma solidity ^0.8.0;
 
 import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IERC7802 } from "interfaces/L2/IERC7802.sol";
-import { ISemver } from "interfaces/universal/ISemver.sol";
 
-interface ISuperchainWETH is IWETH98, IERC7802, ISemver {
+interface ISuperchainWETH is IWETH98, IERC7802 {
     error Unauthorized();
     error NotCustomGasToken();
     error InvalidCrossDomainSender();
@@ -20,6 +19,9 @@ interface ISuperchainWETH is IWETH98, IERC7802, ISemver {
     function supportsInterface(bytes4 _interfaceId) external view returns (bool);
     function sendETH(address _to, uint256 _chainId) external payable returns (bytes32 msgHash_);
     function relayETH(address _from, address _to, uint256 _amount) external;
+
+    function version() external pure returns (string memory);
+    function reinitializerValue() external pure returns (uint64);
 
     function __constructor__() external;
 }

@@ -4,6 +4,7 @@ pragma solidity 0.8.25;
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { ZeroAddress, Unauthorized } from "src/libraries/errors/CommonErrors.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Interfaces
 import { ISuperchainERC20 } from "interfaces/L2/ISuperchainERC20.sol";
@@ -16,7 +17,7 @@ import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMes
 /// @notice The SuperchainTokenBridge allows for the bridging of ERC20 tokens to make them fungible across the
 ///         Superchain. It builds on top of the L2ToL2CrossDomainMessenger for both replay protection and domain
 ///         binding.
-contract SuperchainTokenBridge {
+contract SuperchainTokenBridge is Semver {
     /// @notice Thrown when attempting to relay a message and the cross domain message sender is not the
     /// SuperchainTokenBridge.
     error InvalidCrossDomainSender();
@@ -46,8 +47,10 @@ contract SuperchainTokenBridge {
     address internal constant MESSENGER = Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.4
-    string public constant version = "1.0.0-beta.4";
+    /// @custom:semver 1.0.1
+    function _version() internal pure virtual override returns (Versions memory) {
+        return Versions({ major: 1, minor: 0, patch: 1, suffix: "" });
+    }
 
     /// @notice Sends tokens to a target address on another chain.
     /// @dev Tokens are burned on the source chain.

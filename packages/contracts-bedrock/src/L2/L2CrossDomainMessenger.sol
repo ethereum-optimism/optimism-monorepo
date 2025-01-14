@@ -3,13 +3,13 @@ pragma solidity 0.8.15;
 
 // Contracts
 import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
+import { Semver } from "src/universal/Semver.sol";
 
 // Libraries
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
@@ -19,9 +19,11 @@ import { IL1Block } from "interfaces/L2/IL1Block.sol";
 /// @notice The L2CrossDomainMessenger is a high-level interface for message passing between L1 and
 ///         L2 on the L2 side. Users are generally encouraged to use this contract instead of lower
 ///         level message passing contracts.
-contract L2CrossDomainMessenger is CrossDomainMessenger, ISemver {
-    /// @custom:semver 2.1.1-beta.7
-    string public constant version = "2.1.1-beta.7";
+contract L2CrossDomainMessenger is CrossDomainMessenger, Semver {
+    /// @custom:semver 2.1.2
+    function _version() internal pure override returns (Versions memory) {
+        return Versions({ major: 2, minor: 1, patch: 2, suffix: "" });
+    }
 
     /// @notice Constructs the L2CrossDomainMessenger contract.
     constructor() {
