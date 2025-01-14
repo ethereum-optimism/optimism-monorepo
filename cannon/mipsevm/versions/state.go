@@ -184,7 +184,7 @@ func ParseStateVersion(ver string) (StateVersion, error) {
 	case "multithreaded64-2":
 		return VersionMultiThreaded64_v2, nil
 	case "multithreaded-2":
-		return VersionMultiThreaded64_v2, nil
+		return VersionMultiThreaded_v2, nil
 	case "multithreaded64-3":
 		return VersionMultiThreaded64_v3, nil
 	default:

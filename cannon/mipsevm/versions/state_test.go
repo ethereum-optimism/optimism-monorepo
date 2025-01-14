@@ -75,6 +75,16 @@ func TestVersionsOtherThanZeroDoNotSupportJSON(t *testing.T) {
 	}
 }
 
+func TestParseStateVersion(t *testing.T) {
+	for _, version := range StateVersionTypes {
+		t.Run(version.String(), func(t *testing.T) {
+			result, err := ParseStateVersion(version.String())
+			require.NoError(t, err)
+			require.Equal(t, version, result)
+		})
+	}
+}
+
 func writeToFile(t *testing.T, filename string, data serialize.Serializable) string {
 	dir := t.TempDir()
 	path := filepath.Join(dir, filename)
