@@ -1,0 +1,50 @@
+{
+  "drippie": "0x7ECe0FdeA734B9E77dDd04362c312562924857F6",
+
+  "__comment": "Addresses of dripcheck contracts to be used in drips",
+  "dripchecks": [
+    {
+      "00__name": "CheckBalanceLow",
+      "01__address": "0xaF8C77CfeB57620c4D9dCC81df75a1F0Da7064Af"
+    },
+    {
+      "00__name": "CheckSecrets",
+      "01__address": "0x32c1e36E733913388076D7c3055300072814bF2A"
+    },
+    {
+      "00__name": "CheckTrue",
+      "01__address": "0xcBCb3896Ddec35d91901768733C5d3738e10509F"
+    }
+  ],
+
+  "__comment": "Prefix is used to namespace drips so that drip management can be handled modularly",
+  "prefix": "operations",
+
+  "__comment": "Object attributes below are prefixed with numbers because of how foundry parses JSON into structs in alphabetical order",
+  "drips": [
+    {
+      "00__name": "test_v2",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0x68108902De3A5031197a6eB3b74b3b033e8E8e4d",
+        "02__threshold": 10000000000000000000
+      },
+      "03__recipient": "0x68108902De3A5031197a6eB3b74b3b033e8E8e4d",
+      "04__value": 10000000000000000,
+      "05__interval": 1,
+      "06__data": ""
+    },
+    {
+      "00__name": "test_2_v1",
+      "01__dripcheck": "CheckBalanceLow",
+      "02__checkparams": {
+        "01__target": "0x68108902De3A5031197a6eB3b74b3b033e8E8e4d",
+        "02__threshold": 10000000000000000000
+      },
+      "03__recipient": "0x68108902De3A5031197a6eB3b74b3b033e8E8e4d",
+      "04__value": 1000000000000000,
+      "05__interval": 20,
+      "06__data": ""
+    }
+  ]
+}

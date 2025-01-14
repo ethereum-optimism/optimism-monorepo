@@ -15,9 +15,6 @@ contract PeripheryDeployConfig is Script {
     // General configuration.
     string public create2DeploymentSalt;
 
-    // Configuration for Gelato.
-    address public gelatoAutomateContract;
-
     // Configuration for standard operations Drippie contract.
     address public operationsDrippieOwner;
 
@@ -49,9 +46,6 @@ contract PeripheryDeployConfig is Script {
 
         // General configuration.
         create2DeploymentSalt = stdJson.readString(_json, "$.create2DeploymentSalt");
-
-        // Configuration for Gelato.
-        gelatoAutomateContract = stdJson.readAddress(_json, "$.gelatoAutomateContract");
 
         // Configuration for the standard operations Drippie contract.
         operationsDrippieOwner = stdJson.readAddress(_json, "$.operationsDrippieOwner");

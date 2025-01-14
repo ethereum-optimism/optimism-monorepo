@@ -1,16 +1,11 @@
 {
   "drippie": "0xd6F935Bd272BEE05bD64096D82970482EF16D64b",
-  "gelato": "0x859E31b3848Ec384012EECc72C5c49821008296C",
 
   "__comment": "Addresses of dripcheck contracts to be used in drips",
   "dripchecks": [
     {
       "00__name": "CheckBalanceLow",
       "01__address": "0xaF8C77CfeB57620c4D9dCC81df75a1F0Da7064Af"
-    },
-    {
-      "00__name": "CheckGelatoLow",
-      "01__address": "0x0fF11AfAC4146a0bABf7F9F042a22C8053a54674"
     },
     {
       "00__name": "CheckSecrets",

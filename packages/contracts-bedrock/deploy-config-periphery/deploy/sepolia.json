@@ -1,9 +1,7 @@
 {
-  "create2DeploymentSalt": "0.0.7",
+  "create2DeploymentSalt": "0.0.8",
 
-  "gelatoAutomateContract": "0x2A6C106ae13B558BB9E2Ec64Bd2f1f7BEFF3A5E0",
-
-  "operationsDrippieOwner": "0xCd438409d5Cac9D2E076Ac7Bd0Bf2377E99BB6e4",
+  "operationsDrippieOwner": "0xEdc8e780ff786F2DE335FC859349d43392D037a3",
   "faucetDrippieOwner": "0x10ab157483dd308f8B38aCF2ad823dfD255F56b5",
 
   "opChainAdminWalletDripValue": 1000000000000000000,
