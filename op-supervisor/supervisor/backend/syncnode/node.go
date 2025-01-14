@@ -113,13 +113,23 @@ func (m *ManagedNode) SubscribeToNodeEvents() {
 	// Resubscribe, since the RPC subscription might fail intermittently.
 	// And fall back to polling, if RPC subscriptions are not supported.
 	m.subscriptions = append(m.subscriptions, gethevent.ResubscribeErr(time.Second*10,
-		func(ctx context.Context, _ error) (gethevent.Subscription, error) {
+		func(ctx context.Context, prevErr error) (gethevent.Subscription, error) {
+			if prevErr != nil {
+				// This is the RPC runtime error, not the setup error we have logging for below.
+				m.log.Error("RPC subscription failed, restarting now", "err", prevErr)
+			}
 			sub, err := m.Node.SubscribeEvents(ctx, m.nodeEvents)
 			if err != nil {
 				if errors.Is(err, gethrpc.ErrNotificationsUnsupported) {
+					m.log.Warn("No RPC notification support detected, falling back to polling")
 					// fallback to polling if subscriptions are not supported.
-					return rpc.StreamFallback[types.ManagedEvent](
+					sub, err := rpc.StreamFallback[types.ManagedEvent](
 						m.Node.PullEvent, time.Millisecond*100, m.nodeEvents)
+					if err != nil {
+						m.log.Error("Failed to start RPC stream fallback", "err", err)
+						return nil, err
+					}
+					return sub, err
 				}
 				return nil, err
 			}
