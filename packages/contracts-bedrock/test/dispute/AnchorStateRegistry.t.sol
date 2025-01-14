@@ -5,7 +5,7 @@ pragma solidity ^0.8.15;
 import { FaultDisputeGame_Init, _changeClaimStatus } from "test/dispute/FaultDisputeGame.t.sol";
 
 // Libraries
-import { GameType, GameStatus, Hash, Claim, VMStatuses } from "src/dispute/lib/Types.sol";
+import { GameType, GameStatus, Hash, Claim, VMStatuses, OutputRoot } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
@@ -39,6 +39,29 @@ contract AnchorStateRegistry_Initialize_Test is AnchorStateRegistry_Init {
         assert(anchorStateRegistry.superchainConfig() == superchainConfig);
         assert(anchorStateRegistry.disputeGameFactory() == disputeGameFactory);
         assert(anchorStateRegistry.portal() == optimismPortal2);
+    }
+}
+
+contract AnchorStateRegistry_Initialize_TestFail is AnchorStateRegistry_Init {
+    /// @notice Tests that initialization cannot be done twice
+    function test_initialize_twice_reverts() public {
+        vm.expectRevert("Initializable: contract is already initialized");
+        anchorStateRegistry.initialize(
+            superchainConfig,
+            disputeGameFactory,
+            optimismPortal2,
+            OutputRoot({
+                root: Hash.wrap(0xDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEFDEADBEEF),
+                l2BlockNumber: 0
+            })
+        );
+    }
+}
+
+contract AnchorStateRegistry_Version_Test is AnchorStateRegistry_Init {
+    /// @notice Tests that the version function returns a string.
+    function test_version_succeeds() public view {
+        assert(bytes(anchorStateRegistry.version()).length > 0);
     }
 }
 
