@@ -554,11 +554,19 @@ contract Specification_Test is CommonTest {
 
         // AnchorStateRegistry
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("anchors(uint32)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("getAnchorRoot()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("disputeGameFactory()") });
-        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("initialize((uint32,(bytes32,uint256))[],address)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("portal()") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("anchorGame()") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("initialize(address,address,address,(bytes32,uint256))") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("tryUpdateAnchorState()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("setAnchorState(address)"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("version()") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameRegistered(address)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameRespected(address)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameBlacklisted(address)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameRetired(address)") });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameProper(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("superchainConfig()") });
 
         // PermissionedDisputeGame
