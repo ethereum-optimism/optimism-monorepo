@@ -95,6 +95,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.onFinalizedL2(x.FinalizedL2)
+	case superevents.LocalSafeOutOfSyncEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.resetSignal(x.Err, x.L1Ref)
 	// TODO: watch for reorg events from DB. Send a reset signal to op-node if needed
 	default:
 		return false
@@ -244,9 +249,6 @@ func (m *ManagedNode) onUnsafeBlock(unsafeRef eth.BlockRef) {
 		ChainID:        m.chainID,
 		NewLocalUnsafe: unsafeRef,
 	})
-	// We cannot get synchronous DB feedback here,
-	// since the receipts data of the unsafe block still has to be fetched.
-	// TODO: maybe include pre-processed logs in the block event?
 }
 
 func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {

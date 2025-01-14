@@ -122,10 +122,7 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 		db.maybeInitEventsDB(x.ChainID, x.Anchor)
 		db.maybeInitSafeDB(x.ChainID, x.Anchor)
 	case superevents.LocalDerivedEvent:
-		// TODO: this is temporary. The sync node might do this directly instead. TBD.
-		if err := db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived); err != nil {
-			db.logger.Error("Failed to apply local-safe data to DB", "err", err)
-		}
+		db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived)
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
 	default:

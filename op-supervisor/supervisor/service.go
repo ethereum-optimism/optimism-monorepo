@@ -78,11 +78,6 @@ func (su *SupervisorService) initFromCLIConfig(ctx context.Context, cfg *config.
 }
 
 func (su *SupervisorService) initBackend(ctx context.Context, cfg *config.Config) error {
-	if cfg.MockRun {
-		su.backend = backend.NewMockBackend()
-		return nil
-	}
-
 	// In the future we may introduce other executors.
 	// For now, we just use a synchronous executor, and poll the drain function of it.
 	ex := event.NewGlobalSynchronous(ctx)
@@ -91,6 +86,11 @@ func (su *SupervisorService) initBackend(ctx context.Context, cfg *config.Config
 			su.log.Warn("Failed to execute events", "err", err)
 		}
 	}, clock.SystemClock, time.Millisecond*100)
+
+	if cfg.MockRun {
+		su.backend = backend.NewMockBackend()
+		return nil
+	}
 
 	be, err := backend.NewSupervisorBackend(ctx, su.log, su.metrics, cfg, ex)
 	if err != nil {

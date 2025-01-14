@@ -91,6 +91,16 @@ func (ev FinalizedL2UpdateEvent) String() string {
 	return "finalized-l2-update"
 }
 
+type LocalSafeOutOfSyncEvent struct {
+	ChainID types.ChainID
+	L1Ref   eth.BlockRef
+	Err     error
+}
+
+func (ev LocalSafeOutOfSyncEvent) String() string {
+	return "local-safe-out-of-sync"
+}
+
 type LocalUnsafeReceivedEvent struct {
 	ChainID        types.ChainID
 	NewLocalUnsafe eth.BlockRef

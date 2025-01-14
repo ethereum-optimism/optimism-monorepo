@@ -48,15 +48,24 @@ func (db *ChainsDB) Rewind(chain types.ChainID, headBlockNum uint64) error {
 	return logDB.Rewind(headBlockNum)
 }
 
-func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
+func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
+	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
-		return fmt.Errorf("cannot UpdateLocalSafe: %w: %v", types.ErrUnknownChain, chain)
+		logger.Error("Cannot update local-safe DB, unknown chain")
+		return
 	}
-	db.logger.Debug("Updating local safe", "chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
+	logger.Debug("Updating local safe DB")
 	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
-		return err
+		db.logger.Warn("Failed to update local safe")
+		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
+			ChainID: chain,
+			L1Ref:   derivedFrom,
+			Err:     err,
+		})
+		return
 	}
+	db.logger.Info("Updated local safe DB")
 	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
 		ChainID: chain,
 		NewLocalSafe: types.DerivedBlockSealPair{
@@ -64,7 +73,6 @@ func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRe
 			Derived:     types.BlockSealFromRef(lastDerived),
 		},
 	})
-	return nil
 }
 
 func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error {

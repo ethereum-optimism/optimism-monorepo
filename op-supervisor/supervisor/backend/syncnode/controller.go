@@ -69,19 +69,16 @@ func (snc *SyncNodesController) AttachNodeController(chainID types.ChainID, ctrl
 	if !snc.depSet.HasChain(chainID) {
 		return nil, fmt.Errorf("chain %v not in dependency set: %w", chainID, types.ErrUnknownChain)
 	}
-	// TODO: the below locking is not safe
 	// lazy init the controllers map for this chain
-	if !snc.controllers.Has(chainID) {
-		snc.controllers.Set(chainID, &locks.RWMap[*ManagedNode, struct{}]{})
-	}
+	snc.controllers.Default(chainID, func() *locks.RWMap[*ManagedNode, struct{}] {
+		return &locks.RWMap[*ManagedNode, struct{}]{}
+	})
 	controllersForChain, _ := snc.controllers.Get(chainID)
 	node := NewManagedNode(snc.logger, chainID, ctrl, snc.backend, noSubscribe)
 
 	nodeID := snc.id.Add(1)
 	name := fmt.Sprintf("syncnode-%s-%d", chainID, nodeID)
 	snc.eventSys.Register(name, node, event.DefaultRegisterOpts())
-	// TODO: nodes are not removed from the sync-controller currently
-	// If they were, we must unregister the node from the event system when it closes.
 
 	controllersForChain.Set(node, struct{}{})
 	anchor, err := ctrl.AnchorPoint(context.Background())
