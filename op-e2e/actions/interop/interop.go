@@ -17,7 +17,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
@@ -128,32 +128,22 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 
 // SupervisorActor represents a supervisor, instrumented to run synchronously for action-test purposes.
 type SupervisorActor struct {
+	exec    *event.GlobalSyncExec
 	backend *backend.SupervisorBackend
 	frontend.QueryFrontend
 	frontend.AdminFrontend
 }
 
-func (sa *SupervisorActor) SyncEvents(t helpers.Testing, chainID types.ChainID) {
-	require.NoError(t, sa.backend.SyncEvents(chainID))
+func (sa *SupervisorActor) ProcessFull(t helpers.Testing) {
+	require.NoError(t, sa.exec.Drain(), "process all supervisor events")
 }
 
-func (sa *SupervisorActor) SyncCrossUnsafe(t helpers.Testing, chainID types.ChainID) {
-	err := sa.backend.SyncCrossUnsafe(chainID)
-	if err != nil {
-		require.ErrorIs(t, err, types.ErrFuture)
-	}
+func (sa *SupervisorActor) SignalLatestL1(t helpers.Testing) {
+	require.NoError(t, sa.backend.PullLatestL1())
 }
 
-func (sa *SupervisorActor) SyncCrossSafe(t helpers.Testing, chainID types.ChainID) {
-	err := sa.backend.SyncCrossSafe(chainID)
-	if err != nil {
-		require.ErrorIs(t, err, types.ErrFuture)
-	}
-}
-
-func (sa *SupervisorActor) SyncFinalizedL1(t helpers.Testing, ref eth.BlockRef) {
-	sa.backend.SyncFinalizedL1(ref)
-	require.Equal(t, ref, sa.backend.FinalizedL1())
+func (sa *SupervisorActor) SignalFinalizedL1(t helpers.Testing) {
+	require.NoError(t, sa.backend.PullFinalizedL1())
 }
 
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.
@@ -182,10 +172,12 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 		Datadir:               supervisorDataDir,
 		SyncSources:           &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
 	}
-	b, err := backend.NewSupervisorBackend(t.Ctx(),
-		logger.New("role", "supervisor"), metrics.NoopMetrics, svCfg)
+	evExec := event.NewGlobalSynchronous(t.Ctx())
+	b, err := backend.NewSupervisorBackend(t.Ctx(), logger, metrics.NoopMetrics, svCfg, evExec)
 	require.NoError(t, err)
+	b.SetConfDepthL1(0)
 	return &SupervisorActor{
+		exec:    evExec,
 		backend: b,
 		QueryFrontend: frontend.QueryFrontend{
 			Supervisor: b,

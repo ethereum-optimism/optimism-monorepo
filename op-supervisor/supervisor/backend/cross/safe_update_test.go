@@ -1,7 +1,6 @@
 package cross
 
 import (
-	"context"
 	"errors"
 	"testing"
 
@@ -16,7 +15,6 @@ import (
 
 func TestCrossSafeUpdate(t *testing.T) {
 	t.Run("scopedCrossSafeUpdate passes", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -36,11 +34,10 @@ func TestCrossSafeUpdate(t *testing.T) {
 		csd.deps = mockDependencySet{}
 		// when scopedCrossSafeUpdate returns no error,
 		// no error is returned
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.NoError(t, err)
 	})
 	t.Run("scopedCrossSafeUpdate returns error", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -56,11 +53,10 @@ func TestCrossSafeUpdate(t *testing.T) {
 		// when scopedCrossSafeUpdate returns an error,
 		// (by way of OpenBlock returning an error),
 		// the error is returned
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("scopedCrossSafeUpdate returns ErrOutOfScope", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -98,7 +94,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		// CrossSafeUpdate proceeds anyway and calls UpdateCrossSafe
 		// the update uses the new scope returned by NextDerivedFrom
 		// and a crossSafeRef made from the current crossSafe and its parent
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.NoError(t, err)
 		require.Equal(t, chainID, updatingChain)
 		require.Equal(t, newScope, updatingCandidateScope)
@@ -106,7 +102,6 @@ func TestCrossSafeUpdate(t *testing.T) {
 		require.Equal(t, crossSafeRef, updatingCandidate)
 	})
 	t.Run("NextDerivedFrom returns error", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -125,11 +120,10 @@ func TestCrossSafeUpdate(t *testing.T) {
 		// when scopedCrossSafeUpdate returns Out of Scope error,
 		// and NextDerivedFrom returns an error,
 		// the error is returned
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("PreviousDerived returns error", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -148,11 +142,10 @@ func TestCrossSafeUpdate(t *testing.T) {
 		// when scopedCrossSafeUpdate returns Out of Scope error,
 		// and PreviousDerived returns an error,
 		// the error is returned
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 	})
 	t.Run("UpdateCrossSafe returns error", func(t *testing.T) {
-		ctx := context.Background()
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := types.ChainIDFromUInt64(0)
 		csd := &mockCrossSafeDeps{}
@@ -171,7 +164,7 @@ func TestCrossSafeUpdate(t *testing.T) {
 		// when scopedCrossSafeUpdate returns Out of Scope error,
 		// and UpdateCrossSafe returns an error,
 		// the error is returned
-		err := CrossSafeUpdate(ctx, logger, chainID, csd)
+		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 	})
 }

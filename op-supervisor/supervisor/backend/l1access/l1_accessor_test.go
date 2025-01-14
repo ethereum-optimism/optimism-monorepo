@@ -40,7 +40,7 @@ func TestL1Accessor(t *testing.T) {
 			Number: number,
 		}, nil
 	}
-	accessor := NewL1Accessor(log, source, nil)
+	accessor := NewL1Accessor(context.Background(), log, source)
 	accessor.tipHeight = 10
 
 	// Test L1BlockRefByNumber
@@ -54,7 +54,7 @@ func TestL1Accessor(t *testing.T) {
 
 	// attach a new source
 	source2 := &mockL1Source{}
-	accessor.AttachClient(source2)
+	accessor.AttachClient(source2, false)
 	require.Equal(t, source2, accessor.client)
 
 }

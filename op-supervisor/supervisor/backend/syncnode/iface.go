@@ -51,8 +51,4 @@ type SyncNode interface {
 
 type Node interface {
 	PullEvents(ctx context.Context) (pulledAny bool, err error)
-
-	AwaitSentCrossUnsafeUpdate(ctx context.Context, minNum uint64) error
-	AwaitSentCrossSafeUpdate(ctx context.Context, minNum uint64) error
-	AwaitSentFinalizedUpdate(ctx context.Context, minNum uint64) error
 }

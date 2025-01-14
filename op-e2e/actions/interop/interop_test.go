@@ -37,15 +37,8 @@ func TestFullInterop(gt *testing.T) {
 	status := actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, uint64(0), status.UnsafeL2.Number)
 
-	// sync chain A
-	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
-
-	// sync chain B
-	actors.Supervisor.SyncEvents(t, actors.ChainB.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainB.ChainID)
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainB.ChainID)
+	// sync initial chain A and B
+	actors.Supervisor.ProcessFull(t)
 
 	// Build L2 block on chain A
 	actors.ChainA.Sequencer.ActL2StartBlock(t)
@@ -62,9 +55,7 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 
 	// Verify as cross-unsafe with supervisor
-	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
-	actors.ChainA.Sequencer.AwaitSentCrossUnsafeUpdate(t, 1)
+	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
@@ -83,6 +74,7 @@ func TestFullInterop(gt *testing.T) {
 	// it needs the supervisor to see the L1 block first,
 	// and provide it to the node.
 	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+	actors.Supervisor.SignalLatestL1(t)          // supervisor will be aware of latest L1
 	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
 	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
 
@@ -97,12 +89,14 @@ func TestFullInterop(gt *testing.T) {
 	n := actors.ChainA.SequencerEngine.L2Chain().CurrentSafeBlock().Number.Uint64()
 	require.Equal(t, uint64(0), n)
 
+	// Make the supervisor aware of the new L1 block
+	actors.Supervisor.SignalLatestL1(t)
+
 	// Ingest the new local-safe event
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 
 	// Cross-safe verify it
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
-	actors.ChainA.Sequencer.AwaitSentCrossSafeUpdate(t, 1)
+	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
@@ -119,8 +113,8 @@ func TestFullInterop(gt *testing.T) {
 	actors.L1Miner.ActL1FinalizeNext(t)
 	actors.ChainA.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
 	actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
-	actors.Supervisor.SyncFinalizedL1(t, status.HeadL1)
-	actors.ChainA.Sequencer.AwaitSentFinalizedUpdate(t, 1)
+	actors.Supervisor.SignalFinalizedL1(t)
+	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	finalizedL2BlockID, err := actors.Supervisor.Finalized(t.Ctx(), actors.ChainA.ChainID)
 	require.NoError(t, err)
@@ -155,15 +149,8 @@ func TestInteropFaultProofs(gt *testing.T) {
 	status := actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, uint64(0), status.UnsafeL2.Number)
 
-	// sync chain A
-	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
-
-	// sync chain B
-	actors.Supervisor.SyncEvents(t, actors.ChainB.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainB.ChainID)
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainB.ChainID)
+	// sync chain A and B
+	actors.Supervisor.ProcessFull(t)
 
 	// Build L2 block on chain A
 	actors.ChainA.Sequencer.ActL2StartBlock(t)
@@ -180,16 +167,11 @@ func TestInteropFaultProofs(gt *testing.T) {
 	actors.ChainB.Sequencer.SyncSupervisor(t)
 
 	// Verify as cross-unsafe with supervisor
-	actors.Supervisor.SyncEvents(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncEvents(t, actors.ChainB.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossUnsafe(t, actors.ChainB.ChainID)
-	actors.ChainA.Sequencer.AwaitSentCrossUnsafeUpdate(t, 1)
+	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(gt, uint64(1), status.UnsafeL2.Number)
 	require.Equal(gt, uint64(1), status.CrossUnsafeL2.Number)
-	actors.ChainB.Sequencer.AwaitSentCrossUnsafeUpdate(t, 1)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainB.Sequencer.SyncStatus()
 	require.Equal(gt, uint64(1), status.UnsafeL2.Number)
@@ -202,6 +184,7 @@ func TestInteropFaultProofs(gt *testing.T) {
 	actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
 	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
 	actors.L1Miner.ActL1EndBlock(t)
+	actors.Supervisor.SignalLatestL1(t)
 	// The node will exhaust L1 data,
 	// it needs the supervisor to see the L1 block first, and provide it to the node.
 	actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
@@ -223,13 +206,10 @@ func TestInteropFaultProofs(gt *testing.T) {
 	actors.ChainB.Sequencer.SyncSupervisor(t)
 
 	// Cross-safe verify it
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainA.ChainID)
-	actors.Supervisor.SyncCrossSafe(t, actors.ChainB.ChainID)
-	actors.ChainA.Sequencer.AwaitSentCrossSafeUpdate(t, 1)
+	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(gt, uint64(1), status.SafeL2.Number)
-	actors.ChainB.Sequencer.AwaitSentCrossSafeUpdate(t, 1)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainB.Sequencer.SyncStatus()
 	require.Equal(gt, uint64(1), status.SafeL2.Number)

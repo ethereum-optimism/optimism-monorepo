@@ -8,13 +8,14 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/fromda"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
-	gethevent "github.com/ethereum/go-ethereum/event"
 )
 
 type LogStorage interface {
@@ -87,12 +88,6 @@ type ChainsDB struct {
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
 	crossDBs locks.RWMap[types.ChainID, CrossDerivedFromStorage]
 
-	localUnsafeFeeds locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
-	crossUnsafeFeeds locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
-	localSafeFeeds   locks.RWMap[types.ChainID, *gethevent.FeedOf[types.DerivedBlockSealPair]]
-	crossSafeFeeds   locks.RWMap[types.ChainID, *gethevent.FeedOf[types.DerivedBlockSealPair]]
-	l2FinalityFeeds  locks.RWMap[types.ChainID, *gethevent.FeedOf[types.BlockSeal]]
-
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
 	// an error until it has this L1 finality to work with.
@@ -103,13 +98,37 @@ type ChainsDB struct {
 	depSet depset.DependencySet
 
 	logger log.Logger
+
+	// emitter used to signal when the DB changes, for other modules to react to
+	emitter event.Emitter
 }
+
+var _ event.AttachEmitter = (*ChainsDB)(nil)
 
 func NewChainsDB(l log.Logger, depSet depset.DependencySet) *ChainsDB {
 	return &ChainsDB{
 		logger: l,
 		depSet: depSet,
 	}
+}
+
+func (db *ChainsDB) AttachEmitter(em event.Emitter) {
+	db.emitter = em
+}
+
+func (db *ChainsDB) OnEvent(ev event.Event) bool {
+	switch x := ev.(type) {
+	case superevents.AnchorEvent:
+		db.maybeInitEventsDB(x.ChainID, x.Anchor)
+		db.maybeInitSafeDB(x.ChainID, x.Anchor)
+	case superevents.LocalDerivedEvent:
+		db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived)
+	case superevents.FinalizedL1RequestEvent:
+		db.onFinalizedL1(x.FinalizedL1)
+	default:
+		return false
+	}
+	return true
 }
 
 func (db *ChainsDB) AddLogDB(chainID types.ChainID, logDB LogStorage) {
@@ -141,14 +160,6 @@ func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
 		db.logger.Warn("overwriting existing cross-unsafe tracker for chain", "chain", chainID)
 	}
 	db.crossUnsafe.Set(chainID, &locks.RWValue[types.BlockSeal]{})
-}
-
-func (db *ChainsDB) AddSubscriptions(chainID types.ChainID) {
-	locks.InitPtrMaybe(&db.l2FinalityFeeds, chainID)
-	locks.InitPtrMaybe(&db.crossSafeFeeds, chainID)
-	locks.InitPtrMaybe(&db.localSafeFeeds, chainID)
-	locks.InitPtrMaybe(&db.crossUnsafeFeeds, chainID)
-	locks.InitPtrMaybe(&db.localUnsafeFeeds, chainID)
 }
 
 // ResumeFromLastSealedBlock prepares the chains db to resume recording events after a restart.

@@ -13,6 +13,7 @@ import (
 	types2 "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
@@ -24,6 +25,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -61,7 +63,8 @@ func TestBackendLifetime(t *testing.T) {
 		Datadir:               dataDir,
 	}
 
-	b, err := NewSupervisorBackend(context.Background(), logger, m, cfg)
+	ex := event.NewGlobalSynchronous(context.Background())
+	b, err := NewSupervisorBackend(context.Background(), logger, m, cfg, ex)
 	require.NoError(t, err)
 	t.Log("initialized!")
 
@@ -106,12 +109,13 @@ func TestBackendLifetime(t *testing.T) {
 
 	src.ExpectBlockRefByNumber(2, eth.L1BlockRef{}, ethereum.NotFound)
 
-	err = b.UpdateLocalUnsafe(context.Background(), chainA, blockY)
-	require.NoError(t, err)
+	b.emitter.Emit(superevents.LocalUnsafeReceivedEvent{
+		ChainID:        chainA,
+		NewLocalUnsafe: blockY,
+	})
 	// Make the processing happen, so we can rely on the new chain information,
 	// and not run into errors for future data that isn't mocked at this time.
-	proc, _ := b.chainProcessors.Get(chainA)
-	proc.ProcessToHead()
+	require.NoError(t, ex.Drain())
 
 	_, err = b.CrossUnsafe(context.Background(), chainA)
 	require.ErrorIs(t, err, types.ErrFuture, "still no data yet, need cross-unsafe")
