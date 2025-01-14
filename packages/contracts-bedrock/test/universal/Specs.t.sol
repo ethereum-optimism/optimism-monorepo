@@ -120,12 +120,11 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("RELAY_RESERVED_GAS()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("baseGas(bytes,uint32)") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("failedMessages(bytes32)") });
-        _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("initialize(address,address,address)") });
+        _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("initialize(address,address)") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("messageNonce()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("paused()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("otherMessenger()") });
         _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("portal()") });
-        _addSpec({ _name: "L1CrossDomainMessenger", _sel: _getSel("systemConfig()") });
         _addSpec({
             _name: "L1CrossDomainMessenger",
             _sel: _getSel("relayMessage(uint256,address,address,uint256,uint256,bytes)"),
@@ -200,14 +199,13 @@ contract Specification_Test is CommonTest {
             _auth: Role.MESSENGER,
             _pausable: true
         });
-        _addSpec({ _name: "L1StandardBridge", _sel: _getSel("initialize(address,address,address)") });
+        _addSpec({ _name: "L1StandardBridge", _sel: _getSel("initialize(address,address)") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("l2TokenBridge()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("messenger()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("otherBridge()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("paused()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "L1StandardBridge", _sel: _getSel("version()") });
-        _addSpec({ _name: "L1StandardBridge", _sel: _getSel("systemConfig()") });
 
         // OptimismPortalInterop
         _addSpec({
