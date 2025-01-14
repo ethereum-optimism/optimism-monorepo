@@ -2194,7 +2194,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy.resolve();
 
         // Don't wait the finalization delay
-        vm.expectRevert(abi.encodeWithSelector(GameNotFinalized.selector, "game not beyond airgap period"));
+        vm.expectRevert(GameNotFinalized.selector);
         gameProxy.closeGame();
     }
 
