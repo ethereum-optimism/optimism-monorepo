@@ -1,6 +1,7 @@
 package nat
 
 import (
+	// "context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -12,12 +13,14 @@ import (
 
 type Config struct {
 	SC         SuperchainManifest
+	L1RPCUrl   string
 	RPCURL     string
 	Validators []Validator
 
 	// tx-fuzz
-	SenderSecretKey    string `json:"-"`
-	ReceiverPublicKeys []string
+	SenderSecretKey     string `json:"-"`
+	ReceiverPublicKeys  []string
+	ReceiverPrivateKeys []string
 }
 
 func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
@@ -32,6 +35,8 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 		return nil, fmt.Errorf("failed to parse kurtosis-devnet manifest: %w", err)
 	}
 
+	l1RpcUrl := fmt.Sprintf("http://%s:%d", manifest.L1.Nodes[0].Services.EL.Endpoints["rpc"].Host, manifest.L1.Nodes[0].Services.EL.Endpoints["rpc"].Port)
+
 	firstL2 := manifest.L2[0]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Host, firstL2.Nodes[0].Services.EL.Endpoints["rpc"].Port)
 	senderSecretKey := firstL2.Wallets["l2Faucet"].PrivateKey
@@ -40,13 +45,20 @@ func NewConfig(ctx *cli.Context, validators []Validator) (*Config, error) {
 		manifest.L1.Wallets["user-key-1"].Address,
 		manifest.L1.Wallets["user-key-2"].Address,
 	}
+	receiverPrivateKeys := []string{
+		manifest.L1.Wallets["user-key-0"].PrivateKey,
+		manifest.L1.Wallets["user-key-1"].PrivateKey,
+		manifest.L1.Wallets["user-key-2"].PrivateKey,
+	}
 
 	return &Config{
-		SC:                 *manifest,
-		RPCURL:             rpcURL,
-		SenderSecretKey:    senderSecretKey,
-		ReceiverPublicKeys: receiverPublicKeys,
-		Validators:         validators,
+		SC:                  *manifest,
+		L1RPCUrl:            l1RpcUrl,
+		RPCURL:              rpcURL,
+		SenderSecretKey:     senderSecretKey,
+		ReceiverPublicKeys:  receiverPublicKeys,
+		ReceiverPrivateKeys: receiverPrivateKeys,
+		Validators:          validators,
 	}, nil
 }
 
@@ -56,6 +68,9 @@ func (c Config) Check() error {
 	}
 	if len(c.ReceiverPublicKeys) == 0 {
 		return fmt.Errorf("missing receiver public keys")
+	}
+	if len(c.ReceiverPrivateKeys) == 0 {
+		return fmt.Errorf("missing receiver private keys")
 	}
 	return nil
 }

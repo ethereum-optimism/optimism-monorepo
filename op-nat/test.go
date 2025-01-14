@@ -1,19 +1,24 @@
 package nat
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+
+	"github.com/ethereum/go-ethereum/log"
+)
 
 var _ Validator = &Test{}
 
 type Test struct {
 	ID string
-	Fn func(cfg Config) (bool, error)
+	Fn func(ctx context.Context, log log.Logger, cfg Config) (bool, error)
 }
 
-func (t Test) Run(cfg Config) (bool, error) {
+func (t Test) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
 	if t.Fn == nil {
 		return false, fmt.Errorf("test function is nil")
 	}
-	return t.Fn(cfg)
+	return t.Fn(ctx, log, cfg)
 }
 
 // Name returns the id of the test.
