@@ -237,19 +237,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getInitializedVersion",
-    "outputs": [
-      {
-        "internalType": "uint64",
-        "name": "",
-        "type": "uint64"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "contract StandardBridge",
@@ -584,9 +571,9 @@
     "inputs": [
       {
         "indexed": false,
-        "internalType": "uint64",
+        "internalType": "uint8",
         "name": "version",
-        "type": "uint64"
+        "type": "uint8"
       }
     ],
     "name": "Initialized",
@@ -634,15 +621,5 @@
     ],
     "name": "WithdrawalInitiated",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidInitialization",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NotInitializing",
-    "type": "error"
   }
 ]
