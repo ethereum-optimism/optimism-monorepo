@@ -569,7 +569,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("isGameRetired(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("portal()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("respectedGameType()") });
-        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("setAnchorState(address)"), _auth: Role.GUARDIAN });
+        _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("setAnchorState(address)") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "AnchorStateRegistry", _sel: _getSel("version()") });
 
