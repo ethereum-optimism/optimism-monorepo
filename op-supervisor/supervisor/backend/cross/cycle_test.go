@@ -9,8 +9,23 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
+
+type testDepSet struct {
+	mapping map[types.ChainIndex]types.ChainID
+}
+
+func (t testDepSet) ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error) {
+	v, ok := t.mapping[index]
+	if !ok {
+		return types.ChainID{}, types.ErrUnknownChain
+	}
+	return v, nil
+}
+
+var _ depset.ChainIDFromIndex = (*testDepSet)(nil)
 
 type mockCycleCheckDeps struct {
 	openBlockFn func(chainID types.ChainID, blockNum uint64) (eth.BlockRef, uint32, map[uint32]*types.ExecutingMessage, error)
@@ -78,8 +93,15 @@ func runHazardCycleChecksTestCase(t *testing.T, tc hazardCycleChecksTestCase) {
 		}
 	}
 
+	depSet := &testDepSet{
+		mapping: make(map[types.ChainIndex]types.ChainID),
+	}
+	for chainStr := range tc.chainBlocks {
+		index := chainIndex(chainStr)
+		depSet.mapping[index] = types.ChainIDFromUInt64(uint64(index))
+	}
 	// Run the test
-	err := HazardCycleChecks(deps, 100, hazards)
+	err := HazardCycleChecks(depSet, deps, 100, hazards)
 
 	// No error expected
 	if tc.expectErr == nil {

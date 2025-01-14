@@ -7,6 +7,7 @@ import (
 
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
+	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
@@ -331,6 +332,43 @@ func TestInteropFaultProofs(gt *testing.T) {
 			expectValid:    true,
 			skip:           true,
 		},
+
+		{
+			name:           "FirstChainReachesL1Head",
+			startTimestamp: startTimestamp,
+			agreedClaim:    start.Marshal(),
+			disputedClaim:  interop.InvalidTransition,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
+		},
+		{
+			name:           "SecondChainReachesL1Head",
+			startTimestamp: startTimestamp,
+			agreedClaim:    step1Expected,
+			disputedClaim:  interop.InvalidTransition,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
+		},
+		{
+			name:           "SuperRootInvalidIfUnsupportedByL1Data",
+			startTimestamp: startTimestamp,
+			agreedClaim:    step1Expected,
+			disputedClaim:  step2Expected,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: false,
+		},
+		{
+			name:           "FromInvalidTransitionHash",
+			startTimestamp: startTimestamp,
+			agreedClaim:    interop.InvalidTransition,
+			disputedClaim:  interop.InvalidTransition,
+			// The derivation reaches the L1 head before the next block can be created
+			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
+			expectValid: true,
+		},
 	}
 
 	for _, test := range tests {
@@ -346,12 +384,17 @@ func TestInteropFaultProofs(gt *testing.T) {
 			if !test.expectValid {
 				checkResult = fpHelpers.ExpectError(claim.ErrClaimNotValid)
 			}
+			l1Head := test.l1Head
+			if l1Head == (common.Hash{}) {
+				l1Head = actors.L1Miner.L1Chain().CurrentBlock().Hash()
+			}
 			fpHelpers.RunFaultProofProgram(
 				t,
 				logger,
 				actors.L1Miner,
 				checkResult,
 				WithInteropEnabled(actors, test.agreedClaim, crypto.Keccak256Hash(test.disputedClaim), endTimestamp),
+				fpHelpers.WithL1Head(l1Head),
 			)
 		})
 	}
@@ -384,6 +427,7 @@ type transitionTest struct {
 	startTimestamp uint64
 	agreedClaim    []byte
 	disputedClaim  []byte
+	l1Head         common.Hash // Defaults to current L1 head if not set
 	expectValid    bool
 	skip           bool
 }

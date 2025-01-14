@@ -192,7 +192,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 	// For each chain initialize a chain processor service,
 	// after cross-unsafe workers are ready to receive updates
 	for _, chainID := range chains {
-		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs)
+		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs, su.depSet)
 		chainProcessor := processors.NewChainProcessor(su.sysContext, su.logger, chainID, logProcessor, su.chainDBs)
 		su.eventSys.Register(fmt.Sprintf("events-%s", chainID), chainProcessor, eventOpts)
 		su.chainProcessors.Set(chainID, chainProcessor)
