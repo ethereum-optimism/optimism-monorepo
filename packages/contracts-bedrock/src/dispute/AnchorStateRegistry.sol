@@ -163,7 +163,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Returns whether a game is beyond the airgap period.
     /// @param _game The game to check.
     /// @return Whether the game is beyond the airgap period.
-    function isGameBeyondAirgap(IDisputeGame _game) public view returns (bool) {
+    function isGameAirgapped(IDisputeGame _game) public view returns (bool) {
         return block.timestamp - _game.resolvedAt().raw() > portal.disputeGameFinalityDelaySeconds();
     }
 
@@ -215,7 +215,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Game must be beyond the airgap period.
-        if (!isGameBeyondAirgap(_game)) {
+        if (!isGameAirgapped(_game)) {
             return false;
         }
 

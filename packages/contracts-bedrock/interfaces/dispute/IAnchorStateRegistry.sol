@@ -29,7 +29,7 @@ interface IAnchorStateRegistry {
     )
         external;
 
-    function isGameBeyondAirgap(IDisputeGame _game) external view returns (bool);
+    function isGameAirgapped(IDisputeGame _game) external view returns (bool);
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
     function isGameProper(IDisputeGame _game) external view returns (bool);
     function isGameRegistered(IDisputeGame _game) external view returns (bool);
