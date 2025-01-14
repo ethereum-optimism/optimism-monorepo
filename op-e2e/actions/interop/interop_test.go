@@ -131,6 +131,90 @@ func TestFullInterop(gt *testing.T) {
 	require.Equal(t, head, status.FinalizedL2.ID())
 }
 
+// TestFinality confirms that when L1 finality is updated on the supervisor,
+// the L2 finality signal updates to the appropriate value.
+// Sub-tests control how many additional blocks might be submitted to the L1 chain,
+// affecting the way Finality would be determined.
+func TestFinality(gt *testing.T) {
+	testFinality := func(t helpers.StatefulTesting, extraBlocks int) {
+		is := SetupInterop(t)
+		actors := is.CreateActors()
+
+		// set up a blank ChainA
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+
+		actors.Supervisor.ProcessFull(t)
+
+		// Build L2 block on chain A
+		actors.ChainA.Sequencer.ActL2StartBlock(t)
+		actors.ChainA.Sequencer.ActL2EndBlock(t)
+
+		// Sync and process the supervisor, updating cross-unsafe
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.Supervisor.ProcessFull(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+
+		// Submit the L2 block, sync the local-safe data
+		actors.ChainA.Batcher.ActSubmitAll(t)
+		actors.L1Miner.ActL1StartBlock(12)(t)
+		actors.L1Miner.ActL1IncludeTx(actors.ChainA.BatcherAddr)(t)
+		actors.L1Miner.ActL1EndBlock(t)
+		actors.L1Miner.ActL1SafeNext(t)
+
+		// Run the node until the L1 is exhausted
+		// and have the supervisor provide the latest L1 block
+		actors.ChainA.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
+		actors.Supervisor.SignalLatestL1(t)
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		actors.ChainA.Sequencer.ActL1HeadSignal(t)
+		// Make the supervisor aware of the new L1 block
+		actors.Supervisor.SignalLatestL1(t)
+		// Ingest the new local-safe event
+		actors.ChainA.Sequencer.SyncSupervisor(t)
+		// Cross-safe verify it
+		actors.Supervisor.ProcessFull(t)
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+
+		// Submit more blocks to the L1, to bury the L2 block
+		for i := 0; i < extraBlocks; i++ {
+			actors.L1Miner.ActL1StartBlock(12)(t)
+			actors.L1Miner.ActL1EndBlock(t)
+			actors.L1Miner.ActL1SafeNext(t)
+			actors.Supervisor.SignalLatestL1(t)
+			actors.Supervisor.ProcessFull(t)
+		}
+
+		tip := actors.L1Miner.SafeNum()
+
+		// Update finality on the supervisor to the latest block
+		actors.L1Miner.ActL1Finalize(t, tip)
+		actors.Supervisor.SignalFinalizedL1(t)
+
+		// Process the supervisor to update the finality, and pull L1, L2 finality
+		actors.Supervisor.ProcessFull(t)
+		l1Finalized := actors.Supervisor.backend.FinalizedL1()
+		l2Finalized, err := actors.Supervisor.backend.Finalized(context.Background(), actors.ChainA.ChainID)
+		require.NoError(t, err)
+		require.Equal(t, uint64(tip), l1Finalized.Number)
+		// the L2 finality is the latest L2 block, because L1 finality is beyond anything the L2 used to derive
+		require.Equal(t, uint64(1), l2Finalized.Number)
+
+		// confirm the node also sees the finality
+		actors.ChainA.Sequencer.ActL2PipelineFull(t)
+		status := actors.ChainA.Sequencer.SyncStatus()
+		require.Equal(t, uint64(1), status.FinalizedL2.Number)
+	}
+	statefulT := helpers.NewDefaultTesting(gt)
+	gt.Run("FinalizeBeyondDerived", func(t *testing.T) {
+		testFinality(statefulT, 10)
+	})
+	gt.Run("Finalize", func(t *testing.T) {
+		testFinality(statefulT, 0)
+	})
+}
+
 func TestInteropFaultProofs(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 
