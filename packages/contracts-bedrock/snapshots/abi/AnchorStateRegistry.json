@@ -120,7 +120,7 @@
         "type": "address"
       }
     ],
-    "name": "isGameAirgapped",
+    "name": "isGameBeyondAirgap",
     "outputs": [
       {
         "internalType": "bool",
@@ -386,6 +386,11 @@
     ],
     "name": "Initialized",
     "type": "event"
+  },
+  {
+    "inputs": [],
+    "name": "AnchorStateRegistry_AnchorGameBlacklisted",
+    "type": "error"
   },
   {
     "inputs": [],
