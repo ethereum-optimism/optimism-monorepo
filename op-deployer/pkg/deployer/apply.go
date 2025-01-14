@@ -288,6 +288,13 @@ func ApplyPipeline(
 		return fmt.Errorf("invalid deployment target: '%s'", opts.DeploymentTarget)
 	}
 
+	// TODO: make this an optional thing. Behind an optional intent setting maybe.
+	// And then make the op-e2e setup that generates the allocs use the setting to disable code-size.
+	// TODO: or alternatively, maybe we can read the artifacts, and determine if they were built in dev mode? (no optimizations enabled?)
+
+	// This allows `just build-dev` contracts to be executed
+	l1Host.EnforceMaxCodeSize(false)
+
 	pEnv := &pipeline.Env{
 		StateWriter:  opts.StateWriter,
 		L1ScriptHost: l1Host,

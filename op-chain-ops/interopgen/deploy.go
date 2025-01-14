@@ -41,6 +41,7 @@ func Deploy(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceMap
 	}
 
 	l1Host := CreateL1(logger, fa, srcFS, cfg.L1)
+	l1Host.EnforceMaxCodeSize(false) // op-e2e with dev contracts
 	if err := l1Host.EnableCheats(); err != nil {
 		return nil, nil, fmt.Errorf("failed to enable cheats in L1 state: %w", err)
 	}
@@ -85,6 +86,7 @@ func Deploy(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceMap
 
 	for l2ChainID, l2Cfg := range cfg.L2s {
 		l2Host := CreateL2(logger, fa, srcFS, l2Cfg, genesisTimestamp)
+		l2Host.EnforceMaxCodeSize(false) // op-e2e with dev contracts
 		if err := l2Host.EnableCheats(); err != nil {
 			return nil, nil, fmt.Errorf("failed to enable cheats in L2 state %s: %w", l2ChainID, err)
 		}
