@@ -5,14 +5,14 @@ pragma solidity ^0.8.15;
 import { FaultDisputeGame_Init, _changeClaimStatus } from "test/dispute/FaultDisputeGame.t.sol";
 
 // Libraries
-import "src/dispute/lib/Types.sol";
-import "src/dispute/lib/Errors.sol";
+import { GameType, GameStatus, Hash, Claim, VMStatuses } from "src/dispute/lib/Types.sol";
 
 // Interfaces
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 
 contract AnchorStateRegistry_Init is FaultDisputeGame_Init {
-    event AnchorNotUpdated(IFaultDisputeGame indexed game, string reason);
+    event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
 
     function setUp() public virtual override {
@@ -187,9 +187,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             abi.encode(gameProxy.gameType())
         );
 
-        (bool isGameProper, string memory reason) = anchorStateRegistry.isGameProper(gameProxy);
-        assertTrue(isGameProper);
-        assertEq(reason, "");
+        assertTrue(anchorStateRegistry.isGameProper(gameProxy));
     }
 
     /// @notice Tests that isGameProper will return false if the game is not registered.
@@ -203,9 +201,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             abi.encode(address(0), 0)
         );
 
-        (bool isGameProper, string memory reason) = anchorStateRegistry.isGameProper(gameProxy);
-        assertFalse(isGameProper);
-        assertEq(reason, "game not factory registered");
+        assertFalse(anchorStateRegistry.isGameProper(gameProxy));
     }
 
     /// @notice Tests that isGameProper will return false if the game is not the respected game type.
@@ -219,9 +215,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             address(optimismPortal2), abi.encodeCall(optimismPortal2.respectedGameType, ()), abi.encode(_gameType)
         );
 
-        (bool isGameProper, string memory reason) = anchorStateRegistry.isGameProper(gameProxy);
-        assertFalse(isGameProper);
-        assertEq(reason, "game type not respected");
+        assertFalse(anchorStateRegistry.isGameProper(gameProxy));
     }
 
     /// @notice Tests that isGameProper will return false if the game is blacklisted.
@@ -232,9 +226,8 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             abi.encodeCall(optimismPortal2.disputeGameBlacklist, (gameProxy)),
             abi.encode(true)
         );
-        (bool isGameProper, string memory reason) = anchorStateRegistry.isGameProper(gameProxy);
-        assertFalse(isGameProper);
-        assertEq(reason, "game blacklisted");
+
+        assertFalse(anchorStateRegistry.isGameProper(gameProxy));
     }
 
     /// @notice Tests that isGameProper will return false if the game is retired.
@@ -248,9 +241,8 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             abi.encodeCall(optimismPortal2.respectedGameTypeUpdatedAt, ()),
             abi.encode(_retirementTimestamp)
         );
-        (bool isGameProper, string memory reason) = anchorStateRegistry.isGameProper(gameProxy);
-        assertFalse(isGameProper);
-        assertEq(reason, "game retired");
+
+        assertFalse(anchorStateRegistry.isGameProper(gameProxy));
     }
 }
 
@@ -323,7 +315,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game not newer than anchor state");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -366,7 +358,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game not factory registered");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -401,7 +393,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game not defender wins");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -436,7 +428,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game not defender wins");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -467,7 +459,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Try to update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game type not respected");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -509,7 +501,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game blacklisted");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -551,7 +543,7 @@ contract AnchorStateRegistry_TryUpdateAnchorState_TestFail is AnchorStateRegistr
         // Update the anchor state.
         vm.prank(address(gameProxy));
         vm.expectEmit(address(anchorStateRegistry));
-        emit AnchorNotUpdated(gameProxy, "game retired");
+        emit AnchorNotUpdated(gameProxy);
         anchorStateRegistry.tryUpdateAnchorState();
 
         // Confirm that the anchor state has not updated.
@@ -630,7 +622,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Try to update the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game not factory registered"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_ImproperAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.
@@ -661,7 +653,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Try to update the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game not defender wins"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_InvalidAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.
@@ -695,7 +687,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Try to update the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game not defender wins"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_InvalidAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.
@@ -722,7 +714,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Try to update the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game type not respected"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_ImproperAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.
@@ -762,7 +754,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Set the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game blacklisted"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_ImproperAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.
@@ -802,7 +794,7 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
 
         // Set the anchor state.
         vm.prank(superchainConfig.guardian());
-        vm.expectRevert(abi.encodeWithSelector(InvalidAnchorGame.selector, "game retired"));
+        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_ImproperAnchorGame.selector);
         anchorStateRegistry.setAnchorState(gameProxy);
 
         // Confirm that the anchor state has not updated.

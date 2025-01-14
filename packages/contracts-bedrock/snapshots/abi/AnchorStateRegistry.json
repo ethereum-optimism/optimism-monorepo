@@ -145,11 +145,6 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -279,12 +274,6 @@
         "internalType": "contract IFaultDisputeGame",
         "name": "game",
         "type": "address"
-      },
-      {
-        "indexed": false,
-        "internalType": "string",
-        "name": "reason",
-        "type": "string"
       }
     ],
     "name": "AnchorNotUpdated",
@@ -317,19 +306,18 @@
     "type": "event"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "reason",
-        "type": "string"
-      }
-    ],
-    "name": "InvalidAnchorGame",
+    "inputs": [],
+    "name": "AnchorStateRegistry_ImproperAnchorGame",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "Unauthorized",
+    "name": "AnchorStateRegistry_InvalidAnchorGame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "AnchorStateRegistry_Unauthorized",
     "type": "error"
   }
 ]

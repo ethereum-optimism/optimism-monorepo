@@ -6,8 +6,6 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
-import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { InvalidAnchorGame } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -44,10 +42,21 @@ contract AnchorStateRegistry is Initializable, ISemver {
     OutputRoot internal startingAnchorRoot;
 
     /// @notice Emitted when an anchor state is not updated.
-    event AnchorNotUpdated(IFaultDisputeGame indexed game, string reason);
+    /// @param game Game that was not used as the new anchor game.
+    event AnchorNotUpdated(IFaultDisputeGame indexed game);
 
     /// @notice Emitted when an anchor state is updated.
+    /// @param game Game that was used as the new anchor game.
     event AnchorUpdated(IFaultDisputeGame indexed game);
+
+    /// @notice Thrown when an unauthorized caller attempts to set the anchor state.
+    error AnchorStateRegistry_Unauthorized();
+
+    /// @notice Thrown when an improper anchor game is provided.
+    error AnchorStateRegistry_ImproperAnchorGame();
+
+    /// @notice Thrown when an invalid anchor game is provided.
+    error AnchorStateRegistry_InvalidAnchorGame();
 
     /// @notice Constructor to disable initializers.
     constructor() {
@@ -138,28 +147,28 @@ contract AnchorStateRegistry is Initializable, ISemver {
     ///         DO NOT USE THIS FUNCTION ALONE TO DETERMINE IF A ROOT CLAIM IS VALID.
     /// @param _game The game to check.
     /// @return Whether the game is a proper game.
-    /// @return Reason why the game is not a proper game.
-    function isGameProper(IDisputeGame _game) public view returns (bool, string memory) {
+    function isGameProper(IDisputeGame _game) public view returns (bool) {
+        // Must be registered in the DisputeGameFactory.
         if (!isGameRegistered(_game)) {
-            return (false, "game not factory registered");
+            return false;
         }
 
         // Must be respected game type.
         if (!isGameRespected(_game)) {
-            return (false, "game type not respected");
+            return false;
         }
 
         // Must not be blacklisted.
         if (isGameBlacklisted(_game)) {
-            return (false, "game blacklisted");
+            return false;
         }
 
         // Must be created at or after the respectedGameTypeUpdatedAt timestamp.
         if (isGameRetired(_game)) {
-            return (false, "game retired");
+            return false;
         }
 
-        return (true, "");
+        return true;
     }
 
     /// @notice Callable by FaultDisputeGame contracts to update the anchor state. Pulls the anchor state directly from
@@ -170,22 +179,21 @@ contract AnchorStateRegistry is Initializable, ISemver {
         IFaultDisputeGame game = IFaultDisputeGame(msg.sender);
 
         // Check if the game is a proper game.
-        (bool isProper, string memory reason) = isGameProper(game);
-        if (!isProper) {
-            emit AnchorNotUpdated(game, reason);
+        if (!isGameProper(game)) {
+            emit AnchorNotUpdated(game);
             return;
         }
 
         // Must be a game that resolved in favor of the state.
         if (game.status() != GameStatus.DEFENDER_WINS) {
-            emit AnchorNotUpdated(game, "game not defender wins");
+            emit AnchorNotUpdated(game);
             return;
         }
 
         // No need to update anything if the anchor state is already newer.
         (, uint256 anchorL2BlockNumber) = getAnchorRoot();
         if (game.l2BlockNumber() <= anchorL2BlockNumber) {
-            emit AnchorNotUpdated(game, "game not newer than anchor state");
+            emit AnchorNotUpdated(game);
             return;
         }
 
@@ -197,17 +205,19 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Sets the anchor state given the game.
     /// @param _game The game to set the anchor state for.
     function setAnchorState(IFaultDisputeGame _game) external {
-        if (msg.sender != superchainConfig.guardian()) revert Unauthorized();
+        // Function can only be triggered by the guardian.
+        if (msg.sender != superchainConfig.guardian()) {
+            revert AnchorStateRegistry_Unauthorized();
+        }
 
         // Check if the game is a proper game.
-        (bool isProper, string memory reason) = isGameProper(_game);
-        if (!isProper) {
-            revert InvalidAnchorGame(reason);
+        if (!isGameProper(_game)) {
+            revert AnchorStateRegistry_ImproperAnchorGame();
         }
 
         // The game must have resolved in favor of the root claim.
         if (_game.status() != GameStatus.DEFENDER_WINS) {
-            revert InvalidAnchorGame("game not defender wins");
+            revert AnchorStateRegistry_InvalidAnchorGame();
         }
 
         // Update the anchor game.
