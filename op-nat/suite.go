@@ -17,13 +17,16 @@ type Suite struct {
 // Run runs all the tests in the suite.
 // func (s Suite) Run(cfg Config) (bool, error) {
 func (s Suite) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
+	log.Info("", "type", s.Type(), "id", s.Name())
+	allPassed := true
 	for _, test := range s.Tests {
+		//log.Info("", "type", test.Type(), "test", test.Name())
 		ok, err := test.Run(ctx, log, cfg)
 		if err != nil || !ok {
-			return false, err
+			allPassed = false
 		}
 	}
-	return true, nil
+	return allPassed, nil
 }
 
 // Name returns the id of the suite.
