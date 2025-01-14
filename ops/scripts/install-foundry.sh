@@ -36,7 +36,7 @@ git clone https://github.com/foundry-rs/foundry.git "$TMP_DIR" && cd "$TMP_DIR"
 # `cast`, `anvil`, and `chisel` from source.
 if git rev-parse "$TAG" >/dev/null 2>&1; then
   echo "Nightly tag exists! Downloading prebuilt binaries..."
-  foundryup -v "$TAG"
+  foundryup -i "$TAG"
 else
   echo "Nightly tag doesn't exist! Building from source..."
   git checkout "$SHA"

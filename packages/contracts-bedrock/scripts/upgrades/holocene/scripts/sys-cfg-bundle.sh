@@ -30,9 +30,10 @@ L1_CHAIN_ID=$(cast chain-id)
 # Copy the bundle template
 cp ./templates/sys_cfg_upgrade_bundle_template.json "$BUNDLE_PATH"
 
+
 # We need to re-generate the SystemConfig initialization call
-# We want to use the exact same values that the SystemConfig is already using, apart from baseFeeScalar and blobBaseFeeScalar.
-# Start with values we can just read off:
+# We want to use the exact same values that the SystemConfig is already using, apart from baseFeeScalar, blobBaseFeeScalar, gasPayingToken, disputeGameFactory.
+# Start with values that are the same regardless of existing SystemConfig version:
 OWNER=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "owner()")
 SCALAR=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "scalar()")
 BATCHER_HASH=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "batcherHash()")
@@ -40,18 +41,43 @@ GAS_LIMIT=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "gasLimit()")
 UNSAFE_BLOCK_SIGNER=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "unsafeBlockSigner()")
 RESOURCE_CONFIG=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "resourceConfig()")
 BATCH_INBOX=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "batchInbox()")
-GAS_PAYING_TOKEN=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "gasPayingToken()(address)")
 L1_CROSS_DOMAIN_MESSENGER_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "l1CrossDomainMessenger()(address)")
 L1_STANDARD_BRIDGE_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "l1StandardBridge()(address)")
 L1_ERC721_BRIDGE_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "l1ERC721Bridge()(address)")
-DISPUTE_GAME_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "disputeGameFactory()(address)")
 OPTIMISM_PORTAL_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "optimismPortal()(address)")
 OPTIMISM_MINTABLE_ERC20_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "optimismMintableERC20Factory()(address)")
 
+# 2.3.0 is the first release to have a gasPayingToken. Therefore we set it to
+# the magic address denoting Ether, since we are upgrading chains which are
+# by definition not custom gas token chains
+GAS_PAYING_TOKEN=0xEeeeeEeeeEeEeeEeEeEeeEEEeeeeEeeeeeeeEEeE
+
+# Handle DisputeGameFactory in a version-specific way:
+SYSTEM_CONFIG_VERSION=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" 'version()(string)' | tr -d '"')
+MCPver=1.12.0 # e.g. if on MCP op-contracts/v1.3.0
+FPver=2.2.0 # e.g. if on op-contracts/v1.6.0
+case "$SYSTEM_CONFIG_VERSION" in
+  "$MCPver")
+    echo "SystemConfig detected at version 1.12.0"
+    DISPUTE_GAME_FACTORY_PROXY=0x0000000000000000000000000000000000000000
+    ;;
+  "$FPver")
+    echo "SystemConfig detected at version 2.2.0"
+    DISPUTE_GAME_FACTORY_PROXY=$(cast call "$SYSTEM_CONFIG_PROXY_ADDR" "disputeGameFactory()(address)")
+    ;;
+  *)
+    printf '%q\n%q\n%q\n' "$SYSTEM_CONFIG_VERSION" "$MCPver" "$FPver"
+    echo "unsupported SystemConfig version: $SYSTEM_CONFIG_VERSION"
+    exit 1
+    ;;
+esac
 
 # Decode base fee scalar and blob base fee scalar from scalar value:
-BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SCALAR" | awk '/^# base fee scalar[[:space:]]*:/{print $NF}')
-BLOB_BASE_FEE_SCALAR=$(go run github.com/ethereum-optimism/optimism/op-chain-ops/cmd/ecotone-scalar --decode="$SCALAR" | awk '/^# blob base fee scalar[[:space:]]*:/{print $NF}')
+BASE_FEE_SCALAR=$(./ecotone-scalar --decode="$SCALAR" | yq '.baseFeeScalar')
+BLOB_BASE_FEE_SCALAR=$(./ecotone-scalar --decode="$SCALAR" | yq '.blobbaseFeeScalar')
+
+echo "BASE_FEE_SCALAR: $BASE_FEE_SCALAR"
+echo "BLOB_BASE_FEE_SCALAR: $BLOB_BASE_FEE_SCALAR"
 
 # Now we generate the initialization calldata
 SYSTEM_CONFIG_INITIALIZE_CALLDATA=$(cast calldata \

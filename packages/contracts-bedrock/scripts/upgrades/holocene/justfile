@@ -35,6 +35,8 @@ sys-cfg-bundle output-folder-path="$(pwd)/output/" *args='':
     --rm \
     -v {{output-folder-path}}:/output \
     -e OUTPUT_FOLDER_PATH=/output \
+    -e SYSTEM_CONFIG_PROXY_ADDR \
+    -e PROXY_ADMIN_ADDR \
     --env-file=.env \
     --entrypoint=./scripts/sys-cfg-bundle.sh \
     op-holocene-upgrade:local {{args}}
@@ -58,6 +60,7 @@ sys-cfg-task output-folder-path="$(pwd)/output/" *args='':
 
 # Build the image locally.
 build-image:
+  GOOS=linux GOARCH=amd64 go build ../../../../../op-chain-ops/cmd/ecotone-scalar
   docker build \
   -t op-holocene-upgrade:local \
   -f upgrade.dockerfile \
