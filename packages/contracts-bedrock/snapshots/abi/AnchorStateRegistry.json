@@ -164,11 +164,6 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -188,11 +183,6 @@
         "internalType": "bool",
         "name": "",
         "type": "bool"
-      },
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
       }
     ],
     "stateMutability": "view",
@@ -396,11 +386,6 @@
     ],
     "name": "Initialized",
     "type": "event"
-  },
-  {
-    "inputs": [],
-    "name": "AnchorStateRegistry_ImproperAnchorGame",
-    "type": "error"
   },
   {
     "inputs": [],

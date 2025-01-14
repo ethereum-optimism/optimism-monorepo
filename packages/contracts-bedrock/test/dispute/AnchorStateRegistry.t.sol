@@ -338,48 +338,6 @@ contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
     }
-}
-
-contract AnchorStateRegistry_SetAnchorState_TestFail is AnchorStateRegistry_Init {
-    /// @notice Tests that setAnchorState will revert if the sender is not the guardian.
-    /// @param _sender The address of the sender.
-    /// @param _l2BlockNumber The L2 block number to use for the game.
-    function testFuzz_setAnchorState_notGuardian_fails(address _sender, uint256 _l2BlockNumber) public {
-        // Grab block number of the existing anchor root.
-        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
-
-        // Mock the l2BlockNumber call.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.l2BlockNumber, ()), abi.encode(_l2BlockNumber));
-
-        // Mock the DEFENDER_WINS state.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
-
-        // Make our game type the respected game type.
-        vm.mockCall(
-            address(optimismPortal2),
-            abi.encodeCall(optimismPortal2.respectedGameType, ()),
-            abi.encode(gameProxy.gameType())
-        );
-
-        // Mock the DisputeGameFactory to make it seem that the game was not registered.
-        vm.mockCall(
-            address(disputeGameFactory),
-            abi.encodeCall(
-                disputeGameFactory.games, (gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData())
-            ),
-            abi.encode(address(0), 0)
-        );
-
-        // Try to update the anchor state.
-        vm.prank(_sender);
-        vm.expectRevert(IAnchorStateRegistry.AnchorStateRegistry_Unauthorized.selector);
-        anchorStateRegistry.setAnchorState(gameProxy);
-
-        // Confirm that the anchor state has not updated.
-        (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
-        assertEq(updatedL2BlockNumber, l2BlockNumber);
-        assertEq(updatedRoot.raw(), root.raw());
-    }
 
     /// @notice Tests that setAnchorState will revert if the game is not registered.
     /// @param _l2BlockNumber The L2 block number to use for the game.

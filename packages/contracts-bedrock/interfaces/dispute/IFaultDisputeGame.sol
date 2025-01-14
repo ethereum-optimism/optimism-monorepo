@@ -75,7 +75,7 @@ interface IFaultDisputeGame is IDisputeGame {
     error UnexpectedString();
     error ValidStep();
     error InvalidBondDistributionMode();
-    error GameNotFinalized(string reason);
+    error GameNotFinalized();
     error GameNotResolved();
     error ReservedGameType();
 

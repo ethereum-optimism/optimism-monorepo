@@ -1086,13 +1086,7 @@
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "reason",
-        "type": "string"
-      }
-    ],
+    "inputs": [],
     "name": "GameNotFinalized",
     "type": "error"
   },
