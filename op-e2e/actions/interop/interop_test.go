@@ -282,14 +282,16 @@ func TestInteropFaultProofs(gt *testing.T) {
 		Step: 2,
 	})
 
-	step3Expected := serializeIntermediateRoot(&types.TransitionState{
-		SuperRoot: start.Marshal(),
-		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
-			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
-		},
-		Step: 3,
-	})
+	paddingStep := func(step uint64) []byte {
+		return serializeIntermediateRoot(&types.TransitionState{
+			SuperRoot: start.Marshal(),
+			PendingProgress: []types.OptimisticBlock{
+				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
+				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
+			},
+			Step: step,
+		})
+	}
 
 	tests := []*transitionTest{
 		{
@@ -319,20 +321,32 @@ func TestInteropFaultProofs(gt *testing.T) {
 			agreedClaim:    step1Expected,
 			disputedClaim:  step2Expected,
 			expectValid:    true,
-			skip:           true,
 		},
 		{
-			name:           "PaddingStep",
+			name:           "FirstPaddingStep",
 			startTimestamp: startTimestamp,
 			agreedClaim:    step2Expected,
-			disputedClaim:  step3Expected,
+			disputedClaim:  paddingStep(3),
 			expectValid:    true,
-			skip:           true,
+		},
+		{
+			name:           "SecondPaddingStep",
+			startTimestamp: startTimestamp,
+			agreedClaim:    paddingStep(3),
+			disputedClaim:  paddingStep(4),
+			expectValid:    true,
+		},
+		{
+			name:           "LastPaddingStep",
+			startTimestamp: startTimestamp,
+			agreedClaim:    paddingStep(1022),
+			disputedClaim:  paddingStep(1023),
+			expectValid:    true,
 		},
 		{
 			name:           "Consolidate",
 			startTimestamp: startTimestamp,
-			agreedClaim:    step3Expected,
+			agreedClaim:    paddingStep(1023),
 			disputedClaim:  end.Marshal(),
 			expectValid:    true,
 			skip:           true,

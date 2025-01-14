@@ -20,7 +20,7 @@ import (
 
 var networks = []string{"mainnet", "sepolia"}
 
-var versions = []string{"v1.8.0-rc.4", "v1.6.0"}
+var versions = []string{"v1.6.0", "v1.8.0-rc.4"}
 
 func TestSuperchain(t *testing.T) {
 	for _, network := range networks {

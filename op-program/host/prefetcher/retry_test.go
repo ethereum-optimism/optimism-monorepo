@@ -226,7 +226,8 @@ func createL1BlobSource(t *testing.T) (*RetryingL1BlobSource, *testutils.MockBlo
 func TestRetryingL2Source(t *testing.T) {
 	ctx := context.Background()
 	hash := common.Hash{0xab}
-	info := &testutils.MockBlockInfo{InfoHash: hash}
+	blockNum := uint64(14982)
+	info := &testutils.MockBlockInfo{InfoHash: hash, InfoNum: blockNum}
 	// The mock really doesn't like returning nil for a eth.BlockInfo so return a value we expect to be ignored instead
 	wrongInfo := &testutils.MockBlockInfo{InfoHash: common.Hash{0x99}}
 	txs := types.Transactions{
@@ -325,6 +326,28 @@ func TestRetryingL2Source(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, output, actualOutput)
 	})
+
+	t.Run("OutputByNumber Success", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		mock.ExpectOutputByNumber(blockNum, output, nil)
+
+		actualOutput, err := source.OutputByNumber(ctx, blockNum)
+		require.NoError(t, err)
+		require.Equal(t, output, actualOutput)
+	})
+
+	t.Run("OutputByNumber Error", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		expectedErr := errors.New("boom")
+		mock.ExpectOutputByNumber(blockNum, wrongOutput, expectedErr)
+		mock.ExpectOutputByNumber(blockNum, output, nil)
+
+		actualOutput, err := source.OutputByNumber(ctx, blockNum)
+		require.NoError(t, err)
+		require.Equal(t, output, actualOutput)
+	})
 }
 
 func createL2Source(t *testing.T) (*RetryingL2Source, *MockL2Source) {
@@ -370,6 +393,11 @@ func (m *MockL2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) 
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
+func (m *MockL2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByNumber", blockNum)
+	return out[0].(eth.Output), *out[1].(*error)
+}
+
 func (m *MockL2Source) ExpectInfoAndTxsByHash(blockHash common.Hash, info eth.BlockInfo, txs types.Transactions, err error) {
 	m.Mock.On("InfoAndTxsByHash", blockHash).Once().Return(info, txs, &err)
 }
@@ -384,6 +412,10 @@ func (m *MockL2Source) ExpectCodeByHash(hash common.Hash, code []byte, err error
 
 func (m *MockL2Source) ExpectOutputByRoot(blockHash common.Hash, output eth.Output, err error) {
 	m.Mock.On("OutputByRoot", blockHash).Once().Return(output, &err)
+}
+
+func (m *MockL2Source) ExpectOutputByNumber(blockNum uint64, output eth.Output, err error) {
+	m.Mock.On("OutputByNumber", blockNum).Once().Return(output, &err)
 }
 
 var _ hosttypes.L2Source = (*MockL2Source)(nil)

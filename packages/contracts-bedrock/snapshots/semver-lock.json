@@ -52,8 +52,8 @@
     "sourceCodeHash": "0x661d7659f09b7f909e8bd5e6c41e8c98f2091036ed2123b7e18a1a74120bd849"
   },
   "src/L2/ETHLiquidity.sol": {
-    "initCodeHash": "0xbb16de6a3f678db7301694a000f315154f25f9660c8dcec4b0bef20bc7cfdebd",
-    "sourceCodeHash": "0x0576b189811bd343c2cdafcb512ece2c2ea20077bef8754a3dc3e3c80210b225"
+    "initCodeHash": "0xdc7075deb7e7c407e6ec3be33ce352ee4a9ca0e82f4bffeb360c93b395a2452f",
+    "sourceCodeHash": "0x92bf6a7a13d1331cbfed35e22130b54b00576bd31de5feb309dfadef2a0b7dd9"
   },
   "src/L2/GasPriceOracle.sol": {
     "initCodeHash": "0x83d50e3b34cd1b4de32f1cced28796b07aefc526cc17ceb1903ad55f4abc90b7",

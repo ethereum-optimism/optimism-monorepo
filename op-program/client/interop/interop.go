@@ -55,42 +55,44 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Prei
 		return fmt.Errorf("%w: %v", ErrIncorrectOutputRootType, super.Version())
 	}
 	superRoot := super.(*eth.SuperV1)
-	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
-	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
-	if err != nil {
-		return fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
-	}
-	l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
-	if err != nil {
-		return fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
-	}
-	claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
-	if err != nil {
-		return err
-	}
-	derivationResult, err := tasks.RunDerivation(
-		logger,
-		rollupCfg,
-		l2ChainConfig,
-		bootInfo.L1Head,
-		chainAgreedPrestate.Output,
-		claimedBlockNumber,
-		l1PreimageOracle,
-		l2PreimageOracle,
-	)
-	if err != nil {
-		return err
-	}
 
-	newPendingProgress := make([]types.OptimisticBlock, len(transitionState.PendingProgress)+1)
-	copy(newPendingProgress, transitionState.PendingProgress)
-	newPendingProgress[len(newPendingProgress)-1] = types.OptimisticBlock{
-		BlockHash:  derivationResult.BlockHash,
-		OutputRoot: derivationResult.OutputRoot,
+	expectedPendingProgress := transitionState.PendingProgress
+	if transitionState.Step < uint64(len(superRoot.Chains)) {
+		chainAgreedPrestate := superRoot.Chains[transitionState.Step]
+		rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
+		if err != nil {
+			return fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		}
+		l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
+		if err != nil {
+			return fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		}
+		claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
+		if err != nil {
+			return err
+		}
+		derivationResult, err := tasks.RunDerivation(
+			logger,
+			rollupCfg,
+			l2ChainConfig,
+			bootInfo.L1Head,
+			chainAgreedPrestate.Output,
+			claimedBlockNumber,
+			l1PreimageOracle,
+			l2PreimageOracle,
+		)
+		if err != nil {
+			return err
+		}
+
+		expectedPendingProgress = append(expectedPendingProgress, types.OptimisticBlock{
+			BlockHash:  derivationResult.BlockHash,
+			OutputRoot: derivationResult.OutputRoot,
+		})
 	}
 	finalState := &types.TransitionState{
 		SuperRoot:       transitionState.SuperRoot,
-		PendingProgress: newPendingProgress,
+		PendingProgress: expectedPendingProgress,
 		Step:            transitionState.Step + 1,
 	}
 	expected, err := finalState.Hash()
@@ -100,7 +102,7 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Prei
 	if !validateClaim {
 		return nil
 	}
-	return claim.ValidateClaim(logger, derivationResult.Head, eth.Bytes32(bootInfo.Claim), eth.Bytes32(expected))
+	return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.Claim), eth.Bytes32(expected))
 }
 
 type interopTaskExecutor struct {

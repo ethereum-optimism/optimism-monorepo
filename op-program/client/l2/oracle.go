@@ -19,11 +19,11 @@ type StateOracle interface {
 	// NodeByHash retrieves the merkle-patricia trie node pre-image for a given hash.
 	// Trie nodes may be from the world state trie or any account storage trie.
 	// Contract code is not stored as part of the trie and must be retrieved via CodeByHash
-	NodeByHash(nodeHash common.Hash) []byte
+	NodeByHash(nodeHash common.Hash, chainID uint64) []byte
 
 	// CodeByHash retrieves the contract code pre-image for a given hash.
 	// codeHash should be retrieved from the world state account for a contract.
-	CodeByHash(codeHash common.Hash) []byte
+	CodeByHash(codeHash common.Hash, chainID uint64) []byte
 }
 
 // Oracle defines the high-level API used to retrieve L2 data.
@@ -32,9 +32,9 @@ type Oracle interface {
 	StateOracle
 
 	// BlockByHash retrieves the block with the given hash.
-	BlockByHash(blockHash common.Hash) *types.Block
+	BlockByHash(blockHash common.Hash, chainID uint64) *types.Block
 
-	OutputByRoot(root common.Hash) eth.Output
+	OutputByRoot(root common.Hash, chainID uint64) eth.Output
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
 	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
@@ -45,21 +45,27 @@ type Oracle interface {
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
 // to fetch pre-images to decode into the requested data.
 type PreimageOracle struct {
-	oracle preimage.Oracle
-	hint   preimage.Hinter
+	oracle         preimage.Oracle
+	hint           preimage.Hinter
+	hintL2ChainIDs bool
 }
 
 var _ Oracle = (*PreimageOracle)(nil)
 
-func NewPreimageOracle(raw preimage.Oracle, hint preimage.Hinter) *PreimageOracle {
+func NewPreimageOracle(raw preimage.Oracle, hint preimage.Hinter, hintL2ChainIDs bool) *PreimageOracle {
 	return &PreimageOracle{
-		oracle: raw,
-		hint:   hint,
+		oracle:         raw,
+		hint:           hint,
+		hintL2ChainIDs: hintL2ChainIDs,
 	}
 }
 
-func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash) *types.Header {
-	p.hint.Hint(BlockHeaderHint(blockHash))
+func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash, chainID uint64) *types.Header {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(BlockHeaderHint{Hash: blockHash, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyBlockHeaderHint(blockHash))
+	}
 	headerRlp := p.oracle.Get(preimage.Keccak256Key(blockHash))
 	var header types.Header
 	if err := rlp.DecodeBytes(headerRlp, &header); err != nil {
@@ -68,15 +74,19 @@ func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash) *types.Header 
 	return &header
 }
 
-func (p *PreimageOracle) BlockByHash(blockHash common.Hash) *types.Block {
-	header := p.headerByBlockHash(blockHash)
-	txs := p.LoadTransactions(blockHash, header.TxHash)
+func (p *PreimageOracle) BlockByHash(blockHash common.Hash, chainID uint64) *types.Block {
+	header := p.headerByBlockHash(blockHash, chainID)
+	txs := p.LoadTransactions(blockHash, header.TxHash, chainID)
 
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
 }
 
-func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash) []*types.Transaction {
-	p.hint.Hint(TransactionsHint(blockHash))
+func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash, chainID uint64) []*types.Transaction {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(TransactionsHint{Hash: blockHash, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyTransactionsHint(blockHash))
+	}
 
 	opaqueTxs := mpt.ReadTrie(txHash, func(key common.Hash) []byte {
 		return p.oracle.Get(preimage.Keccak256Key(key))
@@ -89,18 +99,30 @@ func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.H
 	return txs
 }
 
-func (p *PreimageOracle) NodeByHash(nodeHash common.Hash) []byte {
-	p.hint.Hint(StateNodeHint(nodeHash))
+func (p *PreimageOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(StateNodeHint{Hash: nodeHash, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyStateNodeHint(nodeHash))
+	}
 	return p.oracle.Get(preimage.Keccak256Key(nodeHash))
 }
 
-func (p *PreimageOracle) CodeByHash(codeHash common.Hash) []byte {
-	p.hint.Hint(CodeHint(codeHash))
+func (p *PreimageOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(CodeHint{Hash: codeHash, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyCodeHint(codeHash))
+	}
 	return p.oracle.Get(preimage.Keccak256Key(codeHash))
 }
 
-func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash) eth.Output {
-	p.hint.Hint(L2OutputHint(l2OutputRoot))
+func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash, chainID uint64) eth.Output {
+	if p.hintL2ChainIDs {
+		p.hint.Hint(L2OutputHint{Hash: l2OutputRoot, ChainID: chainID})
+	} else {
+		p.hint.Hint(LegacyL2OutputHint(l2OutputRoot))
+	}
 	data := p.oracle.Get(preimage.Keccak256Key(l2OutputRoot))
 	output, err := eth.UnmarshalOutput(data)
 	if err != nil {
@@ -116,8 +138,8 @@ func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 		ChainID:         chainID,
 	}
 	p.hint.Hint(hint)
-	header := p.headerByBlockHash(blockHash)
-	txs := p.LoadTransactions(blockHash, header.TxHash)
+	header := p.headerByBlockHash(blockHash, chainID)
+	txs := p.LoadTransactions(blockHash, header.TxHash, chainID)
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
 }
 
