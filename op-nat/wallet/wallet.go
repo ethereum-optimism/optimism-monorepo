@@ -72,7 +72,7 @@ func (w *Wallet) Send(ctx context.Context, network *network.Network, amount *big
 	log.Info("current gas price", "network", network.Name, "gasPrice", gasPrice)
 
 	// 6. Estimate the gas limit:
-	gasLimit := uint64(21000) // Standard gas limit for a simple ETH transfer
+	gasLimit := uint64(2100000) // Standard gas limit for a simple ETH transfer
 
 	// 7. Create the transaction:
 	tx := types.NewTransaction(nonce, to, amount, gasLimit, gasPrice, nil)
