@@ -1,0 +1,30 @@
+# Default recipe to list help menu.
+default:
+  @just --list
+
+# Run the deployment / upgrade generation image. If the image is not present locally,
+# it will be built.
+run deploy-config-path deployment-path output-folder-path="$(pwd)/output/" *args='':
+  #!/bin/bash
+  if [ ! "$(docker images -q op-v1.8.0-permissioned:local 2> /dev/null)" ]; then
+    just build-image
+  fi
+
+  mkdir -p {{output-folder-path}}
+
+  # Run the deployment.
+  docker run -it \
+    --rm \
+    -v $(realpath {{output-folder-path}}):/outputs \
+    -v $(realpath {{deploy-config-path}}):/deploy_config.json \
+    -v $(realpath {{deployment-path}}):/deployment.json \
+    --env-file=.env \
+    op-v1.8.0-permissioned:local /deploy_config.json /deployment.json {{args}}
+
+# Build the image locally.
+build-image contracts-version="1.8.0":
+  docker build \
+  -t op-v1.8.0-permissioned:local \
+  -f Dockerfile \
+  --build-arg REV={{contracts-version}} \
+  .
