@@ -119,7 +119,7 @@ func (ds *StaticConfigDependencySet) HasChain(chainID types.ChainID) bool {
 func (ds *StaticConfigDependencySet) ChainIndexFromID(id types.ChainID) (types.ChainIndex, error) {
 	dep, ok := ds.dependencies[id]
 	if !ok {
-		return 0, types.ErrUnknownChain
+		return 0, fmt.Errorf("failed to translate chain ID %s to chain index: %w", id, types.ErrUnknownChain)
 	}
 	return dep.ChainIndex, nil
 }
@@ -127,7 +127,7 @@ func (ds *StaticConfigDependencySet) ChainIndexFromID(id types.ChainID) (types.C
 func (ds *StaticConfigDependencySet) ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error) {
 	id, ok := ds.indexToID[index]
 	if !ok {
-		return types.ChainID{}, types.ErrUnknownChain
+		return types.ChainID{}, fmt.Errorf("failed to translate chain index %s to chain ID: %w", index, types.ErrUnknownChain)
 	}
 	return id, nil
 }

@@ -9,8 +9,23 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
+
+type testDepSet struct {
+	mapping map[types.ChainID]types.ChainIndex
+}
+
+func (t *testDepSet) ChainIndexFromID(id types.ChainID) (types.ChainIndex, error) {
+	v, ok := t.mapping[id]
+	if !ok {
+		return 0, types.ErrUnknownChain
+	}
+	return v, nil
+}
+
+var _ depset.ChainIndexFromID = (*testDepSet)(nil)
 
 func TestDecodeExecutingMessageLog(t *testing.T) {
 	data := `
@@ -32,7 +47,11 @@ func TestDecodeExecutingMessageLog(t *testing.T) {
 	var logEvent ethTypes.Log
 	require.NoError(t, json.Unmarshal([]byte(data), &logEvent))
 
-	msg, err := DecodeExecutingMessageLog(&logEvent)
+	msg, err := DecodeExecutingMessageLog(&logEvent, &testDepSet{
+		mapping: map[types.ChainID]types.ChainIndex{
+			types.ChainIDFromUInt64(900200): types.ChainIndex(123),
+		},
+	})
 	require.NoError(t, err)
 	require.NotNil(t, msg)
 
@@ -53,5 +72,5 @@ func TestDecodeExecutingMessageLog(t *testing.T) {
 	require.Equal(t, uint64(4509), msg.BlockNum)
 	require.Equal(t, uint32(0), msg.LogIdx)
 	require.Equal(t, uint64(1730467171), msg.Timestamp)
-	require.Equal(t, types.ChainIndex(900200), msg.Chain)
+	require.Equal(t, types.ChainIndex(123), msg.Chain)
 }

@@ -60,7 +60,7 @@ func CrossUnsafeUpdate(ctx context.Context, logger log.Logger, chainID types.Cha
 	if err := HazardUnsafeFrontierChecks(d, hazards); err != nil {
 		return fmt.Errorf("failed to verify block %s in cross-unsafe frontier: %w", candidate, err)
 	}
-	if err := HazardCycleChecks(d, candidate.Timestamp, hazards); err != nil {
+	if err := HazardCycleChecks(d.DependencySet(), d, candidate.Timestamp, hazards); err != nil {
 		return fmt.Errorf("failed to verify block %s in cross-unsafe check for cycle hazards: %w", candidate, err)
 	}
 

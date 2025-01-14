@@ -33,9 +33,18 @@ type DependencySet interface {
 	// See CanExecuteAt and CanInitiateAt to check if a chain may message at a given time.
 	HasChain(chainID types.ChainID) bool
 
-	// ChainIndexFromID converts a ChainID to a ChainIndex.
 	ChainIndexFromID(id types.ChainID) (types.ChainIndex, error)
 
+	ChainIndexFromID
+	ChainIDFromIndex
+}
+
+type ChainIndexFromID interface {
+	// ChainIndexFromID converts a ChainID to a ChainIndex.
+	ChainIndexFromID(id types.ChainID) (types.ChainIndex, error)
+}
+
+type ChainIDFromIndex interface {
 	// ChainIDFromIndex converts a ChainIndex to a ChainID.
 	ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error)
 }
