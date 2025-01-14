@@ -117,6 +117,14 @@ func (l *L2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth
 	return l.canonicalEthClient.OutputByRoot(ctx, blockRoot)
 }
 
+// OutputByBlockNumber implements prefetcher.L2Source.
+func (l *L2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	if l.ExperimentalEnabled() {
+		return l.experimentalClient.OutputByNumber(ctx, blockNum)
+	}
+	return l.canonicalEthClient.OutputByNumber(ctx, blockNum)
+}
+
 // ExecutionWitness implements prefetcher.L2Source.
 func (l *L2Source) ExecutionWitness(ctx context.Context, blockNum uint64) (*eth.ExecutionWitness, error) {
 	if !l.ExperimentalEnabled() {

@@ -12,6 +12,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 // Interfaces
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
+/// @custom:proxied true
+/// @custom:predeploy 0x4200000000000000000000000000000000000025
 /// @title ETHLiquidity
 /// @notice The ETHLiquidity contract allows other contracts to access ETH liquidity without
 ///         needing to modify the EVM to generate new ETH.

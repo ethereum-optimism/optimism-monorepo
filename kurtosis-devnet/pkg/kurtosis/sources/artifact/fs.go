@@ -1,20 +1,23 @@
-package deployer
+package artifact
 
 import (
 	"archive/tar"
 	"bytes"
 	"compress/gzip"
 	"context"
-	"fmt"
 	"io"
 	"path/filepath"
 
-	"github.com/kurtosis-tech/kurtosis/api/golang/core/lib/enclaves"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
+// EnclaveContextIface abstracts the EnclaveContext for testing
+type EnclaveContextIface interface {
+	DownloadFilesArtifact(ctx context.Context, name string) ([]byte, error)
+}
+
 type EnclaveFS struct {
-	enclaveCtx *enclaves.EnclaveContext
+	enclaveCtx EnclaveContextIface
 }
 
 func NewEnclaveFS(ctx context.Context, enclave string) (*EnclaveFS, error) {
@@ -29,6 +32,11 @@ func NewEnclaveFS(ctx context.Context, enclave string) (*EnclaveFS, error) {
 	}
 
 	return &EnclaveFS{enclaveCtx: enclaveCtx}, nil
+}
+
+// NewEnclaveFSWithContext creates an EnclaveFS with a provided context (useful for testing)
+func NewEnclaveFSWithContext(ctx EnclaveContextIface) *EnclaveFS {
+	return &EnclaveFS{enclaveCtx: ctx}
 }
 
 type Artifact struct {
@@ -55,11 +63,17 @@ type ArtifactFileWriter struct {
 	writer io.Writer
 }
 
+func NewArtifactFileWriter(path string, writer io.Writer) *ArtifactFileWriter {
+	return &ArtifactFileWriter{
+		path:   path,
+		writer: writer,
+	}
+}
+
 func (a *Artifact) ExtractFiles(writers ...*ArtifactFileWriter) error {
 	paths := make(map[string]io.Writer)
 	for _, writer := range writers {
 		canonicalPath := filepath.Clean(writer.path)
-		canonicalPath = fmt.Sprintf("./%s", canonicalPath)
 		paths[canonicalPath] = writer.writer
 	}
 
@@ -69,11 +83,12 @@ func (a *Artifact) ExtractFiles(writers ...*ArtifactFileWriter) error {
 			break
 		}
 
-		if _, ok := paths[header.Name]; !ok {
+		headerPath := filepath.Clean(header.Name)
+		if _, ok := paths[headerPath]; !ok {
 			continue
 		}
 
-		writer := paths[header.Name]
+		writer := paths[headerPath]
 		_, err = io.Copy(writer, a.reader)
 		if err != nil {
 			return err

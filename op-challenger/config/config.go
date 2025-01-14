@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"os"
 	"runtime"
 	"slices"
 	"strconv"
@@ -216,6 +217,14 @@ func (c Config) Check() error {
 		if c.Cannon.Server == "" {
 			return ErrMissingCannonServer
 		}
+
+		if _, err := os.Stat(c.Cannon.VmBin); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingCannonBin, err)
+		}
+		if _, err := os.Stat(c.Cannon.Server); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingCannonServer, err)
+		}
+
 		if c.Cannon.Network == "" {
 			if c.Cannon.RollupConfigPath == "" {
 				return ErrMissingCannonRollupConfig
@@ -254,6 +263,14 @@ func (c Config) Check() error {
 		if c.Asterisc.Server == "" {
 			return ErrMissingAsteriscServer
 		}
+
+		if _, err := os.Stat(c.Asterisc.VmBin); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscBin, err)
+		}
+		if _, err := os.Stat(c.Asterisc.Server); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscServer, err)
+		}
+
 		if c.Asterisc.Network == "" {
 			if c.Asterisc.RollupConfigPath == "" {
 				return ErrMissingAsteriscRollupConfig
@@ -289,6 +306,14 @@ func (c Config) Check() error {
 		if c.AsteriscKona.Server == "" {
 			return ErrMissingAsteriscKonaServer
 		}
+
+		if _, err := os.Stat(c.AsteriscKona.VmBin); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscKonaBin, err)
+		}
+		if _, err := os.Stat(c.AsteriscKona.Server); err != nil {
+			return fmt.Errorf("%w: %w", ErrMissingAsteriscKonaServer, err)
+		}
+
 		if c.AsteriscKona.Network == "" {
 			if c.AsteriscKona.RollupConfigPath == "" {
 				return ErrMissingAsteriscKonaRollupConfig
