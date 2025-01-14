@@ -69,3 +69,8 @@ There is a more direct route available for those wanting to focus on generating 
 just sys-cfg-bundle
 just sys-cfg-task
 ```
+
+> **Note:** The tooling in this package only supports the following upgrade paths for the SystemConfig: version 1.12.0 -> 2.30 and version 2.2.0 -> 2.3.0. As a part of the upgrade, the contract will be reinitialized with Ecotone scalar variables `baseFeeScalar` and `blobbaseFeeScalar`.
+
+### Upgrading multiple chains with one transaction bundle
+The [`./multichain.sh`](./multichain.sh) script is a wrapper around `just sys-cfg-bundle` which generates multiple transaction bundles and combines them into a single "superbundle". It was used to generate https://github.com/ethereum-optimism/superchain-ops/pull/454 and https://github.com/ethereum-optimism/superchain-ops/pull/418.
