@@ -109,15 +109,6 @@ func (ev LocalDerivedEvent) String() string {
 	return "local-derived"
 }
 
-type LocalDerivedExhaustEvent struct {
-	ChainID types.ChainID
-	Derived types.DerivedBlockRefPair
-}
-
-func (ev LocalDerivedExhaustEvent) String() string {
-	return "local-derived-exhaust"
-}
-
 type AnchorEvent struct {
 	ChainID types.ChainID
 	Anchor  types.DerivedBlockRefPair

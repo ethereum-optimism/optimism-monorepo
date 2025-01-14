@@ -344,15 +344,6 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 		// but does not fit on the derivation state.
 		return
 	}
-	// Now that the node has the next L1 block,
-	// we can process it optimistically, repeating the last derived L2 block
-	m.emitter.Emit(superevents.LocalDerivedEvent{
-		ChainID: m.chainID,
-		Derived: types.DerivedBlockRefPair{
-			DerivedFrom: nextL1,
-			Derived:     completed.Derived,
-		},
-	})
 }
 
 func (m *ManagedNode) Close() error {

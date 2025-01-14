@@ -126,10 +126,6 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 		if err := db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived); err != nil {
 			db.logger.Error("Failed to apply local-safe data to DB", "err", err)
 		}
-	case superevents.LocalDerivedExhaustEvent:
-		if err := db.recordNewL1(x.ChainID, x.Derived); err != nil {
-			db.logger.Error("failed to record new L1 block", "err", err)
-		}
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
 	default:
