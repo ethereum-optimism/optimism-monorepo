@@ -16,14 +16,16 @@ var codePrefixedKeyLength = common.HashLength + len(rawdb.CodePrefix)
 var ErrInvalidKeyLength = errors.New("pre-images must be identified by 32-byte hash keys")
 
 type OracleKeyValueStore struct {
-	db     ethdb.KeyValueStore
-	oracle StateOracle
+	db      ethdb.KeyValueStore
+	oracle  StateOracle
+	chainID uint64
 }
 
-func NewOracleBackedDB(oracle StateOracle) *OracleKeyValueStore {
+func NewOracleBackedDB(oracle StateOracle, chainID uint64) *OracleKeyValueStore {
 	return &OracleKeyValueStore{
-		db:     memorydb.New(),
-		oracle: oracle,
+		db:      memorydb.New(),
+		oracle:  oracle,
+		chainID: chainID,
 	}
 }
 
@@ -38,12 +40,12 @@ func (o *OracleKeyValueStore) Get(key []byte) ([]byte, error) {
 
 	if len(key) == codePrefixedKeyLength && bytes.HasPrefix(key, rawdb.CodePrefix) {
 		key = key[len(rawdb.CodePrefix):]
-		return o.oracle.CodeByHash(*(*[common.HashLength]byte)(key)), nil
+		return o.oracle.CodeByHash(*(*[common.HashLength]byte)(key), o.chainID), nil
 	}
 	if len(key) != common.HashLength {
 		return nil, ErrInvalidKeyLength
 	}
-	return o.oracle.NodeByHash(*(*[common.HashLength]byte)(key)), nil
+	return o.oracle.NodeByHash(*(*[common.HashLength]byte)(key), o.chainID), nil
 }
 
 func (o *OracleKeyValueStore) NewBatch() ethdb.Batch {
