@@ -295,7 +295,7 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
 	case l2.HintL2Code:
-		hash, chainID, err := p.parseHashAndChainID("L2 state node", hintBytes)
+		hash, chainID, err := p.parseHashAndChainID("L2 code", hintBytes)
 		if err != nil {
 			return err
 		}
