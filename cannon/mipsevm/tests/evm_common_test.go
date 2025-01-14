@@ -970,9 +970,6 @@ func TestEVM_HelloProgram(t *testing.T) {
 
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
-				_ = stepWitness
-				_ = validator
-				_ = step
 				validator.ValidateEVM(t, stepWitness, step, goVm)
 			}
 			end := time.Now()
@@ -1021,10 +1018,7 @@ func TestEVM_ClaimProgram(t *testing.T) {
 
 				stepWitness, err := goVm.Step(true)
 				require.NoError(t, err)
-				_ = stepWitness
-				_ = curStep
-				_ = validator
-				//validator.ValidateEVM(t, stepWitness, curStep, goVm)
+				validator.ValidateEVM(t, stepWitness, curStep, goVm)
 			}
 			t.Logf("Completed in %d steps", state.GetStep())
 
