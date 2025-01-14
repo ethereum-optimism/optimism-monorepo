@@ -17,11 +17,6 @@ type LogStorage interface {
 	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
 }
 
-type ChainsDBClientForLogProcessor interface {
-	SealBlock(chain types.ChainID, block eth.BlockRef) error
-	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
-}
-
 type logProcessor struct {
 	chain        types.ChainID
 	logStore     LogStorage

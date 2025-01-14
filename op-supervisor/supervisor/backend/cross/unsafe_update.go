@@ -1,13 +1,14 @@
 package cross
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -22,7 +23,7 @@ type CrossUnsafeDeps interface {
 	UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error
 }
 
-func CrossUnsafeUpdate(ctx context.Context, logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) error {
+func CrossUnsafeUpdate(logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) error {
 	var candidate types.BlockSeal
 	var execMsgs []*types.ExecutingMessage
 
@@ -71,9 +72,38 @@ func CrossUnsafeUpdate(ctx context.Context, logger log.Logger, chainID types.Cha
 	return nil
 }
 
-func NewCrossUnsafeWorker(logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) *Worker {
+type CrossUnsafeWorker struct {
+	logger  log.Logger
+	chainID types.ChainID
+	d       CrossUnsafeDeps
+}
+
+func (c *CrossUnsafeWorker) OnEvent(ev event.Event) bool {
+	switch x := ev.(type) {
+	case superevents.UpdateCrossUnsafeRequestEvent:
+		if x.ChainID != c.chainID {
+			return false
+		}
+		if err := CrossUnsafeUpdate(c.logger, c.chainID, c.d); err != nil {
+			if errors.Is(err, types.ErrFuture) {
+				c.logger.Debug("Worker awaits additional blocks", "err", err)
+			} else {
+				c.logger.Warn("Failed to process work", "err", err)
+			}
+		}
+	default:
+		return false
+	}
+	return true
+}
+
+var _ event.Deriver = (*CrossUnsafeWorker)(nil)
+
+func NewCrossUnsafeWorker(logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) *CrossUnsafeWorker {
 	logger = logger.New("chain", chainID)
-	return NewWorker(logger, func(ctx context.Context) error {
-		return CrossUnsafeUpdate(ctx, logger, chainID, d)
-	})
+	return &CrossUnsafeWorker{
+		logger:  logger,
+		chainID: chainID,
+		d:       d,
+	}
 }
