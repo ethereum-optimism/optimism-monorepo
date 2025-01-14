@@ -153,7 +153,7 @@
   },
   "src/dispute/AnchorStateRegistry.sol": {
     "initCodeHash": "0xfbeeac40d86d13e71c7add66eef6357576a93b6a175c9cff6ec6ef587fe3acc4",
-    "sourceCodeHash": "0xe299ca0d3a1c3a22e31e94db5e62122120c6aa081bbc2424367022e77b826348"
+    "sourceCodeHash": "0xbb2e08da74d470fc30dd35dc39834e19f676a45974aa2403eb97e84bc5bed0a8"
   },
   "src/dispute/DelayedWETH.sol": {
     "initCodeHash": "0x759d7f9c52b7c13ce4502f39dae3a75d130c6278240cde0b60ae84616aa2bd48",

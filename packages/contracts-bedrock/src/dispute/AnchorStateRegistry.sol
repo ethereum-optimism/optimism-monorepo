@@ -137,6 +137,8 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param _game The game to check.
     /// @return Whether the game is retired.
     function isGameRetired(IDisputeGame _game) public view returns (bool) {
+        // Must be created at or after the respectedGameTypeUpdatedAt timestamp. Note that the
+        // strict inequality exactly mirrors the logic in the OptimismPortal contract.
         return _game.createdAt().raw() < portal.respectedGameTypeUpdatedAt();
     }
 
@@ -145,6 +147,13 @@ contract AnchorStateRegistry is Initializable, ISemver {
     ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
     ///         valid. The root claim of a proper game CAN BE incorrect and still be a proper game.
     ///         DO NOT USE THIS FUNCTION ALONE TO DETERMINE IF A ROOT CLAIM IS VALID.
+    /// @dev Note that it is possible for games to be created when their game type is not the
+    ///      respected game type. We do not consider these games to be Proper Games. isGameProper()
+    ///      can currently guarantee this because the OptimismPortal contract will always set the
+    ///      retirement timestamp whenever the respected game type is updated such that any games
+    ///      created before any update of the respected game type are automatically retired. If
+    ///      this coupling is broken, then we must instead check that the game type *was* the
+    ///      respected game type at the time of the game's creation.
     /// @param _game The game to check.
     /// @return Whether the game is a proper game.
     function isGameProper(IDisputeGame _game) public view returns (bool) {
@@ -171,9 +180,9 @@ contract AnchorStateRegistry is Initializable, ISemver {
         return true;
     }
 
-    /// @notice Callable by FaultDisputeGame contracts to update the anchor state. Pulls the anchor state directly from
-    ///         the FaultDisputeGame contract and stores it in the registry if the new anchor state is valid and the
-    ///         state is newer than the current anchor state.
+    /// @notice Allows FaultDisputeGame contracts to attempt to become the new anchor game. A game
+    ///         can only become the new anchor game if it is not invalid (it is a Proper Game), it
+    ///         resolved in favor of the root claim, and it is newer than the current anchor game.
     function tryUpdateAnchorState() external {
         // Grab the game.
         IFaultDisputeGame game = IFaultDisputeGame(msg.sender);
@@ -190,7 +199,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
             return;
         }
 
-        // No need to update anything if the anchor state is already newer.
+        // Must be newer than the current anchor game.
         (, uint256 anchorL2BlockNumber) = getAnchorRoot();
         if (game.l2BlockNumber() <= anchorL2BlockNumber) {
             emit AnchorNotUpdated(game);
@@ -202,7 +211,10 @@ contract AnchorStateRegistry is Initializable, ISemver {
         emit AnchorUpdated(game);
     }
 
-    /// @notice Sets the anchor state given the game.
+    /// @notice Sets the anchor state given the game. Can only be triggered by the Guardian
+    ///         address. Unlike tryUpdateAnchorState(), this function does not check if the
+    ///         provided is newer than the existing anchor game. This allows the Guardian to
+    ///         recover from situations in which the current anchor game is invalid.
     /// @param _game The game to set the anchor state for.
     function setAnchorState(IFaultDisputeGame _game) external {
         // Function can only be triggered by the guardian.
