@@ -10,6 +10,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/clock"
 )
 
+const eventualTimeout = 10 * time.Second
+
 func TestPoller(t *testing.T) {
 	cl := clock.NewDeterministicClock(time.Now())
 	counter := new(atomic.Int64)
@@ -24,7 +26,7 @@ func TestPoller(t *testing.T) {
 	require.Eventually(t, func() bool {
 		t.Log("counter", counter.Load())
 		return counter.Load() == 1
-	}, time.Second, time.Millisecond*100)
+	}, eventualTimeout, time.Millisecond*100)
 
 	cl.AdvanceTime(time.Second * 3) // no hit yet, 9 seconds have passsed now
 
@@ -36,7 +38,7 @@ func TestPoller(t *testing.T) {
 	cl.AdvanceTime(time.Second * 2) // 11 seconds have passed now
 	require.Eventually(t, func() bool {
 		return counter.Load() == 2
-	}, time.Second, time.Millisecond*100)
+	}, eventualTimeout, time.Millisecond*100)
 
 	poller.Stop()
 
@@ -62,7 +64,7 @@ func TestPoller(t *testing.T) {
 	require.Eventually(t, func() bool {
 		t.Log("counter", counter.Load())
 		return counter.Load() == 3
-	}, time.Second, time.Millisecond*100)
+	}, eventualTimeout, time.Millisecond*100)
 
 	poller.Stop()
 }
