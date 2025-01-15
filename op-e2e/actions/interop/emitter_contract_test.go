@@ -198,9 +198,11 @@ func includeTxOnChain(t helpers.Testing, actors *InteropActors, chain *Chain, tx
 	chain.Sequencer.ActL2EventsUntil(t, event.Is[derive.ExhaustedL1Event], 100, false)
 	actors.Supervisor.SignalLatestL1(t)
 	chain.Sequencer.SyncSupervisor(t)
-	actors.Supervisor.SignalLatestL1(t)
+	chain.Sequencer.ActL2PipelineFull(t)
 
 	// Final sync of both chains
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
 	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
