@@ -320,7 +320,7 @@ func CheckAsteriscFlags(ctx *cli.Context) error {
 		return fmt.Errorf("flag %s is required", AsteriscServerFlag.Name)
 	}
 	if !PreStatesURLFlag.IsSet(ctx, types.TraceTypeAsterisc) && !ctx.IsSet(AsteriscPreStateFlag.Name) {
-		return fmt.Errorf("flag %s or %s is required", PreStatesURLFlag.EitherFlagName(types.TraceTypeAsteriscKona), AsteriscPreStateFlag.Name)
+		return fmt.Errorf("flag %s or %s is required", PreStatesURLFlag.EitherFlagName(types.TraceTypeAsterisc), AsteriscPreStateFlag.Name)
 	}
 	return nil
 }

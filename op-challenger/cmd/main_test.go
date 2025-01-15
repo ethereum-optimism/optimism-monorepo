@@ -293,7 +293,7 @@ func TestAsteriscOpProgramRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("Required", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-prestate"))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-prestates-url or asterisc-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-prestate"))
 		})
 
 		t.Run("Valid", func(t *testing.T) {
@@ -318,7 +318,7 @@ func TestAsteriscOpProgramRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("RequiredIfAsteriscPrestatesBaseURLNotSet", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-prestates-url or asterisc-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
 		})
 
 		t.Run("Invalid", func(t *testing.T) {
@@ -337,7 +337,7 @@ func TestAsteriscOpProgramRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("Required", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-prestate"))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-prestates-url or asterisc-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-prestate"))
 		})
 
 		t.Run("Valid", func(t *testing.T) {
@@ -370,7 +370,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("Required", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-kona-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-kona-prestate"))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-kona-prestates-url or asterisc-kona-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-kona-prestate"))
 		})
 
 		t.Run("Valid", func(t *testing.T) {
@@ -385,7 +385,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("Required", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-kona-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-kona-prestate"))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-kona-prestates-url or asterisc-kona-prestate is required", addRequiredArgsExcept(traceType, "--asterisc-kona-prestate"))
 		})
 
 		t.Run("Valid", func(t *testing.T) {
@@ -410,7 +410,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		})
 
 		t.Run("RequiredIfAsteriscKonaPrestatesBaseURLNotSet", func(t *testing.T) {
-			verifyArgsInvalid(t, "flag prestates-url or asterisc-kona-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
+			verifyArgsInvalid(t, "flag prestates-url/asterisc-kona-prestates-url or asterisc-kona-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
 		})
 
 		t.Run("Invalid", func(t *testing.T) {
@@ -490,15 +490,15 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestRequireEitherNetworkOrRollupAndGenesis-%v", traceType), func(t *testing.T) {
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				fmt.Sprintf("flag network or rollup-config/%s-rollup-config and l2-genesis/%s-l2-genesis is required", traceType, traceType),
 				addRequiredArgsExcept(traceType, "--network"))
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				fmt.Sprintf("flag network or rollup-config/%s-rollup-config and l2-genesis/%s-l2-genesis is required", traceType, traceType),
 				addRequiredArgsExcept(traceType, "--network", "--rollup-config=rollup.json"))
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				fmt.Sprintf("flag network or rollup-config/%s-rollup-config and l2-genesis/%s-l2-genesis is required", traceType, traceType),
 				addRequiredArgsExcept(traceType, "--network", "--l2-genesis=gensis.json"))
 		})
 
@@ -610,7 +610,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			})
 
 			t.Run("Required", func(t *testing.T) {
-				verifyArgsInvalid(t, "flag prestates-url or cannon-prestate is required", addRequiredArgsExcept(traceType, "--cannon-prestate"))
+				verifyArgsInvalid(t, "flag prestates-url/cannon-prestates-url or cannon-prestate is required", addRequiredArgsExcept(traceType, "--cannon-prestate"))
 			})
 
 			t.Run("Valid", func(t *testing.T) {
@@ -625,7 +625,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			})
 
 			t.Run("Required", func(t *testing.T) {
-				verifyArgsInvalid(t, "flag prestates-url or cannon-prestate is required", addRequiredArgsExcept(traceType, "--cannon-prestate"))
+				verifyArgsInvalid(t, "flag prestates-url/cannon-prestates-url or cannon-prestate is required", addRequiredArgsExcept(traceType, "--cannon-prestate"))
 			})
 
 			t.Run("Valid", func(t *testing.T) {
@@ -650,7 +650,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			})
 
 			t.Run("RequiredIfCannonPrestatesBaseURLNotSet", func(t *testing.T) {
-				verifyArgsInvalid(t, "flag prestates-url or cannon-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
+				verifyArgsInvalid(t, "flag prestates-url/cannon-prestates-url or cannon-prestate is required", addRequiredArgsExceptArr(traceType, allPrestateOptions))
 			})
 
 			t.Run("Invalid", func(t *testing.T) {
@@ -711,15 +711,15 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestRequireEitherCannonNetworkOrRollupAndGenesis-%v", traceType), func(t *testing.T) {
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				"flag network or rollup-config/cannon-rollup-config and l2-genesis/cannon-l2-genesis is required",
 				addRequiredArgsExcept(traceType, "--network"))
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				"flag network or rollup-config/cannon-rollup-config and l2-genesis/cannon-l2-genesis is required",
 				addRequiredArgsExcept(traceType, "--network", "--cannon-rollup-config=rollup.json"))
 			verifyArgsInvalid(
 				t,
-				"flag network or rollup-config and l2-genesis is required",
+				"flag network or rollup-config/cannon-rollup-config and l2-genesis/cannon-l2-genesis is required",
 				addRequiredArgsExcept(traceType, "--network", "--cannon-l2-genesis=gensis.json"))
 		})
 
