@@ -14,21 +14,26 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-func ReceiptsToExecutingMessages(receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, error) {
+func ReceiptsToExecutingMessages(receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
 	var execMsgs []*supervisortypes.ExecutingMessage
+	var logCount uint32
 	for _, rcpt := range receipts {
+		logCount += uint32(len(rcpt.Logs))
 		for _, l := range rcpt.Logs {
 			execMsg, err := processors.DecodeExecutingMessageLog(l)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
-			execMsgs = append(execMsgs, execMsg)
+			// TODO: e2e test for both executing and non-executing messages in the logs
+			if execMsg != nil {
+				execMsgs = append(execMsgs, execMsg)
+			}
 		}
 	}
-	return execMsgs, nil
+	return execMsgs, logCount, nil
 }
 
-func Consolidate(deps ConsolidateCheckDeps,
+func RunConsolidation(deps ConsolidateCheckDeps,
 	oracle l2.Oracle,
 	transitionState *types.TransitionState,
 	superRoot *eth.SuperV1,
@@ -37,12 +42,14 @@ func Consolidate(deps ConsolidateCheckDeps,
 
 	for i, chain := range superRoot.Chains {
 		progress := transitionState.PendingProgress[i]
-		receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
-		execMsgs, err := ReceiptsToExecutingMessages(receipts)
+
+		// TODO(13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
+		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
+		execMsgs, _, err := ReceiptsToExecutingMessages(receipts)
 		if err != nil {
 			return eth.Bytes32{}, err
 		}
-		block := oracle.BlockByHash(progress.BlockHash, chain.ChainID)
+
 		candidate := supervisortypes.BlockSeal{
 			Hash:      progress.BlockHash,
 			Number:    block.NumberU64(),
@@ -53,17 +60,17 @@ func Consolidate(deps ConsolidateCheckDeps,
 			return eth.Bytes32{}, err
 		}
 		if err := checkHazards(deps, &candidate, hazards); err != nil {
-			// TODO: replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
+			// TODO(13776): replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
 			return eth.Bytes32{}, err
 		}
 		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
 			ChainID: chain.ChainID,
-			// TODO: when applicable, use the deposit-only output root
-			Output: chain.Output,
+			// TODO: when applicable, use the deposit-only block output root
+			Output: progress.OutputRoot,
 		})
 	}
 	consolidatedSuper := &eth.SuperV1{
-		Timestamp: superRoot.Timestamp,
+		Timestamp: superRoot.Timestamp + 1,
 		Chains:    consolidatedChains,
 	}
 	return eth.SuperRoot(consolidatedSuper), nil
@@ -107,15 +114,19 @@ func getHazards(
 
 type consolidateCheckDeps struct {
 	oracle l2.Oracle
-	heads  map[supervisortypes.ChainID]*ethtypes.Block
+	heads  map[uint64]*ethtypes.Block
 	depset depset.DependencySet
+	// block by number cache per chain
+	hashByNum map[uint64]map[uint64]common.Hash
 }
 
-func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) *consolidateCheckDeps {
+func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[supervisortypes.ChainID]*depset.StaticConfigDependency)
-	heads := make(map[supervisortypes.ChainID]*ethtypes.Block)
+	heads := make(map[uint64]*ethtypes.Block)
+	hashByNum := make(map[uint64]map[uint64]common.Hash)
+
 	for i, chain := range chains {
 		deps[supervisortypes.ChainIDFromUInt64(chain.ChainID)] = &depset.StaticConfigDependency{
 			ChainIndex:     supervisortypes.ChainIndex(i),
@@ -125,17 +136,25 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) *c
 		output := oracle.OutputByRoot(common.Hash(chain.Output), chain.ChainID)
 		outputV0, ok := output.(*eth.OutputV0)
 		if !ok {
-			// TODO: return an error instead
-			panic(fmt.Sprintf("unexpected output type: %T", output))
+			return nil, fmt.Errorf("unexpected output type: %T", output)
 		}
 		head := oracle.BlockByHash(outputV0.BlockHash, chain.ChainID)
-		heads[supervisortypes.ChainIDFromUInt64(chain.ChainID)] = head
+		heads[chain.ChainID] = head
+
+		hashByNum[chain.ChainID] = make(map[uint64]common.Hash)
+		hashByNum[chain.ChainID][head.NumberU64()] = head.Hash()
 	}
 	depset, err := depset.NewStaticConfigDependencySet(deps)
 	if err != nil {
-		panic(fmt.Sprintf("unexpected error: failed to create dependency set: %v", err))
+		return nil, fmt.Errorf("unexpected error: failed to create dependency set: %w", err)
 	}
-	return &consolidateCheckDeps{oracle: oracle, heads: heads, depset: depset}
+
+	return &consolidateCheckDeps{
+		oracle:    oracle,
+		heads:     heads,
+		depset:    depset,
+		hashByNum: hashByNum,
+	}, nil
 }
 
 func (d *consolidateCheckDeps) Check(
@@ -145,12 +164,11 @@ func (d *consolidateCheckDeps) Check(
 	logIdx uint32,
 	logHash common.Hash,
 ) (includedIn supervisortypes.BlockSeal, err error) {
-	head := d.heads[chain]
-	if head == nil {
-		return supervisortypes.BlockSeal{}, fmt.Errorf("head not found for chain %v", chain)
-	}
 	// We can assume the oracle has the block the executing message is in
-	block := BlockByNumber(d.oracle, head, blockNum, chain.ToBig().Uint64())
+	block, err := d.BlockByNumber(d.oracle, blockNum, chain.ToBig().Uint64())
+	if err != nil {
+		return supervisortypes.BlockSeal{}, err
+	}
 	return supervisortypes.BlockSeal{
 		Hash:      block.Hash(),
 		Number:    block.NumberU64(),
@@ -160,7 +178,7 @@ func (d *consolidateCheckDeps) Check(
 
 func (d *consolidateCheckDeps) IsCrossUnsafe(chainID supervisortypes.ChainID, block eth.BlockID) error {
 	// TODO: assumed to be cross-unsafe
-	// But if the block a future block, then retunr an error
+	// But if the block a future block, then return an error
 	return nil
 }
 
@@ -170,11 +188,10 @@ func (d *consolidateCheckDeps) IsLocalUnsafe(chainID supervisortypes.ChainID, bl
 }
 
 func (d *consolidateCheckDeps) ParentBlock(chainID supervisortypes.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
-	head := d.heads[chainID]
-	if head == nil {
-		return eth.BlockID{}, fmt.Errorf("head not found for chain %v", chainID)
+	block, err := d.BlockByNumber(d.oracle, parentOf.Number-1, chainID.ToBig().Uint64())
+	if err != nil {
+		return eth.BlockID{}, err
 	}
-	block := BlockByNumber(d.oracle, head, parentOf.Number-1, chainID.ToBig().Uint64())
 	return eth.BlockID{
 		Hash:   block.Hash(),
 		Number: block.NumberU64(),
@@ -185,17 +202,16 @@ func (d *consolidateCheckDeps) OpenBlock(
 	chainID supervisortypes.ChainID,
 	blockNum uint64,
 ) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*supervisortypes.ExecutingMessage, err error) {
-	head := d.heads[chainID]
-	if head == nil {
-		return eth.BlockRef{}, 0, nil, fmt.Errorf("head not found for chain %v", chainID)
+	block, err := d.BlockByNumber(d.oracle, blockNum, chainID.ToBig().Uint64())
+	if err != nil {
+		return eth.BlockRef{}, 0, nil, err
 	}
-	block := BlockByNumber(d.oracle, head, blockNum, chainID.ToBig().Uint64())
 	ref = eth.BlockRef{
 		Hash:   block.Hash(),
 		Number: block.NumberU64(),
 	}
-	receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chainID.ToBig().Uint64())
-	execs, err := ReceiptsToExecutingMessages(receipts)
+	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chainID.ToBig().Uint64())
+	execs, logCount, err := ReceiptsToExecutingMessages(receipts)
 	if err != nil {
 		return eth.BlockRef{}, 0, nil, err
 	}
@@ -203,25 +219,28 @@ func (d *consolidateCheckDeps) OpenBlock(
 	for _, exec := range execs {
 		execMsgs[exec.LogIdx] = exec
 	}
-	return ref, uint32(len(execs)), execMsgs, nil
+	return ref, uint32(logCount), execMsgs, nil
 }
 
 func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 	return d.depset
 }
 
-func BlockByNumber(oracle l2.Oracle, head *ethtypes.Block, blockNum uint64, chainID uint64) *ethtypes.Block {
+func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, chainID uint64) (*ethtypes.Block, error) {
+	head := d.heads[chainID]
+	if head == nil {
+		return nil, fmt.Errorf("head not found for chain %v", chainID)
+	}
 	if head.NumberU64() < blockNum {
-		return nil
+		return nil, nil
 	}
-	for {
-		if head.NumberU64() == blockNum {
-			return head
-		}
-		if blockNum == 0 {
-			return nil
-		}
-		// TODO: maintain a cache at the earliest head
+	hash, ok := d.hashByNum[chainID][blockNum]
+	if ok {
+		return oracle.BlockByHash(hash, chainID), nil
+	}
+	for head.NumberU64() > blockNum {
 		head = oracle.BlockByHash(head.ParentHash(), chainID)
+		d.hashByNum[chainID][head.NumberU64()] = head.Hash()
 	}
+	return head, nil
 }

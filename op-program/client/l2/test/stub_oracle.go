@@ -89,12 +89,12 @@ func (o StubBlockOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 	return block
 }
 
-func (o StubBlockOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) gethTypes.Receipts {
+func (o StubBlockOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*gethTypes.Block, gethTypes.Receipts) {
 	receipts, ok := o.Receipts[blockHash]
 	if !ok {
 		o.t.Fatalf("requested unknown receipts for block %s", blockHash)
 	}
-	return receipts
+	return o.BlockByHash(blockHash, chainID), receipts
 }
 
 // KvStateOracle loads data from a source ethdb.KeyValueStore

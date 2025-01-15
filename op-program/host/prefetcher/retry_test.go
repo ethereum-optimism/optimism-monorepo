@@ -233,6 +233,9 @@ func TestRetryingL2Source(t *testing.T) {
 	txs := types.Transactions{
 		&types.Transaction{},
 	}
+	rcpts := types.Receipts{
+		&types.Receipt{},
+	}
 	data := []byte{1, 2, 3, 4, 5}
 	output := &eth.OutputV0{}
 	wrongOutput := &eth.OutputV0{BlockHash: common.Hash{0x99}}
@@ -303,6 +306,17 @@ func TestRetryingL2Source(t *testing.T) {
 		actual, err := source.CodeByHash(ctx, hash)
 		require.NoError(t, err)
 		require.Equal(t, data, actual)
+	})
+
+	t.Run("FetchReceipts Success", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		mock.ExpectFetchReceipts(hash, info, rcpts, nil)
+
+		actualInfo, actualRcpts, err := source.FetchReceipts(ctx, hash)
+		require.NoError(t, err)
+		require.Equal(t, info, actualInfo)
+		require.Equal(t, rcpts, actualRcpts)
 	})
 
 	t.Run("OutputByRoot Success", func(t *testing.T) {
@@ -413,6 +427,10 @@ func (m *MockL2Source) ExpectNodeByHash(hash common.Hash, node []byte, err error
 
 func (m *MockL2Source) ExpectCodeByHash(hash common.Hash, code []byte, err error) {
 	m.Mock.On("CodeByHash", hash).Once().Return(code, &err)
+}
+
+func (m *MockL2Source) ExpectFetchReceipts(blockHash common.Hash, info eth.BlockInfo, rcpts types.Receipts, err error) {
+	m.Mock.On("FetchReceipts", blockHash).Once().Return(info, rcpts, &err)
 }
 
 func (m *MockL2Source) ExpectOutputByRoot(blockHash common.Hash, output eth.Output, err error) {

@@ -50,14 +50,15 @@ func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte 
 	return node
 }
 
-func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts {
+func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts) {
 	rcpts, ok := o.rcpts.Get(blockHash)
 	if ok {
-		return rcpts
+		return o.BlockByHash(blockHash, chainID), rcpts
 	}
-	rcpts = o.oracle.ReceiptsByBlockHash(blockHash, chainID)
+	block, rcpts := o.oracle.ReceiptsByBlockHash(blockHash, chainID)
+	o.blocks.Add(blockHash, block)
 	o.rcpts.Add(blockHash, rcpts)
-	return rcpts
+	return block, rcpts
 }
 
 func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {

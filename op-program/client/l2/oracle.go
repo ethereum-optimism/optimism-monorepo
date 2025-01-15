@@ -41,7 +41,7 @@ type Oracle interface {
 
 	TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState
 
-	ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts
+	ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts)
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -155,7 +155,7 @@ func (p *PreimageOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 	return output
 }
 
-func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) types.Receipts {
+func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts) {
 	block := p.BlockByHash(blockHash, chainID)
 	p.hint.Hint(ReceiptsHint{Hash: blockHash, ChainID: chainID})
 	opaqueReceipts := mpt.ReadTrie(block.ReceiptHash(), func(key common.Hash) []byte {
@@ -169,5 +169,5 @@ func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint
 	if err != nil {
 		panic(fmt.Errorf("failed to decode receipts for block %v: %w", block.Hash(), err))
 	}
-	return receipts
+	return block, receipts
 }

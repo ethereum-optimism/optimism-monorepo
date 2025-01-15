@@ -98,17 +98,16 @@ func runInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Prei
 		if len(transitionState.PendingProgress) >= ConsolidateStep {
 			return fmt.Errorf("pending progress length does not match the expected step")
 		}
-		deps := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
-		expectedSuperRoot, err := Consolidate(deps, l2PreimageOracle, transitionState, superRoot)
+		deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
+		if err != nil {
+			return fmt.Errorf("failed to create consolidate check deps: %w", err)
+		}
+		expectedSuperRoot, err := RunConsolidation(deps, l2PreimageOracle, transitionState, superRoot)
 		if err != nil {
 			return err
 		}
 		if validateClaim {
-			claimedSuperRoot := eth.SuperRoot(superRoot)
-			logger.Info("Validating super root", "expected", expectedSuperRoot, "claim", claimedSuperRoot)
-			if expectedSuperRoot != claimedSuperRoot {
-				return fmt.Errorf("expected root %s does not match claim %s", expectedSuperRoot, claimedSuperRoot)
-			}
+			return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.Claim), expectedSuperRoot)
 		}
 		return nil
 	}
