@@ -25,12 +25,16 @@ const (
 	StepsPerTimestamp = 1024
 )
 
+type PreimagePrestateProvider interface {
+	types.PrestateProvider
+	AbsolutePreState(ctx context.Context) (eth.Super, error)
+}
 type RootProvider interface {
-	SuperRootAtTimestamp(timestamp uint64) (eth.SuperRootResponse, error)
+	SuperRootAtTimestamp(ctx context.Context, timestamp uint64) (eth.SuperRootResponse, error)
 }
 
 type SuperTraceProvider struct {
-	types.PrestateProvider
+	PreimagePrestateProvider
 	logger             log.Logger
 	rootProvider       RootProvider
 	prestateTimestamp  uint64
@@ -39,66 +43,71 @@ type SuperTraceProvider struct {
 	gameDepth          types.Depth
 }
 
-func NewSuperTraceProvider(logger log.Logger, prestateProvider types.PrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
+func NewSuperTraceProvider(logger log.Logger, prestateProvider PreimagePrestateProvider, rootProvider RootProvider, l1Head eth.BlockID, gameDepth types.Depth, prestateTimestamp, poststateTimestamp uint64) *SuperTraceProvider {
 	return &SuperTraceProvider{
-		PrestateProvider:   prestateProvider,
-		logger:             logger,
-		rootProvider:       rootProvider,
-		prestateTimestamp:  prestateTimestamp,
-		poststateTimestamp: poststateTimestamp,
-		l1Head:             l1Head,
-		gameDepth:          gameDepth,
+		PreimagePrestateProvider: prestateProvider,
+		logger:                   logger,
+		rootProvider:             rootProvider,
+		prestateTimestamp:        prestateTimestamp,
+		poststateTimestamp:       poststateTimestamp,
+		l1Head:                   l1Head,
+		gameDepth:                gameDepth,
 	}
 }
 
 func (s *SuperTraceProvider) Get(ctx context.Context, pos types.Position) (common.Hash, error) {
-	// Find the timestamp and step at position
-	timestamp, step, err := s.ComputeStep(pos)
+	preimage, err := s.GetPreimageBytes(ctx, pos)
 	if err != nil {
 		return common.Hash{}, err
 	}
+	return crypto.Keccak256Hash(preimage), nil
+}
+
+func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Position) ([]byte, error) {
+	// Find the timestamp and step at position
+	timestamp, step, err := s.ComputeStep(pos)
+	if err != nil {
+		return nil, err
+	}
 	s.logger.Info("Getting claim", "pos", pos.ToGIndex(), "timestamp", timestamp, "step", step)
 	if step == 0 {
-		root, err := s.rootProvider.SuperRootAtTimestamp(timestamp)
+		root, err := s.rootProvider.SuperRootAtTimestamp(ctx, timestamp)
 		if err != nil {
-			return common.Hash{}, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
+			return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
 		}
-		return common.Hash(root.SuperRoot), nil
+		return responseToSuper(root).Marshal(), nil
 	}
 	// Fetch the super root at the next timestamp since we are part way through the transition to it
-	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(timestamp)
+	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, timestamp)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
+		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
 	}
 	nextTimestamp := timestamp + 1
-	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(nextTimestamp)
+	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, nextTimestamp)
 	if err != nil {
-		return common.Hash{}, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", nextTimestamp, err)
+		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", nextTimestamp, err)
 	}
-	prevChainOutputs := make([]eth.ChainIDAndOutput, 0, len(prevRoot.Chains))
-	for _, chain := range prevRoot.Chains {
-		prevChainOutputs = append(prevChainOutputs, eth.ChainIDAndOutput{ChainID: chain.ChainID.ToBig().Uint64(), Output: chain.Canonical})
-	}
+	superV1 := responseToSuper(prevRoot)
 	expectedState := interopTypes.TransitionState{
-		SuperRoot:       eth.NewSuperV1(prevRoot.Timestamp, prevChainOutputs...).Marshal(),
+		SuperRoot:       superV1.Marshal(),
 		PendingProgress: make([]interopTypes.OptimisticBlock, 0, step),
 		Step:            step,
 	}
-	for i := uint64(0); i < min(step, uint64(len(prevChainOutputs))); i++ {
+	for i := uint64(0); i < min(step, uint64(len(nextRoot.Chains))); i++ {
 		rawOutput, err := eth.UnmarshalOutput(nextRoot.Chains[i].Pending)
 		if err != nil {
-			return common.Hash{}, fmt.Errorf("failed to unmarshal pending output %v at timestamp %v: %w", i, nextTimestamp, err)
+			return nil, fmt.Errorf("failed to unmarshal pending output %v at timestamp %v: %w", i, nextTimestamp, err)
 		}
 		output, ok := rawOutput.(*eth.OutputV0)
 		if !ok {
-			return common.Hash{}, fmt.Errorf("unsupported output version %v at timestamp %v", output.Version(), nextTimestamp)
+			return nil, fmt.Errorf("unsupported output version %v at timestamp %v", output.Version(), nextTimestamp)
 		}
 		expectedState.PendingProgress = append(expectedState.PendingProgress, interopTypes.OptimisticBlock{
 			BlockHash:  output.BlockHash,
 			OutputRoot: eth.OutputRoot(output),
 		})
 	}
-	return expectedState.Hash(), nil
+	return expectedState.Marshal(), nil
 }
 
 func (s *SuperTraceProvider) ComputeStep(pos types.Position) (timestamp uint64, step uint64, err error) {
