@@ -49,6 +49,10 @@ func GenerateL2Genesis(pEnv *Env, intent *state.Intent, bundle ArtifactsBundle, 
 		return fmt.Errorf("failed to create L2 script host: %w", err)
 	}
 
+	// This is an ugly hack to support holocene. The v1.7.0 predeploy contracts do not support setting the allocs
+	// mode as Holocene, even though there are no predeploy changes in Holocene. The v1.7.0 changes are the "official"
+	// release of the predeploy contracts, so we need to set the allocs mode to "granite" to avoid having to backport
+	// Holocene support into the predeploy contracts.
 	var overrideAllocsMode string
 	if intent.L2ContractsLocator.IsTag() && intent.L2ContractsLocator.Tag == standard.ContractsV170Beta1L2Tag {
 		overrideAllocsMode = "granite"
