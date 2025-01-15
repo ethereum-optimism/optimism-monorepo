@@ -587,9 +587,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Tests that `proveWithdrawalTransaction` reverts if the game was not the respected game type when created.
     function test_proveWithdrawalTransaction_wasNotRespectedGameTypeWhenCreated_reverts() external {
-        vm.mockCall(
-            address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), abi.encode(false)
-        );
+        vm.mockCall(address(game), abi.encodeCall(game.wasRespectedGameTypeWhenCreated, ()), abi.encode(false));
         vm.expectRevert(InvalidGameType.selector);
         optimismPortal2.proveWithdrawalTransaction({
             _tx: _defaultTx,
@@ -602,7 +600,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     /// @dev Tests that `proveWithdrawalTransaction` reverts if the game is a legacy game that does not implement
     ///      `wasRespectedGameTypeWhenCreated`.
     function test_proveWithdrawalTransaction_legacyGame_reverts() external {
-        vm.mockCallRevert(address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), "");
+        vm.mockCallRevert(address(game), abi.encodeCall(game.wasRespectedGameTypeWhenCreated, ()), "");
         vm.expectRevert(LegacyGame.selector);
         optimismPortal2.proveWithdrawalTransaction({
             _tx: _defaultTx,
@@ -616,7 +614,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
     ///      timestamp.
     function testFuzz_proveWithdrawalTransaction_createdBeforeRetirementTimestamp_reverts(uint64 _createdAt) external {
         _createdAt = uint64(bound(_createdAt, 0, optimismPortal2.respectedGameTypeUpdatedAt() - 1));
-        vm.mockCall(address(game), abi.encodeWithSelector(game.createdAt.selector), abi.encode(uint64(_createdAt)));
+        vm.mockCall(address(game), abi.encodeCall(game.createdAt, ()), abi.encode(uint64(_createdAt)));
         vm.expectRevert("OptimismPortal: dispute game created before respected game type was updated");
         optimismPortal2.proveWithdrawalTransaction({
             _tx: _defaultTx,
@@ -1525,7 +1523,7 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         // Warp past the dispute game finality delay.
         vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds() + 1);
 
-        vm.mockCallRevert(address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), "");
+        vm.mockCallRevert(address(game), abi.encodeCall(game.wasRespectedGameTypeWhenCreated, ()), "");
 
         vm.expectRevert(LegacyGame.selector);
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
