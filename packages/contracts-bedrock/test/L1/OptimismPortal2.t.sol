@@ -672,13 +672,15 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
             _withdrawalProof: _withdrawalProof
         });
 
+        // Create a new game.
+        IDisputeGame newGame =
+            disputeGameFactory.create(GameType.wrap(0), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber + 1));
+
         // Update the respected game type to 0xbeef.
         vm.prank(optimismPortal2.guardian());
         optimismPortal2.setRespectedGameType(GameType.wrap(0xbeef));
 
         // Create a new game and mock the game type as 0xbeef in the factory.
-        IDisputeGame newGame =
-            disputeGameFactory.create(GameType.wrap(0), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber + 1));
         vm.mockCall(
             address(disputeGameFactory),
             abi.encodeCall(disputeGameFactory.gameAtIndex, (_proposedGameIndex + 1)),
