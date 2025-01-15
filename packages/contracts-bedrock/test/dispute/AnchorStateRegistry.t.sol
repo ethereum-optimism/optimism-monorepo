@@ -235,7 +235,7 @@ contract AnchorStateRegistry_IsGameRetired_Test is AnchorStateRegistry_Init {
 
 contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
     /// @notice Tests that isGameProper will return true if the game meets all conditions.
-    function test_isGameProper_meetsAllConditions_succeeds() public {
+    function test_isGameProper_meetsAllConditions_succeeds() public view {
         // Game will meet all conditions by default.
         assertTrue(anchorStateRegistry.isGameProper(gameProxy));
     }

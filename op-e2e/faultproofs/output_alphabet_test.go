@@ -121,7 +121,7 @@ func TestOutputAlphabetGame_ReclaimBond(t *testing.T) {
 
 	// The actor should have no credit available because all its bonds were paid to Alice.
 	actorCredit := game.AvailableCredit(ctx, disputegame.TestAddress)
-	require.True(t, actorCredit.Cmp(big.NewInt(0)) == 0, "Expected alice available credit to be zero")
+	require.True(t, actorCredit.Cmp(big.NewInt(0)) == 0, "Expected actor available credit to be zero")
 
 	// Advance the time past the weth unlock delay
 	sys.TimeTravelClock.AdvanceTime(game.CreditUnlockDuration(ctx))

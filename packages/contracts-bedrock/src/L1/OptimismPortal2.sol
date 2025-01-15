@@ -28,7 +28,8 @@ import {
     Blacklisted,
     Unproven,
     ProposalNotValidated,
-    AlreadyFinalized
+    AlreadyFinalized,
+    LegacyGame
 } from "src/libraries/PortalErrors.sol";
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
@@ -309,7 +310,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         if (gameType.raw() != respectedGameType.raw()) revert InvalidGameType();
 
         // The game type of the DisputeGame must have been the respected game type at creation.
-        if (!gameProxy.wasRespectedGameTypeWhenCreated()) revert InvalidGameType();
+        try gameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
+            if (!wasRespected_) revert InvalidGameType();
+        } catch {
+            revert LegacyGame();
+        }
 
         // Creation time must be greater than or equal to the respected game type updated time.
         // Games created before this timestamp are not valid and cannot be used to finalize a
@@ -541,7 +546,12 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // time. We check that the game type is the respected game type at proving time, but it's
         // possible that the respected game type has since changed. Users can still use this game
         // to finalize a withdrawal as long as it has not been otherwise invalidated.
-        if (!disputeGameProxy.wasRespectedGameTypeWhenCreated()) revert InvalidGameType();
+        // The game type of the DisputeGame must have been the respected game type at creation.
+        try disputeGameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
+            if (!wasRespected_) revert InvalidGameType();
+        } catch {
+            revert LegacyGame();
+        }
 
         // The game must have been created after `respectedGameTypeUpdatedAt`. This is to prevent users from creating
         // invalid disputes against a deployed game type while the off-chain challenge agents are not watching.
