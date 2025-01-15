@@ -74,9 +74,9 @@ type Config struct {
 
 	TraceTypes []types.TraceType // Type of traces supported
 
-	RollupRpc string // L2 Rollup RPC Url
-
-	L2Rpc string // L2 RPC Url
+	RollupRpc     string // L2 Rollup RPC Url
+	SupervisorRPC string // L2 supervisor RPC URL
+	L2Rpc         string // L2 RPC Url
 
 	// Specific to the cannon trace provider
 	Cannon                        vm.Config

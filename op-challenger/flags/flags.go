@@ -44,6 +44,11 @@ var (
 		Usage:   "Address of L1 Beacon API endpoint to use",
 		EnvVars: prefixEnvVars("L1_BEACON"),
 	}
+	SupervisorRpcFlag = &cli.StringFlag{
+		Name:    "supervisor-rpc",
+		Usage:   "Provider URL for supervisor RPC",
+		EnvVars: prefixEnvVars("SUPERVISOR_RPC"),
+	}
 	RollupRpcFlag = &cli.StringFlag{
 		Name:    "rollup-rpc",
 		Usage:   "HTTP provider URL for the rollup node",
@@ -230,6 +235,7 @@ var optionalFlags = []cli.Flag{
 	FactoryAddressFlag,
 	TraceTypeFlag,
 	MaxConcurrencyFlag,
+	SupervisorRpcFlag,
 	L2EthRpcFlag,
 	MaxPendingTransactionsFlag,
 	HTTPPollInterval,
@@ -267,6 +273,13 @@ func init() {
 
 // Flags contains the list of configuration options available to the binary.
 var Flags []cli.Flag
+
+func CheckInteropCannonFlags(ctx *cli.Context) error {
+	if !ctx.IsSet(SupervisorRpcFlag.Name) {
+		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
+	}
+	return nil
+}
 
 func CheckCannonFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(flags.NetworkFlagName) &&
@@ -362,6 +375,9 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 				return err
 			}
 		case types.TraceTypeInteropCannon:
+			if err := CheckInteropCannonFlags(ctx); err != nil {
+				return err
+			}
 		case types.TraceTypeAlphabet, types.TraceTypeFast:
 		default:
 			return fmt.Errorf("invalid trace type %v. must be one of %v", traceType, types.TraceTypes)
@@ -499,6 +515,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 		PollInterval:            ctx.Duration(HTTPPollInterval.Name),
 		AdditionalBondClaimants: claimants,
 		RollupRpc:               ctx.String(RollupRpcFlag.Name),
+		SupervisorRPC:           ctx.String(SupervisorRpcFlag.Name),
 		Cannon: vm.Config{
 			VmType:           types.TraceTypeCannon,
 			L1:               l1EthRpc,
