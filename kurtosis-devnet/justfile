@@ -50,7 +50,6 @@ devnet TEMPLATE_FILE DATA_FILE="":
         -template "{{TEMPLATE_FILE}}" \
         -data "{{DATA_FILE}}" \
         -enclave `basename {{TEMPLATE_FILE}} .yaml`-devnet
-    cat tests/`basename {{TEMPLATE_FILE}} .yaml`-devnet.json
 
 devnet-test DEVNET *TEST:
     #!/usr/bin/env bash
