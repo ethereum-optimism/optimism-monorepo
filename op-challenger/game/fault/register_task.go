@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/cannon"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/outputs"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/prestates"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	faultTypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
@@ -47,6 +48,40 @@ type RegisterTask struct {
 		splitDepth faultTypes.Depth,
 		prestateBlock uint64,
 		poststateBlock uint64) (*trace.Accessor, error)
+}
+
+func NewSuperCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, rootProvider super.RootProvider) *RegisterTask {
+	stateConverter := cannon.NewStateConverter(cfg.Cannon)
+	return &RegisterTask{
+		gameType: gameType,
+		getTopPrestateProvider: func(ctx context.Context, prestateTimestamp uint64) (faultTypes.PrestateProvider, error) {
+			return super.NewSuperRootPrestateProvider(rootProvider, prestateTimestamp), nil
+		},
+		getBottomPrestateProvider: cachePrestates(
+			gameType,
+			stateConverter,
+			m,
+			cfg.CannonAbsolutePreStateBaseURL,
+			cfg.CannonAbsolutePreState,
+			filepath.Join(cfg.Datadir, "super-cannon-prestates"),
+			func(ctx context.Context, path string) faultTypes.PrestateProvider {
+				return vm.NewPrestateProvider(path, stateConverter)
+			}),
+		newTraceAccessor: func(
+			logger log.Logger,
+			m metrics.Metricer,
+			prestateProvider faultTypes.PrestateProvider,
+			vmPrestateProvider faultTypes.PrestateProvider,
+			dir string,
+			l1Head eth.BlockID,
+			splitDepth faultTypes.Depth,
+			prestateBlock uint64,
+			poststateBlock uint64) (*trace.Accessor, error) {
+			provider := vmPrestateProvider.(*vm.PrestateProvider)
+			preimagePrestateProvider := prestateProvider.(super.PreimagePrestateProvider)
+			return super.NewSuperCannonTraceAccessor(logger, m, cfg.Cannon, serverExecutor, preimagePrestateProvider, rootProvider, provider.PrestatePath(), dir, l1Head, splitDepth, prestateBlock, poststateBlock)
+		},
+	}
 }
 
 func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient, syncValidator SyncValidator) *RegisterTask {
