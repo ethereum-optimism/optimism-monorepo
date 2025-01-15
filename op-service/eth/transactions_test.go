@@ -1,12 +1,14 @@
-package eth
+package eth_test
 
 import (
 	"context"
 	"math/big"
+	"math/rand"
 	"testing"
 
+	. "github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
@@ -128,8 +130,14 @@ func TestTransactions_checkRecentTxs(t *testing.T) {
 }
 
 func TestOpaqueTransaction(t *testing.T) {
-	encodedDynamicFeeTx, err := hexutil.Decode("0x02f8af017b830186a0830f4240825dc094c00e5d67c2755389aded7d8b151cbd5bcdf7ed278301e2408b68656c6c6f20776f726c64f838f7945ad5e028b664880fc7581c77547deaf776200434e1a095b358675999c4b7338ff339566349ed0ef6384876655d1b9b955e36ac165c6b80a06c33b333151b99d601320ca7f05ccb5597b9bbf1db299a63a61a780d081622f0a00ddade96dd1f0df1f67a5879b8cb06c3310818be6a2fc7d746fd73e300253b96")
+
+	// Prepare binary encoding of a DynamicFeeTx
+	rng := rand.New(rand.NewSource(1234))
+	tx := testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
+	encodedDynamicFeeTx, err := tx.MarshalBinary()
 	require.NoError(t, err)
+
+	// Binary Unmarshal / Marshal roundtrip
 	o := new(OpaqueTransaction)
 	o.UnmarshalBinary([]byte(encodedDynamicFeeTx))
 	require.Equal(t, uint8(2), o.TxType())
@@ -138,6 +146,16 @@ func TestOpaqueTransaction(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, encodedDynamicFeeTx, reSerialized)
 
-	expectedHash := common.HexToHash("0x6a1d6ffccedd6b9b53e1e81fc625cdd1ad1e48993b6c6d6ee58df55245271dc3")
+	expectedHash := tx.Hash()
 	require.Equal(t, expectedHash, o.TxHash())
+
+	// extract the transaction (this only works if it is one of the supported types)
+	extractedTx, err := o.Transaction()
+	require.NoError(t, err)
+
+	// compare the binary encoding of the extracted transaction with the original
+	// the rich type has extra metadat which we don't want to compare here
+	e, err := extractedTx.MarshalBinary()
+	require.NoError(t, err)
+	require.Equal(t, encodedDynamicFeeTx, e)
 }
