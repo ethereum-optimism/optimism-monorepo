@@ -1,9 +1,11 @@
 package eth
 
 import (
+	"cmp"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
+	"slices"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -42,6 +44,16 @@ func (c *ChainIDAndOutput) Marshal() []byte {
 	binary.BigEndian.PutUint64(d[24:32], c.ChainID)
 	copy(d[32:], c.Output[:])
 	return d
+}
+
+func NewSuperV1(timestamp uint64, chains ...ChainIDAndOutput) *SuperV1 {
+	slices.SortFunc(chains, func(a, b ChainIDAndOutput) int {
+		return cmp.Compare(a.ChainID, b.ChainID)
+	})
+	return &SuperV1{
+		Timestamp: timestamp,
+		Chains:    chains,
+	}
 }
 
 type SuperV1 struct {

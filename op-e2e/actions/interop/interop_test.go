@@ -314,12 +314,6 @@ func TestInteropFaultProofs(gt *testing.T) {
 	end, err := source.CreateSuperRoot(ctx, endTimestamp)
 	require.NoError(t, err)
 
-	serializeIntermediateRoot := func(root *types.TransitionState) []byte {
-		data, err := root.Marshal()
-		require.NoError(t, err)
-		return data
-	}
-
 	endBlockNumA, err := actors.ChainA.RollupCfg.TargetBlockNumber(endTimestamp)
 	require.NoError(t, err)
 	chain1End, err := chainAClient.OutputAtBlock(ctx, endBlockNumA)
@@ -330,32 +324,32 @@ func TestInteropFaultProofs(gt *testing.T) {
 	chain2End, err := chainBClient.OutputAtBlock(ctx, endBlockNumB)
 	require.NoError(t, err)
 
-	step1Expected := serializeIntermediateRoot(&types.TransitionState{
+	step1Expected := (&types.TransitionState{
 		SuperRoot: start.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
 			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 		},
 		Step: 1,
-	})
+	}).Marshal()
 
-	step2Expected := serializeIntermediateRoot(&types.TransitionState{
+	step2Expected := (&types.TransitionState{
 		SuperRoot: start.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
 			{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 			{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
 		},
 		Step: 2,
-	})
+	}).Marshal()
 
 	paddingStep := func(step uint64) []byte {
-		return serializeIntermediateRoot(&types.TransitionState{
+		return (&types.TransitionState{
 			SuperRoot: start.Marshal(),
 			PendingProgress: []types.OptimisticBlock{
 				{BlockHash: chain1End.BlockRef.Hash, OutputRoot: chain1End.OutputRoot},
 				{BlockHash: chain2End.BlockRef.Hash, OutputRoot: chain2End.OutputRoot},
 			},
 			Step: step,
-		})
+		}).Marshal()
 	}
 
 	tests := []*transitionTest{

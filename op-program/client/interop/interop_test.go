@@ -66,9 +66,7 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 		Step: 1,
 	}
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
-
+	expectedClaim := expectedIntermediateRoot.Hash()
 	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
 }
 
@@ -82,8 +80,7 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 		},
 		Step: 1,
 	}
-	outputRootHash, err := agreedTransitionState.Hash()
-	require.NoError(t, err)
+	outputRootHash := agreedTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
 	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
 	expectedIntermediateRoot := &types.TransitionState{
@@ -95,8 +92,7 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 		Step: 2,
 	}
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
+	expectedClaim := expectedIntermediateRoot.Hash()
 	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
 }
 
@@ -111,15 +107,13 @@ func TestNoOpStep(t *testing.T) {
 		},
 		Step: 2,
 	}
-	outputRootHash, err := agreedTransitionState.Hash()
-	require.NoError(t, err)
+	outputRootHash := agreedTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
 	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
 	expectedIntermediateRoot := *agreedTransitionState // Copy agreed state
 	expectedIntermediateRoot.Step = 3
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
+	expectedClaim := expectedIntermediateRoot.Hash()
 	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
 }
 

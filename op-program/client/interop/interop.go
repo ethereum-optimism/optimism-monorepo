@@ -78,11 +78,7 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 		PendingProgress: expectedPendingProgress,
 		Step:            transitionState.Step + 1,
 	}
-	expected, err := finalState.Hash()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return expected, nil
+	return finalState.Hash(), nil
 }
 
 func parseAgreedState(bootInfo *boot.BootInfoInterop, l2PreimageOracle l2.Oracle) (*types.TransitionState, *eth.SuperV1, error) {
