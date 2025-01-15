@@ -11,7 +11,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
-	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -28,12 +27,12 @@ func TestGet(t *testing.T) {
 	t.Run("AtPostState", func(t *testing.T) {
 		provider, stubSupervisor := createProvider(t)
 		superRoot := eth.Bytes32{0xaa}
-		stubSupervisor.Add(supervisortypes.SuperRootResponse{
+		stubSupervisor.Add(eth.SuperRootResponse{
 			Timestamp: poststateTimestamp,
 			SuperRoot: superRoot,
-			Chains: []supervisortypes.ChainRootInfo{
+			Chains: []eth.ChainRootInfo{
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(1),
+					ChainID:   eth.ChainIDFromUInt64(1),
 					Canonical: eth.Bytes32{0xbb},
 					Pending:   []byte{0xcc},
 				},
@@ -47,12 +46,12 @@ func TestGet(t *testing.T) {
 	t.Run("AtNewTimestamp", func(t *testing.T) {
 		provider, stubSupervisor := createProvider(t)
 		superRoot := eth.Bytes32{0xaa}
-		stubSupervisor.Add(supervisortypes.SuperRootResponse{
+		stubSupervisor.Add(eth.SuperRootResponse{
 			Timestamp: prestateTimestamp + 1,
 			SuperRoot: superRoot,
-			Chains: []supervisortypes.ChainRootInfo{
+			Chains: []eth.ChainRootInfo{
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(1),
+					ChainID:   eth.ChainIDFromUInt64(1),
 					Canonical: eth.Bytes32{0xbb},
 					Pending:   []byte{0xcc},
 				},
@@ -77,33 +76,33 @@ func TestGet(t *testing.T) {
 		superRoot2 := eth.NewSuperV1(prestateTimestamp+1,
 			eth.ChainIDAndOutput{ChainID: 1, Output: eth.OutputRoot(outputA2)},
 			eth.ChainIDAndOutput{ChainID: 2, Output: eth.OutputRoot(outputB2)})
-		stubSupervisor.Add(supervisortypes.SuperRootResponse{
+		stubSupervisor.Add(eth.SuperRootResponse{
 			Timestamp: prestateTimestamp,
 			SuperRoot: eth.SuperRoot(superRoot1),
-			Chains: []supervisortypes.ChainRootInfo{
+			Chains: []eth.ChainRootInfo{
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(1),
+					ChainID:   eth.ChainIDFromUInt64(1),
 					Canonical: eth.OutputRoot(outputA1),
 					Pending:   outputA1.Marshal(),
 				},
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(2),
+					ChainID:   eth.ChainIDFromUInt64(2),
 					Canonical: eth.OutputRoot(outputB1),
 					Pending:   outputB1.Marshal(),
 				},
 			},
 		})
-		stubSupervisor.Add(supervisortypes.SuperRootResponse{
+		stubSupervisor.Add(eth.SuperRootResponse{
 			Timestamp: prestateTimestamp + 1,
 			SuperRoot: eth.SuperRoot(superRoot2),
-			Chains: []supervisortypes.ChainRootInfo{
+			Chains: []eth.ChainRootInfo{
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(1),
+					ChainID:   eth.ChainIDFromUInt64(1),
 					Canonical: eth.OutputRoot(outputA2),
 					Pending:   outputA2.Marshal(),
 				},
 				{
-					ChainID:   supervisortypes.ChainIDFromUInt64(1),
+					ChainID:   eth.ChainIDFromUInt64(1),
 					Canonical: eth.OutputRoot(outputB2),
 					Pending:   outputB2.Marshal(),
 				},
@@ -225,26 +224,26 @@ func TestComputeStep(t *testing.T) {
 func createProvider(t *testing.T) (*SuperTraceProvider, *stubRootProvider) {
 	logger := testlog.Logger(t, log.LvlInfo)
 	stubSupervisor := &stubRootProvider{
-		rootsByTimestamp: make(map[uint64]supervisortypes.SuperRootResponse),
+		rootsByTimestamp: make(map[uint64]eth.SuperRootResponse),
 	}
 	return NewSuperTraceProvider(logger, nil, stubSupervisor, eth.BlockID{}, gameDepth, prestateTimestamp, poststateTimestamp), stubSupervisor
 }
 
 type stubRootProvider struct {
-	rootsByTimestamp map[uint64]supervisortypes.SuperRootResponse
+	rootsByTimestamp map[uint64]eth.SuperRootResponse
 }
 
-func (s *stubRootProvider) Add(root supervisortypes.SuperRootResponse) {
+func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
 	if s.rootsByTimestamp == nil {
-		s.rootsByTimestamp = make(map[uint64]supervisortypes.SuperRootResponse)
+		s.rootsByTimestamp = make(map[uint64]eth.SuperRootResponse)
 	}
 	s.rootsByTimestamp[root.Timestamp] = root
 }
 
-func (s *stubRootProvider) SuperRootAtTimestamp(timestamp uint64) (supervisortypes.SuperRootResponse, error) {
+func (s *stubRootProvider) SuperRootAtTimestamp(timestamp uint64) (eth.SuperRootResponse, error) {
 	root, ok := s.rootsByTimestamp[timestamp]
 	if !ok {
-		return supervisortypes.SuperRootResponse{}, ethereum.NotFound
+		return eth.SuperRootResponse{}, ethereum.NotFound
 	}
 	return root, nil
 }

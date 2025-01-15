@@ -8,7 +8,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
@@ -27,8 +26,7 @@ const (
 )
 
 type RootProvider interface {
-	// TODO: Should we redefine SuperRootResponse so we don't depend on supervisor?
-	SuperRootAtTimestamp(timestamp uint64) (supervisortypes.SuperRootResponse, error)
+	SuperRootAtTimestamp(timestamp uint64) (eth.SuperRootResponse, error)
 }
 
 type SuperTraceProvider struct {
