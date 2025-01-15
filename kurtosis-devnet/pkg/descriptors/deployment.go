@@ -1,8 +1,9 @@
 package descriptors
 
 type PortInfo struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	PrivatePort int    `json:"private_port"`
 }
 
 // EndpointMap is a map of service names to their endpoints.
