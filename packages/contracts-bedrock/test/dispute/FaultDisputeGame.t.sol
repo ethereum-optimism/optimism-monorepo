@@ -2014,6 +2014,62 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         vm.stopPrank();
     }
 
+    /// @dev Tests that claimCredit reverts when recipient can't receive value.
+    function test_claimCredit_recipientCantReceiveValue_reverts() public {
+        // Set up actors.
+        address alice = address(0xa11ce);
+        address bob = address(0xb0b);
+
+        // Give the game proxy 1 extra ether, unregistered.
+        vm.deal(address(gameProxy), 1 ether);
+
+        // Perform a bonded move.
+        Claim claim = _dummyClaim();
+
+        // Bond the first claim.
+        uint256 firstBond = _getRequiredBond(0);
+        vm.deal(alice, firstBond);
+        (,,,, Claim disputed,,) = gameProxy.claimData(0);
+        vm.prank(alice);
+        gameProxy.attack{ value: firstBond }(disputed, 0, claim);
+
+        // Bond the second claim.
+        uint256 secondBond = _getRequiredBond(1);
+        vm.deal(bob, secondBond);
+        (,,,, disputed,,) = gameProxy.claimData(1);
+        vm.prank(bob);
+        gameProxy.attack{ value: secondBond }(disputed, 1, claim);
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + 3 days + 12 hours);
+
+        // Resolve the game.
+        // Second claim wins, so bob should get alice's credit.
+        gameProxy.resolveClaim(2, 0);
+        gameProxy.resolveClaim(1, 0);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Wait for the withdrawal delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
+
+        // make bob not be able to receive value by setting his contract code to something without `receive`
+        vm.etch(address(bob), address(L1Token).code);
+
+        vm.expectRevert(BondTransferFailed.selector);
+        gameProxy.claimCredit(address(bob));
+    }
+
     /// @dev Tests that adding local data with an out of bounds identifier reverts.
     function testFuzz_addLocalData_oob_reverts(uint256 _ident) public {
         Claim disputed;
