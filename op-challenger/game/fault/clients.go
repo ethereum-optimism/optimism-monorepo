@@ -5,8 +5,11 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/config"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
+	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/dial"
+	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -17,6 +20,7 @@ type clientProvider struct {
 	cfg            *config.Config
 	l2HeaderSource utils.L2HeaderSource
 	rollupClient   RollupClient
+	rootProvider   super.RootProvider
 	syncValidator  *syncStatusValidator
 	toClose        []CloseFunc
 }
@@ -65,4 +69,15 @@ func (c *clientProvider) RollupClient() (RollupClient, error) {
 	c.syncValidator = newSyncStatusValidator(rollupClient)
 	c.toClose = append(c.toClose, rollupClient.Close)
 	return rollupClient, nil
+}
+
+func (c *clientProvider) RootProvider() (super.RootProvider, error) {
+	cl, err := client.NewRPC(context.Background(), c.logger, c.cfg.SupervisorRPC)
+	if err != nil {
+		return nil, fmt.Errorf("failed to dial supervisor: %w", err)
+	}
+	supervisorClient := sources.NewSupervisorClient(cl)
+	c.rootProvider = supervisorClient
+	c.toClose = append(c.toClose, supervisorClient.Close)
+	return supervisorClient, nil
 }
