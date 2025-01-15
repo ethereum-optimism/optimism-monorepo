@@ -113,19 +113,16 @@ func getHazards(
 }
 
 type consolidateCheckDeps struct {
-	oracle l2.Oracle
-	heads  map[uint64]*ethtypes.Block
-	depset depset.DependencySet
-	// block by number cache per chain
-	hashByNum map[uint64]map[uint64]common.Hash
+	oracle      l2.Oracle
+	depset      depset.DependencySet
+	canonBlocks map[uint64]*l2.CanonicalBlockHeaderOracle
 }
 
 func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
-	heads := make(map[uint64]*ethtypes.Block)
-	hashByNum := make(map[uint64]map[uint64]common.Hash)
+	canonBlocks := make(map[uint64]*l2.CanonicalBlockHeaderOracle)
 
 	for i, chain := range chains {
 		deps[eth.ChainIDFromUInt64(chain.ChainID)] = &depset.StaticConfigDependency{
@@ -139,10 +136,7 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 			return nil, fmt.Errorf("unexpected output type: %T", output)
 		}
 		head := oracle.BlockByHash(outputV0.BlockHash, chain.ChainID)
-		heads[chain.ChainID] = head
-
-		hashByNum[chain.ChainID] = make(map[uint64]common.Hash)
-		hashByNum[chain.ChainID][head.NumberU64()] = head.Hash()
+		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), oracle, chain.ChainID)
 	}
 	depset, err := depset.NewStaticConfigDependencySet(deps)
 	if err != nil {
@@ -150,10 +144,9 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 	}
 
 	return &consolidateCheckDeps{
-		oracle:    oracle,
-		heads:     heads,
-		depset:    depset,
-		hashByNum: hashByNum,
+		oracle:      oracle,
+		depset:      depset,
+		canonBlocks: canonBlocks,
 	}, nil
 }
 
@@ -226,20 +219,9 @@ func (d *consolidateCheckDeps) DependencySet() depset.DependencySet {
 }
 
 func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, chainID uint64) (*ethtypes.Block, error) {
-	head := d.heads[chainID]
+	head := d.canonBlocks[chainID].GetHeaderByNumber(blockNum)
 	if head == nil {
 		return nil, fmt.Errorf("head not found for chain %v", chainID)
 	}
-	if head.NumberU64() < blockNum {
-		return nil, nil
-	}
-	hash, ok := d.hashByNum[chainID][blockNum]
-	if ok {
-		return oracle.BlockByHash(hash, chainID), nil
-	}
-	for head.NumberU64() > blockNum {
-		head = oracle.BlockByHash(head.ParentHash(), chainID)
-		d.hashByNum[chainID][head.NumberU64()] = head.Hash()
-	}
-	return head, nil
+	return d.oracle.BlockByHash(head.Hash(), chainID), nil
 }
