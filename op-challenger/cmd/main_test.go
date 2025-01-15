@@ -596,7 +596,7 @@ func TestAlphabetRequiredArgs(t *testing.T) {
 }
 
 func TestCannonRequiredArgs(t *testing.T) {
-	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned} {
+	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeInteropCannon} {
 		traceType := traceType
 		t.Run(fmt.Sprintf("TestCannonBin-%v", traceType), func(t *testing.T) {
 			t.Run("NotRequiredForAlphabetTrace", func(t *testing.T) {
@@ -1004,7 +1004,6 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 	args := map[string]string{
 		"--l1-eth-rpc":           l1EthRpc,
 		"--l1-beacon":            l1Beacon,
-		"--rollup-rpc":           rollupRpc,
 		"--l2-eth-rpc":           l2EthRpc,
 		"--game-factory-address": gameFactoryAddressValue,
 		"--trace-type":           traceType.String(),
@@ -1019,15 +1018,27 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 		addRequiredAsteriscKonaArgs(args)
 	case types.TraceTypeInteropCannon:
 		addRequiredInteropCannonArgs(args)
+	case types.TraceTypeAlphabet, types.TraceTypeFast:
+		addRequiredOutputRootArgs(args)
 	}
 	return args
 }
 
 func addRequiredInteropCannonArgs(args map[string]string) {
+	addRequiredCannonBaseArgs(args)
 	args["--supervisor-rpc"] = supervisorRpc
 }
 
 func addRequiredCannonArgs(args map[string]string) {
+	addRequiredCannonBaseArgs(args)
+	addRequiredOutputRootArgs(args)
+}
+
+func addRequiredOutputRootArgs(args map[string]string) {
+	args["--rollup-rpc"] = rollupRpc
+}
+
+func addRequiredCannonBaseArgs(args map[string]string) {
 	args["--network"] = network
 	args["--cannon-bin"] = cannonBin
 	args["--cannon-server"] = cannonServer
@@ -1035,6 +1046,7 @@ func addRequiredCannonArgs(args map[string]string) {
 }
 
 func addRequiredAsteriscArgs(args map[string]string) {
+	addRequiredOutputRootArgs(args)
 	args["--network"] = network
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-server"] = asteriscServer
@@ -1042,6 +1054,7 @@ func addRequiredAsteriscArgs(args map[string]string) {
 }
 
 func addRequiredAsteriscKonaArgs(args map[string]string) {
+	addRequiredOutputRootArgs(args)
 	args["--network"] = network
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-kona-server"] = asteriscServer

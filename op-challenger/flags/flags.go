@@ -281,17 +281,7 @@ func checkOutputProviderFlags(ctx *cli.Context) error {
 	return nil
 }
 
-func CheckInteropCannonFlags(ctx *cli.Context) error {
-	if !ctx.IsSet(SupervisorRpcFlag.Name) {
-		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
-	}
-	return nil
-}
-
-func CheckCannonFlags(ctx *cli.Context) error {
-	if err := checkOutputProviderFlags(ctx); err != nil {
-		return err
-	}
+func CheckCannonBaseFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(flags.NetworkFlagName) &&
 		!(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) && L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
@@ -314,6 +304,26 @@ func CheckCannonFlags(ctx *cli.Context) error {
 	}
 	if !PreStatesURLFlag.IsSet(ctx, types.TraceTypeCannon) && !ctx.IsSet(CannonPreStateFlag.Name) {
 		return fmt.Errorf("flag %s or %s is required", PreStatesURLFlag.EitherFlagName(types.TraceTypeCannon), CannonPreStateFlag.Name)
+	}
+	return nil
+}
+
+func CheckInteropCannonFlags(ctx *cli.Context) error {
+	if !ctx.IsSet(SupervisorRpcFlag.Name) {
+		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
+	}
+	if err := CheckCannonBaseFlags(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CheckCannonFlags(ctx *cli.Context) error {
+	if err := checkOutputProviderFlags(ctx); err != nil {
+		return err
+	}
+	if err := CheckCannonBaseFlags(ctx); err != nil {
+		return err
 	}
 	return nil
 }
