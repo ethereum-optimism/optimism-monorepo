@@ -1,6 +1,7 @@
 package eth
 
 import (
+	"bytes"
 	"context"
 	"fmt"
 	"math/big"
@@ -8,6 +9,7 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 type L1Client interface {
@@ -140,3 +142,55 @@ type GenericTx interface {
 	// UnmarshalBinary as EIP-2718 opaque tx (including version byte).
 	UnmarshalBinary(b []byte) error
 }
+
+type OpaqueTransaction struct {
+	raw  []byte
+	hash common.Hash
+}
+
+func (o *OpaqueTransaction) Transaction() (*types.Transaction, error) {
+	panic("not implemented")
+}
+
+// TxType returns the EIP-2718 TransactionType. https://eips.ethereum.org/EIPS/eip-2718
+func (o *OpaqueTransaction) TxType() uint8 {
+	firstByte := o.raw[0]
+	switch {
+	case 0xc0 <= firstByte && firstByte <= 0xfe:
+		// legacy tx
+		return 0
+	case firstByte <= 0x7f:
+		// EIP-2718 tx
+		return firstByte
+	default:
+		panic("invalid tx type")
+	}
+}
+
+func (o *OpaqueTransaction) TxHash() common.Hash {
+	if (o.hash == common.Hash{}) {
+		o.hash = crypto.Keccak256Hash(o.raw[:])
+	}
+	return o.hash
+}
+
+func (o *OpaqueTransaction) MarshalJSON() ([]byte, error) {
+	return nil, fmt.Errorf("cannot marshal opaque transaction to JSON")
+}
+
+func (o *OpaqueTransaction) UnmarshalJSON([]byte) error {
+	return fmt.Errorf("cannot unmarshal opaque transaction from JSON")
+}
+
+func (o *OpaqueTransaction) MarshalBinary() ([]byte, error) {
+	return o.raw, nil
+}
+
+func (o *OpaqueTransaction) UnmarshalBinary(b []byte) error {
+	o.raw = bytes.Clone(b)
+	o.TxType()
+	return nil
+}
+
+// Compile-time check that OpqueTransaction implements GenericTx.
+var _ GenericTx = (*OpaqueTransaction)(nil)
