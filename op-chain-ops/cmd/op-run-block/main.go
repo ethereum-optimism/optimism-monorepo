@@ -47,7 +47,7 @@ var (
 	}
 	BlockPathFlag = &cli.PathFlag{
 		Name:     "block",
-		Usage:    "Path to local block",
+		Usage:    "Path to local block JSON dump. This is a JSON-list of {'block': contentHere} entries, as in the response of the debug_getBadBlocks geth RPC.",
 		EnvVars:  op_service.PrefixEnvVar(EnvPrefix, "BLOCK"),
 		Required: true,
 	}
@@ -348,7 +348,8 @@ func Process(logger log.Logger, config *params.ChainConfig,
 	}
 
 	engine := chainCtx.Engine()
-	// Finalize the block, applying any consensus engine specific extras (e.g. block rewards)
+	// Finalize (geth specific term, a.k.a. seal) the block,
+	// applying any consensus engine specific extras (e.g. block rewards, withdrawals-root)
 	engine.Finalize(chainCtx, header, statedb,
 		&types.Body{Transactions: block.Transactions, Withdrawals: *block.Withdrawals})
 	logger.Info("Completed block processing")
