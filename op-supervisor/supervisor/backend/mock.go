@@ -39,6 +39,10 @@ func (m *MockBackend) Stop(ctx context.Context) error {
 	return nil
 }
 
+func (m *MockBackend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error) {
+	return nil, nil
+}
+
 func (m *MockBackend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
 	return nil
 }

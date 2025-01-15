@@ -475,6 +475,20 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.Chai
 	return v.ID(), nil
 }
 
+// AllSafeDerivedAt returns the last derived block for each chain, from the given L1 block
+func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
+	chains := su.depSet.Chains()
+	ret := map[eth.ChainID]eth.BlockID{}
+	for _, chainID := range chains {
+		derived, err := su.SafeDerivedAt(context.Background(), chainID, derivedFrom)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get last derived block for chain %v: %w", chainID, err)
+		}
+		ret[chainID] = derived
+	}
+	return ret, nil
+}
+
 func (su *SupervisorBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.Finalized(chainID)
 	if err != nil {
