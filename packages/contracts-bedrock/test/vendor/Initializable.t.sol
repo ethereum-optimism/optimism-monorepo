@@ -75,9 +75,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "L1CrossDomainMessengerImpl",
                 target: addressManager.getAddress("OVM_L1CrossDomainMessenger"),
-                initCalldata: abi.encodeCall(
-                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
-                )
+                initCalldata: abi.encodeCall(l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2))
             })
         );
         // L1CrossDomainMessengerProxy
@@ -85,9 +83,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "L1CrossDomainMessengerProxy",
                 target: address(l1CrossDomainMessenger),
-                initCalldata: abi.encodeCall(
-                    l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2, systemConfig)
-                )
+                initCalldata: abi.encodeCall(l1CrossDomainMessenger.initialize, (superchainConfig, optimismPortal2))
             })
         );
         // DisputeGameFactoryImpl
@@ -249,9 +245,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "L1StandardBridgeImpl",
                 target: EIP1967Helper.getImplementation(address(l1StandardBridge)),
-                initCalldata: abi.encodeCall(
-                    l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig, systemConfig)
-                )
+                initCalldata: abi.encodeCall(l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig))
             })
         );
         // L1StandardBridgeProxy
@@ -259,9 +253,7 @@ contract Initializer_Test is CommonTest {
             InitializeableContract({
                 name: "L1StandardBridgeProxy",
                 target: address(l1StandardBridge),
-                initCalldata: abi.encodeCall(
-                    l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig, systemConfig)
-                )
+                initCalldata: abi.encodeCall(l1StandardBridge.initialize, (l1CrossDomainMessenger, superchainConfig))
             })
         );
         // L1ERC721BridgeImpl

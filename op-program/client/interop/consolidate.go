@@ -14,13 +14,13 @@ import (
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
 )
 
-func ReceiptsToExecutingMessages(receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
+func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
 	var execMsgs []*supervisortypes.ExecutingMessage
 	var logCount uint32
 	for _, rcpt := range receipts {
 		logCount += uint32(len(rcpt.Logs))
 		for _, l := range rcpt.Logs {
-			execMsg, err := processors.DecodeExecutingMessageLog(l)
+			execMsg, err := processors.DecodeExecutingMessageLog(l, depset)
 			if err != nil {
 				return nil, 0, err
 			}
@@ -45,7 +45,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 
 		// TODO(13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
 		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
-		execMsgs, _, err := ReceiptsToExecutingMessages(receipts)
+		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
 			return eth.Bytes32{}, err
 		}
@@ -90,7 +90,7 @@ func checkHazards(
 	if err := cross.HazardUnsafeFrontierChecks(deps, hazards); err != nil {
 		return err
 	}
-	if err := cross.HazardCycleChecks(deps, candidate.Timestamp, hazards); err != nil {
+	if err := cross.HazardCycleChecks(deps.DependencySet(), deps, candidate.Timestamp, hazards); err != nil {
 		return err
 	}
 	return nil
@@ -123,12 +123,12 @@ type consolidateCheckDeps struct {
 func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
-	deps := make(map[supervisortypes.ChainID]*depset.StaticConfigDependency)
+	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
 	heads := make(map[uint64]*ethtypes.Block)
 	hashByNum := make(map[uint64]map[uint64]common.Hash)
 
 	for i, chain := range chains {
-		deps[supervisortypes.ChainIDFromUInt64(chain.ChainID)] = &depset.StaticConfigDependency{
+		deps[eth.ChainIDFromUInt64(chain.ChainID)] = &depset.StaticConfigDependency{
 			ChainIndex:     supervisortypes.ChainIndex(i),
 			ActivationTime: 0,
 			HistoryMinTime: 0,
@@ -158,7 +158,7 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 }
 
 func (d *consolidateCheckDeps) Check(
-	chain supervisortypes.ChainID,
+	chain eth.ChainID,
 	blockNum uint64,
 	timestamp uint64,
 	logIdx uint32,
@@ -176,17 +176,17 @@ func (d *consolidateCheckDeps) Check(
 	}, nil
 }
 
-func (d *consolidateCheckDeps) IsCrossUnsafe(chainID supervisortypes.ChainID, block eth.BlockID) error {
+func (d *consolidateCheckDeps) IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error {
 	// Assumed to be cross-unsafe. And hazard checks will catch any future blocks prior to calling this
 	return nil
 }
 
-func (d *consolidateCheckDeps) IsLocalUnsafe(chainID supervisortypes.ChainID, block eth.BlockID) error {
+func (d *consolidateCheckDeps) IsLocalUnsafe(chainID eth.ChainID, block eth.BlockID) error {
 	// Always assumed to be local-unsafe
 	return nil
 }
 
-func (d *consolidateCheckDeps) ParentBlock(chainID supervisortypes.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
+func (d *consolidateCheckDeps) ParentBlock(chainID eth.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error) {
 	block, err := d.BlockByNumber(d.oracle, parentOf.Number-1, chainID.ToBig().Uint64())
 	if err != nil {
 		return eth.BlockID{}, err
@@ -198,7 +198,7 @@ func (d *consolidateCheckDeps) ParentBlock(chainID supervisortypes.ChainID, pare
 }
 
 func (d *consolidateCheckDeps) OpenBlock(
-	chainID supervisortypes.ChainID,
+	chainID eth.ChainID,
 	blockNum uint64,
 ) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*supervisortypes.ExecutingMessage, err error) {
 	block, err := d.BlockByNumber(d.oracle, blockNum, chainID.ToBig().Uint64())
@@ -210,7 +210,7 @@ func (d *consolidateCheckDeps) OpenBlock(
 		Number: block.NumberU64(),
 	}
 	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chainID.ToBig().Uint64())
-	execs, logCount, err := ReceiptsToExecutingMessages(receipts)
+	execs, logCount, err := ReceiptsToExecutingMessages(d.depset, receipts)
 	if err != nil {
 		return eth.BlockRef{}, 0, nil, err
 	}

@@ -63,8 +63,8 @@ func (rs *RPCSyncNode) FetchReceipts(ctx context.Context, blockHash common.Hash)
 	return out, nil
 }
 
-func (rs *RPCSyncNode) ChainID(ctx context.Context) (types.ChainID, error) {
-	var chainID types.ChainID
+func (rs *RPCSyncNode) ChainID(ctx context.Context) (eth.ChainID, error) {
+	var chainID eth.ChainID
 	err := rs.cl.CallContext(ctx, &chainID, "interop_chainID")
 	return chainID, err
 }

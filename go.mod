@@ -15,7 +15,7 @@ require (
 	github.com/crate-crypto/go-kzg-4844 v1.0.0
 	github.com/decred/dcrd/dcrec/secp256k1/v4 v4.3.0
 	github.com/ethereum-optimism/go-ethereum-hdwallet v0.1.3
-	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20241213092551-33a63fce8214
+	github.com/ethereum-optimism/superchain-registry/superchain v0.0.0-20250115145553-996c7aba6565
 	github.com/ethereum/go-ethereum v1.14.12
 	github.com/fatih/color v1.18.0
 	github.com/fsnotify/fsnotify v1.8.0
@@ -42,7 +42,6 @@ require (
 	github.com/multiformats/go-base32 v0.1.0
 	github.com/multiformats/go-multiaddr v0.14.0
 	github.com/multiformats/go-multiaddr-dns v0.4.1
-	github.com/naoina/toml v0.1.2-0.20170918210437-9fafd6967416
 	github.com/olekukonko/tablewriter v0.0.5
 	github.com/pkg/errors v0.9.1
 	github.com/pkg/profile v1.7.0
@@ -179,7 +178,6 @@ require (
 	github.com/multiformats/go-multistream v0.5.0 // indirect
 	github.com/multiformats/go-varint v0.0.7 // indirect
 	github.com/munnerz/goautoneg v0.0.0-20191010083416-a7dc8b61c822 // indirect
-	github.com/naoina/go-stringutil v0.1.0 // indirect
 	github.com/nwaples/rardecode v1.1.3 // indirect
 	github.com/onsi/ginkgo/v2 v2.20.0 // indirect
 	github.com/opencontainers/runtime-spec v1.2.0 // indirect
@@ -253,7 +251,7 @@ require (
 	rsc.io/tmplfunc v0.0.3 // indirect
 )
 
-replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101411.5-rc.1
+replace github.com/ethereum/go-ethereum => github.com/ethereum-optimism/op-geth v1.101411.5-rc.2
 
 //replace github.com/ethereum/go-ethereum => ../go-ethereum
 

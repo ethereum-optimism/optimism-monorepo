@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/descriptors"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/fake"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/api/interfaces"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/deployer"
@@ -248,11 +249,11 @@ func TestGetEnvironmentInfo(t *testing.T) {
 	}
 
 	// Create expected L1 services
-	l1Services := make(ServiceMap)
-	l1Services["el"] = Service{
+	l1Services := make(descriptors.ServiceMap)
+	l1Services["el"] = descriptors.Service{
 		Name: "el-1-geth-lighthouse",
-		Endpoints: EndpointMap{
-			"rpc": inspect.PortInfo{Port: 52645},
+		Endpoints: descriptors.EndpointMap{
+			"rpc": descriptors.PortInfo{Port: 52645},
 		},
 	}
 
@@ -273,22 +274,24 @@ func TestGetEnvironmentInfo(t *testing.T) {
 			deploy:  &deployer.DeployerData{Wallets: testWallets},
 			jwt:     testJWTs,
 			want: &KurtosisEnvironment{
-				L1: &Chain{
-					Name:     "Ethereum",
-					Services: make(ServiceMap),
-					Nodes: []Node{
-						{
-							Services: l1Services,
+				DevnetEnvironment: descriptors.DevnetEnvironment{
+					L1: &descriptors.Chain{
+						Name:     "Ethereum",
+						Services: make(descriptors.ServiceMap),
+						Nodes: []descriptors.Node{
+							{
+								Services: l1Services,
+							},
 						},
+						JWT: testJWTs.L1JWT,
 					},
-					JWT: testJWTs.L1JWT,
-				},
-				L2: []*Chain{
-					{
-						Name:     "op-kurtosis",
-						ID:       "1234",
-						Services: make(ServiceMap),
-						JWT:      testJWTs.L2JWT,
+					L2: []*descriptors.Chain{
+						{
+							Name:     "op-kurtosis",
+							ID:       "1234",
+							Services: make(descriptors.ServiceMap),
+							JWT:      testJWTs.L2JWT,
+						},
 					},
 				},
 			},

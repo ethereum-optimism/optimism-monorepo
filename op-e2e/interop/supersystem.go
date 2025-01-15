@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -485,11 +486,11 @@ func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 		L1RPC:       s.l1.UserRPC().RPC(),
 		Datadir:     path.Join(s.t.TempDir(), "supervisor"),
 	}
-	depSet := make(map[supervisortypes.ChainID]*depset.StaticConfigDependency)
+	depSet := make(map[eth.ChainID]*depset.StaticConfigDependency)
 
 	// Iterate over the L2 chain configs. The L2 nodes don't exist yet.
 	for _, l2Out := range s.worldOutput.L2s {
-		chainID := supervisortypes.ChainIDFromBig(l2Out.Genesis.Config.ChainID)
+		chainID := eth.ChainIDFromBig(l2Out.Genesis.Config.ChainID)
 		index, err := chainID.ToUInt32()
 		require.NoError(s.t, err)
 		depSet[chainID] = &depset.StaticConfigDependency{

@@ -45,6 +45,7 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, stubTasks) {
 		chainConfigs: []*params.ChainConfig{chainCfg1, &chainCfg2},
 	}
 	tasksStub := stubTasks{
+		l2SafeHead: eth.L2BlockRef{Number: 918429823450218}, // Past the claimed block
 		blockHash:  common.Hash{0x22},
 		outputRoot: eth.Bytes32{0x66},
 	}
