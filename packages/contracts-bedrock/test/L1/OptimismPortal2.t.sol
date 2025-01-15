@@ -395,18 +395,23 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
 
     /// @dev Setup the system for a ready-to-use state.
     function setUp() public virtual override {
+        // Warp forward in time to ensure that the game is created after the retirement timestamp.
+        vm.warp(optimismPortal2.respectedGameTypeUpdatedAt() + 1 seconds);
+
+        // Set up the dummy game.
         _proposedBlockNumber = 0xFF;
         GameType respectedGameType = optimismPortal2.respectedGameType();
-        uint256 bondAmount = disputeGameFactory.initBonds(respectedGameType);
         game = IFaultDisputeGame(
             payable(
                 address(
-                    disputeGameFactory.create{ value: bondAmount }(
-                        optimismPortal2.respectedGameType(), Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
+                    disputeGameFactory.create{ value: disputeGameFactory.initBonds(respectedGameType) }(
+                        respectedGameType, Claim.wrap(_outputRoot), abi.encode(_proposedBlockNumber)
                     )
                 )
             )
         );
+
+        // Grab the index of the game we just created.
         _proposedGameIndex = disputeGameFactory.gameCount() - 1;
 
         // Warp beyond the chess clocks and finalize the game.
@@ -610,10 +615,25 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         });
     }
 
-    /// @dev Tests that `proveWithdrawalTransaction` reverts if the game was created before the game retirement
-    ///      timestamp.
-    function testFuzz_proveWithdrawalTransaction_createdBeforeRetirementTimestamp_reverts(uint64 _createdAt) external {
-        _createdAt = uint64(bound(_createdAt, 0, optimismPortal2.respectedGameTypeUpdatedAt() - 1));
+    /// @dev Tests that `proveWithdrawalTransaction` succeeds if the game was created after the
+    ///      game retirement timestamp.
+    function testFuzz_proveWithdrawalTransaction_createdAfterRetirementTimestamp_succeeds(uint64 _createdAt) external {
+        _createdAt = uint64(bound(_createdAt, optimismPortal2.respectedGameTypeUpdatedAt() + 1, type(uint64).max));
+        vm.mockCall(address(game), abi.encodeCall(game.createdAt, ()), abi.encode(uint64(_createdAt)));
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts if the game was created before or at
+    ///      the game retirement timestamp.
+    function testFuzz_proveWithdrawalTransaction_createdBeforeOrAtRetirementTimestamp_reverts(uint64 _createdAt)
+        external
+    {
+        _createdAt = uint64(bound(_createdAt, 0, optimismPortal2.respectedGameTypeUpdatedAt()));
         vm.mockCall(address(game), abi.encodeCall(game.createdAt, ()), abi.encode(uint64(_createdAt)));
         vm.expectRevert("OptimismPortal: dispute game created before respected game type was updated");
         optimismPortal2.proveWithdrawalTransaction({

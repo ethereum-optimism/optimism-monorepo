@@ -94,7 +94,7 @@ interface IPermissionedDisputeGame is IDisputeGame {
     function claims(Hash) external view returns (bool);
     function clockExtension() external view returns (Duration clockExtension_);
     function closeGame() external;
-    function credit(address) external view returns (uint256);
+    function credit(address _recipient) external view returns (uint256 credit_);
     function defend(Claim _disputed, uint256 _parentIndex, Claim _claim) external payable;
     function getChallengerDuration(uint256 _claimIndex) external view returns (Duration duration_);
     function getNumToResolve(uint256 _claimIndex) external view returns (uint256 numRemainingChildren_);
@@ -108,6 +108,7 @@ interface IPermissionedDisputeGame is IDisputeGame {
     function maxClockDuration() external view returns (Duration maxClockDuration_);
     function maxGameDepth() external view returns (uint256 maxGameDepth_);
     function move(Claim _disputed, uint256 _challengeIndex, Claim _claim, bool _isAttack) external payable;
+    function normalModeCredit(address) external view returns (uint256);
     function refundModeCredit(address) external view returns (uint256);
     function resolutionCheckpoints(uint256)
         external

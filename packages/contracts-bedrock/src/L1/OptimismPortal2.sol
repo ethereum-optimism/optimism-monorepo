@@ -316,12 +316,14 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             revert LegacyGame();
         }
 
-        // Creation time must be greater than or equal to the respected game type updated time.
-        // Games created before this timestamp are not valid and cannot be used to finalize a
-        // withdrawal, so for user convenience we also prevent them from being used to prove a
-        // withdrawal.
+        // Game must have been created after the respected game type was updated. This check is a
+        // strict inequality because we want to prevent users from being able to prove or finalize
+        // withdrawals against games that were created in the same block that the retirement
+        // timestamp was set. If the retirement timestamp and game type are changed in the same
+        // block, such games could still be considered valid even if they used the old game type
+        // that we intended to invalidate.
         require(
-            gameProxy.createdAt().raw() >= respectedGameTypeUpdatedAt,
+            gameProxy.createdAt().raw() > respectedGameTypeUpdatedAt,
             "OptimismPortal: dispute game created before respected game type was updated"
         );
 
@@ -521,6 +523,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // a timestamp of zero.
         if (provenWithdrawal.timestamp == 0) revert Unproven();
 
+        // Grab the createdAt timestamp once.
         uint64 createdAt = disputeGameProxy.createdAt().raw();
 
         // As a sanity check, we make sure that the proven withdrawal's timestamp is greater than
@@ -553,10 +556,14 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
             revert LegacyGame();
         }
 
-        // The game must have been created after `respectedGameTypeUpdatedAt`. This is to prevent users from creating
-        // invalid disputes against a deployed game type while the off-chain challenge agents are not watching.
+        // Game must have been created after the respected game type was updated. This check is a
+        // strict inequality because we want to prevent users from being able to prove or finalize
+        // withdrawals against games that were created in the same block that the retirement
+        // timestamp was set. If the retirement timestamp and game type are changed in the same
+        // block, such games could still be considered valid even if they used the old game type
+        // that we intended to invalidate.
         require(
-            createdAt >= respectedGameTypeUpdatedAt,
+            createdAt > respectedGameTypeUpdatedAt,
             "OptimismPortal: dispute game created before respected game type was updated"
         );
 

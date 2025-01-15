@@ -196,7 +196,7 @@ contract FaultDisputeGame is Clone, ISemver {
     ClaimData[] public claimData;
 
     /// @notice Credited balances for winning participants.
-    mapping(address => uint256) public credit;
+    mapping(address => uint256) public normalModeCredit;
 
     /// @notice A mapping to allow for constant-time lookups of existing claims.
     mapping(Hash => bool) public claims;
@@ -957,7 +957,7 @@ contract FaultDisputeGame is Clone, ISemver {
         if (bondDistributionMode == BondDistributionMode.REFUND) {
             recipientCredit = refundModeCredit[_recipient];
         } else if (bondDistributionMode == BondDistributionMode.NORMAL) {
-            recipientCredit = credit[_recipient];
+            recipientCredit = normalModeCredit[_recipient];
         } else {
             // We shouldn't get here, but sanity check just in case.
             revert InvalidBondDistributionMode();
@@ -976,7 +976,7 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // Set the recipient's credit balances to 0.
         refundModeCredit[_recipient] = 0;
-        credit[_recipient] = 0;
+        normalModeCredit[_recipient] = 0;
 
         // Try to withdraw the WETH amount so it can be used here.
         WETH.withdraw(_recipient, recipientCredit);
@@ -1060,6 +1060,18 @@ contract FaultDisputeGame is Clone, ISemver {
         len_ = claimData.length;
     }
 
+    /// @notice Returns the credit balance of a given recipient.
+    /// @param _recipient The recipient of the credit.
+    /// @return credit_ The credit balance of the recipient.
+    function credit(address _recipient) external view returns (uint256 credit_) {
+        if (bondDistributionMode == BondDistributionMode.REFUND) {
+            credit_ = refundModeCredit[_recipient];
+        } else {
+            // Always return normal credit balance by default unless we're in refund mode.
+            credit_ = normalModeCredit[_recipient];
+        }
+    }
+
     ////////////////////////////////////////////////////////////////
     //                     IMMUTABLE GETTERS                      //
     ////////////////////////////////////////////////////////////////
@@ -1117,7 +1129,7 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @param _recipient The recipient of the bond.
     /// @param _bonded The claim to pay out the bond of.
     function _distributeBond(address _recipient, ClaimData storage _bonded) internal {
-        credit[_recipient] += _bonded.bond;
+        normalModeCredit[_recipient] += _bonded.bond;
     }
 
     /// @notice Verifies the integrity of an execution bisection subgame's root claim. Reverts if the claim

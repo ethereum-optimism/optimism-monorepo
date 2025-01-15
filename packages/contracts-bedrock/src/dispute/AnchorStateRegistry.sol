@@ -147,9 +147,10 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param _game The game to check.
     /// @return Whether the game is retired.
     function isGameRetired(IDisputeGame _game) public view returns (bool) {
-        // Must be created at or after the respectedGameTypeUpdatedAt timestamp. Note that the
-        // strict inequality exactly mirrors the logic in the OptimismPortal contract.
-        return _game.createdAt().raw() < portal.respectedGameTypeUpdatedAt();
+        // Must be created after the respectedGameTypeUpdatedAt timestamp. Note that this means all
+        // games created in the same block as the respectedGameTypeUpdatedAt timestamp are
+        // considered retired.
+        return _game.createdAt().raw() <= portal.respectedGameTypeUpdatedAt();
     }
 
     /// @notice Returns whether a game is resolved.
@@ -263,6 +264,9 @@ contract AnchorStateRegistry is Initializable, ISemver {
         }
 
         // Must be newer than the current anchor game.
+        // Note that this WILL block/brick if getAnchorRoot() ever reverts because the current
+        // anchor game is blacklisted. A blacklisted anchor game is *very* bad and we deliberately
+        // want to force the situation to be handled manually.
         (, uint256 anchorL2BlockNumber) = getAnchorRoot();
         if (game.l2BlockNumber() <= anchorL2BlockNumber) {
             revert AnchorStateRegistry_InvalidAnchorGame();

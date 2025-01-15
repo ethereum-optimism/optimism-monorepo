@@ -205,15 +205,17 @@ contract AnchorStateRegistry_IsGameRetired_Test is AnchorStateRegistry_Init {
     /// @notice Tests that isGameRetired will return true if the game is retired.
     /// @param _retirementTimestamp The retirement timestamp to use for the test.
     function testFuzz_isGameRetired_isRetired_succeeds(uint64 _retirementTimestamp) public {
-        // Make sure retirement timestamp is later than the game's creation time.
-        _retirementTimestamp = uint64(bound(_retirementTimestamp, gameProxy.createdAt().raw() + 1, type(uint64).max));
+        // Make sure retirement timestamp is greater than or equal to the game's creation time.
+        _retirementTimestamp = uint64(bound(_retirementTimestamp, gameProxy.createdAt().raw(), type(uint64).max));
 
-        // Mock the respectedGameTypeUpdatedAt call to be later than the game's creation time.
+        // Mock the respectedGameTypeUpdatedAt call.
         vm.mockCall(
             address(optimismPortal2),
             abi.encodeCall(optimismPortal2.respectedGameTypeUpdatedAt, ()),
             abi.encode(_retirementTimestamp)
         );
+
+        // Game should be retired.
         assertTrue(anchorStateRegistry.isGameRetired(gameProxy));
     }
 
@@ -221,7 +223,7 @@ contract AnchorStateRegistry_IsGameRetired_Test is AnchorStateRegistry_Init {
     /// @param _retirementTimestamp The retirement timestamp to use for the test.
     function testFuzz_isGameRetired_isNotRetired_succeeds(uint64 _retirementTimestamp) public {
         // Make sure retirement timestamp is earlier than the game's creation time.
-        _retirementTimestamp = uint64(bound(_retirementTimestamp, 0, gameProxy.createdAt().raw()));
+        _retirementTimestamp = uint64(bound(_retirementTimestamp, 0, gameProxy.createdAt().raw() - 1));
 
         // Mock the respectedGameTypeUpdatedAt call to be earlier than the game's creation time.
         vm.mockCall(
@@ -229,6 +231,8 @@ contract AnchorStateRegistry_IsGameRetired_Test is AnchorStateRegistry_Init {
             abi.encodeCall(optimismPortal2.respectedGameTypeUpdatedAt, ()),
             abi.encode(_retirementTimestamp)
         );
+
+        // Game should not be retired.
         assertFalse(anchorStateRegistry.isGameRetired(gameProxy));
     }
 }
