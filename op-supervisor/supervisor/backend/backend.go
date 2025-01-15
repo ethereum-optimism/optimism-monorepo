@@ -480,7 +480,7 @@ func (su *SupervisorBackend) AllSafeDerivedAt(ctx context.Context, derivedFrom e
 	chains := su.depSet.Chains()
 	ret := map[eth.ChainID]eth.BlockID{}
 	for _, chainID := range chains {
-		derived, err := su.SafeDerivedAt(context.Background(), chainID, derivedFrom)
+		derived, err := su.SafeDerivedAt(ctx, chainID, derivedFrom)
 		if err != nil {
 			return nil, fmt.Errorf("failed to get last derived block for chain %v: %w", chainID, err)
 		}
