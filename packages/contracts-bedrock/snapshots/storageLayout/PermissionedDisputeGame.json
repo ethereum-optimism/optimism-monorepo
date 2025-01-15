@@ -50,7 +50,7 @@
   },
   {
     "bytes": "32",
-    "label": "credit",
+    "label": "normalModeCredit",
     "offset": 0,
     "slot": "3",
     "type": "mapping(address => uint256)"

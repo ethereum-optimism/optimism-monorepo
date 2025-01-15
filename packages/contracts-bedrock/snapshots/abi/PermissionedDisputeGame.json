@@ -341,7 +341,7 @@
     "inputs": [
       {
         "internalType": "address",
-        "name": "",
+        "name": "_recipient",
         "type": "address"
       }
     ],
@@ -349,7 +349,7 @@
     "outputs": [
       {
         "internalType": "uint256",
-        "name": "",
+        "name": "credit_",
         "type": "uint256"
       }
     ],
@@ -641,6 +641,25 @@
     "name": "move",
     "outputs": [],
     "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "normalModeCredit",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
