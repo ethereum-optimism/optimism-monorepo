@@ -585,6 +585,47 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         });
     }
 
+    /// @dev Tests that `proveWithdrawalTransaction` reverts if the game was not the respected game type when created.
+    function test_proveWithdrawalTransaction_wasNotRespectedGameTypeWhenCreated_reverts() external {
+        vm.mockCall(
+            address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), abi.encode(false)
+        );
+        vm.expectRevert(InvalidGameType.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts if the game is a legacy game that does not implement
+    ///      `wasRespectedGameTypeWhenCreated`.
+    function test_proveWithdrawalTransaction_legacyGame_reverts() external {
+        vm.mockCallRevert(address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), "");
+        vm.expectRevert(LegacyGame.selector);
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
+    /// @dev Tests that `proveWithdrawalTransaction` reverts if the game was created before the game retirement
+    ///      timestamp.
+    function testFuzz_proveWithdrawalTransaction_createdBeforeRetirementTimestamp_reverts(uint64 _createdAt) external {
+        _createdAt = uint64(bound(_createdAt, 0, optimismPortal2.respectedGameTypeUpdatedAt() - 1));
+        vm.mockCall(address(game), abi.encodeWithSelector(game.createdAt.selector), abi.encode(uint64(_createdAt)));
+        vm.expectRevert("OptimismPortal: dispute game created before respected game type was updated");
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+    }
+
     /// @dev Tests that `proveWithdrawalTransaction` can be re-executed if the dispute game proven against has been
     ///      blacklisted.
     function test_proveWithdrawalTransaction_replayProveBlacklisted_succeeds() external {
@@ -1456,6 +1497,37 @@ contract OptimismPortal2_FinalizeWithdrawal_Test is CommonTest {
         vm.mockCall(address(game), abi.encodeCall(game.wasRespectedGameTypeWhenCreated, ()), abi.encode(false));
 
         vm.expectRevert(InvalidGameType.selector);
+        optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
+    }
+
+    /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the game is a legacy game that does not implement
+    ///      `wasRespectedGameTypeWhenCreated`.  `proveWithdrawalTransaction` should already prevent this, but we remove
+    ///      that assumption here.
+    function test_finalizeWithdrawalTransaction_legacyGame_reverts() external {
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProven(_withdrawalHash, alice, bob);
+        vm.expectEmit(address(optimismPortal2));
+        emit WithdrawalProvenExtension1(_withdrawalHash, address(this));
+        optimismPortal2.proveWithdrawalTransaction({
+            _tx: _defaultTx,
+            _disputeGameIndex: _proposedGameIndex,
+            _outputRootProof: _outputRootProof,
+            _withdrawalProof: _withdrawalProof
+        });
+
+        // Warp past the finalization period.
+        vm.warp(block.timestamp + optimismPortal2.proofMaturityDelaySeconds() + 1);
+
+        // Resolve the dispute game.
+        game.resolveClaim(0, 0);
+        game.resolve();
+
+        // Warp past the dispute game finality delay.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds() + 1);
+
+        vm.mockCallRevert(address(game), abi.encodeWithSelector(game.wasRespectedGameTypeWhenCreated.selector), "");
+
+        vm.expectRevert(LegacyGame.selector);
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
     }
 
