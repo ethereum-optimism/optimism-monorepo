@@ -56,7 +56,7 @@ func TestEmitterContract(gt *testing.T) {
 		// Execute message on destination chain and verify that the heads progress
 		execTx := newExecuteMessageTx(t, actors, actors.ChainB, aliceB, emitTx)
 		includeTxOnChain(t, actors, actors.ChainB, execTx, aliceB.address)
-		assertHeads(t, actors.ChainB, 2, 2, 2)
+		assertHeads(t, actors.ChainB, 2, 2, 2, 2)
 	})
 
 	gt.Run("failure with conflicting message", func(_ *testing.T) {
@@ -73,7 +73,7 @@ func TestEmitterContract(gt *testing.T) {
 
 		// Process the invalid message attempt and verify that only the local unsafe head progresses
 		includeTxOnChain(t, actors, actors.ChainB, tx, auth.From)
-		assertHeads(t, actors.ChainB, 2, 2, 1)
+		assertHeads(t, actors.ChainB, 2, 2, 1, 1)
 	})
 }
 
@@ -166,11 +166,11 @@ func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, acto
 
 	emitTx := newEmitMessageTx(t, actors.ChainA, aliceA, emitContract, []byte("test message"))
 	includeTxOnChain(t, actors, actors.ChainA, emitTx, aliceA.address)
-	assertHeads(t, actors.ChainA, 2, 2, 2)
+	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
 
 	// Verify initial state
-	assertHeads(t, actors.ChainA, 2, 2, 2)
-	assertHeads(t, actors.ChainB, 0, 0, 0)
+	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
+	assertHeads(t, actors.ChainB, 0, 0, 0, 0)
 
 	return emitTx
 }
@@ -208,9 +208,10 @@ func includeTxOnChain(t helpers.Testing, actors *InteropActors, chain *Chain, tx
 	actors.ChainB.Sequencer.ActL2PipelineFull(t)
 }
 
-func assertHeads(t helpers.Testing, chain *Chain, unsafe, localSafe, crossUnsafe uint64) {
+func assertHeads(t helpers.Testing, chain *Chain, unsafe, localSafe, crossUnsafe, safe uint64) {
 	status := chain.Sequencer.SyncStatus()
 	require.Equal(t, unsafe, status.UnsafeL2.ID().Number)
 	require.Equal(t, crossUnsafe, status.CrossUnsafeL2.ID().Number)
 	require.Equal(t, localSafe, status.LocalSafeL2.ID().Number)
+	require.Equal(t, safe, status.SafeL2.ID().Number)
 }
