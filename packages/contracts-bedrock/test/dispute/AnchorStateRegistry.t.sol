@@ -236,9 +236,7 @@ contract AnchorStateRegistry_IsGameRetired_Test is AnchorStateRegistry_Init {
 contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
     /// @notice Tests that isGameProper will return true if the game meets all conditions.
     function test_isGameProper_meetsAllConditions_succeeds() public {
-        // Mock that the game was respected.
-        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.wasRespectedGameTypeWhenCreated, ()), abi.encode(true));
-
+        // Game will meet all conditions by default.
         assertTrue(anchorStateRegistry.isGameProper(gameProxy));
     }
 
@@ -258,7 +256,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
 
     /// @notice Tests that isGameProper will return false if the game is not the respected game type.
     /// @param _gameType The game type to use for the test.
-    function testFuzz_isGameProper_isNotRespected_succeeds(GameType _gameType) public {
+    function testFuzz_isGameProper_anyGameType_succeeds(GameType _gameType) public {
         if (_gameType.raw() == gameProxy.gameType().raw()) {
             _gameType = GameType.wrap(_gameType.raw() + 1);
         }
@@ -268,7 +266,8 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
             address(gameProxy), abi.encodeCall(gameProxy.wasRespectedGameTypeWhenCreated, ()), abi.encode(false)
         );
 
-        assertFalse(anchorStateRegistry.isGameProper(gameProxy));
+        // Still a proper game.
+        assertTrue(anchorStateRegistry.isGameProper(gameProxy));
     }
 
     /// @notice Tests that isGameProper will return false if the game is blacklisted.

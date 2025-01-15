@@ -308,6 +308,18 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // The game type of the dispute game must be the respected game type.
         if (gameType.raw() != respectedGameType.raw()) revert InvalidGameType();
 
+        // The game type of the DisputeGame must have been the respected game type at creation.
+        if (!gameProxy.wasRespectedGameTypeWhenCreated()) revert InvalidGameType();
+
+        // Creation time must be greater than or equal to the respected game type updated time.
+        // Games created before this timestamp are not valid and cannot be used to finalize a
+        // withdrawal, so for user convenience we also prevent them from being used to prove a
+        // withdrawal.
+        require(
+            gameProxy.createdAt().raw() >= respectedGameTypeUpdatedAt,
+            "OptimismPortal: dispute game created before respected game type was updated"
+        );
+
         // Verify that the output root can be generated with the elements in the proof.
         if (outputRoot.raw() != Hashing.hashOutputRootProof(_outputRootProof)) revert InvalidProof();
 

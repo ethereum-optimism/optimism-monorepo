@@ -172,23 +172,17 @@ contract AnchorStateRegistry is Initializable, ISemver {
     ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
     ///         valid. The root claim of a proper game CAN BE incorrect and still be a proper game.
     ///         DO NOT USE THIS FUNCTION ALONE TO DETERMINE IF A ROOT CLAIM IS VALID.
-    /// @dev Note that it is possible for games to be created when their game type is not the
-    ///      respected game type. We do not consider these games to be Proper Games. isGameProper()
-    ///      can currently guarantee this because the OptimismPortal contract will always set the
-    ///      retirement timestamp whenever the respected game type is updated such that any games
-    ///      created before any update of the respected game type are automatically retired. If
-    ///      this coupling is broken, then we must instead check that the game type *was* the
-    ///      respected game type at the time of the game's creation.
+    /// @dev Note that isGameProper previously checked that the game type was equal to the
+    ///      respected game type. However, it should be noted that it is possible for a game other
+    ///      than the respected game type to resolve without being invalidated. Since isGameProper
+    ///      exists to determine if a game has (or has not) been invalidated, we now allow any game
+    ///      type to be considered a proper game. We enforce checks on the game type in
+    ///      isGameClaimValid().
     /// @param _game The game to check.
     /// @return Whether the game is a proper game.
     function isGameProper(IDisputeGame _game) public view returns (bool) {
         // Must be registered in the DisputeGameFactory.
         if (!isGameRegistered(_game)) {
-            return false;
-        }
-
-        // Must be respected game type.
-        if (!isGameRespected(_game)) {
             return false;
         }
 
@@ -229,6 +223,12 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Game must be a proper game.
         bool properGame = isGameProper(_game);
         if (!properGame) {
+            return false;
+        }
+
+        // Must be respected.
+        bool respected = isGameRespected(_game);
+        if (!respected) {
             return false;
         }
 
