@@ -44,6 +44,10 @@ func TestEmitterContract(gt *testing.T) {
 		aliceB = setupUser(t, is, actors.ChainB, 0)
 		initializeChainState(t, actors)
 		emitTx = initializeEmitterContractTest(t, aliceA, actors)
+
+		// TODO: This is required otherwise the exec msg will fail with
+		// a timestamp invariant issue
+		includeTxOnChain(t, actors, actors.ChainB, nil, aliceB.address)
 	}
 
 	gt.Run("success", func(_ *testing.T) {
@@ -51,7 +55,6 @@ func TestEmitterContract(gt *testing.T) {
 
 		// Execute message on destination chain and verify that the heads progress
 		execTx := newExecuteMessageTx(t, actors, actors.ChainB, aliceB, emitTx)
-		includeTxOnChain(t, actors, actors.ChainB, nil, aliceB.address) // TODO: why?
 		includeTxOnChain(t, actors, actors.ChainB, execTx, aliceB.address)
 		assertHeads(t, actors.ChainB, 2, 2, 2)
 	})
@@ -69,7 +72,6 @@ func TestEmitterContract(gt *testing.T) {
 		require.NoError(t, err)
 
 		// Process the invalid message attempt and verify that only the local unsafe head progresses
-		includeTxOnChain(t, actors, actors.ChainB, nil, aliceB.address) // TODO: why?
 		includeTxOnChain(t, actors, actors.ChainB, tx, auth.From)
 		assertHeads(t, actors.ChainB, 2, 2, 1)
 	})
