@@ -49,7 +49,7 @@ func run(ctx *cli.Context, closeApp context.CancelCauseFunc) (cliapp.Lifecycle, 
 
 	// TODO: map validators from flags
 	var validators = []nat.Validator{
-		&gates.Alphanet,
+		gates.Alphanet,
 	}
 
 	cfg, err := nat.NewConfig(ctx, validators)

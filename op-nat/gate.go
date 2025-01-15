@@ -2,6 +2,7 @@ package nat
 
 import (
 	"context"
+	"errors"
 
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -14,18 +15,28 @@ type Gate struct {
 	Validators []Validator
 }
 
-// Run runs all the tests in the suite.
-func (g Gate) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
+// Run runs all the tests in the gate.
+// Returns the overall result of the gate and an error if any of the tests failed.
+func (g Gate) Run(ctx context.Context, log log.Logger, cfg Config) (ValidatorResult, error) {
 	log.Info("", "type", g.Type(), "id", g.Name())
 	allPassed := true
+	results := []ValidatorResult{}
+	var allErrors error
 	for _, validator := range g.Validators {
-		//log.Info("", "type", validator.Type(), "validator", validator.Name())
-		ok, err := validator.Run(ctx, log, cfg)
-		if err != nil || !ok {
+		res, err := validator.Run(ctx, log, cfg)
+		if err != nil || !res.Passed {
 			allPassed = false
+			allErrors = errors.Join(allErrors, err)
 		}
+		results = append(results, res)
 	}
-	return allPassed, nil
+	return ValidatorResult{
+		ID:         g.ID,
+		Type:       g.Type(),
+		Passed:     allPassed,
+		Error:      allErrors,
+		SubResults: results,
+	}, nil
 }
 
 // Type returns the type name of the gate.

@@ -15,18 +15,12 @@ import (
 
 var _ cliapp.Lifecycle = &nat{}
 
-type TestResult struct {
-	Test   Validator
-	Passed bool
-	Error  error
-}
-
 type nat struct {
 	ctx     context.Context
 	log     log.Logger
 	config  *Config
 	version string
-	results []TestResult
+	results []ValidatorResult
 
 	running atomic.Bool
 }
@@ -54,19 +48,19 @@ func (n *nat) Start(ctx context.Context) error {
 	n.running.Store(true)
 	for _, validator := range n.config.Validators {
 		n.log.Info("Running acceptance tests...")
-		passed, err := validator.Run(ctx, n.log, *n.config)
-		n.log.Info("Completed validator", "validator", validator.Name(), "type", validator.Type(), "passed", passed, "error", err)
+		result, err := validator.Run(ctx, n.log, *n.config)
+		n.log.Info("Completed validator", "validator", validator.Name(), "type", validator.Type(), "passed", result.Passed, "error", err)
 		if err != nil {
 			n.log.Error("Error running validator", "validator", validator.Name(), "error", err)
 		}
-		n.addResult(validator, passed, err)
+		n.results = append(n.results, result)
 	}
 	n.log.Info("OpNAT finished")
 	return nil
 }
 
 func (n *nat) Stop(ctx context.Context) error {
-	n.printResults()
+	n.printResultsTable()
 	n.running.Store(false)
 	n.log.Info("OpNAT stopped")
 	return nil
@@ -76,32 +70,43 @@ func (n *nat) Stopped() bool {
 	return n.running.Load()
 }
 
-func (n *nat) addResult(test Validator, passed bool, err error) {
-	n.results = append(n.results, TestResult{
-		Test:   test,
-		Passed: passed,
-		Error:  err,
-	})
-}
-func (n *nat) printResults() {
+func (n *nat) printResultsTable() {
 	n.log.Info("Printing results...")
 	t := table.NewWriter()
+	t.SetStyle(table.StyleColoredBlackOnGreenWhite)
 	t.SetOutputMirror(os.Stdout)
+	t.SetTitle("NAT Results")
 	t.AppendHeader(table.Row{"Type", "ID", "Result", "Error"})
-	resultRows := []table.Row{}
+	colConfigAutoMerge := table.ColumnConfig{AutoMerge: true}
+	t.SetColumnConfigs([]table.ColumnConfig{colConfigAutoMerge})
+
 	overallPass := true
 	for _, result := range n.results {
-		resultPass := "PASS"
-		if !result.Passed {
-			resultPass = "FAIL"
-		}
-		resultRows = append(resultRows, table.Row{result.Test.Type(), result.Test.Name(), resultPass, result.Error})
+		appendResultRows(t, result)
 		if !result.Passed {
 			overallPass = false
 		}
+		t.AppendSeparator()
 	}
-	t.AppendRows(resultRows)
-	t.AppendSeparator()
-	t.AppendRow([]interface{}{"SUMMARY", "", overallPass, ""})
+	t.AppendFooter([]interface{}{"SUMMARY", "", boolToPassFail(overallPass), ""})
+	if !overallPass {
+		t.SetStyle(table.StyleColoredBlackOnRedWhite)
+	}
 	t.Render()
+}
+
+func appendResultRows(t table.Writer, result ValidatorResult) {
+	resultRows := []table.Row{}
+	resultRows = append(resultRows, table.Row{result.Type, result.ID, boolToPassFail(result.Passed), result.Error})
+	t.AppendRows(resultRows)
+	for _, subResult := range result.SubResults {
+		appendResultRows(t, subResult)
+	}
+}
+
+func boolToPassFail(passed bool) string {
+	if passed {
+		return "PASS"
+	}
+	return "FAIL"
 }
