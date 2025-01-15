@@ -60,12 +60,14 @@ func TestReceiptsByBlockHash(t *testing.T) {
 	block, rcpts := testutils.RandomBlock(rng, 1)
 
 	// Initial call retrieves from the stub
+	stub.Blocks[block.Hash()] = block
 	stub.Receipts[block.Hash()] = rcpts
 	actualBlock, actualRcpts := oracle.ReceiptsByBlockHash(block.Hash(), chainID)
 	require.EqualValues(t, block, actualBlock)
 	require.EqualValues(t, rcpts, actualRcpts)
 
 	// Later calls should retrieve from cache (even if chain ID is different)
+	delete(stub.Blocks, block.Hash())
 	delete(stub.Receipts, block.Hash())
 	actualBlock, actualRcpts = oracle.ReceiptsByBlockHash(block.Hash(), 9982)
 	require.EqualValues(t, block, actualBlock)
