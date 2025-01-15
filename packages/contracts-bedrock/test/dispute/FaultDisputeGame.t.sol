@@ -351,6 +351,44 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         });
     }
 
+    /// @dev Tests that the constructor of the `FaultDisputeGame` reverts when the `_gameType`
+    ///      parameter is set to the reserved `type(uint32).max` game type.
+    function test_constructor_reservedGameType_reverts() public {
+        AlphabetVM alphabetVM = new AlphabetVM(
+            absolutePrestate,
+            IPreimageOracle(
+                DeployUtils.create1({
+                    _name: "PreimageOracle",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IPreimageOracle.__constructor__, (0, 0)))
+                })
+            )
+        );
+
+        vm.expectRevert(ReservedGameType.selector);
+        DeployUtils.create1({
+            _name: "FaultDisputeGame",
+            _args: DeployUtils.encodeConstructor(
+                abi.encodeCall(
+                    IFaultDisputeGame.__constructor__,
+                    (
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GameType.wrap(type(uint32).max),
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: 16,
+                            splitDepth: 8,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
+                    )
+                )
+            )
+        });
+    }
+
     /// @dev Tests that the game's root claim is set correctly.
     function test_rootClaim_succeeds() public view {
         assertEq(gameProxy.rootClaim().raw(), ROOT_CLAIM.raw());
@@ -458,6 +496,20 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         // Assert that the blockhash provided is correct.
         assertEq(gameProxy.l1Head().raw(), blockhash(block.number - 1));
+    }
+
+    /// @dev Tests that the game cannot be initialized when the anchor root is not found.
+    function test_initialize_anchorRootNotFound_reverts() public {
+        // Mock the AnchorStateRegistry to return a zero root.
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
+            abi.encode(Hash.wrap(bytes32(0)), 0)
+        );
+
+        // Creation should fail.
+        vm.expectRevert(AnchorRootNotFound.selector);
+        gameProxy = IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, _dummyClaim(), hex""))));
     }
 
     /// @dev Tests that the game cannot be initialized twice.
@@ -1817,6 +1869,77 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
+    }
+
+    function test_claimCredit_refundMode_succeeds() public {
+        // Set up actors.
+        address alice = address(0xa11ce);
+        address bob = address(0xb0b);
+
+        // Give the game proxy 1 extra ether, unregistered.
+        vm.deal(address(gameProxy), 1 ether);
+
+        // Perform a bonded move.
+        Claim claim = _dummyClaim();
+
+        // Bond the first claim.
+        uint256 firstBond = _getRequiredBond(0);
+        vm.deal(alice, firstBond);
+        (,,,, Claim disputed,,) = gameProxy.claimData(0);
+        vm.prank(alice);
+        gameProxy.attack{ value: firstBond }(disputed, 0, claim);
+
+        // Bond the second claim.
+        uint256 secondBond = _getRequiredBond(1);
+        vm.deal(bob, secondBond);
+        (,,,, disputed,,) = gameProxy.claimData(1);
+        vm.prank(bob);
+        gameProxy.attack{ value: secondBond }(disputed, 1, claim);
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + 3 days + 12 hours);
+
+        // Resolve the game.
+        // Second claim wins, so bob should get alice's credit.
+        gameProxy.resolveClaim(2, 0);
+        gameProxy.resolveClaim(1, 0);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Mock that the game proxy is not proper, trigger refund mode.
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(anchorStateRegistry.isGameProper, (gameProxy)),
+            abi.encode(false)
+        );
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Assert bond distribution mode is refund mode.
+        assertTrue(gameProxy.bondDistributionMode() == BondDistributionMode.REFUND);
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Wait for the withdrawal delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
+
+        // Grab balances before claim.
+        uint256 aliceBalanceBefore = alice.balance;
+        uint256 bobBalanceBefore = bob.balance;
+
+        // Claim credit again to get the bond back.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Should have original balance again.
+        assertEq(alice.balance, aliceBalanceBefore + firstBond);
+        assertEq(bob.balance, bobBalanceBefore + secondBond);
     }
 
     /// @dev Static unit test asserting that credit may not be drained past allowance through reentrancy.

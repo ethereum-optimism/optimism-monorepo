@@ -257,6 +257,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
     }
 
     /// @notice Tests that isGameProper will return false if the game is not the respected game type.
+    /// @param _gameType The game type to use for the test.
     function testFuzz_isGameProper_isNotRespected_succeeds(GameType _gameType) public {
         if (_gameType.raw() == gameProxy.gameType().raw()) {
             _gameType = GameType.wrap(_gameType.raw() + 1);
@@ -283,6 +284,7 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
     }
 
     /// @notice Tests that isGameProper will return false if the game is retired.
+    /// @param _retirementTimestamp The retirement timestamp to use for the test.
     function testFuzz_isGameProper_isRetired_succeeds(uint64 _retirementTimestamp) public {
         // Make sure retirement timestamp is later than the game's creation time.
         _retirementTimestamp = uint64(bound(_retirementTimestamp, gameProxy.createdAt().raw() + 1, type(uint64).max));
@@ -295,6 +297,206 @@ contract AnchorStateRegistry_IsGameProper_Test is AnchorStateRegistry_Init {
         );
 
         assertFalse(anchorStateRegistry.isGameProper(gameProxy));
+    }
+}
+
+contract AnchorStateRegistry_IsGameResolved_Test is AnchorStateRegistry_Init {
+    /// @notice Tests that isGameResolved will return true if the game is resolved.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameResolved_challengerWins_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Bound resolvedAt to be less than or equal to current timestamp.
+        _resolvedAtTimestamp = bound(_resolvedAtTimestamp, 1, block.timestamp);
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Mock the status to be CHALLENGER_WINS.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.CHALLENGER_WINS));
+
+        // Game should be resolved.
+        assertTrue(anchorStateRegistry.isGameResolved(gameProxy));
+    }
+
+    /// @notice Tests that isGameResolved will return true if the game is resolved.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameResolved_defenderWins_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Bound resolvedAt to be less than or equal to current timestamp.
+        _resolvedAtTimestamp = bound(_resolvedAtTimestamp, 1, block.timestamp);
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Mock the status to be DEFENDER_WINS.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
+
+        // Game should be resolved.
+        assertTrue(anchorStateRegistry.isGameResolved(gameProxy));
+    }
+
+    /// @notice Tests that isGameResolved will return false if the game is in progress and not resolved.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameResolved_inProgressNotResolved_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Bound resolvedAt to be less than or equal to current timestamp.
+        _resolvedAtTimestamp = bound(_resolvedAtTimestamp, 1, block.timestamp);
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Mock the status to be IN_PROGRESS.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.IN_PROGRESS));
+
+        // Game should not be resolved.
+        assertFalse(anchorStateRegistry.isGameResolved(gameProxy));
+    }
+}
+
+contract AnchorStateRegistry_IsGameAirgapped_TestFail is AnchorStateRegistry_Init {
+    /// @notice Tests that isGameAirgapped will return true if the game is airgapped.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameAirgapped_isAirgapped_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Warp forward by disputeGameFinalityDelaySeconds.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds());
+
+        // Bound resolvedAt to be at least disputeGameFinalityDelaySeconds in the past.
+        _resolvedAtTimestamp =
+            bound(_resolvedAtTimestamp, 0, block.timestamp - optimismPortal2.disputeGameFinalityDelaySeconds() - 1);
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Game should be airgapped.
+        assertTrue(anchorStateRegistry.isGameAirgapped(gameProxy));
+    }
+
+    /// @notice Tests that isGameAirgapped will return false if the game is not airgapped.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameAirgapped_isNotAirgapped_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Warp forward by disputeGameFinalityDelaySeconds.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds());
+
+        // Bound resolvedAt to be less than disputeGameFinalityDelaySeconds in the past.
+        _resolvedAtTimestamp = bound(
+            _resolvedAtTimestamp, block.timestamp - optimismPortal2.disputeGameFinalityDelaySeconds(), block.timestamp
+        );
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Game should not be airgapped.
+        assertFalse(anchorStateRegistry.isGameAirgapped(gameProxy));
+    }
+}
+
+contract AnchorStateRegistry_IsGameClaimValid_Test is AnchorStateRegistry_Init {
+    /// @notice Tests that isGameClaimValid will return true if the game claim is valid.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameClaimValid_claimIsValid_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Warp forward by disputeGameFinalityDelaySeconds.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds());
+
+        // Bound resolvedAt to be at least disputeGameFinalityDelaySeconds in the past.
+        _resolvedAtTimestamp =
+            bound(_resolvedAtTimestamp, 1, block.timestamp - optimismPortal2.disputeGameFinalityDelaySeconds() - 1);
+
+        // Mock that the game was respected.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.wasRespectedGameTypeWhenCreated, ()), abi.encode(true));
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Mock the status to be DEFENDER_WINS.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.DEFENDER_WINS));
+
+        // Claim should be valid.
+        assertTrue(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is not registered.
+    function testFuzz_isGameClaimValid_notRegistered_succeeds() public {
+        // Mock the DisputeGameFactory to make it seem that the game was not registered.
+        vm.mockCall(
+            address(disputeGameFactory),
+            abi.encodeCall(
+                disputeGameFactory.games, (gameProxy.gameType(), gameProxy.rootClaim(), gameProxy.extraData())
+            ),
+            abi.encode(address(0), 0)
+        );
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is not respected.
+    /// @param _gameType The game type to use for the test.
+    function testFuzz_isGameClaimValid_isNotRespected_succeeds(GameType _gameType) public {
+        if (_gameType.raw() == gameProxy.gameType().raw()) {
+            _gameType = GameType.wrap(_gameType.raw() + 1);
+        }
+
+        // Mock that the game was not respected.
+        vm.mockCall(
+            address(gameProxy), abi.encodeCall(gameProxy.wasRespectedGameTypeWhenCreated, ()), abi.encode(false)
+        );
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is blacklisted.
+    function testFuzz_isGameClaimValid_isBlacklisted_succeeds() public {
+        // Mock the disputeGameBlacklist call to return true.
+        vm.mockCall(
+            address(optimismPortal2),
+            abi.encodeCall(optimismPortal2.disputeGameBlacklist, (gameProxy)),
+            abi.encode(true)
+        );
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is retired.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameClaimValid_isRetired_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Make sure retirement timestamp is later than the game's creation time.
+        _resolvedAtTimestamp = uint64(bound(_resolvedAtTimestamp, gameProxy.createdAt().raw() + 1, type(uint64).max));
+
+        // Mock the respectedGameTypeUpdatedAt call to be later than the game's creation time.
+        vm.mockCall(
+            address(optimismPortal2),
+            abi.encodeCall(optimismPortal2.respectedGameTypeUpdatedAt, ()),
+            abi.encode(_resolvedAtTimestamp)
+        );
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is not resolved.
+    function testFuzz_isGameClaimValid_notResolved_succeeds() public {
+        // Mock the status to be IN_PROGRESS.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.status, ()), abi.encode(GameStatus.IN_PROGRESS));
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
+    }
+
+    /// @notice Tests that isGameClaimValid will return false if the game is not airgapped.
+    /// @param _resolvedAtTimestamp The resolvedAt timestamp to use for the test.
+    function testFuzz_isGameClaimValid_notAirgapped_succeeds(uint256 _resolvedAtTimestamp) public {
+        // Warp forward by disputeGameFinalityDelaySeconds.
+        vm.warp(block.timestamp + optimismPortal2.disputeGameFinalityDelaySeconds());
+
+        // Bound resolvedAt to be less than disputeGameFinalityDelaySeconds in the past.
+        _resolvedAtTimestamp = bound(
+            _resolvedAtTimestamp, block.timestamp - optimismPortal2.disputeGameFinalityDelaySeconds(), block.timestamp
+        );
+
+        // Mock the resolvedAt timestamp.
+        vm.mockCall(address(gameProxy), abi.encodeCall(gameProxy.resolvedAt, ()), abi.encode(_resolvedAtTimestamp));
+
+        // Claim should not be valid.
+        assertFalse(anchorStateRegistry.isGameClaimValid(gameProxy));
     }
 }
 

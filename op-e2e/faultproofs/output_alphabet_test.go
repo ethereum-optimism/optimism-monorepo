@@ -129,7 +129,8 @@ func TestOutputAlphabetGame_ReclaimBond(t *testing.T) {
 
 	// Advance the time past the finalization delay
 	// Finalization delay is the same as the credit unlock delay
-	sys.TimeTravelClock.AdvanceTime(game.CreditUnlockDuration(ctx))
+	// But just warp way into the future to be safe
+	sys.TimeTravelClock.AdvanceTime(game.CreditUnlockDuration(ctx) * 2)
 	require.NoError(t, wait.ForNextBlock(ctx, l1Client))
 
 	// Wait for alice to have no available credit
