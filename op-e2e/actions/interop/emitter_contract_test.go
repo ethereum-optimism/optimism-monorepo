@@ -166,7 +166,6 @@ func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, acto
 
 	emitTx := newEmitMessageTx(t, actors.ChainA, aliceA, emitContract, []byte("test message"))
 	includeTxOnChain(t, actors, actors.ChainA, emitTx, aliceA.address)
-	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
 
 	// Verify initial state
 	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
