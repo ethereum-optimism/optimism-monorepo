@@ -127,13 +127,3 @@ error L2BlockNumberChallenged();
 
 /// @notice Thrown when an unauthorized address attempts to interact with the game.
 error BadAuth();
-
-////////////////////////////////////////////////////////////////
-//              `AnchorStateRegistry` Errors                  //
-////////////////////////////////////////////////////////////////
-
-/// @notice Thrown when attempting to set an anchor state using an unregistered game.
-error UnregisteredGame();
-
-/// @notice Thrown when attempting to set an anchor state using an invalid game result.
-error InvalidGameStatus();

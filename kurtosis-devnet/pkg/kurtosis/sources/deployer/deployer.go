@@ -7,8 +7,9 @@ import (
 	"fmt"
 	"io"
 	"math/big"
-	"os/exec"
 	"strings"
+
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
 )
 
 const (
@@ -25,24 +26,36 @@ type DeploymentAddresses map[string]string
 // DeploymentStateAddresses maps chain IDs to their contract addresses
 type DeploymentStateAddresses map[string]DeploymentAddresses
 
+type DeploymentState struct {
+	Addresses DeploymentAddresses `json:"addresses"`
+	Wallets   WalletList          `json:"wallets"`
+}
+
+type DeployerState struct {
+	Deployments map[string]DeploymentState `json:"l2s"`
+	Addresses   DeploymentAddresses        `json:"superchain"`
+}
+
 // StateFile represents the structure of the state.json file
 type StateFile struct {
-	OpChainDeployments []map[string]interface{} `json:"opChainDeployments"`
+	OpChainDeployments        []map[string]interface{} `json:"opChainDeployments"`
+	SuperChainDeployment      map[string]interface{}   `json:"superchainDeployment"`
+	ImplementationsDeployment map[string]interface{}   `json:"implementationsDeployment"`
 }
 
 // Wallet represents a wallet with optional private key and name
 type Wallet struct {
-	Address    string
-	PrivateKey string
-	Name       string
+	Address    string `json:"address"`
+	PrivateKey string `json:"private_key"`
+	Name       string `json:"name"`
 }
 
 // WalletList holds a list of wallets
 type WalletList []*Wallet
 
 type DeployerData struct {
-	Wallets WalletList
-	State   DeploymentStateAddresses
+	Wallets WalletList     `json:"wallets"`
+	State   *DeployerState `json:"state"`
 }
 
 type Deployer struct {
@@ -104,7 +117,9 @@ func NewDeployer(enclave string, opts ...DeployerOption) *Deployer {
 }
 
 // parseWalletsFile parses a JSON file containing wallet information
-func parseWalletsFile(r io.Reader) (WalletList, error) {
+func parseWalletsFile(r io.Reader) (map[string]WalletList, error) {
+	result := make(map[string]WalletList)
+
 	// Read all data from reader
 	data, err := io.ReadAll(r)
 	if err != nil {
@@ -112,52 +127,46 @@ func parseWalletsFile(r io.Reader) (WalletList, error) {
 	}
 
 	// Unmarshal into a map first
-	var rawData map[string]string
+	var rawData map[string]map[string]string
 	if err := json.Unmarshal(data, &rawData); err != nil {
 		return nil, fmt.Errorf("failed to decode wallet file: %w", err)
 	}
 
-	// Create a map to store wallets by name
-	walletMap := make(map[string]Wallet)
+	for id, chain := range rawData {
+		// Create a map to store wallets by name
+		walletMap := make(map[string]Wallet)
 
-	// Process each key-value pair
-	for key, value := range rawData {
-		if strings.HasSuffix(key, "Address") {
-			name := strings.TrimSuffix(key, "Address")
-			wallet := walletMap[name]
-			wallet.Address = value
-			wallet.Name = name
-			walletMap[name] = wallet
-		} else if strings.HasSuffix(key, "PrivateKey") {
-			name := strings.TrimSuffix(key, "PrivateKey")
-			wallet := walletMap[name]
-			wallet.PrivateKey = value
-			wallet.Name = name
-			walletMap[name] = wallet
+		// Process each key-value pair
+		for key, value := range chain {
+			if strings.HasSuffix(key, "Address") {
+				name := strings.TrimSuffix(key, "Address")
+				wallet := walletMap[name]
+				wallet.Address = value
+				wallet.Name = name
+				walletMap[name] = wallet
+			} else if strings.HasSuffix(key, "PrivateKey") {
+				name := strings.TrimSuffix(key, "PrivateKey")
+				wallet := walletMap[name]
+				wallet.PrivateKey = value
+				wallet.Name = name
+				walletMap[name] = wallet
+			}
 		}
-	}
 
-	// Convert map to list
-	result := make(WalletList, 0, len(walletMap))
+		// Convert map to list
+		wl := make(WalletList, 0, len(walletMap))
 
-	for _, wallet := range walletMap {
-		// Only include wallets that have at least an address
-		if wallet.Address != "" {
-			result = append(result, &wallet)
+		for _, wallet := range walletMap {
+			// Only include wallets that have at least an address
+			if wallet.Address != "" {
+				wl = append(wl, &wallet)
+			}
 		}
+
+		result[id] = wl
 	}
 
 	return result, nil
-}
-
-// downloadArtifact downloads a kurtosis artifact to a temporary directory
-// TODO: reimplement this using the kurtosis SDK
-func downloadArtifact(enclave, artifact, destDir string) error {
-	cmd := exec.Command("kurtosis", "files", "download", enclave, artifact, destDir)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("failed to download artifact %s: %w", artifact, err)
-	}
-	return nil
 }
 
 // hexToDecimal converts a hex string (with or without 0x prefix) to a decimal string
@@ -176,13 +185,27 @@ func hexToDecimal(hex string) (string, error) {
 }
 
 // parseStateFile parses the state.json file and extracts addresses
-func parseStateFile(r io.Reader) (DeploymentStateAddresses, error) {
+func parseStateFile(r io.Reader) (*DeployerState, error) {
 	var state StateFile
 	if err := json.NewDecoder(r).Decode(&state); err != nil {
 		return nil, fmt.Errorf("failed to decode state file: %w", err)
 	}
 
-	result := make(DeploymentStateAddresses)
+	result := &DeployerState{
+		Deployments: make(map[string]DeploymentState),
+		Addresses:   make(DeploymentAddresses),
+	}
+
+	mapDeployment := func(deployment map[string]interface{}) DeploymentAddresses {
+		addrSuffix := "Address"
+		addresses := make(DeploymentAddresses)
+		for key, value := range deployment {
+			if strings.HasSuffix(key, addrSuffix) {
+				addresses[strings.TrimSuffix(key, addrSuffix)] = value.(string)
+			}
+		}
+		return addresses
+	}
 
 	for _, deployment := range state.OpChainDeployments {
 		// Get the chain ID
@@ -201,19 +224,19 @@ func parseStateFile(r io.Reader) (DeploymentStateAddresses, error) {
 			continue
 		}
 
-		addresses := make(DeploymentAddresses)
-
-		// Look for address fields in the deployment map
-		for key, value := range deployment {
-			if strings.HasSuffix(key, "Address") {
-				key = strings.TrimSuffix(key, "Address")
-				addresses[key] = value.(string)
-			}
-		}
+		addresses := mapDeployment(deployment)
 
 		if len(addresses) > 0 {
-			result[id] = addresses
+			result.Deployments[id] = DeploymentState{
+				Addresses: addresses,
+			}
 		}
+	}
+
+	result.Addresses = mapDeployment(state.ImplementationsDeployment)
+	// merge the superchain and implementations addresses
+	for key, value := range mapDeployment(state.SuperChainDeployment) {
+		result.Addresses[key] = value
 	}
 
 	return result, nil
@@ -221,21 +244,21 @@ func parseStateFile(r io.Reader) (DeploymentStateAddresses, error) {
 
 // ExtractData downloads and parses the op-deployer state
 func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
-	fs, err := NewEnclaveFS(ctx, d.enclave)
+	fs, err := artifact.NewEnclaveFS(ctx, d.enclave)
 	if err != nil {
 		return nil, err
 	}
 
-	artifact, err := fs.GetArtifact(ctx, d.deployerArtifactName)
+	a, err := fs.GetArtifact(ctx, d.deployerArtifactName)
 	if err != nil {
 		return nil, err
 	}
 
 	stateBuffer := bytes.NewBuffer(nil)
 	walletsBuffer := bytes.NewBuffer(nil)
-	if err := artifact.ExtractFiles(
-		&ArtifactFileWriter{path: d.stateName, writer: stateBuffer},
-		&ArtifactFileWriter{path: d.walletsName, writer: walletsBuffer},
+	if err := a.ExtractFiles(
+		artifact.NewArtifactFileWriter(d.stateName, stateBuffer),
+		artifact.NewArtifactFileWriter(d.walletsName, walletsBuffer),
 	); err != nil {
 		return nil, err
 	}
@@ -250,12 +273,20 @@ func (d *Deployer) ExtractData(ctx context.Context) (*DeployerData, error) {
 		return nil, err
 	}
 
+	for id, wallets := range wallets {
+		if deployment, exists := state.Deployments[id]; exists {
+			deployment.Wallets = wallets
+			state.Deployments[id] = deployment
+		}
+	}
+
 	knownWallets, err := d.getKnownWallets(ctx, fs)
 	if err != nil {
 		return nil, err
 	}
 
-	wallets = append(wallets, knownWallets...)
-
-	return &DeployerData{State: state, Wallets: wallets}, nil
+	return &DeployerData{
+		State:   state,
+		Wallets: knownWallets,
+	}, nil
 }

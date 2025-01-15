@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"os"
 	"path/filepath"
 	"regexp"
@@ -195,7 +196,7 @@ func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupCli
 	}
 	l1Head := status.FinalizedL1
 	if status.FinalizedL1.Number > status.CurrentL1.Number {
-		// Restrict the L1 head to a block that has actually be processed by op-node.
+		// Restrict the L1 head to a block that has actually been processed by op-node.
 		// This only matters if op-node is behind and hasn't processed all finalized L1 blocks yet.
 		l1Head = status.CurrentL1
 	}
@@ -235,15 +236,32 @@ func (r *Runner) findL2BlockNumberToDispute(ctx context.Context, client *sources
 			return l2BlockNum, nil
 		}
 		l1HeadNum -= skipSize
-		priorSafeHead, err := client.SafeHeadAtL1Block(ctx, l1HeadNum)
+		prevSafeHead, err := client.SafeHeadAtL1Block(ctx, l1HeadNum)
 		if err != nil {
 			return 0, fmt.Errorf("failed to get prior safe head at L1 block %v: %w", l1HeadNum, err)
 		}
-		if priorSafeHead.SafeHead.Number < l2BlockNum {
+		if prevSafeHead.SafeHead.Number < l2BlockNum {
+			switch rand.Intn(3) {
+			case 0: // First block of span batch
+				return prevSafeHead.SafeHead.Number + 1, nil
+			case 1: // Last block of span batch
+				return prevSafeHead.SafeHead.Number, nil
+			case 2: // Random block, probably but not guaranteed to be in the middle of a span batch
+				firstBlockInSpanBatch := prevSafeHead.SafeHead.Number + 1
+				if l2BlockNum <= firstBlockInSpanBatch {
+					// There is only one block in the next batch so we just have to use it
+					return l2BlockNum, nil
+				}
+				offset := rand.Intn(int(l2BlockNum - firstBlockInSpanBatch))
+				return firstBlockInSpanBatch + uint64(offset), nil
+			}
+
+		}
+		if prevSafeHead.SafeHead.Number < l2BlockNum {
 			// We walked back far enough to be before the batch that included l2BlockNum
 			// So use the first block after the prior safe head as the disputed block.
 			// It must be the first block in a batch.
-			return priorSafeHead.SafeHead.Number + 1, nil
+			return prevSafeHead.SafeHead.Number + 1, nil
 		}
 	}
 	r.log.Warn("Failed to find prior batch", "l2BlockNum", l2BlockNum, "earliestCheckL1Block", l1HeadNum)

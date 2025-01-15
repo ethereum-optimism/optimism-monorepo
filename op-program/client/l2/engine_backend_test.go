@@ -378,7 +378,7 @@ func createBlock(t *testing.T, chain *OracleBackedL2Chain, opts ...blockCreateOp
 	require.NoError(t, err)
 	nonce := parentDB.GetNonce(fundedAddress)
 	config := chain.Config()
-	db := rawdb.NewDatabase(NewOracleBackedDB(chain.oracle))
+	db := rawdb.NewDatabase(NewOracleBackedDB(chain.oracle, config.ChainID.Uint64()))
 	blocks, _ := core.GenerateChain(config, parent, chain.Engine(), db, 1, func(i int, gen *core.BlockGen) {
 		rawTx := &types.DynamicFeeTx{
 			ChainID:   config.ChainID,

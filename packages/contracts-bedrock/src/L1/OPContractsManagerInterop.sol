@@ -34,9 +34,8 @@ contract OPContractsManagerInterop is OPContractsManager {
         override
         returns (bytes memory)
     {
-        bytes4 selector = ISystemConfigInterop.initialize.selector;
         (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
-            defaultSystemConfigParams(selector, _input, _output);
+            defaultSystemConfigParams(_input, _output);
 
         // TODO For now we assume that the dependency manager is the same as system config owner.
         // This is currently undefined since it's not part of the standard config, so we may need
@@ -45,18 +44,20 @@ contract OPContractsManagerInterop is OPContractsManager {
         // we will make the change described in https://github.com/ethereum-optimism/optimism/issues/11783.
         address dependencyManager = address(_input.roles.systemConfigOwner);
 
-        return abi.encodeWithSelector(
-            selector,
-            _input.roles.systemConfigOwner,
-            _input.basefeeScalar,
-            _input.blobBasefeeScalar,
-            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-            _input.gasLimit,
-            _input.roles.unsafeBlockSigner,
-            referenceResourceConfig,
-            chainIdToBatchInboxAddress(_input.l2ChainId),
-            opChainAddrs,
-            dependencyManager
+        return abi.encodeCall(
+            ISystemConfigInterop.initialize,
+            (
+                _input.roles.systemConfigOwner,
+                _input.basefeeScalar,
+                _input.blobBasefeeScalar,
+                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
+                _input.gasLimit,
+                _input.roles.unsafeBlockSigner,
+                referenceResourceConfig,
+                chainIdToBatchInboxAddress(_input.l2ChainId),
+                opChainAddrs,
+                dependencyManager
+            )
         );
     }
 }

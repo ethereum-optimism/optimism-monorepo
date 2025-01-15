@@ -7,17 +7,17 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
 // Server handles sync requests
 type Server struct {
 	config      Config
-	validChains map[types.ChainID]struct{}
+	validChains map[eth.ChainID]struct{}
 }
 
 // NewServer creates a new Server with the given config.
-func NewServer(config Config, chains []types.ChainID) (*Server, error) {
+func NewServer(config Config, chains []eth.ChainID) (*Server, error) {
 	// Convert root to absolute path for security
 	root, err := filepath.Abs(config.DataDir)
 	if err != nil {
@@ -34,7 +34,7 @@ func NewServer(config Config, chains []types.ChainID) (*Server, error) {
 	}
 
 	// Build map of valid chains for efficient lookup
-	validChains := make(map[types.ChainID]struct{}, len(chains))
+	validChains := make(map[eth.ChainID]struct{}, len(chains))
 	for _, chain := range chains {
 		validChains[chain] = struct{}{}
 	}
@@ -45,9 +45,9 @@ func NewServer(config Config, chains []types.ChainID) (*Server, error) {
 	}, nil
 }
 
-func parsePath(path string) (types.ChainID, string, error) {
+func parsePath(path string) (eth.ChainID, string, error) {
 	var (
-		chainID   types.ChainID
+		chainID   eth.ChainID
 		fileAlias string
 	)
 

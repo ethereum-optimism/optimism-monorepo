@@ -3,98 +3,93 @@ package syncnode
 import (
 	"context"
 	"fmt"
-	"sync"
+	"sync/atomic"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum/go-ethereum/log"
+
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/locks"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
-	"github.com/ethereum/go-ethereum/log"
 )
 
-type chainsDB interface {
-	UpdateLocalSafe(types.ChainID, eth.BlockRef, eth.BlockRef) error
-}
-
-// SyncNodeController handles the sync node operations across multiple sync nodes
+// SyncNodesController manages a collection of active sync nodes.
+// Sync nodes are used to sync the supervisor,
+// and subject to the canonical chain view as followed by the supervisor.
 type SyncNodesController struct {
-	logger      log.Logger
-	controllers locks.RWMap[types.ChainID, SyncControl]
+	logger log.Logger
 
-	db chainsDB
+	id          atomic.Uint64
+	controllers locks.RWMap[eth.ChainID, *locks.RWMap[*ManagedNode, struct{}]]
+
+	eventSys event.System
+
+	emitter event.Emitter
+
+	backend backend
 
 	depSet depset.DependencySet
 }
 
-// NewSyncNodeController creates a new SyncNodeController
-func NewSyncNodesController(l log.Logger, depset depset.DependencySet, db chainsDB) *SyncNodesController {
+var _ event.AttachEmitter = (*SyncNodesController)(nil)
+
+// NewSyncNodesController creates a new SyncNodeController
+func NewSyncNodesController(l log.Logger, depset depset.DependencySet, eventSys event.System, backend backend) *SyncNodesController {
 	return &SyncNodesController{
-		logger: l,
-		depSet: depset,
-		db:     db,
+		logger:   l,
+		depSet:   depset,
+		eventSys: eventSys,
+		backend:  backend,
 	}
 }
 
-func (snc *SyncNodesController) AttachNodeController(id types.ChainID, ctrl SyncControl) error {
-	if !snc.depSet.HasChain(id) {
-		return fmt.Errorf("chain %v not in dependency set", id)
-	}
-	snc.controllers.Set(id, ctrl)
+func (snc *SyncNodesController) AttachEmitter(em event.Emitter) {
+	snc.emitter = em
+}
+
+func (snc *SyncNodesController) OnEvent(ev event.Event) bool {
+	return false
+}
+
+func (snc *SyncNodesController) Close() error {
+	snc.controllers.Range(func(chainID eth.ChainID, controllers *locks.RWMap[*ManagedNode, struct{}]) bool {
+		controllers.Range(func(node *ManagedNode, _ struct{}) bool {
+			node.Close()
+			return true
+		})
+		return true
+	})
 	return nil
 }
 
-// DeriveFromL1 derives the L2 blocks from the L1 block reference for all the chains
-// if any chain fails to derive, the first error is returned
-func (snc *SyncNodesController) DeriveFromL1(ref eth.BlockRef) error {
-	snc.logger.Debug("deriving from L1", "ref", ref)
-	returns := make(chan error, len(snc.depSet.Chains()))
-	wg := sync.WaitGroup{}
-	// for now this function just prints all the chain-ids of controlled nodes, as a placeholder
-	for _, chain := range snc.depSet.Chains() {
-		wg.Add(1)
-		go func() {
-			returns <- snc.DeriveToEnd(chain, ref)
-			wg.Done()
-		}()
+// AttachNodeController attaches a node to be managed by the supervisor.
+// If noSubscribe, the node is not actively polled/subscribed to, and requires manual ManagedNode.PullEvents calls.
+func (snc *SyncNodesController) AttachNodeController(chainID eth.ChainID, ctrl SyncControl, noSubscribe bool) (Node, error) {
+	if !snc.depSet.HasChain(chainID) {
+		return nil, fmt.Errorf("chain %v not in dependency set: %w", chainID, types.ErrUnknownChain)
 	}
-	wg.Wait()
-	// collect all errors
-	errors := []error{}
-	for i := 0; i < len(snc.depSet.Chains()); i++ {
-		err := <-returns
-		if err != nil {
-			errors = append(errors, err)
-		}
-	}
-	// log all errors, but only return the first one
-	if len(errors) > 0 {
-		snc.logger.Warn("sync nodes failed to derive from L1", "errors", errors)
-		return errors[0]
-	}
-	return nil
-}
+	// lazy init the controllers map for this chain
+	snc.controllers.Default(chainID, func() *locks.RWMap[*ManagedNode, struct{}] {
+		return &locks.RWMap[*ManagedNode, struct{}]{}
+	})
+	controllersForChain, _ := snc.controllers.Get(chainID)
+	node := NewManagedNode(snc.logger, chainID, ctrl, snc.backend, noSubscribe)
 
-// DeriveToEnd derives the L2 blocks from the L1 block reference for a single chain
-// it will continue to derive until no more blocks are derived
-func (snc *SyncNodesController) DeriveToEnd(id types.ChainID, ref eth.BlockRef) error {
-	ctrl, ok := snc.controllers.Get(id)
-	if !ok {
-		snc.logger.Warn("missing controller for chain. Not attempting derivation", "chain", id)
-		return nil // maybe return an error?
+	nodeID := snc.id.Add(1)
+	name := fmt.Sprintf("syncnode-%s-%d", chainID, nodeID)
+	snc.eventSys.Register(name, node, event.DefaultRegisterOpts())
+
+	controllersForChain.Set(node, struct{}{})
+	anchor, err := ctrl.AnchorPoint(context.Background())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get anchor point: %w", err)
 	}
-	for {
-		derived, err := ctrl.TryDeriveNext(context.Background(), ref)
-		if err != nil {
-			return err
-		}
-		// if no more blocks are derived, we are done
-		// (or something? this exact behavior is yet to be defined by the node)
-		if derived == (eth.BlockRef{}) {
-			return nil
-		}
-		// record the new L2 to the local database
-		if err := snc.db.UpdateLocalSafe(id, ref, derived); err != nil {
-			return err
-		}
-	}
+	snc.emitter.Emit(superevents.AnchorEvent{
+		ChainID: chainID,
+		Anchor:  anchor,
+	})
+	node.Start()
+	return node, nil
 }

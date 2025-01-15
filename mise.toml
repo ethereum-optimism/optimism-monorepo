@@ -40,7 +40,7 @@ anvil = "nightly-59f354c179f4e7f6d7292acb3d068815c79286d1"
 # actually be managed by mise (yet). Make sure that anything you put in here is
 # also found inside of disabled_tools or mise will try to install it.
 asterisc = "1.2.0"
-kontrol = "1.0.53"
+kontrol = "1.0.90"
 binary_signer = "1.0.4"
 
 [alias]

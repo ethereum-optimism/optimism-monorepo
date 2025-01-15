@@ -3,10 +3,11 @@ package inspect
 import (
 	"context"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/descriptors"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
-type PortMap map[string]int
+type PortMap map[string]descriptors.PortInfo
 
 type ServiceMap map[string]PortMap
 
@@ -64,7 +65,10 @@ func (e *Inspector) ExtractData(ctx context.Context) (*InspectData, error) {
 		portMap := make(PortMap)
 
 		for port, portSpec := range svcCtx.GetPublicPorts() {
-			portMap[port] = int(portSpec.GetNumber())
+			portMap[port] = descriptors.PortInfo{
+				Host: svcCtx.GetMaybePublicIPAddress(),
+				Port: int(portSpec.GetNumber()),
+			}
 		}
 
 		if len(portMap) != 0 {

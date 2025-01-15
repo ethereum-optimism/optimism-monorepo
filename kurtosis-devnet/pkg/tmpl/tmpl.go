@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"io"
 	"text/template"
+
+	sprig "github.com/go-task/slim-sprig/v3"
 )
 
 // TemplateFunc represents a function that can be used in templates
@@ -59,6 +61,7 @@ func (ctx *TemplateContext) InstantiateTemplate(reader io.Reader, writer io.Writ
 
 	// Create template with helper functions and option to error on missing fields
 	tmpl := template.New("template").
+		Funcs(sprig.TxtFuncMap()).
 		Funcs(funcMap).
 		Option("missingkey=error")
 

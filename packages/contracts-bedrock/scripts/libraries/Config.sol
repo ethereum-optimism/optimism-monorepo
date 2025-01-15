@@ -94,13 +94,6 @@ library Config {
         env_ = vm.envOr("CHAIN_ID", block.chainid);
     }
 
-    /// @notice Returns the value of the env var CONTRACT_ADDRESSES_PATH which is a JSON key/value
-    ///         pair of contract names and their addresses. Each key/value pair is passed to `save`
-    ///         which then backs the `getAddress` function.
-    function contractAddressesPath() internal view returns (string memory env_) {
-        env_ = vm.envOr("CONTRACT_ADDRESSES_PATH", string(""));
-    }
-
     /// @notice The CREATE2 salt to be used when deploying the implementations.
     function implSalt() internal view returns (string memory env_) {
         env_ = vm.envOr("IMPL_SALT", string("ethers phoenix"));

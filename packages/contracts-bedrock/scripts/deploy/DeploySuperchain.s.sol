@@ -292,6 +292,8 @@ contract DeploySuperchainOutput is BaseDeployIO {
 // default sender would be the broadcaster during test, but the broadcaster needs to be the deployer
 // since they are set to the initial proxy admin owner.
 contract DeploySuperchain is Script {
+    bytes32 internal _salt = DeployUtils.DEFAULT_SALT;
+
     // -------- Core Deployment Methods --------
 
     function run(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
@@ -342,15 +344,17 @@ contract DeploySuperchain is Script {
         // Deploy implementation contracts.
         vm.startBroadcast(msg.sender);
         ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "SuperchainConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
+                _salt: _salt
             })
         );
         IProtocolVersions protocolVersionsImpl = IProtocolVersions(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "ProtocolVersions",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
+                _salt: _salt
             })
         );
         vm.stopBroadcast();
@@ -436,10 +440,16 @@ contract DeploySuperchain is Script {
     // When interacting with the script programmatically (e.g. in a Solidity test), this must be called.
     function etchIOContracts() public returns (DeploySuperchainInput dsi_, DeploySuperchainOutput dso_) {
         (dsi_, dso_) = getIOContracts();
-        vm.etch(address(dsi_), type(DeploySuperchainInput).runtimeCode);
-        vm.etch(address(dso_), type(DeploySuperchainOutput).runtimeCode);
-        vm.allowCheatcodes(address(dsi_));
-        vm.allowCheatcodes(address(dso_));
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(dsi_),
+            _cname: "DeploySuperchainInput",
+            _artifactPath: "DeploySuperchain.s.sol:DeploySuperchainInput"
+        });
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(dso_),
+            _cname: "DeploySuperchainOutput",
+            _artifactPath: "DeploySuperchain.s.sol:DeploySuperchainOutput"
+        });
     }
 
     // This returns the addresses of the IO contracts for this script.

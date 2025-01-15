@@ -9,6 +9,8 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
+
 	"github.com/hashicorp/go-multierror"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -76,8 +78,7 @@ type OpNode struct {
 
 	beacon *sources.L1BeaconClient
 
-	supervisor       *sources.SupervisorClient
-	tmpInteropServer *interop.TemporaryInteropServer
+	interopSys interop.SubSystem
 
 	// some resources cannot be stopped directly, like the p2p gossipsub router (not our design),
 	// and depend on this ctx to be closed.
@@ -187,13 +188,13 @@ func (n *OpNode) initTracer(ctx context.Context, cfg *Config) error {
 }
 
 func (n *OpNode) initL1(ctx context.Context, cfg *Config) error {
-	l1Node, rpcCfg, err := cfg.L1.Setup(ctx, n.log, &cfg.Rollup)
+	l1RPC, l1Cfg, err := cfg.L1.Setup(ctx, n.log, &cfg.Rollup)
 	if err != nil {
 		return fmt.Errorf("failed to get L1 RPC client: %w", err)
 	}
 
 	n.l1Source, err = sources.NewL1Client(
-		client.NewInstrumentedRPC(l1Node, &n.metrics.RPCMetrics.RPCClientMetrics), n.log, n.metrics.L1SourceCache, rpcCfg)
+		client.NewInstrumentedRPC(l1RPC, &n.metrics.RPCMetrics.RPCClientMetrics), n.log, n.metrics.L1SourceCache, l1Cfg)
 	if err != nil {
 		return fmt.Errorf("failed to create L1 source: %w", err)
 	}
@@ -399,13 +400,17 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		return err
 	}
 
+	managedMode := false
 	if cfg.Rollup.InteropTime != nil {
-		cl, srv, err := cfg.InteropConfig.TemporarySetup(ctx, n.log, n.l2Source)
+		sys, err := cfg.InteropConfig.Setup(ctx, n.log, &n.cfg.Rollup, n.l1Source, n.l2Source)
 		if err != nil {
 			return fmt.Errorf("failed to setup interop: %w", err)
 		}
-		n.supervisor = cl
-		n.tmpInteropServer = srv
+		if _, ok := sys.(*managed.ManagedMode); ok {
+			managedMode = ok
+		}
+		n.interopSys = sys
+		n.eventSys.Register("interop", n.interopSys, event.DefaultRegisterOpts())
 	}
 
 	var sequencerConductor conductor.SequencerConductor = &conductor.NoOpConductor{}
@@ -430,7 +435,7 @@ func (n *OpNode) initL2(ctx context.Context, cfg *Config) error {
 		n.safeDB = safedb.Disabled
 	}
 	n.l2Driver = driver.NewDriver(n.eventSys, n.eventDrain, &cfg.Driver, &cfg.Rollup, n.l2Source, n.l1Source,
-		n.supervisor, n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA)
+		n.beacon, n, n, n.log, n.metrics, cfg.ConfigPersistence, n.safeDB, &cfg.Sync, sequencerConductor, altDA, managedMode)
 	return nil
 }
 
@@ -522,6 +527,12 @@ func (n *OpNode) initP2PSigner(ctx context.Context, cfg *Config) (err error) {
 }
 
 func (n *OpNode) Start(ctx context.Context) error {
+	if n.interopSys != nil {
+		if err := n.interopSys.Start(ctx); err != nil {
+			n.log.Error("Could not start interop sub system", "err", err)
+			return err
+		}
+	}
 	n.log.Info("Starting execution engine driver")
 	// start driving engine: sync blocks by deriving them from L1 and driving them into the engine
 	if err := n.l2Driver.Start(); err != nil {
@@ -721,12 +732,9 @@ func (n *OpNode) Stop(ctx context.Context) error {
 	}
 
 	// close the interop sub system
-	if n.supervisor != nil {
-		n.supervisor.Close()
-	}
-	if n.tmpInteropServer != nil {
-		if err := n.tmpInteropServer.Close(); err != nil {
-			result = multierror.Append(result, fmt.Errorf("failed to close interop RPC server: %w", err))
+	if n.interopSys != nil {
+		if err := n.interopSys.Stop(ctx); err != nil {
+			result = multierror.Append(result, fmt.Errorf("failed to close interop sub-system: %w", err))
 		}
 	}
 
@@ -797,10 +805,11 @@ func (n *OpNode) HTTPEndpoint() string {
 }
 
 func (n *OpNode) InteropRPC() (rpcEndpoint string, jwtSecret eth.Bytes32) {
-	if n.tmpInteropServer == nil {
+	m, ok := n.interopSys.(*managed.ManagedMode)
+	if !ok {
 		return "", [32]byte{}
 	}
-	return n.tmpInteropServer.Endpoint(), [32]byte{} // tmp server has no secret
+	return m.WSEndpoint(), m.JWTSecret()
 }
 
 func (n *OpNode) getP2PNodeIfEnabled() *p2p.NodeP2P {

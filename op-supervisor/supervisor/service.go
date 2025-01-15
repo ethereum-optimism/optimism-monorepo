@@ -5,15 +5,19 @@ import (
 	"errors"
 	"fmt"
 	"sync/atomic"
+	"time"
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
+	"github.com/ethereum-optimism/optimism/op-service/clock"
 	"github.com/ethereum-optimism/optimism/op-service/httputil"
 	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/ethereum-optimism/optimism/op-service/oppprof"
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
+	"github.com/ethereum-optimism/optimism/op-service/tasks"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/metrics"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend"
@@ -33,6 +37,8 @@ type SupervisorService struct {
 	log log.Logger
 
 	metrics metrics.Metricer
+
+	poller *tasks.Poller
 
 	backend Backend
 
@@ -72,11 +78,21 @@ func (su *SupervisorService) initFromCLIConfig(ctx context.Context, cfg *config.
 }
 
 func (su *SupervisorService) initBackend(ctx context.Context, cfg *config.Config) error {
+	// In the future we may introduce other executors.
+	// For now, we just use a synchronous executor, and poll the drain function of it.
+	ex := event.NewGlobalSynchronous(ctx)
+	su.poller = tasks.NewPoller(func() {
+		if err := ex.Drain(); err != nil {
+			su.log.Warn("Failed to execute events", "err", err)
+		}
+	}, clock.SystemClock, time.Millisecond*100)
+
 	if cfg.MockRun {
 		su.backend = backend.NewMockBackend()
 		return nil
 	}
-	be, err := backend.NewSupervisorBackend(ctx, su.log, su.metrics, cfg)
+
+	be, err := backend.NewSupervisorBackend(ctx, su.log, su.metrics, cfg, ex)
 	if err != nil {
 		return fmt.Errorf("failed to create supervisor backend: %w", err)
 	}
@@ -151,11 +167,6 @@ func (su *SupervisorService) initRPCServer(cfg *config.Config) error {
 		Service:       &frontend.QueryFrontend{Supervisor: su.backend},
 		Authenticated: false,
 	})
-	server.AddAPI(rpc.API{
-		Namespace:     "supervisor",
-		Service:       &frontend.UpdatesFrontend{Supervisor: su.backend},
-		Authenticated: false,
-	})
 
 	su.rpcServer = server
 	return nil
@@ -183,6 +194,8 @@ func (su *SupervisorService) Start(ctx context.Context) error {
 	if err := su.rpcServer.Start(); err != nil {
 		return fmt.Errorf("unable to start RPC server: %w", err)
 	}
+
+	su.poller.Start()
 
 	if err := su.backend.Start(ctx); err != nil {
 		return fmt.Errorf("unable to start backend: %w", err)
@@ -224,6 +237,10 @@ func (su *SupervisorService) Stop(ctx context.Context) error {
 		}
 	}
 	su.log.Info("JSON-RPC server stopped")
+	if su.poller != nil {
+		su.poller.Stop()
+	}
+	su.log.Info("Event processing stopped")
 	return result
 }
 

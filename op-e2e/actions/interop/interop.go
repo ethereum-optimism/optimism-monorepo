@@ -5,12 +5,10 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/params"
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
@@ -20,8 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
-	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
@@ -31,6 +28,8 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -40,10 +39,10 @@ const (
 
 // Chain holds the most common per-chain action-test data and actors
 type Chain struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 
 	RollupCfg   *rollup.Config
-	ChainCfg    *params.ChainConfig
+	L2Genesis   *core.Genesis
 	BatcherAddr common.Address
 
 	Sequencer       *helpers.L2Sequencer
@@ -104,17 +103,22 @@ func SetupInterop(t helpers.Testing) *InteropSetup {
 func (is *InteropSetup) CreateActors() *InteropActors {
 	l1Miner := helpers.NewL1Miner(is.T, is.Log.New("role", "l1Miner"), is.Out.L1.Genesis)
 	supervisorAPI := NewSupervisor(is.T, is.Log, is.DepSet)
+	supervisorAPI.backend.AttachL1Source(l1Miner.L1ClientSimple(is.T))
 	require.NoError(is.T, supervisorAPI.Start(is.T.Ctx()))
 	is.T.Cleanup(func() {
 		require.NoError(is.T, supervisorAPI.Stop(context.Background()))
 	})
-	chainA := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900200"], supervisorAPI)
-	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"], supervisorAPI)
+	chainA := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900200"])
+	chainB := createL2Services(is.T, is.Log, l1Miner, is.Keys, is.Out.L2s["900201"])
 	// Hook up L2 RPCs to supervisor, to fetch event data from
 	srcA := chainA.Sequencer.InteropSyncNode(is.T)
 	srcB := chainB.Sequencer.InteropSyncNode(is.T)
-	require.NoError(is.T, supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcA))
-	require.NoError(is.T, supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcB))
+	nodeA, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcA, true)
+	require.NoError(is.T, err)
+	nodeB, err := supervisorAPI.backend.AttachSyncNode(is.T.Ctx(), srcB, true)
+	require.NoError(is.T, err)
+	chainA.Sequencer.InteropControl = nodeA
+	chainB.Sequencer.InteropControl = nodeB
 	return &InteropActors{
 		L1Miner:    l1Miner,
 		Supervisor: supervisorAPI,
@@ -125,34 +129,29 @@ func (is *InteropSetup) CreateActors() *InteropActors {
 
 // SupervisorActor represents a supervisor, instrumented to run synchronously for action-test purposes.
 type SupervisorActor struct {
+	exec    *event.GlobalSyncExec
 	backend *backend.SupervisorBackend
 	frontend.QueryFrontend
 	frontend.AdminFrontend
-	frontend.UpdatesFrontend
 }
 
-func (sa *SupervisorActor) SyncEvents(t helpers.Testing, chainID types.ChainID) {
-	require.NoError(t, sa.backend.SyncEvents(chainID))
+func (sa *SupervisorActor) ProcessFull(t helpers.Testing) {
+	require.NoError(t, sa.exec.Drain(), "process all supervisor events")
 }
 
-func (sa *SupervisorActor) SyncCrossUnsafe(t helpers.Testing, chainID types.ChainID) {
-	require.NoError(t, sa.backend.SyncCrossUnsafe(chainID))
+func (sa *SupervisorActor) SignalLatestL1(t helpers.Testing) {
+	require.NoError(t, sa.backend.PullLatestL1())
 }
 
-func (sa *SupervisorActor) SyncCrossSafe(t helpers.Testing, chainID types.ChainID) {
-	require.NoError(t, sa.backend.SyncCrossSafe(chainID))
-}
-
-func (sa *SupervisorActor) SyncFinalizedL1(t helpers.Testing, ref eth.BlockRef) {
-	sa.backend.SyncFinalizedL1(ref)
-	require.Equal(t, ref, sa.backend.FinalizedL1())
+func (sa *SupervisorActor) SignalFinalizedL1(t helpers.Testing) {
+	require.NoError(t, sa.backend.PullFinalizedL1())
 }
 
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.
 func worldToDepSet(t helpers.Testing, worldOutput *interopgen.WorldOutput) *depset.StaticConfigDependencySet {
-	depSetCfg := make(map[types.ChainID]*depset.StaticConfigDependency)
+	depSetCfg := make(map[eth.ChainID]*depset.StaticConfigDependency)
 	for _, out := range worldOutput.L2s {
-		depSetCfg[types.ChainIDFromBig(out.Genesis.Config.ChainID)] = &depset.StaticConfigDependency{
+		depSetCfg[eth.ChainIDFromBig(out.Genesis.Config.ChainID)] = &depset.StaticConfigDependency{
 			ChainIndex:     types.ChainIndex(out.Genesis.Config.ChainID.Uint64()),
 			ActivationTime: 0,
 			HistoryMinTime: 0,
@@ -174,18 +173,17 @@ func NewSupervisor(t helpers.Testing, logger log.Logger, depSet depset.Dependenc
 		Datadir:               supervisorDataDir,
 		SyncSources:           &syncnode.CLISyncNodes{}, // sources are added dynamically afterwards
 	}
-	b, err := backend.NewSupervisorBackend(t.Ctx(),
-		logger.New("role", "supervisor"), metrics.NoopMetrics, svCfg)
+	evExec := event.NewGlobalSynchronous(t.Ctx())
+	b, err := backend.NewSupervisorBackend(t.Ctx(), logger, metrics.NoopMetrics, svCfg, evExec)
 	require.NoError(t, err)
+	b.SetConfDepthL1(0)
 	return &SupervisorActor{
+		exec:    evExec,
 		backend: b,
 		QueryFrontend: frontend.QueryFrontend{
 			Supervisor: b,
 		},
 		AdminFrontend: frontend.AdminFrontend{
-			Supervisor: b,
-		},
-		UpdatesFrontend: frontend.UpdatesFrontend{
 			Supervisor: b,
 		},
 	}
@@ -198,7 +196,6 @@ func createL2Services(
 	l1Miner *helpers.L1Miner,
 	keys devkeys.Keys,
 	output *interopgen.L2Output,
-	interopBackend interop.InteropBackend,
 ) *Chain {
 	logger = logger.New("chain", output.Genesis.Config.ChainID)
 
@@ -215,7 +212,7 @@ func createL2Services(
 
 	seq := helpers.NewL2Sequencer(t, logger.New("role", "sequencer"), l1F,
 		l1Miner.BlobStore(), altda.Disabled, seqCl, output.RollupCfg,
-		0, interopBackend)
+		0)
 
 	batcherKey, err := keys.Secret(devkeys.ChainOperatorKey{
 		ChainID: output.Genesis.Config.ChainID,
@@ -235,9 +232,9 @@ func createL2Services(
 		eng.EthClient(), eng.EngineClient(t, output.RollupCfg))
 
 	return &Chain{
-		ChainID:         types.ChainIDFromBig(output.Genesis.Config.ChainID),
+		ChainID:         eth.ChainIDFromBig(output.Genesis.Config.ChainID),
 		RollupCfg:       output.RollupCfg,
-		ChainCfg:        output.Genesis.Config,
+		L2Genesis:       output.Genesis,
 		BatcherAddr:     crypto.PubkeyToAddress(batcherKey.PublicKey),
 		Sequencer:       seq,
 		SequencerEngine: eng,

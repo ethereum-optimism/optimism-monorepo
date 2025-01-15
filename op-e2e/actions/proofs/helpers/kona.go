@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/stretchr/testify/require"
 )
@@ -29,7 +30,7 @@ func IsKonaConfigured() bool {
 func RunKonaNative(
 	t helpers.Testing,
 	workDir string,
-	env *L2FaultProofEnv,
+	rollupCfg *rollup.Config,
 	l1Rpc string,
 	l1BeaconRpc string,
 	l2Rpc string,
@@ -37,7 +38,7 @@ func RunKonaNative(
 ) error {
 	// Write rollup config to tempdir.
 	rollupConfigPath := filepath.Join(workDir, "rollup.json")
-	ser, err := json.Marshal(env.Sd.RollupCfg)
+	ser, err := json.Marshal(rollupCfg)
 	require.NoError(t, err)
 	require.NoError(t, os.WriteFile(rollupConfigPath, ser, fs.ModePerm))
 
