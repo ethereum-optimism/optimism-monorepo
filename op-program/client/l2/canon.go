@@ -5,23 +5,23 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 )
 
+type BlockByHashFn func(hash common.Hash) *types.Block
+
 type CanonicalBlockHeaderOracle struct {
 	head                 *types.Header
 	hashByNum            map[uint64]common.Hash
 	earliestIndexedBlock *types.Header
-	oracle               Oracle
-	chainID              uint64
+	blockByHashFn        BlockByHashFn
 }
 
-func NewCanonicalBlockHeaderOracle(head *types.Header, oracle Oracle, chainID uint64) *CanonicalBlockHeaderOracle {
+func NewCanonicalBlockHeaderOracle(head *types.Header, blockByHashFn BlockByHashFn) *CanonicalBlockHeaderOracle {
 	return &CanonicalBlockHeaderOracle{
 		head: head,
 		hashByNum: map[uint64]common.Hash{
 			head.Number.Uint64(): head.Hash(),
 		},
 		earliestIndexedBlock: head,
-		oracle:               oracle,
-		chainID:              chainID,
+		blockByHashFn:        blockByHashFn,
 	}
 }
 
@@ -35,15 +35,15 @@ func (o *CanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Header {
 	if o.earliestIndexedBlock.Number.Uint64() > n {
 		hash, ok := o.hashByNum[n]
 		if ok {
-			return o.oracle.BlockByHash(hash, o.chainID).Header()
+			return o.blockByHashFn(hash).Header()
 		}
 		h = o.head
 	} else {
-		h = o.oracle.BlockByHash(o.hashByNum[n], o.chainID).Header()
+		h = o.blockByHashFn(o.hashByNum[n]).Header()
 	}
 
 	for h.Number.Uint64() > n {
-		h = o.oracle.BlockByHash(h.ParentHash, o.chainID).Header()
+		h = o.blockByHashFn(h.ParentHash).Header()
 		o.hashByNum[h.Number.Uint64()] = h.Hash()
 	}
 	o.earliestIndexedBlock = h
@@ -71,7 +71,7 @@ func (o *CanonicalBlockHeaderOracle) SetCanonical(head *types.Header) common.Has
 			break
 		}
 		o.hashByNum[h.Number.Uint64()] = newHash
-		h = o.oracle.BlockByHash(h.ParentHash, o.chainID).Header()
+		h = o.blockByHashFn(h.ParentHash).Header()
 	}
 	o.earliestIndexedBlock = h
 	return head.Hash()

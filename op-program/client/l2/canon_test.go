@@ -14,7 +14,10 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 	chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 	head := blocks[headBlockNumber].Header()
 
-	canon := NewCanonicalBlockHeaderOracle(head, oracle, chainCfg.ChainID.Uint64())
+	blockByHash := func(hash common.Hash) *types.Block {
+		return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+	}
+	canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 	require.Nil(t, canon.GetHeaderByNumber(4))
 
 	oracle.Blocks[blocks[3].Hash()] = blocks[3]
@@ -48,7 +51,10 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 		head := blocks[headBlockNumber].Header()
 
-		canon := NewCanonicalBlockHeaderOracle(head, oracle, chainCfg.ChainID.Uint64())
+		blockByHash := func(hash common.Hash) *types.Block {
+			return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+		}
+		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 		oracle.Blocks[blocks[2].Hash()] = blocks[2]
 		oracle.Blocks[blocks[1].Hash()] = blocks[1]
 		oracle.Blocks[blocks[0].Hash()] = blocks[0]
@@ -78,7 +84,10 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 		head := blocks[headBlockNumber].Header()
 
-		canon := NewCanonicalBlockHeaderOracle(head, oracle, chainCfg.ChainID.Uint64())
+		blockByHash := func(hash common.Hash) *types.Block {
+			return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+		}
+		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 		oracle.Blocks[blocks[2].Hash()] = blocks[2]
 		oracle.Blocks[blocks[1].Hash()] = blocks[1]
 		oracle.Blocks[blocks[0].Hash()] = blocks[0]

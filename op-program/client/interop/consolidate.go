@@ -136,7 +136,10 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 			return nil, fmt.Errorf("unexpected output type: %T", output)
 		}
 		head := oracle.BlockByHash(outputV0.BlockHash, chain.ChainID)
-		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), oracle, chain.ChainID)
+		blockByHash := func(hash common.Hash) *ethtypes.Block {
+			return oracle.BlockByHash(hash, chain.ChainID)
+		}
+		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
 	}
 	depset, err := depset.NewStaticConfigDependencySet(deps)
 	if err != nil {

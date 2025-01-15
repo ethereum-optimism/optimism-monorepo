@@ -51,7 +51,8 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	}
 	head := oracle.BlockByHash(outputV0.BlockHash, chainID)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
-	return &OracleBackedL2Chain{
+
+	chain := &OracleBackedL2Chain{
 		log:      logger,
 		oracle:   oracle,
 		chainCfg: chainCfg,
@@ -59,7 +60,6 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 
 		// Treat the agreed starting head as finalized - nothing before it can be disputed
 		head:       head.Header(),
-		canon:      NewCanonicalBlockHeaderOracle(head.Header(), oracle, chainID),
 		safe:       head.Header(),
 		finalized:  head.Header(),
 		oracleHead: head.Header(),
@@ -68,7 +68,13 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 		vmCfg: vm.Config{
 			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
 		},
-	}, nil
+	}
+	// Use the chain's GetBlockByHash to ensure newly built blocks are visible to the canonical chain
+	blockByHash := func(hash common.Hash) *types.Block {
+		return chain.GetBlockByHash(hash)
+	}
+	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
+	return chain, nil
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
