@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"context"
+	"encoding"
 	"encoding/json"
 	"fmt"
 	"math/big"
@@ -139,9 +140,10 @@ type GenericTx interface {
 	json.Unmarshaler
 
 	// MarshalBinary as EIP-2718 opaque tx (including version byte).
-	MarshalBinary() ([]byte, error)
+	encoding.BinaryMarshaler
+
 	// UnmarshalBinary as EIP-2718 opaque tx (including version byte).
-	UnmarshalBinary(b []byte) error
+	encoding.BinaryUnmarshaler
 }
 
 type OpaqueTransaction struct {
@@ -149,8 +151,24 @@ type OpaqueTransaction struct {
 	hash common.Hash
 }
 
+// Compile-time check that OpaqueTransaction implements GenericTx.
+var _ GenericTx = (*OpaqueTransaction)(nil)
+
 func (o *OpaqueTransaction) Transaction() (*types.Transaction, error) {
-	panic("not implemented")
+	switch o.TxType() {
+	case types.LegacyTxType, types.AccessListTxType,
+		types.DynamicFeeTxType, types.BlobTxType,
+		types.DepositTxType:
+		var tx types.Transaction
+		// Note: this unmarshal may still return ErrTxTypeNotSupported
+		// if the linked-in geth library doesn't support the expected tx types.
+		if err := tx.UnmarshalBinary(o.raw); err != nil {
+			return nil, err
+		}
+		return &tx, nil
+	default:
+		return nil, types.ErrTxTypeNotSupported
+	}
 }
 
 // TxType returns the EIP-2718 TransactionType. https://eips.ethereum.org/EIPS/eip-2718
@@ -192,6 +210,3 @@ func (o *OpaqueTransaction) UnmarshalBinary(b []byte) error {
 	o.TxType()
 	return nil
 }
-
-// Compile-time check that OpqueTransaction implements GenericTx.
-var _ GenericTx = (*OpaqueTransaction)(nil)
