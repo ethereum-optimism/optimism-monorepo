@@ -32,7 +32,7 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona}
+	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona, types.TraceTypeInteropCannon}
 	// Required Flags
 	L1EthRpcFlag = &cli.StringFlag{
 		Name:    "l1-eth-rpc",
@@ -361,6 +361,7 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			if err := CheckAsteriscKonaFlags(ctx); err != nil {
 				return err
 			}
+		case types.TraceTypeInteropCannon:
 		case types.TraceTypeAlphabet, types.TraceTypeFast:
 		default:
 			return fmt.Errorf("invalid trace type %v. must be one of %v", traceType, types.TraceTypes)

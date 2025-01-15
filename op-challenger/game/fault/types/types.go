@@ -24,13 +24,14 @@ var (
 type GameType uint32
 
 const (
-	CannonGameType       GameType = 0
-	PermissionedGameType GameType = 1
-	AsteriscGameType     GameType = 2
-	AsteriscKonaGameType GameType = 3
-	FastGameType         GameType = 254
-	AlphabetGameType     GameType = 255
-	UnknownGameType      GameType = math.MaxUint32
+	CannonGameType        GameType = 0
+	PermissionedGameType  GameType = 1
+	AsteriscGameType      GameType = 2
+	AsteriscKonaGameType  GameType = 3
+	InteropCannonGameType GameType = 4
+	FastGameType          GameType = 254
+	AlphabetGameType      GameType = 255
+	UnknownGameType       GameType = math.MaxUint32
 )
 
 func (t GameType) MarshalText() ([]byte, error) {
@@ -59,15 +60,16 @@ func (t GameType) String() string {
 type TraceType string
 
 const (
-	TraceTypeAlphabet     TraceType = "alphabet"
-	TraceTypeFast         TraceType = "fast"
-	TraceTypeCannon       TraceType = "cannon"
-	TraceTypeAsterisc     TraceType = "asterisc"
-	TraceTypeAsteriscKona TraceType = "asterisc-kona"
-	TraceTypePermissioned TraceType = "permissioned"
+	TraceTypeAlphabet      TraceType = "alphabet"
+	TraceTypeFast          TraceType = "fast"
+	TraceTypeCannon        TraceType = "cannon"
+	TraceTypeAsterisc      TraceType = "asterisc"
+	TraceTypeAsteriscKona  TraceType = "asterisc-kona"
+	TraceTypePermissioned  TraceType = "permissioned"
+	TraceTypeInteropCannon TraceType = "interop-cannon"
 )
 
-var TraceTypes = []TraceType{TraceTypeAlphabet, TraceTypeCannon, TraceTypePermissioned, TraceTypeAsterisc, TraceTypeAsteriscKona, TraceTypeFast}
+var TraceTypes = []TraceType{TraceTypeAlphabet, TraceTypeCannon, TraceTypePermissioned, TraceTypeAsterisc, TraceTypeAsteriscKona, TraceTypeFast, TraceTypeInteropCannon}
 
 func (t TraceType) String() string {
 	return string(t)
@@ -110,6 +112,8 @@ func (t TraceType) GameType() GameType {
 		return FastGameType
 	case TraceTypeAlphabet:
 		return AlphabetGameType
+	case TraceTypeInteropCannon:
+		return InteropCannonGameType
 	default:
 		return UnknownGameType
 	}
