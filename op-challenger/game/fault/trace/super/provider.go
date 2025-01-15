@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"math"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
@@ -55,17 +54,12 @@ func NewSuperTraceProvider(logger log.Logger, prestateProvider types.PrestatePro
 }
 
 func (s *SuperTraceProvider) Get(ctx context.Context, pos types.Position) (common.Hash, error) {
-	// Find the cross safe timestamp at L1 head
-	crossSafeHead := uint64(math.MaxUint64) // TODO: Load this from supervisor
 	// Find the timestamp and step at position
 	timestamp, step, err := s.ComputeStep(pos)
 	if err != nil {
 		return common.Hash{}, err
 	}
 	s.logger.Info("Getting claim", "pos", pos.ToGIndex(), "timestamp", timestamp, "step", step)
-	if timestamp > crossSafeHead {
-		return InvalidTransitionHash, nil
-	}
 	if step == 0 {
 		root, err := s.rootProvider.SuperRootAtTimestamp(timestamp)
 		if err != nil {
