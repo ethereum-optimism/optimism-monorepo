@@ -5,5 +5,5 @@ import (
 )
 
 func main() {
-	client.Main(false)
+	client.Main(true)
 }

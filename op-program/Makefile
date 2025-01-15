@@ -26,7 +26,7 @@ op-program-host:
 op-program-client:
 	env GO111MODULE=on GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client ./client/cmd/main.go
 
-op-program-client-mips: op-program-client-mips32 op-program-client-mips64
+op-program-client-mips: op-program-client-mips32 op-program-client-mips64 op-program-client-mips64-interop
 
 op-program-client-mips32:
 	env GO111MODULE=on GOOS=linux GOARCH=mips GOMIPS=softfloat go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client.elf ./client/cmd/main.go
@@ -36,6 +36,11 @@ op-program-client-mips32:
 op-program-client-mips64:
 	env GO111MODULE=on GOOS=linux GOARCH=mips64 GOMIPS64=softfloat go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client64.elf ./client/cmd/main.go
 	# verify output with: readelf -h bin/op-program-client64.elf
+	# result is mips64, big endian, R3000
+
+op-program-client-mips64-interop:
+	env GO111MODULE=on GOOS=linux GOARCH=mips64 GOMIPS64=softfloat go build -v -ldflags "$(PC_LDFLAGSSTRING)" -o ./bin/op-program-client-interop.elf ./client/interopcmd/main.go
+	# verify output with: readelf -h bin/op-program-client-interop.elf
 	# result is mips64, big endian, R3000
 
 op-program-client-riscv:
@@ -49,6 +54,8 @@ reproducible-prestate:
 	@cat ./bin/prestate-proof-mt.json | jq -r .pre
 	@echo "Cannon64 Absolute prestate hash: "
 	@cat ./bin/prestate-proof-mt64.json | jq -r .pre
+	@echo "CannonInterop Absolute prestate hash: "
+	@cat ./bin/prestate-proof-interop.json | jq -r .pre
 .PHONY: reproducible-prestate
 
 verify-reproducibility:
