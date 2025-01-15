@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -17,8 +18,7 @@ type RawJsonTransaction struct {
 	raw    json.RawMessage
 }
 
-var _ json.Marshaler = (*RawJsonTransaction)(nil)
-var _ json.Unmarshaler = (*RawJsonTransaction)(nil)
+var _ eth.GenericTx = (*RawJsonTransaction)(nil)
 
 // Transaction tries to interpret into a typed tx.
 // This will return types.ErrTxTypeNotSupported if the transaction-type is not supported.

@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -131,11 +132,11 @@ type GenericTx interface {
 
 	// MarshalJSON into RPC tx definition.
 	// Block metadata may or may not be included.
-	MarshalJSON() ([]byte, error)
+	json.Marshaler
 
 	// UnmarshalJSON into RPC tx definition.
 	// Block metadata is ignored.
-	UnmarshalJSON([]byte) error
+	json.Unmarshaler
 
 	// MarshalBinary as EIP-2718 opaque tx (including version byte).
 	MarshalBinary() ([]byte, error)
