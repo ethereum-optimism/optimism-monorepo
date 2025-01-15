@@ -32,7 +32,7 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona, types.TraceTypeInteropCannon}
+	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona, types.TraceTypeSuperCannon}
 	// Required Flags
 	L1EthRpcFlag = &cli.StringFlag{
 		Name:    "l1-eth-rpc",
@@ -308,7 +308,7 @@ func CheckCannonBaseFlags(ctx *cli.Context) error {
 	return nil
 }
 
-func CheckInteropCannonFlags(ctx *cli.Context) error {
+func CheckSuperCannonFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(SupervisorRpcFlag.Name) {
 		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
 	}
@@ -397,8 +397,8 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			if err := CheckAsteriscKonaFlags(ctx); err != nil {
 				return err
 			}
-		case types.TraceTypeInteropCannon:
-			if err := CheckInteropCannonFlags(ctx); err != nil {
+		case types.TraceTypeSuperCannon:
+			if err := CheckSuperCannonFlags(ctx); err != nil {
 				return err
 			}
 		case types.TraceTypeAlphabet, types.TraceTypeFast:

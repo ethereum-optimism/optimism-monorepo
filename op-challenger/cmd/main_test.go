@@ -89,13 +89,13 @@ func TestL1Beacon(t *testing.T) {
 }
 
 func TestOpSupervisor(t *testing.T) {
-	t.Run("RequiredForInteropCannon", func(t *testing.T) {
-		verifyArgsInvalid(t, "flag supervisor-rpc is required", addRequiredArgsExcept(types.TraceTypeInteropCannon, "--supervisor-rpc"))
+	t.Run("RequiredForSuperCannon", func(t *testing.T) {
+		verifyArgsInvalid(t, "flag supervisor-rpc is required", addRequiredArgsExcept(types.TraceTypeSuperCannon, "--supervisor-rpc"))
 	})
 
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
-		if traceType == types.TraceTypeInteropCannon {
+		if traceType == types.TraceTypeSuperCannon {
 			continue
 		}
 
@@ -106,7 +106,7 @@ func TestOpSupervisor(t *testing.T) {
 
 	t.Run("Valid", func(t *testing.T) {
 		url := "http://localhost/supervisor"
-		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeInteropCannon, "--supervisor-rpc", "--supervisor-rpc", url))
+		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeSuperCannon, "--supervisor-rpc", "--supervisor-rpc", url))
 		require.Equal(t, url, cfg.SupervisorRPC)
 	})
 }
@@ -596,7 +596,7 @@ func TestAlphabetRequiredArgs(t *testing.T) {
 }
 
 func TestCannonRequiredArgs(t *testing.T) {
-	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeInteropCannon} {
+	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon} {
 		traceType := traceType
 		t.Run(fmt.Sprintf("TestCannonBin-%v", traceType), func(t *testing.T) {
 			t.Run("NotRequiredForAlphabetTrace", func(t *testing.T) {
@@ -831,7 +831,7 @@ func TestRollupRpc(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
 
-		if traceType == types.TraceTypeInteropCannon {
+		if traceType == types.TraceTypeSuperCannon {
 			t.Run(fmt.Sprintf("NotRequiredFor-%v", traceType), func(t *testing.T) {
 				configForArgs(t, addRequiredArgsExcept(traceType, "--rollup-rpc"))
 			})
@@ -1016,15 +1016,15 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 		addRequiredAsteriscArgs(args)
 	case types.TraceTypeAsteriscKona:
 		addRequiredAsteriscKonaArgs(args)
-	case types.TraceTypeInteropCannon:
-		addRequiredInteropCannonArgs(args)
+	case types.TraceTypeSuperCannon:
+		addRequiredSuperCannonArgs(args)
 	case types.TraceTypeAlphabet, types.TraceTypeFast:
 		addRequiredOutputRootArgs(args)
 	}
 	return args
 }
 
-func addRequiredInteropCannonArgs(args map[string]string) {
+func addRequiredSuperCannonArgs(args map[string]string) {
 	addRequiredCannonBaseArgs(args)
 	args["--supervisor-rpc"] = supervisorRpc
 }
