@@ -63,10 +63,22 @@ func (rs *RPCSyncNode) FetchReceipts(ctx context.Context, blockHash common.Hash)
 	return out, nil
 }
 
-func (rs *RPCSyncNode) ChainID(ctx context.Context) (types.ChainID, error) {
-	var chainID types.ChainID
+func (rs *RPCSyncNode) ChainID(ctx context.Context) (eth.ChainID, error) {
+	var chainID eth.ChainID
 	err := rs.cl.CallContext(ctx, &chainID, "interop_chainID")
 	return chainID, err
+}
+
+func (rs *RPCSyncNode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	var out *eth.OutputV0
+	err := rs.cl.CallContext(ctx, &out, "interop_outputV0AtTimestamp", timestamp)
+	return out, err
+}
+
+func (rs *RPCSyncNode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	var out *eth.OutputV0
+	err := rs.cl.CallContext(ctx, &out, "interop_pendingOutputV0AtTimestamp", timestamp)
+	return out, err
 }
 
 func (rs *RPCSyncNode) String() string {

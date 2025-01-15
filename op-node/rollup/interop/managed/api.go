@@ -51,8 +51,16 @@ func (ib *InteropAPI) BlockRefByNumber(ctx context.Context, num uint64) (eth.Blo
 	return ib.backend.BlockRefByNumber(ctx, num)
 }
 
-func (ib *InteropAPI) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
+func (ib *InteropAPI) ChainID(ctx context.Context) (eth.ChainID, error) {
 	return ib.backend.ChainID(ctx)
+}
+
+func (ib *InteropAPI) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	return ib.backend.OutputV0AtTimestamp(ctx, timestamp)
+}
+
+func (ib *InteropAPI) PendingOutputV0ATTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+	return ib.backend.PendingOutputV0AtTimestamp(ctx, timestamp)
 }
 
 func (ib *InteropAPI) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {

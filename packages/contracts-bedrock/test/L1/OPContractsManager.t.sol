@@ -98,7 +98,7 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),
             l2ChainId: _doi.l2ChainId(),
-            startingAnchorRoots: _doi.startingAnchorRoots(),
+            startingAnchorRoot: _doi.startingAnchorRoot(),
             saltMixer: _doi.saltMixer(),
             gasLimit: _doi.gasLimit(),
             disputeGameType: _doi.disputeGameType(),
@@ -184,7 +184,6 @@ contract OPContractsManager_AddGameType_Test is Test {
         (blueprints.proxyAdmin,) = Blueprint.create(vm.getCode("ProxyAdmin"), salt);
         (blueprints.l1ChugSplashProxy,) = Blueprint.create(vm.getCode("L1ChugSplashProxy"), salt);
         (blueprints.resolvedDelegateProxy,) = Blueprint.create(vm.getCode("ResolvedDelegateProxy"), salt);
-        (blueprints.anchorStateRegistry,) = Blueprint.create(vm.getCode("AnchorStateRegistry"), salt);
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) =
             Blueprint.create(vm.getCode("PermissionedDisputeGame"), salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) =
@@ -200,6 +199,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             l1CrossDomainMessengerImpl: address(new L1CrossDomainMessenger()),
             l1StandardBridgeImpl: address(new L1StandardBridge()),
             disputeGameFactoryImpl: address(new DisputeGameFactory()),
+            anchorStateRegistryImpl: address(new AnchorStateRegistry()),
             delayedWETHImpl: address(new DelayedWETH(3)),
             mipsImpl: address(new MIPS(oracle))
         });
@@ -208,12 +208,6 @@ contract OPContractsManager_AddGameType_Test is Test {
         vm.etch(address(protocolVersionsProxy), hex"01");
 
         opcm = new OPContractsManager(superchainConfigProxy, protocolVersionsProxy, "dev", blueprints, impls);
-
-        AnchorStateRegistry.StartingAnchorRoot[] memory roots = new AnchorStateRegistry.StartingAnchorRoot[](1);
-        roots[0] = AnchorStateRegistry.StartingAnchorRoot({
-            outputRoot: OutputRoot({ root: Hash.wrap(hex"dead"), l2BlockNumber: 0 }),
-            gameType: GameType.wrap(1)
-        });
 
         chainDeployOutput = opcm.deploy(
             OPContractsManager.DeployInput({
@@ -227,7 +221,7 @@ contract OPContractsManager_AddGameType_Test is Test {
                 }),
                 basefeeScalar: 1,
                 blobBasefeeScalar: 1,
-                startingAnchorRoots: abi.encode(roots),
+                startingAnchorRoot: abi.encode(OutputRoot({ root: Hash.wrap(hex"dead"), l2BlockNumber: 0 })),
                 l2ChainId: 100,
                 saltMixer: "hello",
                 gasLimit: 30_000_000,

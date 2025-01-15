@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"context"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
@@ -99,7 +100,9 @@ func RunFaultProofProgram(t helpers.Testing, logger log.Logger, l1 *helpers.L1Mi
 			executor := host.MakeProgramExecutor(logger, programCfg)
 			return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, fixtureInputs.L2ChainID, sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 		})
-		err = hostcommon.FaultProofProgram(t.Ctx(), logger, programCfg, withInProcessPrefetcher)
+		ctx, cancel := context.WithTimeout(t.Ctx(), 2*time.Minute)
+		defer cancel()
+		err = hostcommon.FaultProofProgram(ctx, logger, programCfg, withInProcessPrefetcher)
 		checkResult(t, err)
 	}
 }

@@ -25,6 +25,7 @@ func NewNativeKonaExecutor() *KonaExecutor {
 func (s *KonaExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
 	args := []string{
 		cfg.Server,
+		"single",
 		"--l1-node-address", cfg.L1,
 		"--l1-beacon-address", cfg.L1Beacon,
 		"--l2-node-address", cfg.L2,

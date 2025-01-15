@@ -31,6 +31,7 @@ func TestKonaFillHostCommand(t *testing.T) {
 	args, err := vmConfig.OracleCommand(cfg, dir, inputs)
 	require.NoError(t, err)
 
+	require.True(t, slices.Contains(args, "single"))
 	require.True(t, slices.Contains(args, "--server"))
 	require.True(t, slices.Contains(args, "--l1-node-address"))
 	require.True(t, slices.Contains(args, "--l1-beacon-address"))

@@ -58,7 +58,7 @@ func TestRollupConfig(t *testing.T) {
 		config := validConfig()
 		config.Rollups = nil
 		err := config.Check()
-		require.ErrorIs(t, err, ErrMissingRollupConfig)
+		require.ErrorIs(t, err, ErrNoL2Chains)
 	})
 
 	t.Run("Invalid", func(t *testing.T) {
@@ -66,6 +66,12 @@ func TestRollupConfig(t *testing.T) {
 		config.Rollups = []*rollup.Config{{}}
 		err := config.Check()
 		require.ErrorIs(t, err, rollup.ErrBlockTimeZero)
+	})
+
+	t.Run("DisallowDuplicates", func(t *testing.T) {
+		cfg := validConfig()
+		cfg.Rollups = append(cfg.Rollups, validRollupConfig)
+		require.ErrorIs(t, cfg.Check(), ErrDuplicateRollup)
 	})
 }
 
@@ -109,6 +115,26 @@ func TestL2GenesisRequired(t *testing.T) {
 	config.L2ChainConfigs = nil
 	err := config.Check()
 	require.ErrorIs(t, err, ErrMissingL2Genesis)
+}
+
+func TestL2Genesis_ExtraGenesisProvided(t *testing.T) {
+	config := validConfig()
+	config.L2ChainConfigs = append(config.L2ChainConfigs, &params.ChainConfig{ChainID: big.NewInt(422142)})
+	require.ErrorIs(t, config.Check(), ErrNoRollupForGenesis)
+}
+
+func TestL2Genesis_GenesisMissingForChain(t *testing.T) {
+	config := validConfig()
+	secondConfig := *chaincfg.OPSepolia()
+	secondConfig.L2ChainID = big.NewInt(422142)
+	config.Rollups = append(config.Rollups, &secondConfig)
+	require.ErrorIs(t, config.Check(), ErrNoGenesisForRollup)
+}
+
+func TestL2Genesis_Duplicate(t *testing.T) {
+	config := validConfig()
+	config.L2ChainConfigs = append(config.L2ChainConfigs, validL2Genesis)
+	require.ErrorIs(t, config.Check(), ErrDuplicateGenesis)
 }
 
 func TestFetchingArgConsistency(t *testing.T) {

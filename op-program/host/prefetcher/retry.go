@@ -152,6 +152,17 @@ func (s *RetryingL2Source) OutputByRoot(ctx context.Context, blockRoot common.Ha
 	})
 }
 
+func (s *RetryingL2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	return retry.Do(ctx, maxAttempts, s.strategy, func() (eth.Output, error) {
+		o, err := s.source.OutputByNumber(ctx, blockNum)
+		if err != nil {
+			s.logger.Warn("Failed to fetch l2 output", "block", blockNum, "err", err)
+			return o, err
+		}
+		return o, nil
+	})
+}
+
 func NewRetryingL2Source(logger log.Logger, source hosttypes.L2Source) *RetryingL2Source {
 	return &RetryingL2Source{
 		logger:   logger,

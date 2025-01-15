@@ -2,8 +2,11 @@ package eth
 
 import (
 	"encoding/binary"
+	"encoding/json"
 	"errors"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
@@ -94,4 +97,73 @@ func unmarshalSuperRootV1(data []byte) (*SuperV1, error) {
 		output.Chains = append(output.Chains, chainOutput)
 	}
 	return &output, nil
+}
+
+type ChainRootInfo struct {
+	ChainID ChainID `json:"chainID"`
+	// Canonical is the output root of the latest canonical block at a particular Timestamp.
+	Canonical Bytes32 `json:"canonical"`
+	// Pending is the output root preimage for the latest block at a particular Timestamp prior to validation of
+	// executing messages. If the original block was valid, this will be the preimage of the
+	// output root from the Canonical array. If it was invalid, it will be the output root preimage from the
+	// Optimistic Block Deposited Transaction added to the deposit-only block.
+	Pending []byte `json:"pending"`
+}
+
+type chainRootInfoMarshalling struct {
+	ChainID   ChainID       `json:"chainID"`
+	Canonical common.Hash   `json:"canonical"`
+	Pending   hexutil.Bytes `json:"pending"`
+}
+
+func (i ChainRootInfo) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&chainRootInfoMarshalling{
+		ChainID:   i.ChainID,
+		Canonical: common.Hash(i.Canonical),
+		Pending:   i.Pending,
+	})
+}
+
+func (i *ChainRootInfo) UnmarshalJSON(input []byte) error {
+	var dec chainRootInfoMarshalling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	i.ChainID = dec.ChainID
+	i.Canonical = Bytes32(dec.Canonical)
+	i.Pending = dec.Pending
+	return nil
+}
+
+type SuperRootResponse struct {
+	Timestamp uint64  `json:"timestamp"`
+	SuperRoot Bytes32 `json:"superRoot"`
+	// Chains is the list of ChainRootInfo for each chain in the dependency set.
+	// It represents the state of the chain at or before the Timestamp.
+	Chains []ChainRootInfo `json:"chains"`
+}
+
+type superRootResponseMarshalling struct {
+	Timestamp hexutil.Uint64  `json:"timestamp"`
+	SuperRoot common.Hash     `json:"superRoot"`
+	Chains    []ChainRootInfo `json:"chains"`
+}
+
+func (r SuperRootResponse) MarshalJSON() ([]byte, error) {
+	return json.Marshal(&superRootResponseMarshalling{
+		Timestamp: hexutil.Uint64(r.Timestamp),
+		SuperRoot: common.Hash(r.SuperRoot),
+		Chains:    r.Chains,
+	})
+}
+
+func (r *SuperRootResponse) UnmarshalJSON(input []byte) error {
+	var dec superRootResponseMarshalling
+	if err := json.Unmarshal(input, &dec); err != nil {
+		return err
+	}
+	r.Timestamp = uint64(dec.Timestamp)
+	r.SuperRoot = Bytes32(dec.SuperRoot)
+	r.Chains = dec.Chains
+	return nil
 }

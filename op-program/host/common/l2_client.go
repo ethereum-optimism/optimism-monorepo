@@ -32,3 +32,7 @@ func NewL2Client(client client.RPC, log log.Logger, metrics caching.Metrics, con
 func (s *L2Client) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
 	return s.OutputV0AtBlock(ctx, blockRoot)
 }
+
+func (s *L2Client) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	return s.OutputV0AtBlockNumber(ctx, blockNum)
+}

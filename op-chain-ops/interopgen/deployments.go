@@ -20,6 +20,7 @@ type Implementations struct {
 	L1StandardBridgeImpl             common.Address `json:"L1StandardBridgeImpl"`
 	OptimismMintableERC20FactoryImpl common.Address `json:"OptimismMintableERC20FactoryImpl"`
 	DisputeGameFactoryImpl           common.Address `json:"DisputeGameFactoryImpl"`
+	AnchorStateRegistryImpl          common.Address `json:"AnchorStateRegistryImpl"`
 }
 
 type SuperchainDeployment struct {

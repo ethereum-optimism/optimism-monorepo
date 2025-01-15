@@ -120,6 +120,12 @@ type L1EndpointConfig struct {
 	// It is recommended to use websockets or IPC for efficient following of the changing block.
 	// Setting this to 0 disables polling.
 	HttpPollInterval time.Duration
+
+	// CacheSize specifies the cache size for blocks, receipts and transactions. It's optional and a
+	// sane default of 3/2 the sequencing window size is used during Setup if this field is set to 0.
+	// Note that receipts and transactions are cached per block, which is why there's only one cache
+	// size to configure.
+	CacheSize uint
 }
 
 var _ L1EndpointSetup = (*L1EndpointConfig)(nil)
@@ -129,10 +135,13 @@ func (cfg *L1EndpointConfig) Check() error {
 		return fmt.Errorf("batch size is invalid or unreasonable: %d", cfg.BatchSize)
 	}
 	if cfg.RateLimit < 0 {
-		return fmt.Errorf("rate limit cannot be negative")
+		return fmt.Errorf("rate limit cannot be negative: %f", cfg.RateLimit)
 	}
 	if cfg.MaxConcurrency < 1 {
 		return fmt.Errorf("max concurrent requests cannot be less than 1, was %d", cfg.MaxConcurrency)
+	}
+	if cfg.CacheSize > 1_000_000 {
+		return fmt.Errorf("cache size is dangerously large: %d", cfg.CacheSize)
 	}
 	return nil
 }
@@ -146,14 +155,20 @@ func (cfg *L1EndpointConfig) Setup(ctx context.Context, log log.Logger, rollupCf
 		opts = append(opts, client.WithRateLimit(cfg.RateLimit, cfg.BatchSize))
 	}
 
-	l1Node, err := client.NewRPC(ctx, log, cfg.L1NodeAddr, opts...)
+	l1RPC, err := client.NewRPC(ctx, log, cfg.L1NodeAddr, opts...)
 	if err != nil {
 		return nil, nil, fmt.Errorf("failed to dial L1 address (%s): %w", cfg.L1NodeAddr, err)
 	}
-	rpcCfg := sources.L1ClientDefaultConfig(rollupCfg, cfg.L1TrustRPC, cfg.L1RPCKind)
-	rpcCfg.MaxRequestsPerBatch = cfg.BatchSize
-	rpcCfg.MaxConcurrentRequests = cfg.MaxConcurrency
-	return l1Node, rpcCfg, nil
+
+	var l1Cfg *sources.L1ClientConfig
+	if cfg.CacheSize > 0 {
+		l1Cfg = sources.L1ClientSimpleConfig(cfg.L1TrustRPC, cfg.L1RPCKind, int(cfg.CacheSize))
+	} else {
+		l1Cfg = sources.L1ClientDefaultConfig(rollupCfg, cfg.L1TrustRPC, cfg.L1RPCKind)
+	}
+	l1Cfg.MaxRequestsPerBatch = cfg.BatchSize
+	l1Cfg.MaxConcurrentRequests = cfg.MaxConcurrency
+	return l1RPC, l1Cfg, nil
 }
 
 // PreparedL1Endpoint enables testing with an in-process pre-setup RPC connection to L1

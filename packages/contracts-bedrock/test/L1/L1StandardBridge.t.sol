@@ -28,9 +28,6 @@ contract L1StandardBridge_Getter_Test is CommonTest {
         assert(address(l1StandardBridge.messenger()) == address(l1CrossDomainMessenger));
         assert(address(l1StandardBridge.MESSENGER()) == address(l1CrossDomainMessenger));
         assert(l1StandardBridge.superchainConfig() == superchainConfig);
-
-        returnIfForkTest("L1StandardBridge_Getter_Test: systemConfig() getter DNE on op mainnet");
-        assert(l1StandardBridge.systemConfig() == systemConfig);
     }
 }
 
@@ -49,7 +46,6 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
         assertEq(address(impl.OTHER_BRIDGE()), address(0));
         assertEq(address(impl.otherBridge()), address(0));
         assertEq(address(l2StandardBridge), Predeploys.L2_STANDARD_BRIDGE);
-        assertEq(address(impl.systemConfig()), address(0));
     }
 
     /// @dev Test that the initialize function sets the correct values.
@@ -60,9 +56,6 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
         assertEq(address(l1StandardBridge.OTHER_BRIDGE()), Predeploys.L2_STANDARD_BRIDGE);
         assertEq(address(l1StandardBridge.otherBridge()), Predeploys.L2_STANDARD_BRIDGE);
         assertEq(address(l2StandardBridge), Predeploys.L2_STANDARD_BRIDGE);
-
-        returnIfForkTest("L1StandardBridge_Initialize_Test: systemConfig() getter DNE on op mainnet");
-        assertEq(address(l1StandardBridge.systemConfig()), address(systemConfig));
     }
 }
 

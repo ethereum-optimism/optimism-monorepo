@@ -380,7 +380,6 @@ contract Deploy is Deployer {
         artifacts.save("DisputeGameFactoryProxy", address(deployOutput.disputeGameFactoryProxy));
         artifacts.save("PermissionedDelayedWETHProxy", address(deployOutput.delayedWETHPermissionedGameProxy));
         artifacts.save("AnchorStateRegistryProxy", address(deployOutput.anchorStateRegistryProxy));
-        artifacts.save("AnchorStateRegistryImpl", address(deployOutput.anchorStateRegistryImpl));
         artifacts.save("PermissionedDisputeGame", address(deployOutput.permissionedDisputeGame));
         artifacts.save("OptimismPortalProxy", address(deployOutput.optimismPortalProxy));
         artifacts.save("OptimismPortal2Proxy", address(deployOutput.optimismPortalProxy));
@@ -854,24 +853,6 @@ contract Deploy is Deployer {
 
     /// @notice Get the DeployInput struct to use for testing
     function getDeployInput() public view returns (OPContractsManager.DeployInput memory) {
-        OutputRoot memory testOutputRoot = OutputRoot({
-            root: Hash.wrap(cfg.faultGameGenesisOutputRoot()),
-            l2BlockNumber: cfg.faultGameGenesisBlock()
-        });
-        IAnchorStateRegistry.StartingAnchorRoot[] memory startingAnchorRoots =
-            new IAnchorStateRegistry.StartingAnchorRoot[](5);
-        startingAnchorRoots[0] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.CANNON, outputRoot: testOutputRoot });
-        startingAnchorRoots[1] = IAnchorStateRegistry.StartingAnchorRoot({
-            gameType: GameTypes.PERMISSIONED_CANNON,
-            outputRoot: testOutputRoot
-        });
-        startingAnchorRoots[2] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.ASTERISC, outputRoot: testOutputRoot });
-        startingAnchorRoots[3] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.FAST, outputRoot: testOutputRoot });
-        startingAnchorRoots[4] =
-            IAnchorStateRegistry.StartingAnchorRoot({ gameType: GameTypes.ALPHABET, outputRoot: testOutputRoot });
         string memory saltMixer = "salt mixer";
         return OPContractsManager.DeployInput({
             roles: OPContractsManager.Roles({
@@ -885,7 +866,9 @@ contract Deploy is Deployer {
             basefeeScalar: cfg.basefeeScalar(),
             blobBasefeeScalar: cfg.blobbasefeeScalar(),
             l2ChainId: cfg.l2ChainID(),
-            startingAnchorRoots: abi.encode(startingAnchorRoots),
+            startingAnchorRoot: abi.encode(
+                OutputRoot({ root: Hash.wrap(cfg.faultGameGenesisOutputRoot()), l2BlockNumber: cfg.faultGameGenesisBlock() })
+            ),
             saltMixer: saltMixer,
             gasLimit: uint64(cfg.l2GenesisBlockGasLimit()),
             disputeGameType: GameTypes.PERMISSIONED_CANNON,
