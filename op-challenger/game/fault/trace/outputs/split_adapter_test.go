@@ -7,8 +7,8 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/split"
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -73,18 +73,18 @@ func TestOutputRootSplitAdapter(t *testing.T) {
 				ParentContractIndex: 1,
 			}
 
-			expectedAgreed := contracts.Proposal{
+			expectedAgreed := utils.Proposal{
 				L2BlockNumber: big.NewInt(test.expectedAgreedBlockNum),
 				OutputRoot:    preClaim.Value,
 			}
-			expectedClaimed := contracts.Proposal{
+			expectedClaimed := utils.Proposal{
 				L2BlockNumber: big.NewInt(test.expectedClaimedBlockNum),
 				OutputRoot:    postClaim.Value,
 			}
 
 			_, err := adapter(context.Background(), 5, preClaim, postClaim)
 			require.ErrorIs(t, err, creatorError)
-			require.Equal(t, CreateLocalContext(preClaim, postClaim), creator.localContext)
+			require.Equal(t, split.CreateLocalContext(preClaim, postClaim), creator.localContext)
 			require.Equal(t, expectedAgreed, creator.agreed)
 			require.Equal(t, expectedClaimed, creator.claimed)
 		})
@@ -104,18 +104,18 @@ func TestOutputRootSplitAdapter_FromAbsolutePrestate(t *testing.T) {
 		ParentContractIndex: 1,
 	}
 
-	expectedAgreed := contracts.Proposal{
+	expectedAgreed := utils.Proposal{
 		L2BlockNumber: big.NewInt(20),
 		OutputRoot:    prestateOutputRoot, // Absolute prestate output root
 	}
-	expectedClaimed := contracts.Proposal{
+	expectedClaimed := utils.Proposal{
 		L2BlockNumber: big.NewInt(21),
 		OutputRoot:    postClaim.Value,
 	}
 
 	_, err := adapter(context.Background(), 5, types.Claim{}, postClaim)
 	require.ErrorIs(t, err, creatorError)
-	require.Equal(t, CreateLocalContext(types.Claim{}, postClaim), creator.localContext)
+	require.Equal(t, split.CreateLocalContext(types.Claim{}, postClaim), creator.localContext)
 	require.Equal(t, expectedAgreed, creator.agreed)
 	require.Equal(t, expectedClaimed, creator.claimed)
 }
@@ -146,11 +146,11 @@ func setupAdapterTest(t *testing.T, topDepth types.Depth) (split.ProviderCreator
 
 type capturingCreator struct {
 	localContext common.Hash
-	agreed       contracts.Proposal
-	claimed      contracts.Proposal
+	agreed       utils.Proposal
+	claimed      utils.Proposal
 }
 
-func (c *capturingCreator) Create(_ context.Context, localContext common.Hash, _ types.Depth, agreed contracts.Proposal, claimed contracts.Proposal) (types.TraceProvider, error) {
+func (c *capturingCreator) Create(_ context.Context, localContext common.Hash, _ types.Depth, agreed utils.Proposal, claimed utils.Proposal) (types.TraceProvider, error) {
 	c.localContext = localContext
 	c.agreed = agreed
 	c.claimed = claimed
@@ -207,9 +207,9 @@ func TestCreateLocalContext(t *testing.T) {
 					Position: test.postPosition,
 				},
 			}
-			actualPreimage := localContextPreimage(pre, post)
+			actualPreimage := split.LocalContextPreimage(pre, post)
 			require.Equal(t, test.expected, actualPreimage)
-			localContext := CreateLocalContext(pre, post)
+			localContext := split.CreateLocalContext(pre, post)
 			require.Equal(t, crypto.Keccak256Hash(test.expected), localContext)
 		})
 	}

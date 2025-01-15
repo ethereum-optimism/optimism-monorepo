@@ -67,11 +67,6 @@ type FaultDisputeGameContractLatest struct {
 	contract    *batching.BoundContract
 }
 
-type Proposal struct {
-	L2BlockNumber *big.Int
-	OutputRoot    common.Hash
-}
-
 // outputRootProof is designed to match the solidity OutputRootProof struct.
 type outputRootProof struct {
 	Version                  [32]byte
