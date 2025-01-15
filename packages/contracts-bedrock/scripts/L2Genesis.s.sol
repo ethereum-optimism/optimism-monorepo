@@ -187,6 +187,10 @@ contract L2Genesis is Deployer {
         if (writeForkGenesisAllocs(_fork, Fork.GRANITE, _mode)) {
             return;
         }
+
+        if (writeForkGenesisAllocs(_fork, Fork.HOLOCENE, _mode)) {
+            return;
+        }
     }
 
     function writeForkGenesisAllocs(Fork _latest, Fork _current, OutputMode _mode) internal returns (bool isLatest_) {
