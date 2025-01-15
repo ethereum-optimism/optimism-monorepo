@@ -115,6 +115,9 @@ func TestOutputAlphabetGame_ReclaimBond(t *testing.T) {
 	game.WaitForGameStatus(ctx, types.GameStatusChallengerWon)
 	game.LogGameData(ctx)
 
+	// Wait for the game to have bond mode set
+	game.WaitForBondModeSet(ctx)
+
 	// Expect Alice's credit to be non-zero
 	// But it can't be claimed right now since there is a delay on the weth unlock
 	require.Truef(t, game.AvailableCredit(ctx, alice).Cmp(big.NewInt(0)) > 0, "Expected alice credit to be above zero")
