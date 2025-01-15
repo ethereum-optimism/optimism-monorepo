@@ -14,12 +14,20 @@ type Test struct {
 	Fn func(ctx context.Context, log log.Logger, cfg Config) (bool, error)
 }
 
-func (t Test) Run(ctx context.Context, log log.Logger, cfg Config) (bool, error) {
+func (t Test) Run(ctx context.Context, log log.Logger, cfg Config) (ValidatorResult, error) {
 	if t.Fn == nil {
-		return false, fmt.Errorf("test function is nil")
+		return ValidatorResult{
+			Passed: false,
+		}, fmt.Errorf("test function is nil")
 	}
 	log.Info("", "type", t.Type(), "id", t.Name())
-	return t.Fn(ctx, log, cfg)
+	passed, err := t.Fn(ctx, log, cfg)
+	return ValidatorResult{
+		ID:     t.ID,
+		Type:   t.Type(),
+		Error:  err,
+		Passed: passed,
+	}, err
 }
 
 // Name returns the id of the test.
