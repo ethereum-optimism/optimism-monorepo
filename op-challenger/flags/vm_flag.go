@@ -65,6 +65,10 @@ func (f *VMFlag) SourceFlagName(ctx *cli.Context, vm types.TraceType) string {
 	return f.name
 }
 
+func (f *VMFlag) EitherFlagName(vm types.TraceType) string {
+	return fmt.Sprintf("%s/%s", f.DefaultName(), f.TraceSpecificFlagName(vm))
+}
+
 func (f *VMFlag) TraceSpecificFlagName(vm types.TraceType) string {
 	return fmt.Sprintf("%v-%v", vm, f.name)
 }
