@@ -29,8 +29,8 @@ type LogProcessor interface {
 }
 
 type DatabaseRewinder interface {
-	Rewind(chain types.ChainID, headBlockNum uint64) error
-	LatestBlockNum(chain types.ChainID) (num uint64, ok bool)
+	Rewind(chain eth.ChainID, headBlockNum uint64) error
+	LatestBlockNum(chain eth.ChainID) (num uint64, ok bool)
 }
 
 type BlockProcessorFn func(ctx context.Context, block eth.BlockRef) error
@@ -47,7 +47,7 @@ type ChainProcessor struct {
 	client     Source
 	clientLock sync.Mutex
 
-	chain types.ChainID
+	chain eth.ChainID
 
 	systemContext context.Context
 
@@ -62,7 +62,7 @@ type ChainProcessor struct {
 var _ event.AttachEmitter = (*ChainProcessor)(nil)
 var _ event.Deriver = (*ChainProcessor)(nil)
 
-func NewChainProcessor(systemContext context.Context, log log.Logger, chain types.ChainID, processor LogProcessor, rewinder DatabaseRewinder) *ChainProcessor {
+func NewChainProcessor(systemContext context.Context, log log.Logger, chain eth.ChainID, processor LogProcessor, rewinder DatabaseRewinder) *ChainProcessor {
 	out := &ChainProcessor{
 		systemContext:     systemContext,
 		log:               log.New("chain", chain),

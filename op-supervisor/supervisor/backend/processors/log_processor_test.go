@@ -16,7 +16,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-var logProcessorChainID = types.ChainIDFromUInt64(4)
+var logProcessorChainID = eth.ChainIDFromUInt64(4)
 
 func TestLogProcessor(t *testing.T) {
 	ctx := context.Background()
@@ -27,8 +27,8 @@ func TestLogProcessor(t *testing.T) {
 		Time:       1111,
 	}
 	depSet := &testDepSet{
-		mapping: map[types.ChainID]types.ChainIndex{
-			types.ChainIDFromUInt64(100): 4,
+		mapping: map[eth.ChainID]types.ChainIndex{
+			eth.ChainIDFromUInt64(100): 4,
 		},
 	}
 
@@ -124,7 +124,7 @@ func TestLogProcessor(t *testing.T) {
 			Hash:      common.Hash{0xaa},
 		}
 		store := &stubLogStorage{}
-		processor := NewLogProcessor(types.ChainID{4}, store, depSet).(*logProcessor)
+		processor := NewLogProcessor(eth.ChainID{4}, store, depSet).(*logProcessor)
 		processor.eventDecoder = func(l *ethTypes.Log, translator depset.ChainIndexFromID) (*types.ExecutingMessage, error) {
 			require.Equal(t, rcpts[0].Logs[0], l)
 			return execMsg, nil
@@ -214,7 +214,7 @@ type stubLogStorage struct {
 	seals []storedSeal
 }
 
-func (s *stubLogStorage) SealBlock(chainID types.ChainID, block eth.BlockRef) error {
+func (s *stubLogStorage) SealBlock(chainID eth.ChainID, block eth.BlockRef) error {
 	if logProcessorChainID != chainID {
 		return fmt.Errorf("chain id mismatch, expected %v but got %v", logProcessorChainID, chainID)
 	}
@@ -226,7 +226,7 @@ func (s *stubLogStorage) SealBlock(chainID types.ChainID, block eth.BlockRef) er
 	return nil
 }
 
-func (s *stubLogStorage) AddLog(chainID types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error {
+func (s *stubLogStorage) AddLog(chainID eth.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error {
 	if logProcessorChainID != chainID {
 		return fmt.Errorf("chain id mismatch, expected %v but got %v", logProcessorChainID, chainID)
 	}

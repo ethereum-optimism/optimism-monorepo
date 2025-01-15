@@ -34,10 +34,10 @@ func TestBackendLifetime(t *testing.T) {
 	logger := testlog.Logger(t, log.LvlInfo)
 	m := metrics.NoopMetrics
 	dataDir := t.TempDir()
-	chainA := types.ChainIDFromUInt64(900)
-	chainB := types.ChainIDFromUInt64(901)
+	chainA := eth.ChainIDFromUInt64(900)
+	chainB := eth.ChainIDFromUInt64(901)
 	depSet, err := depset.NewStaticConfigDependencySet(
-		map[types.ChainID]*depset.StaticConfigDependency{
+		map[eth.ChainID]*depset.StaticConfigDependency{
 			chainA: {
 				ChainIndex:     900,
 				ActivationTime: 42,

@@ -87,19 +87,19 @@ var _ SyncControl = (*mockSyncControl)(nil)
 
 type mockBackend struct{}
 
-func (m *mockBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (pair types.DerivedIDPair, err error) {
+func (m *mockBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error) {
 	return types.DerivedIDPair{}, nil
 }
 
-func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (m *mockBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	return eth.BlockID{}, nil
 }
 
-func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
+func (m *mockBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error) {
 	return eth.BlockID{}, nil
 }
 
-func (m *mockBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (m *mockBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	return eth.BlockID{}, nil
 }
 
@@ -111,13 +111,13 @@ var _ backend = (*mockBackend)(nil)
 
 func sampleDepSet(t *testing.T) depset.DependencySet {
 	depSet, err := depset.NewStaticConfigDependencySet(
-		map[types.ChainID]*depset.StaticConfigDependency{
-			types.ChainIDFromUInt64(900): {
+		map[eth.ChainID]*depset.StaticConfigDependency{
+			eth.ChainIDFromUInt64(900): {
 				ChainIndex:     900,
 				ActivationTime: 42,
 				HistoryMinTime: 100,
 			},
-			types.ChainIDFromUInt64(901): {
+			eth.ChainIDFromUInt64(901): {
 				ChainIndex:     901,
 				ActivationTime: 30,
 				HistoryMinTime: 20,
@@ -173,14 +173,14 @@ func TestInitFromAnchorPoint(t *testing.T) {
 	}
 
 	// after the first attach, both databases are called for update
-	_, err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl, false)
+	_, err := controller.AttachNodeController(eth.ChainIDFromUInt64(900), &ctrl, false)
 	require.NoError(t, err)
 	require.NoError(t, ex.Drain())
 	require.Equal(t, 1, mon.anchorCalled, "an anchor point should be received")
 
 	// on second attach we send the anchor again; it's up to the DB to use it or not.
 	ctrl2 := mockSyncControl{}
-	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2, false)
+	_, err = controller.AttachNodeController(eth.ChainIDFromUInt64(901), &ctrl2, false)
 	require.NoError(t, err)
 	require.NoError(t, ex.Drain())
 	require.Equal(t, 2, mon.anchorCalled, "anchor point again")
@@ -199,21 +199,21 @@ func TestAttachNodeController(t *testing.T) {
 
 	// Attach a controller for chain 900
 	ctrl := mockSyncControl{}
-	_, err := controller.AttachNodeController(types.ChainIDFromUInt64(900), &ctrl, false)
+	_, err := controller.AttachNodeController(eth.ChainIDFromUInt64(900), &ctrl, false)
 	require.NoError(t, err)
 
 	require.Equal(t, 1, controller.controllers.Len(), "controllers should have 1 entry")
 
 	// Attach a controller for chain 901
 	ctrl2 := mockSyncControl{}
-	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(901), &ctrl2, false)
+	_, err = controller.AttachNodeController(eth.ChainIDFromUInt64(901), &ctrl2, false)
 	require.NoError(t, err)
 
 	require.Equal(t, 2, controller.controllers.Len(), "controllers should have 2 entries")
 
 	// Attach a controller for chain 902 (which is not in the dependency set)
 	ctrl3 := mockSyncControl{}
-	_, err = controller.AttachNodeController(types.ChainIDFromUInt64(902), &ctrl3, false)
+	_, err = controller.AttachNodeController(eth.ChainIDFromUInt64(902), &ctrl3, false)
 	require.Error(t, err)
 	require.Equal(t, 2, controller.controllers.Len(), "controllers should still have 2 entries")
 }

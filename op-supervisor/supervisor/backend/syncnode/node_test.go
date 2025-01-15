@@ -17,7 +17,7 @@ import (
 )
 
 func TestEventResponse(t *testing.T) {
-	chainID := types.ChainIDFromUInt64(1)
+	chainID := eth.ChainIDFromUInt64(1)
 	logger := testlog.Logger(t, log.LvlInfo)
 	syncCtrl := &mockSyncControl{}
 	backend := &mockBackend{}

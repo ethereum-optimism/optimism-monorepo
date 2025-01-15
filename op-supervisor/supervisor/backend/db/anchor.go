@@ -3,12 +3,13 @@ package db
 import (
 	"errors"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
 // maybeInitSafeDB initializes the chain database if it is not already initialized
 // it checks if the Local Safe database is empty, and loads it with the Anchor Point if so
-func (db *ChainsDB) maybeInitSafeDB(id types.ChainID, anchor types.DerivedBlockRefPair) {
+func (db *ChainsDB) maybeInitSafeDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
 	_, err := db.LocalSafe(id)
 	if errors.Is(err, types.ErrFuture) {
 		db.logger.Debug("initializing chain database", "chain", id)
@@ -23,7 +24,7 @@ func (db *ChainsDB) maybeInitSafeDB(id types.ChainID, anchor types.DerivedBlockR
 	}
 }
 
-func (db *ChainsDB) maybeInitEventsDB(id types.ChainID, anchor types.DerivedBlockRefPair) {
+func (db *ChainsDB) maybeInitEventsDB(id eth.ChainID, anchor types.DerivedBlockRefPair) {
 	_, _, _, err := db.OpenBlock(id, 0)
 	if errors.Is(err, types.ErrFuture) {
 		db.logger.Debug("initializing events database", "chain", id)

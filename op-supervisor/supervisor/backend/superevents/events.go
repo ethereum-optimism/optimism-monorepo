@@ -6,7 +6,7 @@ import (
 )
 
 type ChainProcessEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 	Target  uint64
 }
 
@@ -15,7 +15,7 @@ func (ev ChainProcessEvent) String() string {
 }
 
 type UpdateCrossUnsafeRequestEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 }
 
 func (ev UpdateCrossUnsafeRequestEvent) String() string {
@@ -23,7 +23,7 @@ func (ev UpdateCrossUnsafeRequestEvent) String() string {
 }
 
 type UpdateCrossSafeRequestEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 }
 
 func (ev UpdateCrossSafeRequestEvent) String() string {
@@ -31,7 +31,7 @@ func (ev UpdateCrossSafeRequestEvent) String() string {
 }
 
 type LocalUnsafeUpdateEvent struct {
-	ChainID        types.ChainID
+	ChainID        eth.ChainID
 	NewLocalUnsafe eth.BlockRef
 }
 
@@ -40,7 +40,7 @@ func (ev LocalUnsafeUpdateEvent) String() string {
 }
 
 type LocalSafeUpdateEvent struct {
-	ChainID      types.ChainID
+	ChainID      eth.ChainID
 	NewLocalSafe types.DerivedBlockSealPair
 }
 
@@ -49,7 +49,7 @@ func (ev LocalSafeUpdateEvent) String() string {
 }
 
 type CrossUnsafeUpdateEvent struct {
-	ChainID        types.ChainID
+	ChainID        eth.ChainID
 	NewCrossUnsafe types.BlockSeal
 }
 
@@ -58,7 +58,7 @@ func (ev CrossUnsafeUpdateEvent) String() string {
 }
 
 type CrossSafeUpdateEvent struct {
-	ChainID      types.ChainID
+	ChainID      eth.ChainID
 	NewCrossSafe types.DerivedBlockSealPair
 }
 
@@ -83,7 +83,7 @@ func (ev FinalizedL1UpdateEvent) String() string {
 }
 
 type FinalizedL2UpdateEvent struct {
-	ChainID     types.ChainID
+	ChainID     eth.ChainID
 	FinalizedL2 types.BlockSeal
 }
 
@@ -92,7 +92,7 @@ func (ev FinalizedL2UpdateEvent) String() string {
 }
 
 type LocalSafeOutOfSyncEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 	L1Ref   eth.BlockRef
 	Err     error
 }
@@ -102,7 +102,7 @@ func (ev LocalSafeOutOfSyncEvent) String() string {
 }
 
 type LocalUnsafeReceivedEvent struct {
-	ChainID        types.ChainID
+	ChainID        eth.ChainID
 	NewLocalUnsafe eth.BlockRef
 }
 
@@ -111,7 +111,7 @@ func (ev LocalUnsafeReceivedEvent) String() string {
 }
 
 type LocalDerivedEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 	Derived types.DerivedBlockRefPair
 }
 
@@ -120,7 +120,7 @@ func (ev LocalDerivedEvent) String() string {
 }
 
 type AnchorEvent struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 	Anchor  types.DerivedBlockRefPair
 }
 

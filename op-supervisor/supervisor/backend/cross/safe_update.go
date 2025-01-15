@@ -13,21 +13,21 @@ import (
 )
 
 type CrossSafeDeps interface {
-	CrossSafe(chainID types.ChainID) (pair types.DerivedBlockSealPair, err error)
+	CrossSafe(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error)
 
 	SafeFrontierCheckDeps
 	SafeStartDeps
 
-	CandidateCrossSafe(chain types.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error)
-	NextDerivedFrom(chain types.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
-	PreviousDerived(chain types.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
+	CandidateCrossSafe(chain eth.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error)
+	NextDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	PreviousDerived(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
 
-	OpenBlock(chainID types.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	OpenBlock(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 
-	UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
+	UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
 }
 
-func CrossSafeUpdate(logger log.Logger, chainID types.ChainID, d CrossSafeDeps) error {
+func CrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) error {
 	logger.Debug("Cross-safe update call")
 	// TODO(#11693): establish L1 reorg-lock of scopeDerivedFrom
 	// defer unlock once we are done checking the chain
@@ -70,7 +70,7 @@ func CrossSafeUpdate(logger log.Logger, chainID types.ChainID, d CrossSafeDeps) 
 // If no L2 cross-safe progress can be made without additional L1 input data,
 // then a types.ErrOutOfScope error is returned,
 // with the current scope that will need to be expanded for further progress.
-func scopedCrossSafeUpdate(logger log.Logger, chainID types.ChainID, d CrossSafeDeps) (scope eth.BlockRef, err error) {
+func scopedCrossSafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) (scope eth.BlockRef, err error) {
 	candidateScope, candidate, err := d.CandidateCrossSafe(chainID)
 	if err != nil {
 		return candidateScope, fmt.Errorf("failed to determine candidate block for cross-safe: %w", err)
@@ -111,7 +111,7 @@ func sliceOfExecMsgs(execMsgs map[uint32]*types.ExecutingMessage) []*types.Execu
 
 type CrossSafeWorker struct {
 	logger  log.Logger
-	chainID types.ChainID
+	chainID eth.ChainID
 	d       CrossSafeDeps
 }
 
@@ -136,7 +136,7 @@ func (c *CrossSafeWorker) OnEvent(ev event.Event) bool {
 
 var _ event.Deriver = (*CrossUnsafeWorker)(nil)
 
-func NewCrossSafeWorker(logger log.Logger, chainID types.ChainID, d CrossSafeDeps) *CrossSafeWorker {
+func NewCrossSafeWorker(logger log.Logger, chainID eth.ChainID, d CrossSafeDeps) *CrossSafeWorker {
 	logger = logger.New("chain", chainID)
 	return &CrossSafeWorker{
 		logger:  logger,

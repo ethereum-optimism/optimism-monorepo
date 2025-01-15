@@ -22,10 +22,10 @@ import (
 )
 
 type backend interface {
-	LocalSafe(ctx context.Context, chainID types.ChainID) (pair types.DerivedIDPair, err error)
-	LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
-	SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
-	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
+	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
@@ -37,7 +37,7 @@ const (
 type ManagedNode struct {
 	log     log.Logger
 	Node    SyncControl
-	chainID types.ChainID
+	chainID eth.ChainID
 
 	backend backend
 
@@ -57,7 +57,7 @@ type ManagedNode struct {
 var _ event.AttachEmitter = (*ManagedNode)(nil)
 var _ event.Deriver = (*ManagedNode)(nil)
 
-func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
+func NewManagedNode(log log.Logger, id eth.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &ManagedNode{
 		log:     log.New("chain", id),

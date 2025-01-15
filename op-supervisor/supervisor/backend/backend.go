@@ -50,9 +50,9 @@ type SupervisorBackend struct {
 	l1Accessor *l1access.L1Accessor
 
 	// chainProcessors are notified of new unsafe blocks, and add the unsafe log events data into the events DB
-	chainProcessors locks.RWMap[types.ChainID, *processors.ChainProcessor]
+	chainProcessors locks.RWMap[eth.ChainID, *processors.ChainProcessor]
 
-	syncSources locks.RWMap[types.ChainID, syncnode.SyncSource]
+	syncSources locks.RWMap[eth.ChainID, syncnode.SyncSource]
 
 	// syncNodesController controls the derivation or reset of the sync nodes
 	syncNodesController *syncnode.SyncNodesController
@@ -63,7 +63,7 @@ type SupervisorBackend struct {
 
 	// chainMetrics are used to track metrics for each chain
 	// they are reused for processors and databases of the same chain
-	chainMetrics locks.RWMap[types.ChainID, *chainMetrics]
+	chainMetrics locks.RWMap[eth.ChainID, *chainMetrics]
 
 	emitter event.Emitter
 }
@@ -229,7 +229,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 
 // openChainDBs initializes all the DB resources of a specific chain.
 // It is a sub-task of initResources.
-func (su *SupervisorBackend) openChainDBs(chainID types.ChainID) error {
+func (su *SupervisorBackend) openChainDBs(chainID eth.ChainID) error {
 	cm := newChainMetrics(chainID, su.m)
 	// create metrics and a logdb for the chain
 	su.chainMetrics.Set(chainID, cm)
@@ -280,7 +280,7 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 
-func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src processors.Source) error {
+func (su *SupervisorBackend) AttachProcessorSource(chainID eth.ChainID, src processors.Source) error {
 	proc, ok := su.chainProcessors.Get(chainID)
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to processor", chainID)
@@ -289,7 +289,7 @@ func (su *SupervisorBackend) AttachProcessorSource(chainID types.ChainID, src pr
 	return nil
 }
 
-func (su *SupervisorBackend) AttachSyncSource(chainID types.ChainID, src syncnode.SyncSource) error {
+func (su *SupervisorBackend) AttachSyncSource(chainID eth.ChainID, src syncnode.SyncSource) error {
 	_, ok := su.syncSources.Get(chainID)
 	if !ok {
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to sync source", chainID)
@@ -429,7 +429,7 @@ func (su *SupervisorBackend) CheckMessages(
 	return nil
 }
 
-func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
 	p, err := su.chainDBs.CrossSafe(chainID)
 	if err != nil {
 		return types.DerivedIDPair{}, err
@@ -440,7 +440,7 @@ func (su *SupervisorBackend) CrossSafe(ctx context.Context, chainID types.ChainI
 	}, nil
 }
 
-func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
 	p, err := su.chainDBs.LocalSafe(chainID)
 	if err != nil {
 		return types.DerivedIDPair{}, err
@@ -451,7 +451,7 @@ func (su *SupervisorBackend) LocalSafe(ctx context.Context, chainID types.ChainI
 	}, nil
 }
 
-func (su *SupervisorBackend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (su *SupervisorBackend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.LocalUnsafe(chainID)
 	if err != nil {
 		return eth.BlockID{}, err
@@ -459,7 +459,7 @@ func (su *SupervisorBackend) LocalUnsafe(ctx context.Context, chainID types.Chai
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.CrossUnsafe(chainID)
 	if err != nil {
 		return eth.BlockID{}, err
@@ -467,7 +467,7 @@ func (su *SupervisorBackend) CrossUnsafe(ctx context.Context, chainID types.Chai
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
+func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
 	v, err := su.chainDBs.SafeDerivedAt(chainID, derivedFrom)
 	if err != nil {
 		return eth.BlockID{}, err
@@ -475,7 +475,7 @@ func (su *SupervisorBackend) SafeDerivedAt(ctx context.Context, chainID types.Ch
 	return v.ID(), nil
 }
 
-func (su *SupervisorBackend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (su *SupervisorBackend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	v, err := su.chainDBs.Finalized(chainID)
 	if err != nil {
 		return eth.BlockID{}, err
@@ -487,7 +487,7 @@ func (su *SupervisorBackend) FinalizedL1() eth.BlockRef {
 	return su.chainDBs.FinalizedL1()
 }
 
-func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (su *SupervisorBackend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	v, err := su.chainDBs.CrossDerivedFromBlockRef(chainID, derived)
 	if err != nil {
 		return eth.BlockRef{}, err
@@ -499,29 +499,29 @@ func (su *SupervisorBackend) L1BlockRefByNumber(ctx context.Context, number uint
 	return su.l1Accessor.L1BlockRefByNumber(ctx, number)
 }
 
-func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	chains := su.depSet.Chains()
-	slices.SortFunc(chains, func(a, b types.ChainID) int {
+	slices.SortFunc(chains, func(a, b eth.ChainID) int {
 		return a.Cmp(b)
 	})
-	chainInfos := make([]types.ChainRootInfo, len(chains))
+	chainInfos := make([]eth.ChainRootInfo, len(chains))
 	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
 		if !ok {
 			su.logger.Error("bug: unknown chain %s, cannot get sync source", chainID)
-			return types.SuperRootResponse{}, fmt.Errorf("unknown chain %s, cannot get sync source", chainID)
+			return eth.SuperRootResponse{}, fmt.Errorf("unknown chain %s, cannot get sync source", chainID)
 		}
 		output, err := src.OutputV0AtTimestamp(ctx, uint64(timestamp))
 		if err != nil {
-			return types.SuperRootResponse{}, err
+			return eth.SuperRootResponse{}, err
 		}
 		pending, err := src.PendingOutputV0AtTimestamp(ctx, uint64(timestamp))
 		if err != nil {
-			return types.SuperRootResponse{}, err
+			return eth.SuperRootResponse{}, err
 		}
 		canonicalRoot := eth.OutputRoot(output)
-		chainInfos[i] = types.ChainRootInfo{
+		chainInfos[i] = eth.ChainRootInfo{
 			ChainID:   chainID,
 			Canonical: canonicalRoot,
 			Pending:   pending.Marshal(),
@@ -532,7 +532,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 		Timestamp: uint64(timestamp),
 		Chains:    superRootChains,
 	})
-	return types.SuperRootResponse{
+	return eth.SuperRootResponse{
 		Timestamp: uint64(timestamp),
 		SuperRoot: superRoot,
 		Chains:    chainInfos,

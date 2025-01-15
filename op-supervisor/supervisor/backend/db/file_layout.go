@@ -5,10 +5,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
-func prepLocalDerivedFromDBPath(chainID types.ChainID, datadir string) (string, error) {
+func prepLocalDerivedFromDBPath(chainID eth.ChainID, datadir string) (string, error) {
 	dir, err := prepChainDir(chainID, datadir)
 	if err != nil {
 		return "", err
@@ -16,7 +16,7 @@ func prepLocalDerivedFromDBPath(chainID types.ChainID, datadir string) (string, 
 	return filepath.Join(dir, "local_safe.db"), nil
 }
 
-func prepCrossDerivedFromDBPath(chainID types.ChainID, datadir string) (string, error) {
+func prepCrossDerivedFromDBPath(chainID eth.ChainID, datadir string) (string, error) {
 	dir, err := prepChainDir(chainID, datadir)
 	if err != nil {
 		return "", err
@@ -24,7 +24,7 @@ func prepCrossDerivedFromDBPath(chainID types.ChainID, datadir string) (string, 
 	return filepath.Join(dir, "cross_safe.db"), nil
 }
 
-func prepLogDBPath(chainID types.ChainID, datadir string) (string, error) {
+func prepLogDBPath(chainID eth.ChainID, datadir string) (string, error) {
 	dir, err := prepChainDir(chainID, datadir)
 	if err != nil {
 		return "", err
@@ -32,7 +32,7 @@ func prepLogDBPath(chainID types.ChainID, datadir string) (string, error) {
 	return filepath.Join(dir, "log.db"), nil
 }
 
-func prepChainDir(chainID types.ChainID, datadir string) (string, error) {
+func prepChainDir(chainID eth.ChainID, datadir string) (string, error) {
 	dir := filepath.Join(datadir, chainID.String())
 	if err := os.MkdirAll(dir, 0755); err != nil {
 		return "", fmt.Errorf("failed to create chain directory %v: %w", dir, err)

@@ -24,7 +24,7 @@ type SyncNodeSetup interface {
 type SyncSource interface {
 	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (gethtypes.Receipts, error)
-	ChainID(ctx context.Context) (types.ChainID, error)
+	ChainID(ctx context.Context) (eth.ChainID, error)
 	OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
 	PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
 	// String identifies the sync source

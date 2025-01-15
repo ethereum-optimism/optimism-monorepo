@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -14,10 +15,10 @@ import (
 )
 
 type testDepSet struct {
-	mapping map[types.ChainID]types.ChainIndex
+	mapping map[eth.ChainID]types.ChainIndex
 }
 
-func (t *testDepSet) ChainIndexFromID(id types.ChainID) (types.ChainIndex, error) {
+func (t *testDepSet) ChainIndexFromID(id eth.ChainID) (types.ChainIndex, error) {
 	v, ok := t.mapping[id]
 	if !ok {
 		return 0, types.ErrUnknownChain
@@ -48,8 +49,8 @@ func TestDecodeExecutingMessageLog(t *testing.T) {
 	require.NoError(t, json.Unmarshal([]byte(data), &logEvent))
 
 	msg, err := DecodeExecutingMessageLog(&logEvent, &testDepSet{
-		mapping: map[types.ChainID]types.ChainIndex{
-			types.ChainIDFromUInt64(900200): types.ChainIndex(123),
+		mapping: map[eth.ChainID]types.ChainIndex{
+			eth.ChainIDFromUInt64(900200): types.ChainIndex(123),
 		},
 	})
 	require.NoError(t, err)
