@@ -282,9 +282,13 @@ func RandomBlock(rng *rand.Rand, txCount uint64) (*types.Block, []*types.Receipt
 	return RandomBlockPrependTxs(rng, int(txCount))
 }
 
+func RandomSigner(rng *rand.Rand) types.Signer {
+	return types.NewLondonSigner(big.NewInt(rng.Int63n(1000)))
+}
+
 func RandomBlockPrependTxsWithTime(rng *rand.Rand, txCount int, t uint64, ptxs ...*types.Transaction) (*types.Block, []*types.Receipt) {
 	header := RandomHeaderWithTime(rng, t)
-	signer := types.NewLondonSigner(big.NewInt(rng.Int63n(1000)))
+	signer := RandomSigner(rng)
 	txs := make([]*types.Transaction, 0, txCount+len(ptxs))
 	txs = append(txs, ptxs...)
 	for i := 0; i < txCount; i++ {
