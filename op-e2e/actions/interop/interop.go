@@ -9,6 +9,9 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	batcherFlags "github.com/ethereum-optimism/optimism/op-batcher/flags"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
@@ -27,8 +30,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const (
@@ -69,7 +70,9 @@ type InteropActors struct {
 
 // SetupInterop creates an InteropSetup to instantiate actors on, with 2 L2 chains.
 func SetupInterop(t helpers.Testing) *InteropSetup {
-	logger := testlog.Logger(t, log.LevelDebug)
+	logger := testlog.Logger(t, log.LevelInfo)
+
+	// logger := log.NewLogger(log.DiscardHandler())
 
 	recipe := interopgen.InteropDevRecipe{
 		L1ChainID:        900100,
