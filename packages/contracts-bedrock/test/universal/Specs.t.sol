@@ -624,6 +624,7 @@ contract Specification_Test is CommonTest {
             _auth: Role.CHALLENGER
         });
         _addSpec({ _name: "PermissionedDisputeGame", _sel: _getSel("proposer()") });
+        _addSpec({ _name: "PermissionedDisputeGame", _sel: _getSel("normalModeCredit(address)") });
         _addSpec({ _name: "PermissionedDisputeGame", _sel: _getSel("refundModeCredit(address)") });
         _addSpec({ _name: "PermissionedDisputeGame", _sel: _getSel("resolutionCheckpoints(uint256)") });
         _addSpec({ _name: "PermissionedDisputeGame", _sel: _getSel("resolve()") });
@@ -685,6 +686,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("resolutionCheckpoints(uint256)") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("resolve()") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("getNumToResolve(uint256)") });
+        _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("normalModeCredit(address)") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("refundModeCredit(address)") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("resolveClaim(uint256,uint256)") });
         _addSpec({ _name: "FaultDisputeGame", _sel: _getSel("resolvedAt()") });
