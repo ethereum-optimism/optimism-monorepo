@@ -225,12 +225,12 @@ var (
 var requiredFlags = []cli.Flag{
 	L1EthRpcFlag,
 	DatadirFlag,
-	RollupRpcFlag,
 	L1BeaconFlag,
 }
 
 // optionalFlags is a list of unchecked cli flags
 var optionalFlags = []cli.Flag{
+	RollupRpcFlag,
 	NetworkFlag,
 	FactoryAddressFlag,
 	TraceTypeFlag,
@@ -274,6 +274,13 @@ func init() {
 // Flags contains the list of configuration options available to the binary.
 var Flags []cli.Flag
 
+func checkOutputProviderFlags(ctx *cli.Context) error {
+	if !ctx.IsSet(RollupRpcFlag.Name) {
+		return fmt.Errorf("flag %v is required", RollupRpcFlag.Name)
+	}
+	return nil
+}
+
 func CheckInteropCannonFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(SupervisorRpcFlag.Name) {
 		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
@@ -282,6 +289,9 @@ func CheckInteropCannonFlags(ctx *cli.Context) error {
 }
 
 func CheckCannonFlags(ctx *cli.Context) error {
+	if err := checkOutputProviderFlags(ctx); err != nil {
+		return err
+	}
 	if !ctx.IsSet(flags.NetworkFlagName) &&
 		!(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) && L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
@@ -309,6 +319,9 @@ func CheckCannonFlags(ctx *cli.Context) error {
 }
 
 func CheckAsteriscBaseFlags(ctx *cli.Context, traceType types.TraceType) error {
+	if err := checkOutputProviderFlags(ctx); err != nil {
+		return err
+	}
 	if !ctx.IsSet(flags.NetworkFlagName) &&
 		!(RollupConfigFlag.IsSet(ctx, traceType) && L2GenesisFlag.IsSet(ctx, traceType)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
@@ -379,6 +392,9 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 				return err
 			}
 		case types.TraceTypeAlphabet, types.TraceTypeFast:
+			if err := checkOutputProviderFlags(ctx); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid trace type %v. must be one of %v", traceType, types.TraceTypes)
 		}

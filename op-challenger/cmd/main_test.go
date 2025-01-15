@@ -831,9 +831,15 @@ func TestRollupRpc(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
 
-		t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
-			verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept(traceType, "--rollup-rpc"))
-		})
+		if traceType == types.TraceTypeInteropCannon {
+			t.Run(fmt.Sprintf("NotRequiredFor-%v", traceType), func(t *testing.T) {
+				configForArgs(t, addRequiredArgsExcept(traceType, "--rollup-rpc"))
+			})
+		} else {
+			t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
+				verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept(traceType, "--rollup-rpc"))
+			})
+		}
 	}
 
 	t.Run("Valid", func(t *testing.T) {
