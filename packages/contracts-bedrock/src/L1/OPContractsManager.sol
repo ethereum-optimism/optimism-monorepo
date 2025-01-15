@@ -135,8 +135,8 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.30
-    string public constant version = "1.0.0-beta.30";
+    /// @custom:semver 1.0.0-beta.31
+    string public constant version = "1.0.0-beta.31";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
@@ -649,10 +649,7 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(
-            IL1CrossDomainMessenger.initialize,
-            (superchainConfig, _output.optimismPortalProxy, _output.systemConfigProxy)
-        );
+        return abi.encodeCall(IL1CrossDomainMessenger.initialize, (superchainConfig, _output.optimismPortalProxy));
     }
 
     /// @notice Helper method for encoding the L1StandardBridge initializer data.
@@ -662,10 +659,7 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(
-            IL1StandardBridge.initialize,
-            (_output.l1CrossDomainMessengerProxy, superchainConfig, _output.systemConfigProxy)
-        );
+        return abi.encodeCall(IL1StandardBridge.initialize, (_output.l1CrossDomainMessengerProxy, superchainConfig));
     }
 
     function encodeDisputeGameFactoryInitializer() internal view virtual returns (bytes memory) {

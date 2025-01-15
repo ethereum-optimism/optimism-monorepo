@@ -16,7 +16,6 @@ import { Encoding } from "src/libraries/Encoding.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 contract L1CrossDomainMessenger_Test is CommonTest {
     /// @dev The receiver address
@@ -731,9 +730,7 @@ contract L1CrossDomainMessenger_ReinitReentryTest is CommonTest {
             vm.store(address(l1CrossDomainMessenger), 0, bytes32(uint256(0)));
 
             // call the initializer function
-            l1CrossDomainMessenger.initialize(
-                ISuperchainConfig(superchainConfig), IOptimismPortal2(optimismPortal2), ISystemConfig(systemConfig)
-            );
+            l1CrossDomainMessenger.initialize(ISuperchainConfig(superchainConfig), IOptimismPortal2(optimismPortal2));
 
             // attempt to re-replay the withdrawal
             vm.expectEmit(address(l1CrossDomainMessenger));
