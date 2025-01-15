@@ -188,7 +188,7 @@ func (o *OpaqueTransaction) TxType() uint8 {
 
 func (o *OpaqueTransaction) TxHash() common.Hash {
 	if (o.hash == common.Hash{}) {
-		o.hash = crypto.Keccak256Hash(o.raw[:])
+		o.hash = crypto.Keccak256Hash(o.raw)
 	}
 	return o.hash
 }

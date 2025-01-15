@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
@@ -139,7 +140,7 @@ func TestOpaqueTransaction(t *testing.T) {
 
 	// Binary Unmarshal / Marshal roundtrip
 	o := new(OpaqueTransaction)
-	o.UnmarshalBinary([]byte(encodedDynamicFeeTx))
+	o.UnmarshalBinary(encodedDynamicFeeTx)
 	require.Equal(t, uint8(2), o.TxType())
 
 	reSerialized, err := o.MarshalBinary()
@@ -154,8 +155,29 @@ func TestOpaqueTransaction(t *testing.T) {
 	require.NoError(t, err)
 
 	// compare the binary encoding of the extracted transaction with the original
-	// the rich type has extra metadat which we don't want to compare here
+	// the rich type has extra metadata which we don't want to compare here
 	e, err := extractedTx.MarshalBinary()
 	require.NoError(t, err)
 	require.Equal(t, encodedDynamicFeeTx, e)
+
+	// A future, unsupported EIP 2718 tx type, unsupported at the time of writing
+	hypotheticalTxBytes := append([]byte{0x66}, testutils.RandomData(rng, 12)...)
+
+	// Binary Unmarshal / Marshal roundtrip
+	p := new(OpaqueTransaction)
+	p.UnmarshalBinary(hypotheticalTxBytes)
+	require.Equal(t, uint8(102), p.TxType())
+
+	reSerialized, err = p.MarshalBinary()
+	require.NoError(t, err)
+	require.Equal(t, hypotheticalTxBytes, reSerialized)
+
+	// the hash should be non-zero
+	expectedHash = crypto.Keccak256Hash(hypotheticalTxBytes)
+	require.NotEqual(t, expectedHash, o.TxHash())
+
+	// try to extract the rich transaction (this should return an error since the tx type is unsupported)
+	extractedTx, err = p.Transaction()
+	require.Nil(t, extractedTx)
+	require.Error(t, err)
 }
