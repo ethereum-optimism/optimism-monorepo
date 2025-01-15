@@ -134,7 +134,7 @@ func CreateL2(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceM
 	return l2Host
 }
 
-// prepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
+// PrepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
 func PrepareInitialL1(l1Host *script.Host, cfg *L1Config) (*L1Deployment, error) {
 	l1Host.SetTxOrigin(sysGenesisDeployer)
 

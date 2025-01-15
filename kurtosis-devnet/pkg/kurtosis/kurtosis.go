@@ -142,7 +142,7 @@ func (d *KurtosisDeployer) getWallets(wallets deployer.WalletList) descriptors.W
 	return walletMap
 }
 
-// getEnvironmentInfo parses the input spec and inspect output to create KurtosisEnvironment
+// GetEnvironmentInfo parses the input spec and inspect output to create KurtosisEnvironment
 func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*KurtosisEnvironment, error) {
 	inspectResult, err := d.enclaveInspecter.EnclaveInspect(ctx, d.enclave)
 	if err != nil {
