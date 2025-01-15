@@ -65,7 +65,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 		}
 		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
 			ChainID: chain.ChainID,
-			// TODO: when applicable, use the deposit-only block output root
+			// TODO(13776): when applicable, use the deposit-only block output root
 			Output: progress.OutputRoot,
 		})
 	}
@@ -177,8 +177,7 @@ func (d *consolidateCheckDeps) Check(
 }
 
 func (d *consolidateCheckDeps) IsCrossUnsafe(chainID supervisortypes.ChainID, block eth.BlockID) error {
-	// TODO: assumed to be cross-unsafe
-	// But if the block a future block, then return an error
+	// Assumed to be cross-unsafe. And hazard checks will catch any future blocks prior to calling this
 	return nil
 }
 
