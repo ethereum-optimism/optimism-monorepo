@@ -35,17 +35,12 @@ func (o *CanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Header {
 		return nil
 	}
 
-	var h *types.Header
-	if o.earliestIndexedBlock.Number.Uint64() > n {
-		hash, ok := o.hashByNum[n]
-		if ok {
-			return o.blockByHashFn(hash).Header()
-		}
-		h = o.head
-	} else {
-		h = o.blockByHashFn(o.hashByNum[n]).Header()
+	if o.earliestIndexedBlock.Number.Uint64() <= n {
+		// guaranteed to be cached during lookup
+		return o.blockByHashFn(o.hashByNum[n]).Header()
 	}
 
+	h := o.head
 	for h.Number.Uint64() > n {
 		h = o.blockByHashFn(h.ParentHash).Header()
 		o.hashByNum[h.Number.Uint64()] = h.Hash()

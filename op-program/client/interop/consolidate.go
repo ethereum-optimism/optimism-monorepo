@@ -147,8 +147,6 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 	}, nil
 }
 
-// Check(
-// chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
 func (d *consolidateCheckDeps) Check(
 	chain eth.ChainID,
 	blockNum uint64,
