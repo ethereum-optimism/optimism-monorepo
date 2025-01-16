@@ -132,6 +132,22 @@ func TestResetConflict(t *testing.T) {
 			l1RefNum:       100,
 			finalizedNum:   99,
 		},
+		{
+			name: "stops_after_max_attempts_exceeded",
+			resetErrors: func() []error {
+				// Generate more errors than we allow attempts for
+				errors := make([]error, maxWalkBackAttempts+100)
+				for i := range errors {
+					errors[i] = &gethrpc.JsonError{Code: blockNotFoundRPCErrCode}
+				}
+				return errors
+			}(),
+			// We expect the max number of attempts to be made, plus one for the initial attempt
+			expectAttempts: maxWalkBackAttempts + 1,
+			expectError:    true,
+			l1RefNum:       1000,
+			finalizedNum:   1,
+		},
 	}
 
 	for _, tc := range tests {
