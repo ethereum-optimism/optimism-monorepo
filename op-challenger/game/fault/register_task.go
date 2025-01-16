@@ -33,6 +33,8 @@ type RegisterTask struct {
 	gameType               faultTypes.GameType
 	skipPrestateValidation bool
 
+	syncValidator SyncValidator
+
 	getTopPrestateProvider    func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error)
 	getBottomPrestateProvider func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error)
 	newTraceAccessor          func(
@@ -47,10 +49,11 @@ type RegisterTask struct {
 		poststateBlock uint64) (*trace.Accessor, error)
 }
 
-func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
+func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient, syncValidator SyncValidator) *RegisterTask {
 	stateConverter := cannon.NewStateConverter(cfg.Cannon)
 	return &RegisterTask{
-		gameType: gameType,
+		gameType:      gameType,
+		syncValidator: syncValidator,
 		// Don't validate the absolute prestate or genesis output root for permissioned games
 		// Only trusted actors participate in these games so they aren't expected to reach the step() call and
 		// are often configured without valid prestates but the challenger should still resolve the games.
@@ -84,10 +87,11 @@ func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m c
 	}
 }
 
-func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
+func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient, syncValidator SyncValidator) *RegisterTask {
 	stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
 	return &RegisterTask{
-		gameType: gameType,
+		gameType:      gameType,
+		syncValidator: syncValidator,
 		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
 			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
 		},
@@ -117,10 +121,11 @@ func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m
 	}
 }
 
-func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
+func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient, syncValidator SyncValidator) *RegisterTask {
 	stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
 	return &RegisterTask{
-		gameType: gameType,
+		gameType:      gameType,
+		syncValidator: syncValidator,
 		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
 			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
 		},
@@ -150,9 +155,10 @@ func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Confi
 	}
 }
 
-func NewAlphabetRegisterTask(gameType faultTypes.GameType, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
+func NewAlphabetRegisterTask(gameType faultTypes.GameType, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient, syncValidator SyncValidator) *RegisterTask {
 	return &RegisterTask{
-		gameType: gameType,
+		gameType:      gameType,
+		syncValidator: syncValidator,
 		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
 			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
 		},
@@ -203,7 +209,6 @@ func (e *RegisterTask) Register(
 	l1Clock faultTypes.ClockReader,
 	logger log.Logger,
 	m metrics.Metricer,
-	syncValidator SyncValidator,
 	txSender TxSender,
 	gameFactory *contracts.DisputeGameFactoryContract,
 	caller *batching.MultiCaller,
@@ -259,7 +264,7 @@ func (e *RegisterTask) Register(
 			validators = append(validators, NewPrestateValidator(e.gameType.String(), contract.GetAbsolutePrestateHash, vmPrestateProvider))
 			validators = append(validators, NewPrestateValidator("output root", contract.GetStartingRootHash, prestateProvider))
 		}
-		return NewGamePlayer(ctx, systemClock, l1Clock, logger, m, dir, game.Proxy, txSender, contract, syncValidator, validators, creator, l1HeaderSource, selective, claimants)
+		return NewGamePlayer(ctx, systemClock, l1Clock, logger, m, dir, game.Proxy, txSender, contract, e.syncValidator, validators, creator, l1HeaderSource, selective, claimants)
 	}
 	err := registerOracle(ctx, logger, m, oracles, gameFactory, caller, e.gameType)
 	if err != nil {
