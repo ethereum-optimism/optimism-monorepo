@@ -60,6 +60,19 @@ contract OptimismPortalInterop_Config_Test is OptimismPortalInterop_Base_Test {
         _optimismPortal().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
 
+    /// @notice Tests that the version function returns a valid string. We avoid testing the
+    ///         specific value of the string as it changes frequently.
+    function test_version_succeeds() external view {
+        assert(bytes(_optimismPortalInterop().version()).length > 0);
+    }
+
+    /// @dev Tests that the config for the gas paying token cannot be set.
+    function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
+        vm.prank(address(_optimismPortalInterop().systemConfig()));
+        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
+        _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
+    }
+
     /// @dev Tests that setting the gas paying token config as not the system config reverts.
     function testFuzz_setConfig_gasPayingTokenButNotSystemConfig_reverts(bytes calldata _value) public {
         vm.expectRevert(Unauthorized.selector);

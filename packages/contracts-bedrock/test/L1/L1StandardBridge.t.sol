@@ -12,6 +12,7 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
@@ -27,9 +28,6 @@ contract L1StandardBridge_Getter_Test is CommonTest {
         assert(address(l1StandardBridge.messenger()) == address(l1CrossDomainMessenger));
         assert(address(l1StandardBridge.MESSENGER()) == address(l1CrossDomainMessenger));
         assert(l1StandardBridge.superchainConfig() == superchainConfig);
-
-        returnIfForkTest("L1StandardBridge_Getter_Test: systemConfig() getter DNE on op mainnet");
-        assert(l1StandardBridge.systemConfig() == systemConfig);
     }
 }
 
@@ -38,7 +36,7 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() external virtual {
-        IL1StandardBridge impl = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridgeImpl"));
+        IL1StandardBridge impl = IL1StandardBridge(payable(EIP1967Helper.getImplementation(address(l1StandardBridge))));
         assertEq(address(impl.superchainConfig()), address(0));
 
         // The constructor now uses _disableInitializers, whereas OP Mainnet has these values in storage
@@ -48,7 +46,6 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
         assertEq(address(impl.OTHER_BRIDGE()), address(0));
         assertEq(address(impl.otherBridge()), address(0));
         assertEq(address(l2StandardBridge), Predeploys.L2_STANDARD_BRIDGE);
-        assertEq(address(impl.systemConfig()), address(0));
     }
 
     /// @dev Test that the initialize function sets the correct values.
@@ -59,9 +56,6 @@ contract L1StandardBridge_Initialize_Test is CommonTest {
         assertEq(address(l1StandardBridge.OTHER_BRIDGE()), Predeploys.L2_STANDARD_BRIDGE);
         assertEq(address(l1StandardBridge.otherBridge()), Predeploys.L2_STANDARD_BRIDGE);
         assertEq(address(l2StandardBridge), Predeploys.L2_STANDARD_BRIDGE);
-
-        returnIfForkTest("L1StandardBridge_Initialize_Test: systemConfig() getter DNE on op mainnet");
-        assertEq(address(l1StandardBridge.systemConfig()), address(systemConfig));
     }
 }
 
@@ -377,26 +371,6 @@ contract L1StandardBridge_Receive_Interop_Test is L1StandardBridge_InteropBase_T
     }
 }
 
-contract L1StandardBridge_Receive_TestFail is CommonTest {
-    /// @dev Tests receive function reverts with custom gas token.
-    function testFuzz_receive_customGasToken_reverts(uint256 _value) external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_Receive_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.prank(alice, alice);
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(18))
-        );
-        vm.deal(alice, _value);
-        (bool success, bytes memory data) = address(l1StandardBridge).call{ value: _value }(hex"");
-        assertFalse(success);
-        assembly {
-            data := add(data, 0x04)
-        }
-        assertEq(abi.decode(data, (string)), "StandardBridge: cannot bridge ETH with custom gas token");
-    }
-}
-
 contract L1StandardBridge_DepositETH_Test is PreBridgeETH {
     /// @dev Tests that depositing ETH succeeds.
     ///      Emits ETHDepositInitiated and ETHBridgeInitiated events.
@@ -439,19 +413,6 @@ contract L1StandardBridge_DepositETH_TestFail is CommonTest {
         vm.prank(alice);
         l1StandardBridge.depositETH{ value: 1 }(300, hex"");
     }
-
-    /// @dev Tests that depositing reverts with custom gas token.
-    function test_depositETH_customGasToken_reverts() external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_DepositETH_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.prank(alice, alice);
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-        l1StandardBridge.depositETH(50000, hex"dead");
-    }
 }
 
 contract L1StandardBridge_BridgeETH_Test is PreBridgeETH {
@@ -485,22 +446,6 @@ contract L1StandardBridge_BridgeETH_Interop_Test is L1StandardBridge_InteropBase
 
         assertEq(address(optimismPortal2).balance, portalBalanceBefore);
         assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + 500);
-    }
-}
-
-contract L1StandardBridge_BridgeETH_TestFail is PreBridgeETH {
-    /// @dev Tests that bridging eth reverts with custom gas token.
-    function test_bridgeETH_customGasToken_reverts() external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_BridgeETH_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.prank(alice, alice);
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-
-        l1StandardBridge.bridgeETH(50000, hex"dead");
     }
 }
 
@@ -538,29 +483,6 @@ contract L1StandardBridge_DepositETHTo_Interop_Test is L1StandardBridge_InteropB
     }
 }
 
-contract L1StandardBridge_DepositETHTo_TestFail is CommonTest {
-    /// @dev Tests that depositETHTo reverts with custom gas token.
-    function testFuzz_depositETHTo_customGasToken_reverts(
-        uint256 _value,
-        address _to,
-        uint32 _minGasLimit,
-        bytes calldata _extraData
-    )
-        external
-    {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_DepositETHTo_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.deal(address(this), _value);
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-
-        l1StandardBridge.depositETHTo{ value: _value }(_to, _minGasLimit, _extraData);
-    }
-}
-
 contract L1StandardBridge_BridgeETHTo_Test is PreBridgeETH {
     /// @dev Tests that bridging ETH to a different address succeeds.
     ///      Emits ETHDepositInitiated and ETHBridgeInitiated events.
@@ -592,28 +514,6 @@ contract L1StandardBridge_BridgeETHTo_Interop_Test is L1StandardBridge_InteropBa
 
         assertEq(address(optimismPortal2).balance, portalBalanceBefore);
         assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + 600);
-    }
-}
-
-contract L1StandardBridge_BridgeETHTo_TestFail is PreBridgeETH {
-    /// @dev Tests that bridging reverts with custom gas token.
-    function testFuzz_bridgeETHTo_customGasToken_reverts(
-        uint256 _value,
-        uint32 _minGasLimit,
-        bytes calldata _extraData
-    )
-        external
-    {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_BridgeETHTo_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.deal(address(this), _value);
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-
-        l1StandardBridge.bridgeETHTo{ value: _value }(bob, _minGasLimit, _extraData);
     }
 }
 
@@ -808,35 +708,6 @@ contract L1StandardBridge_FinalizeETHWithdrawal_Test is CommonTest {
     }
 }
 
-contract L1StandardBridge_FinalizeETHWithdrawal_TestFail is CommonTest {
-    /// @dev Tests that finalizeETHWithdrawal reverts with custom gas token.
-    function testFuzz_finalizeETHWithdrawal_customGasToken_reverts(
-        uint256 _value,
-        bytes calldata _extraData
-    )
-        external
-    {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest(
-            "L1StandardBridge_FinalizeETHWithdrawal_TestFail: gas paying token functionality DNE on op mainnet"
-        );
-
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.mockCall(
-            address(l1StandardBridge.messenger()),
-            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
-            abi.encode(address(l1StandardBridge.OTHER_BRIDGE()))
-        );
-        vm.deal(address(l1StandardBridge.messenger()), _value);
-        vm.prank(address(l1StandardBridge.messenger()));
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-
-        l1StandardBridge.finalizeETHWithdrawal{ value: _value }(alice, alice, _value, _extraData);
-    }
-}
-
 contract L1StandardBridge_FinalizeERC20Withdrawal_Test is CommonTest {
     using stdStorage for StdStorage;
 
@@ -922,26 +793,6 @@ contract L1StandardBridge_FinalizeBridgeETH_Test is CommonTest {
 }
 
 contract L1StandardBridge_FinalizeBridgeETH_TestFail is CommonTest {
-    /// @dev Tests that finalizing bridged reverts with custom gas token.
-    function testFuzz_finalizeBridgeETH_customGasToken_reverts(uint256 _value, bytes calldata _extraData) external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("L1StandardBridge_FinalizeBridgeETH_TestFail: gas paying token functionality DNE on op mainnet");
-
-        vm.mockCall(
-            address(l1StandardBridge.messenger()),
-            abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
-            abi.encode(address(l1StandardBridge.OTHER_BRIDGE()))
-        );
-        vm.deal(address(l1CrossDomainMessenger), _value);
-        vm.prank(address(l1CrossDomainMessenger));
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2))
-        );
-        vm.expectRevert("StandardBridge: cannot bridge ETH with custom gas token");
-
-        l1StandardBridge.finalizeBridgeETH{ value: _value }(alice, alice, _value, _extraData);
-    }
-
     /// @dev Tests that finalizing bridged ETH reverts if the amount is incorrect.
     function test_finalizeBridgeETH_incorrectValue_reverts() external {
         address messenger = address(l1StandardBridge.messenger());

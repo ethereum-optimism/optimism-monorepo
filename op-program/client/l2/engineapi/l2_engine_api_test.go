@@ -84,6 +84,7 @@ func newStubBackend(t *testing.T) *stubCachingBackend {
 
 func createGenesis() *core.Genesis {
 	config := *params.MergedTestChainConfig
+	config.PragueTime = nil
 	var zero uint64
 	// activate recent OP-stack forks
 	config.RegolithTime = &zero

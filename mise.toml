@@ -31,16 +31,16 @@ just = "1.37.0"
 # Foundry dependencies
 # Foundry is a special case because it supplies multiple binaries at the same
 # GitHub release, so we need to use the aliasing trick to get mise to not error
-forge = "nightly-59f354c179f4e7f6d7292acb3d068815c79286d1"
-cast = "nightly-59f354c179f4e7f6d7292acb3d068815c79286d1"
-anvil = "nightly-59f354c179f4e7f6d7292acb3d068815c79286d1"
+forge = "nightly-017c59d6806ce11f1dc131f8607178efad79d84a"
+cast = "nightly-017c59d6806ce11f1dc131f8607178efad79d84a"
+anvil = "nightly-017c59d6806ce11f1dc131f8607178efad79d84a"
 
 # Fake dependencies
 # Put things here if you need to track versions of tools or projects that can't
 # actually be managed by mise (yet). Make sure that anything you put in here is
 # also found inside of disabled_tools or mise will try to install it.
 asterisc = "1.2.0"
-kontrol = "1.0.53"
+kontrol = "1.0.90"
 binary_signer = "1.0.4"
 
 [alias]

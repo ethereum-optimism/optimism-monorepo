@@ -38,3 +38,5 @@ error Unproven();
 error ProposalNotValidated();
 /// @notice Error for when a withdrawal has already been finalized.
 error AlreadyFinalized();
+/// @notice Error for when a game is a legacy game.
+error LegacyGame();

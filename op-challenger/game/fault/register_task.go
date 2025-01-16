@@ -33,14 +33,13 @@ type RegisterTask struct {
 	gameType               faultTypes.GameType
 	skipPrestateValidation bool
 
-	getPrestateProvider func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error)
-	newTraceAccessor    func(
+	getTopPrestateProvider    func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error)
+	getBottomPrestateProvider func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error)
+	newTraceAccessor          func(
 		logger log.Logger,
 		m metrics.Metricer,
-		l2Client utils.L2HeaderSource,
 		prestateProvider faultTypes.PrestateProvider,
 		vmPrestateProvider faultTypes.PrestateProvider,
-		rollupClient outputs.OutputRollupClient,
 		dir string,
 		l1Head eth.BlockID,
 		splitDepth faultTypes.Depth,
@@ -48,7 +47,7 @@ type RegisterTask struct {
 		poststateBlock uint64) (*trace.Accessor, error)
 }
 
-func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor) *RegisterTask {
+func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
 	stateConverter := cannon.NewStateConverter(cfg.Cannon)
 	return &RegisterTask{
 		gameType: gameType,
@@ -56,7 +55,10 @@ func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m c
 		// Only trusted actors participate in these games so they aren't expected to reach the step() call and
 		// are often configured without valid prestates but the challenger should still resolve the games.
 		skipPrestateValidation: gameType == faultTypes.PermissionedGameType,
-		getPrestateProvider: cachePrestates(
+		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
+			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
+		},
+		getBottomPrestateProvider: cachePrestates(
 			gameType,
 			stateConverter,
 			m,
@@ -69,10 +71,8 @@ func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m c
 		newTraceAccessor: func(
 			logger log.Logger,
 			m metrics.Metricer,
-			l2Client utils.L2HeaderSource,
 			prestateProvider faultTypes.PrestateProvider,
 			vmPrestateProvider faultTypes.PrestateProvider,
-			rollupClient outputs.OutputRollupClient,
 			dir string,
 			l1Head eth.BlockID,
 			splitDepth faultTypes.Depth,
@@ -84,11 +84,14 @@ func NewCannonRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m c
 	}
 }
 
-func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor) *RegisterTask {
+func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
 	stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
 	return &RegisterTask{
 		gameType: gameType,
-		getPrestateProvider: cachePrestates(
+		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
+			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
+		},
+		getBottomPrestateProvider: cachePrestates(
 			gameType,
 			stateConverter,
 			m,
@@ -101,10 +104,8 @@ func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m
 		newTraceAccessor: func(
 			logger log.Logger,
 			m metrics.Metricer,
-			l2Client utils.L2HeaderSource,
 			prestateProvider faultTypes.PrestateProvider,
 			vmPrestateProvider faultTypes.PrestateProvider,
-			rollupClient outputs.OutputRollupClient,
 			dir string,
 			l1Head eth.BlockID,
 			splitDepth faultTypes.Depth,
@@ -116,11 +117,14 @@ func NewAsteriscRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m
 	}
 }
 
-func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor) *RegisterTask {
+func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Config, m caching.Metrics, serverExecutor vm.OracleServerExecutor, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
 	stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
 	return &RegisterTask{
 		gameType: gameType,
-		getPrestateProvider: cachePrestates(
+		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
+			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
+		},
+		getBottomPrestateProvider: cachePrestates(
 			gameType,
 			stateConverter,
 			m,
@@ -133,10 +137,8 @@ func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Confi
 		newTraceAccessor: func(
 			logger log.Logger,
 			m metrics.Metricer,
-			l2Client utils.L2HeaderSource,
 			prestateProvider faultTypes.PrestateProvider,
 			vmPrestateProvider faultTypes.PrestateProvider,
-			rollupClient outputs.OutputRollupClient,
 			dir string,
 			l1Head eth.BlockID,
 			splitDepth faultTypes.Depth,
@@ -148,19 +150,20 @@ func NewAsteriscKonaRegisterTask(gameType faultTypes.GameType, cfg *config.Confi
 	}
 }
 
-func NewAlphabetRegisterTask(gameType faultTypes.GameType) *RegisterTask {
+func NewAlphabetRegisterTask(gameType faultTypes.GameType, l2Client utils.L2HeaderSource, rollupClient outputs.OutputRollupClient) *RegisterTask {
 	return &RegisterTask{
 		gameType: gameType,
-		getPrestateProvider: func(_ context.Context, _ common.Hash) (faultTypes.PrestateProvider, error) {
+		getTopPrestateProvider: func(ctx context.Context, prestateBlock uint64) (faultTypes.PrestateProvider, error) {
+			return outputs.NewPrestateProvider(rollupClient, prestateBlock), nil
+		},
+		getBottomPrestateProvider: func(_ context.Context, _ common.Hash) (faultTypes.PrestateProvider, error) {
 			return alphabet.PrestateProvider, nil
 		},
 		newTraceAccessor: func(
 			logger log.Logger,
 			m metrics.Metricer,
-			l2Client utils.L2HeaderSource,
 			prestateProvider faultTypes.PrestateProvider,
 			vmPrestateProvider faultTypes.PrestateProvider,
-			rollupClient outputs.OutputRollupClient,
 			dir string,
 			l1Head eth.BlockID,
 			splitDepth faultTypes.Depth,
@@ -181,13 +184,14 @@ func cachePrestates(
 	newPrestateProvider func(ctx context.Context, path string) faultTypes.PrestateProvider,
 ) func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error) {
 	prestateSource := prestates.NewPrestateSource(prestateBaseURL, preStatePath, prestateDir, stateConverter)
-	prestateProviderCache := prestates.NewPrestateProviderCache(m, fmt.Sprintf("prestates-%v", gameType), func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error) {
-		prestatePath, err := prestateSource.PrestatePath(ctx, prestateHash)
-		if err != nil {
-			return nil, fmt.Errorf("required prestate %v not available: %w", prestateHash, err)
-		}
-		return newPrestateProvider(ctx, prestatePath), nil
-	})
+	prestateProviderCache := prestates.NewPrestateProviderCache(m, fmt.Sprintf("prestates-%v", gameType),
+		func(ctx context.Context, prestateHash common.Hash) (faultTypes.PrestateProvider, error) {
+			prestatePath, err := prestateSource.PrestatePath(ctx, prestateHash)
+			if err != nil {
+				return nil, fmt.Errorf("required prestate %v not available: %w", prestateHash, err)
+			}
+			return newPrestateProvider(ctx, prestatePath), nil
+		})
 	return prestateProviderCache.GetOrCreate
 }
 
@@ -200,11 +204,9 @@ func (e *RegisterTask) Register(
 	logger log.Logger,
 	m metrics.Metricer,
 	syncValidator SyncValidator,
-	rollupClient outputs.OutputRollupClient,
 	txSender TxSender,
 	gameFactory *contracts.DisputeGameFactoryContract,
 	caller *batching.MultiCaller,
-	l2Client utils.L2HeaderSource,
 	l1HeaderSource L1HeaderSource,
 	selective bool,
 	claimants []common.Address) error {
@@ -219,7 +221,7 @@ func (e *RegisterTask) Register(
 			return nil, fmt.Errorf("failed to load prestate hash for game %v: %w", game.Proxy, err)
 		}
 
-		vmPrestateProvider, err := e.getPrestateProvider(ctx, requiredPrestatehash)
+		vmPrestateProvider, err := e.getBottomPrestateProvider(ctx, requiredPrestatehash)
 		if err != nil {
 			return nil, fmt.Errorf("required prestate %v not available for game %v: %w", requiredPrestatehash, game.Proxy, err)
 		}
@@ -241,9 +243,12 @@ func (e *RegisterTask) Register(
 		if err != nil {
 			return nil, err
 		}
-		prestateProvider := outputs.NewPrestateProvider(rollupClient, prestateBlock)
+		prestateProvider, err := e.getTopPrestateProvider(ctx, prestateBlock)
+		if err != nil {
+			return nil, fmt.Errorf("failed to create top prestate provider: %w", err)
+		}
 		creator := func(ctx context.Context, logger log.Logger, gameDepth faultTypes.Depth, dir string) (faultTypes.TraceAccessor, error) {
-			accessor, err := e.newTraceAccessor(logger, m, l2Client, prestateProvider, vmPrestateProvider, rollupClient, dir, l1HeadID, splitDepth, prestateBlock, poststateBlock)
+			accessor, err := e.newTraceAccessor(logger, m, prestateProvider, vmPrestateProvider, dir, l1HeadID, splitDepth, prestateBlock, poststateBlock)
 			if err != nil {
 				return nil, err
 			}

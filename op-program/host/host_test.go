@@ -9,8 +9,9 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
-	"github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
+	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -24,7 +25,7 @@ func TestServerMode(t *testing.T) {
 
 	l1Head := common.Hash{0x11}
 	l2OutputRoot := common.Hash{0x33}
-	cfg := config.NewConfig(chaincfg.OPSepolia(), chainconfig.OPSepoliaChainConfig(), l1Head, common.Hash{0x22}, l2OutputRoot, common.Hash{0x44}, 1000)
+	cfg := config.NewSingleChainConfig(chaincfg.OPSepolia(), chainconfig.OPSepoliaChainConfig(), l1Head, common.Hash{0x22}, l2OutputRoot, common.Hash{0x44}, 1000)
 	cfg.DataDir = dir
 	cfg.ServerMode = true
 
@@ -37,15 +38,15 @@ func TestServerMode(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelTrace)
 	result := make(chan error)
 	go func() {
-		result <- PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, makeDefaultPrefetcher)
+		result <- hostcommon.PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, makeDefaultPrefetcher)
 	}()
 
 	pClient := preimage.NewOracleClient(preimageClient)
 	hClient := preimage.NewHintWriter(hintClient)
 	l1PreimageOracle := l1.NewPreimageOracle(pClient, hClient)
 
-	require.Equal(t, l1Head.Bytes(), pClient.Get(client.L1HeadLocalIndex), "Should get l1 head preimages")
-	require.Equal(t, l2OutputRoot.Bytes(), pClient.Get(client.L2OutputRootLocalIndex), "Should get l2 output root preimages")
+	require.Equal(t, l1Head.Bytes(), pClient.Get(boot.L1HeadLocalIndex), "Should get l1 head preimages")
+	require.Equal(t, l2OutputRoot.Bytes(), pClient.Get(boot.L2OutputRootLocalIndex), "Should get l2 output root preimages")
 
 	// Should exit when a preimage is unavailable
 	require.Panics(t, func() {

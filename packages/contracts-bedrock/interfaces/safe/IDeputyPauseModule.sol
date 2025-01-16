@@ -8,6 +8,7 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 
 interface IDeputyPauseModule is ISemver {
     error DeputyPauseModule_InvalidDeputy();
+    error DeputyPauseModule_InvalidDeputyGuardianModule();
     error DeputyPauseModule_ExecutionFailed(string);
     error DeputyPauseModule_SuperchainNotPaused();
     error DeputyPauseModule_Unauthorized();

@@ -179,6 +179,13 @@ var (
 		Value:    20,
 		Category: L1RPCCategory,
 	}
+	L1CacheSize = &cli.UintFlag{
+		Name: "l1.cache-size",
+		Usage: "Cache size for blocks, receipts and transactions. " +
+			"It's optional and a sane default of 3/2 the sequencing window size is used if this field is set to 0.",
+		EnvVars:  prefixEnvVars("L1_CACHE_SIZE"),
+		Category: L1RPCCategory,
+	}
 	L1HTTPPollInterval = &cli.DurationFlag{
 		Name:     "l1.http-poll-interval",
 		Usage:    "Polling interval for latest-block subscription when using an HTTP RPC provider. Ignored for other types of RPC endpoints.",
@@ -423,6 +430,7 @@ var optionalFlags = []cli.Flag{
 	L1RPCMaxBatchSize,
 	L1RPCMaxConcurrency,
 	L1HTTPPollInterval,
+	L1CacheSize,
 	VerifierL1Confs,
 	SequencerEnabledFlag,
 	SequencerStoppedFlag,

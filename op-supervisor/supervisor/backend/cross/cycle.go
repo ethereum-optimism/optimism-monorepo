@@ -6,6 +6,7 @@ import (
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -18,7 +19,7 @@ var (
 // CycleCheckDeps is an interface for checking cyclical dependencies between logs.
 type CycleCheckDeps interface {
 	// OpenBlock returns log data for the requested block, to be used for cycle checking.
-	OpenBlock(chainID types.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	OpenBlock(chainID eth.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
 // node represents a log entry in the dependency graph.
@@ -68,8 +69,8 @@ func (g *graph) addEdge(from, to node) {
 // succeeds if and only if a graph is acyclic.
 //
 // Returns nil if no cycles are found or ErrCycle if a cycle is detected.
-func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
-	g, err := buildGraph(d, inTimestamp, hazards)
+func HazardCycleChecks(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) error {
+	g, err := buildGraph(depSet, d, inTimestamp, hazards)
 	if err != nil {
 		return err
 	}
@@ -81,7 +82,7 @@ func HazardCycleChecks(d CycleCheckDeps, inTimestamp uint64, hazards map[types.C
 // Returns:
 // - map of chain index to its log count
 // - map of chain index to map of log index to executing message (nil if doesn't exist or ignored)
-func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
+func gatherLogs(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (
 	map[types.ChainIndex]uint32,
 	map[types.ChainIndex]map[uint32]*types.ExecutingMessage,
 	error,
@@ -90,8 +91,10 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 	execMsgs := make(map[types.ChainIndex]map[uint32]*types.ExecutingMessage)
 
 	for hazardChainIndex, hazardBlock := range hazards {
-		// TODO(#11105): translate chain index to chain ID
-		hazardChainID := types.ChainIDFromUInt64(uint64(hazardChainIndex))
+		hazardChainID, err := depSet.ChainIDFromIndex(hazardChainIndex)
+		if err != nil {
+			return nil, nil, err
+		}
 		bl, logCount, msgs, err := d.OpenBlock(hazardChainID, hazardBlock.Number)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to open block: %w", err)
@@ -127,14 +130,14 @@ func gatherLogs(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainInd
 }
 
 // buildGraph constructs a dependency graph from the hazard blocks.
-func buildGraph(d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (*graph, error) {
+func buildGraph(depSet depset.ChainIDFromIndex, d CycleCheckDeps, inTimestamp uint64, hazards map[types.ChainIndex]types.BlockSeal) (*graph, error) {
 	g := &graph{
 		inDegree0:     make(map[node]struct{}),
 		inDegreeNon0:  make(map[node]uint32),
 		outgoingEdges: make(map[node][]node),
 	}
 
-	logCounts, execMsgs, err := gatherLogs(d, inTimestamp, hazards)
+	logCounts, execMsgs, err := gatherLogs(depSet, d, inTimestamp, hazards)
 	if err != nil {
 		return nil, err
 	}

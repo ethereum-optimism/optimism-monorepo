@@ -6,7 +6,10 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/artifact"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/devkeys"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"gopkg.in/yaml.v3"
 )
 
@@ -31,15 +34,15 @@ func getMnemonics(r io.Reader) (string, error) {
 	return config[0].Mnemonic, nil
 }
 
-func (d *Deployer) getKnownWallets(ctx context.Context, fs *EnclaveFS) ([]*Wallet, error) {
-	artifact, err := fs.GetArtifact(ctx, d.genesisArtifactName)
+func (d *Deployer) getKnownWallets(ctx context.Context, fs *artifact.EnclaveFS) ([]*Wallet, error) {
+	a, err := fs.GetArtifact(ctx, d.genesisArtifactName)
 	if err != nil {
 		return nil, err
 	}
 
 	mnemonicsBuffer := bytes.NewBuffer(nil)
-	if err := artifact.ExtractFiles(
-		&ArtifactFileWriter{path: d.mnemonicsName, writer: mnemonicsBuffer},
+	if err := a.ExtractFiles(
+		artifact.NewArtifactFileWriter(d.mnemonicsName, mnemonicsBuffer),
 	); err != nil {
 		return nil, err
 	}
@@ -60,10 +63,11 @@ func (d *Deployer) getKnownWallets(ctx context.Context, fs *EnclaveFS) ([]*Walle
 	for _, key := range keys {
 		addr, _ := m.Address(key)
 		sec, _ := m.Secret(key)
+
 		knownWallets = append(knownWallets, &Wallet{
 			Name:       key.String(),
 			Address:    addr.Hex(),
-			PrivateKey: fmt.Sprintf("%x", sec.D),
+			PrivateKey: hexutil.Bytes(crypto.FromECDSA(sec)).String(),
 		})
 	}
 

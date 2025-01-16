@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/keccak"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/keccak/fetcher"
 	"github.com/ethereum-optimism/optimism/op-challenger/sender"
-	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/ethereum/go-ethereum/log"
@@ -55,7 +54,6 @@ type Service struct {
 	factoryContract *contracts.DisputeGameFactoryContract
 	registry        *registry.GameTypeRegistry
 	oracles         *registry.OracleRegistry
-	rollupClient    *sources.RollupClient
 
 	l1Client   *ethclient.Client
 	pollClient client.RPC
@@ -92,9 +90,6 @@ func (s *Service) initFromConfig(ctx context.Context, cfg *config.Config) error 
 	s.initClaimants(cfg)
 	if err := s.initL1Client(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to init l1 client: %w", err)
-	}
-	if err := s.initRollupClient(ctx, cfg); err != nil {
-		return fmt.Errorf("failed to init rollup client: %w", err)
 	}
 	if err := s.initPollClient(ctx, cfg); err != nil {
 		return fmt.Errorf("failed to init poll client: %w", err)
@@ -210,27 +205,15 @@ func (s *Service) initBondClaims() error {
 	return nil
 }
 
-func (s *Service) initRollupClient(ctx context.Context, cfg *config.Config) error {
-	if cfg.RollupRpc == "" {
-		return nil
-	}
-	rollupClient, err := dial.DialRollupClientWithTimeout(ctx, dial.DefaultDialTimeout, s.logger, cfg.RollupRpc)
-	if err != nil {
-		return err
-	}
-	s.rollupClient = rollupClient
-	return nil
-}
-
 func (s *Service) registerGameTypes(ctx context.Context, cfg *config.Config) error {
 	gameTypeRegistry := registry.NewGameTypeRegistry()
 	oracles := registry.NewOracleRegistry()
 	caller := batching.NewMultiCaller(s.l1Client.Client(), batching.DefaultBatchSize)
-	closer, err := fault.RegisterGameTypes(ctx, s.systemClock, s.l1Clock, s.logger, s.metrics, cfg, gameTypeRegistry, oracles, s.rollupClient, s.txSender, s.factoryContract, caller, s.l1Client, cfg.SelectiveClaimResolution, s.claimants)
+	closer, err := fault.RegisterGameTypes(ctx, s.systemClock, s.l1Clock, s.logger, s.metrics, cfg, gameTypeRegistry, oracles, s.txSender, s.factoryContract, caller, s.l1Client, cfg.SelectiveClaimResolution, s.claimants)
+	s.faultGamesCloser = closer
 	if err != nil {
 		return err
 	}
-	s.faultGamesCloser = closer
 	s.registry = gameTypeRegistry
 	s.oracles = oracles
 	return nil
@@ -304,9 +287,6 @@ func (s *Service) Stop(ctx context.Context) error {
 		s.txMgr.Close()
 	}
 
-	if s.rollupClient != nil {
-		s.rollupClient.Close()
-	}
 	if s.pollClient != nil {
 		s.pollClient.Close()
 	}

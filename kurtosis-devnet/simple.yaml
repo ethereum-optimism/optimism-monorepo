@@ -14,7 +14,7 @@ optimism_package:
         el_min_mem: 0
         el_max_mem: 0
         cl_type: op-node
-        cl_image: ""
+        cl_image: {{ localDockerImage "op-node" }}
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
@@ -38,17 +38,29 @@ optimism_package:
         holocene_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
-        image: ""
+        image: {{ localDockerImage "op-batcher" }}
         extra_params: []
+      challenger_params:
+        image: {{ localDockerImage "op-challenger" }}
+        cannon_prestate_path: ""
+        cannon_prestates_url: "http://fileserver/proofs/op-program/cannon"
+        extra_params: []
+      proposer_params:
+        image: {{ localDockerImage "op-proposer" }}
+        extra_params: []
+        game_type: 1
+        proposal_interval: 10m
       mev_params:
         rollup_boost_image: ""
         builder_host: ""
         builder_port: ""
       additional_services: []
   op_contract_deployer_params:
-    image: opsigma/op-deployer:v0.0.7-http
+    image: {{ localDockerImage "op-deployer" }}
     l1_artifacts_locator: {{ localContractArtifacts "l1" }}
     l2_artifacts_locator: {{ localContractArtifacts "l2" }}
+    global_deploy_overrides:
+      faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
   global_log_level: "info"
   global_node_selectors: {}
   global_tolerations: []

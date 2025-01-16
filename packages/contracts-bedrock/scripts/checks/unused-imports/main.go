@@ -16,7 +16,7 @@ var asPattern = regexp.MustCompile(`(\S+)\s+as\s+(\S+)`)
 func main() {
 	if _, err := common.ProcessFilesGlob(
 		[]string{"src/**/*.sol", "scripts/**/*.sol", "test/**/*.sol", "interfaces/**/*.sol"},
-		[]string{},
+		[]string{"src/dispute/lib/Types.sol"},
 		processFile,
 	); err != nil {
 		fmt.Printf("error: %v\n", err)
@@ -74,12 +74,22 @@ func isImportUsed(imp, content string) bool {
 	wordPattern := fmt.Sprintf(`\b%s\b`, regexp.QuoteMeta(imp))
 	scanner := bufio.NewScanner(strings.NewReader(content))
 
+	importOpen := false
 	for scanner.Scan() {
 		line := scanner.Text()
 		if strings.HasPrefix(strings.TrimSpace(line), "//") || strings.HasPrefix(strings.TrimSpace(line), "/*") || strings.HasPrefix(strings.TrimSpace(line), "*") || strings.HasPrefix(strings.TrimSpace(line), "*/") {
 			continue
 		}
-		if strings.Contains(line, "import") {
+		if importOpen {
+			if strings.Contains(line, "}") {
+				importOpen = false
+			}
+			continue
+		}
+		if strings.Contains(line, "import {") {
+			if !strings.Contains(line, "}") {
+				importOpen = true
+			}
 			continue
 		}
 

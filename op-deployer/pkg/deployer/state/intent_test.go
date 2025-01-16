@@ -8,7 +8,7 @@ import (
 )
 
 func TestValidateStandardValues(t *testing.T) {
-	intent, err := NewIntentStandard(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+	intent, err := NewIntentStandard(1, []common.Hash{common.HexToHash("0x336")})
 	require.NoError(t, err)
 
 	err = intent.Check()
@@ -64,7 +64,7 @@ func TestValidateStandardValues(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			intent, err := NewIntentStandard(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+			intent, err := NewIntentStandard(1, []common.Hash{common.HexToHash("0x336")})
 			require.NoError(t, err)
 			setChainRoles(&intent)
 			setFeeAddresses(&intent)
@@ -79,7 +79,7 @@ func TestValidateStandardValues(t *testing.T) {
 }
 
 func TestValidateCustomValues(t *testing.T) {
-	intent, err := NewIntentCustom(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+	intent, err := NewIntentCustom(1, []common.Hash{common.HexToHash("0x336")})
 	require.NoError(t, err)
 
 	err = intent.Check()

@@ -188,27 +188,6 @@ func (_Inbox *InboxTransactorRaw) Transact(opts *bind.TransactOpts, method strin
 	return _Inbox.Contract.contract.Transact(opts, method, params...)
 }
 
-// ExecuteMessage is a paid mutator transaction binding the contract method 0x5984c53e.
-//
-// Solidity: function executeMessage((address,uint256,uint256,uint256,uint256) _id, address _target, bytes _message) payable returns()
-func (_Inbox *InboxTransactor) ExecuteMessage(opts *bind.TransactOpts, _id Identifier, _target common.Address, _message []byte) (*types.Transaction, error) {
-	return _Inbox.contract.Transact(opts, "executeMessage", _id, _target, _message)
-}
-
-// ExecuteMessage is a paid mutator transaction binding the contract method 0x5984c53e.
-//
-// Solidity: function executeMessage((address,uint256,uint256,uint256,uint256) _id, address _target, bytes _message) payable returns()
-func (_Inbox *InboxSession) ExecuteMessage(_id Identifier, _target common.Address, _message []byte) (*types.Transaction, error) {
-	return _Inbox.Contract.ExecuteMessage(&_Inbox.TransactOpts, _id, _target, _message)
-}
-
-// ExecuteMessage is a paid mutator transaction binding the contract method 0x5984c53e.
-//
-// Solidity: function executeMessage((address,uint256,uint256,uint256,uint256) _id, address _target, bytes _message) payable returns()
-func (_Inbox *InboxTransactorSession) ExecuteMessage(_id Identifier, _target common.Address, _message []byte) (*types.Transaction, error) {
-	return _Inbox.Contract.ExecuteMessage(&_Inbox.TransactOpts, _id, _target, _message)
-}
-
 // ValidateMessage is a paid mutator transaction binding the contract method 0xab4d6f75.
 //
 // Solidity: function validateMessage((address,uint256,uint256,uint256,uint256) _id, bytes32 _msgHash) returns()

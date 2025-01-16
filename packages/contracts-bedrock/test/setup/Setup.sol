@@ -11,6 +11,8 @@ import { ForkLive } from "test/setup/ForkLive.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
 import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
 import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
+import { Artifacts } from "scripts/Artifacts.s.sol";
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -67,14 +69,21 @@ contract Setup {
     ///         mutating any nonces. MUST not have constructor logic.
     Deploy internal constant deploy = Deploy(address(uint160(uint256(keccak256(abi.encode("optimism.deploy"))))));
 
+    /// @notice The address of the ForkLive contract. Set into state with `etch` to avoid
+    ///         mutating any nonces. MUST not have constructor logic.
+    ForkLive internal constant forkLive =
+        ForkLive(address(uint160(uint256(keccak256(abi.encode("optimism.forklive"))))));
+
+    /// @notice The address of the Artifacts contract. Set into state by Deployer.setUp() with `etch` to avoid
+    ///         mutating any nonces. MUST not have constructor logic.
+    Artifacts public constant artifacts =
+        Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
+
     L2Genesis internal constant l2Genesis =
         L2Genesis(address(uint160(uint256(keccak256(abi.encode("optimism.l2genesis"))))));
 
     /// @notice Allows users of Setup to override what L2 genesis is being created.
     Fork l2Fork = LATEST_FORK;
-
-    /// @notice Indicates whether a test is running against a forked production network.
-    bool private _isForkTest;
 
     // L1 contracts
     IDisputeGameFactory disputeGameFactory;
@@ -119,7 +128,7 @@ contract Setup {
 
     /// @notice Indicates whether a test is running against a forked production network.
     function isForkTest() public view returns (bool) {
-        return _isForkTest;
+        return vm.envOr("FORK_TEST", false);
     }
 
     /// @dev Deploys either the Deploy.s.sol or Fork.s.sol contract, by fetching the bytecode dynamically using
@@ -132,33 +141,24 @@ contract Setup {
     function setUp() public virtual {
         console.log("Setup: L1 setup start!");
 
-        // Optimistically etch, label and allow cheatcodes for the Deploy.s.sol contract
-        vm.etch(address(deploy), vm.getDeployedCode("Deploy.s.sol:Deploy"));
-        vm.label(address(deploy), "Deploy");
-        vm.allowCheatcodes(address(deploy));
-
-        _isForkTest = vm.envOr("FORK_TEST", false);
-        if (_isForkTest) {
+        if (isForkTest()) {
             vm.createSelectFork(vm.envString("FORK_RPC_URL"), vm.envUint("FORK_BLOCK_NUMBER"));
             require(
                 block.chainid == Chains.Sepolia || block.chainid == Chains.Mainnet,
                 "Setup: ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL"
             );
-
-            // Overwrite the Deploy.s.sol contract with the ForkLive.s.sol contract
-            vm.etch(address(deploy), vm.getDeployedCode("ForkLive.s.sol:ForkLive"));
-            vm.label(address(deploy), "ForkLive");
         }
 
-        // deploy.setUp() will either:
-        // 1. deploy a fresh system or
-        // 2. fork from L1
-        // It will then save the appropriate name/address pairs to disk using Artifacts.save()
+        // Etch the contracts used to setup the test environment
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(deploy), _cname: "Deploy" });
+        DeployUtils.etchLabelAndAllowCheatcodes({ _etchTo: address(forkLive), _cname: "ForkLive" });
+
         deploy.setUp();
+        forkLive.setUp();
         console.log("Setup: L1 setup done!");
 
-        // Return early if this is a fork test
-        if (_isForkTest) {
+        if (isForkTest()) {
+            // Return early if this is a fork test as we don't need to setup L2
             console.log("Setup: fork test detected, skipping L2 genesis generation");
             return;
         }
@@ -172,7 +172,7 @@ contract Setup {
 
     /// @dev Skips tests when running against a forked production network.
     function skipIfForkTest(string memory message) public {
-        if (_isForkTest) {
+        if (isForkTest()) {
             vm.skip(true);
             console.log(string.concat("Skipping fork test: ", message));
         }
@@ -181,7 +181,7 @@ contract Setup {
     /// @dev Returns early when running against a forked production network. Useful for allowing a portion of a test
     ///      to run.
     function returnIfForkTest(string memory message) public view {
-        if (_isForkTest) {
+        if (isForkTest()) {
             console.log(string.concat("Returning early from fork test: ", message));
             assembly {
                 return(0, 0)
@@ -198,25 +198,30 @@ contract Setup {
             hex"7fffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffe03601600081602082378035828234f58015156039578182fd5b8082525050506014600cf3"
         );
 
-        deploy.run();
+        if (isForkTest()) {
+            forkLive.run();
+        } else {
+            deploy.run();
+        }
+
         console.log("Setup: completed L1 deployment, registering addresses now");
 
-        optimismPortal2 = IOptimismPortal2(deploy.mustGetAddress("OptimismPortalProxy"));
-        systemConfig = ISystemConfig(deploy.mustGetAddress("SystemConfigProxy"));
-        l1StandardBridge = IL1StandardBridge(deploy.mustGetAddress("L1StandardBridgeProxy"));
-        l1CrossDomainMessenger = IL1CrossDomainMessenger(deploy.mustGetAddress("L1CrossDomainMessengerProxy"));
+        optimismPortal2 = IOptimismPortal2(artifacts.mustGetAddress("OptimismPortalProxy"));
+        systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
+        l1StandardBridge = IL1StandardBridge(artifacts.mustGetAddress("L1StandardBridgeProxy"));
+        l1CrossDomainMessenger = IL1CrossDomainMessenger(artifacts.mustGetAddress("L1CrossDomainMessengerProxy"));
         vm.label(
             AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger)), "L1CrossDomainMessengerProxy_aliased"
         );
-        addressManager = IAddressManager(deploy.mustGetAddress("AddressManager"));
-        l1ERC721Bridge = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721BridgeProxy"));
+        addressManager = IAddressManager(artifacts.mustGetAddress("AddressManager"));
+        l1ERC721Bridge = IL1ERC721Bridge(artifacts.mustGetAddress("L1ERC721BridgeProxy"));
         l1OptimismMintableERC20Factory =
-            IOptimismMintableERC20Factory(deploy.mustGetAddress("OptimismMintableERC20FactoryProxy"));
-        protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
-        superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
-        anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
-        disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
-        delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
+            IOptimismMintableERC20Factory(artifacts.mustGetAddress("OptimismMintableERC20FactoryProxy"));
+        protocolVersions = IProtocolVersions(artifacts.mustGetAddress("ProtocolVersionsProxy"));
+        superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
+        anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
+        disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
 
         if (deploy.cfg().useInterop()) {
             sharedLockbox = ISharedLockbox(deploy.mustGetAddress("SharedLockboxProxy"));
@@ -224,7 +229,7 @@ contract Setup {
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
-                IDataAvailabilityChallenge(deploy.mustGetAddress("DataAvailabilityChallengeProxy"));
+                IDataAvailabilityChallenge(artifacts.mustGetAddress("DataAvailabilityChallengeProxy"));
         }
         console.log("Setup: registered L1 deployments");
     }
@@ -232,7 +237,7 @@ contract Setup {
     /// @dev Sets up the L2 contracts. Depends on `L1()` being called first.
     function L2() public {
         // Fork tests focus on L1 contracts so there is no need to do all the work of setting up L2.
-        if (_isForkTest) {
+        if (isForkTest()) {
             console.log("Setup: fork test detected, skipping L2 setup");
             return;
         }

@@ -186,13 +186,3 @@ func (w *starlarkInfoWrapper) GetMessage() string {
 func (w *starlarkInstructionResultWrapper) GetSerializedInstructionResult() string {
 	return w.StarlarkInstructionResult.SerializedInstructionResult
 }
-
-func GetDefaultKurtosisContext() (interfaces.KurtosisContextInterface, error) {
-	kCtx, err := kurtosis_context.NewKurtosisContextFromLocalEngine()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create Kurtosis context: %w", err)
-	}
-	return KurtosisContextWrapper{
-		KurtosisContext: kCtx,
-	}, nil
-}

@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/ethdb"
+	"github.com/ethereum/go-ethereum/ethdb/leveldb"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/ethereum/go-ethereum/trie"
@@ -43,17 +44,13 @@ type Cheater struct {
 
 func OpenGethRawDB(dataDirPath string, readOnly bool) (ethdb.Database, error) {
 	// don't use readonly mode in actual DB, it doesn't work with Geth.
-	db, err := rawdb.Open(rawdb.OpenOptions{
-		Type:              "leveldb",
-		Directory:         dataDirPath,
-		AncientsDirectory: filepath.Join(dataDirPath, "ancient"),
-		Namespace:         "",
-		Cache:             2048,
-		Handles:           500,
-		ReadOnly:          readOnly,
-	})
+	kvs, err := leveldb.New(dataDirPath, 2048, 500, "", readOnly)
 	if err != nil {
 		return nil, fmt.Errorf("failed to open leveldb: %w", err)
+	}
+	db, err := rawdb.NewDatabaseWithFreezer(kvs, filepath.Join(dataDirPath, "ancient"), "", readOnly)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open db with freezer: %w", err)
 	}
 	return db, nil
 }

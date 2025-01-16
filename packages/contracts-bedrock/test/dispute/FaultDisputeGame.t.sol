@@ -42,6 +42,7 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
     bytes internal extraData;
 
     event Move(uint256 indexed parentIndex, Claim indexed pivot, address indexed claimant);
+    event GameClosed(BondDistributionMode bondDistributionMode);
 
     event ReceiveETH(uint256 amount);
 
@@ -350,6 +351,44 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         });
     }
 
+    /// @dev Tests that the constructor of the `FaultDisputeGame` reverts when the `_gameType`
+    ///      parameter is set to the reserved `type(uint32).max` game type.
+    function test_constructor_reservedGameType_reverts() public {
+        AlphabetVM alphabetVM = new AlphabetVM(
+            absolutePrestate,
+            IPreimageOracle(
+                DeployUtils.create1({
+                    _name: "PreimageOracle",
+                    _args: DeployUtils.encodeConstructor(abi.encodeCall(IPreimageOracle.__constructor__, (0, 0)))
+                })
+            )
+        );
+
+        vm.expectRevert(ReservedGameType.selector);
+        DeployUtils.create1({
+            _name: "FaultDisputeGame",
+            _args: DeployUtils.encodeConstructor(
+                abi.encodeCall(
+                    IFaultDisputeGame.__constructor__,
+                    (
+                        IFaultDisputeGame.GameConstructorParams({
+                            gameType: GameType.wrap(type(uint32).max),
+                            absolutePrestate: absolutePrestate,
+                            maxGameDepth: 16,
+                            splitDepth: 8,
+                            clockExtension: Duration.wrap(3 hours),
+                            maxClockDuration: Duration.wrap(3.5 days),
+                            vm: alphabetVM,
+                            weth: IDelayedWETH(payable(address(0))),
+                            anchorStateRegistry: IAnchorStateRegistry(address(0)),
+                            l2ChainId: 10
+                        })
+                    )
+                )
+            )
+        });
+    }
+
     /// @dev Tests that the game's root claim is set correctly.
     function test_rootClaim_succeeds() public view {
         assertEq(gameProxy.rootClaim().raw(), ROOT_CLAIM.raw());
@@ -457,6 +496,20 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         // Assert that the blockhash provided is correct.
         assertEq(gameProxy.l1Head().raw(), blockhash(block.number - 1));
+    }
+
+    /// @dev Tests that the game cannot be initialized when the anchor root is not found.
+    function test_initialize_anchorRootNotFound_reverts() public {
+        // Mock the AnchorStateRegistry to return a zero root.
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(IAnchorStateRegistry.getAnchorRoot, ()),
+            abi.encode(Hash.wrap(bytes32(0)), 0)
+        );
+
+        // Creation should fail.
+        vm.expectRevert(AnchorRootNotFound.selector);
+        gameProxy = IFaultDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, _dummyClaim(), hex""))));
     }
 
     /// @dev Tests that the game cannot be initialized twice.
@@ -967,6 +1020,17 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         // Ensure the challenge was successful.
         assertEq(uint8(fdg.status()), uint8(GameStatus.CHALLENGER_WINS));
 
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        fdg.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        fdg.claimCredit(address(this));
+        fdg.claimCredit(address(0xb0b));
+        fdg.claimCredit(address(0xace));
+
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
 
@@ -1415,19 +1479,11 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         vm.warp(block.timestamp + 3 days + 12 hours);
 
-        assertEq(address(this).balance, 0);
         gameProxy.resolveClaim(2, 0);
         gameProxy.resolveClaim(1, 0);
 
-        // Wait for the withdrawal delay.
-        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
-
-        gameProxy.claimCredit(address(this));
-        assertEq(address(this).balance, firstBond + secondBond);
-
         vm.expectRevert(ClaimAlreadyResolved.selector);
         gameProxy.resolveClaim(1, 0);
-        assertEq(address(this).balance, firstBond + secondBond);
     }
 
     /// @dev Static unit test asserting that resolve reverts when attempting to resolve a subgame at max depth
@@ -1447,15 +1503,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         vm.warp(block.timestamp + 3 days + 12 hours);
 
-        // Resolve to claim bond
-        uint256 balanceBefore = address(this).balance;
         gameProxy.resolveClaim(8, 0);
-
-        // Wait for the withdrawal delay.
-        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
-
-        gameProxy.claimCredit(address(this));
-        assertEq(address(this).balance, balanceBefore + _getRequiredBond(7));
 
         vm.expectRevert(ClaimAlreadyResolved.selector);
         gameProxy.resolveClaim(8, 0);
@@ -1534,9 +1582,19 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         }
         gameProxy.resolve();
 
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(address(this));
+
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
 
+        // Claim credit again to get the bond back.
         gameProxy.claimCredit(address(this));
 
         // Ensure that bonds were paid out correctly.
@@ -1622,11 +1680,24 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             (bool success,) = address(gameProxy).call(abi.encodeCall(gameProxy.resolveClaim, (i - 1, 0)));
             assertTrue(success);
         }
+
+        // Resolve the game.
         gameProxy.resolve();
+
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(address(this));
+        gameProxy.claimCredit(bob);
 
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
 
+        // Claim credit again to get the bond back.
         gameProxy.claimCredit(address(this));
 
         // Bob's claim should revert since it's value is 0
@@ -1684,9 +1755,22 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         }
         gameProxy.resolve();
 
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(address(this));
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+        gameProxy.claimCredit(charlie);
+
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
 
+        // All of these claims should work.
         gameProxy.claimCredit(address(this));
         gameProxy.claimCredit(alice);
         gameProxy.claimCredit(bob);
@@ -1720,6 +1804,12 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy.resolveClaim(0, 0);
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));
 
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
         // Confirm that the anchor state is now the same as the game state.
         (root, l2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assertEq(l2BlockNumber, gameProxy.l2BlockNumber());
@@ -1742,6 +1832,12 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy.resolveClaim(0, 0);
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));
 
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
         // Confirm that the anchor state is the same as the initial anchor state.
         (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assertEq(updatedL2BlockNumber, l2BlockNumber);
@@ -1763,10 +1859,87 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         gameProxy.resolveClaim(0, 0);
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.CHALLENGER_WINS));
 
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
         // Confirm that the anchor state is the same as the initial anchor state.
         (Hash updatedRoot, uint256 updatedL2BlockNumber) = anchorStateRegistry.anchors(gameProxy.gameType());
         assertEq(updatedL2BlockNumber, l2BlockNumber);
         assertEq(updatedRoot.raw(), root.raw());
+    }
+
+    function test_claimCredit_refundMode_succeeds() public {
+        // Set up actors.
+        address alice = address(0xa11ce);
+        address bob = address(0xb0b);
+
+        // Give the game proxy 1 extra ether, unregistered.
+        vm.deal(address(gameProxy), 1 ether);
+
+        // Perform a bonded move.
+        Claim claim = _dummyClaim();
+
+        // Bond the first claim.
+        uint256 firstBond = _getRequiredBond(0);
+        vm.deal(alice, firstBond);
+        (,,,, Claim disputed,,) = gameProxy.claimData(0);
+        vm.prank(alice);
+        gameProxy.attack{ value: firstBond }(disputed, 0, claim);
+
+        // Bond the second claim.
+        uint256 secondBond = _getRequiredBond(1);
+        vm.deal(bob, secondBond);
+        (,,,, disputed,,) = gameProxy.claimData(1);
+        vm.prank(bob);
+        gameProxy.attack{ value: secondBond }(disputed, 1, claim);
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + 3 days + 12 hours);
+
+        // Resolve the game.
+        // Second claim wins, so bob should get alice's credit.
+        gameProxy.resolveClaim(2, 0);
+        gameProxy.resolveClaim(1, 0);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Mock that the game proxy is not proper, trigger refund mode.
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(anchorStateRegistry.isGameProper, (gameProxy)),
+            abi.encode(false)
+        );
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Assert bond distribution mode is refund mode.
+        assertTrue(gameProxy.bondDistributionMode() == BondDistributionMode.REFUND);
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Wait for the withdrawal delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
+
+        // Grab balances before claim.
+        uint256 aliceBalanceBefore = alice.balance;
+        uint256 bobBalanceBefore = bob.balance;
+
+        // Claim credit again to get the bond back.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Should have original balance again.
+        assertEq(alice.balance, aliceBalanceBefore + firstBond);
+        assertEq(bob.balance, bobBalanceBefore + secondBond);
     }
 
     /// @dev Static unit test asserting that credit may not be drained past allowance through reentrancy.
@@ -1808,6 +1981,21 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         // Ensure that the game registered the `reenter` contract's credit.
         assertEq(gameProxy.credit(address(reenter)), reenterBond);
 
+        // Resolve the root claim.
+        gameProxy.resolveClaim(0, 0);
+
+        // Resolve the game.
+        gameProxy.resolve();
+
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(address(reenter));
+
         // Wait for the withdrawal delay.
         vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
 
@@ -1824,6 +2012,62 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(delayedWeth.balanceOf(address(gameProxy)), 0);
 
         vm.stopPrank();
+    }
+
+    /// @dev Tests that claimCredit reverts when recipient can't receive value.
+    function test_claimCredit_recipientCantReceiveValue_reverts() public {
+        // Set up actors.
+        address alice = address(0xa11ce);
+        address bob = address(0xb0b);
+
+        // Give the game proxy 1 extra ether, unregistered.
+        vm.deal(address(gameProxy), 1 ether);
+
+        // Perform a bonded move.
+        Claim claim = _dummyClaim();
+
+        // Bond the first claim.
+        uint256 firstBond = _getRequiredBond(0);
+        vm.deal(alice, firstBond);
+        (,,,, Claim disputed,,) = gameProxy.claimData(0);
+        vm.prank(alice);
+        gameProxy.attack{ value: firstBond }(disputed, 0, claim);
+
+        // Bond the second claim.
+        uint256 secondBond = _getRequiredBond(1);
+        vm.deal(bob, secondBond);
+        (,,,, disputed,,) = gameProxy.claimData(1);
+        vm.prank(bob);
+        gameProxy.attack{ value: secondBond }(disputed, 1, claim);
+
+        // Warp past the finalization period
+        vm.warp(block.timestamp + 3 days + 12 hours);
+
+        // Resolve the game.
+        // Second claim wins, so bob should get alice's credit.
+        gameProxy.resolveClaim(2, 0);
+        gameProxy.resolveClaim(1, 0);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay.
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game.
+        gameProxy.closeGame();
+
+        // Claim credit once to trigger unlock period.
+        gameProxy.claimCredit(alice);
+        gameProxy.claimCredit(bob);
+
+        // Wait for the withdrawal delay.
+        vm.warp(block.timestamp + delayedWeth.delay() + 1 seconds);
+
+        // make bob not be able to receive value by setting his contract code to something without `receive`
+        vm.etch(address(bob), address(L1Token).code);
+
+        vm.expectRevert(BondTransferFailed.selector);
+        gameProxy.claimCredit(address(bob));
     }
 
     /// @dev Tests that adding local data with an out of bounds identifier reverts.
@@ -2113,6 +2357,90 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         // Defender wins game since the root claim is uncountered
         assertEq(uint8(gameProxy.resolve()), uint8(GameStatus.DEFENDER_WINS));
+    }
+
+    /// @dev Tests that closeGame reverts if the game is not resolved
+    function test_closeGame_gameNotResolved_reverts() public {
+        vm.expectRevert(GameNotResolved.selector);
+        gameProxy.closeGame();
+    }
+
+    /// @dev Tests that closeGame reverts if the game is not finalized
+    function test_closeGame_gameNotFinalized_reverts() public {
+        // Resolve the game
+        vm.warp(block.timestamp + 3 days + 12 hours);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Don't wait the finalization delay
+        vm.expectRevert(GameNotFinalized.selector);
+        gameProxy.closeGame();
+    }
+
+    /// @dev Tests that closeGame succeeds for a proper game (normal distribution)
+    function test_closeGame_properGame_succeeds() public {
+        // Resolve the game
+        vm.warp(block.timestamp + 3 days + 12 hours);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Close the game and verify normal distribution mode
+        vm.expectEmit(true, true, true, true);
+        emit GameClosed(BondDistributionMode.NORMAL);
+        gameProxy.closeGame();
+        assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.NORMAL));
+
+        // Check that the anchor state was set correctly.
+        assertEq(address(gameProxy.anchorStateRegistry().anchorGame()), address(gameProxy));
+    }
+
+    /// @dev Tests that closeGame succeeds for an improper game (refund mode)
+    function test_closeGame_improperGame_succeeds() public {
+        // Resolve the game
+        vm.warp(block.timestamp + 3 days + 12 hours);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // Mock the anchor registry to return improper game
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(anchorStateRegistry.isGameProper, (IDisputeGame(address(gameProxy)))),
+            abi.encode(false, "")
+        );
+
+        // Close the game and verify refund mode
+        vm.expectEmit(true, true, true, true);
+        emit GameClosed(BondDistributionMode.REFUND);
+        gameProxy.closeGame();
+        assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.REFUND));
+    }
+
+    /// @dev Tests that multiple calls to closeGame succeed after initial distribution mode is set
+    function test_closeGame_multipleCallsAfterSet_succeeds() public {
+        // Resolve and close the game first
+        vm.warp(block.timestamp + 3 days + 12 hours);
+        gameProxy.resolveClaim(0, 0);
+        gameProxy.resolve();
+
+        // Wait for finalization delay
+        vm.warp(block.timestamp + 3.5 days + 1 seconds);
+
+        // First close sets the mode
+        gameProxy.closeGame();
+        assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.NORMAL));
+
+        // Subsequent closes should succeed without changing the mode
+        gameProxy.closeGame();
+        assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.NORMAL));
+
+        gameProxy.closeGame();
+        assertEq(uint8(gameProxy.bondDistributionMode()), uint8(BondDistributionMode.NORMAL));
     }
 
     /// @dev Helper to generate a mock RLP encoded header (with only a real block number) & an output root proof.

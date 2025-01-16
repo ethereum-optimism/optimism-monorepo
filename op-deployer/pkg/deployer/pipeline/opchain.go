@@ -24,34 +24,15 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 		return fmt.Errorf("failed to get chain intent: %w", err)
 	}
 
-	var opcmAddr common.Address
-	var deployFunc func() (opcm.DeployOPChainOutput, error)
-	switch intent.L1ContractsLocator.Tag {
-	case standard.ContractsV160Tag, standard.ContractsV170Beta1L2Tag:
-		deployFunc = func() (opcm.DeployOPChainOutput, error) {
-			input, err := makeDCIV160(intent, thisIntent, chainID, st)
-			if err != nil {
-				return opcm.DeployOPChainOutput{}, fmt.Errorf("error making deploy OP chain input: %w", err)
-			}
-
-			opcmAddr = input.Opcm
-			return opcm.DeployOPChainV160(env.L1ScriptHost, input)
-		}
-	default:
-		deployFunc = func() (opcm.DeployOPChainOutput, error) {
-			input, err := makeDCIIsthmus(intent, thisIntent, chainID, st)
-			if err != nil {
-				return opcm.DeployOPChainOutput{}, fmt.Errorf("error making deploy OP chain input: %w", err)
-			}
-
-			opcmAddr = input.Opcm
-			return opcm.DeployOPChainIsthmus(env.L1ScriptHost, input)
-		}
-	}
-
 	var dco opcm.DeployOPChainOutput
 	lgr.Info("deploying OP chain using local allocs", "id", chainID.Hex())
-	dco, err = deployFunc()
+
+	dci, err := makeDCI(intent, thisIntent, chainID, st)
+	if err != nil {
+		return fmt.Errorf("error making deploy OP chain input: %w", err)
+	}
+
+	dco, err = opcm.DeployOPChain(env.L1ScriptHost, dci)
 	if err != nil {
 		return fmt.Errorf("error deploying OP chain: %w", err)
 	}
@@ -67,7 +48,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 
 	readInput := opcm.ReadImplementationAddressesInput{
 		DeployOPChainOutput: dco,
-		Opcm:                opcmAddr,
+		Opcm:                dci.Opcm,
 		Release:             release,
 	}
 	impls, err := opcm.ReadImplementationAddresses(env.L1ScriptHost, readInput)
@@ -89,7 +70,7 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 	return nil
 }
 
-func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInputV160, error) {
+func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInput, error) {
 	proofParams, err := jsonutil.MergeJSON(
 		state.ChainProofParams{
 			DisputeGameType:         standard.DisputeGameType,
@@ -103,31 +84,10 @@ func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID co
 		thisIntent.DeployOverrides,
 	)
 	if err != nil {
-		return opcm.DeployOPChainInputV160{}, fmt.Errorf("error merging proof params from overrides: %w", err)
+		return opcm.DeployOPChainInput{}, fmt.Errorf("error merging proof params from overrides: %w", err)
 	}
 
-	startingAnchorRoots := opcm.PermissionedGameStartingAnchorRoots
-	if len(thisIntent.AdditionalDisputeGames) > 0 {
-		anchorRoots := []opcm.StartingAnchorRoot{
-			opcm.DefaultStartingAnchorRoot,
-		}
-
-		for _, game := range thisIntent.AdditionalDisputeGames {
-			anchorRoots = append(anchorRoots, opcm.StartingAnchorRoot{
-				GameType:      game.DisputeGameType,
-				Root:          game.StartingAnchorRoot,
-				L2BlockNumber: common.Big0,
-			})
-		}
-
-		encoded, err := opcm.EncodeStartingAnchorRoots(anchorRoots)
-		if err != nil {
-			return opcm.DeployOPChainInputV160{}, fmt.Errorf("error encoding starting anchor roots: %w", err)
-		}
-		startingAnchorRoots = encoded
-	}
-
-	return opcm.DeployOPChainInputV160{
+	return opcm.DeployOPChainInput{
 		OpChainProxyAdminOwner:       thisIntent.Roles.L1ProxyAdminOwner,
 		SystemConfigOwner:            thisIntent.Roles.SystemConfigOwner,
 		Batcher:                      thisIntent.Roles.Batcher,
@@ -147,19 +107,6 @@ func makeDCIV160(intent *state.Intent, thisIntent *state.ChainIntent, chainID co
 		DisputeClockExtension:        proofParams.DisputeClockExtension,   // 3 hours (input in seconds)
 		DisputeMaxClockDuration:      proofParams.DisputeMaxClockDuration, // 3.5 days (input in seconds)
 		AllowCustomDisputeParameters: proofParams.DangerouslyAllowCustomDisputeParameters,
-		StartingAnchorRoots:          startingAnchorRoots,
-	}, nil
-}
-
-func makeDCIIsthmus(intent *state.Intent, thisIntent *state.ChainIntent, chainID common.Hash, st *state.State) (opcm.DeployOPChainInputIsthmus, error) {
-	dci, err := makeDCIV160(intent, thisIntent, chainID, st)
-	if err != nil {
-		return opcm.DeployOPChainInputIsthmus{}, fmt.Errorf("error making deploy OP chain input: %w", err)
-	}
-
-	return opcm.DeployOPChainInputIsthmus{
-		DeployOPChainInputV160: dci,
-		SystemConfigFeeAdmin:   common.Address{'D', 'E', 'A', 'D'},
 	}, nil
 }
 

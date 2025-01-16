@@ -121,6 +121,10 @@ func (i *iterator) TraverseConditional(fn traverseConditionalFn) error {
 			continue
 		}
 		if err := fn(&i.current); err != nil {
+			// don't rewind to the snapshot if the error is ErrStop
+			if errors.Is(err, types.ErrStop) {
+				return err
+			}
 			i.current = snapshot
 			return err
 		}

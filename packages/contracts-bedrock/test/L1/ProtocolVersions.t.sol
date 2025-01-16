@@ -28,7 +28,7 @@ contract ProtocolVersions_Initialize_Test is ProtocolVersions_Init {
         skipIfForkTest(
             "ProtocolVersions_Initialize_Test: cannot test initialization on forked network against hardhat config"
         );
-        IProtocolVersions protocolVersionsImpl = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsImpl"));
+        IProtocolVersions protocolVersionsImpl = IProtocolVersions(artifacts.mustGetAddress("ProtocolVersionsImpl"));
         address owner = deploy.cfg().finalSystemOwner();
 
         assertEq(ProtocolVersion.unwrap(protocolVersions.required()), ProtocolVersion.unwrap(required));
@@ -42,7 +42,7 @@ contract ProtocolVersions_Initialize_Test is ProtocolVersions_Init {
 
     /// @dev Ensures that the events are emitted during initialization.
     function test_initialize_events_succeeds() external {
-        IProtocolVersions protocolVersionsImpl = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsImpl"));
+        IProtocolVersions protocolVersionsImpl = IProtocolVersions(artifacts.mustGetAddress("ProtocolVersionsImpl"));
 
         // Wipe out the initialized slot so the proxy can be initialized again
         vm.store(address(protocolVersions), bytes32(0), bytes32(0));
