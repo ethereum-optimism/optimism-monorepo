@@ -205,6 +205,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
     uint256 l2ChainId;
     IProxyAdmin proxyAdmin;
+    IProxyAdmin superchainProxyAdmin;
     address upgrader;
     IOPContractsManager.OpChain[] opChains;
 
@@ -217,6 +218,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         }
 
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
+        superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
@@ -252,6 +254,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), delegateCaller);
         vm.label(newAnchorStateRegistryProxy, "NewAnchorStateRegistryProxy");
 
+        expectEmitUpgraded(impls.superchainConfigImpl, address(superchainConfig));
+        expectEmitUpgraded(impls.protocolVersionsImpl, address(protocolVersions));
         expectEmitUpgraded(impls.systemConfigImpl, address(systemConfig));
         vm.expectEmit(address(addressManager));
         emit AddressSet("OVM_L1CrossDomainMessenger", impls.l1CrossDomainMessengerImpl, oldL1CrossDomainMessenger);
@@ -279,7 +283,9 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
         vm.expectEmit(address(delegateCaller));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
-        DelegateCaller(delegateCaller).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
+        DelegateCaller(upgrader).dcForward(
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+        );
 
         if (delegateCaller == upgrader) {
             assertFalse(opcm.isRC(), "isRC should be false");
@@ -361,7 +367,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     function test_upgrade_notDelegateCalled_reverts() public {
         vm.prank(upgrader);
         vm.expectRevert(IOPContractsManager.OnlyDelegatecall.selector);
-        opcm.upgrade(opChains);
+        opcm.upgrade(superchainProxyAdmin, opChains);
     }
 
     function test_upgrade_superchainConfigMismatch_reverts() public {
@@ -377,7 +383,9 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
         vm.expectRevert(
             abi.encodeWithSelector(IOPContractsManager.SuperchainConfigMismatch.selector, address(systemConfig))
         );
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
+        DelegateCaller(upgrader).dcForward(
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+        );
     }
 }
 
@@ -441,6 +449,8 @@ contract OPContractsManager_AddGameType_Test is Test {
         IPreimageOracle oracle = IPreimageOracle(DeployUtils.create1("PreimageOracle", abi.encode(126000, 86400)));
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
+            superchainConfigImpl: DeployUtils.create1("SuperchainConfig"),
+            protocolVersionsImpl: DeployUtils.create1("ProtocolVersions"),
             l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
             optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
             systemConfigImpl: DeployUtils.create1("SystemConfig"),
