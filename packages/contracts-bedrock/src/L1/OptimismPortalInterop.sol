@@ -116,6 +116,8 @@ contract OptimismPortalInterop is OptimismPortal2 {
 
     /// @notice Locks the ETH in the SharedLockbox.
     function _lockETH() internal virtual override {
+        if (msg.value == 0) return;
+
         OptimismPortalStorage storage s = _storage();
         if (s.migrated) sharedLockbox().lockETH{ value: msg.value }();
     }

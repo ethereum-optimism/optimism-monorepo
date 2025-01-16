@@ -456,7 +456,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     {
         // This function locks ETH in the SharedLockbox when using the OptimismPortalInterop contract.
         // If the interop version is not used, this function is a no-ops.
-        if (msg.value != 0) _lockETH();
+        _lockETH();
 
         // Just to be safe, make sure that people specify address(0) as the target when doing
         // contract creations.
