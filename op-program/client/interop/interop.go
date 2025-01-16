@@ -63,6 +63,9 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 	if err != nil {
 		return common.Hash{}, err
 	}
+	if superRoot.Timestamp >= bootInfo.GameTimestamp {
+		return bootInfo.AgreedPrestate, nil
+	}
 	expectedPendingProgress := transitionState.PendingProgress
 	if transitionState.Step < uint64(len(superRoot.Chains)) {
 		block, err := deriveOptimisticBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, transitionState, tasks)
