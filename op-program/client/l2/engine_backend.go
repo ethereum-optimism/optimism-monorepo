@@ -26,7 +26,6 @@ type OracleBackedL2Chain struct {
 	chainCfg   *params.ChainConfig
 	engine     consensus.Engine
 	oracleHead *types.Header
-	head       *types.Header
 	safe       *types.Header
 	finalized  *types.Header
 	vmCfg      vm.Config
@@ -59,7 +58,6 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 		engine:   beacon.New(nil),
 
 		// Treat the agreed starting head as finalized - nothing before it can be disputed
-		head:       head.Header(),
 		safe:       head.Header(),
 		finalized:  head.Header(),
 		oracleHead: head.Header(),
@@ -78,7 +76,7 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
-	return o.head
+	return o.canon.CurrentHeader()
 }
 
 func (o *OracleBackedL2Chain) GetHeaderByNumber(n uint64) *types.Header {

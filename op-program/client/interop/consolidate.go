@@ -122,14 +122,16 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
-	canonBlocks := make(map[uint64]*l2.CanonicalBlockHeaderOracle)
-
 	for i, chain := range chains {
 		deps[eth.ChainIDFromUInt64(chain.ChainID)] = &depset.StaticConfigDependency{
 			ChainIndex:     supervisortypes.ChainIndex(i),
 			ActivationTime: 0,
 			HistoryMinTime: 0,
 		}
+	}
+
+	canonBlocks := make(map[uint64]*l2.CanonicalBlockHeaderOracle)
+	for _, chain := range chains {
 		output := oracle.OutputByRoot(common.Hash(chain.Output), chain.ChainID)
 		outputV0, ok := output.(*eth.OutputV0)
 		if !ok {
@@ -141,6 +143,7 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 		}
 		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
 	}
+
 	depset, err := depset.NewStaticConfigDependencySet(deps)
 	if err != nil {
 		return nil, fmt.Errorf("unexpected error: failed to create dependency set: %w", err)

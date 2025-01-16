@@ -18,6 +18,7 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 		return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
 	}
 	canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
+	require.Equal(t, head.Hash(), canon.CurrentHeader().Hash())
 	require.Nil(t, canon.GetHeaderByNumber(4))
 
 	oracle.Blocks[blocks[3].Hash()] = blocks[3]
@@ -64,6 +65,7 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		_, fork, forkOracle := setupOracle(t, blockCount, headBlockNumber, true)
 
 		canon.SetCanonical(fork[2].Header())
+		require.Equal(t, fork[2].Hash(), canon.CurrentHeader().Hash())
 		require.Nil(t, canon.GetHeaderByNumber(3))
 
 		forkOracle.Blocks[fork[2].Hash()] = fork[2]
@@ -95,6 +97,7 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		require.Equal(t, blocks[0].Hash(), h.Hash())
 
 		canon.SetCanonical(blocks[2].Header())
+		require.Equal(t, blocks[2].Hash(), canon.CurrentHeader().Hash())
 		require.Nil(t, canon.GetHeaderByNumber(3))
 		// earliest block cache is unchanged.
 		oracle.Blocks = map[common.Hash]*types.Block{

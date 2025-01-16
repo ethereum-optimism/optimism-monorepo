@@ -25,6 +25,10 @@ func NewCanonicalBlockHeaderOracle(head *types.Header, blockByHashFn BlockByHash
 	}
 }
 
+func (o *CanonicalBlockHeaderOracle) CurrentHeader() *types.Header {
+	return o.head
+}
+
 // GetHeaderByNumber walks back from the current head to the requested block number
 func (o *CanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Header {
 	if o.head.Number.Uint64() < n {
