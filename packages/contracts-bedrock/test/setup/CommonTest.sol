@@ -22,6 +22,7 @@ import { console } from "forge-std/console.sol";
 // Interfaces
 import { IOptimismMintableERC20Full } from "interfaces/universal/IOptimismMintableERC20Full.sol";
 import { ILegacyMintableERC20Full } from "interfaces/legacy/ILegacyMintableERC20Full.sol";
+import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
 
 /// @title CommonTest
 /// @dev An extenstion to `Test` that sets up the optimism smart contracts.
@@ -92,12 +93,23 @@ contract CommonTest is Test, Setup, Events {
         // Deploy L2
         Setup.L2();
 
-        // Authorize portals to interact with the SharedLockbox.
-        vm.prank(address(superchainConfig));
-        sharedLockbox.authorizePortal(address(optimismPortal2));
+        // Add L2 chain as cluster dependency
+        if (useInteropOverride) _addDependency();
 
         // Call bridge initializer setup function
         bridgeInitializerSetUp();
+    }
+
+    function _addDependency() internal {
+        vm.chainId(deploy.cfg().l1ChainID());
+        uint256 l2ChainID = deploy.cfg().l2ChainID();
+
+        ISuperchainConfigInterop superchainConfigInterop = ISuperchainConfigInterop(address(superchainConfig));
+
+        vm.prank(superchainConfigInterop.clusterManager());
+        superchainConfigInterop.addDependency(l2ChainID, address(systemConfig));
+
+        vm.chainId(l2ChainID);
     }
 
     function bridgeInitializerSetUp() public {

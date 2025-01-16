@@ -8,7 +8,6 @@ import { LibString } from "@solady/utils/LibString.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 import { Bytes } from "src/libraries/Bytes.sol";
 
@@ -50,7 +49,6 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
-    ISharedLockbox internal _sharedLockboxProxy;
 
     string internal _standardVersionsToml;
 
@@ -86,7 +84,6 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
-        else if (_sel == this.sharedLockboxProxy.selector) _sharedLockboxProxy = ISharedLockbox(_addr);
         else revert("DeployImplementationsInput: unknown selector");
     }
 
@@ -151,11 +148,6 @@ contract DeployImplementationsInput is BaseDeployIO {
     function protocolVersionsProxy() public view returns (IProtocolVersions) {
         require(address(_protocolVersionsProxy) != address(0), "DeployImplementationsInput: not set");
         return _protocolVersionsProxy;
-    }
-
-    function sharedLockboxProxy() public view returns (ISharedLockbox) {
-        require(address(_sharedLockboxProxy) != address(0), "DeployImplementationsInput: not set");
-        return _sharedLockboxProxy;
     }
 }
 

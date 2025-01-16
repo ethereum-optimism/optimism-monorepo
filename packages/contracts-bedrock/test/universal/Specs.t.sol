@@ -45,7 +45,7 @@ contract Specification_Test is CommonTest {
         COUNCILSAFEOWNER,
         PORTAL,
         SUPERCHAINCONFIG,
-        DEPENDENCYMANAGER
+        CLUSTERMANAGER
     }
 
     /// @notice Represents the specification of a function.
@@ -275,6 +275,8 @@ contract Specification_Test is CommonTest {
             _auth: Role.SYSTEMCONFIGOWNER
         });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("sharedLockbox()") });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrateLiquidity()"), _auth: Role.SUPERCHAINCONFIG });
+        _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrated()") });
 
         // OptimismPortal2
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("depositTransaction(address,uint256,uint64,bool,bytes)") });
@@ -322,7 +324,6 @@ contract Specification_Test is CommonTest {
             _sel: _getSel("depositERC20Transaction(address,uint256,uint256,uint64,bool,bytes)")
         });
         _addSpec({ _name: "OptimismPortal2", _sel: _getSel("setGasPayingToken(address,uint8,bytes32,bytes32)") });
-        _addSpec({ _name: "OptimismPortal2", _sel: _getSel("sharedLockbox()") });
 
         // ProtocolVersions
         _addSpec({ _name: "ProtocolVersions", _sel: _getSel("RECOMMENDED_SLOT()") });
@@ -351,33 +352,44 @@ contract Specification_Test is CommonTest {
 
         // SuperchainConfig
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("GUARDIAN_SLOT()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("DEPENDENCY_MANAGER_SLOT()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("PAUSED_SLOT()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("SHARED_LOCKBOX()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("guardian()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencyManager()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,address,bool)") });
+        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("initialize(address,bool)") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("paused()") });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
         _addSpec({ _name: "SuperchainConfig", _sel: _getSel("version()") });
+
+        // SuperchainConfigInterop
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("GUARDIAN_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("CLUSTER_MANAGER_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("PAUSED_SLOT()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("sharedLockbox()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("guardian()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("clusterManager()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("initialize(address,bool)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("initialize(address,bool,address,address)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("pause(string)"), _auth: Role.GUARDIAN });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("paused()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("unpause()"), _auth: Role.GUARDIAN });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("version()") });
         _addSpec({
-            _name: "SuperchainConfig",
+            _name: "SuperchainConfigInterop",
             _sel: _getSel("addDependency(uint256,address)"),
-            _auth: Role.DEPENDENCYMANAGER
+            _auth: Role.CLUSTERMANAGER
         });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("isInDependencySet(uint256)") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencySet()") });
-        _addSpec({ _name: "SuperchainConfig", _sel: _getSel("dependencySetSize()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("isInDependencySet(uint256)") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("dependencySet()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("dependencySetSize()") });
+        _addSpec({ _name: "SuperchainConfigInterop", _sel: _getSel("authorizedPortals(address)") });
 
         // SharedLockbox
-        _addSpec({ _name: "SharedLockbox", _sel: _getSel("SUPERCHAIN_CONFIG()") });
-        _addSpec({ _name: "SharedLockbox", _sel: _getSel("authorizedPortals(address)") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("lockETH()"), _auth: Role.PORTAL });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("unlockETH(uint256)"), _auth: Role.PORTAL });
-        _addSpec({ _name: "SharedLockbox", _sel: _getSel("authorizePortal(address)"), _auth: Role.SUPERCHAINCONFIG });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("version()") });
         _addSpec({ _name: "SharedLockbox", _sel: _getSel("paused()") });
+        _addSpec({ _name: "SharedLockbox", _sel: _getSel("initialize(address)") });
 
         // SystemConfig
         _addSpec({ _name: "SystemConfig", _sel: _getSel("UNSAFE_BLOCK_SIGNER_SLOT()") });
@@ -865,11 +877,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "LivenessModule", _sel: _getSel("safe()") });
         _addSpec({ _name: "LivenessModule", _sel: _getSel("thresholdPercentage()") });
         _addSpec({ _name: "LivenessModule", _sel: _getSel("version()") });
-
-        // LiquidityMigrator
-        _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("migrateETH()") });
-        _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("SHARED_LOCKBOX()") });
-        _addSpec({ _name: "LiquidityMigrator", _sel: _getSel("version()") });
     }
 
     /// @dev Computes the selector from a function signature.
@@ -953,9 +960,9 @@ contract Specification_Test is CommonTest {
 
     /// @notice Ensures that the DeputyGuardian is authorized to take all Guardian actions.
     function test_deputyGuardianAuth_works() public view {
-        // Additional 2 roles for the DeputyPauseModule.
-        assertEq(specsByRole[Role.GUARDIAN].length, 5);
-        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length + 2);
+        // Additional 2 roles for the DeputyPauseModule. Plus 2 for the SuperchainConfigInterop (remove when unified).
+        assertEq(specsByRole[Role.GUARDIAN].length, 5 + 2);
+        assertEq(specsByRole[Role.DEPUTYGUARDIAN].length, specsByRole[Role.GUARDIAN].length);
 
         mapping(bytes4 => Spec) storage dgmFuncSpecs = specs["DeputyGuardianModule"];
         mapping(bytes4 => Spec) storage superchainConfigFuncSpecs = specs["SuperchainConfig"];

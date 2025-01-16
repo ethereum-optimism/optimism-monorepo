@@ -11,6 +11,8 @@ import { Unauthorized } from "src/libraries/PortalErrors.sol";
 
 // Interfaces
 import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
+import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
+import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
 
 /// @custom:proxied true
 /// @title OptimismPortalInterop
@@ -18,6 +20,29 @@ import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 ///         and L2. Messages sent directly to the OptimismPortal have no form of replayability.
 ///         Users are encouraged to use the L1CrossDomainMessenger for a higher-level interface.
 contract OptimismPortalInterop is OptimismPortal2 {
+    /// @notice Emitted when the contract migrates the ETH liquidity to the SharedLockbox.
+    /// @param amount Amount of ETH migrated.
+    event ETHMigrated(uint256 amount);
+
+    /// @notice Storage slot that the OptimismPortalStorage struct is stored at.
+    /// keccak256(abi.encode(uint256(keccak256("optimismPortal.storage")) - 1)) & ~bytes32(uint256(0xff));
+    bytes32 internal constant OPTIMISM_PORTAL_STORAGE_SLOT =
+        0x554bed1aae13f6a1ca3b124bc567e2e458d6903a211d2d3a4ec21fca3b2b6c00;
+
+    /// @notice Storage struct for the OptimismPortal specific storage data.
+    /// @custom:storage-location erc7201:OptimismPortal.storage
+    struct OptimismPortalStorage {
+        /// @notice A flag indicating whether the contract has migrated the ETH liquidity to the SharedLockbox.
+        bool migrated;
+    }
+
+    /// @notice Returns the storage for the OptimismPortalStorage.
+    function _storage() private pure returns (OptimismPortalStorage storage storage_) {
+        assembly {
+            storage_.slot := OPTIMISM_PORTAL_STORAGE_SLOT
+        }
+    }
+
     constructor(
         uint256 _proofMaturityDelaySeconds,
         uint256 _disputeGameFinalityDelaySeconds
@@ -53,5 +78,43 @@ contract OptimismPortalInterop is OptimismPortal2 {
                 abi.encodeCall(IL1BlockInterop.setConfig, (_type, _value))
             )
         );
+    }
+
+    /// @notice Getter for the address of the shared lockbox.
+    function sharedLockbox() public view returns (ISharedLockbox) {
+        return ISuperchainConfigInterop(address(superchainConfig)).sharedLockbox();
+    }
+
+    /// @notice Getter for the migrated flag.
+    function migrated() external view returns (bool) {
+        return _storage().migrated;
+    }
+
+    /// @notice Unlock and receive the ETH from the shared lockbox.
+    /// @param _value Amount of ETH to unlock.
+    function _unlockETH(uint256 _value) internal virtual override {
+        OptimismPortalStorage storage s = _storage();
+        if (s.migrated) sharedLockbox().unlockETH(_value);
+    }
+
+    /// @notice Locks the ETH in the shared lockbox.
+    function _lockETH() internal virtual override {
+        OptimismPortalStorage storage s = _storage();
+        if (s.migrated) sharedLockbox().lockETH{ value: msg.value }();
+    }
+
+    /// @notice Migrates the ETH liquidity to the SharedLockbox. This function will only be called once by the
+    ///         SuperchainConfig when adding this chain to the dependency set.
+    function migrateLiquidity() external {
+        if (msg.sender != address(superchainConfig)) revert Unauthorized();
+
+        OptimismPortalStorage storage s = _storage();
+        s.migrated = true;
+
+        uint256 ethBalance = address(this).balance;
+
+        sharedLockbox().lockETH{ value: ethBalance }();
+
+        emit ETHMigrated(ethBalance);
     }
 }

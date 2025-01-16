@@ -45,7 +45,6 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IL1Block } from "interfaces/L2/IL1Block.sol";
-import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 /// @notice This is temporary. Error thrown when a chain uses a custom gas token.
 error CustomGasTokenNotSupported();
@@ -275,11 +274,6 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         return DISPUTE_GAME_FINALITY_DELAY_SECONDS;
     }
 
-    /// @notice Getter for the address of the shared lockbox.
-    function sharedLockbox() public view returns (ISharedLockbox) {
-        return superchainConfig.SHARED_LOCKBOX();
-    }
-
     /// @notice Computes the minimum gas limit for a deposit.
     ///         The minimum gas limit linearly increases based on the size of the calldata.
     ///         This is to prevent users from creating L2 resource usage without paying for it.
@@ -433,8 +427,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         bool success;
         (address token,) = gasPayingToken();
         if (token == Constants.ETHER) {
-            // Unlock and receive the ETH from the shared lockbox.
-            if (_tx.value != 0) sharedLockbox().unlockETH(_tx.value);
+            // This function unlocks ETH from the SharedLockbox when using the OptimismPortalInterop contract.
+            // If the interop version is not used, this function is a no-ops.
+            if (_tx.value != 0) _unlockETH(_tx.value);
 
             // Trigger the call to the target contract. We use a custom low level method
             // SafeCall.callWithMinGas to ensure two key properties
@@ -575,10 +570,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         if (token != Constants.ETHER && msg.value != 0) revert NoValue();
 
-        if (token == Constants.ETHER && msg.value != 0) {
-            // Lock the ETH in the shared lockbox.
-            sharedLockbox().lockETH{ value: msg.value }();
-        }
+        // This function locks ETH in the SharedLockbox when using the OptimismPortalInterop contract.
+        // If the interop version is not used, this function is a no-ops.
+        if (token == Constants.ETHER && msg.value != 0) _lockETH();
 
         _depositTransaction({
             _to: _to,
@@ -750,4 +744,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     function numProofSubmitters(bytes32 _withdrawalHash) external view returns (uint256) {
         return proofSubmitters[_withdrawalHash].length;
     }
+
+    /// @notice No-op function to be used to lock ETH in the SharedLockbox in the interop contract.
+    function _lockETH() internal virtual { }
+
+    /// @notice No-op function to be used to unlock ETH from the SharedLockbox in the interop contract.
+    /// @param _value Amount of ETH to unlock
+    function _unlockETH(uint256 _value) internal virtual { }
 }

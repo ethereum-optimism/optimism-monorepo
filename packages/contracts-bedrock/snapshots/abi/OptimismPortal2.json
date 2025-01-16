@@ -645,19 +645,6 @@
   },
   {
     "inputs": [],
-    "name": "sharedLockbox",
-    "outputs": [
-      {
-        "internalType": "contract ISharedLockbox",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
     "name": "superchainConfig",
     "outputs": [
       {

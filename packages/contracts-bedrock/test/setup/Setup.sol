@@ -24,7 +24,6 @@ import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.s
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
-import { ILiquidityMigrator } from "interfaces/L1/ILiquidityMigrator.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -51,6 +50,7 @@ import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { IDependencyManager } from "interfaces/L2/IDependencyManager.sol";
 
 /// @title Setup
 /// @dev This contact is responsible for setting up the contracts in state. It currently
@@ -91,7 +91,6 @@ contract Setup {
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
     ISharedLockbox sharedLockbox;
-    ILiquidityMigrator liquidityMigrator;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
@@ -116,6 +115,7 @@ contract Setup {
     ISuperchainTokenBridge superchainTokenBridge = ISuperchainTokenBridge(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
     IOptimismSuperchainERC20Factory l2OptimismSuperchainERC20Factory =
         IOptimismSuperchainERC20Factory(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
+    IDependencyManager dependencyManager = IDependencyManager(Predeploys.DEPENDENCY_MANAGER);
 
     /// @notice Indicates whether a test is running against a forked production network.
     function isForkTest() public view returns (bool) {
@@ -215,10 +215,12 @@ contract Setup {
         protocolVersions = IProtocolVersions(deploy.mustGetAddress("ProtocolVersionsProxy"));
         superchainConfig = ISuperchainConfig(deploy.mustGetAddress("SuperchainConfigProxy"));
         anchorStateRegistry = IAnchorStateRegistry(deploy.mustGetAddress("AnchorStateRegistryProxy"));
-        sharedLockbox = ISharedLockbox(deploy.mustGetAddress("SharedLockboxProxy"));
-        liquidityMigrator = ILiquidityMigrator(deploy.mustGetAddress("LiquidityMigrator"));
         disputeGameFactory = IDisputeGameFactory(deploy.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(deploy.mustGetAddress("DelayedWETHProxy"));
+
+        if (deploy.cfg().useInterop()) {
+            sharedLockbox = ISharedLockbox(deploy.mustGetAddress("SharedLockboxProxy"));
+        }
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
@@ -273,6 +275,7 @@ contract Setup {
         labelPredeploy(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
         labelPredeploy(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON);
         labelPredeploy(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
+        labelPredeploy(Predeploys.DEPENDENCY_MANAGER);
 
         // L2 Preinstalls
         labelPreinstall(Preinstalls.MultiCall3);

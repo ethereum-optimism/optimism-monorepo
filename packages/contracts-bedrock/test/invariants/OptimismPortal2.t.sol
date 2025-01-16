@@ -136,15 +136,19 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
         game.resolveClaim(0, 0);
         game.resolve();
 
-        // Fund the SharedLockbox so that we can withdraw ETH.
-        vm.deal(address(sharedLockbox), 0xFFFFFFFF);
+        // Fund the system so that we can withdraw ETH.
+        _fundSystem();
+    }
+
+    function _fundSystem() internal virtual {
+        vm.deal(address(optimismPortal2), 0xFFFFFFFF);
     }
 }
 
 contract OptimismPortal2_Deposit_Invariant is CommonTest {
     OptimismPortal2_Depositor internal actor;
 
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
         // Create a deposit actor.
         actor = new OptimismPortal2_Depositor(vm, optimismPortal2);
@@ -167,8 +171,15 @@ contract OptimismPortal2_Deposit_Invariant is CommonTest {
     }
 }
 
+contract OptimismPortalInterop_Deposit_Invariant is OptimismPortal2_Deposit_Invariant {
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+}
+
 contract OptimismPortal2_CannotTimeTravel is OptimismPortal2_Invariant_Harness {
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
 
         // Prove the withdrawal transaction
@@ -190,8 +201,19 @@ contract OptimismPortal2_CannotTimeTravel is OptimismPortal2_Invariant_Harness {
     }
 }
 
+contract OptimismPortalInterop_CannotTimeTravel is OptimismPortal2_CannotTimeTravel {
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+
+    function _fundSystem() internal virtual override {
+        vm.deal(address(sharedLockbox), 0xFFFFFFFF);
+    }
+}
+
 contract OptimismPortal2_CannotFinalizeTwice is OptimismPortal2_Invariant_Harness {
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
 
         // Prove the withdrawal transaction
@@ -219,8 +241,19 @@ contract OptimismPortal2_CannotFinalizeTwice is OptimismPortal2_Invariant_Harnes
     }
 }
 
+contract OptimismPortalInterop_CannotFinalizeTwice is OptimismPortal2_CannotFinalizeTwice {
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+
+    function _fundSystem() internal virtual override {
+        vm.deal(address(sharedLockbox), 0xFFFFFFFF);
+    }
+}
+
 contract OptimismPortal_CanAlwaysFinalizeAfterWindow is OptimismPortal2_Invariant_Harness {
-    function setUp() public override {
+    function setUp() public virtual override {
         super.setUp();
 
         // Prove the withdrawal transaction
@@ -247,5 +280,16 @@ contract OptimismPortal_CanAlwaysFinalizeAfterWindow is OptimismPortal2_Invarian
         optimismPortal2.finalizeWithdrawalTransaction(_defaultTx);
 
         assertEq(address(bob).balance, bobBalanceBefore + _defaultTx.value);
+    }
+}
+
+contract OptimismPortalInterop_CanAlwaysFinalizeAfterWindow is OptimismPortal_CanAlwaysFinalizeAfterWindow {
+    function setUp() public virtual override {
+        super.enableInterop();
+        super.setUp();
+    }
+
+    function _fundSystem() internal virtual override {
+        vm.deal(address(sharedLockbox), 0xFFFFFFFF);
     }
 }

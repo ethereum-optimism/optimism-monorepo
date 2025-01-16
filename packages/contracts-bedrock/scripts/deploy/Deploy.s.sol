@@ -16,7 +16,12 @@ import { StateDiff } from "scripts/libraries/StateDiff.sol";
 import { Process } from "scripts/libraries/Process.sol";
 import { ChainAssertions } from "scripts/deploy/ChainAssertions.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { DeploySuperchainInput, DeploySuperchain, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
+import {
+    DeploySuperchainInput,
+    DeploySuperchain,
+    DeploySuperchainInterop,
+    DeploySuperchainOutput
+} from "scripts/deploy/DeploySuperchain.s.sol";
 import {
     DeployImplementationsInput,
     DeployImplementations,
@@ -213,7 +218,7 @@ contract Deploy is Deployer {
 
         // Set up the Superchain if needed.
         if (_needsSuperchain) {
-            deploySuperchain();
+            deploySuperchain({ _isInterop: cfg.useInterop() });
         }
 
         deployImplementations({ _isInterop: cfg.useInterop() });
@@ -255,7 +260,9 @@ contract Deploy is Deployer {
     ///         1. The SuperchainConfig contract
     ///         2. The ProtocolVersions contract
     ///         3. The SharedLockbox contract
-    function deploySuperchain() public {
+    function deploySuperchain(bool _isInterop) public {
+        require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
+
         console.log("Setting up Superchain");
         DeploySuperchain ds = new DeploySuperchain();
         (DeploySuperchainInput dsi, DeploySuperchainOutput dso) = ds.etchIOContracts();
@@ -268,7 +275,11 @@ contract Deploy is Deployer {
         dsi.set(dsi.paused.selector, false);
         dsi.set(dsi.requiredProtocolVersion.selector, ProtocolVersion.wrap(cfg.requiredProtocolVersion()));
         dsi.set(dsi.recommendedProtocolVersion.selector, ProtocolVersion.wrap(cfg.recommendedProtocolVersion()));
+        dsi.set(dsi.isInterop.selector, _isInterop);
 
+        if (_isInterop) {
+            ds = DeploySuperchain(new DeploySuperchainInterop());
+        }
         // Run the deployment script.
         ds.run(dsi, dso);
         save("SuperchainProxyAdmin", address(dso.superchainProxyAdmin()));
@@ -276,33 +287,49 @@ contract Deploy is Deployer {
         save("SuperchainConfigImpl", address(dso.superchainConfigImpl()));
         save("ProtocolVersionsProxy", address(dso.protocolVersionsProxy()));
         save("ProtocolVersionsImpl", address(dso.protocolVersionsImpl()));
-        save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
-        save("SharedLockboxImpl", address(dso.sharedLockboxImpl()));
-        save("LiquidityMigrator", address(dso.liquidityMigratorImpl()));
+
+        if (_isInterop) {
+            save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
+            save("SharedLockboxImpl", address(dso.sharedLockboxImpl()));
+        }
 
         // First run assertions for the ProtocolVersions, SuperchainConfig and SharedLockbox proxy contracts.
         Types.ContractSet memory contracts = _proxies();
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: true });
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isProxy: true, _isPaused: false });
-        ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: true });
 
-        // Test the LiquidityMigrator contract is setup correctly.
-        ChainAssertions.checkLiquidityMigrator({
-            _contracts: contracts,
-            _liquidityMigrator: mustGetAddress("LiquidityMigrator")
-        });
-
-        // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
-        contracts.SharedLockbox = mustGetAddress("SharedLockboxImpl");
-        ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: false });
+        if (_isInterop) {
+            ChainAssertions.checkSuperchainConfigInterop({
+                _contracts: contracts,
+                _cfg: cfg,
+                _isProxy: true,
+                _isPaused: false
+            });
+            ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: true });
+        }
 
         // Then replace the ProtocolVersions proxy with the implementation address and run assertions on it.
         contracts.ProtocolVersions = mustGetAddress("ProtocolVersionsImpl");
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
-        // Finally replace the SuperchainConfig proxy with the implementation address and run assertions on it.
-        contracts.SuperchainConfig = mustGetAddress("SuperchainConfigImpl");
-        ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isPaused: false, _isProxy: false });
+        if (_isInterop) {
+            // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
+            contracts.SharedLockbox = mustGetAddress("SharedLockboxImpl");
+            ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: false });
+
+            // Finally replace the SuperchainConfig proxy with the implementation address and run assertions on it.
+            contracts.SuperchainConfig = mustGetAddress("SuperchainConfigImpl");
+            ChainAssertions.checkSuperchainConfigInterop({
+                _contracts: contracts,
+                _cfg: cfg,
+                _isPaused: false,
+                _isProxy: false
+            });
+        } else {
+            // Finally replace the SuperchainConfig proxy with the implementation address and run assertions on it.
+            contracts.SuperchainConfig = mustGetAddress("SuperchainConfigImpl");
+            ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isPaused: false, _isProxy: false });
+        }
     }
 
     /// @notice Deploy all of the implementations
@@ -326,7 +353,6 @@ contract Deploy is Deployer {
         );
         dii.set(dii.superchainConfigProxy.selector, mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, mustGetAddress("ProtocolVersionsProxy"));
-        dii.set(dii.sharedLockboxProxy.selector, mustGetAddress("SharedLockboxProxy"));
         dii.set(dii.salt.selector, _implSalt());
 
         if (_isInterop) {

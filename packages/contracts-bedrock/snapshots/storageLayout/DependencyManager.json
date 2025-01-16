@@ -1,0 +1,9 @@
+[
+  {
+    "bytes": "64",
+    "label": "_dependencySet",
+    "offset": 0,
+    "slot": "0",
+    "type": "struct EnumerableSet.UintSet"
+  }
+]

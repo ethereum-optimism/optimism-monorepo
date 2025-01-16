@@ -24,8 +24,8 @@ import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
-import { ILiquidityMigrator } from "interfaces/L1/ILiquidityMigrator.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
@@ -441,6 +441,7 @@ library ChainAssertions {
         view
     {
         ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
+
         console.log(
             "Running chain assertions on the SuperchainConfig %s at %s",
             _isProxy ? "proxy" : "implementation",
@@ -463,6 +464,36 @@ library ChainAssertions {
             require(superchainConfig.guardian() == address(0), "CHECK-SC-40");
             require(superchainConfig.paused() == false, "CHECK-SC-50");
         }
+    }
+
+    /// @notice Asserts that the SuperchainConfigInterop is setup correctly
+    function checkSuperchainConfigInterop(
+        Types.ContractSet memory _contracts,
+        DeployConfig _cfg,
+        bool _isPaused,
+        bool _isProxy
+    )
+        internal
+        view
+    {
+        ISuperchainConfigInterop superchainConfig = ISuperchainConfigInterop(_contracts.SuperchainConfig);
+        ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
+
+        console.log(
+            "Running chain assertions on the SuperchainConfigInterop %s at %s",
+            _isProxy ? "proxy" : "implementation",
+            address(superchainConfig)
+        );
+
+        if (_isProxy) {
+            require(superchainConfig.clusterManager() == _cfg.finalSystemOwner(), "CHECK-SCI-10");
+            require(address(superchainConfig.sharedLockbox()) == address(sharedLockbox), "CHECK-SCI-20");
+        } else {
+            require(superchainConfig.clusterManager() == address(0), "CHECK-SCI-30");
+            require(address(superchainConfig.sharedLockbox()) == address(0), "CHECK-SCI-40");
+        }
+
+        checkSuperchainConfig(_contracts, _cfg, _isPaused, _isProxy);
     }
 
     /// @notice Asserts that the OPContractsManager is setup correctly
@@ -545,7 +576,7 @@ library ChainAssertions {
     /// @notice Asserts that the SharedLockbox is setup correctly
     function checkSharedLockbox(Types.ContractSet memory _contracts, bool _isProxy) internal view {
         ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
-        ISuperchainConfig superchainConfig = ISuperchainConfig(_contracts.SuperchainConfig);
+        ISuperchainConfigInterop superchainConfig = ISuperchainConfigInterop(_contracts.SuperchainConfig);
 
         console.log(
             "Running chain assertions on the SharedLockbox %s at %s",
@@ -554,13 +585,14 @@ library ChainAssertions {
         );
 
         require(address(sharedLockbox) != address(0), "CHECK-SLB-10");
-        require(sharedLockbox.SUPERCHAIN_CONFIG() == superchainConfig, "CHECK-SLB-20");
-    }
 
-    /// @notice Asserts that the LiquidityMigrator is setup correctly
-    function checkLiquidityMigrator(Types.ContractSet memory _contracts, address _liquidityMigrator) internal view {
-        ISharedLockbox sharedLockbox = ISharedLockbox(_contracts.SharedLockbox);
+        // Check that the contract is initialized
+        DeployUtils.assertInitializedOZv5({ _contractAddress: address(sharedLockbox), _isProxy: _isProxy });
 
-        require(ILiquidityMigrator(_liquidityMigrator).SHARED_LOCKBOX() == sharedLockbox, "LM-10");
+        if (_isProxy) {
+            require(sharedLockbox.superchainConfig() == superchainConfig, "CHECK-SLB-20");
+        } else {
+            require(address(sharedLockbox.superchainConfig()) == address(0), "CHECK-SLB-30");
+        }
     }
 }
