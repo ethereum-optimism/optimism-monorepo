@@ -7,7 +7,7 @@
   "op_supervisor" (localDockerImage "op-supervisor")
 -}}
 {{- $urls := dict
-  "prestate" "http://fileserver/proofs/op-program/cannon"
+  "prestate" (localPrestate.URL)
   "l1_artifacts" (localContractArtifacts "l1")
   "l2_artifacts" (localContractArtifacts "l2")
 -}}

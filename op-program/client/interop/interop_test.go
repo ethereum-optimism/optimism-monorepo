@@ -68,10 +68,8 @@ func TestDeriveBlockForFirstChainFromSuperchainRoot(t *testing.T) {
 		Step: 1,
 	}
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
-
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
+	expectedClaim := expectedIntermediateRoot.Hash()
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
@@ -84,8 +82,7 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 		},
 		Step: 1,
 	}
-	outputRootHash, err := agreedTransitionState.Hash()
-	require.NoError(t, err)
+	outputRootHash := agreedTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
 	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
 	expectedIntermediateRoot := &types.TransitionState{
@@ -97,9 +94,8 @@ func TestDeriveBlockForSecondChainFromTransitionState(t *testing.T) {
 		Step: 2,
 	}
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
+	expectedClaim := expectedIntermediateRoot.Hash()
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 func TestNoOpStep(t *testing.T) {
@@ -113,16 +109,14 @@ func TestNoOpStep(t *testing.T) {
 		},
 		Step: 2,
 	}
-	outputRootHash, err := agreedTransitionState.Hash()
-	require.NoError(t, err)
+	outputRootHash := agreedTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
 	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
 	expectedIntermediateRoot := *agreedTransitionState // Copy agreed state
 	expectedIntermediateRoot.Step = 3
 
-	expectedClaim, err := expectedIntermediateRoot.Hash()
-	require.NoError(t, err)
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
+	expectedClaim := expectedIntermediateRoot.Hash()
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, outputRootHash, agreedSuperRoot.Timestamp+100000, expectedClaim)
 }
 
 func TestDeriveBlockForConsolidateStep(t *testing.T) {
@@ -141,8 +135,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 		},
 		Step: ConsolidateStep,
 	}
-	outputRootHash, err := agreedTransitionState.Hash()
-	require.NoError(t, err)
+	outputRootHash := agreedTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
 	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
 
@@ -168,7 +161,16 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			},
 		},
 	}))
-	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedSuperRoot, outputRootHash, expectedClaim)
+	verifyResult(
+		t,
+		logger,
+		tasksStub,
+		configSource,
+		l2PreimageOracle,
+		outputRootHash,
+		agreedSuperRoot.Timestamp+100000,
+		expectedClaim,
+	)
 }
 
 func createBlock(num int64) *gethTypes.Block {
@@ -181,10 +183,36 @@ func createBlock(num int64) *gethTypes.Block {
 	)
 }
 
-func verifyResult(t *testing.T, logger log.Logger, tasks stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedSuperRoot *eth.SuperV1, agreedPrestate common.Hash, expectedClaim common.Hash) {
+func TestTraceExtensionOnceClaimedTimestampIsReached(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelError)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
+	agreedPrestatehash := common.Hash(eth.SuperRoot(agreedSuperRoot))
+	l2PreimageOracle, _ := test.NewStubOracle(t)
+	l2PreimageOracle.TransitionStates[agreedPrestatehash] = &types.TransitionState{SuperRoot: agreedSuperRoot.Marshal()}
+
+	// We have reached the game's timestamp so should just trace extend the agreed claim
+	expectedClaim := agreedPrestatehash
+	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp, expectedClaim)
+}
+
+func TestPanicIfAgreedPrestateIsAfterGameTimestamp(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelError)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
+	agreedPrestatehash := common.Hash(eth.SuperRoot(agreedSuperRoot))
+	l2PreimageOracle, _ := test.NewStubOracle(t)
+	l2PreimageOracle.TransitionStates[agreedPrestatehash] = &types.TransitionState{SuperRoot: agreedSuperRoot.Marshal()}
+
+	// We have reached the game's timestamp so should just trace extend the agreed claim
+	expectedClaim := agreedPrestatehash
+	require.PanicsWithError(t, fmt.Sprintf("agreed prestate timestamp %v is after the game timestamp %v", agreedSuperRoot.Timestamp, agreedSuperRoot.Timestamp-1), func() {
+		verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp-1, expectedClaim)
+	})
+}
+
+func verifyResult(t *testing.T, logger log.Logger, tasks stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
 	bootInfo := &boot.BootInfoInterop{
 		AgreedPrestate: agreedPrestate,
-		ClaimTimestamp: agreedSuperRoot.Timestamp + 1,
+		GameTimestamp:  gameTimestamp,
 		Claim:          expectedClaim,
 		Configs:        configSource,
 	}

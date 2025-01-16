@@ -28,6 +28,7 @@ var (
 	validDatadir                          = "/tmp/data"
 	validL2Rpc                            = "http://localhost:9545"
 	validRollupRpc                        = "http://localhost:8555"
+	validSupervisorRpc                    = "http://localhost/supervisor"
 
 	validAsteriscBin                        = "./bin/asterisc"
 	validAsteriscOpProgramBin               = "./bin/op-program"
@@ -43,7 +44,7 @@ var (
 	validAsteriscKonaAbsolutePreStateBaseURL, _ = url.Parse("http://localhost/bar/")
 )
 
-var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned}
+var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon}
 var asteriscTraceTypes = []types.TraceType{types.TraceTypeAsterisc}
 var asteriscKonaTraceTypes = []types.TraceType{types.TraceTypeAsteriscKona}
 
@@ -63,8 +64,12 @@ func ensureExists(path string) error {
 	return file.Close()
 }
 
-func applyValidConfigForCannon(t *testing.T, cfg *Config) {
+func applyValidConfigForSuperCannon(t *testing.T, cfg *Config) {
+	cfg.SupervisorRPC = validSupervisorRpc
+	applyValidConfigForCannon(t, cfg)
+}
 
+func applyValidConfigForCannon(t *testing.T, cfg *Config) {
 	tmpDir := t.TempDir()
 	vmBin := filepath.Join(tmpDir, validCannonBin)
 	server := filepath.Join(tmpDir, validCannonOpProgramBin)
@@ -108,6 +113,9 @@ func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
 
 func validConfig(t *testing.T, traceType types.TraceType) Config {
 	cfg := NewConfig(validGameFactoryAddress, validL1EthRpc, validL1BeaconUrl, validRollupRpc, validL2Rpc, validDatadir, traceType)
+	if traceType == types.TraceTypeSuperCannon {
+		applyValidConfigForSuperCannon(t, &cfg)
+	}
 	if traceType == types.TraceTypeCannon || traceType == types.TraceTypePermissioned {
 		applyValidConfigForCannon(t, &cfg)
 	}
@@ -582,11 +590,39 @@ func TestHttpPollInterval(t *testing.T) {
 func TestRollupRpcRequired(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
+		if traceType == types.TraceTypeSuperCannon {
+			continue
+		}
 		t.Run(traceType.String(), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.RollupRpc = ""
 			require.ErrorIs(t, config.Check(), ErrMissingRollupRpc)
 		})
+	}
+}
+
+func TestRollupRpcNotRequiredForInterop(t *testing.T) {
+	config := validConfig(t, types.TraceTypeSuperCannon)
+	config.RollupRpc = ""
+	require.NoError(t, config.Check())
+}
+
+func TestSupervisorRpc(t *testing.T) {
+	for _, traceType := range types.TraceTypes {
+		traceType := traceType
+		if traceType == types.TraceTypeSuperCannon {
+			t.Run("RequiredFor"+traceType.String(), func(t *testing.T) {
+				config := validConfig(t, traceType)
+				config.SupervisorRPC = ""
+				require.ErrorIs(t, config.Check(), ErrMissingSupervisorRpc)
+			})
+		} else {
+			t.Run("NotRequiredFor"+traceType.String(), func(t *testing.T) {
+				config := validConfig(t, traceType)
+				config.SupervisorRPC = ""
+				require.NoError(t, config.Check())
+			})
+		}
 	}
 }
 

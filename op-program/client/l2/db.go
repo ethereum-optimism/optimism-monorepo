@@ -74,6 +74,10 @@ func (o *OracleKeyValueStore) Delete(key []byte) error {
 	panic("not supported")
 }
 
+func (o *OracleKeyValueStore) DeleteRange(start, end []byte) error {
+	panic("not supported")
+}
+
 func (o *OracleKeyValueStore) Stat() (string, error) {
 	panic("not supported")
 }

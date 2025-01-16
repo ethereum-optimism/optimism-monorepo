@@ -28,7 +28,8 @@ var (
 	ErrMissingCannonSnapshotFreq     = errors.New("missing cannon snapshot freq")
 	ErrMissingCannonInfoFreq         = errors.New("missing cannon info freq")
 
-	ErrMissingRollupRpc = errors.New("missing rollup rpc url")
+	ErrMissingRollupRpc     = errors.New("missing rollup rpc url")
+	ErrMissingSupervisorRpc = errors.New("missing supervisor rpc url")
 
 	ErrMissingAsteriscAbsolutePreState = errors.New("missing asterisc absolute pre-state")
 	ErrMissingAsteriscSnapshotFreq     = errors.New("missing asterisc snapshot freq")
@@ -74,9 +75,9 @@ type Config struct {
 
 	TraceTypes []types.TraceType // Type of traces supported
 
-	RollupRpc string // L2 Rollup RPC Url
-
-	L2Rpc string // L2 RPC Url
+	RollupRpc     string // L2 Rollup RPC Url
+	SupervisorRPC string // L2 supervisor RPC URL
+	L2Rpc         string // L2 RPC Url
 
 	// Specific to the cannon trace provider
 	Cannon                        vm.Config
@@ -169,9 +170,6 @@ func (c Config) Check() error {
 	if c.L1Beacon == "" {
 		return ErrMissingL1Beacon
 	}
-	if c.RollupRpc == "" {
-		return ErrMissingRollupRpc
-	}
 	if c.L2Rpc == "" {
 		return ErrMissingL2Rpc
 	}
@@ -187,21 +185,26 @@ func (c Config) Check() error {
 	if c.MaxConcurrency == 0 {
 		return ErrMaxConcurrencyZero
 	}
+	if c.TraceTypeEnabled(types.TraceTypeSuperCannon) {
+		if c.SupervisorRPC == "" {
+			return ErrMissingSupervisorRpc
+		}
+		if err := c.validateBaseCannonOptions(); err != nil {
+			return err
+		}
+	}
 	if c.TraceTypeEnabled(types.TraceTypeCannon) || c.TraceTypeEnabled(types.TraceTypePermissioned) {
-		if err := c.Cannon.Check(); err != nil {
-			return fmt.Errorf("cannon: %w", err)
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
 		}
-		if c.CannonAbsolutePreState == "" && c.CannonAbsolutePreStateBaseURL == nil {
-			return ErrMissingCannonAbsolutePreState
-		}
-		if c.Cannon.SnapshotFreq == 0 {
-			return ErrMissingCannonSnapshotFreq
-		}
-		if c.Cannon.InfoFreq == 0 {
-			return ErrMissingCannonInfoFreq
+		if err := c.validateBaseCannonOptions(); err != nil {
+			return err
 		}
 	}
 	if c.TraceTypeEnabled(types.TraceTypeAsterisc) {
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
+		}
 		if err := c.Asterisc.Check(); err != nil {
 			return fmt.Errorf("asterisc: %w", err)
 		}
@@ -216,6 +219,9 @@ func (c Config) Check() error {
 		}
 	}
 	if c.TraceTypeEnabled(types.TraceTypeAsteriscKona) {
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
+		}
 		if err := c.AsteriscKona.Check(); err != nil {
 			return fmt.Errorf("asterisc kona: %w", err)
 		}
@@ -229,6 +235,11 @@ func (c Config) Check() error {
 			return ErrMissingAsteriscKonaInfoFreq
 		}
 	}
+	if c.TraceTypeEnabled(types.TraceTypeAlphabet) || c.TraceTypeEnabled(types.TraceTypeFast) {
+		if c.RollupRpc == "" {
+			return ErrMissingRollupRpc
+		}
+	}
 	if err := c.TxMgrConfig.Check(); err != nil {
 		return err
 	}
@@ -237,6 +248,22 @@ func (c Config) Check() error {
 	}
 	if err := c.PprofConfig.Check(); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c Config) validateBaseCannonOptions() error {
+	if err := c.Cannon.Check(); err != nil {
+		return fmt.Errorf("cannon: %w", err)
+	}
+	if c.CannonAbsolutePreState == "" && c.CannonAbsolutePreStateBaseURL == nil {
+		return ErrMissingCannonAbsolutePreState
+	}
+	if c.Cannon.SnapshotFreq == 0 {
+		return ErrMissingCannonSnapshotFreq
+	}
+	if c.Cannon.InfoFreq == 0 {
+		return ErrMissingCannonInfoFreq
 	}
 	return nil
 }

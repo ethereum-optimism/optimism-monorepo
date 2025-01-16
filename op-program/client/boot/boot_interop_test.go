@@ -20,14 +20,14 @@ func TestInteropBootstrap_SimpleValues(t *testing.T) {
 		L1Head:         common.Hash{0xaa},
 		AgreedPrestate: common.Hash{0xbb},
 		Claim:          common.Hash{0xcc},
-		ClaimTimestamp: 49829482,
+		GameTimestamp:  49829482,
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, false)
 	actual := BootstrapInterop(mockOracle)
 	require.Equal(t, expected.L1Head, actual.L1Head)
 	require.Equal(t, expected.AgreedPrestate, actual.AgreedPrestate)
 	require.Equal(t, expected.Claim, actual.Claim)
-	require.Equal(t, expected.ClaimTimestamp, actual.ClaimTimestamp)
+	require.Equal(t, expected.GameTimestamp, actual.GameTimestamp)
 }
 
 func TestInteropBootstrap_RollupConfigBuiltIn(t *testing.T) {
@@ -36,7 +36,7 @@ func TestInteropBootstrap_RollupConfigBuiltIn(t *testing.T) {
 		L1Head:         common.Hash{0xaa},
 		AgreedPrestate: common.Hash{0xbb},
 		Claim:          common.Hash{0xcc},
-		ClaimTimestamp: 49829482,
+		GameTimestamp:  49829482,
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, false)
 	actual := BootstrapInterop(mockOracle)
@@ -52,7 +52,7 @@ func TestInteropBootstrap_RollupConfigCustom(t *testing.T) {
 		L1Head:         common.Hash{0xaa},
 		AgreedPrestate: common.Hash{0xbb},
 		Claim:          common.Hash{0xcc},
-		ClaimTimestamp: 49829482,
+		GameTimestamp:  49829482,
 	}
 	mockOracle := newMockInteropBootstrapOracle(source, true)
 	mockOracle.rollupCfgs = []*rollup.Config{config1, config2}
@@ -72,7 +72,7 @@ func TestInteropBootstrap_ChainConfigBuiltIn(t *testing.T) {
 		L1Head:         common.Hash{0xaa},
 		AgreedPrestate: common.Hash{0xbb},
 		Claim:          common.Hash{0xcc},
-		ClaimTimestamp: 49829482,
+		GameTimestamp:  49829482,
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, false)
 	actual := BootstrapInterop(mockOracle)
@@ -88,7 +88,7 @@ func TestInteropBootstrap_ChainConfigCustom(t *testing.T) {
 		L1Head:         common.Hash{0xaa},
 		AgreedPrestate: common.Hash{0xbb},
 		Claim:          common.Hash{0xcc},
-		ClaimTimestamp: 49829482,
+		GameTimestamp:  49829482,
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, true)
 	mockOracle.chainCfgs = []*params.ChainConfig{config1, config2}
@@ -109,7 +109,7 @@ func newMockInteropBootstrapOracle(b *BootInfoInterop, custom bool) *mockInterop
 			l1Head:             b.L1Head,
 			l2OutputRoot:       b.AgreedPrestate,
 			l2Claim:            b.Claim,
-			l2ClaimBlockNumber: b.ClaimTimestamp,
+			l2ClaimBlockNumber: b.GameTimestamp,
 		},
 		custom: custom,
 	}

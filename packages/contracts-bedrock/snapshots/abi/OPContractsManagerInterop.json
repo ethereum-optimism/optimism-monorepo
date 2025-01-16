@@ -130,19 +130,6 @@
     "type": "constructor"
   },
   {
-    "inputs": [],
-    "name": "OUTPUT_VERSION",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "components": [
@@ -629,12 +616,6 @@
   {
     "anonymous": false,
     "inputs": [
-      {
-        "indexed": true,
-        "internalType": "uint256",
-        "name": "outputVersion",
-        "type": "uint256"
-      },
       {
         "indexed": true,
         "internalType": "uint256",

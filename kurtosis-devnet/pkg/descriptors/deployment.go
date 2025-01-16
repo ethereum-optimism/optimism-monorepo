@@ -49,4 +49,6 @@ type WalletMap map[string]Wallet
 type DevnetEnvironment struct {
 	L1 *Chain   `json:"l1"`
 	L2 []*Chain `json:"l2"`
+
+	Features []string `json:"features,omitempty"`
 }

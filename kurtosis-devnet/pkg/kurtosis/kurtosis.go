@@ -163,7 +163,8 @@ func (d *KurtosisDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.En
 
 	env := &KurtosisEnvironment{
 		DevnetEnvironment: descriptors.DevnetEnvironment{
-			L2: make([]*descriptors.Chain, 0, len(spec.Chains)),
+			L2:       make([]*descriptors.Chain, 0, len(spec.Chains)),
+			Features: spec.Features,
 		},
 	}
 

@@ -26,6 +26,7 @@ var (
 	network                 = "op-mainnet"
 	testNetwork             = "op-sepolia"
 	l2EthRpc                = "http://example.com:9545"
+	supervisorRpc           = "http://example.com/supervisor"
 	cannonBin               = "./bin/cannon"
 	cannonServer            = "./bin/op-program"
 	cannonPreState          = "./pre.json"
@@ -84,6 +85,29 @@ func TestL1Beacon(t *testing.T) {
 		url := "http://example.com:8888"
 		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--l1-beacon", "--l1-beacon="+url))
 		require.Equal(t, url, cfg.L1Beacon)
+	})
+}
+
+func TestOpSupervisor(t *testing.T) {
+	t.Run("RequiredForSuperCannon", func(t *testing.T) {
+		verifyArgsInvalid(t, "flag supervisor-rpc is required", addRequiredArgsExcept(types.TraceTypeSuperCannon, "--supervisor-rpc"))
+	})
+
+	for _, traceType := range types.TraceTypes {
+		traceType := traceType
+		if traceType == types.TraceTypeSuperCannon {
+			continue
+		}
+
+		t.Run("NotRequiredForTraceType-"+traceType.String(), func(t *testing.T) {
+			configForArgs(t, addRequiredArgsExcept(traceType, "--supervisor-rpc"))
+		})
+	}
+
+	t.Run("Valid", func(t *testing.T) {
+		url := "http://localhost/supervisor"
+		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeSuperCannon, "--supervisor-rpc", "--supervisor-rpc", url))
+		require.Equal(t, url, cfg.SupervisorRPC)
 	})
 }
 
@@ -572,7 +596,7 @@ func TestAlphabetRequiredArgs(t *testing.T) {
 }
 
 func TestCannonRequiredArgs(t *testing.T) {
-	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned} {
+	for _, traceType := range []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon} {
 		traceType := traceType
 		t.Run(fmt.Sprintf("TestCannonBin-%v", traceType), func(t *testing.T) {
 			t.Run("NotRequiredForAlphabetTrace", func(t *testing.T) {
@@ -807,9 +831,15 @@ func TestRollupRpc(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
 
-		t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
-			verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept(traceType, "--rollup-rpc"))
-		})
+		if traceType == types.TraceTypeSuperCannon {
+			t.Run(fmt.Sprintf("NotRequiredFor-%v", traceType), func(t *testing.T) {
+				configForArgs(t, addRequiredArgsExcept(traceType, "--rollup-rpc"))
+			})
+		} else {
+			t.Run(fmt.Sprintf("RequiredFor-%v", traceType), func(t *testing.T) {
+				verifyArgsInvalid(t, "flag rollup-rpc is required", addRequiredArgsExcept(traceType, "--rollup-rpc"))
+			})
+		}
 	}
 
 	t.Run("Valid", func(t *testing.T) {
@@ -974,7 +1004,6 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 	args := map[string]string{
 		"--l1-eth-rpc":           l1EthRpc,
 		"--l1-beacon":            l1Beacon,
-		"--rollup-rpc":           rollupRpc,
 		"--l2-eth-rpc":           l2EthRpc,
 		"--game-factory-address": gameFactoryAddressValue,
 		"--trace-type":           traceType.String(),
@@ -987,11 +1016,29 @@ func requiredArgs(traceType types.TraceType) map[string]string {
 		addRequiredAsteriscArgs(args)
 	case types.TraceTypeAsteriscKona:
 		addRequiredAsteriscKonaArgs(args)
+	case types.TraceTypeSuperCannon:
+		addRequiredSuperCannonArgs(args)
+	case types.TraceTypeAlphabet, types.TraceTypeFast:
+		addRequiredOutputRootArgs(args)
 	}
 	return args
 }
 
+func addRequiredSuperCannonArgs(args map[string]string) {
+	addRequiredCannonBaseArgs(args)
+	args["--supervisor-rpc"] = supervisorRpc
+}
+
 func addRequiredCannonArgs(args map[string]string) {
+	addRequiredCannonBaseArgs(args)
+	addRequiredOutputRootArgs(args)
+}
+
+func addRequiredOutputRootArgs(args map[string]string) {
+	args["--rollup-rpc"] = rollupRpc
+}
+
+func addRequiredCannonBaseArgs(args map[string]string) {
 	args["--network"] = network
 	args["--cannon-bin"] = cannonBin
 	args["--cannon-server"] = cannonServer
@@ -999,6 +1046,7 @@ func addRequiredCannonArgs(args map[string]string) {
 }
 
 func addRequiredAsteriscArgs(args map[string]string) {
+	addRequiredOutputRootArgs(args)
 	args["--network"] = network
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-server"] = asteriscServer
@@ -1006,6 +1054,7 @@ func addRequiredAsteriscArgs(args map[string]string) {
 }
 
 func addRequiredAsteriscKonaArgs(args map[string]string) {
+	addRequiredOutputRootArgs(args)
 	args["--network"] = network
 	args["--asterisc-bin"] = asteriscBin
 	args["--asterisc-kona-server"] = asteriscServer

@@ -67,6 +67,16 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 	if err != nil {
 		return common.Hash{}, err
 	}
+	// Strictly, the state transition ends when superRoot.Timestamp == bootInfo.GameTimestamp.
+	// Since the valid state transition ends at the game timestamp, there isn't any valid hash resulting from
+	// an agreed prestate and so the program panics to make it clear that the setup is invalid.
+	// The honest actor will never agree to a prestate where superRoot.Timestamp > bootInfo.GameTimestamp and so will
+	// be unaffected by this
+	if superRoot.Timestamp == bootInfo.GameTimestamp {
+		return bootInfo.AgreedPrestate, nil
+	} else if superRoot.Timestamp > bootInfo.GameTimestamp {
+		panic(fmt.Errorf("agreed prestate timestamp %v is after the game timestamp %v", superRoot.Timestamp, bootInfo.GameTimestamp))
+	}
 	expectedPendingProgress := transitionState.PendingProgress
 	if transitionState.Step < uint64(len(superRoot.Chains)) {
 		block, err := deriveOptimisticBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, transitionState, tasks)
@@ -97,11 +107,7 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 		PendingProgress: expectedPendingProgress,
 		Step:            transitionState.Step + 1,
 	}
-	expected, err := finalState.Hash()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return expected, nil
+	return finalState.Hash(), nil
 }
 
 func parseAgreedState(bootInfo *boot.BootInfoInterop, l2PreimageOracle l2.Oracle) (*types.TransitionState, *eth.SuperV1, error) {

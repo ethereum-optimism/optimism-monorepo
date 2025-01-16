@@ -32,20 +32,17 @@ func (i *TransitionState) Version() byte {
 	return IntermediateTransitionVersion
 }
 
-func (i *TransitionState) Marshal() ([]byte, error) {
+func (i *TransitionState) Marshal() []byte {
 	rlpData, err := rlp.EncodeToBytes(i)
 	if err != nil {
 		panic(err)
 	}
-	return append([]byte{IntermediateTransitionVersion}, rlpData...), nil
+	return append([]byte{IntermediateTransitionVersion}, rlpData...)
 }
 
-func (i *TransitionState) Hash() (common.Hash, error) {
-	data, err := i.Marshal()
-	if err != nil {
-		return common.Hash{}, err
-	}
-	return crypto.Keccak256Hash(data), nil
+func (i *TransitionState) Hash() common.Hash {
+	data := i.Marshal()
+	return crypto.Keccak256Hash(data)
 }
 
 func UnmarshalTransitionState(data []byte) (*TransitionState, error) {

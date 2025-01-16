@@ -24,6 +24,7 @@ type QueryBackend interface {
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	FinalizedL1() eth.BlockRef
 	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
+	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error)
 }
 
 type Backend interface {
@@ -73,6 +74,10 @@ func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainI
 
 func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	return q.Supervisor.SuperRootAtTimestamp(ctx, timestamp)
+}
+
+func (q *QueryFrontend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error) {
+	return q.Supervisor.AllSafeDerivedAt(ctx, derivedFrom)
 }
 
 type AdminFrontend struct {

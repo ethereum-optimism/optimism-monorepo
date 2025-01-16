@@ -15,7 +15,8 @@ type ChainSpec struct {
 
 // EnclaveSpec represents the parsed chain specifications from the YAML
 type EnclaveSpec struct {
-	Chains []ChainSpec
+	Chains   []ChainSpec
+	Features []string
 }
 
 // NetworkParams represents the network parameters section in the YAML
@@ -29,9 +30,15 @@ type ChainConfig struct {
 	NetworkParams NetworkParams `yaml:"network_params"`
 }
 
+// InteropConfig represents the interop section in the YAML
+type InteropConfig struct {
+	Enabled bool `yaml:"enabled"`
+}
+
 // OptimismPackage represents the optimism_package section in the YAML
 type OptimismPackage struct {
-	Chains []ChainConfig `yaml:"chains"`
+	Interop InteropConfig `yaml:"interop"`
+	Chains  []ChainConfig `yaml:"chains"`
 }
 
 // YAMLSpec represents the root of the YAML document
@@ -51,6 +58,16 @@ func NewSpec(opts ...SpecOption) *Spec {
 	return s
 }
 
+type featureExtractor func(YAMLSpec, string) bool
+
+var featuresMap = map[string]featureExtractor{
+	"interop": interopExtractor,
+}
+
+func interopExtractor(yamlSpec YAMLSpec, chainName string) bool {
+	return yamlSpec.OptimismPackage.Interop.Enabled
+}
+
 // ExtractData parses a YAML document and returns the chain specifications
 func (s *Spec) ExtractData(r io.Reader) (*EnclaveSpec, error) {
 	var yamlSpec YAMLSpec
@@ -59,8 +76,16 @@ func (s *Spec) ExtractData(r io.Reader) (*EnclaveSpec, error) {
 		return nil, fmt.Errorf("failed to decode YAML: %w", err)
 	}
 
+	var features []string
+	for feature, extractor := range featuresMap {
+		if extractor(yamlSpec, feature) {
+			features = append(features, feature)
+		}
+	}
+
 	result := &EnclaveSpec{
-		Chains: make([]ChainSpec, 0, len(yamlSpec.OptimismPackage.Chains)),
+		Chains:   make([]ChainSpec, 0, len(yamlSpec.OptimismPackage.Chains)),
+		Features: features,
 	}
 
 	// Extract chain specifications

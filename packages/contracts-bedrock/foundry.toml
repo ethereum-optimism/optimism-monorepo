@@ -13,6 +13,14 @@ snapshots = 'notarealpath' # workaround for foundry#9477
 optimizer = true
 optimizer_runs = 999999
 
+additional_compiler_profiles = [
+  { name = "dispute", optimizer_runs = 5000 },
+]
+compilation_restrictions = [
+  { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
+]
+
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
 bytecode_hash = 'none'
 ast = true
@@ -85,6 +93,7 @@ depth = 32
 
 [profile.cicoverage]
 optimizer = false
+compilation_restrictions = []
 
 [profile.cicoverage.fuzz]
 runs = 1
@@ -112,6 +121,8 @@ timeout = 300
 
 [profile.lite]
 optimizer = false
+compilation_restrictions = []
+
 
 ################################################################
 #                         PROFILE: KONTROL                     #

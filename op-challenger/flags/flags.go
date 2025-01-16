@@ -32,7 +32,7 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona}
+	faultDisputeVMs = []types.TraceType{types.TraceTypeCannon, types.TraceTypeAsterisc, types.TraceTypeAsteriscKona, types.TraceTypeSuperCannon}
 	// Required Flags
 	L1EthRpcFlag = &cli.StringFlag{
 		Name:    "l1-eth-rpc",
@@ -43,6 +43,11 @@ var (
 		Name:    "l1-beacon",
 		Usage:   "Address of L1 Beacon API endpoint to use",
 		EnvVars: prefixEnvVars("L1_BEACON"),
+	}
+	SupervisorRpcFlag = &cli.StringFlag{
+		Name:    "supervisor-rpc",
+		Usage:   "Provider URL for supervisor RPC",
+		EnvVars: prefixEnvVars("SUPERVISOR_RPC"),
 	}
 	RollupRpcFlag = &cli.StringFlag{
 		Name:    "rollup-rpc",
@@ -220,16 +225,17 @@ var (
 var requiredFlags = []cli.Flag{
 	L1EthRpcFlag,
 	DatadirFlag,
-	RollupRpcFlag,
 	L1BeaconFlag,
 }
 
 // optionalFlags is a list of unchecked cli flags
 var optionalFlags = []cli.Flag{
+	RollupRpcFlag,
 	NetworkFlag,
 	FactoryAddressFlag,
 	TraceTypeFlag,
 	MaxConcurrencyFlag,
+	SupervisorRpcFlag,
 	L2EthRpcFlag,
 	MaxPendingTransactionsFlag,
 	HTTPPollInterval,
@@ -268,7 +274,14 @@ func init() {
 // Flags contains the list of configuration options available to the binary.
 var Flags []cli.Flag
 
-func CheckCannonFlags(ctx *cli.Context) error {
+func checkOutputProviderFlags(ctx *cli.Context) error {
+	if !ctx.IsSet(RollupRpcFlag.Name) {
+		return fmt.Errorf("flag %v is required", RollupRpcFlag.Name)
+	}
+	return nil
+}
+
+func CheckCannonBaseFlags(ctx *cli.Context) error {
 	if !ctx.IsSet(flags.NetworkFlagName) &&
 		!(RollupConfigFlag.IsSet(ctx, types.TraceTypeCannon) && L2GenesisFlag.IsSet(ctx, types.TraceTypeCannon)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
@@ -295,7 +308,30 @@ func CheckCannonFlags(ctx *cli.Context) error {
 	return nil
 }
 
+func CheckSuperCannonFlags(ctx *cli.Context) error {
+	if !ctx.IsSet(SupervisorRpcFlag.Name) {
+		return fmt.Errorf("flag %v is required", SupervisorRpcFlag.Name)
+	}
+	if err := CheckCannonBaseFlags(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
+func CheckCannonFlags(ctx *cli.Context) error {
+	if err := checkOutputProviderFlags(ctx); err != nil {
+		return err
+	}
+	if err := CheckCannonBaseFlags(ctx); err != nil {
+		return err
+	}
+	return nil
+}
+
 func CheckAsteriscBaseFlags(ctx *cli.Context, traceType types.TraceType) error {
+	if err := checkOutputProviderFlags(ctx); err != nil {
+		return err
+	}
 	if !ctx.IsSet(flags.NetworkFlagName) &&
 		!(RollupConfigFlag.IsSet(ctx, traceType) && L2GenesisFlag.IsSet(ctx, traceType)) {
 		return fmt.Errorf("flag %v or %v and %v is required",
@@ -361,7 +397,14 @@ func CheckRequired(ctx *cli.Context, traceTypes []types.TraceType) error {
 			if err := CheckAsteriscKonaFlags(ctx); err != nil {
 				return err
 			}
+		case types.TraceTypeSuperCannon:
+			if err := CheckSuperCannonFlags(ctx); err != nil {
+				return err
+			}
 		case types.TraceTypeAlphabet, types.TraceTypeFast:
+			if err := checkOutputProviderFlags(ctx); err != nil {
+				return err
+			}
 		default:
 			return fmt.Errorf("invalid trace type %v. must be one of %v", traceType, types.TraceTypes)
 		}
@@ -498,6 +541,7 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 		PollInterval:            ctx.Duration(HTTPPollInterval.Name),
 		AdditionalBondClaimants: claimants,
 		RollupRpc:               ctx.String(RollupRpcFlag.Name),
+		SupervisorRPC:           ctx.String(SupervisorRpcFlag.Name),
 		Cannon: vm.Config{
 			VmType:           types.TraceTypeCannon,
 			L1:               l1EthRpc,

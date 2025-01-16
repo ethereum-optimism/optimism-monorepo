@@ -5,7 +5,6 @@ import (
 	"math/big"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
@@ -16,11 +15,11 @@ func TestFetchLocalInputs(t *testing.T) {
 	ctx := context.Background()
 	contract := &mockGameInputsSource{
 		l1Head: common.Hash{0xcc},
-		starting: contracts.Proposal{
+		starting: Proposal{
 			L2BlockNumber: big.NewInt(2222),
 			OutputRoot:    common.Hash{0xdd},
 		},
-		disputed: contracts.Proposal{
+		disputed: Proposal{
 			L2BlockNumber: big.NewInt(3333),
 			OutputRoot:    common.Hash{0xee},
 		},
@@ -44,11 +43,11 @@ func TestFetchLocalInputs(t *testing.T) {
 
 func TestFetchLocalInputsFromProposals(t *testing.T) {
 	ctx := context.Background()
-	agreed := contracts.Proposal{
+	agreed := Proposal{
 		L2BlockNumber: big.NewInt(2222),
 		OutputRoot:    common.Hash{0xdd},
 	}
-	claimed := contracts.Proposal{
+	claimed := Proposal{
 		L2BlockNumber: big.NewInt(3333),
 		OutputRoot:    common.Hash{0xee},
 	}
@@ -72,15 +71,15 @@ func TestFetchLocalInputsFromProposals(t *testing.T) {
 
 type mockGameInputsSource struct {
 	l1Head   common.Hash
-	starting contracts.Proposal
-	disputed contracts.Proposal
+	starting Proposal
+	disputed Proposal
 }
 
 func (s *mockGameInputsSource) GetL1Head(_ context.Context) (common.Hash, error) {
 	return s.l1Head, nil
 }
 
-func (s *mockGameInputsSource) GetProposals(_ context.Context) (contracts.Proposal, contracts.Proposal, error) {
+func (s *mockGameInputsSource) GetProposals(_ context.Context) (Proposal, Proposal, error) {
 	return s.starting, s.disputed, nil
 }
 

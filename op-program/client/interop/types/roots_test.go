@@ -25,8 +25,7 @@ func TestTransitionStateCodec(t *testing.T) {
 			},
 			Step: 2,
 		}
-		data, err := state.Marshal()
-		require.NoError(t, err)
+		data := state.Marshal()
 		actual, err := UnmarshalTransitionState(data)
 		require.NoError(t, err)
 		require.Equal(t, state, actual)

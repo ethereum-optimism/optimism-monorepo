@@ -28,7 +28,8 @@ import {
     Blacklisted,
     Unproven,
     ProposalNotValidated,
-    AlreadyFinalized
+    AlreadyFinalized,
+    LegacyGame
 } from "src/libraries/PortalErrors.sol";
 import { GameStatus, GameType, Claim, Timestamp } from "src/dispute/lib/Types.sol";
 
@@ -176,9 +177,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 3.11.0-beta.11
+    /// @custom:semver 3.12.0-beta.1
     function version() public pure virtual returns (string memory) {
-        return "3.11.0-beta.11";
+        return "3.12.0-beta.1";
     }
 
     /// @notice Constructs the OptimismPortal contract.
@@ -307,6 +308,24 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
 
         // The game type of the dispute game must be the respected game type.
         if (gameType.raw() != respectedGameType.raw()) revert InvalidGameType();
+
+        // The game type of the DisputeGame must have been the respected game type at creation.
+        try gameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
+            if (!wasRespected_) revert InvalidGameType();
+        } catch {
+            revert LegacyGame();
+        }
+
+        // Game must have been created after the respected game type was updated. This check is a
+        // strict inequality because we want to prevent users from being able to prove or finalize
+        // withdrawals against games that were created in the same block that the retirement
+        // timestamp was set. If the retirement timestamp and game type are changed in the same
+        // block, such games could still be considered valid even if they used the old game type
+        // that we intended to invalidate.
+        require(
+            gameProxy.createdAt().raw() > respectedGameTypeUpdatedAt,
+            "OptimismPortal: dispute game created before respected game type was updated"
+        );
 
         // Verify that the output root can be generated with the elements in the proof.
         if (outputRoot.raw() != Hashing.hashOutputRootProof(_outputRootProof)) revert InvalidProof();
@@ -476,9 +495,16 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _gameType The game type to consult for output proposals.
     function setRespectedGameType(GameType _gameType) external {
         if (msg.sender != guardian()) revert Unauthorized();
-        respectedGameType = _gameType;
-        respectedGameTypeUpdatedAt = uint64(block.timestamp);
-        emit RespectedGameTypeSet(_gameType, Timestamp.wrap(respectedGameTypeUpdatedAt));
+        // respectedGameTypeUpdatedAt is now no longer set by default. We want to avoid modifying
+        // this function's signature as that would result in changes to the DeputyGuardianModule.
+        // We use type(uint32).max as a temporary solution to allow us to update the
+        // respectedGameTypeUpdatedAt timestamp without modifying this function's signature.
+        if (_gameType.raw() == type(uint32).max) {
+            respectedGameTypeUpdatedAt = uint64(block.timestamp);
+        } else {
+            respectedGameType = _gameType;
+        }
+        emit RespectedGameTypeSet(respectedGameType, Timestamp.wrap(respectedGameTypeUpdatedAt));
     }
 
     /// @notice Checks if a withdrawal can be finalized. This function will revert if the withdrawal cannot be
@@ -497,6 +523,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // a timestamp of zero.
         if (provenWithdrawal.timestamp == 0) revert Unproven();
 
+        // Grab the createdAt timestamp once.
         uint64 createdAt = disputeGameProxy.createdAt().raw();
 
         // As a sanity check, we make sure that the proven withdrawal's timestamp is greater than
@@ -518,15 +545,25 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // from finalizing withdrawals proven against non-finalized output roots.
         if (disputeGameProxy.status() != GameStatus.DEFENDER_WINS) revert ProposalNotValidated();
 
-        // The game type of the dispute game must be the respected game type. This was also checked in
-        // `proveWithdrawalTransaction`, but we check it again in case the respected game type has changed since
-        // the withdrawal was proven.
-        if (disputeGameProxy.gameType().raw() != respectedGameType.raw()) revert InvalidGameType();
+        // The game type of the dispute game must have been the respected game type at creation
+        // time. We check that the game type is the respected game type at proving time, but it's
+        // possible that the respected game type has since changed. Users can still use this game
+        // to finalize a withdrawal as long as it has not been otherwise invalidated.
+        // The game type of the DisputeGame must have been the respected game type at creation.
+        try disputeGameProxy.wasRespectedGameTypeWhenCreated() returns (bool wasRespected_) {
+            if (!wasRespected_) revert InvalidGameType();
+        } catch {
+            revert LegacyGame();
+        }
 
-        // The game must have been created after `respectedGameTypeUpdatedAt`. This is to prevent users from creating
-        // invalid disputes against a deployed game type while the off-chain challenge agents are not watching.
+        // Game must have been created after the respected game type was updated. This check is a
+        // strict inequality because we want to prevent users from being able to prove or finalize
+        // withdrawals against games that were created in the same block that the retirement
+        // timestamp was set. If the retirement timestamp and game type are changed in the same
+        // block, such games could still be considered valid even if they used the old game type
+        // that we intended to invalidate.
         require(
-            createdAt >= respectedGameTypeUpdatedAt,
+            createdAt > respectedGameTypeUpdatedAt,
             "OptimismPortal: dispute game created before respected game type was updated"
         );
 

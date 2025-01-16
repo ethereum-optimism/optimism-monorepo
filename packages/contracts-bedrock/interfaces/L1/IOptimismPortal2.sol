@@ -31,6 +31,7 @@ interface IOptimismPortal2 {
     error UnexpectedList();
     error UnexpectedString();
     error Unproven();
+    error LegacyGame();
 
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
     event Initialized(uint8 version);
