@@ -47,7 +47,7 @@ library GameTypes {
     GameType internal constant ASTERISC = GameType.wrap(2);
 
     /// @notice A dispute game type that uses OP Succinct
-    GameType internal constant OP_SUCCINCT = GameType.wrap(3);
+    GameType internal constant OP_SUCCINCT = GameType.wrap(5);
 
     /// @notice A dispute game type with short game duration for testing withdrawals.
     ///         Not intended for production use.
