@@ -354,94 +354,88 @@ func TestInteropFaultProofs(gt *testing.T) {
 
 	tests := []*transitionTest{
 		{
-			name:           "ClaimNoChange",
-			startTimestamp: startTimestamp,
-			agreedClaim:    start.Marshal(),
-			disputedClaim:  start.Marshal(),
-			expectValid:    false,
+			name:          "ClaimNoChange",
+			agreedClaim:   start.Marshal(),
+			disputedClaim: start.Marshal(),
+			expectValid:   false,
 		},
 		{
-			name:           "ClaimDirectToNextTimestamp",
-			startTimestamp: startTimestamp,
-			agreedClaim:    start.Marshal(),
-			disputedClaim:  end.Marshal(),
-			expectValid:    false,
+			name:          "ClaimDirectToNextTimestamp",
+			agreedClaim:   start.Marshal(),
+			disputedClaim: end.Marshal(),
+			expectValid:   false,
 		},
 		{
-			name:           "FirstChainOptimisticBlock",
-			startTimestamp: startTimestamp,
-			agreedClaim:    start.Marshal(),
-			disputedClaim:  step1Expected,
-			expectValid:    true,
+			name:          "FirstChainOptimisticBlock",
+			agreedClaim:   start.Marshal(),
+			disputedClaim: step1Expected,
+			expectValid:   true,
 		},
 		{
-			name:           "SecondChainOptimisticBlock",
-			startTimestamp: startTimestamp,
-			agreedClaim:    step1Expected,
-			disputedClaim:  step2Expected,
-			expectValid:    true,
+			name:          "SecondChainOptimisticBlock",
+			agreedClaim:   step1Expected,
+			disputedClaim: step2Expected,
+			expectValid:   true,
 		},
 		{
-			name:           "FirstPaddingStep",
-			startTimestamp: startTimestamp,
-			agreedClaim:    step2Expected,
-			disputedClaim:  paddingStep(3),
-			expectValid:    true,
+			name:          "FirstPaddingStep",
+			agreedClaim:   step2Expected,
+			disputedClaim: paddingStep(3),
+			expectValid:   true,
 		},
 		{
-			name:           "SecondPaddingStep",
-			startTimestamp: startTimestamp,
-			agreedClaim:    paddingStep(3),
-			disputedClaim:  paddingStep(4),
-			expectValid:    true,
+			name:          "SecondPaddingStep",
+			agreedClaim:   paddingStep(3),
+			disputedClaim: paddingStep(4),
+			expectValid:   true,
 		},
 		{
-			name:           "LastPaddingStep",
-			startTimestamp: startTimestamp,
-			agreedClaim:    paddingStep(1022),
-			disputedClaim:  paddingStep(1023),
-			expectValid:    true,
+			name:          "LastPaddingStep",
+			agreedClaim:   paddingStep(1022),
+			disputedClaim: paddingStep(1023),
+			expectValid:   true,
 		},
 		{
-			name:           "Consolidate",
-			startTimestamp: startTimestamp,
-			agreedClaim:    paddingStep(1023),
-			disputedClaim:  end.Marshal(),
-			expectValid:    true,
+			name:          "Consolidate",
+			agreedClaim:   paddingStep(1023),
+			disputedClaim: end.Marshal(),
+			expectValid:   true,
+		},
+		{
+			name:          "AlreadyAtClaimedTimestamp",
+			agreedClaim:   end.Marshal(),
+			disputedClaim: end.Marshal(),
+			expectValid:   true,
 		},
 
 		{
-			name:           "FirstChainReachesL1Head",
-			startTimestamp: startTimestamp,
-			agreedClaim:    start.Marshal(),
-			disputedClaim:  interop.InvalidTransition,
+			name:          "FirstChainReachesL1Head",
+			agreedClaim:   start.Marshal(),
+			disputedClaim: interop.InvalidTransition,
 			// The derivation reaches the L1 head before the next block can be created
 			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
 			expectValid: true,
 		},
 		{
-			name:           "SecondChainReachesL1Head",
-			startTimestamp: startTimestamp,
-			agreedClaim:    step1Expected,
-			disputedClaim:  interop.InvalidTransition,
+			name:          "SecondChainReachesL1Head",
+			agreedClaim:   step1Expected,
+			disputedClaim: interop.InvalidTransition,
 			// The derivation reaches the L1 head before the next block can be created
 			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
 			expectValid: true,
 		},
 		{
-			name:           "SuperRootInvalidIfUnsupportedByL1Data",
-			startTimestamp: startTimestamp,
-			agreedClaim:    step1Expected,
-			disputedClaim:  step2Expected,
+			name:          "SuperRootInvalidIfUnsupportedByL1Data",
+			agreedClaim:   step1Expected,
+			disputedClaim: step2Expected,
 			// The derivation reaches the L1 head before the next block can be created
 			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
 			expectValid: false,
 		},
 		{
-			name:           "FromInvalidTransitionHash",
-			startTimestamp: startTimestamp,
-			agreedClaim:    interop.InvalidTransition,
-			disputedClaim:  interop.InvalidTransition,
+			name:          "FromInvalidTransitionHash",
+			agreedClaim:   interop.InvalidTransition,
+			disputedClaim: interop.InvalidTransition,
 			// The derivation reaches the L1 head before the next block can be created
 			l1Head:      actors.L1Miner.L1Chain().Genesis().Hash(),
 			expectValid: true,
@@ -500,11 +494,10 @@ func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedCl
 }
 
 type transitionTest struct {
-	name           string
-	startTimestamp uint64
-	agreedClaim    []byte
-	disputedClaim  []byte
-	l1Head         common.Hash // Defaults to current L1 head if not set
-	expectValid    bool
-	skip           bool
+	name          string
+	agreedClaim   []byte
+	disputedClaim []byte
+	l1Head        common.Hash // Defaults to current L1 head if not set
+	expectValid   bool
+	skip          bool
 }
