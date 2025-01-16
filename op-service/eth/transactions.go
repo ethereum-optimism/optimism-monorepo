@@ -194,11 +194,25 @@ func (o *OpaqueTransaction) TxHash() common.Hash {
 }
 
 func (o *OpaqueTransaction) MarshalJSON() ([]byte, error) {
-	return nil, fmt.Errorf("cannot marshal opaque transaction to JSON")
+	tx, err := o.Transaction()
+	if err != nil {
+		return nil, err
+	}
+	return tx.MarshalJSON()
 }
 
 func (o *OpaqueTransaction) UnmarshalJSON([]byte) error {
-	return fmt.Errorf("cannot unmarshal opaque transaction from JSON")
+	var tx types.Transaction
+	if err := tx.UnmarshalJSON(o.raw); err != nil {
+		return err
+	}
+	data, err := tx.MarshalBinary()
+	if err != nil {
+		return err
+	}
+	o.raw = data
+	o.hash = tx.Hash()
+	return nil
 }
 
 func (o *OpaqueTransaction) MarshalBinary() ([]byte, error) {

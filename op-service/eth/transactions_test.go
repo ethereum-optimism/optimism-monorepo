@@ -131,7 +131,6 @@ func TestTransactions_checkRecentTxs(t *testing.T) {
 }
 
 func TestOpaqueTransaction(t *testing.T) {
-
 	// Prepare binary encoding of a DynamicFeeTx
 	rng := rand.New(rand.NewSource(1234))
 	tx := testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
@@ -182,4 +181,6 @@ func TestOpaqueTransaction(t *testing.T) {
 	extractedTx, err = p.Transaction()
 	require.Nil(t, extractedTx)
 	require.Error(t, err)
+
+	// TODO add coverage for JSON marshalling / unmarshalling
 }
