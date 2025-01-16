@@ -18,7 +18,7 @@ type DataIter interface {
 }
 
 type L1TransactionFetcher interface {
-	InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error)
+	InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error)
 }
 
 type L1BlobsFetcher interface {
@@ -93,20 +93,25 @@ type DataSourceConfig struct {
 // isValidBatchTx returns true if:
 //  1. the transaction has a To() address that matches the batch inbox address, and
 //  2. the transaction has a valid signature from the batcher address
-func isValidBatchTx(tx *types.Transaction, l1Signer types.Signer, batchInboxAddr, batcherAddr common.Address, logger log.Logger) bool {
+func isValidBatchTx(g eth.GenericTx, l1Signer types.Signer, batchInboxAddr, batcherAddr common.Address, logger log.Logger) (tx *types.Transaction, isValid bool) {
+	tx, err := g.Transaction()
+	if err != nil {
+		logger.Warn("unsupported tx", "hash", g.TxHash(), "err", err)
+		return nil, false
+	}
 	to := tx.To()
 	if to == nil || *to != batchInboxAddr {
-		return false
+		return nil, false
 	}
 	seqDataSubmitter, err := l1Signer.Sender(tx) // optimization: only derive sender if To is correct
 	if err != nil {
 		logger.Warn("tx in inbox with invalid signature", "hash", tx.Hash(), "err", err)
-		return false
+		return nil, false
 	}
 	// some random L1 user might have sent a transaction to our batch inbox, ignore them
 	if seqDataSubmitter != batcherAddr {
 		logger.Warn("tx in inbox with unauthorized submitter", "addr", seqDataSubmitter, "hash", tx.Hash(), "err", err)
-		return false
+		return nil, false
 	}
-	return true
+	return tx, true
 }
