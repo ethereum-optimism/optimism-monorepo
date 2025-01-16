@@ -14,16 +14,24 @@ import (
 	"github.com/pkg/errors"
 )
 
+type SimpleDepositParams struct {
+	MaxBalanceChecks int
+}
+
 // SimpleTransfer is a test that runs a transfer on a network
 var SimpleDeposit = nat.Test{
 	ID: "simple-deposit",
-	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config) (bool, error) {
+	DefaultParams: SimpleDepositParams{
+		MaxBalanceChecks: 12,
+	},
+	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, params interface{}) (bool, error) {
+		p := params.(SimpleDepositParams)
 		l1, l2, wallet, err := SetupSimpleDepositTest(ctx, log, cfg)
 		l2ProxyPortal := common.HexToAddress(cfg.SC.L2[0].Addresses.OptimismPortalProxy)
 		if err != nil {
 			return false, err
 		}
-		return SimpleDepositTest(ctx, log, l1, l2, wallet, l2ProxyPortal)
+		return SimpleDepositTest(ctx, log, l1, l2, wallet, l2ProxyPortal, p)
 	},
 }
 
@@ -54,7 +62,7 @@ func SetupSimpleDepositTest(ctx context.Context, log log.Logger, config nat.Conf
 	return l1, l2, wallet, nil
 }
 
-func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Network, wallet *wallet.Wallet, portal common.Address) (bool, error) {
+func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Network, wallet *wallet.Wallet, portal common.Address, p SimpleDepositParams) (bool, error) {
 	if l1 == nil || wallet == nil || l2 == nil || len(portal) == 0 {
 		return false, errors.New("error empty arguments provided for SimpleDepositTest")
 	}
@@ -109,7 +117,7 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 	l1Diff := false
 	l2Diff := false
 
-	for i := 0; i < 12; i++ {
+	for i := 0; i < p.MaxBalanceChecks; i++ {
 		l1Post, err = wallet.GetBalance(ctx, l1)
 		if err != nil {
 			return false, errors.Wrap(err, "error getting l1 balance")

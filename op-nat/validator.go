@@ -7,7 +7,7 @@ import (
 )
 
 type Validator interface {
-	Run(ctx context.Context, log log.Logger, cfg Config) (ValidatorResult, error)
+	Run(ctx context.Context, log log.Logger, cfg Config, params interface{}) (ValidatorResult, error)
 	Name() string
 	Type() string
 }

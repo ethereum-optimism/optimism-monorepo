@@ -11,17 +11,29 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/ethereum/go-ethereum/params"
+	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 	"github.com/scharissis/tx-fuzz/spammer"
 )
+
+type TxFuzzParams struct {
+	NSlotsToRunFor     int
+	TxPerAccount       uint64
+	GenerateAccessList bool
+}
 
 // TxFuzz is a test that runs tx-fuzz.
 // It runs 3 slots of spam, with 1 transaction per account.
 var TxFuzz = nat.Test{
 	ID: "tx-fuzz",
-	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config) (bool, error) {
-		err := runBasicSpam(cfg)
+	DefaultParams: TxFuzzParams{
+		NSlotsToRunFor:     120, // Duration of the fuzzing
+		TxPerAccount:       3,
+		GenerateAccessList: false,
+	},
+	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, params interface{}) (bool, error) {
+		p := params.(TxFuzzParams)
+		err := runBasicSpam(cfg, p)
 		if err != nil {
 			return false, err
 		}
@@ -29,22 +41,22 @@ var TxFuzz = nat.Test{
 	},
 }
 
-func runBasicSpam(config nat.Config) error {
-	fuzzCfg, err := newConfig(config)
+func runBasicSpam(config nat.Config, params TxFuzzParams) error {
+	fuzzCfg, err := newConfig(config, params)
 	if err != nil {
 		return err
 	}
-	airdropValue := new(big.Int).Mul(big.NewInt(int64((1+fuzzCfg.N)*1000000)), big.NewInt(params.GWei))
-	return spam(fuzzCfg, spammer.SendBasicTransactions, airdropValue)
+	airdropValue := new(big.Int).Mul(big.NewInt(int64((1+fuzzCfg.N)*1000000)), big.NewInt(ethparams.GWei))
+	return spam(fuzzCfg, spammer.SendBasicTransactions, airdropValue, params)
 }
 
-func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int) error {
+func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int, params TxFuzzParams) error {
 	// Make sure the accounts are unstuck before sending any transactions
 	if err := spammer.Unstuck(config); err != nil {
 		return err
 	}
 
-	for nSlots := 0; nSlots < 12; nSlots++ {
+	for nSlots := 0; nSlots < params.NSlotsToRunFor; nSlots++ {
 		if err := spammer.Airdrop(config, airdropValue); err != nil {
 			return err
 		}
@@ -56,9 +68,9 @@ func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int) er
 	return nil
 }
 
-func newConfig(c nat.Config) (*spammer.Config, error) {
-	txPerAccount := uint64(1)
-	genAccessList := false
+func newConfig(c nat.Config, p TxFuzzParams) (*spammer.Config, error) {
+	txPerAccount := p.TxPerAccount
+	genAccessList := p.GenerateAccessList
 	rpcURL := c.RPCURL
 	senderSecretKey := c.SenderSecretKey
 	receiverPublicKeys := c.ReceiverPublicKeys

@@ -19,6 +19,7 @@ type nat struct {
 	ctx     context.Context
 	log     log.Logger
 	config  *Config
+	params  map[string]interface{}
 	version string
 	results []ValidatorResult
 
@@ -36,6 +37,7 @@ func New(ctx context.Context, config *Config, log log.Logger, version string) (*
 	return &nat{
 		ctx:     ctx,
 		config:  config,
+		params:  map[string]interface{}{},
 		log:     log,
 		version: version,
 	}, nil
@@ -48,7 +50,11 @@ func (n *nat) Start(ctx context.Context) error {
 	n.running.Store(true)
 	for _, validator := range n.config.Validators {
 		n.log.Info("Running acceptance tests...")
-		result, err := validator.Run(ctx, n.log, *n.config)
+
+		// Get test-specific parameters if they exist
+		params := n.params[validator.Name()]
+
+		result, err := validator.Run(ctx, n.log, *n.config, params)
 		n.log.Info("Completed validator", "validator", validator.Name(), "type", validator.Type(), "passed", result.Passed, "error", err)
 		if err != nil {
 			n.log.Error("Error running validator", "validator", validator.Name(), "error", err)

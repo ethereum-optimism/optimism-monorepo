@@ -15,7 +15,7 @@ import (
 // SimpleTransfer is a test that runs a transfer on a network
 var SimpleTransfer = nat.Test{
 	ID: "simple-transfer",
-	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config) (bool, error) {
+	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, _ interface{}) (bool, error) {
 		network, walletA, walletB, err := SetupSimpleTransferTest(ctx, log, cfg)
 		if err != nil {
 			return false, err

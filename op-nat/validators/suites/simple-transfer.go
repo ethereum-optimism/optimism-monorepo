@@ -10,4 +10,5 @@ var SimpleTransfer = nat.Suite{
 	Tests: []nat.Test{
 		tests.SimpleTransfer,
 	},
+	TestsParams: map[string]interface{}{},
 }
