@@ -43,7 +43,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 	for i, chain := range superRoot.Chains {
 		progress := transitionState.PendingProgress[i]
 
-		// TODO(13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
+		// TODO(#13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
 		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
@@ -56,12 +56,12 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 			Timestamp: block.Time(),
 		}
 		if err := checkHazards(deps, candidate, eth.ChainIDFromUInt64(chain.ChainID), execMsgs); err != nil {
-			// TODO(13776): replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
+			// TODO(#13776): replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
 			return eth.Bytes32{}, err
 		}
 		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
 			ChainID: chain.ChainID,
-			// TODO(13776): when applicable, use the deposit-only block output root
+			// TODO(#13776): when applicable, use the deposit-only block output root
 			Output: progress.OutputRoot,
 		})
 	}
