@@ -14,7 +14,7 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 	chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 	head := blocks[headBlockNumber].Header()
 
-// Ensure we don't walk back from head on every lookup by failing if a block is loaded multiple times.
+	// Ensure we don't walk back from head on every lookup by failing if a block is loaded multiple times.
 	requestedBlocks := make(map[common.Hash]bool)
 	blockByHash := func(hash common.Hash) *types.Block {
 		if requestedBlocks[hash] {
@@ -60,7 +60,9 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 		head := blocks[headBlockNumber].Header()
 
+		blockRequestCount := 0
 		blockByHash := func(hash common.Hash) *types.Block {
+			blockRequestCount++
 			return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
 		}
 		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
@@ -70,25 +72,28 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		h := canon.GetHeaderByNumber(0)
 		require.Equal(t, blocks[0].Hash(), h.Hash())
 
-		_, fork, forkOracle := setupOracle(t, blockCount, headBlockNumber, true)
+		// Create an alternate block 2
+		header2b := *blocks[2].Header()
+		header2b.Time = header2b.Time + 1
+		block2b := types.NewBlockWithHeader(&header2b)
+		require.NotEqual(t, blocks[2].Hash(), block2b.Hash())
 
-		canon.SetCanonical(fork[2].Header())
-		require.Equal(t, fork[2].Hash(), canon.CurrentHeader().Hash())
-		require.Nil(t, canon.GetHeaderByNumber(3))
+		oracle.Blocks[block2b.Hash()] = block2b
 
-		forkOracle.Blocks[fork[2].Hash()] = fork[2]
+		canon.SetCanonical(block2b.Header())
+		require.Equal(t, block2b.Hash(), canon.CurrentHeader().Hash())
+		blockRequestCount = 0
+		require.Nil(t, canon.GetHeaderByNumber(3), "Should have removed block 3 from cache")
+		require.Equal(t, 0, blockRequestCount, "Should not have needed to fetch a block")
+
 		h = canon.GetHeaderByNumber(2)
-		require.Equal(t, fork[2].Hash(), h.Hash())
+		require.Equal(t, block2b.Hash(), h.Hash(), "Should replace block 2 in cache")
+		require.Equal(t, 1, blockRequestCount, "Should not have used cache")
 
-		forkOracle.Blocks[fork[1].Hash()] = fork[1]
+		blockRequestCount = 0
 		h = canon.GetHeaderByNumber(1)
-		require.Equal(t, fork[1].Hash(), h.Hash())
-
-		// Test eraliest block short-circuiting. Do not expect oracle requests for other blocks.
-		oracle.Blocks = map[common.Hash]*types.Block{
-			fork[1].Hash(): fork[1],
-		}
-		require.Equal(t, fork[1].Hash(), canon.GetHeaderByNumber(1).Hash())
+		require.Equal(t, blocks[1].Hash(), h.Hash(), "Should retain block 1")
+		require.Equal(t, 1, blockRequestCount, "Should not have used cache")
 	})
 	t.Run("set canonical on same chain", func(t *testing.T) {
 		chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
