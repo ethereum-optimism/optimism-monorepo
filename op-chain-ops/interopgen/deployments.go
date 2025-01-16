@@ -47,7 +47,6 @@ type L2OpchainDeployment struct {
 	OptimismPortalProxy                common.Address `json:"OptimismPortalProxy"`
 	DisputeGameFactoryProxy            common.Address `json:"DisputeGameFactoryProxy"`
 	AnchorStateRegistryProxy           common.Address `json:"AnchorStateRegistryProxy"`
-	AnchorStateRegistryImpl            common.Address `json:"AnchorStateRegistryImpl"`
 	FaultDisputeGame                   common.Address `json:"FaultDisputeGame"`
 	PermissionedDisputeGame            common.Address `json:"PermissionedDisputeGame"`
 	DelayedWETHPermissionedGameProxy   common.Address `json:"DelayedWETHPermissionedGameProxy"`
