@@ -202,6 +202,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     // The AddressSet event emitted by the AddressManager contract.
     event AddressSet(string indexed name, address newAddress, address oldAddress);
 
+    // The AdminChanged event emitted by the Proxy contract at init time or when the admin is changed.
+    event AdminChanged(address previousAdmin, address newAdmin);
+
     uint256 l2ChainId;
     IProxyAdmin proxyAdmin;
     address upgrader;
@@ -241,7 +244,15 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
 
         vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         OPContractsManager.Implementations memory impls = opcm.implementations();
+
+        // Cache the old L1xDM address so we can look for it in the AddressManager's event
         address oldL1CrossDomainMessenger = addressManager.getAddress("OVM_L1CrossDomainMessenger");
+
+        // Predict the address of the new ASR so that we can expect its event
+        bytes32 salt = keccak256(abi.encode(l2ChainId, "v2.0.0", "AnchorStateRegistry"));
+        bytes memory initCode = bytes.concat(vm.getCode("Proxy"), abi.encode(proxyAdmin));
+        address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), upgrader);
+        vm.label(newAnchorStateRegistryProxy, "NewAnchorStateRegistryProxy");
 
         expectEmitUpgraded(impls.systemConfigImpl, address(systemConfig));
         vm.expectEmit(address(addressManager));
@@ -252,7 +263,9 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         expectEmitUpgraded(impls.disputeGameFactoryImpl, address(disputeGameFactory));
         expectEmitUpgraded(impls.optimismPortalImpl, address(optimismPortal2));
         expectEmitUpgraded(impls.optimismMintableERC20FactoryImpl, address(l1OptimismMintableERC20Factory));
-        expectEmitUpgraded(impls.anchorStateRegistryImpl, address(anchorStateRegistry));
+        vm.expectEmit(address(newAnchorStateRegistryProxy));
+        emit AdminChanged(address(0), address(proxyAdmin));
+        expectEmitUpgraded(impls.anchorStateRegistryImpl, address(newAnchorStateRegistryProxy));
         expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionedGameProxy));
         if (address(delayedWeth) != address(0)) {
             expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWeth));
@@ -260,7 +273,6 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         vm.expectEmit(true, true, true, true, address(delegateCaller));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
         DelegateCaller(delegateCaller).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
-        vm.stopPrank();
 
         if (delegateCaller == upgrader) {
             assertFalse(opcm.isRC(), "isRC should be false");
@@ -279,8 +291,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         );
         assertEq(impls.l1StandardBridgeImpl, EIP1967Helper.getImplementation(address(l1StandardBridge)));
         assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
-
-        assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(anchorStateRegistry)));
+        assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(newAnchorStateRegistryProxy)));
         assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
         if (address(delayedWeth) != address(0)) {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
@@ -436,7 +447,12 @@ contract OPContractsManager_AddGameType_Test is Test {
                 }),
                 basefeeScalar: 1,
                 blobBasefeeScalar: 1,
-                startingAnchorRoot: abi.encode(OutputRoot({ root: Hash.wrap(hex"dead"), l2BlockNumber: 0 })),
+                startingAnchorRoot: abi.encode(
+                    OutputRoot({
+                        root: Hash.wrap(0xdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeefdeadbeef),
+                        l2BlockNumber: 0
+                    })
+                ),
                 l2ChainId: 100,
                 saltMixer: "hello",
                 gasLimit: 30_000_000,
