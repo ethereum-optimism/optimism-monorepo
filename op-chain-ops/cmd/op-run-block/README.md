@@ -11,5 +11,28 @@ can be replayed in a debugger to find what is happening.
 ## Usage
 
 ```bash
-go run . --rpc=http://my-debug-geth-endpoint:8545 --block=badblock.json
+go run . --rpc=http://my-debug-geth-endpoint:8545 --block=badblock.json --out=trace.txt
 ```
+
+Where `badblock.json` looks like:
+
+```json
+[
+  {
+    "block": {
+      "timestamp": ...
+      "number": ...
+      "transactions": [ ... ],
+      ...
+    }
+  }
+]
+```
+
+This type of block can be collected with:
+
+```bash
+cast rpc --rpc-url=http://localhost:8545 debug_getBadBlocks
+```
+
+See Go-ethereum `debug` RPC namespace docs: https://geth.ethereum.org/docs/interacting-with-geth/rpc/ns-debug

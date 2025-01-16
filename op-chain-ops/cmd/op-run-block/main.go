@@ -51,11 +51,17 @@ var (
 		EnvVars:  op_service.PrefixEnvVar(EnvPrefix, "BLOCK"),
 		Required: true,
 	}
+	OutPathFlag = &cli.PathFlag{
+		Name:     "out",
+		Usage:    "Path to file to write trace data to. Trace data is formatted as a list of lines, 1 json entry per line, with comment lines that start with a `#`.",
+		EnvVars:  op_service.PrefixEnvVar(EnvPrefix, "OUT"),
+		Required: true,
+	}
 )
 
 func main() {
 	flags := []cli.Flag{
-		RPCFlag, BlockPathFlag,
+		RPCFlag, BlockPathFlag, OutPathFlag,
 	}
 	flags = append(flags, oplog.CLIFlags(EnvPrefix)...)
 
@@ -132,7 +138,8 @@ func mainAction(c *cli.Context) error {
 		logger:       logger,
 	}
 
-	outW, err := os.OpenFile("tx_17_dump.json", os.O_CREATE|os.O_WRONLY, 0755)
+	outPath := c.Path(OutPathFlag.Name)
+	outW, err := os.OpenFile(outPath, os.O_CREATE|os.O_WRONLY, 0755)
 	if err != nil {
 		return fmt.Errorf("failed to create/open dump file: %w", err)
 	}
@@ -153,7 +160,7 @@ func mainAction(c *cli.Context) error {
 		return fmt.Errorf("failed to prepare witness data collector: %w", err)
 	}
 	state.StartPrefetcher("debug", witness)
-	defer func() {
+	defer func() { // Even if the EVM fails, try to export witness data for the state-transition up to the error.
 		witnessDump := witness.ToExecutionWitness()
 		out, err := json.MarshalIndent(witnessDump, "", "  ")
 		if err != nil {
@@ -193,6 +200,8 @@ func loadBlock(blockPath string) (*sources.RPCBlock, error) {
 	return blockData, nil
 }
 
+// remoteChainCtx provides access to block-headers, for usage by the state-transition,
+// such as basefee computation (based on prior block) and EVM block-hash opcode.
 type remoteChainCtx struct {
 	consensusEng consensus.Engine
 	hdr          *types.Header
@@ -204,14 +213,17 @@ type remoteChainCtx struct {
 var _ core.ChainContext = (*remoteChainCtx)(nil)
 var _ consensus.ChainHeaderReader = (*remoteChainCtx)(nil)
 
+// Config is part of consensus.ChainHeaderReader
 func (r *remoteChainCtx) Config() *params.ChainConfig {
 	return r.cfg
 }
 
+// CurrentHeader is part of consensus.ChainHeaderReader
 func (r remoteChainCtx) CurrentHeader() *types.Header {
 	return r.hdr
 }
 
+// GetHeaderByNumber is part of consensus.ChainHeaderReader
 func (r remoteChainCtx) GetHeaderByNumber(u uint64) *types.Header {
 	if r.hdr.Number.Uint64() == u {
 		return r.hdr
@@ -232,6 +244,7 @@ func (r remoteChainCtx) GetHeaderByNumber(u uint64) *types.Header {
 	return hdr
 }
 
+// GetHeaderByHash is part of consensus.ChainHeaderReader
 func (r remoteChainCtx) GetHeaderByHash(hash common.Hash) *types.Header {
 	if r.hdr.Hash() == hash {
 		return r.hdr
@@ -252,14 +265,17 @@ func (r remoteChainCtx) GetHeaderByHash(hash common.Hash) *types.Header {
 	return hdr
 }
 
+// GetTd is part of consensus.ChainHeaderReader
 func (r remoteChainCtx) GetTd(hash common.Hash, number uint64) *big.Int {
 	return big.NewInt(1)
 }
 
+// Engine is part of core.ChainContext
 func (r remoteChainCtx) Engine() consensus.Engine {
 	return r.consensusEng
 }
 
+// GetHeader is part of both consensus.ChainHeaderReader and core.ChainContext
 func (r remoteChainCtx) GetHeader(hash common.Hash, u uint64) *types.Header {
 	if r.hdr.Hash() == hash {
 		return r.hdr
@@ -303,12 +319,12 @@ func Process(logger log.Logger, config *params.ChainConfig,
 	}
 	misc.EnsureCreate2Deployer(config, uint64(block.Time), statedb)
 	var (
-		context vm.BlockContext
-		signer  = types.MakeSigner(config, header.Number, header.Time)
-		err     error
+		blockContext vm.BlockContext
+		signer       = types.MakeSigner(config, header.Number, header.Time)
+		err          error
 	)
-	context = core.NewEVMBlockContext(header, chainCtx, nil, config, statedb)
-	vmenv := vm.NewEVM(context, vm.TxContext{}, statedb, config, cfg)
+	blockContext = core.NewEVMBlockContext(header, chainCtx, nil, config, statedb)
+	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, config, cfg)
 	if beaconRoot := block.ParentBeaconRoot; beaconRoot != nil {
 		core.ProcessBeaconBlockRoot(*beaconRoot, vmenv, statedb)
 	}
