@@ -551,10 +551,6 @@ func WithInteropEnabled(actors *InteropActors, agreedPrestate []byte, disputedCl
 		f.L2Claim = disputedClaim
 		f.L2BlockNumber = claimTimestamp
 
-		// TODO: Remove these once hints all specify the L2 chain ID
-		f.L2ChainID = actors.ChainA.ChainID.ToBig().Uint64()
-		f.L2Head = actors.ChainA.SequencerEngine.L2Chain().CurrentHeader().ParentHash
-
 		for _, chain := range []*Chain{actors.ChainA, actors.ChainB} {
 			f.L2Sources = append(f.L2Sources, &fpHelpers.FaultProofProgramL2Source{
 				Node:        chain.Sequencer.L2Verifier,
