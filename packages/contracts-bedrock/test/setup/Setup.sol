@@ -224,7 +224,7 @@ contract Setup {
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
 
         if (deploy.cfg().useInterop()) {
-            sharedLockbox = ISharedLockbox(deploy.mustGetAddress("SharedLockboxProxy"));
+            sharedLockbox = ISharedLockbox(artifacts.mustGetAddress("SharedLockboxProxy"));
         }
 
         if (deploy.cfg().useAltDA()) {

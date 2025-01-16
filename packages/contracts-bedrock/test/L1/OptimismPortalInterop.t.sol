@@ -63,14 +63,14 @@ contract OptimismPortalInterop_Config_Test is OptimismPortalInterop_Base_Test {
     /// @notice Tests that the version function returns a valid string. We avoid testing the
     ///         specific value of the string as it changes frequently.
     function test_version_succeeds() external view {
-        assert(bytes(_optimismPortalInterop().version()).length > 0);
+        assert(bytes(_optimismPortal().version()).length > 0);
     }
 
     /// @dev Tests that the config for the gas paying token cannot be set.
     function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
-        vm.prank(address(_optimismPortalInterop().systemConfig()));
+        vm.prank(address(_optimismPortal().systemConfig()));
         vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
-        _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
+        _optimismPortal().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
 
     /// @dev Tests that setting the gas paying token config as not the system config reverts.
@@ -307,21 +307,6 @@ contract OptimismPortalInterop_Test is OptimismPortalInterop_Base_Test {
 
         assertEq(address(_optimismPortal()).balance, portalBalanceBefore);
         assertEq(address(sharedLockbox).balance, lockboxBalanceBefore + _mint);
-    }
-
-    /// @dev Tests that `balance()` returns the correct balance when the gas paying token is ether.
-    function testFuzz_balance_ether_succeeds(uint256 _amount) external {
-        // TODO(opcm upgrades): remove skip once upgrade path is implemented
-        skipIfForkTest("OptimismPortalInterop_Test: gas paying token functionality DNE on op mainnet");
-        // Check that the gas paying token is set to ether
-        (address token,) = systemConfig.gasPayingToken();
-        assertEq(token, Constants.ETHER);
-
-        // Increase the balance of the gas paying token
-        vm.deal(address(_optimismPortal()), _amount);
-
-        // Check that the balance has been correctly updated
-        assertEq(_optimismPortal().balance(), address(_optimismPortal()).balance);
     }
 
     /// @dev Tests that the donateETH function donates ETH and does no state read/write
@@ -802,152 +787,6 @@ contract OptimismPortalInterop_FinalizeWithdrawal_Test is OptimismPortalInterop_
         assert(bob.balance == bobBalanceBefore + 100);
     }
 
-    /// @dev Tests that `finalizeWithdrawalTransaction` reverts when using a custom gas token.
-    /// @dev Should be removed when/if Custom Gas Token functionality is allowed again.
-    function test_finalizeWithdrawalTransaction_customGasToken_reverts() external {
-        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
-            nonce: 0,
-            sender: alice,
-            target: bob,
-            value: 100,
-            gasLimit: 100_000,
-            data: hex""
-        });
-        // Get withdrawal proof data we can use for testing.
-        (
-            bytes32 _stateRoot_noData,
-            bytes32 _storageRoot_noData,
-            bytes32 _outputRoot_noData,
-            bytes32 _withdrawalHash_noData,
-            bytes[] memory _withdrawalProof_noData
-        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
-        // Setup a dummy output root proof for reuse.
-        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
-            version: bytes32(uint256(0)),
-            stateRoot: _stateRoot_noData,
-            messagePasserStorageRoot: _storageRoot_noData,
-            latestBlockhash: bytes32(uint256(0))
-        });
-        uint256 _proposedBlockNumber_noData = 0xFF;
-        IFaultDisputeGame game_noData = IFaultDisputeGame(
-            payable(
-                address(
-                    disputeGameFactory.create(
-                        _optimismPortal().respectedGameType(),
-                        Claim.wrap(_outputRoot_noData),
-                        abi.encode(_proposedBlockNumber_noData)
-                    )
-                )
-            )
-        );
-        uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
-        // Warp beyond the chess clocks and finalize the game.
-        vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
-        // Fund the portal so that we can withdraw ETH.
-        vm.store(address(_optimismPortal()), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
-        deal(address(L1Token), address(_optimismPortal()), 0xFFFFFFFF);
-
-        // modify the gas token to be non ether
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
-        );
-
-        vm.expectEmit(address(_optimismPortal()));
-        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
-        vm.expectEmit(address(_optimismPortal()));
-        emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
-        _optimismPortal().proveWithdrawalTransaction({
-            _tx: _defaultTx_noData,
-            _disputeGameIndex: _proposedGameIndex_noData,
-            _outputRootProof: _outputRootProof_noData,
-            _withdrawalProof: _withdrawalProof_noData
-        });
-
-        // Warp and resolve the dispute game.
-        game_noData.resolveClaim(0, 0);
-        game_noData.resolve();
-        vm.warp(block.timestamp + _optimismPortal().proofMaturityDelaySeconds() + 1 seconds);
-
-        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
-        _optimismPortal().finalizeWithdrawalTransaction(_defaultTx_noData);
-    }
-
-    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds when _tx.data is empty and with a custom gas token.
-    function test_finalizeWithdrawalTransaction_noTxDataNonEtherGasToken_succeeds() external {
-        vm.skip(true, "Custom gas token not supported");
-
-        Types.WithdrawalTransaction memory _defaultTx_noData = Types.WithdrawalTransaction({
-            nonce: 0,
-            sender: alice,
-            target: bob,
-            value: 100,
-            gasLimit: 100_000,
-            data: hex""
-        });
-        // Get withdrawal proof data we can use for testing.
-        (
-            bytes32 _stateRoot_noData,
-            bytes32 _storageRoot_noData,
-            bytes32 _outputRoot_noData,
-            bytes32 _withdrawalHash_noData,
-            bytes[] memory _withdrawalProof_noData
-        ) = ffi.getProveWithdrawalTransactionInputs(_defaultTx_noData);
-        // Setup a dummy output root proof for reuse.
-        Types.OutputRootProof memory _outputRootProof_noData = Types.OutputRootProof({
-            version: bytes32(uint256(0)),
-            stateRoot: _stateRoot_noData,
-            messagePasserStorageRoot: _storageRoot_noData,
-            latestBlockhash: bytes32(uint256(0))
-        });
-        uint256 _proposedBlockNumber_noData = 0xFF;
-        IFaultDisputeGame game_noData = IFaultDisputeGame(
-            payable(
-                address(
-                    disputeGameFactory.create(
-                        _optimismPortal().respectedGameType(),
-                        Claim.wrap(_outputRoot_noData),
-                        abi.encode(_proposedBlockNumber_noData)
-                    )
-                )
-            )
-        );
-        uint256 _proposedGameIndex_noData = disputeGameFactory.gameCount() - 1;
-        // Warp beyond the chess clocks and finalize the game.
-        vm.warp(block.timestamp + game_noData.maxClockDuration().raw() + 1 seconds);
-        // Fund the portal so that we can withdraw ETH.
-        vm.store(address(_optimismPortal()), bytes32(uint256(61)), bytes32(uint256(0xFFFFFFFF)));
-        deal(address(L1Token), address(_optimismPortal()), 0xFFFFFFFF);
-
-        // modify the gas token to be non ether
-        vm.mockCall(
-            address(systemConfig), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(L1Token), 18)
-        );
-
-        uint256 bobBalanceBefore = L1Token.balanceOf(bob);
-
-        vm.expectEmit(address(_optimismPortal()));
-        emit WithdrawalProven(_withdrawalHash_noData, alice, bob);
-        vm.expectEmit(address(_optimismPortal()));
-        emit WithdrawalProvenExtension1(_withdrawalHash_noData, address(this));
-        _optimismPortal().proveWithdrawalTransaction({
-            _tx: _defaultTx_noData,
-            _disputeGameIndex: _proposedGameIndex_noData,
-            _outputRootProof: _outputRootProof_noData,
-            _withdrawalProof: _withdrawalProof_noData
-        });
-
-        // Warp and resolve the dispute game.
-        game_noData.resolveClaim(0, 0);
-        game_noData.resolve();
-        vm.warp(block.timestamp + _optimismPortal().proofMaturityDelaySeconds() + 1 seconds);
-
-        vm.expectEmit(true, true, false, true);
-        emit WithdrawalFinalized(_withdrawalHash_noData, true);
-        _optimismPortal().finalizeWithdrawalTransaction(_defaultTx_noData);
-
-        assert(L1Token.balanceOf(bob) == bobBalanceBefore + 100);
-    }
-
     /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
     function test_finalizeWithdrawalTransaction_provenWithdrawalHashEther_succeeds() external {
         uint256 bobBalanceBefore = address(bob).balance;
@@ -1042,32 +881,6 @@ contract OptimismPortalInterop_FinalizeWithdrawal_Test is OptimismPortalInterop_
         _optimismPortal().finalizeWithdrawalTransaction(_defaultTx);
 
         assert(address(bob).balance == bobBalanceBefore + 100);
-    }
-
-    /// @dev Tests that `finalizeWithdrawalTransaction` succeeds.
-    function test_finalizeWithdrawalTransaction_provenWithdrawalHashNonEtherTargetToken_reverts() external {
-        vm.skip(true, "Custom gas token not supported");
-
-        vm.mockCall(
-            address(systemConfig),
-            abi.encodeCall(systemConfig.gasPayingToken, ()),
-            abi.encode(address(_defaultTx.target), 18)
-        );
-
-        _optimismPortal().proveWithdrawalTransaction({
-            _tx: _defaultTx,
-            _disputeGameIndex: _proposedGameIndex,
-            _outputRootProof: _outputRootProof,
-            _withdrawalProof: _withdrawalProof
-        });
-
-        // Warp to after the finalization period
-        game.resolveClaim(0, 0);
-        game.resolve();
-        vm.warp(block.timestamp + _optimismPortal().proofMaturityDelaySeconds() + 1);
-
-        vm.expectRevert(BadTarget.selector);
-        _optimismPortal().finalizeWithdrawalTransaction(_defaultTx);
     }
 
     /// @dev Tests that `finalizeWithdrawalTransaction` reverts if the contract is paused.

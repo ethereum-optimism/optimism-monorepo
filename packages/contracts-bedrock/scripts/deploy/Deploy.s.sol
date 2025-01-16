@@ -191,8 +191,8 @@ contract Deploy is Deployer {
         artifacts.save("ProtocolVersionsProxy", _protocolVersionsProxy);
 
         IProxy slProxy = IProxy(_sharedLockboxProxy);
-        save("SharedLockboxImpl", slProxy.implementation());
-        save("SharedLockboxProxy", _sharedLockboxProxy);
+        artifacts.save("SharedLockboxImpl", slProxy.implementation());
+        artifacts.save("SharedLockboxProxy", _sharedLockboxProxy);
 
         _run({ _needsSuperchain: false });
     }
@@ -287,8 +287,8 @@ contract Deploy is Deployer {
         artifacts.save("ProtocolVersionsImpl", address(dso.protocolVersionsImpl()));
 
         if (_isInterop) {
-            save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
-            save("SharedLockboxImpl", address(dso.sharedLockboxImpl()));
+            artifacts.save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
+            artifacts.save("SharedLockboxImpl", address(dso.sharedLockboxImpl()));
         }
 
         // First run assertions for the ProtocolVersions, SuperchainConfig and SharedLockbox proxy contracts.
@@ -377,7 +377,8 @@ contract Deploy is Deployer {
             L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
             // We didn't deploy new versions of these in this function, so just read the existing ones.
             ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
-            SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
+            SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl"),
+            SharedLockbox: address(0)
         });
 
         ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });

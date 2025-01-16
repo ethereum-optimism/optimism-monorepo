@@ -20,12 +20,12 @@
     "sourceCodeHash": "0xdfd5c91e5ddbbf2ad82b867cbf7403437decd6ca70b87891eec935665f17ffd5"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x554049cefba17dabf4ae3b992ef9d4d3c25743b61289906f3deabf90bf3ddad0",
-    "sourceCodeHash": "0xfc2e42014c74389c45cf2c29ef0404db63bc0888187a9e2a28d1e919e601c4dc"
+    "initCodeHash": "0x55cf30cac62bc5bfd1e1a81d690e8658edd8e926ca1654f98eeb89d19ff9d356",
+    "sourceCodeHash": "0xe1b371241d6410956fbc6a67ae6ae8e6e356bfad566ae2c62f45106f233df3e9"
   },
   "src/L1/OptimismPortalInterop.sol": {
-    "initCodeHash": "0x59b9c40297b84461349520420253cab92883956df7851261f1cab384da362ad1",
-    "sourceCodeHash": "0xadac4a408d74286d97f090086988e7c746377bf631c4e5d80427c68da436322f"
+    "initCodeHash": "0x16cb53e5d98f9706b2e650da4b9172d834c345d4a6a5a53acac4e4d78ea1c8a1",
+    "sourceCodeHash": "0x02ebeb9e6b706287a96c72d573ecba23b5b37b4176ba34eaac70b9888ca09795"
   },
   "src/L1/ProtocolVersions.sol": {
     "initCodeHash": "0x0000ec89712d8b4609873f1ba76afffd4205bf9110818995c90134dbec12e91e",
@@ -48,16 +48,16 @@
     "sourceCodeHash": "0x2dde897735c0cd699f15a1927bf6f75c2da220c1934021ee93315708d5b5f995"
   },
   "src/L1/SystemConfigInterop.sol": {
-    "initCodeHash": "0xfebda7d1bff696c8c647b79aa2e8946a4be183dd9249828ea6641cb410696c2e",
-    "sourceCodeHash": "0xf3753cdf3d19f3da26472a0de7cd97dce775f7e36f4bf9ce89b7a1b1aafab193"
+    "initCodeHash": "0x67538cce23fab621b4e4f18edd182fd7d60937c43629d6b7316723c1b3589496",
+    "sourceCodeHash": "0x31d126afec007d5add180cb2f38ca223c266a882bc8410486254b85587f187c0"
   },
   "src/L2/BaseFeeVault.sol": {
     "initCodeHash": "0xc403d4c555d8e69a2699e01d192ae7327136701fa02da10a6d75a584b3c364c9",
     "sourceCodeHash": "0xfa56426153227e798150f6becc30a33fd20a3c6e0d73c797a3922dd631acbb57"
   },
   "src/L2/CrossL2Inbox.sol": {
-    "initCodeHash": "0x8bbf318357b2529530b538095d6ef238c8791006295c95bbe4a5025828a1bc13",
-    "sourceCodeHash": "0xc3b3f050c2b54b9513a50bfce2fb916eeae4fefc097788d240d8479a02d0fc13"
+    "initCodeHash": "0x1308d4d3ebd857c6df9901fccc1d2ffc10f1d17b0cc1b14f58135f9ea9cad7a3",
+    "sourceCodeHash": "0xbb3077cd69943416f13cc0bf8f11fb9b64aa560599f00e89ee0fa6a25f11fd7f"
   },
   "src/L2/DependencyManager.sol": {
     "initCodeHash": "0xb2e0d759cef5b82efd3b4644b6490c1db2d6d865075937d5b07f23121912a46d",
