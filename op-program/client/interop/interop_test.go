@@ -129,6 +129,20 @@ func TestTraceExtensionOnceClaimedTimestampIsReached(t *testing.T) {
 	verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp, expectedClaim)
 }
 
+func TestPanicIfAgreedPrestateIsAfterGameTimestamp(t *testing.T) {
+	logger := testlog.Logger(t, log.LevelError)
+	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
+	agreedPrestatehash := common.Hash(eth.SuperRoot(agreedSuperRoot))
+	l2PreimageOracle, _ := test.NewStubOracle(t)
+	l2PreimageOracle.TransitionStates[agreedPrestatehash] = &types.TransitionState{SuperRoot: agreedSuperRoot.Marshal()}
+
+	// We have reached the game's timestamp so should just trace extend the agreed claim
+	expectedClaim := agreedPrestatehash
+	require.PanicsWithError(t, fmt.Sprintf("agreed prestate timestamp %v is after the game timestamp %v", agreedSuperRoot.Timestamp, agreedSuperRoot.Timestamp-1), func() {
+		verifyResult(t, logger, tasksStub, configSource, l2PreimageOracle, agreedPrestatehash, agreedSuperRoot.Timestamp-1, expectedClaim)
+	})
+}
+
 func verifyResult(t *testing.T, logger log.Logger, tasks stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
 	bootInfo := &boot.BootInfoInterop{
 		AgreedPrestate: agreedPrestate,
