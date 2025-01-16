@@ -201,9 +201,9 @@ func (o *OpaqueTransaction) MarshalJSON() ([]byte, error) {
 	return tx.MarshalJSON()
 }
 
-func (o *OpaqueTransaction) UnmarshalJSON([]byte) error {
+func (o *OpaqueTransaction) UnmarshalJSON(data []byte) error {
 	var tx types.Transaction
-	if err := tx.UnmarshalJSON(o.raw); err != nil {
+	if err := tx.UnmarshalJSON(data); err != nil {
 		return err
 	}
 	data, err := tx.MarshalBinary()
@@ -221,6 +221,7 @@ func (o *OpaqueTransaction) MarshalBinary() ([]byte, error) {
 
 func (o *OpaqueTransaction) UnmarshalBinary(b []byte) error {
 	o.raw = bytes.Clone(b)
-	o.TxType()
+	o.TxHash() // cache the hash
+	o.TxType() // panics if the tx is not an EIP2718 tx
 	return nil
 }
