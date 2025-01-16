@@ -779,7 +779,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("OUTPUT_VERSION()") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("outputVersion()") });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
@@ -791,7 +791,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("OUTPUT_VERSION()") });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("outputVersion()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.deploy.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
