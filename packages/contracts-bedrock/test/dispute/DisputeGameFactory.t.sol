@@ -107,7 +107,8 @@ contract DisputeGameFactory_Create_Test is DisputeGameFactory_Init {
     function testFuzz_create_noImpl_reverts(uint32 gameType, Claim rootClaim, bytes calldata extraData) public {
         // Ensure that the `gameType` is within the bounds of the `GameType` enum's possible values. We skip over
         // game type = 0, since the deploy script set the implementation for that game type.
-        GameType gt = GameType.wrap(uint32(bound(gameType, 2, type(uint32).max)));
+        uint32 lowerBound = isForkTest() ? 99 : 2;
+        GameType gt = GameType.wrap(uint32(bound(gameType, lowerBound, type(uint32).max)));
         // Ensure the rootClaim has a VMStatus that disagrees with the validity.
         rootClaim = changeClaimStatus(rootClaim, VMStatuses.INVALID);
 
