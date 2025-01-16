@@ -26,6 +26,8 @@ contract DeployOPCMInput is BaseDeployIO {
     address internal _permissionedDisputeGame1Blueprint;
     address internal _permissionedDisputeGame2Blueprint;
 
+    address internal _superchainConfigImpl;
+    address internal _protocolVersionsImpl;
     address internal _l1ERC721BridgeImpl;
     address internal _optimismPortalImpl;
     address internal _systemConfigImpl;
@@ -167,6 +169,16 @@ contract DeployOPCMInput is BaseDeployIO {
         return _anchorStateRegistryImpl;
     }
 
+    function superchainConfigImpl() public view returns (address) {
+        require(_superchainConfigImpl != address(0), "DeployOPCMInput: not set");
+        return _superchainConfigImpl;
+    }
+
+    function protocolVersionsImpl() public view returns (address) {
+        require(_protocolVersionsImpl != address(0), "DeployOPCMInput: not set");
+        return _protocolVersionsImpl;
+    }
+
     function delayedWETHImpl() public view returns (address) {
         require(_delayedWETHImpl != address(0), "DeployOPCMInput: not set");
         return _delayedWETHImpl;
@@ -209,6 +221,8 @@ contract DeployOPCM is Script {
             permissionlessDisputeGame2: address(0)
         });
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
+            superchainConfigImpl: address(_doi.superchainConfigImpl()),
+            protocolVersionsImpl: address(_doi.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_doi.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_doi.optimismPortalImpl()),
             systemConfigImpl: address(_doi.systemConfigImpl()),

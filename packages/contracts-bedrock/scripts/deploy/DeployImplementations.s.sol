@@ -28,6 +28,7 @@ import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
+import { DeploySuperchainImplementations, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -149,6 +150,8 @@ contract DeployImplementationsOutput is BaseDeployIO {
     IOptimismMintableERC20Factory internal _optimismMintableERC20FactoryImpl;
     IDisputeGameFactory internal _disputeGameFactoryImpl;
     IAnchorStateRegistry internal _anchorStateRegistryImpl;
+    ISuperchainConfig internal _superchainConfigImpl;
+    IProtocolVersions internal _protocolVersionsImpl;
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
@@ -166,6 +169,8 @@ contract DeployImplementationsOutput is BaseDeployIO {
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = IOptimismMintableERC20Factory(_addr);
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = IDisputeGameFactory(_addr);
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = IAnchorStateRegistry(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = ISuperchainConfig(_addr);
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = IProtocolVersions(_addr);
         else revert("DeployImplementationsOutput: unknown selector");
         // forgefmt: disable-end
     }
@@ -254,6 +259,16 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function anchorStateRegistryImpl() public view returns (IAnchorStateRegistry) {
         DeployUtils.assertValidContractAddress(address(_anchorStateRegistryImpl));
         return _anchorStateRegistryImpl;
+    }
+
+    function superchainConfigImpl() public view returns (ISuperchainConfig) {
+        DeployUtils.assertValidContractAddress(address(_superchainConfigImpl));
+        return _superchainConfigImpl;
+    }
+
+    function protocolVersionsImpl() public view returns (IProtocolVersions) {
+        DeployUtils.assertValidContractAddress(address(_protocolVersionsImpl));
+        return _protocolVersionsImpl;
     }
 
     // -------- Deployment Assertions --------
@@ -418,6 +433,7 @@ contract DeployImplementations is Script {
 
     function run(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public {
         // Deploy the implementations.
+        DeploySuperchainImplementations.deploySuperchainImplementationContracts(DeploySuperchainOutput(address(_dio)));
         deploySystemConfigImpl(_dio);
         deployL1CrossDomainMessengerImpl(_dio);
         deployL1ERC721BridgeImpl(_dio);
@@ -463,6 +479,8 @@ contract DeployImplementations is Script {
             l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
             mipsImpl: address(_dio.mipsSingleton())
         });
@@ -809,6 +827,8 @@ contract DeployImplementationsInterop is DeployImplementations {
         address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
