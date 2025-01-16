@@ -131,56 +131,88 @@ func TestTransactions_checkRecentTxs(t *testing.T) {
 }
 
 func TestOpaqueTransaction(t *testing.T) {
-	// Prepare binary encoding of a DynamicFeeTx
 	rng := rand.New(rand.NewSource(1234))
-	tx := testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
-	encodedDynamicFeeTx, err := tx.MarshalBinary()
-	require.NoError(t, err)
 
-	// Binary Unmarshal / Marshal roundtrip
-	o := new(OpaqueTransaction)
-	err = o.UnmarshalBinary(encodedDynamicFeeTx)
-	require.NoError(t, err)
-	require.Equal(t, uint8(2), o.TxType())
+	getBytesAndHash := func(tx *types.Transaction) ([]byte, common.Hash) {
+		txBytes, err := tx.MarshalBinary()
+		require.NoError(t, err)
+		return txBytes, tx.Hash()
+	}
 
-	reSerialized, err := o.MarshalBinary()
-	require.NoError(t, err)
-	require.Equal(t, encodedDynamicFeeTx, reSerialized)
+	tx := testutils.RandomLegacyTx(rng, testutils.RandomSigner(rng))
+	legacyTxBytes, legacyTxHash := getBytesAndHash(tx)
 
-	expectedHash := tx.Hash()
-	require.Equal(t, expectedHash, o.TxHash())
+	tx = testutils.RandomAccessListTx(rng, testutils.RandomSigner(rng))
+	accessListTxBytes, accessListTxHash := getBytesAndHash(tx)
 
-	// extract the transaction (this only works if it is one of the supported types)
-	extractedTx, err := o.Transaction()
-	require.NoError(t, err)
+	tx = testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
+	dynamicFeeTxBytes, dyamicFeeTxHash := getBytesAndHash(tx)
 
-	// compare the binary encoding of the extracted transaction with the original
-	// the rich type has extra metadata which we don't want to compare here
-	e, err := extractedTx.MarshalBinary()
-	require.NoError(t, err)
-	require.Equal(t, encodedDynamicFeeTx, e)
+	futureTxBytes := append([]byte{0x66}, testutils.RandomData(rng, 12)...)
+	futureTxHash := crypto.Keccak256Hash(futureTxBytes)
 
-	// A future, unsupported EIP 2718 tx type, unsupported at the time of writing
-	hypotheticalTxBytes := append([]byte{0x66}, testutils.RandomData(rng, 12)...)
+	nonEIP2718TxBytes := append([]byte{0x80}, testutils.RandomData(rng, 12)...)
+	nonEIP2718TxHash := crypto.Keccak256Hash(nonEIP2718TxBytes)
 
-	// Binary Unmarshal / Marshal roundtrip
-	p := new(OpaqueTransaction)
-	err = p.UnmarshalBinary(hypotheticalTxBytes)
-	require.NoError(t, err)
-	require.Equal(t, uint8(102), p.TxType())
+	type testCase struct {
+		name      string
+		rawTx     []byte
+		txType    uint8
+		txHash    common.Hash
+		eip2718   bool // is this an EIP 2718 transaction?
+		supported bool // is this an explicitly supported EIP 2718 transaction?
+	}
 
-	reSerialized, err = p.MarshalBinary()
-	require.NoError(t, err)
-	require.Equal(t, hypotheticalTxBytes, reSerialized)
+	testCases := []testCase{
+		{"LegacyTx(0x00)", legacyTxBytes, 0, legacyTxHash, true, true},
+		{"AccessListTx(0x01)", accessListTxBytes, 1, accessListTxHash, true, true},
+		{"DyamicFeeTx(0x02)", dynamicFeeTxBytes, 2, dyamicFeeTxHash, true, true},
+		{"FutureTx(0x66)", futureTxBytes, 102, futureTxHash, true, false},
+		{"NonEIP2718Tx(0x80)", nonEIP2718TxBytes, 128, nonEIP2718TxHash, false, false},
+	}
 
-	// the hash should be non-zero
-	expectedHash = crypto.Keccak256Hash(hypotheticalTxBytes)
-	require.NotEqual(t, expectedHash, o.TxHash())
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
 
-	// try to extract the rich transaction (this should return an error since the tx type is unsupported)
-	extractedTx, err = p.Transaction()
-	require.Nil(t, extractedTx)
-	require.Error(t, err)
+			o := new(OpaqueTransaction)
 
-	// TODO add coverage for JSON marshalling / unmarshalling
+			if !tc.eip2718 {
+				require.Panics(t, func() {
+					o.UnmarshalBinary(tc.rawTx)
+				})
+				return
+			}
+
+			err := o.UnmarshalBinary(tc.rawTx)
+			require.NoError(t, err)
+
+			require.Equal(t, tc.txType, o.TxType())
+			require.Equal(t, tc.txHash, o.TxHash())
+
+			reSerialized, err := o.MarshalBinary()
+			require.NoError(t, err)
+			require.Equal(t, tc.rawTx, reSerialized)
+
+			data, err := o.MarshalJSON()
+			if tc.supported {
+				require.NoError(t, err)
+				p := new(OpaqueTransaction)
+				err = p.UnmarshalJSON(data)
+				require.NoError(t, err)
+				require.Equal(t, o, p)
+			} else {
+				require.Error(t, err)
+				require.Nil(t, data)
+			}
+
+			tx, err = o.Transaction()
+			if tc.supported {
+				require.NoError(t, err)
+				require.Equal(t, tc.txHash, tx.Hash())
+			} else {
+				require.Error(t, err)
+				require.Nil(t, tx)
+			}
+		})
+	}
 }
