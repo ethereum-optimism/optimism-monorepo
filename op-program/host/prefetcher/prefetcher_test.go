@@ -624,7 +624,7 @@ func TestFetchL2Output(t *testing.T) {
 func TestFetchL2BlockData(t *testing.T) {
 	chainID := uint64(14)
 
-	testBlockExec := func(t *testing.T, err error) {
+	testBlockExec := func(t *testing.T, clientErrs []error) {
 		prefetcher, _, _, l2Clients, _ := createPrefetcher(t)
 		l2Client := l2Clients.sources[defaultChainID]
 		rng := rand.New(rand.NewSource(123))
@@ -632,7 +632,9 @@ func TestFetchL2BlockData(t *testing.T) {
 		disputedBlockHash := common.Hash{0xab}
 
 		l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
-		l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, err)
+		for _, clientErr := range clientErrs {
+			l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, clientErr)
+		}
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
 		hint := l2.L2BlockDataHint{
@@ -656,10 +658,10 @@ func TestFetchL2BlockData(t *testing.T) {
 		require.False(t, prefetcher.executor.(*mockExecutor).invoked)
 	}
 	t.Run("exec block not found", func(t *testing.T) {
-		testBlockExec(t, ethereum.NotFound)
+		testBlockExec(t, []error{ethereum.NotFound})
 	})
 	t.Run("exec block fetch error", func(t *testing.T) {
-		testBlockExec(t, errors.New("fetch error"))
+		testBlockExec(t, []error{errors.New("fetch error"), ethereum.NotFound})
 	})
 
 	t.Run("no exec", func(t *testing.T) {

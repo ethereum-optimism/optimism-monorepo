@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
+	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 )
@@ -19,19 +20,27 @@ type ProgramExecutor interface {
 // re-derive the block.
 func (p *Prefetcher) nativeReExecuteBlock(
 	ctx context.Context, agreedBlockHash, blockHash common.Hash, chainID uint64) error {
-	// Avoid retries as the block may not be canonical and unavailable
-
+	// Avoid using the retrying source to prevent indefinite retries as the block may not be canonical and unavailable
 	source, err := p.l2Sources.ForChainIDWithoutRetries(chainID)
 	if err != nil {
 		return err
 	}
-	_, _, err = source.InfoAndTxsByHash(ctx, blockHash)
-	if err == nil {
+	notFound, err := retry.Do(ctx, maxAttempts, retry.Exponential(), func() (bool, error) {
+		_, _, err := source.InfoAndTxsByHash(ctx, blockHash)
+		if errors.Is(err, ethereum.NotFound) {
+			return true, nil
+		}
+		if err != nil {
+			p.logger.Warn("Failed to retrieve l2 info and txs", "hash", blockHash, "err", err)
+		}
+		return false, err
+	})
+	if !notFound && err == nil {
 		// we already have the data needed for the program to re-execute
 		return nil
 	}
-	if !errors.Is(err, ethereum.NotFound) {
-		p.logger.Error("Failed to fetch block", "block_hash", blockHash, "err", err)
+	if notFound {
+		p.logger.Error("Requested block is not canonical", "block_hash", blockHash, "err", err)
 	}
 
 	retrying, err := p.l2Sources.ForChainID(chainID)
