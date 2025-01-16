@@ -140,7 +140,8 @@ func TestOpaqueTransaction(t *testing.T) {
 
 	// Binary Unmarshal / Marshal roundtrip
 	o := new(OpaqueTransaction)
-	o.UnmarshalBinary(encodedDynamicFeeTx)
+	err = o.UnmarshalBinary(encodedDynamicFeeTx)
+	require.NoError(t, err)
 	require.Equal(t, uint8(2), o.TxType())
 
 	reSerialized, err := o.MarshalBinary()
@@ -165,7 +166,8 @@ func TestOpaqueTransaction(t *testing.T) {
 
 	// Binary Unmarshal / Marshal roundtrip
 	p := new(OpaqueTransaction)
-	p.UnmarshalBinary(hypotheticalTxBytes)
+	err = p.UnmarshalBinary(hypotheticalTxBytes)
+	require.NoError(t, err)
 	require.Equal(t, uint8(102), p.TxType())
 
 	reSerialized, err = p.MarshalBinary()
