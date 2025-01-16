@@ -1,71 +1,98 @@
 package sources
 
 import (
-	"encoding/json"
 	"math/rand"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
 
 func TestRawJsonTransaction(t *testing.T) {
 	rng := rand.New(rand.NewSource(1234))
-	tx := testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
 
-	txJson, err := json.Marshal(tx)
-	require.NoError(t, err)
+	getJsonAndHash := func(tx *types.Transaction) ([]byte, common.Hash) {
+		txJson, err := tx.MarshalJSON()
+		require.NoError(t, err)
+		return txJson, tx.Hash()
+	}
 
-	// Test json round trip
-	var flexTx RawJsonTransaction
+	tx := testutils.RandomLegacyTx(rng, testutils.RandomSigner(rng))
+	legacyTxJSON, legacyTxHash := getJsonAndHash(tx)
 
-	// Takes JSON encoded DynamicFeeTx and converts it to RawJsonTransaction:
-	require.NoError(t, json.Unmarshal(txJson, &flexTx))
-	// Takes RawJsonTransaction and JSON encodes it (uses cached raw JSON from the unmarshalling step):
-	reEncoded, err := json.Marshal(&flexTx)
-	require.NoError(t, err)
-	require.Equal(t, hexutil.Bytes(txJson), hexutil.Bytes(reEncoded))
+	tx = testutils.RandomAccessListTx(rng, testutils.RandomSigner(rng))
+	accessListTxJSON, accessListTxHash := getJsonAndHash(tx)
 
-	require.Equal(t, tx.Hash(), flexTx.TxHash())
-	require.Equal(t, tx.Type(), flexTx.TxType())
+	tx = testutils.RandomDynamicFeeTx(rng, testutils.RandomSigner(rng))
+	dynamicFeeTxJSON, dyamicFeeTxHash := getJsonAndHash(tx)
 
-	// Test binary round trip
-	// Takes RawJsonTransaction and converts it to binary, this requires the tx to be one of the supported types:
-	data, err := flexTx.MarshalBinary()
-	require.NoError(t, err)
+	futureTxJSON := []byte(`{"hash":"0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246","type":"0x66"}`)
+	futureTxHash := common.HexToHash("0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246")
 
-	// Unmarshal the binary data back into a new RawJsonTransaction, again this requires it to be one of the supported types:
-	var reDecoded RawJsonTransaction
-	require.NoError(t, reDecoded.UnmarshalBinary(data))
+	nonEIP2718TxJSON := []byte(`{"hash":"0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246","type":"0x80"}`)
+	nonEIP2718TxHash := common.HexToHash("0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246")
 
-	// Re-encode the RawJsonTransaction as JSON:
-	jsonAgain, err := json.Marshal(&reDecoded)
-	require.NoError(t, err)
-	require.Equal(t, string(txJson), string(jsonAgain))
+	type testCase struct {
+		name      string
+		jsonTx    []byte
+		txType    uint8
+		txHash    common.Hash
+		eip2718   bool // is this an EIP 2718 transaction?
+		supported bool // is this an explicitly supported EIP 2718 transaction?
+	}
 
-	// A future, unsupported EIP 2718 tx type, unsupported at the time of writing
-	hypotheticalTxJson := []byte(`{"hash":"0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246","type":"0x66"}`)
+	testCases := []testCase{
+		{"LegacyTx(0x00)", legacyTxJSON, 0, legacyTxHash, true, true},
+		{"AccessListTx(0x01)", accessListTxJSON, 1, accessListTxHash, true, true},
+		{"DyamicFeeTx(0x02)", dynamicFeeTxJSON, 2, dyamicFeeTxHash, true, true},
+		{"FutureTx(0x66)", futureTxJSON, 102, futureTxHash, true, false},
+		{"NonEIP2718Tx(0x80)", nonEIP2718TxJSON, 128, nonEIP2718TxHash, false, false},
+	}
 
-	// Test json round trip
-	// Takes JSON encoded DynamicFeeTx and converts it to RawJsonTransaction:
-	require.NoError(t, json.Unmarshal(hypotheticalTxJson, &flexTx))
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
 
-	// Takes RawJsonTransaction and JSON encodes it (uses cached raw JSON from the unmarshalling step):
+			o := new(RawJsonTransaction)
 
-	require.Equal(t, common.HexToHash("0x9222cd0ffde5ae945a5aa35a58dcc1c8014385bed272a0a86c8852013803c246"), flexTx.TxHash())
-	require.Equal(t, uint8(0x66), flexTx.TxType())
+			err := o.UnmarshalJSON(tc.jsonTx)
+			if tc.eip2718 {
+				require.NoError(t, err)
+			} else {
+				require.Error(t, err)
+				return
+			}
 
-	reEncoded, err = json.Marshal(&flexTx)
-	require.NoError(t, err)
-	require.Equal(t, string(hypotheticalTxJson), string(reEncoded))
+			require.Equal(t, tc.txType, o.TxType())
+			require.Equal(t, tc.txHash, o.TxHash())
 
-	// Unsupported tx type should not be able to be converted to binary
-	data, err = flexTx.MarshalBinary()
-	require.Error(t, err)
-	require.Nil(t, data)
+			reSerialized, err := o.MarshalJSON()
+			require.NoError(t, err)
+			require.Equal(t, tc.jsonTx, reSerialized)
 
+			data, err := o.MarshalBinary()
+			if tc.supported {
+				require.NoError(t, err)
+				p := new(RawJsonTransaction)
+				err = p.UnmarshalBinary(data)
+				require.NoError(t, err)
+				require.Equal(t, o, p)
+			} else {
+				require.Error(t, err)
+				require.Nil(t, data)
+			}
+
+			tx, err = o.Transaction()
+			if tc.supported {
+				require.NoError(t, err)
+				require.Equal(t, tc.txHash, tx.Hash())
+			} else {
+				require.Error(t, err)
+				require.Nil(t, tx)
+			}
+		})
+	}
 }
