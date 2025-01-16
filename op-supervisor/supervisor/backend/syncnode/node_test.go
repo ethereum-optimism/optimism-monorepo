@@ -91,7 +91,7 @@ func TestEventResponse(t *testing.T) {
 }
 
 func TestResetConflict(t *testing.T) {
-	chainID := types.ChainIDFromUInt64(1)
+	chainID := eth.ChainIDFromUInt64(1)
 	logger := testlog.Logger(t, log.LvlDebug)
 
 	tests := []struct {
@@ -146,14 +146,13 @@ func TestResetConflict(t *testing.T) {
 					return tc.resetErrors[resetAttempts-1]
 				},
 			}
-			db := &mockChainsDB{}
 			backend := &mockBackend{
-				safeDerivedAtFn: func(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
+				safeDerivedAtFn: func(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (eth.BlockID, error) {
 					return eth.BlockID{Number: derivedFrom.Number}, nil
 				},
 			}
 
-			node := NewManagedNode(logger, chainID, ctrl, db, backend, true)
+			node := NewManagedNode(logger, chainID, ctrl, backend, true)
 			l1Ref := eth.BlockRef{Number: tc.l1RefNum}
 			unsafe := eth.BlockID{Number: tc.l1RefNum + 100}
 			finalized := eth.BlockID{Number: tc.finalizedNum}

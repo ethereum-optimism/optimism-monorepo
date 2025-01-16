@@ -331,61 +331,59 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	}
 }
 
+// resolveConflict attempts to reset the node to a valid state when a conflict is detected.
+// It first tries using the latest safe block, and if that fails, walks back block by block
+// until it finds a common ancestor or reaches the finalized block.
 func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u eth.BlockID, f eth.BlockID) error {
 	// First try to reset to the last known safe block
 	s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
 	if err != nil {
 		return fmt.Errorf("failed to retrieve safe block for %v: %w", l1Ref.ID(), err)
 	}
-	err, errCanBeWalkedBack := m.attemptReset(ctx, u, s, f)
-	if err == nil {
+
+	// Helper to attempt a reset and classify the error
+	tryReset := func(safe eth.BlockID) (resolved bool, needsWalkback bool, err error) {
+		m.log.Debug("Attempting reset", "unsafe", u, "safe", safe, "finalized", f)
+		if err := m.Node.Reset(ctx, u, safe, f); err == nil {
+			return true, false, nil
+		} else {
+			var rpcErr *gethrpc.JsonError
+			if errors.As(err, &rpcErr) && (rpcErr.Code == blockNotFoundRPCErrCode || rpcErr.Code == conflictingBlockRPCErrCode) {
+				return false, true, err
+			}
+			return false, false, err
+		}
+	}
+
+	// Try initial reset
+	resolved, needsWalkback, err := tryReset(s)
+	if resolved {
 		return nil
-	} else if !errCanBeWalkedBack {
+	}
+	if !needsWalkback {
 		return fmt.Errorf("error during reset: %w", err)
 	}
 
-	// If initial attempt fails, try walking back
-	return m.walkBackToCommonAncestorLinear(ctx, s.Number, u, f)
-}
-
-// attemptReset tries to reset the node to the given block range. If there's an error, the returned bool indicates if
-// the error can be resolved by walking back to a common ancestor.
-func (m *ManagedNode) attemptReset(ctx context.Context, unsafe eth.BlockID, safe eth.BlockID, finalized eth.BlockID) (error, bool) {
-	// Try to reset and return successfully if there's no error
-	m.log.Debug("Attempting reset", "unsafe", unsafe, "safe", safe, "finalized", finalized)
-	err := m.Node.Reset(ctx, unsafe, safe, finalized)
-	if err == nil {
-		return nil, false
-	}
-
-	// Check if the error means we should try to walk back
-	var rpcErr *gethrpc.JsonError = nil
-	canBeWalkedBack := false
-	if errors.As(err, &rpcErr) {
-		canBeWalkedBack = rpcErr.Code == blockNotFoundRPCErrCode || rpcErr.Code == conflictingBlockRPCErrCode
-	}
-
-	return err, canBeWalkedBack
-}
-
-// walkBackToCommonAncestorLinear walks back to a common ancestor between the safe and unsafe block. It does this by
-// walking back one block at a time and checking if the node can be reset to that block.
-func (m *ManagedNode) walkBackToCommonAncestorLinear(ctx context.Context, start uint64, unsafe, finalized eth.BlockID) error {
-	currentBlock := start
+	// Walk back one block at a time looking for a common ancestor
+	currentBlock := s.Number
 	for i := 0; i < maxWalkBackAttempts; i++ {
 		currentBlock--
-		if currentBlock <= finalized.Number {
-			return fmt.Errorf("reached finalized block %d without finding common ancestor", finalized.Number)
+		if currentBlock <= f.Number {
+			return fmt.Errorf("reached finalized block %d without finding common ancestor", f.Number)
 		}
 
 		safe, err := m.backend.SafeDerivedAt(ctx, m.chainID, eth.BlockID{Number: currentBlock})
 		if err != nil {
 			return fmt.Errorf("failed to retrieve safe block %d: %w", currentBlock, err)
 		}
-		err, errCanBeWalkedBack := m.attemptReset(ctx, unsafe, safe, finalized)
-		if err == nil {
+
+		resolved, _, err := tryReset(safe)
+		if resolved {
 			return nil
-		} else if !errCanBeWalkedBack {
+		}
+		// Continue walking back on walkable errors, otherwise return the error
+		var rpcErr *gethrpc.JsonError
+		if !errors.As(err, &rpcErr) || (rpcErr.Code != blockNotFoundRPCErrCode && rpcErr.Code != conflictingBlockRPCErrCode) {
 			return fmt.Errorf("error during reset at block %d: %w", currentBlock, err)
 		}
 	}
