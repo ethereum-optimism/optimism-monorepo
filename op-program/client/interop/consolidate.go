@@ -55,11 +55,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 			Number:    block.NumberU64(),
 			Timestamp: block.Time(),
 		}
-		hazards, err := cross.CrossUnsafeHazards(deps, eth.ChainIDFromUInt64(chain.ChainID), candidate, execMsgs)
-		if err != nil {
-			return eth.Bytes32{}, err
-		}
-		if err := checkHazards(deps, &candidate, hazards); err != nil {
+		if err := checkHazards(deps, candidate, eth.ChainIDFromUInt64(chain.ChainID), execMsgs); err != nil {
 			// TODO(13776): replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
 			return eth.Bytes32{}, err
 		}
@@ -90,10 +86,14 @@ type ConsolidateCheckDeps interface {
 
 func checkHazards(
 	deps ConsolidateCheckDeps,
-	candidate *supervisortypes.BlockSeal,
-	hazards map[supervisortypes.ChainIndex]supervisortypes.BlockSeal,
+	candidate supervisortypes.BlockSeal,
+	chainID eth.ChainID,
+	execMsgs []*supervisortypes.ExecutingMessage,
 ) error {
-	// TODO: for each of these hazard checks, ensure that they're scoped to the super root timestamp of the chain
+	hazards, err := cross.CrossUnsafeHazards(deps, chainID, candidate, execMsgs)
+	if err != nil {
+		return err
+	}
 	if err := cross.HazardUnsafeFrontierChecks(deps, hazards); err != nil {
 		return err
 	}
