@@ -864,7 +864,7 @@ jobs:
             FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
             FORK_BLOCK_NUMBER: <<parameters.fork_block_number>>
           working_directory: packages/contracts-bedrock
-          no_output_timeout: 30m
+          no_output_timeout: 100m
       - run:
           name: Print failed test traces
           command: just test-upgrade-rerun
