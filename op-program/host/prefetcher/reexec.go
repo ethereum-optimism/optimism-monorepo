@@ -42,6 +42,7 @@ func (p *Prefetcher) nativeReExecuteBlock(
 	if notFound {
 		p.logger.Error("Requested block is not canonical", "block_hash", blockHash, "err", err)
 	}
+	// Else, i.e. there was an error, then we still want to rebuild the block
 
 	retrying, err := p.l2Sources.ForChainID(chainID)
 	if err != nil {
