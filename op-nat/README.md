@@ -1,5 +1,5 @@
 # Network Acceptance Tester (NAT)
-
+NAT is a tool to run checks against a network to determine if it is ready for production.
 
 ## Building and Running
 
@@ -7,21 +7,4 @@
 1. `./bin/op-nat --kurtosis.devnet.manifest=../kurtosis-devnet/tests/interop-devnet.json`
 
 ## TODOs
-
-### Test: simple-transfers
-
-#### PO
-
- 1. Validate Balances before and after transfer
- 1. Try an L1 Deposit to L2
-   a. To do this must add optimism portal to network object
-
-#### P1
-
- 1. Remove hardcodes / Read json file
- 2. Aggregate results and output them to stdout
-
-
-#### P2
-
- 1. A nice way to add per-validator config/params
+See [here](https://www.notion.so/oplabs/17cf153ee1628001a06ce7231b775cf2?v=253881d1c6034d49b263baa4325b65f8).
