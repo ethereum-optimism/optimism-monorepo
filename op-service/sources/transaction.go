@@ -58,8 +58,8 @@ func (m *RawJsonTransaction) UnmarshalJSON(data []byte) error {
 	if x.Hash == (common.Hash{}) {
 		return errors.New("expected hash attribute")
 	}
-	if x.Type > 0xff {
-		return fmt.Errorf("unexpectedly large tx type: %d", uint64(x.Type))
+	if x.Type >= 0xff || (x.Type < 0xc0 && x.Type > 0x7f) {
+		return fmt.Errorf("cannot decode into an EIP-2718 transaction: TransactionType: %d", uint64(x.Type))
 	}
 	m.raw = bytes.Clone(data)
 	m.txHash = x.Hash
