@@ -16,7 +16,6 @@ import (
 func TestProviderCache(t *testing.T) {
 	claimInfo := ClaimInfo{
 		AgreedPrestate: []byte{1, 2, 3, 4},
-		ClaimTimestamp: 59832984598,
 		Claim:          common.Hash{0xaa, 0x66},
 	}
 	depth := types.Depth(6)

@@ -2,6 +2,7 @@ package super
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -246,7 +247,7 @@ func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
 func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	root, ok := s.rootsByTimestamp[uint64(timestamp)]
 	if !ok {
-		return eth.SuperRootResponse{}, ethereum.NotFound
+		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %w", uint64(timestamp), ethereum.NotFound)
 	}
 	return root, nil
 }

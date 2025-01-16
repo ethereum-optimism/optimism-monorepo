@@ -6,15 +6,22 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/split"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 )
 
 type ProposalTraceProviderCreator func(ctx context.Context, localContext common.Hash, depth types.Depth, claimInfo ClaimInfo) (types.TraceProvider, error)
 
-func SuperRootSplitAdapter(topProvider *SuperTraceProvider, creator ProposalTraceProviderCreator) split.ProviderCreator {
+type PreimageTraceProvider interface {
+	AbsolutePreState(ctx context.Context) (eth.Super, error)
+	GetPreimageBytes(ctx context.Context, pos types.Position) ([]byte, error)
+	ComputeStep(pos types.Position) (timestamp uint64, step uint64, err error)
+}
+
+func SuperRootSplitAdapter(topProvider PreimageTraceProvider, creator ProposalTraceProviderCreator) split.ProviderCreator {
 	return func(ctx context.Context, depth types.Depth, pre types.Claim, post types.Claim) (types.TraceProvider, error) {
 		localContext := split.CreateLocalContext(pre, post)
-		claimInfo, err := FetchProposals(ctx, topProvider, pre, post)
+		claimInfo, err := FetchClaimInfo(ctx, topProvider, pre, post)
 		if err != nil {
 			return nil, err
 		}
@@ -22,7 +29,7 @@ func SuperRootSplitAdapter(topProvider *SuperTraceProvider, creator ProposalTrac
 	}
 }
 
-func FetchProposals(ctx context.Context, topProvider *SuperTraceProvider, pre types.Claim, post types.Claim) (ClaimInfo, error) {
+func FetchClaimInfo(ctx context.Context, topProvider PreimageTraceProvider, pre types.Claim, post types.Claim) (ClaimInfo, error) {
 	usePrestateBlock := pre == (types.Claim{})
 	var claimInfo ClaimInfo
 	if usePrestateBlock {
@@ -38,17 +45,11 @@ func FetchProposals(ctx context.Context, topProvider *SuperTraceProvider, pre ty
 		}
 		claimInfo.AgreedPrestate = agreedPrestate
 	}
-	timestamp, _, err := topProvider.ComputeStep(post.Position)
-	if err != nil {
-		return ClaimInfo{}, fmt.Errorf("failed to calculate post-claim step: %w", err)
-	}
-	claimInfo.ClaimTimestamp = timestamp
 	claimInfo.Claim = post.Value
 	return claimInfo, nil
 }
 
 type ClaimInfo struct {
 	AgreedPrestate []byte
-	ClaimTimestamp uint64
 	Claim          common.Hash
 }

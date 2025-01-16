@@ -34,13 +34,13 @@ func NewSuperCannonTraceAccessor(
 ) (*trace.Accessor, error) {
 	outputProvider := NewSuperTraceProvider(logger, prestateProvider, rootProvider, l1Head, splitDepth, prestateBlock, poststateBlock)
 	cannonCreator := func(ctx context.Context, localContext common.Hash, depth types.Depth, claimInfo ClaimInfo) (types.TraceProvider, error) {
-		logger := logger.New("agreedPrestate", claimInfo.AgreedPrestate, "claimTimestamp", claimInfo.ClaimTimestamp, "claim", claimInfo.Claim, "localContext", localContext)
+		logger := logger.New("agreedPrestate", claimInfo.AgreedPrestate, "claim", claimInfo.Claim, "localContext", localContext)
 		subdir := filepath.Join(dir, localContext.Hex())
 		localInputs := utils.LocalGameInputs{
 			L1Head:        l1Head.Hash,
 			L2OutputRoot:  crypto.Keccak256Hash(claimInfo.AgreedPrestate),
 			L2Claim:       claimInfo.Claim,
-			L2BlockNumber: new(big.Int).SetUint64(claimInfo.ClaimTimestamp),
+			L2BlockNumber: new(big.Int).SetUint64(poststateBlock),
 		}
 		provider := cannon.NewTraceProvider(logger, m.ToTypedVmMetrics(cfg.VmType.String()), cfg, serverExecutor, prestateProvider, cannonPrestate, localInputs, subdir, depth)
 		return provider, nil
