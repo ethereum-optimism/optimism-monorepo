@@ -20,7 +20,7 @@ type Oracle interface {
 	HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo
 
 	// TransactionsByBlockHash retrieves the transactions from the block with the given hash.
-	TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Transactions)
+	TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx)
 
 	// ReceiptsByBlockHash retrieves the receipts from the block with the given hash.
 	ReceiptsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Receipts)
@@ -62,7 +62,7 @@ func (p *PreimageOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo 
 	return eth.HeaderBlockInfo(p.headerByBlockHash(blockHash))
 }
 
-func (p *PreimageOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Transactions) {
+func (p *PreimageOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, eth.GenericTx) {
 	header := p.headerByBlockHash(blockHash)
 	p.hint.Hint(TransactionsHint(blockHash))
 
@@ -87,7 +87,11 @@ func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash) (eth.BlockIn
 		return p.oracle.Get(preimage.Keccak256Key(key))
 	})
 
-	txHashes := eth.TransactionsToHashes(txs)
+	txHashes := make([]common.Hash, 0, len(txs))
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.Hash())
+	}
+
 	receipts, err := eth.DecodeRawReceipts(eth.ToBlockID(info), opaqueReceipts, txHashes)
 	if err != nil {
 		panic(fmt.Errorf("bad receipts data for block %s: %w", blockHash, err))

@@ -106,8 +106,8 @@ type EthClient struct {
 	log log.Logger
 
 	// cache transactions in bundles per block hash
-	// common.Hash -> types.Transactions
-	transactionsCache *caching.LRUCache[common.Hash, types.Transactions]
+	// common.Hash -> []*RawJsonTransaction
+	transactionsCache *caching.LRUCache[common.Hash, []*RawJsonTransaction]
 
 	// cache block headers of blocks by hash
 	// common.Hash -> *HeaderInfo
@@ -140,7 +140,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 		trustRPC:          config.TrustRPC,
 		mustBePostMerge:   config.MustBePostMerge,
 		log:               log,
-		transactionsCache: caching.NewLRUCache[common.Hash, types.Transactions](metrics, "txs", config.TransactionsCacheSize),
+		transactionsCache: caching.NewLRUCache[common.Hash, []*RawJsonTransaction](metrics, "txs", config.TransactionsCacheSize),
 		headersCache:      caching.NewLRUCache[common.Hash, eth.BlockInfo](metrics, "headers", config.HeadersCacheSize),
 		payloadsCache:     caching.NewLRUCache[common.Hash, *eth.ExecutionPayloadEnvelope](metrics, "payloads", config.PayloadsCacheSize),
 		blockRefsCache:    caching.NewLRUCache[common.Hash, eth.L1BlockRef](metrics, "blockrefs", config.BlockRefsCacheSize),
@@ -204,7 +204,7 @@ func (s *EthClient) headerCall(ctx context.Context, method string, id rpcBlockID
 	return info, nil
 }
 
-func (s *EthClient) blockCall(ctx context.Context, method string, id rpcBlockID) (eth.BlockInfo, types.Transactions, error) {
+func (s *EthClient) blockCall(ctx context.Context, method string, id rpcBlockID) (eth.BlockInfo, []*RawJsonTransaction, error) {
 	var block *RPCBlock
 	err := s.client.CallContext(ctx, &block, method, id.Arg(), true)
 	if err != nil {
@@ -272,7 +272,7 @@ func (s *EthClient) InfoByLabel(ctx context.Context, label eth.BlockLabel) (eth.
 	return s.headerCall(ctx, "eth_getBlockByNumber", label)
 }
 
-func (s *EthClient) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (s *EthClient) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []*RawJsonTransaction, error) {
 	if header, ok := s.headersCache.Get(hash); ok {
 		if txs, ok := s.transactionsCache.Get(hash); ok {
 			return header, txs, nil
@@ -281,12 +281,12 @@ func (s *EthClient) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth
 	return s.blockCall(ctx, "eth_getBlockByHash", hashID(hash))
 }
 
-func (s *EthClient) InfoAndTxsByNumber(ctx context.Context, number uint64) (eth.BlockInfo, types.Transactions, error) {
+func (s *EthClient) InfoAndTxsByNumber(ctx context.Context, number uint64) (eth.BlockInfo, []*RawJsonTransaction, error) {
 	// can't hit the cache when querying by number due to reorgs.
 	return s.blockCall(ctx, "eth_getBlockByNumber", numberID(number))
 }
 
-func (s *EthClient) InfoAndTxsByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockInfo, types.Transactions, error) {
+func (s *EthClient) InfoAndTxsByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockInfo, []*RawJsonTransaction, error) {
 	// can't hit the cache when querying the head due to reorgs / changes.
 	return s.blockCall(ctx, "eth_getBlockByNumber", label)
 }
@@ -315,7 +315,11 @@ func (s *EthClient) FetchReceipts(ctx context.Context, blockHash common.Hash) (e
 		return nil, nil, fmt.Errorf("querying block: %w", err)
 	}
 
-	txHashes, _ := eth.TransactionsToHashes(txs), eth.ToBlockID(info)
+	txHashes := make([]common.Hash, 0, len(txs))
+	for _, tx := range txs {
+		txHashes = append(txHashes, tx.TxHash())
+	}
+
 	receipts, err := s.recProvider.FetchReceipts(ctx, info, txHashes)
 	if err != nil {
 		return nil, nil, err

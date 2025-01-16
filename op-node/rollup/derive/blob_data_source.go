@@ -115,13 +115,14 @@ func (ds *BlobDataSource) open(ctx context.Context) ([]blobOrCalldata, error) {
 // dataAndHashesFromTxs extracts calldata and datahashes from the input transactions and returns them. It
 // creates a placeholder blobOrCalldata element for each returned blob hash that must be populated
 // by fillBlobPointers after blob bodies are retrieved.
-func dataAndHashesFromTxs(txs types.Transactions, config *DataSourceConfig, batcherAddr common.Address, logger log.Logger) ([]blobOrCalldata, []eth.IndexedBlobHash) {
+func dataAndHashesFromTxs(gs []eth.GenericTx, config *DataSourceConfig, batcherAddr common.Address, logger log.Logger) ([]blobOrCalldata, []eth.IndexedBlobHash) {
 	data := []blobOrCalldata{}
 	var hashes []eth.IndexedBlobHash
 	blobIndex := 0 // index of each blob in the block's blob sidecar
-	for _, tx := range txs {
+	var tx *types.Transaction
+	for _, g := range gs {
 		// skip any non-batcher transactions
-		if !isValidBatchTx(tx, config.l1Signer, config.batchInboxAddress, batcherAddr, logger) {
+		if tx, valid := isValidBatchTx(g, config.l1Signer, config.batchInboxAddress, batcherAddr, logger); valid {
 			blobIndex += len(tx.BlobHashes())
 			continue
 		}

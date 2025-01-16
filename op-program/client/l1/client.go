@@ -77,7 +77,7 @@ func (o *OracleL1Client) FetchReceipts(ctx context.Context, blockHash common.Has
 	return info, rcpts, nil
 }
 
-func (o *OracleL1Client) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (o *OracleL1Client) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
 	info, txs := o.oracle.TransactionsByBlockHash(hash)
 	return info, txs, nil
 }

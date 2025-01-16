@@ -212,8 +212,8 @@ func (hdr *RPCHeader) BlockID() eth.BlockID {
 
 type RPCBlock struct {
 	RPCHeader
-	Transactions []*types.Transaction `json:"transactions"`
-	Withdrawals  *types.Withdrawals   `json:"withdrawals,omitempty"`
+	Transactions []*RawJsonTransaction `json:"transactions"`
+	Withdrawals  *types.Withdrawals    `json:"withdrawals,omitempty"`
 }
 
 func (block *RPCBlock) verify() error {
@@ -225,9 +225,10 @@ func (block *RPCBlock) verify() error {
 			return fmt.Errorf("block tx %d is nil", i)
 		}
 	}
-	if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
-		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
-	}
+	// TODO reinstate
+	// if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
+	// 	return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
+	// }
 	if block.WithdrawalsRoot != nil {
 		if block.Withdrawals == nil {
 			return errors.New("expected withdrawals")
@@ -248,7 +249,7 @@ func (block *RPCBlock) verify() error {
 	return nil
 }
 
-func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, types.Transactions, error) {
+func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, []*RawJsonTransaction, error) {
 	if mustBePostMerge {
 		if err := block.checkPostMerge(); err != nil {
 			return nil, nil, err

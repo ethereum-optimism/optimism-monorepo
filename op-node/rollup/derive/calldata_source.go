@@ -8,7 +8,6 @@ import (
 
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -76,10 +75,10 @@ func (ds *CalldataSource) Next(ctx context.Context) (eth.Data, error) {
 // DataFromEVMTransactions filters all of the transactions and returns the calldata from transactions
 // that are sent to the batch inbox address from the batch sender address.
 // This will return an empty array if no valid transactions are found.
-func DataFromEVMTransactions(dsCfg DataSourceConfig, batcherAddr common.Address, txs types.Transactions, log log.Logger) []eth.Data {
+func DataFromEVMTransactions(dsCfg DataSourceConfig, batcherAddr common.Address, txs []eth.GenericTx, log log.Logger) []eth.Data {
 	out := []eth.Data{}
 	for _, tx := range txs {
-		if isValidBatchTx(tx, dsCfg.l1Signer, dsCfg.batchInboxAddress, batcherAddr, log) {
+		if tx, isValid := isValidBatchTx(tx, dsCfg.l1Signer, dsCfg.batchInboxAddress, batcherAddr, log); isValid {
 			out = append(out, tx.Data())
 		}
 	}

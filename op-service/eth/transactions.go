@@ -33,25 +33,16 @@ func EncodeTransactions(elems []*types.Transaction) ([]hexutil.Bytes, error) {
 }
 
 // DecodeTransactions decodes a list of opaque transactions into transactions.
-func DecodeTransactions(data []hexutil.Bytes) ([]*types.Transaction, error) {
-	dest := make([]*types.Transaction, len(data))
+func DecodeTransactions(data []hexutil.Bytes) ([]*OpaqueTransaction, error) {
+	dest := make([]*OpaqueTransaction, len(data))
 	for i := range dest {
-		var x types.Transaction
+		var x OpaqueTransaction
 		if err := x.UnmarshalBinary(data[i]); err != nil {
 			return nil, fmt.Errorf("failed to unmarshal tx %d: %w", i, err)
 		}
 		dest[i] = &x
 	}
 	return dest, nil
-}
-
-// TransactionsToHashes computes the transaction-hash for every transaction in the input.
-func TransactionsToHashes(elems []*types.Transaction) []common.Hash {
-	out := make([]common.Hash, len(elems))
-	for i, el := range elems {
-		out[i] = el.Hash()
-	}
-	return out
 }
 
 // CheckRecentTxs checks the depth recent blocks for txs from the account with address addr

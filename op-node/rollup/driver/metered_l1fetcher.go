@@ -47,7 +47,7 @@ func (m *MeteredL1Fetcher) InfoByHash(ctx context.Context, hash common.Hash) (et
 	return m.inner.InfoByHash(ctx, hash)
 }
 
-func (m *MeteredL1Fetcher) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (m *MeteredL1Fetcher) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
 	defer m.recordTime("InfoAndTxsByHash")()
 	return m.inner.InfoAndTxsByHash(ctx, hash)
 }

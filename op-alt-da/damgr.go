@@ -33,7 +33,7 @@ var ErrInvalidChallenge = errors.New("invalid challenge")
 
 // L1Fetcher is the required interface for syncing the DA challenge contract state.
 type L1Fetcher interface {
-	InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error)
+	InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	L1BlockRefByNumber(context.Context, uint64) (eth.L1BlockRef, error)
 }
@@ -357,15 +357,20 @@ func (d *DA) loadChallengeEvents(ctx context.Context, l1 L1Fetcher, block eth.Bl
 			// select the transaction corresponding to the receipt
 			tx := txs[i]
 			// txs and receipts must be in the same order
-			if tx.Hash() != log.TxHash {
-				d.log.Error("tx hash mismatch", "block", block.Number, "txIdx", i, "log", log.Index, "txHash", tx.Hash(), "receiptTxHash", log.TxHash)
+			if tx.TxHash() != log.TxHash {
+				d.log.Error("tx hash mismatch", "block", block.Number, "txIdx", i, "log", log.Index, "txHash", tx.TxHash(), "receiptTxHash", log.TxHash)
 				continue
 			}
 
 			var input []byte
 			if d.cfg.CommitmentType == Keccak256CommitmentType {
+				supportedTx, err := tx.Transaction()
+				if err != nil {
+					d.log.Error("failed to get supported tx", "block", block.Number, "txIdx", i, "err", err)
+					continue
+				}
 				// Decode the input from resolver tx calldata
-				input, err = DecodeResolvedInput(tx.Data())
+				input, err = DecodeResolvedInput(supportedTx.Data())
 				if err != nil {
 					d.log.Error("failed to decode resolved input", "block", block.Number, "txIdx", i, "err", err)
 					continue

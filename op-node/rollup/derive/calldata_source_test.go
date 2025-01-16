@@ -106,6 +106,7 @@ func TestDataFromEVMTransactions(t *testing.T) {
 			},
 		},
 		// TODO: test with different batcher key, i.e. when it's changed from initial config value by L1 contract
+		// TODO: check with unsupported tx types
 	}
 
 	for i, tc := range testCases {
