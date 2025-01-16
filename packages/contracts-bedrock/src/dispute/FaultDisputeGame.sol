@@ -963,6 +963,9 @@ contract FaultDisputeGame is Clone, ISemver {
             revert InvalidBondDistributionMode();
         }
 
+        // Revert if the recipient has no credit to claim.
+        if (recipientCredit == 0) revert NoCreditToClaim();
+
         // If the game is in refund mode, and the recipient has not unlocked their refund mode
         // credit, we unlock it and return early.
         if (!hasUnlockedCredit[_recipient]) {
@@ -970,9 +973,6 @@ contract FaultDisputeGame is Clone, ISemver {
             WETH.unlock(_recipient, recipientCredit);
             return;
         }
-
-        // Revert if the recipient has no credit to claim.
-        if (recipientCredit == 0) revert NoCreditToClaim();
 
         // Set the recipient's credit balances to 0.
         refundModeCredit[_recipient] = 0;

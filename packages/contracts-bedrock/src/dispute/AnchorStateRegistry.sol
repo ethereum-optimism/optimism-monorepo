@@ -103,9 +103,11 @@ contract AnchorStateRegistry is Initializable, ISemver {
     function getAnchorRoot() public view returns (Hash, uint256) {
         // Return the starting anchor root if there is no anchor game.
         if (address(anchorGame) == address(0)) {
+            // We assume that the starting anchor root is a trusted, truly valid root.
             return (startingAnchorRoot.root, startingAnchorRoot.l2BlockNumber);
         }
 
+        // Check if the anchor game is blacklisted.
         if (isGameBlacklisted(anchorGame)) {
             revert AnchorStateRegistry_AnchorGameBlacklisted();
         }
@@ -201,6 +203,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     }
 
     /// @notice Returns whether a game is finalized.
+    /// @dev Finalized games are NOT guaranteed to be proper or valid games.
     /// @param _game The game to check.
     /// @return Whether the game is finalized.
     function isGameFinalized(IDisputeGame _game) public view returns (bool) {
@@ -222,20 +225,17 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @return Whether the game's root claim is valid.
     function isGameClaimValid(IDisputeGame _game) public view returns (bool) {
         // Game must be a proper game.
-        bool properGame = isGameProper(_game);
-        if (!properGame) {
+        if (!isGameProper(_game)) {
             return false;
         }
 
         // Must be respected.
-        bool respected = isGameRespected(_game);
-        if (!respected) {
+        if (!isGameRespected(_game)) {
             return false;
         }
 
         // Game must be finalized.
-        bool finalized = isGameFinalized(_game);
-        if (!finalized) {
+        if (!isGameFinalized(_game)) {
             return false;
         }
 

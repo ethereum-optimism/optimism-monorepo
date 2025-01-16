@@ -20,11 +20,11 @@
     "sourceCodeHash": "0x823041c951d9df921295b25f9151b57292a64de98fec2c12849e9fe6a3fb635d"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x969e3687d4497cc168af61e610ba0ae187e80f86aaa7b5d5bb598de19f279f08",
-    "sourceCodeHash": "0xf215a31954f2ef166cfb26d20e466c62fafa235a08fc42c55131dcb81998ff01"
+    "initCodeHash": "0xac49d34f2fbdbb55a5512a27b0248df5220f69f1115e54f8a40c14676382e2ca",
+    "sourceCodeHash": "0x8e1918589931e3b65ab3f7ffd8f51112734f5445ddf9022cb59624ee120f7fa9"
   },
   "src/L1/OptimismPortalInterop.sol": {
-    "initCodeHash": "0x057c56174304f3773654fed39abf5fab70d9446f531d07fdb225b738a680ad46",
+    "initCodeHash": "0xedd8157e4c6738e63648f9ec2802146c6d5ae9f499be4e45ec1ef13e08e4adf5",
     "sourceCodeHash": "0xc04a7f9c14a13ec3587f5cc351c8e9f27fbbe9f1291a1aba07de29edbeef418a"
   },
   "src/L1/ProtocolVersions.sol": {
@@ -152,8 +152,8 @@
     "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
-    "initCodeHash": "0xb2618d650808a7a335db7cc56d15ccaf432f50aa551c01be8bde8356893c0e0d",
-    "sourceCodeHash": "0x745f0e2b07b8f6492e11ca2f69b53d129177fbfd346d5ca4729d72792aff1f83"
+    "initCodeHash": "0x9053b404ea333833a5ef60355509ac65a5242165e28259511593e0730c1bc69c",
+    "sourceCodeHash": "0xecbca2b4572987b1c4781674edb3a298d82dea6f6ee7e51a6c21289a910d410f"
   },
   "src/dispute/DelayedWETH.sol": {
     "initCodeHash": "0xb1f04c9ee86984a157b92a18754c84104e9d4df7a3838633301ca7f557d0220a",
@@ -164,8 +164,8 @@
     "sourceCodeHash": "0x155c0334f63616ed245aadf9a94f419ef7d5e2237b3b32172484fd19890a61dc"
   },
   "src/dispute/FaultDisputeGame.sol": {
-    "initCodeHash": "0x152fbb1f82488d815f56087fc464b9478f1390e3ecd67ae595344115fdd9ba91",
-    "sourceCodeHash": "0x9bfea41bd993bc1ef2ede9a5846a432ed5ea183868634fd77c4068b0a4a779b2"
+    "initCodeHash": "0x67fc80fdd6da7bcaf873954bcdfe2fd1d3175c616033c41e354e6e72499060c3",
+    "sourceCodeHash": "0x32952352634bdfcb9e5892d3a3cfebae9147f7e2446b7bc042f54d7c271abb42"
   },
   "src/legacy/DeployerWhitelist.sol": {
     "initCodeHash": "0x53099379ed48b87f027d55712dbdd1da7d7099925426eb0531da9c0012e02c29",

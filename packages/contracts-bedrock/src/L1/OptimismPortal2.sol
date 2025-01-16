@@ -337,6 +337,9 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         // of the root claim.
         if (gameProxy.status() == GameStatus.CHALLENGER_WINS) revert InvalidDisputeGame();
 
+        // Check that the dispute game is not blacklisted.
+        if (disputeGameBlacklist[gameProxy]) revert Blacklisted();
+
         // Compute the storage slot of the withdrawal hash in the L2ToL1MessagePasser contract.
         // Refer to the Solidity documentation for more information on how storage layouts are
         // computed for mappings.
@@ -490,8 +493,11 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         emit DisputeGameBlacklisted(_disputeGame);
     }
 
-    /// @notice Sets the respected game type. Changing this value can alter the security properties of the system,
-    ///         depending on the new game's behavior.
+    /// @notice Sets the respected game type. Changing this value can alter the security properties
+    ///         of the system, depending on the new game's behavior.
+    /// @dev If attempting to change the respected game type and invalidate all existing games, you
+    ///      MUST either execute both actions in a single transaction or execute the game type
+    ///      change BEFORE setting the respectedGameTypeUpdatedAt timestamp.
     /// @param _gameType The game type to consult for output proposals.
     function setRespectedGameType(GameType _gameType) external {
         if (msg.sender != guardian()) revert Unauthorized();
