@@ -1,6 +1,9 @@
 package flags
 
-import "fmt"
+import (
+	"fmt"
+	"slices"
+)
 
 type DataAvailabilityType string
 
@@ -22,7 +25,7 @@ func (kind DataAvailabilityType) String() string {
 }
 
 func (kind *DataAvailabilityType) Set(value string) error {
-	if !ValidDataAvailabilityType(DataAvailabilityType(value)) {
+	if !slices.Contains(DataAvailabilityTypes, DataAvailabilityType(value)) {
 		return fmt.Errorf("unknown data-availability type: %q", value)
 	}
 	*kind = DataAvailabilityType(value)
@@ -32,13 +35,4 @@ func (kind *DataAvailabilityType) Set(value string) error {
 func (kind *DataAvailabilityType) Clone() any {
 	cpy := *kind
 	return &cpy
-}
-
-func ValidDataAvailabilityType(value DataAvailabilityType) bool {
-	for _, k := range DataAvailabilityTypes {
-		if k == value {
-			return true
-		}
-	}
-	return false
 }
