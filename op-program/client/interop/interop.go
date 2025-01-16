@@ -7,6 +7,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
+	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
@@ -39,7 +40,9 @@ type taskExecutor interface {
 		agreedOutputRoot eth.Bytes32,
 		claimedBlockNumber uint64,
 		l1Oracle l1.Oracle,
-		l2Oracle l2.Oracle) (tasks.DerivationResult, error)
+		l2Oracle l2.Oracle,
+		opts ...cldr.DeriverOpts,
+	) (tasks.DerivationResult, error)
 }
 
 func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
@@ -91,11 +94,8 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 		if len(transitionState.PendingProgress) >= ConsolidateStep {
 			return common.Hash{}, fmt.Errorf("pending progress length does not match the expected step")
 		}
-		deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
-		if err != nil {
-			return common.Hash{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
-		}
-		expectedSuperRoot, err := RunConsolidation(deps, l2PreimageOracle, transitionState, superRoot)
+		expectedSuperRoot, err := RunConsolidation(
+			logger, bootInfo, l1PreimageOracle, l2PreimageOracle, transitionState, superRoot, tasks)
 		if err != nil {
 			return common.Hash{}, err
 		}
@@ -178,7 +178,9 @@ func (t *interopTaskExecutor) RunDerivation(
 	agreedOutputRoot eth.Bytes32,
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
-	l2Oracle l2.Oracle) (tasks.DerivationResult, error) {
+	l2Oracle l2.Oracle,
+	opts ...cldr.DeriverOpts,
+) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
 		rollupCfg,
@@ -187,5 +189,7 @@ func (t *interopTaskExecutor) RunDerivation(
 		common.Hash(agreedOutputRoot),
 		claimedBlockNumber,
 		l1Oracle,
-		l2Oracle)
+		l2Oracle,
+		opts...,
+	)
 }

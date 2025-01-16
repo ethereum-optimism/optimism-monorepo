@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
+	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
@@ -141,6 +142,10 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 
 	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x11}}))] = output
 	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}}))] = output
+	l2PreimageOracle.BlockData = map[common.Hash]*gethTypes.Block{
+		{0xaa}:              block2,
+		tasksStub.blockHash: block2,
+	}
 	l2PreimageOracle.Blocks[output.BlockHash] = block1
 	l2PreimageOracle.Blocks[common.Hash{0xaa}] = block2
 	l2PreimageOracle.Blocks[tasksStub.blockHash] = block2
@@ -235,7 +240,9 @@ func (t *stubTasks) RunDerivation(
 	_ eth.Bytes32,
 	_ uint64,
 	_ l1.Oracle,
-	_ l2.Oracle) (tasks.DerivationResult, error) {
+	_ l2.Oracle,
+	_ ...cldr.DeriverOpts,
+) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
 		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,

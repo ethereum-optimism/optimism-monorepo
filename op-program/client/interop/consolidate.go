@@ -1,9 +1,13 @@
 package interop
 
 import (
+	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-program/client/boot"
+	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
+	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/cross"
@@ -12,6 +16,7 @@ import (
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtypes.Receipts) ([]*supervisortypes.ExecutingMessage, uint32, error) {
@@ -33,18 +38,47 @@ func ReceiptsToExecutingMessages(depset depset.ChainIndexFromID, receipts ethtyp
 	return execMsgs, logCount, nil
 }
 
-func RunConsolidation(deps ConsolidateCheckDeps,
-	oracle l2.Oracle,
+func fetchAgreedBlockHashes(oracle l2.Oracle, superRoot *eth.SuperV1) ([]common.Hash, error) {
+	agreedBlockHashes := make([]common.Hash, len(superRoot.Chains))
+	for i, chain := range superRoot.Chains {
+		output := oracle.OutputByRoot(common.Hash(chain.Output), chain.ChainID)
+		outputV0, ok := output.(*eth.OutputV0)
+		if !ok {
+			return nil, fmt.Errorf("unsupported L2 output version: %d", output.Version())
+		}
+		agreedBlockHashes[i] = common.Hash(outputV0.BlockHash)
+	}
+	return agreedBlockHashes, nil
+}
+
+func RunConsolidation(
+	logger log.Logger,
+	bootInfo *boot.BootInfoInterop,
+	l1PreimageOracle l1.Oracle,
+	l2PreimageOracle l2.Oracle,
 	transitionState *types.TransitionState,
 	superRoot *eth.SuperV1,
+	tasks taskExecutor,
 ) (eth.Bytes32, error) {
+	deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
+	if err != nil {
+		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
+	}
+
 	var consolidatedChains []eth.ChainIDAndOutput
+
+	agreedBlockHashes, err := fetchAgreedBlockHashes(l2PreimageOracle, superRoot)
+	if err != nil {
+		return eth.Bytes32{}, err
+	}
 
 	for i, chain := range superRoot.Chains {
 		progress := transitionState.PendingProgress[i]
 
-		// TODO(#13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
-		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
+		// It's possible that the optimistic block is not canonical.
+		// So we use the blockDataByHash hint to trigger a block rebuild to ensure that the block data, including receipts, are available.
+		_ = l2PreimageOracle.BlockDataByHash(agreedBlockHashes[i], progress.BlockHash, chain.ChainID)
+		block, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
 			return eth.Bytes32{}, err
@@ -55,14 +89,41 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 			Number:    block.NumberU64(),
 			Timestamp: block.Time(),
 		}
+		consolidatedOutputRoot := progress.OutputRoot
 		if err := checkHazards(deps, candidate, eth.ChainIDFromUInt64(chain.ChainID), execMsgs); err != nil {
-			// TODO(#13776): replace with deposit-only block if ErrConflict, ErrCycle, or ErrFuture
-			return eth.Bytes32{}, err
+			if !isInvalidMessageError(err) {
+				return eth.Bytes32{}, err
+			}
+			rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
+			if err != nil {
+				return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
+			}
+			l2ChainConfig, err := bootInfo.Configs.ChainConfig(chain.ChainID)
+			if err != nil {
+				return eth.Bytes32{}, fmt.Errorf("no chain config available for chain ID %v: %w", chain.ChainID, err)
+			}
+			claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
+			if err != nil {
+				return eth.Bytes32{}, err
+			}
+			result, err := tasks.RunDerivation(
+				logger,
+				rollupCfg,
+				l2ChainConfig,
+				bootInfo.L1Head,
+				chain.Output,
+				claimedBlockNumber,
+				l1PreimageOracle,
+				l2PreimageOracle,
+				cldr.WithDepositsOnlyTargetBlock(true))
+			if err != nil {
+				return eth.Bytes32{}, err
+			}
+			consolidatedOutputRoot = result.OutputRoot
 		}
 		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
 			ChainID: chain.ChainID,
-			// TODO(#13776): when applicable, use the deposit-only block output root
-			Output: progress.OutputRoot,
+			Output:  consolidatedOutputRoot,
 		})
 	}
 	consolidatedSuper := &eth.SuperV1{
@@ -70,6 +131,14 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 		Chains:    consolidatedChains,
 	}
 	return eth.SuperRoot(consolidatedSuper), nil
+}
+
+func isInvalidMessageError(err error) bool {
+	// TODO: Create an error category for InvalidExecutingMessage errors in the cross package for easier maintenance.
+	return errors.Is(err, supervisortypes.ErrConflict) ||
+		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
+		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
+		errors.Is(err, cross.ErrCycle)
 }
 
 type ConsolidateCheckDeps interface {

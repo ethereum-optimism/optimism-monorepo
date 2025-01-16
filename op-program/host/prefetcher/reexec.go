@@ -3,7 +3,9 @@ package prefetcher
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum/go-ethereum"
@@ -53,5 +55,13 @@ func (p *Prefetcher) nativeReExecuteBlock(
 		return err
 	}
 	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64())
-	return p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID)
+	if err = p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID); err != nil {
+		return err
+	}
+
+	// Sanity check that the program execution created the requested block
+	if _, err := p.kvStore.Get(preimage.Keccak256Key(blockHash).PreimageKey()); err != nil {
+		return fmt.Errorf("cannot find block %v in storage after re-execution", blockHash)
+	}
+	return nil
 }

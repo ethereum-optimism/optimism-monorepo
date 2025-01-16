@@ -30,8 +30,21 @@ type Driver struct {
 	deriver event.Deriver
 }
 
+type deriverCfg struct {
+	depositsOnlyTargetBlock bool
+}
+
+type DeriverOpts func(cfg *deriverCfg)
+
+// WithDepositsOnlyTargetBlock configures the driver to use deposits-only attributes to build the target block
+func WithDepositsOnlyTargetBlock(enable bool) DeriverOpts {
+	return func(cfg *deriverCfg) {
+		cfg.depositsOnlyTargetBlock = enable
+	}
+}
+
 func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
-	l1BlobsSource derive.L1BlobsFetcher, l2Source engine.Engine, targetBlockNum uint64) *Driver {
+	l1BlobsSource derive.L1BlobsFetcher, l2Source engine.Engine, targetBlockNum uint64, opts ...DeriverOpts) *Driver {
 
 	d := &Driver{
 		logger: logger,
@@ -54,6 +67,9 @@ func NewDriver(logger log.Logger, cfg *rollup.Config, l1Source derive.L1Fetcher,
 		closing:        false,
 		result:         eth.L2BlockRef{},
 		targetBlockNum: targetBlockNum,
+	}
+	for _, opt := range opts {
+		opt(&prog.opts)
 	}
 
 	d.deriver = &event.DeriverMux{
