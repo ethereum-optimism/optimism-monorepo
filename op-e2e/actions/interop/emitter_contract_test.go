@@ -44,10 +44,6 @@ func TestEmitterContract(gt *testing.T) {
 		aliceB = setupUser(t, is, actors.ChainB, 0)
 		initializeChainState(t, actors)
 		emitTx = initializeEmitterContractTest(t, aliceA, actors)
-
-		// TODO: This is required otherwise the exec msg will fail with
-		// a timestamp invariant issue
-		includeTxOnChain(t, actors, actors.ChainB, nil, aliceB.address)
 	}
 
 	gt.Run("success", func(_ *testing.T) {
@@ -56,7 +52,7 @@ func TestEmitterContract(gt *testing.T) {
 		// Execute message on destination chain and verify that the heads progress
 		execTx := newExecuteMessageTx(t, actors, actors.ChainB, aliceB, emitTx)
 		includeTxOnChain(t, actors, actors.ChainB, execTx, aliceB.address)
-		assertHeads(t, actors.ChainB, 2, 2, 2, 2)
+		assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 	})
 
 	gt.Run("failure with conflicting message", func(_ *testing.T) {
@@ -73,7 +69,7 @@ func TestEmitterContract(gt *testing.T) {
 
 		// Process the invalid message attempt and verify that only the local unsafe head progresses
 		includeTxOnChain(t, actors, actors.ChainB, tx, auth.From)
-		assertHeads(t, actors.ChainB, 2, 2, 1, 1)
+		assertHeads(t, actors.ChainB, 3, 3, 2, 2)
 	})
 }
 
@@ -159,17 +155,21 @@ func initializeChainState(t helpers.Testing, actors *InteropActors) {
 
 func initializeEmitterContractTest(t helpers.Testing, aliceA *userWithKeys, actors *InteropActors) *types.Transaction {
 	// Deploy message contract and emit a log on ChainA
+	// This issues two blocks to ChainA
 	auth := newL2TxOpts(t, aliceA.secret, actors.ChainA)
 	emitContract, tx, _, err := emit.DeployEmit(auth, actors.ChainA.SequencerEngine.EthClient())
 	require.NoError(t, err)
 	includeTxOnChain(t, actors, actors.ChainA, tx, aliceA.address)
-
 	emitTx := newEmitMessageTx(t, actors.ChainA, aliceA, emitContract, []byte("test message"))
 	includeTxOnChain(t, actors, actors.ChainA, emitTx, aliceA.address)
 
+	// Catch ChainB up to the same height/time as ChainA
+	includeTxOnChain(t, actors, actors.ChainB, nil, aliceA.address)
+	includeTxOnChain(t, actors, actors.ChainB, nil, aliceA.address)
+
 	// Verify initial state
 	assertHeads(t, actors.ChainA, 2, 2, 2, 2)
-	assertHeads(t, actors.ChainB, 0, 0, 0, 0)
+	assertHeads(t, actors.ChainB, 2, 2, 2, 2)
 
 	return emitTx
 }
