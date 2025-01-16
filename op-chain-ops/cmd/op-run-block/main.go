@@ -321,7 +321,6 @@ func Process(logger log.Logger, config *params.ChainConfig,
 	var (
 		blockContext vm.BlockContext
 		signer       = types.MakeSigner(config, header.Number, header.Time)
-		err          error
 	)
 	blockContext = core.NewEVMBlockContext(header, chainCtx, nil, config, statedb)
 	vmenv := vm.NewEVM(blockContext, vm.TxContext{}, statedb, config, cfg)
@@ -354,15 +353,6 @@ func Process(logger log.Logger, config *params.ChainConfig,
 	logger.Info("Done with transactions")
 	_, _ = fmt.Fprintf(outW, "# Done with transactions\n")
 
-	// Read requests if Prague is enabled.
-	var requests types.Requests
-	if config.IsPrague(new(big.Int).SetUint64(uint64(block.Number)), uint64(block.Time)) {
-		requests, err = core.ParseDepositLogs(allLogs, config)
-		if err != nil {
-			return nil, err
-		}
-	}
-
 	engine := chainCtx.Engine()
 	// Finalize (geth specific term, a.k.a. seal) the block,
 	// applying any consensus engine specific extras (e.g. block rewards, withdrawals-root)
@@ -373,7 +363,7 @@ func Process(logger log.Logger, config *params.ChainConfig,
 
 	return &core.ProcessResult{
 		Receipts: receipts,
-		Requests: requests,
+		Requests: nil,
 		Logs:     allLogs,
 		GasUsed:  *usedGas,
 	}, nil
