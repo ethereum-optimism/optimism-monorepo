@@ -120,8 +120,10 @@ func CheckRecentTxs(
 	return oldestBlock.Uint64(), false, nil
 }
 
+// GenericTx is a transaction that can be represent any EIP 2718 transaction https://eips.ethereum.org/EIPS/eip-2718,
+// including transactions that are not yet explicitly supported by the derivation pipeline.
 type GenericTx interface {
-	// Transaction tries to interpret into a typed tx.
+	// Transaction tries to interpret into a supported typed tx.
 	// This will return types.ErrTxTypeNotSupported if the transaction-type is not supported.
 	Transaction() (*types.Transaction, error)
 
