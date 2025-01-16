@@ -55,7 +55,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 			Number:    block.NumberU64(),
 			Timestamp: block.Time(),
 		}
-		hazards, err := getHazards(progress.BlockHash, execMsgs)
+		hazards, err := cross.CrossUnsafeHazards(deps, eth.ChainIDFromUInt64(chain.ChainID), candidate, execMsgs)
 		if err != nil {
 			return eth.Bytes32{}, err
 		}
@@ -79,6 +79,13 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 type ConsolidateCheckDeps interface {
 	cross.UnsafeFrontierCheckDeps
 	cross.CycleCheckDeps
+	Check(
+		chain eth.ChainID,
+		blockNum uint64,
+		timestamp uint64,
+		logIdx uint32,
+		logHash common.Hash,
+	) (includedIn supervisortypes.BlockSeal, err error)
 }
 
 func checkHazards(
@@ -94,22 +101,6 @@ func checkHazards(
 		return err
 	}
 	return nil
-}
-
-// getHazards treats all executing messages as hazards
-func getHazards(
-	blockHash common.Hash,
-	execMsgs []*supervisortypes.ExecutingMessage,
-) (map[supervisortypes.ChainIndex]supervisortypes.BlockSeal, error) {
-	hazards := make(map[supervisortypes.ChainIndex]supervisortypes.BlockSeal)
-	for _, execMsg := range execMsgs {
-		hazards[execMsg.Chain] = supervisortypes.BlockSeal{
-			Hash:      blockHash,
-			Number:    execMsg.BlockNum,
-			Timestamp: execMsg.Timestamp,
-		}
-	}
-	return hazards, nil
 }
 
 type consolidateCheckDeps struct {
@@ -156,6 +147,8 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 	}, nil
 }
 
+// Check(
+// chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
 func (d *consolidateCheckDeps) Check(
 	chain eth.ChainID,
 	blockNum uint64,
