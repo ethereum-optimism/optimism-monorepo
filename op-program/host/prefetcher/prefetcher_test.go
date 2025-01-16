@@ -625,16 +625,22 @@ func TestFetchL2BlockData(t *testing.T) {
 	chainID := uint64(14)
 
 	testBlockExec := func(t *testing.T, clientErrs []error) {
+		require.NotEmpty(t, clientErrs)
 		prefetcher, _, _, l2Clients, _ := createPrefetcher(t)
 		l2Client := l2Clients.sources[defaultChainID]
 		rng := rand.New(rand.NewSource(123))
 		block, _ := testutils.RandomBlock(rng, 10)
 		disputedBlockHash := common.Hash{0xab}
 
-		l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
+		isCanonical := clientErrs[len(clientErrs)-1] == nil
+
 		for _, clientErr := range clientErrs {
 			l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, clientErr)
 		}
+		if !isCanonical {
+			l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
+		}
+
 		defer l2Client.MockDebugClient.AssertExpectations(t)
 		prefetcher.executor = &mockExecutor{}
 		hint := l2.L2BlockDataHint{
@@ -644,9 +650,13 @@ func TestFetchL2BlockData(t *testing.T) {
 		}.Hint()
 
 		require.NoError(t, prefetcher.Hint(hint))
-		require.True(t, prefetcher.executor.(*mockExecutor).invoked)
-		require.Equal(t, prefetcher.executor.(*mockExecutor).blockNumber, block.NumberU64()+1)
-		require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
+		if isCanonical {
+			require.False(t, prefetcher.executor.(*mockExecutor).invoked)
+		} else {
+			require.True(t, prefetcher.executor.(*mockExecutor).invoked)
+			require.Equal(t, prefetcher.executor.(*mockExecutor).blockNumber, block.NumberU64()+1)
+			require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
+		}
 
 		data, err := prefetcher.kvStore.Get(BlockDataKey(disputedBlockHash).Key())
 		require.NoError(t, err)
@@ -657,10 +667,16 @@ func TestFetchL2BlockData(t *testing.T) {
 		require.NoError(t, prefetcher.Hint(hint))
 		require.False(t, prefetcher.executor.(*mockExecutor).invoked)
 	}
-	t.Run("exec block not found", func(t *testing.T) {
+	t.Run("exec block is canonical", func(t *testing.T) {
+		testBlockExec(t, []error{nil})
+	})
+	t.Run("exec block is canonical with errors", func(t *testing.T) {
+		testBlockExec(t, []error{errors.New("fetch error"), nil})
+	})
+	t.Run("exec block is not canonical", func(t *testing.T) {
 		testBlockExec(t, []error{ethereum.NotFound})
 	})
-	t.Run("exec block fetch error", func(t *testing.T) {
+	t.Run("exec block is not canonical with fetch error", func(t *testing.T) {
 		testBlockExec(t, []error{errors.New("fetch error"), ethereum.NotFound})
 	})
 
