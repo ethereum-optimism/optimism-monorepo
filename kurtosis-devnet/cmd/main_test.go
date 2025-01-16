@@ -10,17 +10,23 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis"
+	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/kurtosis/sources/spec"
 	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/tmpl"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/urfave/cli/v2"
+	"gopkg.in/yaml.v3"
 )
 
 type mockDeployer struct {
 	dryRun bool
 }
 
-func (m *mockDeployer) Deploy(ctx context.Context, input io.Reader) (*kurtosis.KurtosisEnvironment, error) {
+func (m *mockDeployer) Deploy(ctx context.Context, input io.Reader) (*spec.EnclaveSpec, error) {
+	return &spec.EnclaveSpec{}, nil
+}
+
+func (m *mockDeployer) GetEnvironmentInfo(ctx context.Context, spec *spec.EnclaveSpec) (*kurtosis.KurtosisEnvironment, error) {
 	return &kurtosis.KurtosisEnvironment{}, nil
 }
 
@@ -56,12 +62,10 @@ func TestParseFlags(t *testing.T) {
 			args: []string{
 				"--template", "path/to/template.yaml",
 				"--enclave", "test-enclave",
-				"--local-hostname", "test.local",
 			},
 			wantCfg: &config{
 				templateFile:    "path/to/template.yaml",
 				enclave:         "test-enclave",
-				localHostName:   "test.local",
 				kurtosisPackage: kurtosis.DefaultPackageName,
 			},
 			wantError: false,
@@ -81,7 +85,6 @@ func TestParseFlags(t *testing.T) {
 			wantCfg: &config{
 				templateFile:    "path/to/template.yaml",
 				dataFile:        "path/to/data.json",
-				localHostName:   "host.docker.internal",
 				enclave:         kurtosis.DefaultEnclave,
 				kurtosisPackage: kurtosis.DefaultPackageName,
 			},
@@ -113,34 +116,12 @@ func TestParseFlags(t *testing.T) {
 			require.NotNil(t, cfg)
 			assert.Equal(t, tt.wantCfg.templateFile, cfg.templateFile)
 			assert.Equal(t, tt.wantCfg.enclave, cfg.enclave)
-			assert.Equal(t, tt.wantCfg.localHostName, cfg.localHostName)
 			assert.Equal(t, tt.wantCfg.kurtosisPackage, cfg.kurtosisPackage)
 			if tt.wantCfg.dataFile != "" {
 				assert.Equal(t, tt.wantCfg.dataFile, cfg.dataFile)
 			}
 		})
 	}
-}
-
-func TestLaunchStaticServer(t *testing.T) {
-	cfg := &config{
-		localHostName: "test.local",
-	}
-
-	m := newTestMain(cfg)
-	ctx := context.Background()
-	server, cleanup, err := m.launchStaticServer(ctx)
-	require.NoError(t, err)
-	defer cleanup()
-
-	// Verify server properties
-	assert.NotEmpty(t, server.dir)
-	assert.DirExists(t, server.dir)
-	assert.NotNil(t, server.Server)
-
-	// Verify cleanup works
-	cleanup()
-	assert.NoDirExists(t, server.dir)
 }
 
 func TestRenderTemplate(t *testing.T) {
@@ -173,18 +154,13 @@ artifacts: {{localContractArtifacts "l1"}}`
 	}
 
 	m := newTestMain(cfg)
-	ctx := context.Background()
-	server, cleanup, err := m.launchStaticServer(ctx)
-	require.NoError(t, err)
-	defer cleanup()
 
-	buf, err := m.renderTemplate(server)
+	buf, err := m.renderTemplate(tmpDir)
 	require.NoError(t, err)
 
 	// Verify template rendering
 	assert.Contains(t, buf.String(), "test-deployment")
 	assert.Contains(t, buf.String(), "test-project:test-enclave")
-	assert.Contains(t, buf.String(), server.URL())
 }
 
 func TestDeploy(t *testing.T) {
@@ -218,6 +194,26 @@ func TestDeploy(t *testing.T) {
 
 	var env map[string]interface{}
 	err = json.Unmarshal(content, &env)
+	require.NoError(t, err)
+}
+
+func TestDeployFileserver(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	tmpDir, err := os.MkdirTemp("", "deploy-fileserver-test")
+	require.NoError(t, err)
+	defer os.RemoveAll(tmpDir)
+
+	envPath := filepath.Join(tmpDir, "env.json")
+	cfg := &config{
+		baseDir:     tmpDir,
+		environment: envPath,
+		dryRun:      true,
+	}
+
+	m := newTestMain(cfg)
+	err = m.deployFileserver(ctx, filepath.Join(tmpDir, "fileserver"))
 	require.NoError(t, err)
 }
 
@@ -287,16 +283,25 @@ _prestate-build target:
 			}
 
 			m := newTestMain(cfg)
-			ctx := context.Background()
-			server, cleanup, err := m.launchStaticServer(ctx)
+
+			tmpDir, err := os.MkdirTemp("", "prestate-test")
 			require.NoError(t, err)
-			defer cleanup()
+			defer os.RemoveAll(tmpDir)
 
 			// Create template context with just the prestate function
-			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(server))
+			tmplCtx := tmpl.NewTemplateContext(m.localPrestateOption(tmpDir))
 
-			// Test template
-			template := `{"prestate": "{{localPrestate}}"}`
+			// Test template with multiple calls to localPrestate
+			template := `first:
+  url: {{(localPrestate).URL}}
+  hashes:
+    game: {{index (localPrestate).Hashes "game"}}
+    proof: {{index (localPrestate).Hashes "proof"}}
+second:
+  url: {{(localPrestate).URL}}
+  hashes:
+    game: {{index (localPrestate).Hashes "game"}}
+    proof: {{index (localPrestate).Hashes "proof"}}`
 			buf := bytes.NewBuffer(nil)
 			err = tmplCtx.InstantiateTemplate(bytes.NewBufferString(template), buf)
 
@@ -306,19 +311,30 @@ _prestate-build target:
 			}
 			require.NoError(t, err)
 
-			// Parse the output
-			var output struct {
-				Prestate string `json:"prestate"`
+			// Verify the output is valid YAML and contains the static path
+			output := buf.String()
+			assert.Contains(t, output, "url: http://fileserver/proofs/op-program/cannon")
+
+			// Verify both calls return the same values
+			var result struct {
+				First struct {
+					URL    string            `yaml:"url"`
+					Hashes map[string]string `yaml:"hashes"`
+				} `yaml:"first"`
+				Second struct {
+					URL    string            `yaml:"url"`
+					Hashes map[string]string `yaml:"hashes"`
+				} `yaml:"second"`
 			}
-			err = json.Unmarshal(buf.Bytes(), &output)
+			err = yaml.Unmarshal(buf.Bytes(), &result)
 			require.NoError(t, err)
 
-			// Verify the URL structure
-			assert.Contains(t, output.Prestate, server.URL())
-			assert.Contains(t, output.Prestate, "/proofs/op-program/cannon")
+			// Check that both calls returned identical results
+			assert.Equal(t, result.First.URL, result.Second.URL, "URLs should match")
+			assert.Equal(t, result.First.Hashes, result.Second.Hashes, "Hashes should match")
 
-			// Verify the directory was created
-			prestateDir := filepath.Join(server.dir, "proofs", "op-program", "cannon")
+			// Verify the directory was created only once
+			prestateDir := filepath.Join(tmpDir, "proofs", "op-program", "cannon")
 			assert.DirExists(t, prestateDir)
 		})
 	}

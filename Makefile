@@ -1,5 +1,5 @@
 # provide JUSTFLAGS for just-backed targets
-include ./just/flags.mk
+include ./justfiles/flags.mk
 
 BEDROCK_TAGS_REMOTE?=origin
 OP_STACK_GO_BUILDER?=us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:latest

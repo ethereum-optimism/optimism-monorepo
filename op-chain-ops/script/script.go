@@ -209,12 +209,11 @@ func NewHost(
 		GrayGlacierBlock:    big.NewInt(0),
 		MergeNetsplitBlock:  big.NewInt(0),
 		// Ethereum forks in proof-of-stake era.
-		TerminalTotalDifficulty:       big.NewInt(1),
-		TerminalTotalDifficultyPassed: true,
-		ShanghaiTime:                  new(uint64),
-		CancunTime:                    new(uint64),
-		PragueTime:                    nil,
-		VerkleTime:                    nil,
+		TerminalTotalDifficulty: big.NewInt(1),
+		ShanghaiTime:            new(uint64),
+		CancunTime:              new(uint64),
+		PragueTime:              nil,
+		VerkleTime:              nil,
 		// OP-Stack forks are disabled, since we use this for L1.
 		BedrockBlock: nil,
 		RegolithTime: nil,

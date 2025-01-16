@@ -172,15 +172,26 @@ func (s *L2Client) SystemConfigByL2Hash(ctx context.Context, hash common.Hash) (
 	return cfg, nil
 }
 
+func (s *L2Client) OutputV0AtBlockNumber(ctx context.Context, blockNum uint64) (*eth.OutputV0, error) {
+	head, err := s.InfoByNumber(ctx, blockNum)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get L2 block by hash: %w", err)
+	}
+	return s.outputV0(ctx, head)
+}
 func (s *L2Client) OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error) {
 	head, err := s.InfoByHash(ctx, blockHash)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get L2 block by hash: %w", err)
 	}
-	if head == nil {
+	return s.outputV0(ctx, head)
+}
+
+func (s *L2Client) outputV0(ctx context.Context, block eth.BlockInfo) (*eth.OutputV0, error) {
+	if block == nil {
 		return nil, ethereum.NotFound
 	}
-
+	blockHash := block.Hash()
 	proof, err := s.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, blockHash.String())
 	if err != nil {
 		return nil, fmt.Errorf("failed to get contract proof at block %s: %w", blockHash, err)
@@ -189,10 +200,10 @@ func (s *L2Client) OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (
 		return nil, fmt.Errorf("proof %w", ethereum.NotFound)
 	}
 	// make sure that the proof (including storage hash) that we retrieved is correct by verifying it against the state-root
-	if err := proof.Verify(head.Root()); err != nil {
-		return nil, fmt.Errorf("invalid withdrawal root hash, state root was %s: %w", head.Root(), err)
+	if err := proof.Verify(block.Root()); err != nil {
+		return nil, fmt.Errorf("invalid withdrawal root hash, state root was %s: %w", block.Root(), err)
 	}
-	stateRoot := head.Root()
+	stateRoot := block.Root()
 	return &eth.OutputV0{
 		StateRoot:                eth.Bytes32(stateRoot),
 		MessagePasserStorageRoot: eth.Bytes32(proof.StorageHash),

@@ -27,8 +27,8 @@ struct Identifier {
 ///         chain. It is permissionless to execute a cross chain message on behalf of any user.
 contract CrossL2Inbox is ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.12
-    string public constant version = "1.0.0-beta.12";
+    /// @custom:semver 1.0.0-beta.13
+    string public constant version = "1.0.0-beta.13";
 
     /// @notice Emitted when a cross chain message is being executed.
     /// @param msgHash Hash of message payload being executed.

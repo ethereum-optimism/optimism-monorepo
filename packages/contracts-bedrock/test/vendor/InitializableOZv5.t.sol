@@ -57,7 +57,7 @@ contract InitializerOZv5_Test is CommonTest {
         contracts.push(
             InitializeableContract({
                 name: "SharedLockboxImpl",
-                target: deploy.mustGetAddress("SharedLockboxImpl"),
+                target: artifacts.mustGetAddress("SharedLockboxImpl"),
                 initCalldata: abi.encodeCall(sharedLockbox.initialize, (address(0)))
             })
         );

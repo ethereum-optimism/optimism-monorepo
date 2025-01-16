@@ -80,6 +80,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 				L2GenesisEcotoneTimeOffset:  op_service.U64UtilPtr(0),
 				L2GenesisFjordTimeOffset:    op_service.U64UtilPtr(0),
 				L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
+				L2GenesisHoloceneTimeOffset: op_service.U64UtilPtr(0),
 				UseInterop:                  intent.UseInterop,
 			},
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{

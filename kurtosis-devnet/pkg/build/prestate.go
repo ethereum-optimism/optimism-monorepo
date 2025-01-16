@@ -13,6 +13,8 @@ type PrestateBuilder struct {
 	baseDir     string
 	cmdTemplate *template.Template
 	dryRun      bool
+
+	builtPrestates map[string]interface{}
 }
 
 const (
@@ -48,9 +50,10 @@ func WithPrestateDryRun(dryRun bool) PrestateBuilderOptions {
 // NewPrestateBuilder creates a new PrestateBuilder instance
 func NewPrestateBuilder(opts ...PrestateBuilderOptions) *PrestateBuilder {
 	b := &PrestateBuilder{
-		baseDir:     ".",
-		cmdTemplate: defaultPrestateTemplate,
-		dryRun:      false,
+		baseDir:        ".",
+		cmdTemplate:    defaultPrestateTemplate,
+		dryRun:         false,
+		builtPrestates: make(map[string]interface{}),
 	}
 
 	for _, opt := range opts {
@@ -67,6 +70,10 @@ type prestateTemplateData struct {
 
 // Build executes the prestate build command
 func (b *PrestateBuilder) Build(path string) error {
+	if _, ok := b.builtPrestates[path]; ok {
+		return nil
+	}
+
 	log.Printf("Building prestate: %s", path)
 
 	// Prepare template data
@@ -91,5 +98,6 @@ func (b *PrestateBuilder) Build(path string) error {
 		}
 	}
 
+	b.builtPrestates[path] = struct{}{}
 	return nil
 }

@@ -10,10 +10,11 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 contract RelayActor is StdUtils {
     // Storage slot of the l2Sender
-    uint256 constant senderSlotIndex = 50;
+    uint256 senderSlotIndex;
 
     uint256 public numHashes;
     bytes32[] public hashes;
@@ -29,6 +30,7 @@ contract RelayActor is StdUtils {
         xdm = _xdm;
         vm = _vm;
         doFail = _doFail;
+        senderSlotIndex = ForgeArtifacts.getSlot("OptimismPortal2", "l2Sender").slot;
     }
 
     /// @notice Relays a message to the `L1CrossDomainMessenger` with a random `version`,
