@@ -178,7 +178,7 @@ func TestOpaqueTransaction(t *testing.T) {
 
 			if !tc.eip2718 {
 				require.Panics(t, func() {
-					o.UnmarshalBinary(tc.rawTx)
+					_ = o.UnmarshalBinary(tc.rawTx)
 				})
 				return
 			}
