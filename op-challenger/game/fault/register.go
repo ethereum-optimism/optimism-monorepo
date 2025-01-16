@@ -68,7 +68,7 @@ func RegisterGameTypes(
 		registerTasks = append(registerTasks, NewCannonRegisterTask(faultTypes.CannonGameType, cfg, m, vm.NewOpProgramServerExecutor(logger), l2HeaderSource, rollupClient, syncValidator))
 	}
 	if cfg.TraceTypeEnabled(faultTypes.TraceTypeSuperCannon) {
-		rootProvider, err := clients.RootProvider()
+		rootProvider, err := clients.SuperRootProvider()
 		if err != nil {
 			return nil, err
 		}

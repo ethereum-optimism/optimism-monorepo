@@ -20,8 +20,8 @@ type clientProvider struct {
 	cfg            *config.Config
 	l2HeaderSource utils.L2HeaderSource
 	rollupClient   RollupClient
-	rootProvider   super.RootProvider
 	syncValidator  *syncStatusValidator
+	rootProvider   super.RootProvider
 	toClose        []CloseFunc
 }
 
@@ -71,7 +71,7 @@ func (c *clientProvider) RollupClient() (RollupClient, error) {
 	return rollupClient, nil
 }
 
-func (c *clientProvider) RootProvider() (super.RootProvider, error) {
+func (c *clientProvider) SuperRootProvider() (super.RootProvider, error) {
 	cl, err := client.NewRPC(context.Background(), c.logger, c.cfg.SupervisorRPC)
 	if err != nil {
 		return nil, fmt.Errorf("failed to dial supervisor: %w", err)
