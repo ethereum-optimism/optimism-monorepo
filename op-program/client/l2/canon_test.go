@@ -14,7 +14,13 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 	chainCfg, blocks, oracle := setupOracle(t, blockCount, headBlockNumber, true)
 	head := blocks[headBlockNumber].Header()
 
+// Ensure we don't walk back from head on every lookup by failing if a block is loaded multiple times.
+	requestedBlocks := make(map[common.Hash]bool)
 	blockByHash := func(hash common.Hash) *types.Block {
+		if requestedBlocks[hash] {
+			t.Fatalf("Requested duplicate block: %v", hash)
+		}
+		requestedBlocks[hash] = true
 		return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
 	}
 	canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
@@ -37,7 +43,9 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 	h = canon.GetHeaderByNumber(0)
 	require.Equal(t, blocks[0].Hash(), h.Hash())
 
-	// Test eraliest block short-circuiting. Do not expect oracle requests for other blocks.
+	// Test that the block hash is cached. Do not expect oracle requests for any other blocks.
+	// Allow requesting block 1 again as we're specifically asking for it and only the hash is cached
+	requestedBlocks[blocks[1].Hash()] = false
 	oracle.Blocks = map[common.Hash]*types.Block{
 		blocks[1].Hash(): blocks[1],
 	}
