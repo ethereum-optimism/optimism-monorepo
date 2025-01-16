@@ -10,4 +10,9 @@ var DepositSuite = nat.Suite{
 	Tests: []nat.Test{
 		tests.SimpleDeposit,
 	},
+	TestsParams: map[string]interface{}{
+		tests.SimpleDeposit.ID: tests.SimpleDepositParams{
+			MaxBalanceChecks: 24,
+		},
+	},
 }

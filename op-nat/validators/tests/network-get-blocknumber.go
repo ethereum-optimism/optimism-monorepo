@@ -12,7 +12,7 @@ import (
 // NetworkGetBlockNumber is a test that checks if RPC call `BlockNumber` is working.
 var NetworkGetBlockNumber = nat.Test{
 	ID: "network-get-block-number",
-	Fn: func(ctx context.Context, log log.Logger, config nat.Config) (bool, error) {
+	Fn: func(ctx context.Context, log log.Logger, config nat.Config, _ interface{}) (bool, error) {
 		network, err := network.NewNetwork(ctx, log, config.RPCURL, "kurtosis-l2")
 		if err != nil {
 			return false, fmt.Errorf("failed to setup network")

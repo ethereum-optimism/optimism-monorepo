@@ -10,4 +10,11 @@ var LoadTest = nat.Suite{
 	Tests: []nat.Test{
 		tests.TxFuzz,
 	},
+	TestsParams: map[string]interface{}{
+		"tx-fuzz": tests.TxFuzzParams{
+			NSlotsToRunFor:     1,
+			TxPerAccount:       2,
+			GenerateAccessList: false,
+		},
+	},
 }
