@@ -135,12 +135,12 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.31
-    string public constant version = "1.0.0-beta.31";
+    /// @custom:semver 1.0.0-beta.32
+    string public constant version = "1.0.0-beta.32";
 
     /// @notice Represents the interface version so consumers know how to decode the DeployOutput struct
     /// that's emitted in the `Deployed` event. Whenever that struct changes, a new version should be used.
-    uint256 public constant OUTPUT_VERSION = 0;
+    uint256 internal constant OUTPUT_VERSION = 0;
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
     ISuperchainConfig public immutable superchainConfig;
@@ -778,5 +778,10 @@ contract OPContractsManager is ISemver {
     /// @notice Returns the implementation contract addresses.
     function implementations() public view returns (Implementations memory) {
         return implementation;
+    }
+
+    /// @notice Returns the version of OPCM's `DeployOutput` type.
+    function outputVersion() external pure returns (uint256) {
+        return OUTPUT_VERSION;
     }
 }
