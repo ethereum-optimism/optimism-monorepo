@@ -270,7 +270,7 @@ contract DeploySuperchain_Test is Test {
         vm.store(address(dsi), bytes32(slot), bytes32(unwrap(defaultRecommendedProtocolVersion)));
     }
 
-    function test_deploySuperchainImplementationContracts_reuseAddresses_succeeds() public {
+    function test_deploySuperchainImplementationContracts_reuseAddresses_succeeds() public virtual {
         deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
         address originalConfig = address(dso.superchainConfigImpl());
         address originalProtocolVersions = address(dso.protocolVersionsImpl());
@@ -312,5 +312,13 @@ contract DeploySuperchainInterop_Test is DeploySuperchain_Test {
         assertEq(sharedLockboxProxy.implementation(), address(dso.sharedLockboxImpl()), "1400");
         assertEq(sharedLockboxProxy.admin(), address(dso.superchainProxyAdmin()), "1500");
         vm.stopPrank();
+    }
+
+    function test_deploySuperchainImplementationContracts_reuseAddresses_succeeds() public virtual override {
+        super.test_deploySuperchainImplementationContracts_reuseAddresses_succeeds();
+
+        address originalSharedLockbox = address(dso.sharedLockboxImpl());
+        deploySuperchain.deploySuperchainImplementationContracts(dsi, dso);
+        assertEq(address(dso.sharedLockboxImpl()), originalSharedLockbox, "300");
     }
 }

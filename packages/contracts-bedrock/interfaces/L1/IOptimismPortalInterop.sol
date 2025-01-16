@@ -35,6 +35,7 @@ interface IOptimismPortalInterop {
     error UnexpectedString();
     error Unproven();
     error LegacyGame();
+    error MessageTargetSharedLockbox();
 
     event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
     event Initialized(uint8 version);

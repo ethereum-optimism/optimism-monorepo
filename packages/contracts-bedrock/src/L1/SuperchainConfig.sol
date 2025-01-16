@@ -54,12 +54,15 @@ contract SuperchainConfig is Initializable, ISemver {
     }
 
     /// @notice Initializer.
-    /// @param _guardian             Address of the guardian, can pause the OptimismPortal.
-    /// @param _paused               Initial paused status.
+    /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
+    /// @param _paused      Initial paused status.
     function initialize(address _guardian, bool _paused) external initializer {
         _initialize(_guardian, _paused);
     }
 
+    /// @notice Internal initializer.
+    /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
+    /// @param _paused      Initial paused status.
     function _initialize(address _guardian, bool _paused) internal {
         _setGuardian(_guardian);
         if (_paused) {

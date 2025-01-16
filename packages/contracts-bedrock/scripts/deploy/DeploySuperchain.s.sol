@@ -616,9 +616,10 @@ contract DeploySuperchainInterop is DeploySuperchain {
     function deploySharedLockboxImplementation(DeploySuperchainOutput _dso) public virtual {
         vm.broadcast(msg.sender);
         ISharedLockbox sharedLockboxImpl = ISharedLockbox(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "SharedLockbox",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISharedLockbox.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISharedLockbox.__constructor__, ())),
+                _salt: _salt
             })
         );
 
@@ -656,9 +657,10 @@ contract DeploySuperchainInterop is DeploySuperchain {
     function deploySuperchainConfigImplementation(DeploySuperchainOutput _dso) public override {
         vm.broadcast(msg.sender);
         ISuperchainConfigInterop superchainConfigImpl = ISuperchainConfigInterop(
-            DeployUtils.create1({
+            DeployUtils.createDeterministic({
                 _name: "SuperchainConfigInterop",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfigInterop.__constructor__, ()))
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfigInterop.__constructor__, ())),
+                _salt: _salt
             })
         );
 

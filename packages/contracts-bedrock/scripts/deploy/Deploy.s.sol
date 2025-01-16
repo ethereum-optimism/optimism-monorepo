@@ -406,11 +406,7 @@ contract Deploy is Deployer {
             _opcm: OPContractsManager(address(dio.opcm())),
             _mips: IMIPS(address(dio.mipsSingleton()))
         });
-        if (_isInterop) {
-            ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
-        } else {
-            ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
-        }
+        ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
     }
 
     /// @notice Deploy all of the OP Chain specific contracts

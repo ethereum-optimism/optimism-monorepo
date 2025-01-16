@@ -8,7 +8,6 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Scripts
 import { DeployConfig } from "scripts/deploy/DeployConfig.s.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 // Libraries
@@ -124,26 +123,6 @@ library ChainAssertions {
             require(config.optimismPortal() == address(0), "CHECK-SCFG-420");
             require(config.optimismMintableERC20Factory() == address(0), "CHECK-SCFG-430");
         }
-    }
-
-    /// @notice Asserts that the SystemConfigInterop is setup correctly
-    function checkSystemConfigInterop(
-        Types.ContractSet memory _contracts,
-        DeployConfig _cfg,
-        bool _isProxy
-    )
-        internal
-        view
-    {
-        ISystemConfigInterop config = ISystemConfigInterop(_contracts.SystemConfig);
-
-        console.log(
-            "Running chain assertions on the SystemConfigInterop %s at %s",
-            _isProxy ? "proxy" : "implementation",
-            address(config)
-        );
-
-        checkSystemConfig(_contracts, _cfg, _isProxy);
     }
 
     /// @notice Asserts that the L1CrossDomainMessenger is setup correctly

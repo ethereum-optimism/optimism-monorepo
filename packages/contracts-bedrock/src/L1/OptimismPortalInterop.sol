@@ -8,6 +8,7 @@ import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Unauthorized } from "src/libraries/PortalErrors.sol";
+import { Types } from "src/libraries/Types.sol";
 
 // Interfaces
 import { IL1BlockInterop, ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
@@ -26,6 +27,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @notice Emitted when the contract migrates the ETH liquidity to the SharedLockbox.
     /// @param amount Amount of ETH migrated.
     event ETHMigrated(uint256 amount);
+
+    /// @notice Error thrown when the withdrawal target is the SharedLockbox.
+    error MessageTargetSharedLockbox();
 
     /// @notice Storage slot that the OptimismPortalStorage struct is stored at.
     /// keccak256(abi.encode(uint256(keccak256("optimismPortal.storage")) - 1)) & ~bytes32(uint256(0xff));
@@ -94,14 +98,23 @@ contract OptimismPortalInterop is OptimismPortal2 {
         return _storage().migrated;
     }
 
-    /// @notice Unlock and receive the ETH from the shared lockbox.
-    /// @param _value Amount of ETH to unlock.
-    function _unlockETH(uint256 _value) internal virtual override {
+    /// @notice Unlock and receive the ETH from the SharedLockbox.
+    /// @param _tx Withdrawal transaction to finalize.
+    function _unlockETH(Types.WithdrawalTransaction memory _tx) internal virtual override {
+        // We don't allow the SharedLockbox to be the target of a withdrawal.
+        // This is to prevent the SharedLockbox from being drained.
+        // This check needs to be done for every withdrawal.
+        if (_tx.target == address(sharedLockbox())) revert MessageTargetSharedLockbox();
+
         OptimismPortalStorage storage s = _storage();
-        if (s.migrated) sharedLockbox().unlockETH(_value);
+
+        if (!s.migrated) return;
+        if (_tx.value == 0) return;
+
+        sharedLockbox().unlockETH(_tx.value);
     }
 
-    /// @notice Locks the ETH in the shared lockbox.
+    /// @notice Locks the ETH in the SharedLockbox.
     function _lockETH() internal virtual override {
         OptimismPortalStorage storage s = _storage();
         if (s.migrated) sharedLockbox().lockETH{ value: msg.value }();

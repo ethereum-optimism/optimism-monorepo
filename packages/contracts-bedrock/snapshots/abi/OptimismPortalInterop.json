@@ -888,6 +888,11 @@
   },
   {
     "inputs": [],
+    "name": "MessageTargetSharedLockbox",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NonReentrant",
     "type": "error"
   },

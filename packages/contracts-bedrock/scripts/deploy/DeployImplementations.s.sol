@@ -22,7 +22,6 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
-import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
@@ -749,9 +748,6 @@ contract DeployImplementations is Script {
 // interop as an example, they've made the following changes to L1 contracts:
 //   - `OptimismPortalInterop is OptimismPortal`: A different portal implementation is used, and
 //     it's ABI is the same.
-//   - `SystemConfigInterop is SystemConfig`: A different system config implementation is used, and
-//     it's constructor has a different signature. This signature is different because there is a
-//     new input parameter, the `superchainConfig`.
 //   - Because of the different system config constructor, there is a new input parameter (superchainConfig).
 //
 // Similar to how inheritance was used to develop the new portal and system config contracts, we use
@@ -759,7 +755,6 @@ contract DeployImplementations is Script {
 // means is we need:
 //   - A `DeployImplementationsInterop is DeployImplementations` that:
 //     - Deploys OptimismPortalInterop instead of OptimismPortal.
-//     - Deploys SystemConfigInterop instead of SystemConfig.
 //
 // Most of the complexity in the above flow comes from the the new input for the updated SystemConfig
 // initializer. If all function signatures were the same, all we'd have to change is the contract
@@ -791,18 +786,5 @@ contract DeployImplementationsInterop is DeployImplementations {
 
         vm.label(address(impl), "OptimismPortalImpl");
         _dio.set(_dio.optimismPortalImpl.selector, address(impl));
-    }
-
-    function deploySystemConfigImpl(DeployImplementationsOutput _dio) public override {
-        vm.broadcast(msg.sender);
-        ISystemConfigInterop impl = ISystemConfigInterop(
-            DeployUtils.createDeterministic({
-                _name: "SystemConfigInterop",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISystemConfigInterop.__constructor__, ())),
-                _salt: _salt
-            })
-        );
-        vm.label(address(impl), "SystemConfigImpl");
-        _dio.set(_dio.systemConfigImpl.selector, address(impl));
     }
 }

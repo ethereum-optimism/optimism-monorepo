@@ -177,6 +177,7 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
     function test_addDependencyFromPortal_succeeds(uint256 _chainId, uint256 _chainId2) external {
         vm.assume(!_superchainConfigInterop().isInDependencySet(_chainId));
         vm.assume(!_superchainConfigInterop().isInDependencySet(_chainId2));
+        vm.assume(_chainId != _chainId2);
         uint256 currentSize = _superchainConfigInterop().dependencySetSize();
 
         // Add first an authorized portal
