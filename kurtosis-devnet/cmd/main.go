@@ -156,9 +156,10 @@ func (h *localPrestateHolder) GetPrestateInfo() (*PrestateInfo, error) {
 
 	// Map of known file prefixes to their keys
 	fileToKey := map[string]string{
-		"prestate-proof.json":      "prestate",
-		"prestate-proof-mt64.json": "prestate-mt64",
-		"prestate-proof-mt.json":   "prestate-mt",
+		"prestate-proof.json":         "prestate",
+		"prestate-proof-mt64.json":    "prestate_mt64",
+		"prestate-proof-mt.json":      "prestate_mt",
+		"prestate-proof-interop.json": "prestate_interop",
 	}
 
 	// Build all prestate files directly in the target directory
