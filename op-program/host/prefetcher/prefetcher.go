@@ -267,7 +267,7 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		supportedTxs := make(types.Transactions, 0, len(txs))
 		for _, tx := range txs {
 			t, err := tx.Transaction()
-			if err != nil {
+			if err == nil {
 				supportedTxs = append(supportedTxs, t)
 			}
 		}

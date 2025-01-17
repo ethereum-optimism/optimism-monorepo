@@ -24,9 +24,7 @@ func TestRetryingL1Source(t *testing.T) {
 	info := &testutils.MockBlockInfo{InfoHash: hash}
 	// The mock really doesn't like returning nil for a eth.BlockInfo so return a value we expect to be ignored instead
 	wrongInfo := &testutils.MockBlockInfo{InfoHash: common.Hash{0x99}}
-	txs := types.Transactions{
-		&types.Transaction{},
-	}
+	txs := types.Transactions{}
 	rcpts := types.Receipts{
 		&types.Receipt{},
 	}
@@ -61,7 +59,7 @@ func TestRetryingL1Source(t *testing.T) {
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
 		require.Equal(t, info, actualInfo)
-		require.Equal(t, txs, actualTxs)
+		require.Equal(t, eth.MustToGenericTxSlice(txs), actualTxs)
 	})
 
 	t.Run("InfoAndTxsByHash Error", func(t *testing.T) {
@@ -74,7 +72,7 @@ func TestRetryingL1Source(t *testing.T) {
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
 		require.Equal(t, info, actualInfo)
-		require.Equal(t, txs, actualTxs)
+		require.Equal(t, eth.MustToGenericTxSlice(txs), actualTxs)
 	})
 
 	t.Run("FetchReceipts Success", func(t *testing.T) {
@@ -227,9 +225,7 @@ func TestRetryingL2Source(t *testing.T) {
 	info := &testutils.MockBlockInfo{InfoHash: hash}
 	// The mock really doesn't like returning nil for a eth.BlockInfo so return a value we expect to be ignored instead
 	wrongInfo := &testutils.MockBlockInfo{InfoHash: common.Hash{0x99}}
-	txs := types.Transactions{
-		&types.Transaction{},
-	}
+	txs := types.Transactions{}
 	data := []byte{1, 2, 3, 4, 5}
 	output := &eth.OutputV0{}
 	wrongOutput := &eth.OutputV0{BlockHash: common.Hash{0x99}}
@@ -242,7 +238,7 @@ func TestRetryingL2Source(t *testing.T) {
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
 		require.Equal(t, info, actualInfo)
-		require.Equal(t, txs, actualTxs)
+		require.Equal(t, eth.MustToGenericTxSlice(txs), actualTxs)
 	})
 
 	t.Run("InfoAndTxsByHash Error", func(t *testing.T) {
@@ -255,7 +251,7 @@ func TestRetryingL2Source(t *testing.T) {
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
 		require.Equal(t, info, actualInfo)
-		require.Equal(t, txs, actualTxs)
+		require.Equal(t, eth.MustToGenericTxSlice(txs), actualTxs)
 	})
 
 	t.Run("NodeByHash Success", func(t *testing.T) {
