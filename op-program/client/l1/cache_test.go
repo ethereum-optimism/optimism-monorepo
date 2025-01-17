@@ -44,14 +44,14 @@ func TestCachingOracle_TransactionsByBlockHash(t *testing.T) {
 	stub.Txs[block.Hash()] = eth.MustToGenericTxSlice(block.Transactions())
 	actualBlock, actualTxs := oracle.TransactionsByBlockHash(block.Hash())
 	require.Equal(t, eth.BlockToInfo(block), actualBlock)
-	require.Equal(t, block.Transactions(), actualTxs)
+	require.Equal(t, eth.MustToGenericTxSlice(block.Transactions()), actualTxs)
 
 	// Later calls should retrieve from cache
 	delete(stub.Blocks, block.Hash())
 	delete(stub.Txs, block.Hash())
 	actualBlock, actualTxs = oracle.TransactionsByBlockHash(block.Hash())
 	require.Equal(t, eth.BlockToInfo(block), actualBlock)
-	require.Equal(t, block.Transactions(), actualTxs)
+	require.Equal(t, eth.MustToGenericTxSlice(block.Transactions()), actualTxs)
 }
 
 func TestCachingOracle_ReceiptsByBlockHash(t *testing.T) {
