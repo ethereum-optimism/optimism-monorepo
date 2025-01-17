@@ -132,7 +132,7 @@ func TestBlockToExecutionPayloadIncludesEcotoneProperties(t *testing.T) {
 
 	block := RPCBlock{
 		RPCHeader:    rhdr,
-		Transactions: types.Transactions{},
+		Transactions: []eth.GenericTx{},
 		Withdrawals:  &types.Withdrawals{},
 	}
 

@@ -286,7 +286,11 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 	// There is no option for encoded transactions.
 	opaqueTxs := make([]hexutil.Bytes, len(block.Transactions))
 	for i, tx := range block.Transactions {
-		data, err := tx.MarshalBinary()
+		t, err := tx.Transaction()
+		if err != nil {
+			return nil, err // unsupported
+		}
+		data, err := t.MarshalBinary()
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode tx %d from RPC: %w", i, err)
 		}

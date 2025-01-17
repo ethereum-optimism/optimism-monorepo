@@ -114,11 +114,12 @@ func TestDataFromEVMTransactions(t *testing.T) {
 		signer := cfg.L1Signer()
 
 		var expectedData []eth.Data
-		var txs []*types.Transaction
-		for i, tx := range tc.txs {
-			txs = append(txs, tx.Create(t, signer, rng))
+		var txs []eth.GenericTx
+		for _, tx := range tc.txs {
+			t := tx.Create(t, signer, rng)
+			txs = append(txs, eth.MustToOpaqueTransaction(t))
 			if tx.good {
-				expectedData = append(expectedData, txs[i].Data())
+				expectedData = append(expectedData, t.Data())
 			}
 		}
 

@@ -131,7 +131,13 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if err != nil {
 			return fmt.Errorf("failed to fetch L1 block %s txs: %w", hash, err)
 		}
-		return p.storeTransactions(txs)
+		ts := make(types.Transactions, 0, len(txs))
+		for _, tx := range txs {
+			if t, err := tx.Transaction(); err == nil {
+				ts = append(ts, t)
+			}
+		}
+		return p.storeTransactions(ts)
 	case l1.HintL1Receipts:
 		if len(hintBytes) != 32 {
 			return fmt.Errorf("invalid L1 receipts hint: %x", hint)
@@ -257,7 +263,15 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		if err != nil {
 			return err
 		}
-		return p.storeTransactions(txs)
+
+		supportedTxs := make(types.Transactions, 0, len(txs))
+		for _, tx := range txs {
+			t, err := tx.Transaction()
+			if err != nil {
+				supportedTxs = append(supportedTxs, t)
+			}
+		}
+		return p.storeTransactions(supportedTxs)
 	case l2.HintL2StateNode:
 		if len(hintBytes) != 32 {
 			return fmt.Errorf("invalid L2 state node hint: %x", hint)
@@ -300,7 +314,7 @@ func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {
 	return p.storeTrieNodes(opaqueReceipts)
 }
 
-func (p *Prefetcher) storeTransactions(txs []eth.GenericTx) error {
+func (p *Prefetcher) storeTransactions(txs types.Transactions) error {
 	opaqueTxs, err := eth.EncodeTransactions(txs)
 	if err != nil {
 		return err

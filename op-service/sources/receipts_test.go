@@ -123,7 +123,7 @@ func (tc *ReceiptsTestCase) Run(t *testing.T) {
 		switch req.method {
 		case EthGetTransactionReceiptBatch:
 			for i, tx := range block.Transactions {
-				m.On("eth_getTransactionReceipt", tx.Hash()).Once().Return(req.result[i], &req.err)
+				m.On("eth_getTransactionReceipt", tx.TxHash()).Once().Return(req.result[i], &req.err)
 			}
 		case AlchemyGetTransactionReceipts:
 			m.On("alchemy_getTransactionReceipts", block.Hash.String()).Once().Return(req.result, &req.err)
@@ -207,7 +207,7 @@ func randomRpcBlockAndReceipts(rng *rand.Rand, txCount uint64) (*RPCBlock, []*ty
 			BaseFee:     (*hexutil.Big)(block.BaseFee()),
 			Hash:        block.Hash(),
 		},
-		Transactions: block.Transactions(),
+		Transactions: eth.MustToGenericTxSlice(block.Transactions()),
 	}, receipts
 }
 

@@ -69,9 +69,7 @@ func TestDurationRecorded(t *testing.T) {
 		{
 			method: "InfoAndTxsByHash",
 			call: func(t *testing.T, fetcher *MeteredL1Fetcher, inner *testutils.MockL1Source) {
-				txs := types.Transactions{
-					&types.Transaction{},
-				}
+				txs := make([]eth.GenericTx, 1)
 				inner.ExpectInfoAndTxsByHash(hash, info, txs, expectedErr)
 
 				actualInfo, actualTxs, err := fetcher.InfoAndTxsByHash(context.Background(), hash)

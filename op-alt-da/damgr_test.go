@@ -200,12 +200,12 @@ type mockL1Fetcher struct {
 	mock.Mock
 }
 
-func (m *mockL1Fetcher) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (m *mockL1Fetcher) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
 	out := m.Mock.Called(hash)
-	return out.Get(0).(eth.BlockInfo), out.Get(1).(types.Transactions), out.Error(2)
+	return out.Get(0).(eth.BlockInfo), out.Get(1).([]eth.GenericTx), out.Error(2)
 }
 
-func (m *mockL1Fetcher) ExpectInfoAndTxsByHash(hash common.Hash, info eth.BlockInfo, transactions types.Transactions, err error) {
+func (m *mockL1Fetcher) ExpectInfoAndTxsByHash(hash common.Hash, info eth.BlockInfo, transactions []eth.GenericTx, err error) {
 	m.Mock.On("InfoAndTxsByHash", hash).Once().Return(info, transactions, err)
 }
 

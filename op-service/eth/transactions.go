@@ -19,7 +19,7 @@ type L1Client interface {
 }
 
 // EncodeTransactions encodes a list of transactions into opaque transactions.
-func EncodeTransactions(elems []OpaqueTransaction) ([]hexutil.Bytes, error) {
+func EncodeTransactions(elems types.Transactions) ([]hexutil.Bytes, error) {
 	out := make([]hexutil.Bytes, len(elems))
 	for i, el := range elems {
 		dat, err := el.MarshalBinary()
@@ -122,6 +122,38 @@ type GenericTx interface {
 
 	// TxHash returns the transaction hash.
 	TxHash() common.Hash
+}
+
+func ToOpaqueTransaction(tx *types.Transaction) (*OpaqueTransaction, error) {
+	raw, err := tx.MarshalBinary()
+	if err != nil {
+		return nil, err
+	}
+	return &OpaqueTransaction{raw: raw}, nil
+}
+
+func MustToOpaqueTransaction(tx *types.Transaction) *OpaqueTransaction {
+	otx, err := ToOpaqueTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+	return otx
+}
+
+func MustToOpaqueTransactionSlice(txs types.Transactions) []OpaqueTransaction {
+	out := make([]OpaqueTransaction, len(txs))
+	for i, tx := range txs {
+		out[i] = *MustToOpaqueTransaction(tx)
+	}
+	return out
+}
+
+func MustToGenericTxSlice(txs types.Transactions) []GenericTx {
+	out := make([]GenericTx, len(txs))
+	for i, tx := range txs {
+		out[i] = MustToOpaqueTransaction(tx)
+	}
+	return out
 }
 
 type OpaqueTransaction struct {

@@ -76,7 +76,7 @@ func testBlock(t *testing.T, block *types.Block, receipts []*types.Receipt) {
 	expectedTxs := block.Transactions()
 	require.Equal(t, len(expectedTxs), len(gotTxs), "expecting equal tx list length")
 	for i, tx := range gotTxs {
-		require.Equalf(t, tx.Hash(), expectedTxs[i].Hash(), "expecting tx %d to match", i)
+		require.Equalf(t, tx.TxHash(), expectedTxs[i].Hash(), "expecting tx %d to match", i)
 	}
 
 	// Check if blocks with receipts work

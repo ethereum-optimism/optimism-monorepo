@@ -71,15 +71,3 @@ func (m *RawJsonTransaction) UnmarshalJSON(data []byte) error {
 func (m *RawJsonTransaction) MarshalJSON() ([]byte, error) {
 	return m.raw, nil
 }
-
-func ToRawJsonTransaction(tx *types.Transaction) *RawJsonTransaction {
-	data, err := json.Marshal(tx)
-	if err != nil {
-		panic(err)
-	}
-	return &RawJsonTransaction{
-		txHash: tx.Hash(),
-		txType: tx.Type(),
-		raw:    data,
-	}
-}

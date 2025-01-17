@@ -1,4 +1,4 @@
-package derive
+package derive_test
 
 import (
 	"context"
@@ -9,6 +9,7 @@ import (
 
 	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	. "github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
@@ -122,7 +123,7 @@ func TestAltDADataSource(t *testing.T) {
 
 		// pick a random number of commitments to include in the l1 block
 		c := rng.Intn(4)
-		var txs []*types.Transaction
+		var txs []eth.GenericTx
 
 		for j := 0; j < c; j++ {
 			// mock input commitments in l1 transactions
@@ -146,7 +147,7 @@ func TestAltDADataSource(t *testing.T) {
 			})
 			require.NoError(t, err)
 
-			txs = append(txs, tx)
+			txs = append(txs, eth.MustToOpaqueTransaction(tx))
 
 		}
 		logger.Info("included commitments", "count", c)
@@ -225,7 +226,7 @@ func TestAltDADataSource(t *testing.T) {
 
 			// pick a random number of commitments to include in the l1 block
 			c := rng.Intn(4)
-			var txs []*types.Transaction
+			var txs []eth.GenericTx
 
 			for j := 0; j < c; j++ {
 				// mock input commitments in l1 transactions
@@ -248,7 +249,7 @@ func TestAltDADataSource(t *testing.T) {
 				})
 				require.NoError(t, err)
 
-				txs = append(txs, tx)
+				txs = append(txs, eth.MustToOpaqueTransaction(tx))
 
 			}
 			logger.Info("included commitments", "count", c)
@@ -367,7 +368,7 @@ func TestAltDADataSourceStall(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	txs := []*types.Transaction{tx}
+	txs := []eth.GenericTx{eth.MustToOpaqueTransaction(tx)}
 
 	l1F.ExpectInfoAndTxsByHash(ref.Hash, testutils.RandomBlockInfo(rng), txs, nil)
 
@@ -518,7 +519,10 @@ func TestAltDADataSourceInvalidData(t *testing.T) {
 	})
 	require.NoError(t, err)
 
-	txs := []*types.Transaction{tx1, tx2, tx3}
+	txs := []eth.GenericTx{
+		eth.MustToOpaqueTransaction(tx1),
+		eth.MustToOpaqueTransaction(tx2),
+		eth.MustToOpaqueTransaction(tx3)}
 
 	l1F.ExpectInfoAndTxsByHash(ref.Hash, testutils.RandomBlockInfo(rng), txs, nil)
 

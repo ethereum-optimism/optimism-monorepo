@@ -182,7 +182,7 @@ func TestEthClient_WrongInfoByHash(t *testing.T) {
 
 func newEthClientWithCaches(metrics caching.Metrics, cacheSize int) *EthClient {
 	return &EthClient{
-		transactionsCache: caching.NewLRUCache[common.Hash, types.Transactions](metrics, "txs", cacheSize),
+		transactionsCache: caching.NewLRUCache[common.Hash, []eth.GenericTx](metrics, "txs", cacheSize),
 		headersCache:      caching.NewLRUCache[common.Hash, eth.BlockInfo](metrics, "headers", cacheSize),
 		payloadsCache:     caching.NewLRUCache[common.Hash, *eth.ExecutionPayloadEnvelope](metrics, "payloads", cacheSize),
 	}

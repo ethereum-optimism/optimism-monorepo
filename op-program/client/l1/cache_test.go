@@ -41,7 +41,7 @@ func TestCachingOracle_TransactionsByBlockHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stub.Blocks[block.Hash()] = eth.BlockToInfo(block)
-	stub.Txs[block.Hash()] = block.Transactions()
+	stub.Txs[block.Hash()] = eth.MustToGenericTxSlice(block.Transactions())
 	actualBlock, actualTxs := oracle.TransactionsByBlockHash(block.Hash())
 	require.Equal(t, eth.BlockToInfo(block), actualBlock)
 	require.Equal(t, block.Transactions(), actualTxs)

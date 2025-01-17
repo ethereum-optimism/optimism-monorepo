@@ -56,7 +56,7 @@ func TestRetryingL1Source(t *testing.T) {
 	t.Run("InfoAndTxsByHash Success", func(t *testing.T) {
 		source, mock := createL1Source(t)
 		defer mock.AssertExpectations(t)
-		mock.ExpectInfoAndTxsByHash(hash, info, txs, nil)
+		mock.ExpectInfoAndTxsByHash(hash, info, eth.MustToGenericTxSlice(txs), nil)
 
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
@@ -69,7 +69,7 @@ func TestRetryingL1Source(t *testing.T) {
 		defer mock.AssertExpectations(t)
 		expectedErr := errors.New("boom")
 		mock.ExpectInfoAndTxsByHash(hash, wrongInfo, nil, expectedErr)
-		mock.ExpectInfoAndTxsByHash(hash, info, txs, nil)
+		mock.ExpectInfoAndTxsByHash(hash, info, eth.MustToGenericTxSlice(txs), nil)
 
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
@@ -237,7 +237,7 @@ func TestRetryingL2Source(t *testing.T) {
 	t.Run("InfoAndTxsByHash Success", func(t *testing.T) {
 		source, mock := createL2Source(t)
 		defer mock.AssertExpectations(t)
-		mock.ExpectInfoAndTxsByHash(hash, info, txs, nil)
+		mock.ExpectInfoAndTxsByHash(hash, info, eth.MustToGenericTxSlice(txs), nil)
 
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
@@ -250,7 +250,7 @@ func TestRetryingL2Source(t *testing.T) {
 		defer mock.AssertExpectations(t)
 		expectedErr := errors.New("boom")
 		mock.ExpectInfoAndTxsByHash(hash, wrongInfo, nil, expectedErr)
-		mock.ExpectInfoAndTxsByHash(hash, info, txs, nil)
+		mock.ExpectInfoAndTxsByHash(hash, info, eth.MustToGenericTxSlice(txs), nil)
 
 		actualInfo, actualTxs, err := source.InfoAndTxsByHash(ctx, hash)
 		require.NoError(t, err)
@@ -338,9 +338,9 @@ type MockL2Source struct {
 	mock.Mock
 }
 
-func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
 	out := m.Mock.MethodCalled("InfoAndTxsByHash", blockHash)
-	return out[0].(eth.BlockInfo), out[1].(types.Transactions), *out[2].(*error)
+	return out[0].(eth.BlockInfo), out[1].([]eth.GenericTx), *out[2].(*error)
 }
 
 func (m *MockL2Source) NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
@@ -358,7 +358,7 @@ func (m *MockL2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
-func (m *MockL2Source) ExpectInfoAndTxsByHash(blockHash common.Hash, info eth.BlockInfo, txs types.Transactions, err error) {
+func (m *MockL2Source) ExpectInfoAndTxsByHash(blockHash common.Hash, info eth.BlockInfo, txs []eth.GenericTx, err error) {
 	m.Mock.On("InfoAndTxsByHash", blockHash).Once().Return(info, txs, &err)
 }
 

@@ -49,30 +49,30 @@ func (m *MockEthClient) ExpectInfoByLabel(label eth.BlockLabel, info eth.BlockIn
 	m.Mock.On("InfoByLabel", label).Once().Return(&info, err)
 }
 
-func (m *MockEthClient) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, types.Transactions, error) {
+func (m *MockEthClient) InfoAndTxsByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
 	out := m.Mock.Called(hash)
-	return out.Get(0).(eth.BlockInfo), out.Get(1).(types.Transactions), out.Error(2)
+	return out.Get(0).(eth.BlockInfo), out.Get(1).([]eth.GenericTx), out.Error(2)
 }
 
-func (m *MockEthClient) ExpectInfoAndTxsByHash(hash common.Hash, info eth.BlockInfo, transactions types.Transactions, err error) {
+func (m *MockEthClient) ExpectInfoAndTxsByHash(hash common.Hash, info eth.BlockInfo, transactions []eth.GenericTx, err error) {
 	m.Mock.On("InfoAndTxsByHash", hash).Once().Return(info, transactions, err)
 }
 
-func (m *MockEthClient) InfoAndTxsByNumber(ctx context.Context, number uint64) (eth.BlockInfo, types.Transactions, error) {
+func (m *MockEthClient) InfoAndTxsByNumber(ctx context.Context, number uint64) (eth.BlockInfo, []eth.GenericTx, error) {
 	out := m.Mock.Called(number)
-	return out.Get(0).(eth.BlockInfo), out.Get(1).(types.Transactions), out.Error(2)
+	return out.Get(0).(eth.BlockInfo), out.Get(1).([]eth.GenericTx), out.Error(2)
 }
 
-func (m *MockEthClient) ExpectInfoAndTxsByNumber(number uint64, info eth.BlockInfo, transactions types.Transactions, err error) {
+func (m *MockEthClient) ExpectInfoAndTxsByNumber(number uint64, info eth.BlockInfo, transactions []eth.GenericTx, err error) {
 	m.Mock.On("InfoAndTxsByNumber", number).Once().Return(info, transactions, err)
 }
 
-func (m *MockEthClient) InfoAndTxsByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockInfo, types.Transactions, error) {
+func (m *MockEthClient) InfoAndTxsByLabel(ctx context.Context, label eth.BlockLabel) (eth.BlockInfo, []eth.GenericTx, error) {
 	out := m.Mock.Called(label)
-	return out.Get(0).(eth.BlockInfo), out.Get(1).(types.Transactions), out.Error(2)
+	return out.Get(0).(eth.BlockInfo), out.Get(1).([]eth.GenericTx), out.Error(2)
 }
 
-func (m *MockEthClient) ExpectInfoAndTxsByLabel(label eth.BlockLabel, info eth.BlockInfo, transactions types.Transactions, err error) {
+func (m *MockEthClient) ExpectInfoAndTxsByLabel(label eth.BlockLabel, info eth.BlockInfo, transactions []eth.GenericTx, err error) {
 	m.Mock.On("InfoAndTxsByLabel", label).Once().Return(info, transactions, err)
 }
 

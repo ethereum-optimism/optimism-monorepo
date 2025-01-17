@@ -66,9 +66,7 @@ func TestInfoAndTxsByHash(t *testing.T) {
 	client, oracle := newClient(t)
 	hash := common.HexToHash("0xAABBCC")
 	expectedInfo := &testutils.MockBlockInfo{}
-	expectedTxs := types.Transactions{
-		&types.Transaction{},
-	}
+	expectedTxs := make([]eth.GenericTx, 1)
 	oracle.Blocks[hash] = expectedInfo
 	oracle.Txs[hash] = expectedTxs
 

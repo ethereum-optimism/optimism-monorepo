@@ -94,19 +94,19 @@ func TestFetchL1Transactions(t *testing.T) {
 		oracle := l1.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher))
 		header, txs := oracle.TransactionsByBlockHash(hash)
 		require.EqualValues(t, hash, header.Hash())
-		assertTransactionsEqual(t, block.Transactions(), txs)
+		assertTransactionsEqualToGenericTxs(t, block.Transactions(), txs)
 	})
 
 	t.Run("Unknown", func(t *testing.T) {
 		prefetcher, l1Cl, _, _, _ := createPrefetcher(t)
 		l1Cl.ExpectInfoByHash(hash, eth.BlockToInfo(block), nil)
-		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
+		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), eth.MustToGenericTxSlice(block.Transactions()), nil)
 		defer l1Cl.AssertExpectations(t)
 
 		oracle := l1.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher))
 		header, txs := oracle.TransactionsByBlockHash(hash)
 		require.EqualValues(t, hash, header.Hash())
-		assertTransactionsEqual(t, block.Transactions(), txs)
+		assertTransactionsEqualToGenericTxs(t, block.Transactions(), txs)
 	})
 }
 
@@ -129,7 +129,7 @@ func TestFetchL1Receipts(t *testing.T) {
 	t.Run("Unknown", func(t *testing.T) {
 		prefetcher, l1Cl, _, _, _ := createPrefetcher(t)
 		l1Cl.ExpectInfoByHash(hash, eth.BlockToInfo(block), nil)
-		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
+		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), eth.MustToGenericTxSlice(block.Transactions()), nil)
 		l1Cl.ExpectFetchReceipts(hash, eth.BlockToInfo(block), receipts, nil)
 		defer l1Cl.AssertExpectations(t)
 
@@ -144,7 +144,7 @@ func TestFetchL1Receipts(t *testing.T) {
 	t.Run("CommonTrieNodes", func(t *testing.T) {
 		prefetcher, l1Cl, _, _, kv := createPrefetcher(t)
 		l1Cl.ExpectInfoByHash(hash, eth.BlockToInfo(block), nil)
-		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
+		l1Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), eth.MustToGenericTxSlice(block.Transactions()), nil)
 		l1Cl.ExpectFetchReceipts(hash, eth.BlockToInfo(block), receipts, nil)
 		defer l1Cl.AssertExpectations(t)
 
@@ -425,7 +425,7 @@ func TestFetchL2Block(t *testing.T) {
 
 	t.Run("Unknown", func(t *testing.T) {
 		prefetcher, _, _, l2Cl, _ := createPrefetcher(t)
-		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), eth.MustToGenericTxSlice(block.Transactions()), nil)
 		defer l2Cl.MockL2Client.AssertExpectations(t)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher))
@@ -451,7 +451,7 @@ func TestFetchL2Transactions(t *testing.T) {
 
 	t.Run("Unknown", func(t *testing.T) {
 		prefetcher, _, _, l2Cl, _ := createPrefetcher(t)
-		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
+		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), eth.MustToGenericTxSlice(block.Transactions()), nil)
 		defer l2Cl.MockL2Client.AssertExpectations(t)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher))
@@ -680,10 +680,28 @@ func asHinter(t *testing.T, prefetcher *Prefetcher) preimage.HinterFn {
 	}
 }
 
-func assertTransactionsEqual(t *testing.T, blockTx types.Transactions, txs types.Transactions) {
+func assertTransactionsEqualToGenericTxs(t *testing.T, blockTx types.Transactions, txs []eth.GenericTx) {
 	require.Equal(t, len(blockTx), len(txs))
 	for i, tx := range txs {
-		require.Equal(t, blockTx[i].Hash(), tx.Hash())
+		{
+			require.Equal(t, blockTx[i].Hash(), tx.TxHash())
+		}
+	}
+}
+
+func assertTransactionsEqual[T eth.OpaqueTransaction | types.Transaction](t *testing.T, blockTx types.Transactions, txs []*T) {
+	require.Equal(t, len(blockTx), len(txs))
+	for i, tx := range txs {
+		switch v := any(tx).(type) {
+		case eth.OpaqueTransaction:
+			{
+				require.Equal(t, blockTx[i].Hash(), v.TxHash())
+			}
+		case types.Transaction:
+			{
+				require.Equal(t, blockTx[i].Hash(), v.Hash())
+			}
+		}
 	}
 }
 

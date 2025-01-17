@@ -17,7 +17,7 @@ type StubOracle struct {
 	Blocks map[common.Hash]eth.BlockInfo
 
 	// Txs maps block hash to transactions
-	Txs map[common.Hash]types.Transactions
+	Txs map[common.Hash][]eth.GenericTx
 
 	// Rcpts maps Block hash to receipts
 	Rcpts map[common.Hash]types.Receipts
@@ -33,7 +33,7 @@ func NewStubOracle(t *testing.T) *StubOracle {
 	return &StubOracle{
 		t:           t,
 		Blocks:      make(map[common.Hash]eth.BlockInfo),
-		Txs:         make(map[common.Hash]types.Transactions),
+		Txs:         make(map[common.Hash]([]eth.GenericTx)),
 		Rcpts:       make(map[common.Hash]types.Receipts),
 		Blobs:       make(map[eth.L1BlockRef]map[eth.IndexedBlobHash]*eth.Blob),
 		PcmpResults: make(map[common.Hash][]byte),
@@ -48,7 +48,7 @@ func (o StubOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo {
 	return info
 }
 
-func (o StubOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Transactions) {
+func (o StubOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx) {
 	txs, ok := o.Txs[blockHash]
 	if !ok {
 		o.t.Fatalf("unknown txs %s", blockHash)
