@@ -60,7 +60,7 @@ func RunConsolidation(
 	superRoot *eth.SuperV1,
 	tasks taskExecutor,
 ) (eth.Bytes32, error) {
-	deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
+	deps, err := newConsolidateCheckDeps(transitionState, superRoot.Chains, l2PreimageOracle)
 	if err != nil {
 		return eth.Bytes32{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
 	}
@@ -78,6 +78,7 @@ func RunConsolidation(
 		// It's possible that the optimistic block is not canonical.
 		// So we use the blockDataByHash hint to trigger a block rebuild to ensure that the block data, including receipts, are available.
 		_ = l2PreimageOracle.BlockDataByHash(agreedBlockHashes[i], progress.BlockHash, chain.ChainID)
+
 		block, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
@@ -94,28 +95,17 @@ func RunConsolidation(
 			if !isInvalidMessageError(err) {
 				return eth.Bytes32{}, err
 			}
-			rollupCfg, err := bootInfo.Configs.RollupConfig(chain.ChainID)
-			if err != nil {
-				return eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chain.ChainID, err)
-			}
-			l2ChainConfig, err := bootInfo.Configs.ChainConfig(chain.ChainID)
-			if err != nil {
-				return eth.Bytes32{}, fmt.Errorf("no chain config available for chain ID %v: %w", chain.ChainID, err)
-			}
-			claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
-			if err != nil {
-				return eth.Bytes32{}, err
-			}
-			result, err := tasks.RunDerivation(
+			chainAgreedPrestate := superRoot.Chains[i]
+			result, err := deriveBlock(
 				logger,
-				rollupCfg,
-				l2ChainConfig,
-				bootInfo.L1Head,
-				chain.Output,
-				claimedBlockNumber,
+				bootInfo,
 				l1PreimageOracle,
 				l2PreimageOracle,
-				cldr.WithDepositsOnlyTargetBlock(true))
+				superRoot,
+				chainAgreedPrestate,
+				tasks,
+				cldr.WithDepositsOnlyTargetBlock(true),
+			)
 			if err != nil {
 				return eth.Bytes32{}, err
 			}
@@ -178,7 +168,7 @@ type consolidateCheckDeps struct {
 	canonBlocks map[uint64]*l2.CanonicalBlockHeaderOracle
 }
 
-func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
+func newConsolidateCheckDeps(transitionState *types.TransitionState, chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*consolidateCheckDeps, error) {
 	// TODO: handle case where dep set changes in a given timestamp
 	// TODO: Also replace dep set stubs with the actual dependency set in the RollupConfig.
 	deps := make(map[eth.ChainID]*depset.StaticConfigDependency)
@@ -191,13 +181,12 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 	}
 
 	canonBlocks := make(map[uint64]*l2.CanonicalBlockHeaderOracle)
-	for _, chain := range chains {
-		output := oracle.OutputByRoot(common.Hash(chain.Output), chain.ChainID)
-		outputV0, ok := output.(*eth.OutputV0)
-		if !ok {
-			return nil, fmt.Errorf("unexpected output type: %T", output)
-		}
-		head := oracle.BlockByHash(outputV0.BlockHash, chain.ChainID)
+	for i, chain := range chains {
+		progress := transitionState.PendingProgress[i]
+		// This is the optimistic head. It's OK if it's replaced by a deposits-only block.
+		// Because by then the replacement block won't be used for hazard checks.
+		// TODO: for extra safety, ensure the l2 oracle used for checks isn't affected by block reexec.
+		head := oracle.BlockByHash(progress.BlockHash, chain.ChainID)
 		blockByHash := func(hash common.Hash) *ethtypes.Block {
 			return oracle.BlockByHash(hash, chain.ChainID)
 		}

@@ -1,6 +1,7 @@
 package interop
 
 import (
+	"encoding/binary"
 	"fmt"
 	"math/big"
 	"testing"
@@ -19,9 +20,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/core/types/interoptypes"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
+	"github.com/holiman/uint256"
 	"github.com/stretchr/testify/require"
 )
 
@@ -131,7 +134,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 	agreedTransitionState := &types.TransitionState{
 		SuperRoot: agreedSuperRoot.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: common.Hash{0xaa}, OutputRoot: eth.OutputRoot(output)},
+			{BlockHash: block2.Hash(), OutputRoot: eth.OutputRoot(output)},
 			{BlockHash: tasksStub.blockHash, OutputRoot: eth.OutputRoot(output)},
 		},
 		Step: ConsolidateStep,
@@ -143,14 +146,21 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x11}}))] = output
 	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}}))] = output
 	l2PreimageOracle.BlockData = map[common.Hash]*gethTypes.Block{
-		{0xaa}:              block2,
+		block2.Hash():       block2,
 		tasksStub.blockHash: block2,
 	}
 	l2PreimageOracle.Blocks[output.BlockHash] = block1
-	l2PreimageOracle.Blocks[common.Hash{0xaa}] = block2
+	l2PreimageOracle.Blocks[block2.Hash()] = block2
 	l2PreimageOracle.Blocks[tasksStub.blockHash] = block2
 
-	l2PreimageOracle.Receipts[common.Hash{0xaa}] = gethTypes.Receipts{}
+	// Uncomment to create self-referential message
+	//log := createExecutingMessageLog(t, block2.NumberU64(), configSource.rollupCfgs[0].L2ChainID.Uint64())
+	log := createExecutingMessageLog(t, block2.NumberU64(), configSource.rollupCfgs[1].L2ChainID.Uint64())
+	l2PreimageOracle.Receipts[block2.Hash()] = gethTypes.Receipts{
+		{
+			Logs: []*gethTypes.Log{log},
+		},
+	}
 	l2PreimageOracle.Receipts[tasksStub.blockHash] = gethTypes.Receipts{}
 
 	expectedClaim := common.Hash(eth.SuperRoot(&eth.SuperV1{
@@ -176,6 +186,36 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 		agreedSuperRoot.Timestamp+100000,
 		expectedClaim,
 	)
+}
+
+func createExecutingMessageLog(t *testing.T, blockNumber uint64, chainID uint64) *gethTypes.Log {
+	payloadHash := common.Hash{0x01, 0x02, 0x03}
+	id := interoptypes.Identifier{
+		Origin:      common.Address{0xaa},
+		BlockNumber: blockNumber,
+		LogIndex:    0,
+		Timestamp:   0,
+		ChainID:     *uint256.NewInt(chainID),
+	}
+	data := make([]byte, 0, 32*5)
+	data = append(data, make([]byte, 12)...)
+	data = append(data, id.Origin.Bytes()...)
+	data = append(data, make([]byte, 32-8)...)
+	data = append(data, binary.BigEndian.AppendUint64(nil, id.BlockNumber)...)
+	data = append(data, make([]byte, 32-4)...)
+	data = append(data, binary.BigEndian.AppendUint32(nil, id.LogIndex)...)
+	data = append(data, make([]byte, 32-8)...)
+	data = append(data, binary.BigEndian.AppendUint64(nil, id.Timestamp)...)
+	b := id.ChainID.Bytes32()
+	data = append(data, b[:]...)
+
+	require.Equal(t, len(data), 32*5)
+
+	return &gethTypes.Log{
+		Address: params.InteropCrossL2InboxAddress,
+		Topics:  []common.Hash{interoptypes.ExecutingMessageEventTopic, payloadHash},
+		Data:    data,
+	}
 }
 
 func createBlock(num int64) *gethTypes.Block {

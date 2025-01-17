@@ -129,21 +129,29 @@ func parseAgreedState(bootInfo *boot.BootInfoInterop, l2PreimageOracle l2.Oracle
 	return transitionState, superRoot, nil
 }
 
-func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor) (types.OptimisticBlock, error) {
-	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
+func deriveBlock(
+	logger log.Logger,
+	bootInfo *boot.BootInfoInterop,
+	l1PreimageOracle l1.Oracle,
+	l2PreimageOracle l2.Oracle,
+	superRoot *eth.SuperV1,
+	chainAgreedPrestate eth.ChainIDAndOutput,
+	taskExecutor taskExecutor,
+	opts ...cldr.DeriverOpts,
+) (tasks.DerivationResult, error) {
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
-		return types.OptimisticBlock{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		return tasks.DerivationResult{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
 	}
 	l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
-		return types.OptimisticBlock{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		return tasks.DerivationResult{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
 	}
 	claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
 	if err != nil {
-		return types.OptimisticBlock{}, err
+		return tasks.DerivationResult{}, err
 	}
-	derivationResult, err := tasks.RunDerivation(
+	derivationResult, err := taskExecutor.RunDerivation(
 		logger,
 		rollupCfg,
 		l2ChainConfig,
@@ -152,14 +160,23 @@ func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1
 		claimedBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
+		opts...,
 	)
+	if err != nil {
+		return tasks.DerivationResult{}, err
+	}
+	if derivationResult.Head.Number < claimedBlockNumber {
+		return tasks.DerivationResult{}, ErrL1HeadReached
+	}
+	return derivationResult, nil
+}
+
+func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor) (types.OptimisticBlock, error) {
+	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
+	derivationResult, err := deriveBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, chainAgreedPrestate, tasks)
 	if err != nil {
 		return types.OptimisticBlock{}, err
 	}
-	if derivationResult.Head.Number < claimedBlockNumber {
-		return types.OptimisticBlock{}, ErrL1HeadReached
-	}
-
 	block := types.OptimisticBlock{
 		BlockHash:  derivationResult.BlockHash,
 		OutputRoot: derivationResult.OutputRoot,
