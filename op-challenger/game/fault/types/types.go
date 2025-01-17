@@ -48,6 +48,8 @@ func (t GameType) String() string {
 		return "asterisc"
 	case AsteriscKonaGameType:
 		return "asterisc-kona"
+	case SuperCannonGameType:
+		return "super-cannon"
 	case FastGameType:
 		return "fast"
 	case AlphabetGameType:
