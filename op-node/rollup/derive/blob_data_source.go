@@ -115,17 +115,21 @@ func (ds *BlobDataSource) open(ctx context.Context) ([]blobOrCalldata, error) {
 // dataAndHashesFromTxs extracts calldata and datahashes from the input transactions and returns them. It
 // creates a placeholder blobOrCalldata element for each returned blob hash that must be populated
 // by fillBlobPointers after blob bodies are retrieved.
-func dataAndHashesFromTxs(gs []eth.GenericTx, config *DataSourceConfig, batcherAddr common.Address, logger log.Logger) ([]blobOrCalldata, []eth.IndexedBlobHash) {
+func dataAndHashesFromTxs(gTxs []eth.GenericTx, config *DataSourceConfig, batcherAddr common.Address, logger log.Logger) ([]blobOrCalldata, []eth.IndexedBlobHash) {
 	data := []blobOrCalldata{}
 	var hashes []eth.IndexedBlobHash
 	blobIndex := 0 // index of each blob in the block's blob sidecar
-	var tx *types.Transaction
-	for _, g := range gs {
+	for _, g := range gTxs {
+		valid := isValidBatchTx(g, config.l1Signer, config.batchInboxAddress, batcherAddr, logger)
 		// skip any non-batcher transactions
-		if tx, valid := isValidBatchTx(g, config.l1Signer, config.batchInboxAddress, batcherAddr, logger); valid {
-			blobIndex += len(tx.BlobHashes())
+		if !valid {
+			if g.TxType() == types.BlobTxType {
+				tx, _ := g.Transaction()          // TODO don't ignore error here
+				blobIndex += len(tx.BlobHashes()) // non batcher, but valid blob txs still need to increment the index
+			}
 			continue
 		}
+		tx, _ := g.Transaction() // ignoring error because isValid implies it is a valid transaction
 		// handle non-blob batcher transactions by extracting their calldata
 		if tx.Type() != types.BlobTxType {
 			calldata := eth.Data(tx.Data())

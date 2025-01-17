@@ -93,25 +93,26 @@ type DataSourceConfig struct {
 // isValidBatchTx returns true if:
 //  1. the transaction has a To() address that matches the batch inbox address, and
 //  2. the transaction has a valid signature from the batcher address
-func isValidBatchTx(g eth.GenericTx, l1Signer types.Signer, batchInboxAddr, batcherAddr common.Address, logger log.Logger) (tx *types.Transaction, isValid bool) {
+func isValidBatchTx(g eth.GenericTx, l1Signer types.Signer, batchInboxAddr, batcherAddr common.Address, logger log.Logger) (isValid bool) {
 	tx, err := g.Transaction()
+	// TODO be stricter here, we should whitelist the types of transactions we accept
 	if err != nil {
 		logger.Warn("unsupported tx", "hash", g.TxHash(), "err", err)
-		return nil, false
+		return false
 	}
 	to := tx.To()
 	if to == nil || *to != batchInboxAddr {
-		return nil, false
+		return false
 	}
 	seqDataSubmitter, err := l1Signer.Sender(tx) // optimization: only derive sender if To is correct
 	if err != nil {
 		logger.Warn("tx in inbox with invalid signature", "hash", tx.Hash(), "err", err)
-		return nil, false
+		return false
 	}
 	// some random L1 user might have sent a transaction to our batch inbox, ignore them
 	if seqDataSubmitter != batcherAddr {
 		logger.Warn("tx in inbox with unauthorized submitter", "addr", seqDataSubmitter, "hash", tx.Hash(), "err", err)
-		return nil, false
+		return false
 	}
-	return tx, true
+	return true
 }

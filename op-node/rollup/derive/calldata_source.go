@@ -75,10 +75,11 @@ func (ds *CalldataSource) Next(ctx context.Context) (eth.Data, error) {
 // DataFromEVMTransactions filters all of the transactions and returns the calldata from transactions
 // that are sent to the batch inbox address from the batch sender address.
 // This will return an empty array if no valid transactions are found.
-func DataFromEVMTransactions(dsCfg DataSourceConfig, batcherAddr common.Address, txs []eth.GenericTx, log log.Logger) []eth.Data {
+func DataFromEVMTransactions(dsCfg DataSourceConfig, batcherAddr common.Address, gTxs []eth.GenericTx, log log.Logger) []eth.Data {
 	out := []eth.Data{}
-	for _, tx := range txs {
-		if tx, isValid := isValidBatchTx(tx, dsCfg.l1Signer, dsCfg.batchInboxAddress, batcherAddr, log); isValid {
+	for _, gTx := range gTxs {
+		if isValid := isValidBatchTx(gTx, dsCfg.l1Signer, dsCfg.batchInboxAddress, batcherAddr, log); isValid {
+			tx, _ := gTx.Transaction() // ignoring error because isValid implies it is a valid transaction
 			out = append(out, tx.Data())
 		}
 	}
