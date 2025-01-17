@@ -105,10 +105,10 @@ func TestValidateL1ConfigInvalidGenesisHashFails(t *testing.T) {
 	config.Genesis.L1.Number = 100
 	config.Genesis.L1.Hash = [32]byte{0x00}
 	mockClient := mockL1Client{chainID: big.NewInt(100), Hash: common.Hash{0x01}}
-	err := config.ValidateL1Config(context.TODO(), &mockClient)
+	err := config.ValidateL1Genesis(context.TODO(), &mockClient)
 	assert.Error(t, err)
 	config.Genesis.L1.Hash = [32]byte{0x02}
-	err = config.ValidateL1Config(context.TODO(), &mockClient)
+	err = config.ValidateL1Genesis(context.TODO(), &mockClient)
 	assert.Error(t, err)
 }
 
