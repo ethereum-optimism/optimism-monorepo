@@ -205,7 +205,7 @@ func TestNetwork(t *testing.T) {
 		addr := common.Address{0xbb, 0xcc, 0xdd}
 		cfg := configForArgs(t, addRequiredArgsExcept(types.TraceTypeAlphabet, "--game-factory-address", "--network=1234", "--game-factory-address="+addr.Hex()))
 		require.Equal(t, addr, cfg.GameFactoryAddress)
-		require.Equal(t, "1234", cfg.Cannon.Network)
+		require.Equal(t, []string{"1234"}, cfg.Cannon.Networks)
 	})
 }
 
@@ -473,7 +473,7 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgs(traceType))
-				require.Equal(t, l2EthRpc, cfg.L2Rpc)
+				require.Equal(t, []string{l2EthRpc}, cfg.L2Rpcs)
 			})
 		})
 
@@ -549,12 +549,12 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 				delete(args, "--game-factory-address")
 				args["--network"] = "op-sepolia"
 				cfg := configForArgs(t, toArgList(args))
-				require.Equal(t, "op-sepolia", cfg.Asterisc.Network)
+				require.Equal(t, []string{"op-sepolia"}, cfg.Asterisc.Networks)
 			})
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--network", testNetwork))
-				require.Equal(t, testNetwork, cfg.Asterisc.Network)
+				require.Equal(t, []string{testNetwork}, cfg.Asterisc.Networks)
 			})
 		})
 
@@ -565,7 +565,7 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--rollup-config=rollup.json", "--l2-genesis=genesis.json"))
-				require.Equal(t, "rollup.json", cfg.Asterisc.RollupConfigPath)
+				require.Equal(t, []string{"rollup.json"}, cfg.Asterisc.RollupConfigPaths)
 			})
 		})
 
@@ -576,7 +576,7 @@ func TestAsteriscBaseRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--rollup-config=rollup.json", "--l2-genesis=genesis.json"))
-				require.Equal(t, "genesis.json", cfg.Asterisc.L2GenesisPath)
+				require.Equal(t, []string{"genesis.json"}, cfg.Asterisc.L2GenesisPaths)
 			})
 		})
 	}
@@ -590,7 +590,7 @@ func TestAlphabetRequiredArgs(t *testing.T) {
 
 		t.Run("Valid", func(t *testing.T) {
 			cfg := configForArgs(t, addRequiredArgs(types.TraceTypeAlphabet))
-			require.Equal(t, l2EthRpc, cfg.L2Rpc)
+			require.Equal(t, []string{l2EthRpc}, cfg.L2Rpcs)
 		})
 	})
 }
@@ -694,7 +694,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgs(traceType))
-				require.Equal(t, l2EthRpc, cfg.L2Rpc)
+				require.Equal(t, []string{l2EthRpc}, cfg.L2Rpcs)
 			})
 		})
 
@@ -776,7 +776,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--network", testNetwork))
-				require.Equal(t, testNetwork, cfg.Cannon.Network)
+				require.Equal(t, []string{testNetwork}, cfg.Cannon.Networks)
 			})
 		})
 
@@ -795,7 +795,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--cannon-rollup-config=rollup.json", "--cannon-l2-genesis=genesis.json"))
-				require.Equal(t, "rollup.json", cfg.Cannon.RollupConfigPath)
+				require.Equal(t, []string{"rollup.json"}, cfg.Cannon.RollupConfigPaths)
 			})
 		})
 
@@ -806,7 +806,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 			t.Run("Valid", func(t *testing.T) {
 				cfg := configForArgs(t, addRequiredArgsExcept(traceType, "--network", "--cannon-rollup-config=rollup.json", "--cannon-l2-genesis=genesis.json"))
-				require.Equal(t, "genesis.json", cfg.Cannon.L2GenesisPath)
+				require.Equal(t, []string{"genesis.json"}, cfg.Cannon.L2GenesisPaths)
 			})
 		})
 	}
