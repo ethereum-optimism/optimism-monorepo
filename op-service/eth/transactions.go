@@ -3,6 +3,7 @@ package eth
 import (
 	"bytes"
 	"context"
+	"encoding"
 	"fmt"
 	"math/big"
 
@@ -18,7 +19,7 @@ type L1Client interface {
 }
 
 // EncodeTransactions encodes a list of transactions into opaque transactions.
-func EncodeTransactions(elems []GenericTx) ([]hexutil.Bytes, error) {
+func EncodeTransactions(elems []OpaqueTransaction) ([]hexutil.Bytes, error) {
 	out := make([]hexutil.Bytes, len(elems))
 	for i, el := range elems {
 		dat, err := el.MarshalBinary()
@@ -130,6 +131,7 @@ type OpaqueTransaction struct {
 
 // Compile-time check that OpaqueTransaction implements GenericTx.
 var _ GenericTx = (*OpaqueTransaction)(nil)
+var _ encoding.BinaryMarshaler = (*OpaqueTransaction)(nil)
 
 func (o *OpaqueTransaction) Transaction() (*types.Transaction, error) {
 	switch o.TxType() {
