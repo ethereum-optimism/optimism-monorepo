@@ -207,7 +207,7 @@ func randomRpcBlockAndReceipts(rng *rand.Rand, txCount uint64) (*RPCBlock, []*ty
 			BaseFee:     (*hexutil.Big)(block.BaseFee()),
 			Hash:        block.Hash(),
 		},
-		Transactions: eth.MustToGenericTxSlice(block.Transactions()),
+		Transactions: MustToRawJsonTransactions(block.Transactions()),
 	}, receipts
 }
 

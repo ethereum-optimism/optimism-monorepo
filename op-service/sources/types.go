@@ -212,8 +212,8 @@ func (hdr *RPCHeader) BlockID() eth.BlockID {
 
 type RPCBlock struct {
 	RPCHeader
-	Transactions []eth.GenericTx    `json:"transactions"`
-	Withdrawals  *types.Withdrawals `json:"withdrawals,omitempty"`
+	Transactions []*RawJsonTransaction `json:"transactions"`
+	Withdrawals  *types.Withdrawals    `json:"withdrawals,omitempty"`
 }
 
 func (block *RPCBlock) verify() error {
@@ -226,7 +226,7 @@ func (block *RPCBlock) verify() error {
 		}
 	}
 	// TODO reinstate
-	// if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
+	// if computed := types.DeriveSha(block.Transactions, trie.NewStackTrie(nil)); block.TxHash != computed {
 	// 	return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	// }
 	if block.WithdrawalsRoot != nil {
@@ -267,7 +267,7 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInf
 		return nil, nil, fmt.Errorf("failed to verify block from RPC: %w", err)
 	}
 
-	return info, block.Transactions, nil
+	return info, ToGenericTxSlice(block.Transactions), nil
 }
 
 func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.ExecutionPayloadEnvelope, error) {

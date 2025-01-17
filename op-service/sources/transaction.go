@@ -71,3 +71,52 @@ func (m *RawJsonTransaction) UnmarshalJSON(data []byte) error {
 func (m *RawJsonTransaction) MarshalJSON() ([]byte, error) {
 	return m.raw, nil
 }
+
+func ToRawJsonTransaction(tx *types.Transaction) (*RawJsonTransaction, error) {
+	data, err := tx.MarshalJSON()
+	if err != nil {
+		return nil, err
+	}
+	r := new(RawJsonTransaction)
+	err = r.UnmarshalJSON(data)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
+func ToRawJsonTransactions(txs types.Transactions) ([]*RawJsonTransaction, error) {
+	out := make([]*RawJsonTransaction, len(txs))
+	for i, tx := range txs {
+		r, err := ToRawJsonTransaction(tx)
+		if err != nil {
+			return nil, err
+		}
+		out[i] = r
+	}
+	return out, nil
+}
+
+func MustToRawJsonTransaction(tx *types.Transaction) *RawJsonTransaction {
+	r, err := ToRawJsonTransaction(tx)
+	if err != nil {
+		panic(err)
+	}
+	return r
+}
+
+func MustToRawJsonTransactions(txs types.Transactions) []*RawJsonTransaction {
+	out := make([]*RawJsonTransaction, len(txs))
+	for i, tx := range txs {
+		out[i] = MustToRawJsonTransaction(tx)
+	}
+	return out
+}
+
+func ToGenericTxSlice(txs []*RawJsonTransaction) []eth.GenericTx {
+	out := make([]eth.GenericTx, len(txs))
+	for i, tx := range txs {
+		out[i] = tx
+	}
+	return out
+}
