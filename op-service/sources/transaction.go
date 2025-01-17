@@ -19,6 +19,7 @@ type RawJsonTransaction struct {
 }
 
 var _ eth.GenericTx = (*RawJsonTransaction)(nil)
+var _ json.Marshaler = (*RawJsonTransaction)(nil)
 
 // Transaction tries to interpret into a typed tx.
 // This will return types.ErrTxTypeNotSupported if the transaction-type is not supported.
