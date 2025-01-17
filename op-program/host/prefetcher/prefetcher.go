@@ -41,7 +41,7 @@ var acceleratedPrecompiles = []common.Address{
 
 type L1Source interface {
 	InfoByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, error)
-	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error)
+	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 }
 
@@ -51,7 +51,7 @@ type L1BlobSource interface {
 }
 
 type L2Source interface {
-	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error)
+	InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx, error)
 	NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
 	CodeByHash(ctx context.Context, hash common.Hash) ([]byte, error)
 	OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error)
@@ -300,7 +300,7 @@ func (p *Prefetcher) storeReceipts(receipts types.Receipts) error {
 	return p.storeTrieNodes(opaqueReceipts)
 }
 
-func (p *Prefetcher) storeTransactions(txs types.Transactions) error {
+func (p *Prefetcher) storeTransactions(txs []eth.GenericTx) error {
 	opaqueTxs, err := eth.EncodeTransactions(txs)
 	if err != nil {
 		return err

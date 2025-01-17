@@ -69,14 +69,21 @@ func (p *PreimageOracle) BlockByHash(blockHash common.Hash) *types.Block {
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
 }
 
-func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash) []*types.Transaction {
+func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash) types.Transactions {
 	p.hint.Hint(TransactionsHint(blockHash))
 
 	opaqueTxs := mpt.ReadTrie(txHash, func(key common.Hash) []byte {
 		return p.oracle.Get(preimage.Keccak256Key(key))
 	})
 
-	txs, err := eth.DecodeTransactions(opaqueTxs)
+	ts, err := eth.DecodeTransactions(opaqueTxs)
+	txs := make(types.Transactions, len(ts))
+	for i, t := range ts {
+		txs[i], err = t.Transaction()
+		if err != nil {
+			panic(fmt.Errorf("unsupported transaction type %d: %w", i, err))
+		}
+	}
 	if err != nil {
 		panic(fmt.Errorf("failed to decode list of txs: %w", err))
 	}

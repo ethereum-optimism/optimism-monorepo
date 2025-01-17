@@ -20,7 +20,7 @@ type L1Client interface {
 }
 
 // EncodeTransactions encodes a list of transactions into opaque transactions.
-func EncodeTransactions(elems []*types.Transaction) ([]hexutil.Bytes, error) {
+func EncodeTransactions(elems []GenericTx) ([]hexutil.Bytes, error) {
 	out := make([]hexutil.Bytes, len(elems))
 	for i, el := range elems {
 		dat, err := el.MarshalBinary()
@@ -33,8 +33,8 @@ func EncodeTransactions(elems []*types.Transaction) ([]hexutil.Bytes, error) {
 }
 
 // DecodeTransactions decodes a list of opaque transactions into transactions.
-func DecodeTransactions(data []hexutil.Bytes) ([]*OpaqueTransaction, error) {
-	dest := make([]*OpaqueTransaction, len(data))
+func DecodeTransactions(data []hexutil.Bytes) ([]GenericTx, error) {
+	dest := make([]GenericTx, len(data))
 	for i := range dest {
 		var x OpaqueTransaction
 		if err := x.UnmarshalBinary(data[i]); err != nil {

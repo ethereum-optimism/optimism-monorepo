@@ -62,7 +62,7 @@ func (p *PreimageOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo 
 	return eth.HeaderBlockInfo(p.headerByBlockHash(blockHash))
 }
 
-func (p *PreimageOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, eth.GenericTx) {
+func (p *PreimageOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx) {
 	header := p.headerByBlockHash(blockHash)
 	p.hint.Hint(TransactionsHint(blockHash))
 
@@ -89,7 +89,7 @@ func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash) (eth.BlockIn
 
 	txHashes := make([]common.Hash, 0, len(txs))
 	for _, tx := range txs {
-		txHashes = append(txHashes, tx.Hash())
+		txHashes = append(txHashes, tx.TxHash())
 	}
 
 	receipts, err := eth.DecodeRawReceipts(eth.ToBlockID(info), opaqueReceipts, txHashes)

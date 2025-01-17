@@ -676,8 +676,12 @@ func checkUpgradeTxs(ctx context.Context, env *actionEnv) error {
 		return fmt.Errorf("expected at least 7 txs in Ecotone activation block, but got %d", len(txs))
 	}
 	for i, tx := range txs {
-		if !tx.IsDepositTx() {
-			return fmt.Errorf("unexpected non-deposit tx in activation block, index %d, hash %s", i, tx.Hash())
+		t, err := tx.Transaction()
+		if err != nil {
+			return err
+		}
+		if !t.IsDepositTx() {
+			return fmt.Errorf("unexpected non-deposit tx in activation block, index %d, hash %s", i, tx.TxHash())
 		}
 	}
 	_, receipts, err := l2EthCl.FetchReceipts(ctx, activeBlock.Hash())

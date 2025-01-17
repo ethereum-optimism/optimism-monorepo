@@ -19,7 +19,7 @@ const cacheSize = 2000
 type CachingOracle struct {
 	oracle Oracle
 	blocks *simplelru.LRU[common.Hash, eth.BlockInfo]
-	txs    *simplelru.LRU[common.Hash, types.Transactions]
+	txs    *simplelru.LRU[common.Hash, []eth.GenericTx]
 	rcpts  *simplelru.LRU[common.Hash, types.Receipts]
 	blobs  *simplelru.LRU[common.Hash, *eth.Blob]
 	pcmps  *simplelru.LRU[common.Hash, precompileResult]
@@ -32,7 +32,7 @@ type precompileResult struct {
 
 func NewCachingOracle(oracle Oracle) *CachingOracle {
 	blockLRU, _ := simplelru.NewLRU[common.Hash, eth.BlockInfo](cacheSize, nil)
-	txsLRU, _ := simplelru.NewLRU[common.Hash, types.Transactions](cacheSize, nil)
+	txsLRU, _ := simplelru.NewLRU[common.Hash, []eth.GenericTx](cacheSize, nil)
 	rcptsLRU, _ := simplelru.NewLRU[common.Hash, types.Receipts](cacheSize, nil)
 	blobsLRU, _ := simplelru.NewLRU[common.Hash, *eth.Blob](cacheSize, nil)
 	pcmps, _ := simplelru.NewLRU[common.Hash, precompileResult](cacheSize, nil)
@@ -56,7 +56,7 @@ func (o *CachingOracle) HeaderByBlockHash(blockHash common.Hash) eth.BlockInfo {
 	return block
 }
 
-func (o *CachingOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, types.Transactions) {
+func (o *CachingOracle) TransactionsByBlockHash(blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx) {
 	txs, ok := o.txs.Get(blockHash)
 	if ok {
 		return o.HeaderByBlockHash(blockHash), txs

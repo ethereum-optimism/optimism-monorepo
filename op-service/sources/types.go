@@ -212,8 +212,8 @@ func (hdr *RPCHeader) BlockID() eth.BlockID {
 
 type RPCBlock struct {
 	RPCHeader
-	Transactions []*RawJsonTransaction `json:"transactions"`
-	Withdrawals  *types.Withdrawals    `json:"withdrawals,omitempty"`
+	Transactions []eth.GenericTx    `json:"transactions"`
+	Withdrawals  *types.Withdrawals `json:"withdrawals,omitempty"`
 }
 
 func (block *RPCBlock) verify() error {
@@ -249,7 +249,7 @@ func (block *RPCBlock) verify() error {
 	return nil
 }
 
-func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, []*RawJsonTransaction, error) {
+func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, []eth.GenericTx, error) {
 	if mustBePostMerge {
 		if err := block.checkPostMerge(); err != nil {
 			return nil, nil, err

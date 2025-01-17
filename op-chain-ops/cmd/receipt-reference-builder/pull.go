@@ -297,7 +297,12 @@ func processBlockRange(
 		}
 		// process each transaction in the block
 		for j := 0; j < len(b.Transactions); j++ {
-			tx := b.Transactions[j]
+			t := b.Transactions[j]
+			tx, err := t.Transaction()
+			if err != nil {
+				log.Warn("Unsupported Transaction", "Err", err)
+				continue
+			}
 			ok, err := checkTransaction(ctx, c, tx, log)
 			if err != nil {
 				log.Error("Failed to Check Tx", "Err", err)

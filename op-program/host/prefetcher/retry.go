@@ -37,8 +37,8 @@ func (s *RetryingL1Source) InfoByHash(ctx context.Context, blockHash common.Hash
 	})
 }
 
-func (s *RetryingL1Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
-	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, types.Transactions, error) {
+func (s *RetryingL1Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
+	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, []eth.GenericTx, error) {
 		i, t, err := s.source.InfoAndTxsByHash(ctx, blockHash)
 		if err != nil {
 			s.logger.Warn("Failed to retrieve l1 info and txs", "hash", blockHash, "err", err)
@@ -101,8 +101,8 @@ type RetryingL2Source struct {
 	strategy retry.Strategy
 }
 
-func (s *RetryingL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
-	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, types.Transactions, error) {
+func (s *RetryingL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, []eth.GenericTx, error) {
+	return retry.Do2(ctx, maxAttempts, s.strategy, func() (eth.BlockInfo, []eth.GenericTx, error) {
 		i, t, err := s.source.InfoAndTxsByHash(ctx, blockHash)
 		if err != nil {
 			s.logger.Warn("Failed to retrieve l2 info and txs", "hash", blockHash, "err", err)
