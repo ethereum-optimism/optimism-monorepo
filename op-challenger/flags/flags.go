@@ -54,7 +54,11 @@ var (
 		Usage:   "HTTP provider URL for the rollup node",
 		EnvVars: prefixEnvVars("ROLLUP_RPC"),
 	}
-	NetworkFlag        = flags.CLINetworkFlag(EnvVarPrefix, "")
+	NetworkFlag = &cli.StringSliceFlag{
+		Name:    flags.NetworkFlagName,
+		Usage:   fmt.Sprintf("Predefined network selection. Available networks: %s", strings.Join(chaincfg.AvailableNetworks(), ", ")),
+		EnvVars: prefixEnvVars("NETWORK"),
+	}
 	FactoryAddressFlag = &cli.StringFlag{
 		Name:    "game-factory-address",
 		Usage:   "Address of the fault game factory contract.",
@@ -84,9 +88,9 @@ var (
 		EnvVars: prefixEnvVars("MAX_CONCURRENCY"),
 		Value:   uint(runtime.NumCPU()),
 	}
-	L2EthRpcFlag = &cli.StringFlag{
+	L2EthRpcFlag = &cli.StringSliceFlag{
 		Name:    "l2-eth-rpc",
-		Usage:   "L2 Address of L2 JSON-RPC endpoint to use (eth and debug namespace required)",
+		Usage:   "URLs of L2 JSON-RPC endpoints to use (eth and debug namespace required)",
 		EnvVars: prefixEnvVars("L2_ETH_RPC"),
 	}
 	MaxPendingTransactionsFlag = &cli.Uint64Flag{
@@ -116,16 +120,16 @@ var (
 		}
 	})
 	RollupConfigFlag = NewVMFlag("rollup-config", EnvVarPrefix, faultDisputeVMs, func(name string, envVars []string, traceTypeInfo string) cli.Flag {
-		return &cli.StringFlag{
+		return &cli.StringSliceFlag{
 			Name:    name,
 			Usage:   "Rollup chain parameters " + traceTypeInfo,
 			EnvVars: envVars,
 		}
 	})
 	L2GenesisFlag = NewVMFlag("l2-genesis", EnvVarPrefix, faultDisputeVMs, func(name string, envVars []string, traceTypeInfo string) cli.Flag {
-		return &cli.StringFlag{
+		return &cli.StringSliceFlag{
 			Name:    name,
-			Usage:   "Path to the op-geth genesis file " + traceTypeInfo,
+			Usage:   "Paths to the op-geth genesis file " + traceTypeInfo,
 			EnvVars: envVars,
 		}
 	})
@@ -435,26 +439,30 @@ func FactoryAddress(ctx *cli.Context) (common.Address, error) {
 		}
 		return gameFactoryAddress, nil
 	}
-	if ctx.IsSet(flags.NetworkFlagName) {
-		chainName := ctx.String(flags.NetworkFlagName)
-		chainCfg := chaincfg.ChainByName(chainName)
-		if chainCfg == nil {
-			var opts []string
-			for _, cfg := range superchain.OPChains {
-				opts = append(opts, cfg.Chain+"-"+cfg.Superchain)
-			}
-			return common.Address{}, fmt.Errorf("unknown chain: %v (Valid options: %v)", chainName, strings.Join(opts, ", "))
-		}
-		addrs, ok := superchain.Addresses[chainCfg.ChainID]
-		if !ok {
-			return common.Address{}, fmt.Errorf("no addresses available for chain %v", chainName)
-		}
-		if addrs.DisputeGameFactoryProxy == (superchain.Address{}) {
-			return common.Address{}, fmt.Errorf("dispute factory proxy not available for chain %v", chainName)
-		}
-		return common.Address(addrs.DisputeGameFactoryProxy), nil
+	networks := ctx.StringSlice(flags.NetworkFlagName)
+	if len(networks) > 1 {
+		return common.Address{}, fmt.Errorf("flag %v required when multiple networks specified", FactoryAddressFlag.Name)
 	}
-	return common.Address{}, fmt.Errorf("flag %v or %v is required", FactoryAddressFlag.Name, flags.NetworkFlagName)
+	if len(networks) == 0 {
+		return common.Address{}, fmt.Errorf("flag %v or %v is required", FactoryAddressFlag.Name, flags.NetworkFlagName)
+	}
+	network := networks[0]
+	chainCfg := chaincfg.ChainByName(network)
+	if chainCfg == nil {
+		var opts []string
+		for _, cfg := range superchain.OPChains {
+			opts = append(opts, cfg.Chain+"-"+cfg.Superchain)
+		}
+		return common.Address{}, fmt.Errorf("unknown chain: %v (Valid options: %v)", network, strings.Join(opts, ", "))
+	}
+	addrs, ok := superchain.Addresses[chainCfg.ChainID]
+	if !ok {
+		return common.Address{}, fmt.Errorf("no addresses available for chain %v", network)
+	}
+	if addrs.DisputeGameFactoryProxy == (superchain.Address{}) {
+		return common.Address{}, fmt.Errorf("dispute factory proxy not available for chain %v", network)
+	}
+	return common.Address(addrs.DisputeGameFactoryProxy), nil
 }
 
 // NewConfigFromCLI parses the Config from the provided flags or environment variables.
@@ -523,16 +531,10 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 	if err != nil {
 		return nil, err
 	}
-	toArray := func(val string) []string {
-		if val == "" {
-			return nil
-		}
-		return []string{val}
-	}
-	networks := toArray(ctx.String(flags.NetworkFlagName))
+	networks := ctx.StringSlice(flags.NetworkFlagName)
 	l1EthRpc := ctx.String(L1EthRpcFlag.Name)
 	l1Beacon := ctx.String(L1BeaconFlag.Name)
-	l2Rpcs := toArray(ctx.String(L2EthRpcFlag.Name))
+	l2Rpcs := ctx.StringSlice(L2EthRpcFlag.Name)
 	return &config.Config{
 		// Required Flags
 		L1EthRpc:                l1EthRpc,
@@ -557,8 +559,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			Server:            ctx.String(CannonServerFlag.Name),
 			Networks:          networks,
 			L2Custom:          ctx.Bool(CannonL2CustomFlag.Name),
-			RollupConfigPaths: toArray(RollupConfigFlag.String(ctx, types.TraceTypeCannon)),
-			L2GenesisPaths:    toArray(L2GenesisFlag.String(ctx, types.TraceTypeCannon)),
+			RollupConfigPaths: RollupConfigFlag.StringSlice(ctx, types.TraceTypeCannon),
+			L2GenesisPaths:    L2GenesisFlag.StringSlice(ctx, types.TraceTypeCannon),
 			SnapshotFreq:      ctx.Uint(CannonSnapshotFreqFlag.Name),
 			InfoFreq:          ctx.Uint(CannonInfoFreqFlag.Name),
 			DebugInfo:         true,
@@ -575,8 +577,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:             ctx.String(AsteriscBinFlag.Name),
 			Server:            ctx.String(AsteriscServerFlag.Name),
 			Networks:          networks,
-			RollupConfigPaths: toArray(RollupConfigFlag.String(ctx, types.TraceTypeAsterisc)),
-			L2GenesisPaths:    toArray(L2GenesisFlag.String(ctx, types.TraceTypeAsterisc)),
+			RollupConfigPaths: RollupConfigFlag.StringSlice(ctx, types.TraceTypeAsterisc),
+			L2GenesisPaths:    L2GenesisFlag.StringSlice(ctx, types.TraceTypeAsterisc),
 			SnapshotFreq:      ctx.Uint(AsteriscSnapshotFreqFlag.Name),
 			InfoFreq:          ctx.Uint(AsteriscInfoFreqFlag.Name),
 			BinarySnapshots:   true,
@@ -591,8 +593,8 @@ func NewConfigFromCLI(ctx *cli.Context, logger log.Logger) (*config.Config, erro
 			VmBin:             ctx.String(AsteriscBinFlag.Name),
 			Server:            ctx.String(AsteriscKonaServerFlag.Name),
 			Networks:          networks,
-			RollupConfigPaths: toArray(RollupConfigFlag.String(ctx, types.TraceTypeAsteriscKona)),
-			L2GenesisPaths:    toArray(L2GenesisFlag.String(ctx, types.TraceTypeAsteriscKona)),
+			RollupConfigPaths: RollupConfigFlag.StringSlice(ctx, types.TraceTypeAsteriscKona),
+			L2GenesisPaths:    L2GenesisFlag.StringSlice(ctx, types.TraceTypeAsteriscKona),
 			SnapshotFreq:      ctx.Uint(AsteriscSnapshotFreqFlag.Name),
 			InfoFreq:          ctx.Uint(AsteriscInfoFreqFlag.Name),
 			BinarySnapshots:   true,
