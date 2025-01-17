@@ -127,12 +127,19 @@ func ProveWithdrawal(t *testing.T, cfg e2esys.SystemConfig, clients ClientProvid
 		require.NoError(t, err)
 	}
 
+	// Wait for another block to be mined so that the timestamp increases. Otherwise,
+	// proveWithdrawalTransaction gas estimation may fail because the current timestamp is the same
+	// as the dispute game creation timestamp.
+	err = wait.ForNextBlock(ctx, l1Client)
+	require.NoError(t, err)
+
 	receiptCl := clients.NodeClient(l2NodeName)
 	headerCl := clients.NodeClient(l2NodeName)
 	proofCl := gethclient.New(receiptCl.Client())
 
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
+
 	// Get the latest header
 	header, err := receiptCl.HeaderByNumber(ctx, new(big.Int).SetUint64(blockNumber))
 	require.NoError(t, err)

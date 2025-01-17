@@ -98,7 +98,12 @@ contract SuperFaultDisputeGame_Init is DisputeGameFactory_Init {
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
 
         vm.prank(superchainConfig.guardian());
-        optimismPortal2.setRespectedGameType(GAME_TYPE);
+        anchorStateRegistry.setRespectedGameType(GAME_TYPE);
+
+        // Warp ahead of the game retirement timestamp if needed.
+        if (block.timestamp <= anchorStateRegistry.retirementTimestamp()) {
+            vm.warp(anchorStateRegistry.retirementTimestamp() + 1);
+        }
 
         // Create a new game.
         gameProxy = IFaultDisputeGame(

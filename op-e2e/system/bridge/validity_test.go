@@ -449,6 +449,12 @@ func testMixedWithdrawalValidity(t *testing.T, allocType config.AllocType) {
 			receiptCl := ethclient.NewClient(rpcClient)
 			blockCl := ethclient.NewClient(rpcClient)
 
+			// Mine an empty block so that the timestamp is updated. Otherwise,
+			// proveWithdrawalTransaction gas estimation may fail because the current timestamp is
+			// the same as the dispute game creation timestamp.
+			err = wait.ForNextBlock(ctx, l1Client)
+			require.NoError(t, err)
+
 			// Now create the withdrawal
 			params, err := helpers.ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, blockCl, tx.Hash(), header, l2OutputOracle, disputeGameFactory, optimismPortal2, cfg.AllocType)
 			require.Nil(t, err)

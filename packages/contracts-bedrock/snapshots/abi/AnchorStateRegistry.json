@@ -1,6 +1,12 @@
 [
   {
-    "inputs": [],
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "_disputeGameFinalityDelaySeconds",
+        "type": "uint256"
+      }
+    ],
     "stateMutability": "nonpayable",
     "type": "constructor"
   },
@@ -42,6 +48,38 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "contract IDisputeGame",
+        "name": "_disputeGame",
+        "type": "address"
+      }
+    ],
+    "name": "blacklistDisputeGame",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IDisputeGame",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "disputeGameBlacklist",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "disputeGameFactory",
     "outputs": [
@@ -49,6 +87,19 @@
         "internalType": "contract IDisputeGameFactory",
         "name": "",
         "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "disputeGameFinalityDelaySeconds",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -85,11 +136,6 @@
         "type": "address"
       },
       {
-        "internalType": "contract IOptimismPortal2",
-        "name": "_portal",
-        "type": "address"
-      },
-      {
         "components": [
           {
             "internalType": "Hash",
@@ -105,6 +151,11 @@
         "internalType": "struct OutputRoot",
         "name": "_startingAnchorRoot",
         "type": "tuple"
+      },
+      {
+        "internalType": "GameType",
+        "name": "_startingRespectedGameType",
+        "type": "uint32"
       }
     ],
     "name": "initialize",
@@ -266,12 +317,12 @@
   },
   {
     "inputs": [],
-    "name": "portal",
+    "name": "paused",
     "outputs": [
       {
-        "internalType": "contract IOptimismPortal2",
+        "internalType": "bool",
         "name": "",
-        "type": "address"
+        "type": "bool"
       }
     ],
     "stateMutability": "view",
@@ -291,6 +342,19 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "retirementTimestamp",
+    "outputs": [
+      {
+        "internalType": "uint64",
+        "name": "",
+        "type": "uint64"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "contract IDisputeGame",
@@ -299,6 +363,19 @@
       }
     ],
     "name": "setAnchorState",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "GameType",
+        "name": "_gameType",
+        "type": "uint32"
+      }
+    ],
+    "name": "setRespectedGameType",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -314,6 +391,13 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "updateRetirementTimestamp",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -339,7 +423,7 @@
         "type": "address"
       }
     ],
-    "name": "AnchorNotUpdated",
+    "name": "AnchorUpdated",
     "type": "event"
   },
   {
@@ -347,12 +431,12 @@
     "inputs": [
       {
         "indexed": true,
-        "internalType": "contract IFaultDisputeGame",
-        "name": "game",
+        "internalType": "contract IDisputeGame",
+        "name": "disputeGame",
         "type": "address"
       }
     ],
-    "name": "AnchorUpdated",
+    "name": "DisputeGameBlacklisted",
     "type": "event"
   },
   {
@@ -366,6 +450,32 @@
       }
     ],
     "name": "Initialized",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "GameType",
+        "name": "gameType",
+        "type": "uint32"
+      }
+    ],
+    "name": "RespectedGameTypeSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "timestamp",
+        "type": "uint256"
+      }
+    ],
+    "name": "RetirementTimestampSet",
     "type": "event"
   },
   {

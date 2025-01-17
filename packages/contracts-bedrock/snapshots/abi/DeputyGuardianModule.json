@@ -23,8 +23,8 @@
   {
     "inputs": [
       {
-        "internalType": "contract IOptimismPortal2",
-        "name": "_portal",
+        "internalType": "contract IAnchorStateRegistry",
+        "name": "_anchorStateRegistry",
         "type": "address"
       },
       {
@@ -75,25 +75,7 @@
     "inputs": [
       {
         "internalType": "contract IAnchorStateRegistry",
-        "name": "_registry",
-        "type": "address"
-      },
-      {
-        "internalType": "contract IFaultDisputeGame",
-        "name": "_game",
-        "type": "address"
-      }
-    ],
-    "name": "setAnchorState",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IOptimismPortal2",
-        "name": "_portal",
+        "name": "_anchorStateRegistry",
         "type": "address"
       },
       {
@@ -123,6 +105,19 @@
   {
     "inputs": [],
     "name": "unpause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IAnchorStateRegistry",
+        "name": "_anchorStateRegistry",
+        "type": "address"
+      }
+    ],
+    "name": "updateRetirementTimestamp",
     "outputs": [],
     "stateMutability": "nonpayable",
     "type": "function"
@@ -187,6 +182,19 @@
   },
   {
     "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "Timestamp",
+        "name": "updatedAt",
+        "type": "uint64"
+      }
+    ],
+    "name": "RetirementTimestampUpdated",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
     "inputs": [],
     "name": "Unpaused",
     "type": "event"
@@ -199,12 +207,12 @@
         "type": "string"
       }
     ],
-    "name": "ExecutionFailed",
+    "name": "DeputyGuardianModule_ExecutionFailed",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "Unauthorized",
+    "name": "DeputyGuardianModule_Unauthorized",
     "type": "error"
   }
 ]
