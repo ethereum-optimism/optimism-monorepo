@@ -9,7 +9,9 @@ import (
 
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/jedib0t/go-pretty/v6/table"
+	"github.com/urfave/cli/v2"
 
+	"github.com/ethereum-optimism/optimism/op-nat/flags"
 	"github.com/ethereum-optimism/optimism/op-service/cliapp"
 )
 
@@ -62,6 +64,15 @@ func (n *nat) Start(ctx context.Context) error {
 		n.results = append(n.results, result)
 	}
 	n.log.Info("OpNAT finished")
+	return nil
+}
+
+// RunSuite is used to run a specific suite
+func RunSuite(ctx *cli.Context) error {
+	if len(ctx.String(flags.ValidatorFilter.Value)) == 0 {
+		return nil
+	}
+
 	return nil
 }
 

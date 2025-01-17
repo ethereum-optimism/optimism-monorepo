@@ -52,12 +52,12 @@ func run(ctx *cli.Context, closeApp context.CancelCauseFunc) (cliapp.Lifecycle, 
 		gates.Alphanet,
 	}
 
-	cfg, err := nat.NewConfig(ctx, validators)
+	cfg, err := nat.NewConfig(ctx, log, validators)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create config: %w", err)
 	}
 
-	log.Debug("Config", "config", cfg)
+	// log.Debug("Config", "config", cfg)
 
 	c, err := nat.New(ctx.Context, cfg, log, Version)
 	if err != nil {

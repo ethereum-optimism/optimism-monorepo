@@ -15,7 +15,12 @@ import (
 )
 
 type SimpleDepositParams struct {
+	// MaxBalanceChecks is the amount of time to poll for the balance to be updated
 	MaxBalanceChecks int
+	// DepositAmount is the amount of eth deposited
+	DepositAmount big.Int
+	// MinL1Balance is how much eth is required to run the test
+	MinL1Balance big.Int
 }
 
 // SimpleTransfer is a test that runs a transfer on a network
@@ -23,43 +28,32 @@ var SimpleDeposit = nat.Test{
 	ID: "simple-deposit",
 	DefaultParams: SimpleDepositParams{
 		MaxBalanceChecks: 12,
+		DepositAmount:    *big.NewInt(1000),
+		MinL1Balance:     *big.NewInt(10000),
 	},
+
 	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, params interface{}) (bool, error) {
 		p := params.(SimpleDepositParams)
-		l1, l2, wallet, err := SetupSimpleDepositTest(ctx, log, cfg)
+		wallet, err := SetupSimpleDepositTest(ctx, log, cfg, p)
+
 		l2ProxyPortal := common.HexToAddress(cfg.SC.L2[0].Addresses.OptimismPortalProxy)
 		if err != nil {
 			return false, err
 		}
-		return SimpleDepositTest(ctx, log, l1, l2, wallet, l2ProxyPortal, p)
+		return SimpleDepositTest(ctx, log, cfg.L1, cfg.L2A, wallet, l2ProxyPortal, p)
 	},
 }
 
-func SetupSimpleDepositTest(ctx context.Context, log log.Logger, config nat.Config) (*network.Network, *network.Network, *wallet.Wallet, error) {
-	l1, err := network.NewNetwork(ctx, log, config.L1RPCUrl, "kurtosis-1")
+func SetupSimpleDepositTest(ctx context.Context, log log.Logger, config nat.Config, p SimpleDepositParams) (*wallet.Wallet, error) {
+
+	wallet, err := config.GetWalletWithBalance(ctx, config.L1, &p.MinL1Balance)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("SetupSimpleDeposit failed to setup network")
+		return nil, errors.Wrap(err, "SetupSimpleDepositTest failed")
 	}
-
-	l2port := config.SC.L2[0].Nodes[0].Services.EL.Endpoints["rpc"].Port
-	l2Addr := config.SC.L2[0].Nodes[0].Services.EL.Endpoints["rpc"].Host
-	l2RPC := fmt.Sprintf("http://%s:%d", l2Addr, l2port)
-
-	log.Debug("rpc info", "l1_rpc", config.L1RPCUrl, "l2_rpc", l2RPC)
-
-	l2, err := network.NewNetwork(ctx, log, l2RPC, "kurtosis-l2")
-	if err != nil {
-		return nil, nil, nil, fmt.Errorf("SetupSimpleDepositTest failed to setup network")
-	}
-	wallet, err := wallet.NewWallet(config.SC.L1.Wallets["user-key-13"].PrivateKey, "user-13")
-	log.Debug("wallet",
+	log.Debug("deposit wallet",
 		"public", wallet.Address(),
 	)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "SetupSimpleDepositTest failed")
-	}
-
-	return l1, l2, wallet, nil
+	return wallet, nil
 }
 
 func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Network, wallet *wallet.Wallet, portal common.Address, p SimpleDepositParams) (bool, error) {
@@ -82,19 +76,12 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 		"l2_pre_deposit", l2Pre.String(),
 	)
 
-	// Confirm wallet has more than 10m wei
-	if l1Pre.Cmp(big.NewInt(10000000)) < 0 {
-		return false, errors.New("error wallet A does not have enough balance to perform simple deposit")
-	}
-
-	transferValue := big.NewInt(100000)
-
 	log.Debug("sending deposit",
-		"deposit_value", transferValue.String(),
+		"deposit_value", p.DepositAmount.String(),
 		"portal", portal,
 	)
 
-	tx, err := wallet.Send(ctx, l1, transferValue, portal)
+	tx, err := wallet.Send(ctx, l1, &p.DepositAmount, portal)
 	if err != nil {
 		return false, errors.Wrap(err, fmt.Sprintf("error sending simple deposit"+
 			"l1_network: %s"+
@@ -111,11 +98,21 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 		"nonce", tx.Nonce(),
 	)
 
+	if err := l1.PollForConfirmation(ctx, log, 3, tx.Hash()); err != nil {
+		return false, errors.New("polling for deposit transaction confirmation timed out")
+	}
+
 	var l1Post *big.Int
 	var l2Post *big.Int
 
 	l1Diff := false
 	l2Diff := false
+
+	l1PostExpected := new(big.Int)
+	l1PostExpected.Sub(l1Pre, &p.DepositAmount)
+
+	l2PostExpected := new(big.Int)
+	l2PostExpected.Add(&p.DepositAmount, l2Pre)
 
 	for i := 0; i < p.MaxBalanceChecks; i++ {
 		l1Post, err = wallet.GetBalance(ctx, l1)
@@ -133,17 +130,11 @@ func SimpleDepositTest(ctx context.Context, log log.Logger, l1, l2 *network.Netw
 			"l2_post", l2Post.String(),
 		)
 
-		l1PostExpected := new(big.Int)
-		l1PostExpected.Sub(l1Pre, transferValue)
-
 		// Expect walletA post to be less than walletAPre - transfer value due to gas as well
 		if l1Post.Cmp(l1PostExpected) < 0 && !l1Diff {
 			log.Debug("l1 balance has been subtracted")
 			l1Diff = true
 		}
-
-		l2PostExpected := new(big.Int)
-		l2PostExpected.Add(transferValue, l2Pre)
 
 		if l2PostExpected.Cmp(l2Post) == 0 && !l2Diff {
 			log.Debug("l2 balance has increased")

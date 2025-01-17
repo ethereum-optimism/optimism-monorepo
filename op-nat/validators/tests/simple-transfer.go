@@ -9,117 +9,138 @@ import (
 	"github.com/ethereum-optimism/optimism/op-nat/network"
 	"github.com/ethereum-optimism/optimism/op-nat/wallet"
 	"github.com/ethereum/go-ethereum/log"
+	ethparams "github.com/ethereum/go-ethereum/params"
 	"github.com/pkg/errors"
 )
+
+type SimpleTranferParams struct {
+	// TransferAmount is the amount of eth transferred
+	TransferAmount big.Int
+	// MinBalance is how much eth is required to run the test
+	MinBalance big.Int
+}
 
 // SimpleTransfer is a test that runs a transfer on a network
 var SimpleTransfer = nat.Test{
 	ID: "simple-transfer",
-	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, _ interface{}) (bool, error) {
-		network, walletA, walletB, err := SetupSimpleTransferTest(ctx, log, cfg)
-		if err != nil {
-			return false, err
+	DefaultParams: SimpleTranferParams{
+		TransferAmount: *big.NewInt(1 * ethparams.GWei),
+		MinBalance:     *big.NewInt(10 * ethparams.GWei),
+	},
+	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, params interface{}) (bool, error) {
+
+		p := params.(SimpleTranferParams)
+		for _, network := range cfg.GetNetworks() {
+			sender, reciever, err := SetupSimpleTransferTest(ctx, log, network, cfg, p)
+			if err != nil {
+				return false, err
+			}
+			pass, err := SimpleTransferTest(ctx, log, network, sender, reciever, p)
+			if err != nil {
+				return false, errors.Wrapf(err, "error executing simple transfer for network: %s", network.Name)
+			}
+
+			if !pass {
+				return pass, nil
+			}
 		}
-		return SimpleTransferTest(ctx, log, network, walletA, walletB)
+		return true, nil
 	},
 }
 
-func SetupSimpleTransferTest(ctx context.Context, log log.Logger, config nat.Config) (*network.Network, *wallet.Wallet, *wallet.Wallet, error) {
-	network, err := network.NewNetwork(ctx, log, config.L1RPCUrl, "kurtosis-l1")
+func SetupSimpleTransferTest(ctx context.Context, log log.Logger, network *network.Network, cfg nat.Config, p SimpleTranferParams) (*wallet.Wallet, *wallet.Wallet, error) {
+
+	sender, err := cfg.GetWalletWithBalance(ctx, network, &p.MinBalance)
 	if err != nil {
-		return nil, nil, nil, fmt.Errorf("SetupSimpleTransfer failed to setup network")
+		return nil, nil, err
 	}
 
-	walletA, err := wallet.NewWallet(config.ReceiverPrivateKeys[0], "walletA")
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "SetupSimpleTransfer failed to wallet A")
+	// Ensure reciever is not equal to sender
+	for i := 0; i < 5; i++ {
+		reciever := cfg.GetRandomWallet()
+		if reciever.Address() == sender.Address() {
+			continue
+		}
+		return sender, reciever, nil
 	}
+	return nil, nil, errors.New("unable to find valid reciever wallet that did not match sender wallet")
 
-	walletB, err := wallet.NewWallet(config.ReceiverPrivateKeys[1], "walletB")
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "SetupSimpleTransfer failed to wallet B")
-	}
-
-	return network, walletA, walletB, nil
 }
 
-func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Network, walletA, walletB *wallet.Wallet) (bool, error) {
+func SimpleTransferTest(ctx context.Context, log log.Logger, network *network.Network, sender, reciever *wallet.Wallet, p SimpleTranferParams) (bool, error) {
 	// Make sure the accounts are unstuck before sending any transactions
-	if network == nil || walletA == nil || walletB == nil {
+	if network == nil || sender == nil || reciever == nil {
 		return false, errors.New("error empty arguments provided for SimpleTransferTest")
 	}
 
-	walletABalancePre, err := walletA.GetBalance(ctx, network)
+	senderBalancePre, err := sender.GetBalance(ctx, network)
 	if err != nil {
-		return false, errors.Wrap(err, "error getting walletA balance")
+		return false, errors.Wrap(err, "error getting sender balance")
 	}
 
-	walletBBalancePre, err := walletB.GetBalance(ctx, network)
+	recieverBalancePre, err := reciever.GetBalance(ctx, network)
 	if err != nil {
-		return false, errors.Wrap(err, "error getting walletB balance")
+		return false, errors.Wrap(err, "error getting reciever balance")
 	}
 
 	log.Debug("user balances pre simple transfer test",
-		"wallet_a", walletABalancePre.String(),
-		"wallet_a_addr", walletA.Address(),
-		"wallet_b", walletBBalancePre.String(),
-		"wallet_b_addr", walletB.Address(),
+		"sender", senderBalancePre.String(),
+		"sender_addr", sender.Address(),
+		"reciever", recieverBalancePre.String(),
+		"reciever_addr", reciever.Address(),
 		"network", network.Name,
+		"transfer_value", p.TransferAmount.String(),
 	)
 
-	// Confirm wallet has more than 10m wei
-	if walletABalancePre.Cmp(big.NewInt(10000000)) < 0 {
-		return false, errors.New("error wallet A does not have enough balance to perform simple transfer")
-	}
-
-	transferValue := big.NewInt(100000)
-
-	log.Debug("sending transfer from A to B",
-		"wallet_a", walletABalancePre.String(),
-		"wallet_b", walletBBalancePre.String(),
-		"transfer_value", transferValue.String(),
-	)
-
-	_, err = walletA.Send(ctx, network, transferValue, walletB.Address())
+	tx, err := sender.Send(ctx, network, &p.TransferAmount, reciever.Address())
 	if err != nil {
 		return false, errors.Wrap(err, fmt.Sprintf("error sending simple transfer"+
 			"network: %s"+
-			"walletA: %s"+
-			"walletB: %s",
+			"sender: %s"+
+			"reciever: %s",
 			network.Name,
-			walletA.Address(),
-			walletB.Address(),
+			sender.Address(),
+			reciever.Address(),
 		))
 	}
 
-	walletABalancePost, err := walletA.GetBalance(ctx, network)
-	if err != nil {
-		return false, errors.Wrap(err, "error getting walletA balance")
+	if err := network.PollForConfirmation(ctx, log, uint64(2), tx.Hash()); err != nil {
+		return false, errors.Wrap(err, "error polling for tx confirmation")
 	}
 
-	walletBBalancePost, err := walletA.GetBalance(ctx, network)
+	senderBalancePost, err := sender.GetBalance(ctx, network)
 	if err != nil {
-		return false, errors.Wrap(err, "error getting walletB balance")
+		return false, errors.Wrap(err, "error getting sender balance")
 	}
+
+	recieverBalancePost, err := reciever.GetBalance(ctx, network)
+	if err != nil {
+		return false, errors.Wrap(err, "error getting reciever balance")
+	}
+
+	recieverDiff := new(big.Int)
+	recieverDiff.Sub(recieverBalancePost, recieverBalancePre)
+
+	senderPostExpected := new(big.Int)
+	senderPostExpected.Sub(senderBalancePre, &p.TransferAmount)
 
 	log.Debug("user balances post simple transfer test",
-		"wallet_a", walletABalancePost.String(),
-		"wallet_b", walletBBalancePost.String(),
+		"sender_post", senderBalancePost.String(),
+		"sender_post_expected", senderPostExpected.String(),
+		"reciever_post", recieverBalancePost.String(),
+		"reciever_diff", recieverDiff.String(),
+		"transfer_amount", p.TransferAmount.String(),
 	)
 
-	walletAPostExpected := new(big.Int)
-	walletAPostExpected.Sub(walletABalancePre, transferValue)
-
-	// Expect walletA post to be less than walletAPre - transfer value due to gas as well
-	if walletABalancePost.Cmp(walletAPostExpected) < 0 {
-		return false, errors.New("error walletA balance post transfer was incorrect")
+	// TODO: Improve the clarity of these checks
+	// If the difference is not the same return error
+	if p.TransferAmount.Cmp(recieverDiff) != 0 {
+		return false, errors.New("error reciever balance post transfer was incorrect")
 	}
 
-	walletBPostExpected := new(big.Int)
-	walletBPostExpected.Add(transferValue, walletBBalancePre)
-
-	if walletBBalancePost.Cmp(walletBPostExpected) == 0 {
-		return false, errors.New("error walletB balance post transfer was incorrect")
+	// If sender post to be greater than senderPostExpected fail the test
+	if senderBalancePost.Cmp(senderPostExpected) >= 0 {
+		return false, errors.New("error sender balance post transfer was greater than expected")
 	}
 
 	return true, nil
