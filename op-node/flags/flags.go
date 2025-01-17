@@ -209,6 +209,13 @@ var (
 		}(),
 		Category: RollupCategory,
 	}
+	L2EngineRpcTimeout = &cli.DurationFlag{
+		Name:     "l2.engine-rpc-timeout",
+		Usage:    "L2 engine client rpc timeout",
+		EnvVars:  prefixEnvVars("L2_ENGINE_RPC_TIMEOUT"),
+		Value:    time.Second * 10,
+		Category: RollupCategory,
+	}
 	VerifierL1Confs = &cli.Uint64Flag{
 		Name:     "verifier.l1-confs",
 		Usage:    "Number of L1 blocks to keep distance from the L1 head before deriving L2 data from. Reorgs are supported, but may be slow to perform.",
@@ -459,6 +466,7 @@ var optionalFlags = []cli.Flag{
 	ConductorRpcTimeoutFlag,
 	SafeDBPath,
 	L2EngineKind,
+	L2EngineRpcTimeout,
 	InteropSupervisor,
 	InteropRPCAddr,
 	InteropRPCPort,
