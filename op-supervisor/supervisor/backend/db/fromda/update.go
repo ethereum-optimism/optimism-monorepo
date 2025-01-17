@@ -3,6 +3,8 @@ package fromda
 import (
 	"fmt"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -10,20 +12,30 @@ import (
 func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
+	return db.addLink(derivedFrom, derived, common.Hash{})
+}
 
+// addLink adds a L1/L2 derivation link, with strong consistency checks.
+// if the link invalidates a prior L2 block, that was valid in a prior L1,
+// the invalidated hash needs to match it, even if a new derived block replaces it.
+func (db *DB) addLink(derivedFrom eth.BlockRef, derived eth.BlockRef, invalidated common.Hash) error {
+	link := LinkEntry{
+		derivedFrom: types.BlockSeal{
+			Hash:      derivedFrom.Hash,
+			Number:    derivedFrom.Number,
+			Timestamp: derivedFrom.Time,
+		},
+		derived: types.BlockSeal{
+			Hash:      derived.Hash,
+			Number:    derived.Number,
+			Timestamp: derived.Time,
+		},
+		invalidated: (invalidated != common.Hash{}) && derived.Hash == invalidated,
+	}
 	// If we don't have any entries yet, allow any block to start things off
 	if db.store.Size() == 0 {
-		link := LinkEntry{
-			derivedFrom: types.BlockSeal{
-				Hash:      derivedFrom.Hash,
-				Number:    derivedFrom.Number,
-				Timestamp: derivedFrom.Time,
-			},
-			derived: types.BlockSeal{
-				Hash:      derived.Hash,
-				Number:    derived.Number,
-				Timestamp: derived.Time,
-			},
+		if link.invalidated {
+			return fmt.Errorf("first DB entry %s cannot be an invalidated entry: %w", link, types.ErrConflict)
 		}
 		e := link.encode()
 		if err := db.store.Append(e); err != nil {
@@ -33,10 +45,15 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 		return nil
 	}
 
-	lastDerivedFrom, lastDerived, err := db.latest()
+	last, err := db.latest()
 	if err != nil {
 		return err
 	}
+	if last.invalidated {
+		return fmt.Errorf("cannot build %s on top of invalidated entry %s: %w", link, last, types.ErrConflict)
+	}
+	lastDerivedFrom := last.derivedFrom
+	lastDerived := last.derived
 
 	if lastDerived.ID() == derived.ID() && lastDerivedFrom.ID() == derivedFrom.ID() {
 		// it shouldn't be possible, but the ID component of a block ref doesn't include the timestamp
@@ -57,9 +74,15 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 	if lastDerived.Number == derived.Number {
 		// Same block height? Then it must be the same block.
 		// I.e. we encountered an empty L1 block, and the same L2 block continues to be the last block that was derived from it.
-		if lastDerived.Hash != derived.Hash {
-			return fmt.Errorf("derived block %s conflicts with known derived block %s at same height: %w",
-				derived, lastDerived, types.ErrConflict)
+		if invalidated != (common.Hash{}) {
+			if lastDerived.Hash != invalidated {
+				return fmt.Errorf("inserting block %s that invalidates %s at height %d, but expected %s", derived.Hash, invalidated, lastDerived.Number, lastDerived.Hash)
+			}
+		} else {
+			if lastDerived.Hash != derived.Hash {
+				return fmt.Errorf("derived block %s conflicts with known derived block %s at same height: %w",
+					derived, lastDerived, types.ErrConflict)
+			}
 		}
 	} else if lastDerived.Number+1 == derived.Number {
 		if lastDerived.Hash != derived.ParentHash {
@@ -101,18 +124,6 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 			derived, derivedFrom, lastDerivedFrom, types.ErrOutOfOrder)
 	}
 
-	link := LinkEntry{
-		derivedFrom: types.BlockSeal{
-			Hash:      derivedFrom.Hash,
-			Number:    derivedFrom.Number,
-			Timestamp: derivedFrom.Time,
-		},
-		derived: types.BlockSeal{
-			Hash:      derived.Hash,
-			Number:    derived.Number,
-			Timestamp: derived.Time,
-		},
-	}
 	e := link.encode()
 	if err := db.store.Append(e); err != nil {
 		return err

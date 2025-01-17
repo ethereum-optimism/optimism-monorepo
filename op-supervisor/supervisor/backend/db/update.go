@@ -40,12 +40,12 @@ func (db *ChainsDB) SealBlock(chain eth.ChainID, block eth.BlockRef) error {
 	return nil
 }
 
-func (db *ChainsDB) Rewind(chain eth.ChainID, headBlockNum uint64) error {
+func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
 	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot Rewind: %w: %s", types.ErrUnknownChain, chain)
 	}
-	return logDB.Rewind(headBlockNum)
+	return logDB.Rewind(headBlock)
 }
 
 func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
