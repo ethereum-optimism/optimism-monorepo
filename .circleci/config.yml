@@ -844,7 +844,7 @@ jobs:
           command: bash scripts/ops/pull-artifacts.sh
           working_directory: packages/contracts-bedrock
       - run:
-          name: Write pinned block number for cache key
+          name: Write data for cache key
           command: |
             just print-pinned-block-number > ./pinnedBlockNumber.txt
             echo <<parameters.fork_base_chain>> >> ./pinnedBlockNumber.txt
