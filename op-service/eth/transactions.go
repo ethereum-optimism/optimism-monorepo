@@ -3,8 +3,6 @@ package eth
 import (
 	"bytes"
 	"context"
-	"encoding"
-	"encoding/json"
 	"fmt"
 	"math/big"
 
@@ -118,25 +116,11 @@ type GenericTx interface {
 	// This will return types.ErrTxTypeNotSupported if the transaction-type is not supported.
 	Transaction() (*types.Transaction, error)
 
-	// TxType returns the EIP-2718 type.
+	// TxType returns the EIP-2718 type, or an error if the transaction is not an EIP-2718 transaction.
 	TxType() uint8
 
 	// TxHash returns the transaction hash.
 	TxHash() common.Hash
-
-	// MarshalJSON into RPC tx definition.
-	// Block metadata may or may not be included.
-	json.Marshaler
-
-	// UnmarshalJSON into RPC tx definition.
-	// Block metadata is ignored.
-	json.Unmarshaler
-
-	// MarshalBinary as EIP-2718 opaque tx (including version byte).
-	encoding.BinaryMarshaler
-
-	// UnmarshalBinary as EIP-2718 opaque tx (including version byte).
-	encoding.BinaryUnmarshaler
 }
 
 type OpaqueTransaction struct {
@@ -184,28 +168,6 @@ func (o *OpaqueTransaction) TxHash() common.Hash {
 		o.hash = crypto.Keccak256Hash(o.raw)
 	}
 	return o.hash
-}
-
-func (o *OpaqueTransaction) MarshalJSON() ([]byte, error) {
-	tx, err := o.Transaction()
-	if err != nil {
-		return nil, err
-	}
-	return tx.MarshalJSON()
-}
-
-func (o *OpaqueTransaction) UnmarshalJSON(data []byte) error {
-	var tx types.Transaction
-	if err := tx.UnmarshalJSON(data); err != nil {
-		return err
-	}
-	data, err := tx.MarshalBinary()
-	if err != nil {
-		return err
-	}
-	o.raw = data
-	o.hash = tx.Hash()
-	return nil
 }
 
 func (o *OpaqueTransaction) MarshalBinary() ([]byte, error) {

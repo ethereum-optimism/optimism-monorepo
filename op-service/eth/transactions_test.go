@@ -193,18 +193,6 @@ func TestOpaqueTransaction(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.rawTx, reSerialized)
 
-			data, err := o.MarshalJSON()
-			if tc.supported {
-				require.NoError(t, err)
-				p := new(OpaqueTransaction)
-				err = p.UnmarshalJSON(data)
-				require.NoError(t, err)
-				require.Equal(t, o, p)
-			} else {
-				require.Error(t, err)
-				require.Nil(t, data)
-			}
-
 			tx, err = o.Transaction()
 			if tc.supported {
 				require.NoError(t, err)

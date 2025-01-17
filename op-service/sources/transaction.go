@@ -71,25 +71,14 @@ func (m *RawJsonTransaction) MarshalJSON() ([]byte, error) {
 	return m.raw, nil
 }
 
-func (m *RawJsonTransaction) MarshalBinary() ([]byte, error) {
-	tx, err := m.Transaction()
+func ToRawJsonTransaction(tx *types.Transaction) *RawJsonTransaction {
+	data, err := json.Marshal(tx)
 	if err != nil {
-		return nil, err
+		panic(err)
 	}
-	return tx.MarshalBinary()
-}
-
-func (m *RawJsonTransaction) UnmarshalBinary(b []byte) error {
-	var tx types.Transaction
-	if err := tx.UnmarshalBinary(b); err != nil {
-		return err
+	return &RawJsonTransaction{
+		txHash: tx.Hash(),
+		txType: tx.Type(),
+		raw:    data,
 	}
-	data, err := json.Marshal(&tx)
-	if err != nil {
-		return err
-	}
-	m.raw = data
-	m.txType = tx.Type()
-	m.txHash = tx.Hash()
-	return nil
 }

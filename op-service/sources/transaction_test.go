@@ -73,18 +73,6 @@ func TestRawJsonTransaction(t *testing.T) {
 			require.NoError(t, err)
 			require.Equal(t, tc.jsonTx, reSerialized)
 
-			data, err := o.MarshalBinary()
-			if tc.supported {
-				require.NoError(t, err)
-				p := new(RawJsonTransaction)
-				err = p.UnmarshalBinary(data)
-				require.NoError(t, err)
-				require.Equal(t, o, p)
-			} else {
-				require.Error(t, err)
-				require.Nil(t, data)
-			}
-
 			tx, err = o.Transaction()
 			if tc.supported {
 				require.NoError(t, err)
