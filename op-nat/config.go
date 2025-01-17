@@ -12,12 +12,13 @@ import (
 )
 
 type Config struct {
+	// Network config
 	SC         SuperchainManifest
 	L1RPCUrl   string
 	RPCURL     string
 	Validators []Validator
 
-	// tx-fuzz
+	// mix of chain config and tx-fuzz params - needs cleanup
 	SenderSecretKey     string `json:"-"`
 	ReceiverPublicKeys  []string
 	ReceiverPrivateKeys []string
