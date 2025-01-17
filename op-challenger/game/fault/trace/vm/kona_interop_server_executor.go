@@ -8,7 +8,7 @@ import (
 )
 
 type KonaSuperExecutor struct {
-	nativeMode     bool
+	nativeMode bool
 }
 
 var _ OracleServerExecutor = (*KonaSuperExecutor)(nil)
