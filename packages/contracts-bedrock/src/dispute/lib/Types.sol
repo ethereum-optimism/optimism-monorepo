@@ -46,8 +46,11 @@ library GameTypes {
     /// @notice A dispute game type that uses the asterisc VM
     GameType internal constant ASTERISC = GameType.wrap(2);
 
+    /// @notice A dispute game type that uses the asterisc VM with Kona
+    GameType internal constant ASTERISC_KONA = GameType.wrap(3);
+
     /// @notice A dispute game type that uses OP Succinct
-    GameType internal constant OP_SUCCINCT = GameType.wrap(5);
+    GameType internal constant OP_SUCCINCT = GameType.wrap(6);
 
     /// @notice A dispute game type with short game duration for testing withdrawals.
     ///         Not intended for production use.

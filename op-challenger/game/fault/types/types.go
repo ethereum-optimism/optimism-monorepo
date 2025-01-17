@@ -28,7 +28,7 @@ const (
 	PermissionedGameType GameType = 1
 	AsteriscGameType     GameType = 2
 	AsteriscKonaGameType GameType = 3
-	OPSuccinctGameType   GameType = 5
+	OPSuccinctGameType   GameType = 6
 	FastGameType         GameType = 254
 	AlphabetGameType     GameType = 255
 	UnknownGameType      GameType = math.MaxUint32
