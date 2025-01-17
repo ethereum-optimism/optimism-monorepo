@@ -239,8 +239,12 @@ contract DeployConfig is Script {
     }
 
     /// @notice Allow the `useUpgradedFork` config to be overridden in testing environments
-    /// @dev This is used to test the fork upgrade process, it does not exist in the deploy config, but
-    ///      is being added here for testing purposes following the same pattern as the other custom configs.
+    /// @dev When true, the forked system WILL be upgraded in setUp().
+    ///      When false, the forked system WILL NOT be upgraded in setUp().
+    ///      This function does nothing when not testing in a forked environment.
+    ///      Generally the only time you should call this function is if you want to
+    ///      call opcm.upgrade() in the test itself, rather than have the upgraded
+    ///      system be deployed in setUp().
     function setUseUpgradedFork(bool _useUpgradedFork) public {
         useUpgradedFork = _useUpgradedFork;
     }
