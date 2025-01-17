@@ -27,7 +27,10 @@ compilation_restrictions = [
   { paths = "src/dispute/SuperFaultDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/dispute/SuperPermissionedDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/OPContractsManagerInterop.sol", optimizer_runs = 5000 },
   { paths = "src/L1/StandardValidator.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/OptimismPortal2.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/OptimismPortalInterop.sol", optimizer_runs = 5000 },
 ]
 
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
@@ -138,8 +141,13 @@ additional_compiler_profiles = [
 compilation_restrictions = [
   { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 0 },
   { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 0 },
+  { paths = "src/dispute/SuperFaultDisputeGame.sol", optimizer_runs = 0 },
+  { paths = "src/dispute/SuperPermissionedDisputeGame.sol", optimizer_runs = 0 },
   { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 0 },
+  { paths = "src/L1/OPContractsManagerInterop.sol", optimizer_runs = 0 },
   { paths = "src/L1/StandardValidator.sol", optimizer_runs = 0 },
+  { paths = "src/L1/OptimismPortal2.sol", optimizer_runs = 0 },
+  { paths = "src/L1/OptimismPortalInterop.sol", optimizer_runs = 0 },
 ]
 
 ################################################################

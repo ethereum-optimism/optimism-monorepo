@@ -568,7 +568,8 @@ contract DeputyPauseModule_Pause_TestFail is DeputyPauseModule_TestInit {
                 IDeputyPauseModule.DeputyPauseModule_ExecutionFailed.selector,
                 string(
                     abi.encodeWithSelector(
-                        IDeputyGuardianModule.ExecutionFailed.selector, "SuperchainConfig: pause() reverted"
+                        IDeputyGuardianModule.DeputyGuardianModule_ExecutionFailed.selector,
+                        "SuperchainConfig: pause() reverted"
                     )
                 )
             )

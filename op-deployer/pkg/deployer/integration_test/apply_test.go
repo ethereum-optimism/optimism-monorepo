@@ -293,7 +293,7 @@ func TestProofParamOverrides(t *testing.T) {
 		{
 			"disputeGameFinalityDelaySeconds",
 			uint64Caster,
-			st.ImplementationsDeployment.OptimismPortalImplAddress,
+			st.ImplementationsDeployment.AnchorStateRegistryImplAddress,
 		},
 		{
 			"faultGameAbsolutePrestate",
