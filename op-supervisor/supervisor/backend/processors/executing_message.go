@@ -3,6 +3,7 @@ package processors
 import (
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/types/interoptypes"
 	"github.com/ethereum/go-ethereum/params"
@@ -28,7 +29,7 @@ func DecodeExecutingMessageLog(l *ethTypes.Log, depSet depset.ChainIndexFromID) 
 		return nil, fmt.Errorf("invalid executing message: %w", err)
 	}
 	logHash := types.PayloadHashToLogHash(msg.PayloadHash, msg.Identifier.Origin)
-	index, err := depSet.ChainIndexFromID(types.ChainID(msg.Identifier.ChainID))
+	index, err := depSet.ChainIndexFromID(eth.ChainID(msg.Identifier.ChainID))
 	if err != nil {
 		return nil, err
 	}

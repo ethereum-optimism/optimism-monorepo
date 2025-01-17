@@ -18,12 +18,13 @@ type AdminBackend interface {
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
-	CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
-	LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
-	CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error)
-	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
+	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error)
+	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	FinalizedL1() eth.BlockRef
-	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error)
+	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
+	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error)
 }
 
 type Backend interface {
@@ -51,15 +52,15 @@ func (q *QueryFrontend) CheckMessages(
 	return q.Supervisor.CheckMessages(messages, minSafety)
 }
 
-func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	return q.Supervisor.LocalUnsafe(ctx, chainID)
 }
 
-func (q *QueryFrontend) CrossSafe(ctx context.Context, chainID types.ChainID) (types.DerivedIDPair, error) {
+func (q *QueryFrontend) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
 	return q.Supervisor.CrossSafe(ctx, chainID)
 }
 
-func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (q *QueryFrontend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	return q.Supervisor.Finalized(ctx, chainID)
 }
 
@@ -67,12 +68,16 @@ func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
 	return q.Supervisor.FinalizedL1()
 }
 
-func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
 }
 
-func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
+func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
 	return q.Supervisor.SuperRootAtTimestamp(ctx, timestamp)
+}
+
+func (q *QueryFrontend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error) {
+	return q.Supervisor.AllSafeDerivedAt(ctx, derivedFrom)
 }
 
 type AdminFrontend struct {

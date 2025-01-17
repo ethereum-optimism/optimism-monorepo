@@ -24,8 +24,8 @@ func TestHazardSafeFrontierChecks(t *testing.T) {
 	t.Run("unknown chain", func(t *testing.T) {
 		sfcd := &mockSafeFrontierCheckDeps{
 			deps: mockDependencySet{
-				chainIDFromIndexfn: func() (types.ChainID, error) {
-					return types.ChainID{}, types.ErrUnknownChain
+				chainIDFromIndexfn: func() (eth.ChainID, error) {
+					return eth.ChainID{}, types.ErrUnknownChain
 				},
 			},
 		}
@@ -143,14 +143,14 @@ type mockSafeFrontierCheckDeps struct {
 	crossDerivedFromFn   func() (derivedFrom types.BlockSeal, err error)
 }
 
-func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain types.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error) {
+func (m *mockSafeFrontierCheckDeps) CandidateCrossSafe(chain eth.ChainID) (derivedFromScope, crossSafe eth.BlockRef, err error) {
 	if m.candidateCrossSafeFn != nil {
 		return m.candidateCrossSafeFn()
 	}
 	return eth.BlockRef{}, eth.BlockRef{}, nil
 }
 
-func (m *mockSafeFrontierCheckDeps) CrossDerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeFrontierCheckDeps) CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	if m.crossDerivedFromFn != nil {
 		return m.crossDerivedFromFn()
 	}
@@ -162,34 +162,34 @@ func (m *mockSafeFrontierCheckDeps) DependencySet() depset.DependencySet {
 }
 
 type mockDependencySet struct {
-	chainIDFromIndexfn func() (types.ChainID, error)
+	chainIDFromIndexfn func() (eth.ChainID, error)
 	canExecuteAtfn     func() (bool, error)
 	canInitiateAtfn    func() (bool, error)
 }
 
-func (m mockDependencySet) CanExecuteAt(chain types.ChainID, timestamp uint64) (bool, error) {
+func (m mockDependencySet) CanExecuteAt(chain eth.ChainID, timestamp uint64) (bool, error) {
 	if m.canExecuteAtfn != nil {
 		return m.canExecuteAtfn()
 	}
 	return true, nil
 }
 
-func (m mockDependencySet) CanInitiateAt(chain types.ChainID, timestamp uint64) (bool, error) {
+func (m mockDependencySet) CanInitiateAt(chain eth.ChainID, timestamp uint64) (bool, error) {
 	if m.canInitiateAtfn != nil {
 		return m.canInitiateAtfn()
 	}
 	return true, nil
 }
 
-func (m mockDependencySet) ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error) {
+func (m mockDependencySet) ChainIDFromIndex(index types.ChainIndex) (eth.ChainID, error) {
 	if m.chainIDFromIndexfn != nil {
 		return m.chainIDFromIndexfn()
 	}
-	id := types.ChainIDFromUInt64(uint64(index) - 1000)
+	id := eth.ChainIDFromUInt64(uint64(index) - 1000)
 	return id, nil
 }
 
-func (m mockDependencySet) ChainIndexFromID(chain types.ChainID) (types.ChainIndex, error) {
+func (m mockDependencySet) ChainIndexFromID(chain eth.ChainID) (types.ChainIndex, error) {
 	v, err := chain.ToUInt32()
 	if err != nil {
 		return 0, err
@@ -198,10 +198,10 @@ func (m mockDependencySet) ChainIndexFromID(chain types.ChainID) (types.ChainInd
 	return types.ChainIndex(v + 1000), nil
 }
 
-func (m mockDependencySet) Chains() []types.ChainID {
+func (m mockDependencySet) Chains() []eth.ChainID {
 	return nil
 }
 
-func (m mockDependencySet) HasChain(chain types.ChainID) bool {
+func (m mockDependencySet) HasChain(chain eth.ChainID) bool {
 	return true
 }

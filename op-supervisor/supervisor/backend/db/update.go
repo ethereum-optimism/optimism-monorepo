@@ -11,7 +11,7 @@ import (
 )
 
 func (db *ChainsDB) AddLog(
-	chain types.ChainID,
+	chain eth.ChainID,
 	logHash common.Hash,
 	parentBlock eth.BlockID,
 	logIdx uint32,
@@ -23,7 +23,7 @@ func (db *ChainsDB) AddLog(
 	return logDB.AddLog(logHash, parentBlock, logIdx, execMsg)
 }
 
-func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
+func (db *ChainsDB) SealBlock(chain eth.ChainID, block eth.BlockRef) error {
 	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot SealBlock: %w: %v", types.ErrUnknownChain, chain)
@@ -40,7 +40,7 @@ func (db *ChainsDB) SealBlock(chain types.ChainID, block eth.BlockRef) error {
 	return nil
 }
 
-func (db *ChainsDB) Rewind(chain types.ChainID, headBlockNum uint64) error {
+func (db *ChainsDB) Rewind(chain eth.ChainID, headBlockNum uint64) error {
 	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot Rewind: %w: %s", types.ErrUnknownChain, chain)
@@ -48,7 +48,7 @@ func (db *ChainsDB) Rewind(chain types.ChainID, headBlockNum uint64) error {
 	return logDB.Rewind(headBlockNum)
 }
 
-func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
+func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
 	logger := db.logger.New("chain", chain, "derivedFrom", derivedFrom, "lastDerived", lastDerived)
 	localDB, ok := db.localDBs.Get(chain)
 	if !ok {
@@ -75,7 +75,7 @@ func (db *ChainsDB) UpdateLocalSafe(chain types.ChainID, derivedFrom eth.BlockRe
 	})
 }
 
-func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error {
+func (db *ChainsDB) UpdateCrossUnsafe(chain eth.ChainID, crossUnsafe types.BlockSeal) error {
 	v, ok := db.crossUnsafe.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot UpdateCrossUnsafe: %w: %s", types.ErrUnknownChain, chain)
@@ -89,7 +89,7 @@ func (db *ChainsDB) UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.Blo
 	return nil
 }
 
-func (db *ChainsDB) UpdateCrossSafe(chain types.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error {
+func (db *ChainsDB) UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error {
 	crossDB, ok := db.crossDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot UpdateCrossSafe: %w: %s", types.ErrUnknownChain, chain)

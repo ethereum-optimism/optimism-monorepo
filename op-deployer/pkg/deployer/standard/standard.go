@@ -15,7 +15,7 @@ const (
 	GasLimit                        uint64 = 60_000_000
 	BasefeeScalar                   uint32 = 1368
 	BlobBaseFeeScalar               uint32 = 801949
-	WithdrawalDelaySeconds          uint64 = 604800
+	WithdrawalDelaySeconds          uint64 = 302400
 	MinProposalSizeBytes            uint64 = 126000
 	ChallengePeriodSeconds          uint64 = 86400
 	ProofMaturityDelaySeconds       uint64 = 604800
@@ -31,6 +31,7 @@ const (
 	Eip1559Elasticity               uint64 = 6
 
 	ContractsV160Tag        = "op-contracts/v1.6.0"
+	ContractsV180Tag        = "op-contracts/v1.8.0-rc.4"
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
 )
 
@@ -46,7 +47,7 @@ var L1VersionsSepolia L1Versions
 
 var L1VersionsMainnet L1Versions
 
-var DefaultL1ContractsTag = ContractsV160Tag
+var DefaultL1ContractsTag = ContractsV180Tag
 
 var DefaultL2ContractsTag = ContractsV170Beta1L2Tag
 

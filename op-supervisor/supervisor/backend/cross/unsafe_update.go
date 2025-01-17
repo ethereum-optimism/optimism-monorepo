@@ -13,17 +13,17 @@ import (
 )
 
 type CrossUnsafeDeps interface {
-	CrossUnsafe(chainID types.ChainID) (types.BlockSeal, error)
+	CrossUnsafe(chainID eth.ChainID) (types.BlockSeal, error)
 
 	UnsafeStartDeps
 	UnsafeFrontierCheckDeps
 
-	OpenBlock(chainID types.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	OpenBlock(chainID eth.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 
-	UpdateCrossUnsafe(chain types.ChainID, crossUnsafe types.BlockSeal) error
+	UpdateCrossUnsafe(chain eth.ChainID, crossUnsafe types.BlockSeal) error
 }
 
-func CrossUnsafeUpdate(logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) error {
+func CrossUnsafeUpdate(logger log.Logger, chainID eth.ChainID, d CrossUnsafeDeps) error {
 	var candidate types.BlockSeal
 	var execMsgs []*types.ExecutingMessage
 
@@ -74,7 +74,7 @@ func CrossUnsafeUpdate(logger log.Logger, chainID types.ChainID, d CrossUnsafeDe
 
 type CrossUnsafeWorker struct {
 	logger  log.Logger
-	chainID types.ChainID
+	chainID eth.ChainID
 	d       CrossUnsafeDeps
 }
 
@@ -99,7 +99,7 @@ func (c *CrossUnsafeWorker) OnEvent(ev event.Event) bool {
 
 var _ event.Deriver = (*CrossUnsafeWorker)(nil)
 
-func NewCrossUnsafeWorker(logger log.Logger, chainID types.ChainID, d CrossUnsafeDeps) *CrossUnsafeWorker {
+func NewCrossUnsafeWorker(logger log.Logger, chainID eth.ChainID, d CrossUnsafeDeps) *CrossUnsafeWorker {
 	logger = logger.New("chain", chainID)
 	return &CrossUnsafeWorker{
 		logger:  logger,

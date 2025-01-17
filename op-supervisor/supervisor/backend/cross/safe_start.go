@@ -12,9 +12,9 @@ import (
 )
 
 type SafeStartDeps interface {
-	Check(chain types.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
+	Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
 
-	CrossDerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
@@ -22,7 +22,7 @@ type SafeStartDeps interface {
 // CrossSafeHazards checks if the given messages all exist and pass invariants.
 // It returns a hazard-set: if any intra-block messaging happened,
 // these hazard blocks have to be verified.
-func CrossSafeHazards(d SafeStartDeps, chainID types.ChainID, inL1DerivedFrom eth.BlockID,
+func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1DerivedFrom eth.BlockID,
 	candidate types.BlockSeal, execMsgs []*types.ExecutingMessage) (hazards map[types.ChainIndex]types.BlockSeal, err error) {
 
 	hazards = make(map[types.ChainIndex]types.BlockSeal)

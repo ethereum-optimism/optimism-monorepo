@@ -123,7 +123,6 @@ func makeChainState(chainID common.Hash, dco opcm.DeployOPChainOutput) *state.Ch
 		OptimismPortalProxyAddress:                dco.OptimismPortalProxy,
 		DisputeGameFactoryProxyAddress:            dco.DisputeGameFactoryProxy,
 		AnchorStateRegistryProxyAddress:           dco.AnchorStateRegistryProxy,
-		AnchorStateRegistryImplAddress:            dco.AnchorStateRegistryImpl,
 		FaultDisputeGameAddress:                   dco.FaultDisputeGame,
 		PermissionedDisputeGameAddress:            dco.PermissionedDisputeGame,
 		DelayedWETHPermissionedGameProxyAddress:   dco.DelayedWETHPermissionedGameProxy,

@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 
@@ -27,6 +28,7 @@ var (
 	validDatadir                          = "/tmp/data"
 	validL2Rpc                            = "http://localhost:9545"
 	validRollupRpc                        = "http://localhost:8555"
+	validSupervisorRpc                    = "http://localhost/supervisor"
 
 	validAsteriscBin                        = "./bin/asterisc"
 	validAsteriscOpProgramBin               = "./bin/op-program"
@@ -42,7 +44,7 @@ var (
 	validAsteriscKonaAbsolutePreStateBaseURL, _ = url.Parse("http://localhost/bar/")
 )
 
-var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned}
+var cannonTraceTypes = []types.TraceType{types.TraceTypeCannon, types.TraceTypePermissioned, types.TraceTypeSuperCannon}
 var asteriscTraceTypes = []types.TraceType{types.TraceTypeAsterisc}
 var asteriscKonaTraceTypes = []types.TraceType{types.TraceTypeAsteriscKona}
 
@@ -62,8 +64,12 @@ func ensureExists(path string) error {
 	return file.Close()
 }
 
-func applyValidConfigForCannon(t *testing.T, cfg *Config) {
+func applyValidConfigForSuperCannon(t *testing.T, cfg *Config) {
+	cfg.SupervisorRPC = validSupervisorRpc
+	applyValidConfigForCannon(t, cfg)
+}
 
+func applyValidConfigForCannon(t *testing.T, cfg *Config) {
 	tmpDir := t.TempDir()
 	vmBin := filepath.Join(tmpDir, validCannonBin)
 	server := filepath.Join(tmpDir, validCannonOpProgramBin)
@@ -107,6 +113,9 @@ func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
 
 func validConfig(t *testing.T, traceType types.TraceType) Config {
 	cfg := NewConfig(validGameFactoryAddress, validL1EthRpc, validL1BeaconUrl, validRollupRpc, validL2Rpc, validDatadir, traceType)
+	if traceType == types.TraceTypeSuperCannon {
+		applyValidConfigForSuperCannon(t, &cfg)
+	}
 	if traceType == types.TraceTypeCannon || traceType == types.TraceTypePermissioned {
 		applyValidConfigForCannon(t, &cfg)
 	}
@@ -175,13 +184,13 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestCannonBinRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.Cannon.VmBin = ""
-			require.ErrorIs(t, config.Check(), ErrMissingCannonBin)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestCannonServerRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.Cannon.Server = ""
-			require.ErrorIs(t, config.Check(), ErrMissingCannonServer)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingServer)
 		})
 
 		t.Run(fmt.Sprintf("TestCannonAbsolutePreStateOrBaseURLRequired-%v", traceType), func(t *testing.T) {
@@ -240,7 +249,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg.Cannon.Network = ""
 			cfg.Cannon.RollupConfigPath = ""
 			cfg.Cannon.L2GenesisPath = "genesis.json"
-			require.ErrorIs(t, cfg.Check(), ErrMissingCannonRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestCannonNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
@@ -248,7 +257,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg.Cannon.Network = ""
 			cfg.Cannon.RollupConfigPath = "foo.json"
 			cfg.Cannon.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrMissingCannonL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
@@ -256,7 +265,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg.Cannon.Network = validCannonNetwork
 			cfg.Cannon.RollupConfigPath = "foo.json"
 			cfg.Cannon.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkAndRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
@@ -264,13 +273,13 @@ func TestCannonRequiredArgs(t *testing.T) {
 			cfg.Cannon.Network = validCannonNetwork
 			cfg.Cannon.RollupConfigPath = ""
 			cfg.Cannon.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkAndL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Cannon.Network = "unknown"
-			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkUnknown)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMayBeAnyChainID-%v", traceType), func(t *testing.T) {
@@ -282,7 +291,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestNetworkInvalidWhenNotEntirelyNumeric-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Cannon.Network = "467294a"
-			require.ErrorIs(t, cfg.Check(), ErrCannonNetworkUnknown)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
 		t.Run(fmt.Sprintf("TestDebugInfoEnabled-%v", traceType), func(t *testing.T) {
@@ -293,13 +302,13 @@ func TestCannonRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Cannon.VmBin = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingCannonBin)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Cannon.Server = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingCannonServer)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingServer)
 		})
 	}
 }
@@ -311,13 +320,13 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestAsteriscBinRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.Asterisc.VmBin = ""
-			require.ErrorIs(t, config.Check(), ErrMissingAsteriscBin)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscServerRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.Asterisc.Server = ""
-			require.ErrorIs(t, config.Check(), ErrMissingAsteriscServer)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingServer)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscAbsolutePreStateOrBaseURLRequired-%v", traceType), func(t *testing.T) {
@@ -376,7 +385,7 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			cfg.Asterisc.Network = ""
 			cfg.Asterisc.RollupConfigPath = ""
 			cfg.Asterisc.L2GenesisPath = "genesis.json"
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
@@ -384,7 +393,7 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			cfg.Asterisc.Network = ""
 			cfg.Asterisc.RollupConfigPath = "foo.json"
 			cfg.Asterisc.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
@@ -392,7 +401,7 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			cfg.Asterisc.Network = validAsteriscNetwork
 			cfg.Asterisc.RollupConfigPath = "foo.json"
 			cfg.Asterisc.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscNetworkAndRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
@@ -400,13 +409,13 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 			cfg.Asterisc.Network = validAsteriscNetwork
 			cfg.Asterisc.RollupConfigPath = ""
 			cfg.Asterisc.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscNetworkAndL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Asterisc.Network = "unknown"
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscNetworkUnknown)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
 		t.Run(fmt.Sprintf("TestDebugInfoDisabled-%v", traceType), func(t *testing.T) {
@@ -417,13 +426,13 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Asterisc.VmBin = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscBin)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.Asterisc.Server = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscServer)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingServer)
 		})
 	}
 }
@@ -435,13 +444,13 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestAsteriscKonaBinRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.AsteriscKona.VmBin = ""
-			require.ErrorIs(t, config.Check(), ErrMissingAsteriscKonaBin)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscKonaServerRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.AsteriscKona.Server = ""
-			require.ErrorIs(t, config.Check(), ErrMissingAsteriscKonaServer)
+			require.ErrorIs(t, config.Check(), vm.ErrMissingServer)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscKonaAbsolutePreStateOrBaseURLRequired-%v", traceType), func(t *testing.T) {
@@ -500,7 +509,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 			cfg.AsteriscKona.Network = ""
 			cfg.AsteriscKona.RollupConfigPath = ""
 			cfg.AsteriscKona.L2GenesisPath = "genesis.json"
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscKonaNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
@@ -508,7 +517,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 			cfg.AsteriscKona.Network = ""
 			cfg.AsteriscKona.RollupConfigPath = "foo.json"
 			cfg.AsteriscKona.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
@@ -516,7 +525,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 			cfg.AsteriscKona.Network = validAsteriscKonaNetwork
 			cfg.AsteriscKona.RollupConfigPath = "foo.json"
 			cfg.AsteriscKona.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscKonaNetworkAndRollupConfig)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
@@ -524,13 +533,13 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 			cfg.AsteriscKona.Network = validAsteriscKonaNetwork
 			cfg.AsteriscKona.RollupConfigPath = ""
 			cfg.AsteriscKona.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscKonaNetworkAndL2Genesis)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.AsteriscKona.Network = "unknown"
-			require.ErrorIs(t, cfg.Check(), ErrAsteriscKonaNetworkUnknown)
+			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
 		t.Run(fmt.Sprintf("TestDebugInfoDisabled-%v", traceType), func(t *testing.T) {
@@ -541,13 +550,13 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 		t.Run(fmt.Sprintf("TestVMBinExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.AsteriscKona.VmBin = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaBin)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingBin)
 		})
 
 		t.Run(fmt.Sprintf("TestServerExists-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
 			cfg.AsteriscKona.Server = nonExistingFile
-			require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscKonaServer)
+			require.ErrorIs(t, cfg.Check(), vm.ErrMissingServer)
 		})
 	}
 }
@@ -581,11 +590,39 @@ func TestHttpPollInterval(t *testing.T) {
 func TestRollupRpcRequired(t *testing.T) {
 	for _, traceType := range types.TraceTypes {
 		traceType := traceType
+		if traceType == types.TraceTypeSuperCannon {
+			continue
+		}
 		t.Run(traceType.String(), func(t *testing.T) {
 			config := validConfig(t, traceType)
 			config.RollupRpc = ""
 			require.ErrorIs(t, config.Check(), ErrMissingRollupRpc)
 		})
+	}
+}
+
+func TestRollupRpcNotRequiredForInterop(t *testing.T) {
+	config := validConfig(t, types.TraceTypeSuperCannon)
+	config.RollupRpc = ""
+	require.NoError(t, config.Check())
+}
+
+func TestSupervisorRpc(t *testing.T) {
+	for _, traceType := range types.TraceTypes {
+		traceType := traceType
+		if traceType == types.TraceTypeSuperCannon {
+			t.Run("RequiredFor"+traceType.String(), func(t *testing.T) {
+				config := validConfig(t, traceType)
+				config.SupervisorRPC = ""
+				require.ErrorIs(t, config.Check(), ErrMissingSupervisorRpc)
+			})
+		} else {
+			t.Run("NotRequiredFor"+traceType.String(), func(t *testing.T) {
+				config := validConfig(t, traceType)
+				config.SupervisorRPC = ""
+				require.NoError(t, config.Check())
+			})
+		}
 	}
 }
 
@@ -636,7 +673,7 @@ func TestRequireConfigForMultipleTraceTypesForCannonAndAsterisc(t *testing.T) {
 
 	// Require cannon specific args
 	cfg.Cannon.VmBin = ""
-	require.ErrorIs(t, cfg.Check(), ErrMissingCannonBin)
+	require.ErrorIs(t, cfg.Check(), vm.ErrMissingBin)
 	tmpDir := t.TempDir()
 	vmBin := filepath.Join(tmpDir, validCannonBin)
 	err := ensureExists(vmBin)
@@ -649,9 +686,8 @@ func TestRequireConfigForMultipleTraceTypesForCannonAndAsterisc(t *testing.T) {
 	require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscAbsolutePreState)
 	cfg.AsteriscAbsolutePreState = validAsteriscAbsolutePreState
 
-	// Require cannon specific args
 	cfg.Asterisc.Server = ""
-	require.ErrorIs(t, cfg.Check(), ErrMissingAsteriscServer)
+	require.ErrorIs(t, cfg.Check(), vm.ErrMissingServer)
 	server := filepath.Join(tmpDir, validAsteriscOpProgramBin)
 	err = ensureExists(server)
 	require.NoError(t, err)

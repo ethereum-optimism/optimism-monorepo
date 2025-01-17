@@ -44,7 +44,7 @@ func TestInstantiateTemplate(t *testing.T) {
 		err := ctx.InstantiateTemplate(input, &output)
 		require.NoError(t, err)
 
-		expected := "Hello world!"
+		expected := "Hello world!\n"
 		require.Equal(t, expected, output.String())
 	})
 
@@ -61,7 +61,7 @@ func TestInstantiateTemplate(t *testing.T) {
 		err := ctx.InstantiateTemplate(input, &output)
 		require.NoError(t, err)
 
-		expected := "Hello WORLD!"
+		expected := "Hello WORLD!\n"
 		require.Equal(t, expected, output.String())
 	})
 
@@ -104,7 +104,7 @@ func TestInstantiateTemplate(t *testing.T) {
 		err := ctx.InstantiateTemplate(input, &output)
 		require.NoError(t, err)
 
-		expected := "HELLO world!"
+		expected := "HELLO world!\n"
 		require.Equal(t, expected, output.String())
 	})
 }

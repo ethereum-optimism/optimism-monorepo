@@ -76,17 +76,17 @@ var _ LogStorage = (*logs.DB)(nil)
 // it implements the LogStorage interface, as well as several DB interfaces needed by the cross package.
 type ChainsDB struct {
 	// unsafe info: the sequence of block seals and events
-	logDBs locks.RWMap[types.ChainID, LogStorage]
+	logDBs locks.RWMap[eth.ChainID, LogStorage]
 
 	// cross-unsafe: how far we have processed the unsafe data.
 	// If present but set to a zeroed value the cross-unsafe will fallback to cross-safe.
-	crossUnsafe locks.RWMap[types.ChainID, *locks.RWValue[types.BlockSeal]]
+	crossUnsafe locks.RWMap[eth.ChainID, *locks.RWValue[types.BlockSeal]]
 
 	// local-safe: index of what we optimistically know about L2 blocks being derived from L1
-	localDBs locks.RWMap[types.ChainID, LocalDerivedFromStorage]
+	localDBs locks.RWMap[eth.ChainID, LocalDerivedFromStorage]
 
 	// cross-safe: index of L2 blocks we know to only have cross-L2 valid dependencies
-	crossDBs locks.RWMap[types.ChainID, CrossDerivedFromStorage]
+	crossDBs locks.RWMap[eth.ChainID, CrossDerivedFromStorage]
 
 	// finalized: the L1 finality progress. This can be translated into what may be considered as finalized in L2.
 	// It is initially zeroed, and the L2 finality query will return
@@ -131,7 +131,7 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 	return true
 }
 
-func (db *ChainsDB) AddLogDB(chainID types.ChainID, logDB LogStorage) {
+func (db *ChainsDB) AddLogDB(chainID eth.ChainID, logDB LogStorage) {
 	if db.logDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing log DB for chain", "chain", chainID)
 	}
@@ -139,7 +139,7 @@ func (db *ChainsDB) AddLogDB(chainID types.ChainID, logDB LogStorage) {
 	db.logDBs.Set(chainID, logDB)
 }
 
-func (db *ChainsDB) AddLocalDerivedFromDB(chainID types.ChainID, dfDB LocalDerivedFromStorage) {
+func (db *ChainsDB) AddLocalDerivedFromDB(chainID eth.ChainID, dfDB LocalDerivedFromStorage) {
 	if db.localDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing local derived-from DB for chain", "chain", chainID)
 	}
@@ -147,7 +147,7 @@ func (db *ChainsDB) AddLocalDerivedFromDB(chainID types.ChainID, dfDB LocalDeriv
 	db.localDBs.Set(chainID, dfDB)
 }
 
-func (db *ChainsDB) AddCrossDerivedFromDB(chainID types.ChainID, dfDB CrossDerivedFromStorage) {
+func (db *ChainsDB) AddCrossDerivedFromDB(chainID eth.ChainID, dfDB CrossDerivedFromStorage) {
 	if db.crossDBs.Has(chainID) {
 		db.logger.Warn("overwriting existing cross derived-from DB for chain", "chain", chainID)
 	}
@@ -155,7 +155,7 @@ func (db *ChainsDB) AddCrossDerivedFromDB(chainID types.ChainID, dfDB CrossDeriv
 	db.crossDBs.Set(chainID, dfDB)
 }
 
-func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
+func (db *ChainsDB) AddCrossUnsafeTracker(chainID eth.ChainID) {
 	if db.crossUnsafe.Has(chainID) {
 		db.logger.Warn("overwriting existing cross-unsafe tracker for chain", "chain", chainID)
 	}
@@ -167,7 +167,7 @@ func (db *ChainsDB) AddCrossUnsafeTracker(chainID types.ChainID) {
 // to ensure it can resume recording from the first log of the next block.
 func (db *ChainsDB) ResumeFromLastSealedBlock() error {
 	var result error
-	db.logDBs.Range(func(chain types.ChainID, logStore LogStorage) bool {
+	db.logDBs.Range(func(chain eth.ChainID, logStore LogStorage) bool {
 		headNum, ok := logStore.LatestSealedBlockNum()
 		if !ok {
 			// db must be empty, nothing to rewind to
@@ -190,7 +190,7 @@ func (db *ChainsDB) DependencySet() depset.DependencySet {
 
 func (db *ChainsDB) Close() error {
 	var combined error
-	db.logDBs.Range(func(id types.ChainID, logDB LogStorage) bool {
+	db.logDBs.Range(func(id eth.ChainID, logDB LogStorage) bool {
 		if err := logDB.Close(); err != nil {
 			combined = errors.Join(combined, fmt.Errorf("failed to close log db for chain %v: %w", id, err))
 		}

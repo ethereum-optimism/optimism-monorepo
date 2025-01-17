@@ -53,6 +53,7 @@ var (
 	methodL2BlockNumberChallenged = "l2BlockNumberChallenged"
 	methodL2BlockNumberChallenger = "l2BlockNumberChallenger"
 	methodChallengeRootL2Block    = "challengeRootL2Block"
+	methodBondDistributionMode    = "bondDistributionMode"
 )
 
 var (
@@ -64,11 +65,6 @@ type FaultDisputeGameContractLatest struct {
 	metrics     metrics.ContractMetricer
 	multiCaller *batching.MultiCaller
 	contract    *batching.BoundContract
-}
-
-type Proposal struct {
-	L2BlockNumber *big.Int
-	OutputRoot    common.Hash
 }
 
 // outputRootProof is designed to match the solidity OutputRootProof struct.
@@ -455,6 +451,14 @@ func (f *FaultDisputeGameContractLatest) GetAllClaims(ctx context.Context, block
 	return claims, nil
 }
 
+func (f *FaultDisputeGameContractLatest) BondDistributionMode(ctx context.Context) (uint8, error) {
+	result, err := f.multiCaller.SingleCall(ctx, rpcblock.Latest, f.contract.Call(methodBondDistributionMode))
+	if err != nil {
+		return 0, fmt.Errorf("failed to fetch bond mode: %w", err)
+	}
+	return result.GetUint8(0), nil
+}
+
 func (f *FaultDisputeGameContractLatest) IsResolved(ctx context.Context, block rpcblock.Block, claims ...types.Claim) ([]bool, error) {
 	defer f.metrics.StartContractRequest("IsResolved")()
 	calls := make([]batching.Call, 0, len(claims))
@@ -639,4 +643,5 @@ type FaultDisputeGameContract interface {
 	CallResolve(ctx context.Context) (gameTypes.GameStatus, error)
 	ResolveTx() (txmgr.TxCandidate, error)
 	Vm(ctx context.Context) (*VMContract, error)
+	BondDistributionMode(ctx context.Context) (uint8, error)
 }

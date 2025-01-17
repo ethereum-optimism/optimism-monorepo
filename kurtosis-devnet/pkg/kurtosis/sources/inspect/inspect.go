@@ -71,6 +71,14 @@ func (e *Inspector) ExtractData(ctx context.Context) (*InspectData, error) {
 			}
 		}
 
+		for port, portSpec := range svcCtx.GetPrivatePorts() {
+			// avoid non-mapped ports, we shouldn't have to use them.
+			if p, ok := portMap[port]; ok {
+				p.PrivatePort = int(portSpec.GetNumber())
+				portMap[port] = p
+			}
+		}
+
 		if len(portMap) != 0 {
 			data.UserServices[svc] = portMap
 		}

@@ -10,8 +10,8 @@ import { GameType, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
 
 interface IAnchorStateRegistry {
     error AnchorStateRegistry_Unauthorized();
-    error AnchorStateRegistry_ImproperAnchorGame();
     error AnchorStateRegistry_InvalidAnchorGame();
+    error AnchorStateRegistry_AnchorGameBlacklisted();
 
     event AnchorNotUpdated(IFaultDisputeGame indexed game);
     event AnchorUpdated(IFaultDisputeGame indexed game);
@@ -21,16 +21,27 @@ interface IAnchorStateRegistry {
     function anchors(GameType) external view returns (Hash, uint256);
     function getAnchorRoot() external view returns (Hash, uint256);
     function disputeGameFactory() external view returns (IDisputeGameFactory);
-    function initialize(ISuperchainConfig _superchainConfig, IDisputeGameFactory _disputeGameFactory, IOptimismPortal2 _portal, OutputRoot memory _startingAnchorRoot) external;
-    function isGameRegistered(IDisputeGame _game) external view returns (bool);
+    function initialize(
+        ISuperchainConfig _superchainConfig,
+        IDisputeGameFactory _disputeGameFactory,
+        IOptimismPortal2 _portal,
+        OutputRoot memory _startingAnchorRoot
+    )
+        external;
+
+    function isGameAirgapped(IDisputeGame _game) external view returns (bool);
     function isGameBlacklisted(IDisputeGame _game) external view returns (bool);
+    function isGameProper(IDisputeGame _game) external view returns (bool);
+    function isGameRegistered(IDisputeGame _game) external view returns (bool);
+    function isGameResolved(IDisputeGame _game) external view returns (bool);
     function isGameRespected(IDisputeGame _game) external view returns (bool);
     function isGameRetired(IDisputeGame _game) external view returns (bool);
-    function isGameProper(IDisputeGame _game) external view returns (bool);
+    function isGameFinalized(IDisputeGame _game) external view returns (bool);
+    function isGameClaimValid(IDisputeGame _game) external view returns (bool);
     function portal() external view returns (IOptimismPortal2);
-    function setAnchorState(IFaultDisputeGame _game) external;
+    function respectedGameType() external view returns (GameType);
+    function setAnchorState(IDisputeGame _game) external;
     function superchainConfig() external view returns (ISuperchainConfig);
-    function tryUpdateAnchorState() external;
     function version() external view returns (string memory);
 
     function __constructor__() external;

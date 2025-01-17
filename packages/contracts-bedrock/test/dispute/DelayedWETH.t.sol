@@ -352,26 +352,48 @@ contract DelayedWETH_Recover_Test is DelayedWETH_Init {
 
 contract DelayedWETH_Hold_Test is DelayedWETH_Init {
     /// @dev Tests that holding WETH succeeds.
-    function test_hold_succeeds() public {
+    function test_hold_byOwner_succeeds() public {
         uint256 amount = 1 ether;
 
         // Pretend to be alice and deposit some WETH.
         vm.prank(alice);
         delayedWeth.deposit{ value: amount }();
 
+        // Get our balance before.
+        uint256 initialBalance = delayedWeth.balanceOf(address(this));
+
         // Hold some WETH.
         vm.expectEmit(true, true, true, false);
         emit Approval(alice, address(this), amount);
         delayedWeth.hold(alice, amount);
 
-        // Verify the allowance.
-        assertEq(delayedWeth.allowance(alice, address(this)), amount);
-
-        // We can transfer.
-        delayedWeth.transferFrom(alice, address(this), amount);
+        // Get our balance after.
+        uint256 finalBalance = delayedWeth.balanceOf(address(this));
 
         // Verify the transfer.
-        assertEq(delayedWeth.balanceOf(address(this)), amount);
+        assertEq(finalBalance, initialBalance + amount);
+    }
+
+    function test_hold_withoutAmount_succeeds() public {
+        uint256 amount = 1 ether;
+
+        // Pretend to be alice and deposit some WETH.
+        vm.prank(alice);
+        delayedWeth.deposit{ value: amount }();
+
+        // Get our balance before.
+        uint256 initialBalance = delayedWeth.balanceOf(address(this));
+
+        // Hold some WETH.
+        vm.expectEmit(true, true, true, false);
+        emit Approval(alice, address(this), amount);
+        delayedWeth.hold(alice); // without amount parameter
+
+        // Get our balance after.
+        uint256 finalBalance = delayedWeth.balanceOf(address(this));
+
+        // Verify the transfer.
+        assertEq(finalBalance, initialBalance + amount);
     }
 
     /// @dev Tests that holding WETH by non-owner fails.

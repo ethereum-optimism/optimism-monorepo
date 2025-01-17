@@ -14,18 +14,18 @@ import (
 )
 
 type LogStorage interface {
-	SealBlock(chain types.ChainID, block eth.BlockRef) error
-	AddLog(chain types.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
+	SealBlock(chain eth.ChainID, block eth.BlockRef) error
+	AddLog(chain eth.ChainID, logHash common.Hash, parentBlock eth.BlockID, logIdx uint32, execMsg *types.ExecutingMessage) error
 }
 
 type logProcessor struct {
-	chain        types.ChainID
+	chain        eth.ChainID
 	logStore     LogStorage
 	eventDecoder EventDecoderFn
 	depSet       depset.ChainIndexFromID
 }
 
-func NewLogProcessor(chain types.ChainID, logStore LogStorage, depSet depset.ChainIndexFromID) LogProcessor {
+func NewLogProcessor(chain eth.ChainID, logStore LogStorage, depSet depset.ChainIndexFromID) LogProcessor {
 	return &logProcessor{
 		chain:        chain,
 		logStore:     logStore,

@@ -77,7 +77,7 @@ func (cl *SupervisorClient) CheckMessage(ctx context.Context, identifier types.I
 	return result, nil
 }
 
-func (cl *SupervisorClient) UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
+func (cl *SupervisorClient) UnsafeView(ctx context.Context, chainID eth.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
 	var result types.ReferenceView
 	err := cl.client.CallContext(
 		ctx,
@@ -91,7 +91,7 @@ func (cl *SupervisorClient) UnsafeView(ctx context.Context, chainID types.ChainI
 	return result, nil
 }
 
-func (cl *SupervisorClient) SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
+func (cl *SupervisorClient) SafeView(ctx context.Context, chainID eth.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
 	var result types.ReferenceView
 	err := cl.client.CallContext(
 		ctx,
@@ -105,7 +105,7 @@ func (cl *SupervisorClient) SafeView(ctx context.Context, chainID types.ChainID,
 	return result, nil
 }
 
-func (cl *SupervisorClient) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (cl *SupervisorClient) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	var result eth.BlockID
 	err := cl.client.CallContext(
 		ctx,
@@ -124,7 +124,7 @@ func (cl *SupervisorClient) FinalizedL1(ctx context.Context) (eth.BlockRef, erro
 	return result, err
 }
 
-func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
+func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (eth.BlockRef, error) {
 	var result eth.BlockRef
 	err := cl.client.CallContext(
 		ctx,
@@ -135,7 +135,7 @@ func (cl *SupervisorClient) CrossDerivedFrom(ctx context.Context, chainID types.
 	return result, err
 }
 
-func (cl *SupervisorClient) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
+func (cl *SupervisorClient) UpdateLocalUnsafe(ctx context.Context, chainID eth.ChainID, head eth.BlockRef) error {
 	return cl.client.CallContext(
 		ctx,
 		nil,
@@ -144,7 +144,7 @@ func (cl *SupervisorClient) UpdateLocalUnsafe(ctx context.Context, chainID types
 		head)
 }
 
-func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
+func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID eth.ChainID, derivedFrom eth.L1BlockRef, lastDerived eth.BlockRef) error {
 	return cl.client.CallContext(
 		ctx,
 		nil,
@@ -154,8 +154,8 @@ func (cl *SupervisorClient) UpdateLocalSafe(ctx context.Context, chainID types.C
 		lastDerived)
 }
 
-func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (types.SuperRootResponse, error) {
-	var result types.SuperRootResponse
+func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
+	var result eth.SuperRootResponse
 	err := cl.client.CallContext(
 		ctx,
 		&result,

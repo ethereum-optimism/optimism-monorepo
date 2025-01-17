@@ -1,8 +1,9 @@
 package descriptors
 
 type PortInfo struct {
-	Host string `json:"host"`
-	Port int    `json:"port"`
+	Host        string `json:"host"`
+	Port        int    `json:"port"`
+	PrivatePort int    `json:"private_port"`
 }
 
 // EndpointMap is a map of service names to their endpoints.
@@ -49,4 +50,6 @@ type WalletMap map[string]Wallet
 type DevnetEnvironment struct {
 	L1 *Chain   `json:"l1"`
 	L2 []*Chain `json:"l2"`
+
+	Features []string `json:"features,omitempty"`
 }

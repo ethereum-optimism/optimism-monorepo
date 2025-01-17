@@ -5,6 +5,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/core"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
@@ -38,7 +39,7 @@ const (
 
 // Chain holds the most common per-chain action-test data and actors
 type Chain struct {
-	ChainID types.ChainID
+	ChainID eth.ChainID
 
 	RollupCfg   *rollup.Config
 	L2Genesis   *core.Genesis
@@ -148,9 +149,9 @@ func (sa *SupervisorActor) SignalFinalizedL1(t helpers.Testing) {
 
 // worldToDepSet converts a set of chain configs into a dependency-set for the supervisor.
 func worldToDepSet(t helpers.Testing, worldOutput *interopgen.WorldOutput) *depset.StaticConfigDependencySet {
-	depSetCfg := make(map[types.ChainID]*depset.StaticConfigDependency)
+	depSetCfg := make(map[eth.ChainID]*depset.StaticConfigDependency)
 	for _, out := range worldOutput.L2s {
-		depSetCfg[types.ChainIDFromBig(out.Genesis.Config.ChainID)] = &depset.StaticConfigDependency{
+		depSetCfg[eth.ChainIDFromBig(out.Genesis.Config.ChainID)] = &depset.StaticConfigDependency{
 			ChainIndex:     types.ChainIndex(out.Genesis.Config.ChainID.Uint64()),
 			ActivationTime: 0,
 			HistoryMinTime: 0,
@@ -231,7 +232,7 @@ func createL2Services(
 		eng.EthClient(), eng.EngineClient(t, output.RollupCfg))
 
 	return &Chain{
-		ChainID:         types.ChainIDFromBig(output.Genesis.Config.ChainID),
+		ChainID:         eth.ChainIDFromBig(output.Genesis.Config.ChainID),
 		RollupCfg:       output.RollupCfg,
 		L2Genesis:       output.Genesis,
 		BatcherAddr:     crypto.PubkeyToAddress(batcherKey.PublicKey),

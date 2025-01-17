@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"sync/atomic"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
@@ -21,7 +22,7 @@ type SyncNodesController struct {
 	logger log.Logger
 
 	id          atomic.Uint64
-	controllers locks.RWMap[types.ChainID, *locks.RWMap[*ManagedNode, struct{}]]
+	controllers locks.RWMap[eth.ChainID, *locks.RWMap[*ManagedNode, struct{}]]
 
 	eventSys event.System
 
@@ -53,7 +54,7 @@ func (snc *SyncNodesController) OnEvent(ev event.Event) bool {
 }
 
 func (snc *SyncNodesController) Close() error {
-	snc.controllers.Range(func(chainID types.ChainID, controllers *locks.RWMap[*ManagedNode, struct{}]) bool {
+	snc.controllers.Range(func(chainID eth.ChainID, controllers *locks.RWMap[*ManagedNode, struct{}]) bool {
 		controllers.Range(func(node *ManagedNode, _ struct{}) bool {
 			node.Close()
 			return true
@@ -65,7 +66,7 @@ func (snc *SyncNodesController) Close() error {
 
 // AttachNodeController attaches a node to be managed by the supervisor.
 // If noSubscribe, the node is not actively polled/subscribed to, and requires manual ManagedNode.PullEvents calls.
-func (snc *SyncNodesController) AttachNodeController(chainID types.ChainID, ctrl SyncControl, noSubscribe bool) (Node, error) {
+func (snc *SyncNodesController) AttachNodeController(chainID eth.ChainID, ctrl SyncControl, noSubscribe bool) (Node, error) {
 	if !snc.depSet.HasChain(chainID) {
 		return nil, fmt.Errorf("chain %v not in dependency set: %w", chainID, types.ErrUnknownChain)
 	}

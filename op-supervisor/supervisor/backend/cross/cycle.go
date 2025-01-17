@@ -19,7 +19,7 @@ var (
 // CycleCheckDeps is an interface for checking cyclical dependencies between logs.
 type CycleCheckDeps interface {
 	// OpenBlock returns log data for the requested block, to be used for cycle checking.
-	OpenBlock(chainID types.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	OpenBlock(chainID eth.ChainID, blockNum uint64) (block eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
 }
 
 // node represents a log entry in the dependency graph.

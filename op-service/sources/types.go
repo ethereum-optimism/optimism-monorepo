@@ -89,11 +89,11 @@ func (hdr *RPCHeader) checkPostMerge() error {
 }
 
 func (hdr *RPCHeader) computeBlockHash() common.Hash {
-	gethHeader := hdr.createGethHeader()
+	gethHeader := hdr.CreateGethHeader()
 	return gethHeader.Hash()
 }
 
-func (hdr *RPCHeader) createGethHeader() *types.Header {
+func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 	return &types.Header{
 		ParentHash:      hdr.ParentHash,
 		UncleHash:       hdr.UncleHash,
@@ -130,7 +130,7 @@ func (hdr *RPCHeader) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo
 			return nil, fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, hdr.Hash)
 		}
 	}
-	return eth.HeaderBlockInfoTrusted(hdr.Hash, hdr.createGethHeader()), nil
+	return eth.HeaderBlockInfoTrusted(hdr.Hash, hdr.CreateGethHeader()), nil
 }
 
 func (hdr *RPCHeader) BlockID() eth.BlockID {
@@ -146,7 +146,7 @@ type RPCBlock struct {
 	Withdrawals  *types.Withdrawals   `json:"withdrawals,omitempty"`
 }
 
-func (block *RPCBlock) verify() error {
+func (block *RPCBlock) Verify() error {
 	if computed := block.computeBlockHash(); computed != block.Hash {
 		return fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, block.Hash)
 	}
@@ -185,7 +185,7 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInf
 		}
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -204,7 +204,7 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 		return nil, err
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, err
 		}
 	}

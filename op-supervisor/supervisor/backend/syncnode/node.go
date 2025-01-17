@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"strings"
 	"sync"
@@ -22,22 +23,25 @@ import (
 )
 
 type backend interface {
-	LocalSafe(ctx context.Context, chainID types.ChainID) (pair types.DerivedIDPair, err error)
-	LocalUnsafe(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
-	SafeDerivedAt(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
-	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
+	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
+	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
 const (
-	internalTimeout = time.Second * 30
-	nodeTimeout     = time.Second * 10
+	internalTimeout            = time.Second * 30
+	nodeTimeout                = time.Second * 10
+	maxWalkBackAttempts        = 300
+	blockNotFoundRPCErrCode    = -39001
+	conflictingBlockRPCErrCode = -39002
 )
 
 type ManagedNode struct {
 	log     log.Logger
 	Node    SyncControl
-	chainID types.ChainID
+	chainID eth.ChainID
 
 	backend backend
 
@@ -57,7 +61,7 @@ type ManagedNode struct {
 var _ event.AttachEmitter = (*ManagedNode)(nil)
 var _ event.Deriver = (*ManagedNode)(nil)
 
-func NewManagedNode(log log.Logger, id types.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
+func NewManagedNode(log log.Logger, id eth.ChainID, node SyncControl, backend backend, noSubscribe bool) *ManagedNode {
 	ctx, cancel := context.WithCancel(context.Background())
 	m := &ManagedNode{
 		log:     log.New("chain", id),
@@ -271,13 +275,13 @@ func (m *ManagedNode) onDerivationUpdate(pair types.DerivedBlockRefPair) {
 	// TODO: keep synchronous local-safe DB update feedback?
 	// We'll still need more async ways of doing this for reorg handling.
 
-	//ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
-	//defer cancel()
-	//if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
+	// ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	// defer cancel()
+	// if err := m.backend.UpdateLocalSafe(ctx, m.chainID, pair.DerivedFrom, pair.Derived); err != nil {
 	//	m.log.Warn("Backend failed to process local-safe update",
 	//		"derived", pair.Derived, "derivedFrom", pair.DerivedFrom, "err", err)
 	//	m.resetSignal(err, pair.DerivedFrom)
-	//}
+	// }
 }
 
 func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
@@ -307,22 +311,17 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	// TODO: errors.As switch
 	switch errSignal {
 	case types.ErrConflict:
-		s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
-		if err != nil {
-			m.log.Warn("Failed to retrieve cross-safe", "err", err)
+		if err := m.resolveConflict(ctx, l1Ref, u, f); err != nil {
+			m.log.Warn("Failed to resolve conflict", "unsafe", u, "finalized", f)
 			return
 		}
-		log.Debug("Node detected conflict, resetting", "unsafe", u, "safe", s, "finalized", f)
-		err = m.Node.Reset(ctx, u, s, f)
-		if err != nil {
-			m.log.Warn("Node failed to reset", "err", err)
-		}
+
 	case types.ErrFuture:
 		s, err := m.backend.LocalSafe(ctx, m.chainID)
 		if err != nil {
 			m.log.Warn("Failed to retrieve local-safe", "err", err)
 		}
-		log.Debug("Node detected future block, resetting", "unsafe", u, "safe", s, "finalized", f)
+		m.log.Debug("Node detected future block, resetting", "unsafe", u, "safe", s, "finalized", f)
 		err = m.Node.Reset(ctx, u, s.Derived, f)
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
@@ -330,6 +329,65 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	case types.ErrOutOfOrder:
 		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
 	}
+}
+
+// resolveConflict attempts to reset the node to a valid state when a conflict is detected.
+// It first tries using the latest safe block, and if that fails, walks back block by block
+// until it finds a common ancestor or reaches the finalized block.
+func (m *ManagedNode) resolveConflict(ctx context.Context, l1Ref eth.BlockRef, u eth.BlockID, f eth.BlockID) error {
+	// First try to reset to the last known safe block
+	s, err := m.backend.SafeDerivedAt(ctx, m.chainID, l1Ref.ID())
+	if err != nil {
+		return fmt.Errorf("failed to retrieve safe block for %v: %w", l1Ref.ID(), err)
+	}
+
+	// Helper to attempt a reset and classify the error
+	tryReset := func(safe eth.BlockID) (resolved bool, needsWalkback bool, err error) {
+		m.log.Debug("Attempting reset", "unsafe", u, "safe", safe, "finalized", f)
+		if err := m.Node.Reset(ctx, u, safe, f); err == nil {
+			return true, false, nil
+		} else {
+			var rpcErr *gethrpc.JsonError
+			if errors.As(err, &rpcErr) && (rpcErr.Code == blockNotFoundRPCErrCode || rpcErr.Code == conflictingBlockRPCErrCode) {
+				return false, true, err
+			}
+			return false, false, err
+		}
+	}
+
+	// Try initial reset
+	resolved, needsWalkback, err := tryReset(s)
+	if resolved {
+		return nil
+	}
+	if !needsWalkback {
+		return fmt.Errorf("error during reset: %w", err)
+	}
+
+	// Walk back one block at a time looking for a common ancestor
+	currentBlock := s.Number
+	for i := 0; i < maxWalkBackAttempts; i++ {
+		currentBlock--
+		if currentBlock <= f.Number {
+			return fmt.Errorf("reached finalized block %d without finding common ancestor", f.Number)
+		}
+
+		safe, err := m.backend.SafeDerivedAt(ctx, m.chainID, eth.BlockID{Number: currentBlock})
+		if err != nil {
+			return fmt.Errorf("failed to retrieve safe block %d: %w", currentBlock, err)
+		}
+
+		resolved, _, err := tryReset(safe)
+		if resolved {
+			return nil
+		}
+		// Continue walking back on walkable errors, otherwise return the error
+		var rpcErr *gethrpc.JsonError
+		if !errors.As(err, &rpcErr) || (rpcErr.Code != blockNotFoundRPCErrCode && rpcErr.Code != conflictingBlockRPCErrCode) {
+			return fmt.Errorf("error during reset at block %d: %w", currentBlock, err)
+		}
+	}
+	return fmt.Errorf("exceeded maximum walk-back attempts (%d)", maxWalkBackAttempts)
 }
 
 func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {

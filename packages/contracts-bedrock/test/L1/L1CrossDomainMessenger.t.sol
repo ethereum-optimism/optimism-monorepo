@@ -11,6 +11,7 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 // Target contract dependencies
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -22,7 +23,12 @@ contract L1CrossDomainMessenger_Test is CommonTest {
     address recipient = address(0xabbaacdc);
 
     /// @dev The storage slot of the l2Sender
-    uint256 constant senderSlotIndex = 50;
+    uint256 senderSlotIndex;
+
+    function setUp() public override {
+        super.setUp();
+        senderSlotIndex = ForgeArtifacts.getSlot("OptimismPortal2", "l2Sender").slot;
+    }
 
     /// @dev Tests that the implementation is initialized correctly.
     /// @notice Marked virtual to be overridden in

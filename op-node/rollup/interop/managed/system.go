@@ -276,8 +276,8 @@ func (m *ManagedMode) BlockRefByNumber(ctx context.Context, num uint64) (eth.Blo
 	return m.l2.BlockRefByNumber(ctx, num)
 }
 
-func (m *ManagedMode) ChainID(ctx context.Context) (supervisortypes.ChainID, error) {
-	return supervisortypes.ChainIDFromBig(m.cfg.L2ChainID), nil
+func (m *ManagedMode) ChainID(ctx context.Context) (eth.ChainID, error) {
+	return eth.ChainIDFromBig(m.cfg.L2ChainID), nil
 }
 
 func (m *ManagedMode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
