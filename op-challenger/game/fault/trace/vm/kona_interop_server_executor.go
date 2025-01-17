@@ -22,7 +22,7 @@ func NewNativeKonaSuperExecutor() *KonaSuperExecutor {
 }
 
 func (s *KonaSuperExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
-	if inputs.AgreedPreState == nil {
+	if len(inputs.AgreedPreState) == 0 {
 		return nil, errors.New("agreed pre-state is not defined")
 	}
 
@@ -33,7 +33,7 @@ func (s *KonaSuperExecutor) OracleCommand(cfg Config, dataDir string, inputs uti
 		"--l1-beacon-address", cfg.L1Beacon,
 		"--l2-node-addresses", cfg.L2,
 		"--l1-head", inputs.L1Head.Hex(),
-		"--agreed-l2-pre-state", common.Bytes2Hex(*inputs.AgreedPreState),
+		"--agreed-l2-pre-state", common.Bytes2Hex(inputs.AgreedPreState),
 		"--claimed-l2-post-state", inputs.L2Claim.Hex(),
 		"--claimed-l2-timestamp", inputs.L2BlockNumber.Text(10),
 	}
