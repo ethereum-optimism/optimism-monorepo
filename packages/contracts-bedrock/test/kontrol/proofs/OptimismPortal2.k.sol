@@ -6,7 +6,6 @@ import { KontrolUtils } from "./utils/KontrolUtils.sol";
 import { Types } from "src/libraries/Types.sol";
 import { IOptimismPortal2 as OptimismPortal } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISuperchainConfig as SuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import "src/libraries/PortalErrors.sol";
 
 contract OptimismPortal2Kontrol is DeploymentSummaryFaultProofs, KontrolUtils {
     OptimismPortal optimismPortal;
@@ -26,7 +25,7 @@ contract OptimismPortal2Kontrol is DeploymentSummaryFaultProofs, KontrolUtils {
         vm.prank(optimismPortal.guardian());
         superchainConfig.pause("identifier");
 
-        vm.expectRevert(CallPaused.selector);
+        vm.expectRevert(OptimismPortal.OptimismPortal_CallPaused.selector);
         optimismPortal.finalizeWithdrawalTransaction(_tx);
     }
 
@@ -47,7 +46,7 @@ contract OptimismPortal2Kontrol is DeploymentSummaryFaultProofs, KontrolUtils {
         vm.prank(optimismPortal.guardian());
         superchainConfig.pause("identifier");
 
-        vm.expectRevert(CallPaused.selector);
+        vm.expectRevert(OptimismPortal.OptimismPortal_CallPaused.selector);
         optimismPortal.proveWithdrawalTransaction(_tx, _l2OutputIndex, _outputRootProof, _withdrawalProof);
     }
 

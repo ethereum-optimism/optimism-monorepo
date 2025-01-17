@@ -5,11 +5,6 @@
         "internalType": "uint256",
         "name": "_proofMaturityDelaySeconds",
         "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_disputeGameFinalityDelaySeconds",
-        "type": "uint256"
       }
     ],
     "stateMutability": "nonpayable",
@@ -20,16 +15,16 @@
     "type": "receive"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "anchorStateRegistry",
+    "outputs": [
       {
-        "internalType": "contract IDisputeGame",
-        "name": "_disputeGame",
+        "internalType": "contract IAnchorStateRegistry",
+        "name": "",
         "type": "address"
       }
     ],
-    "name": "blacklistDisputeGame",
-    "outputs": [],
-    "stateMutability": "nonpayable",
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -81,25 +76,6 @@
     "name": "depositTransaction",
     "outputs": [],
     "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "contract IDisputeGame",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "disputeGameBlacklist",
-    "outputs": [
-      {
-        "internalType": "bool",
-        "name": "",
-        "type": "bool"
-      }
-    ],
-    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -265,11 +241,6 @@
   {
     "inputs": [
       {
-        "internalType": "contract IDisputeGameFactory",
-        "name": "_disputeGameFactory",
-        "type": "address"
-      },
-      {
         "internalType": "contract ISystemConfig",
         "name": "_systemConfig",
         "type": "address"
@@ -280,9 +251,9 @@
         "type": "address"
       },
       {
-        "internalType": "GameType",
-        "name": "_initialRespectedGameType",
-        "type": "uint32"
+        "internalType": "contract IAnchorStateRegistry",
+        "name": "_anchorStateRegistry",
+        "type": "address"
       }
     ],
     "name": "initialize",
@@ -552,19 +523,6 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "GameType",
-        "name": "_gameType",
-        "type": "uint32"
-      }
-    ],
-    "name": "setRespectedGameType",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
     "inputs": [],
     "name": "superchainConfig",
     "outputs": [
@@ -591,6 +549,19 @@
     "type": "function"
   },
   {
+    "inputs": [
+      {
+        "internalType": "contract IAnchorStateRegistry",
+        "name": "_anchorStateRegistry",
+        "type": "address"
+      }
+    ],
+    "name": "upgrade",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
     "inputs": [],
     "name": "version",
     "outputs": [
@@ -607,19 +578,6 @@
     "anonymous": false,
     "inputs": [
       {
-        "indexed": true,
-        "internalType": "contract IDisputeGame",
-        "name": "disputeGame",
-        "type": "address"
-      }
-    ],
-    "name": "DisputeGameBlacklisted",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
         "indexed": false,
         "internalType": "uint8",
         "name": "version",
@@ -627,25 +585,6 @@
       }
     ],
     "name": "Initialized",
-    "type": "event"
-  },
-  {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "GameType",
-        "name": "newGameType",
-        "type": "uint32"
-      },
-      {
-        "indexed": true,
-        "internalType": "Timestamp",
-        "name": "updatedAt",
-        "type": "uint64"
-      }
-    ],
-    "name": "RespectedGameTypeSet",
     "type": "event"
   },
   {
@@ -744,26 +683,6 @@
   },
   {
     "inputs": [],
-    "name": "AlreadyFinalized",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "BadTarget",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "Blacklisted",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "CallPaused",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "ContentLengthMismatch",
     "type": "error"
   },
@@ -774,22 +693,7 @@
   },
   {
     "inputs": [],
-    "name": "GasEstimation",
-    "type": "error"
-  },
-  {
-    "inputs": [],
     "name": "InvalidDataRemainder",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidDisputeGame",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "InvalidGameType",
     "type": "error"
   },
   {
@@ -799,47 +703,82 @@
   },
   {
     "inputs": [],
-    "name": "InvalidMerkleProof",
+    "name": "OptimismPortal_AlreadyFinalized",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "InvalidProof",
+    "name": "OptimismPortal_BadTarget",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "LargeCalldata",
+    "name": "OptimismPortal_CallPaused",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "LegacyGame",
+    "name": "OptimismPortal_CalldataTooLarge",
     "type": "error"
   },
   {
     "inputs": [],
-    "name": "NonReentrant",
+    "name": "OptimismPortal_GasEstimation",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_GasLimitTooLow",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_ImproperDisputeGame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidDisputeGame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidMerkleProof",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidOutputRootProof",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidProofTimestamp",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_InvalidRootClaim",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_NoReentrancy",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_ProofNotOldEnough",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OptimismPortal_Unproven",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "OutOfGas",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "ProposalNotValidated",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "SmallGasLimit",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "Unauthorized",
     "type": "error"
   },
   {
@@ -850,11 +789,6 @@
   {
     "inputs": [],
     "name": "UnexpectedString",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "Unproven",
     "type": "error"
   }
 ]

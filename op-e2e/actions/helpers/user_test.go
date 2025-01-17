@@ -308,6 +308,12 @@ func runCrossLayerUserTest(gt *testing.T, test hardforkScheduledTest) {
 		require.Equal(t, types.ReceiptStatusSuccessful, receipt.Status, "proposal failed")
 	}
 
+	// Mine an empty block so that the timestamp is updated. Otherwise ActProveWithdrawal will fail
+	// because it tries to estimate gas based on the current timestamp, which is the same timestamp
+	// as the dispute game creation timestamp, which causes proveWithdrawalTransaction to revert.
+	miner.ActL1StartBlock(12)(t)
+	miner.ActL1EndBlock(t)
+
 	// prove our withdrawal on L1
 	alice.ActProveWithdrawal(t)
 	// include proved withdrawal in new L1 block

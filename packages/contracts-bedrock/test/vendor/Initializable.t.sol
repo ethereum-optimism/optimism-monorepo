@@ -18,7 +18,6 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
-import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 
 /// @title Initializer_Test
@@ -124,13 +123,7 @@ contract Initializer_Test is CommonTest {
                 name: "OptimismPortal2Impl",
                 target: EIP1967Helper.getImplementation(address(optimismPortal2)),
                 initCalldata: abi.encodeCall(
-                    optimismPortal2.initialize,
-                    (
-                        disputeGameFactory,
-                        systemConfig,
-                        superchainConfig,
-                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
-                    )
+                    optimismPortal2.initialize, (systemConfig, superchainConfig, anchorStateRegistry)
                 )
             })
         );
@@ -140,13 +133,7 @@ contract Initializer_Test is CommonTest {
                 name: "OptimismPortal2Proxy",
                 target: address(optimismPortal2),
                 initCalldata: abi.encodeCall(
-                    optimismPortal2.initialize,
-                    (
-                        disputeGameFactory,
-                        systemConfig,
-                        superchainConfig,
-                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
-                    )
+                    optimismPortal2.initialize, (systemConfig, superchainConfig, anchorStateRegistry)
                 )
             })
         );
@@ -314,8 +301,8 @@ contract Initializer_Test is CommonTest {
                     (
                         ISuperchainConfig(address(0)),
                         IDisputeGameFactory(address(0)),
-                        IOptimismPortal2(payable(0)),
-                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 })
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 }),
+                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
                     )
                 )
             })
@@ -330,8 +317,8 @@ contract Initializer_Test is CommonTest {
                     (
                         ISuperchainConfig(address(0)),
                         IDisputeGameFactory(address(0)),
-                        IOptimismPortal2(payable(0)),
-                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 })
+                        OutputRoot({ root: Hash.wrap(bytes32(0)), l2BlockNumber: 0 }),
+                        GameType.wrap(uint32(deploy.cfg().respectedGameType()))
                     )
                 )
             })

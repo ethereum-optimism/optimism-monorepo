@@ -78,10 +78,10 @@
   },
   {
     "bytes": "20",
-    "label": "disputeGameFactory",
+    "label": "spacer_56_0_20",
     "offset": 0,
     "slot": "56",
-    "type": "contract IDisputeGameFactory"
+    "type": "address"
   },
   {
     "bytes": "32",
@@ -92,21 +92,21 @@
   },
   {
     "bytes": "32",
-    "label": "disputeGameBlacklist",
+    "label": "spacer_58_0_32",
     "offset": 0,
     "slot": "58",
-    "type": "mapping(contract IDisputeGame => bool)"
+    "type": "bytes32"
   },
   {
     "bytes": "4",
-    "label": "respectedGameType",
+    "label": "spacer_59_0_4",
     "offset": 0,
     "slot": "59",
     "type": "GameType"
   },
   {
     "bytes": "8",
-    "label": "respectedGameTypeUpdatedAt",
+    "label": "spacer_59_4_8",
     "offset": 4,
     "slot": "59",
     "type": "uint64"
@@ -124,5 +124,12 @@
     "offset": 0,
     "slot": "61",
     "type": "uint256"
+  },
+  {
+    "bytes": "20",
+    "label": "anchorStateRegistry",
+    "offset": 0,
+    "slot": "62",
+    "type": "contract IAnchorStateRegistry"
   }
 ]

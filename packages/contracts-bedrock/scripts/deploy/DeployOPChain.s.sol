@@ -597,16 +597,17 @@ contract DeployOPChain is Script {
         IOptimismPortal2 portal = _doo.optimismPortalProxy();
         ISuperchainConfig superchainConfig = ISuperchainConfig(address(_doi.opcm().superchainConfig()));
 
-        require(address(portal.disputeGameFactory()) == address(_doo.disputeGameFactoryProxy()), "PORTAL-10");
-        require(address(portal.systemConfig()) == address(_doo.systemConfigProxy()), "PORTAL-20");
-        require(address(portal.superchainConfig()) == address(superchainConfig), "PORTAL-30");
-        require(portal.guardian() == superchainConfig.guardian(), "PORTAL-40");
-        require(portal.paused() == superchainConfig.paused(), "PORTAL-50");
-        require(portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "PORTAL-60");
+        require(address(portal.anchorStateRegistry()) == address(_doo.anchorStateRegistryProxy()), "PORTAL-10");
+        require(address(portal.disputeGameFactory()) == address(_doo.disputeGameFactoryProxy()), "PORTAL-20");
+        require(address(portal.systemConfig()) == address(_doo.systemConfigProxy()), "PORTAL-30");
+        require(address(portal.superchainConfig()) == address(superchainConfig), "PORTAL-40");
+        require(portal.guardian() == superchainConfig.guardian(), "PORTAL-50");
+        require(portal.paused() == superchainConfig.paused(), "PORTAL-60");
+        require(portal.l2Sender() == Constants.DEFAULT_L2_SENDER, "PORTAL-70");
 
         // This slot is the custom gas token _balance and this check ensures
         // that it stays unset for forwards compatibility with custom gas token.
-        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-70");
+        require(vm.load(address(portal), bytes32(uint256(61))) == bytes32(0), "PORTAL-80");
     }
 
     function assertValidDisputeGameFactory(DeployOPChainInput _doi, DeployOPChainOutput _doo) internal {
