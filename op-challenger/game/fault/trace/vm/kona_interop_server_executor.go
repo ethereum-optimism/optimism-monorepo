@@ -7,21 +7,21 @@ import (
 	"github.com/ethereum/go-ethereum/common"
 )
 
-type KonaInteropExecutor struct {
+type KonaSuperExecutor struct {
 	nativeMode     bool
 }
 
-var _ OracleServerExecutor = (*KonaInteropExecutor)(nil)
+var _ OracleServerExecutor = (*KonaSuperExecutor)(nil)
 
-func NewKonaInteropExecutor() *KonaInteropExecutor {
-	return &KonaInteropExecutor{nativeMode: false}
+func NewKonaSuperExecutor() *KonaSuperExecutor {
+	return &KonaSuperExecutor{nativeMode: false}
 }
 
-func NewNativeKonaInteropExecutor() *KonaInteropExecutor {
-	return &KonaInteropExecutor{nativeMode: true}
+func NewNativeKonaSuperExecutor() *KonaSuperExecutor {
+	return &KonaSuperExecutor{nativeMode: true}
 }
 
-func (s *KonaInteropExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
+func (s *KonaSuperExecutor) OracleCommand(cfg Config, dataDir string, inputs utils.LocalGameInputs) ([]string, error) {
 	if inputs.AgreedPreState == nil {
 		return nil, errors.New("agreed pre-state is not defined")
 	}

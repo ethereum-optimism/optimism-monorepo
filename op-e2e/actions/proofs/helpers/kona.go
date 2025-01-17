@@ -71,7 +71,7 @@ func RunKonaNative(
 	var err error
 	if fixtureInputs.InteropEnabled {
 		inputs.AgreedPreState = &fixtureInputs.AgreedPrestate
-		hostCmd, err = vm.NewNativeKonaInteropExecutor().OracleCommand(vmCfg, workDir, inputs)
+		hostCmd, err = vm.NewNativeKonaSuperExecutor().OracleCommand(vmCfg, workDir, inputs)
 	} else {
 		hostCmd, err = vm.NewNativeKonaExecutor().OracleCommand(vmCfg, workDir, inputs)
 	}
