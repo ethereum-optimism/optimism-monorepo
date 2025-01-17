@@ -13,7 +13,6 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 
 /// @custom:proxied true
 /// @title AnchorStateRegistry
@@ -23,8 +22,11 @@ import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Semantic version.
-    /// @custom:semver 2.2.0
-    string public constant version = "2.2.0";
+    /// @custom:semver 3.0.0-beta.1
+    string public constant version = "3.0.0-beta.1";
+
+    /// @notice The dispute game finality delay in seconds.
+    uint256 internal immutable DISPUTE_GAME_FINALITY_DELAY_SECONDS;
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
@@ -32,14 +34,20 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @notice Address of the DisputeGameFactory contract.
     IDisputeGameFactory public disputeGameFactory;
 
-    /// @notice Address of the OptimismPortal contract.
-    IOptimismPortal2 public portal;
-
     /// @notice The game whose claim is currently being used as the anchor state.
     IFaultDisputeGame public anchorGame;
 
     /// @notice The starting anchor root.
     OutputRoot internal startingAnchorRoot;
+
+    /// @notice Mapping of blacklisted dispute games.
+    mapping(IDisputeGame => bool) public disputeGameBlacklist;
+
+    /// @notice The respected game type.
+    GameType public respectedGameType;
+
+    /// @notice The retirement timestamp.
+    uint64 public retirementTimestamp;
 
     /// @notice Emitted when an anchor state is not updated.
     /// @param game Game that was not used as the new anchor game.
@@ -49,44 +57,79 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param game Game that was used as the new anchor game.
     event AnchorUpdated(IFaultDisputeGame indexed game);
 
-    /// @notice Thrown when an unauthorized caller attempts to set the anchor state.
-    error AnchorStateRegistry_Unauthorized();
+    /// @notice Emitted when the respected game type is set.
+    /// @param gameType The new respected game type.
+    event RespectedGameTypeSet(GameType gameType);
 
-    /// @notice Thrown when an invalid anchor game is provided.
-    error AnchorStateRegistry_InvalidAnchorGame();
+    /// @notice Emitted when the retirement timestamp is set.
+    /// @param timestamp The new retirement timestamp.
+    event RetirementTimestampSet(uint256 timestamp);
+
+    /// @notice Emitted when a dispute game is blacklisted.
+    /// @param disputeGame The dispute game that was blacklisted.
+    event DisputeGameBlacklisted(IDisputeGame indexed disputeGame);
 
     /// @notice Thrown when the anchor root is requested, but the anchor game is blacklisted.
     error AnchorStateRegistry_AnchorGameBlacklisted();
 
-    /// @notice Constructor to disable initializers.
-    constructor() {
+    /// @notice Thrown when an invalid anchor game is provided.
+    error AnchorStateRegistry_InvalidAnchorGame();
+
+    /// @notice Thrown when an unauthorized caller attempts to set the anchor state.
+    error AnchorStateRegistry_Unauthorized();
+
+    /// @param _disputeGameFinalityDelaySeconds The dispute game finality delay in seconds.
+    constructor(uint256 _disputeGameFinalityDelaySeconds) {
+        DISPUTE_GAME_FINALITY_DELAY_SECONDS = _disputeGameFinalityDelaySeconds;
         _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
     /// @param _disputeGameFactory The address of the DisputeGameFactory contract.
-    /// @param _portal The address of the OptimismPortal contract.
     /// @param _startingAnchorRoot The starting anchor root.
     function initialize(
         ISuperchainConfig _superchainConfig,
         IDisputeGameFactory _disputeGameFactory,
-        IOptimismPortal2 _portal,
-        OutputRoot memory _startingAnchorRoot
+        OutputRoot memory _startingAnchorRoot,
+        GameType _startingRespectedGameType
     )
         external
         initializer
     {
         superchainConfig = _superchainConfig;
         disputeGameFactory = _disputeGameFactory;
-        portal = _portal;
         startingAnchorRoot = _startingAnchorRoot;
+        respectedGameType = _startingRespectedGameType;
     }
 
-    /// @notice Returns the respected game type.
-    /// @return The respected game type.
-    function respectedGameType() public view returns (GameType) {
-        return portal.respectedGameType();
+    /// @notice Allows the Guardian to set the respected game type.
+    /// @param _gameType The new respected game type.
+    function setRespectedGameType(GameType _gameType) external {
+        if (msg.sender != superchainConfig.guardian()) revert AnchorStateRegistry_Unauthorized();
+        respectedGameType = _gameType;
+        emit RespectedGameTypeSet(_gameType);
+    }
+
+    /// @notice Allows the Guardian to update the retirement timestamp.
+    function updateRetirementTimestamp() external {
+        if (msg.sender != superchainConfig.guardian()) revert AnchorStateRegistry_Unauthorized();
+        retirementTimestamp = uint64(block.timestamp);
+        emit RetirementTimestampSet(block.timestamp);
+    }
+
+    /// @notice Allows the Guardian to blacklist a dispute game.
+    /// @param _disputeGame Dispute game to blacklist.
+    function blacklistDisputeGame(IDisputeGame _disputeGame) external {
+        if (msg.sender != superchainConfig.guardian()) revert AnchorStateRegistry_Unauthorized();
+        disputeGameBlacklist[_disputeGame] = true;
+        emit DisputeGameBlacklisted(_disputeGame);
+    }
+
+    /// @notice Returns the dispute game finality delay in seconds.
+    /// @return The dispute game finality delay in seconds.
+    function disputeGameFinalityDelaySeconds() external view returns (uint256) {
+        return DISPUTE_GAME_FINALITY_DELAY_SECONDS;
     }
 
     /// @custom:legacy
@@ -133,14 +176,19 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param _game The game to check.
     /// @return Whether the game is of a respected game type.
     function isGameRespected(IDisputeGame _game) public view returns (bool) {
-        return _game.wasRespectedGameTypeWhenCreated();
+        try _game.wasRespectedGameTypeWhenCreated() returns (bool respected_) {
+            return respected_;
+        } catch {
+            // Legacy games do not have the wasRespectedGameTypeWhenCreated function.
+            return false;
+        }
     }
 
     /// @notice Determines whether a game is blacklisted.
     /// @param _game The game to check.
     /// @return Whether the game is blacklisted.
     function isGameBlacklisted(IDisputeGame _game) public view returns (bool) {
-        return portal.disputeGameBlacklist(_game);
+        return disputeGameBlacklist[_game];
     }
 
     /// @notice Determines whether a game is retired.
@@ -150,7 +198,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
         // Must be created after the respectedGameTypeUpdatedAt timestamp. Note that this means all
         // games created in the same block as the respectedGameTypeUpdatedAt timestamp are
         // considered retired.
-        return _game.createdAt().raw() <= portal.respectedGameTypeUpdatedAt();
+        return _game.createdAt().raw() <= retirementTimestamp;
     }
 
     /// @notice Returns whether a game is resolved.
@@ -165,7 +213,7 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @param _game The game to check.
     /// @return Whether the game is beyond the airgap period.
     function isGameAirgapped(IDisputeGame _game) public view returns (bool) {
-        return block.timestamp - _game.resolvedAt().raw() > portal.disputeGameFinalityDelaySeconds();
+        return block.timestamp - _game.resolvedAt().raw() > DISPUTE_GAME_FINALITY_DELAY_SECONDS;
     }
 
     /// @notice **READ THIS FUNCTION DOCUMENTATION CAREFULLY.**
@@ -222,20 +270,17 @@ contract AnchorStateRegistry is Initializable, ISemver {
     /// @return Whether the game's root claim is valid.
     function isGameClaimValid(IDisputeGame _game) public view returns (bool) {
         // Game must be a proper game.
-        bool properGame = isGameProper(_game);
-        if (!properGame) {
+        if (!isGameProper(_game)) {
             return false;
         }
 
         // Must be respected.
-        bool respected = isGameRespected(_game);
-        if (!respected) {
+        if (!isGameRespected(_game)) {
             return false;
         }
 
         // Game must be finalized.
-        bool finalized = isGameFinalized(_game);
-        if (!finalized) {
+        if (!isGameFinalized(_game)) {
             return false;
         }
 
