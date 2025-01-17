@@ -143,6 +143,9 @@ $(DEVNET_CANNON_PRESTATE_FILES):
 	make cannon-prestate-mt
 	make cannon-prestate-interop
 
+cannon-prestates: cannon-prestate cannon-prestate-mt cannon-prestate-interop
+.PHONY: cannon-prestates
+
 cannon-prestate: op-program cannon ## Generates prestate using cannon and op-program
 	./cannon/bin/cannon load-elf --type singlethreaded-2 --path op-program/bin/op-program-client.elf --out op-program/bin/prestate.bin.gz --meta op-program/bin/meta.json
 	./cannon/bin/cannon run --proof-at '=0'  --stop-at '=1' --input op-program/bin/prestate.bin.gz --meta op-program/bin/meta.json --proof-fmt 'op-program/bin/%d.json' --output ""
