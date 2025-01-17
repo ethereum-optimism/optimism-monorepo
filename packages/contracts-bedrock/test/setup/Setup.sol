@@ -54,6 +54,8 @@ import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 /// @title Setup
 /// @dev This contact is responsible for setting up the contracts in state. It currently
@@ -89,7 +91,10 @@ contract Setup {
     // L1 contracts - dispute
     IDisputeGameFactory disputeGameFactory;
     IAnchorStateRegistry anchorStateRegistry;
+    IFaultDisputeGame faultDisputeGame;
     IDelayedWETH delayedWeth;
+    IPermissionedDisputeGame permissionedDisputeGame;
+    IDelayedWETH delayedWETHPermissionedGameProxy;
 
     // L1 contracts - core
     IOptimismPortal2 optimismPortal2;

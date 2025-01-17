@@ -196,12 +196,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     address upgrader;
     OPContractsManager.OpChain[] opChains;
 
-    // L1 contracts not stored in CommonTest, but needed here for the upgrade test.
-    IDelayedWETH delayedWETHPermissionlessGameProxy;
-    IDelayedWETH delayedWETHPermissionedGameProxy;
-    IFaultDisputeGame faultDisputeGame;
-    IPermissionedDisputeGame permissionedDisputeGame;
-
     function setUp() public virtual override {
         super.disableUpgradedFork();
         super.setUp();
@@ -222,8 +216,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
         delayedWETHPermissionedGameProxy =
             IDelayedWETH(payable(artifacts.mustGetAddress("PermissionedDelayedWETHProxy")));
-        delayedWETHPermissionlessGameProxy =
-            IDelayedWETH(payable(artifacts.mustGetAddress("PermissionlessDelayedWETHProxy")));
+        delayedWeth = IDelayedWETH(payable(artifacts.mustGetAddress("PermissionlessDelayedWETHProxy")));
         permissionedDisputeGame = IPermissionedDisputeGame(address(artifacts.mustGetAddress("PermissionedDisputeGame")));
         faultDisputeGame = IFaultDisputeGame(address(artifacts.mustGetAddress("FaultDisputeGame")));
     }
@@ -246,8 +239,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         expectEmitUpgraded(impls.optimismMintableERC20FactoryImpl, address(l1OptimismMintableERC20Factory));
         expectEmitUpgraded(impls.anchorStateRegistryImpl, address(anchorStateRegistry));
         expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionedGameProxy));
-        if (address(delayedWETHPermissionlessGameProxy) != address(0)) {
-            expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionlessGameProxy));
+        if (address(delayedWeth) != address(0)) {
+            expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWeth));
         }
         vm.expectEmit(true, true, true, true, address(upgrader));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(upgrader));
@@ -265,8 +258,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
 
         assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(anchorStateRegistry)));
-        assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionlessGameProxy)));
-        if (address(delayedWETHPermissionlessGameProxy) != address(0)) {
+        assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
+        if (address(delayedWeth) != address(0)) {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
         }
 
