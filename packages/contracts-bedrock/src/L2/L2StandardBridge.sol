@@ -65,12 +65,12 @@ contract L2StandardBridge is StandardBridge, ISemver {
 
     /// @notice Constructs the L2StandardBridge contract.
     constructor() StandardBridge() {
-        initialize({ _otherBridge: StandardBridge(payable(address(0))) });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _otherBridge Contract for the corresponding bridge on the other chain.
-    function initialize(StandardBridge _otherBridge) public initializer {
+    function initialize(StandardBridge _otherBridge) external initializer {
         __StandardBridge_init({
             _messenger: ICrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER),
             _otherBridge: _otherBridge

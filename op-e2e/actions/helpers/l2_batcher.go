@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	derive_params "github.com/ethereum-optimism/optimism/op-node/rollup/derive/params"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/txmgr"
 )
@@ -295,7 +296,7 @@ func (s *L2Batcher) ReadNextOutputFrame(t Testing) []byte {
 	}
 	// Collect the output frame
 	data := new(bytes.Buffer)
-	data.WriteByte(derive.DerivationVersion0)
+	data.WriteByte(derive_params.DerivationVersion0)
 	// subtract one, to account for the version byte
 	if _, err := s.L2ChannelOut.OutputFrame(data, s.l2BatcherCfg.MaxL1TxSize-1); err == io.EOF {
 		s.L2ChannelOut = nil
@@ -400,7 +401,7 @@ func (s *L2Batcher) ActL2BatchSubmitMultiBlob(t Testing, numBlobs int) {
 	blobs := make([]*eth.Blob, numBlobs)
 	for i := 0; i < numBlobs; i++ {
 		data := new(bytes.Buffer)
-		data.WriteByte(derive.DerivationVersion0)
+		data.WriteByte(derive_params.DerivationVersion0)
 		// write only a few bytes to all but the last blob
 		l := uint64(derive.FrameV0OverHeadSize + 4) // 4 bytes content
 		if i == numBlobs-1 {

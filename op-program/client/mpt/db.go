@@ -31,6 +31,10 @@ func (p DB) Delete(key []byte) error {
 	return nil
 }
 
+func (p *DB) DeleteRange(start, end []byte) error {
+	panic("not supported")
+}
+
 func (p DB) Stat() (string, error) {
 	panic("not supported")
 }

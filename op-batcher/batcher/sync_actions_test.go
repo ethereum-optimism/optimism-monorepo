@@ -55,6 +55,8 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 		timedOut:       false,
 	}
 
+	happyCaseLogs := []string{} // in the happy case we expect no logs
+
 	type TestCase struct {
 		name string
 		// inputs
@@ -105,7 +107,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: &inclusiveBlockRange{101, 109},
 			},
-			expectedLogs: []string{"oldest unsafe block is below oldest block in state"},
+			expectedLogs: []string{"next safe block is below oldest block in state"},
 		},
 		{name: "unexpectedly good progress",
 			// This can happen if another batcher instance got some blocks
@@ -123,7 +125,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				clearState:   &eth.BlockID{Number: 1},
 				blocksToLoad: &inclusiveBlockRange{105, 109},
 			},
-			expectedLogs: []string{"oldest unsafe block above newest block in state"},
+			expectedLogs: []string{"safe head above newest block in state"},
 		},
 		{name: "safe chain reorg",
 			// This can happen if there is an L1 reorg, the safe chain is at an acceptable
@@ -161,6 +163,23 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			},
 			expectedLogs: []string{"sequencer did not make expected progress"},
 		},
+		{name: "failed to make expected progress (unsafe=safe)",
+			// Edge case where unsafe = safe
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 3},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash(), L1Origin: eth.BlockID{Number: 1}},
+				UnsafeL2:  eth.L2BlockRef{Number: 101},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block102, block103},
+			channels:      []channelStatuser{channel103},
+			expected: syncActions{
+				clearState: &eth.BlockID{Number: 1},
+				// no blocks to load since there are no unsafe blocks
+			},
+			expectedLogs: []string{"sequencer did not make expected progress"},
+		},
 		{name: "no progress",
 			// This can happen if we have a long channel duration
 			// and we didn't submit or have any txs confirmed since
@@ -192,6 +211,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			expected: syncActions{
 				blocksToLoad: &inclusiveBlockRange{104, 109},
 			},
+			expectedLogs: []string{"no blocks in state"},
 		},
 		{name: "happy path",
 			// This happens when the safe chain is being progressed as expected:
@@ -225,10 +245,39 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				channelsToPrune: 1,
 				blocksToLoad:    &inclusiveBlockRange{105, 109},
 			},
+			expectedLogs: happyCaseLogs,
+		},
+		{name: "no progress + unsafe=safe",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 100},
+				UnsafeL2:  eth.L2BlockRef{Number: 100},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{},
+			channels:      []channelStatuser{},
+			expected:      syncActions{},
+			expectedLogs:  []string{"no blocks in state"},
+		},
+		{name: "no progress + unsafe=safe + blocks in state",
+			newSyncStatus: eth.SyncStatus{
+				HeadL1:    eth.BlockRef{Number: 5},
+				CurrentL1: eth.BlockRef{Number: 2},
+				SafeL2:    eth.L2BlockRef{Number: 101, Hash: block101.Hash()},
+				UnsafeL2:  eth.L2BlockRef{Number: 101},
+			},
+			prevCurrentL1: eth.BlockRef{Number: 1},
+			blocks:        queue.Queue[*types.Block]{block101},
+			channels:      []channelStatuser{},
+			expected: syncActions{
+				blocksToPrune: 1,
+			},
+			expectedLogs: happyCaseLogs,
 		},
 	}
 
-	for _, tc := range testCases {
+	for _, tc := range testCases[len(testCases)-1:] {
 
 		t.Run(tc.name, func(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)
@@ -237,11 +286,15 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
-			require.Equal(t, tc.expected, result)
+			require.Equal(t, tc.expected, result, "unexpected actions")
 			require.Equal(t, tc.expectedSeqOutOfSync, outOfSync)
-			for _, e := range tc.expectedLogs {
-				r := h.FindLog(testlog.NewMessageContainsFilter(e))
-				require.NotNil(t, r, "could not find log message containing '%s'", e)
+			if tc.expectedLogs == nil {
+				require.Empty(t, h.Logs, "expected no logs but found some", "logs", h.Logs)
+			} else {
+				for _, e := range tc.expectedLogs {
+					r := h.FindLog(testlog.NewMessageContainsFilter(e))
+					require.NotNil(t, r, "could not find log message containing '%s'", e)
+				}
 			}
 		})
 	}

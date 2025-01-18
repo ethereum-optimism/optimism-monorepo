@@ -9,6 +9,7 @@ import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
@@ -69,12 +70,15 @@ contract L1ERC721Bridge_Test is CommonTest {
     /// @notice Marked virtual to be overridden in
     ///         test/kontrol/deployment/DeploymentSummary.t.sol
     function test_constructor_succeeds() public virtual {
-        IL1ERC721Bridge impl = IL1ERC721Bridge(deploy.mustGetAddress("L1ERC721Bridge"));
+        IL1ERC721Bridge impl = IL1ERC721Bridge(EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(address(impl.MESSENGER()), address(0));
         assertEq(address(impl.messenger()), address(0));
-        assertEq(address(impl.OTHER_BRIDGE()), Predeploys.L2_ERC721_BRIDGE);
-        assertEq(address(impl.otherBridge()), Predeploys.L2_ERC721_BRIDGE);
         assertEq(address(impl.superchainConfig()), address(0));
+
+        // The constructor now uses _disableInitializers, whereas OP Mainnet has the other bridge in storage
+        returnIfForkTest("L1ERC721Bridge_Test: impl storage differs on forked network");
+        assertEq(address(impl.OTHER_BRIDGE()), address(0));
+        assertEq(address(impl.otherBridge()), address(0));
     }
 
     /// @dev Tests that the proxy is initialized with the correct values.

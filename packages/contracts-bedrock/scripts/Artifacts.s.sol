@@ -6,10 +6,7 @@ import { stdJson } from "forge-std/StdJson.sol";
 import { Vm } from "forge-std/Vm.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Config } from "scripts/libraries/Config.sol";
-import { StorageSlot } from "scripts/libraries/ForgeArtifacts.sol";
-import { LibString } from "@solady/utils/LibString.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
-import { Process } from "scripts/libraries/Process.sol";
 
 /// @notice Represents a deployment. Is serialized to JSON as a key/value
 ///         pair. Can be accessed from within scripts.
@@ -22,7 +19,7 @@ struct Deployment {
 /// @notice Useful for accessing deployment artifacts from within scripts.
 ///         When a contract is deployed, call the `save` function to write its name and
 ///         contract address to disk. Inspired by `forge-deploy`.
-abstract contract Artifacts {
+contract Artifacts {
     /// @notice Foundry cheatcode VM.
     Vm private constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
@@ -52,28 +49,6 @@ abstract contract Artifacts {
 
         uint256 chainId = Config.chainID();
         console.log("Connected to network with chainid %s", chainId);
-
-        // Load addresses from a JSON file if the CONTRACT_ADDRESSES_PATH environment variable
-        // is set. Great for loading addresses from `superchain-registry`.
-        string memory addresses = Config.contractAddressesPath();
-        if (bytes(addresses).length > 0) {
-            console.log("Loading addresses from %s", addresses);
-            _loadAddresses(addresses);
-        }
-    }
-
-    /// @notice Populates the addresses to be used in a script based on a JSON file.
-    ///         The format of the JSON file is the same that it output by this script
-    ///         as well as the JSON files that contain addresses in the `superchain-registry`
-    ///         repo. The JSON key is the name of the contract and the value is an address.
-    function _loadAddresses(string memory _path) internal {
-        string memory json = Process.bash(string.concat("jq -cr < ", _path));
-        string[] memory keys = vm.parseJsonKeys(json, "");
-        for (uint256 i; i < keys.length; i++) {
-            string memory key = keys[i];
-            address addr = stdJson.readAddress(json, string.concat("$.", key));
-            save(key, addr);
-        }
     }
 
     /// @notice Returns all of the deployments done in the current context.
@@ -183,45 +158,22 @@ abstract contract Artifacts {
         if (bytes(_name).length == 0) {
             revert InvalidDeployment("EmptyName");
         }
-        if (bytes(_namedDeployments[_name].name).length > 0) {
-            revert InvalidDeployment("AlreadyExists");
+        Deployment memory existing = _namedDeployments[_name];
+        if (bytes(existing.name).length > 0) {
+            console.log("Warning: Deployment already exists for %s.", _name);
+            console.log("Overwriting %s with %s", existing.addr, _deployed);
         }
 
         Deployment memory deployment = Deployment({ name: _name, addr: payable(_deployed) });
         _namedDeployments[_name] = deployment;
         _newDeployments.push(deployment);
         _appendDeployment(_name, _deployed);
+
+        vm.label(_deployed, _name);
     }
 
     /// @notice Adds a deployment to the temp deployments file
     function _appendDeployment(string memory _name, address _deployed) internal {
         vm.writeJson({ json: stdJson.serialize("", _name, _deployed), path: deploymentOutfile });
-    }
-
-    /// @notice Stubs a deployment retrieved through `get`.
-    /// @param _name The name of the deployment.
-    /// @param _addr The mock address of the deployment.
-    function prankDeployment(string memory _name, address _addr) public {
-        if (bytes(_name).length == 0) {
-            revert InvalidDeployment("EmptyName");
-        }
-
-        Deployment memory deployment = Deployment({ name: _name, addr: payable(_addr) });
-        _namedDeployments[_name] = deployment;
-    }
-
-    /// @notice Returns the value of the internal `_initialized` storage slot for a given contract.
-    function loadInitializedSlot(string memory _contractName) public returns (uint8 initialized_) {
-        address contractAddress = mustGetAddress(_contractName);
-
-        // Check if the contract name ends with `Proxy` and, if so override the contract name which is used to
-        // retrieve the storage layout.
-        if (LibString.endsWith(_contractName, "Proxy")) {
-            _contractName = LibString.slice(_contractName, 0, bytes(_contractName).length - 5);
-        }
-
-        StorageSlot memory slot = ForgeArtifacts.getInitializedSlot(_contractName);
-        bytes32 slotVal = vm.load(contractAddress, bytes32(vm.parseUint(slot.slot)));
-        initialized_ = uint8((uint256(slotVal) >> (slot.offset * 8)) & 0xFF);
     }
 }

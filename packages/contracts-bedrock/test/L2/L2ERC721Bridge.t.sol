@@ -6,7 +6,7 @@ import { CommonTest } from "test/setup/CommonTest.sol";
 
 // Contracts
 import { ERC721 } from "@openzeppelin/contracts/token/ERC721/ERC721.sol";
-import { OptimismMintableERC721 } from "src/universal/OptimismMintableERC721.sol";
+import { OptimismMintableERC721 } from "src/L2/OptimismMintableERC721.sol";
 
 // Interfaces
 import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";

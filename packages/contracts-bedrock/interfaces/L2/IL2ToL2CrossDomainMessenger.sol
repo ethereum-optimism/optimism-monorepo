@@ -104,7 +104,14 @@ interface IL2ToL2CrossDomainMessenger {
     ///         already received once and is currently being replayed.
     /// @param _id          Identifier of the SentMessage event to be relayed
     /// @param _sentMessage Message payload of the `SentMessage` event
-    function relayMessage(Identifier calldata _id, bytes calldata _sentMessage) external payable;
+    /// @return returnData_ Return data from the target contract call.
+    function relayMessage(
+        Identifier calldata _id,
+        bytes calldata _sentMessage
+    )
+        external
+        payable
+        returns (bytes memory returnData_);
 
     function messageVersion() external view returns (uint16);
 

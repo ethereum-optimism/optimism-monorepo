@@ -48,14 +48,17 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		return syncActions{}, true
 	}
 
+	var allUnsafeBlocks *inclusiveBlockRange
+	if newSyncStatus.UnsafeL2.Number > newSyncStatus.SafeL2.Number {
+		allUnsafeBlocks = &inclusiveBlockRange{newSyncStatus.SafeL2.Number + 1, newSyncStatus.UnsafeL2.Number}
+	}
+
 	// PART 2: checks involving only the oldest block in the state
 	oldestBlockInState, hasBlocks := blocks.Peek()
-	oldestUnsafeBlockNum := newSyncStatus.SafeL2.Number + 1
-	youngestUnsafeBlockNum := newSyncStatus.UnsafeL2.Number
 
 	if !hasBlocks {
 		s := syncActions{
-			blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+			blocksToLoad: allUnsafeBlocks,
 		}
 		l.Info("no blocks in state", "syncActions", s)
 		return s, false
@@ -63,17 +66,21 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 
 	// These actions apply in multiple unhappy scenarios below, where
 	// we detect that the existing state is invalidated
-	// and we need to start over from the sequencer's oldest
-	// unsafe (and not safe) block.
+	// and we need to start over, loading all unsafe blocks
+	// from the sequencer.
 	startAfresh := syncActions{
 		clearState:   &newSyncStatus.SafeL2.L1Origin,
-		blocksToLoad: &inclusiveBlockRange{oldestUnsafeBlockNum, youngestUnsafeBlockNum},
+		blocksToLoad: allUnsafeBlocks,
 	}
 
 	oldestBlockInStateNum := oldestBlockInState.NumberU64()
+	nextSafeBlockNum := newSyncStatus.SafeL2.Number + 1
 
-	if oldestUnsafeBlockNum < oldestBlockInStateNum {
-		l.Warn("oldest unsafe block is below oldest block in state", "syncActions", startAfresh, "oldestBlockInState", oldestBlockInState, "newSafeBlock", newSyncStatus.SafeL2)
+	if nextSafeBlockNum < oldestBlockInStateNum {
+		l.Warn("next safe block is below oldest block in state",
+			"syncActions", startAfresh,
+			"oldestBlockInState", oldestBlockInState,
+			"safeL2", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -81,25 +88,25 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 	newestBlockInState := blocks[blocks.Len()-1]
 	newestBlockInStateNum := newestBlockInState.NumberU64()
 
-	numBlocksToDequeue := oldestUnsafeBlockNum - oldestBlockInStateNum
+	numBlocksToDequeue := nextSafeBlockNum - oldestBlockInStateNum
 
 	if numBlocksToDequeue > uint64(blocks.Len()) {
 		// This could happen if the batcher restarted.
 		// The sequencer may have derived the safe chain
 		// from channels sent by a previous batcher instance.
-		l.Warn("oldest unsafe block above newest block in state, clearing channel manager state",
-			"oldestUnsafeBlockNum", oldestUnsafeBlockNum,
+		l.Warn("safe head above newest block in state, clearing channel manager state",
+			"syncActions", startAfresh,
+			"safeL2", newSyncStatus.SafeL2,
 			"newestBlockInState", eth.ToBlockID(newestBlockInState),
-			"syncActions",
-			startAfresh)
+		)
 		return startAfresh, false
 	}
 
 	if numBlocksToDequeue > 0 && blocks[numBlocksToDequeue-1].Hash() != newSyncStatus.SafeL2.Hash {
 		l.Warn("safe chain reorg, clearing channel manager state",
+			"syncActions", startAfresh,
 			"existingBlock", eth.ToBlockID(blocks[numBlocksToDequeue-1]),
-			"newSafeBlock", newSyncStatus.SafeL2,
-			"syncActions", startAfresh)
+			"safeL2", newSyncStatus.SafeL2)
 		return startAfresh, false
 	}
 
@@ -114,9 +121,9 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 			// that the derivation pipeline may have stalled
 			// e.g. because of Holocene strict ordering rules.
 			l.Warn("sequencer did not make expected progress",
+				"syncActions", startAfresh,
 				"existingBlock", ch.LatestL2(),
-				"newSafeBlock", newSyncStatus.SafeL2,
-				"syncActions", startAfresh)
+				"safeL2", newSyncStatus.SafeL2)
 			return startAfresh, false
 		}
 	}
@@ -132,12 +139,14 @@ func computeSyncActions[T channelStatuser](newSyncStatus eth.SyncStatus, prevCur
 		numChannelsToPrune++
 	}
 
-	start := newestBlockInStateNum + 1
-	end := youngestUnsafeBlockNum
+	var allUnsafeBlocksAboveState *inclusiveBlockRange
+	if newSyncStatus.UnsafeL2.Number > newestBlockInStateNum {
+		allUnsafeBlocksAboveState = &inclusiveBlockRange{newestBlockInStateNum + 1, newSyncStatus.UnsafeL2.Number}
+	}
 
 	return syncActions{
 		blocksToPrune:   int(numBlocksToDequeue),
 		channelsToPrune: numChannelsToPrune,
-		blocksToLoad:    &inclusiveBlockRange{start, end},
+		blocksToLoad:    allUnsafeBlocksAboveState,
 	}, false
 }

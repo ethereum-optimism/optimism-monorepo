@@ -48,7 +48,7 @@ This way you could understand how we handle the state transitions.
 
 ### RPC design
 
-conductor provides rpc APIs for ease of cluster management, see [api](./op-conductor/rpc/api.go) for rpc definitions and how they can be used.
+conductor provides rpc APIs for ease of cluster management, see [api](./rpc/api.go) for rpc definitions and how they can be used.
 
 ### Failure Scenario walkthrough
 

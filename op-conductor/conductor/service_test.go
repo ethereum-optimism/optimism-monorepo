@@ -106,7 +106,7 @@ func (s *OpConductorTestSuite) SetupSuite() {
 	s.metrics = &metrics.NoopMetricsImpl{}
 	s.cfg = mockConfig(s.T())
 	s.version = "v0.0.1"
-	s.next = make(chan struct{}, 1)
+	s.next = make(chan struct{})
 }
 
 func (s *OpConductorTestSuite) SetupTest() {
@@ -129,7 +129,8 @@ func (s *OpConductorTestSuite) SetupTest() {
 	s.conductor.leaderUpdateCh = s.leaderUpdateCh
 
 	s.err = errors.New("error")
-	s.syncEnabled = false // default to no sync, turn it on by calling s.enableSynchronization()
+	s.syncEnabled = false   // default to no sync, turn it on by calling s.enableSynchronization()
+	s.wg = sync.WaitGroup{} // create new wg for every test in case last test didn't finish the action loop during shutdown.
 }
 
 func (s *OpConductorTestSuite) TearDownTest() {
@@ -876,6 +877,5 @@ func (s *OpConductorTestSuite) TestHandleInitError() {
 }
 
 func TestControlLoop(t *testing.T) {
-	t.Skipf("Skipping test, it's flaky and needs to be fixed")
 	suite.Run(t, new(OpConductorTestSuite))
 }

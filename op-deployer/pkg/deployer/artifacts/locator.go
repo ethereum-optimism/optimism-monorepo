@@ -13,6 +13,7 @@ type schemeUnmarshaler func(string) (*Locator, error)
 var schemeUnmarshalerDispatch = map[string]schemeUnmarshaler{
 	"tag":   unmarshalTag,
 	"file":  unmarshalURL,
+	"http":  unmarshalURL,
 	"https": unmarshalURL,
 }
 
@@ -40,9 +41,39 @@ func MustNewLocatorFromTag(tag string) *Locator {
 	return loc
 }
 
+func MustNewLocatorFromURL(u string) *Locator {
+	if strings.HasPrefix(u, "tag://") {
+		return MustNewLocatorFromTag(strings.TrimPrefix(u, "tag://"))
+	}
+	parsedURL, err := url.Parse(u)
+	if err != nil {
+		panic(err)
+	}
+	return &Locator{
+		URL: parsedURL,
+	}
+}
+
+func MustNewFileLocator(path string) *Locator {
+	loc, err := NewFileLocator(path)
+	if err != nil {
+		panic(err)
+	}
+	return loc
+}
+
 type Locator struct {
 	URL *url.URL
 	Tag string
+}
+
+func NewFileLocator(path string) (*Locator, error) {
+	u, err := url.Parse("file://" + path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse URL: %w", err)
+	}
+
+	return &Locator{URL: u}, nil
 }
 
 func (a *Locator) UnmarshalText(text []byte) error {
@@ -75,6 +106,12 @@ func (a *Locator) MarshalText() ([]byte, error) {
 
 func (a *Locator) IsTag() bool {
 	return a.Tag != ""
+}
+
+func (a *Locator) Equal(b *Locator) bool {
+	aStr, _ := a.MarshalText()
+	bStr, _ := b.MarshalText()
+	return string(aStr) == string(bStr)
 }
 
 func unmarshalTag(tag string) (*Locator, error) {

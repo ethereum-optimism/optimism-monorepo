@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	if err := common.ProcessFilesGlob(
+	if _, err := common.ProcessFilesGlob(
 		[]string{"forge-artifacts/**/*.json"},
 		[]string{},
 		processFile,
@@ -22,10 +22,10 @@ func main() {
 	}
 }
 
-func processFile(path string) []error {
+func processFile(path string) (*common.Void, []error) {
 	artifact, err := common.ReadForgeArtifact(path)
 	if err != nil {
-		return []error{err}
+		return nil, []error{err}
 	}
 
 	var errors []error
@@ -36,12 +36,12 @@ func processFile(path string) []error {
 		}
 	}
 
-	return errors
+	return nil, errors
 }
 
 func extractTestNames(artifact *solc.ForgeArtifact) []string {
 	isTest := false
-	for _, entry := range artifact.Abi.Methods {
+	for _, entry := range artifact.Abi.Parsed.Methods {
 		if entry.Name == "IS_TEST" {
 			isTest = true
 			break
@@ -52,7 +52,7 @@ func extractTestNames(artifact *solc.ForgeArtifact) []string {
 	}
 
 	names := []string{}
-	for _, entry := range artifact.Abi.Methods {
+	for _, entry := range artifact.Abi.Parsed.Methods {
 		if !strings.HasPrefix(entry.Name, "test") {
 			continue
 		}

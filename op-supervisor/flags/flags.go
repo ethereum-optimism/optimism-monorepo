@@ -12,6 +12,7 @@ import (
 	oprpc "github.com/ethereum-optimism/optimism/op-service/rpc"
 	"github.com/ethereum-optimism/optimism/op-supervisor/config"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
 
 const EnvVarPrefix = "OP_SUPERVISOR"
@@ -21,15 +22,33 @@ func prefixEnvVars(name string) []string {
 }
 
 var (
-	L2RPCsFlag = &cli.StringSliceFlag{
-		Name:    "l2-rpcs",
-		Usage:   "L2 RPC sources.",
-		EnvVars: prefixEnvVars("L2_RPCS"),
+	L1RPCFlag = &cli.StringFlag{
+		Name:    "l1-rpc",
+		Usage:   "L1 RPC source.",
+		EnvVars: prefixEnvVars("L1_RPC"),
+	}
+	L2ConsensusNodesFlag = &cli.StringSliceFlag{
+		Name:    "l2-consensus.nodes",
+		Usage:   "L2 Consensus rollup node RPC addresses (with auth).",
+		EnvVars: prefixEnvVars("L2_CONSENSUS_NODES"),
+	}
+	L2ConsensusJWTSecret = &cli.StringSliceFlag{
+		Name: "l2-consensus.jwt-secret",
+		Usage: "Path to JWT secret key. Keys are 32 bytes, hex encoded in a file. " +
+			"If multiple paths are specified, secrets are assumed to match l2-consensus-nodes order.",
+		EnvVars:   prefixEnvVars("L2_CONSENSUS_JWT_SECRET"),
+		Value:     cli.NewStringSlice(),
+		TakesFile: true,
 	}
 	DataDirFlag = &cli.PathFlag{
 		Name:    "datadir",
 		Usage:   "Directory to store data generated as part of responding to games",
 		EnvVars: prefixEnvVars("DATADIR"),
+	}
+	DataDirSyncEndpointFlag = &cli.PathFlag{
+		Name:    "datadir.sync-endpoint",
+		Usage:   "op-supervisor endpoint to sync databases from",
+		EnvVars: prefixEnvVars("DATADIR_SYNC_ENDPOINT"),
 	}
 	DependencySetFlag = &cli.PathFlag{
 		Name:      "dependency-set",
@@ -46,13 +65,16 @@ var (
 )
 
 var requiredFlags = []cli.Flag{
-	L2RPCsFlag,
+	L1RPCFlag,
+	L2ConsensusNodesFlag,
+	L2ConsensusJWTSecret,
 	DataDirFlag,
 	DependencySetFlag,
 }
 
 var optionalFlags = []cli.Flag{
 	MockRunFlag,
+	DataDirSyncEndpointFlag,
 }
 
 func init() {
@@ -86,7 +108,30 @@ func ConfigFromCLI(ctx *cli.Context, version string) *config.Config {
 		RPC:                 oprpc.ReadCLIConfig(ctx),
 		DependencySetSource: &depset.JsonDependencySetLoader{Path: ctx.Path(DependencySetFlag.Name)},
 		MockRun:             ctx.Bool(MockRunFlag.Name),
-		L2RPCs:              ctx.StringSlice(L2RPCsFlag.Name),
+		L1RPC:               ctx.String(L1RPCFlag.Name),
+		SyncSources:         syncSourceSetups(ctx),
 		Datadir:             ctx.Path(DataDirFlag.Name),
+		DatadirSyncEndpoint: ctx.Path(DataDirSyncEndpointFlag.Name),
 	}
+}
+
+// syncSourceSetups creates a sync source collection, from CLI arguments.
+// These sources can share JWT secret configuration.
+func syncSourceSetups(ctx *cli.Context) syncnode.SyncNodeCollection {
+	return &syncnode.CLISyncNodes{
+		Endpoints:      filterEmpty(ctx.StringSlice(L2ConsensusNodesFlag.Name)),
+		JWTSecretPaths: filterEmpty(ctx.StringSlice(L2ConsensusJWTSecret.Name)),
+	}
+}
+
+// filterEmpty cleans empty entries from a string-slice flag,
+// which has the potential to have empty strings.
+func filterEmpty(in []string) []string {
+	out := make([]string, 0, len(in))
+	for _, s := range in {
+		if s != "" {
+			out = append(out, s)
+		}
+	}
+	return out
 }

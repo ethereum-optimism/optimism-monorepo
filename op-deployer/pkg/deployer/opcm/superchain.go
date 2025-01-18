@@ -37,10 +37,6 @@ func (output *DeploySuperchainOutput) CheckOutput(input common.Address) error {
 	return nil
 }
 
-type DeploySuperchainScript struct {
-	Run func(in common.Address, out common.Address) error
-}
-
 type DeploySuperchainOpts struct {
 	ChainID     *big.Int
 	ArtifactsFS foundry.StatDirFs
@@ -52,5 +48,5 @@ type DeploySuperchainOpts struct {
 }
 
 func DeploySuperchain(h *script.Host, input DeploySuperchainInput) (DeploySuperchainOutput, error) {
-	return RunBasicScript[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
+	return RunScriptSingle[DeploySuperchainInput, DeploySuperchainOutput](h, input, "DeploySuperchain.s.sol", "DeploySuperchain")
 }

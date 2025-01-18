@@ -4,7 +4,6 @@ pragma solidity 0.8.15;
 // Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { ForgeArtifacts, Abi } from "scripts/libraries/ForgeArtifacts.sol";
-import { GnosisSafe as Safe } from "safe-contracts/GnosisSafe.sol";
 import "test/safe-tools/SafeTestTools.sol";
 
 // Contracts
@@ -241,6 +240,11 @@ contract DeputyGuardianModule_setRespectedGameType_Test is DeputyGuardianModule_
     /// @dev Tests that `setRespectedGameType` successfully updates the respected game type when called by the deputy
     /// guardian.
     function testFuzz_setRespectedGameType_succeeds(GameType _gameType) external {
+        // Game type(uint32).max is reserved for setting the respectedGameTypeUpdatedAt timestamp.
+        // TODO(kelvin): Remove this once we've removed the hack.
+        uint32 boundedGameType = uint32(bound(_gameType.raw(), 0, type(uint32).max - 1));
+        _gameType = GameType.wrap(boundedGameType);
+
         vm.expectEmit(address(safeInstance.safe));
         emit ExecutionFromModuleSuccess(address(deputyGuardianModule));
 

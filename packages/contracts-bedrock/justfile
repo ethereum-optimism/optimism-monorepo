@@ -15,12 +15,19 @@ dep-status:
 #                         BUILD                        #
 ########################################################
 
-# Core forge build command
+# Core forge build command.
 forge-build:
   forge build
 
+# Developer build command (faster).
+forge-build-dev:
+  FOUNDRY_PROFILE=lite forge build
+
 # Builds the contracts.
 build: lint-fix-no-fail forge-build interfaces-check-no-build
+
+# Builds the contracts (developer mode).
+build-dev: lint-fix-no-fail forge-build-dev interfaces-check-no-build
 
 # Builds the go-ffi tool for contract tests.
 build-go-ffi-default:
@@ -45,9 +52,60 @@ clean:
 test *ARGS: build-go-ffi
   forge test {{ARGS}}
 
+# Runs standard contract tests (developer mode).
+test-dev *ARGS: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test {{ARGS}}
+
+# Default block number for the forked upgrade path.
+export pinnedBlockNumber := env_var_or_default('FORK_BLOCK_NUMBER', '21387830')
+print-pinned-block-number:
+  echo $pinnedBlockNumber
+
+# Runs upgrade path variant of contract tests.
+# Env Vars:
+# - ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL.
+# - FORK_BLOCK_NUMBER can be set in the env, or else will fallback to the default block number.
+#   Reusing the default block number greatly speeds up the test execution time by caching the
+#   rpc call responses in ~/.foundry/cache/rpc. The default block will need to be updated
+#   when the L1 chain is upgraded.
+# TODO(opcm upgrades): unskip the "NMC" tests which fail on the forked upgrade path with "UnexpectedRootClaim" errors.
+test-upgrade *ARGS: build-go-ffi
+  #!/bin/bash
+  echo "Running upgrade tests at block $pinnedBlockNumber"
+  export FORK_BLOCK_NUMBER=$pinnedBlockNumber
+  export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|'AnchorStateRegistry_*'|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
+  export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
+  FORK_RPC_URL=$ETH_RPC_URL \
+    FORK_TEST=true \
+    forge test --match-path "test/{L1,dispute}/**" \
+    --no-match-contract "$NO_MATCH_CONTRACTS" \
+    --no-match-path "$NO_MATCH_PATHS" \
+    {{ARGS}}
+
+test-upgrade-rerun *ARGS: build-go-ffi
+  just test-upgrade {{ARGS}} --rerun -vvv
+
+# Starts a local anvil node with a mainnet fork and sends it to the background
+# Requires ETH_RPC_URL to be set to a production (Sepolia or Mainnet) RPC URL.
+anvil-fork:
+  anvil --fork-url $ETH_RPC_URL
+
+# Use anvil-fork in a separate terminal before running this command.
+# Helpful for debugging.
+test-upgrade-against-anvil *ARGS: build-go-ffi
+  #!/bin/bash
+  export FORK_BLOCK_NUMBER=$pinnedBlockNumber
+  FORK_RPC_URL=http://127.0.0.1:8545 \
+    FORK_TEST=true \
+    forge test {{ARGS}}
+
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
   forge test --rerun -vvv
+
+# Runs standard contract tests with rerun flag (developer mode).
+test-dev-rerun: build-go-ffi
+  FOUNDRY_PROFILE=lite forge test --rerun -vvv
 
 # Run Kontrol tests and build all dependencies.
 test-kontrol: build-go-ffi build kontrol-summary-full test-kontrol-no-build
@@ -144,7 +202,7 @@ interfaces-check-no-build:
 
 # Checks that all interfaces are appropriately named and accurately reflect the corresponding
 # contract that they're meant to represent. We run "clean" before building because leftover
-# artifacts can cause the script to detect issues incorrectly.2
+# artifacts can cause the script to detect issues incorrectly.
 interfaces-check: clean build interfaces-check-no-build
 
 # Checks that the size of the contracts is within the limit.

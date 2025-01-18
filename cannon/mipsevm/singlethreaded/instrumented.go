@@ -3,9 +3,10 @@ package singlethreaded
 import (
 	"io"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type InstrumentedState struct {
@@ -51,6 +52,10 @@ func (m *InstrumentedState) InitDebug() error {
 	}
 	m.stackTracker = stackTracker
 	return nil
+}
+
+func (m *InstrumentedState) EnableStats() {
+	//noop
 }
 
 func (m *InstrumentedState) Step(proof bool) (wit *mipsevm.StepWitness, err error) {
@@ -102,6 +107,7 @@ func (m *InstrumentedState) GetDebugInfo() *mipsevm.DebugInfo {
 		MemoryUsed:          hexutil.Uint64(m.state.Memory.UsageRaw()),
 		NumPreimageRequests: m.preimageOracle.NumPreimageRequests(),
 		TotalPreimageSize:   m.preimageOracle.TotalPreimageSize(),
+		TotalSteps:          m.state.GetStep(),
 	}
 }
 

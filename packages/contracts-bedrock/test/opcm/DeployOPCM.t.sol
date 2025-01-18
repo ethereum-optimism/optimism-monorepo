@@ -41,9 +41,6 @@ contract DeployOPCMInput_Test is Test {
         dii.resolvedDelegateProxyBlueprint();
 
         vm.expectRevert("DeployOPCMInput: not set");
-        dii.anchorStateRegistryBlueprint();
-
-        vm.expectRevert("DeployOPCMInput: not set");
         dii.permissionedDisputeGame1Blueprint();
 
         vm.expectRevert("DeployOPCMInput: not set");
@@ -71,6 +68,9 @@ contract DeployOPCMInput_Test is Test {
         dii.disputeGameFactoryImpl();
 
         vm.expectRevert("DeployOPCMInput: not set");
+        dii.anchorStateRegistryImpl();
+
+        vm.expectRevert("DeployOPCMInput: not set");
         dii.delayedWETHImpl();
 
         vm.expectRevert("DeployOPCMInput: not set");
@@ -87,7 +87,6 @@ contract DeployOPCMInput_Test is Test {
         address proxyAdminBlueprint = makeAddr("proxyAdminBlueprint");
         address l1ChugSplashProxyBlueprint = makeAddr("l1ChugSplashProxyBlueprint");
         address resolvedDelegateProxyBlueprint = makeAddr("resolvedDelegateProxyBlueprint");
-        address anchorStateRegistryBlueprint = makeAddr("anchorStateRegistryBlueprint");
         address permissionedDisputeGame1Blueprint = makeAddr("permissionedDisputeGame1Blueprint");
         address permissionedDisputeGame2Blueprint = makeAddr("permissionedDisputeGame2Blueprint");
 
@@ -99,7 +98,6 @@ contract DeployOPCMInput_Test is Test {
         dii.set(dii.proxyAdminBlueprint.selector, proxyAdminBlueprint);
         dii.set(dii.l1ChugSplashProxyBlueprint.selector, l1ChugSplashProxyBlueprint);
         dii.set(dii.resolvedDelegateProxyBlueprint.selector, resolvedDelegateProxyBlueprint);
-        dii.set(dii.anchorStateRegistryBlueprint.selector, anchorStateRegistryBlueprint);
         dii.set(dii.permissionedDisputeGame1Blueprint.selector, permissionedDisputeGame1Blueprint);
         dii.set(dii.permissionedDisputeGame2Blueprint.selector, permissionedDisputeGame2Blueprint);
 
@@ -111,7 +109,6 @@ contract DeployOPCMInput_Test is Test {
         assertEq(dii.proxyAdminBlueprint(), proxyAdminBlueprint, "300");
         assertEq(dii.l1ChugSplashProxyBlueprint(), l1ChugSplashProxyBlueprint, "350");
         assertEq(dii.resolvedDelegateProxyBlueprint(), resolvedDelegateProxyBlueprint, "400");
-        assertEq(dii.anchorStateRegistryBlueprint(), anchorStateRegistryBlueprint, "450");
         assertEq(dii.permissionedDisputeGame1Blueprint(), permissionedDisputeGame1Blueprint, "500");
         assertEq(dii.permissionedDisputeGame2Blueprint(), permissionedDisputeGame2Blueprint, "550");
     }
@@ -124,6 +121,7 @@ contract DeployOPCMInput_Test is Test {
         address l1CrossDomainMessengerImpl = makeAddr("l1CrossDomainMessengerImpl");
         address l1StandardBridgeImpl = makeAddr("l1StandardBridgeImpl");
         address disputeGameFactoryImpl = makeAddr("disputeGameFactoryImpl");
+        address anchorStateRegistryImpl = makeAddr("anchorStateRegistryImpl");
         address delayedWETHImpl = makeAddr("delayedWETHImpl");
         address mipsImpl = makeAddr("mipsImpl");
 
@@ -134,6 +132,7 @@ contract DeployOPCMInput_Test is Test {
         dii.set(dii.l1CrossDomainMessengerImpl.selector, l1CrossDomainMessengerImpl);
         dii.set(dii.l1StandardBridgeImpl.selector, l1StandardBridgeImpl);
         dii.set(dii.disputeGameFactoryImpl.selector, disputeGameFactoryImpl);
+        dii.set(dii.anchorStateRegistryImpl.selector, anchorStateRegistryImpl);
         dii.set(dii.delayedWETHImpl.selector, delayedWETHImpl);
         dii.set(dii.mipsImpl.selector, mipsImpl);
 
@@ -225,7 +224,6 @@ contract DeployOPCMTest is Test {
         doi.set(doi.proxyAdminBlueprint.selector, makeAddr("proxyAdminBlueprint"));
         doi.set(doi.l1ChugSplashProxyBlueprint.selector, makeAddr("l1ChugSplashProxyBlueprint"));
         doi.set(doi.resolvedDelegateProxyBlueprint.selector, makeAddr("resolvedDelegateProxyBlueprint"));
-        doi.set(doi.anchorStateRegistryBlueprint.selector, makeAddr("anchorStateRegistryBlueprint"));
         doi.set(doi.permissionedDisputeGame1Blueprint.selector, makeAddr("permissionedDisputeGame1Blueprint"));
         doi.set(doi.permissionedDisputeGame2Blueprint.selector, makeAddr("permissionedDisputeGame2Blueprint"));
 
@@ -237,6 +235,7 @@ contract DeployOPCMTest is Test {
         doi.set(doi.l1CrossDomainMessengerImpl.selector, makeAddr("l1CrossDomainMessengerImpl"));
         doi.set(doi.l1StandardBridgeImpl.selector, makeAddr("l1StandardBridgeImpl"));
         doi.set(doi.disputeGameFactoryImpl.selector, makeAddr("disputeGameFactoryImpl"));
+        doi.set(doi.anchorStateRegistryImpl.selector, makeAddr("anchorStateRegistryImpl"));
         doi.set(doi.delayedWETHImpl.selector, makeAddr("delayedWETHImpl"));
         doi.set(doi.mipsImpl.selector, makeAddr("mipsImpl"));
 
@@ -249,7 +248,6 @@ contract DeployOPCMTest is Test {
         vm.etch(doi.proxyAdminBlueprint(), hex"01");
         vm.etch(doi.l1ChugSplashProxyBlueprint(), hex"01");
         vm.etch(doi.resolvedDelegateProxyBlueprint(), hex"01");
-        vm.etch(doi.anchorStateRegistryBlueprint(), hex"01");
         vm.etch(doi.permissionedDisputeGame1Blueprint(), hex"01");
         vm.etch(doi.permissionedDisputeGame2Blueprint(), hex"01");
 

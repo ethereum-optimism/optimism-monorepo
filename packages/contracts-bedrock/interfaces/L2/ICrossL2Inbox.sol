@@ -23,15 +23,6 @@ interface ICrossL2Inbox {
     /// @notice Thrown when a non-written transient storage slot is attempted to be read from.
     error NotEntered();
 
-    /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier timestamp.
-    error InvalidTimestamp();
-
-    /// @notice Thrown when trying to execute a cross chain message with an invalid Identifier chain ID.
-    error InvalidChainId();
-
-    /// @notice Thrown when trying to execute a cross chain message and the target call fails.
-    error TargetCallFailed();
-
     /// @notice Thrown when trying to execute a cross chain message on a deposit transaction.
     error NoExecutingDeposits();
 
@@ -59,12 +50,6 @@ interface ICrossL2Inbox {
     function chainId() external view returns (uint256);
 
     function setInteropStart() external;
-
-    /// @notice Executes a cross chain message on the destination chain.
-    /// @param _id An Identifier pointing to the initiating message.
-    /// @param _target Account that is called with _msg.
-    /// @param _message The message payload, matching the initiating message.
-    function executeMessage(Identifier calldata _id, address _target, bytes calldata _message) external payable;
 
     /// @notice Validates a cross chain message on the destination chain
     ///         and emits an ExecutingMessage event. This function is useful

@@ -50,6 +50,15 @@ contract L2StandardBridgeInterop_Test is CommonTest {
     }
 }
 
+/// @notice Test suite for getter functions.
+contract L2StandardBridgeInterop_Getters_Test is L2StandardBridgeInterop_Test {
+    /// @notice Tests that the version function returns a valid string. We avoid testing the
+    ///         specific value of the string as it changes frequently.
+    function test_version_succeeds() external view {
+        assert(bytes(l2StandardBridge.version()).length > 0);
+    }
+}
+
 /// @notice Test suite when converting from a legacy token to a OptimismSuperchainERC20 token
 contract L2StandardBridgeInterop_LegacyToSuper_Test is L2StandardBridgeInterop_Test {
     /// @notice Set up the test for converting from a legacy token to a OptimismSuperchainERC20 token

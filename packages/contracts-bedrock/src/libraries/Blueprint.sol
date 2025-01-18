@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+import { Bytes } from "src/libraries/Bytes.sol";
+
 /// @notice Methods for working with ERC-5202 blueprint contracts.
 /// https://eips.ethereum.org/EIPS/eip-5202
 library Blueprint {
@@ -157,6 +159,50 @@ library Blueprint {
         if (newContract_ == address(0)) revert DeploymentFailed();
     }
 
+    /// @notice Deploys a blueprint contract with the given `_rawBytecode` and `_salt`. If the blueprint is too large to
+    /// fit in a single deployment, it is split across two addresses. It is the responsibility of the caller to handle
+    /// large contracts by checking if the second return value is not address(0).
+    function create(
+        bytes memory _rawBytecode,
+        bytes32 _salt
+    )
+        internal
+        returns (address newContract1_, address newContract2_)
+    {
+        if (_rawBytecode.length <= maxInitCodeSize()) {
+            newContract1_ = deploySmallBytecode(blueprintDeployerBytecode(_rawBytecode), _salt);
+            return (newContract1_, address(0));
+        }
+
+        (newContract1_, newContract2_) = deployBigBytecode(_rawBytecode, _salt);
+    }
+
+    /// @notice Deploys a blueprint contract that can fit in a single address.
+    function deploySmallBytecode(bytes memory _bytecode, bytes32 _salt) internal returns (address newContract_) {
+        assembly ("memory-safe") {
+            newContract_ := create2(0, add(_bytecode, 0x20), mload(_bytecode), _salt)
+        }
+        require(newContract_ != address(0), "Blueprint: create2 failed");
+    }
+
+    /// @notice Deploys a two blueprint contracts, splitting the bytecode across both of them.
+    function deployBigBytecode(
+        bytes memory _bytecode,
+        bytes32 _salt
+    )
+        internal
+        returns (address newContract1_, address newContract2_)
+    {
+        uint32 maxSize = maxInitCodeSize();
+        bytes memory part1Slice = Bytes.slice(_bytecode, 0, maxSize);
+        bytes memory part1 = blueprintDeployerBytecode(part1Slice);
+        bytes memory part2Slice = Bytes.slice(_bytecode, maxSize, _bytecode.length - maxSize);
+        bytes memory part2 = blueprintDeployerBytecode(part2Slice);
+
+        newContract1_ = deploySmallBytecode(part1, _salt);
+        newContract2_ = deploySmallBytecode(part2, _salt);
+    }
+
     /// @notice Convert a bytes array to a uint256.
     function bytesToUint(bytes memory _b) internal pure returns (uint256) {
         if (_b.length > 32) revert BytesArrayTooLong();
@@ -165,5 +211,10 @@ library Blueprint {
             number = number + uint256(uint8(_b[i])) * (2 ** (8 * (_b.length - (i + 1))));
         }
         return number;
+    }
+
+    /// @notice Returns the maximum init code size for each blueprint. The preamble needs 3 bytes.
+    function maxInitCodeSize() internal pure returns (uint32) {
+        return 24576 - 3;
     }
 }

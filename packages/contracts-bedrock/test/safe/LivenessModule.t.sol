@@ -146,7 +146,7 @@ contract LivenessModule_GetRequiredThreshold_Test is LivenessModule_TestInit {
         pure
         returns (uint256)
     {
-        require(_percentage > 0 && _percentage <= 100);
+        require(_percentage > 0 && _percentage <= 100, "LivenessModule: _percentage must be between 1 and 100");
         uint256 toAdd;
 
         // If the total multiplied by the percentage is not divisible by 100, we need to add 1 to the result to

@@ -3,6 +3,8 @@ package inspect
 import (
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/pipeline"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
@@ -16,6 +18,33 @@ type L1Contracts struct {
 	SuperchainDeployment      SuperchainDeployment      `json:"superchainDeployment"`
 	OpChainDeployment         OpChainDeployment         `json:"opChainDeployment"`
 	ImplementationsDeployment ImplementationsDeployment `json:"implementationsDeployment"`
+}
+
+func (l L1Contracts) AsL1Deployments() *genesis.L1Deployments {
+	return &genesis.L1Deployments{
+		AddressManager:                    l.OpChainDeployment.AddressManagerAddress,
+		DisputeGameFactory:                l.ImplementationsDeployment.DisputeGameFactoryImplAddress,
+		DisputeGameFactoryProxy:           l.OpChainDeployment.DisputeGameFactoryProxyAddress,
+		L1CrossDomainMessenger:            l.ImplementationsDeployment.L1CrossDomainMessengerImplAddress,
+		L1CrossDomainMessengerProxy:       l.OpChainDeployment.L1CrossDomainMessengerProxyAddress,
+		L1ERC721Bridge:                    l.ImplementationsDeployment.L1ERC721BridgeImplAddress,
+		L1ERC721BridgeProxy:               l.OpChainDeployment.L1ERC721BridgeProxyAddress,
+		L1StandardBridge:                  l.ImplementationsDeployment.L1StandardBridgeImplAddress,
+		L1StandardBridgeProxy:             l.OpChainDeployment.L1StandardBridgeProxyAddress,
+		L2OutputOracle:                    common.Address{},
+		L2OutputOracleProxy:               common.Address{},
+		OptimismMintableERC20Factory:      l.ImplementationsDeployment.OptimismMintableERC20FactoryImplAddress,
+		OptimismMintableERC20FactoryProxy: l.OpChainDeployment.OptimismMintableERC20FactoryProxyAddress,
+		OptimismPortal:                    l.ImplementationsDeployment.OptimismPortalImplAddress,
+		OptimismPortalProxy:               l.OpChainDeployment.OptimismPortalProxyAddress,
+		ProxyAdmin:                        l.OpChainDeployment.ProxyAdminAddress,
+		SystemConfig:                      l.ImplementationsDeployment.SystemConfigImplAddress,
+		SystemConfigProxy:                 l.OpChainDeployment.SystemConfigProxyAddress,
+		ProtocolVersions:                  l.SuperchainDeployment.ProtocolVersionsImplAddress,
+		ProtocolVersionsProxy:             l.SuperchainDeployment.ProtocolVersionsProxyAddress,
+		DataAvailabilityChallenge:         l.OpChainDeployment.DataAvailabilityChallengeImplAddress,
+		DataAvailabilityChallengeProxy:    l.OpChainDeployment.DataAvailabilityChallengeProxyAddress,
+	}
 }
 
 type SuperchainDeployment struct {
@@ -42,6 +71,8 @@ type OpChainDeployment struct {
 	PermissionedDisputeGameAddress           common.Address `json:"permissionedDisputeGameAddress"`
 	DelayedWETHPermissionedGameProxyAddress  common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
 	// DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
+	DataAvailabilityChallengeProxyAddress common.Address `json:"dataAvailabilityChallengeProxyAddress"`
+	DataAvailabilityChallengeImplAddress  common.Address `json:"dataAvailabilityChallengeImplAddress"`
 }
 
 type ImplementationsDeployment struct {
@@ -106,10 +137,11 @@ func L1(globalState *state.State, chainID common.Hash) (*L1Contracts, error) {
 			OptimismPortalProxyAddress:               chainState.OptimismPortalProxyAddress,
 			DisputeGameFactoryProxyAddress:           chainState.DisputeGameFactoryProxyAddress,
 			AnchorStateRegistryProxyAddress:          chainState.AnchorStateRegistryProxyAddress,
-			AnchorStateRegistryImplAddress:           chainState.AnchorStateRegistryImplAddress,
 			FaultDisputeGameAddress:                  chainState.FaultDisputeGameAddress,
 			PermissionedDisputeGameAddress:           chainState.PermissionedDisputeGameAddress,
 			DelayedWETHPermissionedGameProxyAddress:  chainState.DelayedWETHPermissionedGameProxyAddress,
+			DataAvailabilityChallengeProxyAddress:    chainState.DataAvailabilityChallengeProxyAddress,
+			DataAvailabilityChallengeImplAddress:     chainState.DataAvailabilityChallengeImplAddress,
 			// DelayedWETHPermissionlessGameProxyAddress: chainState.DelayedWETHPermissionlessGameProxyAddress,
 		},
 		ImplementationsDeployment: ImplementationsDeployment{

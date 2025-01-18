@@ -16,6 +16,7 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 // Interfaces
 import { IL2CrossDomainMessenger } from "interfaces/L2/IL2CrossDomainMessenger.sol";
 import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
+import { IGasToken } from "src/libraries/GasPayingToken.sol";
 
 contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Receiver address for testing
@@ -24,7 +25,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that the implementation is initialized correctly.
     function test_constructor_succeeds() external view {
         IL2CrossDomainMessenger impl =
-            IL2CrossDomainMessenger(EIP1967Helper.getImplementation(deploy.mustGetAddress("L2CrossDomainMessenger")));
+            IL2CrossDomainMessenger(EIP1967Helper.getImplementation(artifacts.mustGetAddress("L2CrossDomainMessenger")));
         assertEq(address(impl.OTHER_MESSENGER()), address(0));
         assertEq(address(impl.otherMessenger()), address(0));
         assertEq(address(impl.l1CrossDomainMessenger()), address(0));
@@ -197,7 +198,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(caller);
         vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
@@ -218,7 +219,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         address caller = AddressAliasHelper.applyL1ToL2Alias(address(l1CrossDomainMessenger));
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(caller);
         vm.expectRevert("CrossDomainMessenger: cannot send message to blocked system address");
@@ -232,14 +233,14 @@ contract L2CrossDomainMessenger_Test is CommonTest {
         );
     }
 
-    /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal but not a failed
+    /// @dev Tests that the relayMessage function reverts if the message called by non-optimismPortal2 but not a failed
     /// message
     function test_relayMessage_relayingNewMessageByExternalUser_reverts() external {
         address target = address(alice);
         address sender = address(l1CrossDomainMessenger);
         bytes memory message = hex"1111";
 
-        vm.store(address(optimismPortal), bytes32(0), bytes32(abi.encode(sender)));
+        vm.store(address(optimismPortal2), bytes32(0), bytes32(abi.encode(sender)));
 
         vm.prank(bob);
         vm.expectRevert("CrossDomainMessenger: message cannot be replayed");
@@ -315,7 +316,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that sendMessage succeeds with a custom gas token when the call value is zero.
     function test_sendMessage_customGasTokenButNoValue_succeeds() external {
         // Mock the gasPayingToken function to return a custom gas token
-        vm.mockCall(address(l1Block), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
+        vm.mockCall(address(l1Block), abi.encodeCall(IGasToken.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
 
         bytes memory xDomainCallData =
             Encoding.encodeCrossDomainMessage(l2CrossDomainMessenger.messageNonce(), alice, recipient, 0, 100, hex"ff");
@@ -355,7 +356,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that the sendMessage reverts when call value is non-zero with custom gas token.
     function test_sendMessage_customGasTokenWithValue_reverts() external {
         // Mock the gasPayingToken function to return a custom gas token
-        vm.mockCall(address(l1Block), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
+        vm.mockCall(address(l1Block), abi.encodeCall(IGasToken.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
 
         vm.expectRevert("CrossDomainMessenger: cannot send value with custom gas token");
         l2CrossDomainMessenger.sendMessage{ value: 1 }(recipient, hex"ff", uint32(100));
@@ -364,7 +365,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Tests that the relayMessage succeeds with a custom gas token when the call value is zero.
     function test_relayMessage_customGasTokenAndNoValue_succeeds() external {
         // Mock the gasPayingToken function to return a custom gas token
-        vm.mockCall(address(l1Block), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
+        vm.mockCall(address(l1Block), abi.encodeCall(IGasToken.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
 
         address target = address(0xabcd);
         address sender = address(l1CrossDomainMessenger);
@@ -400,7 +401,7 @@ contract L2CrossDomainMessenger_Test is CommonTest {
     ///       The L1CrossDomainMessenger `sendMessage` function cannot send value with a custom gas token.
     function test_relayMessage_customGasTokenWithValue_reverts() external virtual {
         // Mock the gasPayingToken function to return a custom gas token
-        vm.mockCall(address(l1Block), abi.encodeCall(systemConfig.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
+        vm.mockCall(address(l1Block), abi.encodeCall(IGasToken.gasPayingToken, ()), abi.encode(address(1), uint8(2)));
         vm.expectRevert("CrossDomainMessenger: value must be zero unless message is from a system address");
 
         l2CrossDomainMessenger.relayMessage{ value: 1 }(

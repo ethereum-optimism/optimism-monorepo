@@ -3,9 +3,11 @@ package runner
 import (
 	"time"
 
-	contractMetrics "github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
-	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 	"github.com/prometheus/client_golang/prometheus"
+
+	contractMetrics "github.com/ethereum-optimism/optimism/op-challenger/game/fault/contracts/metrics"
+	"github.com/ethereum-optimism/optimism/op-challenger/metrics"
+	opmetrics "github.com/ethereum-optimism/optimism/op-service/metrics"
 )
 
 const Namespace = "op_challenger_runner"
@@ -15,10 +17,9 @@ type Metrics struct {
 	registry *prometheus.Registry
 	factory  opmetrics.Factory
 	*contractMetrics.ContractMetrics
+	*metrics.VmMetrics
 
-	vmExecutionTime     *prometheus.HistogramVec
 	vmLastExecutionTime *prometheus.GaugeVec
-	vmMemoryUsed        *prometheus.HistogramVec
 	vmLastMemoryUsed    *prometheus.GaugeVec
 	successTotal        *prometheus.CounterVec
 	failuresTotal       *prometheus.CounterVec
@@ -40,26 +41,12 @@ func NewMetrics() *Metrics {
 		factory:  factory,
 
 		ContractMetrics: contractMetrics.MakeContractMetrics(Namespace, factory),
+		VmMetrics:       metrics.NewVmMetrics(Namespace, factory),
 
-		vmExecutionTime: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: Namespace,
-			Name:      "vm_execution_time",
-			Help:      "Time (in seconds) to execute the fault proof VM",
-			Buckets: append(
-				[]float64{1.0, 10.0},
-				prometheus.ExponentialBuckets(30.0, 2.0, 14)...),
-		}, []string{"vm"}),
 		vmLastExecutionTime: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
 			Name:      "vm_last_execution_time",
 			Help:      "Time (in seconds) taken for the last execution of the fault proof VM",
-		}, []string{"vm"}),
-		vmMemoryUsed: factory.NewHistogramVec(prometheus.HistogramOpts{
-			Namespace: Namespace,
-			Name:      "vm_memory_used",
-			Help:      "Memory used (in bytes) to execute the fault proof VM",
-			// 100MiB increments from 0 to 1.5GiB
-			Buckets: prometheus.LinearBuckets(0, 1024*1024*100, 15),
 		}, []string{"vm"}),
 		vmLastMemoryUsed: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: Namespace,
@@ -90,12 +77,12 @@ func (m *Metrics) Registry() *prometheus.Registry {
 
 func (m *Metrics) RecordVmExecutionTime(vmType string, dur time.Duration) {
 	val := dur.Seconds()
-	m.vmExecutionTime.WithLabelValues(vmType).Observe(val)
+	m.VmMetrics.RecordVmExecutionTime(vmType, dur)
 	m.vmLastExecutionTime.WithLabelValues(vmType).Set(val)
 }
 
 func (m *Metrics) RecordVmMemoryUsed(vmType string, memoryUsed uint64) {
-	m.vmMemoryUsed.WithLabelValues(vmType).Observe(float64(memoryUsed))
+	m.VmMetrics.RecordVmMemoryUsed(vmType, memoryUsed)
 	m.vmLastMemoryUsed.WithLabelValues(vmType).Set(float64(memoryUsed))
 }
 

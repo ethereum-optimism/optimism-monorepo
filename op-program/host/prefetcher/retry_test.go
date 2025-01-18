@@ -5,6 +5,7 @@ import (
 	"errors"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 
+	hosttypes "github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
@@ -224,11 +226,15 @@ func createL1BlobSource(t *testing.T) (*RetryingL1BlobSource, *testutils.MockBlo
 func TestRetryingL2Source(t *testing.T) {
 	ctx := context.Background()
 	hash := common.Hash{0xab}
-	info := &testutils.MockBlockInfo{InfoHash: hash}
+	blockNum := uint64(14982)
+	info := &testutils.MockBlockInfo{InfoHash: hash, InfoNum: blockNum}
 	// The mock really doesn't like returning nil for a eth.BlockInfo so return a value we expect to be ignored instead
 	wrongInfo := &testutils.MockBlockInfo{InfoHash: common.Hash{0x99}}
 	txs := types.Transactions{
 		&types.Transaction{},
+	}
+	rcpts := types.Receipts{
+		&types.Receipt{},
 	}
 	data := []byte{1, 2, 3, 4, 5}
 	output := &eth.OutputV0{}
@@ -302,6 +308,17 @@ func TestRetryingL2Source(t *testing.T) {
 		require.Equal(t, data, actual)
 	})
 
+	t.Run("FetchReceipts Success", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		mock.ExpectFetchReceipts(hash, info, rcpts, nil)
+
+		actualInfo, actualRcpts, err := source.FetchReceipts(ctx, hash)
+		require.NoError(t, err)
+		require.Equal(t, info, actualInfo)
+		require.Equal(t, rcpts, actualRcpts)
+	})
+
 	t.Run("OutputByRoot Success", func(t *testing.T) {
 		source, mock := createL2Source(t)
 		defer mock.AssertExpectations(t)
@@ -323,6 +340,28 @@ func TestRetryingL2Source(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, output, actualOutput)
 	})
+
+	t.Run("OutputByNumber Success", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		mock.ExpectOutputByNumber(blockNum, output, nil)
+
+		actualOutput, err := source.OutputByNumber(ctx, blockNum)
+		require.NoError(t, err)
+		require.Equal(t, output, actualOutput)
+	})
+
+	t.Run("OutputByNumber Error", func(t *testing.T) {
+		source, mock := createL2Source(t)
+		defer mock.AssertExpectations(t)
+		expectedErr := errors.New("boom")
+		mock.ExpectOutputByNumber(blockNum, wrongOutput, expectedErr)
+		mock.ExpectOutputByNumber(blockNum, output, nil)
+
+		actualOutput, err := source.OutputByNumber(ctx, blockNum)
+		require.NoError(t, err)
+		require.Equal(t, output, actualOutput)
+	})
 }
 
 func createL2Source(t *testing.T) (*RetryingL2Source, *MockL2Source) {
@@ -336,6 +375,16 @@ func createL2Source(t *testing.T) (*RetryingL2Source, *MockL2Source) {
 
 type MockL2Source struct {
 	mock.Mock
+}
+
+func (m *MockL2Source) ExperimentalEnabled() bool {
+	out := m.Mock.MethodCalled("ExperimentalEnabled")
+	return out[0].(bool)
+}
+
+func (m *MockL2Source) RollupConfig() *rollup.Config {
+	out := m.Mock.MethodCalled("RollupConfig")
+	return out[0].(*rollup.Config)
 }
 
 func (m *MockL2Source) InfoAndTxsByHash(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Transactions, error) {
@@ -353,8 +402,18 @@ func (m *MockL2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte
 	return out[0].([]byte), *out[1].(*error)
 }
 
-func (m *MockL2Source) OutputByRoot(ctx context.Context, root common.Hash) (eth.Output, error) {
-	out := m.Mock.MethodCalled("OutputByRoot", root)
+func (m *MockL2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
+	out := m.Mock.MethodCalled("FetchReceipts", blockHash)
+	return out[0].(eth.BlockInfo), out[1].(types.Receipts), *out[2].(*error)
+}
+
+func (m *MockL2Source) OutputByRoot(ctx context.Context, blockRoot common.Hash) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByRoot", blockRoot)
+	return out[0].(eth.Output), *out[1].(*error)
+}
+
+func (m *MockL2Source) OutputByNumber(ctx context.Context, blockNum uint64) (eth.Output, error) {
+	out := m.Mock.MethodCalled("OutputByNumber", blockNum)
 	return out[0].(eth.Output), *out[1].(*error)
 }
 
@@ -370,8 +429,16 @@ func (m *MockL2Source) ExpectCodeByHash(hash common.Hash, code []byte, err error
 	m.Mock.On("CodeByHash", hash).Once().Return(code, &err)
 }
 
-func (m *MockL2Source) ExpectOutputByRoot(root common.Hash, output eth.Output, err error) {
-	m.Mock.On("OutputByRoot", root).Once().Return(output, &err)
+func (m *MockL2Source) ExpectFetchReceipts(blockHash common.Hash, info eth.BlockInfo, rcpts types.Receipts, err error) {
+	m.Mock.On("FetchReceipts", blockHash).Once().Return(info, rcpts, &err)
 }
 
-var _ L2Source = (*MockL2Source)(nil)
+func (m *MockL2Source) ExpectOutputByRoot(blockHash common.Hash, output eth.Output, err error) {
+	m.Mock.On("OutputByRoot", blockHash).Once().Return(output, &err)
+}
+
+func (m *MockL2Source) ExpectOutputByNumber(blockNum uint64, output eth.Output, err error) {
+	m.Mock.On("OutputByNumber", blockNum).Once().Return(output, &err)
+}
+
+var _ hosttypes.L2Source = (*MockL2Source)(nil)

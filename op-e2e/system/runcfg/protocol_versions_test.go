@@ -49,8 +49,8 @@ func TestRecommendedProtocolVersionChange(t *testing.T) {
 	protVersions, err := bindings.NewProtocolVersions(cfg.L1Deployments.ProtocolVersionsProxy, l1)
 	require.NoError(t, err)
 
-	// ProtocolVersions contract is owned by same key as SystemConfig in devnet
-	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.SysCfgOwner, cfg.L1ChainIDBig())
+	// ProtocolVersions contract is owned by the deployer in devnet
+	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.Deployer, cfg.L1ChainIDBig())
 	require.NoError(t, err)
 
 	// Change recommended protocol version
@@ -105,7 +105,7 @@ func TestRequiredProtocolVersionChangeAndHalt(t *testing.T) {
 	require.NoError(t, err)
 
 	// ProtocolVersions contract is owned by same key as SystemConfig in devnet
-	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.SysCfgOwner, cfg.L1ChainIDBig())
+	opts, err := bind.NewKeyedTransactorWithChainID(cfg.Secrets.Deployer, cfg.L1ChainIDBig())
 	require.NoError(t, err)
 
 	// Change required protocol version

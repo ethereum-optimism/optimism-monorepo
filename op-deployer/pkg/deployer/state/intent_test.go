@@ -8,7 +8,7 @@ import (
 )
 
 func TestValidateStandardValues(t *testing.T) {
-	intent, err := NewIntentStandard(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+	intent, err := NewIntentStandard(1, []common.Hash{common.HexToHash("0x336")})
 	require.NoError(t, err)
 
 	err = intent.Check()
@@ -24,14 +24,62 @@ func TestValidateStandardValues(t *testing.T) {
 	err = intent.Check()
 	require.NoError(t, err)
 
-	intent.Chains[0].Eip1559Denominator = 3 // set to non-standard value
-	err = intent.Check()
-	require.Error(t, err)
-	require.ErrorIs(t, err, ErrNonStandardValue)
+	tests := []struct {
+		name    string
+		mutator func(intent *Intent)
+		err     error
+	}{
+		{
+			"EIP1559Denominator",
+			func(intent *Intent) {
+				intent.Chains[0].Eip1559Denominator = 3
+			},
+			ErrNonStandardValue,
+		},
+		{
+			"EIP1559DenominatorCanyon",
+			func(intent *Intent) {
+				intent.Chains[0].Eip1559DenominatorCanyon = 3
+			},
+			ErrNonStandardValue,
+		},
+		{
+			"EIP1559Elasticity",
+			func(intent *Intent) {
+				intent.Chains[0].Eip1559Elasticity = 999
+			},
+			ErrNonStandardValue,
+		},
+		{
+			"AdditionalDisputeGames",
+			func(intent *Intent) {
+				intent.Chains[0].AdditionalDisputeGames = []AdditionalDisputeGame{
+					{
+						VMType: VMTypeAlphabet,
+					},
+				}
+			},
+			ErrNonStandardValue,
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			intent, err := NewIntentStandard(1, []common.Hash{common.HexToHash("0x336")})
+			require.NoError(t, err)
+			setChainRoles(&intent)
+			setFeeAddresses(&intent)
+
+			tt.mutator(&intent)
+
+			err = intent.Check()
+			require.Error(t, err)
+			require.ErrorIs(t, err, tt.err)
+		})
+	}
 }
 
 func TestValidateCustomValues(t *testing.T) {
-	intent, err := NewIntentCustom(DeploymentStrategyLive, 1, []common.Hash{common.HexToHash("0x336")})
+	intent, err := NewIntentCustom(1, []common.Hash{common.HexToHash("0x336")})
 	require.NoError(t, err)
 
 	err = intent.Check()

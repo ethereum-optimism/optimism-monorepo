@@ -1,0 +1,370 @@
+[
+  {
+    "inputs": [
+      {
+        "internalType": "contract GnosisSafe",
+        "name": "_foundationSafe",
+        "type": "address"
+      },
+      {
+        "internalType": "contract IDeputyGuardianModule",
+        "name": "_deputyGuardianModule",
+        "type": "address"
+      },
+      {
+        "internalType": "contract ISuperchainConfig",
+        "name": "_superchainConfig",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_deputy",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_deputySignature",
+        "type": "bytes"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "constructor"
+  },
+  {
+    "inputs": [],
+    "name": "deputy",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "deputyAuthMessageTypehash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "deputyAuthMessageTypehash_",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "deputyGuardianModule",
+    "outputs": [
+      {
+        "internalType": "contract IDeputyGuardianModule",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "eip712Domain",
+    "outputs": [
+      {
+        "internalType": "bytes1",
+        "name": "fields",
+        "type": "bytes1"
+      },
+      {
+        "internalType": "string",
+        "name": "name",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "version",
+        "type": "string"
+      },
+      {
+        "internalType": "uint256",
+        "name": "chainId",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "verifyingContract",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes32",
+        "name": "salt",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "uint256[]",
+        "name": "extensions",
+        "type": "uint256[]"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "foundationSafe",
+    "outputs": [
+      {
+        "internalType": "contract GnosisSafe",
+        "name": "foundationSafe_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "_nonce",
+        "type": "bytes32"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_signature",
+        "type": "bytes"
+      }
+    ],
+    "name": "pause",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "pauseMessageTypehash",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "pauseMessageTypehash_",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "pure",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "_deputy",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_deputySignature",
+        "type": "bytes"
+      }
+    ],
+    "name": "setDeputy",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "contract IDeputyGuardianModule",
+        "name": "_deputyGuardianModule",
+        "type": "address"
+      }
+    ],
+    "name": "setDeputyGuardianModule",
+    "outputs": [],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "superchainConfig",
+    "outputs": [
+      {
+        "internalType": "contract ISuperchainConfig",
+        "name": "superchainConfig_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "name": "usedNonces",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "version",
+    "outputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "contract IDeputyGuardianModule",
+        "name": "deputyGuardianModule",
+        "type": "address"
+      }
+    ],
+    "name": "DeputyGuardianModuleSet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "deputy",
+        "type": "address"
+      }
+    ],
+    "name": "DeputySet",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [],
+    "name": "EIP712DomainChanged",
+    "type": "event"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "deputy",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bytes32",
+        "name": "nonce",
+        "type": "bytes32"
+      }
+    ],
+    "name": "PauseTriggered",
+    "type": "event"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "",
+        "type": "string"
+      }
+    ],
+    "name": "DeputyPauseModule_ExecutionFailed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_InvalidDeputy",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_InvalidDeputyGuardianModule",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_NonceAlreadyUsed",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_NotFromSafe",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_SuperchainNotPaused",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "DeputyPauseModule_Unauthorized",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "ECDSAInvalidSignature",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "uint256",
+        "name": "length",
+        "type": "uint256"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureLength",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bytes32",
+        "name": "s",
+        "type": "bytes32"
+      }
+    ],
+    "name": "ECDSAInvalidSignatureS",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidShortString",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "string",
+        "name": "str",
+        "type": "string"
+      }
+    ],
+    "name": "StringTooLong",
+    "type": "error"
+  }
+]

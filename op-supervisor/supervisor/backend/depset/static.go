@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sort"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -28,14 +29,14 @@ type StaticConfigDependency struct {
 // It can be used as a DependencySetSource itself, by simply returning the itself when loading the set.
 type StaticConfigDependencySet struct {
 	// dependency info per chain
-	dependencies map[types.ChainID]*StaticConfigDependency
+	dependencies map[eth.ChainID]*StaticConfigDependency
 	// cached mapping of chain index to chain ID
-	indexToID map[types.ChainIndex]types.ChainID
+	indexToID map[types.ChainIndex]eth.ChainID
 	// cached list of chain IDs, sorted by ID value
-	chainIDs []types.ChainID
+	chainIDs []eth.ChainID
 }
 
-func NewStaticConfigDependencySet(dependencies map[types.ChainID]*StaticConfigDependency) (*StaticConfigDependencySet, error) {
+func NewStaticConfigDependencySet(dependencies map[eth.ChainID]*StaticConfigDependency) (*StaticConfigDependencySet, error) {
 	out := &StaticConfigDependencySet{dependencies: dependencies}
 	if err := out.hydrate(); err != nil {
 		return nil, err
@@ -47,7 +48,7 @@ func NewStaticConfigDependencySet(dependencies map[types.ChainID]*StaticConfigDe
 // to encode/decode just the attributes that matter,
 // while wrapping the decoding functionality with additional hydration step.
 type jsonStaticConfigDependencySet struct {
-	Dependencies map[types.ChainID]*StaticConfigDependency `json:"dependencies"`
+	Dependencies map[eth.ChainID]*StaticConfigDependency `json:"dependencies"`
 }
 
 func (ds *StaticConfigDependencySet) MarshalJSON() ([]byte, error) {
@@ -68,8 +69,8 @@ func (ds *StaticConfigDependencySet) UnmarshalJSON(data []byte) error {
 
 // hydrate sets all the cached values, based on the dependencies attribute
 func (ds *StaticConfigDependencySet) hydrate() error {
-	ds.indexToID = make(map[types.ChainIndex]types.ChainID)
-	ds.chainIDs = make([]types.ChainID, 0, len(ds.dependencies))
+	ds.indexToID = make(map[types.ChainIndex]eth.ChainID)
+	ds.chainIDs = make([]eth.ChainID, 0, len(ds.dependencies))
 	for id, dep := range ds.dependencies {
 		if existing, ok := ds.indexToID[dep.ChainIndex]; ok {
 			return fmt.Errorf("chain %s cannot have the same index (%d) as chain %s", id, dep.ChainIndex, existing)
@@ -91,7 +92,7 @@ func (ds *StaticConfigDependencySet) LoadDependencySet(ctx context.Context) (Dep
 	return ds, nil
 }
 
-func (ds *StaticConfigDependencySet) CanExecuteAt(chainID types.ChainID, execTimestamp uint64) (bool, error) {
+func (ds *StaticConfigDependencySet) CanExecuteAt(chainID eth.ChainID, execTimestamp uint64) (bool, error) {
 	dep, ok := ds.dependencies[chainID]
 	if !ok {
 		return false, nil
@@ -99,7 +100,7 @@ func (ds *StaticConfigDependencySet) CanExecuteAt(chainID types.ChainID, execTim
 	return execTimestamp >= dep.ActivationTime, nil
 }
 
-func (ds *StaticConfigDependencySet) CanInitiateAt(chainID types.ChainID, initTimestamp uint64) (bool, error) {
+func (ds *StaticConfigDependencySet) CanInitiateAt(chainID eth.ChainID, initTimestamp uint64) (bool, error) {
 	dep, ok := ds.dependencies[chainID]
 	if !ok {
 		return false, nil
@@ -107,27 +108,27 @@ func (ds *StaticConfigDependencySet) CanInitiateAt(chainID types.ChainID, initTi
 	return initTimestamp >= dep.HistoryMinTime, nil
 }
 
-func (ds *StaticConfigDependencySet) Chains() []types.ChainID {
+func (ds *StaticConfigDependencySet) Chains() []eth.ChainID {
 	return slices.Clone(ds.chainIDs)
 }
 
-func (ds *StaticConfigDependencySet) HasChain(chainID types.ChainID) bool {
+func (ds *StaticConfigDependencySet) HasChain(chainID eth.ChainID) bool {
 	_, ok := ds.dependencies[chainID]
 	return ok
 }
 
-func (ds *StaticConfigDependencySet) ChainIndexFromID(id types.ChainID) (types.ChainIndex, error) {
+func (ds *StaticConfigDependencySet) ChainIndexFromID(id eth.ChainID) (types.ChainIndex, error) {
 	dep, ok := ds.dependencies[id]
 	if !ok {
-		return 0, types.ErrUnknownChain
+		return 0, fmt.Errorf("failed to translate chain ID %s to chain index: %w", id, types.ErrUnknownChain)
 	}
 	return dep.ChainIndex, nil
 }
 
-func (ds *StaticConfigDependencySet) ChainIDFromIndex(index types.ChainIndex) (types.ChainID, error) {
+func (ds *StaticConfigDependencySet) ChainIDFromIndex(index types.ChainIndex) (eth.ChainID, error) {
 	id, ok := ds.indexToID[index]
 	if !ok {
-		return types.ChainID{}, types.ErrUnknownChain
+		return eth.ChainID{}, fmt.Errorf("failed to translate chain index %s to chain ID: %w", index, types.ErrUnknownChain)
 	}
 	return id, nil
 }

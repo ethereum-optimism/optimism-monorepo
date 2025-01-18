@@ -10,10 +10,10 @@ import (
 )
 
 type UnsafeFrontierCheckDeps interface {
-	ParentBlock(chainID types.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error)
+	ParentBlock(chainID eth.ChainID, parentOf eth.BlockID) (parent eth.BlockID, err error)
 
-	IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) error
-	IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) error
+	IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error
+	IsLocalUnsafe(chainID eth.ChainID, block eth.BlockID) error
 
 	DependencySet() depset.DependencySet
 }

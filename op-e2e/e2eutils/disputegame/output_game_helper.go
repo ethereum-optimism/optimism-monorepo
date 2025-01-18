@@ -368,6 +368,18 @@ func (g *OutputGameHelper) Status(ctx context.Context) gameTypes.GameStatus {
 	return status
 }
 
+func (g *OutputGameHelper) WaitForBondModeSet(ctx context.Context) {
+	g.T.Logf("Waiting for game %v to have bond mode set", g.Addr)
+	timedCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
+	defer cancel()
+	err := wait.For(timedCtx, time.Second, func() (bool, error) {
+		bondMode, err := g.Game.BondDistributionMode(ctx)
+		g.Require.NoError(err)
+		return bondMode != 0, nil
+	})
+	g.Require.NoError(err, "Failed to wait for bond mode to be set")
+}
+
 func (g *OutputGameHelper) WaitForGameStatus(ctx context.Context, expected gameTypes.GameStatus) {
 	g.T.Logf("Waiting for game %v to have status %v", g.Addr, expected)
 	timedCtx, cancel := context.WithTimeout(ctx, defaultTimeout)
