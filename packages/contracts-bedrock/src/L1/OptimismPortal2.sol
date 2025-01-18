@@ -194,6 +194,7 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
     /// @param _disputeGameFactory Contract of the DisputeGameFactory.
     /// @param _systemConfig Contract of the SystemConfig.
     /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _initialRespectedGameType Initial game type to be respected.
     function initialize(
         IDisputeGameFactory _disputeGameFactory,
         ISystemConfig _systemConfig,
@@ -201,7 +202,24 @@ contract OptimismPortal2 is Initializable, ResourceMetering, ISemver {
         GameType _initialRespectedGameType
     )
         external
+        virtual
         initializer
+    {
+        _initialize(_disputeGameFactory, _systemConfig, _superchainConfig, _initialRespectedGameType);
+    }
+
+    /// @notice Internal initializer function.
+    /// @param _disputeGameFactory Contract of the DisputeGameFactory.
+    /// @param _systemConfig Contract of the SystemConfig.
+    /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _initialRespectedGameType Initial game type to be respected.
+    function _initialize(
+        IDisputeGameFactory _disputeGameFactory,
+        ISystemConfig _systemConfig,
+        ISuperchainConfig _superchainConfig,
+        GameType _initialRespectedGameType
+    )
+        internal
     {
         disputeGameFactory = _disputeGameFactory;
         systemConfig = _systemConfig;

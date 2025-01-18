@@ -2,7 +2,13 @@
 pragma solidity 0.8.15;
 
 // Contracts
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
+import {
+    OptimismPortal2,
+    IDisputeGameFactory,
+    ISystemConfig,
+    ISuperchainConfig,
+    GameType
+} from "src/L1/OptimismPortal2.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
@@ -39,6 +45,8 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @notice Storage struct for the OptimismPortal specific storage data.
     /// @custom:storage-location erc7201:OptimismPortal.storage
     struct OptimismPortalStorage {
+        /// @notice The address of the SharedLockbox.
+        address sharedLockbox;
         /// @notice A flag indicating whether the contract has migrated the ETH liquidity to the SharedLockbox.
         bool migrated;
     }
@@ -60,6 +68,27 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @custom:semver +interop-beta.10
     function version() public pure override returns (string memory) {
         return string.concat(super.version(), "+interop-beta.10");
+    }
+
+    /// @notice Initializer.
+    /// @param _disputeGameFactory Contract of the DisputeGameFactory.
+    /// @param _systemConfig Contract of the SystemConfig.
+    /// @param _superchainConfig Contract of the SuperchainConfig.
+    /// @param _initialRespectedGameType Initial game type to be respected.
+    function initialize(
+        IDisputeGameFactory _disputeGameFactory,
+        ISystemConfig _systemConfig,
+        ISuperchainConfig _superchainConfig,
+        GameType _initialRespectedGameType
+    )
+        external
+        override
+        initializer
+    {
+        _initialize(_disputeGameFactory, _systemConfig, _superchainConfig, _initialRespectedGameType);
+
+        OptimismPortalStorage storage s = _storage();
+        s.sharedLockbox = address(ISuperchainConfigInterop(address(_superchainConfig)).sharedLockbox());
     }
 
     /// @notice Sets static configuration options for the L2 system.
@@ -89,8 +118,8 @@ contract OptimismPortalInterop is OptimismPortal2 {
     }
 
     /// @notice Getter for the address of the shared lockbox.
-    function sharedLockbox() public view returns (ISharedLockbox) {
-        return ISuperchainConfigInterop(address(superchainConfig)).sharedLockbox();
+    function sharedLockbox() external view returns (ISharedLockbox) {
+        return ISharedLockbox(_storage().sharedLockbox);
     }
 
     /// @notice Getter for the migrated flag.
@@ -101,17 +130,17 @@ contract OptimismPortalInterop is OptimismPortal2 {
     /// @notice Unlock and receive the ETH from the SharedLockbox.
     /// @param _tx Withdrawal transaction to finalize.
     function _unlockETH(Types.WithdrawalTransaction memory _tx) internal virtual override {
+        OptimismPortalStorage storage s = _storage();
+
         // We don't allow the SharedLockbox to be the target of a withdrawal.
         // This is to prevent the SharedLockbox from being drained.
         // This check needs to be done for every withdrawal.
-        if (_tx.target == address(sharedLockbox())) revert MessageTargetSharedLockbox();
-
-        OptimismPortalStorage storage s = _storage();
+        if (_tx.target == s.sharedLockbox) revert MessageTargetSharedLockbox();
 
         if (!s.migrated) return;
         if (_tx.value == 0) return;
 
-        sharedLockbox().unlockETH(_tx.value);
+        ISharedLockbox(s.sharedLockbox).unlockETH(_tx.value);
     }
 
     /// @notice Locks the ETH in the SharedLockbox.
@@ -119,7 +148,9 @@ contract OptimismPortalInterop is OptimismPortal2 {
         if (msg.value == 0) return;
 
         OptimismPortalStorage storage s = _storage();
-        if (s.migrated) sharedLockbox().lockETH{ value: msg.value }();
+        if (!s.migrated) return;
+
+        ISharedLockbox(s.sharedLockbox).lockETH{ value: msg.value }();
     }
 
     /// @notice Migrates the ETH liquidity to the SharedLockbox. This function will only be called once by the
@@ -132,7 +163,7 @@ contract OptimismPortalInterop is OptimismPortal2 {
 
         uint256 ethBalance = address(this).balance;
 
-        sharedLockbox().lockETH{ value: ethBalance }();
+        ISharedLockbox(s.sharedLockbox).lockETH{ value: ethBalance }();
 
         emit ETHMigrated(ethBalance);
     }
