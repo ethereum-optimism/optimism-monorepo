@@ -82,8 +82,7 @@ func DeployOPChain(host *script.Host, input DeployOPChainInput) (DeployOPChainOu
 
 type ReadImplementationAddressesInput struct {
 	DeployOPChainOutput
-	Opcm    common.Address
-	Release string
+	Opcm common.Address
 }
 
 type ReadImplementationAddressesOutput struct {

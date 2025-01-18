@@ -5,7 +5,6 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
-	"net/url"
 	"os"
 	"testing"
 
@@ -30,11 +29,7 @@ func TestDownloadArtifacts_MockArtifacts(t *testing.T) {
 	defer ts.Close()
 
 	ctx := context.Background()
-	artifactsURL, err := url.Parse(ts.URL)
-	require.NoError(t, err)
-	loc := &Locator{
-		URL: artifactsURL,
-	}
+	loc := MustNewLocatorFromURL(ts.URL)
 
 	t.Run("success", func(t *testing.T) {
 		fs, cleanup, err := Download(ctx, loc, nil)

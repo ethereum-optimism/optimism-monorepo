@@ -17,13 +17,9 @@ var schemeUnmarshalerDispatch = map[string]schemeUnmarshaler{
 	"https": unmarshalURL,
 }
 
-var DefaultL1ContractsLocator = &Locator{
-	Tag: standard.DefaultL1ContractsTag,
-}
+var DefaultL1ContractsLocator = MustNewLocatorFromTag(standard.DefaultL1ContractsTag)
 
-var DefaultL2ContractsLocator = &Locator{
-	Tag: standard.DefaultL2ContractsTag,
-}
+var DefaultL2ContractsLocator = MustNewLocatorFromTag(standard.DefaultL2ContractsTag)
 
 func NewLocatorFromTag(tag string) (*Locator, error) {
 	loc := new(Locator)
@@ -45,13 +41,11 @@ func MustNewLocatorFromURL(u string) *Locator {
 	if strings.HasPrefix(u, "tag://") {
 		return MustNewLocatorFromTag(strings.TrimPrefix(u, "tag://"))
 	}
-	parsedURL, err := url.Parse(u)
+	loc, err := unmarshalURL(u)
 	if err != nil {
 		panic(err)
 	}
-	return &Locator{
-		URL: parsedURL,
-	}
+	return loc
 }
 
 func MustNewFileLocator(path string) *Locator {
@@ -63,17 +57,13 @@ func MustNewFileLocator(path string) *Locator {
 }
 
 type Locator struct {
-	URL *url.URL
-	Tag string
+	URL       *url.URL
+	Tag       string
+	Canonical bool
 }
 
 func NewFileLocator(path string) (*Locator, error) {
-	u, err := url.Parse("file://" + path)
-	if err != nil {
-		return nil, fmt.Errorf("failed to parse URL: %w", err)
-	}
-
-	return &Locator{URL: u}, nil
+	return unmarshalURL("file://" + path)
 }
 
 func (a *Locator) UnmarshalText(text []byte) error {
@@ -97,15 +87,11 @@ func (a *Locator) UnmarshalText(text []byte) error {
 }
 
 func (a *Locator) MarshalText() ([]byte, error) {
-	if a.URL != nil {
-		return []byte(a.URL.String()), nil
+	if a.Canonical {
+		return []byte("tag://" + a.Tag), nil
 	}
 
-	return []byte("tag://" + a.Tag), nil
-}
-
-func (a *Locator) IsTag() bool {
-	return a.Tag != ""
+	return []byte(a.URL.String()), nil
 }
 
 func (a *Locator) Equal(b *Locator) bool {
@@ -120,11 +106,16 @@ func unmarshalTag(tag string) (*Locator, error) {
 		return nil, fmt.Errorf("invalid tag: %s", tag)
 	}
 
-	if _, err := standard.ArtifactsURLForTag(tag); err != nil {
-		return nil, err
+	u, err := standard.ArtifactsURLForTag(tag)
+	if err != nil {
+		return nil, fmt.Errorf("error getting artifacts URL for tag: %w", err)
 	}
 
-	return &Locator{Tag: tag}, nil
+	return &Locator{
+		URL:       u,
+		Tag:       tag,
+		Canonical: true,
+	}, nil
 }
 
 func unmarshalURL(text string) (*Locator, error) {
@@ -133,5 +124,13 @@ func unmarshalURL(text string) (*Locator, error) {
 		return nil, err
 	}
 
-	return &Locator{URL: u}, nil
+	tag := u.Fragment
+	if tag == "" {
+		tag = standard.DevTag
+	}
+	if !standard.IsKnownTag(tag) {
+		return nil, fmt.Errorf("unknown tag: %s", tag)
+	}
+
+	return &Locator{URL: u, Tag: tag}, nil
 }

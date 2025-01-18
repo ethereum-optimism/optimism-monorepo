@@ -32,9 +32,12 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 
 	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID, intent.L1ContractsLocator.Tag)
 	hasPredeployedOPCM := opcmAddrErr == nil
-	isTag := intent.L1ContractsLocator.IsTag()
 
-	if isTag && hasPredeployedOPCM {
+	if intent.L1ContractsLocator.Canonical {
+		if !hasPredeployedOPCM {
+			return displayWarning()
+		}
+
 		superCfg, err := standard.SuperchainFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain config: %w", err)
@@ -55,10 +58,6 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 
 		st.ImplementationsDeployment = &state.ImplementationsDeployment{
 			OpcmAddress: opcmAddress,
-		}
-	} else if isTag && !hasPredeployedOPCM {
-		if err := displayWarning(); err != nil {
-			return err
 		}
 	}
 

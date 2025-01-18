@@ -501,6 +501,16 @@ func (d *UpgradeScheduleDeployConfig) AllocMode(genesisTime uint64) L2AllocsMode
 	panic("should never reach here")
 }
 
+func (d *UpgradeScheduleDeployConfig) ForkOrdinal(genesisTime uint64) uint8 {
+	forks := d.forks()
+	for i := len(forks) - 1; i >= 0; i-- {
+		if forkTime := offsetToUpgradeTime(forks[i].L2GenesisTimeOffset, genesisTime); forkTime != nil && *forkTime == 0 {
+			return uint8(i)
+		}
+	}
+	panic("should never reach here")
+}
+
 type Fork struct {
 	L2GenesisTimeOffset *hexutil.Uint64
 	Name                string

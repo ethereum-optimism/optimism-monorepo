@@ -43,15 +43,8 @@ func LogProgressor(lgr log.Logger) DownloadProgressor {
 }
 
 func Download(ctx context.Context, loc *Locator, progress DownloadProgressor) (foundry.StatDirFs, CleanupFunc, error) {
-	var u *url.URL
-	var err error
 	var checker integrityChecker
-	if loc.IsTag() {
-		u, err = standard.ArtifactsURLForTag(loc.Tag)
-		if err != nil {
-			return nil, nil, fmt.Errorf("failed to get standard artifacts URL for tag %s: %w", loc.Tag, err)
-		}
-
+	if loc.Canonical {
 		hash, err := standard.ArtifactsHashForTag(loc.Tag)
 		if err != nil {
 			return nil, nil, fmt.Errorf("failed to get standard artifacts hash for tag %s: %w", loc.Tag, err)
@@ -59,11 +52,10 @@ func Download(ctx context.Context, loc *Locator, progress DownloadProgressor) (f
 
 		checker = &hashIntegrityChecker{hash: hash}
 	} else {
-		u = loc.URL
 		checker = &noopIntegrityChecker{}
 	}
 
-	return downloadURL(ctx, u, progress, checker)
+	return downloadURL(ctx, loc.URL, progress, checker)
 }
 
 type integrityChecker interface {
