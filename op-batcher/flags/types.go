@@ -25,7 +25,7 @@ func (kind DataAvailabilityType) String() string {
 }
 
 func (kind *DataAvailabilityType) Set(value string) error {
-	if !slices.Contains(DataAvailabilityTypes, DataAvailabilityType(value)) {
+	if !ValidDataAvailabilityType(DataAvailabilityType(value)) {
 		return fmt.Errorf("unknown data-availability type: %q", value)
 	}
 	*kind = DataAvailabilityType(value)
@@ -35,4 +35,8 @@ func (kind *DataAvailabilityType) Set(value string) error {
 func (kind *DataAvailabilityType) Clone() any {
 	cpy := *kind
 	return &cpy
+}
+
+func ValidDataAvailabilityType(value DataAvailabilityType) bool {
+	return slices.Contains(DataAvailabilityTypes, value)
 }
