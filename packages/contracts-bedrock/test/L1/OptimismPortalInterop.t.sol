@@ -12,6 +12,9 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Types } from "src/libraries/Types.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
 
+// Target contracts
+import { OptimismPortalInterop } from "src/L1/OptimismPortalInterop.sol";
+
 // Interfaces
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
@@ -19,6 +22,7 @@ import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import "src/dispute/lib/Types.sol";
 
 contract OptimismPortalInterop_Base_Test is CommonTest {
@@ -1709,5 +1713,231 @@ contract OptimismPortalInterop_MigrateLiquidity_Test is OptimismPortalInterop_Ba
         // Ensure that the contracts has the correct balance
         assertEq(address(_optimismPortal()).balance, 0);
         assertEq(address(sharedLockbox).balance, _value);
+    }
+}
+
+contract OptimismPortalInteropMock is OptimismPortalInterop {
+    constructor(
+        uint256 _proofMaturityDelaySeconds,
+        uint256 _disputeGameFinalityDelaySeconds
+    )
+        OptimismPortalInterop(_proofMaturityDelaySeconds, _disputeGameFinalityDelaySeconds)
+    { }
+
+    function exposed_lockETH() external payable {
+        _lockETH();
+    }
+
+    function exposed_unlockETH(Types.WithdrawalTransaction memory _tx) external {
+        _unlockETH(_tx);
+    }
+
+    function setMigrated(bool _value) external {
+        OptimismPortalStorage storage store;
+        assembly {
+            store.slot := OPTIMISM_PORTAL_STORAGE_SLOT
+        }
+        store.migrated = _value;
+    }
+}
+
+contract OptimismPortalInterop_InternalFunctions_Test is OptimismPortalInterop_Base_Test {
+    function _mockPortal() internal view returns (OptimismPortalInteropMock) {
+        return OptimismPortalInteropMock(payable(address(_optimismPortal())));
+    }
+
+    function setUp() public virtual override {
+        super.setUp();
+        OptimismPortalInteropMock mockPortal = new OptimismPortalInteropMock(
+            _optimismPortal().proofMaturityDelaySeconds(), _optimismPortal().disputeGameFinalityDelaySeconds()
+        );
+
+        // Get the proxy admin address and it's owner
+        IProxyAdmin proxyAdmin = IProxyAdmin(artifacts.mustGetAddress("ProxyAdmin"));
+        address proxyAdminOwner = proxyAdmin.owner();
+
+        // Update the portal proxy implementation to the LiquidityMigrator contract
+        vm.prank(proxyAdminOwner);
+        proxyAdmin.upgrade({ _proxy: payable(optimismPortal2), _implementation: address(mockPortal) });
+
+        // Set the migrated flag to false
+        _mockPortal().setMigrated(false);
+    }
+
+    /// @dev Tests _lockETH when not migrated
+    function testFuzz_lockETH_notMigrated_succeeds(uint256 _value) external {
+        vm.assume(_value > 0);
+        vm.deal(address(this), _value);
+
+        // Should not call lockETH on sharedLockbox since not migrated
+        vm.expectCall(address(sharedLockbox), 0, abi.encodeCall(sharedLockbox.lockETH, ()), 0);
+
+        _mockPortal().exposed_lockETH{ value: _value }();
+
+        assertEq(address(_mockPortal()).balance, _value);
+        assertEq(address(sharedLockbox).balance, 0);
+    }
+
+    /// @dev Tests _lockETH when value is zero
+    function test_lockETH_zeroValue_succeeds() external {
+        // Should not call lockETH on sharedLockbox since value is zero
+        vm.expectCall(address(sharedLockbox), 0, abi.encodeCall(sharedLockbox.lockETH, ()), 0);
+
+        _mockPortal().exposed_lockETH{ value: 0 }();
+
+        assertEq(address(_mockPortal()).balance, 0);
+        assertEq(address(sharedLockbox).balance, 0);
+    }
+
+    /// @dev Tests _lockETH when migrated
+    function testFuzz_lockETH_migrated_succeeds(uint256 _value) external {
+        vm.assume(_value > 0);
+        vm.deal(address(this), _value);
+
+        // Migrate the portal
+        vm.prank(address(superchainConfig));
+        _mockPortal().migrateLiquidity();
+
+        // Should call lockETH on sharedLockbox
+        vm.expectCall(address(sharedLockbox), _value, abi.encodeCall(sharedLockbox.lockETH, ()));
+
+        _mockPortal().exposed_lockETH{ value: _value }();
+
+        assertEq(address(_mockPortal()).balance, 0);
+        assertEq(address(sharedLockbox).balance, _value);
+    }
+
+    /// @dev Tests _unlockETH when not migrated
+    function testFuzz_unlockETH_notMigrated_succeeds(
+        uint256 _nonce,
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes memory _data
+    )
+        external
+    {
+        vm.assume(_value > 0);
+        vm.assume(_target != address(sharedLockbox));
+
+        Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
+            nonce: _nonce,
+            sender: _sender,
+            target: _target,
+            value: _value,
+            gasLimit: _gasLimit,
+            data: _data
+        });
+
+        // Should not call unlockETH on sharedLockbox since not migrated
+        vm.expectCall(address(sharedLockbox), 0, abi.encodeCall(sharedLockbox.unlockETH, (wTx.value)), 0);
+
+        // Unlock the ETH
+        _mockPortal().exposed_unlockETH(wTx);
+
+        // Asserts
+        assertEq(address(_mockPortal()).balance, 0);
+        assertEq(address(sharedLockbox).balance, 0);
+    }
+
+    /// @dev Tests _unlockETH when migrated
+    function testFuzz_unlockETH_migrated_succeeds(
+        uint256 _nonce,
+        address _sender,
+        address _target,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes memory _data
+    )
+        external
+    {
+        vm.assume(_value > 0);
+        vm.assume(_target != address(sharedLockbox));
+
+        Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
+            nonce: _nonce,
+            sender: _sender,
+            target: _target,
+            value: _value,
+            gasLimit: _gasLimit,
+            data: _data
+        });
+
+        // Fund the portal
+        vm.deal(address(_mockPortal()), wTx.value);
+
+        // Migrate the portal
+        vm.prank(address(superchainConfig));
+        _mockPortal().migrateLiquidity();
+
+        // Ensure that the portal has the correct balance
+        assertEq(address(_mockPortal()).balance, 0);
+        assertEq(address(sharedLockbox).balance, wTx.value);
+
+        // Should call unlockETH on sharedLockbox
+        vm.expectCall(address(sharedLockbox), 0, abi.encodeCall(sharedLockbox.unlockETH, (wTx.value)));
+
+        _mockPortal().exposed_unlockETH(wTx);
+
+        // Asserts
+        assertEq(address(_mockPortal()).balance, wTx.value);
+        assertEq(address(sharedLockbox).balance, 0);
+    }
+
+    /// @dev Tests _unlockETH reverts when target is sharedLockbox
+    function testFuzz_unlockETH_targetIsSharedLockbox_reverts(
+        uint256 _nonce,
+        address _sender,
+        uint256 _value,
+        uint256 _gasLimit,
+        bytes memory _data
+    )
+        external
+    {
+        vm.assume(_value > 0);
+
+        Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
+            nonce: _nonce,
+            sender: _sender,
+            target: address(sharedLockbox), // Set target as sharedLockbox
+            value: _value,
+            gasLimit: _gasLimit,
+            data: _data
+        });
+
+        vm.expectRevert(IOptimismPortalInterop.MessageTargetSharedLockbox.selector);
+        _mockPortal().exposed_unlockETH(wTx);
+    }
+
+    /// @dev Tests _unlockETH when value is zero
+    function testFuzz_unlockETH_zeroValue_succeeds(
+        uint256 _nonce,
+        address _sender,
+        address _target,
+        uint256 _gasLimit,
+        bytes memory _data
+    )
+        external
+    {
+        vm.assume(_target != address(sharedLockbox));
+
+        Types.WithdrawalTransaction memory wTx = Types.WithdrawalTransaction({
+            nonce: _nonce,
+            sender: _sender,
+            target: _target,
+            value: 0, // Set value to zero
+            gasLimit: _gasLimit,
+            data: _data
+        });
+
+        // Should not call unlockETH on sharedLockbox since value is zero
+        vm.expectCall(address(sharedLockbox), 0, abi.encodeCall(sharedLockbox.unlockETH, (0)), 0);
+
+        _mockPortal().exposed_unlockETH(wTx);
+
+        // Asserts
+        assertEq(address(_mockPortal()).balance, 0);
+        assertEq(address(sharedLockbox).balance, 0);
     }
 }
