@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 /// @title Storage
-/// @notice Storage handles reading and writing to arbitary storage locations
+/// @notice Storage handles reading and writing to arbitrary storage locations
 library Storage {
     /// @notice Returns an address stored in an arbitrary storage slot.
     ///         These storage slots decouple the storage layout from
