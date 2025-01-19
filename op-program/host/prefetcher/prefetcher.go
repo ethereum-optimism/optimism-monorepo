@@ -53,7 +53,7 @@ type Prefetcher struct {
 	logger         log.Logger
 	l1Fetcher      L1Source
 	l1BlobFetcher  L1BlobSource
-	defaultChainID uint64
+	defaultChainID eth.ChainID
 	l2Sources      hosttypes.L2Sources
 	lastHint       string
 	kvStore        kvstore.KV
@@ -69,7 +69,7 @@ func NewPrefetcher(
 	logger log.Logger,
 	l1Fetcher L1Source,
 	l1BlobFetcher L1BlobSource,
-	defaultChainID uint64,
+	defaultChainID eth.ChainID,
 	l2Sources hosttypes.L2Sources,
 	kvStore kvstore.KV,
 	executor ProgramExecutor,
@@ -373,7 +373,7 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 		}
 		agreedBlockHash := common.Hash(hintBytes[:32])
 		blockHash := common.Hash(hintBytes[32:64])
-		chainID := binary.BigEndian.Uint64(hintBytes[64:72])
+		chainID := eth.ChainIDFromUInt64(binary.BigEndian.Uint64(hintBytes[64:72]))
 		key := BlockDataKey(blockHash)
 		if _, err := p.kvStore.Get(key.Key()); err == nil {
 			return nil
@@ -392,14 +392,14 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 	return fmt.Errorf("unknown hint type: %v", hintType)
 }
 
-func (p *Prefetcher) parseHashAndChainID(hintType string, hintBytes []byte) (common.Hash, uint64, error) {
+func (p *Prefetcher) parseHashAndChainID(hintType string, hintBytes []byte) (common.Hash, eth.ChainID, error) {
 	switch len(hintBytes) {
 	case 32:
 		return common.Hash(hintBytes), p.defaultChainID, nil
 	case 40:
-		return common.Hash(hintBytes[0:32]), binary.BigEndian.Uint64(hintBytes[32:]), nil
+		return common.Hash(hintBytes[0:32]), eth.ChainIDFromUInt64(binary.BigEndian.Uint64(hintBytes[32:])), nil
 	default:
-		return common.Hash{}, 0, fmt.Errorf("invalid %s hint: %x", hintType, hintBytes)
+		return common.Hash{}, eth.ChainID{}, fmt.Errorf("invalid %s hint: %x", hintType, hintBytes)
 	}
 }
 

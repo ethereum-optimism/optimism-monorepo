@@ -2,6 +2,7 @@ package helpers
 
 import (
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -23,7 +24,7 @@ type FixtureInputs struct {
 	L2Claim        common.Hash `toml:"l2-claim"`
 	L2Head         common.Hash `toml:"l2-head"`
 	L2OutputRoot   common.Hash `toml:"l2-output-root"`
-	L2ChainID      uint64      `toml:"l2-chain-id"`
+	L2ChainID      eth.ChainID `toml:"l2-chain-id"`
 	L1Head         common.Hash `toml:"l1-head"`
 	AgreedPrestate []byte      `toml:"agreed-prestate"`
 	InteropEnabled bool        `toml:"use-interop"`

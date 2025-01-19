@@ -137,7 +137,7 @@ func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash,
 	hint := L2BlockDataHint{
 		AgreedBlockHash: agreedBlockHash,
 		BlockHash:       blockHash,
-		ChainID:         chainID,
+		ChainID:         eth.ChainIDFromUInt64(chainID),
 	}
 	p.hint.Hint(hint)
 	header := p.headerByBlockHash(blockHash, chainID)

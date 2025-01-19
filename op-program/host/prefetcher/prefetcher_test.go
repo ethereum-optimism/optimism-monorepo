@@ -34,7 +34,7 @@ import (
 var (
 	ecRecoverInput    = common.FromHex("18c547e4f7b0f325ad1e56f57e26c745b09a3e503d86e00e5255ff7f715d3d1c000000000000000000000000000000000000000000000000000000000000001c73b1693892219d736caba55bdb67216e485557ea6b6af75f37096c9aa6a5a75feeb940b1d03b21e36b0e47e79769f095fe2ab855bd91e3a38756b7d75a9c4549")
 	kzgPointEvalInput = common.FromHex("01e798154708fe7789429634053cbf9f99b619f9f084048927333fce637f549b564c0a11a0f704f4fc3e8acfe0f8245f0ad1347b378fbf96e206da11a5d3630624d25032e67a7e6a4910df5834b8fe70e6bcfeeac0352434196bdf4b2485d5a18f59a8d2a1a625a17f3fea0fe5eb8c896db3764f3185481bc22f91b4aaffcca25f26936857bc3a7c2539ea8ec3a952b7873033e038326e87ed3e1276fd140253fa08e9fc25fb2d9a98527fc22a2c9612fbeafdad446cbc7bcdbdcd780af2c16a")
-	defaultChainID    = uint64(14)
+	defaultChainID    = eth.ChainIDFromUInt64(14)
 )
 
 func TestNoHint(t *testing.T) {
@@ -443,8 +443,8 @@ func TestFetchL2Block(t *testing.T) {
 	})
 
 	t.Run("WithChainID", func(t *testing.T) {
-		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, 5, 7, 10)
-		l2Cl := l2Cls.sources[7]
+		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, eth.ChainIDFromUInt64(5), eth.ChainIDFromUInt64(7), eth.ChainIDFromUInt64(10))
+		l2Cl := l2Cls.sources[eth.ChainIDFromUInt64(7)]
 		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
 		defer assertAllClientExpectations(t, l2Cls)
 
@@ -482,8 +482,8 @@ func TestFetchL2Transactions(t *testing.T) {
 	})
 
 	t.Run("WithChainID", func(t *testing.T) {
-		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, 5, 7, 10)
-		l2Cl := l2Cls.sources[7]
+		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, eth.ChainIDFromUInt64(5), eth.ChainIDFromUInt64(7), eth.ChainIDFromUInt64(10))
+		l2Cl := l2Cls.sources[eth.ChainIDFromUInt64(7)]
 		l2Cl.ExpectInfoAndTxsByHash(hash, eth.BlockToInfo(block), block.Transactions(), nil)
 		defer assertAllClientExpectations(t, l2Cls)
 
@@ -521,8 +521,8 @@ func TestFetchL2Node(t *testing.T) {
 	})
 
 	t.Run("WithChainID", func(t *testing.T) {
-		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, 5, 9, 99)
-		l2Cl := l2Cls.sources[9]
+		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, eth.ChainIDFromUInt64(5), eth.ChainIDFromUInt64(9), eth.ChainIDFromUInt64(99))
+		l2Cl := l2Cls.sources[eth.ChainIDFromUInt64(9)]
 		l2Cl.ExpectNodeByHash(hash, node, nil)
 		defer assertAllClientExpectations(t, l2Cls)
 
@@ -560,8 +560,8 @@ func TestFetchL2Code(t *testing.T) {
 	})
 
 	t.Run("WithChainID", func(t *testing.T) {
-		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, 8, 45, 98, 55)
-		l2Cl := l2Cls.sources[98]
+		prefetcher, _, _, l2Cls, _ := createPrefetcher(t, eth.ChainIDFromUInt64(8), eth.ChainIDFromUInt64(45), eth.ChainIDFromUInt64(98), eth.ChainIDFromUInt64(55))
+		l2Cl := l2Cls.sources[eth.ChainIDFromUInt64(98)]
 		l2Cl.ExpectCodeByHash(hash, code, nil)
 		defer assertAllClientExpectations(t, l2Cls)
 
@@ -603,15 +603,15 @@ func TestFetchL2Output(t *testing.T) {
 		superV1 := eth.SuperV1{
 			Timestamp: timestamp,
 			Chains: []eth.ChainIDAndOutput{
-				{ChainID: 6, Output: eth.OutputRoot(chain6Output)},
-				{ChainID: 78, Output: eth.OutputRoot(output)},
-				{ChainID: 99, Output: eth.OutputRoot(chain99Output)},
+				{ChainID: eth.ChainIDFromUInt64(6), Output: eth.OutputRoot(chain6Output)},
+				{ChainID: eth.ChainIDFromUInt64(78), Output: eth.OutputRoot(output)},
+				{ChainID: eth.ChainIDFromUInt64(99), Output: eth.OutputRoot(chain99Output)},
 			},
 		}
-		prefetcher, _, _, l2Cls, _ := createPrefetcherWithAgreedPrestate(t, superV1.Marshal(), 6, 78, 99)
+		prefetcher, _, _, l2Cls, _ := createPrefetcherWithAgreedPrestate(t, superV1.Marshal(), eth.ChainIDFromUInt64(6), eth.ChainIDFromUInt64(78), eth.ChainIDFromUInt64(99))
 
-		l2Cl := l2Cls.sources[78]
-		blockNum, err := l2Cls.sources[78].RollupConfig().TargetBlockNumber(timestamp)
+		l2Cl := l2Cls.sources[eth.ChainIDFromUInt64(78)]
+		blockNum, err := l2Cls.sources[eth.ChainIDFromUInt64(78)].RollupConfig().TargetBlockNumber(timestamp)
 		require.NoError(t, err)
 		l2Cl.ExpectOutputByNumber(blockNum, output, nil)
 		defer assertAllClientExpectations(t, l2Cls)
@@ -622,7 +622,7 @@ func TestFetchL2Output(t *testing.T) {
 }
 
 func TestFetchL2BlockData(t *testing.T) {
-	chainID := uint64(14)
+	chainID := eth.ChainIDFromUInt64(14)
 
 	testBlockExec := func(t *testing.T, clientErrs []error) {
 		require.NotEmpty(t, clientErrs)
@@ -772,10 +772,10 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	_, l1Source, l1BlobSource, l2Cls, kv := createPrefetcher(t)
 	putsToIgnore := 2
 	kv = &unreliableKvStore{KV: kv, putsToIgnore: putsToIgnore}
-	sources := &l2Clients{sources: map[uint64]*l2Client{6: l2Cls.sources[defaultChainID]}}
-	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, 6, sources, kv, nil, common.Hash{}, nil)
+	sources := &l2Clients{sources: map[eth.ChainID]*l2Client{eth.ChainIDFromUInt64(6): l2Cls.sources[defaultChainID]}}
+	prefetcher := NewPrefetcher(testlog.Logger(t, log.LevelInfo), l1Source, l1BlobSource, eth.ChainIDFromUInt64(6), sources, kv, nil, common.Hash{}, nil)
 
-	l2Cl := sources.sources[6]
+	l2Cl := sources.sources[eth.ChainIDFromUInt64(6)]
 	// Expect one call for each ignored put, plus one more request for when the put succeeds
 	for i := 0; i < putsToIgnore+1; i++ {
 		l2Cl.ExpectNodeByHash(hash, node, nil)
@@ -802,10 +802,10 @@ func (s *unreliableKvStore) Put(k common.Hash, v []byte) error {
 }
 
 type l2Clients struct {
-	sources map[uint64]*l2Client
+	sources map[eth.ChainID]*l2Client
 }
 
-func (l *l2Clients) ForChainID(id uint64) (hostTypes.L2Source, error) {
+func (l *l2Clients) ForChainID(id eth.ChainID) (hostTypes.L2Source, error) {
 	source, ok := l.sources[id]
 	if !ok {
 		return nil, fmt.Errorf("no such source for chain %d", id)
@@ -813,7 +813,7 @@ func (l *l2Clients) ForChainID(id uint64) (hostTypes.L2Source, error) {
 	return source, nil
 }
 
-func (l *l2Clients) ForChainIDWithoutRetries(id uint64) (hostTypes.L2Source, error) {
+func (l *l2Clients) ForChainIDWithoutRetries(id eth.ChainID) (hostTypes.L2Source, error) {
 	return l.ForChainID(id)
 }
 
@@ -849,11 +849,11 @@ func (m *l2Client) ExpectOutputByNumber(blockNum uint64, output eth.Output, err 
 	m.Mock.On("OutputByNumber", blockNum).Once().Return(output, &err)
 }
 
-func createPrefetcher(t *testing.T, chainIDs ...uint64) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Clients, kvstore.KV) {
+func createPrefetcher(t *testing.T, chainIDs ...eth.ChainID) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Clients, kvstore.KV) {
 	return createPrefetcherWithAgreedPrestate(t, nil, chainIDs...)
 }
 
-func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte, chainIDs ...uint64) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Clients, kvstore.KV) {
+func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte, chainIDs ...eth.ChainID) (*Prefetcher, *testutils.MockL1Source, *testutils.MockBlobsFetcher, *l2Clients, kvstore.KV) {
 	logger := testlog.Logger(t, log.LevelDebug)
 	kv := kvstore.NewMemKV()
 
@@ -862,10 +862,10 @@ func createPrefetcherWithAgreedPrestate(t *testing.T, agreedPrestate []byte, cha
 
 	// Provide a default chain if none specified.
 	if len(chainIDs) == 0 {
-		chainIDs = []uint64{defaultChainID}
+		chainIDs = []eth.ChainID{defaultChainID}
 	}
 
-	l2Sources := &l2Clients{sources: make(map[uint64]*l2Client)}
+	l2Sources := &l2Clients{sources: make(map[eth.ChainID]*l2Client)}
 	for i, chainID := range chainIDs {
 		l2Source := &l2Client{
 			rollupCfg: &rollup.Config{
@@ -985,11 +985,11 @@ func (o *legacyPrecompileOracle) Precompile(address common.Address, input []byte
 type mockExecutor struct {
 	invoked     bool
 	blockNumber uint64
-	chainID     uint64
+	chainID     eth.ChainID
 }
 
 func (m *mockExecutor) RunProgram(
-	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error {
+	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID) error {
 	m.invoked = true
 	m.blockNumber = blockNumber
 	m.chainID = chainID
