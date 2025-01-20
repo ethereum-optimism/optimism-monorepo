@@ -32,13 +32,13 @@ func (l LegacyBlockHeaderHint) Hint() string {
 
 type HashAndChainID struct {
 	Hash    common.Hash
-	ChainID uint64
+	ChainID eth.ChainID
 }
 
 func (h HashAndChainID) Marshal() []byte {
 	d := make([]byte, 32+8)
 	copy(d[:32], h.Hash[:])
-	binary.BigEndian.PutUint64(d[32:], h.ChainID)
+	binary.BigEndian.PutUint64(d[32:], eth.EvilChainIDToUInt64(h.ChainID))
 	return d
 }
 

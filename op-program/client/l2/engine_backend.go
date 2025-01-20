@@ -42,7 +42,7 @@ type OracleBackedL2Chain struct {
 var _ engineapi.CachingEngineBackend = (*OracleBackedL2Chain)(nil)
 
 func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, l2OutputRoot common.Hash) (*OracleBackedL2Chain, error) {
-	chainID := chainCfg.ChainID.Uint64()
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	output := oracle.OutputByRoot(l2OutputRoot, chainID)
 	outputV0, ok := output.(*eth.OutputV0)
 	if !ok {
@@ -107,7 +107,7 @@ func (o *OracleBackedL2Chain) GetBlockByHash(hash common.Hash) *types.Block {
 		return block
 	}
 	// Retrieve from the oracle
-	return o.oracle.BlockByHash(hash, o.chainCfg.ChainID.Uint64())
+	return o.oracle.BlockByHash(hash, eth.ChainIDFromBig(o.chainCfg.ChainID))
 }
 
 func (o *OracleBackedL2Chain) GetBlock(hash common.Hash, number uint64) *types.Block {

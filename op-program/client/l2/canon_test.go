@@ -3,6 +3,7 @@ package l2
 import (
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/stretchr/testify/require"
@@ -21,7 +22,7 @@ func TestCanonicalBlockNumberOracle_GetHeaderByNumber(t *testing.T) {
 			t.Fatalf("Requested duplicate block: %v", hash)
 		}
 		requestedBlocks[hash] = true
-		return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+		return oracle.BlockByHash(hash, eth.ChainIDFromBig(chainCfg.ChainID))
 	}
 	canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 	require.Equal(t, head.Hash(), canon.CurrentHeader().Hash())
@@ -63,7 +64,7 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		blockRequestCount := 0
 		blockByHash := func(hash common.Hash) *types.Block {
 			blockRequestCount++
-			return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+			return oracle.BlockByHash(hash, eth.ChainIDFromBig(chainCfg.ChainID))
 		}
 		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 		oracle.Blocks[blocks[2].Hash()] = blocks[2]
@@ -100,7 +101,7 @@ func TestCanonicalBlockNumberOracle_SetCanonical(t *testing.T) {
 		head := blocks[headBlockNumber].Header()
 
 		blockByHash := func(hash common.Hash) *types.Block {
-			return oracle.BlockByHash(hash, chainCfg.ChainID.Uint64())
+			return oracle.BlockByHash(hash, eth.ChainIDFromBig(chainCfg.ChainID))
 		}
 		canon := NewCanonicalBlockHeaderOracle(head, blockByHash)
 		oracle.Blocks[blocks[2].Hash()] = blocks[2]

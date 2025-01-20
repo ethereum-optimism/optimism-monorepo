@@ -44,7 +44,7 @@ func RunConsolidation(deps ConsolidateCheckDeps,
 		progress := transitionState.PendingProgress[i]
 
 		// TODO(#13776): hint block data execution in case the pending progress is not canonical so we can fetch the correct receipts
-		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, eth.EvilChainIDToUInt64(chain.ChainID))
+		block, receipts := oracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
 			return eth.Bytes32{}, err
@@ -123,14 +123,14 @@ func newConsolidateCheckDeps(chains []eth.ChainIDAndOutput, oracle l2.Oracle) (*
 
 	canonBlocks := make(map[eth.ChainID]*l2.CanonicalBlockHeaderOracle)
 	for _, chain := range chains {
-		output := oracle.OutputByRoot(common.Hash(chain.Output), eth.EvilChainIDToUInt64(chain.ChainID))
+		output := oracle.OutputByRoot(common.Hash(chain.Output), chain.ChainID)
 		outputV0, ok := output.(*eth.OutputV0)
 		if !ok {
 			return nil, fmt.Errorf("unexpected output type: %T", output)
 		}
-		head := oracle.BlockByHash(outputV0.BlockHash, eth.EvilChainIDToUInt64(chain.ChainID))
+		head := oracle.BlockByHash(outputV0.BlockHash, chain.ChainID)
 		blockByHash := func(hash common.Hash) *ethtypes.Block {
-			return oracle.BlockByHash(hash, eth.EvilChainIDToUInt64(chain.ChainID))
+			return oracle.BlockByHash(hash, chain.ChainID)
 		}
 		canonBlocks[chain.ChainID] = l2.NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
 	}
@@ -199,7 +199,7 @@ func (d *consolidateCheckDeps) OpenBlock(
 		Hash:   block.Hash(),
 		Number: block.NumberU64(),
 	}
-	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chainID.ToBig().Uint64())
+	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chainID)
 	execs, logCount, err := ReceiptsToExecutingMessages(d.depset, receipts)
 	if err != nil {
 		return eth.BlockRef{}, 0, nil, err
@@ -220,5 +220,5 @@ func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, 
 	if head == nil {
 		return nil, fmt.Errorf("head not found for chain %v", chainID)
 	}
-	return d.oracle.BlockByHash(head.Hash(), eth.EvilChainIDToUInt64(chainID)), nil
+	return d.oracle.BlockByHash(head.Hash(), chainID), nil
 }

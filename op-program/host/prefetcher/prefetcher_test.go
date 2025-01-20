@@ -416,7 +416,7 @@ func TestRestrictedPrecompileContracts(t *testing.T) {
 
 func TestFetchL2Block(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
-	chainID := uint64(482948)
+	chainID := eth.ChainIDFromUInt64(482948)
 	block, rcpts := testutils.RandomBlock(rng, 10)
 	hash := block.Hash()
 
@@ -449,7 +449,7 @@ func TestFetchL2Block(t *testing.T) {
 		defer assertAllClientExpectations(t, l2Cls)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
-		result := oracle.BlockByHash(hash, 7)
+		result := oracle.BlockByHash(hash, eth.ChainIDFromUInt64(7))
 		require.EqualValues(t, block.Header(), result.Header())
 		assertTransactionsEqual(t, block.Transactions(), result.Transactions())
 	})
@@ -459,7 +459,7 @@ func TestFetchL2Transactions(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 	block, rcpts := testutils.RandomBlock(rng, 10)
 	hash := block.Hash()
-	chainID := rng.Uint64()
+	chainID := eth.ChainIDFromUInt64(rng.Uint64())
 
 	t.Run("AlreadyKnown", func(t *testing.T) {
 		prefetcher, _, _, _, kv := createPrefetcher(t)
@@ -488,7 +488,7 @@ func TestFetchL2Transactions(t *testing.T) {
 		defer assertAllClientExpectations(t, l2Cls)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
-		result := oracle.LoadTransactions(hash, block.TxHash(), 7)
+		result := oracle.LoadTransactions(hash, block.TxHash(), eth.ChainIDFromUInt64(7))
 		assertTransactionsEqual(t, block.Transactions(), result)
 	})
 }
@@ -498,7 +498,7 @@ func TestFetchL2Node(t *testing.T) {
 	node := testutils.RandomData(rng, 30)
 	hash := crypto.Keccak256Hash(node)
 	key := preimage.Keccak256Key(hash).PreimageKey()
-	chainID := rng.Uint64()
+	chainID := eth.ChainIDFromUInt64(rng.Uint64())
 
 	t.Run("AlreadyKnown", func(t *testing.T) {
 		prefetcher, _, _, _, kv := createPrefetcher(t)
@@ -527,7 +527,7 @@ func TestFetchL2Node(t *testing.T) {
 		defer assertAllClientExpectations(t, l2Cls)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
-		result := oracle.NodeByHash(hash, 9)
+		result := oracle.NodeByHash(hash, eth.ChainIDFromUInt64(9))
 		require.EqualValues(t, node, result)
 	})
 }
@@ -537,7 +537,7 @@ func TestFetchL2Code(t *testing.T) {
 	code := testutils.RandomData(rng, 30)
 	hash := crypto.Keccak256Hash(code)
 	key := preimage.Keccak256Key(hash).PreimageKey()
-	chainID := rng.Uint64()
+	chainID := eth.ChainIDFromUInt64(rng.Uint64())
 
 	t.Run("AlreadyKnown", func(t *testing.T) {
 		prefetcher, _, _, _, kv := createPrefetcher(t)
@@ -566,7 +566,7 @@ func TestFetchL2Code(t *testing.T) {
 		defer assertAllClientExpectations(t, l2Cls)
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
-		result := oracle.CodeByHash(hash, 98)
+		result := oracle.CodeByHash(hash, eth.ChainIDFromUInt64(98))
 		require.EqualValues(t, code, result)
 	})
 }
@@ -581,7 +581,7 @@ func TestFetchL2Output(t *testing.T) {
 		require.NoError(t, kv.Put(key, output.Marshal()))
 
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), false)
-		result := oracle.OutputByRoot(hash, rng.Uint64())
+		result := oracle.OutputByRoot(hash, eth.ChainIDFromUInt64(rng.Uint64()))
 		require.EqualValues(t, output, result)
 	})
 
@@ -592,7 +592,7 @@ func TestFetchL2Output(t *testing.T) {
 		l2Cl.ExpectOutputByRoot(prefetcher.l2Head, output, nil)
 		defer assertAllClientExpectations(t, l2Cls)
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), false)
-		result := oracle.OutputByRoot(hash, rng.Uint64())
+		result := oracle.OutputByRoot(hash, eth.ChainIDFromUInt64(rng.Uint64()))
 		require.EqualValues(t, output, result)
 	})
 
@@ -616,7 +616,7 @@ func TestFetchL2Output(t *testing.T) {
 		l2Cl.ExpectOutputByNumber(blockNum, output, nil)
 		defer assertAllClientExpectations(t, l2Cls)
 		oracle := l2.NewPreimageOracle(asOracleFn(t, prefetcher), asHinter(t, prefetcher), true)
-		result := oracle.OutputByRoot(hash, 78)
+		result := oracle.OutputByRoot(hash, eth.ChainIDFromUInt64(78))
 		require.EqualValues(t, output, result)
 	})
 }
@@ -767,7 +767,7 @@ func TestRetryWhenNotAvailableAfterPrefetching(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 	node := testutils.RandomData(rng, 30)
 	hash := crypto.Keccak256Hash(node)
-	chainID := rng.Uint64()
+	chainID := eth.ChainIDFromUInt64(rng.Uint64())
 
 	_, l1Source, l1BlobSource, l2Cls, kv := createPrefetcher(t)
 	putsToIgnore := 2
