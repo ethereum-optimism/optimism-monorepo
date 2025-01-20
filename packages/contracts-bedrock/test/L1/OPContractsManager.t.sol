@@ -41,7 +41,7 @@ import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { DelayedWETH } from "src/dispute/DelayedWETH.sol";
 import { MIPS } from "src/cannon/MIPS.sol";
 import { GameType, Duration, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
-import { OutputRoot } from "src/dispute/lib/Types.sol";
+import { OutputRoot, GameTypes } from "src/dispute/lib/Types.sol";
 import { AnchorStateRegistry } from "src/dispute/AnchorStateRegistry.sol";
 import { PreimageOracle } from "src/cannon/PreimageOracle.sol";
 
@@ -205,6 +205,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     // The AdminChanged event emitted by the Proxy contract at init time or when the admin is changed.
     event AdminChanged(address previousAdmin, address newAdmin);
 
+    // The ImplementationSet event emitted by the DisputeGameFactory contract.
+    event ImplementationSet(address indexed impl, GameType indexed gameType);
+
     uint256 l2ChainId;
     IProxyAdmin proxyAdmin;
     address upgrader;
@@ -248,7 +251,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         // Cache the old L1xDM address so we can look for it in the AddressManager's event
         address oldL1CrossDomainMessenger = addressManager.getAddress("OVM_L1CrossDomainMessenger");
 
-        // Predict the address of the new ASR so that we can expect its event
+        // Predict the address of the new AnchorStateRegistry proxy
         bytes32 salt = keccak256(abi.encode(l2ChainId, "v2.0.0", "AnchorStateRegistry"));
         bytes memory initCode = bytes.concat(vm.getCode("Proxy"), abi.encode(proxyAdmin));
         address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), upgrader);
@@ -267,8 +270,17 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         emit AdminChanged(address(0), address(proxyAdmin));
         expectEmitUpgraded(impls.anchorStateRegistryImpl, address(newAnchorStateRegistryProxy));
         expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWETHPermissionedGameProxy));
+
+        // We don't yet know the address of the new permissionedGame which will be deployed by the
+        // OPContractsManager.upgrade() call, so ignore the first topic.
+        vm.expectEmit(false, true, true, true, address(disputeGameFactory));
+        emit ImplementationSet(address(0), GameTypes.PERMISSIONED_CANNON);
         if (address(delayedWeth) != address(0)) {
             expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWeth));
+
+            // Ignore the first topic for the same reason as the previous comment.
+            vm.expectEmit(false, true, true, true, address(disputeGameFactory));
+            emit ImplementationSet(address(0), GameTypes.CANNON);
         }
         vm.expectEmit(address(delegateCaller));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
@@ -281,6 +293,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
                 Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'"
             );
         }
+
+        // Check the implementations of the core addresses
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
@@ -291,13 +305,13 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         );
         assertEq(impls.l1StandardBridgeImpl, EIP1967Helper.getImplementation(address(l1StandardBridge)));
         assertEq(impls.l1CrossDomainMessengerImpl, addressManager.getAddress("OVM_L1CrossDomainMessenger"));
+
+        // Check the implementations of the FP contracts
         assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(newAnchorStateRegistryProxy)));
-        assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
+        assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionedGameProxy)));
         if (address(delayedWeth) != address(0)) {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
         }
-
-        // TODO: ensure dispute games are updated (upcoming PR)
     }
 
     function test_upgrade_succeeds() public {
