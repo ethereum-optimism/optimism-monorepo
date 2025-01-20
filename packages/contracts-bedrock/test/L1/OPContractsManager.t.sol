@@ -27,6 +27,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
@@ -315,8 +316,15 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         // Check the implementations of the FP contracts
         assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(newAnchorStateRegistryProxy)));
         assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionedGameProxy)));
+
+        // Check that the PermissionedDisputeGame is upgraded to the expected version
+        assertEq(
+            ISemver(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON))).version(), "1.4.0-beta.1"
+        );
         if (address(delayedWeth) != address(0)) {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
+            // Check that the PermissionlessDisputeGame is upgraded to the expected version
+            assertEq(ISemver(address(disputeGameFactory.gameImpls(GameTypes.CANNON))).version(), "1.4.0-beta.1");
         }
     }
 
