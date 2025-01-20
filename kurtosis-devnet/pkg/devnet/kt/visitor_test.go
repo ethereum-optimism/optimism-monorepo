@@ -23,7 +23,7 @@ l2:
       locator: https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-c3f2e2adbd52a93c2c08cab018cd637a4e203db53034e59c6c139c76b4297953.tar.gz
       version: 984bae9146398a2997ec13757bfe2438ca8f92eb
     l2-contracts:
-      version: op-contracts/v.1.7.0-beta.1+l2-contracts
+      version: op-contracts/v1.7.0-beta.1+l2-contracts
     overrides:
       seconds_per_slot: 2
       fjord_time_offset: 0
@@ -63,7 +63,7 @@ l2:
 					},
 					NetworkParams: NetworkParams{
 						Network:         "kurtosis",
-						NetworkID:       "11155111100000",
+						NetworkID:       "1081032288",
 						SecondsPerSlot:  2,
 						Name:            "alpaca-0",
 						FundDevAccounts: true,
@@ -90,7 +90,7 @@ l2:
 			OpContractDeployerParams: OpContractDeployerParams{
 				Image:              "us-docker.pkg.dev/oplabs-tools-artifacts/images/op-deployer:v0.0.11",
 				L1ArtifactsLocator: "https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-c3f2e2adbd52a93c2c08cab018cd637a4e203db53034e59c6c139c76b4297953.tar.gz",
-				L2ArtifactsLocator: "op-contracts/v.1.7.0-beta.1+l2-contracts",
+				L2ArtifactsLocator: "tag://op-contracts/v1.7.0-beta.1+l2-contracts",
 			},
 			Persistent: false,
 		},
