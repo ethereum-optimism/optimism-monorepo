@@ -17,10 +17,12 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 
 /// @title ForkLive
@@ -156,6 +158,22 @@ contract ForkLive is Deployer {
         // reflecting the production system.
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
+
+        console.log("save newly deployed contracts");
+        // A new ASR and new dispute games were deployed, so we need to update them
+        IDisputeGameFactory disputeGameFactory =
+            IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
+        address permissionedDisputeGame = address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON));
+        artifacts.save("PermissionedDisputeGame", permissionedDisputeGame);
+
+        address permissionlessDisputeGame = address(disputeGameFactory.gameImpls(GameTypes.CANNON));
+        if (permissionlessDisputeGame != address(0)) {
+            artifacts.save("PermissionlessDisputeGame", address(permissionlessDisputeGame));
+        }
+
+        IAnchorStateRegistry newAnchorStateRegistry =
+            IPermissionedDisputeGame(permissionedDisputeGame).anchorStateRegistry();
+        artifacts.save("AnchorStateRegistryProxy", address(newAnchorStateRegistry));
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
