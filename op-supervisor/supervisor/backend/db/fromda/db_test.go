@@ -712,3 +712,56 @@ func TestRewind(t *testing.T) {
 		require.Equal(t, l2Block0, pair.Derived)
 	})
 }
+
+func TestInvalidateAndReplace(t *testing.T) {
+	l1Block0 := mockL1(0)
+	l1Block1 := mockL1(1)
+
+	l2Block0 := mockL2(0)
+	l2Block1 := mockL2(1)
+	l2Block2 := mockL2(2)
+	l2Block3 := mockL2(2)
+
+	l1Ref1 := toRef(l1Block1, l1Block0.Hash)
+	l2Ref1 := toRef(l2Block1, l2Block0.Hash)
+	l2Ref2 := toRef(l2Block2, l2Block1.Hash)
+	l2Ref3 := toRef(l2Block3, l2Block2.Hash)
+
+	runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {
+		require.NoError(t, db.AddDerived(toRef(l1Block0, common.Hash{}), toRef(l2Block0, common.Hash{})))
+		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref1))
+		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref2))
+		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref3))
+	}, func(t *testing.T, db *DB, m *stubMetrics) {
+		pair, err := db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l2Ref2.ID(), pair.Derived.ID())
+		require.Equal(t, l1Block1.ID(), pair.DerivedFrom.ID())
+
+		_, err = db.Invalidated()
+		require.ErrorIs(t, err, types.ErrConflict)
+
+		invalidated := types.DerivedBlockRefPair{
+			DerivedFrom: l1Ref1,
+			Derived:     l2Ref2,
+		}
+		require.NoError(t, db.RewindAndInvalidate(invalidated))
+		_, err = db.Latest()
+		require.ErrorIs(t, err, types.ErrAwaitReplacementBlock)
+
+		pair, err = db.Invalidated()
+		require.NoError(t, err)
+		require.Equal(t, invalidated.DerivedFrom.ID(), pair.DerivedFrom.ID())
+		require.Equal(t, invalidated.Derived.ID(), pair.Derived.ID())
+
+		replacement := l2Ref2
+		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
+		require.NotEqual(t, l2Ref2.Hash, replacement.Hash) // different L2 block as replacement
+		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+
+		pair, err = db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), pair.Derived.ID())
+		require.Equal(t, l1Block1.ID(), pair.DerivedFrom.ID())
+	})
+}

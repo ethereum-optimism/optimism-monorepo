@@ -69,6 +69,7 @@ func (d *LinkEntry) decode(e Entry) error {
 	if [3]byte(e[1:4]) != ([3]byte{}) {
 		return fmt.Errorf("%w: expected empty data, to pad entry size to round number: %x", types.ErrDataCorruption, e[1:4])
 	}
+	d.invalidated = e.Type() == InvalidatedFromV0
 	// Format:
 	// l1-number(8) l1-timestamp(8) l2-number(8) l2-timestamp(8) l1-hash(32) l2-hash(32)
 	// Note: attributes are ordered for lexical sorting to nicely match chronological sorting.
@@ -107,4 +108,14 @@ func (d *LinkEntry) encode() Entry {
 	offset += 32
 	copy(out[offset:offset+32], d.derived.Hash[:])
 	return out
+}
+
+func (d *LinkEntry) sealOrErr() (types.DerivedBlockSealPair, error) {
+	if d.invalidated {
+		return types.DerivedBlockSealPair{}, types.ErrAwaitReplacementBlock
+	}
+	return types.DerivedBlockSealPair{
+		DerivedFrom: d.derivedFrom,
+		Derived:     d.derived,
+	}, nil
 }
