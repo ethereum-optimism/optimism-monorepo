@@ -1527,7 +1527,7 @@ workflows:
       - publish-cannon-prestates:
           context:
             - slack
-            - oplabs-gcr
+            - oplabs-network-optimism-io-bucket
           requires:
             - cannon-prestate
           filters:
@@ -1600,7 +1600,7 @@ workflows:
       - publish-cannon-prestates:
           context:
             - slack
-            - oplabs-gcr
+            - oplabs-network-optimism-io-bucket
           requires:
             - cannon-prestate
 #            - op-e2e-cannon-tests
