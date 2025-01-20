@@ -99,7 +99,7 @@ test-upgrade-against-anvil *ARGS: build-go-ffi
 
 # Runs standard contract tests with rerun flag.
 test-rerun: build-go-ffi
-  forge test --rerun -vvvvv
+  forge test --rerun -vvv
 
 # Runs standard contract tests with rerun flag (developer mode).
 test-dev-rerun: build-go-ffi
