@@ -296,6 +296,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
 
         // Check the implementations of the core addresses
+        assertEq(impls.superchainConfigImpl, EIP1967Helper.getImplementation(address(superchainConfig)));
+        assertEq(impls.protocolVersionsImpl, EIP1967Helper.getImplementation(address(protocolVersions)));
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
