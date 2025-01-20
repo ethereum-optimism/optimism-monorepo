@@ -127,7 +127,7 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
 
 contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
     /// @dev The root claim of the game.
-    Claim internal constant ROOT_CLAIM = Claim.wrap(bytes32((uint256(1) << 248) | uint256(10)));
+    Claim internal rootClaim;
     /// @dev Minimum bond value that covers all possible moves.
     uint256 internal constant MIN_BOND = 50 ether;
 
@@ -142,7 +142,10 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
 
         super.setUp();
 
-        super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: 0x10 });
+        // Get the actual anchor roots
+        (Hash root, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
+        rootClaim = Claim.wrap(Hash.unwrap(root));
+        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: l2BlockNumber + 1 });
     }
 
     /// @dev Tests that the game's version function returns a string.
@@ -152,9 +155,10 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
 
     /// @dev Tests that the proposer can create a permissioned dispute game.
     function test_createGame_proposer_succeeds() public {
+        (, uint256 l2BlockNumber) = anchorStateRegistry.getAnchorRoot();
         uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.prank(PROPOSER, PROPOSER);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(l2BlockNumber + 2));
     }
 
     /// @dev Tests that the permissioned game cannot be created by any address other than the proposer.
@@ -165,7 +169,7 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
         vm.deal(_p, bondAmount);
         vm.prank(_p, _p);
         vm.expectRevert(BadAuth.selector);
-        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, abi.encode(0x420));
     }
 
     /// @dev Tests that the challenger can participate in a permissioned dispute game.
