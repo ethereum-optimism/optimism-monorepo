@@ -987,22 +987,22 @@ contract OPContractsManager is ISemver {
         isRC = _isRC;
     }
 
-    function getGameConstructorParams(IFaultDisputeGame disputeGame)
+    function getGameConstructorParams(IFaultDisputeGame _disputeGame)
         internal
         view
         returns (IFaultDisputeGame.GameConstructorParams memory)
     {
         IFaultDisputeGame.GameConstructorParams memory params = IFaultDisputeGame.GameConstructorParams({
-            gameType: disputeGame.gameType(),
-            absolutePrestate: disputeGame.absolutePrestate(),
-            maxGameDepth: disputeGame.maxGameDepth(),
-            splitDepth: disputeGame.splitDepth(),
-            clockExtension: disputeGame.clockExtension(),
-            maxClockDuration: disputeGame.maxClockDuration(),
-            vm: disputeGame.vm(),
-            weth: disputeGame.weth(),
-            anchorStateRegistry: disputeGame.anchorStateRegistry(),
-            l2ChainId: disputeGame.l2ChainId()
+            gameType: _disputeGame.gameType(),
+            absolutePrestate: _disputeGame.absolutePrestate(),
+            maxGameDepth: _disputeGame.maxGameDepth(),
+            splitDepth: _disputeGame.splitDepth(),
+            clockExtension: _disputeGame.clockExtension(),
+            maxClockDuration: _disputeGame.maxClockDuration(),
+            vm: _disputeGame.vm(),
+            weth: _disputeGame.weth(),
+            anchorStateRegistry: _disputeGame.anchorStateRegistry(),
+            l2ChainId: _disputeGame.l2ChainId()
         });
         return params;
     }
