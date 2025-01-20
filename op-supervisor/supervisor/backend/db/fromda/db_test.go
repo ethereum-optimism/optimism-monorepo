@@ -717,25 +717,29 @@ func TestInvalidateAndReplace(t *testing.T) {
 	l1Block0 := mockL1(0)
 	l1Block1 := mockL1(1)
 
+	l1Ref0 := toRef(l1Block0, common.Hash{})
+	l1Ref1 := toRef(l1Block1, l1Block0.Hash)
+	l1Ref2 := toRef(l1Block1, l1Block0.Hash)
+	l1Ref3 := toRef(l1Block1, l1Block0.Hash)
+
 	l2Block0 := mockL2(0)
 	l2Block1 := mockL2(1)
 	l2Block2 := mockL2(2)
-	l2Block3 := mockL2(2)
+	l2Block3 := mockL2(3)
 
-	l1Ref1 := toRef(l1Block1, l1Block0.Hash)
 	l2Ref1 := toRef(l2Block1, l2Block0.Hash)
 	l2Ref2 := toRef(l2Block2, l2Block1.Hash)
 	l2Ref3 := toRef(l2Block3, l2Block2.Hash)
 
 	runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {
-		require.NoError(t, db.AddDerived(toRef(l1Block0, common.Hash{}), toRef(l2Block0, common.Hash{})))
-		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref1))
-		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref2))
-		require.NoError(t, db.AddDerived(toRef(l1Block1, l1Block0.Hash), l2Ref3))
+		require.NoError(t, db.AddDerived(l1Ref0, toRef(l2Block0, common.Hash{})))
+		require.NoError(t, db.AddDerived(l1Ref1, l2Ref1))
+		require.NoError(t, db.AddDerived(l1Ref2, l2Ref2))
+		require.NoError(t, db.AddDerived(l1Ref3, l2Ref3))
 	}, func(t *testing.T, db *DB, m *stubMetrics) {
 		pair, err := db.Latest()
 		require.NoError(t, err)
-		require.Equal(t, l2Ref2.ID(), pair.Derived.ID())
+		require.Equal(t, l2Ref3.ID(), pair.Derived.ID())
 		require.Equal(t, l1Block1.ID(), pair.DerivedFrom.ID())
 
 		_, err = db.Invalidated()
@@ -763,5 +767,93 @@ func TestInvalidateAndReplace(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, replacement.ID(), pair.Derived.ID())
 		require.Equal(t, l1Block1.ID(), pair.DerivedFrom.ID())
+	})
+}
+
+// TestInvalidateAndReplaceNonFirst covers an edge-case where we invalidate an L2 block,
+// but only at a later L1 scope, after the L2 block has already been derived from previous L1 blocks.
+// At previous L1 blocks, the original L2 block is still needed, for accurate local-safe information,
+// as future L1 data does not retroactively change the interpretation of past data within that past scope.
+func TestInvalidateAndReplaceNonFirst(t *testing.T) {
+	l1Block0 := mockL1(0)
+	l1Block1 := mockL1(1)
+	l1Block2 := mockL1(2)
+
+	l1Ref0 := toRef(l1Block0, common.Hash{})
+	l1Ref1 := toRef(l1Block1, l1Block0.Hash)
+	l1Ref2 := toRef(l1Block2, l1Block1.Hash)
+
+	l2Block0 := mockL2(0)
+	l2Block1 := mockL2(1)
+	l2Block2 := mockL2(2)
+	l2Block3 := mockL2(3)
+	l2Block4 := mockL2(4)
+
+	l2Ref1 := toRef(l2Block1, l2Block0.Hash)
+	l2Ref2 := toRef(l2Block2, l2Block1.Hash)
+	l2Ref3 := toRef(l2Block3, l2Block2.Hash)
+	l2Ref4 := toRef(l2Block4, l2Block3.Hash)
+
+	runDBTest(t, func(t *testing.T, db *DB, m *stubMetrics) {
+		require.NoError(t, db.AddDerived(l1Ref0, toRef(l2Block0, common.Hash{})))
+		require.NoError(t, db.AddDerived(l1Ref1, l2Ref1))
+		require.NoError(t, db.AddDerived(l1Ref1, l2Ref2))
+		require.NoError(t, db.AddDerived(l1Ref1, l2Ref3))
+		// note the repeat of the L2 block with the bump in L1 scope
+		require.NoError(t, db.AddDerived(l1Ref2, l2Ref3)) // to be invalidated and replaced
+		require.NoError(t, db.AddDerived(l1Ref2, l2Ref4))
+	}, func(t *testing.T, db *DB, m *stubMetrics) {
+		pair, err := db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, l2Ref4.ID(), pair.Derived.ID())
+		require.Equal(t, l1Block2.ID(), pair.DerivedFrom.ID())
+
+		_, err = db.Invalidated()
+		require.ErrorIs(t, err, types.ErrConflict)
+
+		invalidated := types.DerivedBlockRefPair{
+			DerivedFrom: l1Ref2,
+			Derived:     l2Ref3,
+		}
+		require.NoError(t, db.RewindAndInvalidate(invalidated))
+		_, err = db.Latest()
+		require.ErrorIs(t, err, types.ErrAwaitReplacementBlock)
+
+		pair, err = db.Invalidated()
+		require.NoError(t, err)
+		require.Equal(t, invalidated.DerivedFrom.ID(), pair.DerivedFrom.ID())
+		require.Equal(t, invalidated.Derived.ID(), pair.Derived.ID())
+
+		replacement := l2Ref3
+		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
+		require.NotEqual(t, l2Ref3.Hash, replacement.Hash) // different L2 block as replacement
+		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+
+		pair, err = db.Latest()
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), pair.Derived.ID())
+		require.Equal(t, l1Block2.ID(), pair.DerivedFrom.ID())
+
+		// The L2 block before the replacement should point to 2
+		prev, err := db.PreviousDerived(replacement.ID())
+		require.NoError(t, err)
+		require.Equal(t, l2Ref2.ID(), prev.ID())
+
+		lastFrom1, err := db.LastDerivedAt(l1Block1.ID())
+		require.NoError(t, err)
+		// while invalidated, at this point in L1, it was still the local-safe block
+		require.Equal(t, l2Ref3.ID(), lastFrom1.ID())
+
+		// This should point to the original, since we traverse based on L1 scope
+		entryBlock3, err := db.FirstAfter(l1Block1.ID(), l2Ref2.ID())
+		require.NoError(t, err)
+		require.Equal(t, l2Ref3.ID(), entryBlock3.Derived.ID())
+		require.Equal(t, l1Block1.ID(), entryBlock3.DerivedFrom.ID())
+
+		// And then find the replacement, once we traverse further
+		entryBlockRepl, err := db.FirstAfter(l1Block1.ID(), l2Ref3.ID())
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), entryBlockRepl.Derived.ID())
+		require.Equal(t, l1Block2.ID(), entryBlockRepl.DerivedFrom.ID())
 	})
 }

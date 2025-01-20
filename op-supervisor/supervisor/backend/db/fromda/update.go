@@ -37,15 +37,15 @@ func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidat
 	if last.derived.Hash != invalidated {
 		return fmt.Errorf("cannot replace invalidated %s, DB contains %s: %w", invalidated, last.derived, types.ErrConflict)
 	}
-	// Remove the invalidated placeholder and everything after
-	err = db.store.Truncate(lastIndex - 1)
-	if err != nil {
-		return err
-	}
 	// Find the parent-block of derived-from.
 	// We need this to build a block-ref, so the DB can be consistency-checked when the next entry is added.
 	// There is always one, since the first entry in the DB should never be an invalidated one.
 	prevDerivedFrom, err := db.previousDerivedFrom(last.derivedFrom.ID())
+	if err != nil {
+		return err
+	}
+	// Remove the invalidated placeholder and everything after
+	err = db.store.Truncate(lastIndex - 1)
 	if err != nil {
 		return err
 	}

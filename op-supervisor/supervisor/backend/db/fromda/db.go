@@ -85,12 +85,19 @@ func (db *DB) First() (pair types.DerivedBlockSealPair, err error) {
 func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	// get the last time this L2 block was seen.
+	// last
+	_, lastCanonical, err := db.lastDerivedFrom(derived.Number)
+	if err != nil {
+		return types.BlockSeal{}, fmt.Errorf("failed to find last derived %d: %w", derived.Number, err)
+	}
+	// get the first time this L2 block was seen.
 	selfIndex, self, err := db.firstDerivedFrom(derived.Number)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("failed to find derived %d: %w", derived.Number, err)
+		return types.BlockSeal{}, fmt.Errorf("failed to find first derived %d: %w", derived.Number, err)
 	}
-	if self.derived.ID() != derived {
+	// The first entry might not match, since it may have been invalidated with a later L1 scope.
+	// But the last entry should always match.
+	if lastCanonical.derived.ID() != derived {
 		return types.BlockSeal{}, fmt.Errorf("found %s, but expected %s: %w", self.derived, derived, types.ErrConflict)
 	}
 	if selfIndex == 0 { // genesis block has a zeroed block as parent block
