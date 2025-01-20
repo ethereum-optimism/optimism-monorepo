@@ -353,7 +353,10 @@ func DefaultHardforkScheduleForTag(tag string) *genesis.UpgradeScheduleDeployCon
 		L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
 	}
 
-	if tag == "op-contracts/v1.8.0-rc.4" {
+	switch tag {
+	case ContractsV160Tag, ContractsV170Beta1L2Tag:
+		return sched
+	default:
 		sched.ActivateForkAtGenesis(rollup.Holocene)
 	}
 
