@@ -141,9 +141,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.33
+    /// @custom:semver 1.0.0-beta.34
     function version() public pure virtual returns (string memory) {
-        return "1.0.0-beta.33";
+        return "1.0.0-beta.34";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -168,6 +168,20 @@ contract OPContractsManager is ISemver {
     /// which is intended to be DELEGATECALLed.
     OPContractsManager internal immutable thisOPCM;
 
+    /// @notice The release string.
+    string private constant RELEASE = "op-contracts/vX.Y.Z";
+
+    /// @notice The address of the upgrade controller.
+    address public immutable upgradeController;
+
+    /// @notice Whether this is a release candidate.
+    bool public isRC = true;
+
+    /// @notice Returns the release string. Appends "-rc" if this is a release candidate.
+    function release() external view returns (string memory) {
+        return isRC ? string.concat(RELEASE, "-rc") : RELEASE;
+    }
+
     // -------- Events --------
 
     /// @notice Emitted when a new OP Stack chain is deployed.
@@ -182,6 +196,9 @@ contract OPContractsManager is ISemver {
     event Upgraded(uint256 indexed l2ChainId, ISystemConfig indexed systemConfig, address indexed upgrader);
 
     // -------- Errors --------
+
+    /// @notice Thrown when an address other than the upgrade controller calls the upgrade function.
+    error OnlyUpgradeController();
 
     /// @notice Thrown when an address is the zero address.
     error AddressNotFound(address who);
@@ -220,7 +237,8 @@ contract OPContractsManager is ISemver {
         IProtocolVersions _protocolVersions,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
-        Implementations memory _implementations
+        Implementations memory _implementations,
+        address _upgradeController
     ) {
         assertValidContractAddress(address(_superchainConfig));
         assertValidContractAddress(address(_protocolVersions));
@@ -231,6 +249,7 @@ contract OPContractsManager is ISemver {
         blueprint = _blueprints;
         implementation = _implementations;
         thisOPCM = this;
+        upgradeController = _upgradeController;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -415,6 +434,10 @@ contract OPContractsManager is ISemver {
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
     function upgrade(OpChain[] memory _opChains) external {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
+
+        // Set isRC to false.
+        // This function asserts that the caller is the upgrade controller.
+        thisOPCM.setRC(false);
 
         Implementations memory impls = thisOPCM.implementations();
 
@@ -873,5 +896,11 @@ contract OPContractsManager is ISemver {
         returns (IDisputeGame)
     {
         return _disputeGameFactory.gameImpls(_gameType);
+    }
+
+    /// @notice Sets the RC flag.
+    function setRC(bool _isRC) external {
+        if (msg.sender != upgradeController) revert OnlyUpgradeController();
+        isRC = _isRC;
     }
 }

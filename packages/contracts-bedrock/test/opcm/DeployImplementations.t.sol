@@ -69,6 +69,9 @@ contract DeployImplementationsInput_Test is Test {
 
         vm.expectRevert("DeployImplementationsInput: not set");
         dii.protocolVersionsProxy();
+
+        vm.expectRevert("DeployImplementationsInput: not set");
+        dii.upgradeController();
     }
 }
 
@@ -228,6 +231,7 @@ contract DeployImplementations_Test is Test {
     uint256 disputeGameFinalityDelaySeconds = 500;
     ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    address upgradeController = makeAddr("upgradeController");
 
     function setUp() public virtual {
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -263,6 +267,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.mipsVersion.selector, 1);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.upgradeController.selector, upgradeController);
 
         // Perform the initial deployment.
         deployImplementations.deploySystemConfigImpl(dio);
@@ -363,6 +368,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.upgradeController.selector, upgradeController);
 
         deployImplementations.run(dii, dio);
 
@@ -376,6 +382,7 @@ contract DeployImplementations_Test is Test {
         assertEq(release, dii.l1ContractsRelease(), "525");
         assertEq(address(superchainConfigProxy), address(dii.superchainConfigProxy()), "550");
         assertEq(address(protocolVersionsProxy), address(dii.protocolVersionsProxy()), "575");
+        assertEq(upgradeController, dii.upgradeController(), "600");
 
         // Architecture assertions.
         assertEq(address(dio.mipsSingleton().oracle()), address(dio.preimageOracleSingleton()), "600");

@@ -12,9 +12,9 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
 contract OPContractsManagerInterop is OPContractsManager {
-    /// @custom:semver +interop-beta.1
+    /// @custom:semver +interop-beta.2
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.1");
+        return string.concat(super.version(), "+interop-beta.2");
     }
 
     constructor(
@@ -22,9 +22,17 @@ contract OPContractsManagerInterop is OPContractsManager {
         IProtocolVersions _protocolVersions,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
-        Implementations memory _implementations
+        Implementations memory _implementations,
+        address _upgradeController
     )
-        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
+        OPContractsManager(
+            _superchainConfig,
+            _protocolVersions,
+            _l1ContractsRelease,
+            _blueprints,
+            _implementations,
+            _upgradeController
+        )
     { }
 
     // The `SystemConfigInterop` contract has an extra `address _dependencyManager` argument

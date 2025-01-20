@@ -14,6 +14,7 @@ import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
+import { Bytes } from "src/libraries/Bytes.sol";
 
 // Interfaces
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -51,9 +52,17 @@ contract OPContractsManager_Harness is OPContractsManager {
         IProtocolVersions _protocolVersions,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
-        Implementations memory _implementations
+        Implementations memory _implementations,
+        address _upgradeController
     )
-        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
+        OPContractsManager(
+            _superchainConfig,
+            _protocolVersions,
+            _l1ContractsRelease,
+            _blueprints,
+            _implementations,
+            _upgradeController
+        )
     { }
 
     function chainIdToBatchInboxAddress_exposed(uint256 l2ChainId) public pure returns (address) {
@@ -161,7 +170,8 @@ contract OPContractsManager_InternalMethods_Test is Test {
             _protocolVersions: protocolVersionsProxy,
             _l1ContractsRelease: "dev",
             _blueprints: emptyBlueprints,
-            _implementations: emptyImpls
+            _implementations: emptyImpls,
+            _upgradeController: address(0)
         });
     }
 
@@ -224,7 +234,15 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
 contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
     function test_upgrade_succeeds() public {
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        address upgradeController = makeAddr("upgradeController");
+        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(upgradeController))));
+        vm.label(upgradeController, "upgradeController");
+
+        assertTrue(opcm.isRC(), "isRC should be true");
+        bytes memory releaseBytes = bytes(opcm.release());
+        assertEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should end with '-rc'");
+
+        vm.etch(upgradeController, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         OPContractsManager.Implementations memory impls = opcm.implementations();
         address oldL1CrossDomainMessenger = addressManager.getAddress("OVM_L1CrossDomainMessenger");
 
@@ -242,10 +260,16 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         if (address(delayedWeth) != address(0)) {
             expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWeth));
         }
-        vm.expectEmit(true, true, true, true, address(upgrader));
-        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(upgrader));
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
+        vm.expectEmit(true, true, true, true, address(upgradeController));
+        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(upgradeController));
+        DelegateCaller(upgradeController).dcForward(
+            address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains))
+        );
+        vm.stopPrank();
 
+        assertFalse(opcm.isRC(), "isRC should be false");
+        releaseBytes = bytes(opcm.release());
+        assertNotEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'");
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
@@ -333,7 +357,9 @@ contract OPContractsManager_AddGameType_Test is Test {
         vm.etch(address(superchainConfigProxy), hex"01");
         vm.etch(address(protocolVersionsProxy), hex"01");
 
-        opcm = new OPContractsManager(superchainConfigProxy, protocolVersionsProxy, "dev", blueprints, impls);
+        opcm = new OPContractsManager(
+            superchainConfigProxy, protocolVersionsProxy, "dev", blueprints, impls, address(this)
+        );
 
         chainDeployOutput = opcm.deploy(
             OPContractsManager.DeployInput({
