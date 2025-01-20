@@ -276,7 +276,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         if (address(delayedWeth) != address(0)) {
             expectEmitUpgraded(impls.delayedWETHImpl, address(delayedWeth));
         }
-        vm.expectEmit(true, true, true, true, address(delegateCaller));
+        vm.expectEmit(address(delegateCaller));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
         DelegateCaller(delegateCaller).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
 
