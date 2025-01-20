@@ -123,19 +123,28 @@ contract FaultDisputeGame_Init is DisputeGameFactory_Init {
 
 contract FaultDisputeGame_Test is FaultDisputeGame_Init {
     /// @dev The root claim of the game.
-    Claim internal constant ROOT_CLAIM = Claim.wrap(bytes32((uint256(1) << 248) | uint256(10)));
+    Claim internal rootClaim;
 
     /// @dev The preimage of the absolute prestate claim
     bytes internal absolutePrestateData;
     /// @dev The absolute prestate of the trace.
     Claim internal absolutePrestate;
+    /// @dev The l2BlockNumber of the current anchor root during setup.
+    uint256 l2BlockNumber;
 
     function setUp() public override {
+        // Duplicating the initialization/setup logic of FaultDisputeGame_Test.
         absolutePrestateData = abi.encode(0);
         absolutePrestate = _changeClaimStatus(Claim.wrap(keccak256(absolutePrestateData)), VMStatuses.UNFINISHED);
 
         super.setUp();
-        super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: 0x10 });
+
+        // Get the actual anchor roots
+        (Hash root, uint256 l2Bn) = anchorStateRegistry.getAnchorRoot();
+        l2BlockNumber = l2Bn;
+
+        rootClaim = Claim.wrap(Hash.unwrap(root));
+        super.init({ rootClaim: rootClaim, absolutePrestate: absolutePrestate, l2BlockNumber: l2BlockNumber + 1 });
     }
 
     ////////////////////////////////////////////////////////////////
@@ -396,7 +405,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
     /// @dev Tests that the game's root claim is set correctly.
     function test_rootClaim_succeeds() public view {
-        assertEq(gameProxy.rootClaim().raw(), ROOT_CLAIM.raw());
+        assertEq(gameProxy.rootClaim().raw(), rootClaim.raw());
     }
 
     /// @dev Tests that the game's extra data is set correctly.
@@ -419,7 +428,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         (GameType gameType, Claim rootClaim, bytes memory _extraData) = gameProxy.gameData();
 
         assertEq(gameType.raw(), GAME_TYPE.raw());
-        assertEq(rootClaim.raw(), ROOT_CLAIM.raw());
+        assertEq(rootClaim.raw(), rootClaim.raw());
         assertEq(_extraData, extraData);
     }
 
@@ -446,7 +455,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
 
         assertEq(address(gameProxy).balance, 0);
         gameProxy = IFaultDisputeGame(
-            payable(address(disputeGameFactory.create{ value: _value }(GAME_TYPE, ROOT_CLAIM, abi.encode(1))))
+            payable(address(disputeGameFactory.create{ value: _value }(GAME_TYPE, rootClaim, abi.encode(l2BlockNumber + 2))))
         );
         assertEq(address(gameProxy).balance, 0);
         assertEq(delayedWeth.balanceOf(address(gameProxy)), _value);
@@ -492,7 +501,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(counteredBy, address(0));
         assertEq(claimant, address(this));
         assertEq(bond, 0);
-        assertEq(claim.raw(), ROOT_CLAIM.raw());
+        assertEq(claim.raw(), rootClaim.raw());
         assertEq(position.raw(), 1);
         assertEq(clock.raw(), LibClock.wrap(Duration.wrap(0), Timestamp.wrap(uint64(block.timestamp))).raw());
 
@@ -897,7 +906,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         assertEq(counteredBy, address(0));
         assertEq(claimant, address(this));
         assertEq(bond, 0);
-        assertEq(claim.raw(), ROOT_CLAIM.raw());
+        assertEq(claim.raw(), rootClaim.raw());
         assertEq(position.raw(), 1);
         assertEq(clock.raw(), LibClock.wrap(Duration.wrap(0), Timestamp.wrap(uint64(block.timestamp - 5))).raw());
     }
@@ -2160,7 +2169,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         }
         uint256 lastBond = _getRequiredBond(4);
         (,,,, disputed,,) = gameProxy.claimData(4);
-        gameProxy.defend{ value: lastBond }(disputed, 4, _changeClaimStatus(ROOT_CLAIM, VMStatuses.VALID));
+        gameProxy.defend{ value: lastBond }(disputed, 4, _changeClaimStatus(rootClaim, VMStatuses.VALID));
 
         // Expected start/disputed claims
         bytes32 startingClaim = bytes32(uint256(3));
@@ -2229,7 +2238,7 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
             pos = parent.move(true);
             uint256 lastBond = game.getRequiredBond(pos);
             (,,,, disputed,,) = game.claimData(4);
-            game.defend{ value: lastBond }(disputed, 4, _changeClaimStatus(ROOT_CLAIM, VMStatuses.INVALID));
+            game.defend{ value: lastBond }(disputed, 4, _changeClaimStatus(rootClaim, VMStatuses.INVALID));
         }
 
         // Expected start/disputed claims
