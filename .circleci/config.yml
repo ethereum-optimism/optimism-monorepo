@@ -698,7 +698,6 @@ jobs:
             - "/root/.cache/go-build"
       - notify-failures-on-develop
 
-
   contracts-bedrock-tests-upgrade:
     machine: true
     resource_class: ethereum-optimism/latitude-1
@@ -1005,11 +1004,11 @@ jobs:
           name: Upload cannon prestates
           command: |
             gsutil cp ./op-program/bin/prestate.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}.bin.gz
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>-mt64.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-mt64.bin.gz
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>-interop.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-interop.bin.gz
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1536,7 +1535,6 @@ workflows:
             branches:
               ignore: /.*/
 
-
   scheduled-todo-issues:
     when:
       equal: [build_four_hours, <<pipeline.schedule.name>>]
@@ -1603,7 +1601,7 @@ workflows:
             - oplabs-network-optimism-io-bucket
           requires:
             - cannon-prestate
-#            - op-e2e-cannon-tests
+          #            - op-e2e-cannon-tests
           filters:
             branches:
               only:
