@@ -3,7 +3,7 @@ package kt
 import (
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/devnet/manifest"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/manifest"
 	"github.com/stretchr/testify/require"
 	"gopkg.in/yaml.v3"
 )

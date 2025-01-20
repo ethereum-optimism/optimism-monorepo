@@ -89,4 +89,4 @@ user-devnet DATA_FILE:
 
 # subshells
 enter-devnet DEVNET CHAIN='Ethereum':
-    exec go run pkg/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}
+    exec go run ../devnet-sdk/shell/cmd/enter/main.go --devnet tests/{{DEVNET}}.json --chain {{CHAIN}}

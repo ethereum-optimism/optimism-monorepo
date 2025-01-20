@@ -4,8 +4,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/devnet/images"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/devnet/manifest"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/images"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/manifest"
 )
 
 const (

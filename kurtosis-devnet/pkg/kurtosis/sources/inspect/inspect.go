@@ -3,7 +3,7 @@ package inspect
 import (
 	"context"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 

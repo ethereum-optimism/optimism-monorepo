@@ -3,8 +3,9 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/exec"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/shell/env"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/urfave/cli/v2"
 )
 
@@ -27,14 +28,40 @@ func run(ctx *cli.Context) error {
 		return err
 	}
 
-	fmt.Println(chainEnv.Motd)
+	if motd := chainEnv.Motd; motd != "" {
+		fmt.Println(motd)
+	}
+
+	// Get current environment and append chain-specific vars
+	env := os.Environ()
+	for key, value := range chainEnv.EnvVars {
+		env = append(env, fmt.Sprintf("%s=%s", key, value))
+	}
+
+	// Get current shell
+	shell := os.Getenv("SHELL")
+	if shell == "" {
+		shell = "/bin/sh"
+	}
+
+	// Execute new shell
+	cmd := exec.Command(shell)
+	cmd.Env = env
+	cmd.Stdin = os.Stdin
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("error executing shell: %w", err)
+	}
+
 	return nil
 }
 
 func main() {
 	app := &cli.App{
-		Name:  "motd",
-		Usage: "Display the Message of the Day for a chain environment",
+		Name:  "enter",
+		Usage: "Enter a shell with devnet environment variables set",
 		Flags: []cli.Flag{
 			&cli.StringFlag{
 				Name:     "devnet",
@@ -44,7 +71,7 @@ func main() {
 			},
 			&cli.StringFlag{
 				Name:     "chain",
-				Usage:    "Name of the chain to get MOTD for",
+				Usage:    "Name of the chain to connect to",
 				EnvVars:  []string{env.ChainNameVar},
 				Required: true,
 			},
