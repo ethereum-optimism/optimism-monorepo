@@ -1005,11 +1005,11 @@ jobs:
           name: Upload cannon prestates
           command: |
             gsutil cp ./op-program/bin/prestate.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>.bin.gz
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>-mt64.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>-mt64.bin.gz
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>-interop.bin.gz
+              gs://oplabs-network-data/proofs/op-program/cannon/<<pipeline.git.branch>>-interop.bin.gz
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
