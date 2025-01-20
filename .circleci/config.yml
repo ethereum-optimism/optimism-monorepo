@@ -990,6 +990,29 @@ jobs:
             - "op-program/bin"
             - "cannon/bin"
 
+  publish-cannon-prestates:
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
+    steps:
+      - checkout
+      - attach_workspace:
+          at: "."
+      - gcp-cli/install
+      - gcp-oidc-authenticate:
+          gcp_cred_config_file_path: /root/gcp_cred_config.json
+          oidc_token_file_path: /root/oidc_token.json
+      - run:
+          name: Upload cannon prestates
+          command: |
+            gsutil cp ./op-program/bin/prestate.bin.gz \
+              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>.bin.gz
+            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
+              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>-mt64.bin.gz
+            gsutil cp ./op-program/bin/prestate-interop.bin.gz \
+              gs://oplabs-network-data/proofs/op-program/cannon/,<<pipeline.git.branch>>-interop.bin.gz
+      - notify-failures-on-develop:
+          mentions: "@proofs-team"
+
   preimage-reproducibility:
     docker:
       - image: <<pipeline.parameters.ci_builder_image>>
@@ -1495,6 +1518,24 @@ workflows:
             - oplabs-gcr-release
           requires:
             - hold
+      - cannon-prestate:
+          filters:
+            tags:
+              only: /^op-program\/v.*/
+            branches:
+              ignore: /.*/
+      - publish-cannon-prestates:
+          context:
+            - slack
+            - oplabs-gcr
+          requires:
+            - cannon-prestate
+          filters:
+            tags:
+              only: /^op-program\/v.*/
+            branches:
+              ignore: /.*/
+
 
   scheduled-todo-issues:
     when:
@@ -1556,6 +1597,18 @@ workflows:
           requires:
             - contracts-bedrock-build
             - cannon-prestate
+      - publish-cannon-prestates:
+          context:
+            - slack
+            - oplabs-gcr
+          requires:
+            - cannon-prestate
+#            - op-e2e-cannon-tests
+          filters:
+            branches:
+              only:
+                - develop
+                - aj-upload-prestates
 
   develop-kontrol-tests:
     when:
