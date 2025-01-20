@@ -644,23 +644,6 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
-          },
-          {
-            "components": [
-              {
-                "internalType": "Hash",
-                "name": "root",
-                "type": "bytes32"
-              },
-              {
-                "internalType": "uint256",
-                "name": "l2BlockNumber",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct OutputRoot",
-            "name": "startingAnchorRoot",
-            "type": "tuple"
           }
         ],
         "internalType": "struct OPContractsManager.OpChain[]",
