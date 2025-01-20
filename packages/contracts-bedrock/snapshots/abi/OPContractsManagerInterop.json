@@ -72,6 +72,16 @@
         "components": [
           {
             "internalType": "address",
+            "name": "superchainConfigImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolVersionsImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
             "name": "l1ERC721BridgeImpl",
             "type": "address"
           },
@@ -509,6 +519,16 @@
         "components": [
           {
             "internalType": "address",
+            "name": "superchainConfigImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "protocolVersionsImpl",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
             "name": "l1ERC721BridgeImpl",
             "type": "address"
           },
@@ -633,6 +653,11 @@
   },
   {
     "inputs": [
+      {
+        "internalType": "contract IProxyAdmin",
+        "name": "_superchainProxyAdmin",
+        "type": "address"
+      },
       {
         "components": [
           {
@@ -839,6 +864,11 @@
       }
     ],
     "name": "SuperchainConfigMismatch",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "SuperchainProxyAdminMismatch",
     "type": "error"
   },
   {
