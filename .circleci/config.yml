@@ -995,8 +995,8 @@ jobs:
           command: |
             gsutil cp ./op-program/bin/prestate.bin.gz \
               gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}.bin.gz
-            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-mt64.bin.gz
+            gsutil cp ./op-program/bin/prestate-mt.bin.gz \
+              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-mt.bin.gz
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
               gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-interop.bin.gz
       - notify-failures-on-develop:
