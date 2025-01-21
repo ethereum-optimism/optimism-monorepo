@@ -294,7 +294,10 @@ contract Deploy is Deployer {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
-        dii.set(dii.upgradeController.selector, makeAddr("upgradeController"));
+        dii.set(
+            dii.upgradeController.selector,
+            IProxyAdmin(EIP1967Helper.getAdmin(artifacts.mustGetAddress("SuperchainConfigProxy"))).owner()
+        );
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());

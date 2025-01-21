@@ -160,6 +160,7 @@ contract OPContractsManager_InternalMethods_Test is Test {
     function setUp() public {
         ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfig"));
         IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersions"));
+        address upgradeController = makeAddr("upgradeController");
         OPContractsManager.Blueprints memory emptyBlueprints;
         OPContractsManager.Implementations memory emptyImpls;
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -171,7 +172,7 @@ contract OPContractsManager_InternalMethods_Test is Test {
             _l1ContractsRelease: "dev",
             _blueprints: emptyBlueprints,
             _implementations: emptyImpls,
-            _upgradeController: address(0)
+            _upgradeController: upgradeController
         });
     }
 
@@ -261,7 +262,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         DelegateCaller(delegateCaller).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
         vm.stopPrank();
 
-        if (delegateCaller == makeAddr("upgradeController")) {
+        if (delegateCaller == upgrader) {
             assertFalse(opcm.isRC(), "isRC should be false");
             releaseBytes = bytes(opcm.l1ContractsRelease());
             assertNotEq(
@@ -289,21 +290,15 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
     }
 
     function test_upgrade_succeeds() public {
-        address upgradeController = makeAddr("upgradeController");
-
-        // Set the proxy admin owner to be the upgrade controller
-        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(upgradeController))));
-        vm.label(upgradeController, "upgradeController");
-
         // Run the upgrade test and checks
-        runUpgradeTestAndChecks(upgradeController);
+        runUpgradeTestAndChecks(upgrader);
     }
 
     function test_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(address _nonUpgradeController)
         public
     {
         if (
-            _nonUpgradeController == makeAddr("upgradeController") || _nonUpgradeController == address(0)
+            _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
                 || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
                 || _nonUpgradeController > address(0x4200000000000000000000000000000000000800)
                 || _nonUpgradeController == address(vm)
@@ -334,7 +329,6 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 
     function test_upgrade_superchainConfigMismatch_reverts() public {
-        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(makeAddr("upgradeController")))));
         upgrader = proxyAdmin.owner();
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         // Set the superchainConfig to a different address in the OptimismPortal2 contract.
@@ -351,10 +345,10 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 }
 
-contract OPContractsManager_SetRC_Test is CommonTest {
+contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
     /// @notice Tests the setRC function can be set by the upgrade controller.
     function test_setRC_succeeds(bool _isRC) public {
-        vm.prank(makeAddr("upgradeController"));
+        vm.prank(upgrader);
 
         opcm.setRC(_isRC);
         assertTrue(opcm.isRC() == _isRC, "isRC should be true");
@@ -371,7 +365,7 @@ contract OPContractsManager_SetRC_Test is CommonTest {
     /// @notice Tests the setRC function can not be set by non-upgrade controller.
     function test_setRC_nonUpgradeController_reverts(address _nonUpgradeController) public {
         if (
-            _nonUpgradeController == makeAddr("upgradeController") || _nonUpgradeController == address(0)
+            _nonUpgradeController == upgrader || _nonUpgradeController == address(0)
                 || _nonUpgradeController < address(0x4200000000000000000000000000000000000000)
                 || _nonUpgradeController > address(0x4200000000000000000000000000000000000800)
                 || _nonUpgradeController == address(vm)

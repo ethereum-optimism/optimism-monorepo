@@ -146,9 +146,6 @@ contract ForkLive is Deployer {
         ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
         IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
 
-        address oldOwner = proxyAdmin.owner();
-        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(makeAddr("upgradeController")))));
-
         address upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
@@ -159,9 +156,6 @@ contract ForkLive is Deployer {
         // reflecting the production system.
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
-
-        // Restore the old owner
-        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(oldOwner))));
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name
