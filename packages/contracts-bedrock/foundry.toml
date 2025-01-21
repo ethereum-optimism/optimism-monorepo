@@ -80,6 +80,23 @@ wrap_comments=true
 #                         PROFILE: CI                          #
 ################################################################
 
+[profile.ci]
+optimizer = true
+optimizer_runs = 999999
+
+additional_compiler_profiles = [
+  { name = "dispute", optimizer_runs = 5000 },
+]
+compilation_restrictions = [
+  { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
+]
+
+extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
+bytecode_hash = 'none'
+ast = true
+evm_version = 'cancun'
+
 [profile.ci.fuzz]
 runs = 128
 

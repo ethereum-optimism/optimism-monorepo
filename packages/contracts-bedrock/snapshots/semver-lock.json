@@ -8,11 +8,11 @@
     "sourceCodeHash": "0x9726b6f646269f4288ff8dc1b8228dedbdf960e90df1d11793bc534297328e96"
   },
   "src/L1/L1ERC721Bridge.sol": {
-    "initCodeHash": "0x280488bce8b4fb364740c59de14c423851902088f384e077bccc79b9df48528a",
+    "initCodeHash": "0x61a509ace719c19ce6e288d2c37ff4671ade678bbd9148e6c10ffe32675eee9c",
     "sourceCodeHash": "0xe12b9e6c4e4ac2e2c9a03f07c7689f6bf2231922536072812cf1f37a5a276e73"
   },
   "src/L1/L1StandardBridge.sol": {
-    "initCodeHash": "0xe69e972e18930d3feaaad20b8e0e15625df9a71ad8304ee7d89c17d32644e152",
+    "initCodeHash": "0x3b7d0cffe4f4bc8c7a2cefe5657c8147656ecdbf387fe70a39ee74fdfaa172c9",
     "sourceCodeHash": "0xc6613d35d1ad95cbef26a503a10b5dd8663ceb80426f8c528835d39f79e4b4cf"
   },
   "src/L1/OPContractsManager.sol": {
@@ -32,11 +32,11 @@
     "sourceCodeHash": "0xc04a7f9c14a13ec3587f5cc351c8e9f27fbbe9f1291a1aba07de29edbeef418a"
   },
   "src/L1/ProtocolVersions.sol": {
-    "initCodeHash": "0x6ca9c0a0622ba74ac6bfef1e7f922adc7c4b815a34689fdf01b4a00acdb4a63d",
+    "initCodeHash": "0x0000ec89712d8b4609873f1ba76afffd4205bf9110818995c90134dbec12e91e",
     "sourceCodeHash": "0xd4284db247fc1e686bd4b57755c7ac9a073a173d6df4f93448eb7fb5518882f7"
   },
   "src/L1/SuperchainConfig.sol": {
-    "initCodeHash": "0x91410b22e52e82d89a5ee65b00dc3ddc6aa14b86386c8a55c4ebae32208d980b",
+    "initCodeHash": "0xcc35362cfd686d2f50e1db8c4a864cbc1eb847eaf58007d8ce7295ae9e101102",
     "sourceCodeHash": "0xafa784ea78818a382ff3a61e2d84be58c7978110c06b9273db68c0213ead02d3"
   },
   "src/L1/SystemConfig.sol": {
@@ -152,7 +152,7 @@
     "sourceCodeHash": "0xdb771f1b92c7612b120e0bce31967f0c8a7ce332dbb426bc9cfc52b47be21c4d"
   },
   "src/cannon/PreimageOracle.sol": {
-    "initCodeHash": "0x8412f8a8397ff8706fb58b2ddb8952cd093f9e5c70231816852466ac52b567d1",
+    "initCodeHash": "0x17d3b3df1aaaf7a705b8d48de8a05e6511b910fdafdbe5eb7f7f95ec944fba9a",
     "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
@@ -200,7 +200,7 @@
     "sourceCodeHash": "0x918965e52bbd358ac827ebe35998f5d8fa5ca77d8eb9ab8986b44181b9aaa48a"
   },
   "src/universal/OptimismMintableERC20.sol": {
-    "initCodeHash": "0x144f8ed06e2086f9dbfc805f277bef3b5a65badf6c467f0a89177b8fe995e980",
+    "initCodeHash": "0xc3289416829b252c830ad7d389a430986a7404df4fe0be37cb19e1c40907f047",
     "sourceCodeHash": "0xf5e29dd5c750ea935c7281ec916ba5277f5610a0a9e984e53ae5d5245b3cf2f4"
   },
   "src/universal/OptimismMintableERC20Factory.sol": {
