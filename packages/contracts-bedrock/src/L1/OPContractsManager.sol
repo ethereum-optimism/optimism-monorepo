@@ -194,7 +194,7 @@ contract OPContractsManager is ISemver {
 
     // -------- Errors --------
 
-    /// @notice Thrown when an address other than the upgrade controller calls the upgrade function.
+    /// @notice Thrown when an address other than the upgrade controller calls the setRC function.
     error OnlyUpgradeController();
 
     /// @notice Thrown when an address is the zero address.
