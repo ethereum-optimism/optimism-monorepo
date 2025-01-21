@@ -541,16 +541,15 @@ contract OPContractsManager is ISemver {
                 params.anchorStateRegistry = IAnchorStateRegistry(address(newAnchorStateRegistryProxy));
                 address proposer = permissionedDisputeGame.proposer();
                 address challenger = permissionedDisputeGame.challenger();
-                IPermissionedDisputeGame newPermissionedDisputeGame = IPermissionedDisputeGame(
+                IDisputeGame newPermissionedDisputeGame = IDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionedDisputeGame1,
                         bps.permissionedDisputeGame2,
                         computeSalt(l2ChainId, "v2.0.0", "PermissionedDisputeGame"),
-                        encodePermissionedFDGConstructor(params, proposer, challenger)
-                    )
+                        encodePermissionedFDGConstructor(params, proposer, challenger))
                 );
                 IDisputeGameFactory(opChainAddrs.disputeGameFactory).setImplementation(
-                    GameTypes.PERMISSIONED_CANNON, IDisputeGame(address(newPermissionedDisputeGame))
+                    GameTypes.PERMISSIONED_CANNON, IDisputeGame(newPermissionedDisputeGame)
                 );
             }
 
@@ -565,17 +564,16 @@ contract OPContractsManager is ISemver {
                     getGameConstructorParams(IFaultDisputeGame(address(permissionlessDisputeGame)));
                 params.anchorStateRegistry = IAnchorStateRegistry(address(newAnchorStateRegistryProxy));
 
-                IFaultDisputeGame newPermissionlessDisputeGame = IFaultDisputeGame(
+                IDisputeGame newPermissionlessDisputeGame = IDisputeGame(
                     Blueprint.deployFrom(
                         bps.permissionlessDisputeGame1,
                         bps.permissionlessDisputeGame2,
                         computeSalt(l2ChainId, "v2.0.0", "PermissionlessDisputeGame"),
                         encodePermissionlessFDGConstructor(params)
-                    )
-                );
+                ));
 
                 IDisputeGameFactory(opChainAddrs.disputeGameFactory).setImplementation(
-                    GameTypes.CANNON, IDisputeGame(address(newPermissionlessDisputeGame))
+                    GameTypes.CANNON, IDisputeGame(newPermissionlessDisputeGame)
                 );
             }
 
