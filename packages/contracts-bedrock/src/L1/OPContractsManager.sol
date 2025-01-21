@@ -432,9 +432,12 @@ contract OPContractsManager is ISemver {
     function upgrade(OpChain[] memory _opChains) external {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
-        // Set isRC to false.
-        // This function asserts that the caller is the upgrade controller.
-        thisOPCM.setRC(false);
+        // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
+        if (address(this) == upgradeController) {
+            // Set isRC to false.
+            // This function asserts that the caller is the upgrade controller.
+            thisOPCM.setRC(false);
+        }
 
         Implementations memory impls = thisOPCM.implementations();
 
