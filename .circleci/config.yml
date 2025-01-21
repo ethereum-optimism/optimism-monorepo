@@ -1591,12 +1591,11 @@ workflows:
             - oplabs-network-optimism-io-bucket
           requires:
             - cannon-prestate
-          #            - op-e2e-cannon-tests
+            - op-e2e-cannon-tests
           filters:
             branches:
               only:
                 - develop
-                - aj-upload-prestates
 
   develop-kontrol-tests:
     when:
