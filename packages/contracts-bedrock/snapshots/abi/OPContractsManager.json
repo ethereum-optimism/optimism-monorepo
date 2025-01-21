@@ -606,19 +606,6 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "release",
-    "outputs": [
-      {
-        "internalType": "string",
-        "name": "",
-        "type": "string"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "bool",

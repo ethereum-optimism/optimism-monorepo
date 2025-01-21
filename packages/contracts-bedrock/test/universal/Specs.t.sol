@@ -787,7 +787,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.upgrade.selector });
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.release.selector });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("isRC()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("setRC(bool)") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("upgradeController()") });
@@ -803,7 +802,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.upgrade.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.addGameType.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.release.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("isRC()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("setRC(bool)") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("upgradeController()") });

@@ -239,7 +239,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         vm.label(upgradeController, "upgradeController");
 
         assertTrue(opcm.isRC(), "isRC should be true");
-        bytes memory releaseBytes = bytes(opcm.release());
+        bytes memory releaseBytes = bytes(opcm.l1ContractsRelease());
         assertEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should end with '-rc'");
 
         vm.etch(upgradeController, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
@@ -268,7 +268,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         vm.stopPrank();
 
         assertFalse(opcm.isRC(), "isRC should be false");
-        releaseBytes = bytes(opcm.release());
+        releaseBytes = bytes(opcm.l1ContractsRelease());
         assertNotEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'");
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
