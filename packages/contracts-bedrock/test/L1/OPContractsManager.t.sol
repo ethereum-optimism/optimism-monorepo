@@ -304,6 +304,8 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 
     function test_upgrade_superchainConfigMismatch_reverts() public {
+        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(makeAddr("upgradeController")))));
+        upgrader = proxyAdmin.owner();
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         // Set the superchainConfig to a different address in the OptimismPortal2 contract.
         vm.store(
