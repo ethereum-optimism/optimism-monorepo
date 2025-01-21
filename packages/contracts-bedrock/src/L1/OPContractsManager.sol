@@ -528,29 +528,17 @@ contract OPContractsManager is ISemver {
                     );
                 }
 
-                // Permissioned Dispute Game Upgrades
-                // 1. Get and upgrade the Permissioned DelayedWETH Proxy
-                // 2. Deploy a new Permissioned Dispute Game
-                // 3. Set the new Permissioned Dispute Game as the implementation on the OptimismPortal
 
-                IDelayedWETH delayedWETHPermissionedGameProxy = permissionedDisputeGame.weth();
-                upgradeTo(_opChains[i].proxyAdmin, address(delayedWETHPermissionedGameProxy), impls.delayedWETHImpl);
-
-                IFaultDisputeGame.GameConstructorParams memory params =
-                    getGameConstructorParams(IFaultDisputeGame(address(permissionedDisputeGame)));
-                params.anchorStateRegistry = IAnchorStateRegistry(address(newAnchorStateRegistryProxy));
-                address proposer = permissionedDisputeGame.proposer();
-                address challenger = permissionedDisputeGame.challenger();
-                IDisputeGame newPermissionedDisputeGame = IDisputeGame(
-                    Blueprint.deployFrom(
-                        bps.permissionedDisputeGame1,
-                        bps.permissionedDisputeGame2,
-                        computeSalt(l2ChainId, "v2.0.0", "PermissionedDisputeGame"),
-                        encodePermissionedFDGConstructor(params, proposer, challenger))
-                );
-                IDisputeGameFactory(opChainAddrs.disputeGameFactory).setImplementation(
-                    GameTypes.PERMISSIONED_CANNON, IDisputeGame(newPermissionedDisputeGame)
-                );
+                deployAndSetNewGameImpl({
+                    _proxyAdmin: _opChains[i].proxyAdmin,
+                    _currentGame: IDisputeGame(address(permissionedDisputeGame)),
+                    _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
+                    _gameType: GameTypes.PERMISSIONED_CANNON,
+                    _implementations: impls,
+                    _blueprints: bps,
+                    _opChainAddrs: opChainAddrs,
+                    _l2ChainId: l2ChainId
+                });
             }
 
             // Now retrieve the permissionless game. If it exists, upgrade its weth and replace its implementation.
@@ -558,23 +546,16 @@ contract OPContractsManager is ISemver {
                 address(getGameImplementation(IDisputeGameFactory(opChainAddrs.disputeGameFactory), GameTypes.CANNON))
             );
             if (address(permissionlessDisputeGame) != address(0)) {
-                IDelayedWETH delayedWETHPermissionlessGameProxy = permissionlessDisputeGame.weth();
-                upgradeTo(_opChains[i].proxyAdmin, address(delayedWETHPermissionlessGameProxy), impls.delayedWETHImpl);
-                IFaultDisputeGame.GameConstructorParams memory params =
-                    getGameConstructorParams(IFaultDisputeGame(address(permissionlessDisputeGame)));
-                params.anchorStateRegistry = IAnchorStateRegistry(address(newAnchorStateRegistryProxy));
-
-                IDisputeGame newPermissionlessDisputeGame = IDisputeGame(
-                    Blueprint.deployFrom(
-                        bps.permissionlessDisputeGame1,
-                        bps.permissionlessDisputeGame2,
-                        computeSalt(l2ChainId, "v2.0.0", "PermissionlessDisputeGame"),
-                        encodePermissionlessFDGConstructor(params)
-                ));
-
-                IDisputeGameFactory(opChainAddrs.disputeGameFactory).setImplementation(
-                    GameTypes.CANNON, IDisputeGame(newPermissionlessDisputeGame)
-                );
+                deployAndSetNewGameImpl({
+                    _proxyAdmin: _opChains[i].proxyAdmin,
+                    _currentGame: IDisputeGame(address(permissionlessDisputeGame)),
+                    _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
+                    _gameType: GameTypes.CANNON,
+                    _implementations: impls,
+                    _blueprints: bps,
+                    _opChainAddrs: opChainAddrs,
+                    _l2ChainId: l2ChainId
+                });
             }
 
             // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
@@ -1003,5 +984,55 @@ contract OPContractsManager is ISemver {
             l2ChainId: _disputeGame.l2ChainId()
         });
         return params;
+    }
+
+    /// @notice For a given game type, does the following:
+    /// 1. Get and upgrade the DelayedWETH Proxy
+    /// 2. Deploy a new game
+    /// 3. Set the new game as the implementation on the OptimismPortal
+    function deployAndSetNewGameImpl(
+        IProxyAdmin _proxyAdmin,
+        IDisputeGame _currentGame,
+        IAnchorStateRegistry _newAnchorStateRegistryProxy,
+        GameType _gameType,
+        Blueprints memory _blueprints,
+        Implementations memory _implementations,
+        ISystemConfig.Addresses memory _opChainAddrs,
+        uint256 _l2ChainId
+    )
+        internal
+    {
+        // Get and upgrade the WETH proxy
+        IDelayedWETH delayedWethProxy = IFaultDisputeGame(address(_currentGame)).weth();
+        upgradeTo(_proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
+
+        // Get the constructor params for the game
+        IFaultDisputeGame.GameConstructorParams memory params =
+            getGameConstructorParams(IFaultDisputeGame(address(_currentGame)));
+        params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
+
+        IDisputeGame newGame;
+        if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
+            address proposer = IPermissionedDisputeGame(address(_currentGame)).proposer();
+            address challenger = IPermissionedDisputeGame(address(_currentGame)).challenger();
+            newGame = IDisputeGame(
+                Blueprint.deployFrom(
+                    _blueprints.permissionedDisputeGame1,
+                    _blueprints.permissionedDisputeGame2,
+                    computeSalt(_l2ChainId, "v2.0.0", "PermissionedDisputeGame"),
+                    encodePermissionedFDGConstructor(params, proposer, challenger)
+                )
+            );
+        } else {
+            newGame = IDisputeGame(
+                Blueprint.deployFrom(
+                    _blueprints.permissionlessDisputeGame1,
+                    _blueprints.permissionlessDisputeGame2,
+                    computeSalt(_l2ChainId, "v2.0.0", "PermissionlessDisputeGame"),
+                    encodePermissionlessFDGConstructor(params)
+                )
+            );
+        }
+        IDisputeGameFactory(_opChainAddrs.disputeGameFactory).setImplementation(_gameType, IDisputeGame(newGame));
     }
 }
