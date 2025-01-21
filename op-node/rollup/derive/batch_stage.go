@@ -19,7 +19,7 @@ import (
 //
 // It also generates empty batches when the sequencing window has passed.
 //
-// It replaces the [BatchQueue] with Holocene activation.
+// Upon Holocene activation, it replaces the [BatchQueue].
 type BatchStage struct {
 	baseBatchStage
 }
