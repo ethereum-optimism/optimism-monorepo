@@ -24,7 +24,7 @@
     "sourceCodeHash": "0x1bbe8f918f1d5b1cc75924cdf23b10664b890fd306c2aa5d195a7b4177670431"
   },
   "src/L1/OptimismPortal2.sol": {
-    "initCodeHash": "0x969e3687d4497cc168af61e610ba0ae187e80f86aaa7b5d5bb598de19f279f08",
+    "initCodeHash": "0x7befd717b511a9207f6042de50d8e65d84ef7d8d42afff41c25d6528f46d14de",
     "sourceCodeHash": "0xf215a31954f2ef166cfb26d20e466c62fafa235a08fc42c55131dcb81998ff01"
   },
   "src/L1/OptimismPortalInterop.sol": {
@@ -32,7 +32,7 @@
     "sourceCodeHash": "0xc04a7f9c14a13ec3587f5cc351c8e9f27fbbe9f1291a1aba07de29edbeef418a"
   },
   "src/L1/ProtocolVersions.sol": {
-    "initCodeHash": "0x0000ec89712d8b4609873f1ba76afffd4205bf9110818995c90134dbec12e91e",
+    "initCodeHash": "0x6ca9c0a0622ba74ac6bfef1e7f922adc7c4b815a34689fdf01b4a00acdb4a63d",
     "sourceCodeHash": "0xd4284db247fc1e686bd4b57755c7ac9a073a173d6df4f93448eb7fb5518882f7"
   },
   "src/L1/SuperchainConfig.sol": {
@@ -100,11 +100,11 @@
     "sourceCodeHash": "0x72062343a044e9c56f4143dcfc71706286eb205902006c2afcf6a4cd90c3e9f8"
   },
   "src/L2/OptimismMintableERC721.sol": {
-    "initCodeHash": "0xcfa6ad9997a422aef5a19a490a0a535bc870ee34b1f5258c2949eb3680f71e8a",
+    "initCodeHash": "0xcf24943906d3502c563a1224f4bbd8a11905f8b4e207e8f50515a8c7d41a49c0",
     "sourceCodeHash": "0xb67b91f28c8666fee26c40375f835c61629e0f14054bfaf78bc3c61175bbf136"
   },
   "src/L2/OptimismMintableERC721Factory.sol": {
-    "initCodeHash": "0x9ccba9a5db77356c361fe4aea0e93498a56bda9fdac8d5e654d6f7abc4553028",
+    "initCodeHash": "0x174f9ece897365a31525cee030d6ea71864f832ab7dc1c2a56b657fa56122087",
     "sourceCodeHash": "0x2e4b8535b1f7749a0479b2c1de86b3ff79ee4ff6122c6f87c52d66cd301f3f97"
   },
   "src/L2/OptimismSuperchainERC20.sol": {
@@ -136,11 +136,11 @@
     "sourceCodeHash": "0x11d711704a5afcae6076d017ee001b25bc705728973b1ad2e6a32274a8475f50"
   },
   "src/L2/WETH.sol": {
-    "initCodeHash": "0x480d4f8dbec1b0d3211bccbbdfb69796f3e90c784f724b1bbfd4703b0aafdeba",
+    "initCodeHash": "0x4ae485c1327118ac9c1a492fb687502a0eb6079a93b57912ab0d3af201754c74",
     "sourceCodeHash": "0xe9964aa66db1dfc86772958b4c9276697e67f7055529a43e6a49a055009bc995"
   },
   "src/cannon/MIPS.sol": {
-    "initCodeHash": "0xc10654f0e6498f424f7a5095bac36005dc7062d3813cc8f805a15005fc37406b",
+    "initCodeHash": "0x66478c040c82be2c383b4c9616f92eed4849939461aea0dd24606502da29dce6",
     "sourceCodeHash": "0x6c45dd23cb0d6f9bf4f84855ad0caf70e53dee3fe6c41454f7bf8df52ec3a9af"
   },
   "src/cannon/MIPS2.sol": {
@@ -156,7 +156,7 @@
     "sourceCodeHash": "0xb7b0a06cd971c4647247dc19ce997d0c64a73e87c81d30731da9cf9efa1b952a"
   },
   "src/dispute/AnchorStateRegistry.sol": {
-    "initCodeHash": "0xb2618d650808a7a335db7cc56d15ccaf432f50aa551c01be8bde8356893c0e0d",
+    "initCodeHash": "0x3c940e43218ae4e83019acafe9fe5201194da7d0f7a9b4d09ada4cc705fb3aa3",
     "sourceCodeHash": "0x745f0e2b07b8f6492e11ca2f69b53d129177fbfd346d5ca4729d72792aff1f83"
   },
   "src/dispute/DelayedWETH.sol": {
@@ -164,7 +164,7 @@
     "sourceCodeHash": "0x0162302b9c71f184d45bee34ecfb1dfbf427f38fc5652709ab7ffef1ac816d82"
   },
   "src/dispute/DisputeGameFactory.sol": {
-    "initCodeHash": "0xa728192115c5fdb08c633a0899043318289b1d413d7afeed06356008b2a5a7fa",
+    "initCodeHash": "0x4179eeaa24838490be82aa5059fa9078ab84b020fe2eddb72aeea1bb44ea8775",
     "sourceCodeHash": "0x155c0334f63616ed245aadf9a94f419ef7d5e2237b3b32172484fd19890a61dc"
   },
   "src/dispute/FaultDisputeGame.sol": {
@@ -184,7 +184,7 @@
     "sourceCodeHash": "0x62c9a6182d82692fb9c173ddb0d7978bcff2d1d4dc8cd2f10625e1e65bda6888"
   },
   "src/safe/DeputyGuardianModule.sol": {
-    "initCodeHash": "0x5eaf823d81995ce1f703f26e31049c54c1d4902dd9873a0b4645d470f2f459a2",
+    "initCodeHash": "0xf170ba8120f9e83cf9933958892edcf1a0d4e19bd1cfe73de9de94fb28325f4c",
     "sourceCodeHash": "0x17236a91c4171ae9525eae0e59fa65bb2dc320d62677cfc7d7eb942f182619fb"
   },
   "src/safe/DeputyPauseModule.sol": {
@@ -192,7 +192,7 @@
     "sourceCodeHash": "0xfbe7f5733aa57de7557605e40e03e9708fbdec872bc8739c551905c4b1e1b61b"
   },
   "src/safe/LivenessGuard.sol": {
-    "initCodeHash": "0xc8e29e8b12f423c8cd229a38bc731240dd815d96f1b0ab96c71494dde63f6a81",
+    "initCodeHash": "0xb9c1318f86bfc429abfe43b4f051a639aa0707563ff7ca371e72385b218f1f50",
     "sourceCodeHash": "0x72b8d8d855e7af8beee29330f6cb9b9069acb32e23ce940002ec9a41aa012a16"
   },
   "src/safe/LivenessModule.sol": {
