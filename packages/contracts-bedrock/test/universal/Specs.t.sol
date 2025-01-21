@@ -790,6 +790,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.release.selector });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("isRC()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("setRC(bool)") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("upgradeController()") });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
@@ -805,6 +806,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.release.selector });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("isRC()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("setRC(bool)") });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("upgradeController()") });
 
         // DeputyGuardianModule
         _addSpec({
