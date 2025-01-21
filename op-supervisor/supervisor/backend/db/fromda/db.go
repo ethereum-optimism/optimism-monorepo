@@ -51,22 +51,6 @@ func NewFromEntryStore(logger log.Logger, m Metrics, store EntryStore) (*DB, err
 	return db, nil
 }
 
-// Rewind to the last entry that was derived from a L1 block with the given block number.
-func (db *DB) Rewind(derivedFrom uint64) error {
-	db.rwLock.Lock()
-	defer db.rwLock.Unlock()
-	index, _, err := db.lastDerivedAt(derivedFrom)
-	if err != nil {
-		return fmt.Errorf("failed to find point to rewind to: %w", err)
-	}
-	err = db.store.Truncate(index)
-	if err != nil {
-		return err
-	}
-	db.m.RecordDBDerivedEntryCount(int64(index) + 1)
-	return nil
-}
-
 // First returns the first known values, alike to Latest.
 func (db *DB) First() (pair types.DerivedBlockSealPair, err error) {
 	db.rwLock.RLock()

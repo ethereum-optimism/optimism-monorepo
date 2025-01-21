@@ -66,25 +66,83 @@ func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidat
 func (db *DB) RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
-	i, link, err := db.lookup(invalidated.DerivedFrom.Number, invalidated.Derived.Number)
-	if err != nil {
+
+	invalidatedSeals := types.DerivedBlockSealPair{
+		DerivedFrom: types.BlockSealFromRef(invalidated.DerivedFrom),
+		Derived:     types.BlockSealFromRef(invalidated.Derived),
+	}
+	if err := db.rewindLocked(invalidatedSeals, true); err != nil {
 		return err
 	}
-	if link.derivedFrom.Hash != invalidated.DerivedFrom.Hash {
-		return fmt.Errorf("found derived-from %s, but expected %s: %w",
-			link.derivedFrom, invalidated.DerivedFrom, types.ErrConflict)
-	}
-	if link.derived.Hash != invalidated.Derived.Hash {
-		return fmt.Errorf("found derived %s, but expected %s: %w",
-			link.derived, invalidated.Derived, types.ErrConflict)
-	}
-	if err := db.store.Truncate(i - 1); err != nil {
-		return fmt.Errorf("failed to rewind upon block invalidation of %s: %w", invalidated, err)
-	}
-	db.m.RecordDBDerivedEntryCount(int64(i))
 	if err := db.addLink(invalidated.DerivedFrom, invalidated.Derived, invalidated.Derived.Hash); err != nil {
 		return fmt.Errorf("failed to add invalidation entry %s: %w", invalidated, err)
 	}
+	return nil
+}
+
+// Rewind rolls back the database to the target, including the target if the including flag is set.
+// it locks the DB and calls rewindLocked.
+func (db *DB) Rewind(target types.DerivedBlockSealPair, including bool) error {
+	db.rwLock.Lock()
+	defer db.rwLock.Unlock()
+	return db.rewindLocked(target, including)
+}
+
+// RewindToL2 rewinds to the first entry where the L2 block with the given number was derived.
+func (db *DB) RewindToL2(derived uint64) error {
+	db.rwLock.Lock()
+	defer db.rwLock.Unlock()
+	_, link, err := db.firstDerivedFrom(derived)
+	if err != nil {
+		return fmt.Errorf("failed to find last derived-from %d: %w", derived, err)
+	}
+	return db.rewindLocked(types.DerivedBlockSealPair{
+		DerivedFrom: link.derivedFrom,
+		Derived:     link.derived,
+	}, false)
+}
+
+// RewindToL1 rewinds to the last entry that was derived from a L1 block with the given block number.
+func (db *DB) RewindToL1(derivedFrom uint64) error {
+	db.rwLock.Lock()
+	defer db.rwLock.Unlock()
+	_, link, err := db.lastDerivedAt(derivedFrom)
+	if err != nil {
+		return fmt.Errorf("failed to find last derived-from %d: %w", derivedFrom, err)
+	}
+	return db.rewindLocked(types.DerivedBlockSealPair{
+		DerivedFrom: link.derivedFrom,
+		Derived:     link.derived,
+	}, false)
+}
+
+// rewindLocked performs the truncate operation to a specified block seal pair.
+// data beyond the specified block seal pair is truncated from the database.
+// if including is true, the block seal pair itself is removed as well.
+// Note: This function must be called with the rwLock held.
+// Callers are responsible for locking and unlocking the Database.
+func (db *DB) rewindLocked(t types.DerivedBlockSealPair, including bool) error {
+	i, link, err := db.lookup(t.DerivedFrom.Number, t.Derived.Number)
+	if err != nil {
+		return err
+	}
+	if link.derivedFrom.Hash != t.DerivedFrom.Hash {
+		return fmt.Errorf("found derived-from %s, but expected %s: %w",
+			link.derivedFrom, t.DerivedFrom, types.ErrConflict)
+	}
+	if link.derived.Hash != t.Derived.Hash {
+		return fmt.Errorf("found derived %s, but expected %s: %w",
+			link.derived, t.Derived, types.ErrConflict)
+	}
+	// adjust the target index to include the block seal pair itself if requested
+	target := i
+	if including {
+		target = i - 1
+	}
+	if err := db.store.Truncate(target); err != nil {
+		return fmt.Errorf("failed to rewind upon block invalidation of %s: %w", t, err)
+	}
+	db.m.RecordDBDerivedEntryCount(int64(target) + 1)
 	return nil
 }
 

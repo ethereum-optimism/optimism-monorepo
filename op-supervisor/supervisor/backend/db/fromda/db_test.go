@@ -679,17 +679,17 @@ func TestRewind(t *testing.T) {
 		require.Equal(t, l2Block2, pair.Derived)
 
 		// Rewind to the future
-		require.ErrorIs(t, db.Rewind(6), types.ErrFuture)
+		require.ErrorIs(t, db.RewindToL1(6), types.ErrFuture)
 
 		// Rewind to the exact block we're at
-		require.NoError(t, db.Rewind(l1Block5.Number))
+		require.NoError(t, db.RewindToL1(l1Block5.Number))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block5, pair.DerivedFrom)
 		require.Equal(t, l2Block2, pair.Derived)
 
 		// Now rewind to L1 block 3 (inclusive).
-		require.NoError(t, db.Rewind(l1Block3.Number))
+		require.NoError(t, db.RewindToL1(l1Block3.Number))
 
 		// See if we find consistent data
 		pair, err = db.Latest()
@@ -698,14 +698,14 @@ func TestRewind(t *testing.T) {
 		require.Equal(t, l2Block1, pair.Derived)
 
 		// Rewind further to L1 block 1 (inclusive).
-		require.NoError(t, db.Rewind(l1Block1.Number))
+		require.NoError(t, db.RewindToL1(l1Block1.Number))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block1, pair.DerivedFrom)
 		require.Equal(t, l2Block1, pair.Derived)
 
 		// Rewind further to L1 block 0 (inclusive).
-		require.NoError(t, db.Rewind(l1Block0.Number))
+		require.NoError(t, db.RewindToL1(l1Block0.Number))
 		pair, err = db.Latest()
 		require.NoError(t, err)
 		require.Equal(t, l1Block0, pair.DerivedFrom)
