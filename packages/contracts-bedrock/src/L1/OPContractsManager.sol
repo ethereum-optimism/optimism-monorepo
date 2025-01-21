@@ -519,7 +519,8 @@ contract OPContractsManager is ISemver {
                 // 3. getting the anchor root for the respected game type from the Anchor State Registry.
                 {
                     GameType gameType = IOptimismPortal2(payable(opChainAddrs.optimismPortal)).respectedGameType();
-                    (Hash root, uint256 l2BlockNumber) = permissionedDisputeGame.anchorStateRegistry().anchors(gameType);
+                    (Hash root, uint256 l2BlockNumber) =
+                        getAnchorStateRegistry(IFaultDisputeGame(address(permissionedDisputeGame))).anchors(gameType);
                     OutputRoot memory startingAnchorRoot = OutputRoot({ root: root, l2BlockNumber: l2BlockNumber });
 
                     upgradeToAndCall(
@@ -643,7 +644,7 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                pdg.anchorStateRegistry(),
+                                getAnchorStateRegistry(IFaultDisputeGame(address(pdg))),
                                 l2ChainId
                             ),
                             pdg.proposer(),
@@ -667,7 +668,7 @@ contract OPContractsManager is ISemver {
                                 gameConfig.disputeMaxClockDuration,
                                 gameConfig.vm,
                                 outputs[i].delayedWETH,
-                                fdg.anchorStateRegistry(),
+                                getAnchorStateRegistry(fdg),
                                 l2ChainId
                             )
                         )
@@ -975,6 +976,7 @@ contract OPContractsManager is ISemver {
         isRC = _isRC;
     }
 
+    /// @notice Retrieves the constructor params for a given game.
     function getGameConstructorParams(IFaultDisputeGame _disputeGame)
         internal
         view
@@ -993,6 +995,11 @@ contract OPContractsManager is ISemver {
             l2ChainId: _disputeGame.l2ChainId()
         });
         return params;
+    }
+
+    /// @notice Retrieves the Anchor State Registry for a given game
+    function getAnchorStateRegistry(IFaultDisputeGame _disputeGame) internal returns (IAnchorStateRegistry) {
+        return _disputeGame.anchorStateRegistry();
     }
 
     /// @notice For a given game type, does the following:
