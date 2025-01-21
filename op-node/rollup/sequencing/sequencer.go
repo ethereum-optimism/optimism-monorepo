@@ -680,7 +680,6 @@ func (d *Sequencer) Stop(ctx context.Context) (common.Hash, error) {
 		} else if !isLeader {
 			d.log.Info("Not leader anymore, skipping head sync wait")
 			break
-			
 		}
 
 		latestHeadSet := make(chan struct{})
