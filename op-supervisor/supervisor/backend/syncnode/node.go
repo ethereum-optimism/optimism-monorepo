@@ -301,22 +301,15 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		return
 	}
 
-	// fix finalized to point to a L2 block that the L2 node knows about
-	// Conceptually: track the last known block by the node (based on unsafe block updates), as upper bound for resets.
-	// Then when reset fails, lower the last known block
-	// (and prevent it from changing by subscription, until success with reset), and rinse and repeat.
-
-	// TODO: this is very very broken
-
-	// TODO: errors.As switch
-	switch errSignal {
-	case types.ErrConflict:
+	// TODO: Lots of changes needed here
+	// Reset walkback exists via resolveConflict, so this error-type handling should be reconsidered.
+	switch {
+	case errors.Is(errSignal, types.ErrConflict):
 		if err := m.resolveConflict(ctx, l1Ref, u, f); err != nil {
 			m.log.Warn("Failed to resolve conflict", "unsafe", u, "finalized", f)
 			return
 		}
-
-	case types.ErrFuture:
+	case errors.Is(errSignal, types.ErrFuture):
 		s, err := m.backend.LocalSafe(ctx, m.chainID)
 		if err != nil {
 			m.log.Warn("Failed to retrieve local-safe", "err", err)
@@ -326,8 +319,16 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
 		}
-	case types.ErrOutOfOrder:
+	case errors.Is(errSignal, types.ErrOutOfOrder):
+		s, err := m.backend.LocalSafe(ctx, m.chainID)
+		if err != nil {
+			m.log.Warn("Failed to retrieve local-safe", "err", err)
+		}
 		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
+		err = m.Node.Reset(ctx, u, s.Derived, f)
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
 	}
 }
 
