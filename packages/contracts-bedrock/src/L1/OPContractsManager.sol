@@ -444,7 +444,7 @@ contract OPContractsManager is ISemver {
         // TODO: upgrading the SuperchainConfig and ProtocolVersions (in a new function)
 
         for (uint256 i = 0; i < _opChains.length; i++) {
-            // After Upgrade 12, we will be able to use systemConfigProxy.getAddresses() here.
+            // After Upgrade 13, we will be able to use systemConfigProxy.getAddresses() here.
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
                 l1CrossDomainMessenger: _opChains[i].systemConfigProxy.l1CrossDomainMessenger(),
                 l1ERC721Bridge: _opChains[i].systemConfigProxy.l1ERC721Bridge(),
@@ -488,7 +488,7 @@ contract OPContractsManager is ISemver {
 
             // Replace the Anchor State Registry Proxy with a new Proxy and Implementation
             // For this upgrade, we are replacing the previous Anchor State Registry, thus we:
-            // 1. deploy a new Anchor State Registry implementation
+            // 1. deploy a new Anchor State Registry proxy
             // 2. get the starting anchor root corresponding to the currently respected game type.
             // 3. initialize the proxy with that anchor root
             IAnchorStateRegistry newAnchorStateRegistryProxy;
@@ -496,7 +496,7 @@ contract OPContractsManager is ISemver {
                 // Deploy a new proxy, because we're replacing the old one.
                 newAnchorStateRegistryProxy = IAnchorStateRegistry(
                     deployProxy({
-                        _l2ChainId: permissionedDisputeGame.l2ChainId(),
+                        _l2ChainId: l2ChainId,
                         _proxyAdmin: _opChains[i].proxyAdmin,
                         _saltMixer: "v2.0.0",
                         _contractName: "AnchorStateRegistry"
