@@ -10,7 +10,11 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 )
 
-const randomByteCalldataGas = params.TxDataNonZeroGasEIP2028
+// Spec parameters from https://eips.ethereum.org/EIPS/eip-7623
+const (
+	standardTokenCost      = 4
+	totalCostFloorPerToken = 10
+)
 
 type (
 	ChannelConfigProvider interface {
@@ -62,14 +66,29 @@ func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
 	}
 
 	// We estimate the gas costs of a calldata and blob tx under the assumption that we'd fill
-	// a frame fully and compressed random channel data has few zeros, so they can be
-	// ignored in the calldata gas price estimation.
+	// a frame fully.
 	// It is also assumed that a calldata tx would contain exactly one full frame
 	// and a blob tx would contain target-num-frames many blobs.
 
-	// It would be nicer to use core.IntrinsicGas, but we don't have the actual data at hand
+	// We further assume that compressed random channel data has few zeros, so they can be
+	// ignored in the calldata gas price estimation (in actuality zero bytes are worth one token instead of four):
+
 	calldataBytes := dec.calldataConfig.MaxFrameSize + 1 // + 1 version byte
-	calldataGas := big.NewInt(int64(calldataBytes*randomByteCalldataGas + params.TxGas))
+	numTokens := calldataBytes * 4                       // It would be nicer to use core.IntrinsicGas, but we don't have the actual data at hand.
+
+	// Note we can ignore the possibility that the tx creates a contract (which in general contributes a specific amount to the gas calculation)
+	// i.e. isContractCreation = false in https://eips.ethereum.org/EIPS/eip-7623
+	// also execution_gas_used = 0 since batcher transactions do not call any contract code
+	// Therefore the impact of EIP-7623 activating on the L1 DA layer simply scales part of the gas cost:
+	l1Pectra := false
+	var multiplier uint64
+	if l1Pectra {
+		multiplier = totalCostFloorPerToken // 10
+	} else {
+		multiplier = standardTokenCost // 4
+	}
+
+	calldataGas := big.NewInt(int64(params.TxGas + numTokens*multiplier))
 	calldataPrice := new(big.Int).Add(baseFee, tipCap)
 	calldataCost := new(big.Int).Mul(calldataGas, calldataPrice)
 
