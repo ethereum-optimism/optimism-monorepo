@@ -258,7 +258,7 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
     /// @param _gameType The type of the DisputeGame.
     /// @param _impl The implementation contract for the given `GameType`.
     function setImplementation(GameType _gameType, IDisputeGame _impl) external onlyOwner {
-        if (GameType.unwrap(_gameType) != GameType.unwrap(_impl.gameType())) {
+        if (_gameType.raw() != _impl.gameType().raw()) {
             revert IncorrectGameType();
         }
         gameImpls[_gameType] = _impl;
