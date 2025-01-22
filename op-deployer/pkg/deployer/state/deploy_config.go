@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
@@ -25,6 +27,11 @@ var (
 )
 
 func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State, chainState *ChainState) (genesis.DeployConfig, error) {
+	upgradeSchedule := standard.DefaultHardforkScheduleForTag(intent.L1ContractsLocator.Tag)
+	if intent.UseInterop {
+		upgradeSchedule.UseInterop = true
+	}
+
 	cfg := genesis.DeployConfig{
 		L1DependenciesConfig: genesis.L1DependenciesConfig{
 			L1StandardBridgeProxy:       chainState.L1StandardBridgeProxyAddress,
@@ -73,15 +80,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 			// Any upgrades you enable here will be enabled for all new deployments.
 			// In-development hardforks should never be activated here. Instead, they
 			// should be specified as overrides.
-			UpgradeScheduleDeployConfig: genesis.UpgradeScheduleDeployConfig{
-				L2GenesisRegolithTimeOffset: op_service.U64UtilPtr(0),
-				L2GenesisCanyonTimeOffset:   op_service.U64UtilPtr(0),
-				L2GenesisDeltaTimeOffset:    op_service.U64UtilPtr(0),
-				L2GenesisEcotoneTimeOffset:  op_service.U64UtilPtr(0),
-				L2GenesisFjordTimeOffset:    op_service.U64UtilPtr(0),
-				L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
-				UseInterop:                  intent.UseInterop,
-			},
+			UpgradeScheduleDeployConfig: *upgradeSchedule,
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{
 				L1ChainID:                 intent.L1ChainID,
 				L2ChainID:                 chainState.ID.Big().Uint64(),

@@ -91,6 +91,14 @@ func (l *L2Source) CodeByHash(ctx context.Context, hash common.Hash) ([]byte, er
 	return l.canonicalDebugClient.CodeByHash(ctx, hash)
 }
 
+// FetchReceipts implements prefetcher.L2Source.
+func (l *L2Source) FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error) {
+	if l.ExperimentalEnabled() {
+		return l.experimentalClient.FetchReceipts(ctx, blockHash)
+	}
+	return l.canonicalEthClient.FetchReceipts(ctx, blockHash)
+}
+
 // NodeByHash implements prefetcher.L2Source.
 func (l *L2Source) NodeByHash(ctx context.Context, hash common.Hash) ([]byte, error) {
 	if l.ExperimentalEnabled() {

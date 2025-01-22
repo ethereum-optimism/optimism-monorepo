@@ -23,8 +23,8 @@ func TestHazardUnsafeFrontierChecks(t *testing.T) {
 	t.Run("unknown chain", func(t *testing.T) {
 		ufcd := &mockUnsafeFrontierCheckDeps{
 			deps: mockDependencySet{
-				chainIDFromIndexfn: func() (types.ChainID, error) {
-					return types.ChainID{}, types.ErrUnknownChain
+				chainIDFromIndexfn: func() (eth.ChainID, error) {
+					return eth.ChainID{}, types.ErrUnknownChain
 				},
 			},
 		}
@@ -114,17 +114,17 @@ func (m *mockUnsafeFrontierCheckDeps) DependencySet() depset.DependencySet {
 	return m.deps
 }
 
-func (m *mockUnsafeFrontierCheckDeps) ParentBlock(chainID types.ChainID, block eth.BlockID) (parent eth.BlockID, err error) {
+func (m *mockUnsafeFrontierCheckDeps) ParentBlock(chainID eth.ChainID, block eth.BlockID) (parent eth.BlockID, err error) {
 	if m.parentBlockFn != nil {
 		return m.parentBlockFn()
 	}
 	return eth.BlockID{}, nil
 }
 
-func (m *mockUnsafeFrontierCheckDeps) IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) error {
+func (m *mockUnsafeFrontierCheckDeps) IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error {
 	return m.isCrossUnsafe
 }
 
-func (m *mockUnsafeFrontierCheckDeps) IsLocalUnsafe(chainID types.ChainID, block eth.BlockID) error {
+func (m *mockUnsafeFrontierCheckDeps) IsLocalUnsafe(chainID eth.ChainID, block eth.BlockID) error {
 	return m.isLocalUnsafe
 }

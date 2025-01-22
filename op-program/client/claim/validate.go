@@ -11,8 +11,8 @@ import (
 
 var ErrClaimNotValid = errors.New("invalid claim")
 
-func ValidateClaim(log log.Logger, l2Head eth.L2BlockRef, claimedOutputRoot eth.Bytes32, outputRoot eth.Bytes32) error {
-	log.Info("Validating claim", "head", l2Head, "output", outputRoot, "claim", claimedOutputRoot)
+func ValidateClaim(log log.Logger, claimedOutputRoot eth.Bytes32, outputRoot eth.Bytes32) error {
+	log.Info("Validating claim", "output", outputRoot, "claim", claimedOutputRoot)
 	if claimedOutputRoot != outputRoot {
 		return fmt.Errorf("%w: claim: %v actual: %v", ErrClaimNotValid, claimedOutputRoot, outputRoot)
 	}

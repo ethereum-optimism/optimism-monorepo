@@ -22,7 +22,7 @@ type BootInfoInterop struct {
 	L1Head         common.Hash
 	AgreedPrestate common.Hash
 	Claim          common.Hash
-	ClaimTimestamp uint64
+	GameTimestamp  uint64
 }
 
 type ConfigSource interface {
@@ -112,6 +112,6 @@ func BootstrapInterop(r oracleClient) *BootInfoInterop {
 		L1Head:         l1Head,
 		AgreedPrestate: agreedPrestate,
 		Claim:          claim,
-		ClaimTimestamp: claimTimestamp,
+		GameTimestamp:  claimTimestamp,
 	}
 }

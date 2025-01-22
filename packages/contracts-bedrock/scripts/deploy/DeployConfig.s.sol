@@ -89,6 +89,7 @@ contract DeployConfig is Script {
     address public customGasTokenAddress;
 
     bool public useInterop;
+    bool public useUpgradedFork;
 
     function read(string memory _path) public {
         console.log("DeployConfig: reading file %s", _path);
@@ -174,6 +175,7 @@ contract DeployConfig is Script {
         customGasTokenAddress = _readOr(_json, "$.customGasTokenAddress", address(0));
 
         useInterop = _readOr(_json, "$.useInterop", false);
+        useUpgradedFork;
     }
 
     function fork() public view returns (Fork fork_) {
@@ -234,6 +236,17 @@ contract DeployConfig is Script {
     function setUseCustomGasToken(address _token) public {
         useCustomGasToken = true;
         customGasTokenAddress = _token;
+    }
+
+    /// @notice Allow the `useUpgradedFork` config to be overridden in testing environments
+    /// @dev When true, the forked system WILL be upgraded in setUp().
+    ///      When false, the forked system WILL NOT be upgraded in setUp().
+    ///      This function does nothing when not testing in a forked environment.
+    ///      Generally the only time you should call this function is if you want to
+    ///      call opcm.upgrade() in the test itself, rather than have the upgraded
+    ///      system be deployed in setUp().
+    function setUseUpgradedFork(bool _useUpgradedFork) public {
+        useUpgradedFork = _useUpgradedFork;
     }
 
     function latestGenesisFork() internal view returns (Fork) {

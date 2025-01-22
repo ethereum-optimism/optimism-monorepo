@@ -155,7 +155,6 @@ contract DeployOPChainOutput_Test is Test {
         doo.set(doo.optimismPortalProxy.selector, address(optimismPortalProxy));
         doo.set(doo.disputeGameFactoryProxy.selector, address(disputeGameFactoryProxy));
         doo.set(doo.anchorStateRegistryProxy.selector, address(anchorStateRegistryProxy));
-        doo.set(doo.anchorStateRegistryImpl.selector, address(anchorStateRegistryImpl));
         doo.set(doo.faultDisputeGame.selector, address(faultDisputeGame));
         doo.set(doo.permissionedDisputeGame.selector, address(permissionedDisputeGame));
         doo.set(doo.delayedWETHPermissionedGameProxy.selector, address(delayedWETHPermissionedGameProxy));
@@ -172,7 +171,6 @@ contract DeployOPChainOutput_Test is Test {
         assertEq(address(optimismPortalProxy), address(doo.optimismPortalProxy()), "800");
         assertEq(address(disputeGameFactoryProxy), address(doo.disputeGameFactoryProxy()), "900");
         assertEq(address(anchorStateRegistryProxy), address(doo.anchorStateRegistryProxy()), "1100");
-        assertEq(address(anchorStateRegistryImpl), address(doo.anchorStateRegistryImpl()), "1200");
         assertEq(address(faultDisputeGame), address(doo.faultDisputeGame()), "1300");
         assertEq(address(permissionedDisputeGame), address(doo.permissionedDisputeGame()), "1400");
         assertEq(address(delayedWETHPermissionedGameProxy), address(doo.delayedWETHPermissionedGameProxy()), "1500");
@@ -213,9 +211,6 @@ contract DeployOPChainOutput_Test is Test {
 
         vm.expectRevert(expectedErr);
         doo.anchorStateRegistryProxy();
-
-        vm.expectRevert(expectedErr);
-        doo.anchorStateRegistryImpl();
 
         vm.expectRevert(expectedErr);
         doo.faultDisputeGame();
@@ -275,10 +270,6 @@ contract DeployOPChainOutput_Test is Test {
         vm.expectRevert(expectedErr);
         doo.anchorStateRegistryProxy();
 
-        doo.set(doo.anchorStateRegistryImpl.selector, emptyAddr);
-        vm.expectRevert(expectedErr);
-        doo.anchorStateRegistryImpl();
-
         doo.set(doo.faultDisputeGame.selector, emptyAddr);
         vm.expectRevert(expectedErr);
         doo.faultDisputeGame();
@@ -336,7 +327,7 @@ contract DeployOPChain_TestBase is Test {
     uint32 basefeeScalar = 100;
     uint32 blobBaseFeeScalar = 200;
     uint256 l2ChainId = 300;
-    IAnchorStateRegistry.StartingAnchorRoot[] startingAnchorRoots;
+    OutputRoot startingAnchorRoot = OutputRoot({ root: Hash.wrap(keccak256("defaultOutputRoot")), l2BlockNumber: 400 });
     OPContractsManager opcm = OPContractsManager(address(0));
     string saltMixer = "defaultSaltMixer";
     uint64 gasLimit = 60_000_000;
@@ -349,25 +340,6 @@ contract DeployOPChain_TestBase is Test {
     uint64 disputeMaxClockDuration = Duration.unwrap(Duration.wrap(3.5 days));
 
     function setUp() public virtual {
-        // Set defaults for reference types
-        uint256 cannonBlock = 400;
-        uint256 permissionedBlock = 500;
-        startingAnchorRoots.push(
-            IAnchorStateRegistry.StartingAnchorRoot({
-                gameType: GameTypes.CANNON,
-                outputRoot: OutputRoot({ root: Hash.wrap(keccak256("defaultOutputRootCannon")), l2BlockNumber: cannonBlock })
-            })
-        );
-        startingAnchorRoots.push(
-            IAnchorStateRegistry.StartingAnchorRoot({
-                gameType: GameTypes.PERMISSIONED_CANNON,
-                outputRoot: OutputRoot({
-                    root: Hash.wrap(keccak256("defaultOutputRootPermissioned")),
-                    l2BlockNumber: permissionedBlock
-                })
-            })
-        );
-
         // Configure and deploy Superchain contracts
         DeploySuperchain deploySuperchain = new DeploySuperchain();
         (DeploySuperchainInput dsi, DeploySuperchainOutput dso) = deploySuperchain.etchIOContracts();
@@ -431,25 +403,6 @@ contract DeployOPChain_Test is DeployOPChain_TestBase {
         basefeeScalar = uint32(uint256(hash(_seed, 6)));
         blobBaseFeeScalar = uint32(uint256(hash(_seed, 7)));
         l2ChainId = uint256(hash(_seed, 8));
-
-        // Set the initial anchor states. The typical usage we expect is to pass in one root per game type.
-        uint256 cannonBlock = uint256(hash(_seed, 9));
-        uint256 permissionedBlock = uint256(hash(_seed, 10));
-        startingAnchorRoots.push(
-            IAnchorStateRegistry.StartingAnchorRoot({
-                gameType: GameTypes.CANNON,
-                outputRoot: OutputRoot({ root: Hash.wrap(keccak256(abi.encode(_seed, 11))), l2BlockNumber: cannonBlock })
-            })
-        );
-        startingAnchorRoots.push(
-            IAnchorStateRegistry.StartingAnchorRoot({
-                gameType: GameTypes.PERMISSIONED_CANNON,
-                outputRoot: OutputRoot({
-                    root: Hash.wrap(keccak256(abi.encode(_seed, 12))),
-                    l2BlockNumber: permissionedBlock
-                })
-            })
-        );
 
         doi.set(doi.opChainProxyAdminOwner.selector, opChainProxyAdminOwner);
         doi.set(doi.systemConfigOwner.selector, systemConfigOwner);

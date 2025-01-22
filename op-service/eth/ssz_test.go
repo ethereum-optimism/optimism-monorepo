@@ -49,7 +49,7 @@ func TestExecutionPayloadUnmarshalMaliciousData(t *testing.T) {
 	require.Error(t, err)
 }
 
-// FuzzExecutionPayloadMarshalUnmarshal checks that our SSZ encoding>decoding round trips properly
+// FuzzExecutionPayloadMarshalUnmarshalV1 checks that our SSZ encoding>decoding round trips properly
 func FuzzExecutionPayloadMarshalUnmarshalV1(f *testing.F) {
 	f.Fuzz(func(t *testing.T, data []byte, a, b, c, d uint64, extraData []byte, txs uint16, txsData []byte) {
 		if len(data) < 32+20+32+32+256+32+32+32 {

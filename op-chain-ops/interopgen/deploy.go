@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
-
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -136,7 +134,7 @@ func CreateL2(logger log.Logger, fa *foundry.ArtifactsFS, srcFS *foundry.SourceM
 	return l2Host
 }
 
-// prepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
+// PrepareInitialL1 deploys basics such as preinstalls to L1  (incl. EIP-4788)
 func PrepareInitialL1(l1Host *script.Host, cfg *L1Config) (*L1Deployment, error) {
 	l1Host.SetTxOrigin(sysGenesisDeployer)
 
@@ -174,7 +172,6 @@ func DeploySuperchainToL1(l1Host *script.Host, superCfg *SuperchainConfig) (*Sup
 		SuperchainConfigProxy:           superDeployment.SuperchainConfigProxy,
 		ProtocolVersionsProxy:           superDeployment.ProtocolVersionsProxy,
 		UseInterop:                      superCfg.Implementations.UseInterop,
-		StandardVersionsToml:            standard.VersionsMainnetData,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy Implementations contracts: %w", err)
@@ -199,7 +196,7 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 
 	l1Host.SetTxOrigin(cfg.Deployer)
 
-	output, err := opcm.DeployOPChainV160(l1Host, opcm.DeployOPChainInputV160{
+	output, err := opcm.DeployOPChain(l1Host, opcm.DeployOPChainInput{
 		OpChainProxyAdminOwner:  cfg.ProxyAdminOwner,
 		SystemConfigOwner:       cfg.SystemConfigOwner,
 		Batcher:                 cfg.BatchSenderAddress,
@@ -218,7 +215,6 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 		DisputeSplitDepth:       cfg.DisputeSplitDepth,
 		DisputeClockExtension:   cfg.DisputeClockExtension,
 		DisputeMaxClockDuration: cfg.DisputeMaxClockDuration,
-		StartingAnchorRoots:     opcm.PermissionedGameStartingAnchorRoots,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to deploy L2 OP chain: %w", err)

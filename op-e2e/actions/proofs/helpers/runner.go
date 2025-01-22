@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/fakebeacon"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/host"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
@@ -79,8 +80,14 @@ func RunFaultProofProgram(t helpers.Testing, logger log.Logger, l1 *helpers.L1Mi
 		require.NoError(t, fakeBeacon.Start("127.0.0.1:0"))
 		defer fakeBeacon.Close()
 
-		l2Source := fixtureInputs.L2Sources[0]
-		err = RunKonaNative(t, workDir, l2Source.Node.RollupCfg, l1.HTTPEndpoint(), fakeBeacon.BeaconAddr(), l2Source.Engine.HTTPEndpoint(), *fixtureInputs)
+		rollupCfgs := make([]*rollup.Config, 0, len(fixtureInputs.L2Sources))
+		l2Endpoints := make([]string, 0, len(fixtureInputs.L2Sources))
+		for _, source := range fixtureInputs.L2Sources {
+			rollupCfgs = append(rollupCfgs, source.Node.RollupCfg)
+			l2Endpoints = append(l2Endpoints, source.Engine.HTTPEndpoint())
+		}
+
+		err = RunKonaNative(t, workDir, rollupCfgs, l1.HTTPEndpoint(), fakeBeacon.BeaconAddr(), l2Endpoints, *fixtureInputs)
 		checkResult(t, err)
 	} else {
 		programCfg := NewOpProgramCfg(fixtureInputs)

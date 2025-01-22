@@ -307,7 +307,7 @@ func TestBatcherAutoDA(t *testing.T) {
 			b, err := l1Client.BlockByNumber(ctx, nil)
 			require.NoError(t, err)
 			for _, tx := range b.Transactions() {
-				if tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
+				if tx.To() == nil || tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
 					continue
 				}
 				if typ := tx.Type(); typ == txType {

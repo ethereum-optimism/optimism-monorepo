@@ -2,6 +2,7 @@ package vm
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 	"os"
@@ -10,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -21,6 +23,17 @@ import (
 
 const (
 	debugFilename = "debug-info.json"
+)
+
+var (
+	ErrMissingBin    = errors.New("missing bin")
+	ErrMissingServer = errors.New("missing server")
+
+	ErrMissingRollupConfig    = errors.New("missing network or rollup config path")
+	ErrMissingL2Genesis       = errors.New("missing network or l2 genesis path")
+	ErrNetworkAndRollupConfig = errors.New("only specify one of network or rollup config path")
+	ErrNetworkAndL2Genesis    = errors.New("only specify one of network or l2 genesis path")
+	ErrNetworkUnknown         = errors.New("unknown network")
 )
 
 type Metricer = metrics.TypedVmMetricer
@@ -43,6 +56,45 @@ type Config struct {
 	L2Custom         bool
 	RollupConfigPath string
 	L2GenesisPath    string
+}
+
+func (c *Config) Check() error {
+	if c.VmBin == "" {
+		return ErrMissingBin
+	}
+	if c.Server == "" {
+		return ErrMissingServer
+	}
+
+	if _, err := os.Stat(c.VmBin); err != nil {
+		return fmt.Errorf("%w: %w", ErrMissingBin, err)
+	}
+	if _, err := os.Stat(c.Server); err != nil {
+		return fmt.Errorf("%w: %w", ErrMissingServer, err)
+	}
+
+	if c.Network == "" {
+		if c.RollupConfigPath == "" {
+			return ErrMissingRollupConfig
+		}
+		if c.L2GenesisPath == "" {
+			return ErrMissingL2Genesis
+		}
+	} else {
+		if c.RollupConfigPath != "" {
+			return ErrNetworkAndRollupConfig
+		}
+		if c.L2GenesisPath != "" {
+			return ErrNetworkAndL2Genesis
+		}
+		if ch := chaincfg.ChainByName(c.Network); ch == nil {
+			// Check if this looks like a chain ID that could be a custom chain configuration.
+			if _, err := strconv.ParseUint(c.Network, 10, 32); err != nil {
+				return fmt.Errorf("%w: %v", ErrNetworkUnknown, c.Network)
+			}
+		}
+	}
+	return nil
 }
 
 type OracleServerExecutor interface {

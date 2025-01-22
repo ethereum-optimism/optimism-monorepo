@@ -837,6 +837,11 @@
   },
   {
     "inputs": [],
+    "name": "LegacyGame",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "NonReentrant",
     "type": "error"
   },

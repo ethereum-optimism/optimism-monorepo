@@ -294,6 +294,20 @@ func (p *Prefetcher) prefetch(ctx context.Context, hint string) error {
 			return fmt.Errorf("failed to fetch L2 state node %s: %w", hash, err)
 		}
 		return p.kvStore.Put(preimage.Keccak256Key(hash).PreimageKey(), node)
+	case l2.HintL2Receipts:
+		hash, chainID, err := p.parseHashAndChainID("L2 receipts", hintBytes)
+		if err != nil {
+			return err
+		}
+		source, err := p.l2Sources.ForChainID(chainID)
+		if err != nil {
+			return err
+		}
+		_, receipts, err := source.FetchReceipts(ctx, hash)
+		if err != nil {
+			return fmt.Errorf("failed to fetch L1 block %s receipts: %w", hash, err)
+		}
+		return p.storeReceipts(receipts)
 	case l2.HintL2Code:
 		hash, chainID, err := p.parseHashAndChainID("L2 code", hintBytes)
 		if err != nil {

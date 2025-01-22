@@ -25,9 +25,13 @@ import (
 )
 
 var (
+	ErrNoL2Chains            = errors.New("at least one L2 chain must be specified")
 	ErrMissingL2ChainID      = errors.New("missing l2 chain id")
-	ErrMissingRollupConfig   = errors.New("missing rollup config")
 	ErrMissingL2Genesis      = errors.New("missing l2 genesis")
+	ErrNoRollupForGenesis    = errors.New("no rollup config matching l2 genesis")
+	ErrNoGenesisForRollup    = errors.New("no l2 genesis for rollup")
+	ErrDuplicateRollup       = errors.New("duplicate rollup")
+	ErrDuplicateGenesis      = errors.New("duplicate l2 genesis")
 	ErrInvalidL1Head         = errors.New("invalid l1 head")
 	ErrInvalidL2Head         = errors.New("invalid l2 head")
 	ErrInvalidL2OutputRoot   = errors.New("invalid l2 output root")
@@ -97,7 +101,7 @@ func (c *Config) Check() error {
 		return ErrMissingL2ChainID
 	}
 	if len(c.Rollups) == 0 {
-		return ErrMissingRollupConfig
+		return ErrNoL2Chains
 	}
 	for _, rollupCfg := range c.Rollups {
 		if err := rollupCfg.Check(); err != nil {
@@ -118,6 +122,30 @@ func (c *Config) Check() error {
 	}
 	if len(c.L2ChainConfigs) == 0 {
 		return ErrMissingL2Genesis
+	}
+	// Make of known rollup chain IDs to whether we have the L2 chain config for it
+	chainIDToHasChainConfig := make(map[uint64]bool, len(c.Rollups))
+	for _, config := range c.Rollups {
+		chainID := config.L2ChainID.Uint64()
+		if _, ok := chainIDToHasChainConfig[chainID]; ok {
+			return fmt.Errorf("%w for chain ID %v", ErrDuplicateRollup, chainID)
+		}
+		chainIDToHasChainConfig[chainID] = false
+	}
+	for _, config := range c.L2ChainConfigs {
+		chainID := config.ChainID.Uint64()
+		if _, ok := chainIDToHasChainConfig[chainID]; !ok {
+			return fmt.Errorf("%w for chain ID %v", ErrNoRollupForGenesis, config.ChainID)
+		}
+		if chainIDToHasChainConfig[chainID] {
+			return fmt.Errorf("%w for chain ID %v", ErrDuplicateGenesis, config.ChainID)
+		}
+		chainIDToHasChainConfig[chainID] = true
+	}
+	for chainID, hasChainConfig := range chainIDToHasChainConfig {
+		if !hasChainConfig {
+			return fmt.Errorf("%w for chain ID %v", ErrNoGenesisForRollup, chainID)
+		}
 	}
 	if (c.L1URL != "") != (len(c.L2URLs) > 0) {
 		return ErrL1AndL2Inconsistent
@@ -201,9 +229,12 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		return nil, err
 	}
 
-	l2Head := common.HexToHash(ctx.String(flags.L2Head.Name))
-	if l2Head == (common.Hash{}) {
-		return nil, ErrInvalidL2Head
+	var l2Head common.Hash
+	if ctx.IsSet(flags.L2Head.Name) {
+		l2Head = common.HexToHash(ctx.String(flags.L2Head.Name))
+		if l2Head == (common.Hash{}) {
+			return nil, ErrInvalidL2Head
+		}
 	}
 	var l2OutputRoot common.Hash
 	var agreedPrestate []byte
@@ -235,11 +266,11 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	}
 
 	var err error
-	var rollupCfg *rollup.Config
-	var l2ChainConfig *params.ChainConfig
+	var rollupCfgs []*rollup.Config
+	var l2ChainConfigs []*params.ChainConfig
 	var l2ChainID uint64
-	networkName := ctx.String(flags.Network.Name)
-	if networkName != "" {
+	networkNames := ctx.StringSlice(flags.Network.Name)
+	for _, networkName := range networkNames {
 		var chainID uint64
 		if chainID, err = strconv.ParseUint(networkName, 10, 64); err != nil {
 			ch := chaincfg.ChainByName(networkName)
@@ -249,55 +280,58 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 			chainID = ch.ChainID
 		}
 
-		l2ChainConfig, err = chainconfig.ChainConfigByChainID(chainID)
+		l2ChainConfig, err := chainconfig.ChainConfigByChainID(chainID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load chain config for chain %d: %w", chainID, err)
 		}
-		rollupCfg, err = chainconfig.RollupConfigByChainID(chainID)
+		l2ChainConfigs = append(l2ChainConfigs, l2ChainConfig)
+		rollupCfg, err := chainconfig.RollupConfigByChainID(chainID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to load rollup config for chain %d: %w", chainID, err)
 		}
+		rollupCfgs = append(rollupCfgs, rollupCfg)
 		l2ChainID = chainID
-	} else {
-		l2GenesisPath := ctx.String(flags.L2GenesisPath.Name)
-		l2ChainConfig, err = loadChainConfigFromGenesis(l2GenesisPath)
+	}
+
+	genesisPaths := ctx.StringSlice(flags.L2GenesisPath.Name)
+	for _, l2GenesisPath := range genesisPaths {
+		l2ChainConfig, err := loadChainConfigFromGenesis(l2GenesisPath)
 		if err != nil {
 			return nil, fmt.Errorf("invalid genesis: %w", err)
 		}
+		l2ChainConfigs = append(l2ChainConfigs, l2ChainConfig)
+		l2ChainID = l2ChainConfig.ChainID.Uint64()
+	}
 
-		rollupConfigPath := ctx.String(flags.RollupConfig.Name)
-		rollupCfg, err = loadRollupConfig(rollupConfigPath)
+	rollupPaths := ctx.StringSlice(flags.RollupConfig.Name)
+	for _, rollupConfigPath := range rollupPaths {
+		rollupCfg, err := loadRollupConfig(rollupConfigPath)
 		if err != nil {
 			return nil, fmt.Errorf("invalid rollup config: %w", err)
 		}
+		rollupCfgs = append(rollupCfgs, rollupCfg)
 
-		l2ChainID = l2ChainConfig.ChainID.Uint64()
-		if ctx.Bool(flags.L2Custom.Name) {
-			log.Warn("Using custom chain configuration via preimage oracle. This is not compatible with on-chain execution.")
-			l2ChainID = boot.CustomChainIDIndicator
-		}
+	}
+	if ctx.Bool(flags.L2Custom.Name) {
+		log.Warn("Using custom chain configuration via preimage oracle. This is not compatible with on-chain execution.")
+		l2ChainID = boot.CustomChainIDIndicator
+	} else if len(rollupCfgs) > 1 {
+		// L2ChainID is not applicable when multiple L2 sources are used and not using custom configs
+		l2ChainID = 0
 	}
 
 	dbFormat := types.DataFormat(ctx.String(flags.DataFormat.Name))
 	if !slices.Contains(types.SupportedDataFormats, dbFormat) {
 		return nil, fmt.Errorf("invalid %w: %v", ErrInvalidDataFormat, dbFormat)
 	}
-	var l2URLs []string
-	if ctx.IsSet(flags.L2NodeAddr.Name) {
-		l2URLs = append(l2URLs, ctx.String(flags.L2NodeAddr.Name))
-	}
-	var l2ExperimentalURLs []string
-	if ctx.IsSet(flags.L2NodeExperimentalAddr.Name) {
-		l2ExperimentalURLs = append(l2ExperimentalURLs, ctx.String(flags.L2NodeExperimentalAddr.Name))
-	}
 	return &Config{
 		L2ChainID:          l2ChainID,
-		Rollups:            []*rollup.Config{rollupCfg},
+		Rollups:            rollupCfgs,
 		DataDir:            ctx.String(flags.DataDir.Name),
 		DataFormat:         dbFormat,
-		L2URLs:             l2URLs,
-		L2ExperimentalURLs: l2ExperimentalURLs,
-		L2ChainConfigs:     []*params.ChainConfig{l2ChainConfig},
+		L2URLs:             ctx.StringSlice(flags.L2NodeAddr.Name),
+		L2ExperimentalURLs: ctx.StringSlice(flags.L2NodeExperimentalAddr.Name),
+		L2ChainConfigs:     l2ChainConfigs,
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
 		AgreedPrestate:     agreedPrestate,

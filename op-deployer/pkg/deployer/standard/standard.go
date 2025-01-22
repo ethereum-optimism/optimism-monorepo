@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	op_service "github.com/ethereum-optimism/optimism/op-service"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/ethereum-optimism/superchain-registry/superchain"
@@ -15,7 +19,7 @@ const (
 	GasLimit                        uint64 = 60_000_000
 	BasefeeScalar                   uint32 = 1368
 	BlobBaseFeeScalar               uint32 = 801949
-	WithdrawalDelaySeconds          uint64 = 604800
+	WithdrawalDelaySeconds          uint64 = 302400
 	MinProposalSizeBytes            uint64 = 126000
 	ChallengePeriodSeconds          uint64 = 86400
 	ProofMaturityDelaySeconds       uint64 = 604800
@@ -31,6 +35,7 @@ const (
 	Eip1559Elasticity               uint64 = 6
 
 	ContractsV160Tag        = "op-contracts/v1.6.0"
+	ContractsV180Tag        = "op-contracts/v1.8.0-rc.4"
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
 )
 
@@ -46,7 +51,7 @@ var L1VersionsSepolia L1Versions
 
 var L1VersionsMainnet L1Versions
 
-var DefaultL1ContractsTag = ContractsV160Tag
+var DefaultL1ContractsTag = ContractsV180Tag
 
 var DefaultL2ContractsTag = ContractsV170Beta1L2Tag
 
@@ -332,6 +337,30 @@ func ArtifactsHashForTag(tag string) (common.Hash, error) {
 	default:
 		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
 	}
+}
+
+// DefaultHardforkScheduleForTag is used to determine which hardforks should be activated by default given a
+// contract tag. For example, passing in v1.6.0 will return all hardforks up to and including Granite. This allows
+// OP Deployer to set sane defaults for hardforks. This is not an ideal solution, but it will have to work until we get
+// to MCP L2.
+func DefaultHardforkScheduleForTag(tag string) *genesis.UpgradeScheduleDeployConfig {
+	sched := &genesis.UpgradeScheduleDeployConfig{
+		L2GenesisRegolithTimeOffset: op_service.U64UtilPtr(0),
+		L2GenesisCanyonTimeOffset:   op_service.U64UtilPtr(0),
+		L2GenesisDeltaTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisEcotoneTimeOffset:  op_service.U64UtilPtr(0),
+		L2GenesisFjordTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
+	}
+
+	switch tag {
+	case ContractsV160Tag, ContractsV170Beta1L2Tag:
+		return sched
+	default:
+		sched.ActivateForkAtGenesis(rollup.Holocene)
+	}
+
+	return sched
 }
 
 func standardArtifactsURL(checksum string) string {

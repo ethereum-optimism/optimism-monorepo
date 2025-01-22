@@ -20,6 +20,9 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 
+// Contracts (TODO: move to interfaces)
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+
 // Interfaces
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -51,6 +54,8 @@ import { IWETH98 } from "interfaces/universal/IWETH98.sol";
 import { IGovernanceToken } from "interfaces/governance/IGovernanceToken.sol";
 import { ILegacyMessagePasser } from "interfaces/legacy/ILegacyMessagePasser.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
+import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
+import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 
 /// @title Setup
 /// @dev This contact is responsible for setting up the contracts in state. It currently
@@ -83,10 +88,15 @@ contract Setup {
     /// @notice Allows users of Setup to override what L2 genesis is being created.
     Fork l2Fork = LATEST_FORK;
 
-    // L1 contracts
+    // L1 contracts - dispute
     IDisputeGameFactory disputeGameFactory;
     IAnchorStateRegistry anchorStateRegistry;
+    IFaultDisputeGame faultDisputeGame;
     IDelayedWETH delayedWeth;
+    IPermissionedDisputeGame permissionedDisputeGame;
+    IDelayedWETH delayedWETHPermissionedGameProxy;
+
+    // L1 contracts - core
     IOptimismPortal2 optimismPortal2;
     ISystemConfig systemConfig;
     IL1StandardBridge l1StandardBridge;
@@ -97,6 +107,7 @@ contract Setup {
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
+    OPContractsManager opcm;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
@@ -218,6 +229,7 @@ contract Setup {
         anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
         disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
+        opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =

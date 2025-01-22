@@ -13,29 +13,30 @@ import (
 const blockCacheSize = 3_000
 const nodeCacheSize = 100_000
 const codeCacheSize = 10_000
+const receiptsCacheSize = 100
 
 type CachingOracle struct {
-	oracle           Oracle
-	blocks           *simplelru.LRU[common.Hash, *types.Block]
-	nodes            *simplelru.LRU[common.Hash, []byte]
-	codes            *simplelru.LRU[common.Hash, []byte]
-	outputs          *simplelru.LRU[common.Hash, eth.Output]
-	transitionStates *simplelru.LRU[common.Hash, *interopTypes.TransitionState]
+	oracle  Oracle
+	blocks  *simplelru.LRU[common.Hash, *types.Block]
+	nodes   *simplelru.LRU[common.Hash, []byte]
+	rcpts   *simplelru.LRU[common.Hash, types.Receipts]
+	codes   *simplelru.LRU[common.Hash, []byte]
+	outputs *simplelru.LRU[common.Hash, eth.Output]
 }
 
 func NewCachingOracle(oracle Oracle) *CachingOracle {
 	blockLRU, _ := simplelru.NewLRU[common.Hash, *types.Block](blockCacheSize, nil)
 	nodeLRU, _ := simplelru.NewLRU[common.Hash, []byte](nodeCacheSize, nil)
+	rcptsLRU, _ := simplelru.NewLRU[common.Hash, types.Receipts](receiptsCacheSize, nil)
 	codeLRU, _ := simplelru.NewLRU[common.Hash, []byte](codeCacheSize, nil)
 	outputLRU, _ := simplelru.NewLRU[common.Hash, eth.Output](codeCacheSize, nil)
-	transitionStates, _ := simplelru.NewLRU[common.Hash, *interopTypes.TransitionState](codeCacheSize, nil)
 	return &CachingOracle{
-		oracle:           oracle,
-		blocks:           blockLRU,
-		nodes:            nodeLRU,
-		codes:            codeLRU,
-		outputs:          outputLRU,
-		transitionStates: transitionStates,
+		oracle:  oracle,
+		blocks:  blockLRU,
+		rcpts:   rcptsLRU,
+		nodes:   nodeLRU,
+		codes:   codeLRU,
+		outputs: outputLRU,
 	}
 }
 
@@ -47,6 +48,17 @@ func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte 
 	node = o.oracle.NodeByHash(nodeHash, chainID)
 	o.nodes.Add(nodeHash, node)
 	return node
+}
+
+func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts) {
+	rcpts, ok := o.rcpts.Get(blockHash)
+	if ok {
+		return o.BlockByHash(blockHash, chainID), rcpts
+	}
+	block, rcpts := o.oracle.ReceiptsByBlockHash(blockHash, chainID)
+	o.blocks.Add(blockHash, block)
+	o.rcpts.Add(blockHash, rcpts)
+	return block, rcpts
 }
 
 func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {
@@ -87,11 +99,6 @@ func (o *CachingOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, 
 }
 
 func (o *CachingOracle) TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState {
-	state, ok := o.transitionStates.Get(root)
-	if ok {
-		return state
-	}
-	state = o.oracle.TransitionStateByRoot(root)
-	o.transitionStates.Add(root, state)
-	return state
+	// Don't bother caching as this is only requested once as part of the bootstrap process
+	return o.oracle.TransitionStateByRoot(root)
 }
