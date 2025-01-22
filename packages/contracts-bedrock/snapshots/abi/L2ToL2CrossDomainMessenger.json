@@ -12,6 +12,42 @@
         "internalType": "uint256",
         "name": "source_",
         "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "entrypoint_",
+        "type": "address"
+      },
+      {
+        "internalType": "uint256",
+        "name": "nonce_",
+        "type": "uint256"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "crossDomainMessageEntrypoint",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "entrypoint_",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "crossDomainMessageNonce",
+    "outputs": [
+      {
+        "internalType": "uint256",
+        "name": "nonce_",
+        "type": "uint256"
       }
     ],
     "stateMutability": "view",
@@ -152,6 +188,40 @@
   {
     "inputs": [
       {
+        "internalType": "uint256",
+        "name": "_destination",
+        "type": "uint256"
+      },
+      {
+        "internalType": "address",
+        "name": "_target",
+        "type": "address"
+      },
+      {
+        "internalType": "address",
+        "name": "_entrypoint",
+        "type": "address"
+      },
+      {
+        "internalType": "bytes",
+        "name": "_message",
+        "type": "bytes"
+      }
+    ],
+    "name": "sendMessage",
+    "outputs": [
+      {
+        "internalType": "bytes32",
+        "name": "",
+        "type": "bytes32"
+      }
+    ],
+    "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
         "internalType": "bytes32",
         "name": "",
         "type": "bytes32"
@@ -235,6 +305,12 @@
       },
       {
         "indexed": false,
+        "internalType": "address",
+        "name": "entrypoint",
+        "type": "address"
+      },
+      {
+        "indexed": false,
         "internalType": "bytes",
         "name": "message",
         "type": "bytes"
@@ -256,6 +332,11 @@
   {
     "inputs": [],
     "name": "InvalidChainId",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "InvalidEntrypoint",
     "type": "error"
   },
   {

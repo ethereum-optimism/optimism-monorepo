@@ -525,9 +525,10 @@ contract SuperchainWETH_Test is CommonTest {
 
         // Mock the call over the `sendMessage` function and expect it to be called properly
         bytes memory _message = abi.encodeCall(superchainWeth.relayETH, (_sender, _to, _amount));
+        // nosemgrep: sol-style-use-abi-encodecall
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
-            abi.encodeCall(IL2ToL2CrossDomainMessenger.sendMessage, (_chainId, address(superchainWeth), _message)),
+            abi.encodeWithSignature("sendMessage(uint256,address,bytes)", _chainId, address(superchainWeth), _message),
             abi.encode(_msgHash)
         );
 
@@ -584,6 +585,8 @@ contract SuperchainWETH_Test is CommonTest {
     function testFuzz_relayETH_notCrossDomainSender_reverts(
         address _crossDomainMessageSender,
         uint256 _source,
+        address _entrypoint,
+        uint256 _nonce,
         address _to,
         uint256 _amount
     )
@@ -595,7 +598,7 @@ contract SuperchainWETH_Test is CommonTest {
         vm.mockCall(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
-            abi.encode(_crossDomainMessageSender, _source)
+            abi.encode(_crossDomainMessageSender, _source, _entrypoint, _nonce)
         );
 
         // Expect the revert with `InvalidCrossDomainSender` selector
@@ -612,7 +615,9 @@ contract SuperchainWETH_Test is CommonTest {
         address _from,
         address _to,
         uint256 _amount,
-        uint256 _source
+        uint256 _source,
+        address _entrypoint,
+        uint256 _nonce
     )
         public
     {
@@ -636,7 +641,7 @@ contract SuperchainWETH_Test is CommonTest {
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
-            abi.encode(address(superchainWeth), _source)
+            abi.encode(address(superchainWeth), _source, _entrypoint, _nonce)
         );
         // Expect to not call the `mint` function in the `ETHLiquidity` contract
         vm.expectCall(Predeploys.ETH_LIQUIDITY, abi.encodeCall(IETHLiquidity.mint, (_amount)), 0);
@@ -652,7 +657,16 @@ contract SuperchainWETH_Test is CommonTest {
     }
 
     /// @notice Tests the `relayETH` function relays the proper amount of ETH and emits the `RelayETH` event.
-    function testFuzz_relayETH_succeeds(address _from, address _to, uint256 _amount, uint256 _source) public {
+    function testFuzz_relayETH_succeeds(
+        address _from,
+        address _to,
+        uint256 _amount,
+        uint256 _source,
+        address _entrypoint,
+        uint256 _nonce
+    )
+        public
+    {
         // Assume
         vm.assume(_to != ZERO_ADDRESS);
         assumePayable(_to);
@@ -665,7 +679,7 @@ contract SuperchainWETH_Test is CommonTest {
         _mockAndExpect(
             Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER,
             abi.encodeCall(IL2ToL2CrossDomainMessenger.crossDomainMessageContext, ()),
-            abi.encode(address(superchainWeth), _source)
+            abi.encode(address(superchainWeth), _source, _entrypoint, _nonce)
         );
 
         uint256 _toBalanceBefore = _to.balance;
