@@ -16,6 +16,7 @@ interface IDisputeGameFactory {
     error GameAlreadyExists(Hash uuid);
     error IncorrectBondAmount();
     error NoImplementation(GameType gameType);
+    error IncorrectGameType();
 
     event DisputeGameCreated(address indexed disputeProxy, GameType indexed gameType, Claim indexed rootClaim);
     event ImplementationSet(address indexed impl, GameType indexed gameType);

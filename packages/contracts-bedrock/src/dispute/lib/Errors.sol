@@ -31,6 +31,9 @@ error AlreadyInitialized();
 /// @notice Thrown when a supplied bond is not equal to the required bond amount to cover the cost of the interaction.
 error IncorrectBondAmount();
 
+/// @notice Thrown when setImplementation is called with an incorrect game type.
+error IncorrectGameType();
+
 /// @notice Thrown when a credit claim is attempted for a value of 0.
 error NoCreditToClaim();
 
