@@ -10,7 +10,7 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
@@ -179,17 +179,17 @@ contract DeployOPCMInput is BaseDeployIO {
 }
 
 contract DeployOPCMOutput is BaseDeployIO {
-    OPContractsManager internal _opcm;
+    IOPContractsManager internal _opcm;
 
     // Setter for address type
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployOPCMOutput: cannot set zero address");
-        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
+        if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
         else revert("DeployOPCMOutput: unknown selector");
     }
 
     // Getter
-    function opcm() public view returns (OPContractsManager) {
+    function opcm() public view returns (IOPContractsManager) {
         require(address(_opcm) != address(0), "DeployOPCMOutput: not set");
         return _opcm;
     }
@@ -197,7 +197,7 @@ contract DeployOPCMOutput is BaseDeployIO {
 
 contract DeployOPCM is Script {
     function run(DeployOPCMInput _doi, DeployOPCMOutput _doo) public {
-        OPContractsManager.Blueprints memory blueprints = OPContractsManager.Blueprints({
+        IOPContractsManager.Blueprints memory blueprints = IOPContractsManager.Blueprints({
             addressManager: _doi.addressManagerBlueprint(),
             proxy: _doi.proxyBlueprint(),
             proxyAdmin: _doi.proxyAdminBlueprint(),
@@ -208,7 +208,7 @@ contract DeployOPCM is Script {
             permissionlessDisputeGame1: address(0),
             permissionlessDisputeGame2: address(0)
         });
-        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
+        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_doi.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_doi.optimismPortalImpl()),
             systemConfigImpl: address(_doi.systemConfigImpl()),
@@ -221,7 +221,7 @@ contract DeployOPCM is Script {
             mipsImpl: address(_doi.mipsImpl())
         });
 
-        OPContractsManager opcm_ = deployOPCM(
+        IOPContractsManager opcm_ = deployOPCM(
             _doi.superchainConfig(),
             _doi.protocolVersions(),
             blueprints,
@@ -237,39 +237,55 @@ contract DeployOPCM is Script {
     function deployOPCM(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        OPContractsManager.Blueprints memory _blueprints,
-        OPContractsManager.Implementations memory _implementations,
+        IOPContractsManager.Blueprints memory _blueprints,
+        IOPContractsManager.Implementations memory _implementations,
         string memory _l1ContractsRelease,
         address _upgradeController
     )
         public
-        returns (OPContractsManager opcm_)
+        returns (IOPContractsManager opcm_)
     {
         vm.broadcast(msg.sender);
-        opcm_ = new OPContractsManager(
-            _superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations, _upgradeController
+        opcm_ = IOPContractsManager(
+            DeployUtils.createDeterministic({
+                _name: "OPContractsManager",
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOPContractsManager.__constructor__,
+                        (
+                            _superchainConfig,
+                            _protocolVersions,
+                            _l1ContractsRelease,
+                            _blueprints,
+                            _implementations,
+                            _upgradeController
+                        )
+                    )
+                ),
+                _salt: DeployUtils.DEFAULT_SALT
+            })
         );
         vm.label(address(opcm_), "OPContractsManager");
     }
 
     function assertValidOpcm(DeployOPCMInput _doi, DeployOPCMOutput _doo) public view {
-        OPContractsManager impl = OPContractsManager(address(_doo.opcm()));
+        IOPContractsManager impl = IOPContractsManager(address(_doo.opcm()));
         require(address(impl.superchainConfig()) == address(_doi.superchainConfig()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPCMI-20");
         require(LibString.eq(impl.l1ContractsRelease(), string.concat(_doi.l1ContractsRelease(), "-rc")), "OPCMI-30");
 
         require(impl.upgradeController() == _doi.upgradeController(), "OPCMI-40");
 
-        OPContractsManager.Blueprints memory blueprints = impl.blueprints();
-        require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-50");
-        require(blueprints.proxy == _doi.proxyBlueprint(), "OPCMI-60");
-        require(blueprints.proxyAdmin == _doi.proxyAdminBlueprint(), "OPCMI-70");
-        require(blueprints.l1ChugSplashProxy == _doi.l1ChugSplashProxyBlueprint(), "OPCMI-80");
-        require(blueprints.resolvedDelegateProxy == _doi.resolvedDelegateProxyBlueprint(), "OPCMI-90");
+        IOPContractsManager.Blueprints memory blueprints = impl.blueprints();
+        require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-40");
+        require(blueprints.proxy == _doi.proxyBlueprint(), "OPCMI-50");
+        require(blueprints.proxyAdmin == _doi.proxyAdminBlueprint(), "OPCMI-60");
+        require(blueprints.l1ChugSplashProxy == _doi.l1ChugSplashProxyBlueprint(), "OPCMI-70");
+        require(blueprints.resolvedDelegateProxy == _doi.resolvedDelegateProxyBlueprint(), "OPCMI-80");
         require(blueprints.permissionedDisputeGame1 == _doi.permissionedDisputeGame1Blueprint(), "OPCMI-100");
         require(blueprints.permissionedDisputeGame2 == _doi.permissionedDisputeGame2Blueprint(), "OPCMI-110");
 
-        OPContractsManager.Implementations memory implementations = impl.implementations();
+        IOPContractsManager.Implementations memory implementations = impl.implementations();
         require(implementations.l1ERC721BridgeImpl == _doi.l1ERC721BridgeImpl(), "OPCMI-120");
         require(implementations.optimismPortalImpl == _doi.optimismPortalImpl(), "OPCMI-130");
         require(implementations.systemConfigImpl == _doi.systemConfigImpl(), "OPCMI-140");
