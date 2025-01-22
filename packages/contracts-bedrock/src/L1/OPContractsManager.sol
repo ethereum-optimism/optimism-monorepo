@@ -111,7 +111,7 @@ contract OPContractsManager is ISemver {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mipsImpl;
+        address mipsImpl; // this should be updated to mips64
     }
 
     /// @notice The input required to identify a chain for upgrading.
@@ -1074,6 +1074,9 @@ contract OPContractsManager is ISemver {
         IFaultDisputeGame.GameConstructorParams memory params =
             getGameConstructorParams(IFaultDisputeGame(address(_currentGame)));
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
+        // TODO: also override with the new prestate hash
+        // params.absolutePrestate = (comes from input)
+        params.vm = IBigStepper(mips64);
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
