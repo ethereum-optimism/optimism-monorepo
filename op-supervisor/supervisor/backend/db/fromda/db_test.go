@@ -855,5 +855,10 @@ func TestInvalidateAndReplaceNonFirst(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, replacement.ID(), entryBlockRepl.Derived.ID())
 		require.Equal(t, l1Block2.ID(), entryBlockRepl.DerivedFrom.ID())
+
+		// Check if canonical chain is represented accurately
+		require.NoError(t, db.IsDerived(l2Ref2.ID()), "common block 2 is valid part of canonical chain")
+		require.NoError(t, db.IsDerived(replacement.ID()), "replacement is valid part of canonical chain")
+		require.ErrorIs(t, db.IsDerived(l2Ref3.ID()), types.ErrConflict, "invalidated block is not valid in canonical chain")
 	})
 }
