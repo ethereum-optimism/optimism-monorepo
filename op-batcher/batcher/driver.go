@@ -917,6 +917,7 @@ func (l *BatchSubmitter) recordConfirmedTx(id txID, receipt *types.Receipt) {
 
 // l1Tip gets the current L1 tip as a L1BlockRef. The passed context is assumed
 // to be a lifetime context, so it is internally wrapped with a network timeout.
+// It also returns a boolean indicating if the tip is from a Pectra chain.
 func (l *BatchSubmitter) l1Tip(ctx context.Context) (eth.L1BlockRef, bool, error) {
 	tctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 	defer cancel()
@@ -925,7 +926,7 @@ func (l *BatchSubmitter) l1Tip(ctx context.Context) (eth.L1BlockRef, bool, error
 	if err != nil {
 		return eth.L1BlockRef{}, false, fmt.Errorf("getting latest L1 block: %w", err)
 	}
-	isPectra := head.RequestsHash != nil
+	isPectra := head.RequestsHash != nil // See https://eips.ethereum.org/EIPS/eip-7685
 	return eth.InfoToL1BlockRef(eth.HeaderBlockInfo(head)), isPectra, nil
 }
 
