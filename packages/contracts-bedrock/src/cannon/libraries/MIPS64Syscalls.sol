@@ -165,7 +165,6 @@ library MIPS64Syscalls {
     uint32 internal constant REG_SYSCALL_PARAM1 = REG_A0;
     uint32 internal constant REG_SYSCALL_PARAM2 = REG_A1;
     uint32 internal constant REG_SYSCALL_PARAM3 = REG_A2;
-    uint32 internal constant REG_SYSCALL_PARAM4 = REG_A3;
 
     // Constants copied from MIPS64Arch for use in Yul
     uint64 internal constant WORD_SIZE_BYTES = 8;

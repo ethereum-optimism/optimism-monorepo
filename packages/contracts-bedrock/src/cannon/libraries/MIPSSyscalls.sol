@@ -162,7 +162,6 @@ library MIPSSyscalls {
     uint32 internal constant REG_SYSCALL_PARAM1 = REG_A0;
     uint32 internal constant REG_SYSCALL_PARAM2 = REG_A1;
     uint32 internal constant REG_SYSCALL_PARAM3 = REG_A2;
-    uint32 internal constant REG_SYSCALL_PARAM4 = REG_A3;
 
     /// @notice Extract syscall num and arguments from registers.
     /// @param _registers The cpu registers.
