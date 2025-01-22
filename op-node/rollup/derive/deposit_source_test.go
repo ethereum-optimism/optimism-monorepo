@@ -65,3 +65,17 @@ func TestAfterForceIncludeSource(t *testing.T) {
 
 	assert.Equal(t, expected, actual.Hex())
 }
+
+// TestInvalidatedBlockSource
+// cast keccak $(cast concat-hex 0x0000000000000000000000000000000000000000000000000000000000000004 0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8)
+// # 0x4a62bcfa03cf778234ae28fa39c9e0748f11099997b19fef9bb3fffc154fe456
+func TestInvalidatedBlockSource(t *testing.T) {
+	source := InvalidatedBlockSource{
+		OutputRoot: common.HexToHash("0x1c8aff950685c2ed4bc3174f3472287b56d9517b9c948127319a09a7a36deac8"),
+	}
+
+	actual := source.SourceHash()
+	expected := "0x4a62bcfa03cf778234ae28fa39c9e0748f11099997b19fef9bb3fffc154fe456"
+
+	assert.Equal(t, expected, actual.Hex())
+}
