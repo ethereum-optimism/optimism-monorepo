@@ -67,27 +67,29 @@ contract L1Block is ISemver, IGasToken {
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.
     ///         If nothing is set in state, then it means ether is used.
-    function gasPayingToken() public view returns (address addr_, uint8 decimals_) {
-        (addr_, decimals_) = GasPayingToken.getToken();
+    function gasPayingToken() public pure returns (address addr_, uint8 decimals_) {
+        addr_ = Constants.ETHER;
+        decimals_ = 18;
     }
 
     /// @notice Returns the gas paying token name.
     ///         If nothing is set in state, then it means ether is used.
-    function gasPayingTokenName() public view returns (string memory name_) {
-        name_ = GasPayingToken.getName();
+    ///         This function cannot be removed because WETH depends on it.
+    function gasPayingTokenName() public pure returns (string memory name_) {
+        name_ = "Ether";
     }
 
     /// @notice Returns the gas paying token symbol.
     ///         If nothing is set in state, then it means ether is used.
-    function gasPayingTokenSymbol() public view returns (string memory symbol_) {
-        symbol_ = GasPayingToken.getSymbol();
+    ///         This function cannot be removed because WETH depends on it.
+    function gasPayingTokenSymbol() public pure returns (string memory symbol_) {
+        symbol_ = "ETH";
     }
 
     /// @notice Getter for custom gas token paying networks. Returns true if the
     ///         network uses a custom gas token.
-    function isCustomGasToken() public view returns (bool) {
-        (address token,) = gasPayingToken();
-        return token != Constants.ETHER;
+    function isCustomGasToken() public pure returns (bool is_) {
+        is_ = false;
     }
 
     /// @custom:legacy

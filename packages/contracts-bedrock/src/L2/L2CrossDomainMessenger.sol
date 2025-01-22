@@ -50,11 +50,6 @@ contract L2CrossDomainMessenger is CrossDomainMessenger, ISemver {
     }
 
     /// @inheritdoc CrossDomainMessenger
-    function gasPayingToken() internal view override returns (address addr_, uint8 decimals_) {
-        (addr_, decimals_) = IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).gasPayingToken();
-    }
-
-    /// @inheritdoc CrossDomainMessenger
     function _isOtherMessenger() internal view override returns (bool) {
         return AddressAliasHelper.undoL1ToL2Alias(msg.sender) == address(otherMessenger);
     }

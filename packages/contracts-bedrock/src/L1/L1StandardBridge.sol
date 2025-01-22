@@ -112,13 +112,6 @@ contract L1StandardBridge is StandardBridge, ISemver {
         _initiateETHDeposit(msg.sender, msg.sender, RECEIVE_DEFAULT_GAS_LIMIT, bytes(""));
     }
 
-    /// @inheritdoc StandardBridge
-    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
-    /// return the ether address and 18 decimals.
-    function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
-        return (Constants.ETHER, 18);
-    }
-
     /// @custom:legacy
     /// @notice Deposits some amount of ETH into the sender's account on L2.
     /// @param _minGasLimit Minimum gas limit for the deposit message on L2.

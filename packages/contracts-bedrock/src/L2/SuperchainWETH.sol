@@ -47,18 +47,6 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     string public constant version = "1.0.0-beta.13";
 
     /// @inheritdoc WETH98
-    function deposit() public payable override {
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
-        super.deposit();
-    }
-
-    /// @inheritdoc WETH98
-    function withdraw(uint256 _amount) public override {
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
-        super.withdraw(_amount);
-    }
-
-    /// @inheritdoc WETH98
     function allowance(address owner, address spender) public view override returns (uint256) {
         if (spender == Preinstalls.Permit2) return type(uint256).max;
         return super.allowance(owner, spender);
@@ -89,10 +77,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
         _mint(_to, _amount);
 
         // Withdraw from ETHLiquidity contract.
-        if (!IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // NOTE: 'mint' will soon change to 'withdraw'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
-        }
+        // NOTE: 'mint' will soon change to 'withdraw'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
 
         emit CrosschainMint(_to, _amount, msg.sender);
     }
@@ -106,10 +92,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
         _burn(_from, _amount);
 
         // Deposit to ETHLiquidity contract.
-        if (!IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // NOTE: 'burn' will soon change to 'deposit'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: _amount }();
-        }
+        // NOTE: 'burn' will soon change to 'deposit'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: _amount }();
 
         emit CrosschainBurn(_from, _amount, msg.sender);
     }
@@ -126,10 +110,6 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     /// @return msgHash_ Hash of the message sent.
     function sendETH(address _to, uint256 _chainId) external payable returns (bytes32 msgHash_) {
         if (_to == address(0)) revert ZeroAddress();
-
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            revert NotCustomGasToken();
-        }
 
         // NOTE: 'burn' will soon change to 'deposit'.
         IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: msg.value }();
@@ -155,16 +135,11 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
 
         if (crossDomainMessageSender != address(this)) revert InvalidCrossDomainSender();
 
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // Since ETH is not the native asset on custom gas token chains, send SuperchainWETH to the recipient.
-            _mint(_to, _amount);
-        } else {
-            // NOTE: 'mint' will soon change to 'withdraw'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
+        // NOTE: 'mint' will soon change to 'withdraw'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
 
-            // This is a forced ETH send to the recipient, the recipient should NOT expect to be called.
-            new SafeSend{ value: _amount }(payable(_to));
-        }
+        // This is a forced ETH send to the recipient, the recipient should NOT expect to be called.
+        new SafeSend{ value: _amount }(payable(_to));
 
         emit RelayETH(_from, _to, _amount, source);
     }

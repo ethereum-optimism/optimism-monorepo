@@ -13,6 +13,7 @@ import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @title WETH contract that reads the name and symbol from the L1Block contract.
 ///        Allows for nice rendering of token names for chains using custom gas token.
+///        This contract is not proxied and contains calls to the custom gas token methods.
 contract WETH is WETH98, ISemver {
     /// @custom:semver 1.1.0-beta.4
     string public constant version = "1.1.0-beta.4";

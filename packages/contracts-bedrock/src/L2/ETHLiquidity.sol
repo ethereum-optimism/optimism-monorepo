@@ -31,7 +31,6 @@ contract ETHLiquidity is ISemver {
     /// @notice Allows an address to lock ETH liquidity into this contract.
     function burn() external payable {
         if (msg.sender != Predeploys.SUPERCHAIN_WETH) revert Unauthorized();
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
         emit LiquidityBurned(msg.sender, msg.value);
     }
 
@@ -39,7 +38,6 @@ contract ETHLiquidity is ISemver {
     /// @param _amount The amount of liquidity to unlock.
     function mint(uint256 _amount) external {
         if (msg.sender != Predeploys.SUPERCHAIN_WETH) revert Unauthorized();
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
         new SafeSend{ value: _amount }(payable(msg.sender));
         emit LiquidityMinted(msg.sender, _amount);
     }
