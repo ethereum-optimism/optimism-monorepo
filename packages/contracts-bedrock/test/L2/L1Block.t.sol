@@ -12,12 +12,28 @@ import "src/libraries/L1BlockErrors.sol";
 contract L1BlockTest is CommonTest {
     address depositor;
 
-    event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);
-
     /// @dev Sets up the test suite.
     function setUp() public virtual override {
         super.setUp();
         depositor = l1Block.DEPOSITOR_ACCOUNT();
+    }
+
+    function test_isCustomGasToken_succeeds() view external {
+        assertFalse(l1Block.isCustomGasToken());
+    }
+
+    function test_gasPayingToken_succeeds() view external {
+        (address token, uint8 decimals) = l1Block.gasPayingToken();
+        assertEq(token, Constants.ETHER);
+        assertEq(uint256(decimals), uint256(18));
+    }
+
+    function test_gasPayingTokenName_succeeds() view external {
+        assertEq("Ether", l1Block.gasPayingTokenName());
+    }
+
+    function test_gasPayingTokenSymbol_succeeds() view external {
+        assertEq("ETH", l1Block.gasPayingTokenSymbol());
     }
 }
 
