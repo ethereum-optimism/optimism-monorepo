@@ -195,7 +195,7 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 		&cli.StringSliceFlag{
 			Name:    AlreadyPublishedCustomErrsFlagName,
 			Usage:   "List of custom RPC error messages that indicate that a transaction has already been published.",
-			EnvVars: prefixEnvVars("ALREADY_PUBLISHED_CUSTOM_ERRS"),
+			EnvVars: prefixEnvVars("TXMGR_ALREADY_PUBLISHED_CUSTOM_ERRS"),
 		},
 	}, opsigner.CLIFlags(envPrefix, "")...)
 }
