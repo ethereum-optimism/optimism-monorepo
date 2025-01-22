@@ -46,11 +46,11 @@ func SystemTest(t *testing.T, f func(t T, sys system.System), validators ...Vali
 	defer cancel()
 
 	wt = wt.WithContext(ctx)
-	//TODO Stefano
-	// this is consuming some env descriptor
-	// depending on whether that descriptor contains the "interop" feature, we
-	// will build an InteropSystem or a System.
-	var sys system.System
+
+	sys, err := system.NewSystemFromEnv("TEST_DEVNET_FILE")
+	if err != nil {
+		t.Fatalf("failed to parse system from environment: %v", err)
+	}
 
 	for _, validator := range validators {
 		ctx, err := validator(wt, sys)

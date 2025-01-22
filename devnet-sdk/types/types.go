@@ -23,7 +23,6 @@ type InvocationResult interface {
 }
 
 type Wallet interface {
-	SendETH(to Address, amount Balance) WriteInvocation[any]
 	PrivateKey() Key
 	Address() Address
 }
