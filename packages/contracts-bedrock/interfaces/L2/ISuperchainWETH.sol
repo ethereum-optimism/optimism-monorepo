@@ -7,7 +7,6 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 
 interface ISuperchainWETH is IWETH98, IERC7802, ISemver {
     error Unauthorized();
-    error NotCustomGasToken();
     error InvalidCrossDomainSender();
     error ZeroAddress();
 
