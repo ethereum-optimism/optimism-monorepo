@@ -53,7 +53,6 @@ func TestGenerateProof(t *testing.T) {
 		MaxStepsBetweenLLAndSC:       56,
 		ReservationInvalidationCount: 78,
 		ForcedPreemptionCount:        910,
-		FailedWakeupCount:            1112,
 		IdleStepCountThread0:         1314,
 	}
 
@@ -191,7 +190,6 @@ func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsev
 		require.Equal(t, expected.MaxStepsBetweenLLAndSC, m.maxStepsBetweenLLAndSC)
 		require.Equal(t, expected.ReservationInvalidationCount, m.reservationInvalidations)
 		require.Equal(t, expected.ForcedPreemptionCount, m.forcedPreemptions)
-		require.Equal(t, expected.FailedWakeupCount, m.failedWakeup)
 		require.Equal(t, expected.IdleStepCountThread0, m.idleStepsThread0)
 	} else {
 		// If debugInfo is disabled, json file should not be written and metrics should be zeroed out
@@ -202,7 +200,6 @@ func validateMetrics(t require.TestingT, m *capturingVmMetrics, expected *mipsev
 		require.Equal(t, uint64(0), m.maxStepsBetweenLLAndSC)
 		require.Equal(t, uint64(0), m.reservationInvalidations)
 		require.Equal(t, uint64(0), m.forcedPreemptions)
-		require.Equal(t, uint64(0), m.failedWakeup)
 		require.Equal(t, uint64(0), m.idleStepsThread0)
 	}
 }
@@ -220,7 +217,6 @@ type capturingVmMetrics struct {
 	maxStepsBetweenLLAndSC   uint64
 	reservationInvalidations uint64
 	forcedPreemptions        uint64
-	failedWakeup             uint64
 	idleStepsThread0         uint64
 }
 
@@ -254,10 +250,6 @@ func (c *capturingVmMetrics) RecordReservationInvalidationCount(val uint64) {
 
 func (c *capturingVmMetrics) RecordForcedPreemptionCount(val uint64) {
 	c.forcedPreemptions = val
-}
-
-func (c *capturingVmMetrics) RecordFailedWakeupCount(val uint64) {
-	c.failedWakeup = val
 }
 
 func (c *capturingVmMetrics) RecordIdleStepCountThread0(val uint64) {
