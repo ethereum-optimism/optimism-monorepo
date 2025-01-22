@@ -14,22 +14,20 @@ import (
 
 // FakeTxMgr is a fake txmgr.TxManager for testing the op-batcher.
 type FakeTxMgr struct {
-	log                    log.Logger
-	FromAddr               common.Address
-	Closed                 bool
-	Nonce                  uint64
-	SuccessfullySentTxData [][]byte
-	errorEveryNthSend      uint // 0 means never error, 1 means every send errors, etc.
-	sendCount              uint
+	log               log.Logger
+	FromAddr          common.Address
+	Closed            bool
+	Nonce             uint64
+	errorEveryNthSend uint // 0 means never error, 1 means every send errors, etc.
+	sendCount         uint
 }
 
 var _ txmgr.TxManager = (*FakeTxMgr)(nil)
 
 func NewFakeTxMgr(log log.Logger, from common.Address) *FakeTxMgr {
 	return &FakeTxMgr{
-		log:                    log,
-		FromAddr:               from,
-		SuccessfullySentTxData: make([][]byte, 0),
+		log:      log,
+		FromAddr: from,
 	}
 }
 
@@ -56,7 +54,6 @@ func (f *FakeTxMgr) SendAsync(ctx context.Context, candidate txmgr.TxCandidate, 
 		}
 		sendResponse.Nonce = f.Nonce
 		f.Nonce++
-		f.SuccessfullySentTxData = append(f.SuccessfullySentTxData, candidate.TxData)
 	}
 	ch <- sendResponse
 }

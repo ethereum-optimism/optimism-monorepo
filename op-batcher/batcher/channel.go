@@ -10,7 +10,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
-	"github.com/pingcap/failpoint"
 )
 
 // channel is a lightweight wrapper around a ChannelBuilder which keeps track of pending
@@ -164,12 +163,6 @@ func (c *channel) Timeout() uint64 {
 // A channel has timed out if the difference in L1 Inclusion blocks between
 // the first & last included block is greater than or equal to the channel timeout.
 func (c *channel) isTimedOut() bool {
-	// This is used in tests to inject timeouts. It is a noop when not in test mode.
-	// See op-batcher/justfile's test command for more info.
-	failpoint.Inject("channel.isTimedOut", func() {
-		c.log.Warn("channel.isTimedOut failpoint triggered, returning true")
-		failpoint.Return(true)
-	})
 	// Prior to the granite hard fork activating, the use of the shorter ChannelTimeout here may cause the batcher
 	// to believe the channel timed out when it was valid. It would then resubmit the blocks needlessly.
 	// This wastes batcher funds but doesn't cause any problems for the chain progressing safe head.
@@ -189,9 +182,6 @@ func (c *channel) ID() derive.ChannelID {
 	return c.channelBuilder.ID()
 }
 
-// NextAltDACommitment checks if it has already receives the altDA commitment
-// of the txData whose first frame is altDAFrameCursor. If it has, it returns
-// the txData and true. Otherwise, it returns an empty txData and false.
 func (c *channel) NextAltDACommitment() (txData, bool) {
 	if txData, ok := c.altDACommitments[c.altDAFrameCursor]; ok {
 		if txData.altDACommitment == nil {

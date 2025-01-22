@@ -17,13 +17,7 @@ clean:
     rm -f {{BINARY}}
 
 # Run tests
-test: test-failpoint
-    just go_test "./..."
-
-# Failpoint tests rely on https://github.com/pingcap/failpoint, which are identified by a _FailpointTest suffix to the test name.
-# We run them using a separate GOCACHE because they inject code into the compiled binaries, which could interfere with other tests or normal builds.
-test-failpoint:
-    GOCACHE=/tmp/failpoint-cache just go_test "./batcher/..." "-toolexec" "$(mise which failpoint-toolexec)" "-run" ".*_FailpointTest$"
+test: (go_test "./...")
 
 [private]
 batcher_fuzz_task FUZZ TIME='10s': (go_fuzz FUZZ TIME "./batcher")
