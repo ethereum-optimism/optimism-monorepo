@@ -38,7 +38,7 @@ func TestDAClientPrecomputed(t *testing.T) {
 
 	require.Equal(t, comm, NewKeccak256Commitment(input))
 
-	stored, err := client.GetInput(ctx, comm)
+	stored, err := client.GetInput(ctx, comm, 0)
 	require.NoError(t, err)
 
 	require.Equal(t, input, stored)
@@ -46,12 +46,12 @@ func TestDAClientPrecomputed(t *testing.T) {
 	// set a bad commitment in the store
 	require.NoError(t, store.Put(ctx, comm.Encode(), []byte("bad data")))
 
-	_, err = client.GetInput(ctx, comm)
+	_, err = client.GetInput(ctx, comm, 0)
 	require.ErrorIs(t, err, ErrCommitmentMismatch)
 
 	// test not found error
 	comm = NewKeccak256Commitment(RandomData(rng, 32))
-	_, err = client.GetInput(ctx, comm)
+	_, err = client.GetInput(ctx, comm, 0)
 	require.ErrorIs(t, err, ErrNotFound)
 
 	// test storing bad data
@@ -63,7 +63,7 @@ func TestDAClientPrecomputed(t *testing.T) {
 	_, err = client.SetInput(ctx, input)
 	require.Error(t, err)
 
-	_, err = client.GetInput(ctx, NewKeccak256Commitment(input))
+	_, err = client.GetInput(ctx, NewKeccak256Commitment(input), 0)
 	require.Error(t, err)
 }
 
@@ -96,7 +96,7 @@ func TestDAClientService(t *testing.T) {
 
 	require.Equal(t, comm.String(), NewKeccak256Commitment(input).String())
 
-	stored, err := client.GetInput(ctx, comm)
+	stored, err := client.GetInput(ctx, comm, 0)
 	require.NoError(t, err)
 
 	require.Equal(t, input, stored)
@@ -105,12 +105,12 @@ func TestDAClientService(t *testing.T) {
 	require.NoError(t, store.Put(ctx, comm.Encode(), []byte("bad data")))
 
 	// assert no error as generic commitments cannot be verified client side
-	_, err = client.GetInput(ctx, comm)
+	_, err = client.GetInput(ctx, comm, 0)
 	require.NoError(t, err)
 
 	// test not found error
 	comm = NewKeccak256Commitment(RandomData(rng, 32))
-	_, err = client.GetInput(ctx, comm)
+	_, err = client.GetInput(ctx, comm, 0)
 	require.ErrorIs(t, err, ErrNotFound)
 
 	// test storing bad data
@@ -122,6 +122,6 @@ func TestDAClientService(t *testing.T) {
 	_, err = client.SetInput(ctx, input)
 	require.Error(t, err)
 
-	_, err = client.GetInput(ctx, NewKeccak256Commitment(input))
+	_, err = client.GetInput(ctx, NewKeccak256Commitment(input), 0)
 	require.Error(t, err)
 }

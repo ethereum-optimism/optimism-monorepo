@@ -235,7 +235,7 @@ func (a *L2AltDA) ActResolveInput(t helpers.Testing, comm []byte, input []byte, 
 
 func (a *L2AltDA) ActResolveLastChallenge(t helpers.Testing) {
 	// remove derivation byte prefix
-	input, err := a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(a.lastComm[1:]))
+	input, err := a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(a.lastComm[1:]), 0)
 	require.NoError(t, err)
 
 	a.ActResolveInput(t, a.lastComm, input, a.lastCommBn)
@@ -441,7 +441,7 @@ func TestAltDA_SequencerStalledMultiChallenges(gt *testing.T) {
 
 	// keep track of the related commitment
 	comm1 := a.lastComm
-	input1, err := a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(comm1[1:]))
+	input1, err := a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(comm1[1:]), 0)
 	bn1 := a.lastCommBn
 	require.NoError(t, err)
 
@@ -490,7 +490,7 @@ func TestAltDA_SequencerStalledMultiChallenges(gt *testing.T) {
 
 	// keep track of the second commitment
 	comm2 := a.lastComm
-	_, err = a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(comm2[1:]))
+	_, err = a.storage.GetInput(t.Ctx(), altda.Keccak256Commitment(comm2[1:]), 0)
 	require.NoError(t, err)
 	a.lastCommBn = a.miner.L1Chain().CurrentBlock().Number.Uint64()
 
