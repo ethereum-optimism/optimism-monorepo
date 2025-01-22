@@ -18,7 +18,7 @@ const (
 
 type (
 	ChannelConfigProvider interface {
-		ChannelConfig() ChannelConfig
+		ChannelConfig(isPectra bool) ChannelConfig
 	}
 
 	GasPricer interface {
@@ -56,7 +56,7 @@ func NewDynamicEthChannelConfig(lgr log.Logger,
 // calldata and for blobs, given current market conditions: it will return
 // the appropriate ChannelConfig depending on which is cheaper. It makes
 // assumptions about the typical makeup of channel data.
-func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
+func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	ctx, cancel := context.WithTimeout(context.Background(), dec.timeout)
 	defer cancel()
 	tipCap, baseFee, blobBaseFee, err := dec.gasPricer.SuggestGasPriceCaps(ctx)
@@ -80,9 +80,8 @@ func (dec *DynamicEthChannelConfig) ChannelConfig() ChannelConfig {
 	// i.e. isContractCreation = false in https://eips.ethereum.org/EIPS/eip-7623
 	// also execution_gas_used = 0 since batcher transactions do not call any contract code
 	// Therefore the impact of EIP-7623 activating on the L1 DA layer simply scales part of the gas cost:
-	l1Pectra := false
 	var multiplier uint64
-	if l1Pectra {
+	if isPectra {
 		multiplier = totalCostFloorPerToken // 10
 	} else {
 		multiplier = standardTokenCost // 4

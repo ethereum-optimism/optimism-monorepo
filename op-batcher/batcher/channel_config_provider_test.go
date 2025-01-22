@@ -81,7 +81,7 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 				blobBaseFee: tt.blobBaseFee,
 			}
 			dec := NewDynamicEthChannelConfig(lgr, 1*time.Second, gp, blobCfg, calldataCfg)
-			cc := dec.ChannelConfig()
+			cc := dec.ChannelConfig(false)
 			if tt.wantCalldata {
 				require.Equal(t, cc, calldataCfg)
 				require.NotNil(t, ch.FindLog(testlog.NewMessageContainsFilter("calldata")))
@@ -103,21 +103,21 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 			err:         errors.New("gp-error"),
 		}
 		dec := NewDynamicEthChannelConfig(lgr, 1*time.Second, gp, blobCfg, calldataCfg)
-		require.Equal(t, dec.ChannelConfig(), blobCfg)
+		require.Equal(t, dec.ChannelConfig(false), blobCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelWarn),
 			testlog.NewMessageContainsFilter("returning last config"),
 		))
 
 		gp.err = nil
-		require.Equal(t, dec.ChannelConfig(), calldataCfg)
+		require.Equal(t, dec.ChannelConfig(false), calldataCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelInfo),
 			testlog.NewMessageContainsFilter("calldata"),
 		))
 
 		gp.err = errors.New("gp-error-2")
-		require.Equal(t, dec.ChannelConfig(), calldataCfg)
+		require.Equal(t, dec.ChannelConfig(false), calldataCfg)
 		require.NotNil(t, ch.FindLog(
 			testlog.NewLevelFilter(slog.LevelWarn),
 			testlog.NewMessageContainsFilter("returning last config"),
