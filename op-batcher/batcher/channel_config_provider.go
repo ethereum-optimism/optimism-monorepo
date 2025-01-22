@@ -68,7 +68,7 @@ func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 
 	// We assume that compressed random channel data has few zeros so they can be ignored (in actuality,
 	// zero bytes are worth one token instead of four):
-	calldataBytesPerTx := dec.calldataConfig.MaxFrameSize
+	calldataBytesPerTx := dec.calldataConfig.MaxFrameSize + 1 // +1 for the version byte
 	tokensPerCalldataTx := uint64(calldataBytesPerTx * 4)
 	numBlobsPerTx := dec.lastConfig.TargetNumFrames
 
