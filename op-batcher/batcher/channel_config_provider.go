@@ -70,25 +70,25 @@ func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 	// zero bytes are worth one token instead of four):
 	calldataBytesPerTx := dec.calldataConfig.MaxFrameSize + 1 // +1 for the version byte
 	tokensPerCalldataTx := uint64(calldataBytesPerTx * 4)
-	numBlobsPerTx := dec.lastConfig.TargetNumFrames
+	numBlobsPerTx := dec.blobConfig.TargetNumFrames
 
 	// Compute the total absolute cost of submitting either a single calldata tx or a single blob tx.
 	calldataCost, blobCost := computeSingleCalldataTxCost(tokensPerCalldataTx, baseFee, tipCap, isPectra),
 		computeSingleBlobTxCost(numBlobsPerTx, baseFee, tipCap, blobBaseFee)
 
 	// Now we compare the absolute cost per tx divided by the number of bytes per tx:
-	blobDataBytes := big.NewInt(eth.MaxBlobDataSize * int64(dec.blobConfig.TargetNumFrames))
+	blobDataBytesPerTx := big.NewInt(eth.MaxBlobDataSize * int64(dec.blobConfig.TargetNumFrames))
 
 	// The following will compare blobCost(a)/blobDataBytes(x) > calldataCost(b)/calldataBytes(y):
 	ay := new(big.Int).Mul(blobCost, big.NewInt(int64(calldataBytesPerTx)))
-	bx := new(big.Int).Mul(calldataCost, blobDataBytes)
+	bx := new(big.Int).Mul(calldataCost, blobDataBytesPerTx)
 
 	// ratio only used for logging, more correct multiplicative calculation used for comparison
 	ayf, bxf := new(big.Float).SetInt(ay), new(big.Float).SetInt(bx)
 	costRatio := new(big.Float).Quo(ayf, bxf)
 	lgr := dec.log.New("base_fee", baseFee, "blob_base_fee", blobBaseFee, "tip_cap", tipCap,
 		"calldata_bytes", calldataBytesPerTx, "calldata_cost", calldataCost,
-		"blob_data_bytes", blobDataBytes, "blob_cost", blobCost,
+		"blob_data_bytes", blobDataBytesPerTx, "blob_cost", blobCost,
 		"cost_ratio", costRatio)
 
 	if ay.Cmp(bx) == 1 {
@@ -119,8 +119,8 @@ func computeSingleCalldataTxCost(numTokens uint64, baseFee, tipCap *big.Int, isP
 	calldataGas := big.NewInt(int64(params.TxGas + numTokens*multiplier))
 
 	return new(big.Int).Mul(calldataGas, calldataPrice)
-
 }
+
 func computeSingleBlobTxCost(numBlobs int, baseFee, tipCap, blobBaseFee *big.Int) *big.Int {
 	// There is no execution gas or contract creation cost for blob transactions
 	calldataPrice := new(big.Int).Add(baseFee, tipCap)
