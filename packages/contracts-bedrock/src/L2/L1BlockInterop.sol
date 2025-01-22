@@ -104,7 +104,7 @@ contract L1BlockInterop is L1Block {
     function setConfig(ConfigType _type, bytes calldata _value) external {
         if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
 
-        } if (_type == ConfigType.ADD_DEPENDENCY) {
+        if (_type == ConfigType.ADD_DEPENDENCY) {
             _addDependency(_value);
         } else if (_type == ConfigType.REMOVE_DEPENDENCY) {
             _removeDependency(_value);
