@@ -193,7 +193,8 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 	// after cross-unsafe workers are ready to receive updates
 	for _, chainID := range chains {
 		logProcessor := processors.NewLogProcessor(chainID, su.chainDBs, su.depSet)
-		chainProcessor := processors.NewChainProcessor(su.sysContext, su.logger, chainID, logProcessor, su.chainDBs)
+		cm := newChainMetrics(chainID, su.m)
+		chainProcessor := processors.NewChainProcessor(su.sysContext, su.logger, chainID, logProcessor, su.chainDBs, cm)
 		su.eventSys.Register(fmt.Sprintf("events-%s", chainID), chainProcessor, eventOpts)
 		su.chainProcessors.Set(chainID, chainProcessor)
 	}

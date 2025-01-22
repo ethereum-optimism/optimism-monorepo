@@ -19,6 +19,11 @@ type UnsafeStartDeps interface {
 	DependencySet() depset.DependencySet
 }
 
+type ProcessorMetrics interface {
+	RecordCrossChainOp(success bool)
+	RecordHazardDetected()
+}
+
 // CrossUnsafeHazards checks if the given messages all exist and pass invariants.
 // It returns a hazard-set: if any intra-block messaging happened,
 // these hazard blocks have to be verified.

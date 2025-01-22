@@ -22,7 +22,8 @@ const (
 
 type Metrics interface {
 	RecordDBEntryCount(kind string, count int64)
-	RecordDBSearchEntriesRead(count int64)
+	RecordDBTruncation()
+	RecordDBInit(success bool)
 }
 
 // DB implements an append only database for log data and cross-chain dependencies.
@@ -69,6 +70,7 @@ func (db *DB) init(trimToLastSealed bool) error {
 	defer db.updateEntryCountMetric() // Always update the entry count metric after init completes
 	if trimToLastSealed {
 		if err := db.trimToLastSealed(); err != nil {
+			db.m.RecordDBInit(false)
 			return fmt.Errorf("failed to trim invalid trailing entries: %w", err)
 		}
 	}
@@ -87,6 +89,7 @@ func (db *DB) init(trimToLastSealed bool) error {
 			execMsg:        nil,
 			out:            nil,
 		}
+		db.m.RecordDBInit(true)
 		return nil
 	}
 	// start at the last checkpoint,
@@ -95,9 +98,11 @@ func (db *DB) init(trimToLastSealed bool) error {
 	i := db.newIterator(lastCheckpoint)
 	i.current.need.Add(FlagCanonicalHash)
 	if err := i.End(); err != nil {
+		db.m.RecordDBInit(false)
 		return fmt.Errorf("failed to init from remaining trailing data: %w", err)
 	}
 	db.lastEntryContext = i.current
+	db.m.RecordDBInit(true)
 	return nil
 }
 
@@ -115,6 +120,7 @@ func (db *DB) trimToLastSealed() error {
 	}
 	if i < db.lastEntryIdx() {
 		db.log.Warn("Truncating unexpected trailing entries", "prev", db.lastEntryIdx(), "new", i)
+		db.m.RecordDBTruncation()
 		// trim such that the last entry is the canonical-hash we identified
 		return db.store.Truncate(i)
 	}
@@ -380,9 +386,6 @@ func (db *DB) newIteratorAt(blockNum uint64, logIndex uint32) (*iterator, error)
 	// So we can call NextBlock() and get the checkpoint itself as first entry.
 	iter := db.newIterator(searchCheckpointIndex)
 	iter.current.need.Add(FlagCanonicalHash)
-	defer func() {
-		db.m.RecordDBSearchEntriesRead(iter.entriesRead)
-	}()
 	// First walk up to the block that we are sealed up to (incl.)
 	for {
 		if _, n, ok := iter.SealedBlock(); ok && n == blockNum { // we may already have it exactly
@@ -564,6 +567,7 @@ func (db *DB) Rewind(newHeadBlockNum uint64) error {
 	if err := db.store.Truncate(iter.NextIndex()); err != nil {
 		return fmt.Errorf("failed to truncate to block %v: %w", newHeadBlockNum, err)
 	}
+	db.m.RecordDBTruncation()
 	// Use db.init() to find the log context for the new latest log entry
 	if err := db.init(true); err != nil {
 		return fmt.Errorf("failed to find new last entry context: %w", err)

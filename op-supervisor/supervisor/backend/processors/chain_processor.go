@@ -33,6 +33,12 @@ type DatabaseRewinder interface {
 	LatestBlockNum(chain eth.ChainID) (num uint64, ok bool)
 }
 
+type ProcessorMetrics interface {
+	RecordWorkerError(errorType string)
+	RecordWorkerQueueSize(size int)
+	RecordBlockVerification()
+}
+
 type BlockProcessorFn func(ctx context.Context, block eth.BlockRef) error
 
 func (fn BlockProcessorFn) ProcessBlock(ctx context.Context, block eth.BlockRef) error {
@@ -53,6 +59,7 @@ type ChainProcessor struct {
 
 	processor LogProcessor
 	rewinder  DatabaseRewinder
+	metrics   ProcessorMetrics
 
 	emitter event.Emitter
 
@@ -62,7 +69,7 @@ type ChainProcessor struct {
 var _ event.AttachEmitter = (*ChainProcessor)(nil)
 var _ event.Deriver = (*ChainProcessor)(nil)
 
-func NewChainProcessor(systemContext context.Context, log log.Logger, chain eth.ChainID, processor LogProcessor, rewinder DatabaseRewinder) *ChainProcessor {
+func NewChainProcessor(systemContext context.Context, log log.Logger, chain eth.ChainID, processor LogProcessor, rewinder DatabaseRewinder, metrics ProcessorMetrics) *ChainProcessor {
 	out := &ChainProcessor{
 		systemContext:     systemContext,
 		log:               log.New("chain", chain),
@@ -70,6 +77,7 @@ func NewChainProcessor(systemContext context.Context, log log.Logger, chain eth.
 		chain:             chain,
 		processor:         processor,
 		rewinder:          rewinder,
+		metrics:           metrics,
 		maxFetcherThreads: 10,
 	}
 	return out
@@ -112,8 +120,10 @@ func (s *ChainProcessor) onRequest(target uint64) {
 		if errors.Is(err, ethereum.NotFound) {
 			s.log.Debug("Event-indexer cannot find next block yet", "target", target, "err", err)
 		} else if errors.Is(err, types.ErrNoRPCSource) {
+			s.metrics.RecordWorkerError("no_client")
 			s.log.Warn("No RPC source configured, cannot process new blocks")
 		} else {
+			s.metrics.RecordWorkerError("process_failed")
 			s.log.Error("Failed to process new block", "err", err)
 		}
 	} else if x := s.nextNum(); x <= target {
@@ -226,14 +236,21 @@ func (s *ChainProcessor) rangeUpdate(target uint64) (int, error) {
 	// process the results in order and return the first error encountered,
 	// and the number of blocks processed successfully by this call
 	for i := range results {
-		if results[i].err != nil {
-			return i, fmt.Errorf("failed to fetch block %d: %w", results[i].num, results[i].err)
+		result := results[i]
+		if result.err != nil {
+			s.metrics.RecordWorkerError("fetch_block_failed")
+			return i, fmt.Errorf("failed to fetch block %d: %w", result.num, result.err)
 		}
-		// process the receipts
-		err := s.process(s.systemContext, *results[i].blockRef, results[i].receipts)
-		if err != nil {
-			return i, fmt.Errorf("failed to process block %d: %w", results[i].num, err)
+		if result.blockRef == nil {
+			s.metrics.RecordWorkerError("missing_block")
+			return i, fmt.Errorf("missing block %d", result.num)
 		}
+
+		if err := s.process(s.systemContext, *result.blockRef, result.receipts); err != nil {
+			s.metrics.RecordWorkerError("process_block_failed")
+			return i, fmt.Errorf("failed to process block %d: %w", result.num, err)
+		}
+		s.metrics.RecordBlockVerification()
 	}
 	return len(results), nil
 }
