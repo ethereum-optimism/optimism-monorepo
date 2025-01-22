@@ -27,9 +27,9 @@ interface IL1BlockInterop {
     function blobBaseFeeScalar() external view returns (uint32);
     function dependencySetSize() external view returns (uint8);
     function depositsComplete() external;
-    function gasPayingToken() external view returns (address addr_, uint8 decimals_);
-    function gasPayingTokenName() external view returns (string memory name_);
-    function gasPayingTokenSymbol() external view returns (string memory symbol_);
+    function gasPayingToken() external pure returns (address addr_, uint8 decimals_);
+    function gasPayingTokenName() external pure returns (string memory name_);
+    function gasPayingTokenSymbol() external pure returns (string memory symbol_);
     function hash() external view returns (bytes32);
     function isCustomGasToken() external view returns (bool);
     function isDeposit() external view returns (bool isDeposit_);

@@ -12,9 +12,9 @@ interface IL1Block {
     function batcherHash() external view returns (bytes32);
     function blobBaseFee() external view returns (uint256);
     function blobBaseFeeScalar() external view returns (uint32);
-    function gasPayingToken() external view returns (address addr_, uint8 decimals_);
-    function gasPayingTokenName() external view returns (string memory name_);
-    function gasPayingTokenSymbol() external view returns (string memory symbol_);
+    function gasPayingToken() external pure returns (address addr_, uint8 decimals_);
+    function gasPayingTokenName() external pure returns (string memory name_);
+    function gasPayingTokenSymbol() external pure returns (string memory symbol_);
     function hash() external view returns (bytes32);
     function isCustomGasToken() external view returns (bool);
     function l1FeeOverhead() external view returns (uint256);
