@@ -7,11 +7,9 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
-	"github.com/google/go-cmp/cmp"
 )
 
 var excludeContracts = []string{
@@ -130,7 +128,7 @@ func processFile(artifactPath string) (*common.Void, []error) {
 		return nil, []error{fmt.Errorf("failed to compare ABIs: %w", err)}
 	}
 	if !match {
-		return nil, []error{fmt.Errorf("%s: Differences found in ABI between interface and actual contract", contractName)}
+		return nil, []error{fmt.Errorf("differences found")}
 	}
 
 	return nil, nil
@@ -229,53 +227,115 @@ func normalizeInternalType(internalType string) string {
 }
 
 func compareABIs(abi1, abi2 json.RawMessage) (bool, error) {
-	var data1, data2 []map[string]interface{}
+	var interfaceABI, contractABI []map[string]interface{}
 
-	if err := json.Unmarshal(abi1, &data1); err != nil {
-		return false, fmt.Errorf("error unmarshalling first ABI: %w", err)
+	if err := json.Unmarshal(abi1, &interfaceABI); err != nil {
+		return false, fmt.Errorf("error unmarshalling interface ABI: %w", err)
 	}
 
-	if err := json.Unmarshal(abi2, &data2); err != nil {
-		return false, fmt.Errorf("error unmarshalling second ABI: %w", err)
+	if err := json.Unmarshal(abi2, &contractABI); err != nil {
+		return false, fmt.Errorf("error unmarshalling contract ABI: %w", err)
 	}
 
-	// Sort the ABI data
-	sort.Slice(data1, func(i, j int) bool {
-		return abiItemLess(data1[i], data1[j])
-	})
-	sort.Slice(data2, func(i, j int) bool {
-		return abiItemLess(data2[i], data2[j])
-	})
+	// Create maps for easier lookup
+	interfaceItems := make(map[string]map[string]interface{})
+	contractItems := make(map[string]map[string]interface{})
 
-	// Compare using go-cmp
-	diff := cmp.Diff(data1, data2)
-	if diff != "" {
-		log.Printf("ABI diff: %s", diff)
-		return false, nil
-	}
-	return true, nil
-}
-
-func abiItemLess(a, b map[string]interface{}) bool {
-	aType := getString(a, "type")
-	bType := getString(b, "type")
-
-	if aType != bType {
-		return aType < bType
+	// Helper to create a unique key for each ABI item
+	makeKey := func(item map[string]interface{}) string {
+		itemType := getString(item, "type")
+		itemName := getString(item, "name")
+		inputs, _ := json.Marshal(item["inputs"])
+		outputs, _ := json.Marshal(item["outputs"])
+		return fmt.Sprintf("%s_%s_%s_%s", itemType, itemName, inputs, outputs)
 	}
 
-	aName := getString(a, "name")
-	bName := getString(b, "name")
-	return aName < bName
-}
+	// Build lookup maps
+	for _, item := range interfaceABI {
+		key := makeKey(item)
+		interfaceItems[key] = item
+	}
+	for _, item := range contractABI {
+		key := makeKey(item)
+		contractItems[key] = item
+	}
 
-func getString(m map[string]interface{}, key string) string {
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
+	// Check for missing items in both directions
+	isMatch := true
+
+	// Check interface items exist in contract
+	for key, item := range interfaceItems {
+		if _, exists := contractItems[key]; !exists {
+			itemType := getString(item, "type")
+			signature := formatABIItem(item)
+			log.Printf("REMOVE %s from interface: %s", itemType, signature)
+			isMatch = false
 		}
 	}
-	return ""
+
+	// Check contract items exist in interface
+	for key, item := range contractItems {
+		if _, exists := interfaceItems[key]; !exists {
+			itemType := getString(item, "type")
+			signature := formatABIItem(item)
+			log.Printf("ADD %s to interface: %s", itemType, signature)
+			isMatch = false
+		}
+	}
+
+	return isMatch, nil
+}
+
+// Helper function to format ABI item into a readable signature
+func formatABIItem(item map[string]interface{}) string {
+	itemType := getString(item, "type")
+	itemName := getString(item, "name")
+
+	// Format inputs
+	inputs, _ := item["inputs"].([]interface{})
+	inputStr := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		if inputMap, ok := input.(map[string]interface{}); ok {
+			paramType := getString(inputMap, "type")
+			paramName := getString(inputMap, "name")
+			if paramName != "" {
+				inputStr = append(inputStr, fmt.Sprintf("%s %s", paramType, paramName))
+			} else {
+				inputStr = append(inputStr, paramType)
+			}
+		}
+	}
+
+	// Format outputs
+	outputs, _ := item["outputs"].([]interface{})
+	outputStr := make([]string, 0, len(outputs))
+	for _, output := range outputs {
+		if outputMap, ok := output.(map[string]interface{}); ok {
+			paramType := getString(outputMap, "type")
+			paramName := getString(outputMap, "name")
+			if paramName != "" {
+				outputStr = append(outputStr, fmt.Sprintf("%s %s", paramType, paramName))
+			} else {
+				outputStr = append(outputStr, paramType)
+			}
+		}
+	}
+
+	// Build the signature based on the item type
+	switch itemType {
+	case "function":
+		returnStr := ""
+		if len(outputStr) > 0 {
+			returnStr = fmt.Sprintf(" returns (%s)", strings.Join(outputStr, ", "))
+		}
+		return fmt.Sprintf("function %s(%s)%s", itemName, strings.Join(inputStr, ", "), returnStr)
+	case "event":
+		return fmt.Sprintf("event %s(%s)", itemName, strings.Join(inputStr, ", "))
+	case "constructor":
+		return fmt.Sprintf("constructor(%s)", strings.Join(inputStr, ", "))
+	default:
+		return fmt.Sprintf("%s %s(%s)", itemType, itemName, strings.Join(inputStr, ", "))
+	}
 }
 
 func isExcluded(contractName string) bool {
@@ -285,4 +345,14 @@ func isExcluded(contractName string) bool {
 		}
 	}
 	return false
+}
+
+// getString safely retrieves a string value from a map[string]interface{}
+func getString(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
+		}
+	}
+	return ""
 }
