@@ -21,21 +21,13 @@ var (
 		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "KURTOSIS_DEVNET_MANIFEST"),
 		Usage:   "Path to the kurtosis-devnet manifest",
 	}
-	ValidatorFilter = &cli.StringFlag{
-		Name:    "validator.filter",
-		Value:   "",
-		EnvVars: opservice.PrefixEnvVar(EnvVarPrefix, "VALIDATOR_FILTER"),
-		Usage:   "Name of the specific suite to test",
-	}
 )
 
 var requiredFlags = []cli.Flag{
 	KurtosisDevnetManifest,
 }
 
-var optionalFlags = []cli.Flag{
-	ValidatorFilter,
-}
+var optionalFlags = []cli.Flag{}
 
 func init() {
 	optionalFlags = append(optionalFlags, oprpc.CLIFlags(EnvVarPrefix)...)
