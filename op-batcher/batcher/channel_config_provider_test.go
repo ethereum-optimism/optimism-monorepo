@@ -126,9 +126,9 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 }
 
 func TestComputeSingleCalldataTxCost(t *testing.T) {
-	got := computeSingleCalldataTxCost(100, big.NewInt(1), big.NewInt(1), false)
-	require.Equal(t, big.NewInt(42_800), got) // (21000 + 4*100) * (1+1)
+	got := computeSingleCalldataTxCost(120_000, big.NewInt(1), big.NewInt(1), false)
+	require.Equal(t, big.NewInt(1_002_000), got) // (21000 + 4*120_000) * (1+1)
 
-	got = computeSingleCalldataTxCost(100, big.NewInt(1), big.NewInt(1), true)
-	require.Equal(t, big.NewInt(44_000), got) // (21000 + 10*100) * (1+1)
+	got = computeSingleCalldataTxCost(120_000, big.NewInt(1), big.NewInt(1), true)
+	require.Equal(t, big.NewInt(2_442_000), got) // (21000 + 10*120_000) * (1+1)
 }
