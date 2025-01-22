@@ -11,7 +11,6 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { OptimismMintableERC20 } from "src/universal/OptimismMintableERC20.sol";
-import { IL1Block } from "interfaces/L2/IL1Block.sol";
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000010

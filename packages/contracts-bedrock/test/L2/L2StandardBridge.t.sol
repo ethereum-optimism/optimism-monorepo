@@ -20,7 +20,6 @@ import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenge
 import { IStandardBridge } from "interfaces/universal/IStandardBridge.sol";
 import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
 import { IL2StandardBridge } from "interfaces/L2/IL2StandardBridge.sol";
-import { IGasToken } from "src/libraries/GasPayingToken.sol";
 
 contract L2StandardBridge_Test is CommonTest {
     using stdStorage for StdStorage;
