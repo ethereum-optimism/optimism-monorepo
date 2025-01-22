@@ -109,7 +109,7 @@ contract OPContractsManager is ISemver {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mipsImpl; // this should be updated to mips64
+        address mips64Impl;
     }
 
     /// @notice The input required to identify a chain for upgrading.
@@ -170,6 +170,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice The address of the upgrade controller.
     address public immutable upgradeController;
+
+    /// @notice The prestate hash to be used for the upgrade.
+    bytes32 public immutable prestateHash;
 
     /// @notice Whether this is a release candidate.
     bool public isRC = true;
@@ -235,7 +238,8 @@ contract OPContractsManager is ISemver {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController
+        address _upgradeController,
+        bytes32 _prestateHash
     ) {
         assertValidContractAddress(address(_superchainConfig));
         assertValidContractAddress(address(_protocolVersions));
@@ -247,6 +251,7 @@ contract OPContractsManager is ISemver {
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
+        prestateHash = _prestateHash;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -1009,8 +1014,7 @@ contract OPContractsManager is ISemver {
         IFaultDisputeGame.GameConstructorParams memory params =
             getGameConstructorParams(IFaultDisputeGame(address(_currentGame)));
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
-        // TODO: also override with the new prestate hash
-        // params.absolutePrestate = (comes from input)
+        params.absolutePrestate = prestateHash;
         params.vm = IBigStepper(mips64);
 
         IDisputeGame newGame;
