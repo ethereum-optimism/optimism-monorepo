@@ -19,11 +19,6 @@ import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 ///         All configuration is stored on L1 and picked up by L2 as part of the derviation of
 ///         the L2 chain.
 contract SystemConfigInterop is SystemConfig {
-    /// @notice Storage slot where the dependency manager address is stored
-    /// @dev    Equal to bytes32(uint256(keccak256("systemconfig.dependencymanager")) - 1)
-    bytes32 internal constant DEPENDENCY_MANAGER_SLOT =
-        0x1708e077affb93e89be2665fb0fb72581be66f84dc00d25fed755ae911905b1c;
-
     /// @notice Initializer.
     /// @param _owner             Initial owner of the contract.
     /// @param _basefeeScalar     Initial basefee scalar value.
@@ -45,8 +40,7 @@ contract SystemConfigInterop is SystemConfig {
         address _unsafeBlockSigner,
         IResourceMetering.ResourceConfig memory _config,
         address _batchInbox,
-        SystemConfig.Addresses memory _addresses,
-        address _dependencyManager
+        SystemConfig.Addresses memory _addresses
     )
         external
     {
@@ -62,34 +56,10 @@ contract SystemConfigInterop is SystemConfig {
             _batchInbox: _batchInbox,
             _addresses: _addresses
         });
-        Storage.setAddress(DEPENDENCY_MANAGER_SLOT, _dependencyManager);
     }
 
     /// @custom:semver +interop-beta.11
     function version() public pure override returns (string memory) {
         return string.concat(super.version(), "+interop-beta.11");
-    }
-
-    /// @notice Adds a chain to the interop dependency set. Can only be called by the dependency manager.
-    /// @param _chainId Chain ID of chain to add.
-    function addDependency(uint256 _chainId) external {
-        require(msg.sender == dependencyManager(), "SystemConfig: caller is not the dependency manager");
-        IOptimismPortal(payable(optimismPortal())).setConfig(
-            ConfigType.ADD_DEPENDENCY, StaticConfig.encodeAddDependency(_chainId)
-        );
-    }
-
-    /// @notice Removes a chain from the interop dependency set. Can only be called by the dependency manager
-    /// @param _chainId Chain ID of the chain to remove.
-    function removeDependency(uint256 _chainId) external {
-        require(msg.sender == dependencyManager(), "SystemConfig: caller is not the dependency manager");
-        IOptimismPortal(payable(optimismPortal())).setConfig(
-            ConfigType.REMOVE_DEPENDENCY, StaticConfig.encodeRemoveDependency(_chainId)
-        );
-    }
-
-    /// @notice getter for the dependency manager address
-    function dependencyManager() public view returns (address) {
-        return Storage.getAddress(DEPENDENCY_MANAGER_SLOT);
     }
 }
