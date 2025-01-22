@@ -103,7 +103,7 @@ func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 
 func computeSingleCalldataTxCost(numTokens uint64, baseFee, tipCap *big.Int, isPectra bool) *big.Int {
 	// We assume isContractCreation = false and execution_gas_used = 0 in https://eips.ethereum.org/EIPS/eip-7623
-	//  This is a safe assumption given how batcher transactions are constructed.
+	// This is a safe assumption given how batcher transactions are constructed.
 	const (
 		standardTokenCost      = 4
 		totalCostFloorPerToken = 10

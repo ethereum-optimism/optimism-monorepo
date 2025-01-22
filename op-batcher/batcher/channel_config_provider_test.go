@@ -136,8 +136,9 @@ func TestComputeSingleCalldataTxCost(t *testing.T) {
 
 func TestComputeSingleBlobTxCost(t *testing.T) {
 	// This tx submits 655KB of data (21x the calldata example above)
-	// Setting blobBaseFee ~ 16x (baseFee + tipCap) gives a cost which is ~21x higher
-	// than the calldata example.
+	// Setting blobBaseFee to 16x (baseFee + tipCap) gives a cost which is ~21x higher
+	// than the calldata example, showing the rough equilibrium point
+	// of the two DA markets.
 	got := computeSingleBlobTxCost(5, big.NewInt(1), big.NewInt(1), big.NewInt(32))
 	require.Equal(t, big.NewInt(21_013_520), got) // 21_000 * (1+1) + 131_072*5*16
 }
