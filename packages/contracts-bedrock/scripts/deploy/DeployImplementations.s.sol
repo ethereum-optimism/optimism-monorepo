@@ -805,12 +805,14 @@ contract DeployImplementationsInterop is DeployImplementations {
         });
 
         vm.broadcast(msg.sender);
-        opcm_ = IOPContractsManagerInterop(
+        opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManagerInterop",
-                _args: abi.encodeCall(
-                    IOPContractsManagerInterop.__constructor__,
-                    (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOPContractsManagerInterop.__constructor__,
+                        (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                    )
                 ),
                 _salt: _salt
             })
