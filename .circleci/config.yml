@@ -166,7 +166,7 @@ commands:
           command: |
             git reset --hard
             just <<parameters.command>>
-            git diff --quiet --exit-code
+            git diff --exit-code
           working_directory: packages/contracts-bedrock
           when: always
           environment:
