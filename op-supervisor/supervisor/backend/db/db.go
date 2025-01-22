@@ -130,6 +130,8 @@ func (db *ChainsDB) OnEvent(ev event.Event) bool {
 		db.UpdateLocalSafe(x.ChainID, x.Derived.DerivedFrom, x.Derived.Derived)
 	case superevents.FinalizedL1RequestEvent:
 		db.onFinalizedL1(x.FinalizedL1)
+	case superevents.ReplaceBlockEvent:
+		db.onReplaceBlock(x.ChainID, x.Replacement.Replacement, x.Replacement.Invalidated)
 	default:
 		return false
 	}

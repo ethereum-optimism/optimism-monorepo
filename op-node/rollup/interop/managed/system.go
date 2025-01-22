@@ -24,6 +24,7 @@ type L2Source interface {
 	L2BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L2BlockRef, error)
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
 	BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error)
+	PayloadByHash(ctx context.Context, hash common.Hash) (*eth.ExecutionPayloadEnvelope, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
@@ -133,8 +134,21 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
 		}})
+	case engine.InteropReplacedBlockEvent:
+		m.log.Info("Replaced block", "replacement", x.Ref)
+		out, err := DecodeInvalidatedBlockTx(x.Envelope.ExecutionPayload.Transactions)
+		if err != nil {
+			m.log.Error("Failed to parse replacement block", "err", err)
+			return true
+		}
+		m.events.Send(&supervisortypes.ManagedEvent{ReplaceBlock: &supervisortypes.BlockReplacement{
+			Replacement: x.Ref,
+			Invalidated: out.BlockHash,
+		}})
+	default:
+		return false
 	}
-	return false
+	return true
 }
 
 func (m *ManagedMode) PullEvent() (*supervisortypes.ManagedEvent, error) {
@@ -189,14 +203,30 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 
 func (m *ManagedMode) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
 	m.log.Info("Invalidating block", "block", seal)
-	l2Ref, err := m.l2.BlockRefByHash(ctx, seal.Hash)
+
+	// Fetch the block we invalidate, so we can re-use the attributes that stay.
+	block, err := m.l2.PayloadByHash(ctx, seal.Hash)
 	if err != nil { // cannot invalidate if it wasn't there.
-		return fmt.Errorf("failed to get L2BlockRef: %w", err)
+		return fmt.Errorf("failed to get block: %w", err)
+	}
+	parentRef, err := m.l2.L2BlockRefByHash(ctx, block.ExecutionPayload.ParentHash)
+	if err != nil {
+		return fmt.Errorf("failed to get parent of invalidated block: %w", err)
 	}
 
-	// TODO: build deposit-only attributes
+	ref := block.ExecutionPayload.BlockRef()
 
-	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: l2Ref})
+	// Create the attributes that we build the replacement block with.
+	attributes := AttributesToReplaceInvalidBlock(block)
+	annotated := &derive.AttributesWithParent{
+		Attributes:  attributes,
+		Parent:      parentRef,
+		Concluding:  true,
+		DerivedFrom: engine.ReplaceBlockDerivedFrom,
+	}
+
+	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: ref, Attributes: annotated})
+
 	// The node will send an event once the replacement is ready
 	return nil
 }

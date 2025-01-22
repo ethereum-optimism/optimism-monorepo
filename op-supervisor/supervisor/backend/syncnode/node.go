@@ -439,11 +439,12 @@ func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPai
 	}
 }
 
-func (m *ManagedNode) onReplaceBlock(ref eth.BlockRef) {
-	m.log.Info("Node provided replacement block", "ref", ref)
+func (m *ManagedNode) onReplaceBlock(replacement types.BlockReplacement) {
+	m.log.Info("Node provided replacement block",
+		"ref", replacement.Replacement, "invalidated", replacement.Invalidated)
 	m.emitter.Emit(superevents.ReplaceBlockEvent{
 		ChainID:     m.chainID,
-		Replacement: ref,
+		Replacement: replacement,
 	})
 }
 

@@ -139,7 +139,7 @@ func (ev InvalidateLocalSafeEvent) String() string {
 
 type ReplaceBlockEvent struct {
 	ChainID     eth.ChainID
-	Replacement eth.BlockRef
+	Replacement types.BlockReplacement
 }
 
 func (ev ReplaceBlockEvent) String() string {

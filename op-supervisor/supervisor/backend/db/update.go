@@ -223,16 +223,18 @@ func (db *ChainsDB) ResetCrossUnsafeIfNewerThan(chainID eth.ChainID, number uint
 	return nil
 }
 
-func (db *ChainsDB) ReplaceBlock(chainID eth.ChainID, replacement eth.BlockRef, invalidated common.Hash) error {
+func (db *ChainsDB) onReplaceBlock(chainID eth.ChainID, replacement eth.BlockRef, invalidated common.Hash) {
 	localSafeDB, ok := db.localDBs.Get(chainID)
 	if !ok {
-		return fmt.Errorf("cannot find local-safe DB of chain %s for block replacement work: %w", chainID, types.ErrUnknownChain)
+		db.logger.Error("Cannot find DB for replacement block", "chain", chainID)
+		return
 	}
 
 	if err := localSafeDB.ReplaceInvalidatedBlock(replacement, invalidated); err != nil {
-		return fmt.Errorf("cannot replace invalidated block %s with %s in local-safe DB: %w", invalidated, replacement, err)
+		db.logger.Error("Cannot replace invalidated block in local-safe DB",
+			"invalidated", invalidated, "replacement", replacement, "err", err)
+		return
 	}
 
 	// TODO Make sure the events-DB has a matching block-hash with the replacement, roll it back otherwise.
-	return nil
 }

@@ -17,6 +17,7 @@ const (
 	L1InfoDepositSourceDomain     = 1
 	UpgradeDepositSourceDomain    = 2
 	AfterForceIncludeSourceDomain = 3
+	InvalidatedBlockSourceDomain  = 4
 )
 
 func (dep *UserDepositSource) SourceHash() common.Hash {
@@ -80,5 +81,17 @@ func (dep *AfterForceIncludeSource) SourceHash() common.Hash {
 	var domainInput [32 * 2]byte
 	binary.BigEndian.PutUint64(domainInput[32-8:32], AfterForceIncludeSourceDomain)
 	copy(domainInput[32:], depositIDHash[:])
+	return crypto.Keccak256Hash(domainInput[:])
+}
+
+// InvalidatedBlockSource identifies the invalidated optimistic-block system deposit-transaction.
+type InvalidatedBlockSource struct {
+	OutputRoot common.Hash
+}
+
+func (dep *InvalidatedBlockSource) SourceHash() common.Hash {
+	var domainInput [32 * 2]byte
+	binary.BigEndian.PutUint64(domainInput[32-8:32], InvalidatedBlockSourceDomain)
+	copy(domainInput[32:], dep.OutputRoot[:])
 	return crypto.Keccak256Hash(domainInput[:])
 }

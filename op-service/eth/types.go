@@ -245,6 +245,15 @@ func (payload *ExecutionPayload) ParentID() BlockID {
 	return BlockID{Hash: payload.ParentHash, Number: n}
 }
 
+func (payload *ExecutionPayload) BlockRef() BlockRef {
+	return BlockRef{
+		Hash:       payload.BlockHash,
+		Number:     uint64(payload.BlockNumber),
+		ParentHash: payload.ParentHash,
+		Time:       uint64(payload.Timestamp),
+	}
+}
+
 type rawTransactions []Data
 
 func (s rawTransactions) Len() int { return len(s) }
