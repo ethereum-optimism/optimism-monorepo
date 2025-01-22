@@ -16,7 +16,6 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Libraries
-import { Constants } from "src/libraries/Constants.sol";
 import { console } from "forge-std/console.sol";
 
 // Interfaces
@@ -34,7 +33,6 @@ contract CommonTest is Test, Setup, Events {
     FFIInterface constant ffi = FFIInterface(address(uint160(uint256(keccak256(abi.encode("optimism.ffi"))))));
 
     bool useAltDAOverride;
-    address customGasToken;
     bool useInteropOverride;
 
     /// @dev This value is only used in forked tests. During forked tests, the default is to perform the upgrade before
@@ -65,9 +63,6 @@ contract CommonTest is Test, Setup, Events {
         if (useAltDAOverride) {
             deploy.cfg().setUseAltDA(true);
         }
-        if (customGasToken != address(0)) {
-            deploy.cfg().setUseCustomGasToken(customGasToken);
-        }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
         }
@@ -77,7 +72,7 @@ contract CommonTest is Test, Setup, Events {
 
         if (isForkTest()) {
             // Skip any test suite which uses a nonstandard configuration.
-            if (useAltDAOverride || customGasToken != address(0) || useInteropOverride) {
+            if (useAltDAOverride || useInteropOverride) {
                 vm.skip(true);
             }
         } else {
@@ -190,13 +185,6 @@ contract CommonTest is Test, Setup, Events {
     function enableAltDA() public {
         _checkNotDeployed("altda");
         useAltDAOverride = true;
-    }
-
-    /// @dev Sets a custom gas token for testing. Cannot be ETH.
-    function enableCustomGasToken(address _token) public {
-        _checkNotDeployed("custom gas token");
-        require(_token != Constants.ETHER, "CommonTest: Cannot set gas token to ETHER");
-        customGasToken = _token;
     }
 
     /// @dev Enables interoperability mode for testing

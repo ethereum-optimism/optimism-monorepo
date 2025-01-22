@@ -27,19 +27,6 @@ contract OptimismPortalInterop_Test is CommonTest {
         assert(bytes(_optimismPortalInterop().version()).length > 0);
     }
 
-    /// @dev Tests that the config for the gas paying token cannot be set.
-    function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
-        vm.prank(address(_optimismPortalInterop().systemConfig()));
-        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
-        _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
-    }
-
-    /// @dev Tests that setting the gas paying token config as not the system config reverts.
-    function testFuzz_setConfig_gasPayingTokenButNotSystemConfig_reverts(bytes calldata _value) public {
-        vm.expectRevert(Unauthorized.selector);
-        _optimismPortalInterop().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
-    }
-
     /// @dev Tests that the config for adding a dependency can be set.
     function testFuzz_setConfig_addDependency_succeeds(bytes calldata _value) public {
         vm.expectEmit(address(optimismPortal2));

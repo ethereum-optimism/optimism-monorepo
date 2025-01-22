@@ -56,9 +56,9 @@ contract L1Block is ISemver {
     /// @notice The latest L1 blob base fee.
     uint256 public blobBaseFee;
 
-    /// @custom:semver 1.5.1-beta.5
+    /// @custom:semver 1.5.1-beta.6
     function version() public pure virtual returns (string memory) {
-        return "1.5.1-beta.5";
+        return "1.5.1-beta.6";
     }
 
     /// @notice Returns the gas paying token, its decimals, name and symbol.
