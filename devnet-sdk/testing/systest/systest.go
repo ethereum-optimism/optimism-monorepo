@@ -36,7 +36,9 @@ func wrapT(t *testing.T) T {
 	}
 }
 
-func SystemTest(t *testing.T, f func(t T, sys system.System)) {
+type Validator func(t T, sys system.System) (context.Context, error)
+
+func SystemTest(t *testing.T, f func(t T, sys system.System), validators ...Validator) {
 	wt := wrapT(t)
 	wt.Helper()
 
@@ -50,10 +52,18 @@ func SystemTest(t *testing.T, f func(t T, sys system.System)) {
 	// will build an InteropSystem or a System.
 	var sys system.System
 
+	for _, validator := range validators {
+		ctx, err := validator(wt, sys)
+		if err != nil {
+			t.Skipf("validator failed: %v", err)
+		}
+		wt = wt.WithContext(ctx)
+	}
+
 	f(wt, sys)
 }
 
-func InteropSystemTest(t *testing.T, f func(t T, sys system.InteropSystem)) {
+func InteropSystemTest(t *testing.T, f func(t T, sys system.InteropSystem), validators ...Validator) {
 	SystemTest(t, func(t T, sys system.System) {
 		if sys, ok := sys.(system.InteropSystem); ok {
 			f(t, sys)
