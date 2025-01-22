@@ -94,7 +94,7 @@ func (db *DB) RewindToL2(derived uint64) error {
 	defer db.rwLock.Unlock()
 	_, link, err := db.firstDerivedFrom(derived)
 	if err != nil {
-		return fmt.Errorf("failed to find last derived-from %d: %w", derived, err)
+		return fmt.Errorf("failed to find first derived-from %d: %w", derived, err)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,
@@ -108,7 +108,7 @@ func (db *DB) RewindToL1(derivedFrom uint64) error {
 	defer db.rwLock.Unlock()
 	_, link, err := db.lastDerivedAt(derivedFrom)
 	if err != nil {
-		return fmt.Errorf("failed to find last derived-from %d: %w", derivedFrom, err)
+		return fmt.Errorf("failed to find last derived %d: %w", derivedFrom, err)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,

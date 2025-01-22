@@ -229,7 +229,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 				Data:    name,
 			}
 		}
-		if result.Hash != unsafe.Hash {
+		if result.Hash != ref.Hash {
 			return eth.L2BlockRef{}, &gethrpc.JsonError{
 				Code:    ConflictingBlockRPCErrCode,
 				Message: "Conflicting block",
@@ -243,11 +243,11 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	if err != nil {
 		return err
 	}
-	safeRef, err := verify(unsafe, "safe")
+	safeRef, err := verify(safe, "safe")
 	if err != nil {
 		return err
 	}
-	finalizedRef, err := verify(unsafe, "finalized")
+	finalizedRef, err := verify(finalized, "finalized")
 	if err != nil {
 		return err
 	}

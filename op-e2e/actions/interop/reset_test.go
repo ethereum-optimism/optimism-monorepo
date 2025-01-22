@@ -108,16 +108,18 @@ func TestReset(gt *testing.T) {
 		return head
 	}
 
+	// add 10 blocks to the L2 chain and put them all on L1
 	numBlocks := 10
 	blocksAdded := []eth.BlockID{}
 	// Advance through multiple blocks
 	for i := 0; i < numBlocks; i++ {
 		blocksAdded = append(blocksAdded, advanceChainA(true))
-		// finalize just the first block
+		// finalize just the first block, to allow walkback to work
+		// TODO: finalization shouldn't be a blocker for walkback
 		if i == 0 {
 			actors.L1Miner.ActL1SafeNext(t)
 			actors.L1Miner.ActL1FinalizeNext(t)
-			actors.ChainA.Sequencer.ActL1SafeSignal(t) // TODO old source of finality
+			actors.ChainA.Sequencer.ActL1SafeSignal(t)
 			actors.ChainA.Sequencer.ActL1FinalizedSignal(t)
 			actors.Supervisor.SignalFinalizedL1(t)
 			actors.Supervisor.ProcessFull(t)
@@ -129,11 +131,12 @@ func TestReset(gt *testing.T) {
 	}
 
 	// Reset the supervisor to a much earlier block
-	actors.Supervisor.backend.Rewind(actors.ChainA.ChainID, blocksAdded[3])
+	err := actors.Supervisor.backend.Rewind(actors.ChainA.ChainID, blocksAdded[3])
+	require.NoError(t, err)
 	actors.Supervisor.ProcessFull(t)
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 
-	// add another block, this will be the numBlocks+1 block
+	// add another block, this will be the numBlocks+1 block (11th block)
 	advanceChainA(false)
 	// the supervisor should detect an our of order error and instruct the node to reset
 	actors.Supervisor.ProcessFull(t)
@@ -141,6 +144,6 @@ func TestReset(gt *testing.T) {
 	actors.ChainA.Sequencer.ActL2PipelineFull(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 
-	// The supervisor should have reset to the block before the reset block
-	require.Equal(t, blocksAdded[3].Number, status.LocalSafeL2.Number)
+	// The supervisor should have reset to the block we rewound to
+	require.Equal(t, blocksAdded[3].Number, status.SafeL2.Number)
 }
