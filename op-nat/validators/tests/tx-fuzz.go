@@ -28,7 +28,7 @@ var TxFuzz = nat.Test{
 	ID: "tx-fuzz",
 	DefaultParams: TxFuzzParams{
 		NSlotsToRunFor:     120, // Duration of the fuzzing
-		TxPerAccount:       2,
+		TxPerAccount:       3,
 		GenerateAccessList: false,
 	},
 	Fn: func(ctx context.Context, log log.Logger, cfg nat.Config, params interface{}) (bool, error) {
@@ -46,18 +46,12 @@ func runBasicSpam(config nat.Config, params TxFuzzParams) error {
 	if err != nil {
 		return err
 	}
-	airdropValue := new(big.Int).Mul(big.NewInt(int64((1+fuzzCfg.N)*1000000)), big.NewInt(ethparams.Wei))
+	airdropValue := new(big.Int).Mul(big.NewInt(int64((1+fuzzCfg.N)*1000000)), big.NewInt(ethparams.GWei))
 	return spam(fuzzCfg, spammer.SendBasicTransactions, airdropValue, params)
 }
 
 func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int, params TxFuzzParams) error {
 	// Make sure the accounts are unstuck before sending any transactions
-	log.Debug("Spam config",
-		"tx_per_account", config.N,
-		"slot_time", config.SlotTime,
-		"params", params.NSlotsToRunFor,
-		"params", params.TxPerAccount,
-	)
 	if err := spammer.Unstuck(config); err != nil {
 		return err
 	}
@@ -77,12 +71,12 @@ func spam(config *spammer.Config, spamFn spammer.Spam, airdropValue *big.Int, pa
 func newConfig(c nat.Config, p TxFuzzParams) (*spammer.Config, error) {
 	txPerAccount := p.TxPerAccount
 	genAccessList := p.GenerateAccessList
-	// rpcURL := c.RPCURL
-	// senderSecretKey := c.SenderSecretKey
+	rpcURL := c.RPCURL
+	senderSecretKey := c.SenderSecretKey
 	receiverPublicKeys := c.ReceiverPublicKeys
 
 	// Faucet
-	faucet, err := crypto.ToECDSA(common.FromHex("0xe9418c9c567a7758581a1d6037722983d251c2c235fca5b4f420095f1a9383b6"))
+	faucet, err := crypto.ToECDSA(common.FromHex(senderSecretKey))
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to convert sender secret key to ECDSA")
 	}
@@ -94,7 +88,7 @@ func newConfig(c nat.Config, p TxFuzzParams) (*spammer.Config, error) {
 		privateKeys = append(privateKeys, crypto.ToECDSAUnsafe(common.FromHex(keys[i])))
 	}
 
-	cfg, err := spammer.NewDefaultConfig(c.L1.Addr, txPerAccount, genAccessList, rand.New(rand.NewSource(time.Now().UnixNano())))
+	cfg, err := spammer.NewDefaultConfig(rpcURL, txPerAccount, genAccessList, rand.New(rand.NewSource(time.Now().UnixNano())))
 	if err != nil {
 		return nil, err
 	}
