@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { SafeSend } from "src/universal/SafeSend.sol";
 
 // Libraries
-import { Unauthorized, NotCustomGasToken } from "src/libraries/errors/CommonErrors.sol";
+import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces

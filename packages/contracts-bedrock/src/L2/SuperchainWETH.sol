@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { WETH98 } from "src/universal/WETH98.sol";
 
 // Libraries
-import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
+import { Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { SafeSend } from "src/universal/SafeSend.sol";
@@ -13,7 +13,6 @@ import { SafeSend } from "src/universal/SafeSend.sol";
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
-import { IL1Block } from "interfaces/L2/IL1Block.sol";
 import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
 import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";

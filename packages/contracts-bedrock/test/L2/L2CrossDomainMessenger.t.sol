@@ -16,7 +16,6 @@ import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 // Interfaces
 import { IL2CrossDomainMessenger } from "interfaces/L2/IL2CrossDomainMessenger.sol";
 import { IL2ToL1MessagePasser } from "interfaces/L2/IL2ToL1MessagePasser.sol";
-import { IGasToken } from "src/libraries/GasPayingToken.sol";
 
 contract L2CrossDomainMessenger_Test is CommonTest {
     /// @dev Receiver address for testing
