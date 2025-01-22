@@ -2,7 +2,6 @@ package batcher
 
 import (
 	"math/big"
-	"sync"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -284,7 +283,7 @@ func TestBatchSubmitter_computeSyncActions(t *testing.T) {
 			l, h := testlog.CaptureLogger(t, log.LevelDebug)
 
 			result, outOfSync := computeSyncActions(
-				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, &sync.Mutex{}, l,
+				tc.newSyncStatus, tc.prevCurrentL1, tc.blocks, tc.channels, l,
 			)
 
 			require.Equal(t, tc.expected, result, "unexpected actions")
