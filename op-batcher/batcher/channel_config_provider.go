@@ -102,9 +102,8 @@ func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 }
 
 func computeSingleCalldataTxCost(numTokens uint64, baseFee, tipCap *big.Int, isPectra bool) *big.Int {
-	// Note we can ignore the possibility that the tx creates a contract (which in general contributes a specific amount to the gas calculation)
-	// i.e. isContractCreation = false in https://eips.ethereum.org/EIPS/eip-7623
-	// also execution_gas_used = 0 since batcher transactions do not call any contract code
+	// We assume isContractCreation = false and execution_gas_used = 0 in https://eips.ethereum.org/EIPS/eip-7623
+	//  This is a safe assumption given how batcher transactions are constructed.
 	const (
 		standardTokenCost      = 4
 		totalCostFloorPerToken = 10
@@ -123,11 +122,7 @@ func computeSingleCalldataTxCost(numTokens uint64, baseFee, tipCap *big.Int, isP
 
 }
 func computeSingleBlobTxCost(numBlobs int, baseFee, tipCap, blobBaseFee *big.Int) *big.Int {
-	// Note we can ignore the possibility that the tx creates a contract (which in general contributes a specific amount to the gas calculation)
-	// i.e. isContractCreation = false in https://eips.ethereum.org/EIPS/eip-7623
-	// also execution_gas_used = 0 since batcher transactions do not call any contract code
-	// Blobs
-	// We assume there will only be one blob transaction required to submit all the data.
+	// There is no execution gas or contract creation cost for blob transactions
 	calldataPrice := new(big.Int).Add(baseFee, tipCap)
 	blobCalldataCost := new(big.Int).Mul(big.NewInt(int64(params.TxGas)), calldataPrice)
 
