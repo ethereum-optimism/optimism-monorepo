@@ -18,21 +18,21 @@ contract L1BlockTest is CommonTest {
         depositor = l1Block.DEPOSITOR_ACCOUNT();
     }
 
-    function test_isCustomGasToken_succeeds() view external {
+    function test_isCustomGasToken_succeeds() external view {
         assertFalse(l1Block.isCustomGasToken());
     }
 
-    function test_gasPayingToken_succeeds() view external {
+    function test_gasPayingToken_succeeds() external view {
         (address token, uint8 decimals) = l1Block.gasPayingToken();
         assertEq(token, Constants.ETHER);
         assertEq(uint256(decimals), uint256(18));
     }
 
-    function test_gasPayingTokenName_succeeds() view external {
+    function test_gasPayingTokenName_succeeds() external view {
         assertEq("Ether", l1Block.gasPayingTokenName());
     }
 
-    function test_gasPayingTokenSymbol_succeeds() view external {
+    function test_gasPayingTokenSymbol_succeeds() external view {
         assertEq("ETH", l1Block.gasPayingTokenSymbol());
     }
 }
