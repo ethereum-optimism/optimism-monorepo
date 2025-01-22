@@ -528,7 +528,6 @@ contract OPContractsManager is ISemver {
                     );
                 }
 
-
                 deployAndSetNewGameImpl({
                     _proxyAdmin: _opChains[i].proxyAdmin,
                     _currentGame: IDisputeGame(address(permissionedDisputeGame)),
