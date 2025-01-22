@@ -122,7 +122,7 @@ func (db *DB) trimToLastSealed() error {
 }
 
 func (db *DB) updateEntryCountMetric() {
-	db.m.RecordDBEntryCount("log", db.store.Size())
+	db.m.RecordDBEntryCount("log", int64(db.store.LastEntryIdx())+1)
 }
 
 func (db *DB) IteratorStartingAt(sealedNum uint64, logsSince uint32) (Iterator, error) {
