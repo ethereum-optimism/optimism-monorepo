@@ -140,5 +140,5 @@ func TestComputeSingleBlobTxCost(t *testing.T) {
 	// than the calldata example, showing the rough equilibrium point
 	// of the two DA markets.
 	got := computeSingleBlobTxCost(5, big.NewInt(1), big.NewInt(1), big.NewInt(32))
-	require.Equal(t, big.NewInt(21_013_520), got) // 21_000 * (1+1) + 131_072*5*16
+	require.Equal(t, big.NewInt(21_013_520), got) // 21_000 * (1+1) + 131_072*5*32
 }
