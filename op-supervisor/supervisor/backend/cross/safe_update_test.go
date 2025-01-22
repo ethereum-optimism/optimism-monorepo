@@ -62,6 +62,53 @@ func TestCrossSafeUpdate(t *testing.T) {
 		err := CrossSafeUpdate(logger, chainID, csd)
 		require.ErrorContains(t, err, "some error")
 	})
+	t.Run("scopedCrossSafeUpdate returns ErrAwaitReplacementBlock", func(t *testing.T) {
+		logger := testlog.Logger(t, log.LevelDebug)
+		chainID := eth.ChainIDFromUInt64(0)
+		csd := &mockCrossSafeDeps{}
+		candidate := eth.BlockRef{Number: 1}
+		candidateScope := eth.BlockRef{Number: 2}
+		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: candidateScope,
+				Derived:     candidate,
+			}, nil
+		}
+		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+			return eth.BlockRef{}, 0, nil, types.ErrAwaitReplacementBlock
+		}
+		csd.deps = mockDependencySet{}
+		err := CrossSafeUpdate(logger, chainID, csd)
+		require.ErrorIs(t, err, types.ErrAwaitReplacementBlock)
+	})
+	t.Run("scopedCrossSafeUpdate returns ErrConflict and triggers invalidate-local-safe", func(t *testing.T) {
+		logger := testlog.Logger(t, log.LevelDebug)
+		chainID := eth.ChainIDFromUInt64(0)
+		csd := &mockCrossSafeDeps{}
+		candidate := eth.BlockRef{Number: 1}
+		candidateScope := eth.BlockRef{Number: 2}
+		csd.candidateCrossSafeFn = func() (pair types.DerivedBlockRefPair, err error) {
+			return types.DerivedBlockRefPair{
+				DerivedFrom: candidateScope,
+				Derived:     candidate,
+			}, nil
+		}
+		csd.openBlockFn = func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error) {
+			return eth.BlockRef{}, 0, nil, types.ErrConflict
+		}
+		invalidated := false
+		csd.invalidateLocalSafeFn = func(id eth.ChainID, p types.DerivedBlockRefPair) error {
+			require.Equal(t, chainID, id)
+			require.Equal(t, candidate, p.Derived)
+			require.Equal(t, candidateScope, p.DerivedFrom)
+			invalidated = true
+			return nil
+		}
+		csd.deps = mockDependencySet{}
+		err := CrossSafeUpdate(logger, chainID, csd)
+		require.NoError(t, err)
+		require.True(t, invalidated)
+	})
 	t.Run("scopedCrossSafeUpdate returns ErrOutOfScope", func(t *testing.T) {
 		logger := testlog.Logger(t, log.LevelDebug)
 		chainID := eth.ChainIDFromUInt64(0)
@@ -403,14 +450,15 @@ func TestScopedCrossSafeUpdate(t *testing.T) {
 }
 
 type mockCrossSafeDeps struct {
-	deps                 mockDependencySet
-	crossSafeFn          func(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error)
-	candidateCrossSafeFn func() (candidate types.DerivedBlockRefPair, err error)
-	openBlockFn          func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
-	updateCrossSafeFn    func(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
-	nextDerivedFromFn    func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
-	previousDerivedFn    func(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
-	checkFn              func(chainID eth.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
+	deps                  mockDependencySet
+	crossSafeFn           func(chainID eth.ChainID) (pair types.DerivedBlockSealPair, err error)
+	candidateCrossSafeFn  func() (candidate types.DerivedBlockRefPair, err error)
+	openBlockFn           func(chainID eth.ChainID, blockNum uint64) (ref eth.BlockRef, logCount uint32, execMsgs map[uint32]*types.ExecutingMessage, err error)
+	updateCrossSafeFn     func(chain eth.ChainID, l1View eth.BlockRef, lastCrossDerived eth.BlockRef) error
+	nextDerivedFromFn     func(chain eth.ChainID, derivedFrom eth.BlockID) (after eth.BlockRef, err error)
+	previousDerivedFn     func(chain eth.ChainID, derived eth.BlockID) (prevDerived types.BlockSeal, err error)
+	checkFn               func(chainID eth.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (types.BlockSeal, error)
+	invalidateLocalSafeFn func(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
 }
 
 var _ CrossSafeDeps = (*mockCrossSafeDeps)(nil)
@@ -473,6 +521,8 @@ func (m *mockCrossSafeDeps) UpdateCrossSafe(chain eth.ChainID, l1View eth.BlockR
 }
 
 func (m *mockCrossSafeDeps) InvalidateLocalSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
-	// TODO
+	if m.invalidateLocalSafeFn != nil {
+		return m.invalidateLocalSafeFn(chainID, candidate)
+	}
 	return nil
 }
