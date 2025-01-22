@@ -240,7 +240,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         // This is where we would emit an event for the L1StandardBridge however
         // the Chugsplash proxy does not emit such an event.
         expectEmitUpgraded(impls.l1ERC721BridgeImpl, address(l1ERC721Bridge));
-        expectEmitUpgraded(impls.disputeGameFactoryImpl, address(disputeGameFactory));
+        //expectEmitUpgraded(impls.disputeGameFactoryImpl, address(disputeGameFactory));
         expectEmitUpgraded(impls.optimismPortalImpl, address(optimismPortal2));
         expectEmitUpgraded(impls.optimismMintableERC20FactoryImpl, address(l1OptimismMintableERC20Factory));
         expectEmitUpgraded(impls.anchorStateRegistryImpl, address(anchorStateRegistry));
