@@ -12,7 +12,7 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -80,7 +80,7 @@ contract DeployImplementationsOutput_Test is Test {
     }
 
     function test_set_succeeds() public {
-        OPContractsManager opcm = OPContractsManager(address(makeAddr("opcm")));
+        IOPContractsManager opcm = IOPContractsManager(address(makeAddr("opcm")));
         IOptimismPortal2 optimismPortalImpl = IOptimismPortal2(payable(makeAddr("optimismPortalImpl")));
         IDelayedWETH delayedWETHImpl = IDelayedWETH(payable(makeAddr("delayedWETHImpl")));
         IPreimageOracle preimageOracleSingleton = IPreimageOracle(makeAddr("preimageOracleSingleton"));

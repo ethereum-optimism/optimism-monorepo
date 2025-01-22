@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
 import { DeployOPCM, DeployOPCMInput, DeployOPCMOutput } from "scripts/deploy/DeployOPCM.s.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 
@@ -181,7 +181,7 @@ contract DeployOPCMOutput_Test is Test {
     }
 
     function test_set_succeeds() public {
-        OPContractsManager opcm = OPContractsManager(makeAddr("opcm"));
+        IOPContractsManager opcm = IOPContractsManager(makeAddr("opcm"));
         vm.etch(address(opcm), hex"01");
 
         doo.set(doo.opcm.selector, address(opcm));

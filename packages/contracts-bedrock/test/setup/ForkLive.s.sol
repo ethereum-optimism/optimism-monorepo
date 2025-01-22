@@ -21,7 +21,7 @@ import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol"
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 
 /// @title ForkLive
 /// @notice This script is called by Setup.sol as a preparation step for the foundry test suite, and is run as an
@@ -141,7 +141,7 @@ contract ForkLive is Deployer {
 
     /// @notice Upgrades the contracts using the OPCM.
     function _upgrade() internal {
-        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
+        IOPContractsManager opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
         IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
@@ -149,13 +149,13 @@ contract ForkLive is Deployer {
         address upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        OPContractsManager.OpChain[] memory opChains = new OPContractsManager.OpChain[](1);
-        opChains[0] = OPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
+        IOPContractsManager.OpChain[] memory opChains = new IOPContractsManager.OpChain[](1);
+        opChains[0] = IOPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
 
         // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
         // reflecting the production system.
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(OPContractsManager.upgrade, (opChains)));
+        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
     }
 
     /// @notice Saves the proxy and implementation addresses for a contract name

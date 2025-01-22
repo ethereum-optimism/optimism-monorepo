@@ -24,9 +24,6 @@ import {
     DeployImplementationsOutput
 } from "scripts/deploy/DeployImplementations.s.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Libraries
 import { Constants } from "src/libraries/Constants.sol";
 import { Types } from "scripts/libraries/Types.sol";
@@ -35,6 +32,7 @@ import { StorageSlot, ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.so
 import { GameType, Claim, GameTypes, OutputRoot, Hash } from "src/dispute/lib/Types.sol";
 
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
@@ -346,7 +344,7 @@ contract Deploy is Deployer {
         });
         ChainAssertions.checkOPContractsManager({
             _contracts: contracts,
-            _opcm: OPContractsManager(address(dio.opcm())),
+            _opcm: IOPContractsManager(address(dio.opcm())),
             _mips: IMIPS(address(dio.mipsSingleton()))
         });
         if (_isInterop) {
@@ -362,10 +360,10 @@ contract Deploy is Deployer {
 
         // Ensure that the requisite contracts are deployed
         address superchainConfigProxy = artifacts.mustGetAddress("SuperchainConfigProxy");
-        OPContractsManager opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
+        IOPContractsManager opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
-        OPContractsManager.DeployInput memory deployInput = getDeployInput();
-        OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
+        IOPContractsManager.DeployInput memory deployInput = getDeployInput();
+        IOPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
 
         // Save all deploy outputs from the OPCM, in the order they are declared in the DeployOutput struct
         artifacts.save("ProxyAdmin", address(deployOutput.opChainProxyAdmin));
@@ -854,10 +852,10 @@ contract Deploy is Deployer {
     }
 
     /// @notice Get the DeployInput struct to use for testing
-    function getDeployInput() public view returns (OPContractsManager.DeployInput memory) {
+    function getDeployInput() public view returns (IOPContractsManager.DeployInput memory) {
         string memory saltMixer = "salt mixer";
-        return OPContractsManager.DeployInput({
-            roles: OPContractsManager.Roles({
+        return IOPContractsManager.DeployInput({
+            roles: IOPContractsManager.Roles({
                 opChainProxyAdminOwner: msg.sender,
                 systemConfigOwner: cfg.finalSystemOwner(),
                 batcher: cfg.batchSenderAddress(),

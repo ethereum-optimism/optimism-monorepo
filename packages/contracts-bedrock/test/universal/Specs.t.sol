@@ -8,10 +8,8 @@ import { console2 as console } from "forge-std/console2.sol";
 // Scripts
 import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -781,24 +779,24 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.upgrade.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.upgrade.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.addGameType.selector });
 
         // OPContractsManagerInterop
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("version()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManagerInterop", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.implementations.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.upgrade.selector });
-        _addSpec({ _name: "OPContractsManagerInterop", _sel: OPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.upgrade.selector });
+        _addSpec({ _name: "OPContractsManagerInterop", _sel: IOPContractsManager.addGameType.selector });
 
         // DeputyGuardianModule
         _addSpec({

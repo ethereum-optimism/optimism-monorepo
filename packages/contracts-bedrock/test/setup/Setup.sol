@@ -20,10 +20,8 @@ import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { AddressAliasHelper } from "src/vendor/AddressAliasHelper.sol";
 import { Chains } from "scripts/libraries/Chains.sol";
 
-// Contracts (TODO: move to interfaces)
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
@@ -107,7 +105,7 @@ contract Setup {
     IProtocolVersions protocolVersions;
     ISuperchainConfig superchainConfig;
     IDataAvailabilityChallenge dataAvailabilityChallenge;
-    OPContractsManager opcm;
+    IOPContractsManager opcm;
 
     // L2 contracts
     IL2CrossDomainMessenger l2CrossDomainMessenger =
@@ -229,7 +227,7 @@ contract Setup {
         anchorStateRegistry = IAnchorStateRegistry(artifacts.mustGetAddress("AnchorStateRegistryProxy"));
         disputeGameFactory = IDisputeGameFactory(artifacts.mustGetAddress("DisputeGameFactoryProxy"));
         delayedWeth = IDelayedWETH(artifacts.mustGetAddress("DelayedWETHProxy"));
-        opcm = OPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
+        opcm = IOPContractsManager(artifacts.mustGetAddress("OPContractsManager"));
 
         if (deploy.cfg().useAltDA()) {
             dataAvailabilityChallenge =
