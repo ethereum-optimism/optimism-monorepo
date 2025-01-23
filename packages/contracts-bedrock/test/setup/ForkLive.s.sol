@@ -53,6 +53,10 @@ contract ForkLive is Deployer {
     ///      2. deploying the updated OPCM and implementations of the contracts.
     ///      3. upgrading the system using the OPCM.upgrade() function.
     function run() public {
+        if (bytes(vm.envString("LOAD_STATE_PATH")).length > 0) {
+            console.log("ForkLive: loading state from %s", vm.envString("LOAD_STATE_PATH"));
+            vm.loadAllocs(vm.envString("LOAD_STATE_PATH"));
+        }
         // Read the superchain registry and save the addresses to the Artifacts contract.
         _readSuperchainRegistry();
 
