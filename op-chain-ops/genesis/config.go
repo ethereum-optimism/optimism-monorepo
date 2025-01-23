@@ -548,10 +548,10 @@ func (d *UpgradeScheduleDeployConfig) Check(log log.Logger) error {
 // L2CoreDeployConfig configures the core protocol parameters of the chain.
 type L2CoreDeployConfig struct {
 	// L1ChainID is the chain ID of the L1 chain.
-	L1ChainID uint64 `json:"l1ChainID"`
+	L1ChainID uint64 `json:"l1ChainID,string"`
 
 	// L2ChainID is the chain ID of the L2 chain.
-	L2ChainID uint64 `json:"l2ChainID"`
+	L2ChainID uint64 `json:"l2ChainID,string"`
 
 	// L2BlockTime is the number of seconds between each L2 block.
 	L2BlockTime uint64 `json:"l2BlockTime"`
