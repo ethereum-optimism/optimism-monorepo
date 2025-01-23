@@ -215,7 +215,7 @@ func TestBatchSubmitter_AltDA_FailureCase1_L2Reorg(t *testing.T) {
 
 	L1Block0 := types.NewBlock(&types.Header{
 		Number: big.NewInt(0),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	L1Block0Ref := eth.L1BlockRef{
 		Hash:   L1Block0.Hash(),
 		Number: L1Block0.NumberU64(),
@@ -260,7 +260,7 @@ func TestBatchSubmitter_AltDA_FailureCase2_FailedL1Tx(t *testing.T) {
 
 	L1Block0 := types.NewBlock(&types.Header{
 		Number: big.NewInt(0),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	L1Block0Ref := eth.L1BlockRef{
 		Hash:   L1Block0.Hash(),
 		Number: L1Block0.NumberU64(),
@@ -307,7 +307,7 @@ func TestBatchSubmitter_AltDA_FailureCase4_FailedBlobSubmission(t *testing.T) {
 
 	L1Block0 := types.NewBlock(&types.Header{
 		Number: big.NewInt(0),
-	}, nil, nil, nil)
+	}, nil, nil, nil, types.DefaultBlockConfig)
 	L1Block0Ref := eth.L1BlockRef{
 		Hash:   L1Block0.Hash(),
 		Number: L1Block0.NumberU64(),
