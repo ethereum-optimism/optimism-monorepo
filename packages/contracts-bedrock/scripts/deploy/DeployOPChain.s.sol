@@ -18,7 +18,7 @@ import { Constants as ScriptConstants } from "scripts/libraries/Constants.sol";
 
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
-
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
@@ -27,7 +27,6 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisputeGame.sol";
 import { Claim, Duration, GameType, GameTypes, Hash } from "src/dispute/lib/Types.sol";
 
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -47,7 +46,7 @@ contract DeployOPChainInput is BaseDeployIO {
     uint32 internal _basefeeScalar;
     uint32 internal _blobBaseFeeScalar;
     uint256 internal _l2ChainId;
-    OPContractsManager internal _opcm;
+    IOPContractsManager internal _opcm;
     string internal _saltMixer;
     uint64 internal _gasLimit;
 
@@ -68,7 +67,7 @@ contract DeployOPChainInput is BaseDeployIO {
         else if (_sel == this.unsafeBlockSigner.selector) _unsafeBlockSigner = _addr;
         else if (_sel == this.proposer.selector) _proposer = _addr;
         else if (_sel == this.challenger.selector) _challenger = _addr;
-        else if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
+        else if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
         else revert("DeployOPChainInput: unknown selector");
     }
 
@@ -174,7 +173,7 @@ contract DeployOPChainInput is BaseDeployIO {
         return abi.encode(ScriptConstants.DEFAULT_OUTPUT_ROOT());
     }
 
-    function opcm() public view returns (OPContractsManager) {
+    function opcm() public view returns (IOPContractsManager) {
         require(address(_opcm) != address(0), "DeployOPChainInput: not set");
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
@@ -339,9 +338,9 @@ contract DeployOPChain is Script {
     // -------- Core Deployment Methods --------
 
     function run(DeployOPChainInput _doi, DeployOPChainOutput _doo) public {
-        OPContractsManager opcm = _doi.opcm();
+        IOPContractsManager opcm = _doi.opcm();
 
-        OPContractsManager.Roles memory roles = OPContractsManager.Roles({
+        IOPContractsManager.Roles memory roles = IOPContractsManager.Roles({
             opChainProxyAdminOwner: _doi.opChainProxyAdminOwner(),
             systemConfigOwner: _doi.systemConfigOwner(),
             batcher: _doi.batcher(),
@@ -349,7 +348,7 @@ contract DeployOPChain is Script {
             proposer: _doi.proposer(),
             challenger: _doi.challenger()
         });
-        OPContractsManager.DeployInput memory deployInput = OPContractsManager.DeployInput({
+        IOPContractsManager.DeployInput memory deployInput = IOPContractsManager.DeployInput({
             roles: roles,
             basefeeScalar: _doi.basefeeScalar(),
             blobBasefeeScalar: _doi.blobBaseFeeScalar(),
@@ -366,7 +365,7 @@ contract DeployOPChain is Script {
         });
 
         vm.broadcast(msg.sender);
-        OPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
+        IOPContractsManager.DeployOutput memory deployOutput = opcm.deploy(deployInput);
 
         vm.label(address(deployOutput.opChainProxyAdmin), "opChainProxyAdmin");
         vm.label(address(deployOutput.addressManager), "addressManager");
@@ -468,7 +467,7 @@ contract DeployOPChain is Script {
             "DPG-20"
         );
 
-        OPContractsManager opcm = _doi.opcm();
+        IOPContractsManager opcm = _doi.opcm();
         address mipsImpl = opcm.implementations().mipsImpl;
         require(game.vm() == IBigStepper(mipsImpl), "DPG-30");
 

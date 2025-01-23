@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/devnet/kt"
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/devnet/manifest"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/kt"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/manifest"
 	"github.com/urfave/cli/v2"
 	"gopkg.in/yaml.v3"
 )

@@ -39,6 +39,7 @@ type ImplementationsConfig struct {
 	DisputeGameFinalityDelaySeconds uint64             `cli:"dispute-game-finality-delay-seconds"`
 	SuperchainConfigProxy           common.Address     `cli:"superchain-config-proxy"`
 	ProtocolVersionsProxy           common.Address     `cli:"protocol-versions-proxy"`
+	UpgradeController               common.Address     `cli:"upgrade-controller"`
 	UseInterop                      bool               `cli:"use-interop"`
 
 	Logger log.Logger
@@ -192,6 +193,7 @@ func Implementations(ctx context.Context, cfg ImplementationsConfig) (opcm.Deplo
 			L1ContractsRelease:              cfg.L1ContractsRelease,
 			SuperchainConfigProxy:           cfg.SuperchainConfigProxy,
 			ProtocolVersionsProxy:           cfg.ProtocolVersionsProxy,
+			UpgradeController:               cfg.UpgradeController,
 			UseInterop:                      cfg.UseInterop,
 		},
 	); err != nil {

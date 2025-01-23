@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 )

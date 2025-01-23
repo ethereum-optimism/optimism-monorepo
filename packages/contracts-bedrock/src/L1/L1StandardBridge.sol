@@ -6,7 +6,6 @@ import { StandardBridge } from "src/universal/StandardBridge.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -110,13 +109,6 @@ contract L1StandardBridge is StandardBridge, ISemver {
     /// @notice Allows EOAs to bridge ETH by sending directly to the bridge.
     receive() external payable override onlyEOA {
         _initiateETHDeposit(msg.sender, msg.sender, RECEIVE_DEFAULT_GAS_LIMIT, bytes(""));
-    }
-
-    /// @inheritdoc StandardBridge
-    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
-    /// return the ether address and 18 decimals.
-    function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
-        return (Constants.ETHER, 18);
     }
 
     /// @custom:legacy

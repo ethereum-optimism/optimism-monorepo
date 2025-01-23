@@ -3,6 +3,9 @@ package state
 import (
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/artifacts"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/stretchr/testify/require"
@@ -10,7 +13,8 @@ import (
 
 func TestCombineDeployConfig(t *testing.T) {
 	intent := Intent{
-		L1ChainID: 1,
+		L1ChainID:          1,
+		L1ContractsLocator: artifacts.MustNewLocatorFromTag(standard.ContractsV170Beta1L2Tag),
 	}
 	chainState := ChainState{
 		ID: common.HexToHash("0x123"),

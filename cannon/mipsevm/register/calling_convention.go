@@ -25,5 +25,4 @@ const (
 	RegSyscallParam1 = RegA0
 	RegSyscallParam2 = RegA1
 	RegSyscallParam3 = RegA2
-	RegSyscallParam4 = RegA3
 )

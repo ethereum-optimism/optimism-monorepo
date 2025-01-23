@@ -70,6 +70,8 @@ func testImplementations(t *testing.T, forkRPCURL string) {
 
 	loc, _ := testutil.LocalArtifacts(t)
 
+	proxyAdminOwner, err := standard.L1ProxyAdminOwner(uint64(chainID.Uint64()))
+	require.NoError(t, err)
 	deploy := func() opcm.DeployImplementationsOutput {
 		out, err := Implementations(ctx, ImplementationsConfig{
 			L1RPCUrl:                        runner.RPCUrl(),
@@ -85,6 +87,7 @@ func testImplementations(t *testing.T, forkRPCURL string) {
 			MIPSVersion:                     1,
 			SuperchainConfigProxy:           common.Address(*superchain.Config.SuperchainConfigAddr),
 			ProtocolVersionsProxy:           common.Address(*superchain.Config.ProtocolVersionsAddr),
+			UpgradeController:               proxyAdminOwner,
 			UseInterop:                      false,
 		})
 		require.NoError(t, err)

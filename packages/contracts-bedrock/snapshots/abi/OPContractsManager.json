@@ -124,6 +124,11 @@
         "internalType": "struct OPContractsManager.Implementations",
         "name": "_implementations",
         "type": "tuple"
+      },
+      {
+        "internalType": "address",
+        "name": "_upgradeController",
+        "type": "address"
       }
     ],
     "stateMutability": "nonpayable",
@@ -563,6 +568,19 @@
   },
   {
     "inputs": [],
+    "name": "isRC",
+    "outputs": [
+      {
+        "internalType": "bool",
+        "name": "",
+        "type": "bool"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [],
     "name": "l1ContractsRelease",
     "outputs": [
       {
@@ -585,6 +603,19 @@
       }
     ],
     "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "bool",
+        "name": "_isRC",
+        "type": "bool"
+      }
+    ],
+    "name": "setRC",
+    "outputs": [],
+    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -623,6 +654,19 @@
     "name": "upgrade",
     "outputs": [],
     "stateMutability": "nonpayable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "upgradeController",
+    "outputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "stateMutability": "view",
     "type": "function"
   },
   {
@@ -774,6 +818,11 @@
   {
     "inputs": [],
     "name": "OnlyDelegatecall",
+    "type": "error"
+  },
+  {
+    "inputs": [],
+    "name": "OnlyUpgradeController",
     "type": "error"
   },
   {
