@@ -61,8 +61,10 @@ type L2Chain struct {
 }
 
 func (c *L2Chain) Accept(visitor ChainVisitor) {
-	visitor.VisitName(c.Name)
-	visitor.VisitID(c.ChainID)
+	if visitor != nil {
+		visitor.VisitName(c.Name)
+		visitor.VisitID(c.ChainID)
+	}
 }
 
 var _ ChainAcceptor = (*L2Chain)(nil)
