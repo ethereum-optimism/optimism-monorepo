@@ -64,6 +64,14 @@ func NewDefaultTesting(tb e2eutils.TestingBase) StatefulTesting {
 	}
 }
 
+func SubTest(tb e2eutils.TestingBase) StatefulTesting {
+	return &defaultTesting{
+		TestingBase: tb,
+		ctx:         context.Background(),
+		state:       ActionOK,
+	}
+}
+
 // Ctx shares a context to execute an action with, the test runner may interrupt the action without stopping the test.
 func (st *defaultTesting) Ctx() context.Context {
 	return st.ctx
