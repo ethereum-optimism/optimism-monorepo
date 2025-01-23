@@ -238,11 +238,12 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
 contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
     function runUpgradeTestAndChecks(address delegateCaller) public {
+        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
         assertTrue(opcm.isRC(), "isRC should be true");
         bytes memory releaseBytes = bytes(opcm.l1ContractsRelease());
         assertEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should end with '-rc'");
 
-        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         IOPContractsManager.Implementations memory impls = opcm.implementations();
 
         // Cache the old L1xDM address so we can look for it in the AddressManager's event
@@ -283,7 +284,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
         vm.expectEmit(address(delegateCaller));
         emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
-        DelegateCaller(upgrader).dcForward(
+        DelegateCaller(delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
         );
 
