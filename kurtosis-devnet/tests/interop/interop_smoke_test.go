@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"math/big"
 	"os"
 	"testing"
 
@@ -36,14 +37,11 @@ func TestMinimal(t *testing.T) {
 		logger = logger.With("chain", chain.ID())
 		logger.InfoContext(ctx, "starting test")
 
-		funds := types.NewBalanceFromFloat(0.5) // 0.5 ETH
+		funds := types.NewBalance(big.NewInt(0.5 * constants.ETH))
 		user := ctx.Value(testUserMarker).(types.Wallet)
 
 		scw0Addr := constants.SuperchainWETH
-		scw0 := contracts.MustResolveContract[contracts.SuperchainWETH](
-			chain,
-			scw0Addr,
-		)
+		scw0 := contracts.MustResolveContract[contracts.SuperchainWETH](chain, scw0Addr)
 		logger.InfoContext(ctx, "using SuperchainWETH", "contract", scw0Addr)
 
 		initialBalance, err := scw0.BalanceOf(user.Address()).Call(ctx)
@@ -60,7 +58,7 @@ func TestMinimal(t *testing.T) {
 
 		require.Equal(t, balance, initialBalance.Add(funds))
 	},
-		userFundsValidator(chainIdx, types.NewBalanceFromFloat(1.0), testUserMarker),
+		userFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
 

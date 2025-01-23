@@ -18,17 +18,6 @@ func NewBalance(i *big.Int) Balance {
 	return Balance{Int: new(big.Int).Set(i)}
 }
 
-// NewBalanceFromFloat creates a Balance from a float64 value in ETH
-func NewBalanceFromFloat(eth float64) Balance {
-	// Convert ETH to Wei (1 ETH = 1e18 Wei)
-	wei := new(big.Float).Mul(new(big.Float).SetFloat64(eth), new(big.Float).SetFloat64(1e18))
-
-	// Convert to big.Int (truncating any fractional part)
-	result := new(big.Int)
-	wei.Int(result)
-	return Balance{Int: result}
-}
-
 // Add returns a new Balance with other added to it
 func (b Balance) Add(other Balance) Balance {
 	return Balance{Int: new(big.Int).Add(b.Int, other.Int)}
