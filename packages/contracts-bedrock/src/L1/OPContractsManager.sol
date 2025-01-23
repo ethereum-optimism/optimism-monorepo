@@ -432,6 +432,7 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Upgrades a set of chains to the latest implementation contracts
+    /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
     /// @param _opChains Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
     function upgrade(IProxyAdmin _superchainProxyAdmin, OpChain[] memory _opChains) external {
