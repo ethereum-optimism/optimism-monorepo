@@ -27,6 +27,7 @@ type SyncSource interface {
 	ChainID(ctx context.Context) (eth.ChainID, error)
 	OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
 	PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
+	L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error)
 	// String identifies the sync source
 	String() string
 }

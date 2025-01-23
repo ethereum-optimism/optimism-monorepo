@@ -81,6 +81,12 @@ func (rs *RPCSyncNode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp
 	return out, err
 }
 
+func (rs *RPCSyncNode) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	var out eth.L2BlockRef
+	err := rs.cl.CallContext(ctx, &out, "interop_l2BlockRefByTimestamp", timestamp)
+	return out, err
+}
+
 func (rs *RPCSyncNode) String() string {
 	return rs.name
 }
