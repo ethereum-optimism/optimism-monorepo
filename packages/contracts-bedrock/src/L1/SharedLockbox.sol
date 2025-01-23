@@ -28,10 +28,6 @@ contract SharedLockbox is Initializable, ISemver {
     /// @param amount The amount of ETH unlocked.
     event ETHUnlocked(address indexed portal, uint256 amount);
 
-    /// @notice Emitted when a portal is set as authorized to interact with the lockbox.
-    /// @param portal The address of the authorized portal.
-    event PortalAuthorized(address indexed portal);
-
     /// @notice The address of the SuperchainConfig contract.
     bytes32 internal constant SUPERCHAIN_CONFIG_SLOT = bytes32(uint256(keccak256("sharedLockbox.superchainConfig")) - 1);
 
@@ -57,11 +53,6 @@ contract SharedLockbox is Initializable, ISemver {
         superchainConfig_ = ISuperchainConfigInterop(Storage.getAddress(SUPERCHAIN_CONFIG_SLOT));
     }
 
-    /// @notice Reverts when paused.
-    function _whenNotPaused() internal view {
-        if (paused()) revert Paused();
-    }
-
     /// @notice Getter for the current paused status.
     function paused() public view returns (bool) {
         return superchainConfig().paused();
@@ -78,7 +69,7 @@ contract SharedLockbox is Initializable, ISemver {
     /// @notice Unlocks ETH from the lockbox.
     ///         Called by an authorized portal when finalizing a withdrawal that requires ETH.
     function unlockETH(uint256 _value) external {
-        _whenNotPaused();
+        if (paused()) revert Paused();
         if (!superchainConfig().authorizedPortals(msg.sender)) revert Unauthorized();
 
         // Using `donateETH` to avoid triggering a deposit

@@ -128,19 +128,6 @@
     "type": "event"
   },
   {
-    "anonymous": false,
-    "inputs": [
-      {
-        "indexed": true,
-        "internalType": "address",
-        "name": "portal",
-        "type": "address"
-      }
-    ],
-    "name": "PortalAuthorized",
-    "type": "event"
-  },
-  {
     "inputs": [],
     "name": "InvalidInitialization",
     "type": "error"

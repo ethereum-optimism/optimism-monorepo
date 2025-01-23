@@ -15,7 +15,6 @@ interface ISharedLockbox is ISemver {
     event Initialized(uint64 version);
     event ETHLocked(address indexed portal, uint256 amount);
     event ETHUnlocked(address indexed portal, uint256 amount);
-    event PortalAuthorized(address indexed portal);
 
     function superchainConfig() external view returns (ISuperchainConfigInterop superchainConfig_);
     function initialize(address _superchainConfig) external;

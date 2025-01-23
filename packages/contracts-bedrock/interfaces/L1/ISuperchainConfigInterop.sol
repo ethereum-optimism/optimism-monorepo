@@ -13,6 +13,7 @@ interface ISuperchainConfigInterop is IDependencySet, ISuperchainConfig {
     error DependencyAlreadyAdded();
     error InvalidSuperchainConfig();
     error PortalAlreadyAuthorized();
+    error SuperchainPaused();
 
     function CLUSTER_MANAGER_SLOT() external view returns (bytes32);
     function sharedLockbox() external view returns (ISharedLockbox sharedLockbox_);
