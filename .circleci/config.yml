@@ -993,12 +993,21 @@ jobs:
       - run:
           name: Upload cannon prestates
           command: |
+            VERSION="<< pipeline.git.branch >>"
+            if [[ "" == "${VERSION}" ]]
+            then
+              VERSION = "<< pipeline.git.tag >>"
+            fi
+            if [[ "" == "${VERSION}" ]]
+            then
+              echo "Both pipeline.git.branch and pipeline.git.tag are empty"
+            fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}.bin.gz
+              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}.bin.gz"
             gsutil cp ./op-program/bin/prestate-mt.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-mt.bin.gz
+              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}-mt.bin.gz"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              gs://oplabs-network-data/proofs/op-program/cannon/${CIRCLE_BRANCH}-interop.bin.gz
+              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}-interop.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
