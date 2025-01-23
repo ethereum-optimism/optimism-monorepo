@@ -32,14 +32,6 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 // Contracts
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
-import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
-import { L1ERC721Bridge } from "src/L1/L1ERC721Bridge.sol";
-import { OptimismPortal2 } from "src/L1/OptimismPortal2.sol";
-import { SystemConfig } from "src/L1/SystemConfig.sol";
-import { OptimismMintableERC20Factory } from "src/universal/OptimismMintableERC20Factory.sol";
-import { L1CrossDomainMessenger } from "src/L1/L1CrossDomainMessenger.sol";
-import { L1StandardBridge } from "src/L1/L1StandardBridge.sol";
-import { DisputeGameFactory } from "src/dispute/DisputeGameFactory.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { DelayedWETH } from "src/dispute/DelayedWETH.sol";
 import { MIPS } from "src/cannon/MIPS.sol";
@@ -444,16 +436,16 @@ contract OPContractsManager_AddGameType_Test is Test {
         IPreimageOracle oracle = IPreimageOracle(address(new PreimageOracle(126000, 86400)));
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
-            l1ERC721BridgeImpl: address(new L1ERC721Bridge()),
-            optimismPortalImpl: address(new OptimismPortal2(1, 1)),
-            systemConfigImpl: address(new SystemConfig()),
-            optimismMintableERC20FactoryImpl: address(new OptimismMintableERC20Factory()),
-            l1CrossDomainMessengerImpl: address(new L1CrossDomainMessenger()),
-            l1StandardBridgeImpl: address(new L1StandardBridge()),
-            disputeGameFactoryImpl: address(new DisputeGameFactory()),
-            anchorStateRegistryImpl: address(new AnchorStateRegistry()),
-            delayedWETHImpl: address(new DelayedWETH(3)),
-            mipsImpl: address(new MIPS(oracle))
+            l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
+            optimismPortalImpl: DeployUtils.create1("OptimismPortal2", abi.encode(1, 1)),
+            systemConfigImpl: DeployUtils.create1("SystemConfig"),
+            optimismMintableERC20FactoryImpl: DeployUtils.create1("OptimismMintableERC20Factory"),
+            l1CrossDomainMessengerImpl: DeployUtils.create1("L1CrossDomainMessenger"),
+            l1StandardBridgeImpl: DeployUtils.create1("L1StandardBridge"),
+            disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
+            anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
+            delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
+            mipsImpl: DeployUtils.create1("MIPS", abi.encode(oracle))
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");
