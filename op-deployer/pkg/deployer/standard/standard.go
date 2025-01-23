@@ -39,8 +39,6 @@ const (
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
 )
 
-var DisputeAbsolutePrestate = common.HexToHash("0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
-
 //go:embed standard-versions-mainnet.toml
 var VersionsMainnetData string
 
@@ -361,6 +359,15 @@ func DefaultHardforkScheduleForTag(tag string) *genesis.UpgradeScheduleDeployCon
 	}
 
 	return sched
+}
+
+func AbsolutePrestateForTag(tag string) common.Hash {
+	switch tag {
+	case ContractsV160Tag, ContractsV170Beta1L2Tag:
+		return common.HexToHash("0x038512e02c4c3f7bdaec27d00edf55b7155e0905301e1a88083e4e0a6764d54c")
+	default:
+		return common.HexToHash("0x03f89406817db1ed7fd8b31e13300444652cdb0b9c509a674de43483b2f83568")
+	}
 }
 
 func standardArtifactsURL(checksum string) string {
