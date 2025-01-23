@@ -22,7 +22,6 @@ interface IL1BlockInterop {
     function l1FeeScalar() external view returns (uint256);
     function number() external view returns (uint64);
     function sequenceNumber() external view returns (uint64);
-    function setConfig(ConfigType _type, bytes memory _value) external;
     function setL1BlockValues(
         uint64 _number,
         uint64 _timestamp,

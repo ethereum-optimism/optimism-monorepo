@@ -11,7 +11,6 @@ import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.
 // Interfaces
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
-import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -258,11 +257,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({
-            _name: "OptimismPortalInterop",
-            _sel: IOptimismPortalInterop.setConfig.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("sharedLockbox()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrateLiquidity()"), _auth: Role.SUPERCHAINCONFIG });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrated()") });

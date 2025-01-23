@@ -15,7 +15,6 @@ import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
-import { IOPContractsManagerInterop } from "interfaces/L1/IOPContractsManagerInterop.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
