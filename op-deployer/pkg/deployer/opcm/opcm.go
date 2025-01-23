@@ -11,6 +11,7 @@ type DeployOPCMInput struct {
 	SuperchainConfig   common.Address
 	ProtocolVersions   common.Address
 	L1ContractsRelease string
+	UpgradeController  common.Address
 
 	AddressManagerBlueprint           common.Address
 	ProxyBlueprint                    common.Address

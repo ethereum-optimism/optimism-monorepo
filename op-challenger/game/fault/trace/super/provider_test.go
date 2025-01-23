@@ -2,6 +2,7 @@ package super
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -242,10 +244,10 @@ func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
 	s.rootsByTimestamp[root.Timestamp] = root
 }
 
-func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp uint64) (eth.SuperRootResponse, error) {
-	root, ok := s.rootsByTimestamp[timestamp]
+func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
+	root, ok := s.rootsByTimestamp[uint64(timestamp)]
 	if !ok {
-		return eth.SuperRootResponse{}, ethereum.NotFound
+		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %w", uint64(timestamp), ethereum.NotFound)
 	}
 	return root, nil
 }

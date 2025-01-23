@@ -5,6 +5,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type SuperRootPrestateProvider struct {
@@ -30,7 +31,7 @@ func (s *SuperRootPrestateProvider) AbsolutePreStateCommitment(ctx context.Conte
 }
 
 func (s *SuperRootPrestateProvider) AbsolutePreState(ctx context.Context) (eth.Super, error) {
-	response, err := s.provider.SuperRootAtTimestamp(ctx, s.timestamp)
+	response, err := s.provider.SuperRootAtTimestamp(ctx, hexutil.Uint64(s.timestamp))
 	if err != nil {
 		return nil, err
 	}

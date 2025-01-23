@@ -17,10 +17,8 @@ import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Types } from "scripts/libraries/Types.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
@@ -472,7 +470,7 @@ library ChainAssertions {
     /// @notice Asserts that the OPContractsManager is setup correctly
     function checkOPContractsManager(
         Types.ContractSet memory _contracts,
-        OPContractsManager _opcm,
+        IOPContractsManager _opcm,
         IMIPS _mips
     )
         internal
@@ -494,7 +492,7 @@ library ChainAssertions {
         require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-40");
 
         // Ensure that the OPCM impls are correctly saved
-        OPContractsManager.Implementations memory impls = _opcm.implementations();
+        IOPContractsManager.Implementations memory impls = _opcm.implementations();
         require(impls.l1ERC721BridgeImpl == _contracts.L1ERC721Bridge, "CHECK-OPCM-50");
         require(impls.optimismPortalImpl == _contracts.OptimismPortal, "CHECK-OPCM-60");
         require(impls.systemConfigImpl == _contracts.SystemConfig, "CHECK-OPCM-70");
@@ -506,7 +504,7 @@ library ChainAssertions {
         require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
 
         // Verify that initCode is correctly set into the blueprints
-        OPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
+        IOPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
         Blueprint.Preamble memory addressManagerPreamble =
             Blueprint.parseBlueprintPreamble(address(blueprints.addressManager).code);
         require(keccak256(addressManagerPreamble.initcode) == keccak256(vm.getCode("AddressManager")), "CHECK-OPCM-140");

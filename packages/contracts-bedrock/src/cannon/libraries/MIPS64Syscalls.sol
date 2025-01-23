@@ -119,9 +119,6 @@ library MIPS64Syscalls {
 
     uint64 internal constant FUTEX_WAIT_PRIVATE = 128;
     uint64 internal constant FUTEX_WAKE_PRIVATE = 129;
-    uint64 internal constant FUTEX_TIMEOUT_STEPS = 10000;
-    uint64 internal constant FUTEX_NO_TIMEOUT = type(uint64).max;
-    uint64 internal constant FUTEX_EMPTY_ADDR = U64_MASK;
 
     uint64 internal constant SCHED_QUANTUM = 100_000;
     uint64 internal constant HZ = 10_000_000;
@@ -168,7 +165,6 @@ library MIPS64Syscalls {
     uint32 internal constant REG_SYSCALL_PARAM1 = REG_A0;
     uint32 internal constant REG_SYSCALL_PARAM2 = REG_A1;
     uint32 internal constant REG_SYSCALL_PARAM3 = REG_A2;
-    uint32 internal constant REG_SYSCALL_PARAM4 = REG_A3;
 
     // Constants copied from MIPS64Arch for use in Yul
     uint64 internal constant WORD_SIZE_BYTES = 8;
@@ -180,11 +176,10 @@ library MIPS64Syscalls {
     /// @return a0_ The first argument available to the syscall operation.
     /// @return a1_ The second argument available to the syscall operation.
     /// @return a2_ The third argument available to the syscall operation.
-    /// @return a3_ The fourth argument available to the syscall operation.
     function getSyscallArgs(uint64[32] memory _registers)
         internal
         pure
-        returns (uint64 sysCallNum_, uint64 a0_, uint64 a1_, uint64 a2_, uint64 a3_)
+        returns (uint64 sysCallNum_, uint64 a0_, uint64 a1_, uint64 a2_)
     {
         unchecked {
             sysCallNum_ = _registers[REG_SYSCALL_NUM];
@@ -192,9 +187,8 @@ library MIPS64Syscalls {
             a0_ = _registers[REG_SYSCALL_PARAM1];
             a1_ = _registers[REG_SYSCALL_PARAM2];
             a2_ = _registers[REG_SYSCALL_PARAM3];
-            a3_ = _registers[REG_SYSCALL_PARAM4];
 
-            return (sysCallNum_, a0_, a1_, a2_, a3_);
+            return (sysCallNum_, a0_, a1_, a2_);
         }
     }
 

@@ -59,7 +59,7 @@ func (ib *InteropAPI) OutputV0AtTimestamp(ctx context.Context, timestamp uint64)
 	return ib.backend.OutputV0AtTimestamp(ctx, timestamp)
 }
 
-func (ib *InteropAPI) PendingOutputV0ATTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
+func (ib *InteropAPI) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
 	return ib.backend.PendingOutputV0AtTimestamp(ctx, timestamp)
 }
 

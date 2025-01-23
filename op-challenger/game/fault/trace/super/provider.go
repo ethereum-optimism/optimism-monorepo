@@ -9,6 +9,7 @@ import (
 	interopTypes "github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -30,7 +31,7 @@ type PreimagePrestateProvider interface {
 	AbsolutePreState(ctx context.Context) (eth.Super, error)
 }
 type RootProvider interface {
-	SuperRootAtTimestamp(ctx context.Context, timestamp uint64) (eth.SuperRootResponse, error)
+	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
 }
 
 type SuperTraceProvider struct {
@@ -71,19 +72,19 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 	}
 	s.logger.Info("Getting claim", "pos", pos.ToGIndex(), "timestamp", timestamp, "step", step)
 	if step == 0 {
-		root, err := s.rootProvider.SuperRootAtTimestamp(ctx, timestamp)
+		root, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
 		}
 		return responseToSuper(root).Marshal(), nil
 	}
 	// Fetch the super root at the next timestamp since we are part way through the transition to it
-	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, timestamp)
+	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
 	}
 	nextTimestamp := timestamp + 1
-	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, nextTimestamp)
+	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(nextTimestamp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", nextTimestamp, err)
 	}

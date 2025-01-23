@@ -57,6 +57,14 @@ func (f *VMFlag) String(ctx *cli.Context, vm types.TraceType) string {
 	return val
 }
 
+func (f *VMFlag) StringSlice(ctx *cli.Context, vm types.TraceType) []string {
+	val := ctx.StringSlice(f.TraceSpecificFlagName(vm))
+	if len(val) == 0 {
+		val = ctx.StringSlice(f.name)
+	}
+	return val
+}
+
 func (f *VMFlag) SourceFlagName(ctx *cli.Context, vm types.TraceType) string {
 	vmFlag := f.TraceSpecificFlagName(vm)
 	if ctx.IsSet(vmFlag) {

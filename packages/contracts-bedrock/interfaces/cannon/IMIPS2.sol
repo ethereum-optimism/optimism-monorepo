@@ -11,9 +11,6 @@ interface IMIPS2 is ISemver {
         uint32 threadID;
         uint8 exitCode;
         bool exited;
-        uint32 futexAddr;
-        uint32 futexVal;
-        uint64 futexTimeoutStep;
         uint32 pc;
         uint32 nextPC;
         uint32 lo;
@@ -33,7 +30,6 @@ interface IMIPS2 is ISemver {
         bool exited;
         uint64 step;
         uint64 stepsSinceLastContextSwitch;
-        uint32 wakeup;
         bool traverseRight;
         bytes32 leftThreadStack;
         bytes32 rightThreadStack;
