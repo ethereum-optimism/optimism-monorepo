@@ -1171,9 +1171,8 @@ jobs:
       - notify-failures-on-develop
 
   publish-contract-artifacts:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
       - gcp-cli/install
       - gcp-oidc-authenticate:
