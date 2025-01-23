@@ -1286,6 +1286,9 @@ workflows:
           test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
+          # need this requires to ensure that all FFI JSONs exist
+          requires:
+            - contracts-bedrock-build
       - contracts-bedrock-tests-upgrade:
           name: contracts-bedrock-tests-upgrade
       - contracts-bedrock-checks:
