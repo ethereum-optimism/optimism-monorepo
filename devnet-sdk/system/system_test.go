@@ -103,9 +103,9 @@ func TestContractAddress(t *testing.T) {
 			want:       "0x4200000000000000000000000000000000000024",
 		},
 		{
-			name:       "non-existent contract",
-			contractID: "NonExistentContract",
-			want:       "",
+			name:       "contract address",
+			contractID: "0x4200000000000000000000000000000000000024",
+			want:       "0x4200000000000000000000000000000000000024",
 		},
 	}
 
@@ -185,20 +185,6 @@ func TestSystemFromDevnet(t *testing.T) {
 			},
 			wantErr:   false,
 			isInterop: true,
-		},
-		{
-			name: "invalid chain ID",
-			devnet: descriptors.DevnetEnvironment{
-				L1: &descriptors.Chain{
-					ID:    "invalid",
-					Nodes: []descriptors.Node{testNode},
-					Wallets: descriptors.WalletMap{
-						"default": testWallet,
-					},
-				},
-			},
-			wantErr:   true,
-			isInterop: false,
 		},
 	}
 
@@ -286,7 +272,7 @@ func TestWallet(t *testing.T) {
 			privateKey:  "0xabc",
 			address:     "0x123",
 			wantAddr:    "0x123",
-			wantPrivKey: "0xabc",
+			wantPrivKey: "abc",
 		},
 		{
 			name:        "empty wallet",

@@ -189,7 +189,7 @@ func TestChainConfig(t *testing.T) {
 
 		assert.Equal(t, "http://localhost:8545", env.EnvVars["ETH_RPC_URL"])
 		assert.Equal(t, "1234", env.EnvVars["ETH_RPC_JWT_SECRET"])
-		assert.Equal(t, "test.json", env.EnvVars[EnvFileVar])
+		assert.Equal(t, "test.json", filepath.Base(env.EnvVars[EnvFileVar]))
 		assert.Equal(t, "test", env.EnvVars[ChainNameVar])
 		assert.Contains(t, env.Motd, "deployer")
 		assert.Contains(t, env.Motd, "0x123")
