@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 )
 
@@ -47,7 +48,7 @@ func SystemTest(t *testing.T, f func(t T, sys system.System), validators ...Vali
 
 	wt = wt.WithContext(ctx)
 
-	sys, err := system.NewSystemFromEnv("TEST_DEVNET_FILE")
+	sys, err := system.NewSystemFromEnv(env.EnvFileVar)
 	if err != nil {
 		t.Fatalf("failed to parse system from environment: %v", err)
 	}

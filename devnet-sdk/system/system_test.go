@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/shell/env"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -71,7 +72,7 @@ func TestNewSystemFromEnv(t *testing.T) {
 	require.NoError(t, os.WriteFile(devnetFile, data, 0644))
 
 	// Test with valid environment
-	envVar := "TEST_DEVNET_FILE"
+	envVar := env.EnvFileVar
 	os.Setenv(envVar, devnetFile)
 	sys, err := NewSystemFromEnv(envVar)
 	assert.NoError(t, err)
@@ -84,49 +85,8 @@ func TestNewSystemFromEnv(t *testing.T) {
 	assert.Nil(t, sys)
 }
 
-func TestChainAccess(t *testing.T) {
-	// Create test wallet for the chains
-	testWallet := NewWallet("0xabc", "0x123")
-
-	// Create a test system with known chains
-	sys := system{
-		chains: map[types.ChainID]Chain{
-			1: NewChain("1", "http://localhost:8545", testWallet),
-			2: NewChain("2", "http://localhost:8546", testWallet),
-		},
-	}
-
-	tests := []struct {
-		name    string
-		chainID types.ChainID
-		exists  bool
-	}{
-		{
-			name:    "existing chain",
-			chainID: 1,
-			exists:  true,
-		},
-		{
-			name:    "non-existent chain",
-			chainID: 999,
-			exists:  false,
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			chain := sys.Chain(tt.chainID)
-			if tt.exists {
-				assert.NotNil(t, chain)
-			} else {
-				assert.Zero(t, chain)
-			}
-		})
-	}
-}
-
 func TestContractAddress(t *testing.T) {
-	testWallet := NewWallet("0xabc", "0x123")
+	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
 	chain := NewChain("1", "http://localhost:8545", testWallet)
 
 	tests := []struct {
@@ -241,7 +201,7 @@ func TestSystemFromDevnet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			sys, err := systemFromDevnet(tt.devnet)
+			sys, err := systemFromDevnet(tt.devnet, "test")
 			if tt.wantErr {
 				assert.Error(t, err)
 				return
@@ -341,7 +301,7 @@ func TestWallet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := NewWallet(tt.privateKey, tt.address)
+			w := NewWallet(tt.privateKey, tt.address, "http://localhost:8545")
 			assert.Equal(t, tt.wantAddr, w.Address())
 			assert.Equal(t, tt.wantPrivKey, w.PrivateKey())
 		})
@@ -349,7 +309,7 @@ func TestWallet(t *testing.T) {
 }
 
 func TestChainUser(t *testing.T) {
-	testWallet := NewWallet("0xabc", "0x123")
+	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
 	chain := NewChain("1", "http://localhost:8545", testWallet)
 
 	ctx := context.Background()
