@@ -43,6 +43,7 @@ func TestMinimal(t *testing.T) {
 
 		initialBalance, err := scw0.BalanceOf(user.Address()).Call(ctx)
 		require.NoError(t, err)
+		logger = logger.With("user", user.Address())
 		logger.InfoContext(ctx, "initial balance retrieved", "balance", initialBalance)
 
 		logger.InfoContext(ctx, "sending ETH to contract", "amount", funds)

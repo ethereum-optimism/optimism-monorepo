@@ -87,7 +87,9 @@ func TestNewSystemFromEnv(t *testing.T) {
 
 func TestContractAddress(t *testing.T) {
 	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
-	chain := NewChain("1", "http://localhost:8545", testWallet)
+	chain := NewChain("1", "http://localhost:8545", map[string]types.Wallet{
+		"l2Faucet": testWallet,
+	})
 
 	tests := []struct {
 		name       string
@@ -310,7 +312,9 @@ func TestWallet(t *testing.T) {
 
 func TestChainUser(t *testing.T) {
 	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
-	chain := NewChain("1", "http://localhost:8545", testWallet)
+	chain := NewChain("1", "http://localhost:8545", map[string]types.Wallet{
+		"l2Faucet": testWallet,
+	})
 
 	ctx := context.Background()
 	user, err := chain.User(ctx)

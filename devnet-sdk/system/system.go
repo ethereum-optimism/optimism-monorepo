@@ -125,10 +125,10 @@ type chain struct {
 	rpcUrl string
 
 	addresses map[string]types.Address
-	user      types.Wallet
+	users     map[string]types.Wallet
 }
 
-func NewChain(chainID string, rpcUrl string, user types.Wallet) chain {
+func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) chain {
 	return chain{
 		id: chainID,
 		addresses: map[string]types.Address{
@@ -137,7 +137,7 @@ func NewChain(chainID string, rpcUrl string, user types.Wallet) chain {
 			"L2ToL2CrossDomainMessenger": constants.L2ToL2CrossDomainMessenger,
 		},
 		rpcUrl: rpcUrl,
-		user:   user,
+		users:  users,
 	}
 }
 
@@ -145,13 +145,11 @@ func chainFromDescriptor(d *descriptors.Chain) Chain {
 	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
 
-	user := NewWallet( // for now, we'll just grab the first BIP39 wallet
-		"ac0974bec39a17e36ba4a6b4d238ff944bacb478cbed5efcae784d7bf4f2ff80",
-		types.Address("f39Fd6e51aad88F6F4ce6aB8827279cffFb92266"),
-		rpcURL,
-	)
-	c := NewChain(d.ID, rpcURL, user)
-	return c
+	users := make(map[string]types.Wallet)
+	for key, w := range d.Wallets {
+		users[key] = NewWallet(w.PrivateKey, types.Address(w.Address), rpcURL)
+	}
+	return NewChain(d.ID, rpcURL, users)
 }
 
 func (c chain) ContractAddress(contractID string) types.Address {
@@ -166,7 +164,7 @@ func (c chain) RPCURL() string {
 }
 
 func (c chain) User(ctx context.Context, constraints ...constraints.Constraint) (types.Wallet, error) {
-	return c.user, nil
+	return c.users["l2Faucet"], nil // TODO: implement constraints
 }
 
 func (c chain) ID() types.ChainID {
@@ -202,8 +200,8 @@ type wallet struct {
 	rpcURL     string
 }
 
-func NewWallet(pk types.Key, addr types.Address, rpcURL string) wallet {
-	return wallet{privateKey: pk, address: addr, rpcURL: rpcURL}
+func NewWallet(pk types.Key, addr types.Address, rpcURL string) *wallet {
+	return &wallet{privateKey: pk, address: addr, rpcURL: rpcURL}
 }
 
 func (w wallet) PrivateKey() types.Key {
