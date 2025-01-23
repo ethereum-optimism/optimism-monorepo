@@ -187,7 +187,7 @@ func createL2Block(t *testing.T, number int) *types.Block {
 	body := &types.Body{
 		Transactions: []*types.Transaction{types.NewTx(tx)},
 	}
-	return types.NewBlock(header, body, nil, trie.NewStackTrie(nil))
+	return types.NewBlock(header, body, nil, trie.NewStackTrie(nil), types.DefaultBlockConfig)
 }
 
 type stubEngineBackend struct {

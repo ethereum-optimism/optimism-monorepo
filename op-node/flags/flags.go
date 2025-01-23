@@ -28,6 +28,7 @@ const (
 	P2PCategory        = "5. PEER-TO-PEER"
 	AltDACategory      = "6. ALT-DA (EXPERIMENTAL)"
 	MiscCategory       = "7. MISC"
+	InteropCategory    = "8. INTEROP (SUPER EXPERIMENTAL)"
 )
 
 func init() {
@@ -74,13 +75,6 @@ var (
 		Category: RollupCategory,
 	}
 	/* Optional Flags */
-	SupervisorAddr = &cli.StringFlag{
-		Name: "supervisor",
-		Usage: "RPC address of interop supervisor service for cross-chain safety verification." +
-			"Applies only to Interop-enabled networks.",
-		Hidden:  true, // hidden for now during early testing.
-		EnvVars: prefixEnvVars("SUPERVISOR"),
-	}
 	BeaconHeader = &cli.StringFlag{
 		Name:     "l1.beacon-header",
 		Usage:    "Optional HTTP header to add to all requests to the L1 Beacon endpoint. Format: 'X-Key: Value'",
@@ -183,6 +177,13 @@ var (
 		Usage:    "Maximum number of RPC requests to bundle, e.g. during L1 blocks receipt fetching. The L1 RPC rate limit counts this as N items, but allows it to burst at once.",
 		EnvVars:  prefixEnvVars("L1_RPC_MAX_BATCH_SIZE"),
 		Value:    20,
+		Category: L1RPCCategory,
+	}
+	L1CacheSize = &cli.UintFlag{
+		Name: "l1.cache-size",
+		Usage: "Cache size for blocks, receipts and transactions. " +
+			"It's optional and a sane default of 3/2 the sequencing window size is used if this field is set to 0.",
+		EnvVars:  prefixEnvVars("L1_CACHE_SIZE"),
 		Category: L1RPCCategory,
 	}
 	L1HTTPPollInterval = &cli.DurationFlag{
@@ -372,6 +373,40 @@ var (
 		Value:    time.Second * 1,
 		Category: SequencerCategory,
 	}
+	/* Interop flags, experimental. */
+	InteropSupervisor = &cli.StringFlag{
+		Name: "interop.supervisor",
+		Usage: "Interop standard-mode: RPC address of interop supervisor to use for cross-chain safety verification." +
+			"Applies only to Interop-enabled networks.",
+		EnvVars:  prefixEnvVars("INTEROP_SUPERVISOR"),
+		Category: InteropCategory,
+	}
+	InteropRPCAddr = &cli.StringFlag{
+		Name: "interop.rpc.addr",
+		Usage: "Interop Websocket-only RPC listening address, to serve supervisor syncing." +
+			"Applies only to Interop-enabled networks. Optional, alternative to follow-mode.",
+		EnvVars:  prefixEnvVars("INTEROP_RPC_ADDR"),
+		Value:    "127.0.0.1",
+		Category: InteropCategory,
+	}
+	InteropRPCPort = &cli.IntFlag{
+		Name: "interop.rpc.port",
+		Usage: "Interop RPC listening port, to serve supervisor syncing." +
+			"Applies only to Interop-enabled networks.",
+		EnvVars:  prefixEnvVars("INTEROP_RPC_PORT"),
+		Value:    9645, // Note: op-service/rpc/cli.go uses 8545 as the default.
+		Category: InteropCategory,
+	}
+	InteropJWTSecret = &cli.StringFlag{
+		Name: "interop.jwt-secret",
+		Usage: "Interop RPC server authentication. Path to JWT secret key. Keys are 32 bytes, hex encoded in a file. " +
+			"A new key will be generated if the file is empty. " +
+			"Applies only to Interop-enabled networks.",
+		EnvVars:     prefixEnvVars("INTEROP_JWT_SECRET"),
+		Value:       "",
+		Destination: new(string),
+		Category:    InteropCategory,
+	}
 )
 
 var requiredFlags = []cli.Flag{
@@ -381,7 +416,6 @@ var requiredFlags = []cli.Flag{
 }
 
 var optionalFlags = []cli.Flag{
-	SupervisorAddr,
 	BeaconAddr,
 	BeaconHeader,
 	BeaconFallbackAddrs,
@@ -396,6 +430,7 @@ var optionalFlags = []cli.Flag{
 	L1RPCMaxBatchSize,
 	L1RPCMaxConcurrency,
 	L1HTTPPollInterval,
+	L1CacheSize,
 	VerifierL1Confs,
 	SequencerEnabledFlag,
 	SequencerStoppedFlag,
@@ -419,6 +454,10 @@ var optionalFlags = []cli.Flag{
 	ConductorRpcTimeoutFlag,
 	SafeDBPath,
 	L2EngineKind,
+	InteropSupervisor,
+	InteropRPCAddr,
+	InteropRPCPort,
+	InteropJWTSecret,
 }
 
 var DeprecatedFlags = []cli.Flag{

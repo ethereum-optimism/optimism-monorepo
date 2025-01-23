@@ -27,7 +27,7 @@ func DetectVersion(path string) (StateVersion, error) {
 	}
 
 	switch ver {
-	case VersionSingleThreaded, VersionMultiThreaded, VersionSingleThreaded2, VersionMultiThreaded64:
+	case VersionSingleThreaded, VersionMultiThreaded, VersionSingleThreaded2, VersionMultiThreaded64, VersionMultiThreaded64_v2, VersionMultiThreaded_v2, VersionMultiThreaded64_v3:
 		return ver, nil
 	default:
 		return 0, fmt.Errorf("%w: %d", ErrUnknownVersion, ver)

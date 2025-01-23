@@ -3,6 +3,8 @@ package state
 import (
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
+
 	"github.com/ethereum/go-ethereum/core/types"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
@@ -40,6 +42,10 @@ type State struct {
 
 	// L1StateDump contains the complete L1 state dump of the deployment.
 	L1StateDump *GzipData[foundry.ForgeAllocs] `json:"l1StateDump"`
+
+	// DeploymentCalldata contains the calldata of each transaction in the deployment. This is only
+	// populated if apply is called with --deployment-target=calldata.
+	DeploymentCalldata []broadcaster.CalldataDump
 }
 
 func (s *State) WriteToFile(path string) error {
@@ -75,28 +81,37 @@ type ImplementationsDeployment struct {
 	L1StandardBridgeImplAddress             common.Address `json:"l1StandardBridgeImplAddress"`
 	OptimismMintableERC20FactoryImplAddress common.Address `json:"optimismMintableERC20FactoryImplAddress"`
 	DisputeGameFactoryImplAddress           common.Address `json:"disputeGameFactoryImplAddress"`
+	AnchorStateRegistryImplAddress          common.Address `json:"anchorStateRegistryImplAddress"`
+}
+
+type AdditionalDisputeGameState struct {
+	GameType      uint32
+	GameAddress   common.Address
+	VMAddress     common.Address
+	OracleAddress common.Address
+	VMType        VMType
 }
 
 type ChainState struct {
 	ID common.Hash `json:"id"`
 
-	ProxyAdminAddress                         common.Address `json:"proxyAdminAddress"`
-	AddressManagerAddress                     common.Address `json:"addressManagerAddress"`
-	L1ERC721BridgeProxyAddress                common.Address `json:"l1ERC721BridgeProxyAddress"`
-	SystemConfigProxyAddress                  common.Address `json:"systemConfigProxyAddress"`
-	OptimismMintableERC20FactoryProxyAddress  common.Address `json:"optimismMintableERC20FactoryProxyAddress"`
-	L1StandardBridgeProxyAddress              common.Address `json:"l1StandardBridgeProxyAddress"`
-	L1CrossDomainMessengerProxyAddress        common.Address `json:"l1CrossDomainMessengerProxyAddress"`
-	OptimismPortalProxyAddress                common.Address `json:"optimismPortalProxyAddress"`
-	DisputeGameFactoryProxyAddress            common.Address `json:"disputeGameFactoryProxyAddress"`
-	AnchorStateRegistryProxyAddress           common.Address `json:"anchorStateRegistryProxyAddress"`
-	AnchorStateRegistryImplAddress            common.Address `json:"anchorStateRegistryImplAddress"`
-	FaultDisputeGameAddress                   common.Address `json:"faultDisputeGameAddress"`
-	PermissionedDisputeGameAddress            common.Address `json:"permissionedDisputeGameAddress"`
-	DelayedWETHPermissionedGameProxyAddress   common.Address `json:"delayedWETHPermissionedGameProxyAddress"`
-	DelayedWETHPermissionlessGameProxyAddress common.Address `json:"delayedWETHPermissionlessGameProxyAddress"`
-	DataAvailabilityChallengeProxyAddress     common.Address `json:"dataAvailabilityChallengeProxyAddress"`
-	DataAvailabilityChallengeImplAddress      common.Address `json:"dataAvailabilityChallengeImplAddress"`
+	ProxyAdminAddress                         common.Address               `json:"proxyAdminAddress"`
+	AddressManagerAddress                     common.Address               `json:"addressManagerAddress"`
+	L1ERC721BridgeProxyAddress                common.Address               `json:"l1ERC721BridgeProxyAddress"`
+	SystemConfigProxyAddress                  common.Address               `json:"systemConfigProxyAddress"`
+	OptimismMintableERC20FactoryProxyAddress  common.Address               `json:"optimismMintableERC20FactoryProxyAddress"`
+	L1StandardBridgeProxyAddress              common.Address               `json:"l1StandardBridgeProxyAddress"`
+	L1CrossDomainMessengerProxyAddress        common.Address               `json:"l1CrossDomainMessengerProxyAddress"`
+	OptimismPortalProxyAddress                common.Address               `json:"optimismPortalProxyAddress"`
+	DisputeGameFactoryProxyAddress            common.Address               `json:"disputeGameFactoryProxyAddress"`
+	AnchorStateRegistryProxyAddress           common.Address               `json:"anchorStateRegistryProxyAddress"`
+	FaultDisputeGameAddress                   common.Address               `json:"faultDisputeGameAddress"`
+	PermissionedDisputeGameAddress            common.Address               `json:"permissionedDisputeGameAddress"`
+	DelayedWETHPermissionedGameProxyAddress   common.Address               `json:"delayedWETHPermissionedGameProxyAddress"`
+	DelayedWETHPermissionlessGameProxyAddress common.Address               `json:"delayedWETHPermissionlessGameProxyAddress"`
+	DataAvailabilityChallengeProxyAddress     common.Address               `json:"dataAvailabilityChallengeProxyAddress"`
+	DataAvailabilityChallengeImplAddress      common.Address               `json:"dataAvailabilityChallengeImplAddress"`
+	AdditionalDisputeGames                    []AdditionalDisputeGameState `json:"additionalDisputeGames"`
 
 	Allocs *GzipData[foundry.ForgeAllocs] `json:"allocs"`
 

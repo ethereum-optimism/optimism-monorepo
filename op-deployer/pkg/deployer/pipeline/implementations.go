@@ -4,21 +4,12 @@ import (
 	"fmt"
 	"math/big"
 
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 )
-
-type SuperchainProofParams struct {
-	WithdrawalDelaySeconds          uint64 `json:"withdrawalDelaySeconds" toml:"withdrawalDelaySeconds"`
-	MinProposalSizeBytes            uint64 `json:"minProposalSizeBytes" toml:"minProposalSizeBytes"`
-	ChallengePeriodSeconds          uint64 `json:"challengePeriodSeconds" toml:"challengePeriodSeconds"`
-	ProofMaturityDelaySeconds       uint64 `json:"proofMaturityDelaySeconds" toml:"proofMaturityDelaySeconds"`
-	DisputeGameFinalityDelaySeconds uint64 `json:"disputeGameFinalityDelaySeconds" toml:"disputeGameFinalityDelaySeconds"`
-	MIPSVersion                     uint64 `json:"mipsVersion" toml:"mipsVersion"`
-}
 
 func DeployImplementations(env *Env, intent *state.Intent, st *state.State) error {
 	lgr := env.Logger.New("stage", "deploy-implementations")
@@ -30,23 +21,16 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 
 	lgr.Info("deploying implementations")
 
-	var standardVersionsTOML string
 	var contractsRelease string
 	var err error
-	if intent.L1ContractsLocator.IsTag() && intent.DeploymentStrategy == state.DeploymentStrategyLive {
-		standardVersionsTOML, err = standard.L1VersionsDataFor(intent.L1ChainID)
-		if err == nil {
-			contractsRelease = intent.L1ContractsLocator.Tag
-		} else {
-			contractsRelease = "dev"
-		}
-
+	if intent.L1ContractsLocator.IsTag() {
+		contractsRelease = intent.L1ContractsLocator.Tag
 	} else {
 		contractsRelease = "dev"
 	}
 
 	proofParams, err := jsonutil.MergeJSON(
-		SuperchainProofParams{
+		state.SuperchainProofParams{
 			WithdrawalDelaySeconds:          standard.WithdrawalDelaySeconds,
 			MinProposalSizeBytes:            standard.MinProposalSizeBytes,
 			ChallengePeriodSeconds:          standard.ChallengePeriodSeconds,
@@ -63,7 +47,6 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 	dio, err := opcm.DeployImplementations(
 		env.L1ScriptHost,
 		opcm.DeployImplementationsInput{
-			Salt:                            st.Create2Salt,
 			WithdrawalDelaySeconds:          new(big.Int).SetUint64(proofParams.WithdrawalDelaySeconds),
 			MinProposalSizeBytes:            new(big.Int).SetUint64(proofParams.MinProposalSizeBytes),
 			ChallengePeriodSeconds:          new(big.Int).SetUint64(proofParams.ChallengePeriodSeconds),
@@ -73,7 +56,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			L1ContractsRelease:              contractsRelease,
 			SuperchainConfigProxy:           st.SuperchainDeployment.SuperchainConfigProxyAddress,
 			ProtocolVersionsProxy:           st.SuperchainDeployment.ProtocolVersionsProxyAddress,
-			StandardVersionsToml:            standardVersionsTOML,
+			UpgradeController:               intent.SuperchainRoles.ProxyAdminOwner,
 			UseInterop:                      intent.UseInterop,
 		},
 	)
@@ -93,6 +76,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 		L1StandardBridgeImplAddress:             dio.L1StandardBridgeImpl,
 		OptimismMintableERC20FactoryImplAddress: dio.OptimismMintableERC20FactoryImpl,
 		DisputeGameFactoryImplAddress:           dio.DisputeGameFactoryImpl,
+		AnchorStateRegistryImplAddress:          dio.AnchorStateRegistryImpl,
 	}
 
 	return nil

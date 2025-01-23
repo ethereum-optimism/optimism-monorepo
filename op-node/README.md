@@ -17,7 +17,7 @@ It functions as a Consensus Layer client of an OP Stack chain.
 This builds, relays and verifies the canonical chain of blocks.
 The blocks are processed by an execution layer client, like [op-geth].
 
-[rollup-node spec]: https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/rollup-node.m
+[rollup-node spec]: https://github.com/ethereum-optimism/specs/blob/main/specs/protocol/rollup-node.md
 [op-geth]: https://github.com/ethereum-optimism/op-geth
 
 ## Quickstart
@@ -54,7 +54,7 @@ make op-node
   --rpc.port=7000 \
   --syncmode=execution-layer
 
-# If running inside docker, ake sure to mount the below persistent data as (host) volume,
+# If running inside docker, make sure to mount the below persistent data as (host) volume,
 # it may be lost on restart otherwise:
 # - P2P private key: auto-generated when missing, used to maintain a stable peer identity.
 # - Peerstore DB: remember peer records to connect with, used to not wait for peer discovery.

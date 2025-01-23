@@ -1,4 +1,4 @@
-import '../just/go.just'
+import '../justfiles/go.just'
 
 # Build ldflags string
 _LDFLAGSSTRING := "'" + trim(

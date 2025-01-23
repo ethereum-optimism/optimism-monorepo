@@ -25,6 +25,9 @@ COPY ./mise.toml ./mise.toml
 ENV PATH="/root/.local/share/mise/shims:$PATH"
 ENV PATH="/root/.local/bin:${PATH}"
 
+# Set up cargo environment
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 # Install dependencies
 # We do this in one mega RUN command to avoid blowing up the size of the image
 ENV DEBIAN_FRONTEND=noninteractive
@@ -81,7 +84,7 @@ ENTRYPOINT ["/bin/bash", "-c"]
 #                              CI BUILDER (RUST)                              #
 ###############################################################################
 
-FROM base-builder as rust-builder
+FROM base-builder AS rust-builder
 
 # Install clang & lld
 RUN apt-get update && apt-get install -y clang lld

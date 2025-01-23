@@ -1,4 +1,4 @@
-import '../just/go.just'
+import '../justfiles/go.just'
 
 # Run tests
 test: (go_test "./...")

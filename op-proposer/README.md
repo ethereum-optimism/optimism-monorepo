@@ -36,7 +36,7 @@ go run ./op-proposer/cmd \
       --game-type=changeme
 ```
 
-See [Proposer Configuration docs] for customization of the transaction-managent,
+See [Proposer Configuration docs] for customization of the transaction-management,
 and usage of a remote signer to isolate the proposer secret key.
 
 On test networks, `--allow-non-finalized` may be used to make proposals sooner, to reduce test time.

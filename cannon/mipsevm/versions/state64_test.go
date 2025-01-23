@@ -15,16 +15,16 @@ import (
 )
 
 func TestNewFromState(t *testing.T) {
-	t.Run("multithreaded64", func(t *testing.T) {
+	t.Run("multithreaded64-latestVersion", func(t *testing.T) {
 		actual, err := NewFromState(multithreaded.CreateEmptyState())
 		require.NoError(t, err)
 		require.IsType(t, &multithreaded.State{}, actual.FPVMState)
-		require.Equal(t, VersionMultiThreaded64, actual.Version)
+		require.Equal(t, VersionMultiThreaded64_v3, actual.Version)
 	})
 }
 
 func TestLoadStateFromFile(t *testing.T) {
-	t.Run("Multithreaded64FromBinary", func(t *testing.T) {
+	t.Run("Multithreaded64_latestVersion_FromBinary", func(t *testing.T) {
 		expected, err := NewFromState(multithreaded.CreateEmptyState())
 		require.NoError(t, err)
 
@@ -40,7 +40,7 @@ func TestVersionsOtherThanZeroDoNotSupportJSON(t *testing.T) {
 		version     StateVersion
 		createState func() mipsevm.FPVMState
 	}{
-		{VersionMultiThreaded64, func() mipsevm.FPVMState { return multithreaded.CreateEmptyState() }},
+		{VersionMultiThreaded64_v3, func() mipsevm.FPVMState { return multithreaded.CreateEmptyState() }},
 	}
 	for _, test := range tests {
 		test := test

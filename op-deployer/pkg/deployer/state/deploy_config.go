@@ -4,6 +4,10 @@ import (
 	"fmt"
 	"math/big"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
+	op_service "github.com/ethereum-optimism/optimism/op-service"
+
 	"github.com/ethereum-optimism/optimism/op-service/jsonutil"
 
 	"github.com/ethereum/go-ethereum/rpc"
@@ -23,6 +27,11 @@ var (
 )
 
 func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State, chainState *ChainState) (genesis.DeployConfig, error) {
+	upgradeSchedule := standard.DefaultHardforkScheduleForTag(intent.L1ContractsLocator.Tag)
+	if intent.UseInterop {
+		upgradeSchedule.UseInterop = true
+	}
+
 	cfg := genesis.DeployConfig{
 		L1DependenciesConfig: genesis.L1DependenciesConfig{
 			L1StandardBridgeProxy:       chainState.L1StandardBridgeProxyAddress,
@@ -33,6 +42,9 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 			ProtocolVersionsProxy:       state.SuperchainDeployment.ProtocolVersionsProxyAddress,
 		},
 		L2InitializationConfig: genesis.L2InitializationConfig{
+			DevDeployConfig: genesis.DevDeployConfig{
+				FundDevAccounts: intent.FundDevAccounts,
+			},
 			L2GenesisBlockDeployConfig: genesis.L2GenesisBlockDeployConfig{
 				L2GenesisBlockGasLimit:      60_000_000,
 				L2GenesisBlockBaseFeePerGas: &l2GenesisBlockBaseFeePerGas,
@@ -49,7 +61,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 				SequencerFeeVaultRecipient:               chainIntent.SequencerFeeVaultRecipient,
 			},
 			GovernanceDeployConfig: genesis.GovernanceDeployConfig{
-				EnableGovernance:      true,
+				EnableGovernance:      false,
 				GovernanceTokenSymbol: "OP",
 				GovernanceTokenName:   "Optimism",
 				GovernanceTokenOwner:  common.HexToAddress("0xDeaDDEaDDeAdDeAdDEAdDEaddeAddEAdDEAdDEad"),
@@ -68,15 +80,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 			// Any upgrades you enable here will be enabled for all new deployments.
 			// In-development hardforks should never be activated here. Instead, they
 			// should be specified as overrides.
-			UpgradeScheduleDeployConfig: genesis.UpgradeScheduleDeployConfig{
-				L2GenesisRegolithTimeOffset: u64UtilPtr(0),
-				L2GenesisCanyonTimeOffset:   u64UtilPtr(0),
-				L2GenesisDeltaTimeOffset:    u64UtilPtr(0),
-				L2GenesisEcotoneTimeOffset:  u64UtilPtr(0),
-				L2GenesisFjordTimeOffset:    u64UtilPtr(0),
-				L2GenesisGraniteTimeOffset:  u64UtilPtr(0),
-				UseInterop:                  intent.UseInterop,
-			},
+			UpgradeScheduleDeployConfig: *upgradeSchedule,
 			L2CoreDeployConfig: genesis.L2CoreDeployConfig{
 				L1ChainID:                 intent.L1ChainID,
 				L2ChainID:                 chainState.ID.Big().Uint64(),
@@ -108,7 +112,7 @@ func CombineDeployConfig(intent *Intent, chainIntent *ChainIntent, state *State,
 	}
 
 	if intent.UseInterop {
-		cfg.L2InitializationConfig.UpgradeScheduleDeployConfig.L2GenesisInteropTimeOffset = u64UtilPtr(0)
+		cfg.L2InitializationConfig.UpgradeScheduleDeployConfig.L2GenesisInteropTimeOffset = op_service.U64UtilPtr(0)
 	}
 
 	if chainState.StartBlock == nil {
@@ -175,11 +179,6 @@ func mustHexBigFromHex(hex string) *hexutil.Big {
 	num := hexutil.MustDecodeBig(hex)
 	hexBig := hexutil.Big(*num)
 	return &hexBig
-}
-
-func u64UtilPtr(in uint64) *hexutil.Uint64 {
-	util := hexutil.Uint64(in)
-	return &util
 }
 
 func calculateBatchInboxAddr(chainID common.Hash) common.Address {

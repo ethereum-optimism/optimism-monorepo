@@ -11,13 +11,13 @@ type DeployOPCMInput struct {
 	SuperchainConfig   common.Address
 	ProtocolVersions   common.Address
 	L1ContractsRelease string
+	UpgradeController  common.Address
 
 	AddressManagerBlueprint           common.Address
 	ProxyBlueprint                    common.Address
 	ProxyAdminBlueprint               common.Address
 	L1ChugSplashProxyBlueprint        common.Address
 	ResolvedDelegateProxyBlueprint    common.Address
-	AnchorStateRegistryBlueprint      common.Address
 	PermissionedDisputeGame1Blueprint common.Address
 	PermissionedDisputeGame2Blueprint common.Address
 
@@ -28,6 +28,7 @@ type DeployOPCMInput struct {
 	L1CrossDomainMessengerImpl       common.Address
 	L1StandardBridgeImpl             common.Address
 	DisputeGameFactoryImpl           common.Address
+	AnchorStateRegistryImpl          common.Address
 	DelayedWETHImpl                  common.Address
 	MipsImpl                         common.Address
 }
@@ -40,7 +41,7 @@ func DeployOPCM(
 	host *script.Host,
 	input DeployOPCMInput,
 ) (DeployOPCMOutput, error) {
-	out, err := RunBasicScript[DeployOPCMInput, DeployOPCMOutput](host, input, "DeployOPCM.s.sol", "DeployOPCM")
+	out, err := RunScriptSingle[DeployOPCMInput, DeployOPCMOutput](host, input, "DeployOPCM.s.sol", "DeployOPCM")
 	if err != nil {
 		return DeployOPCMOutput{}, fmt.Errorf("failed to deploy OPCM: %w", err)
 	}

@@ -14,6 +14,8 @@ import (
 )
 
 func TestDeployDelayedWETH(t *testing.T) {
+	t.Parallel()
+
 	_, artifacts := testutil.LocalArtifacts(t)
 
 	testCases := []struct {

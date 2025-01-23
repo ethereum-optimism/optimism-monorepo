@@ -31,7 +31,6 @@ type ExpectedMTState struct {
 	expectedMemory      *memory.Memory
 	// Threading-related expectations
 	StepsSinceLastContextSwitch uint64
-	Wakeup                      arch.Word
 	TraverseRight               bool
 	NextThreadId                arch.Word
 	ThreadCount                 int
@@ -44,18 +43,15 @@ type ExpectedMTState struct {
 }
 
 type ExpectedThreadState struct {
-	ThreadId         arch.Word
-	ExitCode         uint8
-	Exited           bool
-	FutexAddr        arch.Word
-	FutexVal         arch.Word
-	FutexTimeoutStep uint64
-	PC               arch.Word
-	NextPC           arch.Word
-	HI               arch.Word
-	LO               arch.Word
-	Registers        [32]arch.Word
-	Dropped          bool
+	ThreadId  arch.Word
+	ExitCode  uint8
+	Exited    bool
+	PC        arch.Word
+	NextPC    arch.Word
+	HI        arch.Word
+	LO        arch.Word
+	Registers [32]arch.Word
+	Dropped   bool
 }
 
 func NewExpectedMTState(fromState *multithreaded.State) *ExpectedMTState {
@@ -81,7 +77,6 @@ func NewExpectedMTState(fromState *multithreaded.State) *ExpectedMTState {
 		MemoryRoot:          fromState.GetMemory().MerkleRoot(),
 		// Thread-related global fields
 		StepsSinceLastContextSwitch: fromState.StepsSinceLastContextSwitch,
-		Wakeup:                      fromState.Wakeup,
 		TraverseRight:               fromState.TraverseRight,
 		NextThreadId:                fromState.NextThreadId,
 		ThreadCount:                 fromState.ThreadCount(),
@@ -98,18 +93,15 @@ func NewExpectedMTState(fromState *multithreaded.State) *ExpectedMTState {
 
 func newExpectedThreadState(fromThread *multithreaded.ThreadState) *ExpectedThreadState {
 	return &ExpectedThreadState{
-		ThreadId:         fromThread.ThreadId,
-		ExitCode:         fromThread.ExitCode,
-		Exited:           fromThread.Exited,
-		FutexAddr:        fromThread.FutexAddr,
-		FutexVal:         fromThread.FutexVal,
-		FutexTimeoutStep: fromThread.FutexTimeoutStep,
-		PC:               fromThread.Cpu.PC,
-		NextPC:           fromThread.Cpu.NextPC,
-		HI:               fromThread.Cpu.HI,
-		LO:               fromThread.Cpu.LO,
-		Registers:        fromThread.Registers,
-		Dropped:          false,
+		ThreadId:  fromThread.ThreadId,
+		ExitCode:  fromThread.ExitCode,
+		Exited:    fromThread.Exited,
+		PC:        fromThread.Cpu.PC,
+		NextPC:    fromThread.Cpu.NextPC,
+		HI:        fromThread.Cpu.HI,
+		LO:        fromThread.Cpu.LO,
+		Registers: fromThread.Registers,
+		Dropped:   false,
 	}
 }
 
@@ -193,7 +185,6 @@ func (e *ExpectedMTState) Validate(t require.TestingT, actualState *multithreade
 	require.Equalf(t, e.MemoryRoot, common.Hash(actualState.GetMemory().MerkleRoot()), "Expect memory root = %v", e.MemoryRoot)
 	// Thread-related global fields
 	require.Equalf(t, e.StepsSinceLastContextSwitch, actualState.StepsSinceLastContextSwitch, "Expect StepsSinceLastContextSwitch = %v", e.StepsSinceLastContextSwitch)
-	require.Equalf(t, e.Wakeup, actualState.Wakeup, "Expect Wakeup = %v", e.Wakeup)
 	require.Equalf(t, e.TraverseRight, actualState.TraverseRight, "Expect TraverseRight = %v", e.TraverseRight)
 	require.Equalf(t, e.NextThreadId, actualState.NextThreadId, "Expect NextThreadId = %v", e.NextThreadId)
 	require.Equalf(t, e.ThreadCount, actualState.ThreadCount(), "Expect thread count = %v", e.ThreadCount)
@@ -229,7 +220,4 @@ func (e *ExpectedMTState) validateThread(t require.TestingT, et *ExpectedThreadS
 	require.Equalf(t, et.Registers, actual.Registers, "Expect registers to match (%v)", threadInfo)
 	require.Equalf(t, et.ExitCode, actual.ExitCode, "Expect exitCode = %v (%v)", et.ExitCode, threadInfo)
 	require.Equalf(t, et.Exited, actual.Exited, "Expect exited = %v (%v)", et.Exited, threadInfo)
-	require.Equalf(t, et.FutexAddr, actual.FutexAddr, "Expect futexAddr = %v (%v)", et.FutexAddr, threadInfo)
-	require.Equalf(t, et.FutexVal, actual.FutexVal, "Expect futexVal = %v (%v)", et.FutexVal, threadInfo)
-	require.Equalf(t, et.FutexTimeoutStep, actual.FutexTimeoutStep, "Expect futexTimeoutStep = %v (%v)", et.FutexTimeoutStep, threadInfo)
 }

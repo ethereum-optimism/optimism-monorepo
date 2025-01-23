@@ -9,6 +9,9 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/cannon"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/outputs"
@@ -25,8 +28,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching/rpcblock"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/log"
 )
 
 type OutputCannonGameHelper struct {
@@ -313,10 +314,10 @@ func (g *OutputCannonGameHelper) createCannonTraceProvider(ctx context.Context, 
 		g.T.Logf("Using trace between blocks %v and %v\n", agreed.L2BlockNumber, disputed.L2BlockNumber)
 		localInputs, err := utils.FetchLocalInputsFromProposals(ctx, l1Head.Hash, l2Client, agreed, disputed)
 		g.Require.NoError(err, "Failed to fetch local inputs")
-		localContext = outputs.CreateLocalContext(pre, post)
+		localContext = split.CreateLocalContext(pre, post)
 		dir := filepath.Join(cfg.Datadir, "cannon-trace")
 		subdir := filepath.Join(dir, localContext.Hex())
-		return cannon.NewTraceProviderForTest(logger, metrics.NoopMetrics.VmMetrics(types.TraceTypeCannon.String()), cfg, localInputs, subdir, g.MaxDepth(ctx)-splitDepth-1), nil
+		return cannon.NewTraceProviderForTest(logger, metrics.NoopMetrics.ToTypedVmMetrics(types.TraceTypeCannon.String()), cfg, localInputs, subdir, g.MaxDepth(ctx)-splitDepth-1), nil
 	})
 
 	claims, err := g.Game.GetAllClaims(ctx, rpcblock.Latest)

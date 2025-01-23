@@ -43,6 +43,14 @@ func TestLocator_Marshaling(t *testing.T) {
 			err: false,
 		},
 		{
+			name: "valid HTTP URL",
+			in:   "http://example.com",
+			out: &Locator{
+				URL: parseUrl(t, "http://example.com"),
+			},
+			err: false,
+		},
+		{
 			name: "valid file URL",
 			in:   "file:///tmp/artifacts",
 			out: &Locator{
@@ -64,7 +72,7 @@ func TestLocator_Marshaling(t *testing.T) {
 		},
 		{
 			name: "unsupported scheme",
-			in:   "http://example.com",
+			in:   "ftp://example.com",
 			out:  nil,
 			err:  true,
 		},
@@ -91,4 +99,60 @@ func parseUrl(t *testing.T, u string) *url.URL {
 	parsed, err := url.Parse(u)
 	require.NoError(t, err)
 	return parsed
+}
+
+func TestLocator_Equal(t *testing.T) {
+	tests := []struct {
+		a     *Locator
+		b     *Locator
+		equal bool
+	}{
+		{
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			MustNewLocatorFromTag("op-contracts/v1.8.0-rc.4"),
+			false,
+		},
+		{
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			true,
+		},
+		{
+			MustNewLocatorFromURL("http://www.example.com"),
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			false,
+		},
+		{
+			MustNewLocatorFromURL("https://www.example.com"),
+			MustNewLocatorFromURL("http://www.example.com"),
+			false,
+		},
+		{
+			MustNewLocatorFromURL("http://www.example.com"),
+			MustNewLocatorFromURL("http://www.example.com"),
+			true,
+		},
+		{
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			MustNewFileLocator("/foo/bar"),
+			false,
+		},
+		{
+			MustNewFileLocator("/foo/bar"),
+			MustNewFileLocator("/foo/bar"),
+			true,
+		},
+		{
+			MustNewFileLocator("/foo/bar"),
+			MustNewFileLocator("/foo/baz"),
+			false,
+		},
+	}
+	for _, test := range tests {
+		if test.equal {
+			require.True(t, test.a.Equal(test.b), "%s != %s", test.a, test.b)
+		} else {
+			require.False(t, test.a.Equal(test.b), "%s == %s", test.a, test.b)
+		}
+	}
 }

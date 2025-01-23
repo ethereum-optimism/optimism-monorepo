@@ -84,18 +84,12 @@ rules:
     pattern-regex: function\s+\w+\s*\(\s*([^)]*?\b\w+\s+(?!_)(?!memory\b)(?!calldata\b)(?!storage\b)(?!payable\b)\w+\s*(?=,|\)))
     paths:
       exclude:
-        - packages/contracts-bedrock/interfaces/universal/IOptimismMintableERC721.sol
-        - packages/contracts-bedrock/interfaces/universal/IWETH98.sol
-        - packages/contracts-bedrock/interfaces/dispute/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
         - packages/contracts-bedrock/test
+        - packages/contracts-bedrock/interfaces
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
-        - packages/contracts-bedrock/scripts/interfaces/IGnosisSafe.sol
-        - packages/contracts-bedrock/interfaces/universal/IWETH.sol
         - packages/contracts-bedrock/src/universal/WETH98.sol
-        - packages/contracts-bedrock/interfaces/L2/ISuperchainWETH.sol
         - packages/contracts-bedrock/src/L2/SuperchainWETH.sol
-        - packages/contracts-bedrock/interfaces/governance/IGovernanceToken.sol
         - packages/contracts-bedrock/src/governance/GovernanceToken.sol
 
   - id: sol-style-return-arg-fmt
@@ -107,11 +101,10 @@ rules:
       exclude:
         - packages/contracts-bedrock/interfaces/dispute/IDelayedWETH.sol
         - op-chain-ops/script/testdata/scripts/ScriptExample.s.sol
+        - packages/contracts-bedrock/interfaces
         - packages/contracts-bedrock/test/safe-tools
         - packages/contracts-bedrock/scripts/libraries/Solarray.sol
         - packages/contracts-bedrock/scripts/interfaces/IGnosisSafe.sol
-        - packages/contracts-bedrock/interfaces/dispute/IPermissionedDisputeGame.sol
-        - packages/contracts-bedrock/interfaces/dispute/IFaultDisputeGame.sol
 
   - id: sol-style-doc-comment
     languages: [solidity]
@@ -185,7 +178,7 @@ rules:
       - pattern-not: require($ERR, $MSG);
     paths:
       exclude:
-        - packages/contracts-bedrock/
+        - packages/contracts-bedrock/src/universal/WETH98.sol
 
   - id: sol-style-no-bare-imports
     languages: [solidity]
@@ -195,3 +188,46 @@ rules:
     paths:
       exclude:
         - packages/contracts-bedrock/test
+
+  - id: sol-safety-use-disable-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts (excluding predeploys) must disable initializers in constructor
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - pattern-not-regex: "///\\s*@custom:predeploy.*(?P<REST>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          constructor(...) {
+            ...
+          }
+      - pattern-not: |
+          constructor(...) {
+            ...
+            _disableInitializers();
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol
+        - packages/contracts-bedrock/src/L1/OptimismPortalInterop.sol
+
+  - id: sol-safety-proper-initializer
+    languages: [solidity]
+    severity: ERROR
+    message: Proxied contracts must have an initialize function with the initializer modifier and external visibility
+    patterns:
+      - pattern-regex: "///\\s*@custom:proxied\\s+true(?P<CONTRACT>[\\s\\S]*)"
+      - focus-metavariable: $CONTRACT
+      - pattern: |
+          function initialize(...) {
+            ...
+          }
+      - pattern-not: |
+          function initialize(...) external initializer {
+            ...
+          }
+    paths:
+      exclude:
+        - packages/contracts-bedrock/src/L1/SystemConfig.sol
+        - packages/contracts-bedrock/src/L1/SystemConfigInterop.sol

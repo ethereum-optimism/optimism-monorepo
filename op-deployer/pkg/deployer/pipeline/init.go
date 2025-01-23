@@ -26,11 +26,11 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 	lgr := env.Logger.New("stage", "init", "strategy", "live")
 	lgr.Info("initializing pipeline")
 
-	if err := initCommonChecks(st); err != nil {
+	if err := initCommonChecks(intent, st); err != nil {
 		return err
 	}
 
-	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID)
+	opcmAddress, opcmAddrErr := standard.ManagerImplementationAddrFor(intent.L1ChainID, intent.L1ContractsLocator.Tag)
 	hasPredeployedOPCM := opcmAddrErr == nil
 	isTag := intent.L1ContractsLocator.IsTag()
 
@@ -40,7 +40,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 			return fmt.Errorf("error getting superchain config: %w", err)
 		}
 
-		proxyAdmin, err := standard.ManagerOwnerAddrFor(intent.L1ChainID)
+		proxyAdmin, err := standard.SuperchainProxyAdminAddrFor(intent.L1ChainID)
 		if err != nil {
 			return fmt.Errorf("error getting superchain proxy admin address: %w", err)
 		}
@@ -100,7 +100,7 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 	return nil
 }
 
-func initCommonChecks(st *state.State) error {
+func initCommonChecks(intent *state.Intent, st *state.State) error {
 	// Ensure the state version is supported.
 	if !IsSupportedStateVersion(st.Version) {
 		return fmt.Errorf("unsupported state version: %d", st.Version)
@@ -112,6 +112,7 @@ func initCommonChecks(st *state.State) error {
 			return fmt.Errorf("failed to generate CREATE2 salt: %w", err)
 		}
 	}
+
 	return nil
 }
 
@@ -119,7 +120,7 @@ func InitGenesisStrategy(env *Env, intent *state.Intent, st *state.State) error 
 	lgr := env.Logger.New("stage", "init", "strategy", "genesis")
 	lgr.Info("initializing pipeline")
 
-	if err := initCommonChecks(st); err != nil {
+	if err := initCommonChecks(intent, st); err != nil {
 		return err
 	}
 

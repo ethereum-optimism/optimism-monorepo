@@ -11,7 +11,6 @@ import { GuardManager } from "safe-contracts/base/GuardManager.sol";
 import { Enum as SafeOps } from "safe-contracts/common/Enum.sol";
 
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
-import { Deployer } from "scripts/deploy/Deployer.sol";
 
 import { LivenessGuard } from "src/safe/LivenessGuard.sol";
 import { LivenessModule } from "src/safe/LivenessModule.sol";
@@ -86,12 +85,12 @@ contract DeployOwnership is Deploy {
     /// @notice Returns a GuardianConfig similar to that of the Guardian Safe on Mainnet.
     function _getExampleGuardianConfig() internal view returns (GuardianConfig memory guardianConfig_) {
         address[] memory exampleGuardianOwners = new address[](1);
-        exampleGuardianOwners[0] = mustGetAddress("SecurityCouncilSafe");
+        exampleGuardianOwners[0] = artifacts.mustGetAddress("SecurityCouncilSafe");
         guardianConfig_ = GuardianConfig({
             safeConfig: SafeConfig({ threshold: 1, owners: exampleGuardianOwners }),
             deputyGuardianModuleConfig: DeputyGuardianModuleConfig({
-                deputyGuardian: mustGetAddress("FoundationOperationsSafe"),
-                superchainConfig: ISuperchainConfig(mustGetAddress("SuperchainConfig"))
+                deputyGuardian: artifacts.mustGetAddress("FoundationOperationsSafe"),
+                superchainConfig: ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigImpl"))
             })
         });
     }
@@ -109,7 +108,7 @@ contract DeployOwnership is Deploy {
                 livenessInterval: 14 weeks,
                 thresholdPercentage: 75,
                 minOwners: 8,
-                fallbackOwner: mustGetAddress("FoundationUpgradeSafe")
+                fallbackOwner: artifacts.mustGetAddress("FoundationUpgradeSafe")
             })
         });
     }
@@ -145,7 +144,7 @@ contract DeployOwnership is Deploy {
     /// @param _name The name of the Safe to deploy.
     /// @param _owners The owners of the Safe.
     /// @param _threshold The threshold of the Safe.
-    /// @param _keepDeployer Wether or not the deployer address will be added as an owner of the Safe.
+    /// @param _keepDeployer Whether or not the deployer address will be added as an owner of the Safe.
     function deploySafe(
         string memory _name,
         address[] memory _owners,
@@ -175,14 +174,14 @@ contract DeployOwnership is Deploy {
         );
         addr_ = address(safeProxyFactory.createProxyWithNonce(address(safeSingleton), initData, uint256(salt)));
 
-        save(_name, addr_);
+        artifacts.save(_name, addr_);
         console.log("New safe: %s deployed at %s\n    Note that this safe is owned by the deployer key", _name, addr_);
     }
 
     /// @notice If the keepDeployer option was used with deploySafe(), this function can be used to remove the deployer.
     ///         Note this function does not have the broadcast modifier.
     function removeDeployerFromSafe(string memory _name, uint256 _newThreshold) public {
-        Safe safe = Safe(mustGetAddress(_name));
+        Safe safe = Safe(artifacts.mustGetAddress(_name));
 
         // The sentinel address is used to mark the start and end of the linked list of owners in the Safe.
         address sentinelOwners = address(0x1);
@@ -199,10 +198,10 @@ contract DeployOwnership is Deploy {
 
     /// @notice Gets the address of the SafeProxyFactory and Safe singleton for use in deploying a new GnosisSafe.
     function _getSafeFactory() internal returns (SafeProxyFactory safeProxyFactory_, Safe safeSingleton_) {
-        if (getAddress("SafeProxyFactory") != address(0)) {
+        if (artifacts.getAddress("SafeProxyFactory") != address(0)) {
             // The SafeProxyFactory is already saved, we can just use it.
-            safeProxyFactory_ = SafeProxyFactory(getAddress("SafeProxyFactory"));
-            safeSingleton_ = Safe(getAddress("SafeSingleton"));
+            safeProxyFactory_ = SafeProxyFactory(artifacts.getAddress("SafeProxyFactory"));
+            safeSingleton_ = Safe(artifacts.getAddress("SafeSingleton"));
             return (safeProxyFactory_, safeSingleton_);
         }
 
@@ -217,8 +216,8 @@ contract DeployOwnership is Deploy {
 
         safeSingleton.code.length == 0 ? safeSingleton_ = new Safe() : safeSingleton_ = Safe(payable(safeSingleton));
 
-        save("SafeProxyFactory", address(safeProxyFactory_));
-        save("SafeSingleton", address(safeSingleton_));
+        artifacts.save("SafeProxyFactory", address(safeProxyFactory_));
+        artifacts.save("SafeSingleton", address(safeSingleton_));
     }
 
     /// @notice Deploys a Safe with a configuration similar to that of the Foundation Safe on Mainnet.
@@ -246,18 +245,18 @@ contract DeployOwnership is Deploy {
     /// @notice Deploy a LivenessGuard for use on the Security Council Safe.
     ///         Note this function does not have the broadcast modifier.
     function deployLivenessGuard() public returns (address addr_) {
-        Safe councilSafe = Safe(payable(mustGetAddress("SecurityCouncilSafe")));
+        Safe councilSafe = Safe(payable(artifacts.mustGetAddress("SecurityCouncilSafe")));
         addr_ = address(new LivenessGuard(councilSafe));
 
-        save("LivenessGuard", address(addr_));
+        artifacts.save("LivenessGuard", address(addr_));
         console.log("New LivenessGuard deployed at %s", address(addr_));
     }
 
     /// @notice Deploy a LivenessModule for use on the Security Council Safe
     ///         Note this function does not have the broadcast modifier.
     function deployLivenessModule() public returns (address addr_) {
-        Safe councilSafe = Safe(payable(mustGetAddress("SecurityCouncilSafe")));
-        address guard = mustGetAddress("LivenessGuard");
+        Safe councilSafe = Safe(payable(artifacts.mustGetAddress("SecurityCouncilSafe")));
+        address guard = artifacts.mustGetAddress("LivenessGuard");
         LivenessModuleConfig memory livenessModuleConfig = _getExampleCouncilConfig().livenessModuleConfig;
 
         addr_ = address(
@@ -271,14 +270,14 @@ contract DeployOwnership is Deploy {
             })
         );
 
-        save("LivenessModule", address(addr_));
+        artifacts.save("LivenessModule", address(addr_));
         console.log("New LivenessModule deployed at %s", address(addr_));
     }
 
     /// @notice Deploy a DeputyGuardianModule for use on the Security Council Safe.
     ///         Note this function does not have the broadcast modifier.
     function deployDeputyGuardianModule() public returns (address addr_) {
-        Safe guardianSafe = Safe(payable(mustGetAddress("GuardianSafe")));
+        Safe guardianSafe = Safe(payable(artifacts.mustGetAddress("GuardianSafe")));
         DeputyGuardianModuleConfig memory deputyGuardianModuleConfig =
             _getExampleGuardianConfig().deputyGuardianModuleConfig;
         addr_ = address(
@@ -289,7 +288,7 @@ contract DeployOwnership is Deploy {
             })
         );
 
-        save("DeputyGuardianModule", addr_);
+        artifacts.save("DeputyGuardianModule", addr_);
         console.log("New DeputyGuardianModule deployed at %s", addr_);
     }
 
@@ -311,7 +310,7 @@ contract DeployOwnership is Deploy {
     function deployGuardianSafe() public broadcast returns (address addr_) {
         // Config is hardcoded here as the Guardian Safe's configuration is inflexible.
         address[] memory owners = new address[](1);
-        owners[0] = mustGetAddress("SecurityCouncilSafe");
+        owners[0] = artifacts.mustGetAddress("SecurityCouncilSafe");
         addr_ = deploySafe({ _name: "GuardianSafe", _owners: owners, _threshold: 1, _keepDeployer: true });
 
         console.log("Deployed and configured the Guardian Safe!");
@@ -321,21 +320,22 @@ contract DeployOwnership is Deploy {
     function deploySuperchainConfig() public broadcast {
         ISuperchainConfig superchainConfig = ISuperchainConfig(
             DeployUtils.create2AndSave({
-                _save: this,
+                _save: artifacts,
                 _salt: _implSalt(),
                 _name: "SuperchainConfig",
+                _nick: "SuperchainConfigImpl",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ()))
             })
         );
 
-        require(superchainConfig.guardian() == address(0));
+        require(superchainConfig.guardian() == address(0), "SuperchainConfig: guardian must be address(0)");
         bytes32 initialized = vm.load(address(superchainConfig), bytes32(0));
-        require(initialized != 0);
+        require(initialized != 0, "SuperchainConfig: must be initialized");
     }
 
     /// @notice Configure the Guardian Safe with the DeputyGuardianModule.
     function configureGuardianSafe() public broadcast returns (address addr_) {
-        addr_ = mustGetAddress("GuardianSafe");
+        addr_ = artifacts.mustGetAddress("GuardianSafe");
         address deputyGuardianModule = deployDeputyGuardianModule();
         _callViaSafe({
             _safe: Safe(payable(addr_)),
@@ -352,7 +352,7 @@ contract DeployOwnership is Deploy {
     function configureSecurityCouncilSafe() public broadcast returns (address addr_) {
         // Deploy and add the Deputy Guardian Module.
         SecurityCouncilConfig memory exampleCouncilConfig = _getExampleCouncilConfig();
-        Safe safe = Safe(mustGetAddress("SecurityCouncilSafe"));
+        Safe safe = Safe(artifacts.mustGetAddress("SecurityCouncilSafe"));
 
         // Deploy and add the Liveness Guard.
         address guard = deployLivenessGuard();

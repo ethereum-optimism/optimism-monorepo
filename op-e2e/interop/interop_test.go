@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/ethereum-optimism/optimism/op-service/dial"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum/log"
@@ -105,6 +106,24 @@ func TestInterop_IsolatedChains(t *testing.T) {
 	setupAndRun(t, config, test)
 }
 
+// TestInterop_SupervisorFinality tests that the supervisor updates its finality
+// It waits for the finalized block to advance past the genesis block.
+func TestInterop_SupervisorFinality(t *testing.T) {
+	test := func(t *testing.T, s2 SuperSystem) {
+		supervisor := s2.SupervisorClient()
+		require.Eventually(t, func() bool {
+			final, err := supervisor.FinalizedL1(context.Background())
+			require.NoError(t, err)
+			return final.Number > 0
+			// this test takes about 30 seconds, with a longer Eventually timeout for CI
+		}, time.Second*60, time.Second, "wait for finalized block to be greater than 0")
+	}
+	config := SuperSystemConfig{
+		mempoolFiltering: false,
+	}
+	setupAndRun(t, config, test)
+}
+
 // TestInterop_EmitLogs tests a simple interop scenario
 // Chains A and B exist, but no messages are sent between them.
 // A contract is deployed on each chain, and logs are emitted repeatedly.
@@ -156,9 +175,8 @@ func TestInterop_EmitLogs(t *testing.T) {
 
 		supervisor := s2.SupervisorClient()
 
-		// requireMessage checks the safety level of a log against the supervisor
-		// it also checks that the error is as expected
-		requireMessage := func(chainID string, log gethTypes.Log, expectedSafety types.SafetyLevel, expectedError error) {
+		// helper function to turn a log into an identifier and the expected hash of the payload
+		logToIdentifier := func(chainID string, log gethTypes.Log) (types.Identifier, common.Hash) {
 			client := s2.L2GethClient(chainID)
 			// construct the expected hash of the log's payload
 			// (topics concatenated with data)
@@ -181,25 +199,37 @@ func TestInterop_EmitLogs(t *testing.T) {
 				BlockNumber: log.BlockNumber,
 				LogIndex:    uint32(log.Index),
 				Timestamp:   block.Time(),
-				ChainID:     types.ChainIDFromBig(s2.ChainID(chainID)),
+				ChainID:     eth.ChainIDFromBig(s2.ChainID(chainID)),
 			}
-
-			safety, err := supervisor.CheckMessage(context.Background(),
-				identifier,
-				expectedHash,
-			)
-			require.ErrorIs(t, err, expectedError)
-			// the supervisor could progress the safety level more quickly than we expect,
-			// which is why we check for a minimum safety level
-			require.True(t, safety.AtLeastAsSafe(expectedSafety), "log: %v should be at least %s, but is %s", log, expectedSafety.String(), safety.String())
+			return identifier, expectedHash
 		}
+
 		// all logs should be cross-safe
 		for _, log := range logsA {
-			requireMessage(chainA, log, types.CrossSafe, nil)
+			identifier, expectedHash := logToIdentifier(chainA, log)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			require.NoError(t, err)
+			// the supervisor could progress the safety level more quickly than we expect,
+			// which is why we check for a minimum safety level
+			require.True(t, safety.AtLeastAsSafe(types.CrossSafe), "log: %v should be at least Cross-Safe, but is %s", log, safety.String())
 		}
 		for _, log := range logsB {
-			requireMessage(chainB, log, types.CrossSafe, nil)
+			identifier, expectedHash := logToIdentifier(chainB, log)
+			safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+			require.NoError(t, err)
+			// the supervisor could progress the safety level more quickly than we expect,
+			// which is why we check for a minimum safety level
+			require.True(t, safety.AtLeastAsSafe(types.CrossSafe), "log: %v should be at least Cross-Safe, but is %s", log, safety.String())
 		}
+
+		// a log should be invalid if the timestamp is incorrect
+		identifier, expectedHash := logToIdentifier(chainA, logsA[0])
+		// make the timestamp incorrect
+		identifier.Timestamp = 333
+		safety, err := supervisor.CheckMessage(context.Background(), identifier, expectedHash)
+		require.NoError(t, err)
+		require.Equal(t, types.Invalid, safety)
+
 	}
 	config := SuperSystemConfig{
 		mempoolFiltering: false,
@@ -261,7 +291,7 @@ func TestInteropBlockBuilding(t *testing.T) {
 			BlockNumber: ev.BlockNumber,
 			LogIndex:    uint32(ev.Index),
 			Timestamp:   header.Time,
-			ChainID:     types.ChainIDFromBig(s2.ChainID(chainA)),
+			ChainID:     eth.ChainIDFromBig(s2.ChainID(chainA)),
 		}
 
 		msgPayload := types.LogToMessagePayload(ev)
@@ -280,18 +310,17 @@ func TestInteropBlockBuilding(t *testing.T) {
 
 		t.Log("Testing invalid message")
 		{
-			bobAddr := s2.Address(chainA, "Bob") // direct it to a random account without code
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 			defer cancel()
-			// Send an executing message, but with different payload.
+			// Emitting an executing message, but with different payload.
 			if s2.(*interopE2ESystem).config.mempoolFiltering {
 				// We expect the traqnsaction to be filtered out by the mempool if mempool filtering is enabled.
-				// ExecuteMessage the ErrTxFilteredOut error is checked when sending the tx.
-				_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload, gethCore.ErrTxFilteredOut)
+				// ValidateMessage the ErrTxFilteredOut error is checked when sending the tx.
+				_, err := s2.ValidateMessage(ctx, chainB, "Alice", identifier, invalidPayloadHash, gethCore.ErrTxFilteredOut)
 				require.ErrorContains(t, err, gethCore.ErrTxFilteredOut.Error())
 			} else {
 				// We expect the miner to be unable to include this tx, and confirmation to thus time out, if mempool filtering is disabled.
-				_, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, invalidPayload, nil)
+				_, err := s2.ValidateMessage(ctx, chainB, "Alice", identifier, invalidPayloadHash, nil)
 				require.ErrorIs(t, err, ctx.Err())
 				require.ErrorIs(t, ctx.Err(), context.DeadlineExceeded)
 			}
@@ -299,11 +328,10 @@ func TestInteropBlockBuilding(t *testing.T) {
 
 		t.Log("Testing valid message now")
 		{
-			bobAddr := s2.Address(chainA, "Bob") // direct it to a random account without code
 			ctx, cancel := context.WithTimeout(context.Background(), time.Second*15)
 			defer cancel()
-			// Send an executing message with the correct identifier / payload
-			rec, err := s2.ExecuteMessage(ctx, chainB, "Alice", identifier, bobAddr, msgPayload, nil)
+			// Emit an executing message with the correct identifier / payload
+			rec, err := s2.ValidateMessage(ctx, chainB, "Alice", identifier, payloadHash, nil)
 			require.NoError(t, err, "expecting tx to be confirmed")
 			t.Logf("confirmed executing msg in block %s", rec.BlockNumber)
 		}

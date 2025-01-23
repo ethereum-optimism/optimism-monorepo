@@ -80,7 +80,7 @@ func LoadELF(ctx *cli.Context) error {
 			}
 			return program.PatchStack(state)
 		}
-	case versions.VersionMultiThreaded, versions.VersionMultiThreaded64:
+	case versions.VersionMultiThreaded_v2, versions.VersionMultiThreaded64_v3:
 		createInitialState = func(f *elf.File) (mipsevm.FPVMState, error) {
 			return program.LoadELF(f, multithreaded.CreateInitialState)
 		}

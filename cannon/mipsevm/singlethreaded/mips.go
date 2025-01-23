@@ -13,7 +13,7 @@ import (
 type Word = arch.Word
 
 func (m *InstrumentedState) handleSyscall() error {
-	syscallNum, a0, a1, a2, _ := exec.GetSyscallArgs(&m.state.Registers)
+	syscallNum, a0, a1, a2 := exec.GetSyscallArgs(&m.state.Registers)
 
 	v0 := Word(0)
 	v1 := Word(0)

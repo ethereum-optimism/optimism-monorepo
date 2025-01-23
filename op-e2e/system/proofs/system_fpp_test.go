@@ -78,6 +78,7 @@ func applySpanBatchActivation(active bool, dp *genesis.DeployConfig) {
 		dp.L2GenesisEcotoneTimeOffset = nil
 		dp.L2GenesisFjordTimeOffset = nil
 		dp.L2GenesisGraniteTimeOffset = nil
+		dp.L2GenesisHoloceneTimeOffset = nil
 	}
 }
 
@@ -284,9 +285,9 @@ type FaultProofProgramTestScenario struct {
 // testFaultProofProgramScenario runs the fault proof program in several contexts, given a test scenario.
 func testFaultProofProgramScenario(t *testing.T, ctx context.Context, sys *e2esys.System, s *FaultProofProgramTestScenario) {
 	preimageDir := t.TempDir()
-	fppConfig := oppconf.NewConfig(sys.RollupConfig, sys.L2GenesisCfg.Config, s.L1Head, s.L2Head, s.L2OutputRoot, common.Hash(s.L2Claim), s.L2ClaimBlockNumber)
+	fppConfig := oppconf.NewSingleChainConfig(sys.RollupConfig, sys.L2GenesisCfg.Config, s.L1Head, s.L2Head, s.L2OutputRoot, common.Hash(s.L2Claim), s.L2ClaimBlockNumber)
 	fppConfig.L1URL = sys.NodeEndpoint("l1").RPC()
-	fppConfig.L2URL = sys.NodeEndpoint("sequencer").RPC()
+	fppConfig.L2URLs = []string{sys.NodeEndpoint("sequencer").RPC()}
 	fppConfig.L1BeaconURL = sys.L1BeaconEndpoint().RestHTTP()
 	fppConfig.DataDir = preimageDir
 	if s.Detached {
@@ -297,7 +298,7 @@ func testFaultProofProgramScenario(t *testing.T, ctx context.Context, sys *e2esy
 	// Check the FPP confirms the expected output
 	t.Log("Running fault proof in fetching mode")
 	log := testlog.Logger(t, log.LevelInfo)
-	err := opp.FaultProofProgram(ctx, log, fppConfig)
+	err := opp.FaultProofProgramWithDefaultPrefecher(ctx, log, fppConfig)
 	require.NoError(t, err)
 
 	t.Log("Shutting down network")
@@ -313,14 +314,14 @@ func testFaultProofProgramScenario(t *testing.T, ctx context.Context, sys *e2esy
 	t.Log("Running fault proof in offline mode")
 	// Should be able to rerun in offline mode using the pre-fetched images
 	fppConfig.L1URL = ""
-	fppConfig.L2URL = ""
-	err = opp.FaultProofProgram(ctx, log, fppConfig)
+	fppConfig.L2URLs = nil
+	err = opp.FaultProofProgramWithDefaultPrefecher(ctx, log, fppConfig)
 	require.NoError(t, err)
 
 	// Check that a fault is detected if we provide an incorrect claim
 	t.Log("Running fault proof with invalid claim")
 	fppConfig.L2Claim = common.Hash{0xaa}
-	err = opp.FaultProofProgram(ctx, log, fppConfig)
+	err = opp.FaultProofProgramWithDefaultPrefecher(ctx, log, fppConfig)
 	if s.Detached {
 		require.Error(t, err, "exit status 1")
 	} else {

@@ -301,7 +301,7 @@ func (ea *L2EngineAPI) NewPayloadV1(ctx context.Context, payload *eth.ExecutionP
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("withdrawals not supported in V1"))
 	}
 
-	return ea.newPayload(ctx, payload, nil, nil)
+	return ea.newPayload(ctx, payload, nil, nil, nil)
 }
 
 func (ea *L2EngineAPI) NewPayloadV2(ctx context.Context, payload *eth.ExecutionPayload) (*eth.PayloadStatusV1, error) {
@@ -313,7 +313,7 @@ func (ea *L2EngineAPI) NewPayloadV2(ctx context.Context, payload *eth.ExecutionP
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("non-nil withdrawals pre-shanghai"))
 	}
 
-	return ea.newPayload(ctx, payload, nil, nil)
+	return ea.newPayload(ctx, payload, nil, nil, nil)
 }
 
 // Ported from: https://github.com/ethereum-optimism/op-geth/blob/c50337a60a1309a0f1dca3bf33ed1bb38c46cdd7/eth/catalyst/api.go#L486C1-L507
@@ -342,7 +342,7 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 		}
 	}
 
-	return ea.newPayload(ctx, params, versionedHashes, beaconRoot)
+	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, nil)
 }
 
 func (ea *L2EngineAPI) getPayload(_ context.Context, payloadId eth.PayloadID) (*eth.ExecutionPayloadEnvelope, error) {
@@ -479,7 +479,7 @@ func toGethWithdrawals(payload *eth.ExecutionPayload) []*types.Withdrawal {
 	return result
 }
 
-func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPayload, hashes []common.Hash, root *common.Hash) (*eth.PayloadStatusV1, error) {
+func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPayload, hashes []common.Hash, root *common.Hash, requests [][]byte) (*eth.PayloadStatusV1, error) {
 	ea.log.Trace("L2Engine API request received", "method", "ExecutePayload", "number", payload.BlockNumber, "hash", payload.BlockHash)
 	txs := make([][]byte, len(payload.Transactions))
 	for i, tx := range payload.Transactions {
@@ -503,7 +503,7 @@ func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPaylo
 		Withdrawals:   toGethWithdrawals(payload),
 		ExcessBlobGas: (*uint64)(payload.ExcessBlobGas),
 		BlobGasUsed:   (*uint64)(payload.BlobGasUsed),
-	}, hashes, root)
+	}, hashes, root, requests, ea.backend.Config())
 	if err != nil {
 		log.Debug("Invalid NewPayload params", "params", payload, "error", err)
 		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalidBlockHash}, nil

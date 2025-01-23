@@ -3,32 +3,34 @@ pragma solidity 0.8.15;
 
 import { StdUtils } from "forge-std/StdUtils.sol";
 import { Vm } from "forge-std/Vm.sol";
-import { IOptimismPortal } from "interfaces/L1/IOptimismPortal.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Constants } from "src/libraries/Constants.sol";
 import { Encoding } from "src/libraries/Encoding.sol";
 import { Hashing } from "src/libraries/Hashing.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 contract RelayActor is StdUtils {
     // Storage slot of the l2Sender
-    uint256 constant senderSlotIndex = 50;
+    uint256 senderSlotIndex;
 
     uint256 public numHashes;
     bytes32[] public hashes;
     bool public reverted = false;
 
-    IOptimismPortal op;
+    IOptimismPortal2 op;
     IL1CrossDomainMessenger xdm;
     Vm vm;
     bool doFail;
 
-    constructor(IOptimismPortal _op, IL1CrossDomainMessenger _xdm, Vm _vm, bool _doFail) {
+    constructor(IOptimismPortal2 _op, IL1CrossDomainMessenger _xdm, Vm _vm, bool _doFail) {
         op = _op;
         xdm = _xdm;
         vm = _vm;
         doFail = _doFail;
+        senderSlotIndex = ForgeArtifacts.getSlot("OptimismPortal2", "l2Sender").slot;
     }
 
     /// @notice Relays a message to the `L1CrossDomainMessenger` with a random `version`,
@@ -95,10 +97,10 @@ contract XDM_MinGasLimits is CommonTest {
         super.setUp();
 
         // Deploy a relay actor
-        actor = new RelayActor(optimismPortal, l1CrossDomainMessenger, vm, doFail);
+        actor = new RelayActor(optimismPortal2, l1CrossDomainMessenger, vm, doFail);
 
         // Give the portal some ether to send to `relayMessage`
-        vm.deal(address(optimismPortal), type(uint128).max);
+        vm.deal(address(optimismPortal2), type(uint128).max);
 
         // Target the `RelayActor` contract
         targetContract(address(actor));
