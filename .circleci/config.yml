@@ -1520,6 +1520,7 @@ workflows:
             - slack
             - oplabs-network-optimism-io-bucket
           requires:
+            - hold
             - cannon-prestate
           filters:
             tags:
