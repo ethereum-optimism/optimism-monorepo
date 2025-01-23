@@ -3,13 +3,13 @@ package contracts
 import (
 	"context"
 	"fmt"
+	"sync"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
 
 type contractConstructor func(chain system.Chain, address types.Address) interface{}
@@ -49,36 +49,53 @@ func newSuperchainWETH(chain system.Chain, address types.Address) interface{} {
 type superchainWETHBinding struct {
 	chain           system.Chain
 	contractAddress types.Address
+	binding         *bindings.SuperchainWETH
+	mu              sync.Mutex
 }
 
-var _ SuperchainWETH = (*superchainWETHBinding)(nil)
+func (b *superchainWETHBinding) getBinding() (*bindings.SuperchainWETH, error) {
+	b.mu.Lock()
+	defer b.mu.Unlock()
 
-type balanceImpl struct {
-	chain           system.Chain
-	contractAddress types.Address
-	user            types.Address
-}
+	if b.binding != nil {
+		return b.binding, nil
+	}
 
-func (i *balanceImpl) Call(ctx context.Context) (types.Balance, error) {
-	conn, err := ethclient.Dial(i.chain.RPCURL())
+	client, err := b.chain.Client()
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	sc, err := bindings.NewSuperchainWETH(common.HexToAddress(string(i.contractAddress)), conn)
+
+	binding, err := bindings.NewSuperchainWETH(common.HexToAddress(string(b.contractAddress)), client)
 	if err != nil {
-		return 0, err
+		return nil, err
 	}
-	balance, err := sc.BalanceOf(nil, common.HexToAddress(string(i.user)))
-	if err != nil {
-		return 0, err
-	}
-	return types.Balance(balance.Uint64()), nil
+
+	b.binding = binding
+	return binding, nil
 }
 
 func (b *superchainWETHBinding) BalanceOf(user types.Address) types.ReadInvocation[types.Balance] {
 	return &balanceImpl{
-		chain:           b.chain,
-		contractAddress: b.contractAddress,
-		user:            user,
+		parent: b,
+		user:   user,
 	}
+}
+
+type balanceImpl struct {
+	parent *superchainWETHBinding
+	user   types.Address
+}
+
+func (i *balanceImpl) Call(ctx context.Context) (types.Balance, error) {
+	binding, err := i.parent.getBinding()
+	if err != nil {
+		return 0, fmt.Errorf("failed to get contract binding: %w", err)
+	}
+
+	balance, err := binding.BalanceOf(nil, common.HexToAddress(string(i.user)))
+	if err != nil {
+		return 0, err
+	}
+	return types.Balance(balance.Uint64()), nil
 }

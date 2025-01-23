@@ -86,10 +86,11 @@ func TestNewSystemFromEnv(t *testing.T) {
 }
 
 func TestContractAddress(t *testing.T) {
-	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
-	chain := NewChain("1", "http://localhost:8545", map[string]types.Wallet{
+	chain := NewChain("1", "http://localhost:8545", nil)
+	testWallet := NewWallet("0xabc", "0x123", chain)
+	chain.users = map[string]types.Wallet{
 		"l2Faucet": testWallet,
-	})
+	}
 
 	tests := []struct {
 		name       string
@@ -271,6 +272,8 @@ func TestDevnetFromFile(t *testing.T) {
 }
 
 func TestWallet(t *testing.T) {
+	chain := NewChain("1", "http://localhost:8545", nil)
+
 	tests := []struct {
 		name        string
 		privateKey  types.Key
@@ -303,7 +306,7 @@ func TestWallet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := NewWallet(tt.privateKey, tt.address, "http://localhost:8545")
+			w := NewWallet(tt.privateKey, tt.address, chain)
 			assert.Equal(t, tt.wantAddr, w.Address())
 			assert.Equal(t, tt.wantPrivKey, w.PrivateKey())
 		})
@@ -311,10 +314,11 @@ func TestWallet(t *testing.T) {
 }
 
 func TestChainUser(t *testing.T) {
-	testWallet := NewWallet("0xabc", "0x123", "http://localhost:8545")
-	chain := NewChain("1", "http://localhost:8545", map[string]types.Wallet{
+	chain := NewChain("1", "http://localhost:8545", nil)
+	testWallet := NewWallet("0xabc", "0x123", chain)
+	chain.users = map[string]types.Wallet{
 		"l2Faucet": testWallet,
-	})
+	}
 
 	ctx := context.Background()
 	user, err := chain.User(ctx)

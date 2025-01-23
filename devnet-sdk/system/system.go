@@ -2,25 +2,24 @@ package system
 
 import (
 	"context"
-	"math/big"
-	"strconv"
-	"strings"
-
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"slices"
+	"strconv"
+	"strings"
+	"sync"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	coreTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
-
-	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 )
 
 type System interface {
@@ -118,6 +117,43 @@ type Chain interface {
 	ID() types.ChainID
 	ContractAddress(contractID string) types.Address
 	User(ctx context.Context, constraints ...constraints.Constraint) (types.Wallet, error)
+	Client() (*ethclient.Client, error)
+}
+
+// clientManager handles ethclient connections
+type clientManager struct {
+	mu      sync.RWMutex
+	clients map[string]*ethclient.Client
+}
+
+func newClientManager() *clientManager {
+	return &clientManager{
+		clients: make(map[string]*ethclient.Client),
+	}
+}
+
+func (m *clientManager) getClient(rpcURL string) (*ethclient.Client, error) {
+	m.mu.RLock()
+	if client, ok := m.clients[rpcURL]; ok {
+		m.mu.RUnlock()
+		return client, nil
+	}
+	m.mu.RUnlock()
+
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// Double-check after acquiring write lock
+	if client, ok := m.clients[rpcURL]; ok {
+		return client, nil
+	}
+
+	client, err := ethclient.Dial(rpcURL)
+	if err != nil {
+		return nil, fmt.Errorf("failed to connect to ethereum client: %w", err)
+	}
+	m.clients[rpcURL] = client
+	return client, nil
 }
 
 type chain struct {
@@ -126,30 +162,40 @@ type chain struct {
 
 	addresses map[string]types.Address
 	users     map[string]types.Wallet
+	clients   *clientManager
 }
 
-func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) chain {
-	return chain{
+func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) *chain {
+	return &chain{
 		id: chainID,
 		addresses: map[string]types.Address{
 			"SuperchainWETH":             constants.SuperchainWETH,
 			"ETHLiquidity":               constants.ETHLiquidity,
 			"L2ToL2CrossDomainMessenger": constants.L2ToL2CrossDomainMessenger,
 		},
-		rpcUrl: rpcUrl,
-		users:  users,
+		rpcUrl:  rpcUrl,
+		users:   users,
+		clients: newClientManager(),
 	}
+}
+
+func (c *chain) Client() (*ethclient.Client, error) {
+	return c.clients.getClient(c.rpcUrl)
 }
 
 func chainFromDescriptor(d *descriptors.Chain) Chain {
 	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
 
+	c := NewChain(d.ID, rpcURL, nil) // Create chain first
+
 	users := make(map[string]types.Wallet)
 	for key, w := range d.Wallets {
-		users[key] = NewWallet(w.PrivateKey, types.Address(w.Address), rpcURL)
+		users[key] = NewWallet(w.PrivateKey, types.Address(w.Address), c)
 	}
-	return NewChain(d.ID, rpcURL, users)
+	c.users = users // Set users after creation
+
+	return c
 }
 
 func (c chain) ContractAddress(contractID string) types.Address {
@@ -197,11 +243,11 @@ type InteropSet interface {
 type wallet struct {
 	privateKey types.Key
 	address    types.Address
-	rpcURL     string
+	chain      Chain
 }
 
-func NewWallet(pk types.Key, addr types.Address, rpcURL string) *wallet {
-	return &wallet{privateKey: pk, address: addr, rpcURL: rpcURL}
+func NewWallet(pk types.Key, addr types.Address, chain Chain) *wallet {
+	return &wallet{privateKey: pk, address: addr, chain: chain}
 }
 
 func (w wallet) PrivateKey() types.Key {
@@ -214,7 +260,7 @@ func (w wallet) Address() types.Address {
 
 func (w wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
 	return &sendImpl{
-		rpcURL: w.rpcURL,
+		chain:  w.chain,
 		pk:     w.PrivateKey(),
 		to:     to,
 		amount: amount,
@@ -222,7 +268,7 @@ func (w wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvoc
 }
 
 type sendImpl struct {
-	rpcURL string
+	chain  Chain
 	pk     types.Key
 	to     types.Address
 	amount types.Balance
@@ -233,18 +279,18 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 }
 
 func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
-	tx, err := sendETH(ctx, i.rpcURL, i.pk, i.to, i.amount)
+	tx, err := sendETH(ctx, i.chain, i.pk, i.to, i.amount)
 	return &sendResult{
-		rpcURL: i.rpcURL,
-		tx:     tx,
-		err:    err,
+		chain: i.chain,
+		tx:    tx,
+		err:   err,
 	}
 }
 
 type sendResult struct {
-	rpcURL string
-	tx     *coreTypes.Transaction
-	err    error
+	chain Chain
+	tx    *coreTypes.Transaction
+	err   error
 }
 
 func (r *sendResult) Error() error {
@@ -259,7 +305,7 @@ func (r *sendResult) Wait() error {
 		return fmt.Errorf("no transaction to wait for")
 	}
 
-	client, err := ethclient.Dial(r.rpcURL)
+	client, err := r.chain.Client()
 	if err != nil {
 		return fmt.Errorf("failed to connect to ethereum client: %w", err)
 	}
@@ -276,8 +322,8 @@ func (r *sendResult) Wait() error {
 	return nil
 }
 
-func sendETH(ctx context.Context, rpcURL string, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
-	client, err := ethclient.Dial(rpcURL)
+func sendETH(ctx context.Context, chain Chain, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
+	client, err := chain.Client()
 	if err != nil {
 		return nil, fmt.Errorf("failed to connect to ethereum client: %w", err)
 	}
