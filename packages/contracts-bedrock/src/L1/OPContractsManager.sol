@@ -999,7 +999,7 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Retrieves the Anchor State Registry for a given game
-    function getAnchorStateRegistry(IFaultDisputeGame _disputeGame) internal returns (IAnchorStateRegistry) {
+    function getAnchorStateRegistry(IFaultDisputeGame _disputeGame) internal view returns (IAnchorStateRegistry) {
         return _disputeGame.anchorStateRegistry();
     }
 
