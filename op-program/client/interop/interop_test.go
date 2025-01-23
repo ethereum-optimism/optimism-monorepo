@@ -4,13 +4,13 @@ import (
 	"encoding/binary"
 	"fmt"
 	"math/big"
+	"math/rand"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
-	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
@@ -18,6 +18,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum/common"
 	gethTypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/types/interoptypes"
@@ -25,10 +26,11 @@ import (
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/ethereum/go-ethereum/trie"
 	"github.com/holiman/uint256"
+	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 )
 
-func setupTwoChains() (*staticConfigSource, *eth.SuperV1, stubTasks) {
+func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 	rollupCfg1 := chaincfg.OPSepolia()
 	chainCfg1 := chainconfig.OPSepoliaChainConfig()
 
@@ -48,7 +50,7 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, stubTasks) {
 		rollupCfgs:   []*rollup.Config{rollupCfg1, &rollupCfg2},
 		chainConfigs: []*params.ChainConfig{chainCfg1, &chainCfg2},
 	}
-	tasksStub := stubTasks{
+	tasksStub := &stubTasks{
 		l2SafeHead: eth.L2BlockRef{Number: 918429823450218}, // Past the claimed block
 		blockHash:  common.Hash{0x22},
 		outputRoot: eth.Bytes32{0x66},
@@ -124,58 +126,191 @@ func TestNoOpStep(t *testing.T) {
 }
 
 func TestDeriveBlockForConsolidateStep(t *testing.T) {
+	cases := []struct {
+		name     string
+		testCase consolidationTestCase
+	}{
+		{
+			name:     "HappyPath",
+			testCase: consolidationTestCase{},
+		},
+		{
+			name: "HappyPathWithValidMessages",
+			testCase: consolidationTestCase{
+				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+					if includeChainIndex == 0 {
+						return nil
+					} else {
+						return []executingMessage{
+							{
+								ChainID:   config.rollupCfgs[0].L2ChainID.Uint64(),
+								BlockNum:  includeBlockNum,
+								LogIdx:    0,
+								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
+							},
+						}
+					}
+				},
+			},
+		},
+		{
+			name: "DepositsOnlyBlockReplacement-ChainA",
+			// Mock block2A (chain A, block 2) replaced with a deposit-only block
+			// Due to a self-referential invalid executing message.
+			testCase: consolidationTestCase{
+				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+					if includeChainIndex == 0 {
+						return []executingMessage{
+							{
+								ChainID:   config.rollupCfgs[0].L2ChainID.Uint64(),
+								BlockNum:  includeBlockNum,
+								LogIdx:    0,
+								Timestamp: includeBlockNum * config.rollupCfgs[0].BlockTime,
+							},
+						}
+					} else {
+						return nil
+					}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
+					return []uint64{0}
+				},
+			},
+		},
+		{
+			name: "DepositsOnlyBlockReplacement-ChainB",
+			// Mock block2B (chain B, block 2) replaced with a deposit-only block
+			// Due to a self-referential invalid executing message.
+			testCase: consolidationTestCase{
+				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+					if includeChainIndex == 0 {
+						return nil
+					} else {
+						return []executingMessage{
+							{
+								ChainID:   config.rollupCfgs[1].L2ChainID.Uint64(),
+								BlockNum:  includeBlockNum,
+								LogIdx:    0,
+								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
+							},
+						}
+					}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
+					return []uint64{1}
+				},
+			},
+		},
+		{
+			name: "DepositsOnlyBlockReplacement-BothChains",
+			testCase: consolidationTestCase{
+				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+					return []executingMessage{
+						{
+							ChainID:   config.rollupCfgs[includeChainIndex].L2ChainID.Uint64(),
+							BlockNum:  includeBlockNum,
+							LogIdx:    0,
+							Timestamp: includeBlockNum * config.rollupCfgs[includeChainIndex].BlockTime,
+						},
+					}
+				},
+				expectBlockReplacements: func(config *staticConfigSource) []uint64 {
+					return []uint64{0, 1}
+				},
+			},
+		},
+	}
+
+	for _, tt := range cases {
+		t.Run(tt.name, func(t *testing.T) {
+			runConsolidationTestCase(t, tt.testCase)
+		})
+	}
+}
+
+type mutateExecMsgFn func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage
+type replaceBlockFn func(config *staticConfigSource) (chainIDsToReplace []uint64)
+type consolidationTestCase struct {
+	mutateExecMsgFn         mutateExecMsgFn
+	expectBlockReplacements replaceBlockFn
+}
+
+func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 	logger := testlog.Logger(t, log.LevelError)
 	configSource, agreedSuperRoot, tasksStub := setupTwoChains()
+	defer tasksStub.AssertExpectations(t)
+	rng := rand.New(rand.NewSource(123))
 
-	block1 := createBlock(1)
-	block2 := createBlock(2)
-	output := &eth.OutputV0{BlockHash: block1.Hash()}
+	configA := configSource.rollupCfgs[0]
+	configB := configSource.rollupCfgs[1]
 
-	agreedTransitionState := &types.TransitionState{
+	block1A, _ := createBlock(rng, configA, 1, nil)
+	block1B, _ := createBlock(rng, configB, 1, nil)
+
+	var logA []*gethTypes.Log
+	if testCase.mutateExecMsgFn != nil {
+		execMsgA := testCase.mutateExecMsgFn(0, block1A.NumberU64()+1, configSource)
+		logA = convertExecutingMessagesToLog(t, execMsgA)
+	}
+	var logB []*gethTypes.Log
+	if testCase.mutateExecMsgFn != nil {
+		execMsgB := testCase.mutateExecMsgFn(1, block1B.NumberU64()+1, configSource)
+		logB = convertExecutingMessagesToLog(t, execMsgB)
+	}
+	block2A, block2AReceipts := createBlock(rng, configA, 2, gethTypes.Receipts{{Logs: logA}})
+	block2B, block2BReceipts := createBlock(rng, configB, 2, gethTypes.Receipts{{Logs: logB}})
+
+	finalTransitionState := &types.TransitionState{
 		SuperRoot: agreedSuperRoot.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: block2.Hash(), OutputRoot: eth.OutputRoot(output)},
-			{BlockHash: tasksStub.blockHash, OutputRoot: eth.OutputRoot(output)},
+			{BlockHash: block2A.Hash(), OutputRoot: eth.OutputRoot(createOutput(block2A.Hash()))},
+			{BlockHash: block2B.Hash(), OutputRoot: eth.OutputRoot(createOutput(block2B.Hash()))},
 		},
 		Step: ConsolidateStep,
 	}
-	outputRootHash := agreedTransitionState.Hash()
+	outputRootHash := finalTransitionState.Hash()
 	l2PreimageOracle, _ := test.NewStubOracle(t)
-	l2PreimageOracle.TransitionStates[outputRootHash] = agreedTransitionState
+	l2PreimageOracle.TransitionStates[outputRootHash] = finalTransitionState
 
-	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x11}}))] = output
-	l2PreimageOracle.Outputs[common.Hash(eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}}))] = output
+	l2PreimageOracle.Outputs[common.Hash(agreedSuperRoot.Chains[0].Output)] = createOutput(block1A.Hash())
+	l2PreimageOracle.Outputs[common.Hash(agreedSuperRoot.Chains[1].Output)] = createOutput(block1B.Hash())
 	l2PreimageOracle.BlockData = map[common.Hash]*gethTypes.Block{
-		block2.Hash():       block2,
-		tasksStub.blockHash: block2,
+		block2A.Hash(): block2A,
+		block2B.Hash(): block2B,
 	}
-	l2PreimageOracle.Blocks[output.BlockHash] = block1
-	l2PreimageOracle.Blocks[block2.Hash()] = block2
-	l2PreimageOracle.Blocks[tasksStub.blockHash] = block2
+	l2PreimageOracle.Blocks[block1A.Hash()] = block1A
+	l2PreimageOracle.Blocks[block2A.Hash()] = block2A
+	l2PreimageOracle.Blocks[block2B.Hash()] = block2B
 
-	// Uncomment to create self-referential message
-	//log := createExecutingMessageLog(t, block2.NumberU64(), configSource.rollupCfgs[0].L2ChainID.Uint64())
-	log := createExecutingMessageLog(t, block2.NumberU64(), configSource.rollupCfgs[1].L2ChainID.Uint64())
-	l2PreimageOracle.Receipts[block2.Hash()] = gethTypes.Receipts{
-		{
-			Logs: []*gethTypes.Log{log},
-		},
+	l2PreimageOracle.Receipts[block2A.Hash()] = block2AReceipts
+	l2PreimageOracle.Receipts[block2B.Hash()] = block2BReceipts
+
+	finalRoots := [2]eth.Bytes32{
+		finalTransitionState.PendingProgress[0].OutputRoot,
+		finalTransitionState.PendingProgress[1].OutputRoot,
 	}
-	l2PreimageOracle.Receipts[tasksStub.blockHash] = gethTypes.Receipts{}
-
+	if testCase.expectBlockReplacements != nil {
+		for _, chainIndexToReplace := range testCase.expectBlockReplacements(configSource) {
+			depositsOnlyBlock, _ := createBlock(rng, configSource.rollupCfgs[chainIndexToReplace], 2, nil)
+			depositsOnlyOutputRoot := eth.OutputRoot(createOutput(depositsOnlyBlock.Hash()))
+			tasksStub.ExpectBuildDepositOnlyBlock(common.Hash{}, agreedSuperRoot.Chains[chainIndexToReplace].Output, depositsOnlyBlock.Hash(), depositsOnlyOutputRoot)
+			finalRoots[chainIndexToReplace] = depositsOnlyOutputRoot
+		}
+	}
 	expectedClaim := common.Hash(eth.SuperRoot(&eth.SuperV1{
 		Timestamp: agreedSuperRoot.Timestamp + 1,
 		Chains: []eth.ChainIDAndOutput{
 			{
-				ChainID: configSource.rollupCfgs[0].L2ChainID.Uint64(),
-				Output:  agreedTransitionState.PendingProgress[0].OutputRoot,
+				ChainID: configA.L2ChainID.Uint64(),
+				Output:  finalRoots[0],
 			},
 			{
-				ChainID: configSource.rollupCfgs[1].L2ChainID.Uint64(),
-				Output:  agreedTransitionState.PendingProgress[1].OutputRoot,
+				ChainID: configB.L2ChainID.Uint64(),
+				Output:  finalRoots[1],
 			},
 		},
 	}))
+
 	verifyResult(
 		t,
 		logger,
@@ -188,44 +323,65 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 	)
 }
 
-func createExecutingMessageLog(t *testing.T, blockNumber uint64, chainID uint64) *gethTypes.Log {
-	payloadHash := common.Hash{0x01, 0x02, 0x03}
-	id := interoptypes.Identifier{
-		Origin:      common.Address{0xaa},
-		BlockNumber: blockNumber,
-		LogIndex:    0,
-		Timestamp:   0,
-		ChainID:     *uint256.NewInt(chainID),
-	}
-	data := make([]byte, 0, 32*5)
-	data = append(data, make([]byte, 12)...)
-	data = append(data, id.Origin.Bytes()...)
-	data = append(data, make([]byte, 32-8)...)
-	data = append(data, binary.BigEndian.AppendUint64(nil, id.BlockNumber)...)
-	data = append(data, make([]byte, 32-4)...)
-	data = append(data, binary.BigEndian.AppendUint32(nil, id.LogIndex)...)
-	data = append(data, make([]byte, 32-8)...)
-	data = append(data, binary.BigEndian.AppendUint64(nil, id.Timestamp)...)
-	b := id.ChainID.Bytes32()
-	data = append(data, b[:]...)
-
-	require.Equal(t, len(data), 32*5)
-
-	return &gethTypes.Log{
-		Address: params.InteropCrossL2InboxAddress,
-		Topics:  []common.Hash{interoptypes.ExecutingMessageEventTopic, payloadHash},
-		Data:    data,
-	}
+func createOutput(blockHash common.Hash) *eth.OutputV0 {
+	return &eth.OutputV0{BlockHash: blockHash}
 }
 
-func createBlock(num int64) *gethTypes.Block {
+type executingMessage struct {
+	ChainID   uint64
+	BlockNum  uint64
+	LogIdx    uint32
+	Timestamp uint64
+}
+
+func convertExecutingMessagesToLog(t *testing.T, msgs []executingMessage) []*gethTypes.Log {
+	logs := make([]*gethTypes.Log, 0, len(msgs))
+	for _, msg := range msgs {
+		id := interoptypes.Identifier{
+			Origin:      common.Address{0xaa},
+			BlockNumber: msg.BlockNum,
+			LogIndex:    msg.LogIdx,
+			Timestamp:   msg.Timestamp,
+			ChainID:     *uint256.NewInt(msg.ChainID),
+		}
+		data := make([]byte, 0, 32*5)
+		data = append(data, make([]byte, 12)...)
+		data = append(data, id.Origin.Bytes()...)
+		data = append(data, make([]byte, 32-8)...)
+		data = append(data, binary.BigEndian.AppendUint64(nil, id.BlockNumber)...)
+		data = append(data, make([]byte, 32-4)...)
+		data = append(data, binary.BigEndian.AppendUint32(nil, id.LogIndex)...)
+		data = append(data, make([]byte, 32-8)...)
+		data = append(data, binary.BigEndian.AppendUint64(nil, id.Timestamp)...)
+		b := id.ChainID.Bytes32()
+		data = append(data, b[:]...)
+		require.Equal(t, len(data), 32*5)
+
+		payloadHash := common.Hash{0x01, 0x02, 0x03}
+		logs = append(logs, &gethTypes.Log{
+			Address: params.InteropCrossL2InboxAddress,
+			Topics:  []common.Hash{interoptypes.ExecutingMessageEventTopic, payloadHash},
+			Data:    data,
+		})
+	}
+	return logs
+}
+
+func createBlock(rng *rand.Rand,
+	config *rollup.Config,
+	blockNum int64, receipts gethTypes.Receipts) (*gethTypes.Block, gethTypes.Receipts) {
+	block, randomReceipts := testutils.RandomBlock(rng, 1)
+	receipts = append(receipts, randomReceipts...)
+	header := block.Header()
+	header.Time = uint64(blockNum) * config.BlockTime
+	header.Number = big.NewInt(blockNum)
 	return gethTypes.NewBlock(
-		&gethTypes.Header{Number: big.NewInt(num)},
-		nil,
-		nil,
+		header,
+		block.Body(),
+		receipts,
 		trie.NewStackTrie(nil),
 		gethTypes.DefaultBlockConfig,
-	)
+	), receipts
 }
 
 func TestTraceExtensionOnceClaimedTimestampIsReached(t *testing.T) {
@@ -254,18 +410,19 @@ func TestPanicIfAgreedPrestateIsAfterGameTimestamp(t *testing.T) {
 	})
 }
 
-func verifyResult(t *testing.T, logger log.Logger, tasks stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
+func verifyResult(t *testing.T, logger log.Logger, tasks *stubTasks, configSource *staticConfigSource, l2PreimageOracle *test.StubBlockOracle, agreedPrestate common.Hash, gameTimestamp uint64, expectedClaim common.Hash) {
 	bootInfo := &boot.BootInfoInterop{
 		AgreedPrestate: agreedPrestate,
 		GameTimestamp:  gameTimestamp,
 		Claim:          expectedClaim,
 		Configs:        configSource,
 	}
-	err := runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, &tasks)
+	err := runInteropProgram(logger, bootInfo, nil, l2PreimageOracle, true, tasks)
 	require.NoError(t, err)
 }
 
 type stubTasks struct {
+	mock.Mock
 	l2SafeHead eth.L2BlockRef
 	blockHash  common.Hash
 	outputRoot eth.Bytes32
@@ -281,13 +438,45 @@ func (t *stubTasks) RunDerivation(
 	_ uint64,
 	_ l1.Oracle,
 	_ l2.Oracle,
-	_ ...cldr.DeriverOpts,
 ) (tasks.DerivationResult, error) {
 	return tasks.DerivationResult{
 		Head:       t.l2SafeHead,
 		BlockHash:  t.blockHash,
 		OutputRoot: t.outputRoot,
 	}, t.err
+}
+
+func (t *stubTasks) BuildDepositOnlyBlock(
+	logger log.Logger,
+	rollupCfg *rollup.Config,
+	l2ChainConfig *params.ChainConfig,
+	l1Head common.Hash,
+	agreedL2OutputRoot eth.Bytes32,
+	l1Oracle l1.Oracle,
+	l2Oracle l2.Oracle,
+	optimisticBlock *gethTypes.Block,
+) (common.Hash, eth.Bytes32, error) {
+	out := t.Mock.Called(logger, rollupCfg, l2ChainConfig, l1Head, agreedL2OutputRoot, l1Oracle, l2Oracle, optimisticBlock)
+	return out.Get(0).(common.Hash), out.Get(1).(eth.Bytes32), nil
+}
+
+func (t *stubTasks) ExpectBuildDepositOnlyBlock(
+	expectL1Head common.Hash,
+	expectAgreedL2OutputRoot eth.Bytes32,
+	depositOnlyBlockHash common.Hash,
+	depositOnlyOutputRoot eth.Bytes32,
+) {
+	t.Mock.On(
+		"BuildDepositOnlyBlock",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+		expectL1Head,
+		expectAgreedL2OutputRoot,
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	).Once().Return(depositOnlyBlockHash, depositOnlyOutputRoot, nil)
 }
 
 type staticConfigSource struct {

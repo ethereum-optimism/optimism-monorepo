@@ -5,7 +5,6 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
-	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
@@ -79,7 +78,7 @@ func RunConsolidation(
 		// So we use the blockDataByHash hint to trigger a block rebuild to ensure that the block data, including receipts, are available.
 		_ = l2PreimageOracle.BlockDataByHash(agreedBlockHashes[i], progress.BlockHash, chain.ChainID)
 
-		block, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
+		optimisticBlock, receipts := l2PreimageOracle.ReceiptsByBlockHash(progress.BlockHash, chain.ChainID)
 		execMsgs, _, err := ReceiptsToExecutingMessages(deps.DependencySet(), receipts)
 		if err != nil {
 			return eth.Bytes32{}, err
@@ -87,8 +86,8 @@ func RunConsolidation(
 
 		candidate := supervisortypes.BlockSeal{
 			Hash:      progress.BlockHash,
-			Number:    block.NumberU64(),
-			Timestamp: block.Time(),
+			Number:    optimisticBlock.NumberU64(),
+			Timestamp: optimisticBlock.Time(),
 		}
 		consolidatedOutputRoot := progress.OutputRoot
 		if err := checkHazards(deps, candidate, eth.ChainIDFromUInt64(chain.ChainID), execMsgs); err != nil {
@@ -96,20 +95,19 @@ func RunConsolidation(
 				return eth.Bytes32{}, err
 			}
 			chainAgreedPrestate := superRoot.Chains[i]
-			result, err := deriveBlock(
+			_, outputRoot, err := buildDepositOnlyBlock(
 				logger,
 				bootInfo,
 				l1PreimageOracle,
 				l2PreimageOracle,
-				superRoot,
 				chainAgreedPrestate,
 				tasks,
-				cldr.WithDepositsOnlyTargetBlock(true),
+				optimisticBlock,
 			)
 			if err != nil {
 				return eth.Bytes32{}, err
 			}
-			consolidatedOutputRoot = result.OutputRoot
+			consolidatedOutputRoot = outputRoot
 		}
 		consolidatedChains = append(consolidatedChains, eth.ChainIDAndOutput{
 			ChainID: chain.ChainID,
@@ -279,4 +277,39 @@ func (d *consolidateCheckDeps) BlockByNumber(oracle l2.Oracle, blockNum uint64, 
 		return nil, fmt.Errorf("head not found for chain %v", chainID)
 	}
 	return d.oracle.BlockByHash(head.Hash(), chainID), nil
+}
+
+var _ ConsolidateCheckDeps = (*consolidateCheckDeps)(nil)
+
+func buildDepositOnlyBlock(
+	logger log.Logger,
+	bootInfo *boot.BootInfoInterop,
+	l1PreimageOracle l1.Oracle,
+	l2PreimageOracle l2.Oracle,
+	chainAgreedPrestate eth.ChainIDAndOutput,
+	taskExecutor taskExecutor,
+	optimisticBlock *ethtypes.Block,
+) (common.Hash, eth.Bytes32, error) {
+	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+	}
+	l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+	}
+	blockHash, outputRoot, err := taskExecutor.BuildDepositOnlyBlock(
+		logger,
+		rollupCfg,
+		l2ChainConfig,
+		bootInfo.L1Head,
+		chainAgreedPrestate.Output,
+		l1PreimageOracle,
+		l2PreimageOracle,
+		optimisticBlock,
+	)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, err
+	}
+	return blockHash, outputRoot, nil
 }

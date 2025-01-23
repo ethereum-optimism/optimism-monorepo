@@ -37,7 +37,6 @@ func RunDerivation(
 	l2ClaimBlockNum uint64,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
-	opts ...cldr.DeriverOpts,
 ) (DerivationResult, error) {
 	l1Source := l1.NewOracleL1Client(logger, l1Oracle, l1Head)
 	l1BlobsSource := l1.NewBlobFetcher(logger, l1Oracle)

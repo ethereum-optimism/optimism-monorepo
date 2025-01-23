@@ -7,13 +7,13 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
-	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -41,8 +41,18 @@ type taskExecutor interface {
 		claimedBlockNumber uint64,
 		l1Oracle l1.Oracle,
 		l2Oracle l2.Oracle,
-		opts ...cldr.DeriverOpts,
 	) (tasks.DerivationResult, error)
+
+	BuildDepositOnlyBlock(
+		logger log.Logger,
+		rollupCfg *rollup.Config,
+		l2ChainConfig *params.ChainConfig,
+		l1Head common.Hash,
+		agreedL2OutputRoot eth.Bytes32,
+		l1Oracle l1.Oracle,
+		l2Oracle l2.Oracle,
+		optimisticBlock *ethtypes.Block,
+	) (blockHash common.Hash, outputRoot eth.Bytes32, err error)
 }
 
 func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
@@ -129,29 +139,21 @@ func parseAgreedState(bootInfo *boot.BootInfoInterop, l2PreimageOracle l2.Oracle
 	return transitionState, superRoot, nil
 }
 
-func deriveBlock(
-	logger log.Logger,
-	bootInfo *boot.BootInfoInterop,
-	l1PreimageOracle l1.Oracle,
-	l2PreimageOracle l2.Oracle,
-	superRoot *eth.SuperV1,
-	chainAgreedPrestate eth.ChainIDAndOutput,
-	taskExecutor taskExecutor,
-	opts ...cldr.DeriverOpts,
-) (tasks.DerivationResult, error) {
+func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor) (types.OptimisticBlock, error) {
+	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
-		return tasks.DerivationResult{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		return types.OptimisticBlock{}, fmt.Errorf("no rollup config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
 	}
 	l2ChainConfig, err := bootInfo.Configs.ChainConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
-		return tasks.DerivationResult{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
+		return types.OptimisticBlock{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
 	}
 	claimedBlockNumber, err := rollupCfg.TargetBlockNumber(superRoot.Timestamp + 1)
 	if err != nil {
-		return tasks.DerivationResult{}, err
+		return types.OptimisticBlock{}, err
 	}
-	derivationResult, err := taskExecutor.RunDerivation(
+	derivationResult, err := tasks.RunDerivation(
 		logger,
 		rollupCfg,
 		l2ChainConfig,
@@ -160,23 +162,14 @@ func deriveBlock(
 		claimedBlockNumber,
 		l1PreimageOracle,
 		l2PreimageOracle,
-		opts...,
 	)
-	if err != nil {
-		return tasks.DerivationResult{}, err
-	}
-	if derivationResult.Head.Number < claimedBlockNumber {
-		return tasks.DerivationResult{}, ErrL1HeadReached
-	}
-	return derivationResult, nil
-}
-
-func deriveOptimisticBlock(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, superRoot *eth.SuperV1, transitionState *types.TransitionState, tasks taskExecutor) (types.OptimisticBlock, error) {
-	chainAgreedPrestate := superRoot.Chains[transitionState.Step]
-	derivationResult, err := deriveBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, chainAgreedPrestate, tasks)
 	if err != nil {
 		return types.OptimisticBlock{}, err
 	}
+	if derivationResult.Head.Number < claimedBlockNumber {
+		return types.OptimisticBlock{}, ErrL1HeadReached
+	}
+
 	block := types.OptimisticBlock{
 		BlockHash:  derivationResult.BlockHash,
 		OutputRoot: derivationResult.OutputRoot,
@@ -196,7 +189,6 @@ func (t *interopTaskExecutor) RunDerivation(
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
-	opts ...cldr.DeriverOpts,
 ) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
@@ -207,6 +199,18 @@ func (t *interopTaskExecutor) RunDerivation(
 		claimedBlockNumber,
 		l1Oracle,
 		l2Oracle,
-		opts...,
 	)
+}
+
+func (t *interopTaskExecutor) BuildDepositOnlyBlock(
+	logger log.Logger,
+	rollupCfg *rollup.Config,
+	l2ChainConfig *params.ChainConfig,
+	l1Head common.Hash,
+	agreedL2OutputRoot eth.Bytes32,
+	l1Oracle l1.Oracle,
+	l2Oracle l2.Oracle,
+	optimisticBlock *ethtypes.Block,
+) (common.Hash, eth.Bytes32, error) {
+	return tasks.BuildDepositOnlyBlock(logger, rollupCfg, l2ChainConfig, optimisticBlock, l1Head, agreedL2OutputRoot, l1Oracle, l2Oracle)
 }
