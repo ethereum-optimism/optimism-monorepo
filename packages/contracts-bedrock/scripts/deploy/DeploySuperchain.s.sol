@@ -441,7 +441,7 @@ library DeploySuperchainImplementations {
     bytes32 internal constant _salt = keccak256("op-stack-contract-impls-salt-v0");
     Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
 
-    function deploySuperchainImplementationContracts(DeploySuperchainOutput _dso) public {
+    function deploySuperchainImplementationContracts(DeploySuperchainOutput _dso) internal {
         // Deploy implementation contracts.
         vm.startBroadcast(msg.sender);
         ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
