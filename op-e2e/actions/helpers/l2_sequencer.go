@@ -225,6 +225,13 @@ func (s *L2Sequencer) ActBuildL2ToFjord(t Testing) {
 	}
 }
 
+func (s *L2Sequencer) ActBuildL2ToIsthmus(t Testing) {
+	require.NotNil(t, s.RollupCfg.IsthmusTime, "cannot activate IsthmusTime when it is not scheduled")
+	for s.L2Unsafe().Time < *s.RollupCfg.IsthmusTime {
+		s.ActL2EmptyBlock(t)
+	}
+}
+
 func (s *L2Sequencer) ActBuildL2ToGranite(t Testing) {
 	require.NotNil(t, s.RollupCfg.GraniteTime, "cannot activate GraniteTime when it is not scheduled")
 	for s.L2Unsafe().Time < *s.RollupCfg.GraniteTime {

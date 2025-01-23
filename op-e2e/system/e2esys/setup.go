@@ -238,6 +238,12 @@ func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts
 	return cfg
 }
 
+func IsthmusSystemConfig(t *testing.T, isthmusTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
+	cfg := HoloceneSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L2GenesisIsthmusTimeOffset = isthmusTimeOffset
+	return cfg
+}
+
 func writeDefaultJWT(t testing.TB) string {
 	// Sadly the geth node config cannot load JWT secret from memory, it has to be a file
 	jwtPath := path.Join(t.TempDir(), "jwt_secret")
