@@ -137,7 +137,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 		{
 			name: "HappyPathWithValidMessages",
 			testCase: consolidationTestCase{
-				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
 					if includeChainIndex == 0 {
 						return nil
 					} else {
@@ -158,7 +158,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			// Mock block2A (chain A, block 2) replaced with a deposit-only block
 			// Due to a self-referential invalid executing message.
 			testCase: consolidationTestCase{
-				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
 					if includeChainIndex == 0 {
 						return []executingMessage{
 							{
@@ -182,7 +182,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 			// Mock block2B (chain B, block 2) replaced with a deposit-only block
 			// Due to a self-referential invalid executing message.
 			testCase: consolidationTestCase{
-				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
 					if includeChainIndex == 0 {
 						return nil
 					} else {
@@ -204,7 +204,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 		{
 			name: "DepositsOnlyBlockReplacement-BothChains",
 			testCase: consolidationTestCase{
-				mutateExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
+				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
 					return []executingMessage{
 						{
 							ChainID:   config.rollupCfgs[includeChainIndex].L2ChainID.Uint64(),
@@ -228,11 +228,15 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 	}
 }
 
-type mutateExecMsgFn func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage
-type replaceBlockFn func(config *staticConfigSource) (chainIDsToReplace []uint64)
+// stubExecMsgFn returns the executing messages to stub inclusion for the specified block
+type stubExecMsgFn func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage
+
+// expectBlockReplacementsFn returns the chain indexes containing an optimistic block that must be replaced
+type expectBlockReplacementsFn func(config *staticConfigSource) (chainIDsToReplace []uint64)
+
 type consolidationTestCase struct {
-	mutateExecMsgFn         mutateExecMsgFn
-	expectBlockReplacements replaceBlockFn
+	stubExecMsgFn           stubExecMsgFn
+	expectBlockReplacements expectBlockReplacementsFn
 }
 
 func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
@@ -248,13 +252,13 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 	block1B, _ := createBlock(rng, configB, 1, nil)
 
 	var logA []*gethTypes.Log
-	if testCase.mutateExecMsgFn != nil {
-		execMsgA := testCase.mutateExecMsgFn(0, block1A.NumberU64()+1, configSource)
+	if testCase.stubExecMsgFn != nil {
+		execMsgA := testCase.stubExecMsgFn(0, block1A.NumberU64()+1, configSource)
 		logA = convertExecutingMessagesToLog(t, execMsgA)
 	}
 	var logB []*gethTypes.Log
-	if testCase.mutateExecMsgFn != nil {
-		execMsgB := testCase.mutateExecMsgFn(1, block1B.NumberU64()+1, configSource)
+	if testCase.stubExecMsgFn != nil {
+		execMsgB := testCase.stubExecMsgFn(1, block1B.NumberU64()+1, configSource)
 		logB = convertExecutingMessagesToLog(t, execMsgB)
 	}
 	block2A, block2AReceipts := createBlock(rng, configA, 2, gethTypes.Receipts{{Logs: logA}})
