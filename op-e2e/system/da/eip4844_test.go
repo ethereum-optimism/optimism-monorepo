@@ -342,7 +342,7 @@ func TestBatcherAutoDA(t *testing.T) {
 		require.NoErrorf(t, err, "Waiting for tx[%d] on L1", i)
 		t.Logf("Tx confirmed[%d]: L1 block num: %v, gas used: %d", i, rec.BlockNumber, rec.GasUsed)
 		if rec.BlockNumber.Int64() > int64(blockNum) {
-			blockNum++
+			blockNum = int(rec.BlockNumber.Int64())
 			block, err := l1Client.BlockByNumber(ctx, rec.BlockNumber)
 			require.NoError(t, err)
 			t.Logf("gas used %d/%d", block.GasUsed(), block.GasLimit())
