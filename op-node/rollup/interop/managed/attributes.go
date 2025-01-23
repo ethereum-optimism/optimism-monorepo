@@ -62,16 +62,13 @@ func AttributesToReplaceInvalidBlock(invalidatedBlock *eth.ExecutionPayloadEnvel
 	return attrs
 }
 
-// TODO: spec says this is L1 Attributes Depositor Account, but that one ends with dead0001
-var invalidatedBlockSender = common.HexToAddress("0xdeaddeaddeaddeaddeaddeaddeaddeaddead0002")
-
 func InvalidatedBlockSourceDepositTx(outputRootPreimage []byte) *types.Transaction {
 	outputRoot := crypto.Keccak256Hash(outputRootPreimage)
 	src := derive.InvalidatedBlockSource{OutputRoot: outputRoot}
 	return types.NewTx(&types.DepositTx{
 		SourceHash:          src.SourceHash(),
-		From:                invalidatedBlockSender,
-		To:                  &common.Address{}, // TODO 0 addr is confusing in system deposits, and pollutes the block-explorer page for 0 addr.
+		From:                derive.L1InfoDepositerAddress,
+		To:                  &common.Address{}, // to the zero address, no EVM execution.
 		Mint:                big.NewInt(0),
 		Value:               big.NewInt(0),
 		Gas:                 36_000,
@@ -96,7 +93,7 @@ func DecodeInvalidatedBlockTx(txs []eth.Data) (*eth.OutputV0, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invalidated-block deposit-tx sender addr: %w", err)
 	}
-	if from != invalidatedBlockSender {
+	if from != derive.L1InfoDepositerAddress {
 		return nil, fmt.Errorf("expected system tx sender, but got %s", from)
 	}
 	out, err := eth.UnmarshalOutput(tx.Data())
