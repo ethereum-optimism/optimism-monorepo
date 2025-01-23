@@ -10,4 +10,7 @@ test
 build/_workspace
 build/bin
 build/_bin
-tests/testdata
+tests/testdata**/*_test.go
+build/_workspace
+build/bin
+build/_bin
