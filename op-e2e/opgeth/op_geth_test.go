@@ -33,6 +33,15 @@ var (
 	// This is a valid hash, r, s, x, y params for RIP-7212 taken from:
 	// https://gist.github.com/ulerdogan/8f1714895e23a54147fc529ea30517eb
 	valid7212Data = common.FromHex("4cee90eb86eaa050036147a12d49004b6b9c72bd725d39d4785011fe190f0b4da73bd4903f0ce3b639bbbf6e8e80d16931ff4bcf5993d58468e8fb19086e8cac36dbcd03009df8c59286b162af3bd7fcc0450c9aa81be5d10d312af6c66b1d604aebd3099c618202fcfe16ae7770b0c49ab5eadf74b754204a3bb6060e44eff37618b065f9832de4ca6ca971a7a1adc826d0f7c00181a5fb2ddf79ae00b4e10e")
+
+	g2AddPrecompile = common.BytesToAddress([]byte{0x0d}) // g2 add
+
+	// Taken from https://eips.ethereum.org/assets/eip-2537/fail-add_G2_bls.json
+	g2AddFail = common.FromHex("0x000000000000000000000000000000001c4bb49d2a0ef12b7123acdd7110bd292b5bc659edc54dc21b81de057194c79b2a5803255959bbef8e7f56c8c12168630000000000000000000000000000000013e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e000000000000000000000000000000000ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801000000000000000000000000000000000606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be00000000000000000000000000000000103121a2ceaae586d240843a398967325f8eb5a93e8fea99b62b9f88d8556c80dd726a4b30e84a36eeabaf3592937f2700000000000000000000000000000000086b990f3da2aeac0a36143b7d7c824428215140db1bb859338764cb58458f081d92664f9053b50b3fbd2e4723121b68000000000000000000000000000000000f9e7ba9a86a8f7624aa2b42dcc8772e1af4ae115685e60abc2c9b90242167acef3d0be4050bf935eed7c3b6fc7ba77e000000000000000000000000000000000d22c3652d0dc6f0fc9316e14268477c2049ef772e852108d269d9c38dba1d4802e8dae479818184c08f9a569d878451")
+
+	// Taken from https://eips.ethereum.org/assets/eip-2537/add_G2_bls.json
+	g2AddData   = common.FromHex("0x00000000000000000000000000000000024aa2b2f08f0a91260805272dc51051c6e47ad4fa403b02b4510b647ae3d1770bac0326a805bbefd48056c8c121bdb80000000000000000000000000000000013e02b6052719f607dacd3a088274f65596bd0d09920b61ab5da61bbdc7f5049334cf11213945d57e5ac7d055d042b7e000000000000000000000000000000000ce5d527727d6e118cc9cdc6da2e351aadfd9baa8cbdd3a76d429a695160d12c923ac9cc3baca289e193548608b82801000000000000000000000000000000000606c4a02ea734cc32acd2b02bc28b99cb3e287e85a763af267492ab572e99ab3f370d275cec1da1aaa9075ff05f79be00000000000000000000000000000000103121a2ceaae586d240843a398967325f8eb5a93e8fea99b62b9f88d8556c80dd726a4b30e84a36eeabaf3592937f2700000000000000000000000000000000086b990f3da2aeac0a36143b7d7c824428215140db1bb859338764cb58458f081d92664f9053b50b3fbd2e4723121b68000000000000000000000000000000000f9e7ba9a86a8f7624aa2b42dcc8772e1af4ae115685e60abc2c9b90242167acef3d0be4050bf935eed7c3b6fc7ba77e000000000000000000000000000000000d22c3652d0dc6f0fc9316e14268477c2049ef772e852108d269d9c38dba1d4802e8dae479818184c08f9a569d878451")
+	g2AddResult = common.FromHex("0x000000000000000000000000000000000b54a8a7b08bd6827ed9a797de216b8c9057b3a9ca93e2f88e7f04f19accc42da90d883632b9ca4dc38d013f71ede4db00000000000000000000000000000000077eba4eecf0bd764dce8ed5f45040dd8f3b3427cb35230509482c14651713282946306247866dfe39a8e33016fcbe520000000000000000000000000000000014e60a76a29ef85cbd69f251b9f29147b67cfe3ed2823d3f9776b3a0efd2731941d47436dc6d2b58d9e65f8438bad073000000000000000000000000000000001586c3c910d95754fef7a732df78e279c3d37431c6a2b77e67a00c7c130a8fcd4d19f159cbeb997a178108fffffcbd20")
 )
 
 // TestMissingGasLimit tests that op-geth cannot build a block without gas limit while optimism is active in the chain config.
@@ -1096,6 +1105,57 @@ func TestFjord(t *testing.T) {
 
 			require.NoError(t, err)
 			require.Equal(t, []byte{}, response, "should return empty response for invalid signature")
+		})
+	}
+}
+
+func TestIsthmus(t *testing.T) {
+	tests := []struct {
+		name            string
+		isthmusTime     hexutil.Uint64
+		activateIsthmus func(ctx context.Context, t *testing.T, opGeth *OpGeth)
+	}{
+		{name: "ActivateAtGenesis", isthmusTime: 0, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {}},
+		{name: "ActivateAfterGenesis", isthmusTime: 2, activateIsthmus: func(ctx context.Context, t *testing.T, opGeth *OpGeth) {
+			//	Adding this block advances us to the fork time.
+			_, err := opGeth.AddL2Block(ctx)
+			require.NoError(t, err)
+		}},
+	}
+
+	for _, test := range tests {
+		test := test
+		t.Run(fmt.Sprintf("EIP2537_%s", test.name), func(t *testing.T) {
+			op_e2e.InitParallel(t)
+			cfg := e2esys.IsthmusSystemConfig(t, &test.isthmusTime)
+
+			ctx, cancel := context.WithTimeout(context.Background(), 60*time.Second)
+			defer cancel()
+
+			opGeth, err := NewOpGeth(t, ctx, &cfg)
+			require.NoError(t, err)
+			defer opGeth.Close()
+
+			test.activateIsthmus(ctx, t, opGeth)
+
+			// check response against test cases
+			response, err := opGeth.L2Client.CallContract(ctx, ethereum.CallMsg{
+				To:   &g2AddPrecompile,
+				Data: g2AddData,
+			}, nil)
+
+			require.NoError(t, err)
+
+			require.Equal(t, g2AddResult, response, "should return proper add result")
+
+			// invalid request reverts with an error
+			_, err = opGeth.L2Client.CallContract(ctx, ethereum.CallMsg{
+				To:   &g2AddPrecompile,
+				Data: g2AddFail,
+			}, nil)
+
+			require.Error(t, err)
+			require.ErrorContains(t, err, "invalid fp.Element encoding", "should return proper error")
 		})
 	}
 }
