@@ -39,7 +39,7 @@ func TestMinimal(t *testing.T) {
 		funds := types.NewBalanceFromFloat(0.5) // 0.5 ETH
 		user := ctx.Value(testUserMarker).(types.Wallet)
 
-		scw0Addr := chain.ContractAddress(constants.SuperchainWETH)
+		scw0Addr := constants.SuperchainWETH
 		scw0 := contracts.MustResolveContract[contracts.SuperchainWETH](
 			chain,
 			scw0Addr,

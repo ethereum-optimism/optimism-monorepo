@@ -85,38 +85,6 @@ func TestNewSystemFromEnv(t *testing.T) {
 	assert.Nil(t, sys)
 }
 
-func TestContractAddress(t *testing.T) {
-	chain := NewChain("1", "http://localhost:8545", nil)
-	testWallet := NewWallet("0xabc", "0x123", chain)
-	chain.users = map[string]types.Wallet{
-		"l2Faucet": testWallet,
-	}
-
-	tests := []struct {
-		name       string
-		contractID string
-		want       types.Address
-	}{
-		{
-			name:       "existing contract",
-			contractID: "SuperchainWETH",
-			want:       "0x4200000000000000000000000000000000000024",
-		},
-		{
-			name:       "contract address",
-			contractID: "0x4200000000000000000000000000000000000024",
-			want:       "0x4200000000000000000000000000000000000024",
-		},
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got := chain.ContractAddress(tt.contractID)
-			assert.Equal(t, tt.want, got)
-		})
-	}
-}
-
 func TestSystemFromDevnet(t *testing.T) {
 	testNode := descriptors.Node{
 		Services: map[string]descriptors.Service{

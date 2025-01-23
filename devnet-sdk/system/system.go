@@ -115,7 +115,6 @@ func systemFromDevnet(dn descriptors.DevnetEnvironment, identifier string) (Syst
 type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
-	ContractAddress(contractID string) types.Address
 	User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
 	Client() (*ethclient.Client, error)
 }
@@ -196,13 +195,6 @@ func chainFromDescriptor(d *descriptors.Chain) Chain {
 	c.users = users // Set users after creation
 
 	return c
-}
-
-func (c *chain) ContractAddress(contractID string) types.Address {
-	if addr, ok := c.addresses[contractID]; ok {
-		return addr
-	}
-	return types.Address(contractID)
 }
 
 func (c *chain) RPCURL() string {
