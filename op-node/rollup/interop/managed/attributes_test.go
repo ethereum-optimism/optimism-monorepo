@@ -87,7 +87,7 @@ func TestAttributesToReplaceInvalidBlock(t *testing.T) {
 	d, e := eip1559.DecodeHolocene1559Params(attrs.EIP1559Params[:])
 	require.Equal(t, denominator, d)
 	require.Equal(t, elasticity, e)
-	result, err := DecodeInvalidatedBlockTx(attrs.Transactions)
+	result, err := DecodeInvalidatedBlockTxFromReplacement(attrs.Transactions)
 	require.NoError(t, err)
 	require.Equal(t, invalidatedBlock.ExecutionPayload.BlockHash, result.BlockHash)
 	require.Equal(t, invalidatedBlock.ExecutionPayload.StateRoot, result.StateRoot)
@@ -98,11 +98,11 @@ func TestAttributesToReplaceInvalidBlock(t *testing.T) {
 // TestInvalidatedBlockTx tests we can encode/decode the system tx that represents the invalidated block
 func TestInvalidatedBlockTx(t *testing.T) {
 	t.Run("nil list", func(t *testing.T) {
-		_, err := DecodeInvalidatedBlockTx(nil)
+		_, err := DecodeInvalidatedBlockTxFromReplacement(nil)
 		require.NotNil(t, err)
 	})
 	t.Run("empty list", func(t *testing.T) {
-		_, err := DecodeInvalidatedBlockTx([]eth.Data{})
+		_, err := DecodeInvalidatedBlockTxFromReplacement([]eth.Data{})
 		require.NotNil(t, err)
 	})
 	t.Run("success", func(t *testing.T) {
@@ -130,7 +130,7 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		require.Equal(t, sourceHash, tx.SourceHash(), "sourceHash")
 		encoded, err := tx.MarshalBinary()
 		require.NoError(t, err, "must encode")
-		result, err := DecodeInvalidatedBlockTx([]eth.Data{encoded})
+		result, err := DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.NoError(t, err, "must decode")
 		require.Equal(t, *output, *result, "roundtrip success")
 	})
@@ -140,7 +140,7 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		tx := testutils.RandomDynamicFeeTx(rng, signer)
 		encoded, err := tx.MarshalBinary()
 		require.NoError(t, err, "must encode")
-		_, err = DecodeInvalidatedBlockTx([]eth.Data{encoded})
+		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "expected deposit")
 	})
 	t.Run("bad tx sender", func(t *testing.T) {
@@ -157,14 +157,14 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		})
 		encoded, err := tx.MarshalBinary()
 		require.NoError(t, err, "must encode")
-		_, err = DecodeInvalidatedBlockTx([]eth.Data{encoded})
+		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "expected system tx sender")
 	})
 	t.Run("bad preimage", func(t *testing.T) {
 		tx := InvalidatedBlockSourceDepositTx([]byte("invalid output root preimage"))
 		encoded, err := tx.MarshalBinary()
 		require.NoError(t, err, "must encode")
-		_, err = DecodeInvalidatedBlockTx([]eth.Data{encoded})
+		_, err = DecodeInvalidatedBlockTxFromReplacement([]eth.Data{encoded})
 		require.Error(t, err, "failed to unmarshal")
 	})
 }

@@ -274,6 +274,13 @@ func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
 	}
 }
 
+func (refs *DerivedBlockRefPair) Seals() DerivedBlockSealPair {
+	return DerivedBlockSealPair{
+		DerivedFrom: BlockSealFromRef(refs.DerivedFrom),
+		Derived:     BlockSealFromRef(refs.Derived),
+	}
+}
+
 // DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
 type DerivedBlockSealPair struct {
 	DerivedFrom BlockSeal `json:"derivedFrom"`

@@ -160,6 +160,7 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 	p.tipHeight = ref.Number
+	p.log.Info("Updated latest known L1 block", "ref", ref)
 }
 
 func (p *L1Accessor) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {

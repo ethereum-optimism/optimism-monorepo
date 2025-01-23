@@ -266,14 +266,6 @@ func (ev TryUpdateEngineEvent) getBlockProcessingMetrics() []interface{} {
 	return logValues
 }
 
-type ForceEngineResetEvent struct {
-	Unsafe, Safe, Finalized eth.L2BlockRef
-}
-
-func (ev ForceEngineResetEvent) String() string {
-	return "force-engine-reset"
-}
-
 type EngineResetConfirmedEvent struct {
 	Unsafe, Safe, Finalized eth.L2BlockRef
 }
@@ -432,7 +424,7 @@ func (d *EngDeriver) OnEvent(ev event.Event) bool {
 			SafeL2Head:      d.ec.SafeL2Head(),
 			FinalizedL2Head: d.ec.Finalized(),
 		})
-	case ForceEngineResetEvent:
+	case rollup.ForceResetEvent:
 		ForceEngineReset(d.ec, x)
 
 		// Time to apply the changes to the underlying engine
@@ -579,7 +571,7 @@ type ResetEngineControl interface {
 }
 
 // ForceEngineReset is not to be used. The op-program needs it for now, until event processing is adopted there.
-func ForceEngineReset(ec ResetEngineControl, x ForceEngineResetEvent) {
+func ForceEngineReset(ec ResetEngineControl, x rollup.ForceResetEvent) {
 	ec.SetUnsafeHead(x.Unsafe)
 	ec.SetLocalSafeHead(x.Safe)
 	ec.SetPendingSafeL2Head(x.Safe)

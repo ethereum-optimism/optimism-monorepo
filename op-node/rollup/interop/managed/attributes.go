@@ -77,7 +77,7 @@ func InvalidatedBlockSourceDepositTx(outputRootPreimage []byte) *types.Transacti
 	})
 }
 
-func DecodeInvalidatedBlockTx(txs []eth.Data) (*eth.OutputV0, error) {
+func DecodeInvalidatedBlockTxFromReplacement(txs []eth.Data) (*eth.OutputV0, error) {
 	if len(txs) == 0 {
 		return nil, errors.New("expected block-replacement tx and more")
 	}
@@ -85,11 +85,15 @@ func DecodeInvalidatedBlockTx(txs []eth.Data) (*eth.OutputV0, error) {
 	if err := tx.UnmarshalBinary(txs[len(txs)-1]); err != nil {
 		return nil, fmt.Errorf("failed to unmarshal invalidated-block system tx: %w", err)
 	}
+	return DecodeInvalidatedBlockTx(&tx)
+}
+
+func DecodeInvalidatedBlockTx(tx *types.Transaction) (*eth.OutputV0, error) {
 	if tx.Type() != types.DepositTxType {
 		return nil, fmt.Errorf("expected deposit tx type, but got %d", tx.Type())
 	}
 	signer := types.LatestSignerForChainID(tx.ChainId())
-	from, err := signer.Sender(&tx)
+	from, err := signer.Sender(tx)
 	if err != nil {
 		return nil, fmt.Errorf("failed to get invalidated-block deposit-tx sender addr: %w", err)
 	}

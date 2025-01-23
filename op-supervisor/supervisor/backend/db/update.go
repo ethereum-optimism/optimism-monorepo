@@ -230,11 +230,22 @@ func (db *ChainsDB) onReplaceBlock(chainID eth.ChainID, replacement eth.BlockRef
 		return
 	}
 
-	if err := localSafeDB.ReplaceInvalidatedBlock(replacement, invalidated); err != nil {
+	result, err := localSafeDB.ReplaceInvalidatedBlock(replacement, invalidated)
+	if err != nil {
 		db.logger.Error("Cannot replace invalidated block in local-safe DB",
 			"invalidated", invalidated, "replacement", replacement, "err", err)
 		return
 	}
+	// Consider the replacement as a new local-unsafe block, so we can try to index the new event-data.
+	db.emitter.Emit(superevents.LocalUnsafeReceivedEvent{
+		ChainID:        chainID,
+		NewLocalUnsafe: replacement,
+	})
+	// The local-safe DB changed, so emit an event, so other sub-systems can react to the change.
+	db.emitter.Emit(superevents.LocalSafeUpdateEvent{
+		ChainID:      chainID,
+		NewLocalSafe: result,
+	})
 
 	// TODO Make sure the events-DB has a matching block-hash with the replacement, roll it back otherwise.
 }

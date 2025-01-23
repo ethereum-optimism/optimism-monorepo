@@ -761,7 +761,10 @@ func TestInvalidateAndReplace(t *testing.T) {
 		replacement := l2Ref2
 		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
 		require.NotEqual(t, l2Ref2.Hash, replacement.Hash) // different L2 block as replacement
-		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+		result, err := db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash)
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), result.Derived.ID())
+		require.Equal(t, l1Block1.ID(), result.DerivedFrom.ID())
 
 		pair, err = db.Latest()
 		require.NoError(t, err)
@@ -827,7 +830,10 @@ func TestInvalidateAndReplaceNonFirst(t *testing.T) {
 		replacement := l2Ref3
 		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
 		require.NotEqual(t, l2Ref3.Hash, replacement.Hash) // different L2 block as replacement
-		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+		result, err := db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash)
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), result.Derived.ID())
+		require.Equal(t, l1Block2.ID(), result.DerivedFrom.ID())
 
 		pair, err = db.Latest()
 		require.NoError(t, err)

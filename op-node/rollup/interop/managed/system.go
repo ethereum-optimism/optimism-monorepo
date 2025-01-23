@@ -136,7 +136,7 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 		}})
 	case engine.InteropReplacedBlockEvent:
 		m.log.Info("Replaced block", "replacement", x.Ref)
-		out, err := DecodeInvalidatedBlockTx(x.Envelope.ExecutionPayload.Transactions)
+		out, err := DecodeInvalidatedBlockTxFromReplacement(x.Envelope.ExecutionPayload.Transactions)
 		if err != nil {
 			m.log.Error("Failed to parse replacement block", "err", err)
 			return true
@@ -297,7 +297,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 		return err
 	}
 
-	m.emitter.Emit(engine.ForceEngineResetEvent{
+	m.emitter.Emit(rollup.ForceResetEvent{
 		Unsafe:    unsafeRef,
 		Safe:      safeRef,
 		Finalized: finalizedRef,

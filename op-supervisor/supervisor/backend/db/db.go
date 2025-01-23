@@ -55,7 +55,7 @@ type LocalDerivedFromStorage interface {
 	Latest() (pair types.DerivedBlockSealPair, err error)
 	Invalidated() (pair types.DerivedBlockSealPair, err error)
 	AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error
-	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) error
+	ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error)
 	RewindAndInvalidate(invalidated types.DerivedBlockRefPair) error
 	LastDerivedAt(derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
 	IsDerived(derived eth.BlockID) error
