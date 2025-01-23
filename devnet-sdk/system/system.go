@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"slices"
 	"strconv"
@@ -346,7 +345,7 @@ func sendETH(ctx context.Context, chain Chain, privateKey string, to types.Addre
 
 	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
 	toAddr := common.HexToAddress(string(to))
-	tx := coreTypes.NewTransaction(nonce, toAddr, big.NewInt(int64(amount)), gasLimit, gasPrice, nil)
+	tx := coreTypes.NewTransaction(nonce, toAddr, amount.Int, gasLimit, gasPrice, nil)
 
 	chainID, err := client.NetworkID(ctx)
 	if err != nil {

@@ -31,7 +31,7 @@ func TestMinimal(t *testing.T) {
 		logger = logger.With("chain", chain.ID())
 		logger.InfoContext(ctx, "starting test")
 
-		var funds types.Balance = 0.5 * constants.ETH
+		funds := types.NewBalanceFromFloat(0.5) // 0.5 ETH
 		user := ctx.Value(testUserMarker).(types.Wallet)
 
 		scw0Addr := chain.ContractAddress(constants.SuperchainWETH)
@@ -53,9 +53,9 @@ func TestMinimal(t *testing.T) {
 		require.NoError(t, err)
 		logger.InfoContext(ctx, "final balance retrieved", "balance", balance)
 
-		require.Equal(t, balance, initialBalance+funds)
+		require.Equal(t, balance, initialBalance.Add(funds))
 	},
-		userFundsValidator(chainIdx, 1*constants.ETH, testUserMarker),
+		userFundsValidator(chainIdx, types.NewBalanceFromFloat(1.0), testUserMarker),
 	)
 }
 

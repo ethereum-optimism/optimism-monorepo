@@ -90,12 +90,12 @@ type balanceImpl struct {
 func (i *balanceImpl) Call(ctx context.Context) (types.Balance, error) {
 	binding, err := i.parent.getBinding()
 	if err != nil {
-		return 0, fmt.Errorf("failed to get contract binding: %w", err)
+		return types.Balance{}, fmt.Errorf("failed to get contract binding: %w", err)
 	}
 
 	balance, err := binding.BalanceOf(nil, common.HexToAddress(string(i.user)))
 	if err != nil {
-		return 0, err
+		return types.Balance{}, err
 	}
-	return types.Balance(balance.Uint64()), nil
+	return types.NewBalance(balance), nil
 }
