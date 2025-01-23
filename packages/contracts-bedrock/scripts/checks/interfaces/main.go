@@ -69,7 +69,7 @@ func processFile(artifactPath string) (*common.Void, []error) {
 
 	contractName := strings.Split(filepath.Base(artifactPath), ".")[0]
 
-	if isExcluded(contractName) {
+	if slices.Contains(excludeContracts, contractName) {
 		return nil, nil
 	}
 
@@ -276,13 +276,4 @@ func getString(m map[string]interface{}, key string) string {
 		}
 	}
 	return ""
-}
-
-func isExcluded(contractName string) bool {
-	for _, exclude := range excludeContracts {
-		if exclude == contractName {
-			return true
-		}
-	}
-	return false
 }
