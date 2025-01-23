@@ -7,6 +7,8 @@ import (
 	"sync"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common"
+
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -42,6 +44,7 @@ type L1Accessor struct {
 	// tipHeight is the height of the L1 chain tip
 	// used to block access to requests more recent than the confirmation depth
 	tipHeight uint64
+	tipHash   common.Hash
 	latestSub ethereum.Subscription
 	confDepth uint64
 
@@ -159,7 +162,29 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 }
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
+	// The block is the same one we already have
+	if ref.Number == p.tipHeight && ref.Hash == p.tipHash {
+		return
+	}
+
+	// The block is not the next one; there is a gap
+	if ref.Number != p.tipHeight+1 {
+		// TODO: ?
+	}
+
+	// The block is the next one; check if it is a reorg
+	if ref.ParentHash != p.tipHash {
+		// Signal a safe block reorg
+		// return now because we don't want to update the tip info yet
+		// p.emitter.Emit(superevents.InvalidationEvent{
+		// 	Type:   superevents.InvalidationTypeCrossSafe,
+		// 	BadRef: ref,
+		// })
+		return
+	}
+
 	p.tipHeight = ref.Number
+	p.tipHash = ref.Hash
 	p.log.Info("Updated latest known L1 block", "ref", ref)
 }
 

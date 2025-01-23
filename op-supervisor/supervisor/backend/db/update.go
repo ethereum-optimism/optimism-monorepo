@@ -196,6 +196,72 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	return nil
 }
 
+// InvalidateLocalUnsafe invalidates all local-unsafe blocks up to the local-safe head.
+// Also invalidates the cross-unsafe blocks that are past the local-safe head.
+// TODO: Allow invalidating to a specific block number so we can invalidate only some unsafe blocks
+// if only some in a chain are reorged.
+func (db *ChainsDB) InvalidateLocalUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error {
+	// Get database to invalidate data in.
+	eventsDB, ok := db.logDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+
+	// Get the local-safe head of the chain.
+	safeHeadPair, err := db.LocalSafe(chainID)
+	if err != nil {
+		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+	}
+
+	// Drop the events of the invalidated block and after,
+	if err := eventsDB.Rewind(safeHeadPair.Derived.ID()); err != nil {
+		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
+	}
+
+	// Reset cross-unsafe if it contains the invalidated block.
+	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Number); err != nil {
+		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
+	}
+
+	// Create an event, that subscribed sync-nodes can listen to,
+	// to start finding the replacement block.
+	db.emitter.Emit(superevents.InvalidateLocalUnsafeEvent{
+		ChainID:   chainID,
+		Candidate: candidate,
+	})
+
+	return nil
+}
+
+// InvalidateCrossUnsafe invalidates all cross-unsafe blocks up to the cross-safe head.
+// Also invalidates the cross-unsafe blocks that are past the cross-safe head.
+func (db *ChainsDB) InvalidateCrossUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error {
+	// Get databases to invalidate data in.
+	eventsDB, ok := db.logDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+
+	// Now invalidate the cross-unsafe data.
+	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Number); err != nil {
+		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
+	}
+
+	// Drop the events of the invalidated block and after,
+	// by rewinding to only keep the parent-block.
+	if err := eventsDB.Rewind(candidate.ParentID()); err != nil {
+		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
+	}
+
+	// Create an event, that subscribed sync-nodes can listen to,
+	// to start finding the replacement block.
+	db.emitter.Emit(superevents.InvalidateCrossUnsafeEvent{
+		ChainID:   chainID,
+		Candidate: candidate,
+	})
+	return nil
+}
+
 func (db *ChainsDB) ResetCrossUnsafeIfNewerThan(chainID eth.ChainID, number uint64) error {
 	crossUnsafe, ok := db.crossUnsafe.Get(chainID)
 	if !ok {

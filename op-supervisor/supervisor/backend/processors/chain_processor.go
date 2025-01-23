@@ -116,6 +116,12 @@ func (s *ChainProcessor) onRequest(target uint64) {
 			s.log.Warn("No RPC source configured, cannot process new blocks")
 		} else {
 			s.log.Error("Failed to process new block", "err", err)
+			// s.emitter.Emit(superevents.InvalidationEvent{
+			// 	ChainID: s.chain,
+			// 	Type:    superevents.InvalidationTypeUnknown,
+			// 	BadRef:  eth.BlockRef{Number: target},
+			// 	Error:   err,
+			// })
 		}
 	} else if x := s.nextNum(); x <= target {
 		s.log.Debug("Continuing with next block", "target", target, "next", x)
@@ -255,5 +261,23 @@ func (s *ChainProcessor) process(ctx context.Context, next eth.BlockRef, receipt
 		return err
 	}
 	s.log.Info("Indexed block events", "block", next, "txs", len(receipts))
+	return nil
+}
+
+// ResetToBlock resets the chain processor to the given block
+func (s *ChainProcessor) ResetToBlock(ctx context.Context, ref eth.L2BlockRef) error {
+	s.log.Info("Resetting chain processor", "ref", ref)
+
+	// Rewind the database to the given block
+	if err := s.rewinder.Rewind(s.chain, ref.ID()); err != nil {
+		return fmt.Errorf("failed to rewind database: %w", err)
+	}
+
+	// Emit a chain process event to restart processing from the new block
+	s.emitter.Emit(superevents.ChainProcessEvent{
+		ChainID: s.chain,
+		Target:  ref.Number,
+	})
+
 	return nil
 }

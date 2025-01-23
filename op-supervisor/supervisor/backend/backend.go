@@ -21,6 +21,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/sync"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/invalidator"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
@@ -66,6 +67,9 @@ type SupervisorBackend struct {
 	chainMetrics locks.RWMap[eth.ChainID, *chainMetrics]
 
 	emitter event.Emitter
+
+	// Invalidator for handling reorgs
+	invalidator *invalidator.Invalidator
 }
 
 var _ event.AttachEmitter = (*SupervisorBackend)(nil)
@@ -137,6 +141,9 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		return nil, errors.Join(err, super.Stop(ctx))
 	}
 
+	// create the invalidator
+	super.invalidator = invalidator.New(logger, chainsDBs)
+
 	return super, nil
 }
 
@@ -163,6 +170,7 @@ func (su *SupervisorBackend) OnEvent(ev event.Event) bool {
 
 func (su *SupervisorBackend) AttachEmitter(em event.Emitter) {
 	su.emitter = em
+	su.invalidator.AttachEmitter(em)
 }
 
 // initResources initializes all the resources, such as DBs and processors for chains.
@@ -196,6 +204,7 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		chainProcessor := processors.NewChainProcessor(su.sysContext, su.logger, chainID, logProcessor, su.chainDBs)
 		su.eventSys.Register(fmt.Sprintf("events-%s", chainID), chainProcessor, eventOpts)
 		su.chainProcessors.Set(chainID, chainProcessor)
+		// su.invalidator.RegisterChain(chainID, chainProcessor)
 	}
 	// initialize sync sources
 	for _, chainID := range chains {
@@ -295,6 +304,11 @@ func (su *SupervisorBackend) AttachSyncSource(chainID eth.ChainID, src syncnode.
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to sync source", chainID)
 	}
 	su.syncSources.Set(chainID, src)
+
+	if err := su.invalidator.AttachSyncSource(chainID, src); err != nil {
+		return fmt.Errorf("failed to attach sync source to invalidator: %w", err)
+	}
+
 	return nil
 }
 

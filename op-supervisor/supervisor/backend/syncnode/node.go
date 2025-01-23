@@ -89,6 +89,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.onInvalidateLocalSafe(x.Candidate)
+	case superevents.InvalidateLocalUnsafeEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.onInvalidateLocalUnsafe(x.Candidate)
 	case superevents.CrossUnsafeUpdateEvent:
 		if x.ChainID != m.chainID {
 			return false
@@ -439,6 +444,21 @@ func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPai
 	if err := m.Node.InvalidateBlock(ctx, types.BlockSealFromRef(invalidated.Derived)); err != nil {
 		m.log.Warn("Node is unable to invalidate block",
 			"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom, "err", err)
+	}
+}
+
+// onInvalidateLocalUnsafe listens for when a local-unsafe block is found to be invalid in the cross-unsafe context
+// and needs to be replaced with a deposit only block.
+// TODO: Is this necessary for unsafe blocks?
+func (m *ManagedNode) onInvalidateLocalUnsafe(invalidated eth.L2BlockRef) {
+	m.log.Warn("Instructing node to replace invalidated local-unsafe block",
+		"invalidated", invalidated)
+
+	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer cancel()
+	if err := m.Node.InvalidateBlock(ctx, types.BlockSealFromRef(invalidated.BlockRef())); err != nil {
+		m.log.Warn("Node is unable to invalidate block",
+			"invalidated", invalidated, "err", err)
 	}
 }
 
