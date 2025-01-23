@@ -94,6 +94,8 @@ interface IOPContractsManager {
 
     /// @notice The latest implementation contracts for the OP Stack.
     struct Implementations {
+        address superchainConfigImpl;
+        address protocolVersionsImpl;
         address l1ERC721BridgeImpl;
         address optimismPortalImpl;
         address systemConfigImpl;
@@ -216,10 +218,10 @@ interface IOPContractsManager {
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory);
 
-    /// @notice Upgrades a set of chains to the latest implementation contracts
-    /// @param _opChains Array of OpChain structs, one per chain to upgrade
-    /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(OpChain[] memory _opChains) external;
+    /// @notice Upgrades the implementation of all proxies in the specified chains
+    /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
+    /// @param _opChains The chains to upgrade
+    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChain[] memory _opChains) external;
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
     /// must be added in ascending GameType order.

@@ -471,6 +471,8 @@ contract DeployImplementations is Script {
         address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -479,8 +481,6 @@ contract DeployImplementations is Script {
             l1StandardBridgeImpl: address(_dio.l1StandardBridgeImpl()),
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
-            superchainConfigImpl: address(_dio.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
             mipsImpl: address(_dio.mipsSingleton())
         });
