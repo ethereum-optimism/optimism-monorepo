@@ -105,7 +105,11 @@ contract OptimismPortalInterop is OptimismPortal2 {
         // This check needs to be done for every withdrawal.
         if (_tx.target == s.sharedLockbox) revert MessageTargetSharedLockbox();
 
+        // If ETH liquidity has not been migrated to the SharedLockbox yet, maintain legacy behavior
+        // where ETH accumulates in the portal contract itself rather than being managed by the lockbox
         if (!s.migrated) return;
+
+        // Skip calling the lockbox if the withdrawal value is 0 since there is no ETH to unlock
         if (_tx.value == 0) return;
 
         ISharedLockbox(s.sharedLockbox).unlockETH(_tx.value);
@@ -113,8 +117,11 @@ contract OptimismPortalInterop is OptimismPortal2 {
 
     /// @notice Locks the ETH in the SharedLockbox.
     function _lockETH() internal virtual override {
+        // Skip calling the lockbox if the deposit value is 0 since there is no ETH to lock
         if (msg.value == 0) return;
 
+        // If ETH liquidity has not been migrated to the SharedLockbox yet, maintain legacy behavior
+        // where ETH accumulates in the portal contract itself rather than being managed by the lockbox
         OptimismPortalStorage storage s = _storage();
         if (!s.migrated) return;
 

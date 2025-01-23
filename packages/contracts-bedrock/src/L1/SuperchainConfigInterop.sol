@@ -46,6 +46,9 @@ contract SuperchainConfigInterop is SuperchainConfig {
     /// @notice Thrown when trying to add an OptimismPortal that is already authorized.
     error PortalAlreadyAuthorized();
 
+    /// @notice Thrown when the superchain is paused.
+    error SuperchainPaused();
+
     /// @notice Semantic version.
     /// @custom:semver +interop-beta.1
     function version() public pure override returns (string memory) {
@@ -116,6 +119,8 @@ contract SuperchainConfigInterop is SuperchainConfig {
     /// @param _chainId         The chain ID to add.
     /// @param _systemConfig    The SystemConfig contract address of the chain to add.
     function addDependency(uint256 _chainId, address _systemConfig) external {
+        if (paused()) revert SuperchainPaused();
+
         SuperchainConfigDependencies storage dependenciesStorage = _dependenciesStorage();
 
         if (msg.sender != clusterManager()) {

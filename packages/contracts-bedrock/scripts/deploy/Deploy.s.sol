@@ -214,7 +214,7 @@ contract Deploy is Deployer {
 
         // Set up the Superchain if needed.
         if (_needsSuperchain) {
-            deploySuperchain({ _isInterop: cfg.useInterop() });
+            deploySuperchain();
         }
 
         deployImplementations({ _isInterop: cfg.useInterop() });
@@ -250,10 +250,12 @@ contract Deploy is Deployer {
     ///         1. The SuperchainConfig contract
     ///         2. The ProtocolVersions contract
     ///         3. The SharedLockbox contract
-    function deploySuperchain(bool _isInterop) public {
-        require(_isInterop == cfg.useInterop(), "Deploy: Interop setting mismatch.");
+    function deploySuperchain() public {
+        bool isInterop = cfg.useInterop();
 
         console.log("Setting up Superchain");
+        if (isInterop) console.log("Using Interop");
+
         DeploySuperchain ds = new DeploySuperchain();
         (DeploySuperchainInput dsi, DeploySuperchainOutput dso) = ds.etchIOContracts();
 
@@ -265,9 +267,9 @@ contract Deploy is Deployer {
         dsi.set(dsi.paused.selector, false);
         dsi.set(dsi.requiredProtocolVersion.selector, ProtocolVersion.wrap(cfg.requiredProtocolVersion()));
         dsi.set(dsi.recommendedProtocolVersion.selector, ProtocolVersion.wrap(cfg.recommendedProtocolVersion()));
-        dsi.set(dsi.isInterop.selector, _isInterop);
+        dsi.set(dsi.isInterop.selector, isInterop);
 
-        if (_isInterop) {
+        if (isInterop) {
             ds = DeploySuperchain(new DeploySuperchainInterop());
         }
         // Run the deployment script.
@@ -278,7 +280,7 @@ contract Deploy is Deployer {
         artifacts.save("ProtocolVersionsProxy", address(dso.protocolVersionsProxy()));
         artifacts.save("ProtocolVersionsImpl", address(dso.protocolVersionsImpl()));
 
-        if (_isInterop) {
+        if (isInterop) {
             artifacts.save("SharedLockboxProxy", address(dso.sharedLockboxProxy()));
             artifacts.save("SharedLockboxImpl", address(dso.sharedLockboxImpl()));
         }
@@ -288,7 +290,7 @@ contract Deploy is Deployer {
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: true });
         ChainAssertions.checkSuperchainConfig({ _contracts: contracts, _cfg: cfg, _isProxy: true, _isPaused: false });
 
-        if (_isInterop) {
+        if (isInterop) {
             ChainAssertions.checkSuperchainConfigInterop({
                 _contracts: contracts,
                 _cfg: cfg,
@@ -302,7 +304,7 @@ contract Deploy is Deployer {
         contracts.ProtocolVersions = artifacts.mustGetAddress("ProtocolVersionsImpl");
         ChainAssertions.checkProtocolVersions({ _contracts: contracts, _cfg: cfg, _isProxy: false });
 
-        if (_isInterop) {
+        if (isInterop) {
             // Then replace the SharedLockbox proxy with the implementation address and run assertions on it.
             contracts.SharedLockbox = artifacts.mustGetAddress("SharedLockboxImpl");
             ChainAssertions.checkSharedLockbox({ _contracts: contracts, _isProxy: false });

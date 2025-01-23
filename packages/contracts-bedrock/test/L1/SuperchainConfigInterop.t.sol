@@ -211,7 +211,10 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
     /// @notice Tests that `addDependency` reverts when the caller is not the cluster manager or an authorized portal.
     function test_addDependency_notClusterManagerOrPortal_reverts(address _caller, uint256 _chainId) external {
         vm.assume(_caller != _superchainConfigInterop().clusterManager());
+        vm.assume(_caller != address(optimismPortal2));
+
         vm.expectRevert(Unauthorized.selector);
+        vm.prank(_caller);
         _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
     }
 
@@ -279,6 +282,18 @@ contract SuperchainConfigInterop_AddDependency_Test is SuperchainConfigInterop_B
         vm.prank(_superchainConfigInterop().clusterManager());
         vm.expectRevert(SuperchainConfigInterop.PortalAlreadyAuthorized.selector);
         _superchainConfigInterop().addDependency(_chainId + 1, address(systemConfig));
+    }
+
+    /// @notice Tests that `addDependency` reverts when the superchain is paused.
+    function test_addDependency_paused_reverts(uint256 _chainId) external {
+        // Set up portal and pause the superchain
+        vm.prank(_superchainConfigInterop().guardian());
+        _superchainConfigInterop().pause("test pause");
+
+        // Try to add dependency while paused
+        vm.prank(_superchainConfigInterop().clusterManager());
+        vm.expectRevert(SuperchainConfigInterop.SuperchainPaused.selector);
+        _superchainConfigInterop().addDependency(_chainId, address(systemConfig));
     }
 }
 
