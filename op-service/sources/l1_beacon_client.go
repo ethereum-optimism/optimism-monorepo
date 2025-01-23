@@ -289,7 +289,7 @@ func (cl *L1BeaconClient) GetBlobs(ctx context.Context, ref eth.L1BlockRef, hash
 	}
 	blobs, err := blobsFromSidecars(blobSidecars, hashes)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get blob sidecars for L1BlockRef %s: %w", ref, err)
+		return nil, fmt.Errorf("failed to get blobs from sidecars for L1BlockRef %s: %w", ref, err)
 	}
 	return blobs, nil
 }
