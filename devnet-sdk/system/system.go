@@ -198,18 +198,18 @@ func chainFromDescriptor(d *descriptors.Chain) Chain {
 	return c
 }
 
-func (c chain) ContractAddress(contractID string) types.Address {
+func (c *chain) ContractAddress(contractID string) types.Address {
 	if addr, ok := c.addresses[contractID]; ok {
 		return addr
 	}
 	return types.Address(contractID)
 }
 
-func (c chain) RPCURL() string {
+func (c *chain) RPCURL() string {
 	return c.rpcUrl
 }
 
-func (c chain) User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
+func (c *chain) User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
 	// Try each user
 	for _, user := range c.users {
 		// Check all constraints
@@ -228,7 +228,7 @@ func (c chain) User(ctx context.Context, constraints ...constraints.WalletConstr
 	return nil, fmt.Errorf("no user found meeting all constraints")
 }
 
-func (c chain) ID() types.ChainID {
+func (c *chain) ID() types.ChainID {
 	if c.id == "" {
 		return types.ChainID(0)
 	}
@@ -241,13 +241,13 @@ type InteropSystem interface {
 	InteropSet() InteropSet
 }
 
-var _ InteropSystem = interopSystem{}
+var _ InteropSystem = (*interopSystem)(nil)
 
 type interopSystem struct {
 	*system
 }
 
-func (i interopSystem) InteropSet() InteropSet {
+func (i *interopSystem) InteropSet() InteropSet {
 	return i.system // TODO
 }
 
@@ -265,15 +265,15 @@ func NewWallet(pk types.Key, addr types.Address, chain Chain) *wallet {
 	return &wallet{privateKey: pk, address: addr, chain: chain}
 }
 
-func (w wallet) PrivateKey() types.Key {
+func (w *wallet) PrivateKey() types.Key {
 	return strings.TrimPrefix(w.privateKey, "0x")
 }
 
-func (w wallet) Address() types.Address {
+func (w *wallet) Address() types.Address {
 	return w.address
 }
 
-func (w wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
+func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
 	return &sendImpl{
 		chain:  w.chain,
 		pk:     w.PrivateKey(),
@@ -282,7 +282,7 @@ func (w wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvoc
 	}
 }
 
-func (w wallet) Balance() types.Balance {
+func (w *wallet) Balance() types.Balance {
 	client, err := w.chain.Client()
 	if err != nil {
 		return types.Balance{Int: new(big.Int)}
