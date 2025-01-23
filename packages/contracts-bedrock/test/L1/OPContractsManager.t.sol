@@ -336,8 +336,16 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
 
         // Set the proxy admin owner to be the non-upgrade controller
-        vm.store(address(proxyAdmin), bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot), bytes32(uint256(uint160(_nonUpgradeController))));
-        vm.store(address(disputeGameFactory), bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot), bytes32(uint256(uint160(_nonUpgradeController))));
+        vm.store(
+            address(proxyAdmin),
+            bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot),
+            bytes32(uint256(uint160(_nonUpgradeController)))
+        );
+        vm.store(
+            address(disputeGameFactory),
+            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
+            bytes32(uint256(uint160(_nonUpgradeController)))
+        );
 
         // Run the upgrade test and checks
         runUpgradeTestAndChecks(_nonUpgradeController);
