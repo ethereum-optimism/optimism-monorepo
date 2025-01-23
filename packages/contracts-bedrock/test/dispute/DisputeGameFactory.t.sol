@@ -342,7 +342,6 @@ contract DisputeGameFactory_FindLatestGames_Test is DisputeGameFactory_Init {
     )
         public
     {
-        skipIfForkTest("");
         _numGames = bound(_numGames, 0, 1 << 8);
         _numSearchedGames = bound(_numSearchedGames, 0, _numGames);
         _n = bound(_n, 0, _numSearchedGames);
