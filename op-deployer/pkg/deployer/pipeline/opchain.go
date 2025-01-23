@@ -74,7 +74,7 @@ func makeDCI(intent *state.Intent, thisIntent *state.ChainIntent, chainID common
 	proofParams, err := jsonutil.MergeJSON(
 		state.ChainProofParams{
 			DisputeGameType:         standard.DisputeGameType,
-			DisputeAbsolutePrestate: standard.AbsolutePrestateForTag(intent.L1ContractsLocator.Tag),
+			DisputeAbsolutePrestate: standard.DisputeAbsolutePrestate,
 			DisputeMaxGameDepth:     standard.DisputeMaxGameDepth,
 			DisputeSplitDepth:       standard.DisputeSplitDepth,
 			DisputeClockExtension:   standard.DisputeClockExtension,

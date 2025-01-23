@@ -480,7 +480,7 @@ func TestAdditionalDisputeGames(t *testing.T) {
 		{
 			ChainProofParams: state.ChainProofParams{
 				DisputeGameType:                         255,
-				DisputeAbsolutePrestate:                 standard.AbsolutePrestateForTag(intent.L1ContractsLocator.Tag),
+				DisputeAbsolutePrestate:                 standard.DisputeAbsolutePrestate,
 				DisputeMaxGameDepth:                     50,
 				DisputeSplitDepth:                       14,
 				DisputeClockExtension:                   0,
