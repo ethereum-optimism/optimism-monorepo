@@ -261,16 +261,6 @@ func NewHost(
 		Random:      &executionContext.PrevRandao,
 	}
 
-	// Initialize a transaction-context for the EVM to access environment variables.
-	// The transaction context (after embedding inside of the EVM environment) may be mutated later.
-	txContext := vm.TxContext{
-		Origin:       executionContext.Origin,
-		GasPrice:     big.NewInt(0),
-		BlobHashes:   executionContext.BlobHashes,
-		BlobFeeCap:   big.NewInt(0),
-		AccessEvents: state.NewAccessEvents(h.baseState.PointCache()),
-	}
-
 	// Hook up the Host to capture the EVM environment changes
 	trHooks := &tracing.Hooks{
 		OnEnter:         h.onEnter,
@@ -289,7 +279,7 @@ func NewHost(
 		CallerOverride:      h.handleCaller,
 	}
 
-	h.env = vm.NewEVM(blockContext, txContext, h.state, h.chainCfg, vmCfg)
+	h.env = vm.NewEVM(blockContext, h.state, h.chainCfg, vmCfg)
 
 	return h
 }
@@ -697,7 +687,9 @@ func (h *Host) StateDump() (*foundry.ForgeAllocs, error) {
 	baseState := h.baseState
 	// We have to commit the existing state to the trie,
 	// for all the state-changes to be captured by the trie iterator.
-	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true)
+	// TODO: do we need to check `IsCancun()` here, or can we just pass false?
+	isCancun := h.chainCfg.IsCancun(h.env.Context.BlockNumber, h.env.Context.Time)
+	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true, isCancun)
 	if err != nil {
 		return nil, fmt.Errorf("failed to commit state: %w", err)
 	}

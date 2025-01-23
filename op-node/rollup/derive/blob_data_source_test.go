@@ -87,6 +87,19 @@ func TestDataAndHashesFromTxs(t *testing.T) {
 	data, blobHashes = dataAndHashesFromTxs(txs, &config, batcherAddr, logger)
 	require.Equal(t, 0, len(data))
 	require.Equal(t, 0, len(blobHashes))
+
+	// make sure SetCode transactions are ignored.
+	setCodeTxData := &types.SetCodeTx{
+		Nonce: rng.Uint64(),
+		Gas:   2_000_000,
+		To:    batchInboxAddr,
+		Data:  testutils.RandomData(rng, rng.Intn(1000)),
+	}
+	setCodeTx, _ := types.SignNewTx(privateKey, signer, setCodeTxData)
+	txs = types.Transactions{setCodeTx}
+	data, blobHashes = dataAndHashesFromTxs(txs, &config, batcherAddr, logger)
+	require.Equal(t, 0, len(data))
+	require.Equal(t, 0, len(blobHashes))
 }
 
 func TestFillBlobPointers(t *testing.T) {

@@ -101,8 +101,9 @@ func (ch *Cheater) RunAndClose(fn HeadFn) error {
 		return ch.Close()
 	}
 
+	isCancun := ch.Blockchain.Config().IsCancun(preHeader.Number, preHeader.Time)
 	// commit the changes, and then update the state-root
-	stateRoot, err := state.Commit(preHeader.Number.Uint64()+1, true)
+	stateRoot, err := state.Commit(preHeader.Number.Uint64()+1, true, isCancun)
 	if err != nil {
 		_ = ch.Close()
 		return fmt.Errorf("failed to commit state change: %w", err)
@@ -324,7 +325,8 @@ func StoragePatch(patch io.Reader, address common.Address) HeadFn {
 			}
 			i += 1
 			if i%1000 == 0 { // for every 1000 values, commit to disk
-				if _, err := headState.Commit(head.Number.Uint64(), true); err != nil {
+				// TODO: ok to just pass `false` here?
+				if _, err := headState.Commit(head.Number.Uint64(), true, false); err != nil {
 					return fmt.Errorf("failed to commit state to disk after patching %d entries: %w", i, err)
 				}
 			}
