@@ -33,12 +33,8 @@ import { ISemver } from "interfaces/universal/ISemver.sol";
 import { OPContractsManager } from "src/L1/OPContractsManager.sol";
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
-import { DelayedWETH } from "src/dispute/DelayedWETH.sol";
-import { MIPS } from "src/cannon/MIPS.sol";
 import { GameType, Duration, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
 import { OutputRoot, GameTypes } from "src/dispute/lib/Types.sol";
-import { AnchorStateRegistry } from "src/dispute/AnchorStateRegistry.sol";
-import { PreimageOracle } from "src/cannon/PreimageOracle.sol";
 
 // Exposes internal functions for testing.
 contract OPContractsManager_Harness is OPContractsManager {
@@ -433,7 +429,7 @@ contract OPContractsManager_AddGameType_Test is Test {
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) =
             Blueprint.create(vm.getCode("FaultDisputeGame"), salt);
 
-        IPreimageOracle oracle = IPreimageOracle(address(new PreimageOracle(126000, 86400)));
+        IPreimageOracle oracle = IPreimageOracle(DeployUtils.create1("PreimageOracle", abi.encode(126000, 86400)));
 
         IOPContractsManager.Implementations memory impls = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: DeployUtils.create1("L1ERC721Bridge"),
@@ -517,7 +513,7 @@ contract OPContractsManager_AddGameType_Test is Test {
     }
 
     function test_addGameType_reusedDelayedWETH_succeeds() public {
-        IDelayedWETH delayedWETH = IDelayedWETH(payable(address(new DelayedWETH(1))));
+        IDelayedWETH delayedWETH = IDelayedWETH(payable(address(DeployUtils.create1("DelayedWETH", abi.encode(1)))));
         vm.etch(address(delayedWETH), hex"01");
         IOPContractsManager.AddGameInput memory input = newGameInputFactory(false);
         input.delayedWETH = delayedWETH;
