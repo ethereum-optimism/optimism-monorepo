@@ -263,8 +263,8 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 
 // DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
 type DerivedBlockRefPair struct {
-	DerivedFrom eth.BlockRef
-	Derived     eth.BlockRef
+	DerivedFrom eth.BlockRef `json:"derivedFrom"`
+	Derived     eth.BlockRef `json:"derived"`
 }
 
 func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
@@ -276,8 +276,8 @@ func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
 
 // DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
 type DerivedBlockSealPair struct {
-	DerivedFrom BlockSeal
-	Derived     BlockSeal
+	DerivedFrom BlockSeal `json:"derivedFrom"`
+	Derived     BlockSeal `json:"derived"`
 }
 
 func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
@@ -289,8 +289,8 @@ func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
 
 // DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
 type DerivedIDPair struct {
-	DerivedFrom eth.BlockID
-	Derived     eth.BlockID
+	DerivedFrom eth.BlockID `json:"derivedFrom"`
+	Derived     eth.BlockID `json:"derived"`
 }
 
 // ManagedEvent is an event sent by the managed node to the supervisor,

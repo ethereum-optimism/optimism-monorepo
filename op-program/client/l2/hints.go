@@ -13,6 +13,7 @@ import (
 const (
 	HintL2BlockHeader  = "l2-block-header"
 	HintL2Transactions = "l2-transactions"
+	HintL2Receipts     = "l2-receipts"
 	HintL2Code         = "l2-code"
 	HintL2StateNode    = "l2-state-node"
 	HintL2Output       = "l2-output"
@@ -62,6 +63,14 @@ var _ preimage.Hint = TransactionsHint{}
 
 func (l TransactionsHint) Hint() string {
 	return HintL2Transactions + " " + hexutil.Encode(HashAndChainID(l).Marshal())
+}
+
+type ReceiptsHint HashAndChainID
+
+var _ preimage.Hint = ReceiptsHint{}
+
+func (l ReceiptsHint) Hint() string {
+	return HintL2Receipts + " " + hexutil.Encode(HashAndChainID(l).Marshal())
 }
 
 type CodeHint HashAndChainID

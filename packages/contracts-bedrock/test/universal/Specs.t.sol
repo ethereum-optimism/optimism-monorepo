@@ -8,12 +8,9 @@ import { console2 as console } from "forge-std/console2.sol";
 // Scripts
 import { ForgeArtifacts, Abi, AbiEntry } from "scripts/libraries/ForgeArtifacts.sol";
 
-// Contracts
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
-
 // Interfaces
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
-import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IDataAvailabilityChallenge } from "interfaces/L1/IDataAvailabilityChallenge.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
@@ -260,11 +257,6 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("respectedGameTypeUpdatedAt()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("proofSubmitters(bytes32,uint256)") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("numProofSubmitters(bytes32)") });
-        _addSpec({
-            _name: "OptimismPortalInterop",
-            _sel: IOptimismPortalInterop.setConfig.selector,
-            _auth: Role.SYSTEMCONFIGOWNER
-        });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("sharedLockbox()") });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrateLiquidity()"), _auth: Role.SUPERCHAINCONFIG });
         _addSpec({ _name: "OptimismPortalInterop", _sel: _getSel("migrated()") });
@@ -426,6 +418,7 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "SystemConfig", _sel: _getSel("basefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("blobbasefeeScalar()") });
         _addSpec({ _name: "SystemConfig", _sel: _getSel("maximumGasLimit()") });
+        _addSpec({ _name: "SystemConfig", _sel: _getSel("getAddresses()") });
 
         // ProxyAdmin
         _addSpec({ _name: "ProxyAdmin", _sel: _getSel("addressManager()") });
@@ -735,12 +728,15 @@ contract Specification_Test is CommonTest {
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("superchainConfig()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("protocolVersions()") });
         _addSpec({ _name: "OPContractsManager", _sel: _getSel("l1ContractsRelease()") });
-        _addSpec({ _name: "OPContractsManager", _sel: _getSel("OUTPUT_VERSION()") });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.deploy.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.blueprints.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.chainIdToBatchInboxAddress.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.implementations.selector });
-        _addSpec({ _name: "OPContractsManager", _sel: OPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.deploy.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.blueprints.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.chainIdToBatchInboxAddress.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.implementations.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.upgrade.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: IOPContractsManager.addGameType.selector });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("isRC()") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("setRC(bool)") });
+        _addSpec({ _name: "OPContractsManager", _sel: _getSel("upgradeController()") });
 
         // DeputyGuardianModule
         _addSpec({

@@ -129,9 +129,9 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     event ConfigUpdate(uint256 indexed version, UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 2.3.0-beta.11
+    /// @custom:semver 2.3.0-beta.12
     function version() public pure virtual returns (string memory) {
-        return "2.3.0-beta.11";
+        return "2.3.0-beta.12";
     }
 
     /// @notice Constructs the SystemConfig contract.
@@ -217,22 +217,22 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     }
 
     /// @notice Getter for the L1CrossDomainMessenger address.
-    function l1CrossDomainMessenger() external view returns (address addr_) {
+    function l1CrossDomainMessenger() public view returns (address addr_) {
         addr_ = Storage.getAddress(L1_CROSS_DOMAIN_MESSENGER_SLOT);
     }
 
     /// @notice Getter for the L1ERC721Bridge address.
-    function l1ERC721Bridge() external view returns (address addr_) {
+    function l1ERC721Bridge() public view returns (address addr_) {
         addr_ = Storage.getAddress(L1_ERC_721_BRIDGE_SLOT);
     }
 
     /// @notice Getter for the L1StandardBridge address.
-    function l1StandardBridge() external view returns (address addr_) {
+    function l1StandardBridge() public view returns (address addr_) {
         addr_ = Storage.getAddress(L1_STANDARD_BRIDGE_SLOT);
     }
 
     /// @notice Getter for the DisputeGameFactory address.
-    function disputeGameFactory() external view returns (address addr_) {
+    function disputeGameFactory() public view returns (address addr_) {
         addr_ = Storage.getAddress(DISPUTE_GAME_FACTORY_SLOT);
     }
 
@@ -242,8 +242,20 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
     }
 
     /// @notice Getter for the OptimismMintableERC20Factory address.
-    function optimismMintableERC20Factory() external view returns (address addr_) {
+    function optimismMintableERC20Factory() public view returns (address addr_) {
         addr_ = Storage.getAddress(OPTIMISM_MINTABLE_ERC20_FACTORY_SLOT);
+    }
+
+    /// @notice Consolidated getter for the Addresses struct.
+    function getAddresses() external view returns (Addresses memory) {
+        return Addresses({
+            l1CrossDomainMessenger: l1CrossDomainMessenger(),
+            l1ERC721Bridge: l1ERC721Bridge(),
+            l1StandardBridge: l1StandardBridge(),
+            disputeGameFactory: disputeGameFactory(),
+            optimismPortal: optimismPortal(),
+            optimismMintableERC20Factory: optimismMintableERC20Factory()
+        });
     }
 
     /// @notice Getter for the BatchInbox address.

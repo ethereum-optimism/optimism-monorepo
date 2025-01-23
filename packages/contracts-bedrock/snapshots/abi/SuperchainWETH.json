@@ -305,7 +305,7 @@
     "inputs": [
       {
         "internalType": "uint256",
-        "name": "_amount",
+        "name": "wad",
         "type": "uint256"
       }
     ],
@@ -517,11 +517,6 @@
   {
     "inputs": [],
     "name": "InvalidCrossDomainSender",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "NotCustomGasToken",
     "type": "error"
   },
   {

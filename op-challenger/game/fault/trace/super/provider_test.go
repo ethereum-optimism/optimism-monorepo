@@ -2,6 +2,7 @@ package super
 
 import (
 	"context"
+	"fmt"
 	"math/big"
 	"math/rand"
 	"testing"
@@ -13,6 +14,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 )
@@ -26,10 +28,9 @@ var (
 func TestGet(t *testing.T) {
 	t.Run("AtPostState", func(t *testing.T) {
 		provider, stubSupervisor := createProvider(t)
-		superRoot := eth.Bytes32{0xaa}
-		stubSupervisor.Add(eth.SuperRootResponse{
+		response := eth.SuperRootResponse{
 			Timestamp: poststateTimestamp,
-			SuperRoot: superRoot,
+			SuperRoot: eth.Bytes32{0xaa},
 			Chains: []eth.ChainRootInfo{
 				{
 					ChainID:   eth.ChainIDFromUInt64(1),
@@ -37,18 +38,19 @@ func TestGet(t *testing.T) {
 					Pending:   []byte{0xcc},
 				},
 			},
-		})
+		}
+		stubSupervisor.Add(response)
 		claim, err := provider.Get(context.Background(), types.RootPosition)
 		require.NoError(t, err)
-		require.Equal(t, common.Hash(superRoot), claim)
+		expected := responseToSuper(response)
+		require.Equal(t, common.Hash(eth.SuperRoot(expected)), claim)
 	})
 
 	t.Run("AtNewTimestamp", func(t *testing.T) {
 		provider, stubSupervisor := createProvider(t)
-		superRoot := eth.Bytes32{0xaa}
-		stubSupervisor.Add(eth.SuperRootResponse{
+		response := eth.SuperRootResponse{
 			Timestamp: prestateTimestamp + 1,
-			SuperRoot: superRoot,
+			SuperRoot: eth.Bytes32{0xaa},
 			Chains: []eth.ChainRootInfo{
 				{
 					ChainID:   eth.ChainIDFromUInt64(1),
@@ -56,10 +58,12 @@ func TestGet(t *testing.T) {
 					Pending:   []byte{0xcc},
 				},
 			},
-		})
+		}
+		stubSupervisor.Add(response)
 		claim, err := provider.Get(context.Background(), types.NewPosition(gameDepth, big.NewInt(StepsPerTimestamp-1)))
 		require.NoError(t, err)
-		require.Equal(t, common.Hash(superRoot), claim)
+		expected := responseToSuper(response)
+		require.Equal(t, common.Hash(eth.SuperRoot(expected)), claim)
 	})
 
 	t.Run("FirstTimestamp", func(t *testing.T) {
@@ -240,10 +244,10 @@ func (s *stubRootProvider) Add(root eth.SuperRootResponse) {
 	s.rootsByTimestamp[root.Timestamp] = root
 }
 
-func (s *stubRootProvider) SuperRootAtTimestamp(timestamp uint64) (eth.SuperRootResponse, error) {
-	root, ok := s.rootsByTimestamp[timestamp]
+func (s *stubRootProvider) SuperRootAtTimestamp(_ context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
+	root, ok := s.rootsByTimestamp[uint64(timestamp)]
 	if !ok {
-		return eth.SuperRootResponse{}, ethereum.NotFound
+		return eth.SuperRootResponse{}, fmt.Errorf("timestamp %v %w", uint64(timestamp), ethereum.NotFound)
 	}
 	return root, nil
 }

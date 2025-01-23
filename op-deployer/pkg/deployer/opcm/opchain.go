@@ -62,7 +62,6 @@ type DeployOPChainOutput struct {
 	OptimismPortalProxy                common.Address
 	DisputeGameFactoryProxy            common.Address
 	AnchorStateRegistryProxy           common.Address
-	AnchorStateRegistryImpl            common.Address
 	FaultDisputeGame                   common.Address
 	PermissionedDisputeGame            common.Address
 	DelayedWETHPermissionedGameProxy   common.Address

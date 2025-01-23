@@ -3,7 +3,6 @@ pragma solidity ^0.8.0;
 
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 
-/// @notice This interface corresponds to the Custom Gas Token version of the SystemConfig contract.
 interface ISystemConfig {
     enum UpdateType {
         BATCHER,
@@ -44,6 +43,7 @@ interface ISystemConfig {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
+    function getAddresses() external view returns (Addresses memory);
     function initialize(
         address _owner,
         uint32 _basefeeScalar,

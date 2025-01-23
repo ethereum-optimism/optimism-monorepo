@@ -7,11 +7,9 @@ import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { ISharedLockbox } from "interfaces/L1/ISharedLockbox.sol";
 
 interface IOptimismPortalInterop {
-    error CustomGasTokenNotSupported();
     error AlreadyFinalized();
     error BadTarget();
     error Blacklisted();
@@ -102,7 +100,6 @@ interface IOptimismPortalInterop {
         returns (IDisputeGame disputeGameProxy, uint64 timestamp); // nosemgrep
     function respectedGameType() external view returns (GameType);
     function respectedGameTypeUpdatedAt() external view returns (uint64);
-    function setConfig(ConfigType _type, bytes memory _value) external;
     function setRespectedGameType(GameType _gameType) external;
     function superchainConfig() external view returns (ISuperchainConfig);
     function systemConfig() external view returns (ISystemConfig);

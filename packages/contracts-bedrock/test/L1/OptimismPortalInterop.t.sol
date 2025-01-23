@@ -18,7 +18,6 @@ import { OptimismPortalInterop } from "src/L1/OptimismPortalInterop.sol";
 // Interfaces
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
-import { ConfigType } from "interfaces/L2/IL1BlockInterop.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
@@ -50,19 +49,6 @@ contract OptimismPortalInterop_Config_Test is OptimismPortalInterop_Base_Test {
     ///         specific value of the string as it changes frequently.
     function test_version_succeeds() external view {
         assert(bytes(_optimismPortal().version()).length > 0);
-    }
-
-    /// @dev Tests that the config for the gas paying token cannot be set.
-    function testFuzz_setConfig_gasPayingToken_reverts(bytes calldata _value) public {
-        vm.prank(address(_optimismPortal().systemConfig()));
-        vm.expectRevert(IOptimismPortalInterop.CustomGasTokenNotSupported.selector);
-        _optimismPortal().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
-    }
-
-    /// @dev Tests that setting the gas paying token config as not the system config reverts.
-    function testFuzz_setConfig_gasPayingTokenButNotSystemConfig_reverts(bytes calldata _value) public {
-        vm.expectRevert(Unauthorized.selector);
-        _optimismPortal().setConfig(ConfigType.SET_GAS_PAYING_TOKEN, _value);
     }
 }
 

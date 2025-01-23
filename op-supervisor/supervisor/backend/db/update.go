@@ -40,12 +40,34 @@ func (db *ChainsDB) SealBlock(chain eth.ChainID, block eth.BlockRef) error {
 	return nil
 }
 
-func (db *ChainsDB) Rewind(chain eth.ChainID, headBlockNum uint64) error {
+func (db *ChainsDB) Rewind(chain eth.ChainID, headBlock eth.BlockID) error {
+	// Rewind the logDB
 	logDB, ok := db.logDBs.Get(chain)
 	if !ok {
 		return fmt.Errorf("cannot Rewind: %w: %s", types.ErrUnknownChain, chain)
 	}
-	return logDB.Rewind(headBlockNum)
+	if err := logDB.Rewind(headBlock); err != nil {
+		return fmt.Errorf("failed to rewind to block %v: %w", headBlock, err)
+	}
+
+	// Rewind the localDB
+	localDB, ok := db.localDBs.Get(chain)
+	if !ok {
+		return fmt.Errorf("cannot Rewind (localDB not found): %w: %s", types.ErrUnknownChain, chain)
+	}
+	if err := localDB.RewindToL2(headBlock.Number); err != nil {
+		return fmt.Errorf("failed to rewind localDB to block %v: %w", headBlock, err)
+	}
+
+	// Rewind the crossDB
+	crossDB, ok := db.crossDBs.Get(chain)
+	if !ok {
+		return fmt.Errorf("cannot Rewind (crossDB not found): %w: %s", types.ErrUnknownChain, chain)
+	}
+	if err := crossDB.RewindToL2(headBlock.Number); err != nil {
+		return fmt.Errorf("failed to rewind crossDB to block %v: %w", headBlock, err)
+	}
+	return nil
 }
 
 func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) {
@@ -57,7 +79,7 @@ func (db *ChainsDB) UpdateLocalSafe(chain eth.ChainID, derivedFrom eth.BlockRef,
 	}
 	logger.Debug("Updating local safe DB")
 	if err := localDB.AddDerived(derivedFrom, lastDerived); err != nil {
-		db.logger.Warn("Failed to update local safe")
+		db.logger.Warn("Failed to update local safe", "err", err)
 		db.emitter.Emit(superevents.LocalSafeOutOfSyncEvent{
 			ChainID: chain,
 			L1Ref:   derivedFrom,

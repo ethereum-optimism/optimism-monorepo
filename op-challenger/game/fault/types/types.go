@@ -29,6 +29,7 @@ const (
 	AsteriscGameType     GameType = 2
 	AsteriscKonaGameType GameType = 3
 	SuperCannonGameType  GameType = 4
+	OPSuccinctGameType   GameType = 6
 	FastGameType         GameType = 254
 	AlphabetGameType     GameType = 255
 	UnknownGameType      GameType = math.MaxUint32
@@ -48,6 +49,10 @@ func (t GameType) String() string {
 		return "asterisc"
 	case AsteriscKonaGameType:
 		return "asterisc-kona"
+	case SuperCannonGameType:
+		return "super-cannon"
+	case OPSuccinctGameType:
+		return "op-succinct"
 	case FastGameType:
 		return "fast"
 	case AlphabetGameType:

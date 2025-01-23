@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
+	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -21,12 +22,21 @@ type Config struct {
 
 // Main executes the client program in a detached context and exits the current process.
 // The client runtime environment must be preset before calling this function.
-func Main(logger log.Logger) {
-	log.Info("Starting fault proof program client")
+func Main(useInterop bool) {
+	// Default to a machine parsable but relatively human friendly log format.
+	// Don't do anything fancy to detect if color output is supported.
+	logger := oplog.NewLogger(os.Stdout, oplog.CLIConfig{
+		Level:  log.LevelInfo,
+		Format: oplog.FormatLogFmt,
+		Color:  false,
+	})
+	oplog.SetGlobalLogHandler(logger.Handler())
+
+	logger.Info("Starting fault proof program client", "useInterop", useInterop)
 	preimageOracle := preimage.ClientPreimageChannel()
 	preimageHinter := preimage.ClientHinterChannel()
 	config := Config{
-		InteropEnabled: os.Getenv("OP_PROGRAM_CLIENT_USE_INTEROP") == "true",
+		InteropEnabled: useInterop,
 	}
 	if err := RunProgram(logger, preimageOracle, preimageHinter, config); errors.Is(err, claim.ErrClaimNotValid) {
 		log.Error("Claim is invalid", "err", err)

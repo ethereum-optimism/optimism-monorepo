@@ -5,6 +5,10 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	op_service "github.com/ethereum-optimism/optimism/op-service"
+
 	"github.com/BurntSushi/toml"
 
 	"github.com/ethereum-optimism/superchain-registry/superchain"
@@ -333,6 +337,30 @@ func ArtifactsHashForTag(tag string) (common.Hash, error) {
 	default:
 		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
 	}
+}
+
+// DefaultHardforkScheduleForTag is used to determine which hardforks should be activated by default given a
+// contract tag. For example, passing in v1.6.0 will return all hardforks up to and including Granite. This allows
+// OP Deployer to set sane defaults for hardforks. This is not an ideal solution, but it will have to work until we get
+// to MCP L2.
+func DefaultHardforkScheduleForTag(tag string) *genesis.UpgradeScheduleDeployConfig {
+	sched := &genesis.UpgradeScheduleDeployConfig{
+		L2GenesisRegolithTimeOffset: op_service.U64UtilPtr(0),
+		L2GenesisCanyonTimeOffset:   op_service.U64UtilPtr(0),
+		L2GenesisDeltaTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisEcotoneTimeOffset:  op_service.U64UtilPtr(0),
+		L2GenesisFjordTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
+	}
+
+	switch tag {
+	case ContractsV160Tag, ContractsV170Beta1L2Tag:
+		return sched
+	default:
+		sched.ActivateForkAtGenesis(rollup.Holocene)
+	}
+
+	return sched
 }
 
 func standardArtifactsURL(checksum string) string {
