@@ -29,6 +29,7 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeploySuperchainImplementations, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -131,6 +132,18 @@ contract DeployImplementationsInput is BaseDeployIO {
         return _protocolVersionsProxy;
     }
 
+    function superchainConfigImpl() public view returns (ISuperchainConfig) {
+        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfigProxy)));
+        DeployUtils.assertValidContractAddress(address(impl));
+        return impl;
+    }
+
+    function protocolVersionsImpl() public view returns (IProtocolVersions) {
+        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersionsProxy)));
+        DeployUtils.assertValidContractAddress(address(impl));
+        return impl;
+    }
+
     function upgradeController() public view returns (address) {
         require(address(_upgradeController) != address(0), "DeployImplementationsInput: not set");
         return _upgradeController;
@@ -158,6 +171,8 @@ contract DeployImplementationsOutput is BaseDeployIO {
 
         // forgefmt: disable-start
         if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = ISuperchainConfig(_addr);
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = IProtocolVersions(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
@@ -169,8 +184,6 @@ contract DeployImplementationsOutput is BaseDeployIO {
         else if (_sel == this.optimismMintableERC20FactoryImpl.selector) _optimismMintableERC20FactoryImpl = IOptimismMintableERC20Factory(_addr);
         else if (_sel == this.disputeGameFactoryImpl.selector) _disputeGameFactoryImpl = IDisputeGameFactory(_addr);
         else if (_sel == this.anchorStateRegistryImpl.selector) _anchorStateRegistryImpl = IAnchorStateRegistry(_addr);
-        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = ISuperchainConfig(_addr);
-        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = IProtocolVersions(_addr);
         else revert("DeployImplementationsOutput: unknown selector");
         // forgefmt: disable-end
     }
@@ -183,7 +196,9 @@ contract DeployImplementationsOutput is BaseDeployIO {
             address(this.optimismPortalImpl()),
             address(this.delayedWETHImpl()),
             address(this.preimageOracleSingleton()),
-            address(this.mipsSingleton())
+            address(this.mipsSingleton()),
+            address(this.superchainConfigImpl()),
+            address(this.protocolVersionsImpl())
         );
 
         address[] memory addrs2 = Solarray.addresses(
@@ -204,6 +219,16 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function opcm() public view returns (IOPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
+    }
+
+    function superchainConfigImpl() public view returns (ISuperchainConfig) {
+        DeployUtils.assertValidContractAddress(address(_superchainConfigImpl));
+        return _superchainConfigImpl;
+    }
+
+    function protocolVersionsImpl() public view returns (IProtocolVersions) {
+        DeployUtils.assertValidContractAddress(address(_protocolVersionsImpl));
+        return _protocolVersionsImpl;
     }
 
     function optimismPortalImpl() public view returns (IOptimismPortal2) {
@@ -259,16 +284,6 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function anchorStateRegistryImpl() public view returns (IAnchorStateRegistry) {
         DeployUtils.assertValidContractAddress(address(_anchorStateRegistryImpl));
         return _anchorStateRegistryImpl;
-    }
-
-    function superchainConfigImpl() public view returns (ISuperchainConfig) {
-        DeployUtils.assertValidContractAddress(address(_superchainConfigImpl));
-        return _superchainConfigImpl;
-    }
-
-    function protocolVersionsImpl() public view returns (IProtocolVersions) {
-        DeployUtils.assertValidContractAddress(address(_protocolVersionsImpl));
-        return _protocolVersionsImpl;
     }
 
     // -------- Deployment Assertions --------
@@ -470,9 +485,10 @@ contract DeployImplementations is Script {
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         address upgradeController = _dii.upgradeController();
 
+        // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_dio.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
+            superchainConfigImpl: address(_dii.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dii.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -536,9 +552,9 @@ contract DeployImplementations is Script {
         require(checkAddress == address(0), "OPCM-50");
             // The max initcode/runtimecode size is 48KB/24KB.
             // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
-        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
-        // forgefmt: disable-end
+            (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
+            (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+            // forgefmt: disable-end
         vm.stopBroadcast();
 
         IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
@@ -826,9 +842,10 @@ contract DeployImplementationsInterop is DeployImplementations {
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         address upgradeController = _dii.upgradeController();
 
+        // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_dio.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
+            superchainConfigImpl: address(_dii.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dii.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
