@@ -249,7 +249,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         // Predict the address of the new AnchorStateRegistry proxy
         bytes32 salt = keccak256(abi.encode(l2ChainId, "v2.0.0", "AnchorStateRegistry"));
         bytes memory initCode = bytes.concat(vm.getCode("Proxy"), abi.encode(proxyAdmin));
-        address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), upgrader);
+        address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), delegateCaller);
         vm.label(newAnchorStateRegistryProxy, "NewAnchorStateRegistryProxy");
 
         expectEmitUpgraded(impls.systemConfigImpl, address(systemConfig));
@@ -336,7 +336,8 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
 
         // Set the proxy admin owner to be the non-upgrade controller
-        vm.store(address(proxyAdmin), bytes32(0), bytes32(uint256(uint160(_nonUpgradeController))));
+        vm.store(address(proxyAdmin), bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot), bytes32(uint256(uint160(_nonUpgradeController))));
+        vm.store(address(disputeGameFactory), bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot), bytes32(uint256(uint160(_nonUpgradeController))));
 
         // Run the upgrade test and checks
         runUpgradeTestAndChecks(_nonUpgradeController);
