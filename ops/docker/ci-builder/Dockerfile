@@ -25,6 +25,9 @@ COPY ./mise.toml ./mise.toml
 ENV PATH="/root/.local/share/mise/shims:$PATH"
 ENV PATH="/root/.local/bin:${PATH}"
 
+# Set up cargo environment
+ENV PATH="/root/.cargo/bin:${PATH}"
+
 # Install dependencies
 # We do this in one mega RUN command to avoid blowing up the size of the image
 ENV DEBIAN_FRONTEND=noninteractive

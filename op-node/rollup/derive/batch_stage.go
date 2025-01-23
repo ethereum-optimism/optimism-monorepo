@@ -11,6 +11,15 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
+// The BatchStage implements the Holocene-derivation batch stage.
+//
+// It pulls batches (singular or span) from the previous [ChannelInReader] stage, validates them and
+// applies the strict ordering requirements of Holocene. Valid batches are forwarded to the next
+// stage.
+//
+// It also generates empty batches when the sequencing window has passed.
+//
+// Upon Holocene activation, it replaces the [BatchQueue].
 type BatchStage struct {
 	baseBatchStage
 }

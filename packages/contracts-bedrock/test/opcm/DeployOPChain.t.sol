@@ -25,7 +25,7 @@ import { IResolvedDelegateProxy } from "interfaces/legacy/IResolvedDelegateProxy
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { ISuperchainConfigInterop } from "interfaces/L1/ISuperchainConfigInterop.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxy } from "interfaces/universal/IProxy.sol";
 
 import { Claim, Duration, GameType, GameTypes, Hash, OutputRoot } from "src/dispute/lib/Types.sol";
@@ -316,7 +316,7 @@ contract DeployOPChain_TestBase is Test {
     string release = "dev-release"; // this means implementation contracts will be deployed
     ISuperchainConfig superchainConfigProxy;
     IProtocolVersions protocolVersionsProxy;
-
+    address upgradeController;
     // Define default inputs for DeployOPChain.
     // `opcm` is set during `setUp` since it is an output of the previous step.
     address opChainProxyAdminOwner = makeAddr("defaultOPChainProxyAdminOwner");
@@ -329,7 +329,7 @@ contract DeployOPChain_TestBase is Test {
     uint32 blobBaseFeeScalar = 200;
     uint256 l2ChainId = 300;
     OutputRoot startingAnchorRoot = OutputRoot({ root: Hash.wrap(keccak256("defaultOutputRoot")), l2BlockNumber: 400 });
-    OPContractsManager opcm = OPContractsManager(address(0));
+    IOPContractsManager opcm = IOPContractsManager(address(0));
     string saltMixer = "defaultSaltMixer";
     uint64 gasLimit = 60_000_000;
     // Configurable dispute game parameters.
@@ -357,6 +357,7 @@ contract DeployOPChain_TestBase is Test {
         // Populate the inputs for DeployImplementations based on the output of DeploySuperchain.
         superchainConfigProxy = dso.superchainConfigProxy();
         protocolVersionsProxy = dso.protocolVersionsProxy();
+        upgradeController = dso.superchainProxyAdmin().owner();
 
         // Configure and deploy Implementation contracts
         DeployImplementations deployImplementations = createDeployImplementationsContract();
@@ -371,6 +372,7 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.upgradeController.selector, upgradeController);
 
         deployImplementations.run(dii, dio);
 

@@ -3,7 +3,7 @@ package inspect
 import (
 	"context"
 
-	"github.com/ethereum-optimism/optimism/kurtosis-devnet/pkg/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
 	"github.com/kurtosis-tech/kurtosis/api/golang/engine/lib/kurtosis_context"
 )
 
@@ -68,6 +68,14 @@ func (e *Inspector) ExtractData(ctx context.Context) (*InspectData, error) {
 			portMap[port] = descriptors.PortInfo{
 				Host: svcCtx.GetMaybePublicIPAddress(),
 				Port: int(portSpec.GetNumber()),
+			}
+		}
+
+		for port, portSpec := range svcCtx.GetPrivatePorts() {
+			// avoid non-mapped ports, we shouldn't have to use them.
+			if p, ok := portMap[port]; ok {
+				p.PrivatePort = int(portSpec.GetNumber())
+				portMap[port] = p
 			}
 		}
 

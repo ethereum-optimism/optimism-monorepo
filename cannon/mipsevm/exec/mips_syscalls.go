@@ -42,11 +42,8 @@ const (
 
 // SysFutex-related constants
 const (
-	FutexWaitPrivate  = 128
-	FutexWakePrivate  = 129
-	FutexTimeoutSteps = 10_000
-	FutexNoTimeout    = ^uint64(0)
-	FutexEmptyAddr    = ^Word(0)
+	FutexWaitPrivate = 128
+	FutexWakePrivate = 129
 )
 
 // SysClone flags
@@ -99,15 +96,14 @@ const (
 	ClockGettimeMonotonicFlag = 1
 )
 
-func GetSyscallArgs(registers *[32]Word) (syscallNum, a0, a1, a2, a3 Word) {
+func GetSyscallArgs(registers *[32]Word) (syscallNum, a0, a1, a2 Word) {
 	syscallNum = registers[register.RegSyscallNum] // v0
 
 	a0 = registers[register.RegSyscallParam1]
 	a1 = registers[register.RegSyscallParam2]
 	a2 = registers[register.RegSyscallParam3]
-	a3 = registers[register.RegSyscallParam4]
 
-	return syscallNum, a0, a1, a2, a3
+	return syscallNum, a0, a1, a2
 }
 
 func HandleSysMmap(a0, a1, heap Word) (v0, v1, newHeap Word) {

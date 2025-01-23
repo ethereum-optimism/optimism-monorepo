@@ -239,6 +239,51 @@
     "type": "function"
   },
   {
+    "inputs": [],
+    "name": "getAddresses",
+    "outputs": [
+      {
+        "components": [
+          {
+            "internalType": "address",
+            "name": "l1CrossDomainMessenger",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1ERC721Bridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "l1StandardBridge",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "disputeGameFactory",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismPortal",
+            "type": "address"
+          },
+          {
+            "internalType": "address",
+            "name": "optimismMintableERC20Factory",
+            "type": "address"
+          }
+        ],
+        "internalType": "struct SystemConfig.Addresses",
+        "name": "",
+        "type": "tuple"
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
     "inputs": [
       {
         "internalType": "address",

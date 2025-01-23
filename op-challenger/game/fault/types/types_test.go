@@ -69,3 +69,12 @@ func TestKnownGameTypeForEveryTraceType(t *testing.T) {
 		})
 	}
 }
+
+func TestKnownStringForUtilisedGameType(t *testing.T) {
+	for _, traceType := range TraceTypes {
+		traceType := traceType
+		t.Run(traceType.String(), func(t *testing.T) {
+			require.NotContains(t, traceType.GameType().String(), "invalid")
+		})
+	}
+}

@@ -15,6 +15,8 @@ var (
 	ErrFuture = errors.New("future data")
 	// ErrConflict happens when we know for sure that there is different canonical data
 	ErrConflict = errors.New("conflicting data")
+	// ErrAwaitReplacementBlock happens when we know for sure that a replacement block is needed before progress can be made.
+	ErrAwaitReplacementBlock = errors.New("awaiting replacement block")
 	// ErrStop can be used in iterators to indicate iteration has to stop
 	ErrStop = errors.New("iter stop")
 	// ErrOutOfScope is when data is accessed, but access is not allowed, because of a limited scope.

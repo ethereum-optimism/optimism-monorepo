@@ -26,6 +26,10 @@ var (
 	InvalidTransitionHash = crypto.Keccak256Hash(InvalidTransition)
 )
 
+const (
+	ConsolidateStep = 1023
+)
+
 type taskExecutor interface {
 	RunDerivation(
 		logger log.Logger,
@@ -63,6 +67,16 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 	if err != nil {
 		return common.Hash{}, err
 	}
+	// Strictly, the state transition ends when superRoot.Timestamp == bootInfo.GameTimestamp.
+	// Since the valid state transition ends at the game timestamp, there isn't any valid hash resulting from
+	// an agreed prestate and so the program panics to make it clear that the setup is invalid.
+	// The honest actor will never agree to a prestate where superRoot.Timestamp > bootInfo.GameTimestamp and so will
+	// be unaffected by this
+	if superRoot.Timestamp == bootInfo.GameTimestamp {
+		return bootInfo.AgreedPrestate, nil
+	} else if superRoot.Timestamp > bootInfo.GameTimestamp {
+		panic(fmt.Errorf("agreed prestate timestamp %v is after the game timestamp %v", superRoot.Timestamp, bootInfo.GameTimestamp))
+	}
 	expectedPendingProgress := transitionState.PendingProgress
 	if transitionState.Step < uint64(len(superRoot.Chains)) {
 		block, err := deriveOptimisticBlock(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, superRoot, transitionState, tasks)
@@ -72,7 +86,22 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 			return common.Hash{}, err
 		}
 		expectedPendingProgress = append(expectedPendingProgress, block)
+	} else if transitionState.Step == ConsolidateStep {
+		// sanity check
+		if len(transitionState.PendingProgress) >= ConsolidateStep {
+			return common.Hash{}, fmt.Errorf("pending progress length does not match the expected step")
+		}
+		deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
+		if err != nil {
+			return common.Hash{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
+		}
+		expectedSuperRoot, err := RunConsolidation(deps, l2PreimageOracle, transitionState, superRoot)
+		if err != nil {
+			return common.Hash{}, err
+		}
+		return common.Hash(expectedSuperRoot), nil
 	}
+
 	finalState := &types.TransitionState{
 		SuperRoot:       transitionState.SuperRoot,
 		PendingProgress: expectedPendingProgress,

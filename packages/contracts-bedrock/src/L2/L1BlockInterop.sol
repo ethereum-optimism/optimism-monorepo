@@ -5,16 +5,9 @@ pragma solidity 0.8.15;
 import { L1Block } from "src/L2/L1Block.sol";
 
 // Libraries
-import { GasPayingToken } from "src/libraries/GasPayingToken.sol";
 import { StaticConfig } from "src/libraries/StaticConfig.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { NotDepositor, NotCrossL2Inbox } from "src/libraries/L1BlockErrors.sol";
-
-/// @notice Enum representing different types of configurations that can be set on L1BlockInterop.
-/// @custom:value SET_GAS_PAYING_TOKEN  Represents the config type for setting the gas paying token.
-enum ConfigType {
-    SET_GAS_PAYING_TOKEN
-}
 
 /// @custom:proxied true
 /// @custom:predeploy 0x4200000000000000000000000000000000000015
@@ -61,27 +54,5 @@ contract L1BlockInterop is L1Block {
         assembly {
             sstore(IS_DEPOSIT_SLOT, 0)
         }
-    }
-
-    /// @notice Sets static configuration options for the L2 system. Can only be called by the special
-    ///         depositor account.
-    /// @param _type  The type of configuration to set.
-    /// @param _value The encoded value with which to set the configuration.
-    function setConfig(ConfigType _type, bytes calldata _value) external {
-        if (msg.sender != DEPOSITOR_ACCOUNT()) revert NotDepositor();
-
-        if (_type == ConfigType.SET_GAS_PAYING_TOKEN) {
-            _setGasPayingToken(_value);
-        }
-    }
-
-    /// @notice Internal method to set the gas paying token.
-    /// @param _value The encoded value with which to set the gas paying token.
-    function _setGasPayingToken(bytes calldata _value) internal {
-        (address token, uint8 decimals, bytes32 name, bytes32 symbol) = StaticConfig.decodeSetGasPayingToken(_value);
-
-        GasPayingToken.set({ _token: token, _decimals: decimals, _name: name, _symbol: symbol });
-
-        emit GasPayingTokenSet({ token: token, decimals: decimals, name: name, symbol: symbol });
     }
 }

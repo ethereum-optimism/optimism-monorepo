@@ -6,7 +6,6 @@ import { CrossDomainMessenger } from "src/universal/CrossDomainMessenger.sol";
 
 // Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Constants } from "src/libraries/Constants.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -32,8 +31,8 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     address private spacer_253_0_20;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.4.1-beta.7
-    string public constant version = "2.4.1-beta.7";
+    /// @custom:semver 2.4.1-beta.8
+    string public constant version = "2.4.1-beta.8";
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() {
@@ -47,13 +46,6 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
         superchainConfig = _superchainConfig;
         portal = _portal;
         __CrossDomainMessenger_init({ _otherMessenger: CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER) });
-    }
-
-    /// @inheritdoc CrossDomainMessenger
-    /// @dev This is added to maintain compatibility with the CrossDomainMessenger abstract contract and should always
-    /// return the ether address and 18 decimals.
-    function gasPayingToken() internal pure override returns (address addr_, uint8 decimals_) {
-        return (Constants.ETHER, 18);
     }
 
     /// @notice Getter function for the OptimismPortal contract on this chain.

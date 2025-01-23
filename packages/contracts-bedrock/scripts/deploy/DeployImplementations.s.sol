@@ -14,7 +14,8 @@ import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
-import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { IOPContractsManagerInterop } from "interfaces/L1/IOPContractsManagerInterop.sol";
 import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { IL1CrossDomainMessenger } from "interfaces/L1/IL1CrossDomainMessenger.sol";
@@ -43,6 +44,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
+    address internal _upgradeController;
 
     function set(bytes4 _sel, uint256 _value) public {
         require(_value != 0, "DeployImplementationsInput: cannot set zero value");
@@ -75,6 +77,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
+        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else revert("DeployImplementationsInput: unknown selector");
     }
 
@@ -125,10 +128,15 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(address(_protocolVersionsProxy) != address(0), "DeployImplementationsInput: not set");
         return _protocolVersionsProxy;
     }
+
+    function upgradeController() public view returns (address) {
+        require(address(_upgradeController) != address(0), "DeployImplementationsInput: not set");
+        return _upgradeController;
+    }
 }
 
 contract DeployImplementationsOutput is BaseDeployIO {
-    OPContractsManager internal _opcm;
+    IOPContractsManager internal _opcm;
     IDelayedWETH internal _delayedWETHImpl;
     IOptimismPortal2 internal _optimismPortalImpl;
     IPreimageOracle internal _preimageOracleSingleton;
@@ -145,7 +153,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
 
         // forgefmt: disable-start
-        if (_sel == this.opcm.selector) _opcm = OPContractsManager(_addr);
+        if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
@@ -187,7 +195,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         assertValidDeploy(_dii);
     }
 
-    function opcm() public view returns (OPContractsManager) {
+    function opcm() public view returns (IOPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
     }
@@ -264,9 +272,10 @@ contract DeployImplementationsOutput is BaseDeployIO {
     }
 
     function assertValidOpcm(DeployImplementationsInput _dii) internal view {
-        OPContractsManager impl = OPContractsManager(address(opcm()));
+        IOPContractsManager impl = IOPContractsManager(address(opcm()));
         require(address(impl.superchainConfig()) == address(_dii.superchainConfigProxy()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_dii.protocolVersionsProxy()), "OPCMI-20");
+        require(impl.upgradeController() == _dii.upgradeController(), "OPCMI-30");
     }
 
     function assertValidOptimismPortalImpl(DeployImplementationsInput) internal view {
@@ -433,17 +442,18 @@ contract DeployImplementations is Script {
     function createOPCMContract(
         DeployImplementationsInput _dii,
         DeployImplementationsOutput _dio,
-        OPContractsManager.Blueprints memory _blueprints,
+        IOPContractsManager.Blueprints memory _blueprints,
         string memory _l1ContractsRelease
     )
         internal
         virtual
-        returns (OPContractsManager opcm_)
+        returns (IOPContractsManager opcm_)
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+        address upgradeController = _dii.upgradeController();
 
-        OPContractsManager.Implementations memory implementations = OPContractsManager.Implementations({
+        IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -457,11 +467,21 @@ contract DeployImplementations is Script {
         });
 
         vm.broadcast(msg.sender);
-        opcm_ = OPContractsManager(
+        opcm_ = IOPContractsManager(
             DeployUtils.createDeterministic({
                 _name: "OPContractsManager",
-                _args: abi.encode(
-                    superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(
+                        IOPContractsManager.__constructor__,
+                        (
+                            superchainConfigProxy,
+                            protocolVersionsProxy,
+                            _l1ContractsRelease,
+                            _blueprints,
+                            implementations,
+                            upgradeController
+                        )
+                    )
                 ),
                 _salt: _salt
             })
@@ -482,7 +502,7 @@ contract DeployImplementations is Script {
 
         // First we deploy the blueprints for the singletons deployed by OPCM.
         // forgefmt: disable-start
-        OPContractsManager.Blueprints memory blueprints;
+        IOPContractsManager.Blueprints memory blueprints;
         vm.startBroadcast(msg.sender);
         address checkAddress;
         (blueprints.addressManager, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("AddressManager"), _salt);
@@ -502,7 +522,7 @@ contract DeployImplementations is Script {
         // forgefmt: disable-end
         vm.stopBroadcast();
 
-        OPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
+        IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
 
         vm.label(address(opcm), "OPContractsManager");
         _dio.set(_dio.opcm.selector, address(opcm));
