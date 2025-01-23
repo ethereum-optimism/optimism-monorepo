@@ -264,11 +264,15 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 	block2A, block2AReceipts := createBlock(rng, configA, 2, gethTypes.Receipts{{Logs: logA}})
 	block2B, block2BReceipts := createBlock(rng, configB, 2, gethTypes.Receipts{{Logs: logB}})
 
+	pendingOutputs := [2]*eth.OutputV0{
+		0: createOutput(block2A.Hash()),
+		1: createOutput(block2B.Hash()),
+	}
 	finalTransitionState := &types.TransitionState{
 		SuperRoot: agreedSuperRoot.Marshal(),
 		PendingProgress: []types.OptimisticBlock{
-			{BlockHash: block2A.Hash(), OutputRoot: eth.OutputRoot(createOutput(block2A.Hash()))},
-			{BlockHash: block2B.Hash(), OutputRoot: eth.OutputRoot(createOutput(block2B.Hash()))},
+			{BlockHash: block2A.Hash(), OutputRoot: eth.OutputRoot(pendingOutputs[0])},
+			{BlockHash: block2B.Hash(), OutputRoot: eth.OutputRoot(pendingOutputs[1])},
 		},
 		Step: ConsolidateStep,
 	}
@@ -295,6 +299,11 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 	}
 	if testCase.expectBlockReplacements != nil {
 		for _, chainIndexToReplace := range testCase.expectBlockReplacements(configSource) {
+			// stub output root preimage of the replaced block
+			replacedBlockOutput := pendingOutputs[chainIndexToReplace]
+			replacedBlockOutputRoot := common.Hash(eth.OutputRoot(replacedBlockOutput))
+			l2PreimageOracle.Outputs[replacedBlockOutputRoot] = replacedBlockOutput
+
 			depositsOnlyBlock, _ := createBlock(rng, configSource.rollupCfgs[chainIndexToReplace], 2, nil)
 			depositsOnlyOutputRoot := eth.OutputRoot(createOutput(depositsOnlyBlock.Hash()))
 			tasksStub.ExpectBuildDepositOnlyBlock(common.Hash{}, agreedSuperRoot.Chains[chainIndexToReplace].Output, depositsOnlyBlock.Hash(), depositsOnlyOutputRoot)
@@ -433,6 +442,8 @@ type stubTasks struct {
 	err        error
 }
 
+var _ taskExecutor = (*stubTasks)(nil)
+
 func (t *stubTasks) RunDerivation(
 	_ log.Logger,
 	_ *rollup.Config,
@@ -459,8 +470,19 @@ func (t *stubTasks) BuildDepositOnlyBlock(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	optimisticBlock *gethTypes.Block,
+	optimisticBlockOutput *eth.OutputV0,
 ) (common.Hash, eth.Bytes32, error) {
-	out := t.Mock.Called(logger, rollupCfg, l2ChainConfig, l1Head, agreedL2OutputRoot, l1Oracle, l2Oracle, optimisticBlock)
+	out := t.Mock.Called(
+		logger,
+		rollupCfg,
+		l2ChainConfig,
+		l1Head,
+		agreedL2OutputRoot,
+		l1Oracle,
+		l2Oracle,
+		optimisticBlock,
+		optimisticBlockOutput,
+	)
 	return out.Get(0).(common.Hash), out.Get(1).(eth.Bytes32), nil
 }
 
@@ -477,6 +499,7 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 		mock.Anything,
 		expectL1Head,
 		expectAgreedL2OutputRoot,
+		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,

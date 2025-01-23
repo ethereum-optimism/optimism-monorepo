@@ -95,6 +95,11 @@ func RunConsolidation(
 				return eth.Bytes32{}, err
 			}
 			chainAgreedPrestate := superRoot.Chains[i]
+			optimisticBlockOutput := l2PreimageOracle.OutputByRoot(common.Hash(progress.OutputRoot), chain.ChainID)
+			optimisticBlockOutputV0, ok := optimisticBlockOutput.(*eth.OutputV0)
+			if !ok {
+				return eth.Bytes32{}, fmt.Errorf("unexpected output version: %d", optimisticBlockOutput.Version())
+			}
 			_, outputRoot, err := buildDepositOnlyBlock(
 				logger,
 				bootInfo,
@@ -103,6 +108,7 @@ func RunConsolidation(
 				chainAgreedPrestate,
 				tasks,
 				optimisticBlock,
+				optimisticBlockOutputV0,
 			)
 			if err != nil {
 				return eth.Bytes32{}, err
@@ -287,8 +293,9 @@ func buildDepositOnlyBlock(
 	l1PreimageOracle l1.Oracle,
 	l2PreimageOracle l2.Oracle,
 	chainAgreedPrestate eth.ChainIDAndOutput,
-	taskExecutor taskExecutor,
+	tasks taskExecutor,
 	optimisticBlock *ethtypes.Block,
+	optimisticBlockOutput *eth.OutputV0,
 ) (common.Hash, eth.Bytes32, error) {
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
@@ -298,7 +305,7 @@ func buildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("no chain config available for chain ID %v: %w", chainAgreedPrestate.ChainID, err)
 	}
-	blockHash, outputRoot, err := taskExecutor.BuildDepositOnlyBlock(
+	blockHash, outputRoot, err := tasks.BuildDepositOnlyBlock(
 		logger,
 		rollupCfg,
 		l2ChainConfig,
@@ -307,6 +314,7 @@ func buildDepositOnlyBlock(
 		l1PreimageOracle,
 		l2PreimageOracle,
 		optimisticBlock,
+		optimisticBlockOutput,
 	)
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, err
