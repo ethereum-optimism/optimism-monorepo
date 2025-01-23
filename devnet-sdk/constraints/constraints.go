@@ -1,17 +1,25 @@
 package constraints
 
-import "github.com/ethereum-optimism/optimism/devnet-sdk/types"
+import (
+	"log/slog"
 
-type Constraint interface {
-	Met() bool
+	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
+)
+
+type WalletConstraint interface {
+	CheckWallet(wallet types.Wallet) bool
 }
 
-type trivialConstraint struct{}
+type WalletConstraintFunc func(wallet types.Wallet) bool
 
-func (c *trivialConstraint) Met() bool {
-	return true
+func (f WalletConstraintFunc) CheckWallet(wallet types.Wallet) bool {
+	return f(wallet)
 }
 
-func WithFunds(amount types.Balance) Constraint {
-	return &trivialConstraint{}
+func WithBalance(amount types.Balance) WalletConstraint {
+	return WalletConstraintFunc(func(wallet types.Wallet) bool {
+		balance := wallet.Balance()
+		slog.Debug("checking balance", "wallet", wallet.Address(), "balance", balance, "needed", amount)
+		return balance.GreaterThan(amount)
+	})
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"os"
 	"slices"
 	"strconv"
@@ -115,7 +116,7 @@ type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
 	ContractAddress(contractID string) types.Address
-	User(ctx context.Context, constraints ...constraints.Constraint) (types.Wallet, error)
+	User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
 	Client() (*ethclient.Client, error)
 }
 
@@ -208,8 +209,23 @@ func (c chain) RPCURL() string {
 	return c.rpcUrl
 }
 
-func (c chain) User(ctx context.Context, constraints ...constraints.Constraint) (types.Wallet, error) {
-	return c.users["l2Faucet"], nil // TODO: implement constraints
+func (c chain) User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
+	// Try each user
+	for _, user := range c.users {
+		// Check all constraints
+		meetsAll := true
+		for _, constraint := range constraints {
+			if !constraint.CheckWallet(user) {
+				meetsAll = false
+				break
+			}
+		}
+		if meetsAll {
+			return user, nil
+		}
+	}
+
+	return nil, fmt.Errorf("no user found meeting all constraints")
 }
 
 func (c chain) ID() types.ChainID {
@@ -264,6 +280,20 @@ func (w wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvoc
 		to:     to,
 		amount: amount,
 	}
+}
+
+func (w wallet) Balance() types.Balance {
+	client, err := w.chain.Client()
+	if err != nil {
+		return types.Balance{Int: new(big.Int)}
+	}
+
+	balance, err := client.BalanceAt(context.Background(), common.HexToAddress(string(w.address)), nil)
+	if err != nil {
+		return types.Balance{Int: new(big.Int)}
+	}
+
+	return types.Balance{Int: balance}
 }
 
 type sendImpl struct {

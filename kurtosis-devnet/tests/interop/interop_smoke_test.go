@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"os"
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
@@ -18,6 +19,10 @@ import (
 var (
 	testUserMarker = &struct{}{}
 )
+
+func init() {
+	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
+}
 
 func TestMinimal(t *testing.T) {
 	// We'll use the first L2 chain for this test
@@ -62,7 +67,7 @@ func TestMinimal(t *testing.T) {
 func userFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.Validator {
 	return func(t systest.T, sys system.System) (context.Context, error) {
 		chain := sys.L2(chainIdx)
-		user, err := chain.User(t.Context(), constraints.WithFunds(minFunds))
+		user, err := chain.User(t.Context(), constraints.WithBalance(minFunds))
 		if err != nil {
 			return nil, fmt.Errorf("No available user with funds: %v", err)
 		}

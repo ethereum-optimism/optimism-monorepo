@@ -47,6 +47,21 @@ func (b Balance) Mul(f float64) Balance {
 	return Balance{Int: result}
 }
 
+// GreaterThan returns true if this balance is greater than other
+func (b Balance) GreaterThan(other Balance) bool {
+	return b.Int.Cmp(other.Int) > 0
+}
+
+// LessThan returns true if this balance is less than other
+func (b Balance) LessThan(other Balance) bool {
+	return b.Int.Cmp(other.Int) < 0
+}
+
+// Equal returns true if this balance equals other
+func (b Balance) Equal(other Balance) bool {
+	return b.Int.Cmp(other.Int) == 0
+}
+
 // LogValue implements slog.LogValuer to format Balance in the most readable unit
 func (b Balance) LogValue() slog.Value {
 	if b.Int == nil {
@@ -93,6 +108,7 @@ type Wallet interface {
 	PrivateKey() Key
 	Address() Address
 	SendETH(to Address, amount Balance) WriteInvocation[any]
+	Balance() Balance
 }
 
 type Key = string
