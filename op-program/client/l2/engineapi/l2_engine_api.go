@@ -12,6 +12,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/consensus"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/state"
@@ -221,6 +222,10 @@ func (ea *L2EngineAPI) GetPayloadV3(ctx context.Context, payloadId eth.PayloadID
 	return ea.getPayload(ctx, payloadId)
 }
 
+func (ea *L2EngineAPI) GetPayloadV4(ctx context.Context, payloadId eth.PayloadID) (*eth.ExecutionPayloadEnvelope, error) {
+	return ea.getPayload(ctx, payloadId)
+}
+
 func (ea *L2EngineAPI) config() *params.ChainConfig {
 	return ea.backend.Config()
 }
@@ -350,6 +355,36 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 	}
 
 	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, nil)
+}
+
+// Ported from: https://github.com/ethereum-optimism/op-geth/blob/94bb3f660f770afd407280055e7f58c0d89a01af/eth/catalyst/api.go#L646
+func (ea *L2EngineAPI) NewPayloadV4(ctx context.Context, params *eth.ExecutionPayload, versionedHashes []common.Hash, beaconRoot *common.Hash, executionRequests []hexutil.Bytes) (*eth.PayloadStatusV1, error) {
+	if params.Withdrawals == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil withdrawals post-shanghai"))
+	}
+	if params.ExcessBlobGas == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil excessBlobGas post-cancun"))
+	}
+	if params.BlobGasUsed == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil blobGasUsed post-cancun"))
+	}
+
+	if versionedHashes == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil versionedHashes post-cancun"))
+	}
+	if beaconRoot == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil beaconRoot post-cancun"))
+	}
+	if executionRequests == nil {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.InvalidParams.With(errors.New("nil executionRequests post-prague"))
+	}
+
+	if !ea.config().IsIsthmus(uint64(params.Timestamp)) {
+		return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("newPayloadV4 called pre-isthmus"))
+	}
+
+	requests := convertRequests(executionRequests)
+	return ea.newPayload(ctx, params, versionedHashes, beaconRoot, requests)
 }
 
 func (ea *L2EngineAPI) getPayload(_ context.Context, payloadId eth.PayloadID) (*eth.ExecutionPayloadEnvelope, error) {
@@ -564,4 +599,16 @@ func (ea *L2EngineAPI) invalid(err error, latestValid *types.Header) *eth.Payloa
 	}
 	errorMsg := err.Error()
 	return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid, LatestValidHash: &currentHash, ValidationError: &errorMsg}
+}
+
+// convertRequests converts a hex requests slice to plain [][]byte.
+func convertRequests(hex []hexutil.Bytes) [][]byte {
+	if hex == nil {
+		return nil
+	}
+	req := make([][]byte, len(hex))
+	for i := range hex {
+		req[i] = hex[i]
+	}
+	return req
 }
