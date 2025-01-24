@@ -9,7 +9,6 @@ import (
 	"testing"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
@@ -37,7 +36,8 @@ func TestMinimal(t *testing.T) {
 		user := ctx.Value(testUserMarker).(types.Wallet)
 
 		scw0Addr := constants.SuperchainWETH
-		scw0 := contracts.MustResolveContract[contracts.SuperchainWETH](chain, scw0Addr)
+		scw0, err := chain.ContractsRegistry().SuperchainWETH(scw0Addr)
+		require.NoError(t, err)
 		logger.InfoContext(ctx, "using SuperchainWETH", "contract", scw0Addr)
 
 		initialBalance, err := scw0.BalanceOf(user.Address()).Call(ctx)

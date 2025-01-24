@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"math/big"
 	"os"
 	"slices"
 	"strconv"
@@ -12,8 +11,10 @@ import (
 	"sync"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
@@ -21,12 +22,6 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-type System interface {
-	Identifier() string
-	L1() Chain
-	L2(uint64) Chain
-}
 
 var _ System = (*system)(nil)
 
@@ -112,11 +107,10 @@ func systemFromDevnet(dn descriptors.DevnetEnvironment, identifier string) (Syst
 	return sys, nil
 }
 
-type Chain interface {
-	RPCURL() string
-	ID() types.ChainID
-	User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
-	Client() (*ethclient.Client, error)
+// internalChain provides access to internal chain functionality
+type internalChain interface {
+	Chain
+	getClient() (*ethclient.Client, error)
 }
 
 // clientManager handles ethclient connections
@@ -162,6 +156,12 @@ type chain struct {
 	addresses map[string]types.Address
 	users     map[string]types.Wallet
 	clients   *clientManager
+	registry  interfaces.ContractsRegistry
+	mu        sync.Mutex
+}
+
+func (c *chain) getClient() (*ethclient.Client, error) {
+	return c.clients.getClient(c.rpcUrl)
 }
 
 func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) *chain {
@@ -178,23 +178,21 @@ func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) *cha
 	}
 }
 
-func (c *chain) Client() (*ethclient.Client, error) {
-	return c.clients.getClient(c.rpcUrl)
-}
+func (c *chain) ContractsRegistry() interfaces.ContractsRegistry {
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
-func chainFromDescriptor(d *descriptors.Chain) Chain {
-	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
-	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
-
-	c := NewChain(d.ID, rpcURL, nil) // Create chain first
-
-	users := make(map[string]types.Wallet)
-	for key, w := range d.Wallets {
-		users[key] = NewWallet(w.PrivateKey, types.Address(w.Address), c)
+	if c.registry != nil {
+		return c.registry
 	}
-	c.users = users // Set users after creation
 
-	return c
+	client, err := c.getClient()
+	if err != nil {
+		return &contracts.EmptyRegistry{}
+	}
+
+	c.registry = contracts.NewClientRegistry(client)
+	return c.registry
 }
 
 func (c *chain) RPCURL() string {
@@ -228,11 +226,6 @@ func (c *chain) ID() types.ChainID {
 	return types.ChainID(id)
 }
 
-type InteropSystem interface {
-	System
-	InteropSet() InteropSet
-}
-
 var _ InteropSystem = (*interopSystem)(nil)
 
 type interopSystem struct {
@@ -243,18 +236,18 @@ func (i *interopSystem) InteropSet() InteropSet {
 	return i.system // TODO
 }
 
-type InteropSet interface {
-	L2(uint64) Chain
-}
-
 type wallet struct {
 	privateKey types.Key
 	address    types.Address
-	chain      Chain
+	chain      internalChain
 }
 
-func NewWallet(pk types.Key, addr types.Address, chain Chain) *wallet {
-	return &wallet{privateKey: pk, address: addr, chain: chain}
+func newWallet(pk types.Key, addr types.Address, chain *chain) *wallet {
+	return &wallet{
+		privateKey: pk,
+		address:    addr,
+		chain:      chain,
+	}
 }
 
 func (w *wallet) PrivateKey() types.Key {
@@ -275,28 +268,63 @@ func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvo
 }
 
 func (w *wallet) Balance() types.Balance {
-	client, err := w.chain.Client()
+	client, err := w.chain.getClient()
 	if err != nil {
-		return types.Balance{Int: new(big.Int)}
+		return types.Balance{}
 	}
 
 	balance, err := client.BalanceAt(context.Background(), common.HexToAddress(string(w.address)), nil)
 	if err != nil {
-		return types.Balance{Int: new(big.Int)}
+		return types.Balance{}
 	}
 
-	return types.Balance{Int: balance}
+	return types.NewBalance(balance)
 }
 
 type sendImpl struct {
-	chain  Chain
+	chain  internalChain
 	pk     types.Key
 	to     types.Address
 	amount types.Balance
 }
 
 func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	return nil, nil
+	client, err := i.chain.getClient()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get client: %w", err)
+	}
+
+	pk, err := crypto.HexToECDSA(string(i.pk))
+	if err != nil {
+		return nil, fmt.Errorf("invalid private key: %w", err)
+	}
+
+	from := crypto.PubkeyToAddress(pk.PublicKey)
+	nonce, err := client.PendingNonceAt(ctx, from)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get nonce: %w", err)
+	}
+
+	gasPrice, err := client.SuggestGasPrice(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get gas price: %w", err)
+	}
+
+	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
+	toAddr := common.HexToAddress(string(i.to))
+	tx := coreTypes.NewTransaction(nonce, toAddr, i.amount.Int, gasLimit, gasPrice, nil)
+
+	chainID, err := client.NetworkID(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get chain id: %w", err)
+	}
+
+	signedTx, err := coreTypes.SignTx(tx, coreTypes.NewEIP155Signer(chainID), pk)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sign transaction: %w", err)
+	}
+
+	return signedTx, nil
 }
 
 func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
@@ -309,7 +337,7 @@ func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
 }
 
 type sendResult struct {
-	chain Chain
+	chain internalChain
 	tx    *coreTypes.Transaction
 	err   error
 }
@@ -319,16 +347,16 @@ func (r *sendResult) Error() error {
 }
 
 func (r *sendResult) Wait() error {
+	client, err := r.chain.getClient()
+	if err != nil {
+		return fmt.Errorf("failed to get client: %w", err)
+	}
+
 	if r.err != nil {
 		return r.err
 	}
 	if r.tx == nil {
 		return fmt.Errorf("no transaction to wait for")
-	}
-
-	client, err := r.chain.Client()
-	if err != nil {
-		return fmt.Errorf("failed to connect to ethereum client: %w", err)
 	}
 
 	receipt, err := bind.WaitMined(context.Background(), client, r.tx)
@@ -343,10 +371,10 @@ func (r *sendResult) Wait() error {
 	return nil
 }
 
-func sendETH(ctx context.Context, chain Chain, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
-	client, err := chain.Client()
+func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
+	client, err := chain.getClient()
 	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ethereum client: %w", err)
+		return nil, fmt.Errorf("failed to get client: %w", err)
 	}
 
 	pk, err := crypto.HexToECDSA(privateKey)
@@ -385,4 +413,19 @@ func sendETH(ctx context.Context, chain Chain, privateKey string, to types.Addre
 	}
 
 	return signedTx, nil
+}
+
+func chainFromDescriptor(d *descriptors.Chain) Chain {
+	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
+	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
+
+	c := NewChain(d.ID, rpcURL, nil) // Create chain first
+
+	users := make(map[string]types.Wallet)
+	for key, w := range d.Wallets {
+		users[key] = newWallet(w.PrivateKey, types.Address(w.Address), c)
+	}
+	c.users = users // Set users after creation
+
+	return c
 }

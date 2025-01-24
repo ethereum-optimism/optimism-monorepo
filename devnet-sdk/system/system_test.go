@@ -260,7 +260,7 @@ func TestWallet(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			w := NewWallet(tt.privateKey, tt.address, chain)
+			w := newWallet(tt.privateKey, tt.address, chain)
 			assert.Equal(t, tt.wantAddr, w.Address())
 			assert.Equal(t, tt.wantPrivKey, w.PrivateKey())
 		})
@@ -269,7 +269,7 @@ func TestWallet(t *testing.T) {
 
 func TestChainUser(t *testing.T) {
 	chain := NewChain("1", "http://localhost:8545", nil)
-	testWallet := NewWallet("0xabc", "0x123", chain)
+	testWallet := newWallet("0xabc", "0x123", chain)
 	chain.users = map[string]types.Wallet{
 		"l2Faucet": testWallet,
 	}
