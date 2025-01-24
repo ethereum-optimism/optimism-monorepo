@@ -725,6 +725,11 @@ jobs:
           command: bash scripts/ops/pull-artifacts.sh
           working_directory: packages/contracts-bedrock
       - run:
+          name: Install lcov
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y lcov
+      - run:
           name: Run coverage tests
           command: just coverage-lcov-all <<parameters.test_flags>>
           environment:
