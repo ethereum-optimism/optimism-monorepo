@@ -736,7 +736,6 @@ func panicGuard[T, S, U any](fn func(T, S, U) error) func(T, S, U) error {
 }
 
 // readExecutionPayload will unmarshal the supplied data into an ExecutionPayloadEnvelope.
-// pass in chain config + timestamp, if case 0, do IsCanyon
 func readExecutionPayload(version uint32, data []byte, isCanyon, isIsthmus bool) (*eth.ExecutionPayloadEnvelope, error) {
 	switch version {
 	case 0:
