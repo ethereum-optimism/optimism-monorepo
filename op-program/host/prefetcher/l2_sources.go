@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
 	"github.com/ethereum-optimism/optimism/op-service/client"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -25,7 +26,7 @@ var (
 )
 
 type RetryingL2Sources struct {
-	Sources map[uint64]*RetryingL2Source
+	Sources map[eth.ChainID]*RetryingL2Source
 }
 
 func NewRetryingL2SourcesFromURLs(ctx context.Context, logger log.Logger, configs []*rollup.Config, l2URLs []string, l2ExperimentalURLs []string) (*RetryingL2Sources, error) {
@@ -58,11 +59,11 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 	if len(configs) == 0 {
 		return nil, ErrNoSources
 	}
-	rollupConfigs := make(map[uint64]*rollup.Config)
+	rollupConfigs := make(map[eth.ChainID]*rollup.Config)
 	for _, rollupCfg := range configs {
-		rollupConfigs[rollupCfg.L2ChainID.Uint64()] = rollupCfg
+		rollupConfigs[eth.ChainIDFromBig(rollupCfg.L2ChainID)] = rollupCfg
 	}
-	l2RPCs := make(map[uint64]client.RPC)
+	l2RPCs := make(map[eth.ChainID]client.RPC)
 	for _, rpc := range l2Clients {
 		chainID, err := loadChainID(ctx, rpc)
 		if err != nil {
@@ -77,7 +78,7 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 		}
 	}
 
-	l2ExperimentalRPCs := make(map[uint64]client.RPC)
+	l2ExperimentalRPCs := make(map[eth.ChainID]client.RPC)
 	for _, rpc := range l2ExperimentalClients {
 		chainID, err := loadChainID(ctx, rpc)
 		if err != nil {
@@ -92,9 +93,9 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 		}
 	}
 
-	sources := make(map[uint64]*RetryingL2Source, len(configs))
+	sources := make(map[eth.ChainID]*RetryingL2Source, len(configs))
 	for _, rollupCfg := range rollupConfigs {
-		chainID := rollupCfg.L2ChainID.Uint64()
+		chainID := eth.ChainIDFromBig(rollupCfg.L2ChainID)
 		l2RPC, ok := l2RPCs[chainID]
 		if !ok {
 			return nil, fmt.Errorf("%w: %v", ErrNoL2ForRollup, chainID)
@@ -112,7 +113,7 @@ func NewRetryingL2Sources(ctx context.Context, logger log.Logger, configs []*rol
 	}, nil
 }
 
-func (s *RetryingL2Sources) ForChainID(chainID uint64) (types.L2Source, error) {
+func (s *RetryingL2Sources) ForChainID(chainID eth.ChainID) (types.L2Source, error) {
 	source, ok := s.Sources[chainID]
 	if !ok {
 		return nil, fmt.Errorf("no source available for chain ID: %v", chainID)
@@ -120,7 +121,7 @@ func (s *RetryingL2Sources) ForChainID(chainID uint64) (types.L2Source, error) {
 	return source, nil
 }
 
-func (s *RetryingL2Sources) ForChainIDWithoutRetries(chainID uint64) (types.L2Source, error) {
+func (s *RetryingL2Sources) ForChainIDWithoutRetries(chainID eth.ChainID) (types.L2Source, error) {
 	retrying, ok := s.Sources[chainID]
 	if !ok {
 		return nil, fmt.Errorf("no source available for chain ID: %v", chainID)
@@ -128,11 +129,11 @@ func (s *RetryingL2Sources) ForChainIDWithoutRetries(chainID uint64) (types.L2So
 	return retrying.source, nil
 }
 
-func loadChainID(ctx context.Context, rpc client.RPC) (uint64, error) {
+func loadChainID(ctx context.Context, rpc client.RPC) (eth.ChainID, error) {
 	var id hexutil.Big
 	err := rpc.CallContext(ctx, &id, "eth_chainId")
 	if err != nil {
-		return 0, err
+		return eth.ChainID{}, err
 	}
-	return (*big.Int)(&id).Uint64(), nil
+	return eth.ChainIDFromBig((*big.Int)(&id)), nil
 }

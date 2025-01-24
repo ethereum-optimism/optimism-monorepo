@@ -75,11 +75,11 @@ func TestGet(t *testing.T) {
 		outputB2 := testutils.RandomOutputV0(rng)
 		superRoot1 := eth.NewSuperV1(
 			prestateTimestamp,
-			eth.ChainIDAndOutput{ChainID: 1, Output: eth.OutputRoot(outputA1)},
-			eth.ChainIDAndOutput{ChainID: 2, Output: eth.OutputRoot(outputB1)})
+			eth.ChainIDAndOutput{ChainID: eth.ChainIDFromUInt64(1), Output: eth.OutputRoot(outputA1)},
+			eth.ChainIDAndOutput{ChainID: eth.ChainIDFromUInt64(2), Output: eth.OutputRoot(outputB1)})
 		superRoot2 := eth.NewSuperV1(prestateTimestamp+1,
-			eth.ChainIDAndOutput{ChainID: 1, Output: eth.OutputRoot(outputA2)},
-			eth.ChainIDAndOutput{ChainID: 2, Output: eth.OutputRoot(outputB2)})
+			eth.ChainIDAndOutput{ChainID: eth.ChainIDFromUInt64(1), Output: eth.OutputRoot(outputA2)},
+			eth.ChainIDAndOutput{ChainID: eth.ChainIDFromUInt64(2), Output: eth.OutputRoot(outputB2)})
 		stubSupervisor.Add(eth.SuperRootResponse{
 			Timestamp: prestateTimestamp,
 			SuperRoot: eth.SuperRoot(superRoot1),

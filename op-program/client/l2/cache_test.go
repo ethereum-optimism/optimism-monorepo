@@ -24,12 +24,12 @@ func TestBlockByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stub.Blocks[block.Hash()] = block
-	actual := oracle.BlockByHash(block.Hash(), chainID)
+	actual := oracle.BlockByHash(block.Hash(), eth.ChainIDFromUInt64(chainID))
 	require.Equal(t, block, actual)
 
 	// Later calls should retrieve from cache (even if chain ID is different)
 	delete(stub.Blocks, block.Hash())
-	actual = oracle.BlockByHash(block.Hash(), 9982)
+	actual = oracle.BlockByHash(block.Hash(), eth.ChainIDFromUInt64(9982))
 	require.Equal(t, block, actual)
 }
 
@@ -42,17 +42,17 @@ func TestNodeByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stateStub.Data[hash] = node
-	actual := oracle.NodeByHash(hash, 1234)
+	actual := oracle.NodeByHash(hash, eth.ChainIDFromUInt64(1234))
 	require.Equal(t, node, actual)
 
 	// Later calls should retrieve from cache (even if chain ID is different)
 	delete(stateStub.Data, hash)
-	actual = oracle.NodeByHash(hash, 997845)
+	actual = oracle.NodeByHash(hash, eth.ChainIDFromUInt64(997845))
 	require.Equal(t, node, actual)
 }
 
 func TestReceiptsByBlockHash(t *testing.T) {
-	chainID := uint64(48294)
+	chainID := eth.ChainIDFromUInt64(48294)
 	stub, _ := test.NewStubOracle(t)
 	oracle := NewCachingOracle(stub)
 
@@ -69,7 +69,7 @@ func TestReceiptsByBlockHash(t *testing.T) {
 	// Later calls should retrieve from cache (even if chain ID is different)
 	delete(stub.Blocks, block.Hash())
 	delete(stub.Receipts, block.Hash())
-	actualBlock, actualRcpts = oracle.ReceiptsByBlockHash(block.Hash(), 9982)
+	actualBlock, actualRcpts = oracle.ReceiptsByBlockHash(block.Hash(), eth.ChainIDFromUInt64(9982))
 	require.EqualValues(t, block, actualBlock)
 	require.EqualValues(t, rcpts, actualRcpts)
 }
@@ -83,12 +83,12 @@ func TestCodeByHash(t *testing.T) {
 
 	// Initial call retrieves from the stub
 	stateStub.Code[hash] = node
-	actual := oracle.CodeByHash(hash, 342)
+	actual := oracle.CodeByHash(hash, eth.ChainIDFromUInt64(342))
 	require.Equal(t, node, actual)
 
 	// Later calls should retrieve from cache (even if the chain ID is different)
 	delete(stateStub.Code, hash)
-	actual = oracle.CodeByHash(hash, 986776)
+	actual = oracle.CodeByHash(hash, eth.ChainIDFromUInt64(986776))
 	require.Equal(t, node, actual)
 }
 
@@ -102,11 +102,11 @@ func TestOutputByRoot(t *testing.T) {
 	// Initial call retrieves from the stub
 	root := common.Hash(eth.OutputRoot(output))
 	stub.Outputs[root] = output
-	actual := oracle.OutputByRoot(root, 59284)
+	actual := oracle.OutputByRoot(root, eth.ChainIDFromUInt64(59284))
 	require.Equal(t, output, actual)
 
 	// Later calls should retrieve from cache (even if the chain ID is different)
 	delete(stub.Outputs, root)
-	actual = oracle.OutputByRoot(root, 9193)
+	actual = oracle.OutputByRoot(root, eth.ChainIDFromUInt64(9193))
 	require.Equal(t, output, actual)
 }

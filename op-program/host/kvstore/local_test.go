@@ -11,6 +11,7 @@ import (
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
@@ -18,7 +19,7 @@ import (
 
 func TestLocalPreimageSource(t *testing.T) {
 	cfg := &config.Config{
-		L2ChainID:          86,
+		L2ChainID:          eth.ChainIDFromUInt64(86),
 		Rollups:            []*rollup.Config{chaincfg.OPSepolia()},
 		L1Head:             common.HexToHash("0x1111"),
 		L2OutputRoot:       common.HexToHash("0x2222"),

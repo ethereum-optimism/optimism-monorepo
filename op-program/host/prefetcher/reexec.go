@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
@@ -12,14 +13,14 @@ import (
 
 type ProgramExecutor interface {
 	// RunProgram derives the block at the specified blockNumber
-	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID uint64) error
+	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID) error
 }
 
 // nativeReExecuteBlock is a helper function that re-executes a block natively.
 // It is used to populate the kv store with the data needed for the program to
 // re-derive the block.
 func (p *Prefetcher) nativeReExecuteBlock(
-	ctx context.Context, agreedBlockHash, blockHash common.Hash, chainID uint64) error {
+	ctx context.Context, agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) error {
 	// Avoid using the retrying source to prevent indefinite retries as the block may not be canonical and unavailable
 	source, err := p.l2Sources.ForChainIDWithoutRetries(chainID)
 	if err != nil {
