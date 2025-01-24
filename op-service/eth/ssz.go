@@ -212,7 +212,7 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 	}
 
 	payloadVersion := payload.inferVersion()
-	if payloadVersion == BlockV3 || payloadVersion == BlockV4 {
+	if payloadVersion.HasBlobProperties() {
 		if payload.BlobGasUsed == nil || payload.ExcessBlobGas == nil {
 			return 0, errors.New("cannot encode ecotone payload without dencun header attributes")
 		}
