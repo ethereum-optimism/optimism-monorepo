@@ -46,6 +46,8 @@ contract DeployOPCMInput is BaseDeployIO {
 
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
         else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
@@ -170,16 +172,14 @@ contract DeployOPCMInput is BaseDeployIO {
         return _anchorStateRegistryImpl;
     }
 
-    function superchainConfigImpl() public view returns (ISuperchainConfig) {
-        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfig)));
-        DeployUtils.assertValidContractAddress(address(impl));
-        return impl;
+    function superchainConfigImpl() public view returns (address) {
+        require(_superchainConfigImpl != address(0), "DeployOPCMInput: not set");
+        return _superchainConfigImpl;
     }
 
-    function protocolVersionsImpl() public view returns (IProtocolVersions) {
-        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersions)));
-        DeployUtils.assertValidContractAddress(address(impl));
-        return impl;
+    function protocolVersionsImpl() public view returns (address) {
+        require(_protocolVersionsImpl != address(0), "DeployOPCMInput: not set");
+        return _protocolVersionsImpl;
     }
 
     function delayedWETHImpl() public view returns (address) {
