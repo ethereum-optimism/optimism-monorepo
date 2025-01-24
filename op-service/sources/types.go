@@ -246,7 +246,7 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool, checker RPCRe
 		}
 	}
 	if !trustCache {
-		if err := block.Verify(); err != nil {
+		if err := block.Verify(checker); err != nil {
 			return nil, nil, err
 		}
 	}

@@ -152,7 +152,7 @@ func (h *headerBlockInfo) HeaderRLP() ([]byte, error) {
 }
 
 func (h headerBlockInfo) WithdrawalsRoot() *common.Hash {
-	return h.Header.WithdrawalsHash
+	return h.header.WithdrawalsHash
 }
 
 func (h *headerBlockInfo) MarshalJSON() ([]byte, error) {
