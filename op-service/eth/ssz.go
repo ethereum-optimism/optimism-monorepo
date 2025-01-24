@@ -39,6 +39,7 @@ var (
 
 	ErrBadTransactionOffset = errors.New("transactions offset is smaller than extra data offset, aborting")
 	ErrBadWithdrawalsOffset = errors.New("withdrawals offset is smaller than transaction offset, aborting")
+	ErrBadExtraDataOffset   = errors.New("unexpected extra data offset")
 
 	ErrMissingData = errors.New("execution payload envelope is missing data")
 )
@@ -220,7 +221,7 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 		offset += 8
 	}
 
-	if payloadVersion == BlockV4 {
+	if payloadVersion.HasWithdrawalsRoot() {
 		if payload.WithdrawalsRoot == nil {
 			return 0, errors.New("cannot encode Isthmus payload without withdrawals root")
 		}
@@ -315,7 +316,7 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 	offset += 8
 	extraDataOffset := binary.LittleEndian.Uint32(buf[offset : offset+4])
 	if extraDataOffset != fixedSize {
-		return fmt.Errorf("unexpected extra data offset: %d <> %d", extraDataOffset, fixedSize)
+		return fmt.Errorf("%w: %d <> %d", ErrBadExtraDataOffset, extraDataOffset, fixedSize)
 	}
 	offset += 4
 	unmarshalBytes32LE(buf[offset:offset+32], &payload.BaseFeePerGas)
@@ -345,7 +346,7 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 		}
 	}
 
-	if version == BlockV3 {
+	if version.HasBlobProperties() {
 		blobGasUsed := binary.LittleEndian.Uint64(buf[offset : offset+8])
 		payload.BlobGasUsed = (*Uint64Quantity)(&blobGasUsed)
 		offset += 8
@@ -354,7 +355,7 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 		offset += 8
 	}
 
-	if version == BlockV4 {
+	if version.HasWithdrawalsRoot() {
 		withdrawalsRoot := common.Hash{}
 		copy(withdrawalsRoot[:], buf[offset:offset+32])
 		payload.WithdrawalsRoot = &withdrawalsRoot
