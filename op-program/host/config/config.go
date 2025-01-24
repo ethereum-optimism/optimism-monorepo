@@ -97,7 +97,7 @@ type Config struct {
 }
 
 func (c *Config) Check() error {
-	if !c.InteropEnabled && c.L2ChainID == eth.ChainIDFromUInt64(0) {
+	if !c.InteropEnabled && c.L2ChainID == (eth.ChainID{}) {
 		return ErrMissingL2ChainID
 	}
 	if len(c.Rollups) == 0 {
@@ -317,7 +317,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		l2ChainID = boot.CustomChainIDIndicator
 	} else if len(rollupCfgs) > 1 {
 		// L2ChainID is not applicable when multiple L2 sources are used and not using custom configs
-		l2ChainID = eth.ChainIDFromUInt64(0)
+		l2ChainID = eth.ChainID{}
 	}
 
 	dbFormat := types.DataFormat(ctx.String(flags.DataFormat.Name))
