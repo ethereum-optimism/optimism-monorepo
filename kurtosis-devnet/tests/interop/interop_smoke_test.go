@@ -17,17 +17,13 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-var (
-	testUserMarker = &struct{}{}
-)
-
 func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
 }
 
 func TestMinimal(t *testing.T) {
-	// We'll use the first L2 chain for this test
-	chainIdx := uint64(0)
+	chainIdx := uint64(0)         // We'll use the first L2 chain for this test
+	testUserMarker := &struct{}{} // Sentinel for the user context value
 
 	systest.SystemTest(t, func(t systest.T, sys system.System) {
 		ctx := t.Context()
