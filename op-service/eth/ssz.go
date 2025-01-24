@@ -468,7 +468,7 @@ func unmarshalTransactions(in []byte) (txs []Data, err error) {
 }
 
 // UnmarshalSSZ decodes the ExecutionPayloadEnvelope as SSZ type
-func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(scope uint32, r io.Reader) error {
+func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(version BlockVersion, scope uint32, r io.Reader) error {
 	if scope < common.HashLength {
 		return fmt.Errorf("scope too small to decode execution payload envelope: %d", scope)
 	}
@@ -483,7 +483,7 @@ func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(scope uint32, r io.Reader
 	copy(envelope.ParentBeaconBlockRoot[:], data)
 
 	var payload ExecutionPayload
-	err = payload.UnmarshalSSZ(BlockV3, scope-32, r)
+	err = payload.UnmarshalSSZ(version, scope-32, r)
 	if err != nil {
 		return err
 	}

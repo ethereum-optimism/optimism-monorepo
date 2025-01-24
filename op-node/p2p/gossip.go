@@ -308,8 +308,8 @@ func BuildBlocksValidator(log log.Logger, cfg *rollup.Config, runCfg GossipRunti
 		var envelope eth.ExecutionPayloadEnvelope
 
 		// [REJECT] if the block encoding is not valid
-		if blockVersion == eth.BlockV3 {
-			if err := envelope.UnmarshalSSZ(uint32(len(payloadBytes)), bytes.NewReader(payloadBytes)); err != nil {
+		if blockVersion == eth.BlockV3 || blockVersion == eth.BlockV4 {
+			if err := envelope.UnmarshalSSZ(blockVersion, uint32(len(payloadBytes)), bytes.NewReader(payloadBytes)); err != nil {
 				log.Warn("invalid envelope payload", "err", err, "peer", id)
 				return pubsub.ValidationReject
 			}
