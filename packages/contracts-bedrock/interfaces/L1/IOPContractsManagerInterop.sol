@@ -11,7 +11,8 @@ interface IOPContractsManagerInterop is IOPContractsManager {
         IProtocolVersions _protocolVersions,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
-        Implementations memory _implementations
+        Implementations memory _implementations,
+        address _upgradeController
     )
         external;
 }

@@ -85,9 +85,6 @@ contract DeployConfig is Script {
     uint256 public daBondSize;
     uint256 public daResolverRefundPercentage;
 
-    bool public useCustomGasToken;
-    address public customGasTokenAddress;
-
     bool public useInterop;
     bool public useUpgradedFork;
 
@@ -171,9 +168,6 @@ contract DeployConfig is Script {
         daBondSize = _readOr(_json, "$.daBondSize", 1000000000);
         daResolverRefundPercentage = _readOr(_json, "$.daResolverRefundPercentage", 0);
 
-        useCustomGasToken = _readOr(_json, "$.useCustomGasToken", false);
-        customGasTokenAddress = _readOr(_json, "$.customGasTokenAddress", address(0));
-
         useInterop = _readOr(_json, "$.useInterop", false);
         useUpgradedFork;
     }
@@ -230,12 +224,6 @@ contract DeployConfig is Script {
     /// @notice Allow the `fundDevAccounts` config to be overridden.
     function setFundDevAccounts(bool _fundDevAccounts) public {
         fundDevAccounts = _fundDevAccounts;
-    }
-
-    /// @notice Allow the `useCustomGasToken` config to be overridden in testing environments
-    function setUseCustomGasToken(address _token) public {
-        useCustomGasToken = true;
-        customGasTokenAddress = _token;
     }
 
     /// @notice Allow the `useUpgradedFork` config to be overridden in testing environments

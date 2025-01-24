@@ -1,5 +1,14 @@
 [
   {
+    "version": "1.4.1-rc.3",
+    "hash": "0x03d7f817d7bb1321533aeeee5e0f2031cc69d167c4a17bf2816b4cc8b1be4077",
+    "type": "cannon64"
+  },
+  {
+    "version": "1.4.1-rc.3",
+    "hash": "0x03ea123151750b03569369130a73c390b0b5e10c722ab42d762d116318325bb7"
+  },
+  {
     "version": "1.4.1-rc.2",
     "hash": "0x0386cde2f2b1bde1189ac9c9b7d66774e6260eca778223def326bfe680c14ab9",
     "type": "cannon64"

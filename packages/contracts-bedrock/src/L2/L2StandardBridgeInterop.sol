@@ -39,9 +39,9 @@ contract L2StandardBridgeInterop is L2StandardBridge {
     event Converted(address indexed from, address indexed to, address indexed caller, uint256 amount);
 
     /// @notice Semantic version.
-    /// @custom:semver +interop-beta.7
+    /// @custom:semver +interop-beta.8
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.7");
+        return string.concat(super.version(), "+interop-beta.8");
     }
 
     /// @notice Converts `amount` of `from` token to `to` token.

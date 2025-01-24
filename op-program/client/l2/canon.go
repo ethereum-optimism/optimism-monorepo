@@ -48,8 +48,9 @@ func (o *CanonicalBlockHeaderOracle) GetHeaderByNumber(n uint64) *types.Header {
 
 	h := o.earliestIndexedBlock
 	for h.Number.Uint64() > n {
-		h = o.blockByHashFn(h.ParentHash).Header()
-		o.hashByNum[h.Number.Uint64()] = h.Hash()
+		hash := h.ParentHash
+		h = o.blockByHashFn(hash).Header()
+		o.hashByNum[h.Number.Uint64()] = hash
 	}
 	o.earliestIndexedBlock = h
 	return h

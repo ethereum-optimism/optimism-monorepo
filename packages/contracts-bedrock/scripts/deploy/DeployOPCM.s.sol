@@ -16,6 +16,7 @@ contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
     IProtocolVersions internal _protocolVersions;
     string internal _l1ContractsRelease;
+    address internal _upgradeController;
 
     address internal _addressManagerBlueprint;
     address internal _proxyBlueprint;
@@ -42,6 +43,7 @@ contract DeployOPCMInput is BaseDeployIO {
 
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
+        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else if (_sel == this.addressManagerBlueprint.selector) _addressManagerBlueprint = _addr;
         else if (_sel == this.proxyBlueprint.selector) _proxyBlueprint = _addr;
         else if (_sel == this.proxyAdminBlueprint.selector) _proxyAdminBlueprint = _addr;
@@ -83,6 +85,11 @@ contract DeployOPCMInput is BaseDeployIO {
     function l1ContractsRelease() public view returns (string memory) {
         require(!LibString.eq(_l1ContractsRelease, ""), "DeployOPCMInput: not set");
         return _l1ContractsRelease;
+    }
+
+    function upgradeController() public view returns (address) {
+        require(_upgradeController != address(0), "DeployOPCMInput: not set");
+        return _upgradeController;
     }
 
     function addressManagerBlueprint() public view returns (address) {
@@ -215,7 +222,12 @@ contract DeployOPCM is Script {
         });
 
         IOPContractsManager opcm_ = deployOPCM(
-            _doi.superchainConfig(), _doi.protocolVersions(), blueprints, implementations, _doi.l1ContractsRelease()
+            _doi.superchainConfig(),
+            _doi.protocolVersions(),
+            blueprints,
+            implementations,
+            _doi.l1ContractsRelease(),
+            _doi.upgradeController()
         );
         _doo.set(_doo.opcm.selector, address(opcm_));
 
@@ -227,7 +239,8 @@ contract DeployOPCM is Script {
         IProtocolVersions _protocolVersions,
         IOPContractsManager.Blueprints memory _blueprints,
         IOPContractsManager.Implementations memory _implementations,
-        string memory _l1ContractsRelease
+        string memory _l1ContractsRelease,
+        address _upgradeController
     )
         public
         returns (IOPContractsManager opcm_)
@@ -239,7 +252,14 @@ contract DeployOPCM is Script {
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOPContractsManager.__constructor__,
-                        (_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
+                        (
+                            _superchainConfig,
+                            _protocolVersions,
+                            _l1ContractsRelease,
+                            _blueprints,
+                            _implementations,
+                            _upgradeController
+                        )
                     )
                 ),
                 _salt: DeployUtils.DEFAULT_SALT
@@ -252,7 +272,9 @@ contract DeployOPCM is Script {
         IOPContractsManager impl = IOPContractsManager(address(_doo.opcm()));
         require(address(impl.superchainConfig()) == address(_doi.superchainConfig()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_doi.protocolVersions()), "OPCMI-20");
-        require(LibString.eq(impl.l1ContractsRelease(), _doi.l1ContractsRelease()), "OPCMI-30");
+        require(LibString.eq(impl.l1ContractsRelease(), string.concat(_doi.l1ContractsRelease(), "-rc")), "OPCMI-30");
+
+        require(impl.upgradeController() == _doi.upgradeController(), "OPCMI-40");
 
         IOPContractsManager.Blueprints memory blueprints = impl.blueprints();
         require(blueprints.addressManager == _doi.addressManagerBlueprint(), "OPCMI-40");

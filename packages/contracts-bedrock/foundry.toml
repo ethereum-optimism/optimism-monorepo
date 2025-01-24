@@ -19,6 +19,7 @@ additional_compiler_profiles = [
 compilation_restrictions = [
   { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
   { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 5000 },
 ]
 
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
@@ -38,7 +39,6 @@ remappings = [
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
-  'gelato/=lib/automate/contracts',
   'interfaces/=interfaces'
 ]
 

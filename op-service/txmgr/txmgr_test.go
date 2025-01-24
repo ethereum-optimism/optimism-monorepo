@@ -1581,6 +1581,29 @@ func TestCloseWaitingForConfirmation(t *testing.T) {
 	})
 }
 
+func TestTxMgrCustomPublishError(t *testing.T) {
+	customErr := errors.New("custom test error")
+
+	testSendVariants(t, func(t *testing.T, send testSendVariantsFn) {
+		cfg := configWithNumConfs(1)
+		cfg.AlreadyPublishedCustomErrs = []string{customErr.Error()}
+		h := newTestHarnessWithConfig(t, cfg)
+
+		sendTx := func(ctx context.Context, tx *types.Transaction) error {
+			txHash := tx.Hash()
+			h.backend.mine(&txHash, tx.GasFeeCap(), nil)
+			return customErr
+		}
+		h.backend.setTxSender(sendTx)
+
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+		receipt, err := send(ctx, h, h.createTxCandidate())
+		require.Nil(t, err)
+		require.NotNil(t, receipt)
+	})
+}
+
 func TestMakeSidecar(t *testing.T) {
 	var blob eth.Blob
 	_, err := rand.Read(blob[:])

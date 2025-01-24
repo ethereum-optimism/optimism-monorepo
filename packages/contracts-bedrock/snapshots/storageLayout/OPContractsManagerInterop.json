@@ -1,7 +1,7 @@
 [
   {
     "bytes": "32",
-    "label": "l1ContractsRelease",
+    "label": "L1_CONTRACTS_RELEASE",
     "offset": 0,
     "slot": "0",
     "type": "string"
@@ -19,5 +19,12 @@
     "offset": 0,
     "slot": "10",
     "type": "struct OPContractsManager.Implementations"
+  },
+  {
+    "bytes": "1",
+    "label": "isRC",
+    "offset": 0,
+    "slot": "20",
+    "type": "bool"
   }
 ]

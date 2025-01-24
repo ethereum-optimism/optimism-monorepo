@@ -210,12 +210,6 @@ contract Deploy is Deployer {
         );
         vm.stopPrank();
 
-        if (cfg.useCustomGasToken()) {
-            // Reset the systemconfig then reinitialize it with the custom gas token
-            resetInitializedProxy("SystemConfig");
-            initializeSystemConfig();
-        }
-
         if (cfg.useAltDA()) {
             bytes32 typeHash = keccak256(bytes(cfg.daCommitmentType()));
             bytes32 keccakHash = keccak256(bytes("KeccakCommitment"));
@@ -292,6 +286,10 @@ contract Deploy is Deployer {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
+        dii.set(
+            dii.upgradeController.selector,
+            IProxyAdmin(EIP1967Helper.getAdmin(artifacts.mustGetAddress("SuperchainConfigProxy"))).owner()
+        );
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());
@@ -500,11 +498,6 @@ contract Deploy is Deployer {
         address systemConfig = artifacts.mustGetAddress("SystemConfigImpl");
 
         bytes32 batcherHash = bytes32(uint256(uint160(cfg.batchSenderAddress())));
-
-        address customGasTokenAddress = Constants.ETHER;
-        if (cfg.useCustomGasToken()) {
-            customGasTokenAddress = cfg.customGasTokenAddress();
-        }
 
         IProxyAdmin proxyAdmin = IProxyAdmin(payable(artifacts.mustGetAddress("ProxyAdmin")));
         proxyAdmin.upgradeAndCall({

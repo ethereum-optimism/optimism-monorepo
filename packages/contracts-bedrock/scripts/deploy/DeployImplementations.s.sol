@@ -45,6 +45,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
+    address internal _upgradeController;
 
     function set(bytes4 _sel, uint256 _value) public {
         require(_value != 0, "DeployImplementationsInput: cannot set zero value");
@@ -77,6 +78,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
+        else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else revert("DeployImplementationsInput: unknown selector");
     }
 
@@ -126,6 +128,11 @@ contract DeployImplementationsInput is BaseDeployIO {
     function protocolVersionsProxy() public view returns (IProtocolVersions) {
         require(address(_protocolVersionsProxy) != address(0), "DeployImplementationsInput: not set");
         return _protocolVersionsProxy;
+    }
+
+    function upgradeController() public view returns (address) {
+        require(address(_upgradeController) != address(0), "DeployImplementationsInput: not set");
+        return _upgradeController;
     }
 }
 
@@ -269,6 +276,7 @@ contract DeployImplementationsOutput is BaseDeployIO {
         IOPContractsManager impl = IOPContractsManager(address(opcm()));
         require(address(impl.superchainConfig()) == address(_dii.superchainConfigProxy()), "OPCMI-10");
         require(address(impl.protocolVersions()) == address(_dii.protocolVersionsProxy()), "OPCMI-20");
+        require(impl.upgradeController() == _dii.upgradeController(), "OPCMI-30");
     }
 
     function assertValidOptimismPortalImpl(DeployImplementationsInput) internal view {
@@ -444,6 +452,7 @@ contract DeployImplementations is Script {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+        address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
@@ -465,7 +474,14 @@ contract DeployImplementations is Script {
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOPContractsManager.__constructor__,
-                        (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                        (
+                            superchainConfigProxy,
+                            protocolVersionsProxy,
+                            _l1ContractsRelease,
+                            _blueprints,
+                            implementations,
+                            upgradeController
+                        )
                     )
                 ),
                 _salt: _salt
@@ -790,6 +806,7 @@ contract DeployImplementationsInterop is DeployImplementations {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+        address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
@@ -811,7 +828,14 @@ contract DeployImplementationsInterop is DeployImplementations {
                 _args: DeployUtils.encodeConstructor(
                     abi.encodeCall(
                         IOPContractsManagerInterop.__constructor__,
-                        (superchainConfigProxy, protocolVersionsProxy, _l1ContractsRelease, _blueprints, implementations)
+                        (
+                            superchainConfigProxy,
+                            protocolVersionsProxy,
+                            _l1ContractsRelease,
+                            _blueprints,
+                            implementations,
+                            upgradeController
+                        )
                     )
                 ),
                 _salt: _salt

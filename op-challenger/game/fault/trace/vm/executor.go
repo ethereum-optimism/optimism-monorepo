@@ -29,11 +29,9 @@ var (
 	ErrMissingBin    = errors.New("missing bin")
 	ErrMissingServer = errors.New("missing server")
 
-	ErrMissingRollupConfig    = errors.New("missing network or rollup config path")
-	ErrMissingL2Genesis       = errors.New("missing network or l2 genesis path")
-	ErrNetworkAndRollupConfig = errors.New("only specify one of network or rollup config path")
-	ErrNetworkAndL2Genesis    = errors.New("only specify one of network or l2 genesis path")
-	ErrNetworkUnknown         = errors.New("unknown network")
+	ErrMissingRollupConfig = errors.New("missing network or rollup config path")
+	ErrMissingL2Genesis    = errors.New("missing network or l2 genesis path")
+	ErrNetworkUnknown      = errors.New("unknown network")
 )
 
 type Metricer = metrics.TypedVmMetricer
@@ -48,14 +46,14 @@ type Config struct {
 	BinarySnapshots bool   // Whether to use binary snapshots instead of JSON
 
 	// Host Configuration
-	L1               string
-	L1Beacon         string
-	L2               string
-	Server           string // Path to the executable that provides the pre-image oracle server
-	Network          string
-	L2Custom         bool
-	RollupConfigPath string
-	L2GenesisPath    string
+	L1                string
+	L1Beacon          string
+	L2s               []string
+	Server            string // Path to the executable that provides the pre-image oracle server
+	Networks          []string
+	L2Custom          bool
+	RollupConfigPaths []string
+	L2GenesisPaths    []string
 }
 
 func (c *Config) Check() error {
@@ -73,24 +71,20 @@ func (c *Config) Check() error {
 		return fmt.Errorf("%w: %w", ErrMissingServer, err)
 	}
 
-	if c.Network == "" {
-		if c.RollupConfigPath == "" {
+	if len(c.Networks) == 0 {
+		if len(c.RollupConfigPaths) == 0 {
 			return ErrMissingRollupConfig
 		}
-		if c.L2GenesisPath == "" {
+		if len(c.L2GenesisPaths) == 0 {
 			return ErrMissingL2Genesis
 		}
 	} else {
-		if c.RollupConfigPath != "" {
-			return ErrNetworkAndRollupConfig
-		}
-		if c.L2GenesisPath != "" {
-			return ErrNetworkAndL2Genesis
-		}
-		if ch := chaincfg.ChainByName(c.Network); ch == nil {
-			// Check if this looks like a chain ID that could be a custom chain configuration.
-			if _, err := strconv.ParseUint(c.Network, 10, 32); err != nil {
-				return fmt.Errorf("%w: %v", ErrNetworkUnknown, c.Network)
+		for _, network := range c.Networks {
+			if ch := chaincfg.ChainByName(network); ch == nil {
+				// Check if this looks like a chain ID that could be a custom chain configuration.
+				if _, err := strconv.ParseUint(network, 10, 32); err != nil {
+					return fmt.Errorf("%w: %v", ErrNetworkUnknown, network)
+				}
 			}
 		}
 	}
@@ -193,12 +187,12 @@ func (e *Executor) DoGenerateProof(ctx context.Context, dir string, begin uint64
 			memoryUsed = fmt.Sprintf("%d", uint64(info.MemoryUsed))
 			e.metrics.RecordMemoryUsed(uint64(info.MemoryUsed))
 			e.metrics.RecordSteps(info.Steps)
-			e.metrics.RecordRmwSuccessCount(uint64(info.RmwSuccessCount))
-			e.metrics.RecordRmwFailCount(uint64(info.RmwFailCount))
-			e.metrics.RecordMaxStepsBetweenLLAndSC(uint64(info.MaxStepsBetweenLLAndSC))
-			e.metrics.RecordReservationInvalidationCount(uint64(info.ReservationInvalidationCount))
-			e.metrics.RecordForcedPreemptionCount(uint64(info.ForcedPreemptionCount))
-			e.metrics.RecordIdleStepCountThread0(uint64(info.IdleStepCountThread0))
+			e.metrics.RecordRmwSuccessCount(info.RmwSuccessCount)
+			e.metrics.RecordRmwFailCount(info.RmwFailCount)
+			e.metrics.RecordMaxStepsBetweenLLAndSC(info.MaxStepsBetweenLLAndSC)
+			e.metrics.RecordReservationInvalidationCount(info.ReservationInvalidationCount)
+			e.metrics.RecordForcedPreemptionCount(info.ForcedPreemptionCount)
+			e.metrics.RecordIdleStepCountThread0(info.IdleStepCountThread0)
 		}
 	}
 	e.logger.Info("VM execution complete", "time", execTime, "memory", memoryUsed)

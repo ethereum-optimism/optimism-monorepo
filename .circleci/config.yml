@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   ci_builder_image:
     type: string
-    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.56.0
+    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.59.0
   ci_builder_rust_image:
     type: string
     default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder-rust:latest
@@ -1195,9 +1195,8 @@ jobs:
       - notify-failures-on-develop
 
   publish-contract-artifacts:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
       - gcp-cli/install
       - gcp-oidc-authenticate:
@@ -1311,6 +1310,9 @@ workflows:
           test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
+          # need this requires to ensure that all FFI JSONs exist
+          requires:
+            - contracts-bedrock-build
       - contracts-bedrock-tests-upgrade:
           name: contracts-bedrock-tests-upgrade op-mainnet
           fork_op_chain: op

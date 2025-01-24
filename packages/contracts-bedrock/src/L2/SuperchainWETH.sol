@@ -5,7 +5,7 @@ pragma solidity 0.8.15;
 import { WETH98 } from "src/universal/WETH98.sol";
 
 // Libraries
-import { NotCustomGasToken, Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
+import { Unauthorized, ZeroAddress } from "src/libraries/errors/CommonErrors.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { Preinstalls } from "src/libraries/Preinstalls.sol";
 import { SafeSend } from "src/universal/SafeSend.sol";
@@ -13,7 +13,6 @@ import { SafeSend } from "src/universal/SafeSend.sol";
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
 import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMessenger.sol";
-import { IL1Block } from "interfaces/L2/IL1Block.sol";
 import { IETHLiquidity } from "interfaces/L2/IETHLiquidity.sol";
 import { IERC7802, IERC165 } from "interfaces/L2/IERC7802.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -43,20 +42,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     event RelayETH(address indexed from, address indexed to, uint256 amount, uint256 source);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.0-beta.13
-    string public constant version = "1.0.0-beta.13";
-
-    /// @inheritdoc WETH98
-    function deposit() public payable override {
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
-        super.deposit();
-    }
-
-    /// @inheritdoc WETH98
-    function withdraw(uint256 _amount) public override {
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) revert NotCustomGasToken();
-        super.withdraw(_amount);
-    }
+    /// @custom:semver 1.0.0-beta.14
+    string public constant version = "1.0.0-beta.14";
 
     /// @inheritdoc WETH98
     function allowance(address owner, address spender) public view override returns (uint256) {
@@ -89,10 +76,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
         _mint(_to, _amount);
 
         // Withdraw from ETHLiquidity contract.
-        if (!IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // NOTE: 'mint' will soon change to 'withdraw'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
-        }
+        // NOTE: 'mint' will soon change to 'withdraw'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
 
         emit CrosschainMint(_to, _amount, msg.sender);
     }
@@ -106,10 +91,8 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
         _burn(_from, _amount);
 
         // Deposit to ETHLiquidity contract.
-        if (!IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // NOTE: 'burn' will soon change to 'deposit'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: _amount }();
-        }
+        // NOTE: 'burn' will soon change to 'deposit'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: _amount }();
 
         emit CrosschainBurn(_from, _amount, msg.sender);
     }
@@ -126,10 +109,6 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
     /// @return msgHash_ Hash of the message sent.
     function sendETH(address _to, uint256 _chainId) external payable returns (bytes32 msgHash_) {
         if (_to == address(0)) revert ZeroAddress();
-
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            revert NotCustomGasToken();
-        }
 
         // NOTE: 'burn' will soon change to 'deposit'.
         IETHLiquidity(Predeploys.ETH_LIQUIDITY).burn{ value: msg.value }();
@@ -155,16 +134,11 @@ contract SuperchainWETH is WETH98, IERC7802, ISemver {
 
         if (crossDomainMessageSender != address(this)) revert InvalidCrossDomainSender();
 
-        if (IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).isCustomGasToken()) {
-            // Since ETH is not the native asset on custom gas token chains, send SuperchainWETH to the recipient.
-            _mint(_to, _amount);
-        } else {
-            // NOTE: 'mint' will soon change to 'withdraw'.
-            IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
+        // NOTE: 'mint' will soon change to 'withdraw'.
+        IETHLiquidity(Predeploys.ETH_LIQUIDITY).mint(_amount);
 
-            // This is a forced ETH send to the recipient, the recipient should NOT expect to be called.
-            new SafeSend{ value: _amount }(payable(_to));
-        }
+        // This is a forced ETH send to the recipient, the recipient should NOT expect to be called.
+        new SafeSend{ value: _amount }(payable(_to));
 
         emit RelayETH(_from, _to, _amount, source);
     }

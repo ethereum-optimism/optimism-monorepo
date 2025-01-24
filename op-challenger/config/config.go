@@ -75,9 +75,9 @@ type Config struct {
 
 	TraceTypes []types.TraceType // Type of traces supported
 
-	RollupRpc     string // L2 Rollup RPC Url
-	SupervisorRPC string // L2 supervisor RPC URL
-	L2Rpc         string // L2 RPC Url
+	RollupRpc     string   // L2 Rollup RPC Url
+	SupervisorRPC string   // L2 supervisor RPC URL
+	L2Rpcs        []string // L2 RPC Url
 
 	// Specific to the cannon trace provider
 	Cannon                        vm.Config
@@ -112,7 +112,7 @@ func NewConfig(
 		L1EthRpc:           l1EthRpc,
 		L1Beacon:           l1BeaconApi,
 		RollupRpc:          l2RollupRpc,
-		L2Rpc:              l2EthRpc,
+		L2Rpcs:             []string{l2EthRpc},
 		GameFactoryAddress: gameFactoryAddress,
 		MaxConcurrency:     uint(runtime.NumCPU()),
 		PollInterval:       DefaultPollInterval,
@@ -131,7 +131,7 @@ func NewConfig(
 			VmType:          types.TraceTypeCannon,
 			L1:              l1EthRpc,
 			L1Beacon:        l1BeaconApi,
-			L2:              l2EthRpc,
+			L2s:             []string{l2EthRpc},
 			SnapshotFreq:    DefaultCannonSnapshotFreq,
 			InfoFreq:        DefaultCannonInfoFreq,
 			DebugInfo:       true,
@@ -141,7 +141,7 @@ func NewConfig(
 			VmType:          types.TraceTypeAsterisc,
 			L1:              l1EthRpc,
 			L1Beacon:        l1BeaconApi,
-			L2:              l2EthRpc,
+			L2s:             []string{l2EthRpc},
 			SnapshotFreq:    DefaultAsteriscSnapshotFreq,
 			InfoFreq:        DefaultAsteriscInfoFreq,
 			BinarySnapshots: true,
@@ -150,7 +150,7 @@ func NewConfig(
 			VmType:          types.TraceTypeAsteriscKona,
 			L1:              l1EthRpc,
 			L1Beacon:        l1BeaconApi,
-			L2:              l2EthRpc,
+			L2s:             []string{l2EthRpc},
 			SnapshotFreq:    DefaultAsteriscSnapshotFreq,
 			InfoFreq:        DefaultAsteriscInfoFreq,
 			BinarySnapshots: true,
@@ -170,7 +170,7 @@ func (c Config) Check() error {
 	if c.L1Beacon == "" {
 		return ErrMissingL1Beacon
 	}
-	if c.L2Rpc == "" {
+	if len(c.L2Rpcs) == 0 {
 		return ErrMissingL2Rpc
 	}
 	if c.GameFactoryAddress == (common.Address{}) {

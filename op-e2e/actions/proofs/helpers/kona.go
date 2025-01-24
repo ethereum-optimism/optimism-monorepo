@@ -8,7 +8,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/utils"
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/vm"
@@ -48,16 +47,13 @@ func RunKonaNative(
 		rollupCfgPaths[i] = rollupConfigPath
 	}
 
-	joinedRollupCfgPaths := strings.Join(rollupCfgPaths, ",")
-	joinedL2Rpcs := strings.Join(l2Rpcs, ",")
-
 	// Run the fault proof program from the state transition from L2 block L2Blocknumber - 1 -> L2BlockNumber.
 	vmCfg := vm.Config{
-		L1:               l1Rpc,
-		L1Beacon:         l1BeaconRpc,
-		L2:               joinedL2Rpcs,
-		RollupConfigPath: joinedRollupCfgPaths,
-		Server:           konaHostPath,
+		L1:                l1Rpc,
+		L1Beacon:          l1BeaconRpc,
+		L2s:               l2Rpcs,
+		RollupConfigPaths: rollupCfgPaths,
+		Server:            konaHostPath,
 	}
 	inputs := utils.LocalGameInputs{
 		L1Head:        fixtureInputs.L1Head,
@@ -70,7 +66,7 @@ func RunKonaNative(
 	var hostCmd []string
 	var err error
 	if fixtureInputs.InteropEnabled {
-		inputs.AgreedPreState = &fixtureInputs.AgreedPrestate
+		inputs.AgreedPreState = fixtureInputs.AgreedPrestate
 		hostCmd, err = vm.NewNativeKonaSuperExecutor().OracleCommand(vmCfg, workDir, inputs)
 	} else {
 		hostCmd, err = vm.NewNativeKonaExecutor().OracleCommand(vmCfg, workDir, inputs)

@@ -13,7 +13,7 @@ type LocalGameInputs struct {
 	L1Head         common.Hash
 	L2Head         common.Hash
 	L2OutputRoot   common.Hash
-	AgreedPreState *[]byte
+	AgreedPreState []byte
 	L2Claim        common.Hash
 	L2BlockNumber  *big.Int
 }

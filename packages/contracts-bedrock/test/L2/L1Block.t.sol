@@ -12,12 +12,28 @@ import "src/libraries/L1BlockErrors.sol";
 contract L1BlockTest is CommonTest {
     address depositor;
 
-    event GasPayingTokenSet(address indexed token, uint8 indexed decimals, bytes32 name, bytes32 symbol);
-
     /// @dev Sets up the test suite.
     function setUp() public virtual override {
         super.setUp();
         depositor = l1Block.DEPOSITOR_ACCOUNT();
+    }
+
+    function test_isCustomGasToken_succeeds() external view {
+        assertFalse(l1Block.isCustomGasToken());
+    }
+
+    function test_gasPayingToken_succeeds() external view {
+        (address token, uint8 decimals) = l1Block.gasPayingToken();
+        assertEq(token, Constants.ETHER);
+        assertEq(uint256(decimals), uint256(18));
+    }
+
+    function test_gasPayingTokenName_succeeds() external view {
+        assertEq("Ether", l1Block.gasPayingTokenName());
+    }
+
+    function test_gasPayingTokenSymbol_succeeds() external view {
+        assertEq("ETH", l1Block.gasPayingTokenSymbol());
     }
 }
 
@@ -162,52 +178,5 @@ contract L1BlockEcotone_Test is L1BlockTest {
         // make sure return value is the expected function selector for "NotDepositor()"
         bytes memory expReturn = hex"3cc50b45";
         assertEq(data, expReturn);
-    }
-}
-
-contract L1BlockCustomGasToken_Test is L1BlockTest {
-    function testFuzz_setGasPayingToken_succeeds(
-        address _token,
-        uint8 _decimals,
-        string calldata _name,
-        string calldata _symbol
-    )
-        external
-    {
-        vm.assume(_token != address(0));
-        vm.assume(_token != Constants.ETHER);
-
-        // Using vm.assume() would cause too many test rejections.
-        string memory name = _name;
-        if (bytes(_name).length > 32) {
-            name = _name[:32];
-        }
-        bytes32 b32name = bytes32(abi.encodePacked(name));
-
-        // Using vm.assume() would cause too many test rejections.
-        string memory symbol = _symbol;
-        if (bytes(_symbol).length > 32) {
-            symbol = _symbol[:32];
-        }
-        bytes32 b32symbol = bytes32(abi.encodePacked(symbol));
-
-        vm.expectEmit(address(l1Block));
-        emit GasPayingTokenSet({ token: _token, decimals: _decimals, name: b32name, symbol: b32symbol });
-
-        vm.prank(depositor);
-        l1Block.setGasPayingToken({ _token: _token, _decimals: _decimals, _name: b32name, _symbol: b32symbol });
-
-        (address token, uint8 decimals) = l1Block.gasPayingToken();
-        assertEq(token, _token);
-        assertEq(decimals, _decimals);
-
-        assertEq(name, l1Block.gasPayingTokenName());
-        assertEq(symbol, l1Block.gasPayingTokenSymbol());
-        assertTrue(l1Block.isCustomGasToken());
-    }
-
-    function test_setGasPayingToken_isDepositor_reverts() external {
-        vm.expectRevert(NotDepositor.selector);
-        l1Block.setGasPayingToken(address(this), 18, "Test", "TST");
     }
 }

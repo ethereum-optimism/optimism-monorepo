@@ -80,7 +80,7 @@ func applyValidConfigForCannon(t *testing.T, cfg *Config) {
 	cfg.Cannon.VmBin = vmBin
 	cfg.Cannon.Server = server
 	cfg.CannonAbsolutePreStateBaseURL = validCannonAbsolutePreStateBaseURL
-	cfg.Cannon.Network = validCannonNetwork
+	cfg.Cannon.Networks = []string{validCannonNetwork}
 }
 
 func applyValidConfigForAsterisc(t *testing.T, cfg *Config) {
@@ -94,7 +94,7 @@ func applyValidConfigForAsterisc(t *testing.T, cfg *Config) {
 	cfg.Asterisc.VmBin = vmBin
 	cfg.Asterisc.Server = server
 	cfg.AsteriscAbsolutePreStateBaseURL = validAsteriscAbsolutePreStateBaseURL
-	cfg.Asterisc.Network = validAsteriscNetwork
+	cfg.Asterisc.Networks = []string{validAsteriscNetwork}
 }
 
 func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
@@ -108,7 +108,7 @@ func applyValidConfigForAsteriscKona(t *testing.T, cfg *Config) {
 	cfg.AsteriscKona.VmBin = vmBin
 	cfg.AsteriscKona.Server = server
 	cfg.AsteriscKonaAbsolutePreStateBaseURL = validAsteriscKonaAbsolutePreStateBaseURL
-	cfg.AsteriscKona.Network = validAsteriscKonaNetwork
+	cfg.AsteriscKona.Networks = []string{validAsteriscKonaNetwork}
 }
 
 func validConfig(t *testing.T, traceType types.TraceType) Config {
@@ -224,7 +224,7 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestL2RpcRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
-			config.L2Rpc = ""
+			config.L2Rpcs = nil
 			require.ErrorIs(t, config.Check(), ErrMissingL2Rpc)
 		})
 
@@ -246,51 +246,43 @@ func TestCannonRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestCannonNetworkOrRollupConfigRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = ""
-			cfg.Cannon.RollupConfigPath = ""
-			cfg.Cannon.L2GenesisPath = "genesis.json"
+			cfg.Cannon.Networks = nil
+			cfg.Cannon.RollupConfigPaths = nil
+			cfg.Cannon.L2GenesisPaths = []string{"genesis.json"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestCannonNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = ""
-			cfg.Cannon.RollupConfigPath = "foo.json"
-			cfg.Cannon.L2GenesisPath = ""
+			cfg.Cannon.Networks = nil
+			cfg.Cannon.RollupConfigPaths = []string{"foo.json"}
+			cfg.Cannon.L2GenesisPaths = nil
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("TestMaySpecifyNetworkAndCustomConfigs-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = validCannonNetwork
-			cfg.Cannon.RollupConfigPath = "foo.json"
-			cfg.Cannon.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
-		})
-
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
-			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = validCannonNetwork
-			cfg.Cannon.RollupConfigPath = ""
-			cfg.Cannon.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
+			cfg.Cannon.Networks = []string{validCannonNetwork}
+			cfg.Cannon.RollupConfigPaths = []string{"foo.json"}
+			cfg.Cannon.L2GenesisPaths = []string{"genesis.json"}
+			require.NoError(t, cfg.Check())
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = "unknown"
+			cfg.Cannon.Networks = []string{"unknown"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMayBeAnyChainID-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = "467294"
+			cfg.Cannon.Networks = []string{"467294"}
 			require.NoError(t, cfg.Check())
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkInvalidWhenNotEntirelyNumeric-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Cannon.Network = "467294a"
+			cfg.Cannon.Networks = []string{"467294a"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
@@ -360,7 +352,7 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestL2RpcRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
-			config.L2Rpc = ""
+			config.L2Rpcs = nil
 			require.ErrorIs(t, config.Check(), ErrMissingL2Rpc)
 		})
 
@@ -382,39 +374,31 @@ func TestAsteriscRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestAsteriscNetworkOrRollupConfigRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Network = ""
-			cfg.Asterisc.RollupConfigPath = ""
-			cfg.Asterisc.L2GenesisPath = "genesis.json"
+			cfg.Asterisc.Networks = nil
+			cfg.Asterisc.RollupConfigPaths = nil
+			cfg.Asterisc.L2GenesisPaths = []string{"genesis.json"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Network = ""
-			cfg.Asterisc.RollupConfigPath = "foo.json"
-			cfg.Asterisc.L2GenesisPath = ""
+			cfg.Asterisc.Networks = nil
+			cfg.Asterisc.RollupConfigPaths = []string{"foo.json"}
+			cfg.Asterisc.L2GenesisPaths = nil
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("MaySpecifyNetworkAndCustomConfigs-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Network = validAsteriscNetwork
-			cfg.Asterisc.RollupConfigPath = "foo.json"
-			cfg.Asterisc.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
-		})
-
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
-			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Network = validAsteriscNetwork
-			cfg.Asterisc.RollupConfigPath = ""
-			cfg.Asterisc.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
+			cfg.Asterisc.Networks = []string{validAsteriscNetwork}
+			cfg.Asterisc.RollupConfigPaths = []string{"foo.json"}
+			cfg.Asterisc.L2GenesisPaths = []string{"genesis.json"}
+			require.NoError(t, cfg.Check())
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.Asterisc.Network = "unknown"
+			cfg.Asterisc.Networks = []string{"unknown"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 
@@ -484,7 +468,7 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestL2RpcRequired-%v", traceType), func(t *testing.T) {
 			config := validConfig(t, traceType)
-			config.L2Rpc = ""
+			config.L2Rpcs = nil
 			require.ErrorIs(t, config.Check(), ErrMissingL2Rpc)
 		})
 
@@ -506,39 +490,31 @@ func TestAsteriscKonaRequiredArgs(t *testing.T) {
 
 		t.Run(fmt.Sprintf("TestAsteriscKonaNetworkOrRollupConfigRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Network = ""
-			cfg.AsteriscKona.RollupConfigPath = ""
-			cfg.AsteriscKona.L2GenesisPath = "genesis.json"
+			cfg.AsteriscKona.Networks = nil
+			cfg.AsteriscKona.RollupConfigPaths = nil
+			cfg.AsteriscKona.L2GenesisPaths = []string{"genesis.json"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingRollupConfig)
 		})
 
 		t.Run(fmt.Sprintf("TestAsteriscKonaNetworkOrL2GenesisRequired-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Network = ""
-			cfg.AsteriscKona.RollupConfigPath = "foo.json"
-			cfg.AsteriscKona.L2GenesisPath = ""
+			cfg.AsteriscKona.Networks = nil
+			cfg.AsteriscKona.RollupConfigPaths = []string{"foo.json"}
+			cfg.AsteriscKona.L2GenesisPaths = nil
 			require.ErrorIs(t, cfg.Check(), vm.ErrMissingL2Genesis)
 		})
 
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndRollup-%v", traceType), func(t *testing.T) {
+		t.Run(fmt.Sprintf("MaySpecifyNetworkAndCustomConfig-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Network = validAsteriscKonaNetwork
-			cfg.AsteriscKona.RollupConfigPath = "foo.json"
-			cfg.AsteriscKona.L2GenesisPath = ""
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndRollupConfig)
-		})
-
-		t.Run(fmt.Sprintf("TestMustNotSpecifyNetworkAndL2Genesis-%v", traceType), func(t *testing.T) {
-			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Network = validAsteriscKonaNetwork
-			cfg.AsteriscKona.RollupConfigPath = ""
-			cfg.AsteriscKona.L2GenesisPath = "foo.json"
-			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkAndL2Genesis)
+			cfg.AsteriscKona.Networks = []string{validAsteriscKonaNetwork}
+			cfg.AsteriscKona.RollupConfigPaths = []string{"foo.json"}
+			cfg.AsteriscKona.L2GenesisPaths = []string{"genesis.json"}
+			require.NoError(t, cfg.Check())
 		})
 
 		t.Run(fmt.Sprintf("TestNetworkMustBeValid-%v", traceType), func(t *testing.T) {
 			cfg := validConfig(t, traceType)
-			cfg.AsteriscKona.Network = "unknown"
+			cfg.AsteriscKona.Networks = []string{"unknown"}
 			require.ErrorIs(t, cfg.Check(), vm.ErrNetworkUnknown)
 		})
 

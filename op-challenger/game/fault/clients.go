@@ -47,10 +47,13 @@ func (c *clientProvider) L2HeaderSource() (utils.L2HeaderSource, error) {
 	if c.l2HeaderSource != nil {
 		return c.l2HeaderSource, nil
 	}
+	if len(c.cfg.L2Rpcs) != 1 {
+		return nil, fmt.Errorf("incorrect number of L2 RPCs configured, expected 1 but got %d", len(c.cfg.L2Rpcs))
+	}
 
-	l2Client, err := ethclient.DialContext(c.ctx, c.cfg.L2Rpc)
+	l2Client, err := ethclient.DialContext(c.ctx, c.cfg.L2Rpcs[0])
 	if err != nil {
-		return nil, fmt.Errorf("dial l2 client %v: %w", c.cfg.L2Rpc, err)
+		return nil, fmt.Errorf("dial l2 client %v: %w", c.cfg.L2Rpcs[0], err)
 	}
 	c.l2HeaderSource = l2Client
 	c.toClose = append(c.toClose, l2Client.Close)
