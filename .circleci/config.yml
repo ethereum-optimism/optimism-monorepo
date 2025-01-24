@@ -689,7 +689,7 @@ jobs:
           steps:
             - codecov/upload:
                 disable_search: true
-                files: ./packages/contracts-bedrock/lcov.info
+                files: ./packages/contracts-bedrock/lcov-all.info
                 flags: contracts-bedrock-tests
       - save_cache:
           name: Save Go build cache
@@ -1321,8 +1321,7 @@ workflows:
           # Generate coverage reports.
           name: contracts-bedrock-coverage
           test_list: find test -name "*.t.sol"
-          test_command: coverage
-          test_flags: --report lcov
+          test_command: coverage-lcov-all
           test_timeout: 1h
           test_profile: cicoverage
           # need this requires to ensure that all FFI JSONs exist
