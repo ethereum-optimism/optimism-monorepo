@@ -83,7 +83,8 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
 	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
 
-	actors.ChainA.Sequencer.ActL1HeadSignal(t) // TODO: two sources of L1 head
+	// TODO(#13972): two sources of L1 head
+	actors.ChainA.Sequencer.ActL1HeadSignal(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
 	require.Equal(t, head, status.CrossUnsafeL2.ID())

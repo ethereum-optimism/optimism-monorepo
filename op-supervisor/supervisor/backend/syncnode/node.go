@@ -288,6 +288,7 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	// if conflict error -> send reset to drop
 	// if future error -> send reset to rewind
 	// if out of order -> warn, just old data
+	// TODO(#13971): When there are errors getting these blocks, we shouldn't always exit early.
 	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
@@ -323,6 +324,7 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		s, err := m.backend.LocalSafe(ctx, m.chainID)
 		if err != nil {
 			m.log.Warn("Failed to retrieve local-safe", "err", err)
+			return
 		}
 		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
 		err = m.Node.Reset(ctx, u, s.Derived, f)
