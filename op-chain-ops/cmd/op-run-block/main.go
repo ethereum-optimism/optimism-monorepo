@@ -107,7 +107,7 @@ func mainAction(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to load block: %w", err)
 	}
-	if err := block.Verify(); err != nil {
+	if err := block.Verify(sources.NewL2RPCChecker()); err != nil {
 		return fmt.Errorf("block content is invalid: %w", err)
 	}
 	logger.Info("Loaded block",
