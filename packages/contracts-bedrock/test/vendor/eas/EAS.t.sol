@@ -9,7 +9,7 @@ import { ISchemaResolver } from "src/vendor/eas/resolver/ISchemaResolver.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 import { EIP712 } from "@openzeppelin/contracts/utils/cryptography/draft-EIP712.sol";
 import { IERC1271 } from "@openzeppelin/contracts/interfaces/IERC1271.sol";
-import { ISemver } from "src/universal/interfaces/ISemver.sol";
+import { ISemver } from "interfaces/universal/ISemver.sol";
 
 contract TestEIP712Helper is EIP712 {
     constructor() EIP712("EAS", "1.3.0") {}
@@ -122,7 +122,7 @@ contract EASTest is CommonTest {
     // =============================================================
     //                         TEST STORAGE
     // =============================================================
-    IEAS public eas;
+
     ISchemaRegistry public registry;
     address public sender;
     address public sender2;
