@@ -312,15 +312,7 @@ contract L2Genesis is Deployer {
 
     /// @notice This predeploy is following the safety invariant #1.
     function setL2StandardBridge(address payable _l1StandardBridgeProxy) public {
-        address impl;
-        if (cfg.useInterop()) {
-            string memory cname = "L2StandardBridgeInterop";
-            impl = Predeploys.predeployToCodeNamespace(Predeploys.L2_STANDARD_BRIDGE);
-            console.log("Setting %s implementation at: %s", cname, impl);
-            vm.etch(impl, vm.getDeployedCode(string.concat(cname, ".sol:", cname)));
-        } else {
-            impl = _setImplementationCode(Predeploys.L2_STANDARD_BRIDGE);
-        }
+        address impl = _setImplementationCode(Predeploys.L2_STANDARD_BRIDGE);
 
         IL2StandardBridge(payable(impl)).initialize({ _otherBridge: IStandardBridge(payable(address(0))) });
 
