@@ -49,7 +49,8 @@ contract ForkLive is Deployer {
 
     /// @notice Forks, upgrades and tests a production network.
     /// @dev This function sets up the system to test by:
-    ///      0. reading the environment variable to determine the base and OP chain names, read the STATE_PATH data
+    ///      0. reading the environment variable to determine the base and OP chain names, read the
+    /// SUPERCHAIN_OPS_ALLOCS_PATH data
     /// created from superchain ops.
     ///      1. if the environment variable is set, load the state from the given path.
     ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
@@ -57,10 +58,10 @@ contract ForkLive is Deployer {
     ///      4. upgrading the system using the OPCM.upgrade() function if not using the applied state from superchain
     /// ops.
     function run() public {
-        bool useOpsRepo = bytes(vm.envOr("STATE_PATH", string(""))).length > 0;
+        bool useOpsRepo = bytes(vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""))).length > 0;
         if (useOpsRepo) {
-            console.log("ForkLive: loading state from %s", vm.envString("STATE_PATH"));
-            vm.loadAllocs(vm.envString("STATE_PATH"));
+            console.log("ForkLive: loading state from %s", vm.envString("SUPERCHAIN_OPS_ALLOCS_PATH"));
+            vm.loadAllocs(vm.envString("SUPERCHAIN_OPS_ALLOCS_PATH"));
             _readSuperchainRegistry();
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
