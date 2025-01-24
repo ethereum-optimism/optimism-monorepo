@@ -13,7 +13,12 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
+import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+
 import { OPPrestateUpdater } from "src/L1/OPPrestateUpdater.sol";
+import { OPContractsManager } from "src/L1/OPContractsManager.sol";
+import { Claim, Hash, Duration, GameType, GameTypes, OutputRoot } from "src/dispute/lib/Types.sol";
 
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
@@ -363,7 +368,7 @@ contract DeployOPCMRunner is Script {
     DeployOPCMInput doi;
     DeployOPCMOutput doo;
 
-    ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
+    ISuperchainConfig superchainConfigProxy = ISuperchainConfig(0xC2Be75506d5724086DEB7245bd260Cc9753911Be);
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
     address upgradeController = makeAddr("upgradeController");
 
@@ -438,5 +443,18 @@ contract DeployOPCMRunner is Script {
 
         // sanity check to ensure that the OPCM is validated
         // deployOPCM.assertValidOpcm(doi, doo);
+    }
+
+    function getCalldata() public view returns (bytes memory) {
+        OPPrestateUpdater.PrestateUpdateInput[] memory inputs = new OPPrestateUpdater.PrestateUpdateInput[](1);
+        inputs[0] = OPPrestateUpdater.PrestateUpdateInput({
+            opChain: OPContractsManager.OpChain({
+                systemConfigProxy: ISystemConfig(0x50fF049515ad0bBFD58EDc91Cbca9BC3706d71a5),
+                proxyAdmin: IProxyAdmin(0x2434a583FE43D126090CB7Ccfef312154Af6Bc92)
+            }),
+            permissionedDisputePrestate: Claim.wrap(0xabba000000000000000000000000000000000000000000000000000000000000),
+            faultDisputePrestate: Claim.wrap(bytes32(0))
+        });
+        return abi.encodeCall(OPPrestateUpdater.updatePrestate, (inputs));
     }
 }
