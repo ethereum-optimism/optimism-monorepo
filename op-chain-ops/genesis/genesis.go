@@ -171,7 +171,6 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		pragueTime := uint64(timestamp) + uint64(*config.L1PragueTimeOffset)
 		chainConfig.PragueTime = &pragueTime
 	}
-
 	return &core.Genesis{
 		Config:        &chainConfig,
 		Nonce:         uint64(config.L1GenesisBlockNonce),
