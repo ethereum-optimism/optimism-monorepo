@@ -993,21 +993,26 @@ jobs:
       - run:
           name: Upload cannon prestates
           command: |
-            VERSION="<< pipeline.git.branch >>"
-            if [[ "" == "${VERSION}" ]]
+            # Use the actual hash for tags (hash can be found by reading releases.json)
+            PRESTATE_HASH=$(jq -r .pre ./op-program/bin/prestate-proof.json)
+            PRESTATE_MT_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-mt.json)
+            PRESTATE_INTEROP_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-interop.json)
+
+            BRANCH_NAME=$(echo "<< pipeline.git.branch >>" | tr '/' '-')
+            echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
+            if [[ "" != "<< pipeline.git.branch >>" ]]
             then
-              VERSION = "<< pipeline.git.tag >>"
-            fi
-            if [[ "" == "${VERSION}" ]]
-            then
-              echo "Both pipeline.git.branch and pipeline.git.tag are empty"
+              # Use the branch name for branches to provide a consistent URL
+              PRESTATE_HASH="${BRANCH_NAME}"
+              PRESTATE_MT_HASH="${BRANCH_NAME}"
+              PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
             gsutil cp ./op-program/bin/prestate-mt.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}-mt.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt.bin.gz"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${VERSION}-interop.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1608,6 +1613,7 @@ workflows:
             branches:
               only:
                 - develop
+                - aj/await-hold
 
   develop-kontrol-tests:
     when:
