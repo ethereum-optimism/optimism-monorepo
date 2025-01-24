@@ -12,6 +12,7 @@ type T interface {
 	testing.TB
 	Context() context.Context
 	WithContext(ctx context.Context) T
+	Run(string, func(t T))
 }
 
 type tWrapper struct {
@@ -37,9 +38,17 @@ func wrapT(t *testing.T) T {
 	}
 }
 
+func (t *tWrapper) Run(name string, fn func(t T)) {
+	t.T.Run(name, func(t *testing.T) {
+		fn(wrapT(t))
+	})
+}
+
 type Validator func(t T, sys system.System) (context.Context, error)
 
-func SystemTest(t *testing.T, f func(t T, sys system.System), validators ...Validator) {
+type SystemTestFunc func(t T, sys system.System)
+
+func SystemTest(t *testing.T, f SystemTestFunc, validators ...Validator) {
 	wt := wrapT(t)
 	wt.Helper()
 
@@ -64,7 +73,9 @@ func SystemTest(t *testing.T, f func(t T, sys system.System), validators ...Vali
 	f(wt, sys)
 }
 
-func InteropSystemTest(t *testing.T, f func(t T, sys system.InteropSystem), validators ...Validator) {
+type InteropSystemTestFunc func(t T, sys system.InteropSystem)
+
+func InteropSystemTest(t *testing.T, f InteropSystemTestFunc, validators ...Validator) {
 	SystemTest(t, func(t T, sys system.System) {
 		if sys, ok := sys.(system.InteropSystem); ok {
 			f(t, sys)

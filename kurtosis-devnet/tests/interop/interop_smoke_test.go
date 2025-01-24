@@ -2,13 +2,10 @@ package interop
 
 import (
 	"context"
-	"fmt"
 	"log/slog"
 	"math/big"
-	"os"
 	"testing"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/testing/systest"
@@ -16,15 +13,8 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func init() {
-	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
-}
-
-func TestMinimal(t *testing.T) {
-	chainIdx := uint64(0)         // We'll use the first L2 chain for this test
-	testUserMarker := &struct{}{} // Sentinel for the user context value
-
-	systest.SystemTest(t, func(t systest.T, sys system.System) {
+func smokeTestScenario(chainIdx uint64, userSentinel interface{}) systest.SystemTestFunc {
+	return func(t systest.T, sys system.System) {
 		ctx := t.Context()
 		logger := slog.With("test", "TestMinimal", "devnet", sys.Identifier())
 
@@ -33,7 +23,7 @@ func TestMinimal(t *testing.T) {
 		logger.InfoContext(ctx, "starting test")
 
 		funds := types.NewBalance(big.NewInt(0.5 * constants.ETH))
-		user := ctx.Value(testUserMarker).(types.Wallet)
+		user := ctx.Value(userSentinel).(types.Wallet)
 
 		scw0Addr := constants.SuperchainWETH
 		scw0, err := chain.ContractsRegistry().SuperchainWETH(scw0Addr)
@@ -53,18 +43,53 @@ func TestMinimal(t *testing.T) {
 		logger.InfoContext(ctx, "final balance retrieved", "balance", balance)
 
 		require.Equal(t, balance, initialBalance.Add(funds))
-	},
+	}
+}
+
+func TestSystemWrapETH(t *testing.T) {
+	chainIdx := uint64(0)         // We'll use the first L2 chain for this test
+	testUserMarker := &struct{}{} // Sentinel for the user context value
+
+	systest.SystemTest(t,
+		smokeTestScenario(chainIdx, testUserMarker),
 		userFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
 
-func userFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.Validator {
-	return func(t systest.T, sys system.System) (context.Context, error) {
-		chain := sys.L2(chainIdx)
-		user, err := chain.User(t.Context(), constraints.WithBalance(minFunds))
-		if err != nil {
-			return nil, fmt.Errorf("No available user with funds: %v", err)
-		}
-		return context.WithValue(t.Context(), userMarker, user), nil
+func TestInteropSystemNoop(t *testing.T) {
+	systest.InteropSystemTest(t, func(t systest.T, sys system.InteropSystem) {
+		slog.Info("noop")
+	})
+}
+
+func TestSmokeTestFailure(t *testing.T) {
+	// Create mock failing system
+	mockAddr := types.Address("0x1234567890123456789012345678901234567890")
+	mockWallet := &mockFailingWallet{
+		addr: mockAddr,
+		key:  "mock-key",
+		bal:  types.NewBalance(big.NewInt(1000000)),
 	}
+	mockChain := &mockFailingChain{
+		id:     types.ChainID(1234),
+		wallet: mockWallet,
+		reg:    &mockRegistry{},
+	}
+	mockSys := &mockFailingSystem{chain: mockChain}
+
+	// Run the smoke test logic and capture failures
+	sentinel := &struct{}{}
+	ctx := context.WithValue(context.Background(), sentinel, mockWallet)
+	failed, failureMsg := runWithRecordingT(
+		"TestSmokeTestFailure",
+		ctx,
+		func(t systest.T) {
+			testFunc := smokeTestScenario(0, sentinel)
+			testFunc(t, mockSys)
+		},
+	)
+
+	// Verify that the test failed due to SendETH error
+	require.True(t, failed, "test should have failed")
+	require.Contains(t, failureMsg, "transaction failure", "unexpected failure message")
 }
