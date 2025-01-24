@@ -683,17 +683,72 @@ jobs:
           name: Lint forge test names
           command: just lint-forge-tests-check-no-build
           working_directory: packages/contracts-bedrock
-      - when:
-          condition:
-            equal: ["<<parameters.test_command>>", "coverage"]
-          steps:
-            - codecov/upload:
-                disable_search: true
-                files: ./packages/contracts-bedrock/lcov-all.info
-                flags: contracts-bedrock-tests
       - save_cache:
           name: Save Go build cache
           key: golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
+          paths:
+            - "/root/.cache/go-build"
+      - notify-failures-on-develop
+
+  contracts-bedrock-coverage:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    parameters:
+      test_flags:
+        description: Additional flags to pass to the test command
+        type: string
+        default: ""
+      test_timeout:
+        description: Timeout for running tests
+        type: string
+        default: 15m
+      test_profile:
+        description: Profile to use for testing
+        type: string
+        default: ci
+    steps:
+      - checkout
+      - attach_workspace: { at: "." }
+      - install-contracts-dependencies
+      - check-changed:
+          patterns: contracts-bedrock,op-node
+      - run:
+          name: Print dependencies
+          command: just dep-status
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Print forge version
+          command: forge --version
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Pull artifacts
+          command: bash scripts/ops/pull-artifacts.sh
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Run coverage tests
+          command: just coverage-lcov-all <<parameters.test_flags>>
+          environment:
+            FOUNDRY_PROFILE: <<parameters.test_profile>>
+          working_directory: packages/contracts-bedrock
+          no_output_timeout: <<parameters.test_timeout>>
+      - run:
+          name: Print failed test traces
+          command: just test-rerun
+          environment:
+            FOUNDRY_PROFILE: ci
+          working_directory: packages/contracts-bedrock
+          when: on_fail
+      - run:
+          name: Lint forge test names
+          command: just lint-forge-tests-check-no-build
+          working_directory: packages/contracts-bedrock
+      - codecov/upload:
+          disable_search: true
+          files: ./packages/contracts-bedrock/lcov-all.info
+          flags: contracts-bedrock-coverage
+      - save_cache:
+          name: Save Go build cache
+          key: golang-build-cache-contracts-bedrock-coverage-{{ checksum "go.sum" }}
           paths:
             - "/root/.cache/go-build"
       - notify-failures-on-develop
@@ -1321,7 +1376,8 @@ workflows:
           # Generate coverage reports.
           name: contracts-bedrock-coverage
           test_list: find test -name "*.t.sol"
-          test_command: coverage-lcov-all
+          test_command: coverage
+          test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
           # need this requires to ensure that all FFI JSONs exist
