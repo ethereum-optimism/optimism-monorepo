@@ -729,13 +729,15 @@ jobs:
           command: just coverage-lcov-all <<parameters.test_flags>>
           environment:
             FOUNDRY_PROFILE: <<parameters.test_profile>>
+            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
           no_output_timeout: <<parameters.test_timeout>>
       - run:
           name: Print failed test traces
           command: just test-rerun
           environment:
-            FOUNDRY_PROFILE: ci
+            FOUNDRY_PROFILE: <<parameters.test_profile>>
+            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
           when: on_fail
       - run:
