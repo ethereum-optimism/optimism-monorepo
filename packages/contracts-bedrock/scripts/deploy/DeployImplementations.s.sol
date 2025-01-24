@@ -29,7 +29,6 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 import { DeploySuperchainImplementations, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -130,18 +129,6 @@ contract DeployImplementationsInput is BaseDeployIO {
     function protocolVersionsProxy() public view returns (IProtocolVersions) {
         require(address(_protocolVersionsProxy) != address(0), "DeployImplementationsInput: not set");
         return _protocolVersionsProxy;
-    }
-
-    function superchainConfigImpl() public view returns (ISuperchainConfig) {
-        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfigProxy)));
-        DeployUtils.assertValidContractAddress(address(impl));
-        return impl;
-    }
-
-    function protocolVersionsImpl() public view returns (IProtocolVersions) {
-        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersionsProxy)));
-        DeployUtils.assertValidContractAddress(address(impl));
-        return impl;
     }
 
     function upgradeController() public view returns (address) {
@@ -487,8 +474,8 @@ contract DeployImplementations is Script {
 
         // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_dii.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dii.protocolVersionsImpl()),
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
