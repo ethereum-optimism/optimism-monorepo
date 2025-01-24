@@ -831,8 +831,8 @@ contract DeployImplementationsInterop is DeployImplementations {
 
         // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
-            superchainConfigImpl: address(_dii.superchainConfigImpl()),
-            protocolVersionsImpl: address(_dii.protocolVersionsImpl()),
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
