@@ -424,8 +424,8 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 	}
 }
 
-// onInvalidateLocalSafe listens for when a local-safe block is invalidated to not be possible to promote to cross-safe,
-// and when it thus has to be replaced.
+// onInvalidateLocalSafe listens for when a local-safe block is found to be invalid in the cross-safe context
+// and needs to be replaced with a deposit only block.
 func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPair) {
 	m.log.Warn("Instructing node to replace invalidated local-safe block",
 		"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom)
