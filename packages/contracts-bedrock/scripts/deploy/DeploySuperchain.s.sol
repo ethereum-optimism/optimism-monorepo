@@ -3,7 +3,7 @@ pragma solidity 0.8.15;
 
 import { Script } from "forge-std/Script.sol";
 import { stdToml } from "forge-std/StdToml.sol";
-import { Vm } from "forge-std/Vm.sol";
+
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions, ProtocolVersion } from "interfaces/L1/IProtocolVersions.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
@@ -310,7 +310,7 @@ contract DeploySuperchain is Script {
         deploySuperchainProxyAdmin(_dsi, _dso);
 
         // Deploy and initialize the superchain contracts.
-        DeploySuperchainImplementations.deploySuperchainImplementationContracts(_dso);
+        deploySuperchainImplementationContracts(_dsi, _dso);
         deployAndInitializeSuperchainConfig(_dsi, _dso);
         deployAndInitializeProtocolVersions(_dsi, _dso);
 
@@ -341,7 +341,29 @@ contract DeploySuperchain is Script {
     }
 
     function deploySuperchainImplementationContracts(DeploySuperchainInput, DeploySuperchainOutput _dso) public {
-        DeploySuperchainImplementations.deploySuperchainImplementationContracts(_dso);
+        // Deploy implementation contracts.
+        vm.startBroadcast(msg.sender);
+        ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
+            DeployUtils.createDeterministic({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        IProtocolVersions protocolVersionsImpl = IProtocolVersions(
+            DeployUtils.createDeterministic({
+                _name: "ProtocolVersions",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.stopBroadcast();
+
+        vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
+        vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");
+
+        _dso.set(_dso.superchainConfigImpl.selector, address(superchainConfigImpl));
+        _dso.set(_dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
     }
 
     function deployAndInitializeSuperchainConfig(DeploySuperchainInput _dsi, DeploySuperchainOutput _dso) public {
@@ -434,36 +456,5 @@ contract DeploySuperchain is Script {
     function getIOContracts() public view returns (DeploySuperchainInput dsi_, DeploySuperchainOutput dso_) {
         dsi_ = DeploySuperchainInput(DeployUtils.toIOAddress(msg.sender, "optimism.DeploySuperchainInput"));
         dso_ = DeploySuperchainOutput(DeployUtils.toIOAddress(msg.sender, "optimism.DeploySuperchainOutput"));
-    }
-}
-
-library DeploySuperchainImplementations {
-    bytes32 internal constant _salt = keccak256("op-stack-contract-impls-salt-v0");
-    Vm internal constant vm = Vm(address(uint160(uint256(keccak256("hevm cheat code")))));
-
-    function deploySuperchainImplementationContracts(DeploySuperchainOutput _dso) internal {
-        // Deploy implementation contracts.
-        vm.startBroadcast(msg.sender);
-        ISuperchainConfig superchainConfigImpl = ISuperchainConfig(
-            DeployUtils.createDeterministic({
-                _name: "SuperchainConfig",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
-                _salt: _salt
-            })
-        );
-        IProtocolVersions protocolVersionsImpl = IProtocolVersions(
-            DeployUtils.createDeterministic({
-                _name: "ProtocolVersions",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
-                _salt: _salt
-            })
-        );
-        vm.stopBroadcast();
-
-        vm.label(address(superchainConfigImpl), "SuperchainConfigImpl");
-        vm.label(address(protocolVersionsImpl), "ProtocolVersionsImpl");
-
-        _dso.set(_dso.superchainConfigImpl.selector, address(superchainConfigImpl));
-        _dso.set(_dso.protocolVersionsImpl.selector, address(protocolVersionsImpl));
     }
 }

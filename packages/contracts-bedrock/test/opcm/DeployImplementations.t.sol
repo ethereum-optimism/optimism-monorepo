@@ -270,6 +270,8 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.upgradeController.selector, upgradeController);
 
         // Perform the initial deployment.
+        deployImplementations.deploySuperchainConfigImpl(dio);
+        deployImplementations.deployProtocolVersionsImpl(dio);
         deployImplementations.deploySystemConfigImpl(dio);
         deployImplementations.deployL1CrossDomainMessengerImpl(dio);
         deployImplementations.deployL1ERC721BridgeImpl(dio);
