@@ -741,7 +741,7 @@ jobs:
             just print-pinned-block-number > ./pinnedBlockNumber.txt
             echo <<parameters.fork_base_chain>> >> ./pinnedBlockNumber.txt
             echo <<parameters.fork_op_chain>> >> ./pinnedBlockNumber.txt
-            echo "42424242" > ./pinnedBlockNumber.txt
+            echo "42424242" >> ./pinnedBlockNumber.txt
             cat pinnedBlockNumber.txt
           working_directory: packages/contracts-bedrock
       - restore_cache:
