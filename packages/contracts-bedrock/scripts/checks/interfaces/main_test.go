@@ -106,8 +106,8 @@ func TestNormalizeABI(t *testing.T) {
 	}{
 		{
 			name: "Replace interface types and add constructor",
-			abi:  `[{"inputs":[{"internalType":"contract ITest","name":"test","type":"address"}],"type":"function"}]`,
-			want: `[{"inputs":[{"internalType":"contract Test","name":"test","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
+			abi:  `[{"inputs":[{"internalType":"contract Test","name":"test","type":"address"}],"type":"function"}]`,
+			want: `[{"inputs":[{"internalType":"contract ITest","name":"test","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
 		},
 		{
 			name: "Convert __constructor__",
@@ -121,8 +121,8 @@ func TestNormalizeABI(t *testing.T) {
 		},
 		{
 			name: "Replace multiple interface types",
-			abi:  `[{"inputs":[{"internalType":"contract ITest1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"}]`,
-			want: `[{"inputs":[{"internalType":"contract Test1","name":"test1","type":"address"},{"internalType":"contract Test2","name":"test2","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
+			abi:  `[{"inputs":[{"internalType":"contract Test1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"}]`,
+			want: `[{"inputs":[{"internalType":"contract ITest1","name":"test1","type":"address"},{"internalType":"contract ITest2","name":"test2","type":"address"}],"type":"function"},{"inputs":[],"stateMutability":"nonpayable","type":"constructor"}]`,
 		},
 	}
 
@@ -230,11 +230,11 @@ func TestNormalizeInternalType(t *testing.T) {
 		internalType string
 		want         string
 	}{
-		{"Replace contract I", "contract ITest", "contract Test"},
-		{"Replace enum I", "enum IMyEnum", "enum MyEnum"},
-		{"Replace struct I", "struct IMyStruct", "struct MyStruct"},
+		{"Replace contract X", "contract Test", "contract ITest"},
+		{"Replace enum X", "enum MyEnum", "enum IMyEnum"},
+		{"Replace struct I", "struct Whatever.MyStruct", "struct IWhatever.MyStruct"},
+		{"Don't replace II", "contract IInternet", "contract IInternet"},
 		{"No replacement needed", "uint256", "uint256"},
-		{"Don't replace non-prefix I", "contract TestI", "contract TestI"},
 	}
 
 	for _, tt := range tests {

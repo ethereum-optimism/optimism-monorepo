@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 
 	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
@@ -220,9 +221,22 @@ func normalizeABIItem(item map[string]interface{}) {
 }
 
 func normalizeInternalType(internalType string) string {
-	internalType = strings.ReplaceAll(internalType, "contract I", "contract ")
-	internalType = strings.ReplaceAll(internalType, "enum I", "enum ")
-	internalType = strings.ReplaceAll(internalType, "struct I", "struct ")
+	// Helper function to add 'I' prefix for non-interface types
+	addIPrefix := func(match string) string {
+		// Skip if it's already an interface pattern (I followed by uppercase)
+		if len(match) > 1 && match[0] == 'I' && match[1] >= 'A' && match[1] <= 'Z' {
+			return match
+		}
+		return "I" + match
+	}
+
+	// Replace patterns like "contract Something" with "contract ISomething"
+	internalType = regexp.MustCompile(`(contract|struct|enum)\s+([^I]\w+|I[a-z]\w*)`).
+		ReplaceAllStringFunc(internalType, func(s string) string {
+			parts := strings.SplitN(s, " ", 2)
+			return parts[0] + " " + addIPrefix(parts[1])
+		})
+
 	return internalType
 }
 
@@ -296,7 +310,11 @@ func formatABIItem(item map[string]interface{}) string {
 	inputStr := make([]string, 0, len(inputs))
 	for _, input := range inputs {
 		if inputMap, ok := input.(map[string]interface{}); ok {
-			paramType := getString(inputMap, "type")
+			internalType := getString(inputMap, "internalType")
+			paramType := internalType
+			if parts := strings.Fields(internalType); len(parts) == 2 {
+				paramType = parts[1]
+			}
 			paramName := getString(inputMap, "name")
 			if paramName != "" {
 				inputStr = append(inputStr, fmt.Sprintf("%s %s", paramType, paramName))
@@ -311,7 +329,11 @@ func formatABIItem(item map[string]interface{}) string {
 	outputStr := make([]string, 0, len(outputs))
 	for _, output := range outputs {
 		if outputMap, ok := output.(map[string]interface{}); ok {
-			paramType := getString(outputMap, "type")
+			internalType := getString(outputMap, "internalType")
+			paramType := internalType
+			if parts := strings.Fields(internalType); len(parts) == 2 {
+				paramType = parts[1]
+			}
 			paramName := getString(outputMap, "name")
 			if paramName != "" {
 				outputStr = append(outputStr, fmt.Sprintf("%s %s", paramType, paramName))
