@@ -63,10 +63,15 @@ func ExecMipsCoreStepLogic(cpu *mipsevm.CpuScalars, registers *[32]Word, memory 
 		rt = registers[rtReg]
 		// store actual rt with lwu, ldl and ldr
 		rdReg = rtReg
-	} else if opcode == 0 || opcode == 0x1c {
+	} else if opcode == 0 || opcode == 0x1c || opcode == 0x1f {
 		// R-type (stores rd)
 		rt = registers[rtReg]
 		rdReg = Word((insn >> 11) & 0x1F)
+
+		// DEXT/DEXTM stores in rt
+		if opcode == 0x1f && fun == 0x01 || fun == 0x03 {
+			rdReg = Word((insn >> 16) & 0x1F)
+		}
 	} else if opcode < 0x20 {
 		// rt is SignExtImm
 		// don't sign extend for andi, ori, xori
@@ -345,6 +350,49 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 					rs <<= 1
 				}
 				return Word(i)
+			case 0x24: // dclz
+				assertMips64(insn)
+				rs = ^rs
+				i := uint32(0)
+				for ; uint64(rs)&uint64(0x8000000000000000) != 0; i++ {
+					rs <<= 1
+				}
+				return Word(i)
+			}
+		// SPECIAL3
+		case 0x1F:
+			switch fun {
+			case 0x20: // bshfl
+				shamt := Word((insn >> 6) & 0x1F)
+				switch shamt {
+				case 0x10: // seb
+					return SignExtend(rt&0xFF, 8)
+				}
+			case 0x24: // dbshfl
+				assertMips64(insn)
+				shamt := Word((insn >> 6) & 0x1F)
+				switch shamt {
+				case 0x02: // dsbh
+					return Word(((uint64(rt) & uint64(0xFF00FF00FF00FF00)) >> 8) | ((uint64(rt) & uint64(0x00FF00FF00FF00FF)) << 8))
+				case 0x05: // dshd
+					return Word(((uint64(rt) & uint64(0xFFFF0000FFFF0000)) >> 16) | ((uint64(rt) & uint64(0x0000FFFF0000FFFF)) << 16))
+				}
+			case 0x01: // dextm
+				assertMips64(insn)
+
+				lsb := Word((insn >> 6) & 0x1F)
+				msbd := Word((insn>>11)&0x1F) + 32
+				msb := lsb + msbd
+
+				return (rs >> lsb) & ((1 << (msb - lsb)) - 1)
+			case 0x3: // dext
+				assertMips64(insn)
+
+				lsb := Word((insn >> 6) & 0x1F)
+				msbd := Word((insn >> 11) & 0x1F)
+				msb := lsb + msbd
+
+				return (rs >> lsb) & ((1 << (msb - lsb)) - 1)
 			}
 		case 0x0F: // lui
 			return SignExtend(rt<<16, 32)
