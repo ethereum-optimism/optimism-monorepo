@@ -271,7 +271,6 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         vm.expectEmit(false, true, true, true, address(disputeGameFactory));
         emit ImplementationSet(address(0), GameTypes.PERMISSIONED_CANNON);
         if (address(delayedWeth) != address(0)) {
-
             // Ignore the first topic for the same reason as the previous comment.
             vm.expectEmit(false, true, true, true, address(disputeGameFactory));
             emit ImplementationSet(address(0), GameTypes.CANNON);
