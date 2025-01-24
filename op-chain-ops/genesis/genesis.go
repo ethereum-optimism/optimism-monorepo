@@ -167,7 +167,10 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		cancunTime := uint64(timestamp) + uint64(*config.L1CancunTimeOffset)
 		chainConfig.CancunTime = &cancunTime
 	}
-
+	if config.L1PragueTimeOffset != nil {
+		pragueTime := uint64(timestamp) + uint64(*config.L1PragueTimeOffset)
+		chainConfig.PragueTime = &pragueTime
+	}
 	return &core.Genesis{
 		Config:        &chainConfig,
 		Nonce:         uint64(config.L1GenesisBlockNonce),
