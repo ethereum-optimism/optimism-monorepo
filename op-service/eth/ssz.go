@@ -40,6 +40,7 @@ var (
 	ErrBadTransactionOffset = errors.New("transactions offset is smaller than extra data offset, aborting")
 	ErrBadWithdrawalsOffset = errors.New("withdrawals offset is smaller than transaction offset, aborting")
 	ErrBadExtraDataOffset   = errors.New("unexpected extra data offset")
+	ErrScopeTooSmall        = errors.New("scope too small to decode execution payload")
 
 	ErrMissingData = errors.New("execution payload envelope is missing data")
 )
@@ -471,7 +472,7 @@ func unmarshalTransactions(in []byte) (txs []Data, err error) {
 // UnmarshalSSZ decodes the ExecutionPayloadEnvelope as SSZ type
 func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(version BlockVersion, scope uint32, r io.Reader) error {
 	if scope < common.HashLength {
-		return fmt.Errorf("scope too small to decode execution payload envelope: %d", scope)
+		return fmt.Errorf("%w: %d", ErrScopeTooSmall, scope)
 	}
 
 	data := make([]byte, common.HashLength)

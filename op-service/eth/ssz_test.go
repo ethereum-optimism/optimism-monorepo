@@ -3,7 +3,6 @@ package eth
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"math"
 	"testing"
@@ -587,5 +586,5 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 func TestFailsToDeserializeTooLittleData(t *testing.T) {
 	var payload ExecutionPayloadEnvelope
 	err := payload.UnmarshalSSZ(BlockV1, 0, bytes.NewReader([]byte{0x00}))
-	assert.Equal(t, err, errors.New("scope too small to decode execution payload envelope: 1"))
+	require.ErrorIs(t, err, ErrScopeTooSmall)
 }
