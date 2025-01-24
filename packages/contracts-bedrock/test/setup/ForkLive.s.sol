@@ -58,10 +58,12 @@ contract ForkLive is Deployer {
     ///      4. upgrading the system using the OPCM.upgrade() function if not using the applied state from superchain
     /// ops.
     function run() public {
-        bool useOpsRepo = bytes(vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""))).length > 0;
+        string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
+
+        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
-            console.log("ForkLive: loading state from %s", vm.envString("SUPERCHAIN_OPS_ALLOCS_PATH"));
-            vm.loadAllocs(vm.envString("SUPERCHAIN_OPS_ALLOCS_PATH"));
+            console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
+            vm.loadAllocs(superchainOpsAllocsPath);
             _readSuperchainRegistry();
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
