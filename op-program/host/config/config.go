@@ -7,6 +7,8 @@ import (
 	"os"
 	"slices"
 
+	"github.com/ethereum-optimism/optimism/op-service/superutil"
+
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
@@ -184,7 +186,7 @@ func NewSingleChainConfig(
 	l2ClaimBlockNum uint64,
 ) *Config {
 	l2ChainID := eth.ChainIDFromBig(l2ChainConfig.ChainID)
-	_, err := params.LoadOPStackChainConfig(eth.EvilChainIDToUInt64(l2ChainID))
+	_, err := superutil.LoadOPStackChainConfigFromChainID(eth.EvilChainIDToUInt64(l2ChainID))
 	if err != nil {
 		// Unknown chain ID so assume it is custom
 		l2ChainID = boot.CustomChainIDIndicator

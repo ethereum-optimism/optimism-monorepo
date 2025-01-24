@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/ethereum-optimism/optimism/op-service/superutil"
+
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
@@ -45,7 +47,7 @@ func rollupConfigByChainID(chainID eth.ChainID, customChainFS embed.FS) (*rollup
 }
 
 func ChainConfigByChainID(chainID eth.ChainID) (*params.ChainConfig, error) {
-	config, err := params.LoadOPStackChainConfig(eth.EvilChainIDToUInt64(chainID))
+	config, err := superutil.LoadOPStackChainConfigFromChainID(eth.EvilChainIDToUInt64(chainID))
 	if err == nil {
 		return config, err
 	}
