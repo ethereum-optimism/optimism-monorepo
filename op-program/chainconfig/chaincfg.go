@@ -44,7 +44,7 @@ func rollupConfigByChainID(chainID uint64, customChainFS embed.FS) (*rollup.Conf
 }
 
 func ChainConfigByChainID(chainID uint64) (*params.ChainConfig, error) {
-	config, err := params.LoadOPStackChainConfig(chainID)
+	config, err := params.LoadOPStackChainConfig(nil) // TODO fixme
 	if err == nil {
 		return config, err
 	}

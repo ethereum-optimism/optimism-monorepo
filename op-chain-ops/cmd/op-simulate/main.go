@@ -180,7 +180,7 @@ func fetchChainConfig(ctx context.Context, cl *rpc.Client) (*params.ChainConfig,
 	// if we recognize the chain ID, we can get the chain config
 	id := (*big.Int)(&idResult)
 	if id.IsUint64() {
-		cfg, err := params.LoadOPStackChainConfig(id.Uint64())
+		cfg, err := params.LoadOPStackChainConfig(nil) // TODO fix
 		if err == nil {
 			return cfg, nil
 		}

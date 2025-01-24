@@ -184,7 +184,7 @@ func NewSingleChainConfig(
 	l2ClaimBlockNum uint64,
 ) *Config {
 	l2ChainID := l2ChainConfig.ChainID.Uint64()
-	_, err := params.LoadOPStackChainConfig(l2ChainID)
+	_, err := params.LoadOPStackChainConfig(nil) // TODO fixme
 	if err != nil {
 		// Unknown chain ID so assume it is custom
 		l2ChainID = boot.CustomChainIDIndicator
