@@ -80,10 +80,7 @@ type L2Client struct {
 // for fetching and caching eth.L2BlockRef values. This includes fetching an L2BlockRef by block number, label, or hash.
 // See: [L2BlockRefByLabel], [L2BlockRefByNumber], [L2BlockRefByHash]
 func NewL2Client(client client.RPC, log log.Logger, metrics caching.Metrics, config *L2ClientConfig) (*L2Client, error) {
-
-	rpcChecker := NewL2RPCChecker()
-
-	ethClient, err := NewEthClient(client, log, metrics, &config.EthClientConfig, rpcChecker)
+	ethClient, err := NewEthClient(client, log, metrics, &config.EthClientConfig)
 	if err != nil {
 		return nil, err
 	}

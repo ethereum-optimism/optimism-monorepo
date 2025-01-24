@@ -76,8 +76,7 @@ func TestBasicRPCReceiptsFetcher_Reuse(t *testing.T) {
 		return err
 	}
 
-	l1RpcChecker := NewL1RPCChecker()
-	bInfo, _, _ := block.Info(true, true, l1RpcChecker)
+	bInfo, _, _ := block.Info(true, true)
 
 	// 1st fetching should result in errors
 	recs, err := rp.FetchReceipts(ctx, bInfo, txHashes)
@@ -162,8 +161,7 @@ func runConcurrentFetchingTest(t *testing.T, rp ReceiptsProvider, numFetchers in
 	}
 	fetchResults := make(chan fetchResult, numFetchers)
 	barrier := make(chan struct{})
-	l1RpcChecker := NewL1RPCChecker()
-	bInfo, _, _ := block.Info(true, true, l1RpcChecker)
+	bInfo, _, _ := block.Info(true, true)
 	ctx, done := context.WithTimeout(context.Background(), 10*time.Second)
 	defer done()
 	for i := 0; i < numFetchers; i++ {

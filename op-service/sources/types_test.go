@@ -70,8 +70,7 @@ func TestBlockJSON(t *testing.T) {
 			var block RPCBlock
 			readJsonTestdata(t, "testdata/data/blocks/"+strings.Replace(entry.Name(), "_metadata.json", "_data.json", 1), &block)
 
-			l2RpcChecker := NewL1RPCChecker()
-			err := block.Verify(l2RpcChecker)
+			err := block.Verify()
 			if metadata.Fail {
 				require.NotNil(t, err, "expecting verification error")
 				require.ErrorContains(t, err, metadata.Reason, "validation failed for incorrect reason")
@@ -137,8 +136,7 @@ func TestBlockToExecutionPayloadIncludesEcotoneProperties(t *testing.T) {
 		Withdrawals:  &types.Withdrawals{},
 	}
 
-	l2RpcChecker := NewL1RPCChecker()
-	envelope, err := block.ExecutionPayloadEnvelope(false, l2RpcChecker)
+	envelope, err := block.ExecutionPayloadEnvelope(false)
 	require.NoError(t, err)
 
 	require.NotNil(t, envelope.ParentBeaconBlockRoot)

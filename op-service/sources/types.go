@@ -220,7 +220,7 @@ type RPCBlock struct {
 	Withdrawals  *types.Withdrawals   `json:"withdrawals,omitempty"`
 }
 
-func (block *RPCBlock) Verify(checker RPCRespCheck) error {
+func (block *RPCBlock) Verify() error {
 	if computed := block.computeBlockHash(); computed != block.Hash {
 		return fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, block.Hash)
 	}
@@ -236,7 +236,6 @@ func (block *RPCBlock) Verify(checker RPCRespCheck) error {
 	// Withdrawals validation is different between L1 and L2. It is possible to determine that it is an L2 block
 	// if the first transaction is a deposit.
 	isL2 := len(block.Transactions) > 0 && block.Transactions[0].IsDepositTx()
-
 	if isL2 {
 		if err := block.validateL2Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
 			return err
@@ -279,14 +278,14 @@ func (block *RPCBlock) validateL2Withdrawals(withdrawals *types.Withdrawals, wit
 	return nil
 }
 
-func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool, checker RPCRespCheck) (eth.BlockInfo, types.Transactions, error) {
+func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo, types.Transactions, error) {
 	if mustBePostMerge {
 		if err := block.checkPostMerge(); err != nil {
 			return nil, nil, err
 		}
 	}
 	if !trustCache {
-		if err := block.Verify(checker); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -300,12 +299,12 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool, checker RPCRe
 	return info, block.Transactions, nil
 }
 
-func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool, checker RPCRespCheck) (*eth.ExecutionPayloadEnvelope, error) {
+func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.ExecutionPayloadEnvelope, error) {
 	if err := block.checkPostMerge(); err != nil {
 		return nil, err
 	}
 	if !trustCache {
-		if err := block.Verify(checker); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, err
 		}
 	}
