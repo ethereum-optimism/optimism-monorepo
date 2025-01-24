@@ -19,6 +19,7 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/core/vm"
 	"github.com/ethereum/go-ethereum/eth/downloader"
+	"github.com/ethereum/go-ethereum/eth/ethconfig"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/holiman/uint256"
@@ -386,7 +387,7 @@ func (ea *L2EngineAPI) forkchoiceUpdated(_ context.Context, state *eth.Forkchoic
 		}
 
 		ea.log.Info("Forkchoice requested sync to new head", "number", header.Number(), "hash", header.Hash())
-		if err := ea.downloader.BeaconSync(downloader.SnapSync, header.Header(), nil); err != nil {
+		if err := ea.downloader.BeaconSync(ethconfig.SnapSync, header.Header(), nil); err != nil {
 			return STATUS_SYNCING, err
 		}
 		return STATUS_SYNCING, nil
