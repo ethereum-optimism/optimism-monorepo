@@ -16,7 +16,7 @@ endif
 .DEFAULT_GOAL := cannon
 
 # The MIPS64 r2 opcodes not supported by cannon. This list does not include coprocess-specific and trap opcodes.
-UNSUPPORTED_OPCODES := (dclo|dclz|madd|maddu|seb|seh|wsbh|dsbh|dshd|ins|dins|dinsm|dinsu|ext|dext|dextu|dextm|rotr|drotr|drotr32|rotrv|drotrv|break|pref)
+UNSUPPORTED_OPCODES := (dclo|dclz|madd|maddu|seb|seh|wsbh|dsbh|dshd|ins|dins|dinsm|dinsu|ext|dext|dextu|dextm|rotr|drotr|drotr32|rotrv|drotrv|break|sdbbp|pref)
 
 CANNON32_FUZZTIME := 10s
 CANNON64_FUZZTIME := 20s
