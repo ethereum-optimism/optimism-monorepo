@@ -112,8 +112,7 @@ func TestEthClient_InfoByHash(t *testing.T) {
 		"eth_getBlockByHash", []any{rhdr.Hash, false}).Run(func(args mock.Arguments) {
 		*args[1].(**RPCHeader) = rhdr
 	}).Return([]error{nil})
-	l1RpcChecker := NewL1RPCChecker()
-	s, err := NewEthClient(m, nil, nil, testEthClientConfig, l1RpcChecker)
+	s, err := NewEthClient(m, nil, nil, testEthClientConfig)
 	require.NoError(t, err)
 	info, err := s.InfoByHash(ctx, rhdr.Hash)
 	require.NoError(t, err)

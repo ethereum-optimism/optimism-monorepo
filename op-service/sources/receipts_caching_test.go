@@ -36,8 +36,7 @@ func TestCachingReceiptsProvider_Caching(t *testing.T) {
 		Return(types.Receipts(receipts), error(nil)).
 		Once() // receipts should be cached after first fetch
 
-	l1RpcChecker := NewL1RPCChecker()
-	bInfo, _, _ := block.Info(true, true, l1RpcChecker)
+	bInfo, _, _ := block.Info(true, true)
 	for i := 0; i < 4; i++ {
 		gotRecs, err := rp.FetchReceipts(ctx, bInfo, txHashes)
 		require.NoError(t, err)
