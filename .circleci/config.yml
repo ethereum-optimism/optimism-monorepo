@@ -1372,12 +1372,9 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
-      - contracts-bedrock-tests:
+      - contracts-bedrock-coverage:
           # Generate coverage reports.
           name: contracts-bedrock-coverage
-          test_list: find test -name "*.t.sol"
-          test_command: coverage
-          test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
           # need this requires to ensure that all FFI JSONs exist
