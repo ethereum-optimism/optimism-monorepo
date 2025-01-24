@@ -525,10 +525,9 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 	}
 
 	tests := []struct {
-		name      string
-		input     input
-		encodeErr error
-		decodeErr error
+		name  string
+		input input
+		err   error
 	}{
 		{"ValidInputSucceeds", input{
 			version:               BlockV3,
@@ -536,37 +535,28 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 			parentBeaconBlockRoot: &hash,
 			withdrawalsRoot:       nil,
 			withdrawals:           &types.Withdrawals{},
-		}, nil, nil},
+		}, nil},
 		{"MissingHashFailsToSerialize", input{
 			version:               BlockV3,
 			usePayload:            true,
 			parentBeaconBlockRoot: nil,
 			withdrawalsRoot:       nil,
 			withdrawals:           &types.Withdrawals{},
-		}, ErrMissingData, nil},
+		}, ErrMissingData},
 		{"MissingExecutionDataFailsToSerialize", input{
 			version:               BlockV3,
 			usePayload:            false,
 			parentBeaconBlockRoot: &hash,
 			withdrawalsRoot:       nil,
 			withdrawals:           nil,
-		}, ErrMissingData, nil},
+		}, ErrMissingData},
 		{"WithWithdrawalRootSucceeds", input{
 			version:               BlockV4,
 			usePayload:            true,
 			parentBeaconBlockRoot: &hash,
 			withdrawalsRoot:       &hash,
 			withdrawals:           &types.Withdrawals{},
-		}, nil, nil},
-		/*
-			{"WrongVersionWithWithdrawalRootFailsToDeserialize", input{
-				version:               BlockV3,
-				usePayload:            true,
-				parentBeaconBlockRoot: &hash,
-				withdrawalsRoot:       &hash,
-				withdrawals:           &types.Withdrawals{},
-			}, nil, ErrBadExtraDataOffset}, // TODO: fix this, new version doesn't force...
-		*/
+		}, nil},
 	}
 
 	for _, test := range tests {
@@ -585,8 +575,8 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 			var buf bytes.Buffer
 			_, err := envelope.MarshalSSZ(&buf)
 
-			if test.encodeErr != nil {
-				require.ErrorIs(t, err, test.encodeErr)
+			if test.err != nil {
+				require.ErrorIs(t, err, test.err)
 				return
 			} else {
 				require.NoError(t, err)
@@ -596,13 +586,7 @@ func TestMarshalUnmarshalExecutionPayloadEnvelopes(t *testing.T) {
 
 			output := &ExecutionPayloadEnvelope{}
 			err = output.UnmarshalSSZ(test.input.version, uint32(len(data)), bytes.NewReader(data))
-
-			if test.decodeErr != nil {
-				require.ErrorIs(t, err, test.decodeErr)
-				return
-			} else {
-				require.NoError(t, err)
-			}
+			require.NoError(t, err)
 
 			require.NotNil(t, output.ParentBeaconBlockRoot)
 			assert.Equal(t, hash, *output.ParentBeaconBlockRoot)
@@ -619,4 +603,22 @@ func TestFailsToDeserializeTooLittleData(t *testing.T) {
 	var payload ExecutionPayloadEnvelope
 	err := payload.UnmarshalSSZ(BlockV1, 0, bytes.NewReader([]byte{0x00}))
 	require.ErrorIs(t, err, ErrScopeTooSmall)
+}
+
+func TestFailsWrongVersionWithWithdrawalRoot(t *testing.T) {
+	hash := common.HexToHash("0x123")
+	envelope := &ExecutionPayloadEnvelope{
+		ParentBeaconBlockRoot: &hash,
+		ExecutionPayload:      createPayloadWithWithdrawals(&types.Withdrawals{}, BlockV4, &hash),
+	}
+
+	var buf bytes.Buffer
+	_, err := envelope.MarshalSSZ(&buf)
+	require.NoError(t, err)
+
+	data := buf.Bytes()
+
+	var payload ExecutionPayloadEnvelope
+	err = payload.UnmarshalSSZ(BlockV3, uint32(len(data)), bytes.NewReader(data))
+	require.ErrorContains(t, err, ErrBadExtraDataOffset.Error())
 }
