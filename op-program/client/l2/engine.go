@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 )
@@ -80,6 +81,8 @@ func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadIn
 	var res *eth.ExecutionPayloadEnvelope
 	var err error
 	switch method := o.rollupCfg.GetPayloadVersion(payloadInfo.Timestamp); method {
+	case eth.GetPayloadV4:
+		res, err = o.api.GetPayloadV4(ctx, payloadInfo.ID)
 	case eth.GetPayloadV3:
 		res, err = o.api.GetPayloadV3(ctx, payloadInfo.ID)
 	case eth.GetPayloadV2:
@@ -108,6 +111,8 @@ func (o *OracleEngine) ForkchoiceUpdate(ctx context.Context, state *eth.Forkchoi
 
 func (o *OracleEngine) NewPayload(ctx context.Context, payload *eth.ExecutionPayload, parentBeaconBlockRoot *common.Hash) (*eth.PayloadStatusV1, error) {
 	switch method := o.rollupCfg.NewPayloadVersion(uint64(payload.Timestamp)); method {
+	case eth.NewPayloadV4:
+		return o.api.NewPayloadV4(ctx, payload, []common.Hash{}, parentBeaconBlockRoot, []hexutil.Bytes{})
 	case eth.NewPayloadV3:
 		return o.api.NewPayloadV3(ctx, payload, []common.Hash{}, parentBeaconBlockRoot)
 	case eth.NewPayloadV2:

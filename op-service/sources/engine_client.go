@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/eth/catalyst"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -103,6 +104,8 @@ func (s *EngineAPIClient) NewPayload(ctx context.Context, payload *eth.Execution
 
 	var err error
 	switch method := s.evp.NewPayloadVersion(uint64(payload.Timestamp)); method {
+	case eth.NewPayloadV4:
+		err = s.RPC.CallContext(execCtx, &result, string(method), payload, []common.Hash{}, parentBeaconBlockRoot, []hexutil.Bytes{})
 	case eth.NewPayloadV3:
 		err = s.RPC.CallContext(ctx, &result, string(method), payload, []common.Hash{}, parentBeaconBlockRoot)
 	case eth.NewPayloadV2:
