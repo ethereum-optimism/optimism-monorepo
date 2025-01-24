@@ -11,6 +11,7 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
@@ -169,14 +170,16 @@ contract DeployOPCMInput is BaseDeployIO {
         return _anchorStateRegistryImpl;
     }
 
-    function superchainConfigImpl() public view returns (address) {
-        require(_superchainConfigImpl != address(0), "DeployOPCMInput: not set");
-        return _superchainConfigImpl;
+    function superchainConfigImpl() public view returns (ISuperchainConfig) {
+        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfigProxy)));
+        DeployUtils.assertValidContractAddress(address(impl));
+        return impl;
     }
 
-    function protocolVersionsImpl() public view returns (address) {
-        require(_protocolVersionsImpl != address(0), "DeployOPCMInput: not set");
-        return _protocolVersionsImpl;
+    function protocolVersionsImpl() public view returns (IProtocolVersions) {
+        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersionsProxy)));
+        DeployUtils.assertValidContractAddress(address(impl));
+        return impl;
     }
 
     function delayedWETHImpl() public view returns (address) {
