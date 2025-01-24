@@ -171,13 +171,13 @@ contract DeployOPCMInput is BaseDeployIO {
     }
 
     function superchainConfigImpl() public view returns (ISuperchainConfig) {
-        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfigProxy)));
+        ISuperchainConfig impl = ISuperchainConfig(EIP1967Helper.getImplementation(address(_superchainConfig)));
         DeployUtils.assertValidContractAddress(address(impl));
         return impl;
     }
 
     function protocolVersionsImpl() public view returns (IProtocolVersions) {
-        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersionsProxy)));
+        IProtocolVersions impl = IProtocolVersions(EIP1967Helper.getImplementation(address(_protocolVersions)));
         DeployUtils.assertValidContractAddress(address(impl));
         return impl;
     }
