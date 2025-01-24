@@ -28,7 +28,6 @@ import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
-import { DeploySuperchainImplementations, DeploySuperchainOutput } from "scripts/deploy/DeploySuperchain.s.sol";
 
 // See DeploySuperchain.s.sol for detailed comments on the script architecture used here.
 contract DeployImplementationsInput is BaseDeployIO {
@@ -435,7 +434,8 @@ contract DeployImplementations is Script {
 
     function run(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public {
         // Deploy the implementations.
-        DeploySuperchainImplementations.deploySuperchainImplementationContracts(DeploySuperchainOutput(address(_dio)));
+        deploySuperchainConfigImpl(_dio);
+        deployProtocolVersionsImpl(_dio);
         deploySystemConfigImpl(_dio);
         deployL1CrossDomainMessengerImpl(_dio);
         deployL1ERC721BridgeImpl(_dio);
@@ -472,7 +472,6 @@ contract DeployImplementations is Script {
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         address upgradeController = _dii.upgradeController();
 
-        // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_dio.superchainConfigImpl()),
             protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
@@ -537,11 +536,11 @@ contract DeployImplementations is Script {
         require(checkAddress == address(0), "OPCM-40");
         (blueprints.resolvedDelegateProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"), _salt);
         require(checkAddress == address(0), "OPCM-50");
-            // The max initcode/runtimecode size is 48KB/24KB.
-            // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
-            (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
-            (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
-            // forgefmt: disable-end
+        // The max initcode/runtimecode size is 48KB/24KB.
+        // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
+        (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
+        (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
+        // forgefmt: disable-end
         vm.stopBroadcast();
 
         IOPContractsManager opcm = createOPCMContract(_dii, _dio, blueprints, l1ContractsRelease);
@@ -551,6 +550,32 @@ contract DeployImplementations is Script {
     }
 
     // --- Core Contracts ---
+
+    function deploySuperchainConfigImpl(DeployImplementationsOutput _dio) public virtual {
+        vm.broadcast(msg.sender);
+        ISuperchainConfig impl = ISuperchainConfig(
+            DeployUtils.createDeterministic({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "SuperchainConfigImpl");
+        _dio.set(_dio.superchainConfigImpl.selector, address(impl));
+    }
+
+    function deployProtocolVersionsImpl(DeployImplementationsOutput _dio) public virtual {
+        vm.broadcast(msg.sender);
+        IProtocolVersions impl = IProtocolVersions(
+            DeployUtils.createDeterministic({
+                _name: "ProtocolVersions",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "ProtocolVersionsImpl");
+        _dio.set(_dio.protocolVersionsImpl.selector, address(impl));
+    }
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public virtual {
         vm.broadcast(msg.sender);
@@ -829,7 +854,6 @@ contract DeployImplementationsInterop is DeployImplementations {
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
         address upgradeController = _dii.upgradeController();
 
-        // moose here (next call fails)
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
             superchainConfigImpl: address(_dio.superchainConfigImpl()),
             protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
