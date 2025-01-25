@@ -317,10 +317,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
 
         // Check that the PermissionedDisputeGame is upgraded to the expected version, references
         // the correct anchor state and has the mips64impl.
-        IPermissionedDisputeGame pdg = IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
-        assertEq(
-            ISemver(address(pdg)).version(), "1.4.0-beta.1"
-        );
+        IPermissionedDisputeGame pdg =
+            IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
+        assertEq(ISemver(address(pdg)).version(), "1.4.0-beta.1");
         assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
         assertEq(address(pdg.vm()), impls.mips64Impl);
 
@@ -330,9 +329,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
             IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
-            assertEq(
-                ISemver(address(fdg)).version(), "1.4.0-beta.1"
-            );
+            assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
             assertEq(address(fdg.vm()), impls.mips64Impl);
             assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
@@ -455,27 +452,22 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
         );
     }
 
-    function test_permissionedPrestateNotSet_reverts() public {
-        opChainConfigs[0].permissionedDisputeGamePrestateHash = Claim.wrap(bytes32(0));
-        address delegateCaller = makeAddr("delegateCaller");
-        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+    function test_upgrade_permissionedPrestateNotSet_reverts() public {
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         vm.expectRevert(
             abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.PERMISSIONED_CANNON))
         );
-        DelegateCaller(delegateCaller).dcForward(
+        DelegateCaller(upgrader).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
     }
 
-    function test_permissionlessPrestateNotSet_reverts() public {
-        opChainConfigs[0].permissionlessDisputeGamePrestateHash = Claim.wrap(bytes32(0));
+    function test_upgrade_permissionlessPrestateNotSet_reverts() public {
         address delegateCaller = makeAddr("delegateCaller");
         vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
-        vm.expectRevert(
-            abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON))
-        );
+        vm.expectRevert(abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON)));
         DelegateCaller(delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
