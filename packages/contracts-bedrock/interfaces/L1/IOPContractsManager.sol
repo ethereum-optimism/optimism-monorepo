@@ -204,6 +204,8 @@ interface IOPContractsManager {
     /// @notice Thrown when the SuperchainConfig of the chain does not match the SuperchainConfig of this OPCM.
     error SuperchainConfigMismatch(ISystemConfig systemConfig);
 
+    error SuperchainProxyAdminMismatch();
+
     // -------- Methods --------
 
     function __constructor__(
