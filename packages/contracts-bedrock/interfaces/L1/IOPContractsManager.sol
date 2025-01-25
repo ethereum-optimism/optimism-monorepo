@@ -219,7 +219,7 @@ interface IOPContractsManager {
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory);
 
     /// @notice Upgrades the implementation of all proxies in the specified chains
-    /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
+    /// @param _superchainProxyAdmin The proxy admin that owns the superchain contract proxies
     /// @param _opChains The chains to upgrade
     function upgrade(IProxyAdmin _superchainProxyAdmin, OpChain[] memory _opChains) external;
 
