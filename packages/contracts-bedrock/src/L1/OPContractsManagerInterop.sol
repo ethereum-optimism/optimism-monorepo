@@ -12,9 +12,9 @@ import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
 
 contract OPContractsManagerInterop is OPContractsManager {
-    /// @custom:semver +interop-beta.4
+    /// @custom:semver +interop-beta.5
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.4");
+        return string.concat(super.version(), "+interop-beta.5");
     }
 
     constructor(
