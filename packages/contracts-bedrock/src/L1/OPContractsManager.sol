@@ -114,10 +114,13 @@ contract OPContractsManager is ISemver {
         address mips64Impl;
     }
 
-    /// @notice The input required to identify a chain for upgrading.
+    /// @notice The input required to identify a chain for upgrading, along with new prestate hashes
+    // TODO: rename to OpChainConfig
     struct OpChain {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
+        Claim permissionedDisputeGamePrestateHash;
+        Claim permissionlessDisputeGamePrestateHash;
     }
 
     struct AddGameInput {
@@ -172,9 +175,6 @@ contract OPContractsManager is ISemver {
 
     /// @notice The address of the upgrade controller.
     address public immutable upgradeController;
-
-    /// @notice The prestate hash to be used for the upgrade.
-    bytes32 public immutable prestateHash;
 
     /// @notice Whether this is a release candidate.
     bool public isRC = true;
@@ -243,8 +243,7 @@ contract OPContractsManager is ISemver {
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        address _upgradeController,
-        bytes32 _prestateHash
+        address _upgradeController
     ) {
         assertValidContractAddress(address(_superchainConfig));
         assertValidContractAddress(address(_protocolVersions));
@@ -256,7 +255,6 @@ contract OPContractsManager is ISemver {
         implementation = _implementations;
         thisOPCM = this;
         upgradeController = _upgradeController;
-        prestateHash = _prestateHash;
     }
 
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
@@ -548,15 +546,16 @@ contract OPContractsManager is ISemver {
                     );
                 }
 
+                // TODO: add new prestate
                 deployAndSetNewGameImpl({
-                    _proxyAdmin: _opChains[i].proxyAdmin,
+                    _l2ChainId: l2ChainId,
                     _disputeGame: IDisputeGame(address(permissionedDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.PERMISSIONED_CANNON,
+                    _opChain: _opChains[i],
                     _implementations: impls,
                     _blueprints: bps,
-                    _opChainAddrs: opChainAddrs,
-                    _l2ChainId: l2ChainId
+                    _opChainAddrs: opChainAddrs
                 });
             }
 
@@ -566,14 +565,14 @@ contract OPContractsManager is ISemver {
             );
             if (address(permissionlessDisputeGame) != address(0)) {
                 deployAndSetNewGameImpl({
-                    _proxyAdmin: _opChains[i].proxyAdmin,
+                    _l2ChainId: l2ChainId,
                     _disputeGame: IDisputeGame(address(permissionlessDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.CANNON,
+                    _opChain: _opChains[i],
                     _implementations: impls,
                     _blueprints: bps,
-                    _opChainAddrs: opChainAddrs,
-                    _l2ChainId: l2ChainId
+                    _opChainAddrs: opChainAddrs
                 });
             }
 
@@ -1055,35 +1054,42 @@ contract OPContractsManager is ISemver {
         return thisOPCM.blueprints();
     }
 
-    /// @notice For a given game type, does the following:
-    /// 1. Get and upgrade the DelayedWETH Proxy
-    /// 2. Deploy a new game
-    /// 3. Set the new game as the implementation on the OptimismPortal
+    /// @notice TODO: write me.
     function deployAndSetNewGameImpl(
-        IProxyAdmin _proxyAdmin,
+        uint256 _l2ChainId,
         IDisputeGame _disputeGame,
         IAnchorStateRegistry _newAnchorStateRegistryProxy,
         GameType _gameType,
+        OpChain memory _opChain,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
-        ISystemConfig.Addresses memory _opChainAddrs,
-        uint256 _l2ChainId
+        ISystemConfig.Addresses memory _opChainAddrs
     )
         internal
     {
-        // Get and upgrade the WETH proxy
-        IDelayedWETH delayedWethProxy = getWETH(IFaultDisputeGame(address(_disputeGame)));
-        upgradeTo(_proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
+        // independently scoped block to avoid stack too deep
+        {
+            // Get and upgrade the WETH proxy
+            IDelayedWETH delayedWethProxy = getWETH(IFaultDisputeGame(address(_disputeGame)));
+            upgradeTo(_opChain.proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
+        }
 
         // Get the constructor params for the game
         IFaultDisputeGame.GameConstructorParams memory params =
             getGameConstructorParams(IFaultDisputeGame(address(_disputeGame)));
+
+        // Modify the params with the new anchorStateRegistry and vm values.
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
-        params.absolutePrestate = prestateHash;
-        params.vm = IBigStepper(mips64);
+        params.vm = IBigStepper(_implementations.mips64Impl);
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
+            // TODO: custom error
+            require(Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) != bytes32(0), "No absolutePrestate for permissioned game");
+
+            // modify the params to set the permissioned game specific absolutePrestate
+            params.absolutePrestate = _opChain.permissionedDisputeGamePrestateHash;
+
             address proposer = getProposer(IPermissionedDisputeGame(address(_disputeGame)));
             address challenger = getChallenger(IPermissionedDisputeGame(address(_disputeGame)));
             newGame = IDisputeGame(
@@ -1095,6 +1101,11 @@ contract OPContractsManager is ISemver {
                 )
             );
         } else {
+            // TODO: custom error
+            require(Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) != bytes32(0), "No absolutePrestate for permissionless game");
+
+            // modify the params to set the permissionless game specific absolutePrestate
+            params.absolutePrestate = _opChain.permissionlessDisputeGamePrestateHash;
             newGame = IDisputeGame(
                 Blueprint.deployFrom(
                     _blueprints.permissionlessDisputeGame1,
