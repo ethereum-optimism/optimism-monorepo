@@ -41,6 +41,8 @@ type DeployImplementationsOutput struct {
 	OptimismMintableERC20FactoryImpl common.Address
 	DisputeGameFactoryImpl           common.Address
 	AnchorStateRegistryImpl          common.Address
+	SuperchainConfigImpl             common.Address
+	ProtocolVersionsImpl             common.Address
 }
 
 func (output *DeployImplementationsOutput) CheckOutput(input common.Address) error {
