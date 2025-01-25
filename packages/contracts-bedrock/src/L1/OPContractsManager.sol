@@ -726,13 +726,13 @@ contract OPContractsManager is ISemver {
     function computeSalt(
         uint256 _l2ChainId,
         bytes32 _saltMixer,
-        string memory _contractName
+        bytes32 _contractName
     )
         internal
         pure
         returns (bytes32)
     {
-        return keccak256(abi.encode(_l2ChainId, _saltMixer, _contractName));
+        return keccak256(bytes.concat(bytes32(_l2ChainId), _saltMixer, _contractName));
     }
 
     /// @notice Deterministically deploys a new proxy contract owned by the provided ProxyAdmin.
@@ -742,7 +742,7 @@ contract OPContractsManager is ISemver {
         uint256 _l2ChainId,
         IProxyAdmin _proxyAdmin,
         bytes32 _saltMixer,
-        string memory _contractName
+        bytes32 _contractName
     )
         internal
         returns (address)
