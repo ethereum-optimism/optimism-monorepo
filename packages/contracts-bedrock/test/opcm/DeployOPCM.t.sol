@@ -74,7 +74,7 @@ contract DeployOPCMInput_Test is Test {
         dii.delayedWETHImpl();
 
         vm.expectRevert("DeployOPCMInput: not set");
-        dii.mipsImpl();
+        dii.mips64Impl();
     }
 
     // Below setter tests are split into two parts to avoid stack too deep errors
@@ -130,7 +130,7 @@ contract DeployOPCMInput_Test is Test {
         address disputeGameFactoryImpl = makeAddr("disputeGameFactoryImpl");
         address anchorStateRegistryImpl = makeAddr("anchorStateRegistryImpl");
         address delayedWETHImpl = makeAddr("delayedWETHImpl");
-        address mipsImpl = makeAddr("mipsImpl");
+        address mips64Impl = makeAddr("mips64Impl");
 
         dii.set(dii.l1ERC721BridgeImpl.selector, l1ERC721BridgeImpl);
         dii.set(dii.optimismPortalImpl.selector, optimismPortalImpl);
@@ -141,7 +141,7 @@ contract DeployOPCMInput_Test is Test {
         dii.set(dii.disputeGameFactoryImpl.selector, disputeGameFactoryImpl);
         dii.set(dii.anchorStateRegistryImpl.selector, anchorStateRegistryImpl);
         dii.set(dii.delayedWETHImpl.selector, delayedWETHImpl);
-        dii.set(dii.mipsImpl.selector, mipsImpl);
+        dii.set(dii.mips64Impl.selector, mips64Impl);
 
         assertEq(dii.l1ERC721BridgeImpl(), l1ERC721BridgeImpl, "600");
         assertEq(dii.optimismPortalImpl(), optimismPortalImpl, "650");
@@ -151,7 +151,7 @@ contract DeployOPCMInput_Test is Test {
         assertEq(dii.l1StandardBridgeImpl(), l1StandardBridgeImpl, "850");
         assertEq(dii.disputeGameFactoryImpl(), disputeGameFactoryImpl, "900");
         assertEq(dii.delayedWETHImpl(), delayedWETHImpl, "950");
-        assertEq(dii.mipsImpl(), mipsImpl, "1000");
+        assertEq(dii.mips64Impl(), mips64Impl, "1000");
     }
 
     function test_set_withZeroAddress_reverts() public {
@@ -250,7 +250,7 @@ contract DeployOPCMTest is Test {
         doi.set(doi.disputeGameFactoryImpl.selector, makeAddr("disputeGameFactoryImpl"));
         doi.set(doi.anchorStateRegistryImpl.selector, makeAddr("anchorStateRegistryImpl"));
         doi.set(doi.delayedWETHImpl.selector, makeAddr("delayedWETHImpl"));
-        doi.set(doi.mipsImpl.selector, makeAddr("mipsImpl"));
+        doi.set(doi.mips64Impl.selector, makeAddr("mips64Impl"));
 
         // Etch all addresses with dummy bytecode
         vm.etch(address(doi.superchainConfig()), hex"01");
@@ -273,7 +273,7 @@ contract DeployOPCMTest is Test {
         vm.etch(doi.l1StandardBridgeImpl(), hex"01");
         vm.etch(doi.disputeGameFactoryImpl(), hex"01");
         vm.etch(doi.delayedWETHImpl(), hex"01");
-        vm.etch(doi.mipsImpl(), hex"01");
+        vm.etch(doi.mips64Impl(), hex"01");
 
         deployOPCM.run(doi, doo);
 

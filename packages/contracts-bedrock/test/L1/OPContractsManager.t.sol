@@ -207,7 +207,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     IProxyAdmin proxyAdmin;
     IProxyAdmin superchainProxyAdmin;
     address upgrader;
-    IOPContractsManager.OpChain[] opChains;
+    IOPContractsManager.OpChainConfig[] opChainConfigs;
+    Claim permissionedPrestate;
+    Claim permissionlessPrestate;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -217,12 +219,22 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             vm.skip(true);
         }
 
+        permissionedPrestate = Claim.wrap(bytes32(keccak256("permissionedPrestate")));
+        permissionlessPrestate = Claim.wrap(bytes32(keccak256("permissionlessPrestate")));
+
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        opChains.push(IOPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin }));
+        opChainConfigs.push(
+            IOPContractsManager.OpChainConfig({
+                systemConfigProxy: systemConfig,
+                proxyAdmin: proxyAdmin,
+                permissionedDisputeGamePrestateHash: permissionedPrestate,
+                permissionlessDisputeGamePrestateHash: permissionlessPrestate
+            })
+        );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
         // encoded as an address.
@@ -280,11 +292,11 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             emit ImplementationSet(address(0), GameTypes.CANNON);
         }
         vm.expectEmit(address(_delegateCaller));
-        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(_delegateCaller));
+        emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
         superchainProxyAdmin = _superchainUpgrade ? superchainProxyAdmin : IProxyAdmin(address(0));
         DelegateCaller(_delegateCaller).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChainConfigs))
         );
 
         // Check the implementations of the core addresses
@@ -303,14 +315,28 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         assertEq(impls.anchorStateRegistryImpl, EIP1967Helper.getImplementation(address(newAnchorStateRegistryProxy)));
         assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionedGameProxy)));
 
-        // Check that the PermissionedDisputeGame is upgraded to the expected version
+        // Check that the PermissionedDisputeGame is upgraded to the expected version, references
+        // the correct anchor state and has the mips64impl.
+        IPermissionedDisputeGame pdg = IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
         assertEq(
-            ISemver(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON))).version(), "1.4.0-beta.1"
+            ISemver(address(pdg)).version(), "1.4.0-beta.1"
         );
+        assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
+        assertEq(address(pdg.vm()), impls.mips64Impl);
+
         if (address(delayedWeth) != address(0)) {
+            // Check that the PermissionlessDisputeGame is upgraded to the expected version, references
+            // the correct anchor state and has the mips64impl.
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
-            assertEq(ISemver(address(disputeGameFactory.gameImpls(GameTypes.CANNON))).version(), "1.4.0-beta.1");
+            IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
+            assertEq(
+                ISemver(address(fdg)).version(), "1.4.0-beta.1"
+            );
+            assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
+            assertEq(address(fdg.vm()), impls.mips64Impl);
+            assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
+            assertEq(address(fdg.vm()), impls.mips64Impl);
         }
     }
 }
@@ -382,7 +408,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     function test_upgrade_notDelegateCalled_reverts() public {
         vm.prank(upgrader);
         vm.expectRevert(IOPContractsManager.OnlyDelegatecall.selector);
-        opcm.upgrade(superchainProxyAdmin, opChains);
+        opcm.upgrade(superchainProxyAdmin, opChainConfigs);
     }
 
     function test_upgrade_superchainConfigMismatch_reverts() public {
@@ -399,7 +425,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
             abi.encodeWithSelector(IOPContractsManager.SuperchainConfigMismatch.selector, address(systemConfig))
         );
         DelegateCaller(upgrader).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChainConfigs))
         );
     }
 
@@ -412,7 +438,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
 
         vm.expectRevert("Ownable: caller is not the owner");
         DelegateCaller(delegateCaller).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChainConfigs))
         );
     }
 
@@ -425,7 +451,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
 
         vm.expectRevert("Ownable: caller is not the owner");
         DelegateCaller(delegateCaller).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChains))
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
     }
 }
@@ -501,7 +527,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
             anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
             delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
-            mipsImpl: DeployUtils.create1("MIPS", abi.encode(oracle))
+            mips64Impl: DeployUtils.create1("MIPS", abi.encode(oracle))
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -656,7 +682,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             disputeClockExtension: Duration.wrap(10800),
             disputeMaxClockDuration: Duration.wrap(302400),
             initialBond: 1 ether,
-            vm: IBigStepper(address(opcm.implementations().mipsImpl)),
+            vm: IBigStepper(address(opcm.implementations().mips64Impl)),
             permissioned: permissioned
         });
     }

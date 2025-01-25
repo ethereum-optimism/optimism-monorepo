@@ -115,8 +115,7 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice The input required to identify a chain for upgrading, along with new prestate hashes
-    // TODO: rename to OpChainConfig
-    struct OpChain {
+    struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
         Claim permissionedDisputeGamePrestateHash;
@@ -441,7 +440,7 @@ contract OPContractsManager is ISemver {
     /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
     /// @param _opChains Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChain[] memory _opChains) external {
+    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChains) external {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
@@ -1054,13 +1053,21 @@ contract OPContractsManager is ISemver {
         return thisOPCM.blueprints();
     }
 
-    /// @notice TODO: write me.
+    /// @notice Deploys and sets a new dispute game implementation
+    /// @param _l2ChainId The L2 chain ID
+    /// @param _disputeGame The current dispute game implementation
+    /// @param _newAnchorStateRegistryProxy The new anchor state registry proxy
+    /// @param _gameType The type of game to deploy
+    /// @param _opChain The OP chain configuration
+    /// @param _blueprints The blueprint addresses
+    /// @param _implementations The implementation addresses
+    /// @param _opChainAddrs The OP chain addresses
     function deployAndSetNewGameImpl(
         uint256 _l2ChainId,
         IDisputeGame _disputeGame,
         IAnchorStateRegistry _newAnchorStateRegistryProxy,
         GameType _gameType,
-        OpChain memory _opChain,
+        OpChainConfig memory _opChain,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
         ISystemConfig.Addresses memory _opChainAddrs
@@ -1085,7 +1092,10 @@ contract OPContractsManager is ISemver {
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
             // TODO: custom error
-            require(Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) != bytes32(0), "No absolutePrestate for permissioned game");
+            require(
+                Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) != bytes32(0),
+                "No absolutePrestate for permissioned game"
+            );
 
             // modify the params to set the permissioned game specific absolutePrestate
             params.absolutePrestate = _opChain.permissionedDisputeGamePrestateHash;
@@ -1102,7 +1112,10 @@ contract OPContractsManager is ISemver {
             );
         } else {
             // TODO: custom error
-            require(Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) != bytes32(0), "No absolutePrestate for permissionless game");
+            require(
+                Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) != bytes32(0),
+                "No absolutePrestate for permissionless game"
+            );
 
             // modify the params to set the permissionless game specific absolutePrestate
             params.absolutePrestate = _opChain.permissionlessDisputeGamePrestateHash;

@@ -105,13 +105,15 @@ interface IOPContractsManager {
         address disputeGameFactoryImpl;
         address anchorStateRegistryImpl;
         address delayedWETHImpl;
-        address mipsImpl;
+        address mips64Impl;
     }
 
     /// @notice The input required to identify a chain for upgrading.
-    struct OpChain {
+    struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
+        Claim permissionedDisputeGamePrestateHash;
+        Claim permissionlessDisputeGamePrestateHash;
     }
 
     struct AddGameInput {
@@ -222,8 +224,8 @@ interface IOPContractsManager {
 
     /// @notice Upgrades the implementation of all proxies in the specified chains
     /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
-    /// @param _opChains The chains to upgrade
-    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChain[] memory _opChains) external;
+    /// @param _opChainConfigs The chains to upgrade
+    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChainConfigs) external;
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
     /// must be added in ascending GameType order.

@@ -501,7 +501,7 @@ library ChainAssertions {
         require(impls.l1StandardBridgeImpl == _contracts.L1StandardBridge, "CHECK-OPCM-100");
         require(impls.disputeGameFactoryImpl == _contracts.DisputeGameFactory, "CHECK-OPCM-110");
         require(impls.delayedWETHImpl == _contracts.DelayedWETH, "CHECK-OPCM-120");
-        require(impls.mipsImpl == address(_mips), "CHECK-OPCM-130");
+        require(impls.mips64Impl == address(_mips), "CHECK-OPCM-130");
 
         // Verify that initCode is correctly set into the blueprints
         IOPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
