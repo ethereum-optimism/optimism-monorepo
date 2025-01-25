@@ -51,7 +51,7 @@ contract OPContractsManager is ISemver {
         // The correct type is OutputRoot memory but OP Deployer does not yet support structs.
         bytes startingAnchorRoot;
         // The salt mixer is used as part of making the resulting salt unique.
-        string saltMixer;
+        bytes32 saltMixer;
         uint64 gasLimit;
         // Configurable dispute game parameters.
         GameType disputeGameType;
@@ -121,7 +121,7 @@ contract OPContractsManager is ISemver {
     }
 
     struct AddGameInput {
-        string saltMixer;
+        bytes32 saltMixer;
         ISystemConfig systemConfig;
         IProxyAdmin proxyAdmin;
         IDelayedWETH delayedWETH;
@@ -257,7 +257,7 @@ contract OPContractsManager is ISemver {
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory) {
         assertValidInputs(_input);
         uint256 l2ChainId = _input.l2ChainId;
-        string memory saltMixer = _input.saltMixer;
+        bytes32 saltMixer = _input.saltMixer;
         DeployOutput memory output;
 
         // -------- Deploy Chain Singletons --------
@@ -725,7 +725,7 @@ contract OPContractsManager is ISemver {
     /// with the same bytecode from this contract, so they each require a unique salt for determinism.
     function computeSalt(
         uint256 _l2ChainId,
-        string memory _saltMixer,
+        bytes32 _saltMixer,
         string memory _contractName
     )
         internal
@@ -741,7 +741,7 @@ contract OPContractsManager is ISemver {
     function deployProxy(
         uint256 _l2ChainId,
         IProxyAdmin _proxyAdmin,
-        string memory _saltMixer,
+        bytes32 _saltMixer,
         string memory _contractName
     )
         internal
