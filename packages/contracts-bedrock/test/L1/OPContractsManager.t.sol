@@ -342,12 +342,12 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
 
         assertFalse(opcm.isRC(), "isRC should be false");
         releaseBytes = bytes(opcm.l1ContractsRelease());
-        assertNotEq(
-            Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'"
-        );
+        assertNotEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should not end with '-rc'");
     }
 
-    function testFuzz_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(address _nonUpgradeController)
+    function testFuzz_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(
+        address _nonUpgradeController
+    )
         public
     {
         if (
