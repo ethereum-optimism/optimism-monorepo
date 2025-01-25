@@ -11,7 +11,6 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
