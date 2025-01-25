@@ -234,11 +234,14 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         permissionedDisputeGame = IPermissionedDisputeGame(address(artifacts.mustGetAddress("PermissionedDisputeGame")));
         faultDisputeGame = IFaultDisputeGame(address(artifacts.mustGetAddress("FaultDisputeGame")));
     }
-}
 
-contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
-    function runUpgradeTestAndChecks(address delegateCaller) public {
-        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+    function expectEmitUpgraded(address impl, address proxy) public {
+        vm.expectEmit(proxy);
+        emit Upgraded(impl);
+    }
+
+    function runUpgradeTestAndChecks(address _delegateCaller, bool _superchainUpgrade) public {
+        vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         assertTrue(opcm.isRC(), "isRC should be true");
         bytes memory releaseBytes = bytes(opcm.l1ContractsRelease());
@@ -252,11 +255,9 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         // Predict the address of the new AnchorStateRegistry proxy
         bytes32 salt = keccak256(abi.encode(l2ChainId, "v2.0.0", "AnchorStateRegistry"));
         bytes memory initCode = bytes.concat(vm.getCode("Proxy"), abi.encode(proxyAdmin));
-        address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), delegateCaller);
+        address newAnchorStateRegistryProxy = vm.computeCreate2Address(salt, keccak256(initCode), _delegateCaller);
         vm.label(newAnchorStateRegistryProxy, "NewAnchorStateRegistryProxy");
 
-        expectEmitUpgraded(impls.superchainConfigImpl, address(superchainConfig));
-        expectEmitUpgraded(impls.protocolVersionsImpl, address(protocolVersions));
         expectEmitUpgraded(impls.systemConfigImpl, address(systemConfig));
         vm.expectEmit(address(addressManager));
         emit AddressSet("OVM_L1CrossDomainMessenger", impls.l1CrossDomainMessengerImpl, oldL1CrossDomainMessenger);
@@ -282,13 +283,15 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
             vm.expectEmit(false, true, true, true, address(disputeGameFactory));
             emit ImplementationSet(address(0), GameTypes.CANNON);
         }
-        vm.expectEmit(address(delegateCaller));
-        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(delegateCaller));
-        DelegateCaller(delegateCaller).dcForward(
+        vm.expectEmit(address(_delegateCaller));
+        emit Upgraded(l2ChainId, opChains[0].systemConfigProxy, address(_delegateCaller));
+
+        superchainProxyAdmin = _superchainUpgrade ? superchainProxyAdmin : IProxyAdmin(address(0));
+        DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
         );
 
-        if (delegateCaller == upgrader) {
+        if (_delegateCaller == upgrader) {
             assertFalse(opcm.isRC(), "isRC should be false");
             releaseBytes = bytes(opcm.l1ContractsRelease());
             assertNotEq(
@@ -297,8 +300,6 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         }
 
         // Check the implementations of the core addresses
-        assertEq(impls.superchainConfigImpl, EIP1967Helper.getImplementation(address(superchainConfig)));
-        assertEq(impls.protocolVersionsImpl, EIP1967Helper.getImplementation(address(protocolVersions)));
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
         assertEq(impls.l1ERC721BridgeImpl, EIP1967Helper.getImplementation(address(l1ERC721Bridge)));
         assertEq(impls.disputeGameFactoryImpl, EIP1967Helper.getImplementation(address(disputeGameFactory)));
@@ -324,13 +325,27 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
             assertEq(ISemver(address(disputeGameFactory.gameImpls(GameTypes.CANNON))).version(), "1.4.0-beta.1");
         }
     }
+}
 
-    function test_upgrade_succeeds() public {
-        // Run the upgrade test and checks
-        runUpgradeTestAndChecks(upgrader);
+contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
+    function test_upgradeSuperchainAndOPChain_succeeds() public {
+        // wrap runUpgradeTestAndChecks with additional checks for superchainConfig and protocolVersions
+        IOPContractsManager.Implementations memory impls = opcm.implementations();
+        expectEmitUpgraded(impls.superchainConfigImpl, address(superchainConfig));
+        expectEmitUpgraded(impls.protocolVersionsImpl, address(protocolVersions));
+
+        runUpgradeTestAndChecks(upgrader, true);
+
+        assertEq(impls.superchainConfigImpl, EIP1967Helper.getImplementation(address(superchainConfig)));
+        assertEq(impls.protocolVersionsImpl, EIP1967Helper.getImplementation(address(protocolVersions)));
     }
 
-    function test_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(address _nonUpgradeController)
+    function test_upgradeOPChainOnly_succeeds() public {
+        // Run the upgrade test and checks
+        runUpgradeTestAndChecks(upgrader, false);
+    }
+
+    function testFuzz_upgrade_nonUpgradeControllerDelegatecallerShouldNotSetIsRCToFalse_works(address _nonUpgradeController)
         public
     {
         if (
@@ -357,12 +372,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         );
 
         // Run the upgrade test and checks
-        runUpgradeTestAndChecks(_nonUpgradeController);
-    }
-
-    function expectEmitUpgraded(address impl, address proxy) public {
-        vm.expectEmit(proxy);
-        emit Upgraded(impl);
+        runUpgradeTestAndChecks(_nonUpgradeController, false);
     }
 }
 
@@ -389,6 +399,13 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
         DelegateCaller(upgrader).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
         );
+    }
+
+    function test_upgrade_notSuperchainProxyAdminOwner_reverts() public {
+        address delegateCaller = makeAddr("delegateCaller");
+        assertNotEq(superchainProxyAdmin.owner(), delegateCaller, "delegateCaller should not be the proxy admin owner");
+        vm.expectRevert("Ownable: caller is not the owner");
+        runUpgradeTestAndChecks(delegateCaller, true);
     }
 }
 
