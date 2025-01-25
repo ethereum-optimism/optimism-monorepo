@@ -749,7 +749,7 @@ jobs:
       - run:
           name: Setup rpc url
           command: |
-            echo "export ETH_RPC_URL=${<<parameters.fork_base_rpc>>}" >> BASH_ENV
+            echo "export ETH_RPC_URL=${<<parameters.fork_base_rpc>>}" >> $BASH_ENV
       - run:
           name: Run tests
           command: just test-upgrade
