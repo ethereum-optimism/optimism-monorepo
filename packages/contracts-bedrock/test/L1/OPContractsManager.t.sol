@@ -454,6 +454,32 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
     }
+
+    function test_permissionedPrestateNotSet_reverts() public {
+        opChainConfigs[0].permissionedDisputeGamePrestateHash = Claim.wrap(bytes32(0));
+        address delegateCaller = makeAddr("delegateCaller");
+        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.PERMISSIONED_CANNON))
+        );
+        DelegateCaller(delegateCaller).dcForward(
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
+        );
+    }
+
+    function test_permissionlessPrestateNotSet_reverts() public {
+        opChainConfigs[0].permissionlessDisputeGamePrestateHash = Claim.wrap(bytes32(0));
+        address delegateCaller = makeAddr("delegateCaller");
+        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
+        vm.expectRevert(
+            abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON))
+        );
+        DelegateCaller(delegateCaller).dcForward(
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
+        );
+    }
 }
 
 contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {

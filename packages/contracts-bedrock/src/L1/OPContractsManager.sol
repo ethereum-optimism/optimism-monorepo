@@ -234,6 +234,9 @@ contract OPContractsManager is ISemver {
     /// @notice Thrown when the SuperchainProxyAdmin does not match the SuperchainConfig's admin.
     error SuperchainProxyAdminMismatch();
 
+    /// @notice Thrown when a prestate is not set for a game.
+    error PrestateNotSet(GameType gameType);
+
     // -------- Methods --------
 
     constructor(
@@ -1091,11 +1094,9 @@ contract OPContractsManager is ISemver {
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
-            // TODO: custom error
-            require(
-                Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) != bytes32(0),
-                "No absolutePrestate for permissioned game"
-            );
+            if (Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) == bytes32(0)) {
+                revert PrestateNotSet(GameTypes.PERMISSIONED_CANNON);
+            }
 
             // modify the params to set the permissioned game specific absolutePrestate
             params.absolutePrestate = _opChain.permissionedDisputeGamePrestateHash;
@@ -1111,11 +1112,9 @@ contract OPContractsManager is ISemver {
                 )
             );
         } else {
-            // TODO: custom error
-            require(
-                Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) != bytes32(0),
-                "No absolutePrestate for permissionless game"
-            );
+            if (Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) == bytes32(0)) {
+                revert PrestateNotSet(GameTypes.CANNON);
+            }
 
             // modify the params to set the permissionless game specific absolutePrestate
             params.absolutePrestate = _opChain.permissionlessDisputeGamePrestateHash;

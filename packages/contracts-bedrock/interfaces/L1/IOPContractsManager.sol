@@ -208,6 +208,8 @@ interface IOPContractsManager {
 
     error SuperchainProxyAdminMismatch();
 
+    error PrestateNotSet(GameType gameType);
+
     // -------- Methods --------
 
     function __constructor__(
