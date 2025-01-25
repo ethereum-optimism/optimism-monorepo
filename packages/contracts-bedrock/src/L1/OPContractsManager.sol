@@ -267,13 +267,13 @@ contract OPContractsManager is ISemver {
         // The AddressManager is used to store the implementation for the L1CrossDomainMessenger
         // due to it's usage of the legacy ResolvedDelegateProxy.
         output.addressManager = IAddressManager(
-            Blueprint.deployFrom(
-                blueprint.addressManager, computeSalt(l2ChainId, saltMixer, "AddressManager"), abi.encode()
-            )
+            Blueprint.deployFrom(blueprint.addressManager, computeSalt(l2ChainId, saltMixer, "AddressManager"), hex"")
         );
         output.opChainProxyAdmin = IProxyAdmin(
             Blueprint.deployFrom(
-                blueprint.proxyAdmin, computeSalt(l2ChainId, saltMixer, "ProxyAdmin"), abi.encode(address(this))
+                blueprint.proxyAdmin,
+                computeSalt(l2ChainId, saltMixer, "ProxyAdmin"),
+                bytes.concat(bytes32(uint256(uint160(address(address(this))))))
             )
         );
         output.opChainProxyAdmin.setAddressManager(output.addressManager);
@@ -301,7 +301,7 @@ contract OPContractsManager is ISemver {
                 Blueprint.deployFrom(
                     blueprint.l1ChugSplashProxy,
                     computeSalt(l2ChainId, saltMixer, "L1StandardBridge"),
-                    abi.encode(output.opChainProxyAdmin)
+                    bytes.concat(bytes32(uint256(uint160(address(output.opChainProxyAdmin)))))
                 )
             )
         );
@@ -620,7 +620,11 @@ contract OPContractsManager is ISemver {
                     gameConfig.proxyAdmin,
                     address(outputs[i].delayedWETH),
                     thisOPCM.implementations().delayedWETHImpl,
-                    abi.encodeCall(IDelayedWETH.initialize, (gameConfig.proxyAdmin.owner(), superchainConfig))
+                    bytes.concat(
+                        IDelayedWETH.initialize.selector,
+                        bytes32(uint256(uint160(address(gameConfig.proxyAdmin.owner())))),
+                        bytes32(uint256(uint160(address(superchainConfig))))
+                    )
                 );
             } else {
                 outputs[i].delayedWETH = gameConfig.delayedWETH;
@@ -744,7 +748,9 @@ contract OPContractsManager is ISemver {
         returns (address)
     {
         bytes32 salt = computeSalt(_l2ChainId, _saltMixer, _contractName);
-        return Blueprint.deployFrom(thisOPCM.blueprints().proxy, salt, abi.encode(_proxyAdmin));
+        return Blueprint.deployFrom(
+            thisOPCM.blueprints().proxy, salt, bytes.concat(bytes32(uint256(uint160(address((_proxyAdmin))))))
+        );
     }
 
     // -------- Initializer Encoding --------
@@ -756,7 +762,11 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(IL1ERC721Bridge.initialize, (_output.l1CrossDomainMessengerProxy, superchainConfig));
+        return bytes.concat(
+            IL1ERC721Bridge.initialize.selector,
+            bytes32(uint256(uint160(address(_output.l1CrossDomainMessengerProxy)))),
+            bytes32(uint256(uint160(address(superchainConfig))))
+        );
     }
 
     /// @notice Helper method for encoding the OptimismPortal initializer data.
@@ -766,14 +776,12 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(
-            IOptimismPortal2.initialize,
-            (
-                _output.disputeGameFactoryProxy,
-                _output.systemConfigProxy,
-                superchainConfig,
-                GameTypes.PERMISSIONED_CANNON
-            )
+        return bytes.concat(
+            IOptimismPortal2.initialize.selector,
+            bytes32(uint256(uint160(address(_output.disputeGameFactoryProxy)))),
+            bytes32(uint256(uint160(address(_output.systemConfigProxy)))),
+            bytes32(uint256(uint160(address(superchainConfig)))),
+            bytes32(uint256(uint32(GameType.unwrap(GameTypes.PERMISSIONED_CANNON))))
         );
     }
 
@@ -813,7 +821,10 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(IOptimismMintableERC20Factory.initialize, (address(_output.l1StandardBridgeProxy)));
+        return bytes.concat(
+            IOptimismMintableERC20Factory.initialize.selector,
+            bytes32(uint256(uint160(address(address(_output.l1StandardBridgeProxy)))))
+        );
     }
 
     /// @notice Helper method for encoding the L1CrossDomainMessenger initializer data.
@@ -823,7 +834,11 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(IL1CrossDomainMessenger.initialize, (superchainConfig, _output.optimismPortalProxy));
+        return bytes.concat(
+            IL1CrossDomainMessenger.initialize.selector,
+            bytes32(uint256(uint160(address(address(superchainConfig))))),
+            bytes32(uint256(uint160(address(address(_output.optimismPortalProxy)))))
+        );
     }
 
     /// @notice Helper method for encoding the L1StandardBridge initializer data.
@@ -833,13 +848,17 @@ contract OPContractsManager is ISemver {
         virtual
         returns (bytes memory)
     {
-        return abi.encodeCall(IL1StandardBridge.initialize, (_output.l1CrossDomainMessengerProxy, superchainConfig));
+        return bytes.concat(
+            IL1StandardBridge.initialize.selector,
+            bytes32(uint256(uint160(address(address(_output.l1CrossDomainMessengerProxy))))),
+            bytes32(uint256(uint160(address(address(superchainConfig)))))
+        );
     }
 
     function encodeDisputeGameFactoryInitializer() internal view virtual returns (bytes memory) {
         // This contract must be the initial owner so we can set game implementations, then
         // ownership is transferred after.
-        return abi.encodeCall(IDisputeGameFactory.initialize, (address(this)));
+        return bytes.concat(IDisputeGameFactory.initialize.selector, bytes32(uint256(uint160(address(address(this))))));
     }
 
     function encodeAnchorStateRegistryInitializer(
@@ -859,7 +878,11 @@ contract OPContractsManager is ISemver {
     }
 
     function encodeDelayedWETHInitializer(DeployInput memory _input) internal view virtual returns (bytes memory) {
-        return abi.encodeCall(IDelayedWETH.initialize, (_input.roles.opChainProxyAdminOwner, superchainConfig));
+        return bytes.concat(
+            IDelayedWETH.initialize.selector,
+            bytes32(uint256(uint160(address(address(_input.roles.opChainProxyAdminOwner))))),
+            bytes32(uint256(uint160(address(address(superchainConfig)))))
+        );
     }
 
     function encodePermissionlessFDGConstructor(IFaultDisputeGame.GameConstructorParams memory _params)
