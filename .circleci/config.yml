@@ -820,8 +820,7 @@ jobs:
         default: "mainnet"
       fork_base_rpc:
         description: Fork Base RPC
-        type: string
-        default: "https://ci-mainnet-l1-archive.optimism.io"
+        type: env_var_name
       fork_block_number:
         description: Fork Block Number
         type: integer
@@ -856,13 +855,16 @@ jobs:
           name: Restore forked state
           key: forked-state-contracts-bedrock-tests-upgrade-{{ checksum "packages/contracts-bedrock/pinnedBlockNumber.txt" }}
       - run:
+          name: Setup rpc url
+          command: |
+            echo "export ETH_RPC_URL=${<<parameters.fork_base_rpc>>}" >> BASH_ENV
+      - run:
           name: Run tests
           command: just test-upgrade
           environment:
             FOUNDRY_FUZZ_SEED: 42424242
             FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
-            ETH_RPC_URL: <<parameters.fork_base_rpc>>
             FORK_OP_CHAIN: <<parameters.fork_op_chain>>
             FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
             FORK_BLOCK_NUMBER: <<parameters.fork_block_number>>
@@ -875,7 +877,6 @@ jobs:
             FOUNDRY_FUZZ_SEED: 42424242
             FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
-            ETH_RPC_URL: <<parameters.fork_base_rpc>>
             FORK_OP_CHAIN: <<parameters.fork_op_chain>>
             FORK_BASE_CHAIN: <<parameters.fork_base_chain>>
             FORK_BLOCK_NUMBER: <<parameters.fork_block_number>>
@@ -1469,13 +1470,15 @@ workflows:
           name: contracts-bedrock-tests-upgrade op-mainnet
           fork_op_chain: op
           fork_base_chain: mainnet
-          fork_base_rpc: https://ci-mainnet-l1-archive.optimism.io
+          fork_base_rpc: RPC_URL_ETHEREUM_MAINNET
           fork_block_number: 21589296
+          context:
+            - oplabs-rpc-urls
       - contracts-bedrock-tests-upgrade:
           name: contracts-bedrock-tests-upgrade op-sepolia
           fork_op_chain: op
           fork_base_chain: sepolia
-          fork_base_rpc: https://ci-sepolia-l1-archive.optimism.io
+          fork_base_rpc: CI_SEPOLIA_RPC
           fork_block_number: 7456138
       - contracts-bedrock-checks:
           requires:
