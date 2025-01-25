@@ -345,7 +345,7 @@ contract OPContractsManager is ISemver {
                         splitDepth: _input.disputeSplitDepth,
                         clockExtension: _input.disputeClockExtension,
                         maxClockDuration: _input.disputeMaxClockDuration,
-                        vm: IBigStepper(implementation.mipsImpl),
+                        vm: IBigStepper(implementation.mips64Impl),
                         weth: IDelayedWETH(payable(address(output.delayedWETHPermissionedGameProxy))),
                         anchorStateRegistry: IAnchorStateRegistry(address(output.anchorStateRegistryProxy)),
                         l2ChainId: _input.l2ChainId
