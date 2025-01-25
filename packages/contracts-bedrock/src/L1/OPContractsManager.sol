@@ -550,7 +550,7 @@ contract OPContractsManager is ISemver {
 
                 deployAndSetNewGameImpl({
                     _proxyAdmin: _opChains[i].proxyAdmin,
-                    _currentGame: IDisputeGame(address(permissionedDisputeGame)),
+                    _disputeGame: IDisputeGame(address(permissionedDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.PERMISSIONED_CANNON,
                     _implementations: impls,
@@ -567,7 +567,7 @@ contract OPContractsManager is ISemver {
             if (address(permissionlessDisputeGame) != address(0)) {
                 deployAndSetNewGameImpl({
                     _proxyAdmin: _opChains[i].proxyAdmin,
-                    _currentGame: IDisputeGame(address(permissionlessDisputeGame)),
+                    _disputeGame: IDisputeGame(address(permissionlessDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.CANNON,
                     _implementations: impls,
@@ -1061,7 +1061,7 @@ contract OPContractsManager is ISemver {
     /// 3. Set the new game as the implementation on the OptimismPortal
     function deployAndSetNewGameImpl(
         IProxyAdmin _proxyAdmin,
-        IDisputeGame _currentGame,
+        IDisputeGame _disputeGame,
         IAnchorStateRegistry _newAnchorStateRegistryProxy,
         GameType _gameType,
         Blueprints memory _blueprints,
@@ -1072,20 +1072,20 @@ contract OPContractsManager is ISemver {
         internal
     {
         // Get and upgrade the WETH proxy
-        IDelayedWETH delayedWethProxy = getWETH(IFaultDisputeGame(address(_currentGame)));
+        IDelayedWETH delayedWethProxy = getWETH(IFaultDisputeGame(address(_disputeGame)));
         upgradeTo(_proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
 
         // Get the constructor params for the game
         IFaultDisputeGame.GameConstructorParams memory params =
-            getGameConstructorParams(IFaultDisputeGame(address(_currentGame)));
+            getGameConstructorParams(IFaultDisputeGame(address(_disputeGame)));
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
         params.absolutePrestate = prestateHash;
         params.vm = IBigStepper(mips64);
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
-            address proposer = getProposer(IPermissionedDisputeGame(address(_currentGame)));
-            address challenger = getChallenger(IPermissionedDisputeGame(address(_currentGame)));
+            address proposer = getProposer(IPermissionedDisputeGame(address(_disputeGame)));
+            address challenger = getChallenger(IPermissionedDisputeGame(address(_disputeGame)));
             newGame = IDisputeGame(
                 Blueprint.deployFrom(
                     _blueprints.permissionedDisputeGame1,
