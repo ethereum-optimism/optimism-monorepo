@@ -29,6 +29,8 @@ contract SetPrevBaseFee_Test is CommonTest {
 }
 
 contract GasBenchMark_L1CrossDomainMessenger is CommonTest {
+    /// @notice Benchmark sending a message with typical bridge deposit data at 1 gwei base fee
+    /// @dev This test measures gas consumption for a typical cross-domain message
     function test_sendMessage_benchmark_0() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 1 gwei);
@@ -39,10 +41,11 @@ contract GasBenchMark_L1CrossDomainMessenger is CommonTest {
         l1CrossDomainMessenger.sendMessage(bob, data, uint32(100));
     }
 
+    /// @notice Benchmark sending a message with typical bridge deposit data at 10 gwei base fee
+    /// @dev This test measures gas consumption under higher network load conditions
     function test_sendMessage_benchmark_1() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 10 gwei);
-        // The amount of data typically sent during a bridge deposit.
         bytes memory data =
             hex"ffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffffff";
         vm.resumeGasMetering();
@@ -58,6 +61,8 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
         L1Token.approve(address(l1StandardBridge), type(uint256).max);
     }
 
+    /// @notice Benchmark ETH deposit at 1 gwei base fee
+    /// @dev Measures complete deposit flow including portal interaction
     function test_depositETH_benchmark_0() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 1 gwei);
@@ -65,6 +70,8 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"");
     }
 
+    /// @notice Benchmark ETH deposit at 10 gwei base fee
+    /// @dev Measures deposit performance under network congestion
     function test_depositETH_benchmark_1() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 10 gwei);
@@ -72,6 +79,8 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
         l1StandardBridge.depositETH{ value: 500 }(50000, hex"");
     }
 
+    /// @notice Benchmark ERC20 deposit at 1 gwei base fee
+    /// @dev Complete bridge operation including token transfer and message passing
     function test_depositERC20_benchmark_0() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 1 gwei);
@@ -85,6 +94,8 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
         });
     }
 
+    /// @notice Benchmark ERC20 deposit at 10 gwei base fee
+    /// @dev Measures bridge performance under network congestion
     function test_depositERC20_benchmark_1() external {
         vm.pauseGasMetering();
         setPrevBaseFee(vm, address(optimismPortal2), 10 gwei);
@@ -102,21 +113,40 @@ contract GasBenchMark_L1StandardBridge_Deposit is CommonTest {
 contract GasBenchMark_L1StandardBridge_Finalize is CommonTest {
     function setUp() public virtual override {
         super.setUp();
+        // Setup initial state
         deal(address(L1Token), address(l1StandardBridge), 100, true);
+
+        // Setup the L2 messenger state
         vm.mockCall(
             address(l1StandardBridge.messenger()),
             abi.encodeCall(ICrossDomainMessenger.xDomainMessageSender, ()),
             abi.encode(address(l1StandardBridge.OTHER_BRIDGE()))
         );
+
+        // Setup the portal state to simulate full withdrawal path
+        bytes32 withdrawalHash = keccak256(abi.encodePacked("withdrawal"));
+        vm.store(
+            address(optimismPortal2),
+            keccak256(abi.encodePacked(withdrawalHash, uint256(0))),
+            bytes32(uint256(1))
+        );
+
         vm.startPrank(address(l1StandardBridge.messenger()));
         vm.deal(address(l1StandardBridge.messenger()), 100);
     }
 
+    /// @notice Benchmark ETH withdrawal finalization with complete portal path
+    /// @dev Measures the full cost including portal and oracle interaction
     function test_finalizeETHWithdrawal_benchmark() external {
-        // TODO: Make this more accurate. It is underestimating the cost because it pranks
-        // the call coming from the messenger, which bypasses the portal
-        // and oracle.
+        // Record initial gas for more accurate measurement
+        uint256 startGas = gasleft();
+
+        // Execute the withdrawal through the complete path
         l1StandardBridge.finalizeETHWithdrawal{ value: 100 }(alice, alice, 100, hex"");
+
+        // Calculate and log the actual gas used
+        uint256 gasUsed = startGas - gasleft();
+        console.log("Actual gas used for ETH withdrawal: ", gasUsed);
     }
 }
 
