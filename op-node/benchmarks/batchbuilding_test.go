@@ -20,7 +20,7 @@ const (
 	// a really large target output size to ensure that the compressors are never full
 	targetOutput_huge = uint64(100_000_000_000)
 	// this target size was determiend by the devnet sepolia batcher's configuration
-	targetOuput_real = uint64(780120)
+	targetOutput_real = uint64(780120)
 )
 
 // compressorDetails is a helper struct to create compressors or supply the configuration for span batches
@@ -81,7 +81,7 @@ var (
 			name:         "ShadowCompressor",
 			compressorFn: compressor.NewShadowCompressor,
 			config: compressor.Config{
-				TargetOutputSize: targetOuput_real,
+				TargetOutputSize: targetOutput_real,
 				CompressionAlgo:  derive.Zlib,
 			},
 		},
@@ -240,14 +240,14 @@ func BenchmarkIncremental(b *testing.B) {
 		{derive.SpanBatchType, 5, 1, compressorDetails{
 			name: "RealThreshold",
 			config: compressor.Config{
-				TargetOutputSize: targetOuput_real,
+				TargetOutputSize: targetOutput_real,
 				CompressionAlgo:  derive.Zlib,
 			},
 		}},
 		{derive.SpanBatchType, 5, 1, compressorDetails{
 			name: "RealThreshold",
 			config: compressor.Config{
-				TargetOutputSize: targetOuput_real,
+				TargetOutputSize: targetOutput_real,
 				CompressionAlgo:  derive.Brotli10,
 			},
 		}},
