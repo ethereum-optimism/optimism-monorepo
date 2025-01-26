@@ -75,8 +75,8 @@ prepare-upgrade-env *ARGS : build-go-ffi
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|'AnchorStateRegistry_*'|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
-  FORK_RPC_URL=$ETH_RPC_URL
-  FORK_TEST=true
+  export FORK_RPC_URL=$ETH_RPC_URL
+  export FORK_TEST=true
   {{ARGS}} \
   --match-path "test/{L1,dispute}/**" \
   --no-match-contract "$NO_MATCH_CONTRACTS" \
