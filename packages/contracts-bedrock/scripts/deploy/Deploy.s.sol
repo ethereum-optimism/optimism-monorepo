@@ -284,12 +284,16 @@ contract Deploy is Deployer {
         dii.set(dii.mipsVersion.selector, Config.useMultithreadedCannon() ? 2 : 1);
         string memory release = "dev";
         dii.set(dii.l1ContractsRelease.selector, release);
-        dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
-        dii.set(
-            dii.upgradeController.selector,
-            IProxyAdmin(EIP1967Helper.getAdmin(artifacts.mustGetAddress("SuperchainConfigProxy"))).owner()
-        );
+
+        ISuperchainConfig superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
+        dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
+
+        address superchainProxyAdmin = EIP1967Helper.getAdmin(address(superchainConfig));
+        dii.set(dii.superchainProxyAdmin.selector, superchainProxyAdmin);
+
+        // I think this was a bug
+        dii.set(dii.upgradeController.selector, IProxyAdmin(superchainProxyAdmin).owner());
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());

@@ -6,6 +6,7 @@ import { DeployOPCM, DeployOPCMInput, DeployOPCMOutput } from "scripts/deploy/De
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 contract DeployOPCMInput_Test is Test {
     DeployOPCMInput dii;
@@ -214,6 +215,7 @@ contract DeployOPCMTest is Test {
 
     ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
     address superchainConfigImpl = makeAddr("superchainConfigImpl");
     address protocolVersionsImpl = makeAddr("protocolVersionsImpl");
     address upgradeController = makeAddr("upgradeController");
@@ -226,6 +228,7 @@ contract DeployOPCMTest is Test {
     function test_run_succeeds() public {
         doi.set(doi.superchainConfig.selector, address(superchainConfigProxy));
         doi.set(doi.protocolVersions.selector, address(protocolVersionsProxy));
+        doi.set(doi.superchainProxyAdmin.selector, address(superchainProxyAdmin));
         doi.set(doi.superchainConfigImpl.selector, address(superchainConfigImpl));
         doi.set(doi.protocolVersionsImpl.selector, address(protocolVersionsImpl));
         doi.set(doi.l1ContractsRelease.selector, "1.0.0");

@@ -144,9 +144,9 @@ contract OPContractsManager is ISemver {
 
     // -------- Constants and Variables --------
 
-    /// @custom:semver 1.0.0-beta.38
+    /// @custom:semver 1.0.0-beta.39
     function version() public pure virtual returns (string memory) {
-        return "1.0.0-beta.38";
+        return "1.0.0-beta.39";
     }
 
     /// @notice Address of the SuperchainConfig contract shared by all chains.
@@ -154,6 +154,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice Address of the ProtocolVersions contract shared by all chains.
     IProtocolVersions public immutable protocolVersions;
+
+    /// @notice Address of the SuperchainProxyAdmin contract shared by all chains.
+    IProxyAdmin public immutable superchainProxyAdmin;
 
     /// @notice L1 smart contracts release deployed by this version of OPCM. This is used in opcm to signal which
     /// version of the L1 smart contracts is deployed. It takes the format of `op-contracts/vX.Y.Z`.
@@ -241,6 +244,7 @@ contract OPContractsManager is ISemver {
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
@@ -251,7 +255,7 @@ contract OPContractsManager is ISemver {
         superchainConfig = _superchainConfig;
         protocolVersions = _protocolVersions;
         L1_CONTRACTS_RELEASE = _l1ContractsRelease;
-
+        superchainProxyAdmin = _superchainProxyAdmin;
         blueprint = _blueprints;
         implementation = _implementations;
         thisOPCM = this;
@@ -439,10 +443,9 @@ contract OPContractsManager is ISemver {
     }
 
     /// @notice Upgrades a set of chains to the latest implementation contracts
-    /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
     /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChainConfigs) external {
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
@@ -455,10 +458,15 @@ contract OPContractsManager is ISemver {
         Implementations memory impls = getImplementations();
         Blueprints memory bps = getBlueprints();
 
-        if (address(_superchainProxyAdmin) != address(0)) {
+        // If the SuperchainConfig is not already upgraded, upgrade it.
+        if (superchainProxyAdmin.getProxyImplementation(address(superchainConfig)) != impls.superchainConfigImpl) {
             // Attempt to upgrade. If the ProxyAdmin is not the SuperchainConfig's admin, this will revert.
-            upgradeTo(_superchainProxyAdmin, address(superchainConfig), impls.superchainConfigImpl);
-            upgradeTo(_superchainProxyAdmin, address(protocolVersions), impls.protocolVersionsImpl);
+            upgradeTo(superchainProxyAdmin, address(superchainConfig), impls.superchainConfigImpl);
+        }
+
+        // If the ProtocolVersions contract is not already upgraded, upgrade it.
+        if (superchainProxyAdmin.getProxyImplementation(address(protocolVersions)) != impls.protocolVersionsImpl) {
+            upgradeTo(superchainProxyAdmin, address(protocolVersions), impls.protocolVersionsImpl);
         }
 
         for (uint256 i = 0; i < _opChainConfigs.length; i++) {
@@ -1060,6 +1068,10 @@ contract OPContractsManager is ISemver {
     /// @notice Retrieves the blueprint addresses stored in this OPCM contract
     function getBlueprints() internal view returns (Blueprints memory) {
         return thisOPCM.blueprints();
+    }
+
+    function getProxyImplementation(IProxyAdmin _proxyAdmin, address _proxy) internal view returns (address) {
+        return _proxyAdmin.getProxyImplementation(_proxy);
     }
 
     /// @notice Deploys and sets a new dispute game implementation

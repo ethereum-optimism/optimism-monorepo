@@ -146,6 +146,9 @@ interface IOPContractsManager {
     /// @notice Address of the ProtocolVersions contract shared by all chains.
     function protocolVersions() external view returns (IProtocolVersions);
 
+    /// @notice Address of the ProxyAdmin contract shared by all chains.
+    function superchainProxyAdmin() external view returns (IProxyAdmin);
+
     /// @notice L1 smart contracts release deployed by this version of OPCM. This is used in opcm to signal which
     /// version of the L1 smart contracts is deployed. It takes the format of `op-contracts/vX.Y.Z`.
     function l1ContractsRelease() external view returns (string memory);
@@ -214,6 +217,7 @@ interface IOPContractsManager {
     function __constructor__(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
@@ -224,9 +228,8 @@ interface IOPContractsManager {
     function deploy(DeployInput calldata _input) external returns (DeployOutput memory);
 
     /// @notice Upgrades the implementation of all proxies in the specified chains
-    /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
     /// @param _opChainConfigs The chains to upgrade
-    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChainConfigs) external;
+    function upgrade(OpChainConfig[] memory _opChainConfigs) external;
 
     /// @notice addGameType deploys a new dispute game and links it to the DisputeGameFactory. The inputted _gameConfigs
     /// must be added in ascending GameType order.
