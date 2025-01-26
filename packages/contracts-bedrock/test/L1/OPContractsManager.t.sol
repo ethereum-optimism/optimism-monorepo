@@ -455,6 +455,7 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     function test_upgrade_permissionedPrestateNotSet_reverts() public {
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
+        opChainConfigs[0].permissionedDisputeGamePrestateHash = Claim.wrap(bytes32(0));
         vm.expectRevert(
             abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.PERMISSIONED_CANNON))
         );
@@ -464,11 +465,11 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 
     function test_upgrade_permissionlessPrestateNotSet_reverts() public {
-        address delegateCaller = makeAddr("delegateCaller");
-        vm.etch(delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+        opChainConfigs[0].permissionlessDisputeGamePrestateHash = Claim.wrap(bytes32(0));
 
         vm.expectRevert(abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON)));
-        DelegateCaller(delegateCaller).dcForward(
+        DelegateCaller(upgrader).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
     }
