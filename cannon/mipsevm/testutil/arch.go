@@ -58,7 +58,7 @@ func RandomizeWordAndSetUint32(mem *memory.Memory, addr Word, val uint32, random
 	exec.StoreSubWord(mem, addr, 4, Word(val), new(exec.NoopMemoryTracker))
 }
 
-// ToSignedInteger converts the unsigend Word to a SignedInteger.
+// ToSignedInteger converts the unsigned Word to a SignedInteger.
 // Useful for avoiding Go compiler warnings for literals that don't fit in a signed type
 func ToSignedInteger(x Word) arch.SignedInteger {
 	return arch.SignedInteger(x)
