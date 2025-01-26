@@ -338,7 +338,7 @@ func TestCLSync(t *testing.T) {
 		// We just hold on to what payloads there are in the queue.
 		require.NotNil(t, cl.unsafePayloads.Peek(), "no pop because temporary error")
 
-		// Pretend we are still stuck on the same forkchoice. The CL-sync will retry sneding the payload.
+		// Pretend we are still stuck on the same forkchoice. The CL-sync will retry sending the payload.
 		emitter.ExpectOnce(engine.ProcessUnsafePayloadEvent{Envelope: payloadA1})
 		cl.OnEvent(engine.ForkchoiceUpdateEvent{
 			UnsafeL2Head:    refA0,
