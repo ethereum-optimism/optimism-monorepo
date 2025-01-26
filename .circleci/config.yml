@@ -745,19 +745,10 @@ jobs:
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
           when: on_fail
-      - run:
-          name: Lint forge test names
-          command: just lint-forge-tests-check-no-build
-          working_directory: packages/contracts-bedrock
       - codecov/upload:
           disable_search: true
           files: ./packages/contracts-bedrock/lcov-all.info
           flags: contracts-bedrock-coverage
-      - save_cache:
-          name: Save Go build cache
-          key: golang-build-cache-contracts-bedrock-coverage-{{ checksum "go.sum" }}
-          paths:
-            - "/root/.cache/go-build"
       - notify-failures-on-develop
 
   contracts-bedrock-tests-upgrade:
