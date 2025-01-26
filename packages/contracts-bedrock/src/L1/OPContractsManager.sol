@@ -441,9 +441,9 @@ contract OPContractsManager is ISemver {
 
     /// @notice Upgrades a set of chains to the latest implementation contracts
     /// @param _superchainProxyAdmin The proxy admin that owns all of the proxies
-    /// @param _opChains Array of OpChain structs, one per chain to upgrade
+    /// @param _opChainConfigs Array of OpChain structs, one per chain to upgrade
     /// @dev This function is intended to be called via DELEGATECALL from the Upgrade Controller Safe
-    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChains) external {
+    function upgrade(IProxyAdmin _superchainProxyAdmin, OpChainConfig[] memory _opChainConfigs) external {
         if (address(this) == address(thisOPCM)) revert OnlyDelegatecall();
 
         // If this is delegatecalled by the upgrade controller, set isRC to false first, else, continue execution.
@@ -462,30 +462,34 @@ contract OPContractsManager is ISemver {
             upgradeTo(_superchainProxyAdmin, address(protocolVersions), impls.protocolVersionsImpl);
         }
 
-        for (uint256 i = 0; i < _opChains.length; i++) {
+        for (uint256 i = 0; i < _opChainConfigs.length; i++) {
             // After Upgrade 13, we will be able to use systemConfigProxy.getAddresses() here.
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
-                l1CrossDomainMessenger: _opChains[i].systemConfigProxy.l1CrossDomainMessenger(),
-                l1ERC721Bridge: _opChains[i].systemConfigProxy.l1ERC721Bridge(),
-                l1StandardBridge: _opChains[i].systemConfigProxy.l1StandardBridge(),
-                disputeGameFactory: address(getDisputeGameFactory(_opChains[i].systemConfigProxy)),
-                optimismPortal: _opChains[i].systemConfigProxy.optimismPortal(),
-                optimismMintableERC20Factory: _opChains[i].systemConfigProxy.optimismMintableERC20Factory()
+                l1CrossDomainMessenger: _opChainConfigs[i].systemConfigProxy.l1CrossDomainMessenger(),
+                l1ERC721Bridge: _opChainConfigs[i].systemConfigProxy.l1ERC721Bridge(),
+                l1StandardBridge: _opChainConfigs[i].systemConfigProxy.l1StandardBridge(),
+                disputeGameFactory: address(getDisputeGameFactory(_opChainConfigs[i].systemConfigProxy)),
+                optimismPortal: _opChainConfigs[i].systemConfigProxy.optimismPortal(),
+                optimismMintableERC20Factory: _opChainConfigs[i].systemConfigProxy.optimismMintableERC20Factory()
             });
 
             if (IOptimismPortal2(payable(opChainAddrs.optimismPortal)).superchainConfig() != superchainConfig) {
-                revert SuperchainConfigMismatch(_opChains[i].systemConfigProxy);
+                revert SuperchainConfigMismatch(_opChainConfigs[i].systemConfigProxy);
             }
 
             // -------- Upgrade Contracts Stored in SystemConfig --------
-            upgradeTo(_opChains[i].proxyAdmin, address(_opChains[i].systemConfigProxy), impls.systemConfigImpl);
-            upgradeTo(_opChains[i].proxyAdmin, opChainAddrs.l1CrossDomainMessenger, impls.l1CrossDomainMessengerImpl);
-            upgradeTo(_opChains[i].proxyAdmin, opChainAddrs.l1ERC721Bridge, impls.l1ERC721BridgeImpl);
-            upgradeTo(_opChains[i].proxyAdmin, opChainAddrs.l1StandardBridge, impls.l1StandardBridgeImpl);
-            upgradeTo(_opChains[i].proxyAdmin, opChainAddrs.disputeGameFactory, impls.disputeGameFactoryImpl);
-            upgradeTo(_opChains[i].proxyAdmin, opChainAddrs.optimismPortal, impls.optimismPortalImpl);
             upgradeTo(
-                _opChains[i].proxyAdmin,
+                _opChainConfigs[i].proxyAdmin, address(_opChainConfigs[i].systemConfigProxy), impls.systemConfigImpl
+            );
+            upgradeTo(
+                _opChainConfigs[i].proxyAdmin, opChainAddrs.l1CrossDomainMessenger, impls.l1CrossDomainMessengerImpl
+            );
+            upgradeTo(_opChainConfigs[i].proxyAdmin, opChainAddrs.l1ERC721Bridge, impls.l1ERC721BridgeImpl);
+            upgradeTo(_opChainConfigs[i].proxyAdmin, opChainAddrs.l1StandardBridge, impls.l1StandardBridgeImpl);
+            upgradeTo(_opChainConfigs[i].proxyAdmin, opChainAddrs.disputeGameFactory, impls.disputeGameFactoryImpl);
+            upgradeTo(_opChainConfigs[i].proxyAdmin, opChainAddrs.optimismPortal, impls.optimismPortalImpl);
+            upgradeTo(
+                _opChainConfigs[i].proxyAdmin,
                 opChainAddrs.optimismMintableERC20Factory,
                 impls.optimismMintableERC20FactoryImpl
             );
@@ -516,7 +520,7 @@ contract OPContractsManager is ISemver {
                 newAnchorStateRegistryProxy = IAnchorStateRegistry(
                     deployProxy({
                         _l2ChainId: l2ChainId,
-                        _proxyAdmin: _opChains[i].proxyAdmin,
+                        _proxyAdmin: _opChainConfigs[i].proxyAdmin,
                         _saltMixer: "v2.0.0",
                         _contractName: "AnchorStateRegistry"
                     })
@@ -533,7 +537,7 @@ contract OPContractsManager is ISemver {
                     OutputRoot memory startingAnchorRoot = OutputRoot({ root: root, l2BlockNumber: l2BlockNumber });
 
                     upgradeToAndCall(
-                        _opChains[i].proxyAdmin,
+                        _opChainConfigs[i].proxyAdmin,
                         address(newAnchorStateRegistryProxy),
                         impls.anchorStateRegistryImpl,
                         abi.encodeCall(
@@ -554,7 +558,7 @@ contract OPContractsManager is ISemver {
                     _disputeGame: IDisputeGame(address(permissionedDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.PERMISSIONED_CANNON,
-                    _opChain: _opChains[i],
+                    _opChain: _opChainConfigs[i],
                     _implementations: impls,
                     _blueprints: bps,
                     _opChainAddrs: opChainAddrs
@@ -571,7 +575,7 @@ contract OPContractsManager is ISemver {
                     _disputeGame: IDisputeGame(address(permissionlessDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.CANNON,
-                    _opChain: _opChains[i],
+                    _opChain: _opChainConfigs[i],
                     _implementations: impls,
                     _blueprints: bps,
                     _opChainAddrs: opChainAddrs
@@ -580,7 +584,7 @@ contract OPContractsManager is ISemver {
 
             // Emit the upgraded event with the address of the caller. Since this will be a delegatecall,
             // the caller will be the value of the ADDRESS opcode.
-            emit Upgraded(l2ChainId, _opChains[i].systemConfigProxy, address(this));
+            emit Upgraded(l2ChainId, _opChainConfigs[i].systemConfigProxy, address(this));
         }
     }
 

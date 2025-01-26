@@ -127,7 +127,7 @@
           },
           {
             "internalType": "address",
-            "name": "mipsImpl",
+            "name": "mips64Impl",
             "type": "address"
           }
         ],
@@ -574,7 +574,7 @@
           },
           {
             "internalType": "address",
-            "name": "mipsImpl",
+            "name": "mips64Impl",
             "type": "address"
           }
         ],
@@ -669,10 +669,20 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
+          },
+          {
+            "internalType": "Claim",
+            "name": "permissionedDisputeGamePrestateHash",
+            "type": "bytes32"
+          },
+          {
+            "internalType": "Claim",
+            "name": "permissionlessDisputeGamePrestateHash",
+            "type": "bytes32"
           }
         ],
-        "internalType": "struct OPContractsManager.OpChain[]",
-        "name": "_opChains",
+        "internalType": "struct OPContractsManager.OpChainConfig[]",
+        "name": "_opChainConfigs",
         "type": "tuple[]"
       }
     ],
@@ -848,6 +858,17 @@
   {
     "inputs": [],
     "name": "OnlyUpgradeController",
+    "type": "error"
+  },
+  {
+    "inputs": [
+      {
+        "internalType": "GameType",
+        "name": "gameType",
+        "type": "uint32"
+      }
+    ],
+    "name": "PrestateNotSet",
     "type": "error"
   },
   {
