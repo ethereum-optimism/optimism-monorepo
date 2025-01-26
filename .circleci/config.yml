@@ -748,7 +748,7 @@ jobs:
       - codecov/upload:
           disable_search: true
           files: ./packages/contracts-bedrock/lcov-all.info
-          flags: contracts-bedrock-coverage
+          flags: contracts-bedrock-tests
       - notify-failures-on-develop
 
   contracts-bedrock-tests-upgrade:
