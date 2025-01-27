@@ -169,9 +169,9 @@ func (l AccountProofHint) Hint() string {
 }
 
 type PayloadWitnessHint struct {
-	ParentBlockHash   common.Hash           `json:"parentBlockHash"`
-	PayloadAttributes eth.PayloadAttributes `json:"payloadAttributes"`
-	ChainID           *eth.ChainID          `json:"chainID,omitempty"`
+	ParentBlockHash   common.Hash            `json:"parentBlockHash"`
+	PayloadAttributes *eth.PayloadAttributes `json:"payloadAttributes"`
+	ChainID           *eth.ChainID           `json:"chainID,omitempty"`
 }
 
 var _ preimage.Hint = PayloadWitnessHint{}

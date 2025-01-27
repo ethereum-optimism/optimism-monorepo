@@ -100,17 +100,8 @@ func (o *OracleEngine) GetPayload(ctx context.Context, payloadInfo eth.PayloadIn
 func (o *OracleEngine) ForkchoiceUpdate(ctx context.Context, state *eth.ForkchoiceState, attr *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
 	if attr != nil {
 		o.hinter.Hint(PayloadWitnessHint{
-			ParentBlockHash: state.HeadBlockHash,
-			PayloadAttributes: eth.PayloadAttributes{
-				PrevRandao:            attr.PrevRandao,
-				Timestamp:             attr.Timestamp,
-				SuggestedFeeRecipient: attr.SuggestedFeeRecipient,
-				Transactions:          attr.Transactions,
-				GasLimit:              attr.GasLimit,
-				EIP1559Params:         attr.EIP1559Params,
-				ParentBeaconBlockRoot: attr.ParentBeaconBlockRoot,
-				NoTxPool:              true,
-			},
+			ParentBlockHash:   state.HeadBlockHash,
+			PayloadAttributes: attr,
 		})
 	}
 

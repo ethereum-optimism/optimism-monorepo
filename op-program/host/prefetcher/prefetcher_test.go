@@ -790,7 +790,7 @@ func TestFallbackWhenExperimentalFails(t *testing.T) {
 
 	defer l2Cls.sources[defaultChainID].AssertExpectations(t)
 	l2Cls.sources[defaultChainID].ExpectNodeByHash(hash, node, nil)
-	prefetcher.Hint(l2.PayloadWitnessHint{ParentBlockHash: common.Hash{0x1}, PayloadAttributes: eth.PayloadAttributes{}}.Hint())
+	prefetcher.Hint(l2.PayloadWitnessHint{ParentBlockHash: common.Hash{0x1}, PayloadAttributes: &eth.PayloadAttributes{}}.Hint())
 
 	// first should fail, but should succeed after retry
 	prefetcher.Hint(l2.StateNodeHint{Hash: hash, ChainID: defaultChainID}.Hint())

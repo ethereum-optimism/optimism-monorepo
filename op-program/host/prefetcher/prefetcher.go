@@ -191,7 +191,7 @@ func (p *Prefetcher) bulkPrefetch(ctx context.Context, hint string) error {
 			return err
 		}
 
-		result, err := cl.PayloadExecutionWitness(ctx, hint.ParentBlockHash, hint.PayloadAttributes)
+		result, err := cl.PayloadExecutionWitness(ctx, hint.ParentBlockHash, *hint.PayloadAttributes)
 		if err != nil {
 			return fmt.Errorf("failed to fetch L2 execution witness for block with parent %v: %w", hint.ParentBlockHash, err)
 		}
