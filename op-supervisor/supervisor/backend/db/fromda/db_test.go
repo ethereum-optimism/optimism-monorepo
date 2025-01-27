@@ -761,7 +761,10 @@ func TestInvalidateAndReplace(t *testing.T) {
 		replacement := l2Ref2
 		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
 		require.NotEqual(t, l2Ref2.Hash, replacement.Hash) // different L2 block as replacement
-		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+		result, err := db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash)
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), result.Derived.ID())
+		require.Equal(t, l1Block1.ID(), result.DerivedFrom.ID())
 
 		pair, err = db.Latest()
 		require.NoError(t, err)
@@ -827,7 +830,10 @@ func TestInvalidateAndReplaceNonFirst(t *testing.T) {
 		replacement := l2Ref3
 		replacement.Hash = common.Hash{0xff, 0xff, 0xff}
 		require.NotEqual(t, l2Ref3.Hash, replacement.Hash) // different L2 block as replacement
-		require.NoError(t, db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash))
+		result, err := db.ReplaceInvalidatedBlock(replacement, invalidated.Derived.Hash)
+		require.NoError(t, err)
+		require.Equal(t, replacement.ID(), result.Derived.ID())
+		require.Equal(t, l1Block2.ID(), result.DerivedFrom.ID())
 
 		pair, err = db.Latest()
 		require.NoError(t, err)
@@ -855,5 +861,10 @@ func TestInvalidateAndReplaceNonFirst(t *testing.T) {
 		require.NoError(t, err)
 		require.Equal(t, replacement.ID(), entryBlockRepl.Derived.ID())
 		require.Equal(t, l1Block2.ID(), entryBlockRepl.DerivedFrom.ID())
+
+		// Check if canonical chain is represented accurately
+		require.NoError(t, db.IsDerived(l2Ref2.ID()), "common block 2 is valid part of canonical chain")
+		require.NoError(t, db.IsDerived(replacement.ID()), "replacement is valid part of canonical chain")
+		require.ErrorIs(t, db.IsDerived(l2Ref3.ID()), types.ErrConflict, "invalidated block is not valid in canonical chain")
 	})
 }

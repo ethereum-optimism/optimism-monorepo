@@ -42,8 +42,8 @@ func setupTwoChains() (*staticConfigSource, *eth.SuperV1, *stubTasks) {
 	agreedSuperRoot := &eth.SuperV1{
 		Timestamp: rollupCfg1.Genesis.L2Time + 1234,
 		Chains: []eth.ChainIDAndOutput{
-			{ChainID: rollupCfg1.L2ChainID.Uint64(), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x11}})},
-			{ChainID: rollupCfg2.L2ChainID.Uint64(), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}})},
+			{ChainID: eth.ChainIDFromBig(rollupCfg1.L2ChainID), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x11}})},
+			{ChainID: eth.ChainIDFromBig(rollupCfg2.L2ChainID), Output: eth.OutputRoot(&eth.OutputV0{BlockHash: common.Hash{0x22}})},
 		},
 	}
 	configSource := &staticConfigSource{
@@ -314,11 +314,11 @@ func runConsolidationTestCase(t *testing.T, testCase consolidationTestCase) {
 		Timestamp: agreedSuperRoot.Timestamp + 1,
 		Chains: []eth.ChainIDAndOutput{
 			{
-				ChainID: configA.L2ChainID.Uint64(),
+				ChainID: eth.ChainIDFromBig(configA.L2ChainID),
 				Output:  finalRoots[0],
 			},
 			{
-				ChainID: configB.L2ChainID.Uint64(),
+				ChainID: eth.ChainIDFromBig(configB.L2ChainID),
 				Output:  finalRoots[1],
 			},
 		},
@@ -511,18 +511,18 @@ type staticConfigSource struct {
 	chainConfigs []*params.ChainConfig
 }
 
-func (s *staticConfigSource) RollupConfig(chainID uint64) (*rollup.Config, error) {
+func (s *staticConfigSource) RollupConfig(chainID eth.ChainID) (*rollup.Config, error) {
 	for _, cfg := range s.rollupCfgs {
-		if cfg.L2ChainID.Uint64() == chainID {
+		if eth.ChainIDFromBig(cfg.L2ChainID) == chainID {
 			return cfg, nil
 		}
 	}
 	return nil, fmt.Errorf("no rollup config found for chain %d", chainID)
 }
 
-func (s *staticConfigSource) ChainConfig(chainID uint64) (*params.ChainConfig, error) {
+func (s *staticConfigSource) ChainConfig(chainID eth.ChainID) (*params.ChainConfig, error) {
 	for _, cfg := range s.chainConfigs {
-		if cfg.ChainID.Uint64() == chainID {
+		if eth.ChainIDFromBig(cfg.ChainID) == chainID {
 			return cfg, nil
 		}
 	}

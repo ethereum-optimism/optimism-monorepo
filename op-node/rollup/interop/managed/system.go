@@ -23,6 +23,8 @@ import (
 type L2Source interface {
 	L2BlockRefByHash(ctx context.Context, hash common.Hash) (eth.L2BlockRef, error)
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
+	BlockRefByHash(ctx context.Context, hash common.Hash) (eth.BlockRef, error)
+	PayloadByHash(ctx context.Context, hash common.Hash) (*eth.ExecutionPayloadEnvelope, error)
 	BlockRefByNumber(ctx context.Context, num uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (eth.BlockInfo, types.Receipts, error)
 	OutputV0AtBlock(ctx context.Context, blockHash common.Hash) (*eth.OutputV0, error)
@@ -132,8 +134,21 @@ func (m *ManagedMode) OnEvent(ev event.Event) bool {
 			DerivedFrom: x.L1Ref,
 			Derived:     x.LastL2.BlockRef(),
 		}})
+	case engine.InteropReplacedBlockEvent:
+		m.log.Info("Replaced block", "replacement", x.Ref)
+		out, err := DecodeInvalidatedBlockTxFromReplacement(x.Envelope.ExecutionPayload.Transactions)
+		if err != nil {
+			m.log.Error("Failed to parse replacement block", "err", err)
+			return true
+		}
+		m.events.Send(&supervisortypes.ManagedEvent{ReplaceBlock: &supervisortypes.BlockReplacement{
+			Replacement: x.Ref,
+			Invalidated: out.BlockHash,
+		}})
+	default:
+		return false
 	}
-	return false
+	return true
 }
 
 func (m *ManagedMode) PullEvent() (*supervisortypes.ManagedEvent, error) {
@@ -186,6 +201,36 @@ func (m *ManagedMode) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return nil
 }
 
+func (m *ManagedMode) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
+	m.log.Info("Invalidating block", "block", seal)
+
+	// Fetch the block we invalidate, so we can re-use the attributes that stay.
+	block, err := m.l2.PayloadByHash(ctx, seal.Hash)
+	if err != nil { // cannot invalidate if it wasn't there.
+		return fmt.Errorf("failed to get block: %w", err)
+	}
+	parentRef, err := m.l2.L2BlockRefByHash(ctx, block.ExecutionPayload.ParentHash)
+	if err != nil {
+		return fmt.Errorf("failed to get parent of invalidated block: %w", err)
+	}
+
+	ref := block.ExecutionPayload.BlockRef()
+
+	// Create the attributes that we build the replacement block with.
+	attributes := AttributesToReplaceInvalidBlock(block)
+	annotated := &derive.AttributesWithParent{
+		Attributes:  attributes,
+		Parent:      parentRef,
+		Concluding:  true,
+		DerivedFrom: engine.ReplaceBlockDerivedFrom,
+	}
+
+	m.emitter.Emit(engine.InteropInvalidateBlockEvent{Invalidated: ref, Attributes: annotated})
+
+	// The node will send an event once the replacement is ready
+	return nil
+}
+
 func (m *ManagedMode) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	l1Ref, err := m.l1.L1BlockRefByHash(ctx, m.cfg.Genesis.L1.Hash)
 	if err != nil {
@@ -229,7 +274,7 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 				Data:    name,
 			}
 		}
-		if result.Hash != unsafe.Hash {
+		if result.Hash != ref.Hash {
 			return eth.L2BlockRef{}, &gethrpc.JsonError{
 				Code:    ConflictingBlockRPCErrCode,
 				Message: "Conflicting block",
@@ -243,16 +288,16 @@ func (m *ManagedMode) Reset(ctx context.Context, unsafe, safe, finalized eth.Blo
 	if err != nil {
 		return err
 	}
-	safeRef, err := verify(unsafe, "safe")
+	safeRef, err := verify(safe, "safe")
 	if err != nil {
 		return err
 	}
-	finalizedRef, err := verify(unsafe, "finalized")
+	finalizedRef, err := verify(finalized, "finalized")
 	if err != nil {
 		return err
 	}
 
-	m.emitter.Emit(engine.ForceEngineResetEvent{
+	m.emitter.Emit(rollup.ForceResetEvent{
 		Unsafe:    unsafeRef,
 		Safe:      safeRef,
 		Finalized: finalizedRef,

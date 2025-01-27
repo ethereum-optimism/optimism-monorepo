@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/retryproxy"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum-optimism/optimism/op-service/testutils/anvil"
-	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
 	"github.com/stretchr/testify/require"
 )
@@ -85,8 +84,8 @@ func testImplementations(t *testing.T, forkRPCURL string) {
 			ProofMaturityDelaySeconds:       standard.ProofMaturityDelaySeconds,
 			DisputeGameFinalityDelaySeconds: standard.DisputeGameFinalityDelaySeconds,
 			MIPSVersion:                     1,
-			SuperchainConfigProxy:           common.Address(*superchain.Config.SuperchainConfigAddr),
-			ProtocolVersionsProxy:           common.Address(*superchain.Config.ProtocolVersionsAddr),
+			SuperchainConfigProxy:           superchain.SuperchainConfigAddr,
+			ProtocolVersionsProxy:           superchain.ProtocolVersionsAddr,
 			UpgradeController:               proxyAdminOwner,
 			UseInterop:                      false,
 		})

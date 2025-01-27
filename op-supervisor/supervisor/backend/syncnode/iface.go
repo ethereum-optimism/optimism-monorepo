@@ -39,6 +39,8 @@ type SyncControl interface {
 	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
 	UpdateFinalized(ctx context.Context, id eth.BlockID) error
 
+	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error
+
 	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
 	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)

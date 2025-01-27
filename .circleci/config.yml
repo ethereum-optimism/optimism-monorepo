@@ -3,7 +3,7 @@ version: 2.1
 parameters:
   ci_builder_image:
     type: string
-    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.56.0
+    default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder:v0.59.0
   ci_builder_rust_image:
     type: string
     default: us-docker.pkg.dev/oplabs-tools-artifacts/images/ci-builder-rust:latest
@@ -166,7 +166,7 @@ commands:
           command: |
             git reset --hard
             just <<parameters.command>>
-            git diff --quiet --exit-code
+            git diff --exit-code
           working_directory: packages/contracts-bedrock
           when: always
           environment:
@@ -1171,14 +1171,13 @@ jobs:
       - notify-failures-on-develop
 
   publish-contract-artifacts:
-    docker:
-      - image: <<pipeline.parameters.ci_builder_image>>
-    resource_class: xlarge
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
     steps:
       - gcp-cli/install
       - gcp-oidc-authenticate:
-          gcp_cred_config_file_path: /root/gcp_cred_config.json
-          oidc_token_file_path: /root/oidc_token.json
+          gcp_cred_config_file_path: /tmp/gcp_cred_config.json
+          oidc_token_file_path: /tmp/oidc_token.json
           project_id: GCP_TOOLS_ARTIFACTS_PROJECT_ID
           service_account_email: GCP_CONTRACTS_PUBLISHER_SERVICE_ACCOUNT_EMAIL
       - checkout
@@ -1287,6 +1286,9 @@ workflows:
           test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
+          # need this requires to ensure that all FFI JSONs exist
+          requires:
+            - contracts-bedrock-build
       - contracts-bedrock-tests-upgrade:
           name: contracts-bedrock-tests-upgrade
       - contracts-bedrock-checks:

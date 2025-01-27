@@ -23,7 +23,7 @@ func TestResponseToSuper(t *testing.T) {
 		expected := &eth.SuperV1{
 			Timestamp: 4978924,
 			Chains: []eth.ChainIDAndOutput{
-				{ChainID: 2987, Output: eth.Bytes32{0x88}},
+				{ChainID: eth.ChainIDFromUInt64(2987), Output: eth.Bytes32{0x88}},
 			},
 		}
 		actual := responseToSuper(input)
@@ -50,8 +50,8 @@ func TestResponseToSuper(t *testing.T) {
 		expected := &eth.SuperV1{
 			Timestamp: 4978924,
 			Chains: []eth.ChainIDAndOutput{
-				{ChainID: 100, Output: eth.Bytes32{0x10}},
-				{ChainID: 2987, Output: eth.Bytes32{0x88}},
+				{ChainID: eth.ChainIDFromUInt64(100), Output: eth.Bytes32{0x10}},
+				{ChainID: eth.ChainIDFromUInt64(2987), Output: eth.Bytes32{0x88}},
 			},
 		}
 		actual := responseToSuper(input)

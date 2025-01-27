@@ -49,8 +49,8 @@ func InitLiveStrategy(ctx context.Context, env *Env, intent *state.Intent, st *s
 		// own Address type.
 		st.SuperchainDeployment = &state.SuperchainDeployment{
 			ProxyAdminAddress:            proxyAdmin,
-			ProtocolVersionsProxyAddress: common.Address(*superCfg.Config.ProtocolVersionsAddr),
-			SuperchainConfigProxyAddress: common.Address(*superCfg.Config.SuperchainConfigAddr),
+			ProtocolVersionsProxyAddress: superCfg.ProtocolVersionsAddr,
+			SuperchainConfigProxyAddress: superCfg.SuperchainConfigAddr,
 		}
 
 		st.ImplementationsDeployment = &state.ImplementationsDeployment{

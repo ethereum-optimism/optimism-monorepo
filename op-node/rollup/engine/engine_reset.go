@@ -55,7 +55,7 @@ func (d *EngineResetDeriver) OnEvent(ev event.Event) bool {
 			d.emitter.Emit(rollup.ResetEvent{Err: fmt.Errorf("failed to find the L2 Heads to start from: %w", err)})
 			return true
 		}
-		d.emitter.Emit(ForceEngineResetEvent{
+		d.emitter.Emit(rollup.ForceResetEvent{
 			Unsafe:    result.Unsafe,
 			Safe:      result.Safe,
 			Finalized: result.Finalized,

@@ -12,7 +12,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
-import { GameTypes } from "src/dispute/lib/Types.sol";
+import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
@@ -151,8 +151,12 @@ contract ForkLive is Deployer {
         address upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        IOPContractsManager.OpChain[] memory opChains = new IOPContractsManager.OpChain[](1);
-        opChains[0] = IOPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
+        IOPContractsManager.OpChainConfig[] memory opChains = new IOPContractsManager.OpChainConfig[](1);
+        opChains[0] = IOPContractsManager.OpChainConfig({
+            systemConfigProxy: systemConfig,
+            proxyAdmin: proxyAdmin,
+            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
+        });
 
         // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
         // reflecting the production system.

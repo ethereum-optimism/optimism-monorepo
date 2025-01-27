@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
@@ -18,10 +19,10 @@ var ErrInvalidKeyLength = errors.New("pre-images must be identified by 32-byte h
 type OracleKeyValueStore struct {
 	db      ethdb.KeyValueStore
 	oracle  StateOracle
-	chainID uint64
+	chainID eth.ChainID
 }
 
-func NewOracleBackedDB(oracle StateOracle, chainID uint64) *OracleKeyValueStore {
+func NewOracleBackedDB(oracle StateOracle, chainID eth.ChainID) *OracleKeyValueStore {
 	return &OracleKeyValueStore{
 		db:      memorydb.New(),
 		oracle:  oracle,

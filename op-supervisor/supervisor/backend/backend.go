@@ -540,7 +540,7 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 			Canonical: canonicalRoot,
 			Pending:   pending.Marshal(),
 		}
-		superRootChains[i] = eth.ChainIDAndOutput{ChainID: chainID.ToBig().Uint64(), Output: canonicalRoot}
+		superRootChains[i] = eth.ChainIDAndOutput{ChainID: chainID, Output: canonicalRoot}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
 		Timestamp: uint64(timestamp),

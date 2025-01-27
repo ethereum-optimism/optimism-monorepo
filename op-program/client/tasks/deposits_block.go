@@ -38,7 +38,7 @@ func BuildDepositOnlyBlock(
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
 	l2Source := l2.NewOracleEngine(cfg, logger, engineBackend)
-	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), l2Cfg.ChainID.Uint64())
+	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), eth.ChainIDFromBig(l2Cfg.ChainID))
 	l2HeadHash := l2Head.Hash()
 
 	logger.Info("Building a deposts-only block to replace block %v", optimisticBlock.Hash())

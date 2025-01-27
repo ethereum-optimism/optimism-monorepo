@@ -1,16 +1,11 @@
 {
   "drippie": "0xa0fF2a54AdC3fB33c44a141E67d194CF249258cb",
-  "gelato": "0x2A6C106ae13B558BB9E2Ec64Bd2f1f7BEFF3A5E0",
 
   "__comment": "Addresses of dripcheck contracts to be used in drips",
   "dripchecks": [
     {
       "00__name": "CheckBalanceLow",
       "01__address": "0xaF8C77CfeB57620c4D9dCC81df75a1F0Da7064Af"
-    },
-    {
-      "00__name": "CheckGelatoLow",
-      "01__address": "0x0fF11AfAC4146a0bABf7F9F042a22C8053a54674"
     },
     {
       "00__name": "CheckSecrets",
@@ -62,19 +57,6 @@
       "04__value": 100000000000000000000,
       "05__interval": 3600,
       "06__data": ""
-    },
-    {
-      "00__name": "gelato_v3",
-      "01__dripcheck": "CheckGelatoLow",
-      "02__checkparams": {
-        "00__treasury": "0x7506C12a824d73D9b08564d5Afc22c949434755e",
-        "01__threshold": 1000000000000000000,
-        "02__recipient": "0xCd438409d5Cac9D2E076Ac7Bd0Bf2377E99BB6e4"
-      },
-      "03__recipient": "0x7506C12a824d73D9b08564d5Afc22c949434755e",
-      "04__value": 1000000000000000000,
-      "05__interval": 86400,
-      "06__data": "0x0000000000000000000000000Cd438409d5Cac9D2E076Ac7Bd0Bf2377E99BB6e4"
     }
   ]
 }
