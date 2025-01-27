@@ -162,7 +162,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					if includeChainIndex == 0 {
 						return []executingMessage{
 							{
-								ChainID:   config.rollupCfgs[0].L2ChainID.Uint64(),
+								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[0].L2ChainID),
 								BlockNum:  includeBlockNum,
 								LogIdx:    0,
 								Timestamp: includeBlockNum * config.rollupCfgs[0].BlockTime,
@@ -188,7 +188,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					} else {
 						return []executingMessage{
 							{
-								ChainID:   config.rollupCfgs[1].L2ChainID.Uint64(),
+								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[1].L2ChainID),
 								BlockNum:  includeBlockNum,
 								LogIdx:    0,
 								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
@@ -207,7 +207,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 				stubExecMsgFn: func(includeChainIndex int, includeBlockNum uint64, config *staticConfigSource) []executingMessage {
 					return []executingMessage{
 						{
-							ChainID:   config.rollupCfgs[includeChainIndex].L2ChainID.Uint64(),
+							ChainID:   eth.ChainIDFromBig(config.rollupCfgs[includeChainIndex].L2ChainID),
 							BlockNum:  includeBlockNum,
 							LogIdx:    0,
 							Timestamp: includeBlockNum * config.rollupCfgs[includeChainIndex].BlockTime,
@@ -341,7 +341,7 @@ func createOutput(blockHash common.Hash) *eth.OutputV0 {
 }
 
 type executingMessage struct {
-	ChainID   uint64
+	ChainID   eth.ChainID
 	BlockNum  uint64
 	LogIdx    uint32
 	Timestamp uint64
@@ -355,7 +355,7 @@ func convertExecutingMessagesToLog(t *testing.T, msgs []executingMessage) []*get
 			BlockNumber: msg.BlockNum,
 			LogIndex:    msg.LogIdx,
 			Timestamp:   msg.Timestamp,
-			ChainID:     *uint256.NewInt(msg.ChainID),
+			ChainID:     uint256.Int(msg.ChainID),
 		}
 		data := make([]byte, 0, 32*5)
 		data = append(data, make([]byte, 12)...)
