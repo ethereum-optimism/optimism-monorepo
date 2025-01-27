@@ -987,10 +987,11 @@ jobs:
             - "cannon/bin"
 
   cannon-prestate:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.ci_builder_image>>
     steps:
       - checkout
+      - setup_remote_docker
       - run:
           name: Build prestates
           command: make reproducible-prestate
