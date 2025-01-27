@@ -12,6 +12,11 @@
         "type": "address"
       },
       {
+        "internalType": "contract IProxyAdmin",
+        "name": "_superchainProxyAdmin",
+        "type": "address"
+      },
+      {
         "internalType": "string",
         "name": "_l1ContractsRelease",
         "type": "string"
@@ -652,12 +657,20 @@
     "type": "function"
   },
   {
-    "inputs": [
+    "inputs": [],
+    "name": "superchainProxyAdmin",
+    "outputs": [
       {
         "internalType": "contract IProxyAdmin",
-        "name": "_superchainProxyAdmin",
+        "name": "",
         "type": "address"
-      },
+      }
+    ],
+    "stateMutability": "view",
+    "type": "function"
+  },
+  {
+    "inputs": [
       {
         "components": [
           {

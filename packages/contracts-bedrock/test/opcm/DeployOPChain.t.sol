@@ -315,6 +315,7 @@ contract DeployOPChain_TestBase is Test {
     string release = "dev-release"; // this means implementation contracts will be deployed
     ISuperchainConfig superchainConfigProxy;
     IProtocolVersions protocolVersionsProxy;
+    IProxyAdmin superchainProxyAdmin;
     address upgradeController;
     // Define default inputs for DeployOPChain.
     // `opcm` is set during `setUp` since it is an output of the previous step.
@@ -356,7 +357,8 @@ contract DeployOPChain_TestBase is Test {
         // Populate the inputs for DeployImplementations based on the output of DeploySuperchain.
         superchainConfigProxy = dso.superchainConfigProxy();
         protocolVersionsProxy = dso.protocolVersionsProxy();
-        upgradeController = dso.superchainProxyAdmin().owner();
+        superchainProxyAdmin = dso.superchainProxyAdmin();
+        upgradeController = superchainProxyAdmin.owner();
 
         // Configure and deploy Implementation contracts
         DeployImplementations deployImplementations = createDeployImplementationsContract();
@@ -371,6 +373,7 @@ contract DeployOPChain_TestBase is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
         dii.set(dii.upgradeController.selector, upgradeController);
 
         deployImplementations.run(dii, dio);

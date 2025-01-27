@@ -11,10 +11,12 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 contract DeployOPCMInput is BaseDeployIO {
     ISuperchainConfig internal _superchainConfig;
     IProtocolVersions internal _protocolVersions;
+    IProxyAdmin internal _superchainProxyAdmin;
     string internal _l1ContractsRelease;
     address internal _upgradeController;
 
@@ -45,6 +47,7 @@ contract DeployOPCMInput is BaseDeployIO {
 
         if (_sel == this.superchainConfig.selector) _superchainConfig = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersions.selector) _protocolVersions = IProtocolVersions(_addr);
+        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
         else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = _addr;
         else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = _addr;
         else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
@@ -84,6 +87,11 @@ contract DeployOPCMInput is BaseDeployIO {
     function protocolVersions() public view returns (IProtocolVersions) {
         require(address(_protocolVersions) != address(0), "DeployOPCMInput: not set");
         return _protocolVersions;
+    }
+
+    function superchainProxyAdmin() public view returns (IProxyAdmin) {
+        require(address(_superchainProxyAdmin) != address(0), "DeployOPCMInput: not set");
+        return _superchainProxyAdmin;
     }
 
     function l1ContractsRelease() public view returns (string memory) {
@@ -240,6 +248,7 @@ contract DeployOPCM is Script {
         IOPContractsManager opcm_ = deployOPCM(
             _doi.superchainConfig(),
             _doi.protocolVersions(),
+            _doi.superchainProxyAdmin(),
             blueprints,
             implementations,
             _doi.l1ContractsRelease(),
@@ -253,6 +262,7 @@ contract DeployOPCM is Script {
     function deployOPCM(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         IOPContractsManager.Blueprints memory _blueprints,
         IOPContractsManager.Implementations memory _implementations,
         string memory _l1ContractsRelease,
@@ -271,6 +281,7 @@ contract DeployOPCM is Script {
                         (
                             _superchainConfig,
                             _protocolVersions,
+                            _superchainProxyAdmin,
                             _l1ContractsRelease,
                             _blueprints,
                             _implementations,
