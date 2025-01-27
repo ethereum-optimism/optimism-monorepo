@@ -159,8 +159,7 @@ contract ForkLive is Deployer {
         opChains[0] = IOPContractsManager.OpChainConfig({
             systemConfigProxy: systemConfig,
             proxyAdmin: proxyAdmin,
-            permissionedDisputeGamePrestateHash: Claim.wrap(bytes32(keccak256("permissionedPrestate"))),
-            permissionlessDisputeGamePrestateHash: Claim.wrap(bytes32(keccak256("permissionlessPrestate")))
+            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
         });
 
         // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly

@@ -118,8 +118,7 @@ contract OPContractsManager is ISemver {
     struct OpChainConfig {
         ISystemConfig systemConfigProxy;
         IProxyAdmin proxyAdmin;
-        Claim permissionedDisputeGamePrestateHash;
-        Claim permissionlessDisputeGamePrestateHash;
+        Claim absolutePrestate;
     }
 
     struct AddGameInput {
@@ -235,7 +234,7 @@ contract OPContractsManager is ISemver {
     error SuperchainProxyAdminMismatch();
 
     /// @notice Thrown when a prestate is not set for a game.
-    error PrestateNotSet(GameType gameType);
+    error PrestateNotSet();
 
     // -------- Methods --------
 
@@ -1098,16 +1097,13 @@ contract OPContractsManager is ISemver {
         // Modify the params with the new anchorStateRegistry and vm values.
         params.anchorStateRegistry = IAnchorStateRegistry(address(_newAnchorStateRegistryProxy));
         params.vm = IBigStepper(_implementations.mips64Impl);
+        if (Claim.unwrap(_opChainConfig.absolutePrestate) == bytes32(0)) {
+            revert PrestateNotSet();
+        }
+        params.absolutePrestate = _opChainConfig.absolutePrestate;
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
-            if (Claim.unwrap(_opChainConfig.permissionedDisputeGamePrestateHash) == bytes32(0)) {
-                revert PrestateNotSet(GameTypes.PERMISSIONED_CANNON);
-            }
-
-            // modify the params to set the permissioned game specific absolutePrestate
-            params.absolutePrestate = _opChainConfig.permissionedDisputeGamePrestateHash;
-
             address proposer = getProposer(IPermissionedDisputeGame(address(_disputeGame)));
             address challenger = getChallenger(IPermissionedDisputeGame(address(_disputeGame)));
             newGame = IDisputeGame(
@@ -1119,12 +1115,6 @@ contract OPContractsManager is ISemver {
                 )
             );
         } else {
-            if (Claim.unwrap(_opChainConfig.permissionlessDisputeGamePrestateHash) == bytes32(0)) {
-                revert PrestateNotSet(GameTypes.CANNON);
-            }
-
-            // modify the params to set the permissionless game specific absolutePrestate
-            params.absolutePrestate = _opChainConfig.permissionlessDisputeGamePrestateHash;
             newGame = IDisputeGame(
                 Blueprint.deployFrom(
                     _blueprints.permissionlessDisputeGame1,

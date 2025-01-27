@@ -672,12 +672,7 @@
           },
           {
             "internalType": "Claim",
-            "name": "permissionedDisputeGamePrestateHash",
-            "type": "bytes32"
-          },
-          {
-            "internalType": "Claim",
-            "name": "permissionlessDisputeGamePrestateHash",
+            "name": "absolutePrestate",
             "type": "bytes32"
           }
         ],
@@ -861,13 +856,7 @@
     "type": "error"
   },
   {
-    "inputs": [
-      {
-        "internalType": "GameType",
-        "name": "gameType",
-        "type": "uint32"
-      }
-    ],
+    "inputs": [],
     "name": "PrestateNotSet",
     "type": "error"
   },

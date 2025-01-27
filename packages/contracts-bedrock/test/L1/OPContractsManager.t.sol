@@ -208,8 +208,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     IProxyAdmin superchainProxyAdmin;
     address upgrader;
     IOPContractsManager.OpChainConfig[] opChainConfigs;
-    Claim permissionedPrestate;
-    Claim permissionlessPrestate;
+    Claim absolutePrestate;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -219,9 +218,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             vm.skip(true);
         }
 
-        permissionedPrestate = Claim.wrap(bytes32(keccak256("permissionedPrestate")));
-        permissionlessPrestate = Claim.wrap(bytes32(keccak256("permissionlessPrestate")));
-
+        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
@@ -234,8 +231,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             IOPContractsManager.OpChainConfig({
                 systemConfigProxy: systemConfig,
                 proxyAdmin: proxyAdmin,
-                permissionedDisputeGamePrestateHash: permissionedPrestate,
-                permissionlessDisputeGamePrestateHash: permissionlessPrestate
+                absolutePrestate: absolutePrestate
             })
         );
 
@@ -452,21 +448,9 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
         );
     }
 
-    function test_upgrade_permissionedPrestateNotSet_reverts() public {
-
-        opChainConfigs[0].permissionedDisputeGamePrestateHash = Claim.wrap(bytes32(0));
-        vm.expectRevert(
-            abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.PERMISSIONED_CANNON))
-        );
-        DelegateCaller(upgrader).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
-        );
-    }
-
-    function test_upgrade_permissionlessPrestateNotSet_reverts() public {
-        opChainConfigs[0].permissionlessDisputeGamePrestateHash = Claim.wrap(bytes32(0));
-
-        vm.expectRevert(abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON)));
+    function test_upgrade_absolutePrestateNotSet_reverts() public {
+        opChainConfigs[0].absolutePrestate = Claim.wrap(bytes32(0));
+        vm.expectRevert(IOPContractsManager.PrestateNotSet.selector);
         DelegateCaller(upgrader).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (proxyAdmin, opChainConfigs))
         );
