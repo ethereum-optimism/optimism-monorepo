@@ -17,7 +17,9 @@ import (
 func TestPectraForkAfterGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
-	offset := hexutil.Uint64(24)
+	// offset := hexutil.Uint64(24)
+	offset := hexutil.Uint64(0)
+	dp.DeployConfig.L1CancunTimeOffset = &offset
 	dp.DeployConfig.L1PragueTimeOffset = &offset
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
