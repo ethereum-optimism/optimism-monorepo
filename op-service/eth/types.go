@@ -10,6 +10,7 @@ import (
 	"math/big"
 	"reflect"
 	"strconv"
+	"strings"
 
 	"github.com/ethereum/go-ethereum/beacon/engine"
 	"github.com/ethereum/go-ethereum/common"
@@ -243,6 +244,15 @@ func (payload *ExecutionPayload) ParentID() BlockID {
 		n -= 1
 	}
 	return BlockID{Hash: payload.ParentHash, Number: n}
+}
+
+func (payload *ExecutionPayload) BlockRef() BlockRef {
+	return BlockRef{
+		Hash:       payload.BlockHash,
+		Number:     uint64(payload.BlockNumber),
+		ParentHash: payload.ParentHash,
+		Time:       uint64(payload.Timestamp),
+	}
 }
 
 type rawTransactions []Data
@@ -619,3 +629,37 @@ const (
 	GetPayloadV2 EngineAPIMethod = "engine_getPayloadV2"
 	GetPayloadV3 EngineAPIMethod = "engine_getPayloadV3"
 )
+
+// StorageKey is a marshaling utility for hex-encoded storage keys, which can have leading 0s and are
+// an arbitrary length.
+type StorageKey []byte
+
+func (k *StorageKey) UnmarshalText(text []byte) error {
+	textString := string(text)
+
+	if len(textString)%2 != 0 {
+		// add leading 0 if odd length
+		if strings.HasPrefix(textString, "0x") {
+			textString = textString[:2] + "0" + textString[2:]
+		} else {
+			textString = "0" + textString
+		}
+	}
+
+	// decode hex string
+	b, err := hexutil.Decode(textString)
+	if err != nil {
+		return err
+	}
+
+	*k = b
+	return nil
+}
+
+func (k StorageKey) MarshalText() ([]byte, error) {
+	return []byte(hexutil.Encode(k)), nil
+}
+
+func (k StorageKey) String() string {
+	return hexutil.Encode(k)
+}

@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum-optimism/optimism/op-program/host/prefetcher"
 	"github.com/ethereum-optimism/optimism/op-service/client"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -44,7 +45,7 @@ func WithPreInteropDefaults(t helpers.Testing, l2ClaimBlockNum uint64, l2 *helpe
 		f.L2Claim = common.Hash(claimRoot.OutputRoot)
 		f.L2Head = preRoot.BlockRef.Hash
 		f.L2OutputRoot = common.Hash(preRoot.OutputRoot)
-		f.L2ChainID = l2.RollupCfg.L2ChainID.Uint64()
+		f.L2ChainID = eth.ChainIDFromBig(l2.RollupCfg.L2ChainID)
 
 		f.L2Sources = []*FaultProofProgramL2Source{
 			{

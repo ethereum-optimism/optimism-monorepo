@@ -6,7 +6,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-service/flags"
-	"github.com/ethereum-optimism/superchain-registry/superchain"
+	"github.com/ethereum/go-ethereum/superchain"
 	"github.com/urfave/cli/v2"
 
 	"github.com/ethereum-optimism/optimism/op-dispute-mon/config"
@@ -179,22 +179,19 @@ func FactoryAddress(ctx *cli.Context) (common.Address, error) {
 	}
 	if ctx.IsSet(flags.NetworkFlagName) {
 		chainName := ctx.String(flags.NetworkFlagName)
-		chainCfg := chaincfg.ChainByName(chainName)
-		if chainCfg == nil {
+		chain := chaincfg.ChainByName(chainName)
+		if chain == nil {
 			var opts []string
-			for _, cfg := range superchain.OPChains {
-				opts = append(opts, cfg.Chain+"-"+cfg.Superchain)
+			for _, cfg := range superchain.Chains {
+				opts = append(opts, cfg.Name+"-"+cfg.Network)
 			}
 			return common.Address{}, fmt.Errorf("unknown chain: %v (Valid options: %v)", chainName, strings.Join(opts, ", "))
 		}
-		addrs, ok := superchain.Addresses[chainCfg.ChainID]
-		if !ok {
-			return common.Address{}, fmt.Errorf("no addresses available for chain %v", chainName)
-		}
-		if addrs.DisputeGameFactoryProxy == (superchain.Address{}) {
+		addrs := chain.Addresses
+		if addrs.DisputeGameFactoryProxy == nil {
 			return common.Address{}, fmt.Errorf("dispute factory proxy not available for chain %v", chainName)
 		}
-		return common.Address(addrs.DisputeGameFactoryProxy), nil
+		return *addrs.DisputeGameFactoryProxy, nil
 	}
 	return common.Address{}, fmt.Errorf("flag %v or %v is required", GameFactoryAddressFlag.Name, flags.NetworkFlagName)
 }

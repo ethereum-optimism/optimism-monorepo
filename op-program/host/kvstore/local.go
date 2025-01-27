@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -38,7 +39,7 @@ func (s *LocalPreimageSource) Get(key common.Hash) ([]byte, error) {
 	case l2ClaimBlockNumberKey:
 		return binary.BigEndian.AppendUint64(nil, s.config.L2ClaimBlockNumber), nil
 	case l2ChainIDKey:
-		return binary.BigEndian.AppendUint64(nil, s.config.L2ChainID), nil
+		return binary.BigEndian.AppendUint64(nil, eth.EvilChainIDToUInt64(s.config.L2ChainID)), nil
 	case l2ChainConfigKey:
 		if s.config.L2ChainID != boot.CustomChainIDIndicator {
 			return nil, ErrNotFound

@@ -84,6 +84,11 @@ func (m *ManagedNode) AttachEmitter(em event.Emitter) {
 
 func (m *ManagedNode) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
+	case superevents.InvalidateLocalSafeEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.onInvalidateLocalSafe(x.Candidate)
 	case superevents.CrossUnsafeUpdateEvent:
 		if x.ChainID != m.chainID {
 			return false
@@ -208,6 +213,9 @@ func (m *ManagedNode) onNodeEvent(ev *types.ManagedEvent) {
 	if ev.ExhaustL1 != nil {
 		m.onExhaustL1Event(*ev.ExhaustL1)
 	}
+	if ev.ReplaceBlock != nil {
+		m.onReplaceBlock(*ev.ReplaceBlock)
+	}
 }
 
 func (m *ManagedNode) onResetEvent(errStr string) {
@@ -288,6 +296,7 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 	// if conflict error -> send reset to drop
 	// if future error -> send reset to rewind
 	// if out of order -> warn, just old data
+	// TODO(#13971): When there are errors getting these blocks, we shouldn't always exit early.
 	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
 	defer cancel()
 	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
@@ -301,22 +310,15 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		return
 	}
 
-	// fix finalized to point to a L2 block that the L2 node knows about
-	// Conceptually: track the last known block by the node (based on unsafe block updates), as upper bound for resets.
-	// Then when reset fails, lower the last known block
-	// (and prevent it from changing by subscription, until success with reset), and rinse and repeat.
-
-	// TODO: this is very very broken
-
-	// TODO: errors.As switch
-	switch errSignal {
-	case types.ErrConflict:
+	// TODO: Lots of changes needed here
+	// Reset walkback exists via resolveConflict, so this error-type handling should be reconsidered.
+	switch {
+	case errors.Is(errSignal, types.ErrConflict):
 		if err := m.resolveConflict(ctx, l1Ref, u, f); err != nil {
 			m.log.Warn("Failed to resolve conflict", "unsafe", u, "finalized", f)
 			return
 		}
-
-	case types.ErrFuture:
+	case errors.Is(errSignal, types.ErrFuture):
 		s, err := m.backend.LocalSafe(ctx, m.chainID)
 		if err != nil {
 			m.log.Warn("Failed to retrieve local-safe", "err", err)
@@ -326,8 +328,17 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
 		}
-	case types.ErrOutOfOrder:
+	case errors.Is(errSignal, types.ErrOutOfOrder):
+		s, err := m.backend.LocalSafe(ctx, m.chainID)
+		if err != nil {
+			m.log.Warn("Failed to retrieve local-safe", "err", err)
+			return
+		}
 		m.log.Warn("Node detected out of order block", "unsafe", u, "finalized", f)
+		err = m.Node.Reset(ctx, u, s.Derived, f)
+		if err != nil {
+			m.log.Warn("Node failed to reset", "err", err)
+		}
 	}
 }
 
@@ -414,6 +425,30 @@ func (m *ManagedNode) onExhaustL1Event(completed types.DerivedBlockRefPair) {
 		// but does not fit on the derivation state.
 		return
 	}
+}
+
+// onInvalidateLocalSafe listens for when a local-safe block is found to be invalid in the cross-safe context
+// and needs to be replaced with a deposit only block.
+func (m *ManagedNode) onInvalidateLocalSafe(invalidated types.DerivedBlockRefPair) {
+	m.log.Warn("Instructing node to replace invalidated local-safe block",
+		"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom)
+
+	ctx, cancel := context.WithTimeout(m.ctx, nodeTimeout)
+	defer cancel()
+	// Send instruction to the node to invalidate the block, and build a replacement block.
+	if err := m.Node.InvalidateBlock(ctx, types.BlockSealFromRef(invalidated.Derived)); err != nil {
+		m.log.Warn("Node is unable to invalidate block",
+			"invalidated", invalidated.Derived, "scope", invalidated.DerivedFrom, "err", err)
+	}
+}
+
+func (m *ManagedNode) onReplaceBlock(replacement types.BlockReplacement) {
+	m.log.Info("Node provided replacement block",
+		"ref", replacement.Replacement, "invalidated", replacement.Invalidated)
+	m.emitter.Emit(superevents.ReplaceBlockEvent{
+		ChainID:     m.chainID,
+		Replacement: replacement,
+	})
 }
 
 func (m *ManagedNode) Close() error {

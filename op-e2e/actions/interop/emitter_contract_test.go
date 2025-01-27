@@ -5,6 +5,7 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -30,14 +31,13 @@ type userWithKeys struct {
 
 func TestEmitterContract(gt *testing.T) {
 	var (
-		t      = helpers.NewDefaultTesting(gt)
 		is     *InteropSetup
 		actors *InteropActors
 		aliceA *userWithKeys
 		aliceB *userWithKeys
 		emitTx *types.Transaction
 	)
-	resetTest := func() {
+	resetTest := func(t helpers.Testing) {
 		is = SetupInterop(t)
 		actors = is.CreateActors()
 		aliceA = setupUser(t, is, actors.ChainA, 0)
@@ -46,17 +46,23 @@ func TestEmitterContract(gt *testing.T) {
 		emitTx = initializeEmitterContractTest(t, aliceA, actors)
 	}
 
-	gt.Run("success", func(_ *testing.T) {
-		resetTest()
+	gt.Run("success", func(gt *testing.T) {
+		t := helpers.SubTest(gt)
+		resetTest(t)
 
 		// Execute message on destination chain and verify that the heads progress
 		execTx := newExecuteMessageTx(t, actors, actors.ChainB, aliceB, emitTx)
 		includeTxOnChain(t, actors, actors.ChainB, execTx, aliceB.address)
+		// assert the tx is included
+		rec, err := actors.ChainB.SequencerEngine.EthClient().TransactionReceipt(t.Ctx(), execTx.Hash())
+		require.NoError(t, err)
+		require.NotNil(t, rec)
 		assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 	})
 
-	gt.Run("failure with conflicting message", func(_ *testing.T) {
-		resetTest()
+	gt.Run("failure with conflicting message", func(gt *testing.T) {
+		t := helpers.SubTest(gt)
+		resetTest(t)
 
 		// Create a message with a conflicting payload
 		fakeMessage := []byte("this message was never emitted")
@@ -69,7 +75,11 @@ func TestEmitterContract(gt *testing.T) {
 
 		// Process the invalid message attempt and verify that only the local unsafe head progresses
 		includeTxOnChain(t, actors, actors.ChainB, tx, auth.From)
-		assertHeads(t, actors.ChainB, 3, 3, 2, 2)
+		// assert the tx was reorged out
+		_, err = actors.ChainB.SequencerEngine.EthClient().TransactionReceipt(t.Ctx(), tx.Hash())
+		require.ErrorIs(gt, err, ethereum.NotFound)
+		// reorg with block-replacement replaces the tip, and then allows that to become cross-safe
+		assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 	})
 }
 
@@ -200,6 +210,12 @@ func includeTxOnChain(t helpers.Testing, actors *InteropActors, chain *Chain, tx
 	chain.Sequencer.ActL2PipelineFull(t)
 
 	// Final sync of both chains
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// another round-trip, for post-processing like cross-safe / cross-unsafe to propagate to the op-node
 	actors.ChainA.Sequencer.SyncSupervisor(t)
 	actors.ChainB.Sequencer.SyncSupervisor(t)
 	actors.Supervisor.ProcessFull(t)
