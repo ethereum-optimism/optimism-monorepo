@@ -552,13 +552,14 @@ contract OPContractsManager is ISemver {
                     );
                 }
 
-                // TODO: add new prestate
+                // Deploy and set a new permissioned game to update its prestate
+
                 deployAndSetNewGameImpl({
                     _l2ChainId: l2ChainId,
                     _disputeGame: IDisputeGame(address(permissionedDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.PERMISSIONED_CANNON,
-                    _opChain: _opChainConfigs[i],
+                    _opChainConfig: _opChainConfigs[i],
                     _implementations: impls,
                     _blueprints: bps,
                     _opChainAddrs: opChainAddrs
@@ -569,13 +570,15 @@ contract OPContractsManager is ISemver {
             IFaultDisputeGame permissionlessDisputeGame = IFaultDisputeGame(
                 address(getGameImplementation(IDisputeGameFactory(opChainAddrs.disputeGameFactory), GameTypes.CANNON))
             );
+
             if (address(permissionlessDisputeGame) != address(0)) {
+                // Deploy and set a new permissionless game to update its prestate
                 deployAndSetNewGameImpl({
                     _l2ChainId: l2ChainId,
                     _disputeGame: IDisputeGame(address(permissionlessDisputeGame)),
                     _newAnchorStateRegistryProxy: newAnchorStateRegistryProxy,
                     _gameType: GameTypes.CANNON,
-                    _opChain: _opChainConfigs[i],
+                    _opChainConfig: _opChainConfigs[i],
                     _implementations: impls,
                     _blueprints: bps,
                     _opChainAddrs: opChainAddrs
@@ -1065,7 +1068,7 @@ contract OPContractsManager is ISemver {
     /// @param _disputeGame The current dispute game implementation
     /// @param _newAnchorStateRegistryProxy The new anchor state registry proxy
     /// @param _gameType The type of game to deploy
-    /// @param _opChain The OP chain configuration
+    /// @param _opChainConfig The OP chain configuration
     /// @param _blueprints The blueprint addresses
     /// @param _implementations The implementation addresses
     /// @param _opChainAddrs The OP chain addresses
@@ -1074,7 +1077,7 @@ contract OPContractsManager is ISemver {
         IDisputeGame _disputeGame,
         IAnchorStateRegistry _newAnchorStateRegistryProxy,
         GameType _gameType,
-        OpChainConfig memory _opChain,
+        OpChainConfig memory _opChainConfig,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
         ISystemConfig.Addresses memory _opChainAddrs
@@ -1085,7 +1088,7 @@ contract OPContractsManager is ISemver {
         {
             // Get and upgrade the WETH proxy
             IDelayedWETH delayedWethProxy = getWETH(IFaultDisputeGame(address(_disputeGame)));
-            upgradeTo(_opChain.proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
+            upgradeTo(_opChainConfig.proxyAdmin, address(delayedWethProxy), _implementations.delayedWETHImpl);
         }
 
         // Get the constructor params for the game
@@ -1098,12 +1101,12 @@ contract OPContractsManager is ISemver {
 
         IDisputeGame newGame;
         if (GameType.unwrap(_gameType) == GameType.unwrap(GameTypes.PERMISSIONED_CANNON)) {
-            if (Claim.unwrap(_opChain.permissionedDisputeGamePrestateHash) == bytes32(0)) {
+            if (Claim.unwrap(_opChainConfig.permissionedDisputeGamePrestateHash) == bytes32(0)) {
                 revert PrestateNotSet(GameTypes.PERMISSIONED_CANNON);
             }
 
             // modify the params to set the permissioned game specific absolutePrestate
-            params.absolutePrestate = _opChain.permissionedDisputeGamePrestateHash;
+            params.absolutePrestate = _opChainConfig.permissionedDisputeGamePrestateHash;
 
             address proposer = getProposer(IPermissionedDisputeGame(address(_disputeGame)));
             address challenger = getChallenger(IPermissionedDisputeGame(address(_disputeGame)));
@@ -1116,12 +1119,12 @@ contract OPContractsManager is ISemver {
                 )
             );
         } else {
-            if (Claim.unwrap(_opChain.permissionlessDisputeGamePrestateHash) == bytes32(0)) {
+            if (Claim.unwrap(_opChainConfig.permissionlessDisputeGamePrestateHash) == bytes32(0)) {
                 revert PrestateNotSet(GameTypes.CANNON);
             }
 
             // modify the params to set the permissionless game specific absolutePrestate
-            params.absolutePrestate = _opChain.permissionlessDisputeGamePrestateHash;
+            params.absolutePrestate = _opChainConfig.permissionlessDisputeGamePrestateHash;
             newGame = IDisputeGame(
                 Blueprint.deployFrom(
                     _blueprints.permissionlessDisputeGame1,
