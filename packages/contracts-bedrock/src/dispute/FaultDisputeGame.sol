@@ -171,7 +171,7 @@ contract FaultDisputeGame is Clone, ISemver {
 
     /// @notice Semantic version.
     /// @custom:semver 1.4.0
-    function version() public pure override returns (string memory) {
+    function version() public pure virtual returns (string memory) {
         return "1.4.0";
     }
 
