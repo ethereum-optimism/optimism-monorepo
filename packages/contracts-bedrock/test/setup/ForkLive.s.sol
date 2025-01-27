@@ -49,8 +49,8 @@ contract ForkLive is Deployer {
 
     /// @notice Forks, upgrades and tests a production network.
     /// @dev This function sets up the system to test by:
-    ///      0. reading the environment variable to determine the base and OP chain names, read the
-    ///         SUPERCHAIN_OPS_ALLOCS_PATH data created from superchain ops.
+    ///      0. read the environment variable to determine the
+    ///         SUPERCHAIN_OPS_ALLOCS_PATH environment variable set from superchain ops.
     ///      1. if the environment variable is set, load the state from the given path.
     ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
     ///      3. deploying the updated OPCM and implementations of the contracts.
@@ -62,7 +62,11 @@ contract ForkLive is Deployer {
         bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
+            /// run the upgrades from the ops repo first
             vm.loadAllocs(superchainOpsAllocsPath);
+            /// then fetch the addresses from the superchain registry after the upgrade
+            /// as this function will read the logic contract addresses which may have
+            /// changed from the upgrade.
             _readSuperchainRegistry();
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
