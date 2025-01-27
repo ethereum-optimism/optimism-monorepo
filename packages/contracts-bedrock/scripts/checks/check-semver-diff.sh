@@ -32,14 +32,14 @@ temp_dir=$(mktemp -d)
 trap 'rm -rf "$temp_dir"' EXIT
 
 # Exit early if semver-lock.json has not changed.
-if ! { git diff origin/develop...HEAD --name-only; git diff --name-only; git diff --cached --name-only; } | grep -q "$SEMVER_LOCK"; then
+if ! { git diff origin/ctb/rm-beta-tags...HEAD --name-only; git diff --name-only; git diff --cached --name-only; } | grep -q "$SEMVER_LOCK"; then
     echo "No changes detected in semver-lock.json"
     exit 0
 fi
 
 # Get the upstream semver-lock.json.
-if ! git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
-      echo "❌ Error: Could not find semver-lock.json in the snapshots/ directory of develop branch"
+if ! git show origin/ctb/rm-beta-tags:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
+      echo "❌ Error: Could not find semver-lock.json in the snapshots/ directory of ctb/rm-beta-tags branch"
       exit 1
 fi
 
@@ -80,7 +80,7 @@ for contract in $changed_contracts; do
     # Extract the old and new source files.
     old_source_file="$temp_dir/old_${contract##*/}"
     new_source_file="$temp_dir/new_${contract##*/}"
-    git show origin/develop:packages/contracts-bedrock/"$contract" > "$old_source_file" 2>/dev/null || true
+    git show origin/ctb/rm-beta-tags:packages/contracts-bedrock/"$contract" > "$old_source_file" 2>/dev/null || true
     cp "$contract" "$new_source_file"
 
     # Extract the old and new versions.
