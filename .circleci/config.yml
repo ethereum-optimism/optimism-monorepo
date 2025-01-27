@@ -946,7 +946,7 @@ jobs:
             - notify-failures-on-develop:
                 mentions: "<<parameters.mentions>>"
 
-  cannon-prestate:
+  sanitize-op-program:
     machine: true
     resource_class: ethereum-optimism/latitude-1
     steps:
@@ -957,14 +957,20 @@ jobs:
       - run:
           name: Build op-program
           command: make op-program
+      - run:
+          name: Sanitize op-program client
+          command: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
+
+  cannon-prestate-quick:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    steps:
+      - checkout
       - restore_cache:
           name: Restore cannon prestate cache
           key: cannon-prestate-{{ checksum "./cannon/bin/cannon" }}-{{ checksum "op-program/bin/op-program-client.elf" }}
       - run:
-          name: Sanitize op-program guest
-          command: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
-      - run:
-          name: generate cannon prestate
+          name: Build prestates
           command: make cannon-prestates
       - save_cache:
           key: cannon-prestate-{{ checksum "./cannon/bin/cannon" }}-{{ checksum "op-program/bin/op-program-client.elf" }}
@@ -976,8 +982,23 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - "op-program/bin"
+            - "op-program/bin/prestate*"
+            - "op-program/bin/meta*"
             - "cannon/bin"
+
+  cannon-prestate:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    steps:
+      - checkout
+      - run:
+          name: Build prestates
+          command: make reproducible-prestate
+      - persist_to_workspace:
+          root: .
+          paths:
+            - "op-program/bin/prestate*"
+            - "op-program/bin/meta*"
 
   publish-cannon-prestates:
     docker:
@@ -1011,6 +1032,8 @@ jobs:
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
             gsutil cp ./op-program/bin/prestate-mt.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt.bin.gz"
+            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt64.bin.gz"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
       - notify-failures-on-develop:
@@ -1360,7 +1383,7 @@ workflows:
             packages/contracts-bedrock/scripts/checks
           requires:
             - contracts-bedrock-build
-            - cannon-prestate
+            - cannon-prestate-quick
       - op-program-compat
       - bedrock-go-tests:
           requires:
@@ -1378,6 +1401,7 @@ workflows:
             - op-supervisor-docker-build
             - proofs-tools-docker-build
             - go-tests
+            - sanitize-op-program
       - docker-build:
           name: <<matrix.docker_name>>-docker-build
           docker_tags: <<pipeline.git.revision>>,<<pipeline.git.branch>>
@@ -1396,7 +1420,10 @@ workflows:
                 - da-server
                 - op-supervisor
                 - cannon
-      - cannon-prestate
+      - cannon-prestate-quick
+      - sanitize-op-program:
+          requires:
+            - cannon-prestate-quick
       - check-generated-mocks-op-node
       - check-generated-mocks-op-service
       - cannon-go-lint-and-test:
@@ -1613,6 +1640,7 @@ workflows:
             branches:
               only:
                 - develop
+                - aj/await-hold
 
   develop-kontrol-tests:
     when:
