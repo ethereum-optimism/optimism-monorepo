@@ -115,6 +115,13 @@ var ApplyFlags = []cli.Flag{
 	DeploymentTargetFlag,
 }
 
+var UpgradeFlags = []cli.Flag{
+	L1RPCURLFlag,
+	WorkdirFlag,
+	PrivateKeyFlag,
+	DeploymentTargetFlag,
+}
+
 func PrefixEnvVar(name string) []string {
 	return op_service.PrefixEnvVar(EnvVarPrefix, name)
 }
