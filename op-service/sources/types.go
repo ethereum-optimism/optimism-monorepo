@@ -62,7 +62,7 @@ type RPCHeader struct {
 	ParentBeaconRoot *common.Hash `json:"parentBeaconBlockRoot,omitempty"`
 
 	// RequestsHash was added by EIP-7685 and is ignored in legacy headers.
-	RequestsHash *common.Hash `json:"requestsRoot" rlp:"optional"`
+	RequestsHash *common.Hash `json:"requestsHash" rlp:"optional"` // NOTE in geth the json tag is "requestsRoot"
 
 	// untrusted info included by RPC, may have to be checked
 	Hash common.Hash `json:"hash"`
