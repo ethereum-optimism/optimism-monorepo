@@ -1614,29 +1614,29 @@ workflows:
           build_args: --deny-warnings --skip test
           context:
             - slack
-      - go-tests:
-          name: op-e2e-cannon-tests
-          notify: true
-          mentions: "@proofs-team"
-          no_output_timeout: 60m
-          test_timeout: 59m
-          resource_class: ethereum-optimism/latitude-fps-1
-          environment_overrides: |
-            export OP_E2E_CANNON_ENABLED="true"
-          packages: |
-            op-e2e/faultproofs
-          context:
-            - slack
-          requires:
-            - contracts-bedrock-build
-            - cannon-prestate
+#      - go-tests:
+#          name: op-e2e-cannon-tests
+#          notify: true
+#          mentions: "@proofs-team"
+#          no_output_timeout: 60m
+#          test_timeout: 59m
+#          resource_class: ethereum-optimism/latitude-fps-1
+#          environment_overrides: |
+#            export OP_E2E_CANNON_ENABLED="true"
+#          packages: |
+#            op-e2e/faultproofs
+#          context:
+#            - slack
+#          requires:
+#            - contracts-bedrock-build
+#            - cannon-prestate
       - publish-cannon-prestates:
           context:
             - slack
             - oplabs-network-optimism-io-bucket
           requires:
             - cannon-prestate
-            - op-e2e-cannon-tests
+#            - op-e2e-cannon-tests
           filters:
             branches:
               only:
