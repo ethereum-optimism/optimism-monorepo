@@ -1,0 +1,19 @@
+# This workflow will open a PR every 30 minutes to sync our develop branch with optimism's develop branch.
+# Our actual fork with eigenda related patches is in eigenda-develop branch, which needs to be manually synced with the develop branch.
+name: Sync Fork
+
+on:
+  schedule:
+    - cron: "*/30 * * * *" # every 30 minutes
+  workflow_dispatch: # on button click
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: tgymnich/fork-sync@v1.8
+        with:
+          owner: ethereum-optimism
+          base: develop
+          head: develop
