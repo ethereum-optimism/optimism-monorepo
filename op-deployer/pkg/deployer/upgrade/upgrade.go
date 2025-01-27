@@ -120,7 +120,7 @@ func UpgradeContracts(
 	}
 
 	if err := RunUpgradeScript(
-		host,
+		nil,
 		opcmAddr,
 		opChainConfigs,
 		"OPCMUpgrade.s.sol",
