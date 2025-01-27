@@ -322,7 +322,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         // the correct anchor state and has the mips64impl.
         IPermissionedDisputeGame pdg =
             IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
-        assertEq(ISemver(address(pdg)).version(), "1.4.0-beta.1");
+        assertEq(ISemver(address(pdg)).version(), "1.4.0");
         assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
         assertEq(address(pdg.vm()), impls.mips64Impl);
 
@@ -332,7 +332,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
             IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
-            assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
+            assertEq(ISemver(address(fdg)).version(), "1.4.0");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
             assertEq(address(fdg.vm()), impls.mips64Impl);
         }
