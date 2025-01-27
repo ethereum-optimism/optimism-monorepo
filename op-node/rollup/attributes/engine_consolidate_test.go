@@ -268,25 +268,24 @@ func TestWithdrawalsMatch(t *testing.T) {
 	rollupCfgPostIsthmusChecks := &rollup.Config{CanyonTime: &canyonTimeInPast, IsthmusTime: &isthmusTimeInPast}
 
 	tests := []struct {
-		cfg        *rollup.Config
-		attrs      *eth.PayloadAttributes
-		block      *eth.ExecutionPayload
-		checkFails bool
-		desc       string
+		cfg   *rollup.Config
+		attrs *eth.PayloadAttributes
+		block *eth.ExecutionPayload
+		err   error
+		desc  string
 	}{
 		{
-			cfg:        rollupCfgPreCanyonChecks,
-			attrs:      nil,
-			block:      nil,
-			checkFails: true,
-			desc:       "nil attributes/block",
+			cfg:   rollupCfgPreCanyonChecks,
+			attrs: nil,
+			block: nil,
+			err:   ErrNilBlockOrAttributes,
+			desc:  "nil attributes/block",
 		},
 		{
-			cfg:        rollupCfgPreCanyonChecks,
-			attrs:      &eth.PayloadAttributes{Withdrawals: nil},
-			block:      &eth.ExecutionPayload{Timestamp: 0},
-			checkFails: false,
-			desc:       "pre-canyon: nil attr withdrawals",
+			cfg:   rollupCfgPreCanyonChecks,
+			attrs: &eth.PayloadAttributes{Withdrawals: nil},
+			block: &eth.ExecutionPayload{Timestamp: 0},
+			desc:  "pre-canyon: nil attr withdrawals",
 		},
 		{
 			cfg: rollupCfgPreCanyonChecks,
@@ -297,9 +296,9 @@ func TestWithdrawalsMatch(t *testing.T) {
 					},
 				},
 			},
-			block:      &eth.ExecutionPayload{Timestamp: 0},
-			checkFails: true,
-			desc:       "pre-canyon: non-nil withdrawals",
+			block: &eth.ExecutionPayload{Timestamp: 0},
+			err:   ErrBedrockMustHaveEmptyWithdrawals,
+			desc:  "pre-canyon: non-nil withdrawals",
 		},
 		{
 			cfg:   rollupCfgPostIsthmusChecks,
@@ -312,8 +311,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 					},
 				},
 			},
-			checkFails: true,
-			desc:       "post-isthmus: non-empty block withdrawals list",
+			err:  ErrCanyonMustHaveWithdrawals,
+			desc: "post-isthmus: non-empty block withdrawals list",
 		},
 		{
 			cfg: rollupCfgPostIsthmusChecks,
@@ -325,8 +324,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: nil,
 				Withdrawals:     &emptyWithdrawals,
 			},
-			checkFails: true,
-			desc:       "post-isthmus: nil block withdrawalsRoot",
+			err:  ErrIsthmusMustHaveWithdrawalsRoot,
+			desc: "post-isthmus: nil block withdrawalsRoot",
 		},
 		{
 			cfg: rollupCfgPostIsthmusChecks,
@@ -342,8 +341,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: &common.Hash{},
 				Withdrawals:     &emptyWithdrawals,
 			},
-			checkFails: true,
-			desc:       "post-isthmus: non-empty attr withdrawals list",
+			err:  ErrCanyonMustHaveWithdrawals,
+			desc: "post-isthmus: non-empty attr withdrawals list",
 		},
 		{
 			cfg: rollupCfgPostIsthmusChecks,
@@ -355,8 +354,7 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: &common.Hash{},
 				Withdrawals:     &emptyWithdrawals,
 			},
-			checkFails: false,
-			desc:       "post-isthmus: non-empty block withdrawalsRoot and empty block/attr withdrawals list",
+			desc: "post-isthmus: non-empty block withdrawalsRoot and empty block/attr withdrawals list",
 		},
 		{
 			cfg:   rollupCfgPreIsthmusChecks,
@@ -369,8 +367,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 					},
 				},
 			},
-			checkFails: true,
-			desc:       "pre-isthmus: non-empty block withdrawals list",
+			err:  ErrCanyonMustHaveWithdrawals,
+			desc: "pre-isthmus: non-empty block withdrawals list",
 		},
 		{
 			cfg: rollupCfgPreIsthmusChecks,
@@ -382,8 +380,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 				Withdrawals:     &types.Withdrawals{},
 				WithdrawalsRoot: &common.Hash{},
 			},
-			checkFails: true,
-			desc:       "pre-isthmus: non-empty block withdrawalsRoot",
+			err:  ErrCanyonWithdrawalsRoot,
+			desc: "pre-isthmus: non-empty block withdrawalsRoot",
 		},
 		{
 			cfg: rollupCfgPreIsthmusChecks,
@@ -399,8 +397,8 @@ func TestWithdrawalsMatch(t *testing.T) {
 				Withdrawals:     &types.Withdrawals{},
 				WithdrawalsRoot: nil,
 			},
-			checkFails: true,
-			desc:       "pre-isthmus: non-empty attr withdrawals list",
+			err:  ErrCanyonMustHaveWithdrawals,
+			desc: "pre-isthmus: non-empty attr withdrawals list",
 		},
 		{
 			cfg: rollupCfgPreIsthmusChecks,
@@ -412,20 +410,20 @@ func TestWithdrawalsMatch(t *testing.T) {
 				WithdrawalsRoot: nil,
 				Withdrawals:     &emptyWithdrawals,
 			},
-			checkFails: false,
-			desc:       "pre-isthmus: nil block withdrawalsRoot and empty block/attr withdrawals list",
+			desc: "pre-isthmus: nil block withdrawalsRoot and empty block/attr withdrawals list",
 		},
 	}
 
 	for _, test := range tests {
-		t.Log(test.desc)
-		err := checkWithdrawals(test.cfg, test.attrs, test.block)
+		t.Run(test.desc, func(t *testing.T) {
+			err := checkWithdrawals(test.cfg, test.attrs, test.block)
 
-		if test.checkFails {
-			require.Error(t, err, "test: %s", test.desc)
-		} else {
-			require.NoError(t, err, "test: %s", test.desc)
-		}
+			if test.err != nil {
+				require.ErrorIs(t, err, test.err, "test: %s", test.desc)
+			} else {
+				require.NoError(t, err, "test: %s", test.desc)
+			}
+		})
 	}
 }
 
