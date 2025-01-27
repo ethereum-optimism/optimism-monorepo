@@ -227,6 +227,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
+        // Set the upgrader to be a DelegateCaller so we can test the upgrade
+        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
+
         opChainConfigs.push(
             IOPContractsManager.OpChainConfig({
                 systemConfigProxy: systemConfig,
@@ -332,8 +335,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
             assertEq(address(fdg.vm()), impls.mips64Impl);
-            assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
-            assertEq(address(fdg.vm()), impls.mips64Impl);
         }
     }
 }
@@ -410,7 +411,6 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
 
     function test_upgrade_superchainConfigMismatch_reverts() public {
         upgrader = proxyAdmin.owner();
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         // Set the superchainConfig to a different address in the OptimismPortal2 contract.
         vm.store(
             address(optimismPortal2),
@@ -453,7 +453,6 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 
     function test_upgrade_permissionedPrestateNotSet_reverts() public {
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         opChainConfigs[0].permissionedDisputeGamePrestateHash = Claim.wrap(bytes32(0));
         vm.expectRevert(
@@ -465,7 +464,6 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
     }
 
     function test_upgrade_permissionlessPrestateNotSet_reverts() public {
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
         opChainConfigs[0].permissionlessDisputeGamePrestateHash = Claim.wrap(bytes32(0));
 
         vm.expectRevert(abi.encodeWithSelector(IOPContractsManager.PrestateNotSet.selector, (GameTypes.CANNON)));
