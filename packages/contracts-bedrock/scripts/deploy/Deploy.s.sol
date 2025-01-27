@@ -287,7 +287,7 @@ contract Deploy is Deployer {
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
 
         ISuperchainConfig superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
-        dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
+        dii.set(dii.superchainConfigProxy.selector, address(superchainConfig));
 
         address superchainProxyAdmin = EIP1967Helper.getAdmin(address(superchainConfig));
         dii.set(dii.superchainProxyAdmin.selector, superchainProxyAdmin);
