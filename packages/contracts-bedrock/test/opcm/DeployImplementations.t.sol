@@ -231,6 +231,7 @@ contract DeployImplementations_Test is Test {
     uint256 disputeGameFinalityDelaySeconds = 500;
     ISuperchainConfig superchainConfigProxy = ISuperchainConfig(makeAddr("superchainConfigProxy"));
     IProtocolVersions protocolVersionsProxy = IProtocolVersions(makeAddr("protocolVersionsProxy"));
+    IProxyAdmin superchainProxyAdmin = IProxyAdmin(makeAddr("superchainProxyAdmin"));
     address upgradeController = makeAddr("upgradeController");
 
     function setUp() public virtual {
@@ -267,6 +268,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.mipsVersion.selector, 1);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
         dii.set(dii.upgradeController.selector, upgradeController);
 
         // Perform the initial deployment.
@@ -338,7 +340,7 @@ contract DeployImplementations_Test is Test {
         protocolVersionsProxy = IProtocolVersions(address(uint160(uint256(hash(_seed, 7)))));
 
         // Must configure the ProxyAdmin contract.
-        IProxyAdmin superchainProxyAdmin = IProxyAdmin(
+        superchainProxyAdmin = IProxyAdmin(
             DeployUtils.create1({
                 _name: "ProxyAdmin",
                 _args: DeployUtils.encodeConstructor(abi.encodeCall(IProxyAdmin.__constructor__, (msg.sender)))
@@ -370,6 +372,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
         dii.set(dii.upgradeController.selector, upgradeController);
 
         deployImplementations.run(dii, dio);
@@ -384,7 +387,8 @@ contract DeployImplementations_Test is Test {
         assertEq(release, dii.l1ContractsRelease(), "525");
         assertEq(address(superchainConfigProxy), address(dii.superchainConfigProxy()), "550");
         assertEq(address(protocolVersionsProxy), address(dii.protocolVersionsProxy()), "575");
-        assertEq(upgradeController, dii.upgradeController(), "600");
+        assertEq(address(superchainProxyAdmin), address(dii.superchainProxyAdmin()), "600");
+        assertEq(upgradeController, dii.upgradeController(), "625");
 
         // Architecture assertions.
         assertEq(address(dio.mipsSingleton().oracle()), address(dio.preimageOracleSingleton()), "600");
@@ -406,6 +410,7 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.l1ContractsRelease.selector, release);
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
+        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
 
         // Set the challenge period to a value that is too large, using vm.store because the setter
         // method won't allow it.
