@@ -168,8 +168,8 @@
     "sourceCodeHash": "0x155c0334f63616ed245aadf9a94f419ef7d5e2237b3b32172484fd19890a61dc"
   },
   "src/dispute/FaultDisputeGame.sol": {
-    "initCodeHash": "0x152fbb1f82488d815f56087fc464b9478f1390e3ecd67ae595344115fdd9ba91",
-    "sourceCodeHash": "0x9bfea41bd993bc1ef2ede9a5846a432ed5ea183868634fd77c4068b0a4a779b2"
+    "initCodeHash": "0x17a5cbd555969aaa591278927f25caa7e6d1f0cf492fca5286cb4bd6e6301604",
+    "sourceCodeHash": "0x9fce75799ae9687e883800d31b4e0b8eb9634a32e4a247bec653bcb6dea65548"
   },
   "src/legacy/DeployerWhitelist.sol": {
     "initCodeHash": "0x53099379ed48b87f027d55712dbdd1da7d7099925426eb0531da9c0012e02c29",

@@ -170,8 +170,8 @@ contract FaultDisputeGame is Clone, ISemver {
     uint256 internal constant HEADER_BLOCK_NUMBER_INDEX = 8;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.4.0-beta.1
-    string public constant version = "1.4.0-beta.1";
+    /// @custom:semver 1.4.0-beta.2
+    string public constant version = "1.4.0-beta.2";
 
     /// @notice The starting timestamp of the game
     Timestamp public createdAt;
@@ -1151,11 +1151,16 @@ contract FaultDisputeGame is Clone, ISemver {
 
         // If the move is a defense, the disputed output could have been made by either party. In this case, we
         // need to search for the parent output to determine what the expected status byte should be.
-        Position disputedLeafPos = Position.wrap(_parentPos.raw() + 1);
-        ClaimData storage disputed = _findTraceAncestor({ _pos: disputedLeafPos, _start: _parentIdx, _global: true });
+        bool topBottomDisagreeWhenDefense = false;
+        if (!_isAttack) {
+            Position disputedLeafPos = Position.wrap(_parentPos.raw() + 1);
+            ClaimData storage disputed =
+                _findTraceAncestor({ _pos: disputedLeafPos, _start: _parentIdx, _global: true });
+            topBottomDisagreeWhenDefense = disputed.position.depth() % 2 == SPLIT_DEPTH % 2;
+        }
         uint8 vmStatus = uint8(_rootClaim.raw()[0]);
 
-        if (_isAttack || disputed.position.depth() % 2 == SPLIT_DEPTH % 2) {
+        if (_isAttack || topBottomDisagreeWhenDefense) {
             // If the move is an attack, the parent output is always deemed to be disputed. In this case, we only need
             // to check that the root claim signals that the VM panicked or resulted in an invalid transition.
             // If the move is a defense, and the disputed output and creator of the execution trace subgame disagree,
