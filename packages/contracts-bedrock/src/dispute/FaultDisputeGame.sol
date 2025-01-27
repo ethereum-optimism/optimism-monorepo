@@ -227,7 +227,7 @@ contract FaultDisputeGame is Clone, ISemver {
     /// @notice The bond distribution mode of the game.
     BondDistributionMode public bondDistributionMode;
 
-    uint256 internal FOO;
+    uint256 internal foo;
 
     /// @param _params Parameters for creating a new FaultDisputeGame.
     constructor(GameConstructorParams memory _params) {
@@ -384,6 +384,7 @@ contract FaultDisputeGame is Clone, ISemver {
         public
         virtual
     {
+        foo = 7;
         // INVARIANT: Steps cannot be made unless the game is currently in progress.
         if (status != GameStatus.IN_PROGRESS) revert GameNotInProgress();
 
