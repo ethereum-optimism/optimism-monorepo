@@ -32,6 +32,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 library ChainAssertions {
     Vm internal constant vm = Vm(0x7109709ECfa91a80626fF3989D68f67F5b1DD12D);
@@ -469,9 +470,11 @@ library ChainAssertions {
 
     /// @notice Asserts that the OPContractsManager is setup correctly
     function checkOPContractsManager(
-        Types.ContractSet memory _contracts,
+        Types.ContractSet memory _impls,
+        Types.ContractSet memory _proxies,
         IOPContractsManager _opcm,
-        IMIPS _mips
+        IMIPS _mips,
+        IProxyAdmin _superchainProxyAdmin
     )
         internal
         view
@@ -479,13 +482,19 @@ library ChainAssertions {
         console.log("Running chain assertions on the OPContractsManager at %s", address(_opcm));
         require(address(_opcm) != address(0), "CHECK-OPCM-10");
 
+        require(bytes(_opcm.version()).length > 0, "CHECK-OPCM-15");
+        require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-16");
+        require(address(_opcm.protocolVersions()) == _proxies.ProtocolVersions, "CHECK-OPCM-17");
+        require(address(_opcm.superchainProxyAdmin()) == address(_superchainProxyAdmin), "CHECK-OPCM-18");
+        require(address(_opcm.superchainConfig()) == _proxies.SuperchainConfig, "CHECK-OPCM-19");
+
         require(
             address(EIP1967Helper.getImplementation(address(_opcm.superchainConfig())))
-                == address(_contracts.SuperchainConfig),
+                == address(_impls.SuperchainConfig),
             "CHECK-OPCM-20"
         );
         require(
-            EIP1967Helper.getImplementation(address(_opcm.protocolVersions())) == address(_contracts.ProtocolVersions),
+            EIP1967Helper.getImplementation(address(_opcm.protocolVersions())) == address(_impls.ProtocolVersions),
             "CHECK-OPCM-30"
         );
 
@@ -493,14 +502,14 @@ library ChainAssertions {
 
         // Ensure that the OPCM impls are correctly saved
         IOPContractsManager.Implementations memory impls = _opcm.implementations();
-        require(impls.l1ERC721BridgeImpl == _contracts.L1ERC721Bridge, "CHECK-OPCM-50");
-        require(impls.optimismPortalImpl == _contracts.OptimismPortal, "CHECK-OPCM-60");
-        require(impls.systemConfigImpl == _contracts.SystemConfig, "CHECK-OPCM-70");
-        require(impls.optimismMintableERC20FactoryImpl == _contracts.OptimismMintableERC20Factory, "CHECK-OPCM-80");
-        require(impls.l1CrossDomainMessengerImpl == _contracts.L1CrossDomainMessenger, "CHECK-OPCM-90");
-        require(impls.l1StandardBridgeImpl == _contracts.L1StandardBridge, "CHECK-OPCM-100");
-        require(impls.disputeGameFactoryImpl == _contracts.DisputeGameFactory, "CHECK-OPCM-110");
-        require(impls.delayedWETHImpl == _contracts.DelayedWETH, "CHECK-OPCM-120");
+        require(impls.l1ERC721BridgeImpl == _impls.L1ERC721Bridge, "CHECK-OPCM-50");
+        require(impls.optimismPortalImpl == _impls.OptimismPortal, "CHECK-OPCM-60");
+        require(impls.systemConfigImpl == _impls.SystemConfig, "CHECK-OPCM-70");
+        require(impls.optimismMintableERC20FactoryImpl == _impls.OptimismMintableERC20Factory, "CHECK-OPCM-80");
+        require(impls.l1CrossDomainMessengerImpl == _impls.L1CrossDomainMessenger, "CHECK-OPCM-90");
+        require(impls.l1StandardBridgeImpl == _impls.L1StandardBridge, "CHECK-OPCM-100");
+        require(impls.disputeGameFactoryImpl == _impls.DisputeGameFactory, "CHECK-OPCM-110");
+        require(impls.delayedWETHImpl == _impls.DelayedWETH, "CHECK-OPCM-120");
         require(impls.mips64Impl == address(_mips), "CHECK-OPCM-130");
 
         // Verify that initCode is correctly set into the blueprints
