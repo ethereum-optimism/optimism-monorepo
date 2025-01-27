@@ -7,6 +7,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
@@ -16,13 +17,15 @@ import (
 func TestPectraForkAfterGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
+	offset := hexutil.Uint64(24)
+	dp.DeployConfig.L1PragueTimeOffset = &offset
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	_, _, miner, sequencer, _, verifier, _, batcher := helpers.SetupReorgTestActors(t, dp, sd, log)
 
-	// l1Head := miner.L1Chain().CurrentBlock()
-	// require.False(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should not be active yet")
-	// require.Nil(t, l1Head.RequestsHash, "Prague header requests hash should be nil")
+	l1Head := miner.L1Chain().CurrentBlock()
+	require.False(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should not be active yet")
+	require.Nil(t, l1Head.RequestsHash, "Prague header requests hash should be nil")
 
 	// start op-nodes
 	sequencer.ActL2PipelineFull(t)
@@ -33,8 +36,9 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 	miner.ActEmptyBlock(t)
 	miner.ActEmptyBlock(t) // Pectra activates here
 	miner.ActEmptyBlock(t)
+
 	// verify Pectra is active on L1
-	l1Head := miner.L1Chain().CurrentBlock()
+	l1Head = miner.L1Chain().CurrentBlock()
 	require.True(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should be active")
 	require.NotNil(t, l1Head.RequestsHash, "Prague header requests hash should be non-nil")
 
@@ -55,6 +59,7 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 
 	// TODO stash safe head block hash
 
+	t.Log("submitting EIP 7702 Set Code Batcher Transaction...")
 	// submit an EIP 7702 Set Code Transaction
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md
 	batcher.ActSubmitSetCodeTx(t)
