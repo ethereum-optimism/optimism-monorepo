@@ -27,8 +27,8 @@ contract DelayedWETH is OwnableUpgradeable, WETH98, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.0-beta.1
-    string public constant version = "1.3.0-beta.1";
+    /// @custom:semver 1.3.0
+    string public constant version = "1.3.0";
 
     /// @notice Returns a withdrawal request for the given address.
     mapping(address => mapping(address => WithdrawalRequest)) public withdrawals;
