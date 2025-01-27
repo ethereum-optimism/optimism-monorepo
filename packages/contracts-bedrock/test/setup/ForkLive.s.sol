@@ -64,10 +64,9 @@ contract ForkLive is Deployer {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
             // Set the resultant state from the superchain ops repo upgrades
             vm.loadAllocs(superchainOpsAllocsPath);
-            // Then fetch the addresses from the superchain registry. This function will
-            // use a local EVM to read the implementation addresses from proxy addresses
-            // that are sourced from the superchain registry. Ensuring the allocs are set
-            // ensures the correct implementation addresses are read.
+            // Next, fetch the addresses from the superchain registry. This function uses a local EVM
+            // to retrieve implementation addresses by reading from proxy addresses provided by the registry.
+            // Setting the allocs first ensures the correct implementation addresses are retrieved.
             _readSuperchainRegistry();
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
