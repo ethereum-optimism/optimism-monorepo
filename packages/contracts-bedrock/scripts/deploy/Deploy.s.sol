@@ -329,12 +329,7 @@ contract Deploy is Deployer {
         ChainAssertions.checkOptimismPortal2({ _contracts: impls, _cfg: cfg, _isProxy: false });
         ChainAssertions.checkOptimismMintableERC20Factory({ _contracts: impls, _isProxy: false });
         ChainAssertions.checkDisputeGameFactory({ _contracts: impls, _expectedOwner: address(0), _isProxy: false });
-        ChainAssertions.checkDelayedWETH({
-            _contracts: impls,
-            _cfg: cfg,
-            _isProxy: false,
-            _expectedOwner: address(0)
-        });
+        ChainAssertions.checkDelayedWETH({ _contracts: impls, _cfg: cfg, _isProxy: false, _expectedOwner: address(0) });
         ChainAssertions.checkPreimageOracle({
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton())),
             _cfg: cfg

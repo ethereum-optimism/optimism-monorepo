@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 // Testing
 import { Vm } from "forge-std/Vm.sol";
 import { console2 as console } from "forge-std/console2.sol";
-import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Scripts
 import { DeployConfig } from "scripts/deploy/DeployConfig.s.sol";
