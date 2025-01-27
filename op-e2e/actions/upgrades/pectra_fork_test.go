@@ -34,14 +34,14 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 	// build empty L1 blocks, crossing the fork boundary
 	miner.ActL1SetFeeRecipient(common.Address{'A', 0})
 	miner.ActEmptyBlock(t)
-	miner.ActEmptyBlock(t) // Cancun activates here
+	miner.ActEmptyBlock(t) // Pectra activates here
 	miner.ActEmptyBlock(t)
-	// verify Cancun is active
+	// verify Pectra is active
 	l1Head = miner.L1Chain().CurrentBlock()
-	require.True(t, sd.L1Cfg.Config.IsCancun(l1Head.Number, l1Head.Time), "Prague should be active")
+	require.True(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should be active")
 	require.NotNil(t, l1Head.RequestsHash, "Prague header requests hash should be non-nil")
 
-	// build L2 chain up to and including L2 blocks referencing Cancun L1 blocks
+	// build L2 chain up to and including L2 blocks referencing Pectra L1 blocks
 	sequencer.ActL1HeadSignal(t)
 	sequencer.ActBuildToL1Head(t)
 	miner.ActL1StartBlock(12)(t)
@@ -52,7 +52,24 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 	// sync verifier
 	verifier.ActL1HeadSignal(t)
 	verifier.ActL2PipelineFull(t)
-	// verify verifier accepted Cancun L1 inputs
-	require.Equal(t, l1Head.Hash(), verifier.SyncStatus().SafeL2.L1Origin.Hash, "verifier synced L1 chain that includes Cancun headers")
+	// verify verifier accepted Prague L1 inputs
+	require.Equal(t, l1Head.Hash(), verifier.SyncStatus().SafeL2.L1Origin.Hash, "verifier synced L1 chain that includes Prague headers")
 	require.Equal(t, sequencer.SyncStatus().UnsafeL2, verifier.SyncStatus().UnsafeL2, "verifier and sequencer agree")
+
+	// TODO stash safe head block hash
+
+	// submit an EIP 7702 Set Code Transaction
+	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md
+	batcher.ActSubmitSetCodeTx(t)
+	miner.ActL1IncludeTx(batcher.BatcherAddr)(t)
+	miner.ActL1EndBlock(t)
+
+	// sync verifier
+	verifier.ActL1HeadSignal(t)
+	verifier.ActL2PipelineFull(t)
+	// verify verifier did not panic and ignored the EIP 7702 Set Code Transaction
+	require.Equal(t, l1Head.Hash(), verifier.SyncStatus().SafeL2.L1Origin.Hash, "verifier synced L1 chain that includes Prague headers")
+	require.Equal(t, sequencer.SyncStatus().UnsafeL2, verifier.SyncStatus().UnsafeL2, "verifier and sequencer agree")
+
+	// TODO check sade head has not changed.
 }
