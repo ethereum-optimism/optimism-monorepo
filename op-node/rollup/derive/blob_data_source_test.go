@@ -28,7 +28,7 @@ func TestDataAndHashesFromTxs(t *testing.T) {
 	logger := testlog.Logger(t, log.LvlInfo)
 
 	chainId := new(big.Int).SetUint64(rng.Uint64())
-	signer := types.NewCancunSigner(chainId)
+	signer := types.NewPragueSigner(chainId)
 	config := DataSourceConfig{
 		l1Signer:          signer,
 		batchInboxAddress: batchInboxAddr,
@@ -95,7 +95,8 @@ func TestDataAndHashesFromTxs(t *testing.T) {
 		To:    batchInboxAddr,
 		Data:  testutils.RandomData(rng, rng.Intn(1000)),
 	}
-	setCodeTx, _ := types.SignNewTx(privateKey, signer, setCodeTxData)
+	setCodeTx, err := types.SignNewTx(privateKey, signer, setCodeTxData)
+	require.NoError(t, err)
 	txs = types.Transactions{setCodeTx}
 	data, blobHashes = dataAndHashesFromTxs(txs, &config, batcherAddr, logger)
 	require.Equal(t, 0, len(data))
