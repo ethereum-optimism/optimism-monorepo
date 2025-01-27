@@ -1613,7 +1613,6 @@ workflows:
             branches:
               only:
                 - develop
-                - aj/await-hold
 
   develop-kontrol-tests:
     when:
