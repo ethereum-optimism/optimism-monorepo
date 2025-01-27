@@ -89,7 +89,19 @@ func TestBatcherConcurrentAltDARequests(t *testing.T) {
 func TestBatcherCanHandleOutOfOrderDAServerResponses(t *testing.T) {
 	op_e2e.InitParallel(t)
 
+	// Not sure whether WithAllocType is needed here, as the tests pass even without them
+	// (see mslipper's comments for the TestBatcherConcurrentAltDARequests test above))
+	// TODO: understand how the DeployConfigs are related to the AllocTypes
+	// I asked here https://discord.com/channels/1244729134312198194/1332175015180767265/1332456541067935834 but have yet to get an answer.
 	cfg := e2esys.HoloceneSystemConfig(t, new(hexutil.Uint64), e2esys.WithAllocType(config.AllocTypeAltDAGeneric))
+	cfg.DeployConfig.UseAltDA = true
+	cfg.DeployConfig.DACommitmentType = "GenericCommitment"
+	// TODO: figure out why the below are needed even in GenericCommitment mode which doesn't use the DAChallenge Contract
+	cfg.DeployConfig.DAChallengeWindow = 16
+	cfg.DeployConfig.DAResolveWindow = 16
+	cfg.DeployConfig.DABondSize = 1000000
+	cfg.DeployConfig.DAResolverRefundPercentage = 0
+
 	cfg.BatcherMaxPendingTransactions = 0 // no limit on parallel txs
 	cfg.BatcherBatchType = 0
 	cfg.DataAvailabilityType = flags.CalldataType
