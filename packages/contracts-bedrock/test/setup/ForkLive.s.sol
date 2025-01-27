@@ -50,8 +50,7 @@ contract ForkLive is Deployer {
     /// @notice Forks, upgrades and tests a production network.
     /// @dev This function sets up the system to test by:
     ///      0. reading the environment variable to determine the base and OP chain names, read the
-    /// SUPERCHAIN_OPS_ALLOCS_PATH data
-    /// created from superchain ops.
+    ///         SUPERCHAIN_OPS_ALLOCS_PATH data created from superchain ops.
     ///      1. if the environment variable is set, load the state from the given path.
     ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
     ///      3. deploying the updated OPCM and implementations of the contracts.
