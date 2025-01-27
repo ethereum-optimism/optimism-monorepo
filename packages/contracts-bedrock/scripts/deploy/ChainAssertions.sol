@@ -488,16 +488,6 @@ library ChainAssertions {
         require(address(_opcm.superchainProxyAdmin()) == address(_superchainProxyAdmin), "CHECK-OPCM-18");
         require(address(_opcm.superchainConfig()) == _proxies.SuperchainConfig, "CHECK-OPCM-19");
 
-        require(
-            address(EIP1967Helper.getImplementation(address(_opcm.superchainConfig())))
-                == address(_impls.SuperchainConfig),
-            "CHECK-OPCM-20"
-        );
-        require(
-            EIP1967Helper.getImplementation(address(_opcm.protocolVersions())) == address(_impls.ProtocolVersions),
-            "CHECK-OPCM-30"
-        );
-
         require(bytes(_opcm.l1ContractsRelease()).length > 0, "CHECK-OPCM-40");
 
         // Ensure that the OPCM impls are correctly saved
@@ -511,6 +501,8 @@ library ChainAssertions {
         require(impls.disputeGameFactoryImpl == _impls.DisputeGameFactory, "CHECK-OPCM-110");
         require(impls.delayedWETHImpl == _impls.DelayedWETH, "CHECK-OPCM-120");
         require(impls.mips64Impl == address(_mips), "CHECK-OPCM-130");
+        require(impls.superchainConfigImpl == _impls.SuperchainConfig, "CHECK-OPCM-140");
+        require(impls.protocolVersionsImpl == _impls.ProtocolVersions, "CHECK-OPCM-150");
 
         // Verify that initCode is correctly set into the blueprints
         IOPContractsManager.Blueprints memory blueprints = _opcm.blueprints();
