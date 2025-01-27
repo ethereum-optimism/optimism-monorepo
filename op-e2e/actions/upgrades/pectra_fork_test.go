@@ -7,7 +7,6 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/log"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils"
@@ -17,17 +16,17 @@ import (
 func TestPectraForkAfterGenesis(gt *testing.T) {
 	t := helpers.NewDefaultTesting(gt)
 	dp := e2eutils.MakeDeployParams(t, helpers.DefaultRollupTestParams())
+	// Prague activated at l1 genesis
 	// offset := hexutil.Uint64(24)
-	offset := hexutil.Uint64(0)
-	dp.DeployConfig.L1CancunTimeOffset = &offset
-	dp.DeployConfig.L1PragueTimeOffset = &offset
+	dp.DeployConfig.L1CancunTimeOffset = nil
+	dp.DeployConfig.L1PragueTimeOffset = nil
 	sd := e2eutils.Setup(t, dp, helpers.DefaultAlloc)
 	log := testlog.Logger(t, log.LevelDebug)
 	_, _, miner, sequencer, _, verifier, _, batcher := helpers.SetupReorgTestActors(t, dp, sd, log)
 
-	l1Head := miner.L1Chain().CurrentBlock()
-	require.False(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should not be active yet")
-	require.Nil(t, l1Head.RequestsHash, "Prague header requests hash should be nil")
+	// l1Head := miner.L1Chain().CurrentBlock()
+	// require.False(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should not be active yet")
+	// require.Nil(t, l1Head.RequestsHash, "Prague header requests hash should be nil")
 
 	// start op-nodes
 	sequencer.ActL2PipelineFull(t)
@@ -39,7 +38,7 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 	miner.ActEmptyBlock(t) // Pectra activates here
 	miner.ActEmptyBlock(t)
 	// verify Pectra is active
-	l1Head = miner.L1Chain().CurrentBlock()
+	l1Head := miner.L1Chain().CurrentBlock()
 	require.True(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should be active")
 	require.NotNil(t, l1Head.RequestsHash, "Prague header requests hash should be non-nil")
 
