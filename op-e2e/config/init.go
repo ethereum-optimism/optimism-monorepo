@@ -428,45 +428,45 @@ func defaultIntent(root string, loc *artifacts.Locator, deployer common.Address,
 					Challenger:        common.HexToAddress("0x15d34AAf54267DB7D7c367839AAf71A00a2C6A65"),
 				},
 				AdditionalDisputeGames: []state.AdditionalDisputeGame{
-					{
-						ChainProofParams: state.ChainProofParams{
-							// Fast game
-							DisputeGameType:         254,
-							DisputeAbsolutePrestate: defaultPrestate,
-							DisputeMaxGameDepth:     14 + 3 + 1,
-							DisputeSplitDepth:       14,
-							DisputeClockExtension:   0,
-							DisputeMaxClockDuration: 0,
-						},
-						VMType:                       state.VMTypeAlphabet,
-						UseCustomOracle:              true,
-						OracleMinProposalSize:        10000,
-						OracleChallengePeriodSeconds: 0,
-						MakeRespected:                true,
-					},
-					{
-						ChainProofParams: state.ChainProofParams{
-							// Alphabet game
-							DisputeGameType:         255,
-							DisputeAbsolutePrestate: defaultPrestate,
-							DisputeMaxGameDepth:     14 + 3 + 1,
-							DisputeSplitDepth:       14,
-							DisputeClockExtension:   0,
-							DisputeMaxClockDuration: 1200,
-						},
-						VMType: state.VMTypeAlphabet,
-					},
-					{
-						ChainProofParams: state.ChainProofParams{
-							DisputeGameType:         0,
-							DisputeAbsolutePrestate: cannonPrestate(root, allocType),
-							DisputeMaxGameDepth:     50,
-							DisputeSplitDepth:       14,
-							DisputeClockExtension:   0,
-							DisputeMaxClockDuration: 1200,
-						},
-						VMType: cannonVMType(allocType),
-					},
+					// {
+					// 	ChainProofParams: state.ChainProofParams{
+					// 		// Fast game
+					// 		DisputeGameType:         254,
+					// 		DisputeAbsolutePrestate: defaultPrestate,
+					// 		DisputeMaxGameDepth:     14 + 3 + 1,
+					// 		DisputeSplitDepth:       14,
+					// 		DisputeClockExtension:   0,
+					// 		DisputeMaxClockDuration: 0,
+					// 	},
+					// 	VMType:                       state.VMTypeAlphabet,
+					// 	UseCustomOracle:              true,
+					// 	OracleMinProposalSize:        10000,
+					// 	OracleChallengePeriodSeconds: 0,
+					// 	MakeRespected:                true,
+					// },
+					// {
+					// 	ChainProofParams: state.ChainProofParams{
+					// 		// Alphabet game
+					// 		DisputeGameType:         255,
+					// 		DisputeAbsolutePrestate: defaultPrestate,
+					// 		DisputeMaxGameDepth:     14 + 3 + 1,
+					// 		DisputeSplitDepth:       14,
+					// 		DisputeClockExtension:   0,
+					// 		DisputeMaxClockDuration: 1200,
+					// 	},
+					// 	VMType: state.VMTypeAlphabet,
+					// },
+					// {
+					// 	ChainProofParams: state.ChainProofParams{
+					// 		DisputeGameType:         0,
+					// 		DisputeAbsolutePrestate: cannonPrestate(root, allocType),
+					// 		DisputeMaxGameDepth:     50,
+					// 		DisputeSplitDepth:       14,
+					// 		DisputeClockExtension:   0,
+					// 		DisputeMaxClockDuration: 1200,
+					// 	},
+					// 	VMType: cannonVMType(allocType),
+					// },
 				},
 			},
 		},
