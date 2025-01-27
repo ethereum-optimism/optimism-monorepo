@@ -52,7 +52,7 @@ func TestSystemWrapETH(t *testing.T) {
 
 	systest.SystemTest(t,
 		smokeTestScenario(chainIdx, testUserMarker),
-		userFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
+		walletFundsValidator(chainIdx, types.NewBalance(big.NewInt(1.0*constants.ETH)), testUserMarker),
 	)
 }
 
@@ -79,17 +79,13 @@ func TestSmokeTestFailure(t *testing.T) {
 
 	// Run the smoke test logic and capture failures
 	sentinel := &struct{}{}
-	ctx := context.WithValue(context.Background(), sentinel, mockWallet)
-	failed, failureMsg := runWithRecordingT(
-		"TestSmokeTestFailure",
-		ctx,
-		func(t systest.T) {
-			testFunc := smokeTestScenario(0, sentinel)
-			testFunc(t, mockSys)
-		},
+	rt := NewRecordingT(context.WithValue(context.TODO(), sentinel, mockWallet))
+	rt.TestScenario(
+		smokeTestScenario(0, sentinel),
+		mockSys,
 	)
 
 	// Verify that the test failed due to SendETH error
-	require.True(t, failed, "test should have failed")
-	require.Contains(t, failureMsg, "transaction failure", "unexpected failure message")
+	require.True(t, rt.Failed(), "test should have failed")
+	require.Contains(t, rt.Logs(), "transaction failure", "unexpected failure message")
 }

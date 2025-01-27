@@ -226,7 +226,7 @@ func TestDevnetFromFile(t *testing.T) {
 }
 
 func TestWallet(t *testing.T) {
-	chain := NewChain("1", "http://localhost:8545", nil)
+	chain := newChain("1", "http://localhost:8545", nil)
 
 	tests := []struct {
 		name        string
@@ -268,14 +268,14 @@ func TestWallet(t *testing.T) {
 }
 
 func TestChainUser(t *testing.T) {
-	chain := NewChain("1", "http://localhost:8545", nil)
+	chain := newChain("1", "http://localhost:8545", nil)
 	testWallet := newWallet("0xabc", "0x123", chain)
 	chain.users = map[string]types.Wallet{
 		"l2Faucet": testWallet,
 	}
 
 	ctx := context.Background()
-	user, err := chain.User(ctx)
+	user, err := chain.Wallet(ctx)
 	assert.NoError(t, err)
 	assert.Equal(t, testWallet.Address(), user.Address())
 	assert.Equal(t, testWallet.PrivateKey(), user.PrivateKey())

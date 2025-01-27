@@ -10,5 +10,6 @@ const (
 )
 
 const (
-	ETH = 1e18
+	ETH  = 1e18
+	Gwei = 1e9
 )

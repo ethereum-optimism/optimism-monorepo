@@ -1,35 +1,23 @@
 package system
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
 	"strings"
-	"sync"
 
-	"github.com/ethereum-optimism/optimism/devnet-sdk/constraints"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/constants"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/descriptors"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
-	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
-	"github.com/ethereum/go-ethereum/accounts/abi/bind"
-	"github.com/ethereum/go-ethereum/common"
-	coreTypes "github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/ethereum/go-ethereum/ethclient"
 )
-
-var _ System = (*system)(nil)
 
 type system struct {
 	identifier string
 	l1         Chain
 	l2s        []Chain
 }
+
+// system implements System
+var _ System = (*system)(nil)
 
 func NewSystemFromEnv(envVar string) (System, error) {
 	devnetFile := os.Getenv(envVar)
@@ -38,7 +26,7 @@ func NewSystemFromEnv(envVar string) (System, error) {
 	}
 	devnet, err := devnetFromFile(devnetFile)
 	if err != nil {
-		return nil, fmt.Errorf("failed to parse devnet file: %v", err)
+		return nil, fmt.Errorf("failed to parse devnet file: %w", err)
 	}
 
 	// Extract basename without extension from devnetFile path
@@ -52,7 +40,7 @@ func NewSystemFromEnv(envVar string) (System, error) {
 
 	sys, err := systemFromDevnet(*devnet, basename)
 	if err != nil {
-		return nil, fmt.Errorf("failed to create system from devnet file: %v", err)
+		return nil, fmt.Errorf("failed to create system from devnet file: %w", err)
 	}
 	return sys, nil
 }
@@ -107,325 +95,13 @@ func systemFromDevnet(dn descriptors.DevnetEnvironment, identifier string) (Syst
 	return sys, nil
 }
 
-// internalChain provides access to internal chain functionality
-type internalChain interface {
-	Chain
-	getClient() (*ethclient.Client, error)
-}
-
-// clientManager handles ethclient connections
-type clientManager struct {
-	mu      sync.RWMutex
-	clients map[string]*ethclient.Client
-}
-
-func newClientManager() *clientManager {
-	return &clientManager{
-		clients: make(map[string]*ethclient.Client),
-	}
-}
-
-func (m *clientManager) getClient(rpcURL string) (*ethclient.Client, error) {
-	m.mu.RLock()
-	if client, ok := m.clients[rpcURL]; ok {
-		m.mu.RUnlock()
-		return client, nil
-	}
-	m.mu.RUnlock()
-
-	m.mu.Lock()
-	defer m.mu.Unlock()
-
-	// Double-check after acquiring write lock
-	if client, ok := m.clients[rpcURL]; ok {
-		return client, nil
-	}
-
-	client, err := ethclient.Dial(rpcURL)
-	if err != nil {
-		return nil, fmt.Errorf("failed to connect to ethereum client: %w", err)
-	}
-	m.clients[rpcURL] = client
-	return client, nil
-}
-
-type chain struct {
-	id     string
-	rpcUrl string
-
-	addresses map[string]types.Address
-	users     map[string]types.Wallet
-	clients   *clientManager
-	registry  interfaces.ContractsRegistry
-	mu        sync.Mutex
-}
-
-func (c *chain) getClient() (*ethclient.Client, error) {
-	return c.clients.getClient(c.rpcUrl)
-}
-
-func NewChain(chainID string, rpcUrl string, users map[string]types.Wallet) *chain {
-	return &chain{
-		id: chainID,
-		addresses: map[string]types.Address{
-			"SuperchainWETH":             constants.SuperchainWETH,
-			"ETHLiquidity":               constants.ETHLiquidity,
-			"L2ToL2CrossDomainMessenger": constants.L2ToL2CrossDomainMessenger,
-		},
-		rpcUrl:  rpcUrl,
-		users:   users,
-		clients: newClientManager(),
-	}
-}
-
-func (c *chain) ContractsRegistry() interfaces.ContractsRegistry {
-	c.mu.Lock()
-	defer c.mu.Unlock()
-
-	if c.registry != nil {
-		return c.registry
-	}
-
-	client, err := c.getClient()
-	if err != nil {
-		return &contracts.EmptyRegistry{}
-	}
-
-	c.registry = contracts.NewClientRegistry(client)
-	return c.registry
-}
-
-func (c *chain) RPCURL() string {
-	return c.rpcUrl
-}
-
-func (c *chain) User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
-	// Try each user
-	for _, user := range c.users {
-		// Check all constraints
-		meetsAll := true
-		for _, constraint := range constraints {
-			if !constraint.CheckWallet(user) {
-				meetsAll = false
-				break
-			}
-		}
-		if meetsAll {
-			return user, nil
-		}
-	}
-
-	return nil, fmt.Errorf("no user found meeting all constraints")
-}
-
-func (c *chain) ID() types.ChainID {
-	if c.id == "" {
-		return types.ChainID(0)
-	}
-	id, _ := strconv.ParseUint(c.id, 10, 64)
-	return types.ChainID(id)
-}
-
-var _ InteropSystem = (*interopSystem)(nil)
-
 type interopSystem struct {
 	*system
 }
 
+// interopSystem implements InteropSystem
+var _ InteropSystem = (*interopSystem)(nil)
+
 func (i *interopSystem) InteropSet() InteropSet {
-	return i.system // TODO
-}
-
-type wallet struct {
-	privateKey types.Key
-	address    types.Address
-	chain      internalChain
-}
-
-func newWallet(pk types.Key, addr types.Address, chain *chain) *wallet {
-	return &wallet{
-		privateKey: pk,
-		address:    addr,
-		chain:      chain,
-	}
-}
-
-func (w *wallet) PrivateKey() types.Key {
-	return strings.TrimPrefix(w.privateKey, "0x")
-}
-
-func (w *wallet) Address() types.Address {
-	return w.address
-}
-
-func (w *wallet) SendETH(to types.Address, amount types.Balance) types.WriteInvocation[any] {
-	return &sendImpl{
-		chain:  w.chain,
-		pk:     w.PrivateKey(),
-		to:     to,
-		amount: amount,
-	}
-}
-
-func (w *wallet) Balance() types.Balance {
-	client, err := w.chain.getClient()
-	if err != nil {
-		return types.Balance{}
-	}
-
-	balance, err := client.BalanceAt(context.Background(), common.HexToAddress(string(w.address)), nil)
-	if err != nil {
-		return types.Balance{}
-	}
-
-	return types.NewBalance(balance)
-}
-
-type sendImpl struct {
-	chain  internalChain
-	pk     types.Key
-	to     types.Address
-	amount types.Balance
-}
-
-func (i *sendImpl) Call(ctx context.Context) (any, error) {
-	client, err := i.chain.getClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
-
-	pk, err := crypto.HexToECDSA(string(i.pk))
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
-
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-	nonce, err := client.PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %w", err)
-	}
-
-	gasPrice, err := client.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get gas price: %w", err)
-	}
-
-	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
-	toAddr := common.HexToAddress(string(i.to))
-	tx := coreTypes.NewTransaction(nonce, toAddr, i.amount.Int, gasLimit, gasPrice, nil)
-
-	chainID, err := client.NetworkID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chain id: %w", err)
-	}
-
-	signedTx, err := coreTypes.SignTx(tx, coreTypes.NewEIP155Signer(chainID), pk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %w", err)
-	}
-
-	return signedTx, nil
-}
-
-func (i *sendImpl) Send(ctx context.Context) types.InvocationResult {
-	tx, err := sendETH(ctx, i.chain, i.pk, i.to, i.amount)
-	return &sendResult{
-		chain: i.chain,
-		tx:    tx,
-		err:   err,
-	}
-}
-
-type sendResult struct {
-	chain internalChain
-	tx    *coreTypes.Transaction
-	err   error
-}
-
-func (r *sendResult) Error() error {
-	return r.err
-}
-
-func (r *sendResult) Wait() error {
-	client, err := r.chain.getClient()
-	if err != nil {
-		return fmt.Errorf("failed to get client: %w", err)
-	}
-
-	if r.err != nil {
-		return r.err
-	}
-	if r.tx == nil {
-		return fmt.Errorf("no transaction to wait for")
-	}
-
-	receipt, err := bind.WaitMined(context.Background(), client, r.tx)
-	if err != nil {
-		return fmt.Errorf("failed waiting for transaction confirmation: %w", err)
-	}
-
-	if receipt.Status == 0 {
-		return fmt.Errorf("transaction failed")
-	}
-
-	return nil
-}
-
-func sendETH(ctx context.Context, chain internalChain, privateKey string, to types.Address, amount types.Balance) (*coreTypes.Transaction, error) {
-	client, err := chain.getClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get client: %w", err)
-	}
-
-	pk, err := crypto.HexToECDSA(privateKey)
-	if err != nil {
-		return nil, fmt.Errorf("invalid private key: %w", err)
-	}
-
-	from := crypto.PubkeyToAddress(pk.PublicKey)
-	nonce, err := client.PendingNonceAt(ctx, from)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get nonce: %w", err)
-	}
-
-	gasPrice, err := client.SuggestGasPrice(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get gas price: %w", err)
-	}
-
-	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
-	toAddr := common.HexToAddress(string(to))
-	tx := coreTypes.NewTransaction(nonce, toAddr, amount.Int, gasLimit, gasPrice, nil)
-
-	chainID, err := client.NetworkID(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to get chain id: %w", err)
-	}
-
-	signedTx, err := coreTypes.SignTx(tx, coreTypes.NewEIP155Signer(chainID), pk)
-	if err != nil {
-		return nil, fmt.Errorf("failed to sign transaction: %w", err)
-	}
-
-	err = client.SendTransaction(ctx, signedTx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to send transaction: %w", err)
-	}
-
-	return signedTx, nil
-}
-
-func chainFromDescriptor(d *descriptors.Chain) Chain {
-	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
-	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
-
-	c := NewChain(d.ID, rpcURL, nil) // Create chain first
-
-	users := make(map[string]types.Wallet)
-	for key, w := range d.Wallets {
-		users[key] = newWallet(w.PrivateKey, types.Address(w.Address), c)
-	}
-	c.users = users // Set users after creation
-
-	return c
+	return i.system // TODO: the interop set might not contain all L2s
 }

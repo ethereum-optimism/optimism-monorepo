@@ -19,7 +19,7 @@ type System interface {
 type Chain interface {
 	RPCURL() string
 	ID() types.ChainID
-	User(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
+	Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error)
 	ContractsRegistry() interfaces.ContractsRegistry
 }
 
