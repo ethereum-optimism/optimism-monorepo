@@ -62,11 +62,12 @@ contract ForkLive is Deployer {
         bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
-            /// run the upgrades from the ops repo first
+            // Set the resultant state from the superchain ops repo upgrades
             vm.loadAllocs(superchainOpsAllocsPath);
-            /// then fetch the addresses from the superchain registry after the upgrade
-            /// as this function will read the logic contract addresses which may have
-            /// changed from the upgrade.
+            // Then fetch the addresses from the superchain registry. This function will
+            // use a local EVM to read the implementation addresses from proxy addresses
+            // that are sourced from the superchain registry. Ensuring the allocs are set
+            // ensures the correct implementation addresses are read.
             _readSuperchainRegistry();
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
