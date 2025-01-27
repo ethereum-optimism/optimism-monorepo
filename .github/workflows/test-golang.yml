@@ -1,0 +1,46 @@
+name: Go
+
+on:
+  push:
+    branches: [ eigenda-develop ]
+  pull_request:
+
+jobs:
+  go-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+
+      - name: Run linter
+        run: make lint-go
+
+  go-tests:
+    needs: [go-lint]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        packages:
+          - op-batcher
+          - op-node
+          - op-e2e/system/altda
+          - op-e2e/actions/altda
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.22'
+
+      - name: Run tests
+        run: |
+          mkdir -p ./tmp/test-results && mkdir -p ./tmp/testlogs
+
+          cd op-e2e && make pre-test && cd ..
+
+          go test -timeout=10m ./${{ matrix.packages }}/...
