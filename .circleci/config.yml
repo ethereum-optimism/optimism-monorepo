@@ -923,6 +923,7 @@ jobs:
             export ENABLE_ANVIL=true
             export SEPOLIA_RPC_URL="https://ci-sepolia-l1-archive.optimism.io"
             export MAINNET_RPC_URL="https://ci-mainnet-l1-archive.optimism.io"
+            export PARALLEL=$(nproc)
 
             <<parameters.environment_overrides>>
 
@@ -931,7 +932,7 @@ jobs:
               --jsonfile=./tmp/testlogs/log.json \
               --rerun-fails=2 \
               --packages="$formatted_packages" \
-              -- -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
+              -- -parallel=$PARALLEL -coverprofile=coverage.out -timeout=<<parameters.test_timeout>>
       - codecov/upload:
           disable_search: true
           files: ./coverage.out
@@ -1580,6 +1581,7 @@ workflows:
           resource_class: ethereum-optimism/latitude-fps-1
           environment_overrides: |
             export OP_E2E_CANNON_ENABLED="true"
+            export PARALLELISM=8
           packages: |
             op-e2e/faultproofs
           context:
