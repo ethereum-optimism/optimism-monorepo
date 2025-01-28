@@ -55,6 +55,7 @@ contract ForkLive is Deployer {
     ///      2. deploying the updated OPCM and implementations of the contracts.
     ///      3. upgrading the system using the OPCM.upgrade() function.
     function run() public {
+        string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
         // Read the superchain registry and save the addresses to the Artifacts contract.
         _readSuperchainRegistry();
 
