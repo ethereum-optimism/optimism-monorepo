@@ -551,7 +551,7 @@ func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
 		Nonce:      nonce,
 		To:         s.rollupCfg.BatchInboxAddress, // send to batch inbox
 		Value:      uint256.NewInt(0),
-		Data:       []byte{},
+		Data:       s.ReadNextOutputFrame(t),
 		AccessList: types.AccessList{},
 		AuthList:   []types.SetCodeAuthorization{signedAuth},
 		Gas:        1_000_000,
@@ -561,6 +561,7 @@ func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
 	tx, err := types.SignNewTx(s.l2BatcherCfg.BatcherKey, s.l1Signer, txData)
 	require.NoError(t, err, "need to sign tx")
 
+	t.Log("submitting EIP 7702 Set Code Batcher Transaction...")
 	err = s.l1.SendTransaction(t.Ctx(), tx)
 	require.NoError(t, err, "need to send tx")
 	s.LastSubmitted = tx
