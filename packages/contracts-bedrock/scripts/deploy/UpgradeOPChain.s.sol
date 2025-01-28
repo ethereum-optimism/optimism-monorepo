@@ -70,8 +70,8 @@ contract UpgradeOPChain is Script {
 contract DummyCaller {
     address internal _opcmAddr;
 
-    function upgrade(OPContractsManager.OpChainConfig[] memory opChainConfigs) external returns (bool, bytes memory) {
-        bytes memory data = abi.encodeCall(DummyCaller.upgrade, opChainConfigs);
+    function upgrade(OPContractsManager.OpChainConfig[] memory _opChainConfigs) external returns (bool, bytes memory) {
+        bytes memory data = abi.encodeCall(DummyCaller.upgrade, _opChainConfigs);
         (bool success, bytes memory result) = _opcmAddr.delegatecall(data);
         return (success, result);
     }
