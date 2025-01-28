@@ -1,0 +1,98 @@
+name: Go
+
+on:
+  push:
+    branches: [eigenda-develop]
+  pull_request:
+
+jobs:
+  go-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: "1.22"
+
+      - name: Install and run golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: v1.61.0
+          args: -E goimports,sqlclosecheck,bodyclose,asciicheck,misspell,errorlint --timeout 5m -e "errors.As" -e "errors.Is" ./...
+
+  build-and-cache-contracts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2024.12.14 # [default: latest] mise version to install
+          install: true # [default: true] run `mise install`
+          cache: true # [default: true] cache mise using GitHub's cache
+          experimental: true # [default: false] enable experimental features
+      - uses: actions/cache@v3
+        id: cache-artifacts
+        with:
+          path: packages/contracts-bedrock/forge-artifacts
+          # If any of the contracts file changes, the cache key will change, forcing a rebuild of the forge artifacts
+          key: ${{ runner.os }}-forge-${{ hashFiles('packages/contracts-bedrock/src/**/*.sol') }}
+      - name: Build contracts if cache miss
+        if: steps.cache-artifacts.outputs.cache-hit != 'true'
+        run: make build-contracts
+
+  go-tests:
+    needs: [build-and-cache-contracts]
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        packages:
+          - op-batcher
+          - op-node
+          - op-e2e/system/altda
+          - op-e2e/actions/altda
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: jdx/mise-action@v2
+        with:
+          version: 2024.12.14 # [default: latest] mise version to install
+          install: true # [default: true] run `mise install`
+          cache: true # [default: true] cache mise using GitHub's cache
+          experimental: true # [default: false] enable experimental features
+
+      - name: Restore cached forge artifacts cached
+        uses: actions/cache@v3
+        id: cache-restore
+        with:
+          path: packages/contracts-bedrock/forge-artifacts
+          key: ${{ runner.os }}-forge-${{ hashFiles('packages/contracts-bedrock/src/**/*.sol') }}
+
+      # Cache has been stored in the build-and-cache-contracts job, so if this fails there's a problem
+      - name: Check cache restore
+        if: steps.cache-restore.outputs.cache-hit != 'true'
+        run: |
+          echo "Cache restore failed"
+          exit 1
+
+      # We use mise to install golang instead of the setup-go action,
+      # so we need to do the cache setup ourselves
+      - name: Go Module Cache
+        uses: actions/cache@v3
+        id: go-cache
+        with:
+          path: ~/go/pkg/mod
+          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          restore-keys: |
+            ${{ runner.os }}-go-
+
+      # Add explicit download on cache miss
+      # go test runs `go mod download` implicitly, but this separation is nice to see how long downloading vs running tests takes
+      - name: Download Go modules
+        if: steps.go-cache.outputs.cache-hit != 'true'
+        run: go mod download
+
+      - name: Run tests
+        run: |
+          go test -timeout=10m ./${{ matrix.packages }}/...
