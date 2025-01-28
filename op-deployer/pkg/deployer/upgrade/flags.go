@@ -2,7 +2,7 @@ package upgrade
 
 import (
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer"
-	v200 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/upgrade/v200"
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/upgrade/v200"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/urfave/cli/v2"
 )
