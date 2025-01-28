@@ -3,6 +3,7 @@ package engine
 import (
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 )
 
@@ -23,6 +24,26 @@ func (ev PayloadSuccessEvent) String() string {
 }
 
 func (eq *EngDeriver) onPayloadSuccess(ev PayloadSuccessEvent) {
+	if ev.DerivedFrom == ReplaceBlockDerivedFrom {
+		eq.log.Warn("Successfully built replacement block, resetting chain to continue now", "replacement", ev.Ref)
+		// Change the engine state to make the replacement block the cross-safe head of the chain,
+		// And continue syncing from there.
+		eq.emitter.Emit(rollup.ForceResetEvent{
+			Unsafe:    ev.Ref,
+			Safe:      ev.Ref,
+			Finalized: eq.ec.Finalized(),
+		})
+		eq.emitter.Emit(InteropReplacedBlockEvent{
+			Envelope: ev.Envelope,
+			Ref:      ev.Ref.BlockRef(),
+		})
+		// Apply it to the execution engine
+		eq.emitter.Emit(TryUpdateEngineEvent{})
+		// Not a regular reset, since we don't wind back to any L2 block.
+		// We start specifically from the replacement block.
+		return
+	}
+
 	eq.emitter.Emit(PromoteUnsafeEvent{Ref: ev.Ref})
 
 	// If derived from L1, then it can be considered (pending) safe

@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/crypto"
@@ -206,14 +207,14 @@ func TestMultipleNetworkConfigs(t *testing.T) {
 func TestL2ChainID(t *testing.T) {
 	t.Run("DefaultToNetworkChainID", func(t *testing.T) {
 		cfg := configForArgs(t, replaceRequiredArg("--network", "op-mainnet"))
-		require.Equal(t, uint64(10), cfg.L2ChainID)
+		require.Equal(t, eth.ChainIDFromUInt64(10), cfg.L2ChainID)
 	})
 
 	t.Run("DefaultToGenesisChainID", func(t *testing.T) {
 		rollupCfgFile := writeValidRollupConfig(t)
 		genesisFile := writeValidGenesis(t)
 		cfg := configForArgs(t, addRequiredArgsExcept("--network", "--rollup.config", rollupCfgFile, "--l2.genesis", genesisFile))
-		require.Equal(t, l2GenesisConfig.ChainID.Uint64(), cfg.L2ChainID)
+		require.Equal(t, eth.ChainIDFromBig(l2GenesisConfig.ChainID), cfg.L2ChainID)
 	})
 
 	t.Run("OverrideToCustomIndicator", func(t *testing.T) {

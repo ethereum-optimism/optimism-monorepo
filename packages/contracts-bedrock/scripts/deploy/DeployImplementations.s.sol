@@ -22,7 +22,7 @@ import { IL1ERC721Bridge } from "interfaces/L1/IL1ERC721Bridge.sol";
 import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
-
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
@@ -43,6 +43,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
+    IProxyAdmin internal _superchainProxyAdmin;
     address internal _upgradeController;
 
     function set(bytes4 _sel, uint256 _value) public {
@@ -76,6 +77,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
         if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
+        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
         else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else revert("DeployImplementationsInput: unknown selector");
     }
@@ -128,6 +130,11 @@ contract DeployImplementationsInput is BaseDeployIO {
         return _protocolVersionsProxy;
     }
 
+    function superchainProxyAdmin() public view returns (IProxyAdmin) {
+        require(address(_superchainProxyAdmin) != address(0), "DeployImplementationsInput: not set");
+        return _superchainProxyAdmin;
+    }
+
     function upgradeController() public view returns (address) {
         require(address(_upgradeController) != address(0), "DeployImplementationsInput: not set");
         return _upgradeController;
@@ -147,12 +154,16 @@ contract DeployImplementationsOutput is BaseDeployIO {
     IOptimismMintableERC20Factory internal _optimismMintableERC20FactoryImpl;
     IDisputeGameFactory internal _disputeGameFactoryImpl;
     IAnchorStateRegistry internal _anchorStateRegistryImpl;
+    ISuperchainConfig internal _superchainConfigImpl;
+    IProtocolVersions internal _protocolVersionsImpl;
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployImplementationsOutput: cannot set zero address");
 
         // forgefmt: disable-start
         if (_sel == this.opcm.selector) _opcm = IOPContractsManager(_addr);
+        else if (_sel == this.superchainConfigImpl.selector) _superchainConfigImpl = ISuperchainConfig(_addr);
+        else if (_sel == this.protocolVersionsImpl.selector) _protocolVersionsImpl = IProtocolVersions(_addr);
         else if (_sel == this.optimismPortalImpl.selector) _optimismPortalImpl = IOptimismPortal2(payable(_addr));
         else if (_sel == this.delayedWETHImpl.selector) _delayedWETHImpl = IDelayedWETH(payable(_addr));
         else if (_sel == this.preimageOracleSingleton.selector) _preimageOracleSingleton = IPreimageOracle(_addr);
@@ -176,7 +187,9 @@ contract DeployImplementationsOutput is BaseDeployIO {
             address(this.optimismPortalImpl()),
             address(this.delayedWETHImpl()),
             address(this.preimageOracleSingleton()),
-            address(this.mipsSingleton())
+            address(this.mipsSingleton()),
+            address(this.superchainConfigImpl()),
+            address(this.protocolVersionsImpl())
         );
 
         address[] memory addrs2 = Solarray.addresses(
@@ -197,6 +210,16 @@ contract DeployImplementationsOutput is BaseDeployIO {
     function opcm() public view returns (IOPContractsManager) {
         DeployUtils.assertValidContractAddress(address(_opcm));
         return _opcm;
+    }
+
+    function superchainConfigImpl() public view returns (ISuperchainConfig) {
+        DeployUtils.assertValidContractAddress(address(_superchainConfigImpl));
+        return _superchainConfigImpl;
+    }
+
+    function protocolVersionsImpl() public view returns (IProtocolVersions) {
+        DeployUtils.assertValidContractAddress(address(_protocolVersionsImpl));
+        return _protocolVersionsImpl;
     }
 
     function optimismPortalImpl() public view returns (IOptimismPortal2) {
@@ -416,6 +439,8 @@ contract DeployImplementations is Script {
 
     function run(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public {
         // Deploy the implementations.
+        deploySuperchainConfigImpl(_dio);
+        deployProtocolVersionsImpl(_dio);
         deploySystemConfigImpl(_dio);
         deployL1CrossDomainMessengerImpl(_dio);
         deployL1ERC721BridgeImpl(_dio);
@@ -450,9 +475,12 @@ contract DeployImplementations is Script {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
+        IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
         address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
+            superchainConfigImpl: address(_dio.superchainConfigImpl()),
+            protocolVersionsImpl: address(_dio.protocolVersionsImpl()),
             l1ERC721BridgeImpl: address(_dio.l1ERC721BridgeImpl()),
             optimismPortalImpl: address(_dio.optimismPortalImpl()),
             systemConfigImpl: address(_dio.systemConfigImpl()),
@@ -462,7 +490,7 @@ contract DeployImplementations is Script {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mipsImpl: address(_dio.mipsSingleton())
+            mips64Impl: address(_dio.mipsSingleton())
         });
 
         vm.broadcast(msg.sender);
@@ -475,6 +503,7 @@ contract DeployImplementations is Script {
                         (
                             superchainConfigProxy,
                             protocolVersionsProxy,
+                            superchainProxyAdmin,
                             _l1ContractsRelease,
                             _blueprints,
                             implementations,
@@ -514,8 +543,8 @@ contract DeployImplementations is Script {
         require(checkAddress == address(0), "OPCM-40");
         (blueprints.resolvedDelegateProxy, checkAddress) = DeployUtils.createDeterministicBlueprint(vm.getCode("ResolvedDelegateProxy"), _salt);
         require(checkAddress == address(0), "OPCM-50");
-            // The max initcode/runtimecode size is 48KB/24KB.
-            // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
+        // The max initcode/runtimecode size is 48KB/24KB.
+        // But for Blueprint, the initcode is stored as runtime code, that's why it's necessary to split into 2 parts.
         (blueprints.permissionedDisputeGame1, blueprints.permissionedDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("PermissionedDisputeGame"), _salt);
         (blueprints.permissionlessDisputeGame1, blueprints.permissionlessDisputeGame2) = DeployUtils.createDeterministicBlueprint(vm.getCode("FaultDisputeGame"), _salt);
         // forgefmt: disable-end
@@ -528,6 +557,32 @@ contract DeployImplementations is Script {
     }
 
     // --- Core Contracts ---
+
+    function deploySuperchainConfigImpl(DeployImplementationsOutput _dio) public virtual {
+        vm.broadcast(msg.sender);
+        ISuperchainConfig impl = ISuperchainConfig(
+            DeployUtils.createDeterministic({
+                _name: "SuperchainConfig",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(ISuperchainConfig.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "SuperchainConfigImpl");
+        _dio.set(_dio.superchainConfigImpl.selector, address(impl));
+    }
+
+    function deployProtocolVersionsImpl(DeployImplementationsOutput _dio) public virtual {
+        vm.broadcast(msg.sender);
+        IProtocolVersions impl = IProtocolVersions(
+            DeployUtils.createDeterministic({
+                _name: "ProtocolVersions",
+                _args: DeployUtils.encodeConstructor(abi.encodeCall(IProtocolVersions.__constructor__, ())),
+                _salt: _salt
+            })
+        );
+        vm.label(address(impl), "ProtocolVersionsImpl");
+        _dio.set(_dio.protocolVersionsImpl.selector, address(impl));
+    }
 
     function deploySystemConfigImpl(DeployImplementationsOutput _dio) public virtual {
         vm.broadcast(msg.sender);

@@ -7,6 +7,7 @@ import (
 	"os"
 
 	"github.com/ethereum-optimism/optimism/op-program/verify"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -44,7 +45,7 @@ func main() {
 	}
 
 	// Apply the custom configs by running op-program
-	runner, err := verify.NewRunner(l1RpcUrl, l1RpcKind, l1BeaconUrl, l2RpcUrl, dataDir, "901", 901, false)
+	runner, err := verify.NewRunner(l1RpcUrl, l1RpcKind, l1BeaconUrl, l2RpcUrl, dataDir, "901", eth.ChainIDFromUInt64(901), false)
 	if err != nil {
 		_, _ = fmt.Fprintf(os.Stderr, "Failed to create runner: %v\n", err.Error())
 		os.Exit(1)

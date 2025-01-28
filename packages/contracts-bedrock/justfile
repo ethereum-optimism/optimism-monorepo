@@ -61,7 +61,7 @@ export pinnedBlockNumber := env_var_or_default('FORK_BLOCK_NUMBER', '21387830')
 print-pinned-block-number:
   echo $pinnedBlockNumber
 
-# Runs upgrade path variant of contract tests.
+# Prepares the environment for upgrade path variant of contract tests and coverage.
 # Env Vars:
 # - ETH_RPC_URL must be set to a production (Sepolia or Mainnet) RPC URL.
 # - FORK_BLOCK_NUMBER can be set in the env, or else will fallback to the default block number.
@@ -69,18 +69,22 @@ print-pinned-block-number:
 #   rpc call responses in ~/.foundry/cache/rpc. The default block will need to be updated
 #   when the L1 chain is upgraded.
 # TODO(opcm upgrades): unskip the "NMC" tests which fail on the forked upgrade path with "UnexpectedRootClaim" errors.
-test-upgrade *ARGS: build-go-ffi
+prepare-upgrade-env *ARGS : build-go-ffi
   #!/bin/bash
   echo "Running upgrade tests at block $pinnedBlockNumber"
   export FORK_BLOCK_NUMBER=$pinnedBlockNumber
   export NO_MATCH_CONTRACTS="OptimismPortal2WithMockERC20_Test|OptimismPortal2_FinalizeWithdrawal_Test|'AnchorStateRegistry_*'|FaultDisputeGame_Test|PermissionedDisputeGame_Test|FaultDispute_1v1_Actors_Test|DelayedWETH_Hold_Test"
   export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
-  FORK_RPC_URL=$ETH_RPC_URL \
-    FORK_TEST=true \
-    forge test --match-path "test/{L1,dispute}/**" \
-    --no-match-contract "$NO_MATCH_CONTRACTS" \
-    --no-match-path "$NO_MATCH_PATHS" \
-    {{ARGS}}
+  export FORK_RPC_URL=$ETH_RPC_URL
+  export FORK_TEST=true
+  {{ARGS}} \
+  --match-path "test/{L1,dispute}/**" \
+  --no-match-contract "$NO_MATCH_CONTRACTS" \
+  --no-match-path "$NO_MATCH_PATHS"
+
+# Runs upgrade path variant of contract tests.
+test-upgrade *ARGS:
+  just prepare-upgrade-env "forge test {{ARGS}}"
 
 test-upgrade-rerun *ARGS: build-go-ffi
   just test-upgrade {{ARGS}} --rerun -vvv
@@ -119,9 +123,22 @@ coverage: build-go-ffi
   forge coverage
 
 # Runs contract coverage with lcov.
-coverage-lcov: build-go-ffi
-  forge coverage --report lcov
+coverage-lcov *ARGS: build-go-ffi
+  forge coverage {{ARGS}} --report lcov --report-file lcov.info
 
+# Runs upgrade path variant of contract coverage tests.
+coverage-upgrade *ARGS:
+  just prepare-upgrade-env "forge coverage {{ARGS}}"
+
+# Runs contract coverage with lcov.
+coverage-lcov-upgrade *ARGS: build-go-ffi
+  just coverage-upgrade {{ARGS}} --report lcov --report-file lcov-upgrade.info
+
+# Runs coverage-lcov and coverage-lcov-upgrade and merges their output files info one file
+coverage-lcov-all *ARGS:
+  just coverage-lcov {{ARGS}} && \
+  just coverage-lcov-upgrade {{ARGS}} && \
+  lcov -a lcov.info -a lcov-upgrade.info -o lcov-all.info
 
 ########################################################
 #                        DEPLOY                        #

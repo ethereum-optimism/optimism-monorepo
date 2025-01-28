@@ -35,6 +35,10 @@ func (ib *InteropAPI) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return ib.backend.UpdateFinalized(ctx, id)
 }
 
+func (ib *InteropAPI) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
+	return ib.backend.InvalidateBlock(ctx, seal)
+}
+
 func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	return ib.backend.AnchorPoint(ctx)
 }

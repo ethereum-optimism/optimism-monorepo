@@ -10,6 +10,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/params"
 	"github.com/stretchr/testify/require"
@@ -40,7 +41,7 @@ func TestInteropBootstrap_RollupConfigBuiltIn(t *testing.T) {
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, false)
 	actual := BootstrapInterop(mockOracle)
-	actualCfg, err := actual.Configs.RollupConfig(expectedCfg.L2ChainID.Uint64())
+	actualCfg, err := actual.Configs.RollupConfig(eth.ChainIDFromBig(expectedCfg.L2ChainID))
 	require.NoError(t, err)
 	require.Equal(t, expectedCfg, actualCfg)
 }
@@ -57,11 +58,11 @@ func TestInteropBootstrap_RollupConfigCustom(t *testing.T) {
 	mockOracle := newMockInteropBootstrapOracle(source, true)
 	mockOracle.rollupCfgs = []*rollup.Config{config1, config2}
 	actual := BootstrapInterop(mockOracle)
-	actualCfg, err := actual.Configs.RollupConfig(config1.L2ChainID.Uint64())
+	actualCfg, err := actual.Configs.RollupConfig(eth.ChainIDFromBig(config1.L2ChainID))
 	require.NoError(t, err)
 	require.Equal(t, config1, actualCfg)
 
-	actualCfg, err = actual.Configs.RollupConfig(config2.L2ChainID.Uint64())
+	actualCfg, err = actual.Configs.RollupConfig(eth.ChainIDFromBig(config2.L2ChainID))
 	require.NoError(t, err)
 	require.Equal(t, config2, actualCfg)
 }
@@ -76,7 +77,7 @@ func TestInteropBootstrap_ChainConfigBuiltIn(t *testing.T) {
 	}
 	mockOracle := newMockInteropBootstrapOracle(expected, false)
 	actual := BootstrapInterop(mockOracle)
-	actualCfg, err := actual.Configs.ChainConfig(expectedCfg.ChainID.Uint64())
+	actualCfg, err := actual.Configs.ChainConfig(eth.ChainIDFromBig(expectedCfg.ChainID))
 	require.NoError(t, err)
 	require.Equal(t, expectedCfg, actualCfg)
 }
@@ -94,11 +95,11 @@ func TestInteropBootstrap_ChainConfigCustom(t *testing.T) {
 	mockOracle.chainCfgs = []*params.ChainConfig{config1, config2}
 	actual := BootstrapInterop(mockOracle)
 
-	actualCfg, err := actual.Configs.ChainConfig(config1.ChainID.Uint64())
+	actualCfg, err := actual.Configs.ChainConfig(eth.ChainIDFromBig(config1.ChainID))
 	require.NoError(t, err)
 	require.Equal(t, config1, actualCfg)
 
-	actualCfg, err = actual.Configs.ChainConfig(config2.ChainID.Uint64())
+	actualCfg, err = actual.Configs.ChainConfig(eth.ChainIDFromBig(config2.ChainID))
 	require.NoError(t, err)
 	require.Equal(t, config2, actualCfg)
 }

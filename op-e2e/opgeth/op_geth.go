@@ -18,8 +18,10 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -104,7 +106,11 @@ func NewOpGeth(t testing.TB, ctx context.Context, cfg *e2esys.SystemConfig) (*Op
 	require.NoError(t, err)
 
 	// Note: Using CanyonTime here because for OP Stack chains, Shanghai must be activated at the same time as Canyon.
-	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()))
+	chainCfg := params.ChainConfig{
+		CanyonTime: cfg.DeployConfig.CanyonTime(l2GenesisBlock.Time()),
+	}
+
+	genesisPayload, err := eth.BlockAsPayload(l2GenesisBlock, &chainCfg)
 
 	require.NoError(t, err)
 	return &OpGeth{
@@ -148,6 +154,21 @@ func (d *OpGeth) AddL2Block(ctx context.Context, txs ...*types.Transaction) (*et
 	}
 	if !reflect.DeepEqual(payload.Transactions, attrs.Transactions) {
 		return nil, errors.New("required transactions were not included")
+	}
+
+	// if we are at Isthmus, set the withdrawalsRoot in the execution payload to the storage root of the message passer contract
+	if d.L2ChainConfig.IsIsthmus(uint64(payload.Timestamp)) {
+		var getProofResponse *eth.AccountResult
+		rpcClient := d.l2Engine.RPC
+		err := rpcClient.CallContext(ctx, &getProofResponse, "eth_getProof", predeploys.L2ToL1MessagePasserAddr, []common.Hash{}, payload.BlockHash.String())
+		if err != nil {
+			return nil, err
+		}
+		if getProofResponse == nil {
+			return nil, ethereum.NotFound
+		}
+		storageHash := getProofResponse.StorageHash
+		payload.WithdrawalsRoot = &storageHash
 	}
 
 	status, err := d.l2Engine.NewPayload(ctx, payload, envelope.ParentBeaconBlockRoot)

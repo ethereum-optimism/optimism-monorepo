@@ -61,6 +61,9 @@ type RPCHeader struct {
 	// ParentBeaconRoot was added by EIP-4788 and is ignored in legacy headers.
 	ParentBeaconRoot *common.Hash `json:"parentBeaconBlockRoot,omitempty"`
 
+	// RequestsHash was added by EIP-7685 and is ignored in legacy headers.
+	RequestsHash *common.Hash `json:"requestsHash,omitempty" rlp:"optional"`
+
 	// untrusted info included by RPC, may have to be checked
 	Hash common.Hash `json:"hash"`
 }
@@ -116,6 +119,8 @@ func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 		BlobGasUsed:      (*uint64)(hdr.BlobGasUsed),
 		ExcessBlobGas:    (*uint64)(hdr.ExcessBlobGas),
 		ParentBeaconRoot: hdr.ParentBeaconRoot,
+		// Prague
+		RequestsHash: hdr.RequestsHash,
 	}
 }
 
@@ -158,21 +163,47 @@ func (block *RPCBlock) Verify() error {
 	if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
 		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	}
-	if block.WithdrawalsRoot != nil {
-		if block.Withdrawals == nil {
+
+	// Withdrawals validation is different between L1 and L2. It is possible to determine that it is an L2 block
+	// if the first transaction is a deposit.
+	isL2 := len(block.Transactions) > 0 && block.Transactions[0].IsDepositTx()
+	if isL2 {
+		if err := block.validateL2Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
+			return err
+		}
+	} else {
+		if err := block.validateL1Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (block *RPCBlock) validateL1Withdrawals(withdrawals *types.Withdrawals, withdrawalsRoot *common.Hash) error {
+	if withdrawalsRoot != nil {
+		if withdrawals == nil {
 			return errors.New("expected withdrawals")
 		}
-		for i, w := range *block.Withdrawals {
+		for i, w := range *withdrawals {
 			if w == nil {
 				return fmt.Errorf("block withdrawal %d is null", i)
 			}
 		}
-		if computed := types.DeriveSha(*block.Withdrawals, trie.NewStackTrie(nil)); *block.WithdrawalsRoot != computed {
-			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, block.WithdrawalsRoot)
+		if computed := types.DeriveSha(*withdrawals, trie.NewStackTrie(nil)); *withdrawalsRoot != computed {
+			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, withdrawalsRoot)
 		}
 	} else {
-		if block.Withdrawals != nil {
-			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*block.Withdrawals))
+		if withdrawals != nil {
+			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*withdrawals))
+		}
+	}
+	return nil
+}
+
+func (block *RPCBlock) validateL2Withdrawals(withdrawals *types.Withdrawals, withdrawalsRoot *common.Hash) error {
+	if withdrawalsRoot != nil {
+		if !(withdrawals != nil && len(*withdrawals) == 0) {
+			return fmt.Errorf("expected empty withdrawals, but got %d", len(*withdrawals))
 		}
 	}
 	return nil
@@ -223,23 +254,24 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 	}
 
 	payload := &eth.ExecutionPayload{
-		ParentHash:    block.ParentHash,
-		FeeRecipient:  block.Coinbase,
-		StateRoot:     eth.Bytes32(block.Root),
-		ReceiptsRoot:  eth.Bytes32(block.ReceiptHash),
-		LogsBloom:     block.Bloom,
-		PrevRandao:    eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
-		BlockNumber:   block.Number,
-		GasLimit:      block.GasLimit,
-		GasUsed:       block.GasUsed,
-		Timestamp:     block.Time,
-		ExtraData:     eth.BytesMax32(block.Extra),
-		BaseFeePerGas: eth.Uint256Quantity(baseFee),
-		BlockHash:     block.Hash,
-		Transactions:  opaqueTxs,
-		Withdrawals:   block.Withdrawals,
-		BlobGasUsed:   block.BlobGasUsed,
-		ExcessBlobGas: block.ExcessBlobGas,
+		ParentHash:      block.ParentHash,
+		FeeRecipient:    block.Coinbase,
+		StateRoot:       eth.Bytes32(block.Root),
+		ReceiptsRoot:    eth.Bytes32(block.ReceiptHash),
+		LogsBloom:       block.Bloom,
+		PrevRandao:      eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
+		BlockNumber:     block.Number,
+		GasLimit:        block.GasLimit,
+		GasUsed:         block.GasUsed,
+		Timestamp:       block.Time,
+		ExtraData:       eth.BytesMax32(block.Extra),
+		BaseFeePerGas:   eth.Uint256Quantity(baseFee),
+		BlockHash:       block.Hash,
+		Transactions:    opaqueTxs,
+		Withdrawals:     block.Withdrawals,
+		BlobGasUsed:     block.BlobGasUsed,
+		ExcessBlobGas:   block.ExcessBlobGas,
+		WithdrawalsRoot: block.WithdrawalsRoot,
 	}
 
 	return &eth.ExecutionPayloadEnvelope{

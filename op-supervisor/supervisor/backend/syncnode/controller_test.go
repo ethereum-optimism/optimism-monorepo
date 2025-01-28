@@ -30,6 +30,10 @@ type mockSyncControl struct {
 	subscribeEvents gethevent.FeedOf[*types.ManagedEvent]
 }
 
+func (m *mockSyncControl) InvalidateBlock(ctx context.Context, seal types.BlockSeal) error {
+	return nil
+}
+
 func (m *mockSyncControl) AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error) {
 	if m.anchorPointFn != nil {
 		return m.anchorPointFn(ctx)

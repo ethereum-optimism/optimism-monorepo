@@ -40,7 +40,7 @@ func NewCachingOracle(oracle Oracle) *CachingOracle {
 	}
 }
 
-func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
+func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte {
 	node, ok := o.nodes.Get(nodeHash)
 	if ok {
 		return node
@@ -50,7 +50,7 @@ func (o *CachingOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte 
 	return node
 }
 
-func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts) {
+func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID eth.ChainID) (*types.Block, types.Receipts) {
 	rcpts, ok := o.rcpts.Get(blockHash)
 	if ok {
 		return o.BlockByHash(blockHash, chainID), rcpts
@@ -61,7 +61,7 @@ func (o *CachingOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint6
 	return block, rcpts
 }
 
-func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {
+func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID eth.ChainID) []byte {
 	code, ok := o.codes.Get(codeHash)
 	if ok {
 		return code
@@ -71,7 +71,7 @@ func (o *CachingOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte 
 	return code
 }
 
-func (o *CachingOracle) BlockByHash(blockHash common.Hash, chainID uint64) *types.Block {
+func (o *CachingOracle) BlockByHash(blockHash common.Hash, chainID eth.ChainID) *types.Block {
 	block, ok := o.blocks.Get(blockHash)
 	if ok {
 		return block
@@ -81,7 +81,7 @@ func (o *CachingOracle) BlockByHash(blockHash common.Hash, chainID uint64) *type
 	return block
 }
 
-func (o *CachingOracle) OutputByRoot(root common.Hash, chainID uint64) eth.Output {
+func (o *CachingOracle) OutputByRoot(root common.Hash, chainID eth.ChainID) eth.Output {
 	output, ok := o.outputs.Get(root)
 	if ok {
 		return output
@@ -91,7 +91,7 @@ func (o *CachingOracle) OutputByRoot(root common.Hash, chainID uint64) eth.Outpu
 	return output
 }
 
-func (o *CachingOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
+func (o *CachingOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) *types.Block {
 	// Always request from the oracle even on cache hit. as we want the effects of the host oracle hinting
 	block := o.oracle.BlockDataByHash(agreedBlockHash, blockHash, chainID)
 	o.blocks.Add(blockHash, block)

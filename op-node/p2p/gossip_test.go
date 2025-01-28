@@ -242,18 +242,19 @@ func createSignedP2Payload(payload MarshalSSZ, signer Signer, l2ChainID *big.Int
 	return snappy.Encode(nil, data), nil
 }
 
-func createExecutionPayload(w types.Withdrawals, excessGas, gasUsed *uint64) *eth.ExecutionPayload {
+func createExecutionPayload(w types.Withdrawals, withdrawalsRoot *common.Hash, excessGas, gasUsed *uint64) *eth.ExecutionPayload {
 	return &eth.ExecutionPayload{
-		Timestamp:     hexutil.Uint64(time.Now().Unix()),
-		Withdrawals:   &w,
-		ExcessBlobGas: (*eth.Uint64Quantity)(excessGas),
-		BlobGasUsed:   (*eth.Uint64Quantity)(gasUsed),
+		Timestamp:       hexutil.Uint64(time.Now().Unix()),
+		Withdrawals:     &w,
+		WithdrawalsRoot: withdrawalsRoot,
+		ExcessBlobGas:   (*eth.Uint64Quantity)(excessGas),
+		BlobGasUsed:     (*eth.Uint64Quantity)(gasUsed),
 	}
 }
 
-func createEnvelope(h *common.Hash, w types.Withdrawals, excessGas, gasUsed *uint64) *eth.ExecutionPayloadEnvelope {
+func createEnvelope(h *common.Hash, w types.Withdrawals, withdrawalsRoot *common.Hash, excessGas, gasUsed *uint64) *eth.ExecutionPayloadEnvelope {
 	return &eth.ExecutionPayloadEnvelope{
-		ExecutionPayload:      createExecutionPayload(w, excessGas, gasUsed),
+		ExecutionPayload:      createExecutionPayload(w, withdrawalsRoot, excessGas, gasUsed),
 		ParentBeaconBlockRoot: h,
 	}
 }
@@ -273,9 +274,10 @@ func TestBlockValidator(t *testing.T) {
 
 	v2Validator := BuildBlocksValidator(testlog.Logger(t, log.LevelCrit), cfg, runCfg, eth.BlockV2)
 	v3Validator := BuildBlocksValidator(testlog.Logger(t, log.LevelCrit), cfg, runCfg, eth.BlockV3)
+	v4Validator := BuildBlocksValidator(testlog.Logger(t, log.LevelCrit), cfg, runCfg, eth.BlockV4)
 
 	zero, one := uint64(0), uint64(1)
-	beaconHash := common.HexToHash("0x1234")
+	beaconHash, withdrawalsRoot := common.HexToHash("0x1234"), common.HexToHash("0x9876")
 
 	payloadTests := []struct {
 		name      string
@@ -283,10 +285,10 @@ func TestBlockValidator(t *testing.T) {
 		result    pubsub.ValidationResult
 		payload   *eth.ExecutionPayload
 	}{
-		{"V2Valid", v2Validator, pubsub.ValidationAccept, createExecutionPayload(types.Withdrawals{}, nil, nil)},
-		{"V2NonZeroWithdrawals", v2Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{&types.Withdrawal{Index: 1, Validator: 1}}, nil, nil)},
-		{"V2NonZeroBlobProperties", v2Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{}, &zero, &zero)},
-		{"V3RejectExecutionPayload", v3Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{}, &zero, &zero)},
+		{"V2Valid", v2Validator, pubsub.ValidationAccept, createExecutionPayload(types.Withdrawals{}, nil, nil, nil)},
+		{"V2NonZeroWithdrawals", v2Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{&types.Withdrawal{Index: 1, Validator: 1}}, nil, nil, nil)},
+		{"V2NonZeroBlobProperties", v2Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{}, nil, &zero, &zero)},
+		{"V3RejectExecutionPayload", v3Validator, pubsub.ValidationReject, createExecutionPayload(types.Withdrawals{}, nil, &zero, &zero)},
 	}
 
 	for _, tt := range payloadTests {
@@ -308,10 +310,12 @@ func TestBlockValidator(t *testing.T) {
 		result    pubsub.ValidationResult
 		payload   *eth.ExecutionPayloadEnvelope
 	}{
-		{"V3RejectNonZeroExcessGas", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, &one, &zero)},
-		{"V3RejectNonZeroBlobGasUsed", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, &zero, &one)},
-		{"V3RejectNonZeroBlobGasUsed", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, &zero, &one)},
-		{"V3Valid", v3Validator, pubsub.ValidationAccept, createEnvelope(&beaconHash, types.Withdrawals{}, &zero, &zero)},
+		{"V3RejectNonZeroExcessGas", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, nil, &one, &zero)},
+		{"V3RejectNonZeroBlobGasUsed", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, nil, &zero, &one)},
+		{"V3RejectNonZeroBlobGasUsed", v3Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, nil, &zero, &one)},
+		{"V3Valid", v3Validator, pubsub.ValidationAccept, createEnvelope(&beaconHash, types.Withdrawals{}, nil, &zero, &zero)},
+		{"V4Valid", v4Validator, pubsub.ValidationAccept, createEnvelope(&beaconHash, types.Withdrawals{}, &withdrawalsRoot, &zero, &zero)},
+		{"V4RejectNoWithdrawalRoot", v4Validator, pubsub.ValidationReject, createEnvelope(&beaconHash, types.Withdrawals{}, nil, &zero, &zero)},
 	}
 
 	for _, tt := range envelopeTests {

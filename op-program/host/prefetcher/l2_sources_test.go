@@ -8,6 +8,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-service/client"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -32,7 +33,7 @@ func TestNewL2Sources(t *testing.T) {
 			[]client.RPC{experimentalRpc})
 		require.NoError(t, err)
 		require.Len(t, src.Sources, 1)
-		require.True(t, src.Sources[uint64(4)].ExperimentalEnabled())
+		require.True(t, src.Sources[eth.ChainIDFromUInt64(4)].ExperimentalEnabled())
 	})
 
 	t.Run("MultipleSources", func(t *testing.T) {
@@ -45,8 +46,8 @@ func TestNewL2Sources(t *testing.T) {
 			[]client.RPC{experimentalRpc1, experimentalRpc2})
 		require.NoError(t, err)
 		require.Len(t, src.Sources, 2)
-		require.True(t, src.Sources[uint64(1)].ExperimentalEnabled())
-		require.True(t, src.Sources[uint64(2)].ExperimentalEnabled())
+		require.True(t, src.Sources[eth.ChainIDFromUInt64(1)].ExperimentalEnabled())
+		require.True(t, src.Sources[eth.ChainIDFromUInt64(2)].ExperimentalEnabled())
 	})
 
 	t.Run("ExperimentalRPCsAreOptional", func(t *testing.T) {
@@ -59,11 +60,11 @@ func TestNewL2Sources(t *testing.T) {
 			[]client.RPC{experimentalRpc2})
 		require.NoError(t, err)
 		require.Len(t, src.Sources, 2)
-		require.Same(t, src.Sources[uint64(1)].RollupConfig(), config1)
-		require.False(t, src.Sources[uint64(1)].ExperimentalEnabled())
+		require.Same(t, src.Sources[eth.ChainIDFromUInt64(1)].RollupConfig(), config1)
+		require.False(t, src.Sources[eth.ChainIDFromUInt64(1)].ExperimentalEnabled())
 
-		require.Same(t, src.Sources[uint64(2)].RollupConfig(), config2)
-		require.True(t, src.Sources[uint64(2)].ExperimentalEnabled())
+		require.Same(t, src.Sources[eth.ChainIDFromUInt64(2)].RollupConfig(), config2)
+		require.True(t, src.Sources[eth.ChainIDFromUInt64(2)].ExperimentalEnabled())
 	})
 
 	t.Run("RollupMissingL2URL", func(t *testing.T) {

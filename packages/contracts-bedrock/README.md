@@ -139,8 +139,8 @@ Use the env var `DEPLOY_CONFIG_PATH` to use a particular deploy config file at r
 
 The script will read the latest active fork from the deploy config and the L2 genesis allocs generated will be
 compatible with this fork. The automatically detected fork can be overwritten by setting the environment variable `FORK`
-either to the lower-case fork name (currently `delta`, `ecotone`, `fjord`, `granite`, or `holocene`) or to `latest`,
-which will select the latest fork available (currently `holocene`).
+either to the lower-case fork name (currently `delta`, `ecotone`, `fjord`, `granite`, `holocene` or `isthmus`) or to `latest`,
+which will select the latest fork available (currently `isthmus`).
 
 By default, the script will dump the L2 genesis allocs of the detected or selected fork only, to the file at `STATE_DUMP_PATH`.
 The optional environment variable `OUTPUT_MODE` allows to modify this behavior by setting it to one of the following values:

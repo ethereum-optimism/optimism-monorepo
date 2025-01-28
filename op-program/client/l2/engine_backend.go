@@ -42,7 +42,7 @@ type OracleBackedL2Chain struct {
 var _ engineapi.CachingEngineBackend = (*OracleBackedL2Chain)(nil)
 
 func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, l2OutputRoot common.Hash) (*OracleBackedL2Chain, error) {
-	chainID := chainCfg.ChainID.Uint64()
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	output := oracle.OutputByRoot(l2OutputRoot, chainID)
 	outputV0, ok := output.(*eth.OutputV0)
 	if !ok {
@@ -50,7 +50,11 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	}
 	head := oracle.BlockByHash(outputV0.BlockHash, chainID)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
+	return NewOracleBackedL2ChainFromHead(logger, oracle, precompileOracle, chainCfg, head), nil
+}
 
+func NewOracleBackedL2ChainFromHead(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, head *types.Block) *OracleBackedL2Chain {
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	chain := &OracleBackedL2Chain{
 		log:      logger,
 		oracle:   oracle,
@@ -72,7 +76,7 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 		return chain.GetBlockByHash(hash)
 	}
 	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
-	return chain, nil
+	return chain
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {
@@ -107,7 +111,7 @@ func (o *OracleBackedL2Chain) GetBlockByHash(hash common.Hash) *types.Block {
 		return block
 	}
 	// Retrieve from the oracle
-	return o.oracle.BlockByHash(hash, o.chainCfg.ChainID.Uint64())
+	return o.oracle.BlockByHash(hash, eth.ChainIDFromBig(o.chainCfg.ChainID))
 }
 
 func (o *OracleBackedL2Chain) GetBlock(hash common.Hash, number uint64) *types.Block {

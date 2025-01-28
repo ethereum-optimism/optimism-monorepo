@@ -1,2 +1,2 @@
 external_*/shim
-op-e2e/interop/jwt.secret
+interop/jwt.secret
