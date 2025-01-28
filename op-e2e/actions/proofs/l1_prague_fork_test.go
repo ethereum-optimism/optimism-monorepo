@@ -14,7 +14,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestPectraForkAfterGenesis(gt *testing.T) {
+func TestPragueForkAfterGenesis(gt *testing.T) {
 	type testCase struct {
 		name         string
 		useSetCodeTx bool
@@ -29,7 +29,7 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 		},
 	}
 
-	runL1PectraTest := func(gt *testing.T, testCfg *helpers.TestCfg[testCase]) {
+	runL1PragueTest := func(gt *testing.T, testCfg *helpers.TestCfg[testCase]) {
 		t := actionsHelpers.NewDefaultTesting(gt)
 		env := helpers.NewL2FaultProofEnv(t, testCfg, helpers.NewTestParams(),
 			helpers.NewBatcherCfg(
@@ -67,7 +67,7 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 			miner.ActL1EndBlock(t)
 		}
 
-		checkPectraStatusOnL1 := func(active bool) {
+		checkPragueStatusOnL1 := func(active bool) {
 			l1Head := miner.L1Chain().CurrentBlock()
 			if active {
 				// require.True(t, sd.L1Cfg.Config.IsPrague(l1Head.Number, l1Head.Time), "Prague should be active")
@@ -84,8 +84,8 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 			checkVerifierDerivedToL1Head(t)
 		}
 
-		// Check initially Pectra is not activated
-		checkPectraStatusOnL1(false)
+		// Check initially Prague is not activated
+		checkPragueStatusOnL1(false)
 
 		// Start op-nodes
 		sequencer.ActL2PipelineFull(t)
@@ -93,11 +93,11 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 
 		// Build empty L1 blocks, crossing the fork boundary
 		miner.ActEmptyBlock(t)
-		miner.ActEmptyBlock(t) // Pectra activates here
+		miner.ActEmptyBlock(t) // Prague activates here
 		miner.ActEmptyBlock(t)
 
-		// Check that Pectra is active on L1
-		checkPectraStatusOnL1(true)
+		// Check that Prague is active on L1
+		checkPragueStatusOnL1(true)
 
 		// Cache safe head before verifier sync
 		safeL2Before := verifier.SyncStatus().SafeL2
@@ -130,14 +130,14 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 			fmt.Sprintf("HonestClaim-%s", tc.name),
 			tc,
 			helpers.NewForkMatrix(helpers.LatestFork),
-			runL1PectraTest,
+			runL1PragueTest,
 			helpers.ExpectNoError(),
 		)
 		matrix.AddTestCase(
 			fmt.Sprintf("JunkClaim-%s", tc.name),
 			tc,
 			helpers.NewForkMatrix(helpers.LatestFork),
-			runL1PectraTest,
+			runL1PragueTest,
 			helpers.ExpectError(claim.ErrClaimNotValid),
 			helpers.WithL2Claim(common.HexToHash("0xdeadbeef")),
 		)
