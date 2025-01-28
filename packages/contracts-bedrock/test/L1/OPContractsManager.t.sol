@@ -6,6 +6,7 @@ import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { DeployOPChain_TestBase } from "test/opcm/DeployOPChain.t.sol";
 import { DelegateCaller } from "test/mocks/Callers.sol";
+import { SafeTestTools, SafeTestLib, SafeInstance } from "test/safe-tools/SafeTestTools.sol";
 
 // Scripts
 import { DeployOPChainInput } from "scripts/deploy/DeployOPChain.s.sol";
@@ -35,6 +36,7 @@ import { Blueprint } from "src/libraries/Blueprint.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { GameType, Duration, Hash, Claim } from "src/dispute/lib/LibUDT.sol";
 import { OutputRoot, GameTypes } from "src/dispute/lib/Types.sol";
+import { Enum } from "safe-contracts/common/Enum.sol";
 
 // Exposes internal functions for testing.
 contract OPContractsManager_Harness is OPContractsManager {
@@ -191,7 +193,9 @@ contract OPContractsManager_InternalMethods_Test is Test {
     }
 }
 
-contract OPContractsManager_Upgrade_Harness is CommonTest {
+contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
+    using SafeTestLib for SafeInstance;
+
     // The Upgraded event emitted by the Proxy contract.
     event Upgraded(address indexed implementation);
 
@@ -213,6 +217,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     address upgrader;
     IOPContractsManager.OpChainConfig[] opChainConfigs;
     Claim absolutePrestate;
+    SafeInstance safeInstance;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -222,15 +227,19 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             vm.skip(true);
         }
 
-        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
+        // Create a Safe with 13 owners and a threshold of 10
+        (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("moduleTest", 10);
+        safeInstance = _setupSafe(keys, 8);
+
+        // Set the new Safe as the owner of the ProxyAdmin
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
-        superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
-        upgrader = proxyAdmin.owner();
+        vm.prank(proxyAdmin.owner());
+        proxyAdmin.transferOwnership(address(safeInstance.safe));
+
+        upgrader = address(safeInstance.safe);
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        // Set the upgrader to be a DelegateCaller so we can test the upgrade
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-
+        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         opChainConfigs.push(
             IOPContractsManager.OpChainConfig({
                 systemConfigProxy: systemConfig,
@@ -297,10 +306,19 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.expectEmit(address(_delegateCaller));
         emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
-        superchainProxyAdmin = _superchainUpgrade ? superchainProxyAdmin : IProxyAdmin(address(0));
-        DelegateCaller(_delegateCaller).dcForward(
-            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
-        );
+        if(_superchainUpgrade) {
+            superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
+            vm.prank(superchainProxyAdmin.owner());
+            superchainProxyAdmin.transferOwnership(address(safeInstance.safe));
+        }
+
+        if(_delegateCaller == upgrader) {
+            safeInstance.execTransaction({ to: address(opcm), value: 0, data: abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs)), operation: Enum.Operation.DelegateCall });
+        } else {
+            DelegateCaller(_delegateCaller).dcForward(
+                address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
+            );
+        }
 
         // Check the implementations of the core addresses
         assertEq(impls.systemConfigImpl, EIP1967Helper.getImplementation(address(systemConfig)));
