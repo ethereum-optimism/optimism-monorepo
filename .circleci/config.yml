@@ -614,10 +614,10 @@ jobs:
       - attach_workspace: { at: "." }
       - install-contracts-dependencies
       - check-changed:
-          patterns: contracts-bedrock/src/L1,contracts-bedrock/src/dispute
+          patterns: contracts-bedrock
       - run:
           name: Check frozen files
-          command: exit 1
+          command: just check-frozen-code
           working_directory: packages/contracts-bedrock
 
   contracts-bedrock-tests:
