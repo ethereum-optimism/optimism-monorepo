@@ -77,8 +77,6 @@ test-upgrade *ARGS: build-go-ffi
   export NO_MATCH_PATHS="test/dispute/AnchorStateRegistry.t.sol"
   FORK_RPC_URL=$ETH_RPC_URL \
     FORK_TEST=true \
-    FOUNDRY_FUZZ_SEED=42424242 \
-    FOUNDRY_FUZZ_RUNS=1 \
     forge test --match-path "test/{L1,dispute}/**" \
     --no-match-contract "$NO_MATCH_CONTRACTS" \
     --no-match-path "$NO_MATCH_PATHS" \

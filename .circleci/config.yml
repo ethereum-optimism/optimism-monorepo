@@ -733,6 +733,8 @@ jobs:
           name: Run tests
           command: just test-upgrade
           environment:
+            FOUNDRY_FUZZ_SEED=42424242
+            FOUNDRY_FUZZ_RUNS=1
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
@@ -741,6 +743,8 @@ jobs:
           name: Print failed test traces
           command: just test-upgrade-rerun
           environment:
+            FOUNDRY_FUZZ_SEED=42424242
+            FOUNDRY_FUZZ_RUNS=1
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
