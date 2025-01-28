@@ -50,7 +50,11 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	}
 	head := oracle.BlockByHash(outputV0.BlockHash, chainID)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
+	return NewOracleBackedL2ChainFromHead(logger, oracle, precompileOracle, chainCfg, head), nil
+}
 
+func NewOracleBackedL2ChainFromHead(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, head *types.Block) *OracleBackedL2Chain {
+	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	chain := &OracleBackedL2Chain{
 		log:      logger,
 		oracle:   oracle,
@@ -72,7 +76,7 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 		return chain.GetBlockByHash(hash)
 	}
 	chain.canon = NewCanonicalBlockHeaderOracle(head.Header(), blockByHash)
-	return chain, nil
+	return chain
 }
 
 func (o *OracleBackedL2Chain) CurrentHeader() *types.Header {

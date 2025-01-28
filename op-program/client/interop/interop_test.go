@@ -143,7 +143,7 @@ func TestDeriveBlockForConsolidateStep(t *testing.T) {
 					} else {
 						return []executingMessage{
 							{
-								ChainID:   config.rollupCfgs[0].L2ChainID.Uint64(),
+								ChainID:   eth.ChainIDFromBig(config.rollupCfgs[0].L2ChainID),
 								BlockNum:  includeBlockNum,
 								LogIdx:    0,
 								Timestamp: includeBlockNum * config.rollupCfgs[1].BlockTime,
@@ -470,7 +470,6 @@ func (t *stubTasks) BuildDepositOnlyBlock(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	optimisticBlock *gethTypes.Block,
-	optimisticBlockOutput *eth.OutputV0,
 ) (common.Hash, eth.Bytes32, error) {
 	out := t.Mock.Called(
 		logger,
@@ -481,7 +480,6 @@ func (t *stubTasks) BuildDepositOnlyBlock(
 		l1Oracle,
 		l2Oracle,
 		optimisticBlock,
-		optimisticBlockOutput,
 	)
 	return out.Get(0).(common.Hash), out.Get(1).(eth.Bytes32), nil
 }
@@ -499,7 +497,6 @@ func (t *stubTasks) ExpectBuildDepositOnlyBlock(
 		mock.Anything,
 		expectL1Head,
 		expectAgreedL2OutputRoot,
-		mock.Anything,
 		mock.Anything,
 		mock.Anything,
 		mock.Anything,

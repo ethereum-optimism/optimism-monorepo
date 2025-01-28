@@ -95,11 +95,6 @@ func RunConsolidation(
 				return eth.Bytes32{}, err
 			}
 			chainAgreedPrestate := superRoot.Chains[i]
-			optimisticBlockOutput := l2PreimageOracle.OutputByRoot(common.Hash(progress.OutputRoot), chain.ChainID)
-			optimisticBlockOutputV0, ok := optimisticBlockOutput.(*eth.OutputV0)
-			if !ok {
-				return eth.Bytes32{}, fmt.Errorf("unexpected output version: %d", optimisticBlockOutput.Version())
-			}
 			_, outputRoot, err := buildDepositOnlyBlock(
 				logger,
 				bootInfo,
@@ -108,7 +103,6 @@ func RunConsolidation(
 				chainAgreedPrestate,
 				tasks,
 				optimisticBlock,
-				optimisticBlockOutputV0,
 			)
 			if err != nil {
 				return eth.Bytes32{}, err
@@ -128,7 +122,7 @@ func RunConsolidation(
 }
 
 func isInvalidMessageError(err error) bool {
-	// TODO: Create an error category for InvalidExecutingMessage errors in the cross package for easier maintenance.
+	// TODO(#14011): Create an error category for InvalidExecutingMessage errors in the cross package for easier maintenance.
 	return errors.Is(err, supervisortypes.ErrConflict) ||
 		errors.Is(err, cross.ErrExecMsgHasInvalidIndex) ||
 		errors.Is(err, cross.ErrExecMsgUnknownChain) ||
@@ -295,7 +289,6 @@ func buildDepositOnlyBlock(
 	chainAgreedPrestate eth.ChainIDAndOutput,
 	tasks taskExecutor,
 	optimisticBlock *ethtypes.Block,
-	optimisticBlockOutput *eth.OutputV0,
 ) (common.Hash, eth.Bytes32, error) {
 	rollupCfg, err := bootInfo.Configs.RollupConfig(chainAgreedPrestate.ChainID)
 	if err != nil {
@@ -314,7 +307,6 @@ func buildDepositOnlyBlock(
 		l1PreimageOracle,
 		l2PreimageOracle,
 		optimisticBlock,
-		optimisticBlockOutput,
 	)
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, err

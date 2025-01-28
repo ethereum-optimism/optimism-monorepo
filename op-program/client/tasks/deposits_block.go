@@ -27,13 +27,12 @@ func BuildDepositOnlyBlock(
 	cfg *rollup.Config,
 	l2Cfg *params.ChainConfig,
 	optimisticBlock *types.Block,
-	optimisticBlockOutput *eth.OutputV0,
 	l1Head common.Hash,
 	agreedL2OutputRoot eth.Bytes32,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 ) (common.Hash, eth.Bytes32, error) {
-	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle /* kzg oracle */, l2Cfg, common.Hash(agreedL2OutputRoot))
+	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, common.Hash(agreedL2OutputRoot))
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
@@ -41,6 +40,10 @@ func BuildDepositOnlyBlock(
 	l2Head := l2Oracle.BlockByHash(optimisticBlock.ParentHash(), eth.ChainIDFromBig(l2Cfg.ChainID))
 	l2HeadHash := l2Head.Hash()
 
+	optimisticBlockOutput, err := getL2Output(logger, cfg, l2Cfg, l2Oracle, l1Oracle, optimisticBlock)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output: %w", err)
+	}
 	logger.Info("Building a deposts-only block to replace block %v", optimisticBlock.Hash())
 	attrs, err := blockToDepositsOnlyAttributes(cfg, optimisticBlock, optimisticBlockOutput)
 	if err != nil {
@@ -71,6 +74,16 @@ func BuildDepositOnlyBlock(
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output root: %w", err)
 	}
 	return blockHash, outputRoot, nil
+}
+
+func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block) (*eth.OutputV0, error) {
+	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block)
+	engine := l2.NewOracleEngine(cfg, logger, backend)
+	output, err := engine.L2OutputAtBlockHash(block.Hash())
+	if err != nil {
+		return nil, fmt.Errorf("failed to get L2 output: %w", err)
+	}
+	return output, nil
 }
 
 func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, output *eth.OutputV0) (*eth.PayloadAttributes, error) {
