@@ -902,7 +902,7 @@ jobs:
           working_directory: op-program
       - run:
           name: build op-program-host
-          command: make op-program-client
+          command: make op-program-host
           working_directory: op-program
       - run:
           name: build cannon
