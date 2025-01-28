@@ -64,6 +64,7 @@ contract ForkLive is Deployer {
         // Now upgrade the contracts (if the config is set to do so)
         if (cfg.useUpgradedFork()) {
             console.log("ForkLive: upgrading");
+            console.log("hello world");
             _upgrade();
         }
     }
