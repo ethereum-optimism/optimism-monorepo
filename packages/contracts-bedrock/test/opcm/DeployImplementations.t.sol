@@ -430,7 +430,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.run(dii, dio);
     }
 
-    function test_deployMipsV1OnMainnetOrSepolia_reverts() public {
+    function test_run_deployMipsV1OnMainnetOrSepolia_reverts() public {
         setDefaults();
         dii.set(dii.mipsVersion.selector, 1);
 
