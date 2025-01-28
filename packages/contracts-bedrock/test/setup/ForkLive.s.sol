@@ -72,7 +72,10 @@ contract ForkLive is Deployer {
         } else {
             // Read the superchain registry and save the addresses to the Artifacts contract.
             _readSuperchainRegistry();
-            // Now deploy the updated OPCM and implementations of the contracts
+            // Now deploy the updated OPCM and implementations of the contracts.
+            // We need to set the USE_MT_CANNON environment variable to true to ensure that the OPCM for upgrade 13
+            // is deployed with Mips64 on production networks.
+            vm.setEnv("USE_MT_CANNON", "true");
             _deployNewImplementations();
         }
 
