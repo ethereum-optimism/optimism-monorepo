@@ -304,11 +304,6 @@ func (su *SupervisorBackend) AttachSyncSource(chainID eth.ChainID, src syncnode.
 		return fmt.Errorf("unknown chain %s, cannot attach RPC to sync source", chainID)
 	}
 	su.syncSources.Set(chainID, src)
-
-	if err := su.invalidator.AttachSyncSource(chainID, src); err != nil {
-		return fmt.Errorf("failed to attach sync source to invalidator: %w", err)
-	}
-
 	return nil
 }
 

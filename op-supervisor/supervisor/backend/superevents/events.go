@@ -146,15 +146,6 @@ func (ev InvalidateCrossSafeEvent) String() string {
 	return "invalidate-cross-safe"
 }
 
-type ReplaceBlockEvent struct {
-	ChainID     eth.ChainID
-	Replacement types.BlockReplacement
-}
-
-func (ev ReplaceBlockEvent) String() string {
-	return "replace-block-event"
-}
-
 type InvalidateLocalUnsafeEvent struct {
 	ChainID   eth.ChainID
 	Candidate eth.L2BlockRef
@@ -173,23 +164,11 @@ func (ev InvalidateCrossUnsafeEvent) String() string {
 	return "invalidate-cross-unsafe"
 }
 
-// type InvalidationType int
+type ReplaceBlockEvent struct {
+	ChainID     eth.ChainID
+	Replacement types.BlockReplacement
+}
 
-// const (
-// 	InvalidationTypeUnknown InvalidationType = iota
-// 	InvalidationTypeLocalUnsafe
-// 	InvalidationTypeCrossUnsafe
-// 	InvalidationTypeLocalSafe
-// 	InvalidationTypeCrossSafe
-// )
-
-// type InvalidationEvent struct {
-// 	ChainID eth.ChainID
-// 	Type    InvalidationType
-// 	BadRef  eth.BlockRef
-// 	Error   error
-// }
-
-// func (InvalidationEvent) String() string {
-// 	return "invalidation"
-// }
+func (ev ReplaceBlockEvent) String() string {
+	return "replace-block-event"
+}
