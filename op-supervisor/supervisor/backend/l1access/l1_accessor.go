@@ -167,19 +167,14 @@ func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 		return
 	}
 
-	// The block is not the next one; there is a gap
-	if ref.Number != p.tipHeight+1 {
-		// TODO: ?
-	}
-
 	// The block is the next one; check if it is a reorg
-	if ref.ParentHash != p.tipHash {
+	if ref.Number == p.tipHeight+1 && ref.ParentHash != p.tipHash {
 		// Signal a safe block reorg
 		// return now because we don't want to update the tip info yet
-		// p.emitter.Emit(superevents.InvalidationEvent{
-		// 	Type:   superevents.InvalidationTypeCrossSafe,
-		// 	BadRef: ref,
-		// })
+		p.emitter.Emit(superevents.RewindCrossSafeEvent{
+			// ChainID:   chainID,
+			// Candidate: ref,
+		})
 		return
 	}
 

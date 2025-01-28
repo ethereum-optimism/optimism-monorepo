@@ -137,31 +137,30 @@ func (ev InvalidateLocalSafeEvent) String() string {
 	return "invalidate-local-safe"
 }
 
-type InvalidateCrossSafeEvent struct {
+type RewindCrossSafeEvent struct {
 	ChainID   eth.ChainID
 	Candidate types.DerivedBlockRefPair
 }
 
-func (ev InvalidateCrossSafeEvent) String() string {
+func (ev RewindCrossSafeEvent) String() string {
 	return "invalidate-cross-safe"
 }
 
-type InvalidateLocalUnsafeEvent struct {
-	ChainID   eth.ChainID
-	Candidate eth.L2BlockRef
+type RewindChainEvent struct {
+	ChainID  eth.ChainID
+	BadBlock eth.L2BlockRef
 }
 
-func (ev InvalidateLocalUnsafeEvent) String() string {
-	return "invalidate-local-unsafe"
+func (ev RewindChainEvent) String() string {
+	return "rewind-chain"
 }
 
-type InvalidateCrossUnsafeEvent struct {
-	ChainID   eth.ChainID
-	Candidate eth.L2BlockRef
+type RewindAllChainsEvent struct {
+	BadBlock eth.L2BlockRef
 }
 
-func (ev InvalidateCrossUnsafeEvent) String() string {
-	return "invalidate-cross-unsafe"
+func (ev RewindAllChainsEvent) String() string {
+	return "rewind-all-chains"
 }
 
 type ReplaceBlockEvent struct {

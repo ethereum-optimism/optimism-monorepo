@@ -21,9 +21,9 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/sync"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
-	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/invalidator"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/rewinder"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -68,8 +68,8 @@ type SupervisorBackend struct {
 
 	emitter event.Emitter
 
-	// Invalidator for handling reorgs
-	invalidator *invalidator.Invalidator
+	// Rewinder for handling reorgs
+	rewinder *rewinder.Rewinder
 }
 
 var _ event.AttachEmitter = (*SupervisorBackend)(nil)
@@ -142,7 +142,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 	}
 
 	// create the invalidator
-	super.invalidator = invalidator.New(logger, chainsDBs)
+	super.rewinder = rewinder.New(logger, chainsDBs)
 
 	return super, nil
 }
@@ -170,7 +170,7 @@ func (su *SupervisorBackend) OnEvent(ev event.Event) bool {
 
 func (su *SupervisorBackend) AttachEmitter(em event.Emitter) {
 	su.emitter = em
-	su.invalidator.AttachEmitter(em)
+	su.rewinder.AttachEmitter(em)
 }
 
 // initResources initializes all the resources, such as DBs and processors for chains.
@@ -286,6 +286,7 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to node: %w", err)
 	}
+	su.rewinder.AttachSyncNode(chainID, src)
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 

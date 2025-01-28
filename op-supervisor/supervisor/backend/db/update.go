@@ -205,107 +205,84 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	return nil
 }
 
-// InvalidateCrossSafe invalidates the cross-safe blocks up to the given block number.
-func (db *ChainsDB) InvalidateCrossSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
-	// Get databases to invalidate data in.
-	eventsDB, ok := db.logDBs.Get(chainID)
-	if !ok {
-		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
-	}
-	localSafeDB, ok := db.localDBs.Get(chainID)
-	if !ok {
-		return fmt.Errorf("cannot find local-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
-	}
+// }
 
-	// Now invalidate the local-safe data.
-	if err := localSafeDB.RewindAndInvalidate(candidate); err != nil {
-		return fmt.Errorf("failed to invalidate entry in local-safe DB: %w", err)
-	}
-
-	// Change cross-unsafe, if it's equal or past the invalidated block.
-	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Derived.Number); err != nil {
-		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
-	}
-
-	// Drop the events of the invalidated block and after,
-	// by rewinding to only keep the parent-block.
-	if err := eventsDB.Rewind(candidate.Derived.ParentID()); err != nil {
-		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
-	}
-
-	// Create an event, that subscribed sync-nodes can listen to,
-	// to start finding the replacement block.
-	db.emitter.Emit(superevents.InvalidateCrossSafeEvent{
-		ChainID:   chainID,
-		Candidate: candidate,
-	})
-
-	return nil
-}
-
-// InvalidateLocalUnsafe invalidates all local-unsafe blocks up to the local-safe head.
-// Also invalidates the cross-unsafe blocks that are past the local-safe head.
-// TODO: Allow invalidating to a specific block number so we can invalidate only some unsafe blocks
-// if only some in a chain are reorged.
-func (db *ChainsDB) InvalidateLocalUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error {
+// RewindLocalUnsafe removes all local-unsafe blocks after the given new head.
+func (db *ChainsDB) RewindLocalUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	// Get database to invalidate data in.
 	eventsDB, ok := db.logDBs.Get(chainID)
 	if !ok {
 		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
 
-	// Get the local-safe head of the chain.
-	safeHeadPair, err := db.LocalSafe(chainID)
-	if err != nil {
-		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+	// If the new head is before the current head then rewind it
+	currentHead, ok := eventsDB.LatestSealedBlock()
+	if !ok {
+		return fmt.Errorf("cannot find local-unsafe head of chain %s: %w", chainID, types.ErrUnknownChain)
 	}
-
-	// Drop the events of the invalidated block and after,
-	if err := eventsDB.Rewind(safeHeadPair.Derived.ID()); err != nil {
-		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
+	if newHead.Number <= currentHead.Number {
+		if err := eventsDB.Rewind(newHead.ID()); err != nil {
+			return fmt.Errorf("failed to rewind local-unsafe of chain %s: %w", chainID, err)
+		}
 	}
-
-	// Reset cross-unsafe if it contains the invalidated block.
-	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Number); err != nil {
-		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
-	}
-
-	// Create an event, that subscribed sync-nodes can listen to,
-	// to start finding the replacement block.
-	db.emitter.Emit(superevents.InvalidateLocalUnsafeEvent{
-		ChainID:   chainID,
-		Candidate: candidate,
-	})
 
 	return nil
 }
 
-// InvalidateCrossUnsafe invalidates all cross-unsafe blocks up to the cross-safe head.
-// Also invalidates the cross-unsafe blocks that are past the cross-safe head.
-func (db *ChainsDB) InvalidateCrossUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error {
-	// Get databases to invalidate data in.
-	eventsDB, ok := db.logDBs.Get(chainID)
+func (db *ChainsDB) RewindCrossUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
+	crossDB, ok := db.crossUnsafe.Get(chainID)
 	if !ok {
-		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+		return fmt.Errorf("cannot find cross-unsafe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
 
-	// Now invalidate the cross-unsafe data.
-	if err := db.ResetCrossUnsafeIfNewerThan(chainID, candidate.Number); err != nil {
-		return fmt.Errorf("failed to reset cross-unsafe: %w", err)
+	crossDB.Lock()
+	defer crossDB.Unlock()
+
+	if crossDB.Value.Number > newHead.Number {
+		crossDB.Value = newHead
+		db.logger.Info("rewound cross-unsafe", "chain", chainID, "newHead", newHead)
 	}
 
-	// Drop the events of the invalidated block and after,
-	// by rewinding to only keep the parent-block.
-	if err := eventsDB.Rewind(candidate.ParentID()); err != nil {
-		return fmt.Errorf("failed to rewind unsafe-chain: %w", err)
+	return nil
+}
+
+func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
+	localSafeDB, ok := db.localDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find local-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
 
-	// Create an event, that subscribed sync-nodes can listen to,
-	// to start finding the replacement block.
-	db.emitter.Emit(superevents.InvalidateCrossUnsafeEvent{
-		ChainID:   chainID,
-		Candidate: candidate,
-	})
+	// If the new head is before the current head then rewind it
+	currentHeadPair, err := localSafeDB.Latest()
+	if err != nil {
+		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+	}
+	currentHead := currentHeadPair.Derived
+	if newHead.Number <= currentHead.Number {
+		if err := localSafeDB.RewindToL2(newHead.Number); err != nil {
+			return fmt.Errorf("failed to rewind local-safe: %w", err)
+		}
+	}
+
+	return nil
+}
+
+func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
+	crossSafeDB, ok := db.crossDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find cross-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+
+	// If the new head is before the current head then rewind it
+	currentHeadPair, err := crossSafeDB.Latest()
+	if err != nil {
+		return fmt.Errorf("cannot find cross-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+	}
+	currentHead := currentHeadPair.Derived
+	if newHead.Number <= currentHead.Number {
+		return crossSafeDB.RewindToL2(newHead.Number)
+	}
+
 	return nil
 }
 

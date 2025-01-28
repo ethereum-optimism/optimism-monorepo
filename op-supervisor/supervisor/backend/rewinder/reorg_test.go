@@ -1,4 +1,4 @@
-package invalidator
+package rewinder
 
 import (
 	"os"
@@ -28,6 +28,7 @@ type testChainSetup struct {
 	logDB    *logs.DB
 	localDB  *fromda.DB
 	crossDB  *fromda.DB
+	syncNode *mockSyncNode
 }
 
 func setupTestChain(t *testing.T) *testChainSetup {
@@ -49,7 +50,6 @@ func setupTestChain(t *testing.T) *testChainSetup {
 	// Create ChainsDB with mock emitter
 	chainsDB := db.NewChainsDB(logger, depSet)
 	chainsDB.AttachEmitter(&mockEmitter{})
-	// chainsDB.emitter = &mockEmitter{}
 
 	// Create the chain directory
 	chainDir := filepath.Join(dataDir, "001", "1")
@@ -74,6 +74,9 @@ func setupTestChain(t *testing.T) *testChainSetup {
 	// Add cross-unsafe tracker
 	chainsDB.AddCrossUnsafeTracker(chainID)
 
+	// Create mock sync node
+	syncNode := newMockSyncNode()
+
 	return &testChainSetup{
 		t:        t,
 		logger:   logger,
@@ -83,6 +86,7 @@ func setupTestChain(t *testing.T) *testChainSetup {
 		logDB:    logDB,
 		localDB:  localDB,
 		crossDB:  crossDB,
+		syncNode: syncNode,
 	}
 }
 
@@ -91,6 +95,18 @@ func (s *testChainSetup) Close() {
 	s.logDB.Close()
 	s.localDB.Close()
 	s.crossDB.Close()
+}
+
+// setupSyncNodeBlocks adds the given blocks to the sync node's block map
+func (s *testChainSetup) setupSyncNodeBlocks(blocks ...eth.L2BlockRef) {
+	for _, block := range blocks {
+		s.syncNode.blocks[block.Number] = eth.BlockRef{
+			Hash:       block.Hash,
+			Number:     block.Number,
+			Time:       block.Time,
+			ParentHash: block.ParentHash,
+		}
+	}
 }
 
 func createTestBlocks() (genesis, block1, block2A, block2B eth.L2BlockRef) {
@@ -211,6 +227,9 @@ func TestReorgLocalUnsafe(t *testing.T) {
 
 	genesis, block1, block2A, block2B := createTestBlocks()
 
+	// Setup sync node with all blocks
+	s.setupSyncNodeBlocks(genesis, block1, block2A, block2B)
+
 	// Seal genesis and block1
 	s.sealBlocks(genesis, block1)
 
@@ -230,10 +249,11 @@ func TestReorgLocalUnsafe(t *testing.T) {
 
 	// Now try to reorg to block2B
 	i := New(s.logger, s.chainsDB)
-	i.OnEvent(superevents.InvalidateLocalUnsafeEvent{
-		ChainID:   s.chainID,
-		Candidate: block2A,
-	})
+	i.AttachSyncNode(s.chainID, s.syncNode)
+	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
+		ChainID:  s.chainID,
+		BadBlock: block2A,
+	}))
 
 	// Verify the reorg happened
 	s.verifyHead(block1.ID(), "should have rewound to block1")
@@ -250,6 +270,9 @@ func TestReorgCrossUnsafe(t *testing.T) {
 	defer s.Close()
 
 	genesis, block1, block2A, block2B := createTestBlocks()
+
+	// Setup sync node with all blocks
+	s.setupSyncNodeBlocks(genesis, block1, block2A, block2B)
 
 	// Seal initial chain
 	s.sealBlocks(genesis, block1, block2A)
@@ -275,7 +298,7 @@ func TestReorgCrossUnsafe(t *testing.T) {
 	s.makeBlockSafe(block2A, l1Block2, false)
 
 	// Set block2 as cross-unsafe
-	require.NoError(s.t, s.chainsDB.UpdateCrossUnsafe(s.chainID, types.BlockSeal{
+	require.NoError(t, s.chainsDB.UpdateCrossUnsafe(s.chainID, types.BlockSeal{
 		Hash:      block2A.Hash,
 		Number:    block2A.Number,
 		Timestamp: block2A.Time,
@@ -286,10 +309,11 @@ func TestReorgCrossUnsafe(t *testing.T) {
 
 	// Now try to invalidate block2 as cross-unsafe
 	i := New(s.logger, s.chainsDB)
-	i.OnEvent(superevents.InvalidateCrossUnsafeEvent{
-		ChainID:   s.chainID,
-		Candidate: block2A,
-	})
+	i.AttachSyncNode(s.chainID, s.syncNode)
+	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
+		ChainID:  s.chainID,
+		BadBlock: block2A,
+	}))
 
 	// Verify we rewound to block1 (the cross-safe head)
 	s.verifyHead(block1.ID(), "should have rewound to block1")
