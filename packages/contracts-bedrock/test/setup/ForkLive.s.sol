@@ -68,6 +68,8 @@ contract ForkLive is Deployer {
             console.log("ForkLive: upgrading");
             console.log("hello world");
             _upgrade();
+        } else {
+            console.log("ForkLive: skipping upgrade");
         }
     }
 
