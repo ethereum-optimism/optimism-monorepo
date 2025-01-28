@@ -68,8 +68,8 @@ optimism_package:
 ethereum_package:
   participants_matrix:
     el:
-      - el_type: geth
-        el_image: ethpandaops/geth:prague-devnet-5-f85cde7
+      - el_type: reth
+        el_image: ethpandaops/reth:main-11bd9dd
     cl:
       - cl_type: lighthouse
         cl_image: ethpandaops/lighthouse:single_attestation-b6d80eb
