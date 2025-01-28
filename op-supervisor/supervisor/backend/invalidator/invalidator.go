@@ -19,6 +19,7 @@ type syncSource interface {
 type db interface {
 	InvalidateLocalUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error
 	InvalidateCrossUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error
+	InvalidateCrossSafe(chainID eth.ChainID, candidate eth.L2BlockRef) error
 }
 
 // Invalidator is responsible for handling invalidation events by coordinating
@@ -90,6 +91,12 @@ func (i *Invalidator) handleCrossUnsafeInvalidation(ev superevents.InvalidateCro
 }
 
 // handleCrossSafeInvalidation handles the invalidation of a cross-safe block.
+func (i *Invalidator) handleCrossSafeInvalidation(ev superevents.InvalidateCrossSafeEvent) {
+	i.log.Info("Processing cross-safe invalidation",
+		"chain", ev.ChainID,
+		"block", ev.Candidate)
+	i.db.InvalidateCrossSafe(ev.ChainID, ev.Candidate)
+}
 
 // findCommonL2Ancestor starts from the given bad block and walks backwards to find the
 // latest common ancestor between the local db and remote chain.

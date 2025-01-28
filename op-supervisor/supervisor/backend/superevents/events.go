@@ -137,6 +137,15 @@ func (ev InvalidateLocalSafeEvent) String() string {
 	return "invalidate-local-safe"
 }
 
+type InvalidateCrossSafeEvent struct {
+	ChainID   eth.ChainID
+	Candidate types.DerivedBlockRefPair
+}
+
+func (ev InvalidateCrossSafeEvent) String() string {
+	return "invalidate-cross-safe"
+}
+
 type ReplaceBlockEvent struct {
 	ChainID     eth.ChainID
 	Replacement types.BlockReplacement
