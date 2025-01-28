@@ -18,10 +18,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-// type mockEmitter struct{}
-
-// func (m *mockEmitter) Emit(ev event.Event) {}
-
 type testChainSetup struct {
 	t        *testing.T
 	logger   log.Logger
