@@ -49,22 +49,21 @@ contract ForkLive is Deployer {
         return vm.envOr("FORK_OP_CHAIN", string("op"));
     }
 
-    /// @notice Forks, upgrades and tests a production network.
-    /// @dev This function sets up the system to test by:
-    ///      0. read the environment variable to determine the
-    ///         SUPERCHAIN_OPS_ALLOCS_PATH environment variable set from superchain ops.
-    ///      1. if the environment variable is set, load the state from the given path.
-    ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
-    ///      3. deploying the updated OPCM and implementations of the contracts.
-    ///      4. upgrading the system using the OPCM.upgrade() function if not using the applied state from superchain
-    /// ops.
+    /// @dev This function sets up the system to test it as follows:
+    ///      1. Check if the SUPERCHAIN_OPS_ALLOCS_PATH environment variable was set from superchain ops.
+    ///      2. If set, load the state from the given path.
+    ///      3. Read the superchain-registry to get the contract addresses we wish to test from that network.
+    ///      4. If the environment variable wasn't set, deploy the updated OPCM and implementations of the contracts.
+    ///      5. Upgrade the system using the OPCM.upgrade() function if useUpgradedFork is true.
     function run() public {
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
         bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
-            // Set the resultant state from the superchain ops repo upgrades
+            // Set the resultant state from the superchain ops repo upgrades.
+            // The allocs are generated when simulating an upgrade task that runs vm.dumpState.
+            // These allocs represent the state of the EVM after the upgrade has been simulated.
             vm.loadAllocs(superchainOpsAllocsPath);
             // Next, fetch the addresses from the superchain registry. This function uses a local EVM
             // to retrieve implementation addresses by reading from proxy addresses provided by the registry.
