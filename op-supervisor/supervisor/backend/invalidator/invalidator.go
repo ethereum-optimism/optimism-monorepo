@@ -9,7 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-type db interface {
+type invalidatorDB interface {
 	InvalidateLocalUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error
 	InvalidateCrossUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error
 	InvalidateCrossSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error
@@ -20,10 +20,10 @@ type db interface {
 type Invalidator struct {
 	log     log.Logger
 	emitter event.Emitter
-	db      db
+	db      invalidatorDB
 }
 
-func New(log log.Logger, db db) *Invalidator {
+func New(log log.Logger, db invalidatorDB) *Invalidator {
 	return &Invalidator{
 		log: log.New("component", "invalidator"),
 		db:  db,

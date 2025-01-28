@@ -8,6 +8,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
@@ -403,10 +404,14 @@ type mockChainsDB struct {
 		chainID   eth.ChainID
 		candidate eth.L2BlockRef
 	}
+	invalidateCrossSafeCalls []struct {
+		chainID   eth.ChainID
+		candidate types.DerivedBlockRefPair
+	}
 }
 
 // Verify mockChainsDB implements db
-var _ db = (*mockChainsDB)(nil)
+var _ invalidatorDB = (*mockChainsDB)(nil)
 
 func (m *mockChainsDB) InvalidateLocalUnsafe(chainID eth.ChainID, candidate eth.L2BlockRef) error {
 	m.invalidateLocalUnsafeCalls = append(m.invalidateLocalUnsafeCalls, struct {
@@ -420,6 +425,14 @@ func (m *mockChainsDB) InvalidateCrossUnsafe(chainID eth.ChainID, candidate eth.
 	m.invalidateCrossUnsafeCalls = append(m.invalidateCrossUnsafeCalls, struct {
 		chainID   eth.ChainID
 		candidate eth.L2BlockRef
+	}{chainID: chainID, candidate: candidate})
+	return nil
+}
+
+func (m *mockChainsDB) InvalidateCrossSafe(chainID eth.ChainID, candidate types.DerivedBlockRefPair) error {
+	m.invalidateCrossSafeCalls = append(m.invalidateCrossSafeCalls, struct {
+		chainID   eth.ChainID
+		candidate types.DerivedBlockRefPair
 	}{chainID: chainID, candidate: candidate})
 	return nil
 }
@@ -486,7 +499,7 @@ func TestInvalidator_HandleLocalUnsafeInvalidation(t *testing.T) {
 			ChainID:   chainID,
 			Candidate: badBlock,
 		}
-		invalidator.handleCrossUnsafeInvalidation(ev)
+		invalidator.OnEvent(ev)
 
 		// Verify ChainsDB was called to invalidate the block
 		require.Len(t, chainsDB.invalidateCrossUnsafeCalls, 1, "should have one cross-unsafe invalidation call")

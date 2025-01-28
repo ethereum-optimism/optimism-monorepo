@@ -1,4 +1,4 @@
-package db
+package invalidator
 
 import (
 	"os"
@@ -9,25 +9,25 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/stretchr/testify/require"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/fromda"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-type mockEmitter struct{}
+// type mockEmitter struct{}
 
-func (m *mockEmitter) Emit(ev event.Event) {}
+// func (m *mockEmitter) Emit(ev event.Event) {}
 
 type testChainSetup struct {
 	t        *testing.T
 	logger   log.Logger
 	dataDir  string
 	chainID  eth.ChainID
-	chainsDB *ChainsDB
+	chainsDB *db.ChainsDB
 	logDB    *logs.DB
 	localDB  *fromda.DB
 	crossDB  *fromda.DB
@@ -50,8 +50,9 @@ func setupTestChain(t *testing.T) *testChainSetup {
 	require.NoError(t, err)
 
 	// Create ChainsDB with mock emitter
-	chainsDB := NewChainsDB(logger, depSet)
-	chainsDB.emitter = &mockEmitter{}
+	chainsDB := db.NewChainsDB(logger, depSet)
+	chainsDB.AttachEmitter(&mockEmitter{})
+	// chainsDB.emitter = &mockEmitter{}
 
 	// Create the chain directory
 	chainDir := filepath.Join(dataDir, "001", "1")
