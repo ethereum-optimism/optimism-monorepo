@@ -110,13 +110,13 @@ var InitFlags = []cli.Flag{
 
 var ApplyFlags = []cli.Flag{
 	L1RPCURLFlag,
+	WorkdirFlag,
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
 }
 
 var UpgradeFlags = []cli.Flag{
 	L1RPCURLFlag,
-	WorkdirFlag,
 	PrivateKeyFlag,
 	DeploymentTargetFlag,
 }

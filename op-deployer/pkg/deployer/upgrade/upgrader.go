@@ -20,12 +20,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-type Config struct {
-	DeploymentTarget deployer.DeploymentTarget
-	ArtifactsVersion string
-	UpgradeConfig    json.RawMessage
-}
-
 type Upgrader interface {
 	Upgrade(host *script.Host, input json.RawMessage) error
 	SupportsVersion(version string) bool
