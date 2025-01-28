@@ -277,8 +277,6 @@ contract L2Genesis is Deployer {
             setL2ToL2CrossDomainMessenger(); // 23
             setSuperchainWETH(); // 24
             setETHLiquidity(); // 25
-            setOptimismSuperchainERC20Factory(); // 26
-            setOptimismSuperchainERC20Beacon(); // 27
             setSuperchainTokenBridge(); // 28
         }
     }
