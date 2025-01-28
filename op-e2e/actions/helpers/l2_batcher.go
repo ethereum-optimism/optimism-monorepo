@@ -554,7 +554,10 @@ func (s *L2Batcher) ActSubmitSetCodeTx(t Testing) {
 		Data:       []byte{},
 		AccessList: types.AccessList{},
 		AuthList:   []types.SetCodeAuthorization{signedAuth},
+		Gas:        1_000_000,
+		GasFeeCap:  uint256.NewInt(1_000_000_000),
 	}
+
 	tx, err := types.SignNewTx(s.l2BatcherCfg.BatcherKey, s.l1Signer, txData)
 	require.NoError(t, err, "need to sign tx")
 

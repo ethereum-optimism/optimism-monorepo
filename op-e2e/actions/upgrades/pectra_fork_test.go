@@ -62,6 +62,7 @@ func TestPectraForkAfterGenesis(gt *testing.T) {
 	t.Log("submitting EIP 7702 Set Code Batcher Transaction...")
 	// submit an EIP 7702 Set Code Transaction
 	// https://github.com/ethereum/EIPs/blob/master/EIPS/eip-7702.md
+	miner.ActL1StartBlock(12)(t)
 	batcher.ActSubmitSetCodeTx(t)
 	miner.ActL1IncludeTx(batcher.BatcherAddr)(t)
 	miner.ActL1EndBlock(t)
