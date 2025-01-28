@@ -11,9 +11,11 @@ import (
 
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	cl "github.com/ethereum-optimism/optimism/op-program/client"
+	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -25,6 +27,7 @@ type PrefetcherCreator func(ctx context.Context, logger log.Logger, kv kvstore.K
 type programCfg struct {
 	prefetcher     PrefetcherCreator
 	skipValidation bool
+	db             l2.KeyValueStore
 }
 
 type ProgramOpt func(c *programCfg)
@@ -41,9 +44,17 @@ func WithSkipValidation(skip bool) ProgramOpt {
 	}
 }
 
+func WithDB(db l2.KeyValueStore) ProgramOpt {
+	return func(c *programCfg) {
+		c.db = db
+	}
+}
+
 // FaultProofProgram is the programmatic entry-point for the fault proof program
 func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Config, opts ...ProgramOpt) error {
-	programConfig := &programCfg{}
+	programConfig := &programCfg{
+		db: memorydb.New(),
+	}
 	for _, opt := range opts {
 		opt(programConfig)
 	}
@@ -115,6 +126,7 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 			clientCfg.SkipValidation = true
 		}
 		clientCfg.InteropEnabled = cfg.InteropEnabled
+		clientCfg.DB = programConfig.db
 		return cl.RunProgram(logger, pClientRW, hClientRW, clientCfg)
 	}
 }

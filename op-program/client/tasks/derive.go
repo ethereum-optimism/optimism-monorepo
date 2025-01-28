@@ -37,10 +37,11 @@ func RunDerivation(
 	l2ClaimBlockNum uint64,
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
+	db l2.KeyValueStore,
 ) (DerivationResult, error) {
 	l1Source := l1.NewOracleL1Client(logger, l1Oracle, l1Head)
 	l1BlobsSource := l1.NewBlobFetcher(logger, l1Oracle)
-	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, l2OutputRoot)
+	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, l2OutputRoot, db)
 	if err != nil {
 		return DerivationResult{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}

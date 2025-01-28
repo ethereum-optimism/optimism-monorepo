@@ -6,6 +6,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-program/host/config"
 	"github.com/ethereum-optimism/optimism/op-program/host/flags"
@@ -112,6 +113,7 @@ func (p *programExecutor) RunProgram(
 	prefetcher hostcommon.Prefetcher,
 	blockNum uint64,
 	chainID eth.ChainID,
+	db l2.KeyValueStore,
 ) error {
 	newCfg := *p.cfg
 	newCfg.L2ChainID = chainID
@@ -122,7 +124,7 @@ func (p *programExecutor) RunProgram(
 			// TODO(#13663): prevent recursive block execution
 			return prefetcher, nil
 		})
-	return hostcommon.FaultProofProgram(ctx, p.logger, &newCfg, withPrefetcher, hostcommon.WithSkipValidation(true))
+	return hostcommon.FaultProofProgram(ctx, p.logger, &newCfg, withPrefetcher, hostcommon.WithSkipValidation(true), hostcommon.WithDB(db))
 }
 
 func MakeProgramExecutor(logger log.Logger, cfg *config.Config) prefetcher.ProgramExecutor {
