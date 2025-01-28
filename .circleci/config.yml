@@ -606,6 +606,20 @@ jobs:
             docker pull $image_name || exit 1
             docker run $image_name <<parameters.op_component>> --version || exit 1
 
+  contracts-bedrock-frozen-code:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    steps:
+      - checkout
+      - attach_workspace: { at: "." }
+      - install-contracts-dependencies
+      - check-changed:
+          patterns: contracts-bedrock/src/L1,contracts-bedrock/src/dispute
+      - run:
+          name: Changes detected
+          command: exit 1
+          working_directory: packages/contracts-bedrock
+
   contracts-bedrock-tests:
     machine: true
     resource_class: ethereum-optimism/latitude-1
@@ -1296,6 +1310,8 @@ workflows:
         - not:
             equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
+      - contracts-bedrock-frozen-code:
+          name: contracts-bedrock-frozen-code
       - contracts-bedrock-build:
           name: contracts-bedrock-build
           # Build with just core + script contracts.
