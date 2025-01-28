@@ -7,7 +7,7 @@ import { OwnableUpgradeable } from "@openzeppelin/contracts-upgradeable/access/O
 // Libraries
 import { LibClone } from "@solady/utils/LibClone.sol";
 import { GameType, Claim, GameId, Timestamp, Hash, LibGameId } from "src/dispute/lib/Types.sol";
-import { NoImplementation, IncorrectBondAmount, GameAlreadyExists } from "src/dispute/lib/Errors.sol";
+import { NoImplementation, IncorrectBondAmount, GameAlreadyExists, IncorrectGameType } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -50,7 +50,7 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
 
     /// @notice Semantic version.
     /// @custom:semver 1.0.1-beta.5
-    string public constant version = "1.0.1-beta.5";
+    string public constant version = "1.0.1-beta.6";
 
     /// @notice `gameImpls` is a mapping that maps `GameType`s to their respective
     ///         `IDisputeGame` implementations.
@@ -258,6 +258,9 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
     /// @param _gameType The type of the DisputeGame.
     /// @param _impl The implementation contract for the given `GameType`.
     function setImplementation(GameType _gameType, IDisputeGame _impl) external onlyOwner {
+        if (_gameType.raw() != _impl.gameType().raw()) {
+            revert IncorrectGameType();
+        }
         gameImpls[_gameType] = _impl;
         emit ImplementationSet(address(_impl), _gameType);
     }
