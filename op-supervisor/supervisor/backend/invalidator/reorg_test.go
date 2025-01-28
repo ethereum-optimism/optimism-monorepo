@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/fromda"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/db/logs"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
@@ -228,7 +229,11 @@ func TestReorgLocalUnsafe(t *testing.T) {
 	s.verifyHead(block2A.ID(), "should have set block2A as latest sealed block")
 
 	// Now try to reorg to block2B
-	require.NoError(t, s.chainsDB.InvalidateLocalUnsafe(s.chainID, block2B))
+	i := New(s.logger, s.chainsDB)
+	i.OnEvent(superevents.InvalidateLocalUnsafeEvent{
+		ChainID:   s.chainID,
+		Candidate: block2A,
+	})
 
 	// Verify the reorg happened
 	s.verifyHead(block1.ID(), "should have rewound to block1")
@@ -280,7 +285,11 @@ func TestReorgCrossUnsafe(t *testing.T) {
 	s.verifyHead(block2A.ID(), "should have set block2 as latest sealed block")
 
 	// Now try to invalidate block2 as cross-unsafe
-	require.NoError(t, s.chainsDB.InvalidateCrossUnsafe(s.chainID, block2A))
+	i := New(s.logger, s.chainsDB)
+	i.OnEvent(superevents.InvalidateCrossUnsafeEvent{
+		ChainID:   s.chainID,
+		Candidate: block2A,
+	})
 
 	// Verify we rewound to block1 (the cross-safe head)
 	s.verifyHead(block1.ID(), "should have rewound to block1")
