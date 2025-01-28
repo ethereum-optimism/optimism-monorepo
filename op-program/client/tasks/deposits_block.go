@@ -125,7 +125,7 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 }
 
 func createBlockDepositedTx(output *eth.OutputV0) *types.Transaction {
-	// TODO: refactor this with block replacement helpers introduced in https://github.com/ethereum-optimism/optimism/pull/13645
+	// TODO(#14013): refactor this with block replacement helpers introduced in https://github.com/ethereum-optimism/optimism/pull/13645
 	outputRoot := eth.OutputRoot(output)
 	outputRootPreimage := output.Marshal()
 
