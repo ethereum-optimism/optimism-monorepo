@@ -70,6 +70,20 @@ func BuildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get payload: %w", err)
 	}
+
+	// Sync the engine's view so we can fetch the latest output root
+	result, err = l2Source.ForkchoiceUpdate(context.Background(), &eth.ForkchoiceState{
+		HeadBlockHash:      payload.ExecutionPayload.BlockHash,
+		SafeBlockHash:      payload.ExecutionPayload.BlockHash,
+		FinalizedBlockHash: payload.ExecutionPayload.BlockHash,
+	}, nil)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", err)
+	}
+	if result.PayloadStatus.Status != eth.ExecutionValid {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", eth.ForkchoiceUpdateErr(result.PayloadStatus))
+	}
+
 	blockHash, outputRoot, err := l2Source.L2OutputRoot(uint64(payload.ExecutionPayload.BlockNumber))
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output root: %w", err)
@@ -119,8 +133,8 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 	}
 	if cfg.IsHolocene(block.Time()) {
 		d, e := eip1559.DecodeHoloceneExtraData(block.Extra())
-		eip1559Params := eip1559.EncodeHolocene1559Params(d, e)
-		copy(attrs.EIP1559Params[:], eip1559Params)
+		eip1559Params := eth.Bytes8(eip1559.EncodeHolocene1559Params(d, e))
+		attrs.EIP1559Params = &eip1559Params
 	}
 	return attrs, nil
 }
