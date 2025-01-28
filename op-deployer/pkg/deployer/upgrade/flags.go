@@ -20,7 +20,7 @@ var (
 
 var Commands = cli.Commands{
 	&cli.Command{
-		Name:  "v200",
+		Name:  "v2.0.0",
 		Usage: "upgrades a chain to version v2.0.0",
 		Flags: append([]cli.Flag{
 			deployer.L1RPCURLFlag,

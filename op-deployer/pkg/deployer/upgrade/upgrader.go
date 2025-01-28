@@ -66,7 +66,7 @@ func UpgradeCLI(upgrader Upgrader) func(*cli.Context) error {
 		}
 
 		var bcaster broadcaster.Broadcaster
-		var depAddr common.Address
+		depAddr := common.Address{'D'}
 		switch deploymentTarget {
 		case deployer.DeploymentTargetLive:
 			privateKeyHex := cliCtx.String(deployer.PrivateKeyFlag.Name)
@@ -93,10 +93,8 @@ func UpgradeCLI(upgrader Upgrader) func(*cli.Context) error {
 			}
 		case deployer.DeploymentTargetCalldata:
 			bcaster = new(broadcaster.CalldataBroadcaster)
-			depAddr = common.Address{'D'}
 		case deployer.DeploymentTargetNoop:
 			bcaster = broadcaster.NoopBroadcaster()
-			depAddr = common.Address{'D'}
 		case deployer.DeploymentTargetGenesis:
 			return fmt.Errorf("cannot upgrade into a genesis deployment")
 		default:
