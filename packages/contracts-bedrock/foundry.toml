@@ -91,9 +91,9 @@ depth = 32
 #                     PROFILE: CICOVERAGE                      #
 ################################################################
 
-[profile.cicoverage]
-optimizer = false
-compilation_restrictions = []
+# [profile.cicoverage]
+# optimizer = false
+# compilation_restrictions = []
 
 [profile.cicoverage.fuzz]
 runs = 1
