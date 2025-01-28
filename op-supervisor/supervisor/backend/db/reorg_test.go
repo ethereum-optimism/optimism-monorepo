@@ -273,15 +273,11 @@ func TestReorgCrossUnsafe(t *testing.T) {
 	s.makeBlockSafe(block2A, l1Block2, false)
 
 	// Set block2 as cross-unsafe
-	crossUnsafe, ok := s.chainsDB.crossUnsafe.Get(s.chainID)
-	require.True(t, ok)
-	crossUnsafe.Lock()
-	crossUnsafe.Value = types.BlockSeal{
+	require.NoError(s.t, s.chainsDB.UpdateCrossUnsafe(s.chainID, types.BlockSeal{
 		Hash:      block2A.Hash,
 		Number:    block2A.Number,
 		Timestamp: block2A.Time,
-	}
-	crossUnsafe.Unlock()
+	}))
 
 	// Verify block2 is the latest sealed block
 	s.verifyHead(block2A.ID(), "should have set block2 as latest sealed block")
