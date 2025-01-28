@@ -119,7 +119,8 @@ func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 		BlobGasUsed:      (*uint64)(hdr.BlobGasUsed),
 		ExcessBlobGas:    (*uint64)(hdr.ExcessBlobGas),
 		ParentBeaconRoot: hdr.ParentBeaconRoot,
-		RequestsHash:     hdr.RequestsHash,
+		// Prague
+		RequestsHash: hdr.RequestsHash,
 	}
 }
 
