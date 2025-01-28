@@ -435,11 +435,11 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.mipsVersion.selector, 1);
 
         vm.chainId(Chains.Mainnet);
-        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on mainnet or sepolia");
+        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
 
         vm.chainId(Chains.Sepolia);
-        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on mainnet or sepolia");
+        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
     }
 }
