@@ -51,25 +51,39 @@ contract ForkLive is Deployer {
 
     /// @notice Forks, upgrades and tests a production network.
     /// @dev This function sets up the system to test by:
-    ///      1. reading the superchain-registry to get the contract addresses we wish to test from that network.
-    ///      2. deploying the updated OPCM and implementations of the contracts.
-    ///      3. upgrading the system using the OPCM.upgrade() function.
+    ///      0. read the environment variable to determine the
+    ///         SUPERCHAIN_OPS_ALLOCS_PATH environment variable set from superchain ops.
+    ///      1. if the environment variable is set, load the state from the given path.
+    ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
+    ///      3. deploying the updated OPCM and implementations of the contracts.
+    ///      4. upgrading the system using the OPCM.upgrade() function if not using the applied state from superchain
+    /// ops.
     function run() public {
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
-        console.log("superchainOpsAllocsPath", superchainOpsAllocsPath);
-        // Read the superchain registry and save the addresses to the Artifacts contract.
-        _readSuperchainRegistry();
 
-        // Now deploy the updated OPCM and implementations of the contracts
-        _deployNewImplementations();
+        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
+        if (useOpsRepo) {
+            console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
+            // Set the resultant state from the superchain ops repo upgrades
+            vm.loadAllocs(superchainOpsAllocsPath);
+            // Next, fetch the addresses from the superchain registry. This function uses a local EVM
+            // to retrieve implementation addresses by reading from proxy addresses provided by the registry.
+            // Setting the allocs first ensures the correct implementation addresses are retrieved.
+            _readSuperchainRegistry();
+        } else {
+            // Read the superchain registry and save the addresses to the Artifacts contract.
+            _readSuperchainRegistry();
+            // Now deploy the updated OPCM and implementations of the contracts
+            _deployNewImplementations();
+        }
 
         // Now upgrade the contracts (if the config is set to do so)
         if (cfg.useUpgradedFork()) {
+            require(!useOpsRepo, "ForkLive: cannot upgrade and use ops repo");
             console.log("ForkLive: upgrading");
-            console.log("hello world");
             _upgrade();
-        } else {
-            console.log("ForkLive: skipping upgrade");
+        } else if (useOpsRepo) {
+            console.log("ForkLive: using ops repo to upgrade");
         }
     }
 
