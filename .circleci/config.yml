@@ -1624,7 +1624,7 @@ workflows:
           resource_class: ethereum-optimism/latitude-fps-1
           environment_overrides: |
             export OP_E2E_CANNON_ENABLED="true"
-            export PARALLEL=8
+            export PARALLEL=24
           packages: |
             op-e2e/faultproofs
           context:
