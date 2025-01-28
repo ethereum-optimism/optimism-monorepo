@@ -51,20 +51,39 @@ contract ForkLive is Deployer {
 
     /// @notice Forks, upgrades and tests a production network.
     /// @dev This function sets up the system to test by:
-    ///      1. reading the superchain-registry to get the contract addresses we wish to test from that network.
-    ///      2. deploying the updated OPCM and implementations of the contracts.
-    ///      3. upgrading the system using the OPCM.upgrade() function.
+    ///      0. read the environment variable to determine the
+    ///         SUPERCHAIN_OPS_ALLOCS_PATH environment variable set from superchain ops.
+    ///      1. if the environment variable is set, load the state from the given path.
+    ///      2. read the superchain-registry to get the contract addresses we wish to test from that network.
+    ///      3. deploying the updated OPCM and implementations of the contracts.
+    ///      4. upgrading the system using the OPCM.upgrade() function if not using the applied state from superchain
+    /// ops.
     function run() public {
-        // Read the superchain registry and save the addresses to the Artifacts contract.
-        _readSuperchainRegistry();
+        string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
-        // Now deploy the updated OPCM and implementations of the contracts
-        _deployNewImplementations();
+        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
+        if (useOpsRepo) {
+            console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
+            /// run the upgrades from the ops repo first
+            vm.loadAllocs(superchainOpsAllocsPath);
+            /// then fetch the addresses from the superchain registry after the upgrade
+            /// as this function will read the logic contract addresses which may have
+            /// changed from the upgrade.
+            _readSuperchainRegistry();
+        } else {
+            // Read the superchain registry and save the addresses to the Artifacts contract.
+            _readSuperchainRegistry();
+            // Now deploy the updated OPCM and implementations of the contracts
+            _deployNewImplementations();
+        }
 
         // Now upgrade the contracts (if the config is set to do so)
         if (cfg.useUpgradedFork()) {
+            require(!useOpsRepo, "ForkLive: cannot upgrade and use ops repo");
             console.log("ForkLive: upgrading");
             _upgrade();
+        } else if (useOpsRepo) {
+            console.log("ForkLive: using ops repo to upgrade");
         }
     }
 
