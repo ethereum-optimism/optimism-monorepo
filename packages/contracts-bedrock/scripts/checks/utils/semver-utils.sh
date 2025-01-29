@@ -22,20 +22,3 @@ extract_version() {
     fi
     echo "$version"
 }
-
-get_changed_contracts() {
-    local local_semver_lock=$1
-    local upstream_semver_lock=$2
-    jq -r '
-        def changes:
-            to_entries as $local
-            | input as $upstream
-            | $local | map(
-                select(
-                    .key as $key
-                    | .value != $upstream[$key]
-                )
-            ) | map(.key);
-        changes[]
-    ' "$local_semver_lock" "$upstream_semver_lock"
-}
