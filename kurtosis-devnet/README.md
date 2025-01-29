@@ -4,8 +4,8 @@ Running a Kurtosis Devnet has the following prerequisites:
 - Kurtosis must be installed
 - Docker Desktop must be installed and running
 
-Platform specific installation instructions for Kurtosis may be found [in Kurtosis documentation](https://docs.kurtosis.com/install/),
-but for Mac users, the following command should suffice:
+Platform specific installation instructions for Kurtosis may be found [in Kurtosis documentation](https://docs.kurtosis.com/install/), alternatively Mac, Windows and Linux binaries can be found [here](https://github.com/kurtosis-tech/kurtosis-cli-release-artifacts).
+For Mac users, the following command should suffice:
 ```
 brew install kurtosis-tech/tap/kurtosis-cli
 ```
