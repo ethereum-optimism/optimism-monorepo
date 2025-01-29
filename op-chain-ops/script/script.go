@@ -698,9 +698,7 @@ func (h *Host) StateDump() (*foundry.ForgeAllocs, error) {
 	baseState := h.baseState
 	// We have to commit the existing state to the trie,
 	// for all the state-changes to be captured by the trie iterator.
-	// TODO: do we need to check `IsCancun()` here, or can we just pass false?
-	isCancun := h.chainCfg.IsCancun(h.env.Context.BlockNumber, h.env.Context.Time)
-	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true, isCancun)
+	root, err := baseState.Commit(h.env.Context.BlockNumber.Uint64(), true, false)
 	if err != nil {
 		return nil, fmt.Errorf("failed to commit state: %w", err)
 	}
