@@ -50,25 +50,26 @@ FROZEN_FILES=(
   "src/L1/L1ERC721Bridge.sol"
   "src/L1/L1StandardBridge.sol"
   "src/L1/OPContractsManager.sol"
-  "src/L1/OPContractsManagerInterop.sol"
   "src/L1/OptimismPortal2.sol"
-  "src/L1/OptimismPortalInterop.sol"
   "src/L1/ProtocolVersions.sol"
   "src/L1/SuperchainConfig.sol"
   "src/L1/SystemConfig.sol"
-  "src/L1/SystemConfigInterop.sol"
   "src/dispute/AnchorStateRegistry.sol"
   "src/dispute/DelayedWETH.sol"
   "src/dispute/DisputeGameFactory.sol"
   "src/dispute/FaultDisputeGame.sol"
+  "src/cannon/MIPS.sol"
+  "src/cannon/MIPS2.sol"
+  "src/cannon/MIPS64.sol"
+  "src/cannon/PreimageOracle.sol"
 )
 
+MATCHED_FILES=()
 # Check each changed contract against protected patterns
 for contract in $changed_contracts; do
     for frozen_file in "${FROZEN_FILES[@]}"; do
-        if [[ $contract == $frozen_file ]]; then
+        if [[ "$contract" == "$frozen_file" ]]; then
             MATCHED_FILES+=("$contract")
-            break
         fi
     done
 done
