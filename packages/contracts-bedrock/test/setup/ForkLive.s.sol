@@ -77,12 +77,11 @@ contract ForkLive is Deployer {
         }
 
         // Now upgrade the contracts (if the config is set to do so)
-        if (cfg.useUpgradedFork()) {
-            require(!useOpsRepo, "ForkLive: cannot upgrade and use ops repo");
+        if (useOpsRepo) {
+            console.log("ForkLive: using ops repo to upgrade");
+        } else if (cfg.useUpgradedFork()) {
             console.log("ForkLive: upgrading");
             _upgrade();
-        } else if (useOpsRepo) {
-            console.log("ForkLive: using ops repo to upgrade");
         }
     }
 
