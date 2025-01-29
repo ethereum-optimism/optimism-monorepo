@@ -616,6 +616,10 @@ jobs:
       - check-changed:
           patterns: contracts-bedrock
       - run:
+          name: Pull artifacts
+          command: bash scripts/ops/pull-artifacts.sh
+          working_directory: packages/contracts-bedrock
+      - run:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
