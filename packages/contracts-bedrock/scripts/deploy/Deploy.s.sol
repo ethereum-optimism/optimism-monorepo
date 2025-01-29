@@ -833,6 +833,8 @@ contract Deploy is Deployer {
             gameTypeString = "Alphabet";
         } else if (rawGameType == GameTypes.OP_SUCCINCT.raw()) {
             gameTypeString = "OP Succinct";
+        } else if (rawGameType == GameTypes.KAILUA.raw()) {
+            gameTypeString = "Kailua";
         } else {
             gameTypeString = "Unknown";
         }

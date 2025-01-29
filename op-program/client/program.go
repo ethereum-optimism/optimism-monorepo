@@ -12,12 +12,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 )
 
 type Config struct {
 	SkipValidation bool
 	InteropEnabled bool
+	DB             l2.KeyValueStore
 }
 
 // Main executes the client program in a detached context and exits the current process.
@@ -37,6 +39,7 @@ func Main(useInterop bool) {
 	preimageHinter := preimage.ClientHinterChannel()
 	config := Config{
 		InteropEnabled: useInterop,
+		DB:             memorydb.New(),
 	}
 	if err := RunProgram(logger, preimageOracle, preimageHinter, config); errors.Is(err, claim.ErrClaimNotValid) {
 		log.Error("Claim is invalid", "err", err)
@@ -61,6 +64,9 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 		bootInfo := boot.BootstrapInterop(pClient)
 		return interop.RunInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, !cfg.SkipValidation)
 	}
+	if cfg.DB == nil {
+		return errors.New("db config is required")
+	}
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
-	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle)
+	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB)
 }

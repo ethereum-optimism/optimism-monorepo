@@ -132,7 +132,7 @@ interface IFaultDisputeGame is IDisputeGame {
     function startingRootHash() external view returns (Hash startingRootHash_);
     function step(uint256 _claimIndex, bool _isAttack, bytes memory _stateData, bytes memory _proof) external;
     function subgames(uint256, uint256) external view returns (uint256);
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
     function vm() external view returns (IBigStepper vm_);
     function wasRespectedGameTypeWhenCreated() external view returns (bool);
     function weth() external view returns (IDelayedWETH weth_);

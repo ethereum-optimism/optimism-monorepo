@@ -41,7 +41,14 @@ type OracleBackedL2Chain struct {
 // and don't need to be re-executed when sent back via execution_newPayload.
 var _ engineapi.CachingEngineBackend = (*OracleBackedL2Chain)(nil)
 
-func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, l2OutputRoot common.Hash) (*OracleBackedL2Chain, error) {
+func NewOracleBackedL2Chain(
+	logger log.Logger,
+	oracle Oracle,
+	precompileOracle engineapi.PrecompileOracle,
+	chainCfg *params.ChainConfig,
+	l2OutputRoot common.Hash,
+	db KeyValueStore,
+) (*OracleBackedL2Chain, error) {
 	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	output := oracle.OutputByRoot(l2OutputRoot, chainID)
 	outputV0, ok := output.(*eth.OutputV0)
@@ -50,10 +57,17 @@ func NewOracleBackedL2Chain(logger log.Logger, oracle Oracle, precompileOracle e
 	}
 	head := oracle.BlockByHash(outputV0.BlockHash, chainID)
 	logger.Info("Loaded L2 head", "hash", head.Hash(), "number", head.Number())
-	return NewOracleBackedL2ChainFromHead(logger, oracle, precompileOracle, chainCfg, head), nil
+	return NewOracleBackedL2ChainFromHead(logger, oracle, precompileOracle, chainCfg, head, db), nil
 }
 
-func NewOracleBackedL2ChainFromHead(logger log.Logger, oracle Oracle, precompileOracle engineapi.PrecompileOracle, chainCfg *params.ChainConfig, head *types.Block) *OracleBackedL2Chain {
+func NewOracleBackedL2ChainFromHead(
+	logger log.Logger,
+	oracle Oracle,
+	precompileOracle engineapi.PrecompileOracle,
+	chainCfg *params.ChainConfig,
+	head *types.Block,
+	db KeyValueStore,
+) *OracleBackedL2Chain {
 	chainID := eth.ChainIDFromBig(chainCfg.ChainID)
 	chain := &OracleBackedL2Chain{
 		log:      logger,
@@ -66,7 +80,7 @@ func NewOracleBackedL2ChainFromHead(logger log.Logger, oracle Oracle, precompile
 		finalized:  head.Header(),
 		oracleHead: head.Header(),
 		blocks:     make(map[common.Hash]*types.Block),
-		db:         NewOracleBackedDB(oracle, chainID),
+		db:         NewOracleBackedDB(db, oracle, chainID),
 		vmCfg: vm.Config{
 			PrecompileOverrides: engineapi.CreatePrecompileOverrides(precompileOracle),
 		},
