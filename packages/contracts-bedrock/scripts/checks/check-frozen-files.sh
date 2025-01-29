@@ -64,8 +64,6 @@ FROZEN_FILES=(
   "src/cannon/PreimageOracle.sol"
 )
 
-echo "changed_contracts: $changed_contracts"
-
 MATCHED_FILES=()
 # Check each changed contract against protected patterns
 for contract in $changed_contracts; do
@@ -75,8 +73,6 @@ for contract in $changed_contracts; do
         fi
     done
 done
-
-echo "MATCHED_FILES: $MATCHED_FILES"
 
 
 if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
