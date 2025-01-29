@@ -18,7 +18,7 @@ optimism_package:
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
-        cl_extra_params: []
+        cl_extra_params: ["--l1.trustrpc=true"]
         cl_tolerations: []
         cl_volume_size: 0
         cl_min_cpu: 0
@@ -38,15 +38,15 @@ optimism_package:
         holocene_time_offset: 0
         fund_dev_accounts: true
       batcher_params:
-        image: {{ localDockerImage "op-batcher" }}
+        image: ""
         extra_params: []
       challenger_params:
-        image: {{ localDockerImage "op-challenger" }}
+        image: ""
         cannon_prestate_path: ""
         cannon_prestates_url: "http://fileserver/proofs/op-program/cannon"
         extra_params: []
       proposer_params:
-        image: {{ localDockerImage "op-proposer" }}
+        image:""
         extra_params: []
         game_type: 1
         proposal_interval: 10m
@@ -69,7 +69,7 @@ ethereum_package:
   participants_matrix:
     el:
       - el_type: reth
-        el_image: ethpandaops/reth:main-11bd9dd
+        el_image: ethpandaops/reth:main-9001cc2
     cl:
       - cl_type: lighthouse
         cl_image: ethpandaops/lighthouse:single_attestation-b6d80eb
