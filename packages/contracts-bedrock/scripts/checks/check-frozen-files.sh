@@ -1,38 +1,88 @@
-#!/bin/bash
+#!/usr/bin/env bash
+set -euo pipefail
 
-# Array of paths that should not change
-FROZEN_PATHS=(
-  "packages/contracts-bedrock/src/L1/"
-  "packages/contracts-bedrock/src/dispute/"
+# Grab the directory of the contracts-bedrock package.
+SCRIPT_DIR=$( cd -- "$( dirname -- "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )
+
+# Load semver-utils.
+# shellcheck source=/dev/null
+source "$SCRIPT_DIR/utils/semver-utils.sh"
+
+# Path to semver-lock.json.
+SEMVER_LOCK="snapshots/semver-lock.json"
+
+# Create a temporary directory.
+temp_dir=$(mktemp -d)
+trap 'rm -rf "$temp_dir"' EXIT
+
+# Exit early if semver-lock.json has not changed.
+if ! { git diff origin/develop...HEAD --name-only; git diff --name-only; git diff --cached --name-only; } | grep -q "$SEMVER_LOCK"; then
+    echo "No changes detected in semver-lock.json"
+    exit 0
+fi
+
+# Get the upstream semver-lock.json.
+if ! git show origin/develop:packages/contracts-bedrock/snapshots/semver-lock.json > "$temp_dir/upstream_semver_lock.json" 2>/dev/null; then
+      echo "❌ Error: Could not find semver-lock.json in the snapshots/ directory of develop branch"
+      exit 1
+fi
+
+# Copy the local semver-lock.json.
+cp "$SEMVER_LOCK" "$temp_dir/local_semver_lock.json"
+
+# Get the changed contracts.
+changed_contracts=$(jq -r '
+    def changes:
+        to_entries as $local
+        | input as $upstream
+        | $local | map(
+            select(
+                .key as $key
+                | .value != $upstream[$key]
+            )
+        ) | map(.key);
+    changes[]
+' "$temp_dir/local_semver_lock.json" "$temp_dir/upstream_semver_lock.json")
+
+# Flag to track if any errors are detected.
+has_errors=false
+
+FROZEN_FILES=(
+  "src/L1/DataAvailabilityChallenge.sol"
+  "src/L1/L1CrossDomainMessenger.sol"
+  "src/L1/L1ERC721Bridge.sol"
+  "src/L1/L1StandardBridge.sol"
+  "src/L1/OPContractsManager.sol"
+  "src/L1/OPContractsManagerInterop.sol"
+  "src/L1/OptimismPortal2.sol"
+  "src/L1/OptimismPortalInterop.sol"
+  "src/L1/ProtocolVersions.sol"
+  "src/L1/SuperchainConfig.sol"
+  "src/L1/SystemConfig.sol"
+  "src/L1/SystemConfigInterop.sol"
+  "src/dispute/AnchorStateRegistry.sol"
+  "src/dispute/DelayedWETH.sol"
+  "src/dispute/DisputeGameFactory.sol"
+  "src/dispute/FaultDisputeGame.sol"
 )
 
-changed_paths=()
-# Check each frozen path
-for path in "${FROZEN_PATHS[@]}"; do
-  # Get all changes from working directory, staged files, and branch diff
-  changes=$({
-    git diff origin/develop...HEAD --name-only
-    git diff --name-only
-    git diff --cached --name-only
-  })
-
-  # Check if any changes match this frozen path
-  if echo "$changes" | grep -q "$path"; then
-    # Extract the specific changed files in this path
-    changed_files=$(echo "$changes" | grep "$path")
-    changed_paths+=("$changed_files")
-  fi
+# Check each changed contract against protected patterns
+for contract in $changed_contracts; do
+    for frozen_file in "${FROZEN_FILES[@]}"; do
+        if [[ $contract == $frozen_file ]]; then
+            MATCHED_FILES+=("$contract")
+            break
+        fi
+    done
 done
 
-if [ ${#changed_paths[@]} -gt 0 ]; then
-  echo "These path(s) should not be modified:"
-fi
-for path in "${changed_paths[@]}"; do
-  echo "$path"
-done
-if [ ${#changed_paths[@]} -gt 0 ]; then
-  exit 1
+# echo "$MATCHED_FILES"
+
+if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
+    echo "❌ Error: The following files should not be modified:"
+    printf '  - %s\n' "${MATCHED_FILES[@]}"
+    exit 1
 fi
 
-echo "No changes detected in frozen paths"
+echo "✅ No changes detected in frozen files"
 exit 0
