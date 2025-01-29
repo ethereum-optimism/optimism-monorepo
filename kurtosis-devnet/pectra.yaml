@@ -56,9 +56,9 @@ optimism_package:
         builder_port: ""
       additional_services: []
   op_contract_deployer_params:
-    image: {{ localDockerImage "op-deployer" }}
-    l1_artifacts_locator: {{ localContractArtifacts "l1" }}
-    l2_artifacts_locator: {{ localContractArtifacts "l2" }}
+    # image: {{ localDockerImage "op-deployer" }}
+    # l1_artifacts_locator: {{ localContractArtifacts "l1" }}
+    # l2_artifacts_locator: {{ localContractArtifacts "l2" }}
     global_deploy_overrides:
       faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
   global_log_level: "info"
@@ -69,7 +69,7 @@ ethereum_package:
   participants_matrix:
     el:
       - el_type: reth
-        el_image: ethpandaops/reth:main-9001cc2
+        el_image: docker.ethquokkaops.io/dh/ethpandaops/reth:main-8a453ba
     cl:
       - cl_type: lighthouse
         cl_image: ethpandaops/lighthouse:single_attestation-b6d80eb
