@@ -1614,7 +1614,7 @@ workflows:
         - not:
             equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
-      - cannon-prestate
+      - cannon-prestate-quick
       - cannon-stf-verify:
           context:
             - slack
@@ -1638,13 +1638,13 @@ workflows:
             - slack
           requires:
             - contracts-bedrock-build
-            - cannon-prestate
+            - cannon-prestate-quick
       - publish-cannon-prestates:
           context:
             - slack
             - oplabs-network-optimism-io-bucket
           requires:
-            - cannon-prestate
+            - cannon-prestate-quick
             - op-e2e-cannon-tests
           filters:
             branches:
