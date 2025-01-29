@@ -15,7 +15,7 @@ import (
 )
 
 type prestateFetcher interface {
-	getPrestate(ctx context.Context, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error)
+	getPrestate(ctx context.Context, logger log.Logger, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error)
 }
 
 func createTraceProvider(
@@ -32,7 +32,7 @@ func createTraceProvider(
 	case types.TraceTypeCannon:
 		serverExecutor := vm.NewOpProgramServerExecutor(logger)
 		stateConverter := cannon.NewStateConverter(cfg.Cannon)
-		prestate, err := prestateSource.getPrestate(ctx, cfg.CannonAbsolutePreStateBaseURL, cfg.CannonAbsolutePreState, dir, stateConverter)
+		prestate, err := prestateSource.getPrestate(ctx, logger, cfg.CannonAbsolutePreStateBaseURL, cfg.CannonAbsolutePreState, dir, stateConverter)
 		if err != nil {
 			return nil, err
 		}
@@ -41,7 +41,7 @@ func createTraceProvider(
 	case types.TraceTypeAsterisc:
 		serverExecutor := vm.NewOpProgramServerExecutor(logger)
 		stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
-		prestate, err := prestateSource.getPrestate(ctx, cfg.AsteriscAbsolutePreStateBaseURL, cfg.AsteriscAbsolutePreState, dir, stateConverter)
+		prestate, err := prestateSource.getPrestate(ctx, logger, cfg.AsteriscAbsolutePreStateBaseURL, cfg.AsteriscAbsolutePreState, dir, stateConverter)
 		if err != nil {
 			return nil, err
 		}
@@ -50,7 +50,7 @@ func createTraceProvider(
 	case types.TraceTypeAsteriscKona:
 		serverExecutor := vm.NewKonaExecutor()
 		stateConverter := asterisc.NewStateConverter(cfg.Asterisc)
-		prestate, err := prestateSource.getPrestate(ctx, cfg.AsteriscKonaAbsolutePreStateBaseURL, cfg.AsteriscKonaAbsolutePreState, dir, stateConverter)
+		prestate, err := prestateSource.getPrestate(ctx, logger, cfg.AsteriscKonaAbsolutePreStateBaseURL, cfg.AsteriscKonaAbsolutePreState, dir, stateConverter)
 		if err != nil {
 			return nil, err
 		}

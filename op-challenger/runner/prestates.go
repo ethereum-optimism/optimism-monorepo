@@ -17,6 +17,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
 	"github.com/ethereum-optimism/optimism/op-service/sources/batching"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/log"
 )
 
 type OnChainPrestateFetcher struct {
@@ -26,7 +27,7 @@ type OnChainPrestateFetcher struct {
 	caller             *batching.MultiCaller
 }
 
-func (f *OnChainPrestateFetcher) getPrestate(ctx context.Context, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error) {
+func (f *OnChainPrestateFetcher) getPrestate(ctx context.Context, logger log.Logger, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error) {
 	gameFactory := contracts.NewDisputeGameFactoryContract(f.m, f.gameFactoryAddress, f.caller)
 	gameImplAddr, err := gameFactory.GetGameImpl(ctx, f.gameType)
 	if err != nil {
@@ -43,15 +44,16 @@ func (f *OnChainPrestateFetcher) getPrestate(ctx context.Context, prestateBaseUr
 	if err != nil {
 		return "", fmt.Errorf("failed to get absolute prestate hash for %v: %w", gameImplAddr, err)
 	}
+	logger.Info("Using on-chain version of prestate", "prestate", prestateHash)
 	hashFetcher := &HashPrestateFetcher{prestateHash: prestateHash}
-	return hashFetcher.getPrestate(ctx, prestateBaseUrl, prestatePath, dataDir, stateConverter)
+	return hashFetcher.getPrestate(ctx, logger, prestateBaseUrl, prestatePath, dataDir, stateConverter)
 }
 
 type HashPrestateFetcher struct {
 	prestateHash common.Hash
 }
 
-func (f *HashPrestateFetcher) getPrestate(ctx context.Context, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error) {
+func (f *HashPrestateFetcher) getPrestate(ctx context.Context, _ log.Logger, prestateBaseUrl *url.URL, prestatePath string, dataDir string, stateConverter vm.StateConverter) (string, error) {
 	prestateSource := prestates.NewPrestateSource(
 		prestateBaseUrl,
 		prestatePath,
@@ -72,7 +74,7 @@ type NamedPrestateFetcher struct {
 	filename string
 }
 
-func (f *NamedPrestateFetcher) getPrestate(ctx context.Context, prestateBaseUrl *url.URL, _ string, dataDir string, _ vm.StateConverter) (string, error) {
+func (f *NamedPrestateFetcher) getPrestate(ctx context.Context, logger log.Logger, prestateBaseUrl *url.URL, _ string, dataDir string, stateConverter vm.StateConverter) (string, error) {
 	targetDir := filepath.Join(dataDir, "prestates")
 	if err := os.MkdirAll(targetDir, 0755); err != nil {
 		return "", fmt.Errorf("error creating prestate dir: %w", err)
@@ -103,5 +105,10 @@ func (f *NamedPrestateFetcher) getPrestate(ctx context.Context, prestateBaseUrl 
 	if _, err := io.Copy(out, resp.Body); err != nil {
 		return "", fmt.Errorf("failed to write prestate to %v: %w", targetFile, err)
 	}
+	proof, _, _, err := stateConverter.ConvertStateToProof(ctx, targetFile)
+	if err != nil {
+		return "", fmt.Errorf("invalid prestate file %v: %w", f.filename, err)
+	}
+	logger.Info("Downloaded named prestate", "filename", f.filename, "prestate", proof.ClaimValue)
 	return targetFile, nil
 }
