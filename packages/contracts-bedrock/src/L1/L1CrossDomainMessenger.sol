@@ -31,8 +31,8 @@ contract L1CrossDomainMessenger is CrossDomainMessenger, ISemver {
     address private spacer_253_0_20;
 
     /// @notice Semantic version.
-    /// @custom:semver 2.5.0
-    string public constant version = "2.5.0";
+    /// @custom:semver 2.5.1
+    string public constant version = "2.5.1";
 
     /// @notice Constructs the L1CrossDomainMessenger contract.
     constructor() {
