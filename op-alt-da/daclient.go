@@ -119,7 +119,7 @@ func (c *DAClient) setInput(ctx context.Context, img []byte) (CommitmentData, er
 	}
 
 	body := bytes.NewReader(img)
-	url := fmt.Sprintf("%s/put", c.url)
+	url := fmt.Sprintf("%s/put/", c.url)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, url, body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create HTTP request: %w", err)
