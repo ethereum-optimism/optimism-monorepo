@@ -2,7 +2,7 @@ optimism_package:
   chains:
     - participants:
       - el_type: op-geth
-        el_image: ""
+        el_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-geth:v1.101500.0-dev.1
         el_log_level: ""
         el_extra_env_vars: {}
         el_extra_labels: {}
@@ -14,7 +14,7 @@ optimism_package:
         el_min_mem: 0
         el_max_mem: 0
         cl_type: op-node
-        cl_image: {{ localDockerImage "op-node" }}
+        cl_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.10.4-dev.2
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
@@ -68,8 +68,8 @@ optimism_package:
 ethereum_package:
   participants_matrix:
     el:
-      - el_type: geth
-        el_image: ethpandaops/geth:prague-devnet-5-f85cde7
+      - el_type: reth
+        el_image: ethpandaops/reth:main-11bd9dd
     cl:
       - cl_type: lighthouse
         cl_image: ethpandaops/lighthouse:single_attestation-b6d80eb
