@@ -1348,7 +1348,6 @@ workflows:
           requires:
             - contracts-bedrock-build
       - contracts-bedrock-frozen-code:
-          name: contracts-bedrock-frozen-code
           requires:
             - contracts-bedrock-checks
       - diff-asterisc-bytecode
