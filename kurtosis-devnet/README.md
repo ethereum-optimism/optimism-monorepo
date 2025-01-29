@@ -16,7 +16,6 @@ Docker Desktop may be substituted by an alternative like Orbstack if you have th
 # Running A Devnet
 
 To see available devnets, consult the `justfile` to see what `.*-devnet` targets exist, currently
-- `mini-devnet`
 - `simple-devnet`
 - `interop-devnet`
 - `user-devnet`
