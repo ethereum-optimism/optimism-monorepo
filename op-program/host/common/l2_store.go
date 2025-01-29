@@ -56,6 +56,10 @@ func (db *l2KeyValueStore) Has(key []byte) (bool, error) {
 
 func (db *l2KeyValueStore) Put(key []byte, value []byte) error {
 	key = unwrapKey(key)
+	// For statedb operations, we only expect code and preimage keys of hash length
+	if len(key) != common.HashLength {
+		return l2.ErrInvalidKeyLength
+	}
 	return db.kv.Put(common.Hash(key), value)
 }
 
@@ -77,12 +81,12 @@ type batch struct {
 var _ ethdb.Batch = (*batch)(nil)
 
 type keyvalue struct {
-	key   string
+	key   []byte
 	value []byte
 }
 
 func (b *batch) Put(key []byte, value []byte) error {
-	b.writes = append(b.writes, keyvalue{string(key), common.CopyBytes(value)})
+	b.writes = append(b.writes, keyvalue{common.CopyBytes(key), common.CopyBytes(value)})
 	b.size += len(key) + len(value)
 	return nil
 }
@@ -98,7 +102,7 @@ func (b *batch) ValueSize() int {
 
 func (b *batch) Write() error {
 	for _, keyvalue := range b.writes {
-		if err := b.db.kv.Put(common.Hash([]byte(keyvalue.key)), keyvalue.value); err != nil {
+		if err := b.db.kv.Put(common.Hash(keyvalue.key), keyvalue.value); err != nil {
 			return err
 		}
 	}
@@ -112,7 +116,7 @@ func (b *batch) Reset() {
 
 func (b *batch) Replay(w ethdb.KeyValueWriter) error {
 	for _, keyvalue := range b.writes {
-		if err := w.Put([]byte(keyvalue.key), keyvalue.value); err != nil {
+		if err := w.Put(keyvalue.key, keyvalue.value); err != nil {
 			return err
 		}
 	}

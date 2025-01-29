@@ -57,6 +57,8 @@ func TestL2KeyValueStore(t *testing.T) {
 		has, err := db.Has([]byte("invalid"))
 		require.ErrorIs(t, err, l2.ErrInvalidKeyLength)
 		require.False(t, has)
+		err = db.Put([]byte("invalid"), []byte("value"))
+		require.ErrorIs(t, err, l2.ErrInvalidKeyLength)
 	})
 	t.Run("MissingPreimage", func(t *testing.T) {
 		kv := kvstore.NewMemKV()
