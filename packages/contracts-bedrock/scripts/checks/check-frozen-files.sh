@@ -78,6 +78,7 @@ done
 if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
     echo "❌ Error: The following files should not be modified:"
     printf '  - %s\n' "${MATCHED_FILES[@]}"
+    echo "In order to make changes to these contracts, they must be removed from the FROZEN_FILES array in check-frozen-files.sh"
     exit 1
 fi
 
