@@ -23,7 +23,7 @@ enum CommitmentType {
     Keccak256
 }
 
-/// @dev A struct representing a single DA challenge
+/// @dev A struct representing a single DA challenge.
 /// @custom:field challenger The address that initiated the challenge.
 /// @custom:field lockedBond The amount of ETH bond that was locked by the challenger.
 /// @custom:field startBlock The block number at which the challenge was initiated.
