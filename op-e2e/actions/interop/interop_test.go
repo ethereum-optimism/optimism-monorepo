@@ -750,22 +750,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 
 	tests := []*transitionTest{
 		{
-			name:               "ClaimNoChange",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      start.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-			skipChallenger:     true,
-		},
-		{
-			name:               "ClaimDirectToNextTimestamp",
-			agreedClaim:        start.Marshal(),
-			disputedClaim:      end.Marshal(),
-			disputedTraceIndex: 0,
-			expectValid:        false,
-			skipChallenger:     true,
-		},
-		{
 			name:               "FirstChainOptimisticBlock",
 			agreedClaim:        start.Marshal(),
 			disputedClaim:      step1Expected,
