@@ -94,6 +94,10 @@ func (c *chain) RPCURL() string {
 	return c.rpcUrl
 }
 
+// Wallet returns the first wallet which meets all provided constraints, or an
+// error.
+// Typically this will be one of the pre-funded wallets associated with
+// the deployed system.
 func (c *chain) Wallet(ctx context.Context, constraints ...constraints.WalletConstraint) (types.Wallet, error) {
 	// Try each user
 	for _, user := range c.users {
@@ -122,6 +126,7 @@ func (c *chain) ID() types.ChainID {
 }
 
 func chainFromDescriptor(d *descriptors.Chain) Chain {
+	// TODO: handle incorrect descriptors better. We could panic here.
 	firstNodeRPC := d.Nodes[0].Services["el"].Endpoints["rpc"]
 	rpcURL := fmt.Sprintf("http://%s:%d", firstNodeRPC.Host, firstNodeRPC.Port)
 

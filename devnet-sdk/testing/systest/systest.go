@@ -7,11 +7,11 @@ import (
 	"github.com/ethereum-optimism/optimism/devnet-sdk/system"
 )
 
-type Validator func(t T, sys system.System) (context.Context, error)
+type PreconditionValidator func(t T, sys system.System) (context.Context, error)
 
 type SystemTestFunc func(t T, sys system.System)
 
-func SystemTest(t BasicT, f SystemTestFunc, validators ...Validator) {
+func SystemTest(t BasicT, f SystemTestFunc, validators ...PreconditionValidator) {
 	wt := NewT(t)
 	wt.Helper()
 
@@ -38,7 +38,7 @@ func SystemTest(t BasicT, f SystemTestFunc, validators ...Validator) {
 
 type InteropSystemTestFunc func(t T, sys system.InteropSystem)
 
-func InteropSystemTest(t BasicT, f InteropSystemTestFunc, validators ...Validator) {
+func InteropSystemTest(t BasicT, f InteropSystemTestFunc, validators ...PreconditionValidator) {
 	SystemTest(t, func(t T, sys system.System) {
 		if sys, ok := sys.(system.InteropSystem); ok {
 			f(t, sys)

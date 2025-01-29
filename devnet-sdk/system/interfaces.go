@@ -12,6 +12,7 @@ import (
 type System interface {
 	Identifier() string
 	L1() Chain
+	// TODO: fix the chain ID type
 	L2(uint64) Chain
 }
 

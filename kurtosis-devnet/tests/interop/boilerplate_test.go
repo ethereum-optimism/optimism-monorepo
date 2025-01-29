@@ -16,7 +16,7 @@ func init() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelDebug})))
 }
 
-func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.Validator {
+func walletFundsValidator(chainIdx uint64, minFunds types.Balance, userMarker interface{}) systest.PreconditionValidator {
 	return func(t systest.T, sys system.System) (context.Context, error) {
 		chain := sys.L2(chainIdx)
 		user, err := chain.Wallet(t.Context(), constraints.WithBalance(minFunds))

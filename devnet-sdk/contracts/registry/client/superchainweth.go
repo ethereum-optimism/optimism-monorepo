@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/ethereum-optimism/optimism/devnet-sdk/contracts/bindings"
+	"github.com/ethereum-optimism/optimism/devnet-sdk/interfaces"
 	"github.com/ethereum-optimism/optimism/devnet-sdk/types"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/ethclient"
@@ -14,6 +15,8 @@ type superchainWETHBinding struct {
 	client          *ethclient.Client
 	binding         *bindings.SuperchainWETH
 }
+
+var _ interfaces.SuperchainWETH = (*superchainWETHBinding)(nil)
 
 func (b *superchainWETHBinding) BalanceOf(addr types.Address) types.ReadInvocation[types.Balance] {
 	return &superchainWETHBalanceOfImpl{

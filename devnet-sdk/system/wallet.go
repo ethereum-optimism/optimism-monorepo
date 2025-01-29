@@ -93,6 +93,7 @@ func (i *sendImpl) Call(ctx context.Context) (any, error) {
 		return nil, fmt.Errorf("failed to get gas price: %w", err)
 	}
 
+	// TODO: compute an accurate gas limit
 	gasLimit := uint64(210000) // 10x Standard ETH transfer gas limit
 	toAddr := common.HexToAddress(string(i.to))
 	tx := coreTypes.NewTransaction(nonce, toAddr, i.amount.Int, gasLimit, gasPrice, nil)
