@@ -616,10 +616,6 @@ jobs:
       - check-changed:
           patterns: contracts-bedrock
       - run:
-          name: Pull artifacts
-          command: bash scripts/ops/pull-artifacts.sh
-          working_directory: packages/contracts-bedrock
-      - run:
           name: Check frozen files
           command: just check-frozen-code
           working_directory: packages/contracts-bedrock
@@ -1314,8 +1310,6 @@ workflows:
         - not:
             equal: [scheduled_pipeline, << pipeline.trigger_source >>]
     jobs:
-      - contracts-bedrock-frozen-code:
-          name: contracts-bedrock-frozen-code
       - contracts-bedrock-build:
           name: contracts-bedrock-build
           # Build with just core + script contracts.
@@ -1353,6 +1347,10 @@ workflows:
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
+      - contracts-bedrock-frozen-code:
+          name: contracts-bedrock-frozen-code
+          requires:
+            - contracts-bedrock-checks
       - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
