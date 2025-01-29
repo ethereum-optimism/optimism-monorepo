@@ -178,8 +178,11 @@ func loadDiscoveryOpts(conf *p2p.Config, ctx *cli.Context) error {
 		return fmt.Errorf("failed to open discovery db: %w", err)
 	}
 
-	bootnodes := make([]*enode.Node, 0)
 	records := strings.Split(ctx.String(flags.BootnodesName), ",")
+	if len(records) == 0 {
+		records = p2p.DefaultBootnodes
+	}
+
 	for i, record := range records {
 		record = strings.TrimSpace(record)
 		if record == "" { // ignore empty records
@@ -198,12 +201,7 @@ func loadDiscoveryOpts(conf *p2p.Config, ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("bootnode record %d (of %d) is invalid: %q err: %w", i, len(records), record, err)
 		}
-		bootnodes = append(bootnodes, nodeRecord)
-	}
-	if len(bootnodes) > 0 {
-		conf.Bootnodes = bootnodes
-	} else {
-		conf.Bootnodes = p2p.DefaultBootnodes
+		conf.Bootnodes = append(conf.Bootnodes, nodeRecord)
 	}
 
 	if ctx.IsSet(flags.NetRestrictName) {
