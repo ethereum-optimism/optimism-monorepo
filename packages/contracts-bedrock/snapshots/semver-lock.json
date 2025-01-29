@@ -1,7 +1,7 @@
 {
   "src/L1/DataAvailabilityChallenge.sol": {
-    "initCodeHash": "0xb7f2935321ac66511b123692ab9af6ea98051c6578a87d5868554185efbb5052",
-    "sourceCodeHash": "0xfa118f1f49a4e9cb2188f7b8408b64b3f1a18f3e770ac3896bc0db3af5bf499f"
+    "initCodeHash": "0xa547dfd266330a9af21ebedd0cd7ca6b22487676748b1503df4de787e1c91af9",
+    "sourceCodeHash": "0x9818a5f980246d7fde7f3a3b7405ca9c5216b96d014ce334d70d402abe1eef28"
   },
   "src/L1/L1CrossDomainMessenger.sol": {
     "initCodeHash": "0x2364c7a72eb76c0d154836ef0b1fdac695c25d4f9bbae4b5a4cf37d4609652e8",
