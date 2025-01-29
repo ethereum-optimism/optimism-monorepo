@@ -1,11 +1,11 @@
 {
   "src/L1/DataAvailabilityChallenge.sol": {
-    "initCodeHash": "0xa547dfd266330a9af21ebedd0cd7ca6b22487676748b1503df4de787e1c91af9",
-    "sourceCodeHash": "0xae49c741c8cd546981ab59b85b88e9fc1055c4fae085e7078d601b42464f86e6"
+    "initCodeHash": "0xb7f2935321ac66511b123692ab9af6ea98051c6578a87d5868554185efbb5052",
+    "sourceCodeHash": "0xfa118f1f49a4e9cb2188f7b8408b64b3f1a18f3e770ac3896bc0db3af5bf499f"
   },
   "src/L1/L1CrossDomainMessenger.sol": {
-    "initCodeHash": "0x2364c7a72eb76c0d154836ef0b1fdac695c25d4f9bbae4b5a4cf37d4609652e8",
-    "sourceCodeHash": "0xe450b4c93a285f683614841eb0042ac937bb250067183854d3cc20b78f587bd1"
+    "initCodeHash": "0xc03041f022774021a4c66970ea34b4bdc3016dfa9a50498d2123e0753417d167",
+    "sourceCodeHash": "0x35eb76f33d40eb248cf17696a9cc4f903f7bf3a2b274ef1af6934642a5839105"
   },
   "src/L1/L1ERC721Bridge.sol": {
     "initCodeHash": "0x280488bce8b4fb364740c59de14c423851902088f384e077bccc79b9df48528a",

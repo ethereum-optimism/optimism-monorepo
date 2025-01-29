@@ -76,7 +76,11 @@ done
 
 if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
     echo "❌ Error: The following files should not be modified:"
+fi
+if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
     printf '  - %s\n' "${MATCHED_FILES[@]}"
+fi
+if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
     exit 1
 fi
 
