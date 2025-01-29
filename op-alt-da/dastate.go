@@ -206,6 +206,7 @@ func (s *State) ExpireChallenges(origin eth.BlockID) {
 }
 
 // Prune removes challenges & commitments which have an expiry block number beyond the given block number.
+// It returns the last pruned commitment's inclusion block number, or eth.L1BlockRef{} if no commitments were pruned.
 func (s *State) Prune(origin eth.BlockID) eth.L1BlockRef {
 	// Commitments rely on challenges, so we prune commitments first.
 	lastPrunedCommIncBlock := s.pruneCommitments(origin)
