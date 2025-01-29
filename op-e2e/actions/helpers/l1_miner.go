@@ -178,7 +178,6 @@ func (s *L1Miner) IncludeTx(t Testing, tx *types.Transaction) {
 	}
 	s.l1BuildingState.SetTxContext(tx.Hash(), len(s.L1Transactions))
 	blockCtx := core.NewEVMBlockContext(s.l1BuildingHeader, s.l1Chain, nil, s.l1Cfg.Config, s.l1BuildingState)
-	// TODO: we could reuse the evm for the same block and use SetTxContext here
 	evm := vm.NewEVM(blockCtx, s.l1BuildingState, s.l1Cfg.Config, *s.l1Chain.GetVMConfig())
 	receipt, err := core.ApplyTransaction(
 		evm, s.L1GasPool, s.l1BuildingState, s.l1BuildingHeader, tx.WithoutBlobTxSidecar(), &s.l1BuildingHeader.GasUsed)

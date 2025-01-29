@@ -130,13 +130,9 @@ func (b *BlockProcessor) AddTx(tx *types.Transaction) error {
 	b.state.SetTxContext(tx.Hash(), txIndex)
 
 	context := core.NewEVMBlockContext(b.header, b.dataProvider, nil, b.dataProvider.Config(), b.state)
-	// TODO: Does this need to happen?
-	var precompileOverrides vm.PrecompileOverrides
-	if vmConfig := b.dataProvider.GetVMConfig(); vmConfig != nil && vmConfig.PrecompileOverrides != nil {
-		precompileOverrides = vmConfig.PrecompileOverrides
-	}
-	// TODO: reuse evm?
-	evm := vm.NewEVM(context, b.state, b.dataProvider.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
+	vmConfig := *b.dataProvider.GetVMConfig()
+	// TODO(#14038): reuse evm
+	evm := vm.NewEVM(context, b.state, b.dataProvider.Config(), vmConfig)
 	receipt, err := core.ApplyTransaction(evm, b.gasPool, b.state, b.header, tx, &b.header.GasUsed)
 	if err != nil {
 		return fmt.Errorf("failed to apply transaction to L2 block (tx %d): %w", txIndex, err)

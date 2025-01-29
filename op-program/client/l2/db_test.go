@@ -145,7 +145,6 @@ func TestUpdateState(t *testing.T) {
 
 	// Changes should be available under the new state root after committing
 	isCancun := l2Genesis.Config.IsCancun(genesisBlock.Number(), genesisBlock.Time())
-	// TODO: can we just use false instead of checking IsCancun()?
 	newRoot, err := statedb.Commit(genesisBlock.NumberU64()+1, false, isCancun)
 	require.NoError(t, err)
 	err = statedb.Database().TrieDB().Commit(newRoot, true)

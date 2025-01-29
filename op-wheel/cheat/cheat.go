@@ -325,7 +325,7 @@ func StoragePatch(patch io.Reader, address common.Address) HeadFn {
 			}
 			i += 1
 			if i%1000 == 0 { // for every 1000 values, commit to disk
-				// TODO: ok to just pass `false` here?
+				// warning: if the account is empty, the storage change will not persist.
 				if _, err := headState.Commit(head.Number.Uint64(), true, false); err != nil {
 					return fmt.Errorf("failed to commit state to disk after patching %d entries: %w", i, err)
 				}

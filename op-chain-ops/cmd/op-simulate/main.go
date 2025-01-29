@@ -296,7 +296,7 @@ func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
 
 	// run the transaction
 	start := time.Now()
-	// TODO: is a nil author ok?
+	// nil block-author, since it defaults to header.coinbase
 	blockCtx := core.NewEVMBlockContext(header, cCtx, nil, conf, state)
 	evm := vm.NewEVM(blockCtx, state, conf, vmConfig)
 	receipt, err := core.ApplyTransaction(evm, &gp, state, header, tx, &usedGas)
