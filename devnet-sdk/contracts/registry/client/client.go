@@ -15,6 +15,8 @@ type ClientRegistry struct {
 	Client *ethclient.Client
 }
 
+var _ interfaces.ContractsRegistry = (*ClientRegistry)(nil)
+
 func (r *ClientRegistry) SuperchainWETH(address types.Address) (interfaces.SuperchainWETH, error) {
 	binding, err := bindings.NewSuperchainWETH(common.HexToAddress(string(address)), r.Client)
 	if err != nil {
