@@ -44,9 +44,6 @@ changed_contracts=$(jq -r '
     changes[]
 ' "$temp_dir/local_semver_lock.json" "$temp_dir/upstream_semver_lock.json")
 
-# Flag to track if any errors are detected.
-has_errors=false
-
 FROZEN_FILES=(
   "src/L1/DataAvailabilityChallenge.sol"
   "src/L1/L1CrossDomainMessenger.sol"
@@ -75,8 +72,6 @@ for contract in $changed_contracts; do
         fi
     done
 done
-
-# echo "$MATCHED_FILES"
 
 if [ ${#MATCHED_FILES[@]} -gt 0 ]; then
     echo "❌ Error: The following files should not be modified:"
