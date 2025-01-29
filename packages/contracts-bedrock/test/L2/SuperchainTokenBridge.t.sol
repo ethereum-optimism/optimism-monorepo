@@ -12,7 +12,6 @@ import { IL2ToL2CrossDomainMessenger } from "interfaces/L2/IL2ToL2CrossDomainMes
 import { SuperchainTokenBridge } from "src/L2/SuperchainTokenBridge.sol";
 import { ISuperchainTokenBridge } from "interfaces/L2/ISuperchainTokenBridge.sol";
 import { ISuperchainERC20 } from "interfaces/L2/ISuperchainERC20.sol";
-import { IOptimismSuperchainERC20Factory } from "interfaces/L2/IOptimismSuperchainERC20Factory.sol";
 import { IERC20 } from "@openzeppelin/contracts/interfaces/IERC20.sol";
 import { IERC7802 } from "interfaces/L2/IERC7802.sol";
 import { MockSuperchainERC20Implementation } from "test/mocks/SuperchainERC20Implementation.sol";
