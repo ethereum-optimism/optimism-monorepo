@@ -4,11 +4,16 @@ import (
 	"fmt"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	cldr "github.com/ethereum-optimism/optimism/op-program/client/driver"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
+	"github.com/ethereum-optimism/optimism/op-program/client/l2/engineapi"
+	"github.com/ethereum-optimism/optimism/op-program/client/mpt"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -54,6 +59,10 @@ func RunDerivation(
 		return DerivationResult{}, fmt.Errorf("failed to run program to completion: %w", err)
 	}
 	logger.Info("Derivation complete", "head", result)
+	if err := writeTrieNodes(result, db, engineBackend); err != nil {
+		return DerivationResult{}, fmt.Errorf("failed to write trie nodes: %w", err)
+	}
+	logger.Info("Trie nodes written")
 	return loadOutputRoot(l2ClaimBlockNum, result, l2Source)
 }
 
@@ -67,4 +76,38 @@ func loadOutputRoot(l2ClaimBlockNum uint64, head eth.L2BlockRef, src L2Source) (
 		BlockHash:  blockHash,
 		OutputRoot: outputRoot,
 	}, nil
+}
+
+func writeTrieNodes(derived eth.L2BlockRef, db l2.KeyValueStore, backend engineapi.CachingEngineBackend) error {
+	block := backend.GetBlockByHash(derived.Hash)
+	if block == nil {
+		return fmt.Errorf("derived block %v is missing", derived.Hash)
+	}
+	opaqueTxs, err := eth.EncodeTransactions(block.Transactions())
+	if err != nil {
+		return err
+	}
+	if err := storeTrieNodes(opaqueTxs, db); err != nil {
+		return err
+	}
+	receipts := backend.GetReceiptsByBlockHash(block.Hash())
+	if receipts == nil {
+		return fmt.Errorf("receipts for block %v are missing", block.Hash())
+	}
+	opaqueReceipts, err := eth.EncodeReceipts(receipts)
+	if err != nil {
+		return err
+	}
+	return storeTrieNodes(opaqueReceipts, db)
+}
+
+func storeTrieNodes(values []hexutil.Bytes, db l2.KeyValueStore) error {
+	_, nodes := mpt.WriteTrie(values)
+	for _, node := range nodes {
+		key := preimage.Keccak256Key(crypto.Keccak256Hash(node)).PreimageKey()
+		if err := db.Put(key[:], node); err != nil {
+			return fmt.Errorf("failed to store node: %w", err)
+		}
+	}
+	return nil
 }

@@ -54,7 +54,7 @@ func Main(logger log.Logger, cfg *config.Config) error {
 	if cfg.ServerMode {
 		preimageChan := preimage.ClientPreimageChannel()
 		hinterChan := preimage.ClientHinterChannel()
-		return hostcommon.PreimageServer(ctx, logger, cfg, preimageChan, hinterChan, makeDefaultPrefetcher)
+		return hostcommon.PreimageServer(ctx, logger, cfg, preimageChan, hinterChan, MakeDefaultPrefetcher)
 	}
 
 	if err := FaultProofProgramWithDefaultPrefecher(ctx, logger, cfg); err != nil {
@@ -67,12 +67,12 @@ func Main(logger log.Logger, cfg *config.Config) error {
 // FaultProofProgramWithDefaultPrefecher is the programmatic entry-point for the fault proof program
 func FaultProofProgramWithDefaultPrefecher(ctx context.Context, logger log.Logger, cfg *config.Config, opts ...hostcommon.ProgramOpt) error {
 	var newopts []hostcommon.ProgramOpt
-	newopts = append(newopts, hostcommon.WithPrefetcher(makeDefaultPrefetcher))
+	newopts = append(newopts, hostcommon.WithPrefetcher(MakeDefaultPrefetcher))
 	newopts = append(newopts, opts...)
 	return hostcommon.FaultProofProgram(ctx, logger, cfg, newopts...)
 }
 
-func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (hostcommon.Prefetcher, error) {
+func MakeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV, cfg *config.Config) (hostcommon.Prefetcher, error) {
 	if !cfg.FetchingEnabled() {
 		return nil, nil
 	}
@@ -116,6 +116,7 @@ func (p *programExecutor) RunProgram(
 	db l2.KeyValueStore,
 ) error {
 	newCfg := *p.cfg
+	newCfg.ExecCmd = "" // ensure we run the program in the same process
 	newCfg.L2ChainID = chainID
 	newCfg.L2ClaimBlockNumber = blockNum
 

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	op_e2e "github.com/ethereum-optimism/optimism/op-e2e"
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 
 	"github.com/ethereum-optimism/optimism/op-e2e/system/e2esys"
 	"github.com/ethereum-optimism/optimism/op-e2e/system/helpers"
@@ -16,6 +17,7 @@ import (
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
+	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/rpc"
 
@@ -23,8 +25,11 @@ import (
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/geth"
 	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/wait"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
+	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	opp "github.com/ethereum-optimism/optimism/op-program/host"
 	oppconf "github.com/ethereum-optimism/optimism/op-program/host/config"
+	"github.com/ethereum-optimism/optimism/op-program/host/kvstore"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
 )
 
@@ -58,6 +63,48 @@ func TestVerifyL2OutputRootEmptyBlockDetached(t *testing.T) {
 
 func TestVerifyL2OutputRootEmptyBlockDetachedSpanBatch(t *testing.T) {
 	testVerifyL2OutputRootEmptyBlock(t, true, true)
+}
+
+func TestProgramBlockRexecutionHint(t *testing.T) {
+	ctx := context.Background()
+	s, sys := createVerifyL2OutputRootTestScenario(t, ctx, false, false)
+
+	preimageDir := t.TempDir()
+	fppConfig := oppconf.NewSingleChainConfig(sys.RollupConfig, sys.L2GenesisCfg.Config, s.L1Head, s.L2Head, s.L2OutputRoot, common.Hash(s.L2Claim), s.L2ClaimBlockNumber)
+	fppConfig.L1URL = sys.NodeEndpoint("l1").RPC()
+	fppConfig.L2URLs = []string{sys.NodeEndpoint("sequencer").RPC()}
+	fppConfig.L1BeaconURL = sys.L1BeaconEndpoint().RestHTTP()
+	fppConfig.DataDir = preimageDir
+
+	logger := testlog.Logger(t, log.LevelInfo)
+	prefetcher, err := opp.MakeDefaultPrefetcher(ctx, logger, kvstore.NewMemKV(), fppConfig)
+	require.NoError(t, err)
+
+	hint := l2.L2BlockDataHint{
+		AgreedBlockHash: s.L2Head,
+		BlockHash:       s.L2ClaimBlock.Hash(),
+		ChainID:         eth.ChainIDFromBig(sys.L2GenesisCfg.Config.ChainID),
+	}
+	err = prefetcher.Hint(hint.Hint())
+	require.NoError(t, err)
+
+	oracle := func(key preimage.Key) []byte {
+		value, err := prefetcher.GetPreimage(ctx, key.PreimageKey())
+		require.NoError(t, err)
+		return value
+	}
+	hinter := func(hint preimage.Hint) {
+		err := prefetcher.Hint(hint.Hint())
+		require.NoError(t, err)
+	}
+	l2Oracle := l2.NewPreimageOracle(preimage.OracleFn(oracle), preimage.HinterFn(hinter), false)
+	chainID := eth.ChainIDFromBig(sys.L2GenesisCfg.Config.ChainID)
+
+	// It's enough to assert that these functions do not panic
+	txs := l2Oracle.LoadTransactions(s.L2ClaimBlock.Hash(), s.L2ClaimBlock.TxHash(), chainID)
+	require.NotNil(t, txs)
+	_, receipts := l2Oracle.ReceiptsByBlockHash(s.L2ClaimBlock.Hash(), chainID)
+	require.NotNil(t, receipts)
 }
 
 func applySpanBatchActivation(active bool, dp *genesis.DeployConfig) {
@@ -195,7 +242,11 @@ func testVerifyL2OutputRootEmptyBlock(t *testing.T, detached bool, spanBatchActi
 func testVerifyL2OutputRoot(t *testing.T, detached bool, spanBatchActivated bool) {
 	op_e2e.InitParallel(t)
 	ctx := context.Background()
+	scene, sys := createVerifyL2OutputRootTestScenario(t, ctx, detached, spanBatchActivated)
+	testFaultProofProgramScenario(t, ctx, sys, scene)
+}
 
+func createVerifyL2OutputRootTestScenario(t *testing.T, ctx context.Context, detached bool, spanBatchActivated bool) (*FaultProofProgramTestScenario, *e2esys.System) {
 	cfg := e2esys.DefaultSystemConfig(t)
 	// We don't need a verifier - just the sequencer is enough
 	delete(cfg.Nodes, "verifier")
@@ -253,6 +304,8 @@ func testVerifyL2OutputRoot(t *testing.T, detached bool, spanBatchActivated bool
 	t.Log("Determine L2 claim")
 	l2ClaimBlockNumber, err := l2Seq.BlockNumber(ctx)
 	require.NoError(t, err, "get L2 claim block number")
+	l2ClaimBlock, err := l2Seq.BlockByNumber(ctx, big.NewInt(int64(l2ClaimBlockNumber)))
+	require.NoError(t, err)
 	l2Output, err := rollupClient.OutputAtBlock(ctx, l2ClaimBlockNumber)
 	require.NoError(t, err, "could not get expected output")
 	l2Claim := l2Output.OutputRoot
@@ -263,14 +316,16 @@ func testVerifyL2OutputRoot(t *testing.T, detached bool, spanBatchActivated bool
 	require.NoError(t, err, "get l1 head block")
 	l1Head := l1HeadBlock.Hash()
 
-	testFaultProofProgramScenario(t, ctx, sys, &FaultProofProgramTestScenario{
+	scene := FaultProofProgramTestScenario{
 		L1Head:             l1Head,
 		L2Head:             l2Head,
 		L2OutputRoot:       common.Hash(l2OutputRoot),
 		L2Claim:            common.Hash(l2Claim),
+		L2ClaimBlock:       l2ClaimBlock,
 		L2ClaimBlockNumber: l2ClaimBlockNumber,
 		Detached:           detached,
-	})
+	}
+	return &scene, sys
 }
 
 type FaultProofProgramTestScenario struct {
@@ -278,6 +333,7 @@ type FaultProofProgramTestScenario struct {
 	L2Head             common.Hash
 	L2OutputRoot       common.Hash
 	L2Claim            common.Hash
+	L2ClaimBlock       *types.Block
 	L2ClaimBlockNumber uint64
 	Detached           bool
 }

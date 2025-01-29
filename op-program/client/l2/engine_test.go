@@ -219,6 +219,10 @@ func (s *stubEngineBackend) GetCanonicalHash(n uint64) common.Hash {
 	return s.canonical[n]
 }
 
+func (s *stubEngineBackend) GetReceiptsByBlockHash(hash common.Hash) types.Receipts {
+	panic("unsupported")
+}
+
 func (s *stubEngineBackend) GetBlock(hash common.Hash, number uint64) *types.Block {
 	panic("unsupported")
 }

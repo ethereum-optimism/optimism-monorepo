@@ -38,7 +38,7 @@ func TestServerMode(t *testing.T) {
 	logger := testlog.Logger(t, log.LevelTrace)
 	result := make(chan error)
 	go func() {
-		result <- hostcommon.PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, makeDefaultPrefetcher)
+		result <- hostcommon.PreimageServer(context.Background(), logger, cfg, preimageServer, hintServer, MakeDefaultPrefetcher)
 	}()
 
 	pClient := preimage.NewOracleClient(preimageClient)

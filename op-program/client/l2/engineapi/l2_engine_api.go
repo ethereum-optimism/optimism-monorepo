@@ -49,6 +49,7 @@ type EngineBackend interface {
 
 type CachingEngineBackend interface {
 	EngineBackend
+	GetReceiptsByBlockHash(hash common.Hash) types.Receipts
 	AssembleAndInsertBlockWithoutSetHead(processor *BlockProcessor) (*types.Block, error)
 }
 
@@ -197,7 +198,7 @@ func (ea *L2EngineAPI) endBlock() (*types.Block, error) {
 	if cachingBackend, ok := ea.backend.(CachingEngineBackend); ok {
 		block, err = cachingBackend.AssembleAndInsertBlockWithoutSetHead(processor)
 	} else {
-		block, err = processor.Assemble()
+		block, _, err = processor.Assemble()
 	}
 	if err != nil {
 		return nil, fmt.Errorf("assemble block: %w", err)
