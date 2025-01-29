@@ -744,6 +744,8 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 	// assert that the invalid message tx was reorged out
 	_, err = actors.ChainB.SequencerEngine.EthClient().TransactionReceipt(t.Ctx(), execTx.Hash())
 	require.ErrorIs(gt, err, ethereum.NotFound)
+	assertHeads(t, actors.ChainA, 3, 3, 3, 3)
+	assertHeads(t, actors.ChainB, 3, 3, 3, 3)
 
 	crossSafeSuperRootEnd, err := source.CreateSuperRoot(ctx, endTimestamp)
 	require.NoError(t, err)
