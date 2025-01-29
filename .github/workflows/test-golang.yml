@@ -50,6 +50,7 @@ jobs:
         packages:
           - op-batcher
           - op-node
+          - op-alt-da
           - op-e2e/system/altda
           - op-e2e/actions/altda
     steps:
