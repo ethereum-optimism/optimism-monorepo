@@ -46,7 +46,7 @@ optimism_package:
         cannon_prestates_url: "http://fileserver/proofs/op-program/cannon"
         extra_params: []
       proposer_params:
-        image:""
+        image: ""
         extra_params: []
         game_type: 1
         proposal_interval: 10m
