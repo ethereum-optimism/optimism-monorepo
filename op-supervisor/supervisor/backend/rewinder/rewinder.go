@@ -13,163 +13,43 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
 
-/*
-
-Let me help design this reorg handling system. First, let's outline the key requirements and constraints:
-
-# Requirements
-
-1. Handle reorgs separately for Safe and Unsafe block categories
-2. For each safety category, handle Local and Cross DBs together
-3. Find the correct rollback height when divergence is detected
-4. Maintain consistency between Cross and Local DBs
-5. Handle edge cases like Safe head being ahead of Unsafe head
-6. Provide clean interface to L2 node for block verification
-
-# Core Algorithm Pseudocode
-
-```go
-type BlockSafety int
-const (
-    Safe BlockSafety = iota
-    Unsafe
-)
-
-type ReorgResult struct {
-    LocalRollbackHeight  uint64
-    CrossRollbackHeight  uint64
-    NewCanonicalHeight   uint64
-    NeedsReorg          bool
-}
-
-// Main entry point for handling reorgs
-func AttemptReorg(safety BlockSafety, badBlock Block) (ReorgResult, error) {
-    // Get current heights from our DBs
-    localHeight := GetLocalHeight(safety)
-    crossHeight := GetCrossHeight(safety)
-
-    // Find latest common ancestor with L2 node
-    ancestor, err := findLatestCommonAncestor(safety, localHeight)
-    if err != nil {
-        return ReorgResult{}, err
-    }
-
-    // If ancestor is our head, no reorg needed
-    if ancestor == localHeight {
-        return ReorgResult{NeedsReorg: false}, nil
-    }
-
-    // Determine rollback heights
-    crossRollback := min(ancestor, crossHeight)
-    localRollback := ancestor
-
-    return ReorgResult{
-        LocalRollbackHeight: localRollback,
-        CrossRollbackHeight: crossRollback,
-        NewCanonicalHeight: ancestor,
-        NeedsReorg: true,
-    }, nil
-}
-
-// Binary search to find latest common ancestor
-func findLatestCommonAncestor(safety BlockSafety, localHeight uint64) (uint64, error) {
-    start := uint64(0)
-    end := localHeight
-
-    for start <= end {
-        mid := (start + end) / 2
-
-        localHash := GetBlockHashFromDB(safety, mid)
-        nodeHash, err := L2Node.BlockHashAtHeight(mid)
-        if err != nil {
-            return 0, err
-        }
-
-        if localHash == nodeHash {
-            // Check if next block diverges
-            if mid == localHeight {
-                return mid, nil
-            }
-
-            nextLocalHash := GetBlockHashFromDB(safety, mid+1)
-            nextNodeHash, err := L2Node.BlockHashAtHeight(mid+1)
-            if err != nil {
-                return 0, err
-            }
-
-            if nextLocalHash != nextNodeHash {
-                return mid, nil
-            }
-
-            // Continue searching higher
-            start = mid + 1
-        } else {
-            // Diverged, search lower
-            end = mid - 1
-        }
-    }
-
-    return start, nil
-}
-```
-
-# Key Considerations
-
-1. **Cross DB Consistency**
-   - Cross DB is always a subset of Local DB
-   - When rolling back Cross DB, must roll back Local DB to at least that point
-   - Local DB can be rolled back independently if divergence is after Cross height
-
-2. **Safe vs Unsafe Interaction**
-   - Handle independently to avoid complexity
-   - Need to handle case where Safe head > Unsafe head
-   - Consider adding validation to ensure Safe blocks don't get rolled back to before Unsafe blocks
-
-3. **Error Handling**
-   - L2 node communication failures
-   - DB consistency checks
-   - Height validation
-   - Cross/Local DB synchronization issues
-
-4. **Performance Optimization**
-   - Binary search for finding divergence point
-   - Minimize L2 node API calls
-   - Batch DB operations where possible
-
-# Implementation Steps
-
-1. Implement core reorg detection logic
-2. Add DB interfaces for Safe/Unsafe and Local/Cross combinations
-3. Implement rollback mechanics for each DB type
-4. Add validation and error handling
-5. Add metrics and logging
-6. Add recovery mechanisms for failed reorgs
-7. Implement tests covering edge cases
-
-
-*/
-
 type rewinderDB interface {
+	LocalUnsafe(eth.ChainID) (types.BlockSeal, error)
+	CrossUnsafe(eth.ChainID) (types.BlockSeal, error)
+	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
+	CrossSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
+
 	RewindLocalUnsafe(eth.ChainID, types.BlockSeal) error
 	RewindCrossUnsafe(eth.ChainID, types.BlockSeal) error
 	RewindLocalSafe(eth.ChainID, types.BlockSeal) error
 	RewindCrossSafe(eth.ChainID, types.BlockSeal) error
 
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
-	LocalUnsafe(eth.ChainID) (types.BlockSeal, error)
-	CrossUnsafe(eth.ChainID) (types.BlockSeal, error)
-	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
-	CrossSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
-	InvalidateLocalSafe(eth.ChainID, types.DerivedBlockRefPair) error
 }
 
 type syncNode interface {
 	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
 }
 
-// Rewinder is responsible for handling invalidation events by coordinating
-// the rewind of databases and resetting of chain processors.
+// rewindController holds the methods for a rewind operation
+type rewindController struct {
+	isSafe      bool
+	getLocal    func(eth.ChainID) (types.BlockSeal, error)
+	getCross    func(eth.ChainID) (types.BlockSeal, error)
+	rewindLocal func(eth.ChainID, types.BlockSeal) error
+	rewindCross func(eth.ChainID, types.BlockSeal) error
+}
+
+func (rc rewindController) safetyStr() string {
+	if rc.isSafe {
+		return "safe"
+	}
+	return "unsafe"
+}
+
+// Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
+// the local databases and L2 node.
 type Rewinder struct {
 	log       log.Logger
 	emitter   event.Emitter
@@ -211,6 +91,8 @@ func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source syncNode) {
 	r.syncNodes.Set(chainID, source)
 }
 
+// handleEventRewindChain handles the rewind chain event by attempting to rewind the local and cross databases
+// for the given chain for both safety level.
 func (r *Rewinder) handleEventRewindChain(ev superevents.RewindChainEvent) error {
 	if err := r.attemptRewindSafe(ev.ChainID, ev.BadBlock); err != nil {
 		return fmt.Errorf("failed to rewind safe chain %s: %w", ev.ChainID, err)
@@ -221,7 +103,9 @@ func (r *Rewinder) handleEventRewindChain(ev superevents.RewindChainEvent) error
 	return nil
 }
 
-func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlock eth.L2BlockRef) error {
+// attemptRewind attempts to rewind the local and cross databases for the given chain and controller
+func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlock eth.L2BlockRef, ctrl rewindController) error {
+	// First get the finalized head
 	finalizedHead, err := r.db.Finalized(chainID)
 	if err != nil {
 		// TODO: handle this
@@ -234,87 +118,64 @@ func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlock eth.L2Block
 		return nil
 	}
 
-	// Find the latest common newHead between the bad block's parent and the finalized head
+	// Find the latest common newHead between the parent and the finalized head
 	newHead, err := r.findLatestCommonAncestor(chainID, badBlock.ParentID(), finalizedHead)
 	if err != nil {
 		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
 	}
 
-	// Reset cross-unsafe if it's newer than the newHead
-	crossUnsafe, err := r.db.CrossUnsafe(chainID)
+	// Reset the cross db if it's newer than the newHead
+	crossHead, err := ctrl.getCross(chainID)
 	if err != nil {
-		return fmt.Errorf("failed to get cross-unsafe for chain %s: %w", chainID, err)
+		return fmt.Errorf("failed to get cross for chain %s: %w", chainID, err)
 	}
-	if crossUnsafe.Number >= newHead.Number {
-		r.log.Info("rewinding cross-unsafe", "chain", chainID, "newHead", newHead.Number)
-		if err := r.db.RewindCrossUnsafe(chainID, newHead); err != nil {
-			return fmt.Errorf("failed to rewind cross-unsafe for chain %s: %w", chainID, err)
+	if crossHead.Number >= newHead.Number {
+		r.log.Info("rewinding cross", "safety", ctrl.safetyStr(), "chain", chainID, "newHead", newHead.Number)
+		if err := ctrl.rewindCross(chainID, newHead); err != nil {
+			return fmt.Errorf("failed to rewind cross for chain %s: %w", chainID, err)
 		}
 	}
 
-	// Rewind local-unsafe if it's newer than the newHead
-	localHead, err := r.db.LocalUnsafe(chainID)
+	// Rewind the local db if it's newer than the newHead
+	localHead, err := ctrl.getLocal(chainID)
 	if err != nil {
 		return err
 	}
 	if localHead.Number >= newHead.Number {
-		r.log.Info("rewinding local-unsafe", "chain", chainID, "newHead", newHead.Number)
-		if err := r.db.RewindLocalUnsafe(chainID, newHead); err != nil {
-			return fmt.Errorf("failed to rewind local-unsafe for chain %s: %w", chainID, err)
+		r.log.Info("rewinding local", "safety", ctrl.safetyStr(), "chain", chainID, "newHead", newHead.Number)
+		if err := ctrl.rewindLocal(chainID, newHead); err != nil {
+			return fmt.Errorf("failed to rewind local for chain %s: %w", chainID, err)
 		}
 	}
 
 	return nil
 }
 
+// attemptRewindUnsafe attempts to rewind the local and cross databases for unsafe blocks.
+func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlock eth.L2BlockRef) error {
+	return r.attemptRewind(chainID, badBlock, rewindController{
+		isSafe:      false,
+		getLocal:    r.db.LocalUnsafe,
+		getCross:    r.db.CrossUnsafe,
+		rewindLocal: r.db.RewindLocalUnsafe,
+		rewindCross: r.db.RewindCrossUnsafe,
+	})
+}
+
+// attemptRewindSafe attempts to rewind the local and cross databases for safe blocks.
 func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlock eth.L2BlockRef) error {
-	finalizedHead, err := r.db.Finalized(chainID)
-	if err != nil {
-		// TODO: handle this
-		finalizedHead = types.BlockSeal{}
-	}
-
-	// If we're not ahead of the finalized head, no reorg needed
-	if badBlock.Number-1 < finalizedHead.Number {
-		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", badBlock.Number-1, "finalized", finalizedHead.Number)
-		return nil
-	}
-
-	// Find the latest common newHead between the candidate's parent and the finalized head
-	newHead, err := r.findLatestCommonAncestor(chainID, badBlock.ParentID(), finalizedHead)
-	if err != nil {
-		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
-	}
-
-	// Reset cross-safe if it's newer than the ancestor
-	crossSafePair, err := r.db.CrossSafe(chainID)
-	if err != nil {
-		return fmt.Errorf("failed to get cross-safe for chain %s: %w", chainID, err)
-	}
-	crossSafe := crossSafePair.Derived
-	if crossSafe.Number >= newHead.Number {
-		r.log.Info("rewinding cross-safe", "chain", chainID, "newHead", newHead.Number)
-		if err := r.db.RewindCrossSafe(chainID, newHead); err != nil {
-			return fmt.Errorf("failed to rewind cross-safe for chain %s: %w", chainID, err)
-		}
-	}
-
-	// Rewind local-safe if it's newer than the newHead
-	localHeadPair, err := r.db.LocalSafe(chainID)
-	if err != nil {
-		return err
-	}
-	localHead := localHeadPair.Derived
-	if localHead.Number >= newHead.Number {
-		r.log.Info("rewinding local-safe", "chain", chainID, "newHead", newHead.Number)
-		if err := r.db.RewindLocalSafe(chainID, newHead); err != nil {
-			return fmt.Errorf("failed to rewind local-safe for chain %s: %w", chainID, err)
-		}
-	}
-
-	return nil
+	return r.attemptRewind(chainID, badBlock, rewindController{
+		isSafe:      true,
+		getLocal:    derivedFromPairGetter(r.db.LocalSafe),
+		getCross:    derivedFromPairGetter(r.db.CrossSafe),
+		rewindLocal: r.db.RewindLocalSafe,
+		rewindCross: r.db.RewindCrossSafe,
+	})
 }
 
+// findLatestCommonAncestor finds the latest common ancestor between the startBlock and the finalizedBlock
+// by searching for the last block that exists in both the local db and the L2 node.
+// If no common ancestor is found then the finalized head is returned.
 func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, startBlock eth.BlockID, finalizedBlock types.BlockSeal) (types.BlockSeal, error) {
 	syncNode, ok := r.syncNodes.Get(chainID)
 	if !ok {
@@ -325,20 +186,34 @@ func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, startBlock eth.
 	r.log.Info("searching for common ancestor", "chain", chainID, "local", startBlock.Number, "finalized", finalizedBlock.Number)
 	finalizedHeight := int64(finalizedBlock.Number)
 	for height := int64(startBlock.Number); height >= finalizedHeight; height-- {
+		// Load the block at this height from the node and the local db
 		remoteRef, err := syncNode.BlockRefByNumber(context.Background(), uint64(height))
 		if err != nil {
 			return types.BlockSeal{}, err
 		}
-
 		localRef, err := r.db.FindSealedBlock(chainID, uint64(height))
 		if err != nil {
 			return types.BlockSeal{}, err
 		}
 
+		// If the block is the same then we've found the common ancestor
 		if localRef.Hash == remoteRef.Hash {
 			return localRef, nil
 		}
 	}
 
+	// If we didn't find a common ancestor then return the finalized head
 	return finalizedBlock, nil
+}
+
+// derivedFromPairGetter wraps a (chainID) -> (types.DerivedBlockSealPair) function
+// and returns the derived block seal from the pair instead of the pair itself.
+func derivedFromPairGetter(fn func(eth.ChainID) (types.DerivedBlockSealPair, error)) func(eth.ChainID) (types.BlockSeal, error) {
+	return func(chainID eth.ChainID) (types.BlockSeal, error) {
+		pair, err := fn(chainID)
+		if err != nil {
+			return types.BlockSeal{}, err
+		}
+		return pair.Derived, nil
+	}
 }
