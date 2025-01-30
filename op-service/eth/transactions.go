@@ -50,9 +50,9 @@ func TransactionsToHashes(elems []*types.Transaction) []common.Hash {
 	return out
 }
 
-// CheckRecentTxs checks the depth recent blocks for txs from the account with address addr
+// CheckRecentTxs checks the depth of recent blocks for txs from the account with address addr
 // and returns either:
-//   - blockNum containing the last tx and true if any was found
+//   - blockNum containing the last tx and true if any were found
 //   - the oldest block checked and false if no nonce change was found
 func CheckRecentTxs(
 	ctx context.Context,
