@@ -141,7 +141,7 @@ func (r *Runner) runAndRecordOnce(ctx context.Context, runConfig RunConfig, clie
 		prestateHash = hash
 	}
 
-	localInputs, err := r.createGameInputs(ctx, client)
+	localInputs, err := r.createGameInputs(ctx, client, runConfig.Name)
 	if err != nil {
 		recordError(err, runConfig.Name, r.m, r.log)
 		return
@@ -185,11 +185,12 @@ func (r *Runner) prepDatadir(name string) (string, error) {
 	return dir, nil
 }
 
-func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupClient) (utils.LocalGameInputs, error) {
+func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupClient, traceType string) (utils.LocalGameInputs, error) {
 	status, err := client.SyncStatus(ctx)
 	if err != nil {
 		return utils.LocalGameInputs{}, fmt.Errorf("failed to get rollup sync status: %w", err)
 	}
+	r.log.Info("Got sync status", "status", status, "type", traceType)
 
 	if status.FinalizedL2.Number == 0 {
 		return utils.LocalGameInputs{}, errors.New("safe head is 0")
@@ -199,7 +200,9 @@ func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupCli
 		// Restrict the L1 head to a block that has actually been processed by op-node.
 		// This only matters if op-node is behind and hasn't processed all finalized L1 blocks yet.
 		l1Head = status.CurrentL1
+		r.log.Info("Node has not completed syncing finalized L1 block, using CurrentL1 instead", "type", traceType)
 	}
+	r.log.Info("Using L1 head", "head", l1Head, "type", traceType)
 	if l1Head.Number == 0 {
 		return utils.LocalGameInputs{}, errors.New("l1 head is 0")
 	}

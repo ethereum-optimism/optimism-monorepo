@@ -35,6 +35,10 @@ func (ib *InteropAPI) UpdateFinalized(ctx context.Context, id eth.BlockID) error
 	return ib.backend.UpdateFinalized(ctx, id)
 }
 
+func (ib *InteropAPI) InvalidateBlock(ctx context.Context, seal supervisortypes.BlockSeal) error {
+	return ib.backend.InvalidateBlock(ctx, seal)
+}
+
 func (ib *InteropAPI) AnchorPoint(ctx context.Context) (supervisortypes.DerivedBlockRefPair, error) {
 	return ib.backend.AnchorPoint(ctx)
 }
@@ -61,6 +65,10 @@ func (ib *InteropAPI) OutputV0AtTimestamp(ctx context.Context, timestamp uint64)
 
 func (ib *InteropAPI) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
 	return ib.backend.PendingOutputV0AtTimestamp(ctx, timestamp)
+}
+
+func (ib *InteropAPI) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	return ib.backend.L2BlockRefByTimestamp(ctx, timestamp)
 }
 
 func (ib *InteropAPI) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {

@@ -15,8 +15,8 @@ endif
 
 .DEFAULT_GOAL := cannon
 
-# The MIPS64 r1 opcodes not supported by cannon. This list does not include coprocess-specific opcodes.
-UNSUPPORTED_OPCODES := (dclo|dclz)
+# The MIPS64 r2 opcodes not supported by cannon. This list does not include coprocess-specific and trap opcodes.
+UNSUPPORTED_OPCODES := (dclo|dclz|madd|maddu|seb|seh|wsbh|dsbh|dshd|ins|dins|dinsm|dinsu|ext|dext|dextu|dextm|rotr|drotr|drotr32|rotrv|drotrv|break|sdbbp|pref)
 
 CANNON32_FUZZTIME := 10s
 CANNON64_FUZZTIME := 20s
@@ -50,7 +50,7 @@ elf:
 	make -C ./testdata/example elf
 
 sanitize-program:
-	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
+	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $$3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
 		echo "guest program is sanitized for unsupported instructions"; \
 	else \
 		echo "found unsupported instructions in the guest program"; \

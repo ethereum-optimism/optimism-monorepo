@@ -69,7 +69,7 @@ func (db *DB) First() (pair types.DerivedBlockSealPair, err error) {
 func (db *DB) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
 	db.rwLock.RLock()
 	defer db.rwLock.RUnlock()
-	// last
+	// last is always the latest view, and thus canonical.
 	_, lastCanonical, err := db.lastDerivedFrom(derived.Number)
 	if err != nil {
 		return types.BlockSeal{}, fmt.Errorf("failed to find last derived %d: %w", derived.Number, err)
@@ -174,6 +174,29 @@ func (db *DB) NextDerived(derived eth.BlockID) (pair types.DerivedBlockSealPair,
 		return types.DerivedBlockSealPair{}, fmt.Errorf("cannot find next derived after %s: %w", derived, err)
 	}
 	return next.sealOrErr()
+}
+
+// IsDerived checks if the given block is the canonical block at the given chain.
+// This returns an ErrFuture if the block is not known yet.
+// An ErrConflict if there is a different block.
+// Or an ErrAwaitReplacementBlock if it was invalidated.
+func (db *DB) IsDerived(derived eth.BlockID) error {
+	db.rwLock.RLock()
+	defer db.rwLock.RUnlock()
+	// Take the last entry: this will be the latest canonical view,
+	// if the block was previously invalidated.
+	_, link, err := db.lastDerivedFrom(derived.Number)
+	if err != nil {
+		return err
+	}
+	if link.derived.ID() != derived {
+		return fmt.Errorf("searched if derived %s but found %s: %w",
+			derived, link.derived, types.ErrConflict)
+	}
+	if link.invalidated {
+		return fmt.Errorf("derived %s, but invalidated it: %w", derived, types.ErrAwaitReplacementBlock)
+	}
+	return nil
 }
 
 // DerivedFrom determines where a L2 block was first derived from.

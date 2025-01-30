@@ -21,6 +21,8 @@ type DeployOPCMInput struct {
 	PermissionedDisputeGame1Blueprint common.Address
 	PermissionedDisputeGame2Blueprint common.Address
 
+	SuperchainConfigImpl             common.Address
+	ProtocolVersionsImpl             common.Address
 	L1ERC721BridgeImpl               common.Address
 	OptimismPortalImpl               common.Address
 	SystemConfigImpl                 common.Address

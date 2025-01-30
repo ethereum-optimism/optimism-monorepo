@@ -126,8 +126,8 @@ func applyCannonConfig(c *config.Config, t *testing.T, rollupCfg *rollup.Config,
 	c.Cannon.VmBin = root + "cannon/bin/cannon"
 	c.Cannon.Server = root + "op-program/bin/op-program"
 	if allocType == e2econfig.AllocTypeMTCannon {
-		t.Log("Using MT-Cannon absolute prestate")
-		c.CannonAbsolutePreState = root + "op-program/bin/prestate-mt.bin.gz"
+		t.Log("Using Cannon64 absolute prestate")
+		c.CannonAbsolutePreState = root + "op-program/bin/prestate-mt64.bin.gz"
 	} else {
 		c.CannonAbsolutePreState = root + "op-program/bin/prestate.bin.gz"
 	}

@@ -152,6 +152,8 @@ contract CommonTest is Test, Setup, Events {
                 string(abi.encodePacked("L1-", NativeL2Token.symbol()))
             )
         );
+
+        console.log("CommonTest: SetUp complete!");
     }
 
     /// @dev Helper function that wraps `TransactionDeposited` event.

@@ -19,11 +19,11 @@ type StateOracle interface {
 	// NodeByHash retrieves the merkle-patricia trie node pre-image for a given hash.
 	// Trie nodes may be from the world state trie or any account storage trie.
 	// Contract code is not stored as part of the trie and must be retrieved via CodeByHash
-	NodeByHash(nodeHash common.Hash, chainID uint64) []byte
+	NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte
 
 	// CodeByHash retrieves the contract code pre-image for a given hash.
 	// codeHash should be retrieved from the world state account for a contract.
-	CodeByHash(codeHash common.Hash, chainID uint64) []byte
+	CodeByHash(codeHash common.Hash, chainID eth.ChainID) []byte
 }
 
 // Oracle defines the high-level API used to retrieve L2 data.
@@ -32,16 +32,16 @@ type Oracle interface {
 	StateOracle
 
 	// BlockByHash retrieves the block with the given hash.
-	BlockByHash(blockHash common.Hash, chainID uint64) *types.Block
+	BlockByHash(blockHash common.Hash, chainID eth.ChainID) *types.Block
 
-	OutputByRoot(root common.Hash, chainID uint64) eth.Output
+	OutputByRoot(root common.Hash, chainID eth.ChainID) eth.Output
 
 	// BlockDataByHash retrieves the block, including all data used to construct it.
-	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block
+	BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) *types.Block
 
 	TransitionStateByRoot(root common.Hash) *interopTypes.TransitionState
 
-	ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts)
+	ReceiptsByBlockHash(blockHash common.Hash, chainID eth.ChainID) (*types.Block, types.Receipts)
 }
 
 // PreimageOracle implements Oracle using by interfacing with the pure preimage.Oracle
@@ -62,7 +62,7 @@ func NewPreimageOracle(raw preimage.Oracle, hint preimage.Hinter, hintL2ChainIDs
 	}
 }
 
-func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash, chainID uint64) *types.Header {
+func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash, chainID eth.ChainID) *types.Header {
 	if p.hintL2ChainIDs {
 		p.hint.Hint(BlockHeaderHint{Hash: blockHash, ChainID: chainID})
 	} else {
@@ -76,14 +76,14 @@ func (p *PreimageOracle) headerByBlockHash(blockHash common.Hash, chainID uint64
 	return &header
 }
 
-func (p *PreimageOracle) BlockByHash(blockHash common.Hash, chainID uint64) *types.Block {
+func (p *PreimageOracle) BlockByHash(blockHash common.Hash, chainID eth.ChainID) *types.Block {
 	header := p.headerByBlockHash(blockHash, chainID)
 	txs := p.LoadTransactions(blockHash, header.TxHash, chainID)
 
 	return types.NewBlockWithHeader(header).WithBody(types.Body{Transactions: txs})
 }
 
-func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash, chainID uint64) []*types.Transaction {
+func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.Hash, chainID eth.ChainID) []*types.Transaction {
 	if p.hintL2ChainIDs {
 		p.hint.Hint(TransactionsHint{Hash: blockHash, ChainID: chainID})
 	} else {
@@ -101,7 +101,7 @@ func (p *PreimageOracle) LoadTransactions(blockHash common.Hash, txHash common.H
 	return txs
 }
 
-func (p *PreimageOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte {
+func (p *PreimageOracle) NodeByHash(nodeHash common.Hash, chainID eth.ChainID) []byte {
 	if p.hintL2ChainIDs {
 		p.hint.Hint(StateNodeHint{Hash: nodeHash, ChainID: chainID})
 	} else {
@@ -110,7 +110,7 @@ func (p *PreimageOracle) NodeByHash(nodeHash common.Hash, chainID uint64) []byte
 	return p.oracle.Get(preimage.Keccak256Key(nodeHash))
 }
 
-func (p *PreimageOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte {
+func (p *PreimageOracle) CodeByHash(codeHash common.Hash, chainID eth.ChainID) []byte {
 	if p.hintL2ChainIDs {
 		p.hint.Hint(CodeHint{Hash: codeHash, ChainID: chainID})
 	} else {
@@ -119,7 +119,7 @@ func (p *PreimageOracle) CodeByHash(codeHash common.Hash, chainID uint64) []byte
 	return p.oracle.Get(preimage.Keccak256Key(codeHash))
 }
 
-func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash, chainID uint64) eth.Output {
+func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash, chainID eth.ChainID) eth.Output {
 	if p.hintL2ChainIDs {
 		p.hint.Hint(L2OutputHint{Hash: l2OutputRoot, ChainID: chainID})
 	} else {
@@ -133,7 +133,7 @@ func (p *PreimageOracle) OutputByRoot(l2OutputRoot common.Hash, chainID uint64) 
 	return output
 }
 
-func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID uint64) *types.Block {
+func (p *PreimageOracle) BlockDataByHash(agreedBlockHash, blockHash common.Hash, chainID eth.ChainID) *types.Block {
 	hint := L2BlockDataHint{
 		AgreedBlockHash: agreedBlockHash,
 		BlockHash:       blockHash,
@@ -155,7 +155,7 @@ func (p *PreimageOracle) TransitionStateByRoot(root common.Hash) *interopTypes.T
 	return output
 }
 
-func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID uint64) (*types.Block, types.Receipts) {
+func (p *PreimageOracle) ReceiptsByBlockHash(blockHash common.Hash, chainID eth.ChainID) (*types.Block, types.Receipts) {
 	block := p.BlockByHash(blockHash, chainID)
 	p.hint.Hint(ReceiptsHint{Hash: blockHash, ChainID: chainID})
 	opaqueReceipts := mpt.ReadTrie(block.ReceiptHash(), func(key common.Hash) []byte {

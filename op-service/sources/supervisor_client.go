@@ -164,6 +164,16 @@ func (cl *SupervisorClient) SuperRootAtTimestamp(ctx context.Context, timestamp 
 	return result, err
 }
 
+func (cl *SupervisorClient) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (map[eth.ChainID]eth.BlockID, error) {
+	var result map[eth.ChainID]eth.BlockID
+	err := cl.client.CallContext(
+		ctx,
+		&result,
+		"supervisor_allSafeDerivedAt",
+		derivedFrom)
+	return result, err
+}
+
 func (cl *SupervisorClient) Close() {
 	cl.client.Close()
 }
