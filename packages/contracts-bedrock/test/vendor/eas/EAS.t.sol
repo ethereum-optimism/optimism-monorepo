@@ -1,10 +1,9 @@
 // SPDX-License-Identifier: MIT
-pragma solidity =0.8.15;
+pragma solidity 0.8.15;
 
 // imports
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { IEAS } from "src/vendor/eas/IEAS.sol";
-import { ISchemaRegistry } from "src/vendor/eas/ISchemaRegistry.sol";
 import { IEAS_EIP1271 } from "src/vendor/eas/IEAS_EIP1271.sol";
 import {
     Attestation,
@@ -66,7 +65,6 @@ contract TestEIP712Proxy is EIP712 {
     }
 }
 
-// Mainnet Contract
 contract EASTest is CommonTest {
     // Constants
     uint64 constant NO_EXPIRATION = 0;
@@ -101,7 +99,6 @@ contract EASTest is CommonTest {
     error DeadlineExpired();
 
     // Test State
-    ISchemaRegistry public registry;
     address public attester;
     address public sender;
     address public sender2;
