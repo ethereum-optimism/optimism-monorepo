@@ -56,6 +56,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 			L1ContractsRelease:              contractsRelease,
 			SuperchainConfigProxy:           st.SuperchainDeployment.SuperchainConfigProxyAddress,
 			ProtocolVersionsProxy:           st.SuperchainDeployment.ProtocolVersionsProxyAddress,
+			SuperchainProxyAdmin:            st.SuperchainDeployment.ProxyAdminAddress,
 			UpgradeController:               intent.SuperchainRoles.ProxyAdminOwner,
 			UseInterop:                      intent.UseInterop,
 		},
