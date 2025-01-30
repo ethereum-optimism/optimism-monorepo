@@ -58,6 +58,7 @@ FROZEN_FILES=(
   "src/dispute/DelayedWETH.sol"
   "src/dispute/DisputeGameFactory.sol"
   "src/dispute/FaultDisputeGame.sol"
+  "src/dispute/PermissionedDisputeGame.sol"
   "src/cannon/MIPS.sol"
   "src/cannon/MIPS2.sol"
   "src/cannon/MIPS64.sol"
