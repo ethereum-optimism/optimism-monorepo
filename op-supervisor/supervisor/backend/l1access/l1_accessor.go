@@ -162,22 +162,33 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 }
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
-	// The block is the same one we already have
+	// Stop if the block is the same or older than the tip
 	if ref.Number == p.tipHeight && ref.Hash == p.tipHash {
+		p.log.Warn("L1 block is the same as the tip", "ref", ref)
+		return
+	}
+	if ref.Number < p.tipHeight {
+		p.log.Warn("L1 block is older than the tip", "ref", ref)
 		return
 	}
 
-	// The block is the next one; check if it is a reorg
-	if ref.Number == p.tipHeight+1 && ref.ParentHash != p.tipHash {
-		// Signal a reorg to all chains
-		p.emitter.Emit(superevents.RewindAllChainsEvent{
-			BadBlock: ref.ID(),
-		})
-	}
-
+	// Update the tip
 	p.tipHeight = ref.Number
 	p.tipHash = ref.Hash
 	p.log.Info("Updated latest known L1 block", "ref", ref)
+
+	// Check if the block is the next one and if it is, check for a reorg
+	if ref.Number != p.tipHeight+1 {
+		p.log.Warn("L1 block is not the next one", "ref", ref)
+		return
+	}
+	if ref.ParentHash != p.tipHash {
+		// Reorg found, signal a reorg to all chains
+		p.emitter.Emit(superevents.RewindAllChainsEvent{
+			BadBlock: ref.ID(),
+		})
+		p.log.Info("Reorg detected", "ref", ref)
+	}
 }
 
 func (p *L1Accessor) L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error) {
