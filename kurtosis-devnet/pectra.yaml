@@ -14,7 +14,7 @@ optimism_package:
         el_min_mem: 0
         el_max_mem: 0
         cl_type: op-node
-        cl_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.10.4-dev.2
+        cl_image: us-docker.pkg.dev/oplabs-tools-artifacts/images/op-node:v1.10.4-dev.5
         cl_log_level: ""
         cl_extra_env_vars: {}
         cl_extra_labels: {}
