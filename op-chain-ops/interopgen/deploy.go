@@ -4,8 +4,10 @@ import (
 	"errors"
 	"fmt"
 	"math/big"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
+	opcmv200 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm/v200"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/types"
@@ -228,13 +230,27 @@ func DeployL2ToL1(l1Host *script.Host, superCfg *SuperchainConfig, superDeployme
 }
 
 func GenesisL2(l2Host *script.Host, cfg *L2Config, deployment *L2Deployment) error {
-	if err := opcm.L2Genesis(l2Host, &opcm.L2GenesisInput{
-		L1Deployments: opcm.L1Deployments{
-			L1CrossDomainMessengerProxy: deployment.L1CrossDomainMessengerProxy,
-			L1StandardBridgeProxy:       deployment.L1StandardBridgeProxy,
-			L1ERC721BridgeProxy:         deployment.L1ERC721BridgeProxy,
-		},
-		L2Config: cfg.L2InitializationConfig,
+	if err := opcmv200.L2Genesis(l2Host, opcmv200.L2GenesisInput{
+		L1CrossDomainMessengerProxy:              deployment.L1CrossDomainMessengerProxy,
+		L1StandardBridgeProxy:                    deployment.L1StandardBridgeProxy,
+		L1ERC721BridgeProxy:                      deployment.L1ERC721BridgeProxy,
+		FundDevAccounts:                          cfg.FundDevAccounts,
+		UseInterop:                               cfg.UseInterop,
+		Fork:                                     cfg.UpgradeScheduleDeployConfig.ForkOrdinal(uint64(time.Now().Unix())),
+		L2ChainId:                                new(big.Int).SetUint64(cfg.L2ChainID),
+		L1ChainId:                                new(big.Int).SetUint64(cfg.L1ChainID),
+		ProxyAdminOwner:                          cfg.ProxyAdminOwner,
+		SequencerFeeVaultRecipient:               cfg.SequencerFeeVaultRecipient,
+		SequencerFeeVaultMinimumWithdrawalAmount: cfg.SequencerFeeVaultMinimumWithdrawalAmount.ToInt(),
+		SequencerFeeVaultWithdrawalNetwork:       cfg.SequencerFeeVaultWithdrawalNetwork.ToBig(),
+		L1FeeVaultRecipient:                      cfg.L1FeeVaultRecipient,
+		L1FeeVaultMinimumWithdrawalAmount:        cfg.L1FeeVaultMinimumWithdrawalAmount.ToInt(),
+		L1FeeVaultWithdrawalNetwork:              cfg.L1FeeVaultWithdrawalNetwork.ToBig(),
+		BaseFeeVaultRecipient:                    cfg.BaseFeeVaultRecipient,
+		BaseFeeVaultMinimumWithdrawalAmount:      cfg.BaseFeeVaultMinimumWithdrawalAmount.ToInt(),
+		BaseFeeVaultWithdrawalNetwork:            cfg.BaseFeeVaultWithdrawalNetwork.ToBig(),
+		EnableGovernance:                         cfg.EnableGovernance,
+		GovernanceTokenOwner:                     cfg.GovernanceTokenOwner,
 	}); err != nil {
 		return fmt.Errorf("failed L2 genesis: %w", err)
 	}

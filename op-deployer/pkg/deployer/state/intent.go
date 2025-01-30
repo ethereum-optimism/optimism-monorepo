@@ -282,9 +282,9 @@ func NewIntentCustom(l1ChainId uint64, l2ChainIds []common.Hash) (Intent, error)
 	intent := Intent{
 		ConfigType:         IntentConfigTypeCustom,
 		L1ChainID:          l1ChainId,
-		L1ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
-		L2ContractsLocator: &artifacts.Locator{URL: &url.URL{}},
-		SuperchainRoles:    &SuperchainRoles{},
+		L1ContractsLocator: new(artifacts.Locator),
+		L2ContractsLocator: new(artifacts.Locator),
+		SuperchainRoles:    new(SuperchainRoles),
 	}
 
 	for _, l2ChainID := range l2ChainIds {

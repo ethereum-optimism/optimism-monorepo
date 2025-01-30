@@ -4,6 +4,8 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
+
 	"github.com/stretchr/testify/require"
 )
 
@@ -18,7 +20,9 @@ func TestLocator_Marshaling(t *testing.T) {
 			name: "valid tag",
 			in:   "tag://op-contracts/v1.6.0",
 			out: &Locator{
-				Tag: "op-contracts/v1.6.0",
+				URL:       parseUrl(t, "https://storage.googleapis.com/oplabs-contract-artifacts/artifacts-v1-e1f0c4020618c4a98972e7124c39686cab2e31d5d7846f9ce5e0d5eed0f5ff32.tar.gz"),
+				Tag:       "op-contracts/v1.6.0",
+				Canonical: true,
 			},
 			err: false,
 		},
@@ -38,7 +42,9 @@ func TestLocator_Marshaling(t *testing.T) {
 			name: "valid HTTPS URL",
 			in:   "https://example.com",
 			out: &Locator{
-				URL: parseUrl(t, "https://example.com"),
+				URL:       parseUrl(t, "https://example.com"),
+				Tag:       standard.DevTag,
+				Canonical: false,
 			},
 			err: false,
 		},
@@ -46,7 +52,9 @@ func TestLocator_Marshaling(t *testing.T) {
 			name: "valid HTTP URL",
 			in:   "http://example.com",
 			out: &Locator{
-				URL: parseUrl(t, "http://example.com"),
+				URL:       parseUrl(t, "http://example.com"),
+				Tag:       standard.DevTag,
+				Canonical: false,
 			},
 			err: false,
 		},
@@ -54,7 +62,9 @@ func TestLocator_Marshaling(t *testing.T) {
 			name: "valid file URL",
 			in:   "file:///tmp/artifacts",
 			out: &Locator{
-				URL: parseUrl(t, "file:///tmp/artifacts"),
+				URL:       parseUrl(t, "file:///tmp/artifacts"),
+				Tag:       standard.DevTag,
+				Canonical: false,
 			},
 			err: false,
 		},
@@ -73,6 +83,22 @@ func TestLocator_Marshaling(t *testing.T) {
 		{
 			name: "unsupported scheme",
 			in:   "ftp://example.com",
+			out:  nil,
+			err:  true,
+		},
+		{
+			name: "valid URL with valid tag override",
+			in:   "http://example.com#op-contracts/v1.6.0",
+			out: &Locator{
+				URL:       parseUrl(t, "http://example.com#op-contracts/v1.6.0"),
+				Tag:       standard.ContractsV160Tag,
+				Canonical: false,
+			},
+			err: false,
+		},
+		{
+			name: "valid URL with invalid tag override",
+			in:   "http://example.com#honk",
 			out:  nil,
 			err:  true,
 		},
@@ -119,6 +145,11 @@ func TestLocator_Equal(t *testing.T) {
 		},
 		{
 			MustNewLocatorFromURL("http://www.example.com"),
+			MustNewLocatorFromTag("op-contracts/v1.6.0"),
+			false,
+		},
+		{
+			MustNewLocatorFromURL("http://www.example.com#op-contracts/v1.6.0"),
 			MustNewLocatorFromTag("op-contracts/v1.6.0"),
 			false,
 		},

@@ -9,8 +9,8 @@ import { Vm } from "forge-std/Vm.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 import { ForkLive } from "test/setup/ForkLive.s.sol";
 import { Fork, LATEST_FORK } from "scripts/libraries/Config.sol";
-import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
-import { OutputMode, Fork, ForkUtils } from "scripts/libraries/Config.sol";
+import { L2Genesis, L2GenesisInput } from "scripts/L2Genesis.s.sol";
+import { Fork, ForkUtils } from "scripts/libraries/Config.sol";
 import { Artifacts } from "scripts/Artifacts.s.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
@@ -171,7 +171,6 @@ contract Setup {
         console.log("Setup: L2 setup start!");
         vm.etch(address(l2Genesis), vm.getDeployedCode("L2Genesis.s.sol:L2Genesis"));
         vm.allowCheatcodes(address(l2Genesis));
-        l2Genesis.setUp();
         console.log("Setup: L2 setup done!");
     }
 
@@ -245,15 +244,32 @@ contract Setup {
         }
 
         console.log("Setup: creating L2 genesis with fork %s", l2Fork.toString());
-        l2Genesis.runWithOptions(
-            OutputMode.NONE,
-            l2Fork,
-            L1Dependencies({
-                l1CrossDomainMessengerProxy: payable(address(l1CrossDomainMessenger)),
-                l1StandardBridgeProxy: payable(address(l1StandardBridge)),
-                l1ERC721BridgeProxy: payable(address(l1ERC721Bridge))
-            })
+
+        L2GenesisInput l2i = new L2GenesisInput();
+        l2i.set(l2i.l1CrossDomainMessengerProxy.selector, address(l1CrossDomainMessenger));
+        l2i.set(l2i.l1StandardBridgeProxy.selector, address(l1StandardBridge));
+        l2i.set(l2i.l1ERC721BridgeProxy.selector, address(l1ERC721Bridge));
+        l2i.set(l2i.useInterop.selector, deploy.cfg().useInterop());
+        l2i.set(l2i.fork.selector, l2Fork);
+        l2i.set(l2i.l1ChainId.selector, deploy.cfg().l1ChainID());
+        l2i.set(l2i.l2ChainId.selector, deploy.cfg().l2ChainID());
+        l2i.set(l2i.proxyAdminOwner.selector, deploy.cfg().proxyAdminOwner());
+        l2i.set(l2i.sequencerFeeVaultRecipient.selector, deploy.cfg().sequencerFeeVaultRecipient());
+        l2i.set(
+            l2i.sequencerFeeVaultMinimumWithdrawalAmount.selector,
+            deploy.cfg().sequencerFeeVaultMinimumWithdrawalAmount()
         );
+        l2i.set(l2i.sequencerFeeVaultWithdrawalNetwork.selector, deploy.cfg().sequencerFeeVaultWithdrawalNetwork());
+        l2i.set(l2i.baseFeeVaultRecipient.selector, deploy.cfg().baseFeeVaultRecipient());
+        l2i.set(l2i.baseFeeVaultMinimumWithdrawalAmount.selector, deploy.cfg().baseFeeVaultMinimumWithdrawalAmount());
+        l2i.set(l2i.baseFeeVaultWithdrawalNetwork.selector, deploy.cfg().baseFeeVaultWithdrawalNetwork());
+        l2i.set(l2i.l1FeeVaultRecipient.selector, deploy.cfg().l1FeeVaultRecipient());
+        l2i.set(l2i.l1FeeVaultMinimumWithdrawalAmount.selector, deploy.cfg().l1FeeVaultMinimumWithdrawalAmount());
+        l2i.set(l2i.l1FeeVaultWithdrawalNetwork.selector, deploy.cfg().l1FeeVaultWithdrawalNetwork());
+        l2i.set(l2i.enableGovernance.selector, deploy.cfg().enableGovernance());
+        l2i.set(l2i.governanceTokenOwner.selector, deploy.cfg().governanceTokenOwner());
+
+        l2Genesis.run(l2i);
 
         // Set the governance token's owner to be the final system owner
         address finalSystemOwner = deploy.cfg().finalSystemOwner();

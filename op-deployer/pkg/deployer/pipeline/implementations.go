@@ -23,7 +23,7 @@ func DeployImplementations(env *Env, intent *state.Intent, st *state.State) erro
 
 	var contractsRelease string
 	var err error
-	if intent.L1ContractsLocator.IsTag() {
+	if intent.L1ContractsLocator.Canonical {
 		contractsRelease = intent.L1ContractsLocator.Tag
 	} else {
 		contractsRelease = "dev"

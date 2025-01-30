@@ -39,17 +39,9 @@ func DeployOPChain(env *Env, intent *state.Intent, st *state.State, chainID comm
 
 	st.Chains = append(st.Chains, makeChainState(chainID, dco))
 
-	var release string
-	if intent.L1ContractsLocator.IsTag() {
-		release = intent.L1ContractsLocator.Tag
-	} else {
-		release = "dev"
-	}
-
 	readInput := opcm.ReadImplementationAddressesInput{
 		DeployOPChainOutput: dco,
 		Opcm:                dci.Opcm,
-		Release:             release,
 	}
 	impls, err := opcm.ReadImplementationAddresses(env.L1ScriptHost, readInput)
 	if err != nil {

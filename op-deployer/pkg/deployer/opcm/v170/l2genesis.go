@@ -21,9 +21,8 @@ type L1Deployments struct {
 }
 
 type L2GenesisInput struct {
-	L1Deployments      L1Deployments
-	L2Config           genesis.L2InitializationConfig
-	OverrideAllocsMode string
+	L1Deployments L1Deployments
+	L2Config      genesis.L2InitializationConfig
 }
 
 type L2GenesisScript struct {
@@ -35,14 +34,15 @@ func L2Genesis(l2Host *script.Host, input *L2GenesisInput) error {
 	l2Host.SetEnvVar("L2GENESIS_L1StandardBridgeProxy", input.L1Deployments.L1StandardBridgeProxy.String())
 	l2Host.SetEnvVar("L2GENESIS_L1ERC721BridgeProxy", input.L1Deployments.L1ERC721BridgeProxy.String())
 
-	var allocsMode string
-	if input.OverrideAllocsMode == "" {
-		allocsMode = string(input.L2Config.UpgradeScheduleDeployConfig.AllocMode(uint64(time.Now().Unix())))
+	// The v170 contract artifacts do not support Holocene, even though Holocene is a noop on L2.
+	// As a result we need to set the allocsMode to Granite in order for the L2 genesis script to run.
+	var allocMode string
+	if input.L2Config.UpgradeScheduleDeployConfig.HoloceneTime(uint64(time.Now().Unix())) != nil {
+		allocMode = string(genesis.L2AllocsGranite)
 	} else {
-		allocsMode = input.OverrideAllocsMode
+		allocMode = string(input.L2Config.UpgradeScheduleDeployConfig.AllocMode(uint64(time.Now().Unix())))
 	}
-
-	l2Host.SetEnvVar("FORK", allocsMode)
+	l2Host.SetEnvVar("FORK", allocMode)
 
 	deployConfig := &genesis.DeployConfig{
 		L2InitializationConfig: input.L2Config,

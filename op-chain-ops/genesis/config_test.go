@@ -175,3 +175,14 @@ func TestUpgradeScheduleDeployConfig_ActivateForkAtOffset(t *testing.T) {
 		}
 	})
 }
+
+func TestUpgradeScheduleDeployConfig_ForkOrdinal(t *testing.T) {
+	for i, fork := range rollup.AllForks[1:] {
+		if fork == rollup.Interop {
+			return
+		}
+		var d UpgradeScheduleDeployConfig
+		d.ActivateForkAtOffset(fork, 0)
+		require.EqualValues(t, i, d.ForkOrdinal(1))
+	}
+}

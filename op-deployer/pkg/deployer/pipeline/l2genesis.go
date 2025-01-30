@@ -2,6 +2,10 @@ package pipeline
 
 import (
 	"fmt"
+	"time"
+
+	opcmv170 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm/v170"
+	opcmv200 "github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm/v200"
 
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/standard"
 
@@ -9,7 +13,6 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/foundry"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/broadcaster"
-	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/opcm"
 	"github.com/ethereum-optimism/optimism/op-deployer/pkg/deployer/state"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -50,25 +53,43 @@ func GenerateL2Genesis(pEnv *Env, intent *state.Intent, bundle ArtifactsBundle, 
 		return fmt.Errorf("failed to create L2 script host: %w", err)
 	}
 
-	// This is an ugly hack to support holocene. The v1.7.0 predeploy contracts do not support setting the allocs
-	// mode as Holocene, even though there are no predeploy changes in Holocene. The v1.7.0 changes are the "official"
-	// release of the predeploy contracts, so we need to set the allocs mode to "granite" to avoid having to backport
-	// Holocene support into the predeploy contracts.
-	var overrideAllocsMode string
-	if intent.L2ContractsLocator.IsTag() && intent.L2ContractsLocator.Tag == standard.ContractsV170Beta1L2Tag {
-		overrideAllocsMode = "granite"
-	}
-
-	if err := opcm.L2Genesis(host, &opcm.L2GenesisInput{
-		L1Deployments: opcm.L1Deployments{
-			L1CrossDomainMessengerProxy: thisChainState.L1CrossDomainMessengerProxyAddress,
-			L1StandardBridgeProxy:       thisChainState.L1StandardBridgeProxyAddress,
-			L1ERC721BridgeProxy:         thisChainState.L1ERC721BridgeProxyAddress,
-		},
-		L2Config:           initCfg.L2InitializationConfig,
-		OverrideAllocsMode: overrideAllocsMode,
-	}); err != nil {
-		return fmt.Errorf("failed to call L2Genesis script: %w", err)
+	switch intent.L2ContractsLocator.Tag {
+	case standard.ContractsV170Beta1L2Tag:
+		if err := opcmv170.L2Genesis(host, &opcmv170.L2GenesisInput{
+			L1Deployments: opcmv170.L1Deployments{
+				L1CrossDomainMessengerProxy: thisChainState.L1CrossDomainMessengerProxyAddress,
+				L1StandardBridgeProxy:       thisChainState.L1StandardBridgeProxyAddress,
+				L1ERC721BridgeProxy:         thisChainState.L1ERC721BridgeProxyAddress,
+			},
+			L2Config: initCfg.L2InitializationConfig,
+		}); err != nil {
+			return fmt.Errorf("failed to call L2Genesis script: %w", err)
+		}
+	case standard.DevTag:
+		if err := opcmv200.L2Genesis(host, opcmv200.L2GenesisInput{
+			L1CrossDomainMessengerProxy:              thisChainState.L1CrossDomainMessengerProxyAddress,
+			L1StandardBridgeProxy:                    thisChainState.L1StandardBridgeProxyAddress,
+			L1ERC721BridgeProxy:                      thisChainState.L1ERC721BridgeProxyAddress,
+			FundDevAccounts:                          initCfg.FundDevAccounts,
+			UseInterop:                               initCfg.UseInterop,
+			Fork:                                     initCfg.UpgradeScheduleDeployConfig.ForkOrdinal(uint64(time.Now().Unix())),
+			L2ChainId:                                thisIntent.ID.Big(),
+			L1ChainId:                                intent.L1ChainIDBig(),
+			ProxyAdminOwner:                          thisIntent.Roles.L2ProxyAdminOwner,
+			SequencerFeeVaultRecipient:               thisIntent.SequencerFeeVaultRecipient,
+			SequencerFeeVaultMinimumWithdrawalAmount: initCfg.SequencerFeeVaultMinimumWithdrawalAmount.ToInt(),
+			SequencerFeeVaultWithdrawalNetwork:       initCfg.SequencerFeeVaultWithdrawalNetwork.ToBig(),
+			L1FeeVaultRecipient:                      thisIntent.L1FeeVaultRecipient,
+			L1FeeVaultMinimumWithdrawalAmount:        initCfg.L1FeeVaultMinimumWithdrawalAmount.ToInt(),
+			L1FeeVaultWithdrawalNetwork:              initCfg.L1FeeVaultWithdrawalNetwork.ToBig(),
+			BaseFeeVaultRecipient:                    thisIntent.BaseFeeVaultRecipient,
+			BaseFeeVaultMinimumWithdrawalAmount:      initCfg.BaseFeeVaultMinimumWithdrawalAmount.ToInt(),
+			BaseFeeVaultWithdrawalNetwork:            initCfg.BaseFeeVaultWithdrawalNetwork.ToBig(),
+			EnableGovernance:                         initCfg.EnableGovernance,
+			GovernanceTokenOwner:                     initCfg.GovernanceTokenOwner,
+		}); err != nil {
+			return fmt.Errorf("failed to call L2Genesis script: %w", err)
+		}
 	}
 
 	host.Wipe(pEnv.Deployer)

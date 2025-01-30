@@ -2,187 +2,147 @@
 pragma solidity 0.8.15;
 
 import { Test } from "forge-std/Test.sol";
-import { L2Genesis, L1Dependencies } from "scripts/L2Genesis.s.sol";
+import { L2GenesisInput, L2Genesis } from "scripts/L2Genesis.s.sol";
+import { Fork } from "scripts/libraries/Config.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
-import { Constants } from "src/libraries/Constants.sol";
-import { Process } from "scripts/libraries/Process.sol";
+import { Ownable } from "@openzeppelin/contracts/access/Ownable.sol";
+import { IProxy } from "interfaces/universal/IProxy.sol";
+import { IL2CrossDomainMessenger } from "interfaces/L2/IL2CrossDomainMessenger.sol";
+import { IL2StandardBridge } from "interfaces/L2/IL2StandardBridge.sol";
+import { IL2ERC721Bridge } from "interfaces/L2/IL2ERC721Bridge.sol";
+import { ISequencerFeeVault } from "interfaces/L2/ISequencerFeeVault.sol";
+import { IBaseFeeVault } from "interfaces/L2/IBaseFeeVault.sol";
+import { IL1FeeVault } from "interfaces/L2/IL1FeeVault.sol";
 
-/// @title L2GenesisTest
-/// @notice Test suite for L2Genesis script.
 contract L2GenesisTest is Test {
-    L2Genesis genesis;
+    L2GenesisInput internal l2i;
+
+    L2Genesis internal genesis;
 
     function setUp() public {
+        l2i = new L2GenesisInput();
+        l2i.set(l2i.l1CrossDomainMessengerProxy.selector, makeAddr("l1CrossDomainMessengerProxy"));
+        l2i.set(l2i.l1StandardBridgeProxy.selector, makeAddr("l1StandardBridgeProxy"));
+        l2i.set(l2i.l1ERC721BridgeProxy.selector, makeAddr("l1ERC721BridgeProxy"));
+        l2i.set(l2i.fundDevAccounts.selector, false);
+        l2i.set(l2i.useInterop.selector, false);
+        l2i.set(l2i.fork.selector, Fork.ECOTONE);
+        l2i.set(l2i.l1ChainId.selector, 1);
+        l2i.set(l2i.l2ChainId.selector, 999);
+        l2i.set(l2i.proxyAdminOwner.selector, makeAddr("proxyAdminOwner"));
+        l2i.set(l2i.sequencerFeeVaultRecipient.selector, makeAddr("sequencerFeeVaultRecipient"));
+        l2i.set(l2i.sequencerFeeVaultMinimumWithdrawalAmount.selector, 1);
+        l2i.set(l2i.sequencerFeeVaultWithdrawalNetwork.selector, 1);
+        l2i.set(l2i.baseFeeVaultRecipient.selector, makeAddr("baseFeeVaultRecipient"));
+        l2i.set(l2i.baseFeeVaultMinimumWithdrawalAmount.selector, 2);
+        l2i.set(l2i.baseFeeVaultWithdrawalNetwork.selector, 1);
+        l2i.set(l2i.l1FeeVaultRecipient.selector, makeAddr("l1FeeVaultRecipient"));
+        l2i.set(l2i.l1FeeVaultMinimumWithdrawalAmount.selector, 3);
+        l2i.set(l2i.l1FeeVaultWithdrawalNetwork.selector, 0);
+        l2i.set(l2i.enableGovernance.selector, true);
+        l2i.set(l2i.governanceTokenOwner.selector, makeAddr("governanceTokenOwner"));
+
         genesis = new L2Genesis();
-        // Note: to customize L1 addresses,
-        // simply pass in the L1 addresses argument for Genesis setup functions that depend on it.
-        // L1 addresses, or L1 artifacts, are not stored globally.
-        genesis.setUp();
     }
 
-    /// @notice Creates a temp file and returns the path to it.
-    function tmpfile() internal returns (string memory) {
-        return Process.bash("mktemp");
+    function test_run_noInteropNoDev_works() public {
+        genesis.run(l2i);
+
+        for (uint256 i = 0; i < genesis.PRECOMPILE_COUNT(); i++) {
+            assertEq(address(uint160(i)).balance, 1);
+        }
+
+        for (uint256 i = 0; i < 30; i++) {
+            assertEq(genesis.devAccounts(i).balance, 0);
+        }
+
+        address l1CrossDomainMessenger =
+            address(IL2CrossDomainMessenger(Predeploys.L2_CROSS_DOMAIN_MESSENGER).l1CrossDomainMessenger());
+        assertEq(l1CrossDomainMessenger, l2i.l1CrossDomainMessengerProxy());
+        address otherBridge = address(IL2StandardBridge(payable(Predeploys.L2_STANDARD_BRIDGE)).otherBridge());
+        assertEq(otherBridge, l2i.l1StandardBridgeProxy());
+        otherBridge = address(IL2ERC721Bridge(Predeploys.L2_ERC721_BRIDGE).OTHER_BRIDGE());
+        assertEq(otherBridge, l2i.l1ERC721BridgeProxy());
+
+        ISequencerFeeVault sfVault = ISequencerFeeVault(payable(Predeploys.SEQUENCER_FEE_WALLET));
+        assertEq(sfVault.recipient(), l2i.sequencerFeeVaultRecipient());
+        assertEq(sfVault.minWithdrawalAmount(), l2i.sequencerFeeVaultMinimumWithdrawalAmount());
+        assertEq(uint256(sfVault.withdrawalNetwork()), l2i.sequencerFeeVaultWithdrawalNetwork());
+
+        IBaseFeeVault bfVault = IBaseFeeVault(payable(Predeploys.BASE_FEE_VAULT));
+        assertEq(bfVault.recipient(), l2i.baseFeeVaultRecipient());
+        assertEq(bfVault.minWithdrawalAmount(), l2i.baseFeeVaultMinimumWithdrawalAmount());
+        assertEq(uint256(bfVault.withdrawalNetwork()), l2i.baseFeeVaultWithdrawalNetwork());
+
+        IL1FeeVault l1Vault = IL1FeeVault(payable(Predeploys.L1_FEE_VAULT));
+        assertEq(l1Vault.recipient(), l2i.l1FeeVaultRecipient());
+        assertEq(l1Vault.minWithdrawalAmount(), l2i.l1FeeVaultMinimumWithdrawalAmount());
+        assertEq(uint256(l1Vault.withdrawalNetwork()), l2i.l1FeeVaultWithdrawalNetwork());
+
+        assertGt(Predeploys.GOVERNANCE_TOKEN.code.length, 0);
+        assertEq(Ownable(Predeploys.GOVERNANCE_TOKEN).owner(), l2i.governanceTokenOwner());
+
+        assertNoImpl(Predeploys.CROSS_L2_INBOX);
+        assertNoImpl(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
+        assertNoImpl(Predeploys.SUPERCHAIN_WETH);
+        assertNoImpl(Predeploys.ETH_LIQUIDITY);
+        assertNoImpl(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
+        assertNoImpl(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON);
+        assertNoImpl(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
+
+        assertEq(Predeploys.ETH_LIQUIDITY.balance, 0);
     }
 
-    /// @notice Deletes a file at a given filesystem path. Does not force delete
-    ///         and does not recursively delete.
-    function deleteFile(string memory path) internal {
-        Process.bash(string.concat("rm ", path), true);
+    function test_fundDevAccounts_works() public {
+        l2i.set(l2i.fundDevAccounts.selector, true);
+        genesis.run(l2i);
+
+        for (uint256 i = 0; i < 30; i++) {
+            assertEq(genesis.devAccounts(i).balance, genesis.DEV_ACCOUNT_FUND_AMT());
+        }
     }
 
-    /// @notice Returns the number of top level keys in a JSON object at a given
-    ///         file path.
-    function getJSONKeyCount(string memory path) internal returns (uint256) {
-        bytes memory result =
-            bytes(Process.bash(string.concat("jq 'keys | length' < ", path, " | xargs cast abi-encode 'f(uint256)'")));
-        return abi.decode(result, (uint256));
+    function test_run_interopNoDev_works() public {
+        l2i.set(l2i.useInterop.selector, true);
+        genesis.run(l2i);
+
+        address impl = Predeploys.predeployToCodeNamespace(Predeploys.L2_STANDARD_BRIDGE);
+        bytes memory expectedCode = vm.getDeployedCode("L2StandardBridgeInterop.sol:L2StandardBridgeInterop");
+        assertEq(impl.code, expectedCode);
+
+        impl = Predeploys.predeployToCodeNamespace(Predeploys.L1_BLOCK_ATTRIBUTES);
+        expectedCode = vm.getDeployedCode("L1BlockInterop.sol:L1BlockInterop");
+        assertEq(impl.code, expectedCode);
+
+        // Check all interop predeploys have code
+        assertHasImpl(Predeploys.CROSS_L2_INBOX);
+        assertHasImpl(Predeploys.L2_TO_L2_CROSS_DOMAIN_MESSENGER);
+        assertHasImpl(Predeploys.SUPERCHAIN_WETH);
+        assertHasImpl(Predeploys.ETH_LIQUIDITY);
+        assertHasImpl(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_FACTORY);
+        assertHasImpl(Predeploys.OPTIMISM_SUPERCHAIN_ERC20_BEACON);
+        assertHasImpl(Predeploys.SUPERCHAIN_TOKEN_BRIDGE);
+
+        assertEq(Predeploys.ETH_LIQUIDITY.balance, type(uint248).max);
     }
 
-    /// @notice Helper function to run a function with a temporary dump file.
-    function withTempDump(function (string memory) internal f) internal {
-        string memory path = tmpfile();
-        f(path);
-        deleteFile(path);
+    function test_run_noGovernance_works() public {
+        l2i.set(l2i.enableGovernance.selector, false);
+        genesis.run(l2i);
+        assertEq(Predeploys.GOVERNANCE_TOKEN.code.length, 0);
     }
 
-    /// @notice Helper function for reading the number of storage keys for a given account.
-    function getStorageKeysCount(string memory _path, address _addr) internal returns (uint256) {
-        return vm.parseUint(
-            Process.bash(
-                string.concat("jq -r '.[\"", vm.toLowercase(vm.toString(_addr)), "\"].storage | length' < ", _path)
-            )
-        );
+    function assertNoImpl(address addr) internal {
+        IProxy proxy = IProxy(payable(addr));
+        vm.prank(address(0));
+        address impl = proxy.implementation();
+        assertEq(impl, address(0));
     }
 
-    /// @notice Returns the number of accounts that contain particular code at a given path to a genesis file.
-    function getCodeCount(string memory path, string memory name) internal returns (uint256) {
-        bytes memory code = vm.getDeployedCode(name);
-        bytes memory result = bytes(
-            Process.bash(
-                string.concat(
-                    "jq -r 'map_values(select(.code == \"",
-                    vm.toString(code),
-                    "\")) | length' < ",
-                    path,
-                    " | xargs cast abi-encode 'f(uint256)'"
-                )
-            )
-        );
-        return abi.decode(result, (uint256));
-    }
-
-    /// @notice Returns the number of accounts that have a particular slot set.
-    function getPredeployCountWithSlotSet(string memory path, bytes32 slot) internal returns (uint256) {
-        bytes memory result = bytes(
-            Process.bash(
-                string.concat(
-                    "jq 'map_values(.storage | select(has(\"",
-                    vm.toString(slot),
-                    "\"))) | keys | length' < ",
-                    path,
-                    " | xargs cast abi-encode 'f(uint256)'"
-                )
-            )
-        );
-        return abi.decode(result, (uint256));
-    }
-
-    /// @notice Returns the number of accounts that have a particular slot set to a particular value.
-    function getPredeployCountWithSlotSetToValue(
-        string memory path,
-        bytes32 slot,
-        bytes32 value
-    )
-        internal
-        returns (uint256)
-    {
-        bytes memory result = bytes(
-            Process.bash(
-                string.concat(
-                    "jq 'map_values(.storage | select(.\"",
-                    vm.toString(slot),
-                    "\" == \"",
-                    vm.toString(value),
-                    "\")) | length' < ",
-                    path,
-                    " | xargs cast abi-encode 'f(uint256)'"
-                )
-            )
-        );
-        return abi.decode(result, (uint256));
-    }
-
-    /// @notice Tests the genesis predeploys setup using a temp file for the case where useInterop is false.
-    function test_genesisPredeploys_notUsingInterop_works() external {
-        string memory path = tmpfile();
-        _test_genesis_predeploys(path, false);
-        deleteFile(path);
-    }
-
-    /// @notice Tests the genesis predeploys setup using a temp file for the case where useInterop is true.
-    function test_genesisPredeploys_usingInterop_works() external {
-        string memory path = tmpfile();
-        _test_genesis_predeploys(path, true);
-        deleteFile(path);
-    }
-
-    /// @notice Tests the genesis predeploys setup.
-    function _test_genesis_predeploys(string memory _path, bool _useInterop) internal {
-        // Set the useInterop value
-        vm.mockCall(address(genesis.cfg()), abi.encodeCall(genesis.cfg().useInterop, ()), abi.encode(_useInterop));
-
-        // Set the predeploy proxies into state
-        genesis.setPredeployProxies();
-        genesis.writeGenesisAllocs(_path);
-
-        // 2 predeploys do not have proxies
-        assertEq(getCodeCount(_path, "Proxy.sol:Proxy"), Predeploys.PREDEPLOY_COUNT - 2);
-
-        // 24 proxies have the implementation set if useInterop is true and 17 if useInterop is false
-        assertEq(getPredeployCountWithSlotSet(_path, Constants.PROXY_IMPLEMENTATION_ADDRESS), _useInterop ? 24 : 17);
-
-        // All proxies except 2 have the proxy 1967 admin slot set to the proxy admin
-        assertEq(
-            getPredeployCountWithSlotSetToValue(
-                _path, Constants.PROXY_OWNER_ADDRESS, bytes32(uint256(uint160(Predeploys.PROXY_ADMIN)))
-            ),
-            Predeploys.PREDEPLOY_COUNT - 2
-        );
-
-        // Also see Predeploys.t.test_predeploysSet_succeeds which uses L1Genesis for the CommonTest prestate.
-    }
-
-    /// @notice Tests the number of accounts in the genesis setup
-    function test_allocs_size_works() external {
-        withTempDump(_test_allocs_size);
-    }
-
-    /// @notice Creates mock L1Dependencies for testing purposes.
-    function _dummyL1Deps() internal pure returns (L1Dependencies memory deps_) {
-        return L1Dependencies({
-            l1CrossDomainMessengerProxy: payable(address(0x100000)),
-            l1StandardBridgeProxy: payable(address(0x100001)),
-            l1ERC721BridgeProxy: payable(address(0x100002))
-        });
-    }
-
-    /// @notice Tests the number of accounts in the genesis setup
-    function _test_allocs_size(string memory _path) internal {
-        genesis.cfg().setFundDevAccounts(false);
-        genesis.runWithLatestLocal(_dummyL1Deps());
-        genesis.writeGenesisAllocs(_path);
-
-        uint256 expected = 0;
-        expected += 2048 - 2; // predeploy proxies
-        expected += 21; // predeploy implementations (excl. legacy erc20-style eth and legacy message sender)
-        expected += 256; // precompiles
-        expected += 13; // preinstalls
-        expected += 1; // 4788 deployer account
-        // 16 prefunded dev accounts are excluded
-        assertEq(expected, getJSONKeyCount(_path), "key count check");
-
-        // 3 slots: implementation, owner, admin
-        assertEq(3, getStorageKeysCount(_path, Predeploys.PROXY_ADMIN), "proxy admin storage check");
+    function assertHasImpl(address addr) internal {
+        IProxy proxy = IProxy(payable(addr));
+        vm.prank(address(0));
+        address impl = proxy.implementation();
+        assertGt(impl.code.length, 0);
     }
 }

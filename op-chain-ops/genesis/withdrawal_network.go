@@ -3,6 +3,7 @@ package genesis
 import (
 	"encoding/json"
 	"fmt"
+	"math/big"
 	"strconv"
 
 	"github.com/holiman/uint256"
@@ -37,6 +38,10 @@ func (w *WithdrawalNetwork) ToUint8() uint8 {
 func (w WithdrawalNetwork) ToABI() []byte {
 	out := uint256.NewInt(uint64(w.ToUint8())).Bytes32()
 	return out[:]
+}
+
+func (w WithdrawalNetwork) ToBig() *big.Int {
+	return new(big.Int).SetUint64(uint64(w.ToUint8()))
 }
 
 // FromUint8 converts a uint8 to a WithdrawalNetwork.

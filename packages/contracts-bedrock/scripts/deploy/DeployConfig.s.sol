@@ -5,7 +5,7 @@ import { Script } from "forge-std/Script.sol";
 import { console2 as console } from "forge-std/console2.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 import { Process } from "scripts/libraries/Process.sol";
-import { Config, Fork, ForkUtils } from "scripts/libraries/Config.sol";
+import { Fork, ForkUtils } from "scripts/libraries/Config.sol";
 
 /// @title DeployConfig
 /// @notice Represents the configuration required to deploy the system. It is expected
@@ -170,18 +170,6 @@ contract DeployConfig is Script {
 
         useInterop = _readOr(_json, "$.useInterop", false);
         useUpgradedFork;
-    }
-
-    function fork() public view returns (Fork fork_) {
-        // let env var take precedence
-        fork_ = Config.fork();
-        if (fork_ == Fork.NONE) {
-            // Will revert if no deploy config can be found either.
-            fork_ = latestGenesisFork();
-            console.log("DeployConfig: using deploy config fork: %s", fork_.toString());
-        } else {
-            console.log("DeployConfig: using env var fork: %s", fork_.toString());
-        }
     }
 
     function l1StartingBlockTag() public returns (bytes32) {
