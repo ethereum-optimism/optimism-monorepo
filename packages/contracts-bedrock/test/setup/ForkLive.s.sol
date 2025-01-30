@@ -36,6 +36,7 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 ///         This contract must not have constructor logic because it is set into state using `etch`.
 contract ForkLive is Deployer {
     using stdToml for string;
+    bool public useOpsRepo;
 
     /// @notice Returns the base chain name to use for forking
     /// @return The base chain name as a string
@@ -58,7 +59,7 @@ contract ForkLive is Deployer {
     function run() public {
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
-        bool useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
+        useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
         if (useOpsRepo) {
             console.log("ForkLive: loading state from %s", superchainOpsAllocsPath);
             // Set the resultant state from the superchain ops repo upgrades.
