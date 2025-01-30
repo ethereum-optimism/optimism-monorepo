@@ -116,15 +116,10 @@ func Dependencies(ctx context.Context, cfg DependenciesConfig) error {
 		lgr.Info("artifacts download progress", "current", curr, "total", total)
 	}
 
-	artifactsFS, cleanup, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
+	artifactsFS, err := artifacts.Download(ctx, cfg.ArtifactsLocator, progressor)
 	if err != nil {
 		return fmt.Errorf("failed to download artifacts: %w", err)
 	}
-	defer func() {
-		if err := cleanup(); err != nil {
-			lgr.Warn("failed to clean up artifacts", "err", err)
-		}
-	}()
 
 	l1RPC, err := rpc.Dial(cfg.L1RPCUrl)
 	if err != nil {

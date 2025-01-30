@@ -583,7 +583,7 @@ func TestManageDependencies(t *testing.T) {
 	// doesn't expose the host directly.
 
 	loc, _ := testutil.LocalArtifacts(t)
-	afacts, _, err := artifacts.Download(ctx, loc, artifacts.NoopDownloadProgressor)
+	afacts, err := artifacts.Download(ctx, loc, artifacts.NoopProgressor())
 	require.NoError(t, err)
 
 	host, err := env.DefaultScriptHost(
