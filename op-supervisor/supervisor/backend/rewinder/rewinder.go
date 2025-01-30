@@ -2,6 +2,7 @@ package rewinder
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -34,11 +35,12 @@ type syncNode interface {
 
 // rewindController holds the methods for a rewind operation
 type rewindController struct {
-	isSafe      bool
-	getLocal    func(eth.ChainID) (types.BlockSeal, error)
-	getCross    func(eth.ChainID) (types.BlockSeal, error)
-	rewindLocal func(eth.ChainID, types.BlockSeal) error
-	rewindCross func(eth.ChainID, types.BlockSeal) error
+	isSafe       bool
+	getFinalized func(eth.ChainID) (types.BlockSeal, error)
+	getLocal     func(eth.ChainID) (types.BlockSeal, error)
+	getCross     func(eth.ChainID) (types.BlockSeal, error)
+	rewindLocal  func(eth.ChainID, types.BlockSeal) error
+	rewindCross  func(eth.ChainID, types.BlockSeal) error
 }
 
 func (rc rewindController) safetyStr() string {
@@ -118,10 +120,13 @@ func (r *Rewinder) rewindChain(ev superevents.RewindChainEvent) error {
 // attemptRewind attempts to rewind the local and cross databases for the given chain and safety level
 func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctrl rewindController) error {
 	// First get the finalized head
-	finalizedHead, err := r.db.Finalized(chainID)
+	finalizedHead, err := ctrl.getFinalized(chainID)
 	if err != nil {
-		// TODO: handle this
-		finalizedHead = types.BlockSeal{}
+		if errors.Is(err, types.ErrFuture) {
+			finalizedHead = types.BlockSeal{}
+		} else {
+			return fmt.Errorf("failed to get finalized head for chain %s: %w", chainID, err)
+		}
 	}
 
 	// If the bad block's parent is before the finalized head then stop
@@ -167,22 +172,24 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctr
 // attemptRewindUnsafe attempts to rewind unsafe blocks
 func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
-		isSafe:      false,
-		getLocal:    r.db.LocalUnsafe,
-		getCross:    r.db.CrossUnsafe,
-		rewindLocal: r.db.RewindLocalUnsafe,
-		rewindCross: r.db.RewindCrossUnsafe,
+		isSafe:       false,
+		getFinalized: derivedFromPairGetter(r.db.LocalSafe),
+		getLocal:     r.db.LocalUnsafe,
+		getCross:     r.db.CrossUnsafe,
+		rewindLocal:  r.db.RewindLocalUnsafe,
+		rewindCross:  r.db.RewindCrossUnsafe,
 	})
 }
 
 // attemptRewindSafe attempts to rewind safe blocks
 func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
-		isSafe:      true,
-		getLocal:    derivedFromPairGetter(r.db.LocalSafe),
-		getCross:    derivedFromPairGetter(r.db.CrossSafe),
-		rewindLocal: r.db.RewindLocalSafe,
-		rewindCross: r.db.RewindCrossSafe,
+		isSafe:       true,
+		getFinalized: r.db.Finalized,
+		getLocal:     derivedFromPairGetter(r.db.LocalSafe),
+		getCross:     derivedFromPairGetter(r.db.CrossSafe),
+		rewindLocal:  r.db.RewindLocalSafe,
+		rewindCross:  r.db.RewindCrossSafe,
 	})
 }
 
