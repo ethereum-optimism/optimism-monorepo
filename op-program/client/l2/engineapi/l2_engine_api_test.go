@@ -2,7 +2,6 @@ package engineapi
 
 import (
 	"context"
-	"fmt"
 	"math/big"
 	"testing"
 
@@ -31,7 +30,7 @@ func TestNewPayloadV4(t *testing.T) {
 		{6, 5, engine.UnsupportedFork.Error()}, // before isthmus
 		{6, 8, ""},                             // after isthmus
 	}
-	logger, _ := testlog.CaptureLogger(t, log.LvlTrace)
+	logger, _ := testlog.CaptureLogger(t, log.LvlInfo)
 
 	for _, c := range cases {
 		genesis := createGenesis()
@@ -78,7 +77,6 @@ func TestNewPayloadV4(t *testing.T) {
 		require.NotNil(t, envelope)
 
 		newPayloadResult, err := engineAPI.NewPayloadV4(context.Background(), envelope.ExecutionPayload, []common.Hash{}, envelope.ParentBeaconBlockRoot, []hexutil.Bytes{})
-		fmt.Println(newPayloadResult, err)
 		if c.expectedError != "" {
 			require.ErrorContains(t, err, c.expectedError)
 			continue
