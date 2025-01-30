@@ -495,8 +495,8 @@ github.com/libp2p/go-reuseport v0.4.0 h1:nR5KU7hD0WxXCJbmw7r2rhRYruNRl2koHw8fQsc
 github.com/libp2p/go-reuseport v0.4.0/go.mod h1:ZtI03j/wO5hZVDFo2jKywN6bYKWLOy8Se6DrI2E1cLU=
 github.com/libp2p/go-yamux/v4 v4.0.1 h1:FfDR4S1wj6Bw2Pqbc8Uz7pCxeRBPbwsBbEdfwiCypkQ=
 github.com/libp2p/go-yamux/v4 v4.0.1/go.mod h1:NWjl8ZTLOGlozrXSOZ/HlfG++39iKNnM5wwmtQP1YB4=
-github.com/lmittmann/w3 v0.17.4 h1:nHaX3EymuMoup5eQ/qpU4YVR67boSDGewGQt90DgJng=
-github.com/lmittmann/w3 v0.17.4/go.mod h1:+NTGtk54BK1W7572qRaiZ9ywVSaKeObg490bUVvKjAs=
+github.com/lmittmann/w3 v0.17.5 h1:5BHLlts5NjZwOAxF0ZU/BiVvJ4+gKBmQOjTS/VDq25g=
+github.com/lmittmann/w3 v0.17.5/go.mod h1:pZGfIFPneOcrpOhcKhtnYKlldwj2jUiTJ2uN4Aq6qg0=
 github.com/lunixbochs/vtclean v1.0.0/go.mod h1:pHhQNgMf3btfWnGBVipUOjRYhoOsdGqdm/+2c2E2WMI=
 github.com/mailru/easyjson v0.0.0-20190312143242-1de009706dbe/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
 github.com/mailru/easyjson v0.0.0-20190614124828-94de47d64c63/go.mod h1:C1wdFJiN94OJF2b5HbByQZoLdCWB1Yqtg26g4irojpc=
