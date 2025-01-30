@@ -127,3 +127,21 @@ type AnchorEvent struct {
 func (ev AnchorEvent) String() string {
 	return "anchor"
 }
+
+type InvalidateLocalSafeEvent struct {
+	ChainID   eth.ChainID
+	Candidate types.DerivedBlockRefPair
+}
+
+func (ev InvalidateLocalSafeEvent) String() string {
+	return "invalidate-local-safe"
+}
+
+type ReplaceBlockEvent struct {
+	ChainID     eth.ChainID
+	Replacement types.BlockReplacement
+}
+
+func (ev ReplaceBlockEvent) String() string {
+	return "replace-block-event"
+}

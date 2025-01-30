@@ -9,6 +9,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	preimage "github.com/ethereum-optimism/optimism/op-preimage"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/stretchr/testify/require"
 )
@@ -20,7 +21,7 @@ func TestBootstrapClient(t *testing.T) {
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1,
-		L2ChainID:          rollupCfg.L2ChainID.Uint64(),
+		L2ChainID:          eth.ChainIDFromBig(rollupCfg.L2ChainID),
 		L2ChainConfig:      chainconfig.OPSepoliaChainConfig(),
 		RollupConfig:       rollupCfg,
 	}
@@ -50,7 +51,7 @@ func TestBootstrapClient_UnknownChainPanics(t *testing.T) {
 		L2OutputRoot:       common.HexToHash("0x2222"),
 		L2Claim:            common.HexToHash("0x3333"),
 		L2ClaimBlockNumber: 1,
-		L2ChainID:          uint64(0xdead),
+		L2ChainID:          eth.ChainID{0xdead},
 	}
 	mockOracle := newMockPreinteropBootstrapOracle(bootInfo, false)
 	client := NewBootstrapClient(mockOracle)
@@ -79,7 +80,7 @@ type mockPreinteropBoostrapOracle struct {
 func (o *mockPreinteropBoostrapOracle) Get(key preimage.Key) []byte {
 	switch key.PreimageKey() {
 	case L2ChainIDLocalIndex.PreimageKey():
-		return binary.BigEndian.AppendUint64(nil, o.b.L2ChainID)
+		return binary.BigEndian.AppendUint64(nil, eth.EvilChainIDToUInt64(o.b.L2ChainID))
 	case L2ChainConfigLocalIndex.PreimageKey():
 		if !o.custom {
 			panic(fmt.Sprintf("unexpected oracle request for preimage key %x", key.PreimageKey()))

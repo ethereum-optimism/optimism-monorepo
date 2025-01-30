@@ -6,12 +6,14 @@ import (
 	"fmt"
 	"os"
 	"slices"
-	"strconv"
+
+	"github.com/ethereum-optimism/optimism/op-service/superutil"
 
 	"github.com/ethereum-optimism/optimism/op-node/chaincfg"
 	"github.com/ethereum-optimism/optimism/op-program/chainconfig"
 	"github.com/ethereum-optimism/optimism/op-program/client/boot"
 	"github.com/ethereum-optimism/optimism/op-program/host/types"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/crypto"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
@@ -46,7 +48,7 @@ var (
 )
 
 type Config struct {
-	L2ChainID uint64 // TODO: Forbid for interop
+	L2ChainID eth.ChainID // TODO: Forbid for interop
 	Rollups   []*rollup.Config
 	// DataDir is the directory to read/write pre-image data from/to.
 	// If not set, an in-memory key-value store is used and fetching data must be enabled
@@ -97,7 +99,7 @@ type Config struct {
 }
 
 func (c *Config) Check() error {
-	if !c.InteropEnabled && c.L2ChainID == 0 {
+	if !c.InteropEnabled && c.L2ChainID == (eth.ChainID{}) {
 		return ErrMissingL2ChainID
 	}
 	if len(c.Rollups) == 0 {
@@ -183,8 +185,8 @@ func NewSingleChainConfig(
 	l2Claim common.Hash,
 	l2ClaimBlockNum uint64,
 ) *Config {
-	l2ChainID := l2ChainConfig.ChainID.Uint64()
-	_, err := params.LoadOPStackChainConfig(l2ChainID)
+	l2ChainID := eth.ChainIDFromBig(l2ChainConfig.ChainID)
+	_, err := superutil.LoadOPStackChainConfigFromChainID(eth.EvilChainIDToUInt64(l2ChainID))
 	if err != nil {
 		// Unknown chain ID so assume it is custom
 		l2ChainID = boot.CustomChainIDIndicator
@@ -268,16 +270,16 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	var err error
 	var rollupCfgs []*rollup.Config
 	var l2ChainConfigs []*params.ChainConfig
-	var l2ChainID uint64
+	var l2ChainID eth.ChainID
 	networkNames := ctx.StringSlice(flags.Network.Name)
 	for _, networkName := range networkNames {
-		var chainID uint64
-		if chainID, err = strconv.ParseUint(networkName, 10, 64); err != nil {
+		var chainID eth.ChainID
+		if chainID, err = eth.ParseDecimalChainID(networkName); err != nil {
 			ch := chaincfg.ChainByName(networkName)
 			if ch == nil {
 				return nil, fmt.Errorf("invalid network: %q", networkName)
 			}
-			chainID = ch.ChainID
+			chainID = eth.ChainIDFromUInt64(ch.ChainID)
 		}
 
 		l2ChainConfig, err := chainconfig.ChainConfigByChainID(chainID)
@@ -300,7 +302,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 			return nil, fmt.Errorf("invalid genesis: %w", err)
 		}
 		l2ChainConfigs = append(l2ChainConfigs, l2ChainConfig)
-		l2ChainID = l2ChainConfig.ChainID.Uint64()
+		l2ChainID = eth.ChainIDFromBig(l2ChainConfig.ChainID)
 	}
 
 	rollupPaths := ctx.StringSlice(flags.RollupConfig.Name)
@@ -317,7 +319,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		l2ChainID = boot.CustomChainIDIndicator
 	} else if len(rollupCfgs) > 1 {
 		// L2ChainID is not applicable when multiple L2 sources are used and not using custom configs
-		l2ChainID = 0
+		l2ChainID = eth.ChainID{}
 	}
 
 	dbFormat := types.DataFormat(ctx.String(flags.DataFormat.Name))

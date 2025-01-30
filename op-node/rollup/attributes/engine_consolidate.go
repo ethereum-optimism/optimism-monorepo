@@ -2,6 +2,7 @@ package attributes
 
 import (
 	"bytes"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -12,6 +13,14 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+)
+
+var (
+	ErrCanyonMustHaveWithdrawals       = errors.New("canyon: expected withdrawals in block to be non-nil and empty")
+	ErrCanyonWithdrawalsRoot           = errors.New("canyon: expected withdrawalsRoot in block to be default")
+	ErrBedrockMustHaveEmptyWithdrawals = errors.New("bedrock: expected withdrawals in attributes to be nil")
+	ErrIsthmusMustHaveWithdrawalsRoot  = errors.New("isthmus: expected withdrawalsRoot in block to be non-nil")
+	ErrNilBlockOrAttributes            = errors.New("nil attributes or block")
 )
 
 // AttributesMatchBlock checks if the L2 attributes pre-inputs match the output
@@ -55,7 +64,7 @@ func AttributesMatchBlock(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes
 	if *attrs.GasLimit != block.GasLimit {
 		return fmt.Errorf("gas limit does not match. expected %d. got: %d", *attrs.GasLimit, block.GasLimit)
 	}
-	if withdrawalErr := checkWithdrawalsMatch(attrs.Withdrawals, block.Withdrawals); withdrawalErr != nil {
+	if withdrawalErr := checkWithdrawals(rollupCfg, attrs, block); withdrawalErr != nil {
 		return withdrawalErr
 	}
 	if err := checkParentBeaconBlockRootMatch(attrs.ParentBeaconBlockRoot, envelope.ParentBeaconBlockRoot); err != nil {
@@ -82,28 +91,45 @@ func checkParentBeaconBlockRootMatch(attrRoot, blockRoot *common.Hash) error {
 	return nil
 }
 
-func checkWithdrawalsMatch(attrWithdrawals *types.Withdrawals, blockWithdrawals *types.Withdrawals) error {
-	if attrWithdrawals == nil && blockWithdrawals == nil {
-		return nil
+// checkWithdrawals checks if the withdrawals list and withdrawalsRoot are as expected in the attributes and block,
+// based on the active hard fork.
+func checkWithdrawals(rollupCfg *rollup.Config, attrs *eth.PayloadAttributes, block *eth.ExecutionPayload) error {
+	if attrs == nil || block == nil {
+		return ErrNilBlockOrAttributes
 	}
 
-	if attrWithdrawals == nil && blockWithdrawals != nil {
-		return fmt.Errorf("expected withdrawals in block to be nil, actual %v", *blockWithdrawals)
+	attrWithdrawals := attrs.Withdrawals
+	blockWithdrawals := block.Withdrawals
+
+	isCanyon := rollupCfg.IsCanyon(uint64(block.Timestamp))
+	isIsthmus := rollupCfg.IsIsthmus(uint64(block.Timestamp))
+
+	if isCanyon {
+		// canyon: the withdrawals list should be non nil and empty
+		if blockWithdrawals == nil || len(*blockWithdrawals) != 0 {
+			return fmt.Errorf("%w: block", ErrCanyonMustHaveWithdrawals)
+		}
+		if attrWithdrawals == nil || len(*attrWithdrawals) != 0 {
+			return fmt.Errorf("%w: attributes", ErrCanyonMustHaveWithdrawals)
+		}
+		if !isIsthmus {
+			// canyon: the withdrawals root should be set to the empty value
+			if block.WithdrawalsRoot != nil && *block.WithdrawalsRoot != types.EmptyWithdrawalsHash {
+				return fmt.Errorf("%w: got %v", ErrCanyonWithdrawalsRoot, *block.WithdrawalsRoot)
+			}
+		}
+	} else {
+		// bedrock: the withdrawals list should be nil
+		if attrWithdrawals != nil {
+			return fmt.Errorf("%w: got %d", ErrBedrockMustHaveEmptyWithdrawals, len(*attrWithdrawals))
+
+		}
 	}
 
-	if attrWithdrawals != nil && blockWithdrawals == nil {
-		return fmt.Errorf("expected withdrawals in block to be non-nil %v, actual nil", *attrWithdrawals)
-	}
-
-	if len(*attrWithdrawals) != len(*blockWithdrawals) {
-		return fmt.Errorf("expected withdrawals in block to be %d, actual %d", len(*attrWithdrawals), len(*blockWithdrawals))
-	}
-
-	for idx, expected := range *attrWithdrawals {
-		actual := (*blockWithdrawals)[idx]
-
-		if *expected != *actual {
-			return fmt.Errorf("expected withdrawal %d to be %v, actual %v", idx, expected, actual)
+	if isIsthmus {
+		// isthmus: the withdrawals root should be non nil
+		if block.WithdrawalsRoot == nil {
+			return ErrIsthmusMustHaveWithdrawalsRoot
 		}
 	}
 

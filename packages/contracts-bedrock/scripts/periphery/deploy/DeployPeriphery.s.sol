@@ -13,7 +13,6 @@ import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { Proxy } from "src/universal/Proxy.sol";
 import { Faucet } from "src/periphery/faucet/Faucet.sol";
 import { Drippie } from "src/periphery/drippie/Drippie.sol";
-import { CheckGelatoLow } from "src/periphery/drippie/dripchecks/CheckGelatoLow.sol";
 import { CheckBalanceLow } from "src/periphery/drippie/dripchecks/CheckBalanceLow.sol";
 import { CheckTrue } from "src/periphery/drippie/dripchecks/CheckTrue.sol";
 import { CheckSecrets } from "src/periphery/drippie/dripchecks/CheckSecrets.sol";
@@ -35,6 +34,7 @@ contract DeployPeriphery is Script {
 
     /// @notice Sets up the deployment script.
     function setUp() public {
+        vm.allowCheatcodes(address(artifacts));
         vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
         artifacts.setUp();
 
@@ -50,7 +50,6 @@ contract DeployPeriphery is Script {
         if (cfg.deployDripchecks()) {
             deployCheckTrue();
             deployCheckBalanceLow();
-            deployCheckGelatoLow();
             deployCheckSecrets();
         }
 
@@ -187,15 +186,6 @@ contract DeployPeriphery is Script {
         addr_ = _deployCreate2({
             _name: "CheckBalanceLow",
             _creationCode: type(CheckBalanceLow).creationCode,
-            _constructorParams: hex""
-        });
-    }
-
-    /// @notice Deploy CheckGelatoLow contract.
-    function deployCheckGelatoLow() public broadcast returns (address addr_) {
-        addr_ = _deployCreate2({
-            _name: "CheckGelatoLow",
-            _creationCode: type(CheckGelatoLow).creationCode,
             _constructorParams: hex""
         });
     }

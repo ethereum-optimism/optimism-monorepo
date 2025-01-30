@@ -27,6 +27,7 @@ type SyncSource interface {
 	ChainID(ctx context.Context) (eth.ChainID, error)
 	OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
 	PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
+	L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error)
 	// String identifies the sync source
 	String() string
 }
@@ -38,6 +39,8 @@ type SyncControl interface {
 	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
 	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
 	UpdateFinalized(ctx context.Context, id eth.BlockID) error
+
+	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error
 
 	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
 	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error

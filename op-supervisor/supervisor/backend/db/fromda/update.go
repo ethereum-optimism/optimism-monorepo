@@ -17,37 +17,39 @@ func (db *DB) AddDerived(derivedFrom eth.BlockRef, derived eth.BlockRef) error {
 
 // ReplaceInvalidatedBlock replaces the current Invalidated block with the given replacement.
 // The to-be invalidated hash must be provided for consistency checks.
-func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) error {
+func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidated common.Hash) (types.DerivedBlockSealPair, error) {
 	db.rwLock.Lock()
 	defer db.rwLock.Unlock()
+
+	db.log.Warn("Replacing invalidated block", "replacement", replacementDerived, "invalidated", invalidated)
 
 	// We take the last occurrence. This is where it started to be considered invalid,
 	// and where we thus stopped building additional entries for it.
 	lastIndex := db.store.LastEntryIdx()
 	if lastIndex < 0 {
-		return types.ErrFuture
+		return types.DerivedBlockSealPair{}, types.ErrFuture
 	}
 	last, err := db.readAt(lastIndex)
 	if err != nil {
-		return fmt.Errorf("failed to read last derivation data: %w", err)
+		return types.DerivedBlockSealPair{}, fmt.Errorf("failed to read last derivation data: %w", err)
 	}
 	if !last.invalidated {
-		return fmt.Errorf("cannot replace block %d, that was not invalidated, with block %s: %w", last.derived, replacementDerived, types.ErrConflict)
+		return types.DerivedBlockSealPair{}, fmt.Errorf("cannot replace block %d, that was not invalidated, with block %s: %w", last.derived, replacementDerived, types.ErrConflict)
 	}
 	if last.derived.Hash != invalidated {
-		return fmt.Errorf("cannot replace invalidated %s, DB contains %s: %w", invalidated, last.derived, types.ErrConflict)
+		return types.DerivedBlockSealPair{}, fmt.Errorf("cannot replace invalidated %s, DB contains %s: %w", invalidated, last.derived, types.ErrConflict)
 	}
 	// Find the parent-block of derived-from.
 	// We need this to build a block-ref, so the DB can be consistency-checked when the next entry is added.
 	// There is always one, since the first entry in the DB should never be an invalidated one.
 	prevDerivedFrom, err := db.previousDerivedFrom(last.derivedFrom.ID())
 	if err != nil {
-		return err
+		return types.DerivedBlockSealPair{}, err
 	}
 	// Remove the invalidated placeholder and everything after
 	err = db.store.Truncate(lastIndex - 1)
 	if err != nil {
-		return err
+		return types.DerivedBlockSealPair{}, err
 	}
 	replacement := types.DerivedBlockRefPair{
 		DerivedFrom: last.derivedFrom.ForceWithParent(prevDerivedFrom.ID()),
@@ -55,9 +57,9 @@ func (db *DB) ReplaceInvalidatedBlock(replacementDerived eth.BlockRef, invalidat
 	}
 	// Insert the replacement
 	if err := db.addLink(replacement.DerivedFrom, replacement.Derived, invalidated); err != nil {
-		return fmt.Errorf("failed to add %s as replacement at %s: %w", replacement.Derived, replacement.DerivedFrom, err)
+		return types.DerivedBlockSealPair{}, fmt.Errorf("failed to add %s as replacement at %s: %w", replacement.Derived, replacement.DerivedFrom, err)
 	}
-	return nil
+	return replacement.Seals(), nil
 }
 
 // RewindAndInvalidate rolls back the database to just before the invalidated block,
@@ -94,7 +96,7 @@ func (db *DB) RewindToL2(derived uint64) error {
 	defer db.rwLock.Unlock()
 	_, link, err := db.firstDerivedFrom(derived)
 	if err != nil {
-		return fmt.Errorf("failed to find last derived-from %d: %w", derived, err)
+		return fmt.Errorf("failed to find first derived-from %d: %w", derived, err)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,
@@ -108,7 +110,7 @@ func (db *DB) RewindToL1(derivedFrom uint64) error {
 	defer db.rwLock.Unlock()
 	_, link, err := db.lastDerivedAt(derivedFrom)
 	if err != nil {
-		return fmt.Errorf("failed to find last derived-from %d: %w", derivedFrom, err)
+		return fmt.Errorf("failed to find last derived %d: %w", derivedFrom, err)
 	}
 	return db.rewindLocked(types.DerivedBlockSealPair{
 		DerivedFrom: link.derivedFrom,

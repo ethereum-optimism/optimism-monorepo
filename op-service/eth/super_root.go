@@ -1,7 +1,6 @@
 package eth
 
 import (
-	"cmp"
 	"encoding/binary"
 	"encoding/json"
 	"errors"
@@ -35,20 +34,21 @@ func SuperRoot(super Super) Bytes32 {
 }
 
 type ChainIDAndOutput struct {
-	ChainID uint64
+	ChainID ChainID
 	Output  Bytes32
 }
 
 func (c *ChainIDAndOutput) Marshal() []byte {
 	d := make([]byte, 64)
-	binary.BigEndian.PutUint64(d[24:32], c.ChainID)
+	chainID := c.ChainID.Bytes32()
+	copy(d[0:32], chainID[:])
 	copy(d[32:], c.Output[:])
 	return d
 }
 
 func NewSuperV1(timestamp uint64, chains ...ChainIDAndOutput) *SuperV1 {
 	slices.SortFunc(chains, func(a, b ChainIDAndOutput) int {
-		return cmp.Compare(a.ChainID, b.ChainID)
+		return a.ChainID.Cmp(b.ChainID)
 	})
 	return &SuperV1{
 		Timestamp: timestamp,
@@ -103,7 +103,7 @@ func unmarshalSuperRootV1(data []byte) (*SuperV1, error) {
 	output.Timestamp = binary.BigEndian.Uint64(data[1:9])
 	for i := 9; i < len(data); i += 64 {
 		chainOutput := ChainIDAndOutput{
-			ChainID: binary.BigEndian.Uint64(data[i+24 : i+32]),
+			ChainID: ChainIDFromBytes32([32]byte(data[i : i+32])),
 			Output:  Bytes32(data[i+32 : i+64]),
 		}
 		output.Chains = append(output.Chains, chainOutput)
@@ -148,24 +148,27 @@ func (i *ChainRootInfo) UnmarshalJSON(input []byte) error {
 }
 
 type SuperRootResponse struct {
-	Timestamp uint64  `json:"timestamp"`
-	SuperRoot Bytes32 `json:"superRoot"`
+	CrossSafeDerivedFrom BlockID `json:"crossSafeDerivedFrom"`
+	Timestamp            uint64  `json:"timestamp"`
+	SuperRoot            Bytes32 `json:"superRoot"`
 	// Chains is the list of ChainRootInfo for each chain in the dependency set.
 	// It represents the state of the chain at or before the Timestamp.
 	Chains []ChainRootInfo `json:"chains"`
 }
 
 type superRootResponseMarshalling struct {
-	Timestamp hexutil.Uint64  `json:"timestamp"`
-	SuperRoot common.Hash     `json:"superRoot"`
-	Chains    []ChainRootInfo `json:"chains"`
+	CrossSafeDerivedFrom BlockID         `json:"crossSafeDerivedFrom"`
+	Timestamp            hexutil.Uint64  `json:"timestamp"`
+	SuperRoot            common.Hash     `json:"superRoot"`
+	Chains               []ChainRootInfo `json:"chains"`
 }
 
 func (r SuperRootResponse) MarshalJSON() ([]byte, error) {
 	return json.Marshal(&superRootResponseMarshalling{
-		Timestamp: hexutil.Uint64(r.Timestamp),
-		SuperRoot: common.Hash(r.SuperRoot),
-		Chains:    r.Chains,
+		CrossSafeDerivedFrom: r.CrossSafeDerivedFrom,
+		Timestamp:            hexutil.Uint64(r.Timestamp),
+		SuperRoot:            common.Hash(r.SuperRoot),
+		Chains:               r.Chains,
 	})
 }
 
@@ -174,6 +177,7 @@ func (r *SuperRootResponse) UnmarshalJSON(input []byte) error {
 	if err := json.Unmarshal(input, &dec); err != nil {
 		return err
 	}
+	r.CrossSafeDerivedFrom = dec.CrossSafeDerivedFrom
 	r.Timestamp = uint64(dec.Timestamp)
 	r.SuperRoot = Bytes32(dec.SuperRoot)
 	r.Chains = dec.Chains

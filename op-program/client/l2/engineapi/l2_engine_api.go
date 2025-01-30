@@ -338,7 +338,14 @@ func (ea *L2EngineAPI) NewPayloadV3(ctx context.Context, params *eth.ExecutionPa
 	// Payload must have eip-1559 params in ExtraData after Holocene
 	if ea.config().IsHolocene(uint64(params.Timestamp)) {
 		if err := eip1559.ValidateHoloceneExtraData(params.ExtraData); err != nil {
-			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holoocene"))
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("invalid holocene extraData post-holocene"))
+		}
+	}
+
+	// Payload must have WithdrawalsRoot after Isthmus
+	if ea.config().IsIsthmus(uint64(params.Timestamp)) {
+		if params.WithdrawalsRoot == nil {
+			return &eth.PayloadStatusV1{Status: eth.ExecutionInvalid}, engine.UnsupportedFork.With(errors.New("nil withdrawalsRoot post-isthmus"))
 		}
 	}
 
@@ -357,7 +364,7 @@ func (ea *L2EngineAPI) getPayload(_ context.Context, payloadId eth.PayloadID) (*
 		return nil, engine.UnknownPayload
 	}
 
-	return eth.BlockAsPayloadEnv(bl, ea.config().ShanghaiTime)
+	return eth.BlockAsPayloadEnv(bl, ea.config())
 }
 
 func (ea *L2EngineAPI) forkchoiceUpdated(_ context.Context, state *eth.ForkchoiceState, attr *eth.PayloadAttributes) (*eth.ForkchoiceUpdatedResult, error) {
@@ -486,23 +493,24 @@ func (ea *L2EngineAPI) newPayload(_ context.Context, payload *eth.ExecutionPaylo
 		txs[i] = tx
 	}
 	block, err := engine.ExecutableDataToBlock(engine.ExecutableData{
-		ParentHash:    payload.ParentHash,
-		FeeRecipient:  payload.FeeRecipient,
-		StateRoot:     common.Hash(payload.StateRoot),
-		ReceiptsRoot:  common.Hash(payload.ReceiptsRoot),
-		LogsBloom:     payload.LogsBloom[:],
-		Random:        common.Hash(payload.PrevRandao),
-		Number:        uint64(payload.BlockNumber),
-		GasLimit:      uint64(payload.GasLimit),
-		GasUsed:       uint64(payload.GasUsed),
-		Timestamp:     uint64(payload.Timestamp),
-		ExtraData:     payload.ExtraData,
-		BaseFeePerGas: (*uint256.Int)(&payload.BaseFeePerGas).ToBig(),
-		BlockHash:     payload.BlockHash,
-		Transactions:  txs,
-		Withdrawals:   toGethWithdrawals(payload),
-		ExcessBlobGas: (*uint64)(payload.ExcessBlobGas),
-		BlobGasUsed:   (*uint64)(payload.BlobGasUsed),
+		ParentHash:      payload.ParentHash,
+		FeeRecipient:    payload.FeeRecipient,
+		StateRoot:       common.Hash(payload.StateRoot),
+		ReceiptsRoot:    common.Hash(payload.ReceiptsRoot),
+		LogsBloom:       payload.LogsBloom[:],
+		Random:          common.Hash(payload.PrevRandao),
+		Number:          uint64(payload.BlockNumber),
+		GasLimit:        uint64(payload.GasLimit),
+		GasUsed:         uint64(payload.GasUsed),
+		Timestamp:       uint64(payload.Timestamp),
+		ExtraData:       payload.ExtraData,
+		BaseFeePerGas:   (*uint256.Int)(&payload.BaseFeePerGas).ToBig(),
+		BlockHash:       payload.BlockHash,
+		Transactions:    txs,
+		Withdrawals:     toGethWithdrawals(payload),
+		ExcessBlobGas:   (*uint64)(payload.ExcessBlobGas),
+		WithdrawalsRoot: payload.WithdrawalsRoot,
+		BlobGasUsed:     (*uint64)(payload.BlobGasUsed),
 	}, hashes, root, requests, ea.backend.Config())
 	if err != nil {
 		log.Debug("Invalid NewPayload params", "params", payload, "error", err)

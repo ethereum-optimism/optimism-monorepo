@@ -5,25 +5,33 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/core/rawdb"
 	"github.com/ethereum/go-ethereum/ethdb"
-	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 )
 
 var codePrefixedKeyLength = common.HashLength + len(rawdb.CodePrefix)
 
 var ErrInvalidKeyLength = errors.New("pre-images must be identified by 32-byte hash keys")
 
-type OracleKeyValueStore struct {
-	db      ethdb.KeyValueStore
-	oracle  StateOracle
-	chainID uint64
+// KeyValueStore is a subset of the ethdb.KeyValueStore interface that's required for block processing.
+type KeyValueStore interface {
+	ethdb.KeyValueReader
+	ethdb.Batcher
+	// Put inserts the given value into the key-value data store.
+	Put(key []byte, value []byte) error
 }
 
-func NewOracleBackedDB(oracle StateOracle, chainID uint64) *OracleKeyValueStore {
+type OracleKeyValueStore struct {
+	db      KeyValueStore
+	oracle  StateOracle
+	chainID eth.ChainID
+}
+
+func NewOracleBackedDB(kv KeyValueStore, oracle StateOracle, chainID eth.ChainID) *OracleKeyValueStore {
 	return &OracleKeyValueStore{
-		db:      memorydb.New(),
+		db:      kv,
 		oracle:  oracle,
 		chainID: chainID,
 	}

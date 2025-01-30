@@ -31,6 +31,6 @@ type L2Source interface {
 }
 
 type L2Sources interface {
-	ForChainID(chainID uint64) (L2Source, error)
-	ForChainIDWithoutRetries(chainID uint64) (L2Source, error)
+	ForChainID(chainID eth.ChainID) (L2Source, error)
+	ForChainIDWithoutRetries(chainID eth.ChainID) (L2Source, error)
 }

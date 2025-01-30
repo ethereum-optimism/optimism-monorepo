@@ -51,7 +51,7 @@ func (los *L1OriginSelector) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case engine.ForkchoiceUpdateEvent:
 		los.onForkchoiceUpdate(x.UnsafeL2Head)
-	case rollup.ResetEvent:
+	case rollup.ResetEvent, rollup.ForceResetEvent:
 		los.reset()
 	default:
 		return false

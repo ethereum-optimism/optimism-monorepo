@@ -84,6 +84,15 @@ OP Stack smart contracts are designed to utilize a single, consistent Solidity v
 refer to [SOLIDITY_UPGRADES.md](./meta/SOLIDITY_UPGRADES.md) to understand the process for updating to
 newer Solidity versions.
 
+### Frozen Code
+
+From time to time we need to ensure that certain files remain frozen, as they may be under audit or
+a large PR is in the works and we wish to avoid a large rebase. In order to enforce this,
+a hardcoded list of contracts is stored in `./scripts/checks/check-frozen-files.sh`. Any change
+which affects the resulting init or source code of that contract will cause a failure in CI.
+
+In order to remove a file from the freeze it must be removed from the check file.
+
 ## Deployment
 
 The smart contracts are deployed using `foundry`. The `DEPLOYMENT_OUTFILE` env var will determine the filepath that the
@@ -139,8 +148,8 @@ Use the env var `DEPLOY_CONFIG_PATH` to use a particular deploy config file at r
 
 The script will read the latest active fork from the deploy config and the L2 genesis allocs generated will be
 compatible with this fork. The automatically detected fork can be overwritten by setting the environment variable `FORK`
-either to the lower-case fork name (currently `delta`, `ecotone`, `fjord`, `granite`, or `holocene`) or to `latest`,
-which will select the latest fork available (currently `holocene`).
+either to the lower-case fork name (currently `delta`, `ecotone`, `fjord`, `granite`, `holocene` or `isthmus`) or to `latest`,
+which will select the latest fork available (currently `isthmus`).
 
 By default, the script will dump the L2 genesis allocs of the detected or selected fork only, to the file at `STATE_DUMP_PATH`.
 The optional environment variable `OUTPUT_MODE` allows to modify this behavior by setting it to one of the following values:

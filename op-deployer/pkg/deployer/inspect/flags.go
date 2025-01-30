@@ -69,14 +69,6 @@ var Commands = []*cli.Command{
 		Action:    L2SemversCLI,
 		Flags:     Flags,
 	},
-	{
-		Name:      "superchain-registry",
-		Usage:     "outputs the .env file expected by superchain-registry add-chain tool",
-		Args:      true,
-		ArgsUsage: "<l2-chain-id>",
-		Action:    SuperchainRegistryCLI,
-		Flags:     Flags,
-	},
 }
 
 type cliConfig struct {

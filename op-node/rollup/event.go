@@ -1,6 +1,9 @@
 package rollup
 
-import "github.com/ethereum-optimism/optimism/op-node/rollup/event"
+import (
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
+)
 
 // L1TemporaryErrorEvent identifies a temporary issue with the L1 data.
 type L1TemporaryErrorEvent struct {
@@ -35,6 +38,15 @@ var _ event.Event = ResetEvent{}
 
 func (ev ResetEvent) String() string {
 	return "reset-event"
+}
+
+// ForceResetEvent forces a reset to a specific unsafe/safe/finalized starting point.
+type ForceResetEvent struct {
+	Unsafe, Safe, Finalized eth.L2BlockRef
+}
+
+func (ev ForceResetEvent) String() string {
+	return "force-reset"
 }
 
 // CriticalErrorEvent is an alias for event.CriticalErrorEvent

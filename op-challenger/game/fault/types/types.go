@@ -32,6 +32,7 @@ const (
 	OPSuccinctGameType   GameType = 6
 	FastGameType         GameType = 254
 	AlphabetGameType     GameType = 255
+	KailuaGameType       GameType = 1337
 	UnknownGameType      GameType = math.MaxUint32
 )
 
@@ -57,6 +58,8 @@ func (t GameType) String() string {
 		return "fast"
 	case AlphabetGameType:
 		return "alphabet"
+	case KailuaGameType:
+		return "kailua"
 	default:
 		return fmt.Sprintf("<invalid: %d>", t)
 	}

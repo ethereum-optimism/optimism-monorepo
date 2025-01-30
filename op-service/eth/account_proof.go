@@ -13,7 +13,7 @@ import (
 )
 
 type StorageProofEntry struct {
-	Key   hexutil.Big     `json:"key"`
+	Key   StorageKey      `json:"key"`
 	Value hexutil.Big     `json:"value"`
 	Proof []hexutil.Bytes `json:"proof"`
 }
@@ -46,7 +46,7 @@ func (res *AccountResult) Verify(stateRoot common.Hash) error {
 				return fmt.Errorf("failed to load storage proof node %d of storage value %d into mem db: %w", j, i, err)
 			}
 		}
-		path := crypto.Keccak256(entry.Key.ToInt().FillBytes(make([]byte, 32)))
+		path := crypto.Keccak256(entry.Key)
 		val, err := trie.VerifyProof(res.StorageHash, path, db)
 		if err != nil {
 			return fmt.Errorf("failed to verify storage value %d with key %s (path %x) in storage trie %s: %w", i, entry.Key.String(), path, res.StorageHash, err)
