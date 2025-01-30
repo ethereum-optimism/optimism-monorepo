@@ -71,16 +71,10 @@ func (r *Rewinder) AttachEmitter(em event.Emitter) {
 func (r *Rewinder) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case superevents.RewindChainEvent:
-		r.handleEventRewindChain(x)
+		r.handleRewindChainEvent(x)
 		return true
 	case superevents.RewindAllChainsEvent:
-		r.syncNodes.Range(func(chainID eth.ChainID, source syncNode) bool {
-			r.emitter.Emit(superevents.RewindChainEvent{
-				ChainID:        chainID,
-				BadBlockHeight: x.BadBlock.Number,
-			})
-			return true
-		})
+		r.handleRewindAllChainsEvent(x)
 		return true
 	default:
 		return false
@@ -91,12 +85,27 @@ func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source syncNode) {
 	r.syncNodes.Set(chainID, source)
 }
 
-// handleEventRewindChain is the main entrypoint into a rewind call.
+func (r *Rewinder) handleRewindChainEvent(ev superevents.RewindChainEvent) {
+	if err := r.rewindChain(ev); err != nil {
+		r.log.Error("failed to rewind chain %s: %w", ev.ChainID, err)
+	}
+}
+func (r *Rewinder) handleRewindAllChainsEvent(ev superevents.RewindAllChainsEvent) {
+	r.syncNodes.Range(func(chainID eth.ChainID, source syncNode) bool {
+		r.emitter.Emit(superevents.RewindChainEvent{
+			ChainID:        chainID,
+			BadBlockHeight: ev.BadBlock.Number,
+		})
+		return true
+	})
+}
+
+// rewindChain is the main entrypoint into a rewind call.
 // It attempts to rewind the local and cross databases for the given chain for both safety levels.
 // It returns an error if the rewind fails for either safety level.
 // For each safety level, it will check between the bad block's parent and the finalized head
 // until it finds a match and then will rewind to that point.
-func (r *Rewinder) handleEventRewindChain(ev superevents.RewindChainEvent) error {
+func (r *Rewinder) rewindChain(ev superevents.RewindChainEvent) error {
 	if err := r.attemptRewindSafe(ev.ChainID, ev.BadBlockHeight); err != nil {
 		return fmt.Errorf("failed to rewind safe chain %s: %w", ev.ChainID, err)
 	}
@@ -106,7 +115,7 @@ func (r *Rewinder) handleEventRewindChain(ev superevents.RewindChainEvent) error
 	return nil
 }
 
-// attemptRewind attempts to rewind the local and cross databases for the given chain and controller
+// attemptRewind attempts to rewind the local and cross databases for the given chain and safety level
 func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctrl rewindController) error {
 	// First get the finalized head
 	finalizedHead, err := r.db.Finalized(chainID)
@@ -155,7 +164,7 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctr
 	return nil
 }
 
-// attemptRewindUnsafe attempts to rewind the local and cross databases for unsafe blocks.
+// attemptRewindUnsafe attempts to rewind unsafe blocks
 func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
 		isSafe:      false,
@@ -166,7 +175,7 @@ func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlockHeight uint6
 	})
 }
 
-// attemptRewindSafe attempts to rewind the local and cross databases for safe blocks.
+// attemptRewindSafe attempts to rewind safe blocks
 func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
 		isSafe:      true,
