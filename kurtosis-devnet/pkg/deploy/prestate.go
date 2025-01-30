@@ -53,7 +53,6 @@ func (h *localPrestateHolder) GetPrestateInfo() (*PrestateInfo, error) {
 	fileToKey := map[string]string{
 		"prestate-proof.json":         "prestate",
 		"prestate-proof-mt64.json":    "prestate_mt64",
-		"prestate-proof-mt.json":      "prestate_mt",
 		"prestate-proof-interop.json": "prestate_interop",
 	}
 

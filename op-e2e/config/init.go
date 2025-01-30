@@ -530,7 +530,7 @@ func cannonPrestate(monorepoRoot string, allocType AllocType) common.Hash {
 		once = &cannonPrestateSTOnce
 		cacheVar = &cannonPrestateST
 	} else {
-		filename = "prestate-proof-mt.json"
+		filename = "prestate-proof-mt64.json"
 		once = &cannonPrestateMTOnce
 		cacheVar = &cannonPrestateMT
 	}
