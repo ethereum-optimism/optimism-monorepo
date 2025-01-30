@@ -10,7 +10,7 @@ import (
 	"github.com/ethereum/go-ethereum/log"
 )
 
-// HeadSignalFn is used as callback function to accept head-signals
+// HeadSignalFn is used as a callback function to accept head-signals
 type HeadSignalFn func(ctx context.Context, sig L1BlockRef)
 
 type NewHeadSource interface {
