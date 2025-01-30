@@ -453,7 +453,7 @@ contract DeployImplementations is Script {
         deployPreimageOracleSingleton(_dii, _dio);
         deployMipsSingleton(_dii, _dio);
         deployDisputeGameFactoryImpl(_dio);
-        deployAnchorStateRegistryImpl(_dio);
+        deployAnchorStateRegistryImpl(_dii, _dio);
 
         // Deploy the OP Contracts Manager with the new implementations set.
         deployOPContractsManager(_dii, _dio);
@@ -696,15 +696,12 @@ contract DeployImplementations is Script {
         virtual
     {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
-        uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
         vm.broadcast(msg.sender);
         IOptimismPortal2 impl = IOptimismPortal2(
             DeployUtils.createDeterministic({
                 _name: "OptimismPortal2",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
-                    )
+                    abi.encodeCall(IOptimismPortal2.__constructor__, (proofMaturityDelaySeconds))
                 ),
                 _salt: _salt
             })
@@ -778,12 +775,21 @@ contract DeployImplementations is Script {
         _dio.set(_dio.disputeGameFactoryImpl.selector, address(impl));
     }
 
-    function deployAnchorStateRegistryImpl(DeployImplementationsOutput _dio) public virtual {
+    function deployAnchorStateRegistryImpl(
+        DeployImplementationsInput _dii,
+        DeployImplementationsOutput _dio
+    )
+        public
+        virtual
+    {
+        uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
         vm.broadcast(msg.sender);
         IAnchorStateRegistry impl = IAnchorStateRegistry(
             DeployUtils.createDeterministic({
                 _name: "AnchorStateRegistry",
-                _args: DeployUtils.encodeConstructor(abi.encodeCall(IAnchorStateRegistry.__constructor__, ())),
+                _args: DeployUtils.encodeConstructor(
+                    abi.encodeCall(IAnchorStateRegistry.__constructor__, (disputeGameFinalityDelaySeconds))
+                ),
                 _salt: _salt
             })
         );
@@ -913,20 +919,16 @@ contract DeployImplementationsInterop is DeployImplementations {
         override
     {
         uint256 proofMaturityDelaySeconds = _dii.proofMaturityDelaySeconds();
-        uint256 disputeGameFinalityDelaySeconds = _dii.disputeGameFinalityDelaySeconds();
         vm.broadcast(msg.sender);
         IOptimismPortalInterop impl = IOptimismPortalInterop(
             DeployUtils.createDeterministic({
                 _name: "OptimismPortalInterop",
                 _args: DeployUtils.encodeConstructor(
-                    abi.encodeCall(
-                        IOptimismPortalInterop.__constructor__, (proofMaturityDelaySeconds, disputeGameFinalityDelaySeconds)
-                    )
+                    abi.encodeCall(IOptimismPortalInterop.__constructor__, (proofMaturityDelaySeconds))
                 ),
                 _salt: _salt
             })
         );
-
         vm.label(address(impl), "OptimismPortalImpl");
         _dio.set(_dio.optimismPortalImpl.selector, address(impl));
     }

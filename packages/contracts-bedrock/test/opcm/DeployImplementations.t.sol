@@ -284,7 +284,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.deployPreimageOracleSingleton(dii, dio);
         deployImplementations.deployMipsSingleton(dii, dio);
         deployImplementations.deployDisputeGameFactoryImpl(dio);
-        deployImplementations.deployAnchorStateRegistryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dii, dio);
         deployImplementations.deployOPContractsManager(dii, dio);
 
         // Store the original addresses.
@@ -312,7 +312,7 @@ contract DeployImplementations_Test is Test {
         deployImplementations.deployPreimageOracleSingleton(dii, dio);
         deployImplementations.deployMipsSingleton(dii, dio);
         deployImplementations.deployDisputeGameFactoryImpl(dio);
-        deployImplementations.deployAnchorStateRegistryImpl(dio);
+        deployImplementations.deployAnchorStateRegistryImpl(dii, dio);
         deployImplementations.deployOPContractsManager(dii, dio);
 
         // Assert that the addresses did not change.
