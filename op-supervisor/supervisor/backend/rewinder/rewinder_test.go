@@ -57,7 +57,7 @@ func TestRewindLocalUnsafe(t *testing.T) {
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 		ChainID:  chainID,
-		BadBlock: block2A,
+		BadBlock: block2A.ID(),
 	}))
 
 	// Verify the reorg happened
@@ -126,7 +126,7 @@ func TestRewindCrossUnsafe(t *testing.T) {
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 		ChainID:  chainID,
-		BadBlock: block2A,
+		BadBlock: block2A.ID(),
 	}))
 
 	// Verify we rewound to block1
@@ -183,7 +183,7 @@ func TestRewindLocalSafe(t *testing.T) {
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 		ChainID:  chainID,
-		BadBlock: block2A,
+		BadBlock: block2A.ID(),
 	}))
 
 	// Verify the reorg happened
@@ -240,7 +240,7 @@ func TestRewindCrossSafe(t *testing.T) {
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 		ChainID:  chainID,
-		BadBlock: block2A,
+		BadBlock: block2A.ID(),
 	}))
 
 	// Verify we rewound to block1
@@ -324,7 +324,7 @@ func TestRewindLongChain(t *testing.T) {
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 		ChainID:  chainID,
-		BadBlock: blocks[96],
+		BadBlock: blocks[96].ID(),
 	}))
 
 	// Verify we rewound to block 95
@@ -368,7 +368,7 @@ func TestRewindMultiChain(t *testing.T) {
 	for chainID := range s.chains {
 		require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
 			ChainID:  chainID,
-			BadBlock: block2A,
+			BadBlock: block2A.ID(),
 		}))
 	}
 
