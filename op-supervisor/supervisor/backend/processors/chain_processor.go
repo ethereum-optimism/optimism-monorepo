@@ -261,21 +261,3 @@ func (s *ChainProcessor) process(ctx context.Context, next eth.BlockRef, receipt
 	s.log.Info("Indexed block events", "block", next, "txs", len(receipts))
 	return nil
 }
-
-// ResetToBlock resets the chain processor to the given block
-func (s *ChainProcessor) ResetToBlock(ctx context.Context, ref eth.L2BlockRef) error {
-	s.log.Info("Resetting chain processor", "ref", ref)
-
-	// Rewind the database to the given block
-	if err := s.rewinder.Rewind(s.chain, ref.ID()); err != nil {
-		return fmt.Errorf("failed to rewind database: %w", err)
-	}
-
-	// Emit a chain process event to restart processing from the new block
-	s.emitter.Emit(superevents.ChainProcessEvent{
-		ChainID: s.chain,
-		Target:  ref.Number,
-	})
-
-	return nil
-}
