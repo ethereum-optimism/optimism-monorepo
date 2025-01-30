@@ -168,6 +168,8 @@ func (s *ChainSpec) CheckForkActivation(log log.Logger, block eth.L2BlockRef) {
 		return
 	}
 
+	fmt.Printf("config: %+v\n", s.config)
+
 	if s.currentFork == "" {
 		// Initialize currentFork if it is not set yet
 		s.currentFork = Bedrock
