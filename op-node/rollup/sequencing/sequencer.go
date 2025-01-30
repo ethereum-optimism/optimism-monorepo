@@ -183,6 +183,8 @@ func (d *Sequencer) OnEvent(ev event.Event) bool {
 		d.onSequencerAction(x)
 	case rollup.EngineTemporaryErrorEvent:
 		d.onEngineTemporaryError(x)
+	case rollup.L1TemporaryErrorEvent:
+		d.onL1TemporaryError(x)
 	case rollup.ResetEvent:
 		d.onReset(x)
 	case engine.EngineResetConfirmedEvent:
@@ -404,6 +406,11 @@ func (d *Sequencer) onEngineTemporaryError(x rollup.EngineTemporaryErrorEvent) {
 	if d.latest.Info == (eth.PayloadInfo{}) {
 		d.latest = BuildingState{}
 	}
+}
+
+func (d *Sequencer) onL1TemporaryError(x rollup.L1TemporaryErrorEvent) {
+	d.nextAction = d.timeNow().Add(time.Second)
+	d.nextActionOK = d.active.Load()
 }
 
 func (d *Sequencer) onReset(x rollup.ResetEvent) {
