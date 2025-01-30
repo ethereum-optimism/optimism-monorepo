@@ -972,6 +972,13 @@ jobs:
           command: make op-program-client
           working_directory: op-program
       - run:
+          name: build op-program-host
+          command: make op-program-host
+          working_directory: op-program
+      - run:
+          name: build cannon
+          command: make cannon
+      - run:
           name: run tests
           no_output_timeout: <<parameters.no_output_timeout>>
           command: |
