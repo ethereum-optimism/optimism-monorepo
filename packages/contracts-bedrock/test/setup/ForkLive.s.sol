@@ -36,6 +36,7 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 ///         This contract must not have constructor logic because it is set into state using `etch`.
 contract ForkLive is Deployer {
     using stdToml for string;
+
     bool public useOpsRepo;
 
     /// @notice Returns the base chain name to use for forking

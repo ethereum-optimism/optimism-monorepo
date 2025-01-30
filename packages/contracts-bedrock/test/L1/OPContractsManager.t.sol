@@ -222,7 +222,9 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             vm.skip(true);
         }
 
-        skipIfOpsRepoTest("OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests");
+        skipIfOpsRepoTest(
+            "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
+        );
 
         absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
