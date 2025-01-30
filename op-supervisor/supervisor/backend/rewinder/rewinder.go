@@ -59,7 +59,7 @@ type Rewinder struct {
 
 func New(log log.Logger, db rewinderDB) *Rewinder {
 	return &Rewinder{
-		log: log.New("component", "invalidator"),
+		log: log.New("component", "rewinder"),
 		db:  db,
 	}
 }
