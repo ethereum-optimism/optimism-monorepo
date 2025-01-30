@@ -127,6 +127,8 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		eventSys:              eventSys,
 		sysCancel:             sysCancel,
 		sysContext:            sysCtx,
+
+		rewinder: rewinder.New(logger, chainsDBs),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
 
@@ -140,9 +142,6 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		err = fmt.Errorf("failed to init resources: %w", err)
 		return nil, errors.Join(err, super.Stop(ctx))
 	}
-
-	// create the invalidator
-	super.rewinder = rewinder.New(logger, chainsDBs)
 
 	return super, nil
 }
