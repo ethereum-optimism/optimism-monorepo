@@ -1096,24 +1096,22 @@ jobs:
           command: |
             # Use the actual hash for tags (hash can be found by reading releases.json)
             PRESTATE_HASH=$(jq -r .pre ./op-program/bin/prestate-proof.json)
-            PRESTATE_MT_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-mt.json)
+            PRESTATE_MT64_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-mt64.json)
             PRESTATE_INTEROP_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-interop.json)
 
             BRANCH_NAME=$(echo "<< pipeline.git.branch >>" | tr '/' '-')
-            echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
+            echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT64_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
             if [[ "" != "<< pipeline.git.branch >>" ]]
             then
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}"
               PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
-            gsutil cp ./op-program/bin/prestate-mt.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt.bin.gz"
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
       - notify-failures-on-develop:
