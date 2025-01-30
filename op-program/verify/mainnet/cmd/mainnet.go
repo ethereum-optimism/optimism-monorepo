@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/ethereum-optimism/optimism/op-program/verify"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const opMainnetChainID = 10
+var opMainnetChainID = eth.ChainIDFromUInt64(10)
 
 func main() {
 	var l1RpcUrl string

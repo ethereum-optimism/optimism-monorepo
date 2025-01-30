@@ -14,6 +14,7 @@ import (
 	opservice "github.com/ethereum-optimism/optimism/op-service"
 	"github.com/ethereum-optimism/optimism/op-service/client"
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/sources"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/log"
@@ -98,7 +99,7 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, cfg.Rollups[0].L2ChainID.Uint64(), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, eth.ChainIDFromBig(cfg.Rollups[0].L2ChainID), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
 }
 
 type programExecutor struct {
@@ -110,7 +111,7 @@ func (p *programExecutor) RunProgram(
 	ctx context.Context,
 	prefetcher hostcommon.Prefetcher,
 	blockNum uint64,
-	chainID uint64,
+	chainID eth.ChainID,
 ) error {
 	newCfg := *p.cfg
 	newCfg.L2ChainID = chainID

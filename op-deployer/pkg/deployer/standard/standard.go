@@ -5,13 +5,14 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum/go-ethereum/superchain"
+
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	op_service "github.com/ethereum-optimism/optimism/op-service"
 
 	"github.com/BurntSushi/toml"
 
-	"github.com/ethereum-optimism/superchain-registry/superchain"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -207,36 +208,14 @@ func ChallengerAddressFor(chainID uint64) (common.Address, error) {
 	}
 }
 
-func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
+func SuperchainFor(chainID uint64) (superchain.Superchain, error) {
 	switch chainID {
 	case 1:
-		return superchain.Superchains["mainnet"], nil
+		return superchain.GetSuperchain("mainnet")
 	case 11155111:
-		return superchain.Superchains["sepolia"], nil
+		return superchain.GetSuperchain("sepolia")
 	default:
-		return nil, fmt.Errorf("unsupported chain ID: %d", chainID)
-	}
-}
-
-func ChainNameFor(chainID uint64) (string, error) {
-	switch chainID {
-	case 1:
-		return "mainnet", nil
-	case 11155111:
-		return "sepolia", nil
-	default:
-		return "", fmt.Errorf("unrecognized l1 chain ID: %d", chainID)
-	}
-}
-
-func CommitForDeployTag(tag string) (string, error) {
-	switch tag {
-	case "op-contracts/v1.6.0":
-		return "33f06d2d5e4034125df02264a5ffe84571bd0359", nil
-	case "op-contracts/v1.7.0-beta.1+l2-contracts":
-		return "5e14a61547a45eef2ebeba677aee4a049f106ed8", nil
-	default:
-		return "", fmt.Errorf("unsupported tag: %s", tag)
+		return superchain.Superchain{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
 }
 
@@ -284,19 +263,6 @@ func SuperchainProxyAdminAddrFor(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x543bA4AADBAb8f9025686Bd03993043599c6fB04"), nil
 	case 11155111:
 		return common.HexToAddress("0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc"), nil
-	default:
-		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
-	}
-}
-
-func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
-	switch chainID {
-	case 1:
-		// Set to owner of superchain proxy admin
-		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
-	case 11155111:
-		// Set to development multisig
-		return common.HexToAddress("0xDEe57160aAfCF04c34C887B5962D0a69676d3C8B"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}

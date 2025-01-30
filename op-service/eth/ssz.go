@@ -18,6 +18,7 @@ const ( // iota is reset to 0
 	BlockV1 BlockVersion = iota
 	BlockV2
 	BlockV3
+	BlockV4
 )
 
 // ExecutionPayload and ExecutionPayloadEnvelope are the only SSZ types we have to marshal/unmarshal,
@@ -38,6 +39,8 @@ var (
 
 	ErrBadTransactionOffset = errors.New("transactions offset is smaller than extra data offset, aborting")
 	ErrBadWithdrawalsOffset = errors.New("withdrawals offset is smaller than transaction offset, aborting")
+	ErrBadExtraDataOffset   = errors.New("unexpected extra data offset")
+	ErrScopeTooSmall        = errors.New("scope too small to decode execution payload")
 
 	ErrMissingData = errors.New("execution payload envelope is missing data")
 )
@@ -49,8 +52,11 @@ const (
 	// V1 + Withdrawals offset
 	blockV2FixedPart = blockV1FixedPart + 4
 
-	// V2 + BlobGasUed + ExcessBlobGas
+	// V2 + BlobGasUsed + ExcessBlobGas
 	blockV3FixedPart = blockV2FixedPart + 8 + 8
+
+	// V3 + WithdrawalsRoot
+	blockV4FixedPart = blockV3FixedPart + 32
 
 	withdrawalSize = 8 + 8 + 20 + 8
 
@@ -64,19 +70,25 @@ const (
 )
 
 func (v BlockVersion) HasBlobProperties() bool {
-	return v == BlockV3
+	return v == BlockV3 || v == BlockV4
 }
 
 func (v BlockVersion) HasWithdrawals() bool {
-	return v == BlockV2 || v == BlockV3
+	return v == BlockV2 || v == BlockV3 || v == BlockV4
 }
 
 func (v BlockVersion) HasParentBeaconBlockRoot() bool {
-	return v == BlockV3
+	return v == BlockV3 || v == BlockV4
+}
+
+func (v BlockVersion) HasWithdrawalsRoot() bool {
+	return v == BlockV4
 }
 
 func executionPayloadFixedPart(version BlockVersion) uint32 {
-	if version == BlockV3 {
+	if version == BlockV4 {
+		return blockV4FixedPart
+	} else if version == BlockV3 {
 		return blockV3FixedPart
 	} else if version == BlockV2 {
 		return blockV2FixedPart
@@ -86,7 +98,9 @@ func executionPayloadFixedPart(version BlockVersion) uint32 {
 }
 
 func (payload *ExecutionPayload) inferVersion() BlockVersion {
-	if payload.ExcessBlobGas != nil && payload.BlobGasUsed != nil {
+	if payload.WithdrawalsRoot != nil && *payload.WithdrawalsRoot != types.EmptyWithdrawalsHash {
+		return BlockV4
+	} else if payload.ExcessBlobGas != nil && payload.BlobGasUsed != nil {
 		return BlockV3
 	} else if payload.Withdrawals != nil {
 		return BlockV2
@@ -197,7 +211,8 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 		offset += 4
 	}
 
-	if payload.inferVersion() == BlockV3 {
+	payloadVersion := payload.inferVersion()
+	if payloadVersion.HasBlobProperties() {
 		if payload.BlobGasUsed == nil || payload.ExcessBlobGas == nil {
 			return 0, errors.New("cannot encode ecotone payload without dencun header attributes")
 		}
@@ -205,6 +220,14 @@ func (payload *ExecutionPayload) MarshalSSZ(w io.Writer) (n int, err error) {
 		offset += 8
 		binary.LittleEndian.PutUint64(buf[offset:offset+8], uint64(*payload.ExcessBlobGas))
 		offset += 8
+	}
+
+	if payloadVersion.HasWithdrawalsRoot() {
+		if payload.WithdrawalsRoot == nil {
+			return 0, errors.New("cannot encode Isthmus payload without withdrawals root")
+		}
+		copy(buf[offset:offset+32], (*payload.WithdrawalsRoot)[:])
+		offset += 32
 	}
 
 	if payload.Withdrawals != nil && offset != fixedSize {
@@ -294,7 +317,7 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 	offset += 8
 	extraDataOffset := binary.LittleEndian.Uint32(buf[offset : offset+4])
 	if extraDataOffset != fixedSize {
-		return fmt.Errorf("unexpected extra data offset: %d <> %d", extraDataOffset, fixedSize)
+		return fmt.Errorf("%w: %d <> %d", ErrBadExtraDataOffset, extraDataOffset, fixedSize)
 	}
 	offset += 4
 	unmarshalBytes32LE(buf[offset:offset+32], &payload.BaseFeePerGas)
@@ -324,13 +347,22 @@ func (payload *ExecutionPayload) UnmarshalSSZ(version BlockVersion, scope uint32
 		}
 	}
 
-	if version == BlockV3 {
+	if version.HasBlobProperties() {
 		blobGasUsed := binary.LittleEndian.Uint64(buf[offset : offset+8])
 		payload.BlobGasUsed = (*Uint64Quantity)(&blobGasUsed)
 		offset += 8
 		excessBlobGas := binary.LittleEndian.Uint64(buf[offset : offset+8])
 		payload.ExcessBlobGas = (*Uint64Quantity)(&excessBlobGas)
+		offset += 8
 	}
+
+	if version.HasWithdrawalsRoot() {
+		withdrawalsRoot := common.Hash{}
+		copy(withdrawalsRoot[:], buf[offset:offset+32])
+		payload.WithdrawalsRoot = &withdrawalsRoot
+		offset += 32
+	}
+
 	_ = offset // for future extensions: we keep the offset accurate for extensions
 
 	if transactionsOffset > extraDataOffset+32 || transactionsOffset > scope {
@@ -438,9 +470,9 @@ func unmarshalTransactions(in []byte) (txs []Data, err error) {
 }
 
 // UnmarshalSSZ decodes the ExecutionPayloadEnvelope as SSZ type
-func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(scope uint32, r io.Reader) error {
+func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(version BlockVersion, scope uint32, r io.Reader) error {
 	if scope < common.HashLength {
-		return fmt.Errorf("scope too small to decode execution payload envelope: %d", scope)
+		return fmt.Errorf("%w: %d", ErrScopeTooSmall, scope)
 	}
 
 	data := make([]byte, common.HashLength)
@@ -453,7 +485,7 @@ func (envelope *ExecutionPayloadEnvelope) UnmarshalSSZ(scope uint32, r io.Reader
 	copy(envelope.ParentBeaconBlockRoot[:], data)
 
 	var payload ExecutionPayload
-	err = payload.UnmarshalSSZ(BlockV3, scope-32, r)
+	err = payload.UnmarshalSSZ(version, scope-32, r)
 	if err != nil {
 		return err
 	}

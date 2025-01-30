@@ -52,7 +52,7 @@ func testBlock(t *testing.T, block *types.Block, hintL2ChainIDs bool) {
 		preimages[preimage.Keccak256Key(crypto.Keccak256Hash(p)).PreimageKey()] = p
 	}
 
-	chainID := uint64(4924)
+	chainID := eth.ChainIDFromUInt64(4924)
 
 	// Prepare a raw mock pre-image oracle that will serve the pre-image data and handle hints
 
@@ -94,7 +94,7 @@ func TestPreimageOracleNodeByHash(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 
 	for i := 0; i < 10; i++ {
-		chainID := rng.Uint64()
+		chainID := eth.ChainIDFromUInt64(rng.Uint64())
 		t.Run(fmt.Sprintf("legacy_node_%d", i), func(t *testing.T) {
 			po, hints, preimages := mockPreimageOracle(t, false)
 
@@ -131,7 +131,7 @@ func TestPreimageOracleCodeByHash(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 
 	for i := 0; i < 10; i++ {
-		chainID := rng.Uint64()
+		chainID := eth.ChainIDFromUInt64(rng.Uint64())
 		t.Run(fmt.Sprintf("legacy_code_%d", i), func(t *testing.T) {
 			po, hints, preimages := mockPreimageOracle(t, false)
 
@@ -168,7 +168,7 @@ func TestPreimageOracleOutputByRoot(t *testing.T) {
 	rng := rand.New(rand.NewSource(123))
 
 	for i := 0; i < 10; i++ {
-		chainID := rng.Uint64()
+		chainID := eth.ChainIDFromUInt64(rng.Uint64())
 		t.Run(fmt.Sprintf("legacy_output_%d", i), func(t *testing.T) {
 			po, hints, preimages := mockPreimageOracle(t, false)
 			output := testutils.RandomOutputV0(rng)

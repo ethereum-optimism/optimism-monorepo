@@ -5,11 +5,8 @@ import { Script } from "forge-std/Script.sol";
 import { console2 as console } from "forge-std/console2.sol";
 import { stdJson } from "forge-std/StdJson.sol";
 
-import { IAutomate as IGelato } from "gelato/interfaces/IAutomate.sol";
-
 import { Drippie } from "src/periphery/drippie/Drippie.sol";
 import { CheckBalanceLow } from "src/periphery/drippie/dripchecks/CheckBalanceLow.sol";
-import { CheckGelatoLow } from "src/periphery/drippie/dripchecks/CheckGelatoLow.sol";
 import { CheckSecrets } from "src/periphery/drippie/dripchecks/CheckSecrets.sol";
 
 /// @title DrippieConfig
@@ -47,9 +44,6 @@ contract DrippieConfig is Script {
     /// @notice Drippie contract.
     Drippie public drippie;
 
-    /// @notice Gelato automation contract.
-    IGelato public gelato;
-
     /// @notice Prefix for the configuration file.
     string public prefix;
 
@@ -75,9 +69,6 @@ contract DrippieConfig is Script {
 
         // Load the Drippie contract address.
         drippie = Drippie(payable(stdJson.readAddress(_json, "$.drippie")));
-
-        // Load the Gelato contract address.
-        gelato = IGelato(stdJson.readAddress(_json, "$.gelato"));
 
         // Load the prefix.
         prefix = stdJson.readString(_json, "$.prefix");
@@ -120,8 +111,6 @@ contract DrippieConfig is Script {
             console.log("DrippieConfig: attempting to decode check parameters for %s", fullname);
             if (strcmp(dripcheck, "CheckBalanceLow")) {
                 abi.decode(checkparams, (CheckBalanceLow.Params));
-            } else if (strcmp(dripcheck, "CheckGelatoLow")) {
-                abi.decode(checkparams, (CheckGelatoLow.Params));
             } else if (strcmp(dripcheck, "CheckSecrets")) {
                 abi.decode(checkparams, (CheckSecrets.Params));
             } else if (strcmp(dripcheck, "CheckTrue")) {

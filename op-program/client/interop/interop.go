@@ -13,6 +13,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
+	ethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -39,7 +40,19 @@ type taskExecutor interface {
 		agreedOutputRoot eth.Bytes32,
 		claimedBlockNumber uint64,
 		l1Oracle l1.Oracle,
-		l2Oracle l2.Oracle) (tasks.DerivationResult, error)
+		l2Oracle l2.Oracle,
+	) (tasks.DerivationResult, error)
+
+	BuildDepositOnlyBlock(
+		logger log.Logger,
+		rollupCfg *rollup.Config,
+		l2ChainConfig *params.ChainConfig,
+		l1Head common.Hash,
+		agreedL2OutputRoot eth.Bytes32,
+		l1Oracle l1.Oracle,
+		l2Oracle l2.Oracle,
+		optimisticBlock *ethtypes.Block,
+	) (blockHash common.Hash, outputRoot eth.Bytes32, err error)
 }
 
 func RunInteropProgram(logger log.Logger, bootInfo *boot.BootInfoInterop, l1PreimageOracle l1.Oracle, l2PreimageOracle l2.Oracle, validateClaim bool) error {
@@ -91,11 +104,8 @@ func stateTransition(logger log.Logger, bootInfo *boot.BootInfoInterop, l1Preima
 		if len(transitionState.PendingProgress) >= ConsolidateStep {
 			return common.Hash{}, fmt.Errorf("pending progress length does not match the expected step")
 		}
-		deps, err := newConsolidateCheckDeps(superRoot.Chains, l2PreimageOracle)
-		if err != nil {
-			return common.Hash{}, fmt.Errorf("failed to create consolidate check deps: %w", err)
-		}
-		expectedSuperRoot, err := RunConsolidation(deps, l2PreimageOracle, transitionState, superRoot)
+		expectedSuperRoot, err := RunConsolidation(
+			logger, bootInfo, l1PreimageOracle, l2PreimageOracle, transitionState, superRoot, tasks)
 		if err != nil {
 			return common.Hash{}, err
 		}
@@ -178,7 +188,8 @@ func (t *interopTaskExecutor) RunDerivation(
 	agreedOutputRoot eth.Bytes32,
 	claimedBlockNumber uint64,
 	l1Oracle l1.Oracle,
-	l2Oracle l2.Oracle) (tasks.DerivationResult, error) {
+	l2Oracle l2.Oracle,
+) (tasks.DerivationResult, error) {
 	return tasks.RunDerivation(
 		logger,
 		rollupCfg,
@@ -187,5 +198,28 @@ func (t *interopTaskExecutor) RunDerivation(
 		common.Hash(agreedOutputRoot),
 		claimedBlockNumber,
 		l1Oracle,
-		l2Oracle)
+		l2Oracle,
+	)
+}
+
+func (t *interopTaskExecutor) BuildDepositOnlyBlock(
+	logger log.Logger,
+	rollupCfg *rollup.Config,
+	l2ChainConfig *params.ChainConfig,
+	l1Head common.Hash,
+	agreedL2OutputRoot eth.Bytes32,
+	l1Oracle l1.Oracle,
+	l2Oracle l2.Oracle,
+	optimisticBlock *ethtypes.Block,
+) (common.Hash, eth.Bytes32, error) {
+	return tasks.BuildDepositOnlyBlock(
+		logger,
+		rollupCfg,
+		l2ChainConfig,
+		optimisticBlock,
+		l1Head,
+		agreedL2OutputRoot,
+		l1Oracle,
+		l2Oracle,
+	)
 }

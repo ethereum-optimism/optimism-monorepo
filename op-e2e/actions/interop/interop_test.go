@@ -7,21 +7,25 @@ import (
 	"math/big"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
+	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/crypto"
+
 	"github.com/ethereum-optimism/optimism/op-challenger/game/fault/trace/super"
 	challengerTypes "github.com/ethereum-optimism/optimism/op-challenger/game/fault/types"
+	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
 	fpHelpers "github.com/ethereum-optimism/optimism/op-e2e/actions/proofs/helpers"
+	"github.com/ethereum-optimism/optimism/op-e2e/e2eutils/interop/contracts/bindings/inbox"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
 	"github.com/ethereum-optimism/optimism/op-program/client/claim"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/interop/types"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
+	"github.com/ethereum-optimism/optimism/op-service/predeploys"
 	"github.com/ethereum-optimism/optimism/op-service/testlog"
-	"github.com/ethereum/go-ethereum/common"
-	"github.com/ethereum/go-ethereum/crypto"
-	"github.com/stretchr/testify/require"
-
-	"github.com/ethereum-optimism/optimism/op-e2e/actions/helpers"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 )
 
 func TestFullInterop(gt *testing.T) {
@@ -83,7 +87,8 @@ func TestFullInterop(gt *testing.T) {
 	actors.ChainA.Sequencer.SyncSupervisor(t)    // supervisor to react to exhaust-L1
 	actors.ChainA.Sequencer.ActL2PipelineFull(t) // node to complete syncing to L1 head.
 
-	actors.ChainA.Sequencer.ActL1HeadSignal(t) // TODO: two sources of L1 head
+	// TODO(#13972): two sources of L1 head
+	actors.ChainA.Sequencer.ActL1HeadSignal(t)
 	status = actors.ChainA.Sequencer.SyncStatus()
 	require.Equal(t, head, status.UnsafeL2.ID())
 	require.Equal(t, head, status.CrossUnsafeL2.ID())
@@ -218,6 +223,129 @@ func TestFinality(gt *testing.T) {
 	gt.Run("Finalize", func(t *testing.T) {
 		testFinality(statefulT, 0)
 	})
+}
+
+func TestInteropLocalSafeInvalidation(gt *testing.T) {
+	t := helpers.NewDefaultTesting(gt)
+
+	is := SetupInterop(t)
+	actors := is.CreateActors()
+
+	// get both sequencers set up
+	actors.ChainA.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+
+	// sync the supervisor, handle initial events emitted by the nodes
+	actors.ChainA.Sequencer.SyncSupervisor(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+
+	genesisB := actors.ChainB.Sequencer.SyncStatus()
+
+	// build L2 block on chain B with invalid executing message pointing to A.
+	fakeMessage := []byte("this message was never emitted")
+	aliceB := setupUser(t, is, actors.ChainB, 0)
+	auth := newL2TxOpts(t, aliceB.secret, actors.ChainB)
+	id := inbox.Identifier{
+		Origin:      common.Address{0x42},
+		BlockNumber: new(big.Int).SetUint64(genesisB.UnsafeL2.Number),
+		LogIndex:    common.Big0,
+		Timestamp:   new(big.Int).SetUint64(genesisB.UnsafeL2.Time),
+		ChainId:     actors.ChainA.RollupCfg.L2ChainID,
+	}
+	contract, err := inbox.NewInbox(predeploys.CrossL2InboxAddr, actors.ChainB.SequencerEngine.EthClient())
+	require.NoError(t, err)
+	tx, err := contract.ValidateMessage(auth, id, crypto.Keccak256Hash(fakeMessage))
+	require.NoError(t, err)
+
+	actors.ChainB.Sequencer.ActL2StartBlock(t)
+	require.NoError(t, actors.ChainB.SequencerEngine.EngineApi.IncludeTx(tx, aliceB.address))
+	actors.ChainB.Sequencer.ActL2EndBlock(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	originalBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
+	require.Equal(t, uint64(1), originalBlock.Number)
+
+	// build another empty L2 block, that will get reorged out
+	actors.ChainB.Sequencer.ActL2StartBlock(t)
+	actors.ChainB.Sequencer.ActL2EndBlock(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	extraBlock := actors.ChainB.Sequencer.SyncStatus().UnsafeL2
+	require.Equal(t, uint64(2), extraBlock.Number)
+
+	// batch-submit the L2 block to L1
+	actors.ChainB.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+
+	// Signal the supervisor there is a new L1 block
+	actors.Supervisor.SignalLatestL1(t)
+	// sync the op-node, to signal that derivation needs the new L1 block
+	t.Log("awaiting L1-exhaust event")
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// sync the supervisor, so it can pass the L1 block to op-node
+	t.Log("awaiting supervisor to provide L1 data")
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	// sync the op-node, so it derives the local-safe head
+	t.Log("awaiting node to sync")
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// Both L2 blocks were derived from the same L1 batch, and should have been processed into local-safe updates
+	require.Equal(t, uint64(2), actors.ChainB.Sequencer.SyncStatus().LocalSafeL2.Number)
+	// Make the supervisor process the derivation work from the op-node.
+	// It should determine that the local-safe block needs replacement.
+	t.Log("Expecting supervisor to sync and catch local-safe dependency issue")
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	// check supervisor head, expect it to be rewound
+	localUnsafe, err := actors.Supervisor.LocalUnsafe(t.Ctx(), actors.ChainB.ChainID)
+	require.NoError(t, err)
+	require.Equal(t, uint64(0), localUnsafe.Number, "unsafe chain needs to be rewound")
+
+	// Make the op-node do the processing to build the replacement
+	t.Log("Expecting op-node to build replacement block")
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// Make the supervisor pick up the replacement
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.ProcessFull(t)
+	// Check that the replacement is recognized as cross-safe
+	crossSafe, err := actors.Supervisor.CrossSafe(t.Ctx(), actors.ChainB.ChainID)
+	require.NoError(t, err)
+	require.NotEqual(t, originalBlock.ID(), crossSafe.Derived)
+	require.NotEqual(t, extraBlock.ID(), crossSafe.Derived)
+	require.Equal(t, uint64(1), crossSafe.Derived.Number)
+
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// check op-node head matches replacement block
+	status := actors.ChainB.Sequencer.SyncStatus()
+	require.Equal(t, crossSafe.Derived, status.SafeL2.ID())
+
+	// Parse system tx from replacement block, assert it matches the original block
+	replacementBlock, err := actors.ChainB.SequencerEngine.EthClient().BlockByHash(t.Ctx(), status.SafeL2.Hash)
+	require.NoError(t, err)
+	txs := replacementBlock.Transactions()
+	out, err := managed.DecodeInvalidatedBlockTx(txs[len(txs)-1])
+	require.NoError(t, err)
+	require.Equal(t, originalBlock.Hash, out.BlockHash)
+
+	// Now check if we can continue to build L2 blocks on top of the new chain.
+	// Build a new L2 block
+	actors.ChainB.Sequencer.ActL2StartBlock(t)
+	actors.ChainB.Sequencer.ActL2EndBlock(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	// Batch submit the L2 block to L1
+	actors.ChainB.Batcher.ActSubmitAll(t)
+	actors.L1Miner.ActL1StartBlock(12)(t)
+	actors.L1Miner.ActL1IncludeTx(actors.ChainB.BatcherAddr)(t)
+	actors.L1Miner.ActL1EndBlock(t)
+	// Sync the sequencer / supervisor, so the indexing, local-safe, cross-safe changes all propagate.
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	actors.ChainB.Sequencer.SyncSupervisor(t)
+	actors.Supervisor.SignalLatestL1(t)
+	actors.Supervisor.ProcessFull(t)
+	actors.ChainB.Sequencer.ActL2PipelineFull(t)
+	status = actors.ChainB.Sequencer.SyncStatus()
+	require.Equal(t, uint64(2), status.SafeL2.Number)
 }
 
 func TestInteropFaultProofs(gt *testing.T) {

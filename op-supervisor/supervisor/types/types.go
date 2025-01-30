@@ -274,6 +274,13 @@ func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
 	}
 }
 
+func (refs *DerivedBlockRefPair) Seals() DerivedBlockSealPair {
+	return DerivedBlockSealPair{
+		DerivedFrom: BlockSealFromRef(refs.DerivedFrom),
+		Derived:     BlockSealFromRef(refs.Derived),
+	}
+}
+
 // DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
 type DerivedBlockSealPair struct {
 	DerivedFrom BlockSeal `json:"derivedFrom"`
@@ -293,6 +300,11 @@ type DerivedIDPair struct {
 	Derived     eth.BlockID `json:"derived"`
 }
 
+type BlockReplacement struct {
+	Replacement eth.BlockRef `json:"replacement"`
+	Invalidated common.Hash  `json:"invalidated"`
+}
+
 // ManagedEvent is an event sent by the managed node to the supervisor,
 // to share an update. One of the fields will be non-null; different kinds of updates may be sent.
 type ManagedEvent struct {
@@ -300,4 +312,5 @@ type ManagedEvent struct {
 	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
 	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
 	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock     *BlockReplacement    `json:"replaceBlock,omitempty"`
 }
