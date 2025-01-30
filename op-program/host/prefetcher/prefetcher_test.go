@@ -994,7 +994,6 @@ type mockExecutor struct {
 	invoked     bool
 	blockNumber uint64
 	chainID     eth.ChainID
-	db          l2.KeyValueStore
 }
 
 func (m *mockExecutor) RunProgram(
@@ -1002,7 +1001,6 @@ func (m *mockExecutor) RunProgram(
 	m.invoked = true
 	m.blockNumber = blockNumber
 	m.chainID = chainID
-	m.db = db
 	return nil
 }
 

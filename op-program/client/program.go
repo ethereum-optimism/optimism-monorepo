@@ -11,6 +11,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-program/client/interop"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
+	"github.com/ethereum-optimism/optimism/op-program/client/tasks"
 	oplog "github.com/ethereum-optimism/optimism/op-service/log"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
@@ -20,6 +21,7 @@ type Config struct {
 	SkipValidation bool
 	InteropEnabled bool
 	DB             l2.KeyValueStore
+	StoreBlockData bool
 }
 
 // Main executes the client program in a detached context and exits the current process.
@@ -68,5 +70,6 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 		return errors.New("db config is required")
 	}
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
-	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB)
+	derivationOptions := tasks.DerivationOptions{StoreBlockData: cfg.StoreBlockData}
+	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB, derivationOptions)
 }

@@ -16,6 +16,7 @@ import (
 	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
+	"github.com/ethereum/go-ethereum/rlp"
 )
 
 type L2Source interface {
@@ -26,6 +27,12 @@ type DerivationResult struct {
 	Head       eth.L2BlockRef
 	BlockHash  common.Hash
 	OutputRoot eth.Bytes32
+}
+
+type DerivationOptions struct {
+	// StoreBlockData controls whether block data, including intermediate trie nodes from transactions and receipts
+	// of the derived block should be stored in the l2.KeyValueStore.
+	StoreBlockData bool
 }
 
 // RunDerivation executes the L2 state transition, given a minimal interface to retrieve data.
@@ -43,6 +50,7 @@ func RunDerivation(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 	db l2.KeyValueStore,
+	options DerivationOptions,
 ) (DerivationResult, error) {
 	l1Source := l1.NewOracleL1Client(logger, l1Oracle, l1Head)
 	l1BlobsSource := l1.NewBlobFetcher(logger, l1Oracle)
@@ -59,10 +67,13 @@ func RunDerivation(
 		return DerivationResult{}, fmt.Errorf("failed to run program to completion: %w", err)
 	}
 	logger.Info("Derivation complete", "head", result)
-	if err := writeTrieNodes(result, db, engineBackend); err != nil {
-		return DerivationResult{}, fmt.Errorf("failed to write trie nodes: %w", err)
+
+	if options.StoreBlockData {
+		if err := storeBlockData(result, db, engineBackend); err != nil {
+			return DerivationResult{}, fmt.Errorf("failed to write trie nodes: %w", err)
+		}
+		logger.Info("Trie nodes written")
 	}
-	logger.Info("Trie nodes written")
 	return loadOutputRoot(l2ClaimBlockNum, result, l2Source)
 }
 
@@ -78,11 +89,20 @@ func loadOutputRoot(l2ClaimBlockNum uint64, head eth.L2BlockRef, src L2Source) (
 	}, nil
 }
 
-func writeTrieNodes(derived eth.L2BlockRef, db l2.KeyValueStore, backend engineapi.CachingEngineBackend) error {
+func storeBlockData(derived eth.L2BlockRef, db l2.KeyValueStore, backend engineapi.CachingEngineBackend) error {
 	block := backend.GetBlockByHash(derived.Hash)
 	if block == nil {
 		return fmt.Errorf("derived block %v is missing", derived.Hash)
 	}
+	headerRLP, err := rlp.EncodeToBytes(block.Header())
+	if err != nil {
+		return fmt.Errorf("failed to encode block header: %w", err)
+	}
+	blockHashKey := preimage.Keccak256Key(derived.Hash).PreimageKey()
+	if err := db.Put(blockHashKey[:], headerRLP); err != nil {
+		return fmt.Errorf("failed to store block header: %w", err)
+	}
+
 	opaqueTxs, err := eth.EncodeTransactions(block.Transactions())
 	if err != nil {
 		return err

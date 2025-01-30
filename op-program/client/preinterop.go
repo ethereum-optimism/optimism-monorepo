@@ -16,6 +16,7 @@ func RunPreInteropProgram(
 	l1PreimageOracle *l1.CachingOracle,
 	l2PreimageOracle *l2.CachingOracle,
 	db l2.KeyValueStore,
+	opts tasks.DerivationOptions,
 ) error {
 	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
 	result, err := tasks.RunDerivation(
@@ -28,6 +29,7 @@ func RunPreInteropProgram(
 		l1PreimageOracle,
 		l2PreimageOracle,
 		db,
+		opts,
 	)
 	if err != nil {
 		return err
