@@ -27,7 +27,7 @@ import { IL1StandardBridge } from "interfaces/L1/IL1StandardBridge.sol";
 import { IOptimismMintableERC20Factory } from "interfaces/universal/IOptimismMintableERC20Factory.sol";
 import { IOptimismPortalInterop } from "interfaces/L1/IOptimismPortalInterop.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
-import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
+
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { Solarray } from "scripts/libraries/Solarray.sol";
 import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
@@ -40,7 +40,7 @@ contract DeployImplementationsInput is BaseDeployIO {
     uint256 internal _proofMaturityDelaySeconds;
     uint256 internal _disputeGameFinalityDelaySeconds;
     uint256 internal _mipsVersion;
-
+    address internal _superchainProxyAdmin;
     // This is used in opcm to signal which version of the L1 smart contracts is deployed.
     // It takes the format of `op-contracts/v*.*.*`.
     string internal _l1ContractsRelease;
@@ -48,7 +48,6 @@ contract DeployImplementationsInput is BaseDeployIO {
     // Outputs from DeploySuperchain.s.sol.
     ISuperchainConfig internal _superchainConfigProxy;
     IProtocolVersions internal _protocolVersionsProxy;
-    IProxyAdmin internal _superchainProxyAdmin;
     address internal _upgradeController;
 
     function set(bytes4 _sel, uint256 _value) public {
@@ -80,9 +79,9 @@ contract DeployImplementationsInput is BaseDeployIO {
 
     function set(bytes4 _sel, address _addr) public {
         require(_addr != address(0), "DeployImplementationsInput: cannot set zero address");
-        if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
+        if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = _addr;
+        else if (_sel == this.superchainConfigProxy.selector) _superchainConfigProxy = ISuperchainConfig(_addr);
         else if (_sel == this.protocolVersionsProxy.selector) _protocolVersionsProxy = IProtocolVersions(_addr);
-        else if (_sel == this.superchainProxyAdmin.selector) _superchainProxyAdmin = IProxyAdmin(_addr);
         else if (_sel == this.upgradeController.selector) _upgradeController = _addr;
         else revert("DeployImplementationsInput: unknown selector");
     }
@@ -135,7 +134,7 @@ contract DeployImplementationsInput is BaseDeployIO {
         return _protocolVersionsProxy;
     }
 
-    function superchainProxyAdmin() public view returns (IProxyAdmin) {
+    function superchainProxyAdmin() public view returns (address) {
         require(address(_superchainProxyAdmin) != address(0), "DeployImplementationsInput: not set");
         return _superchainProxyAdmin;
     }
@@ -480,7 +479,6 @@ contract DeployImplementations is Script {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
-        IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
         address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
@@ -495,7 +493,7 @@ contract DeployImplementations is Script {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
         vm.broadcast(msg.sender);
@@ -508,7 +506,6 @@ contract DeployImplementations is Script {
                         (
                             superchainConfigProxy,
                             protocolVersionsProxy,
-                            superchainProxyAdmin,
                             _l1ContractsRelease,
                             _blueprints,
                             implementations,
@@ -757,11 +754,9 @@ contract DeployImplementations is Script {
         uint256 mipsVersion = _dii.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
 
-        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips64 on production networks.
-        if (mipsVersion == 1) {
-            if (block.chainid == Chains.Mainnet || block.chainid == Chains.Sepolia) {
-                revert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
-            }
+        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips32 on production networks.
+        if (mipsVersion != 1) {
+            revert("DeployImplementations: Should deploy Mips32 for Upgrade 13");
         }
 
         vm.broadcast(msg.sender);
@@ -872,7 +867,6 @@ contract DeployImplementationsInterop is DeployImplementations {
     {
         ISuperchainConfig superchainConfigProxy = _dii.superchainConfigProxy();
         IProtocolVersions protocolVersionsProxy = _dii.protocolVersionsProxy();
-        IProxyAdmin superchainProxyAdmin = _dii.superchainProxyAdmin();
         address upgradeController = _dii.upgradeController();
 
         IOPContractsManager.Implementations memory implementations = IOPContractsManager.Implementations({
@@ -887,7 +881,7 @@ contract DeployImplementationsInterop is DeployImplementations {
             disputeGameFactoryImpl: address(_dio.disputeGameFactoryImpl()),
             anchorStateRegistryImpl: address(_dio.anchorStateRegistryImpl()),
             delayedWETHImpl: address(_dio.delayedWETHImpl()),
-            mips64Impl: address(_dio.mipsSingleton())
+            mipsImpl: address(_dio.mipsSingleton())
         });
 
         vm.broadcast(msg.sender);
@@ -900,7 +894,6 @@ contract DeployImplementationsInterop is DeployImplementations {
                         (
                             superchainConfigProxy,
                             protocolVersionsProxy,
-                            superchainProxyAdmin,
                             _l1ContractsRelease,
                             _blueprints,
                             implementations,

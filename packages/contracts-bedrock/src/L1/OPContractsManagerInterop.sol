@@ -10,7 +10,6 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
-import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 contract OPContractsManagerInterop is OPContractsManager {
     /// @custom:semver +interop
@@ -21,7 +20,6 @@ contract OPContractsManagerInterop is OPContractsManager {
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
-        IProxyAdmin _superchainProxyAdmin,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
         Implementations memory _implementations,
@@ -30,7 +28,6 @@ contract OPContractsManagerInterop is OPContractsManager {
         OPContractsManager(
             _superchainConfig,
             _protocolVersions,
-            _superchainProxyAdmin,
             _l1ContractsRelease,
             _blueprints,
             _implementations,

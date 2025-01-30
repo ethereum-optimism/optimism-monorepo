@@ -12,7 +12,7 @@ import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
 
 // Libraries
-import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
+import { GameTypes } from "src/dispute/lib/Types.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 // Interfaces
@@ -21,6 +21,7 @@ import { IPermissionedDisputeGame } from "interfaces/dispute/IPermissionedDisput
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAddressManager } from "interfaces/legacy/IAddressManager.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
+import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
@@ -170,20 +171,21 @@ contract ForkLive is Deployer {
         ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
         IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
 
+        ISuperchainConfig superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
+        IProxyAdmin superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
+
         address upgrader = proxyAdmin.owner();
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        IOPContractsManager.OpChainConfig[] memory opChains = new IOPContractsManager.OpChainConfig[](1);
-        opChains[0] = IOPContractsManager.OpChainConfig({
-            systemConfigProxy: systemConfig,
-            proxyAdmin: proxyAdmin,
-            absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
-        });
+        IOPContractsManager.OpChain[] memory opChains = new IOPContractsManager.OpChain[](1);
+        opChains[0] = IOPContractsManager.OpChain({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin });
 
         // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
         // reflecting the production system.
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
+        DelegateCaller(upgrader).dcForward(
+            address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (superchainProxyAdmin, opChains))
+        );
 
         console.log("ForkLive: Saving newly deployed contracts");
         // A new ASR and new dispute games were deployed, so we need to update them

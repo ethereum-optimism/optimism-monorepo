@@ -12,11 +12,6 @@
         "type": "address"
       },
       {
-        "internalType": "contract IProxyAdmin",
-        "name": "_superchainProxyAdmin",
-        "type": "address"
-      },
-      {
         "internalType": "string",
         "name": "_l1ContractsRelease",
         "type": "string"
@@ -132,7 +127,7 @@
           },
           {
             "internalType": "address",
-            "name": "mips64Impl",
+            "name": "mipsImpl",
             "type": "address"
           }
         ],
@@ -579,7 +574,7 @@
           },
           {
             "internalType": "address",
-            "name": "mips64Impl",
+            "name": "mipsImpl",
             "type": "address"
           }
         ],
@@ -657,20 +652,12 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "superchainProxyAdmin",
-    "outputs": [
+    "inputs": [
       {
         "internalType": "contract IProxyAdmin",
-        "name": "",
+        "name": "_superchainProxyAdmin",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
+      },
       {
         "components": [
           {
@@ -682,15 +669,10 @@
             "internalType": "contract IProxyAdmin",
             "name": "proxyAdmin",
             "type": "address"
-          },
-          {
-            "internalType": "Claim",
-            "name": "absolutePrestate",
-            "type": "bytes32"
           }
         ],
-        "internalType": "struct OPContractsManager.OpChainConfig[]",
-        "name": "_opChainConfigs",
+        "internalType": "struct OPContractsManager.OpChain[]",
+        "name": "_opChains",
         "type": "tuple[]"
       }
     ],
@@ -866,11 +848,6 @@
   {
     "inputs": [],
     "name": "OnlyUpgradeController",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "PrestateNotSet",
     "type": "error"
   },
   {

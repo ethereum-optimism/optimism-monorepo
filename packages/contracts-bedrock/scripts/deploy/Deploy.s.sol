@@ -284,16 +284,12 @@ contract Deploy is Deployer {
         dii.set(dii.mipsVersion.selector, Config.useMultithreadedCannon() ? 2 : 1);
         string memory release = "dev";
         dii.set(dii.l1ContractsRelease.selector, release);
+        dii.set(dii.superchainConfigProxy.selector, artifacts.mustGetAddress("SuperchainConfigProxy"));
         dii.set(dii.protocolVersionsProxy.selector, artifacts.mustGetAddress("ProtocolVersionsProxy"));
-
-        ISuperchainConfig superchainConfig = ISuperchainConfig(artifacts.mustGetAddress("SuperchainConfigProxy"));
-        dii.set(dii.superchainConfigProxy.selector, address(superchainConfig));
-
-        IProxyAdmin superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
-        dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
-
-        // I think this was a bug
-        dii.set(dii.upgradeController.selector, superchainProxyAdmin.owner());
+        dii.set(
+            dii.upgradeController.selector,
+            IProxyAdmin(EIP1967Helper.getAdmin(artifacts.mustGetAddress("SuperchainConfigProxy"))).owner()
+        );
 
         if (_isInterop) {
             di = DeployImplementations(new DeployImplementationsInterop());
@@ -307,7 +303,7 @@ contract Deploy is Deployer {
         artifacts.save("DelayedWETHImpl", address(dio.delayedWETHImpl()));
 
         // Get a contract set from the implementation addresses which were just deployed.
-        Types.ContractSet memory impls = Types.ContractSet({
+        Types.ContractSet memory contracts = Types.ContractSet({
             L1CrossDomainMessenger: address(dio.l1CrossDomainMessengerImpl()),
             L1StandardBridge: address(dio.l1StandardBridgeImpl()),
             L2OutputOracle: address(0),
@@ -319,17 +315,23 @@ contract Deploy is Deployer {
             OptimismPortal: address(dio.optimismPortalImpl()),
             SystemConfig: address(dio.systemConfigImpl()),
             L1ERC721Bridge: address(dio.l1ERC721BridgeImpl()),
-            ProtocolVersions: address(dio.protocolVersionsImpl()),
-            SuperchainConfig: address(dio.superchainConfigImpl())
+            // We didn't deploy new versions of these in this function, so just read the existing ones.
+            ProtocolVersions: artifacts.mustGetAddress("ProtocolVersionsImpl"),
+            SuperchainConfig: artifacts.mustGetAddress("SuperchainConfigImpl")
         });
 
-        ChainAssertions.checkL1CrossDomainMessenger({ _contracts: impls, _vm: vm, _isProxy: false });
-        ChainAssertions.checkL1StandardBridge({ _contracts: impls, _isProxy: false });
-        ChainAssertions.checkL1ERC721Bridge({ _contracts: impls, _isProxy: false });
-        ChainAssertions.checkOptimismPortal2({ _contracts: impls, _cfg: cfg, _isProxy: false });
-        ChainAssertions.checkOptimismMintableERC20Factory({ _contracts: impls, _isProxy: false });
-        ChainAssertions.checkDisputeGameFactory({ _contracts: impls, _expectedOwner: address(0), _isProxy: false });
-        ChainAssertions.checkDelayedWETH({ _contracts: impls, _cfg: cfg, _isProxy: false, _expectedOwner: address(0) });
+        ChainAssertions.checkL1CrossDomainMessenger({ _contracts: contracts, _vm: vm, _isProxy: false });
+        ChainAssertions.checkL1StandardBridge({ _contracts: contracts, _isProxy: false });
+        ChainAssertions.checkL1ERC721Bridge({ _contracts: contracts, _isProxy: false });
+        ChainAssertions.checkOptimismPortal2({ _contracts: contracts, _cfg: cfg, _isProxy: false });
+        ChainAssertions.checkOptimismMintableERC20Factory({ _contracts: contracts, _isProxy: false });
+        ChainAssertions.checkDisputeGameFactory({ _contracts: contracts, _expectedOwner: address(0), _isProxy: false });
+        ChainAssertions.checkDelayedWETH({
+            _contracts: contracts,
+            _cfg: cfg,
+            _isProxy: false,
+            _expectedOwner: address(0)
+        });
         ChainAssertions.checkPreimageOracle({
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton())),
             _cfg: cfg
@@ -339,16 +341,14 @@ contract Deploy is Deployer {
             _oracle: IPreimageOracle(address(dio.preimageOracleSingleton()))
         });
         ChainAssertions.checkOPContractsManager({
-            _impls: impls,
-            _proxies: _proxies(),
+            _contracts: contracts,
             _opcm: IOPContractsManager(address(dio.opcm())),
-            _mips: IMIPS(address(dio.mipsSingleton())),
-            _superchainProxyAdmin: superchainProxyAdmin
+            _mips: IMIPS(address(dio.mipsSingleton()))
         });
         if (_isInterop) {
-            ChainAssertions.checkSystemConfigInterop({ _contracts: impls, _cfg: cfg, _isProxy: false });
+            ChainAssertions.checkSystemConfigInterop({ _contracts: contracts, _cfg: cfg, _isProxy: false });
         } else {
-            ChainAssertions.checkSystemConfig({ _contracts: impls, _cfg: cfg, _isProxy: false });
+            ChainAssertions.checkSystemConfig({ _contracts: contracts, _cfg: cfg, _isProxy: false });
         }
     }
 

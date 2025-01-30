@@ -8,7 +8,7 @@ import { BaseDeployIO } from "scripts/deploy/BaseDeployIO.sol";
 contract UpgradeOPChainInput is BaseDeployIO {
     address internal _prank;
     OPContractsManager internal _opcm;
-    bytes _opChainConfigs;
+    bytes _opChain;
 
     // Setter for OPContractsManager type
     function set(bytes4 _sel, address _value) public {
@@ -19,10 +19,10 @@ contract UpgradeOPChainInput is BaseDeployIO {
         else revert("UpgradeOPCMInput: unknown selector");
     }
 
-    function set(bytes4 _sel, OPContractsManager.OpChainConfig[] memory _value) public {
+    function set(bytes4 _sel, OPContractsManager.OpChain[] memory _value) public {
         require(_value.length > 0, "UpgradeOPCMInput: cannot set empty array");
 
-        if (_sel == this.opChainConfigs.selector) _opChainConfigs = abi.encode(_value);
+        if (_sel == this.opChain.selector) _opChain = abi.encode(_value);
         else revert("UpgradeOPCMInput: unknown selector");
     }
 
@@ -36,17 +36,16 @@ contract UpgradeOPChainInput is BaseDeployIO {
         return _opcm;
     }
 
-    function opChainConfigs() public view returns (bytes memory) {
-        require(_opChainConfigs.length > 0, "UpgradeOPCMInput: not set");
-        return _opChainConfigs;
+    function opChain() public view returns (bytes memory) {
+        require(_opChain.length > 0, "UpgradeOPCMInput: not set");
+        return _opChain;
     }
 }
 
 contract UpgradeOPChain is Script {
     function run(UpgradeOPChainInput _uoci) external {
         OPContractsManager opcm = _uoci.opcm();
-        OPContractsManager.OpChainConfig[] memory opChainConfigs =
-            abi.decode(_uoci.opChainConfigs(), (OPContractsManager.OpChainConfig[]));
+        OPContractsManager.OpChain[] memory opChain = abi.decode(_uoci.opChain(), (OPContractsManager.OpChain[]));
 
         // Etch DummyCaller contract. This contract is used to mimic the contract that is used
         // as the source of the delegatecall to the OPCM. In practice this will be the governance
@@ -60,7 +59,7 @@ contract UpgradeOPChain is Script {
         // Call into the DummyCaller. This will perform the delegatecall under the hood and
         // return the result.
         vm.broadcast(msg.sender);
-        (bool success,) = DummyCaller(prank).upgrade(opChainConfigs);
+        (bool success,) = DummyCaller(prank).upgrade(opChain);
         require(success, "UpgradeChain: upgrade failed");
     }
 }
@@ -68,8 +67,8 @@ contract UpgradeOPChain is Script {
 contract DummyCaller {
     address internal _opcmAddr;
 
-    function upgrade(OPContractsManager.OpChainConfig[] memory _opChainConfigs) external returns (bool, bytes memory) {
-        bytes memory data = abi.encodeCall(DummyCaller.upgrade, _opChainConfigs);
+    function upgrade(OPContractsManager.OpChain[] memory _opChain) external returns (bool, bytes memory) {
+        bytes memory data = abi.encodeCall(DummyCaller.upgrade, _opChain);
         (bool success, bytes memory result) = _opcmAddr.delegatecall(data);
         return (success, result);
     }

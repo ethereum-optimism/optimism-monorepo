@@ -20,7 +20,6 @@ type DeployImplementationsInput struct {
 	L1ContractsRelease    string
 	SuperchainConfigProxy common.Address
 	ProtocolVersionsProxy common.Address
-	SuperchainProxyAdmin  common.Address
 	UpgradeController     common.Address
 	UseInterop            bool // if true, deploy Interop implementations
 }
