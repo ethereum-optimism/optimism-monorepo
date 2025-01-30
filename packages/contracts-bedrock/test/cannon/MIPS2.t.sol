@@ -157,13 +157,13 @@ contract MIPS2_Test is CommonTest {
 
     /// @notice Used to debug step() behavior given a specific input.
     /// This is useful to more easily debug non-forge tests.
-    /// For example, in cannon/mipsevm/evm_test.go step input can be pulled here:
-    /// https://github.com/ethereum-optimism/optimism/blob/1f64dd6db5561f3bb76ed1d1ffdaff0cde9b7c4b/cannon/mipsevm/evm_test.go#L80-L80
+    /// For example, in cannon/mipsevm/testutil/mips.go step input can be pulled here:
+    /// https://github.com/ethereum-optimism/optimism/blob/efcaa2ded4ee4d6c76331314ab2da0366972aa0a/cannon/mipsevm/testutil/mips.go#L104-L104
     function test_step_debug_succeeds() external {
         bytes memory input =
-            hex"e14ced3200000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000acab5a39c6f974b22302e96dcdef1815483eaf580639bb1ee7ac98267afac2bf1ac041d3ff12045b73c86e4ff95ff662a5eee82abdf44a2d0b75fb180daf48a79e3143a81fa7c3d90b000000000000000000000078fc2ffac2fd940100000000000080c8ffffffff006504aeffb6e08baf3f85da5476a9160fa8f9f188a722fdd29268b0cbaf596736ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb500000001000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000007c6000000000000ffffffff000000000000000000000000f1f85ff4f1f85ff8506d442dbb3938f83eb60825a7ecbff2000010185e1a31f600050f0000000064a7c3d90be5acea102ad7bda149e0bfd0e7111c77d98b335645e665389becadf140ef999cc64fbd7f04799e85c97dadc5cca510bd5b3d97166d1aec28829f3dd43d8cf1f9358e4103b16d09d466e2c7c048ea3ba1aef3141e700270581aa0b75b50e34fc926bb2d83ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb500000000000000000000000000000000000000000000000c00000000000000000000000000000000000000000000000000000000000000000000000000000000ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d3021ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d887c22bd8750d34016ac3c66b5ff102dacdd73f6b014e710b51e8022af9a1968ffd70157e48063fc33c97a050f7f640233bf646cc98d9524c6b92bcf3ab56f839867cc5f7f196b93bae1e27e6320742445d290f2263827498b54fec539f756afcefad4e508c098b9a7e1d8feb19955fb02ba9675585078710969d3440f5054e0f9dc3e7fe016e050eff260334f18a5d4fe391d82092319f5964f2e2eb7c1c3a5f8b13a49e282f609c317a833fb8d976d11517c571d1221a265d25af778ecf8923490c6ceeb450aecdc82e28293031d10c7d73bf85e57bf041a97360aa2c5d99cc1df82d9c4b87413eae2ef048f94b4d3554cea73d92b0f7af96e0271c691e2bb5c67add7c6caf302256adedf7ab114da0acfe870d449a3a489f781d659e8beccda7bce9f4e8618b6bd2f4132ce798cdc7a60e7e1460a7299e3c6342a579626d22733e50f526ec2fa19a22b31e8ed50f23cd1fdf94c9154ed3a7609a2f1ff981fe1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a5a2dce0a8a7f68bb74560f8f71837c2c2ebbcbf7fffb42ae1896f13f7c7479a0b46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0c65e9645644786b620e2dd2ad648ddfcbf4a7e5b1a3a4ecfe7f64667a3f0b7e2f4418588ed35a2458cffeb39b93d26f18d2ab13bdce6aee58e7b99359ec2dfd95a9c16dc00d6ef18b7933a6f8dc65ccb55667138776f7dea101070dc8796e3774df84f40ae0c8229d0d6069e5c8f39a7c299677a09d367fc7b05e3bc380ee652cdc72595f74c7b1043d0e1ffbab734648c838dfb0527d971b602bc216c9619ef0abf5ac974a1ed57f4050aa510dd9c74f508277b39d7973bb2dfccc5eeb0618db8cd74046ff337f0a7bf2c8e03e10f642c1886798d71806ab1e888d9e5ee87d000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
+            hex"e14ced3200000000000000000000000000000000000000000000000000000000000000600000000000000000000000000000000000000000000000000000000000000140000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000a8b2b243c8ff90766c3f413a78ce5dc5176b0aa029576b87025dbeaf6a54020af2c041d3ff12045b73c86e4ff95ff662a5eee82abdf44a2d0b75fb180daf48a79e3143a81f956bdecf000000000000000000000078fc2ffac2fd9401000000000000dfc800c39478fcda196ca0fced6b42ecb09452580e4b553f4ba3e23d60de73779e6d4a3d718f9eeedd979b6295aabc5adf08862b09cce94bb10865cc78cbd362c2fba7000000040000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000b360000000100000000000000000004a0b25df715ec361e43da99550d2e51b81e754db19d40d6d1ed7acb9d6cccd60534c6870936427cee207c51f09ea9c6dcdcbae4865e5f5e026159b4819f295228e910f1366e21ba060337c8018933ad52e51feb4a82d0cc8d289256f48dcf2f1a7806a3958755a4cdf0c5a9dfbe8f1cbf5942f5e7928760894b15d3c5c5a01b075b5c96d4526829d9f5c9a3af93f534a428a7f4b89f96be325b55f40dd7a26b5d441a4101a75595a30a000002000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000ad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5b4c11951957c6f8f642c4af61cd6b24640fec6dc7fc607ee8206a99e92410d3021ddb9a356815c3fac1026b6dec5df3124afbadb485c9ba5a3e3398a04b7ba85e58769b32a1beaf1ea27375a44095a0d1fb664ce2dd358e7fcbfb78c26a193440eb01ebfc9ed27500cd4dfc979272d1f0913cc9f66540d7e8005811109e1cf2d887c22bd8750d34016ac3c66b5ff102dacdd73f6b014e710b51e8022af9a1968ffd70157e48063fc33c97a050f7f640233bf646cc98d9524c6b92bcf3ab56f839867cc5f7f196b93bae1e27e6320742445d290f2263827498b54fec539f756afcefad4e508c098b9a7e1d8feb19955fb02ba9675585078710969d3440f5054e0f9dc3e7fe016e050eff260334f18a5d4fe391d82092319f5964f2e2eb7c1c3a5f8b13a49e282f609c317a833fb8d976d11517c571d1221a265d25af778ecf8923490c6ceeb450aecdc82e28293031d10c7d73bf85e57bf041a97360aa2c5d99cc1df82d9c4b87413eae2ef048f94b4d3554cea73d92b0f7af96e0271c691e2bb5c67add7c6caf302256adedf7ab114da0acfe870d449a3a489f781d659e8beccda7bce9f4e8618b6bd2f4132ce798cdc7a60e7e1460a7299e3c6342a579626d22733e50f526ec2fa19a22b31e8ed50f23cd1fdf94c9154ed3a7609a2f1ff981fe1d3b5c807b281e4683cc6d6315cf95b9ade8641defcb32372f1c126e398ef7a5a2dce0a8a7f68bb74560f8f71837c2c2ebbcbf7fffb42ae1896f13f7c7479a0b46a28b6f55540f89444f63de0378e3d121be09e06cc9ded1c20e65876d36aa0c65e9645644786b620e2dd2ad648ddfcbf4a7e5b1a3a4ecfe7f64667a3f0b7e2f4418588ed35a2458cffeb39b93d26f18d2ab13bdce6aee58e7b99359ec2dfd95a9c16dc00d6ef18b7933a6f8dc65ccb55667138776f7dea101070dc8796e3774df84f40ae0c8229d0d6069e5c8f39a7c299677a09d367fc7b05e3bc380ee652cdc72595f74c7b1043d0e1ffbab734648c838dfb0527d971b602bc216c9619ef0abf5ac974a1ed57f4050aa510dd9c74f508277b39d7973bb2dfccc5eeb0618db8cd74046ff337f0a7bf2c8e03e10f642c1886798d71806ab1e888d9e5ee87d00000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000";
         (bool success, bytes memory retVal) = address(mips).call(input);
-        bytes memory expectedRetVal = hex"0335fe4205f8443eefa7ac4541197874224df35e8536158c2fc2d5c8c2d2adb4";
+        bytes memory expectedRetVal = hex"0334289a94004544cab7d6b90238581ca3e082e097d90deb6251da612df2530f";
 
         assertTrue(success);
         assertEq(retVal.length, 32, "Expect a bytes32 hash of the post-state to be returned");
@@ -179,9 +179,6 @@ contract MIPS2_Test is CommonTest {
             threadID: 0,
             exitCode: 0,
             exited: false,
-            futexAddr: sys.FUTEX_EMPTY_ADDR,
-            futexVal: 0,
-            futexTimeoutStep: 0,
             pc: 4,
             nextPC: 8,
             lo: 0,
@@ -204,7 +201,6 @@ contract MIPS2_Test is CommonTest {
             exited: false,
             step: 1,
             stepsSinceLastContextSwitch: 1,
-            wakeup: sys.FUTEX_EMPTY_ADDR,
             traverseRight: false,
             leftThreadStack: threadRoot,
             rightThreadStack: EMPTY_THREAD_ROOT,
@@ -349,9 +345,6 @@ contract MIPS2_Test is CommonTest {
 
         IMIPS2.ThreadState memory newThread = copyThread(thread);
         newThread.threadID = 1;
-        newThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-        newThread.futexVal = 0;
-        newThread.futexTimeoutStep = 0;
         newThread.pc = thread.nextPC;
         newThread.nextPC = thread.nextPC + 4;
         newThread.registers[2] = 0;
@@ -400,44 +393,17 @@ contract MIPS2_Test is CommonTest {
 
     /// @dev Static unit test asserting successful futex wait syscall behavior with a timeout argument
     function test_syscallFutexWaitTimeout_succeeds() public {
-        uint32 futexAddr = 0x1000;
-        uint32 futexVal = 0xAA_AA_AA_AA;
-        uint32 timeout = 1;
-
-        uint32 insn = 0x0000000c; // syscall
-        (IMIPS2.State memory state, IMIPS2.ThreadState memory thread, bytes memory memProof) =
-            constructMIPSState(0, insn, futexAddr, futexVal);
-        thread.registers[2] = sys.SYS_FUTEX;
-        thread.registers[A0_REG] = futexAddr;
-        thread.registers[A1_REG] = sys.FUTEX_WAIT_PRIVATE;
-        thread.registers[A2_REG] = futexVal;
-        thread.registers[A3_REG] = timeout;
-        threading.createThread();
-        threading.replaceCurrent(thread);
-        bytes memory threadWitness = threading.witness();
-        finalizeThreadingState(threading, state);
-
-        // FUTEX_WAIT
-        IMIPS2.ThreadState memory expectThread = copyThread(thread);
-        expectThread.futexAddr = futexAddr;
-        expectThread.futexVal = futexVal;
-        expectThread.futexTimeoutStep = state.step + 1 + sys.FUTEX_TIMEOUT_STEPS;
-        threading.replaceCurrent(expectThread);
-
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.stepsSinceLastContextSwitch = state.stepsSinceLastContextSwitch + 1;
-        finalizeThreadingState(threading, expect);
-
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
+        syscallFutexWaitTest(1);
     }
 
     /// @dev Static unit test asserting successful futex wait syscall behavior with a zero timeout argument
     function test_syscallFutexWaitNoTimeout_succeeds() public {
+        syscallFutexWaitTest(0);
+    }
+
+    function syscallFutexWaitTest(uint32 timeout) private {
         uint32 futexAddr = 0x1000;
         uint32 futexVal = 0xAA_AA_AA_AA;
-        uint32 timeout = 0;
 
         uint32 insn = 0x0000000c; // syscall
         (IMIPS2.State memory state, IMIPS2.ThreadState memory thread, bytes memory memProof) =
@@ -452,16 +418,20 @@ contract MIPS2_Test is CommonTest {
         bytes memory threadWitness = threading.witness();
         finalizeThreadingState(threading, state);
 
-        // FUTEX_WAIT
+        // FUTEX_WAIT should return empty values and preempt thread
         IMIPS2.ThreadState memory expectThread = copyThread(thread);
-        expectThread.futexAddr = futexAddr;
-        expectThread.futexVal = futexVal;
-        expectThread.futexTimeoutStep = sys.FUTEX_NO_TIMEOUT;
-        threading.replaceCurrent(expectThread);
+        expectThread.registers[2] = 0;
+        expectThread.registers[7] = 0;
+        expectThread.pc = thread.nextPC;
+        expectThread.nextPC = thread.nextPC + 4;
+        // Preempt thread
+        threading.left().pop();
+        threading.right().push(expectThread);
 
         IMIPS2.State memory expect = copyState(state);
         expect.step = state.step + 1;
-        expect.stepsSinceLastContextSwitch = state.stepsSinceLastContextSwitch + 1;
+        expect.stepsSinceLastContextSwitch = 0;
+        expect.traverseRight = true;
         finalizeThreadingState(threading, expect);
 
         bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
@@ -490,7 +460,6 @@ contract MIPS2_Test is CommonTest {
         IMIPS2.ThreadState memory expectThread = copyThread(thread);
         expectThread.pc = thread.nextPC;
         expectThread.nextPC = thread.nextPC + 4;
-        expectThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
         expectThread.registers[2] = sys.SYS_ERROR_SIGNAL;
         expectThread.registers[7] = sys.EAGAIN; // errno
         threading.replaceCurrent(expectThread);
@@ -530,7 +499,6 @@ contract MIPS2_Test is CommonTest {
         threading.right().push(expectThread);
 
         IMIPS2.State memory expect = copyState(state);
-        expect.wakeup = futexAddr;
         expect.step = state.step + 1;
         expect.stepsSinceLastContextSwitch = 0;
         expect.traverseRight = true;
@@ -546,13 +514,11 @@ contract MIPS2_Test is CommonTest {
         uint8 exitCode = 4;
 
         IMIPS2.ThreadState memory threadA = threading.createThread();
-        threadA.futexAddr = sys.FUTEX_EMPTY_ADDR;
         threadA.pc = 0x1000;
         threadA.nextPC = 0x1004;
         threading.replaceCurrent(threadA);
 
         IMIPS2.ThreadState memory threadB = threading.createThread();
-        threadB.futexAddr = sys.FUTEX_EMPTY_ADDR;
         threadB.pc = 0x100;
         threadB.nextPC = 0x104;
         threadB.registers[2] = sys.SYS_EXIT;
@@ -565,7 +531,6 @@ contract MIPS2_Test is CommonTest {
         (state.memRoot, memProof) = ffi.getCannonMemoryProof(threadB.pc, insn, 0, 0);
         state.step = 20;
         state.stepsSinceLastContextSwitch = 10;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         finalizeThreadingState(threading, state);
 
         // state updates
@@ -588,7 +553,6 @@ contract MIPS2_Test is CommonTest {
         uint8 exitCode = 4;
 
         IMIPS2.ThreadState memory thread = threading.createThread();
-        thread.futexAddr = sys.FUTEX_EMPTY_ADDR;
         thread.pc = 0x1000;
         thread.nextPC = 0x1004;
         thread.registers[2] = sys.SYS_EXIT;
@@ -601,7 +565,6 @@ contract MIPS2_Test is CommonTest {
         (state.memRoot, memProof) = ffi.getCannonMemoryProof(thread.pc, insn, 0, 0);
         state.step = 20;
         state.stepsSinceLastContextSwitch = 10;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         finalizeThreadingState(threading, state);
 
         // state updates
@@ -830,13 +793,10 @@ contract MIPS2_Test is CommonTest {
     function test_threadQuantumSchedule_succeeds() public {
         IMIPS2.ThreadState memory threadA = threading.createThread();
         threadA.threadID = 0;
-        threadA.futexAddr = sys.FUTEX_EMPTY_ADDR;
         threading.replaceCurrent(threadA);
         IMIPS2.ThreadState memory threadB = threading.createThread();
-        threadB.futexAddr = sys.FUTEX_EMPTY_ADDR;
         threading.replaceCurrent(threadB);
         IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         state.stepsSinceLastContextSwitch = sys.SCHED_QUANTUM;
         finalizeThreadingState(threading, state);
         bytes memory threadWitness = threading.witness();
@@ -855,10 +815,9 @@ contract MIPS2_Test is CommonTest {
         assertEq(postState, outputState(expect), "unexpected post state");
     }
 
-    /// @dev Static unit test asserting thread left traversal without wakeups
+    /// @dev Static unit test asserting thread left traversal
     function test_threadTraverseLeft_succeeds() public {
         IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         state.step = 10;
         state.stepsSinceLastContextSwitch = 0;
         finalizeThreadingState(threading, state);
@@ -873,7 +832,6 @@ contract MIPS2_Test is CommonTest {
             IMIPS2.ThreadState memory thread = threading.createThread();
             thread.pc = pc;
             thread.nextPC = pc + 4;
-            thread.futexAddr = sys.FUTEX_EMPTY_ADDR;
             thread.registers[2] = sys.SYS_NANOSLEEP;
             threading.replaceCurrent(thread);
         }
@@ -905,12 +863,11 @@ contract MIPS2_Test is CommonTest {
         }
     }
 
-    /// @dev Static unit test asserting thread right traversal without wakeups
+    /// @dev Static unit test asserting thread right traversal
     function test_threadTraverseRight_succeeds() public {
         threading.setTraverseRight(true);
 
         IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         state.step = 10;
         state.stepsSinceLastContextSwitch = 0;
         state.traverseRight = true;
@@ -926,7 +883,6 @@ contract MIPS2_Test is CommonTest {
             IMIPS2.ThreadState memory thread = threading.createThread();
             thread.pc = pc;
             thread.nextPC = pc + 4;
-            thread.futexAddr = sys.FUTEX_EMPTY_ADDR;
             thread.registers[2] = sys.SYS_NANOSLEEP;
             threading.replaceCurrent(thread);
         }
@@ -957,334 +913,6 @@ contract MIPS2_Test is CommonTest {
         }
     }
 
-    /// @dev static unit test asserting state transition of a spurious wakeup
-    function test_wakeupPreemptsThread_succeeds() public {
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-        threadB.futexAddr = 0xdead;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        state.wakeup = 0xabba;
-        finalizeThreadingState(threading, state);
-
-        // Preempt the current thread on spurious wakeup
-        threading.left().pop();
-        threading.right().push(threadB);
-
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.stepsSinceLastContextSwitch = 0;
-        finalizeThreadingState(threading, expect);
-
-        bytes memory memProof;
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev Static unit test asserting successful wakeup traversal when no threads are ready to wake
-    function test_threadWakeupFullTraversalNoWakeup_succeeds() public {
-        IMIPS2.State memory state;
-        state.wakeup = 0x1000;
-        state.step = 10;
-        state.stepsSinceLastContextSwitch = 10;
-        finalizeThreadingState(threading, state);
-
-        // Create a few threads that are not waiting to wake
-        for (uint256 i = 0; i < 3; i++) {
-            IMIPS2.ThreadState memory thread = threading.createThread();
-            thread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-            threading.replaceCurrent(thread);
-        }
-        finalizeThreadingState(threading, state);
-
-        // Traverse left
-        for (uint256 i = 0; i < 3; i++) {
-            IMIPS2.ThreadState memory currentThread = threading.current();
-
-            bytes memory memProof;
-            (state.memRoot, memProof) = ffi.getCannonMemoryProof(currentThread.pc, 0);
-            bytes memory threadWitness = threading.witness();
-
-            // We should preempt the current thread
-            threading.left().pop();
-            threading.right().push(currentThread);
-
-            IMIPS2.State memory expect = copyState(state);
-            expect.step = state.step + 1;
-            expect.stepsSinceLastContextSwitch = 0;
-            finalizeThreadingState(threading, expect);
-            expect.traverseRight = i == 2;
-
-            bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-            assertEq(postState, outputState(expect), "unexpected post state");
-
-            state = expect;
-        }
-
-        // Traverse right
-        threading.setTraverseRight(true);
-        for (uint256 i = 0; i < 3; i++) {
-            IMIPS2.ThreadState memory currentThread = threading.current();
-
-            bytes memory memProof;
-            (state.memRoot, memProof) = ffi.getCannonMemoryProof(currentThread.pc, 0);
-            bytes memory threadWitness = threading.witness();
-
-            // We should preempt the current thread
-            threading.right().pop();
-            threading.left().push(currentThread);
-
-            IMIPS2.State memory expect = copyState(state);
-            expect.step = state.step + 1;
-            expect.stepsSinceLastContextSwitch = 0;
-            finalizeThreadingState(threading, expect);
-            expect.traverseRight = true;
-            if (i == 2) {
-                // When we reach the last thread, we should clear the wakeup and resume normal execution
-                expect.traverseRight = false;
-                expect.wakeup = sys.FUTEX_EMPTY_ADDR;
-            }
-
-            bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-            assertEq(postState, outputState(expect), "unexpected post state");
-
-            state = expect;
-        }
-    }
-
-    /// @dev static unit test asserting state transition of an empty right thread stack
-    ///      This occurs during wakeup traversal
-    function test_wakeup_traversalEnds_succeeds() public {
-        threading.setTraverseRight(true);
-        IMIPS2.ThreadState memory thread = threading.createThread();
-        IMIPS2.State memory state;
-        state.traverseRight = true;
-        state.wakeup = 0x1000;
-        state.stepsSinceLastContextSwitch = 10;
-        finalizeThreadingState(threading, state);
-        bytes memory threadWitness = threading.witness();
-
-        // state changes
-        threading.right().pop();
-        threading.left().push(thread);
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        // Note that this does not change. The next thread scheduled (on the left stack) was the last thread on the
-        // right stack.
-        expect.stepsSinceLastContextSwitch = 0;
-        expect.wakeup = sys.FUTEX_EMPTY_ADDR;
-        expect.traverseRight = false;
-        finalizeThreadingState(threading, expect);
-
-        bytes memory memProof; // unused
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev static unit test asserting state transition of completion of a timed-out futex waiter
-    function test_futexTimeoutCompletion_succeeds() public {
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-        threadB.futexAddr = 0x1000;
-        threadB.futexVal = 0xdead;
-        threadB.futexTimeoutStep = 10;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
-        state.step = 10;
-        state.stepsSinceLastContextSwitch = 10; // must be unchanged
-        finalizeThreadingState(threading, state);
-
-        // Resume the current blocked thread on futex timeout
-        IMIPS2.ThreadState memory expectThread = copyThread(threadB);
-        expectThread.pc = threadB.nextPC;
-        expectThread.nextPC = threadB.nextPC + 4;
-        expectThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-        expectThread.futexVal = 0x0;
-        expectThread.futexTimeoutStep = 0;
-        expectThread.registers[2] = sys.SYS_ERROR_SIGNAL;
-        expectThread.registers[7] = sys.ETIMEDOUT;
-        threading.replaceCurrent(expectThread);
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.wakeup = sys.FUTEX_EMPTY_ADDR;
-        finalizeThreadingState(threading, expect);
-
-        bytes memory memProof;
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev Static unit test asserting wakeup where the current thread is ready to be woken up
-    function testFuzz_wakeupWaiter_succeeds(
-        uint32 _wakeup,
-        uint32 _futexVal,
-        uint32 _futexTimeoutStep,
-        bool _threadExited
-    )
-        public
-    {
-        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 1));
-
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-
-        threadB.futexAddr = _wakeup;
-        threadB.futexVal = _futexVal;
-        threadB.futexTimeoutStep = _futexTimeoutStep;
-        // A thread exit cannot interrupt wakeup traversal. thread.exited during wakeup is technically not a valid
-        // state.
-        // But we fuzz this anyways to ensure the VM only traverses threads during wakeup
-        threadB.exited = _threadExited;
-        threadB.exitCode = _threadExited ? 1 : 0;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        bytes memory memProof; // unused
-        state.wakeup = _wakeup;
-        state.step = 10;
-        state.stepsSinceLastContextSwitch = 20; // must be unchanged
-        finalizeThreadingState(threading, state);
-
-        // Resume the current thread that is blocked
-        IMIPS2.ThreadState memory expectThread = copyThread(threadB);
-        // no changes on thread since we're in wakeup traversal
-        threading.replaceCurrent(expectThread);
-
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.wakeup = sys.FUTEX_EMPTY_ADDR;
-        finalizeThreadingState(threading, expect);
-
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev Static unit test asserting wakeup where the current thread isn't ready
-    function testFuzz_wakeupNonWaiter_succeeds(
-        uint32 _wakeup,
-        uint32 _futexAddr,
-        uint32 _futexVal,
-        uint32 _futexTimeoutStep,
-        bool _threadExited
-    )
-        public
-    {
-        // -2 incase _wakeup == _futexAddr and _wakeup needs to be incremented
-        _wakeup = uint32(_bound(_wakeup, 0, sys.FUTEX_EMPTY_ADDR - 2));
-        if (_wakeup == _futexAddr) _wakeup++;
-
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-        threadB.futexAddr = _futexAddr;
-        threadB.futexVal = _futexVal;
-        threadB.futexTimeoutStep = _futexTimeoutStep;
-        threadB.exited = _threadExited;
-        threadB.exitCode = _threadExited ? 1 : 0;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        bytes memory memProof; // unused
-        state.wakeup = _wakeup;
-        state.step = 10;
-        state.stepsSinceLastContextSwitch = 20;
-        finalizeThreadingState(threading, state);
-
-        // state changes
-        IMIPS2.ThreadState memory expectThread = copyThread(threadB);
-        // thread internal state is unchanged since we're in wakeup traversal
-        threading.replaceCurrent(expectThread);
-        threading.left().pop();
-        threading.right().push(expectThread);
-
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.stepsSinceLastContextSwitch = 0;
-        finalizeThreadingState(threading, expect);
-
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev static unit test asserting state transition of completion of a non-timed-out futex waiter
-    function test_futexNoTimeoutCompletion_succeeds() public {
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-        threadB.futexAddr = 0x1000;
-        threadB.futexVal = 0xdead;
-        threadB.futexTimeoutStep = 100;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        bytes memory memProof;
-        (state.memRoot, memProof) = ffi.getCannonMemoryProof(0, 0, threadB.futexAddr, threadB.futexVal + 1);
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
-        state.step = 10;
-        state.stepsSinceLastContextSwitch = 10; // must be unchanged
-        finalizeThreadingState(threading, state);
-
-        // Resume the current thread that is blocked
-        IMIPS2.ThreadState memory expectThread = copyThread(threadB);
-        expectThread.pc = threadB.nextPC;
-        expectThread.nextPC = threadB.nextPC + 4;
-        expectThread.futexAddr = sys.FUTEX_EMPTY_ADDR;
-        expectThread.futexVal = 0x0;
-        expectThread.futexTimeoutStep = 0;
-        expectThread.registers[2] = 0;
-        expectThread.registers[7] = 0; // errno
-        threading.replaceCurrent(expectThread);
-
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.wakeup = sys.FUTEX_EMPTY_ADDR;
-        finalizeThreadingState(threading, expect);
-
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
-    /// @dev static unit test asserting state transition of futex waiter that isn't ready
-    function test_futexNoTimeoutPreemptsThread_succeeds() public {
-        threading.createThread();
-        threading.createThread();
-        IMIPS2.ThreadState memory threadB = threading.current();
-        threadB.futexAddr = 0x1000;
-        threadB.futexVal = 0xdead;
-        threadB.futexTimeoutStep = sys.FUTEX_NO_TIMEOUT;
-        threading.replaceCurrent(threadB);
-        bytes memory threadWitness = threading.witness();
-
-        IMIPS2.State memory state;
-        bytes memory memProof;
-        (state.memRoot, memProof) = ffi.getCannonMemoryProof(0, 0, threadB.futexAddr, threadB.futexVal);
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
-        state.stepsSinceLastContextSwitch = 10;
-        finalizeThreadingState(threading, state);
-
-        // Expect the thread to be moved from the left to right stack
-        threading.left().pop();
-        threading.right().push(threadB);
-        IMIPS2.State memory expect = copyState(state);
-        expect.step = state.step + 1;
-        expect.stepsSinceLastContextSwitch = 0;
-        finalizeThreadingState(threading, expect);
-
-        bytes32 postState = mips.step(encodeState(state), bytes.concat(threadWitness, memProof), 0);
-        assertEq(postState, outputState(expect), "unexpected post state");
-    }
-
     /// @dev Static unit test asserting VM behavior when the current thread has exited
     function test_threadExit_succeeds() public {
         threading.createThread();
@@ -1295,7 +923,6 @@ contract MIPS2_Test is CommonTest {
         bytes memory threadWitness = threading.witness();
 
         IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         state.stepsSinceLastContextSwitch = 10;
         finalizeThreadingState(threading, state);
 
@@ -1323,7 +950,6 @@ contract MIPS2_Test is CommonTest {
         bytes memory threadWitness = threading.witness();
 
         IMIPS2.State memory state;
-        state.wakeup = sys.FUTEX_EMPTY_ADDR;
         state.stepsSinceLastContextSwitch = 10;
         finalizeThreadingState(threading, state);
 
@@ -2708,10 +2334,8 @@ contract MIPS2_Test is CommonTest {
     {
         (state_.memRoot, proof_) = ffi.getCannonMemoryProof(pc, insn, addr, val);
         state_.nextThreadID = 1;
-        state_.wakeup = sys.FUTEX_EMPTY_ADDR;
         thread_.pc = pc;
         thread_.nextPC = pc + 4;
-        thread_.futexAddr = sys.FUTEX_EMPTY_ADDR;
         state_.leftThreadStack = keccak256(abi.encodePacked(EMPTY_THREAD_ROOT, keccak256(encodeThread(thread_))));
         state_.rightThreadStack = EMPTY_THREAD_ROOT;
     }
@@ -2779,9 +2403,8 @@ contract MIPS2_Test is CommonTest {
         bytes memory b = abi.encodePacked(
             _state.llOwnerThread, _state.exitCode, _state.exited, _state.step, _state.stepsSinceLastContextSwitch
         );
-        bytes memory c = abi.encodePacked(
-            _state.wakeup, _state.traverseRight, _state.leftThreadStack, _state.rightThreadStack, _state.nextThreadID
-        );
+        bytes memory c =
+            abi.encodePacked(_state.traverseRight, _state.leftThreadStack, _state.rightThreadStack, _state.nextThreadID);
         return abi.encodePacked(a, b, c);
     }
 
@@ -2846,9 +2469,6 @@ function encodeThread(IMIPS2.ThreadState memory _thread) pure returns (bytes mem
         _thread.threadID,
         _thread.exitCode,
         _thread.exited,
-        _thread.futexAddr,
-        _thread.futexVal,
-        _thread.futexTimeoutStep,
         _thread.pc,
         _thread.nextPC,
         _thread.lo,

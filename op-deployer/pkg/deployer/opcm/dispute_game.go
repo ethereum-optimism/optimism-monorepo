@@ -36,10 +36,6 @@ func (output *DeployDisputeGameOutput) CheckOutput(input common.Address) error {
 	return nil
 }
 
-type DeployDisputeGameScript struct {
-	Run func(input, output common.Address) error
-}
-
 func DeployDisputeGame(
 	host *script.Host,
 	input DeployDisputeGameInput,

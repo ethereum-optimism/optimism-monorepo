@@ -20,19 +20,6 @@
     "type": "receive"
   },
   {
-    "inputs": [],
-    "name": "balance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
       {
         "internalType": "contract IDisputeGame",
@@ -61,44 +48,6 @@
     "name": "checkWithdrawal",
     "outputs": [],
     "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "_to",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_mint",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "_value",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint64",
-        "name": "_gasLimit",
-        "type": "uint64"
-      },
-      {
-        "internalType": "bool",
-        "name": "_isCreation",
-        "type": "bool"
-      },
-      {
-        "internalType": "bytes",
-        "name": "_data",
-        "type": "bytes"
-      }
-    ],
-    "name": "depositERC20Transaction",
-    "outputs": [],
-    "stateMutability": "nonpayable",
     "type": "function"
   },
   {
@@ -623,34 +572,6 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "_token",
-        "type": "address"
-      },
-      {
-        "internalType": "uint8",
-        "name": "_decimals",
-        "type": "uint8"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_name",
-        "type": "bytes32"
-      },
-      {
-        "internalType": "bytes32",
-        "name": "_symbol",
-        "type": "bytes32"
-      }
-    ],
-    "name": "setGasPayingToken",
-    "outputs": [],
-    "stateMutability": "nonpayable",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
         "internalType": "GameType",
         "name": "_gameType",
         "type": "uint32"
@@ -911,17 +832,12 @@
   },
   {
     "inputs": [],
-    "name": "NoValue",
+    "name": "LegacyGame",
     "type": "error"
   },
   {
     "inputs": [],
     "name": "NonReentrant",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "OnlyCustomGasToken",
     "type": "error"
   },
   {
@@ -937,11 +853,6 @@
   {
     "inputs": [],
     "name": "SmallGasLimit",
-    "type": "error"
-  },
-  {
-    "inputs": [],
-    "name": "TransferFailed",
     "type": "error"
   },
   {

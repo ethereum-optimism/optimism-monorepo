@@ -27,6 +27,7 @@ const (
 	L2AllocsFjord    L2AllocsMode = "fjord"
 	L2AllocsGranite  L2AllocsMode = "granite"
 	L2AllocsHolocene L2AllocsMode = "holocene"
+	L2AllocsIsthmus  L2AllocsMode = "isthmus"
 )
 
 var (
@@ -46,10 +47,10 @@ func BuildL2Genesis(config *DeployConfig, dump *foundry.ForgeAllocs, l1StartBloc
 	}
 	genspec.Alloc = dump.Copy().Accounts
 	// ensure the dev accounts are not funded unintentionally
-	if hasDevAccounts, err := HasAnyDevAccounts(genspec.Alloc); err != nil {
+	if devAccounts, err := RetrieveDevAccounts(genspec.Alloc); err != nil {
 		return nil, fmt.Errorf("failed to check dev accounts: %w", err)
-	} else if hasDevAccounts != config.FundDevAccounts {
-		return nil, fmt.Errorf("deploy config mismatch with allocs. Deploy config fundDevAccounts: %v, actual allocs: %v", config.FundDevAccounts, hasDevAccounts)
+	} else if (len(devAccounts) > 0) != config.FundDevAccounts {
+		return nil, fmt.Errorf("deploy config mismatch with allocs. Deploy config fundDevAccounts: %v, actual allocs: %v", config.FundDevAccounts, devAccounts)
 	}
 	// sanity check the permit2 immutable, to verify we using the allocs for the right chain.
 	if permit2 := genspec.Alloc[predeploys.Permit2Addr].Code; len(permit2) != 0 {
@@ -76,23 +77,24 @@ func BuildL2Genesis(config *DeployConfig, dump *foundry.ForgeAllocs, l1StartBloc
 	return genspec, nil
 }
 
-func HasAnyDevAccounts(allocs types.GenesisAlloc) (bool, error) {
+func RetrieveDevAccounts(allocs types.GenesisAlloc) ([]common.Address, error) {
 	wallet, err := hdwallet.NewFromMnemonic(testMnemonic)
 	if err != nil {
-		return false, fmt.Errorf("failed to create wallet: %w", err)
+		return nil, fmt.Errorf("failed to create wallet: %w", err)
 	}
 	account := func(path string) accounts.Account {
 		return accounts.Account{URL: accounts.URL{Path: path}}
 	}
+	var devAccounts []common.Address
 	for i := 0; i < 30; i++ {
 		key, err := wallet.PrivateKey(account(fmt.Sprintf("m/44'/60'/0'/0/%d", i)))
 		if err != nil {
-			return false, err
+			return nil, err
 		}
 		addr := crypto.PubkeyToAddress(key.PublicKey)
 		if _, ok := allocs[addr]; ok {
-			return true, nil
+			devAccounts = append(devAccounts, addr)
 		}
 	}
-	return false, nil
+	return devAccounts, nil
 }

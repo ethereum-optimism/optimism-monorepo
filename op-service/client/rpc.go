@@ -25,7 +25,7 @@ type RPC interface {
 	Close()
 	CallContext(ctx context.Context, result any, method string, args ...any) error
 	BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
-	EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error)
+	Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error)
 }
 
 type rpcConfig struct {
@@ -234,8 +234,8 @@ func (b *BaseRPCClient) BatchCallContext(ctx context.Context, batch []rpc.BatchE
 	return b.c.BatchCallContext(cCtx, batch)
 }
 
-func (b *BaseRPCClient) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
-	return b.c.EthSubscribe(ctx, channel, args...)
+func (b *BaseRPCClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	return b.c.Subscribe(ctx, namespace, channel, args...)
 }
 
 // InstrumentedRPCClient is an RPC client that tracks
@@ -269,8 +269,8 @@ func (ic *InstrumentedRPCClient) BatchCallContext(ctx context.Context, b []rpc.B
 	}, b)
 }
 
-func (ic *InstrumentedRPCClient) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
-	return ic.c.EthSubscribe(ctx, channel, args...)
+func (ic *InstrumentedRPCClient) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
+	return ic.c.Subscribe(ctx, namespace, channel, args...)
 }
 
 // instrumentBatch handles metrics for batch calls. Request metrics are

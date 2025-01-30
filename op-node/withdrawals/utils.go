@@ -29,8 +29,8 @@ type ReceiptClient interface {
 	TransactionReceipt(context.Context, common.Hash) (*types.Receipt, error)
 }
 
-type BlockClient interface {
-	BlockByNumber(context.Context, *big.Int) (*types.Block, error)
+type HeaderClient interface {
+	HeaderByNumber(context.Context, *big.Int) (*types.Header, error)
 }
 
 // ProvenWithdrawalParameters is the set of parameters to pass to the ProveWithdrawalTransaction
@@ -48,17 +48,16 @@ type ProvenWithdrawalParameters struct {
 }
 
 // ProveWithdrawalParameters calls ProveWithdrawalParametersForBlock with the most recent L2 output after the given header.
-func ProveWithdrawalParameters(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, l2BlockCl BlockClient, txHash common.Hash, header *types.Header, l2OutputOracleContract *bindings.L2OutputOracleCaller) (ProvenWithdrawalParameters, error) {
-	l2OutputIndex, err := l2OutputOracleContract.GetL2OutputIndexAfter(&bind.CallOpts{}, header.Number)
+func ProveWithdrawalParameters(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, txHash common.Hash, l2Header *types.Header, l2OutputOracleContract *bindings.L2OutputOracleCaller) (ProvenWithdrawalParameters, error) {
+	l2OutputIndex, err := l2OutputOracleContract.GetL2OutputIndexAfter(&bind.CallOpts{}, l2Header.Number)
 	if err != nil {
 		return ProvenWithdrawalParameters{}, fmt.Errorf("failed to get l2OutputIndex: %w", err)
 	}
-	l2BlockNumber := header.Number
-	return ProveWithdrawalParametersForBlock(ctx, proofCl, l2ReceiptCl, l2BlockCl, txHash, l2BlockNumber, l2OutputIndex)
+	return ProveWithdrawalParametersForBlock(ctx, proofCl, l2ReceiptCl, txHash, l2Header, l2OutputIndex)
 }
 
 // ProveWithdrawalParametersFaultProofs calls ProveWithdrawalParametersForBlock with the most recent L2 output after the latest game.
-func ProveWithdrawalParametersFaultProofs(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, l2BlockCl BlockClient, txHash common.Hash, disputeGameFactoryContract *bindings.DisputeGameFactoryCaller, optimismPortal2Contract *bindingspreview.OptimismPortal2Caller) (ProvenWithdrawalParameters, error) {
+func ProveWithdrawalParametersFaultProofs(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, l2HeaderCl HeaderClient, txHash common.Hash, disputeGameFactoryContract *bindings.DisputeGameFactoryCaller, optimismPortal2Contract *bindingspreview.OptimismPortal2Caller) (ProvenWithdrawalParameters, error) {
 	latestGame, err := FindLatestGame(ctx, disputeGameFactoryContract, optimismPortal2Contract)
 	if err != nil {
 		return ProvenWithdrawalParameters{}, fmt.Errorf("failed to find latest game: %w", err)
@@ -66,13 +65,18 @@ func ProveWithdrawalParametersFaultProofs(ctx context.Context, proofCl ProofClie
 
 	l2BlockNumber := new(big.Int).SetBytes(latestGame.ExtraData[0:32])
 	l2OutputIndex := latestGame.Index
-	return ProveWithdrawalParametersForBlock(ctx, proofCl, l2ReceiptCl, l2BlockCl, txHash, l2BlockNumber, l2OutputIndex)
+	// Fetch the block header from the L2 node
+	l2Header, err := l2HeaderCl.HeaderByNumber(ctx, l2BlockNumber)
+	if err != nil {
+		return ProvenWithdrawalParameters{}, fmt.Errorf("failed to get l2Block: %w", err)
+	}
+	return ProveWithdrawalParametersForBlock(ctx, proofCl, l2ReceiptCl, txHash, l2Header, l2OutputIndex)
 }
 
 // ProveWithdrawalParametersForBlock queries L1 & L2 to generate all withdrawal parameters and proof necessary to prove a withdrawal on L1.
-// The header provided is very important. It should be a block (timestamp) for which there is a submitted output in the L2 Output Oracle
+// The l2Header provided is very important. It should be a block for which there is a submitted output in the L2 Output Oracle
 // contract. If not, the withdrawal will fail as it the storage proof cannot be verified if there is no submitted state root.
-func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, l2BlockCl BlockClient, txHash common.Hash, l2BlockNumber, l2OutputIndex *big.Int) (ProvenWithdrawalParameters, error) {
+func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient, l2ReceiptCl ReceiptClient, txHash common.Hash, l2Header *types.Header, l2OutputIndex *big.Int) (ProvenWithdrawalParameters, error) {
 	// Transaction receipt
 	receipt, err := l2ReceiptCl.TransactionReceipt(ctx, txHash)
 	if err != nil {
@@ -83,6 +87,13 @@ func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient,
 	if err != nil {
 		return ProvenWithdrawalParameters{}, err
 	}
+	return ProveWithdrawalParametersForEvent(ctx, proofCl, ev, l2Header, l2OutputIndex)
+}
+
+// ProveWithdrawalParametersForEvent queries L1 to generate all withdrawal parameters and proof necessary to prove a withdrawal on L1.
+// The l2Header provided is very important. It should be a block for which there is a submitted output in the L2 Output Oracle
+// contract. If not, the withdrawal will fail as it the storage proof cannot be verified if there is no submitted state root.
+func ProveWithdrawalParametersForEvent(ctx context.Context, proofCl ProofClient, ev *bindings.L2ToL1MessagePasserMessagePassed, l2Header *types.Header, l2OutputIndex *big.Int) (ProvenWithdrawalParameters, error) {
 	// Generate then verify the withdrawal proof
 	withdrawalHash, err := WithdrawalHash(ev)
 	if !bytes.Equal(withdrawalHash[:], ev.WithdrawalHash[:]) {
@@ -93,13 +104,7 @@ func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient,
 	}
 	slot := StorageSlotOfWithdrawalHash(withdrawalHash)
 
-	// Fetch the block from the L2 node
-	l2Block, err := l2BlockCl.BlockByNumber(ctx, l2BlockNumber)
-	if err != nil {
-		return ProvenWithdrawalParameters{}, fmt.Errorf("failed to get l2Block: %w", err)
-	}
-
-	p, err := proofCl.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []string{slot.String()}, l2Block.Number())
+	p, err := proofCl.GetProof(ctx, predeploys.L2ToL1MessagePasserAddr, []string{slot.String()}, l2Header.Number)
 	if err != nil {
 		return ProvenWithdrawalParameters{}, err
 	}
@@ -107,7 +112,7 @@ func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient,
 		return ProvenWithdrawalParameters{}, errors.New("invalid amount of storage proofs")
 	}
 
-	err = VerifyProof(l2Block.Root(), p)
+	err = VerifyProof(l2Header.Root, p)
 	if err != nil {
 		return ProvenWithdrawalParameters{}, err
 	}
@@ -128,9 +133,9 @@ func ProveWithdrawalParametersForBlock(ctx context.Context, proofCl ProofClient,
 		Data:          ev.Data,
 		OutputRootProof: bindings.TypesOutputRootProof{
 			Version:                  [32]byte{}, // Empty for version 1
-			StateRoot:                l2Block.Root(),
+			StateRoot:                l2Header.Root,
 			MessagePasserStorageRoot: p.StorageHash,
-			LatestBlockhash:          l2Block.Hash(),
+			LatestBlockhash:          l2Header.Hash(),
 		},
 		WithdrawalProof: trieNodes,
 	}, nil
@@ -198,11 +203,23 @@ func WithdrawalHash(ev *bindings.L2ToL1MessagePasserMessagePassed) (common.Hash,
 // a transaction receipt. It does not support multiple withdrawals
 // per receipt.
 func ParseMessagePassed(receipt *types.Receipt) (*bindings.L2ToL1MessagePasserMessagePassed, error) {
+	events, err := ParseMessagesPassed(receipt)
+	if err != nil {
+		return nil, err
+	}
+	return events[0], nil
+}
+
+// ParseMessagesPassed parses MessagePassed events from
+// a transaction receipt. It supports multiple withdrawals
+// per receipt.
+func ParseMessagesPassed(receipt *types.Receipt) ([]*bindings.L2ToL1MessagePasserMessagePassed, error) {
 	contract, err := bindings.NewL2ToL1MessagePasser(common.Address{}, nil)
 	if err != nil {
 		return nil, err
 	}
 
+	var events []*bindings.L2ToL1MessagePasserMessagePassed
 	for _, log := range receipt.Logs {
 		if len(log.Topics) == 0 || log.Topics[0] != MessagePassedTopic {
 			continue
@@ -212,9 +229,12 @@ func ParseMessagePassed(receipt *types.Receipt) (*bindings.L2ToL1MessagePasserMe
 		if err != nil {
 			return nil, fmt.Errorf("failed to parse log: %w", err)
 		}
-		return ev, nil
+		events = append(events, ev)
 	}
-	return nil, errors.New("Unable to find MessagePassed event")
+	if len(events) == 0 {
+		return nil, errors.New("unable to find MessagePassed event")
+	}
+	return events, nil
 }
 
 // StorageSlotOfWithdrawalHash determines the storage slot of the L2ToL1MessagePasser contract to look at

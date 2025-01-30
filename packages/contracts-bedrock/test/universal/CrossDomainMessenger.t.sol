@@ -36,7 +36,7 @@ contract CrossDomainMessenger_BaseGas_Test is CommonTest {
         }
 
         uint64 baseGas = l1CrossDomainMessenger.baseGas(_data, _minGasLimit);
-        uint64 minGasLimit = optimismPortal.minimumGasLimit(uint64(_data.length));
+        uint64 minGasLimit = optimismPortal2.minimumGasLimit(uint64(_data.length));
         assertTrue(baseGas >= minGasLimit);
     }
 }
@@ -121,7 +121,7 @@ contract CrossDomainMessenger_RelayMessage_Test is CommonTest {
 
     function setUp() public override {
         super.setUp();
-        er = new ExternalRelay(l1CrossDomainMessenger, address(optimismPortal));
+        er = new ExternalRelay(l1CrossDomainMessenger, address(optimismPortal2));
     }
 
     /// @dev This test mocks an OptimismPortal call to the L1CrossDomainMessenger via
@@ -153,8 +153,8 @@ contract CrossDomainMessenger_RelayMessage_Test is CommonTest {
         });
 
         // set the value of op.l2Sender() to be the L2 Cross Domain Messenger.
-        vm.store(address(optimismPortal), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
-        vm.prank(address(optimismPortal));
+        vm.store(address(optimismPortal2), bytes32(senderSlotIndex), bytes32(abi.encode(sender)));
+        vm.prank(address(optimismPortal2));
         l1CrossDomainMessenger.relayMessage({
             _nonce: Encoding.encodeVersionedNonce({ _nonce: 0, _version: 1 }),
             _sender: sender,

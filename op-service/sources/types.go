@@ -6,12 +6,10 @@ import (
 	"math/big"
 	"strings"
 
-	"github.com/ethereum/go-ethereum/rlp"
 	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
-	"github.com/ethereum/go-ethereum/consensus/misc/eip4844"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/rpc"
 	"github.com/ethereum/go-ethereum/trie"
@@ -30,74 +28,6 @@ import (
 // and we only need to compute the sender for transactions into the inbox.
 //
 // This way we minimize RPC calls, enable batching, and can choose to verify what the RPC gives us.
-
-// headerInfo is a conversion type of types.Header turning it into a
-// BlockInfo, but using a cached hash value.
-type headerInfo struct {
-	hash common.Hash
-	*types.Header
-}
-
-var _ eth.BlockInfo = (*headerInfo)(nil)
-
-func (h headerInfo) Hash() common.Hash {
-	return h.hash
-}
-
-func (h headerInfo) ParentHash() common.Hash {
-	return h.Header.ParentHash
-}
-
-func (h headerInfo) Coinbase() common.Address {
-	return h.Header.Coinbase
-}
-
-func (h headerInfo) Root() common.Hash {
-	return h.Header.Root
-}
-
-func (h headerInfo) NumberU64() uint64 {
-	return h.Header.Number.Uint64()
-}
-
-func (h headerInfo) Time() uint64 {
-	return h.Header.Time
-}
-
-func (h headerInfo) MixDigest() common.Hash {
-	return h.Header.MixDigest
-}
-
-func (h headerInfo) BaseFee() *big.Int {
-	return h.Header.BaseFee
-}
-
-func (h headerInfo) BlobBaseFee() *big.Int {
-	if h.Header.ExcessBlobGas == nil {
-		return nil
-	}
-	return eip4844.CalcBlobFee(*h.Header.ExcessBlobGas)
-}
-
-func (h headerInfo) ReceiptHash() common.Hash {
-	return h.Header.ReceiptHash
-}
-
-func (h headerInfo) GasUsed() uint64 {
-	return h.Header.GasUsed
-}
-
-func (h headerInfo) GasLimit() uint64 {
-	return h.Header.GasLimit
-}
-
-func (h headerInfo) ParentBeaconRoot() *common.Hash {
-	return h.Header.ParentBeaconRoot
-}
-
-func (h headerInfo) HeaderRLP() ([]byte, error) {
-	return rlp.EncodeToBytes(h.Header)
-}
 
 type RPCHeader struct {
 	ParentHash  common.Hash      `json:"parentHash"`
@@ -131,6 +61,9 @@ type RPCHeader struct {
 	// ParentBeaconRoot was added by EIP-4788 and is ignored in legacy headers.
 	ParentBeaconRoot *common.Hash `json:"parentBeaconBlockRoot,omitempty"`
 
+	// RequestsHash was added by EIP-7685 and is ignored in legacy headers.
+	RequestsHash *common.Hash `json:"requestsHash,omitempty" rlp:"optional"`
+
 	// untrusted info included by RPC, may have to be checked
 	Hash common.Hash `json:"hash"`
 }
@@ -159,11 +92,11 @@ func (hdr *RPCHeader) checkPostMerge() error {
 }
 
 func (hdr *RPCHeader) computeBlockHash() common.Hash {
-	gethHeader := hdr.createGethHeader()
+	gethHeader := hdr.CreateGethHeader()
 	return gethHeader.Hash()
 }
 
-func (hdr *RPCHeader) createGethHeader() *types.Header {
+func (hdr *RPCHeader) CreateGethHeader() *types.Header {
 	return &types.Header{
 		ParentHash:      hdr.ParentHash,
 		UncleHash:       hdr.UncleHash,
@@ -186,6 +119,8 @@ func (hdr *RPCHeader) createGethHeader() *types.Header {
 		BlobGasUsed:      (*uint64)(hdr.BlobGasUsed),
 		ExcessBlobGas:    (*uint64)(hdr.ExcessBlobGas),
 		ParentBeaconRoot: hdr.ParentBeaconRoot,
+		// Prague
+		RequestsHash: hdr.RequestsHash,
 	}
 }
 
@@ -200,7 +135,7 @@ func (hdr *RPCHeader) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInfo
 			return nil, fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, hdr.Hash)
 		}
 	}
-	return &headerInfo{hdr.Hash, hdr.createGethHeader()}, nil
+	return eth.HeaderBlockInfoTrusted(hdr.Hash, hdr.CreateGethHeader()), nil
 }
 
 func (hdr *RPCHeader) BlockID() eth.BlockID {
@@ -216,7 +151,7 @@ type RPCBlock struct {
 	Withdrawals  *types.Withdrawals   `json:"withdrawals,omitempty"`
 }
 
-func (block *RPCBlock) verify() error {
+func (block *RPCBlock) Verify() error {
 	if computed := block.computeBlockHash(); computed != block.Hash {
 		return fmt.Errorf("failed to verify block hash: computed %s but RPC said %s", computed, block.Hash)
 	}
@@ -228,21 +163,47 @@ func (block *RPCBlock) verify() error {
 	if computed := types.DeriveSha(types.Transactions(block.Transactions), trie.NewStackTrie(nil)); block.TxHash != computed {
 		return fmt.Errorf("failed to verify transactions list: computed %s but RPC said %s", computed, block.TxHash)
 	}
-	if block.WithdrawalsRoot != nil {
-		if block.Withdrawals == nil {
+
+	// Withdrawals validation is different between L1 and L2. It is possible to determine that it is an L2 block
+	// if the first transaction is a deposit.
+	isL2 := len(block.Transactions) > 0 && block.Transactions[0].IsDepositTx()
+	if isL2 {
+		if err := block.validateL2Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
+			return err
+		}
+	} else {
+		if err := block.validateL1Withdrawals(block.Withdrawals, block.WithdrawalsRoot); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (block *RPCBlock) validateL1Withdrawals(withdrawals *types.Withdrawals, withdrawalsRoot *common.Hash) error {
+	if withdrawalsRoot != nil {
+		if withdrawals == nil {
 			return errors.New("expected withdrawals")
 		}
-		for i, w := range *block.Withdrawals {
+		for i, w := range *withdrawals {
 			if w == nil {
 				return fmt.Errorf("block withdrawal %d is null", i)
 			}
 		}
-		if computed := types.DeriveSha(*block.Withdrawals, trie.NewStackTrie(nil)); *block.WithdrawalsRoot != computed {
-			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, block.WithdrawalsRoot)
+		if computed := types.DeriveSha(*withdrawals, trie.NewStackTrie(nil)); *withdrawalsRoot != computed {
+			return fmt.Errorf("failed to verify withdrawals list: computed %s but RPC said %s", computed, withdrawalsRoot)
 		}
 	} else {
-		if block.Withdrawals != nil {
-			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*block.Withdrawals))
+		if withdrawals != nil {
+			return fmt.Errorf("expected no withdrawals due to missing withdrawals-root, but got %d", len(*withdrawals))
+		}
+	}
+	return nil
+}
+
+func (block *RPCBlock) validateL2Withdrawals(withdrawals *types.Withdrawals, withdrawalsRoot *common.Hash) error {
+	if withdrawalsRoot != nil {
+		if !(withdrawals != nil && len(*withdrawals) == 0) {
+			return fmt.Errorf("expected empty withdrawals, but got %d", len(*withdrawals))
 		}
 	}
 	return nil
@@ -255,7 +216,7 @@ func (block *RPCBlock) Info(trustCache bool, mustBePostMerge bool) (eth.BlockInf
 		}
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, nil, err
 		}
 	}
@@ -274,7 +235,7 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 		return nil, err
 	}
 	if !trustCache {
-		if err := block.verify(); err != nil {
+		if err := block.Verify(); err != nil {
 			return nil, err
 		}
 	}
@@ -293,23 +254,24 @@ func (block *RPCBlock) ExecutionPayloadEnvelope(trustCache bool) (*eth.Execution
 	}
 
 	payload := &eth.ExecutionPayload{
-		ParentHash:    block.ParentHash,
-		FeeRecipient:  block.Coinbase,
-		StateRoot:     eth.Bytes32(block.Root),
-		ReceiptsRoot:  eth.Bytes32(block.ReceiptHash),
-		LogsBloom:     block.Bloom,
-		PrevRandao:    eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
-		BlockNumber:   block.Number,
-		GasLimit:      block.GasLimit,
-		GasUsed:       block.GasUsed,
-		Timestamp:     block.Time,
-		ExtraData:     eth.BytesMax32(block.Extra),
-		BaseFeePerGas: eth.Uint256Quantity(baseFee),
-		BlockHash:     block.Hash,
-		Transactions:  opaqueTxs,
-		Withdrawals:   block.Withdrawals,
-		BlobGasUsed:   block.BlobGasUsed,
-		ExcessBlobGas: block.ExcessBlobGas,
+		ParentHash:      block.ParentHash,
+		FeeRecipient:    block.Coinbase,
+		StateRoot:       eth.Bytes32(block.Root),
+		ReceiptsRoot:    eth.Bytes32(block.ReceiptHash),
+		LogsBloom:       block.Bloom,
+		PrevRandao:      eth.Bytes32(block.MixDigest), // mix-digest field is used for prevRandao post-merge
+		BlockNumber:     block.Number,
+		GasLimit:        block.GasLimit,
+		GasUsed:         block.GasUsed,
+		Timestamp:       block.Time,
+		ExtraData:       eth.BytesMax32(block.Extra),
+		BaseFeePerGas:   eth.Uint256Quantity(baseFee),
+		BlockHash:       block.Hash,
+		Transactions:    opaqueTxs,
+		Withdrawals:     block.Withdrawals,
+		BlobGasUsed:     block.BlobGasUsed,
+		ExcessBlobGas:   block.ExcessBlobGas,
+		WithdrawalsRoot: block.WithdrawalsRoot,
 	}
 
 	return &eth.ExecutionPayloadEnvelope{

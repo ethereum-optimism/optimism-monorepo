@@ -105,7 +105,7 @@ type BatchSubmitter struct {
 	killCtx           context.Context
 	cancelKillCtx     context.CancelFunc
 
-	l2BlockAdded chan struct{} // notifies the throttling loop whenever an l2 block is added
+	pendingBytesUpdated chan int64 // notifies the throttling with the new pending bytes
 
 	mutex   sync.Mutex
 	running bool
@@ -114,8 +114,9 @@ type BatchSubmitter struct {
 	txpoolState       TxPoolState
 	txpoolBlockedBlob bool
 
-	state         *channelManager
-	prevCurrentL1 eth.L1BlockRef // cached CurrentL1 from the last syncStatus
+	channelMgrMutex sync.Mutex // guards channelMgr and prevCurrentL1
+	channelMgr      *channelManager
+	prevCurrentL1   eth.L1BlockRef // cached CurrentL1 from the last syncStatus
 }
 
 // NewBatchSubmitter initializes the BatchSubmitter driver from a preconfigured DriverSetup
@@ -126,7 +127,7 @@ func NewBatchSubmitter(setup DriverSetup) *BatchSubmitter {
 	}
 	return &BatchSubmitter{
 		DriverSetup: setup,
-		state:       state,
+		channelMgr:  state,
 	}
 }
 
@@ -293,13 +294,15 @@ func (l *BatchSubmitter) loadBlockIntoState(ctx context.Context, blockNumber uin
 		return nil, fmt.Errorf("getting L2 block: %w", err)
 	}
 
-	if err := l.state.AddL2Block(block); err != nil {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
+	if err := l.channelMgr.AddL2Block(block); err != nil {
 		return nil, fmt.Errorf("adding L2 block to state: %w", err)
 	}
 
 	// notify the throttling loop it may be time to initiate throttling without blocking
 	select {
-	case l.l2BlockAdded <- struct{}{}:
+	case l.pendingBytesUpdated <- l.channelMgr.PendingDABytes():
 	default:
 	}
 
@@ -387,6 +390,35 @@ func (l *BatchSubmitter) setTxPoolState(txPoolState TxPoolState, txPoolBlockedBl
 	l.txpoolMutex.Unlock()
 }
 
+// syncAndPrune computes actions to take based on the current sync status, prunes the channel manager state
+// and returns blocks to load.
+func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBlockRange {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
+
+	// Decide appropriate actions
+	syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.channelMgr.blocks, l.channelMgr.channelQueue, l.Log)
+
+	if outOfSync {
+		// If the sequencer is out of sync
+		// do nothing and wait to see if it has
+		// got in sync on the next tick.
+		l.Log.Warn("Sequencer is out of sync, retrying next tick.")
+		return syncActions.blocksToLoad
+	}
+
+	l.prevCurrentL1 = syncStatus.CurrentL1
+
+	// Manage existing state / garbage collection
+	if syncActions.clearState != nil {
+		l.channelMgr.Clear(*syncActions.clearState)
+	} else {
+		l.channelMgr.PruneSafeBlocks(syncActions.blocksToPrune)
+		l.channelMgr.PruneChannels(syncActions.channelsToPrune)
+	}
+	return syncActions.blocksToLoad
+}
+
 // mainLoop periodically:
 // -  polls the sequencer,
 // -  prunes the channel manager state (i.e. safe blocks)
@@ -410,8 +442,8 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 	l.txpoolState = TxpoolGood
 	l.txpoolMutex.Unlock()
 
-	l.l2BlockAdded = make(chan struct{})
-	defer close(l.l2BlockAdded)
+	l.pendingBytesUpdated = make(chan int64)
+	defer close(l.pendingBytesUpdated)
 
 	ticker := time.NewTicker(l.Config.PollInterval)
 	defer ticker.Stop()
@@ -430,30 +462,11 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 				continue
 			}
 
-			// Decide appropriate actions
-			syncActions, outOfSync := computeSyncActions(*syncStatus, l.prevCurrentL1, l.state.blocks, l.state.channelQueue, l.Log)
+			blocksToLoad := l.syncAndPrune(syncStatus)
 
-			if outOfSync {
-				// If the sequencer is out of sync
-				// do nothing and wait to see if it has
-				// got in sync on the next tick.
-				l.Log.Warn("Sequencer is out of sync, retrying next tick.")
-				continue
-			}
-
-			l.prevCurrentL1 = syncStatus.CurrentL1
-
-			// Manage existing state / garbage collection
-			if syncActions.clearState != nil {
-				l.state.Clear(*syncActions.clearState)
-			} else {
-				l.state.pruneSafeBlocks(syncActions.blocksToPrune)
-				l.state.pruneChannels(syncActions.channelsToPrune)
-			}
-
-			if syncActions.blocksToLoad != nil {
+			if blocksToLoad != nil {
 				// Get fresh unsafe blocks
-				if err := l.loadBlocksIntoState(l.shutdownCtx, syncActions.blocksToLoad.start, syncActions.blocksToLoad.end); errors.Is(err, ErrReorg) {
+				if err := l.loadBlocksIntoState(l.shutdownCtx, blocksToLoad.start, blocksToLoad.end); errors.Is(err, ErrReorg) {
 					l.Log.Warn("error loading blocks, clearing state and waiting for node sync", "err", err)
 					l.waitNodeSyncAndClearState()
 					continue
@@ -461,6 +474,7 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			}
 
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
+
 		case <-ctx.Done():
 			if err := queue.Wait(); err != nil {
 				l.Log.Error("error waiting for transactions to complete", "err", err)
@@ -506,7 +520,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	ticker := time.NewTicker(l.Config.ThrottleInterval)
 	defer ticker.Stop()
 
-	updateParams := func() {
+	updateParams := func(pendingBytes int64) {
 		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
@@ -514,7 +528,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			l.Log.Error("Can't reach sequencer execution RPC", "err", err)
 			return
 		}
-		pendingBytes := l.state.PendingDABytes()
+
 		maxTxSize := uint64(0)
 		maxBlockSize := l.Config.ThrottleAlwaysBlockSize
 		if pendingBytes > int64(l.Config.ThrottleThreshold) {
@@ -550,12 +564,14 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 		}
 	}
 
+	cachedPendingBytes := int64(0)
 	for {
 		select {
-		case <-l.l2BlockAdded:
-			updateParams()
 		case <-ticker.C:
-			updateParams()
+			updateParams(int64(cachedPendingBytes))
+		case pendingBytes := <-l.pendingBytesUpdated:
+			cachedPendingBytes = pendingBytes
+			updateParams(pendingBytes)
 		case <-ctx.Done():
 			l.Log.Info("DA throttling loop done")
 			return
@@ -621,7 +637,9 @@ func (l *BatchSubmitter) publishStateToL1(queue *txmgr.Queue[txRef], receiptsCh 
 			l.Log.Info("txpool state is not good, aborting state publishing")
 			return
 		}
+
 		err := l.publishTxToL1(l.killCtx, queue, receiptsCh, daGroup)
+
 		if err != nil {
 			if err != io.EOF {
 				l.Log.Error("Error publishing tx to l1", "err", err)
@@ -647,7 +665,9 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 			return false
 		} else {
 			l.Log.Info("Clearing state with safe L1 origin", "origin", l1SafeOrigin)
-			l.state.Clear(l1SafeOrigin)
+			l.channelMgrMutex.Lock()
+			defer l.channelMgrMutex.Unlock()
+			l.channelMgr.Clear(l1SafeOrigin)
 			return true
 		}
 	}
@@ -668,7 +688,9 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 			}
 		case <-ctx.Done():
 			l.Log.Warn("Clearing state cancelled")
-			l.state.Clear(eth.BlockID{})
+			l.channelMgrMutex.Lock()
+			defer l.channelMgrMutex.Unlock()
+			l.channelMgr.Clear(eth.BlockID{})
 			return
 		}
 	}
@@ -676,6 +698,7 @@ func (l *BatchSubmitter) clearState(ctx context.Context) {
 
 // publishTxToL1 submits a single state tx to the L1
 func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) error {
+
 	// send all available transactions
 	l1tip, err := l.l1Tip(ctx)
 	if err != nil {
@@ -686,7 +709,9 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 
 	// Collect next transaction data. This pulls data out of the channel, so we need to make sure
 	// to put it back if ever da or txmgr requests fail, by calling l.recordFailedDARequest/recordFailedTx.
-	txdata, err := l.state.TxData(l1tip.ID())
+	l.channelMgrMutex.Lock()
+	txdata, err := l.channelMgr.TxData(l1tip.ID())
+	l.channelMgrMutex.Unlock()
 
 	if err == io.EOF {
 		l.Log.Trace("No transaction data available")
@@ -867,21 +892,27 @@ func (l *BatchSubmitter) handleReceipt(r txmgr.TxReceipt[txRef]) {
 }
 
 func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	if err != nil {
 		l.Log.Warn("DA request failed", logFields(id, err)...)
 	}
-	l.state.TxFailed(id)
+	l.channelMgr.TxFailed(id)
 }
 
 func (l *BatchSubmitter) recordFailedTx(id txID, err error) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	l.Log.Warn("Transaction failed to send", logFields(id, err)...)
-	l.state.TxFailed(id)
+	l.channelMgr.TxFailed(id)
 }
 
 func (l *BatchSubmitter) recordConfirmedTx(id txID, receipt *types.Receipt) {
+	l.channelMgrMutex.Lock()
+	defer l.channelMgrMutex.Unlock()
 	l.Log.Info("Transaction confirmed", logFields(id, receipt)...)
 	l1block := eth.ReceiptBlockID(receipt)
-	l.state.TxConfirmed(id, l1block)
+	l.channelMgr.TxConfirmed(id, l1block)
 }
 
 // l1Tip gets the current L1 tip as a L1BlockRef. The passed context is assumed

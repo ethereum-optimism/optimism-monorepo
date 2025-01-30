@@ -41,18 +41,18 @@ contract SuperchainConfig is Initializable, ISemver {
     event ConfigUpdate(UpdateType indexed updateType, bytes data);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.1.1-beta.3
-    string public constant version = "1.1.1-beta.3";
+    /// @custom:semver 1.2.0
+    string public constant version = "1.2.0";
 
     /// @notice Constructs the SuperchainConfig contract.
     constructor() {
-        initialize({ _guardian: address(0), _paused: false });
+        _disableInitializers();
     }
 
     /// @notice Initializer.
     /// @param _guardian    Address of the guardian, can pause the OptimismPortal.
     /// @param _paused      Initial paused status.
-    function initialize(address _guardian, bool _paused) public initializer {
+    function initialize(address _guardian, bool _paused) external initializer {
         _setGuardian(_guardian);
         if (_paused) {
             _pause("Initializer paused");

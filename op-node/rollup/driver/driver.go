@@ -17,7 +17,6 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/engine"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sequencing"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/status"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
@@ -163,7 +162,6 @@ func NewDriver(
 	cfg *rollup.Config,
 	l2 L2Chain,
 	l1 L1Chain,
-	supervisor interop.InteropBackend, // may be nil pre-interop.
 	l1Blobs derive.L1BlobsFetcher,
 	altSync AltSync,
 	network Network,
@@ -174,18 +172,11 @@ func NewDriver(
 	syncCfg *sync.Config,
 	sequencerConductor conductor.SequencerConductor,
 	altDA AltDAIface,
+	managedMode bool,
 ) *Driver {
 	driverCtx, driverCancel := context.WithCancel(context.Background())
 
 	opts := event.DefaultRegisterOpts()
-
-	// If interop is scheduled we start the driver.
-	// It will then be ready to pick up verification work
-	// as soon as we reach the upgrade time (if the upgrade is not already active).
-	if cfg.InteropTime != nil {
-		interopDeriver := interop.NewInteropDeriver(log, cfg, driverCtx, supervisor, l2)
-		sys.Register("interop", interopDeriver, opts)
-	}
 
 	statusTracker := status.NewStatusTracker(log, metrics)
 	sys.Register("status", statusTracker, opts)
@@ -216,7 +207,7 @@ func NewDriver(
 	sys.Register("attributes-handler",
 		attributes.NewAttributesHandler(log, cfg, driverCtx, l2), opts)
 
-	derivationPipeline := derive.NewDerivationPipeline(log, cfg, verifConfDepth, l1Blobs, altDA, l2, metrics)
+	derivationPipeline := derive.NewDerivationPipeline(log, cfg, verifConfDepth, l1Blobs, altDA, l2, metrics, managedMode)
 
 	sys.Register("pipeline",
 		derive.NewPipelineDeriver(driverCtx, derivationPipeline), opts)
@@ -233,6 +224,7 @@ func NewDriver(
 		Log:            log,
 		Ctx:            driverCtx,
 		Drain:          drain.Drain,
+		ManagedMode:    managedMode,
 	}
 	sys.Register("sync", syncDeriver, opts)
 

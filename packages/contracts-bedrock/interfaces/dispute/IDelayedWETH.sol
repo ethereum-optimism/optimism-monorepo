@@ -11,13 +11,13 @@ interface IDelayedWETH {
 
     event OwnershipTransferred(address indexed previousOwner, address indexed newOwner);
     event Initialized(uint8 version);
-    event Unwrap(address indexed src, uint256 wad);
 
     fallback() external payable;
     receive() external payable;
 
     function config() external view returns (ISuperchainConfig);
     function delay() external view returns (uint256);
+    function hold(address _guy) external;
     function hold(address _guy, uint256 _wad) external;
     function initialize(address _owner, ISuperchainConfig _config) external;
     function owner() external view returns (address);

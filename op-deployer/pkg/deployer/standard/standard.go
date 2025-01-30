@@ -5,9 +5,14 @@ import (
 	"fmt"
 	"net/url"
 
+	"github.com/ethereum/go-ethereum/superchain"
+
+	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
+	"github.com/ethereum-optimism/optimism/op-node/rollup"
+	op_service "github.com/ethereum-optimism/optimism/op-service"
+
 	"github.com/BurntSushi/toml"
 
-	"github.com/ethereum-optimism/superchain-registry/superchain"
 	"github.com/ethereum/go-ethereum/common"
 )
 
@@ -15,7 +20,7 @@ const (
 	GasLimit                        uint64 = 60_000_000
 	BasefeeScalar                   uint32 = 1368
 	BlobBaseFeeScalar               uint32 = 801949
-	WithdrawalDelaySeconds          uint64 = 604800
+	WithdrawalDelaySeconds          uint64 = 302400
 	MinProposalSizeBytes            uint64 = 126000
 	ChallengePeriodSeconds          uint64 = 86400
 	ProofMaturityDelaySeconds       uint64 = 604800
@@ -31,6 +36,7 @@ const (
 	Eip1559Elasticity               uint64 = 6
 
 	ContractsV160Tag        = "op-contracts/v1.6.0"
+	ContractsV180Tag        = "op-contracts/v1.8.0-rc.4"
 	ContractsV170Beta1L2Tag = "op-contracts/v1.7.0-beta.1+l2-contracts"
 )
 
@@ -46,13 +52,11 @@ var L1VersionsSepolia L1Versions
 
 var L1VersionsMainnet L1Versions
 
-var DefaultL1ContractsTag = ContractsV160Tag
+var DefaultL1ContractsTag = ContractsV180Tag
 
 var DefaultL2ContractsTag = ContractsV170Beta1L2Tag
 
-type L1Versions struct {
-	Releases map[string]L1VersionsReleases `toml:"releases"`
-}
+type L1Versions map[string]L1VersionsReleases
 
 type L1VersionsReleases struct {
 	OptimismPortal               VersionRelease `toml:"optimism_portal"`
@@ -89,34 +93,72 @@ type OPCMBlueprints struct {
 	PermissionedDisputeGame2 common.Address
 }
 
-var sepoliaBlueprints = OPCMBlueprints{
-	AddressManager:           common.HexToAddress("0x3125a4cB2179E04203D3Eb2b5784aaef9FD64216"),
-	Proxy:                    common.HexToAddress("0xe650ADb86a0de96e2c434D0a52E7D5B70980D6f1"),
-	ProxyAdmin:               common.HexToAddress("0x3AC6b88F6bC4A5038DB7718dE47a5ab1a9609319"),
-	L1ChugSplashProxy:        common.HexToAddress("0x58770FC7ed304c43D2B70248914eb34A741cF411"),
-	ResolvedDelegateProxy:    common.HexToAddress("0x0449adB72D489a137d476aB49c6b812161754fD3"),
-	AnchorStateRegistry:      common.HexToAddress("0xB98095199437883b7661E0D58256060f3bc730a4"),
-	PermissionedDisputeGame1: common.HexToAddress("0xf72Ac5f164cC024DE09a2c249441715b69a16eAb"),
-	PermissionedDisputeGame2: common.HexToAddress("0x713dAC5A23728477547b484f9e0D751077E300a2"),
+type OPCMBlueprintsByChain struct {
+	Mainnet *OPCMBlueprints
+	Sepolia *OPCMBlueprints
 }
 
-var mainnetBlueprints = OPCMBlueprints{
-	AddressManager:           common.HexToAddress("0x29aA24714c06914d9689e933cae2293C569AfeEa"),
-	Proxy:                    common.HexToAddress("0x3626ebD458c7f34FD98789A373593fF2fc227bA0"),
-	ProxyAdmin:               common.HexToAddress("0x7170678A5CFFb6872606d251B3CcdB27De962631"),
-	L1ChugSplashProxy:        common.HexToAddress("0x538906C8B000D621fd11B7e8642f504dD8730837"),
-	ResolvedDelegateProxy:    common.HexToAddress("0xF12bD34d6a1d26d230240ECEA761f77e2013926E"),
-	AnchorStateRegistry:      common.HexToAddress("0xbA7Be2bEE016568274a4D1E6c852Bb9a99FaAB8B"),
-	PermissionedDisputeGame1: common.HexToAddress("0xb94bF6130Df8BD9a9eA45D8dD8C18957002d1986"),
-	PermissionedDisputeGame2: common.HexToAddress("0xe0a642B249CF6cbF0fF7b4dDf41443Ea7a5C8Cc8"),
+var opcmBlueprintsByVersion = map[string]OPCMBlueprintsByChain{
+	"op-contracts/v1.6.0": {
+		Mainnet: &OPCMBlueprints{
+			AddressManager:           common.HexToAddress("0x29aA24714c06914d9689e933cae2293C569AfeEa"),
+			Proxy:                    common.HexToAddress("0x3626ebD458c7f34FD98789A373593fF2fc227bA0"),
+			ProxyAdmin:               common.HexToAddress("0x7170678A5CFFb6872606d251B3CcdB27De962631"),
+			L1ChugSplashProxy:        common.HexToAddress("0x538906C8B000D621fd11B7e8642f504dD8730837"),
+			ResolvedDelegateProxy:    common.HexToAddress("0xF12bD34d6a1d26d230240ECEA761f77e2013926E"),
+			AnchorStateRegistry:      common.HexToAddress("0xbA7Be2bEE016568274a4D1E6c852Bb9a99FaAB8B"),
+			PermissionedDisputeGame1: common.HexToAddress("0xb94bF6130Df8BD9a9eA45D8dD8C18957002d1986"),
+			PermissionedDisputeGame2: common.HexToAddress("0xe0a642B249CF6cbF0fF7b4dDf41443Ea7a5C8Cc8"),
+		},
+		Sepolia: &OPCMBlueprints{
+			AddressManager:           common.HexToAddress("0x3125a4cB2179E04203D3Eb2b5784aaef9FD64216"),
+			Proxy:                    common.HexToAddress("0xe650ADb86a0de96e2c434D0a52E7D5B70980D6f1"),
+			ProxyAdmin:               common.HexToAddress("0x3AC6b88F6bC4A5038DB7718dE47a5ab1a9609319"),
+			L1ChugSplashProxy:        common.HexToAddress("0x58770FC7ed304c43D2B70248914eb34A741cF411"),
+			ResolvedDelegateProxy:    common.HexToAddress("0x0449adB72D489a137d476aB49c6b812161754fD3"),
+			AnchorStateRegistry:      common.HexToAddress("0xB98095199437883b7661E0D58256060f3bc730a4"),
+			PermissionedDisputeGame1: common.HexToAddress("0xf72Ac5f164cC024DE09a2c249441715b69a16eAb"),
+			PermissionedDisputeGame2: common.HexToAddress("0x713dAC5A23728477547b484f9e0D751077E300a2"),
+		},
+	},
+	"op-contracts/v1.8.0-rc.4": {
+		Mainnet: &OPCMBlueprints{
+			AddressManager:           common.HexToAddress("0x29aA24714c06914d9689e933cae2293C569AfeEa"),
+			Proxy:                    common.HexToAddress("0x3626ebD458c7f34FD98789A373593fF2fc227bA0"),
+			ProxyAdmin:               common.HexToAddress("0x7170678A5CFFb6872606d251B3CcdB27De962631"),
+			L1ChugSplashProxy:        common.HexToAddress("0x538906C8B000D621fd11B7e8642f504dD8730837"),
+			ResolvedDelegateProxy:    common.HexToAddress("0xF12bD34d6a1d26d230240ECEA761f77e2013926E"),
+			AnchorStateRegistry:      common.HexToAddress("0xbA7Be2bEE016568274a4D1E6c852Bb9a99FaAB8B"),
+			PermissionedDisputeGame1: common.HexToAddress("0x596A4334a28056c7943c8bcEf220F38cA5B42dC5"), // updated
+			PermissionedDisputeGame2: common.HexToAddress("0x4E3E5C09B07AAA3fe482F5A1f82a19e91944Fffc"), // updated
+		},
+		Sepolia: &OPCMBlueprints{
+			AddressManager:           common.HexToAddress("0x3125a4cB2179E04203D3Eb2b5784aaef9FD64216"),
+			Proxy:                    common.HexToAddress("0xe650ADb86a0de96e2c434D0a52E7D5B70980D6f1"),
+			ProxyAdmin:               common.HexToAddress("0x3AC6b88F6bC4A5038DB7718dE47a5ab1a9609319"),
+			L1ChugSplashProxy:        common.HexToAddress("0x58770FC7ed304c43D2B70248914eb34A741cF411"),
+			ResolvedDelegateProxy:    common.HexToAddress("0x0449adB72D489a137d476aB49c6b812161754fD3"),
+			AnchorStateRegistry:      common.HexToAddress("0xB98095199437883b7661E0D58256060f3bc730a4"),
+			PermissionedDisputeGame1: common.HexToAddress("0x596A4334a28056c7943c8bcEf220F38cA5B42dC5"), // updated
+			PermissionedDisputeGame2: common.HexToAddress("0x4E3E5C09B07AAA3fe482F5A1f82a19e91944Fffc"), // updated
+		},
+	},
 }
 
-func OPCMBlueprintsFor(chainID uint64) (OPCMBlueprints, error) {
+func OPCMBlueprintsFor(chainID uint64, version string) (OPCMBlueprints, error) {
 	switch chainID {
 	case 1:
-		return mainnetBlueprints, nil
+		bps := opcmBlueprintsByVersion[version].Mainnet
+		if bps == nil {
+			return OPCMBlueprints{}, fmt.Errorf("unsupported version: %s", version)
+		}
+		return *bps, nil
 	case 11155111:
-		return sepoliaBlueprints, nil
+		bps := opcmBlueprintsByVersion[version].Sepolia
+		if bps == nil {
+			return OPCMBlueprints{}, fmt.Errorf("unsupported version: %s", version)
+		}
+		return *bps, nil
 	default:
 		return OPCMBlueprints{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -166,51 +208,47 @@ func ChallengerAddressFor(chainID uint64) (common.Address, error) {
 	}
 }
 
-func SuperchainFor(chainID uint64) (*superchain.Superchain, error) {
+func SuperchainFor(chainID uint64) (superchain.Superchain, error) {
 	switch chainID {
 	case 1:
-		return superchain.Superchains["mainnet"], nil
+		return superchain.GetSuperchain("mainnet")
 	case 11155111:
-		return superchain.Superchains["sepolia"], nil
+		return superchain.GetSuperchain("sepolia")
 	default:
-		return nil, fmt.Errorf("unsupported chain ID: %d", chainID)
+		return superchain.Superchain{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
 }
 
-func ChainNameFor(chainID uint64) (string, error) {
+func ManagerImplementationAddrFor(chainID uint64, tag string) (common.Address, error) {
 	switch chainID {
 	case 1:
-		return "mainnet", nil
+		switch tag {
+		case "op-contracts/v1.6.0":
+			// Generated using the bootstrap command on 11/18/2024.
+			// Verified against compiled bytecode at:
+			// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
+			return common.HexToAddress("0x9BC0A1eD534BFb31a6Be69e5b767Cba332f14347"), nil
+		case "op-contracts/v1.8.0-rc.4":
+			// Generated using the bootstrap command on 01/23/2025.
+			// Verified against compiled bytecode at:
+			// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v180-blueprints-script
+			return common.HexToAddress("0x5269eed89b0d04d909a0973439e2587e815ba932"), nil
+		default:
+			return common.Address{}, fmt.Errorf("unsupported mainnet tag: %s", tag)
+		}
 	case 11155111:
-		return "sepolia", nil
-	default:
-		return "", fmt.Errorf("unrecognized l1 chain ID: %d", chainID)
-	}
-}
-
-func CommitForDeployTag(tag string) (string, error) {
-	switch tag {
-	case "op-contracts/v1.6.0":
-		return "33f06d2d5e4034125df02264a5ffe84571bd0359", nil
-	case "op-contracts/v1.7.0-beta.1+l2-contracts":
-		return "5e14a61547a45eef2ebeba677aee4a049f106ed8", nil
-	default:
-		return "", fmt.Errorf("unsupported tag: %s", tag)
-	}
-}
-
-func ManagerImplementationAddrFor(chainID uint64) (common.Address, error) {
-	switch chainID {
-	case 1:
-		// Generated using the bootstrap command on 11/18/2024.
-		// Verified against compiled bytecode at:
-		// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
-		return common.HexToAddress("0x9BC0A1eD534BFb31a6Be69e5b767Cba332f14347"), nil
-	case 11155111:
-		// Generated using the bootstrap command on 11/18/2024.
-		// Verified against compiled bytecode at:
-		// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
-		return common.HexToAddress("0x760B1d2Dc68DC51fb6E8B2b8722B8ed08903540c"), nil
+		switch tag {
+		case "op-contracts/v1.6.0":
+			// Generated using the bootstrap command on 11/18/2024.
+			// Verified against compiled bytecode at:
+			// https://github.com/ethereum-optimism/optimism/releases/tag/op-contracts-v160-artifacts-opcm-redesign-backport
+			return common.HexToAddress("0x760B1d2Dc68DC51fb6E8B2b8722B8ed08903540c"), nil
+		case "op-contracts/v1.8.0-rc.4":
+			// Generated using the bootstrap command on 12/19/2024.
+			return common.HexToAddress("0xefb0779120d9cc3582747e5eb787d859e3a53a5c"), nil
+		default:
+			return common.Address{}, fmt.Errorf("unsupported sepolia tag: %s", tag)
+		}
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -225,19 +263,6 @@ func SuperchainProxyAdminAddrFor(chainID uint64) (common.Address, error) {
 		return common.HexToAddress("0x543bA4AADBAb8f9025686Bd03993043599c6fB04"), nil
 	case 11155111:
 		return common.HexToAddress("0x189aBAAaa82DfC015A588A7dbaD6F13b1D3485Bc"), nil
-	default:
-		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
-	}
-}
-
-func SystemOwnerAddrFor(chainID uint64) (common.Address, error) {
-	switch chainID {
-	case 1:
-		// Set to owner of superchain proxy admin
-		return common.HexToAddress("0x5a0Aae59D09fccBdDb6C6CcEB07B7279367C3d2A"), nil
-	case 11155111:
-		// Set to development multisig
-		return common.HexToAddress("0xDEe57160aAfCF04c34C887B5962D0a69676d3C8B"), nil
 	default:
 		return common.Address{}, fmt.Errorf("unsupported chain ID: %d", chainID)
 	}
@@ -260,8 +285,8 @@ func ArtifactsURLForTag(tag string) (*url.URL, error) {
 		return url.Parse(standardArtifactsURL("e1f0c4020618c4a98972e7124c39686cab2e31d5d7846f9ce5e0d5eed0f5ff32"))
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return url.Parse(standardArtifactsURL("b0fb1f6f674519d637cff39a22187a5993d7f81a6d7b7be6507a0b50a5e38597"))
-	case "op-contracts/v1.8.0-rc.3":
-		return url.Parse(standardArtifactsURL("3bcff2944953862596d5fd0125d166a04af2ba6426dc693983291d3cb86b2e2e"))
+	case "op-contracts/v1.8.0-rc.4":
+		return url.Parse(standardArtifactsURL("361ebf1f520c20d932695b00babfff6923ce2530cd05b2776eb74e07038898a6"))
 	default:
 		return nil, fmt.Errorf("unsupported tag: %s", tag)
 	}
@@ -273,11 +298,35 @@ func ArtifactsHashForTag(tag string) (common.Hash, error) {
 		return common.HexToHash("d20a930cc0ff204c2d93b7aa60755ec7859ba4f328b881f5090c6a6a2a86dcba"), nil
 	case "op-contracts/v1.7.0-beta.1+l2-contracts":
 		return common.HexToHash("9e3ad322ec9b2775d59143ce6874892f9b04781742c603ad59165159e90b00b9"), nil
-	case "op-contracts/v1.8.0-rc.3":
-		return common.HexToHash("7c133142165fbbdba28ced5d9a04af8bea68baf58b19a07cdd8ae531b01fbe9d"), nil
+	case "op-contracts/v1.8.0-rc.4":
+		return common.HexToHash("78f186df4e9a02a6421bd9c3641b281e297535140967faa428c938286923976a"), nil
 	default:
 		return common.Hash{}, fmt.Errorf("unsupported tag: %s", tag)
 	}
+}
+
+// DefaultHardforkScheduleForTag is used to determine which hardforks should be activated by default given a
+// contract tag. For example, passing in v1.6.0 will return all hardforks up to and including Granite. This allows
+// OP Deployer to set sane defaults for hardforks. This is not an ideal solution, but it will have to work until we get
+// to MCP L2.
+func DefaultHardforkScheduleForTag(tag string) *genesis.UpgradeScheduleDeployConfig {
+	sched := &genesis.UpgradeScheduleDeployConfig{
+		L2GenesisRegolithTimeOffset: op_service.U64UtilPtr(0),
+		L2GenesisCanyonTimeOffset:   op_service.U64UtilPtr(0),
+		L2GenesisDeltaTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisEcotoneTimeOffset:  op_service.U64UtilPtr(0),
+		L2GenesisFjordTimeOffset:    op_service.U64UtilPtr(0),
+		L2GenesisGraniteTimeOffset:  op_service.U64UtilPtr(0),
+	}
+
+	switch tag {
+	case ContractsV160Tag, ContractsV170Beta1L2Tag:
+		return sched
+	default:
+		sched.ActivateForkAtGenesis(rollup.Holocene)
+	}
+
+	return sched
 }
 
 func standardArtifactsURL(checksum string) string {

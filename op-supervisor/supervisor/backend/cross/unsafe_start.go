@@ -12,9 +12,9 @@ import (
 )
 
 type UnsafeStartDeps interface {
-	Check(chain types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
+	Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
 
-	IsCrossUnsafe(chainID types.ChainID, block eth.BlockID) error
+	IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error
 
 	DependencySet() depset.DependencySet
 }
@@ -22,7 +22,7 @@ type UnsafeStartDeps interface {
 // CrossUnsafeHazards checks if the given messages all exist and pass invariants.
 // It returns a hazard-set: if any intra-block messaging happened,
 // these hazard blocks have to be verified.
-func CrossUnsafeHazards(d UnsafeStartDeps, chainID types.ChainID,
+func CrossUnsafeHazards(d UnsafeStartDeps, chainID eth.ChainID,
 	candidate types.BlockSeal, execMsgs []*types.ExecutingMessage) (hazards map[types.ChainIndex]types.BlockSeal, err error) {
 
 	hazards = make(map[types.ChainIndex]types.BlockSeal)
@@ -61,12 +61,15 @@ func CrossUnsafeHazards(d UnsafeStartDeps, chainID types.ChainID,
 		if msg.Timestamp < candidate.Timestamp {
 			// If timestamp is older: invariant ensures non-cyclic ordering relative to other messages.
 			// Check that the block that they are included in is cross-safe already.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}
 			if err := d.IsCrossUnsafe(initChainID, includedIn.ID()); err != nil {
 				return nil, fmt.Errorf("msg %s included in non-cross-unsafe block %s: %w", msg, includedIn, err)
+			}
+			if includedIn.Timestamp != msg.Timestamp {
+				return nil, fmt.Errorf("executing msg %s exists, but has different timestamp than block %s: %w", msg, includedIn, types.ErrConflict)
 			}
 		} else if msg.Timestamp == candidate.Timestamp {
 			// If timestamp is equal: we have to inspect ordering of individual
@@ -75,7 +78,7 @@ func CrossUnsafeHazards(d UnsafeStartDeps, chainID types.ChainID,
 			// Thus check that it was included in a local-unsafe block,
 			// and then proceed with transitive block checks,
 			// to ensure the local block we depend on is becoming cross-unsafe also.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}

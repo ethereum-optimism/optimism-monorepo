@@ -14,6 +14,5 @@ type DebugInfo struct {
 	MaxStepsBetweenLLAndSC       uint64 `json:"max_steps_between_ll_and_sc"`
 	ReservationInvalidationCount uint64 `json:"reservation_invalidation_count"`
 	ForcedPreemptionCount        uint64 `json:"forced_preemption_count"`
-	FailedWakeupCount            uint64 `json:"failed_wakeup_count"`
 	IdleStepCountThread0         uint64 `json:"idle_step_count_thread_0"`
 }

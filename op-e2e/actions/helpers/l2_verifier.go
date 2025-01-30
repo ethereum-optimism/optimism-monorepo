@@ -26,6 +26,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/finality"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/interop"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/status"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/sync"
 	"github.com/ethereum-optimism/optimism/op-service/client"
@@ -35,6 +36,12 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 )
+
+var interopJWTSecret = [32]byte{4}
+
+type InteropControl interface {
+	PullEvents(ctx context.Context) (pulledAny bool, err error)
+}
 
 // L2Verifier is an actor that functions like a rollup node,
 // without the full P2P/API/Node stack, but just the derivation state, and simplified driver.
@@ -68,7 +75,9 @@ type L2Verifier struct {
 
 	rpc *rpc.Server
 
-	interopRPC *rpc.Server
+	interopSys interop.SubSystem // may be nil if interop is not active
+
+	InteropControl InteropControl // if managed by an op-supervisor
 
 	failRPC func(call []rpc.BatchElem) error // mock error
 
@@ -79,6 +88,7 @@ type L2Verifier struct {
 
 type L2API interface {
 	engine.Engine
+	managed.L2Source
 	L2BlockRefByNumber(ctx context.Context, num uint64) (eth.L2BlockRef, error)
 	InfoByHash(ctx context.Context, hash common.Hash) (eth.BlockInfo, error)
 	// GetProof returns a proof of the account, it may return a nil result without error if the address was not found.
@@ -98,7 +108,6 @@ type safeDB interface {
 func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	blobsSrc derive.L1BlobsFetcher, altDASrc driver.AltDAIface,
 	eng L2API, cfg *rollup.Config, syncCfg *sync.Config, safeHeadListener safeDB,
-	interopBackend interop.InteropBackend,
 ) *L2Verifier {
 	ctx, cancel := context.WithCancel(context.Background())
 	t.Cleanup(cancel)
@@ -119,8 +128,14 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 		},
 	}
 
-	if interopBackend != nil {
-		sys.Register("interop", interop.NewInteropDeriver(log, cfg, ctx, interopBackend, eng), opts)
+	var interopSys interop.SubSystem
+	if cfg.InteropTime != nil {
+		interopSys = managed.NewManagedMode(log, cfg, "127.0.0.1", 0, interopJWTSecret, l1, eng)
+		sys.Register("interop", interopSys, opts)
+		require.NoError(t, interopSys.Start(context.Background()))
+		t.Cleanup(func() {
+			_ = interopSys.Stop(context.Background())
+		})
 	}
 
 	metrics := &testutils.TestDerivationMetrics{}
@@ -144,7 +159,8 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 	sys.Register("attributes-handler",
 		attributes.NewAttributesHandler(log, cfg, ctx, eng), opts)
 
-	pipeline := derive.NewDerivationPipeline(log, cfg, l1, blobsSrc, altDASrc, eng, metrics)
+	managedMode := interopSys != nil
+	pipeline := derive.NewDerivationPipeline(log, cfg, l1, blobsSrc, altDASrc, eng, metrics, managedMode)
 	sys.Register("pipeline", derive.NewPipelineDeriver(ctx, pipeline), opts)
 
 	testActionEmitter := sys.Register("test-action", nil, opts)
@@ -164,6 +180,7 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 		Log:            log,
 		Ctx:            ctx,
 		Drain:          executor.Drain,
+		ManagedMode:    false,
 	}, opts)
 
 	sys.Register("engine", engine.NewEngDeriver(log, ctx, cfg, metrics, ec), opts)
@@ -185,17 +202,11 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 		RollupCfg:         cfg,
 		rpc:               rpc.NewServer(),
 		synchronousEvents: testActionEmitter,
+		interopSys:        interopSys,
 	}
 	sys.Register("verifier", rollupNode, opts)
 
 	t.Cleanup(rollupNode.rpc.Stop)
-
-	if cfg.InteropTime != nil {
-		rollupNode.interopRPC = rpc.NewServer()
-		api := &interop.TemporaryInteropAPI{Eng: eng}
-		require.NoError(t, rollupNode.interopRPC.RegisterName("interop", api))
-		t.Cleanup(rollupNode.interopRPC.Stop)
-	}
 
 	// setup RPC server for rollup node, hooked to the actor as backend
 	m := &testutils.TestRPCMetrics{}
@@ -220,8 +231,12 @@ func NewL2Verifier(t Testing, log log.Logger, l1 derive.L1Fetcher,
 }
 
 func (v *L2Verifier) InteropSyncNode(t Testing) syncnode.SyncNode {
-	require.NotNil(t, v.interopRPC, "interop rpc must be running")
-	cl := rpc.DialInProc(v.interopRPC)
+	require.NotNil(t, v.interopSys, "interop sub-system must be running")
+	m, ok := v.interopSys.(*managed.ManagedMode)
+	require.True(t, ok, "Interop sub-system must be in managed-mode if used as sync-node")
+	cl, err := client.CheckAndDial(t.Ctx(), v.log, m.WSEndpoint(), rpc.WithHTTPAuth(gnode.NewJWTAuth(m.JWTSecret())))
+	require.NoError(t, err)
+	t.Cleanup(cl.Close)
 	bCl := client.NewBaseRPCClient(cl)
 	return syncnode.NewRPCSyncNode("action-tests-l2-verifier", bCl)
 }
@@ -358,13 +373,6 @@ func (s *L2Verifier) ActL1FinalizedSignal(t Testing) {
 	require.Equal(t, finalized, s.syncStatus.SyncStatus().FinalizedL1)
 }
 
-func (s *L2Verifier) ActInteropBackendCheck(t Testing) {
-	s.synchronousEvents.Emit(engine.CrossUpdateRequestEvent{
-		CrossUnsafe: true,
-		CrossSafe:   true,
-	})
-}
-
 func (s *L2Verifier) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
 	case rollup.L1TemporaryErrorEvent:
@@ -435,4 +443,10 @@ func (s *L2Verifier) ActL2InsertUnsafePayload(payload *eth.ExecutionPayloadEnvel
 		err = s.engine.InsertUnsafePayload(t.Ctx(), payload, ref)
 		require.NoError(t, err)
 	}
+}
+
+func (s *L2Verifier) SyncSupervisor(t Testing) {
+	require.NotNil(t, s.InteropControl, "must be managed by op-supervisor")
+	_, err := s.InteropControl.PullEvents(t.Ctx())
+	require.NoError(t, err)
 }

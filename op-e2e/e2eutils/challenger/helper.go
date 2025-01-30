@@ -126,8 +126,8 @@ func applyCannonConfig(c *config.Config, t *testing.T, rollupCfg *rollup.Config,
 	c.Cannon.VmBin = root + "cannon/bin/cannon"
 	c.Cannon.Server = root + "op-program/bin/op-program"
 	if allocType == e2econfig.AllocTypeMTCannon {
-		t.Log("Using MT-Cannon absolute prestate")
-		c.CannonAbsolutePreState = root + "op-program/bin/prestate-mt.bin.gz"
+		t.Log("Using Cannon64 absolute prestate")
+		c.CannonAbsolutePreState = root + "op-program/bin/prestate-mt64.bin.gz"
 	} else {
 		c.CannonAbsolutePreState = root + "op-program/bin/prestate.bin.gz"
 	}
@@ -137,13 +137,13 @@ func applyCannonConfig(c *config.Config, t *testing.T, rollupCfg *rollup.Config,
 	require.NoError(err, "marshall l2 genesis config")
 	genesisFile := filepath.Join(c.Datadir, "l2-genesis.json")
 	require.NoError(os.WriteFile(genesisFile, genesisBytes, 0o644))
-	c.Cannon.L2GenesisPath = genesisFile
+	c.Cannon.L2GenesisPaths = []string{genesisFile}
 
 	rollupBytes, err := json.Marshal(rollupCfg)
 	require.NoError(err, "marshall rollup config")
 	rollupFile := filepath.Join(c.Datadir, "rollup.json")
 	require.NoError(os.WriteFile(rollupFile, rollupBytes, 0o644))
-	c.Cannon.RollupConfigPath = rollupFile
+	c.Cannon.RollupConfigPaths = []string{rollupFile}
 }
 
 func WithCannon(t *testing.T, system System) Option {

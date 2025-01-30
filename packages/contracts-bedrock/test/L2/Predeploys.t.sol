@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Testing
 import { CommonTest } from "test/setup/CommonTest.sol";
 import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
+
+// Libraries
 import { Predeploys } from "src/libraries/Predeploys.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 /// @title PredeploysTest
 contract PredeploysBaseTest is CommonTest {
@@ -106,7 +110,8 @@ contract PredeploysBaseTest is CommonTest {
             }
 
             if (_isInitializable(addr)) {
-                assertEq(l2Genesis.loadInitializedSlot(cname), uint8(1));
+                assertTrue(ForgeArtifacts.isInitialized({ _name: cname, _address: addr }));
+                assertTrue(ForgeArtifacts.isInitialized({ _name: cname, _address: implAddr }));
             }
         }
     }

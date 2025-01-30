@@ -6,7 +6,7 @@ import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
 import { IBigStepper } from "interfaces/dispute/IBigStepper.sol";
 import { Types } from "src/libraries/Types.sol";
-import { GameType, Claim, Position, Clock, Hash, Duration } from "src/dispute/lib/Types.sol";
+import { GameType, Claim, Position, Clock, Hash, Duration, BondDistributionMode } from "src/dispute/lib/Types.sol";
 
 interface IFaultDisputeGame is IDisputeGame {
     struct ClaimData {
@@ -74,13 +74,19 @@ interface IFaultDisputeGame is IDisputeGame {
     error UnexpectedRootClaim(Claim rootClaim);
     error UnexpectedString();
     error ValidStep();
+    error InvalidBondDistributionMode();
+    error GameNotFinalized();
+    error GameNotResolved();
+    error ReservedGameType();
 
     event Move(uint256 indexed parentIndex, Claim indexed claim, address indexed claimant);
+    event GameClosed(BondDistributionMode bondDistributionMode);
 
     function absolutePrestate() external view returns (Claim absolutePrestate_);
     function addLocalData(uint256 _ident, uint256 _execLeafIdx, uint256 _partOffset) external;
     function anchorStateRegistry() external view returns (IAnchorStateRegistry registry_);
     function attack(Claim _disputed, uint256 _parentIndex, Claim _claim) external payable;
+    function bondDistributionMode() external view returns (BondDistributionMode);
     function challengeRootL2Block(Types.OutputRootProof memory _outputRootProof, bytes memory _headerRLP) external;
     function claimCredit(address _recipient) external;
     function claimData(uint256)
@@ -98,11 +104,13 @@ interface IFaultDisputeGame is IDisputeGame {
     function claimDataLen() external view returns (uint256 len_);
     function claims(Hash) external view returns (bool);
     function clockExtension() external view returns (Duration clockExtension_);
-    function credit(address) external view returns (uint256);
+    function closeGame() external;
+    function credit(address _recipient) external view returns (uint256 credit_);
     function defend(Claim _disputed, uint256 _parentIndex, Claim _claim) external payable;
     function getChallengerDuration(uint256 _claimIndex) external view returns (Duration duration_);
     function getNumToResolve(uint256 _claimIndex) external view returns (uint256 numRemainingChildren_);
     function getRequiredBond(Position _position) external view returns (uint256 requiredBond_);
+    function hasUnlockedCredit(address) external view returns (bool);
     function l2BlockNumber() external pure returns (uint256 l2BlockNumber_);
     function l2BlockNumberChallenged() external view returns (bool);
     function l2BlockNumberChallenger() external view returns (address);
@@ -110,6 +118,8 @@ interface IFaultDisputeGame is IDisputeGame {
     function maxClockDuration() external view returns (Duration maxClockDuration_);
     function maxGameDepth() external view returns (uint256 maxGameDepth_);
     function move(Claim _disputed, uint256 _challengeIndex, Claim _claim, bool _isAttack) external payable;
+    function normalModeCredit(address) external view returns (uint256);
+    function refundModeCredit(address) external view returns (uint256);
     function resolutionCheckpoints(uint256)
         external
         view
@@ -122,8 +132,9 @@ interface IFaultDisputeGame is IDisputeGame {
     function startingRootHash() external view returns (Hash startingRootHash_);
     function step(uint256 _claimIndex, bool _isAttack, bytes memory _stateData, bytes memory _proof) external;
     function subgames(uint256, uint256) external view returns (uint256);
-    function version() external view returns (string memory);
+    function version() external pure returns (string memory);
     function vm() external view returns (IBigStepper vm_);
+    function wasRespectedGameTypeWhenCreated() external view returns (bool);
     function weth() external view returns (IDelayedWETH weth_);
 
     function __constructor__(GameConstructorParams memory _params) external;

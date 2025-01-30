@@ -19,68 +19,6 @@ contract CallRecorder {
     }
 }
 
-/// @dev Useful for testing reentrancy guards
-contract CallerCaller {
-    event WhatHappened(bool success, bytes returndata);
-
-    fallback() external {
-        (bool success, bytes memory returndata) = msg.sender.call(msg.data);
-        emit WhatHappened(success, returndata);
-        assembly {
-            switch success
-            case 0 { revert(add(returndata, 0x20), mload(returndata)) }
-            default { return(add(returndata, 0x20), mload(returndata)) }
-        }
-    }
-}
-
-/// @dev Used for testing the `CrossDomainMessenger`'s per-message reentrancy guard.
-contract ConfigurableCaller {
-    bool doRevert = true;
-    address target;
-    bytes payload;
-
-    event WhatHappened(bool success, bytes returndata);
-
-    /// @notice Call the configured target with the configured payload OR revert.
-    function call() external {
-        if (doRevert) {
-            revert("ConfigurableCaller: revert");
-        } else {
-            (bool success, bytes memory returndata) = address(target).call(payload);
-            emit WhatHappened(success, returndata);
-            assembly {
-                switch success
-                case 0 { revert(add(returndata, 0x20), mload(returndata)) }
-                default { return(add(returndata, 0x20), mload(returndata)) }
-            }
-        }
-    }
-
-    /// @notice Set whether or not to have `call` revert.
-    function setDoRevert(bool _doRevert) external {
-        doRevert = _doRevert;
-    }
-
-    /// @notice Set the target for the call made in `call`.
-    function setTarget(address _target) external {
-        target = _target;
-    }
-
-    /// @notice Set the payload for the call made in `call`.
-    function setPayload(bytes calldata _payload) external {
-        payload = _payload;
-    }
-
-    /// @notice Fallback function that reverts if `doRevert` is true.
-    ///        Otherwise, it does nothing.
-    fallback() external {
-        if (doRevert) {
-            revert("ConfigurableCaller: revert");
-        }
-    }
-}
-
 /// @dev Any call will revert
 contract Reverter {
     function doRevert() public pure {
@@ -89,5 +27,26 @@ contract Reverter {
 
     fallback() external {
         revert();
+    }
+}
+
+/// @dev Can be etched in to any address to test making a delegatecall from that address.
+contract DelegateCaller {
+    function dcForward(address _target, bytes memory _data) external {
+        assembly {
+            // Perform the delegatecall, make sure to pass all available gas.
+            let success := delegatecall(gas(), _target, add(_data, 0x20), mload(_data), 0x0, 0x0)
+
+            // Copy returndata into memory at 0x0....returndatasize. Note that this *will*
+            // overwrite the calldata that we just copied into memory but that doesn't really
+            // matter because we'll be returning in a second anyway.
+            returndatacopy(0x0, 0x0, returndatasize())
+
+            // Success == 0 means a revert. We'll revert too and pass the data up.
+            if iszero(success) { revert(0x0, returndatasize()) }
+
+            // Otherwise we'll just return and pass the data up.
+            return(0x0, returndatasize())
+        }
     }
 }

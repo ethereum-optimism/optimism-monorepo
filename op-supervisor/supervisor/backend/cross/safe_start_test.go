@@ -14,7 +14,7 @@ import (
 func TestCrossSafeHazards(t *testing.T) {
 	t.Run("empty execMsgs", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{}
@@ -31,7 +31,7 @@ func TestCrossSafeHazards(t *testing.T) {
 				return false, nil
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -48,7 +48,7 @@ func TestCrossSafeHazards(t *testing.T) {
 				return false, errors.New("some error")
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -61,11 +61,11 @@ func TestCrossSafeHazards(t *testing.T) {
 	t.Run("unknown chain", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		ssd.deps = mockDependencySet{
-			chainIDFromIndexfn: func() (types.ChainID, error) {
-				return types.ChainID{}, types.ErrUnknownChain
+			chainIDFromIndexfn: func() (eth.ChainID, error) {
+				return eth.ChainID{}, types.ErrUnknownChain
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -78,11 +78,11 @@ func TestCrossSafeHazards(t *testing.T) {
 	t.Run("ChainIDFromUInt64 returns error", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		ssd.deps = mockDependencySet{
-			chainIDFromIndexfn: func() (types.ChainID, error) {
-				return types.ChainID{}, errors.New("some error")
+			chainIDFromIndexfn: func() (eth.ChainID, error) {
+				return eth.ChainID{}, errors.New("some error")
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -99,7 +99,7 @@ func TestCrossSafeHazards(t *testing.T) {
 				return false, nil
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -116,7 +116,7 @@ func TestCrossSafeHazards(t *testing.T) {
 				return false, errors.New("some error")
 			},
 		}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{}
 		execMsgs := []*types.ExecutingMessage{{}}
@@ -129,7 +129,7 @@ func TestCrossSafeHazards(t *testing.T) {
 	t.Run("timestamp is greater than candidate", func(t *testing.T) {
 		ssd := &mockSafeStartDeps{}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 10}
@@ -146,7 +146,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 2}
@@ -165,7 +165,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleBlockSeal, nil
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 2}
@@ -192,7 +192,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleBlockSeal2, nil
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 2}
@@ -211,7 +211,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -233,7 +233,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return types.BlockSeal{}, errors.New("some error")
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -256,7 +256,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleDerivedFrom, nil
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -279,7 +279,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleDerivedFrom, nil
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{Number: 10}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -302,7 +302,7 @@ func TestCrossSafeHazards(t *testing.T) {
 			return sampleDerivedFrom, nil
 		}
 		ssd.deps = mockDependencySet{}
-		chainID := types.ChainIDFromUInt64(0)
+		chainID := eth.ChainIDFromUInt64(0)
 		inL1DerivedFrom := eth.BlockID{Number: 1}
 		candidate := types.BlockSeal{Timestamp: 2}
 		em1 := &types.ExecutingMessage{Chain: types.ChainIndex(0), Timestamp: 1}
@@ -322,14 +322,14 @@ type mockSafeStartDeps struct {
 	derivedFromFn func() (derivedFrom types.BlockSeal, err error)
 }
 
-func (m *mockSafeStartDeps) Check(chain types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
+func (m *mockSafeStartDeps) Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error) {
 	if m.checkFn != nil {
 		return m.checkFn()
 	}
 	return types.BlockSeal{}, nil
 }
 
-func (m *mockSafeStartDeps) CrossDerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
+func (m *mockSafeStartDeps) CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error) {
 	if m.derivedFromFn != nil {
 		return m.derivedFromFn()
 	}

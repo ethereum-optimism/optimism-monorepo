@@ -1,0 +1,38 @@
+{{- $context := or . (dict)}}
+{{- $nodes := dig "nodes" (list "op-geth") $context -}}
+---
+participants:
+{{- range $node := $nodes }}
+- {{ include "local-op-node.yaml" (dict "overrides" $context.overrides "el_type" $node) }}
+{{- end }}
+network_params:
+  network: "kurtosis"
+  network_id: "{{ .chain_id }}"
+  seconds_per_slot: 2
+  name: "op-kurtosis-{{ .chain_id }}"
+  fjord_time_offset: 0
+  granite_time_offset: 0
+  holocene_time_offset: 0
+  interop_time_offset: 0
+  fund_dev_accounts: true
+batcher_params:
+  image: {{ dig "overrides" "images" "op_batcher" (localDockerImage "op-batcher") $context }}
+  extra_params:
+  - {{ dig "overrides" "flags" "log_level" "!!str" $context }}
+challenger_params:
+  image: {{ dig "overrides" "images" "op_challenger" (localDockerImage "op-challenger") $context }}
+  cannon_prestate_path: ""
+  cannon_prestates_url: {{ dig "overrides" "urls" "prestate" (localPrestate.URL) $context }}
+  extra_params:
+  - {{ dig "overrides" "flags" "log_level" "!!str" $context }}
+proposer_params:
+  image: {{ dig "overrides" "images" "op_proposer" (localDockerImage "op-proposer") $context }}
+  extra_params:
+  - {{ dig "overrides" "flags" "log_level" "!!str" $context }}
+  game_type: 1
+  proposal_interval: 10m
+mev_params:
+  rollup_boost_image: ""
+  builder_host: ""
+  builder_port: ""
+additional_services: []

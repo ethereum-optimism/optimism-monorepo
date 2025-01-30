@@ -64,9 +64,9 @@ func TestDetectVersion_singleThreadedBinary(t *testing.T) {
 }
 
 func TestDetectVersion_multiThreadedBinary(t *testing.T) {
-	targetVersion := VersionMultiThreaded
+	targetVersion := VersionMultiThreaded_v2
 	if !arch.IsMips32 {
-		targetVersion = VersionMultiThreaded64
+		targetVersion = VersionMultiThreaded64_v3
 	}
 
 	state, err := NewFromState(multithreaded.CreateEmptyState())

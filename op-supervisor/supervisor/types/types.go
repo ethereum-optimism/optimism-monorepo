@@ -5,12 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"math"
-	"math/big"
 	"strconv"
 
 	ethTypes "github.com/ethereum/go-ethereum/core/types"
-
-	"github.com/holiman/uint256"
 
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/common/hexutil"
@@ -62,7 +59,7 @@ type Identifier struct {
 	BlockNumber uint64
 	LogIndex    uint32
 	Timestamp   uint64
-	ChainID     ChainID // flat, not a pointer, to make Identifier safe as map key
+	ChainID     eth.ChainID // flat, not a pointer, to make Identifier safe as map key
 }
 
 type identifierMarshaling struct {
@@ -95,7 +92,7 @@ func (id *Identifier) UnmarshalJSON(input []byte) error {
 	}
 	id.LogIndex = uint32(dec.LogIndex)
 	id.Timestamp = uint64(dec.Timestamp)
-	id.ChainID = (ChainID)(dec.ChainID)
+	id.ChainID = (eth.ChainID)(dec.ChainID)
 	return nil
 }
 
@@ -105,9 +102,10 @@ func (lvl SafetyLevel) String() string {
 	return string(lvl)
 }
 
-func (lvl SafetyLevel) Valid() bool {
+// Validate returns true if the SafetyLevel is one of the recognized levels
+func (lvl SafetyLevel) Validate() bool {
 	switch lvl {
-	case Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
+	case Invalid, Finalized, CrossSafe, LocalSafe, CrossUnsafe, LocalUnsafe:
 		return true
 	default:
 		return false
@@ -123,7 +121,7 @@ func (lvl *SafetyLevel) UnmarshalText(text []byte) error {
 		return errors.New("cannot unmarshal into nil SafetyLevel")
 	}
 	x := SafetyLevel(text)
-	if !x.Valid() {
+	if !x.Validate() {
 		return fmt.Errorf("unrecognized safety level: %q", text)
 	}
 	*lvl = x
@@ -176,54 +174,6 @@ const (
 	// Invalid is the safety of when the message or block is not matching the expected data.
 	Invalid SafetyLevel = "invalid"
 )
-
-type ChainID uint256.Int
-
-func ChainIDFromBig(chainID *big.Int) ChainID {
-	return ChainID(*uint256.MustFromBig(chainID))
-}
-
-func ChainIDFromUInt64(i uint64) ChainID {
-	return ChainID(*uint256.NewInt(i))
-}
-
-func (id ChainID) String() string {
-	return ((*uint256.Int)(&id)).Dec()
-}
-
-func (id ChainID) ToUInt32() (uint32, error) {
-	v := (*uint256.Int)(&id)
-	if !v.IsUint64() {
-		return 0, fmt.Errorf("ChainID too large for uint32: %v", id)
-	}
-	v64 := v.Uint64()
-	if v64 > math.MaxUint32 {
-		return 0, fmt.Errorf("ChainID too large for uint32: %v", id)
-	}
-	return uint32(v64), nil
-}
-
-func (id *ChainID) ToBig() *big.Int {
-	return (*uint256.Int)(id).ToBig()
-}
-
-func (id ChainID) MarshalText() ([]byte, error) {
-	return []byte(id.String()), nil
-}
-
-func (id *ChainID) UnmarshalText(data []byte) error {
-	var x uint256.Int
-	err := x.UnmarshalText(data)
-	if err != nil {
-		return err
-	}
-	*id = ChainID(x)
-	return nil
-}
-
-func (id ChainID) Cmp(other ChainID) int {
-	return (*uint256.Int)(&id).Cmp((*uint256.Int)(&other))
-}
 
 type ReferenceView struct {
 	Local eth.BlockID `json:"local"`
@@ -309,4 +259,58 @@ func LogToMessagePayload(l *ethTypes.Log) []byte {
 	}
 	msg = append(msg, l.Data...)
 	return msg
+}
+
+// DerivedBlockRefPair is a pair of block refs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockRefPair struct {
+	DerivedFrom eth.BlockRef `json:"derivedFrom"`
+	Derived     eth.BlockRef `json:"derived"`
+}
+
+func (refs *DerivedBlockRefPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: refs.DerivedFrom.ID(),
+		Derived:     refs.Derived.ID(),
+	}
+}
+
+func (refs *DerivedBlockRefPair) Seals() DerivedBlockSealPair {
+	return DerivedBlockSealPair{
+		DerivedFrom: BlockSealFromRef(refs.DerivedFrom),
+		Derived:     BlockSealFromRef(refs.Derived),
+	}
+}
+
+// DerivedBlockSealPair is a pair of block seals, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedBlockSealPair struct {
+	DerivedFrom BlockSeal `json:"derivedFrom"`
+	Derived     BlockSeal `json:"derived"`
+}
+
+func (seals *DerivedBlockSealPair) IDs() DerivedIDPair {
+	return DerivedIDPair{
+		DerivedFrom: seals.DerivedFrom.ID(),
+		Derived:     seals.Derived.ID(),
+	}
+}
+
+// DerivedIDPair is a pair of block IDs, where Derived (L2) is derived from DerivedFrom (L1).
+type DerivedIDPair struct {
+	DerivedFrom eth.BlockID `json:"derivedFrom"`
+	Derived     eth.BlockID `json:"derived"`
+}
+
+type BlockReplacement struct {
+	Replacement eth.BlockRef `json:"replacement"`
+	Invalidated common.Hash  `json:"invalidated"`
+}
+
+// ManagedEvent is an event sent by the managed node to the supervisor,
+// to share an update. One of the fields will be non-null; different kinds of updates may be sent.
+type ManagedEvent struct {
+	Reset            *string              `json:"reset,omitempty"`
+	UnsafeBlock      *eth.BlockRef        `json:"unsafeBlock,omitempty"`
+	DerivationUpdate *DerivedBlockRefPair `json:"derivationUpdate,omitempty"`
+	ExhaustL1        *DerivedBlockRefPair `json:"exhaustL1,omitempty"`
+	ReplaceBlock     *BlockReplacement    `json:"replaceBlock,omitempty"`
 }

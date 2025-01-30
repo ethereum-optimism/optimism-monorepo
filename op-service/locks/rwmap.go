@@ -12,6 +12,20 @@ type RWMap[K comparable, V any] struct {
 	mu    sync.RWMutex
 }
 
+// Default creates a value at the given key, if the key is not set yet.
+func (m *RWMap[K, V]) Default(key K, fn func() V) (changed bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inner == nil {
+		m.inner = make(map[K]V)
+	}
+	_, ok := m.inner[key]
+	if !ok {
+		m.inner[key] = fn()
+	}
+	return !ok // if it exists, nothing changed
+}
+
 func (m *RWMap[K, V]) Has(key K) (ok bool) {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
@@ -41,6 +55,12 @@ func (m *RWMap[K, V]) Len() int {
 	return len(m.inner)
 }
 
+func (m *RWMap[K, V]) Delete(key K) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.inner, key)
+}
+
 // Range calls f sequentially for each key and value present in the map.
 // If f returns false, range stops the iteration.
 func (m *RWMap[K, V]) Range(f func(key K, value V) bool) {
@@ -58,4 +78,17 @@ func (m *RWMap[K, V]) Clear() {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	clear(m.inner)
+}
+
+// InitPtrMaybe sets a pointer-value in the map, if it's not set yet, to a new object.
+func InitPtrMaybe[K comparable, V any](m *RWMap[K, *V], key K) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.inner == nil {
+		m.inner = make(map[K]*V)
+	}
+	_, ok := m.inner[key]
+	if !ok {
+		m.inner[key] = new(V)
+	}
 }

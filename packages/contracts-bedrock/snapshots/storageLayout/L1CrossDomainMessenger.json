@@ -137,13 +137,13 @@
     "label": "portal",
     "offset": 0,
     "slot": "252",
-    "type": "contract IOptimismPortal"
+    "type": "contract IOptimismPortal2"
   },
   {
     "bytes": "20",
-    "label": "systemConfig",
+    "label": "spacer_253_0_20",
     "offset": 0,
     "slot": "253",
-    "type": "contract ISystemConfig"
+    "type": "address"
   }
 ]

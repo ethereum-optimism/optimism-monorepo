@@ -41,7 +41,9 @@ func (p *CLISyncNodes) Load(ctx context.Context, logger log.Logger) ([]SyncNodeS
 	for i, endpoint := range p.Endpoints {
 		var secret eth.Bytes32
 		if i >= len(secrets) {
-			secret = secrets[0]
+			secret = secrets[0] // default to the first JWT secret (there's always at least 1)
+		} else {
+			secret = secrets[i]
 		}
 		setups = append(setups, &RPCDialSetup{
 			JWTSecret: secret,

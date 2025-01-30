@@ -11,6 +11,8 @@ import (
 	"path"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/superutil"
+
 	"github.com/ethereum/go-ethereum/core/tracing"
 	"github.com/ethereum/go-ethereum/triedb"
 	"github.com/holiman/uint256"
@@ -181,7 +183,7 @@ func fetchChainConfig(ctx context.Context, cl *rpc.Client) (*params.ChainConfig,
 	// if we recognize the chain ID, we can get the chain config
 	id := (*big.Int)(&idResult)
 	if id.IsUint64() {
-		cfg, err := params.LoadOPStackChainConfig(id.Uint64())
+		cfg, err := superutil.LoadOPStackChainConfigFromChainID(id.Uint64())
 		if err == nil {
 			return cfg, nil
 		}

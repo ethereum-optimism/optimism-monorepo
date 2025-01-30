@@ -209,12 +209,11 @@ func NewHost(
 		GrayGlacierBlock:    big.NewInt(0),
 		MergeNetsplitBlock:  big.NewInt(0),
 		// Ethereum forks in proof-of-stake era.
-		TerminalTotalDifficulty:       big.NewInt(1),
-		TerminalTotalDifficultyPassed: true,
-		ShanghaiTime:                  new(uint64),
-		CancunTime:                    new(uint64),
-		PragueTime:                    nil,
-		VerkleTime:                    nil,
+		TerminalTotalDifficulty: big.NewInt(1),
+		ShanghaiTime:            new(uint64),
+		CancunTime:              new(uint64),
+		PragueTime:              nil,
+		VerkleTime:              nil,
 		// OP-Stack forks are disabled, since we use this for L1.
 		BedrockBlock: nil,
 		RegolithTime: nil,
@@ -531,9 +530,9 @@ func (h *Host) onExit(depth int, output []byte, gasUsed uint64, err error, rever
 	if reverted {
 		h.LogCallStack()
 		if msg, revertInspectErr := abi.UnpackRevert(output); revertInspectErr == nil {
-			h.log.Warn("Revert", "addr", addr, "err", err, "revertMsg", msg, "depth", depth)
+			h.log.Warn("Revert", "addr", addr, "label", h.labels[addr], "err", err, "revertMsg", msg, "depth", depth)
 		} else {
-			h.log.Warn("Revert", "addr", addr, "err", err, "revertData", hexutil.Bytes(output), "depth", depth)
+			h.log.Warn("Revert", "addr", addr, "label", h.labels[addr], "err", err, "revertData", hexutil.Bytes(output), "depth", depth)
 		}
 	}
 
@@ -543,7 +542,7 @@ func (h *Host) onExit(depth int, output []byte, gasUsed uint64, err error, rever
 
 // onFault is a trace-hook, catches things more generic than regular EVM reverts.
 func (h *Host) onFault(pc uint64, op byte, gas, cost uint64, scope tracing.OpContext, depth int, err error) {
-	h.log.Warn("Fault", "addr", scope.Address(), "err", err, "depth", depth)
+	h.log.Warn("Fault", "addr", scope.Address(), "label", h.labels[scope.Address()], "err", err, "depth", depth)
 }
 
 // unwindCallstack is a helper to remove call-stack entries.

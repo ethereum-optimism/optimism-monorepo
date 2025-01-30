@@ -128,7 +128,7 @@ func ProveWithdrawal(t *testing.T, cfg e2esys.SystemConfig, clients ClientProvid
 	}
 
 	receiptCl := clients.NodeClient(l2NodeName)
-	blockCl := clients.NodeClient(l2NodeName)
+	headerCl := clients.NodeClient(l2NodeName)
 	proofCl := gethclient.New(receiptCl.Client())
 
 	ctx, cancel = context.WithTimeout(context.Background(), 30*time.Second)
@@ -146,7 +146,7 @@ func ProveWithdrawal(t *testing.T, cfg e2esys.SystemConfig, clients ClientProvid
 	portal2, err := bindingspreview.NewOptimismPortal2Caller(l1Deployments.OptimismPortalProxy, l1Client)
 	require.NoError(t, err)
 
-	params, err := ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, blockCl, l2WithdrawalReceipt.TxHash, header, oracle, factory, portal2, allocType)
+	params, err := ProveWithdrawalParameters(context.Background(), proofCl, receiptCl, headerCl, l2WithdrawalReceipt.TxHash, header, oracle, factory, portal2, allocType)
 	require.NoError(t, err)
 
 	portal, err := bindings.NewOptimismPortal(l1Deployments.OptimismPortalProxy, l1Client)
@@ -179,11 +179,11 @@ func ProveWithdrawal(t *testing.T, cfg e2esys.SystemConfig, clients ClientProvid
 	return params, proveReceipt
 }
 
-func ProveWithdrawalParameters(ctx context.Context, proofCl withdrawals.ProofClient, l2ReceiptCl withdrawals.ReceiptClient, l2BlockCl withdrawals.BlockClient, txHash common.Hash, header *types.Header, l2OutputOracleContract *bindings.L2OutputOracleCaller, disputeGameFactoryContract *bindings.DisputeGameFactoryCaller, optimismPortal2Contract *bindingspreview.OptimismPortal2Caller, allocType config.AllocType) (withdrawals.ProvenWithdrawalParameters, error) {
+func ProveWithdrawalParameters(ctx context.Context, proofCl withdrawals.ProofClient, l2ReceiptCl withdrawals.ReceiptClient, l2HeaderCl withdrawals.HeaderClient, txHash common.Hash, header *types.Header, l2OutputOracleContract *bindings.L2OutputOracleCaller, disputeGameFactoryContract *bindings.DisputeGameFactoryCaller, optimismPortal2Contract *bindingspreview.OptimismPortal2Caller, allocType config.AllocType) (withdrawals.ProvenWithdrawalParameters, error) {
 	if allocType.UsesProofs() {
-		return withdrawals.ProveWithdrawalParametersFaultProofs(ctx, proofCl, l2ReceiptCl, l2BlockCl, txHash, disputeGameFactoryContract, optimismPortal2Contract)
+		return withdrawals.ProveWithdrawalParametersFaultProofs(ctx, proofCl, l2ReceiptCl, l2HeaderCl, txHash, disputeGameFactoryContract, optimismPortal2Contract)
 	} else {
-		return withdrawals.ProveWithdrawalParameters(ctx, proofCl, l2ReceiptCl, l2BlockCl, txHash, header, l2OutputOracleContract)
+		return withdrawals.ProveWithdrawalParameters(ctx, proofCl, l2ReceiptCl, txHash, header, l2OutputOracleContract)
 	}
 }
 

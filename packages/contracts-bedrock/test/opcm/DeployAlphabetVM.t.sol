@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { Test } from "forge-std/Test.sol";
-import { AlphabetVM } from "test/mocks/AlphabetVM.sol";
 import { DeployAlphabetVM, DeployAlphabetVMInput, DeployAlphabetVMOutput } from "scripts/deploy/DeployAlphabetVM.s.sol";
 
 contract DeployAlphabetVMInput_Test is Test {

@@ -9,21 +9,17 @@ import (
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
-	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 )
 
 const (
-	THREAD_ID_STATE_WITNESS_OFFSET           = 0
-	THREAD_EXIT_CODE_WITNESS_OFFSET          = THREAD_ID_STATE_WITNESS_OFFSET + arch.WordSizeBytes
-	THREAD_EXITED_WITNESS_OFFSET             = THREAD_EXIT_CODE_WITNESS_OFFSET + 1
-	THREAD_FUTEX_ADDR_WITNESS_OFFSET         = THREAD_EXITED_WITNESS_OFFSET + 1
-	THREAD_FUTEX_VAL_WITNESS_OFFSET          = THREAD_FUTEX_ADDR_WITNESS_OFFSET + arch.WordSizeBytes
-	THREAD_FUTEX_TIMEOUT_STEP_WITNESS_OFFSET = THREAD_FUTEX_VAL_WITNESS_OFFSET + arch.WordSizeBytes
-	THREAD_FUTEX_CPU_WITNESS_OFFSET          = THREAD_FUTEX_TIMEOUT_STEP_WITNESS_OFFSET + 8
-	THREAD_REGISTERS_WITNESS_OFFSET          = THREAD_FUTEX_CPU_WITNESS_OFFSET + (4 * arch.WordSizeBytes)
+	THREAD_ID_STATE_WITNESS_OFFSET  = 0
+	THREAD_EXIT_CODE_WITNESS_OFFSET = THREAD_ID_STATE_WITNESS_OFFSET + arch.WordSizeBytes
+	THREAD_EXITED_WITNESS_OFFSET    = THREAD_EXIT_CODE_WITNESS_OFFSET + 1
+	THREAD_CPU_WITNESS_OFFSET       = THREAD_EXITED_WITNESS_OFFSET + 1
+	THREAD_REGISTERS_WITNESS_OFFSET = THREAD_CPU_WITNESS_OFFSET + (4 * arch.WordSizeBytes)
 
 	// SERIALIZED_THREAD_SIZE is the size of a serialized ThreadState object
-	// 166 and 322 bytes for 32 and 64-bit respectively
+	// 150 and 298 bytes for 32 and 64-bit respectively
 	SERIALIZED_THREAD_SIZE = THREAD_REGISTERS_WITNESS_OFFSET + (32 * arch.WordSizeBytes)
 
 	// THREAD_WITNESS_SIZE is the size of a thread witness encoded in bytes.
@@ -37,14 +33,11 @@ const (
 var EmptyThreadsRoot common.Hash = common.HexToHash("0xad3228b676f7d3cd4284a5443f17f1962b36e491b30a40b2405849e597ba5fb5")
 
 type ThreadState struct {
-	ThreadId         Word               `json:"threadId"`
-	ExitCode         uint8              `json:"exit"`
-	Exited           bool               `json:"exited"`
-	FutexAddr        Word               `json:"futexAddr"`
-	FutexVal         Word               `json:"futexVal"`
-	FutexTimeoutStep uint64             `json:"futexTimeoutStep"`
-	Cpu              mipsevm.CpuScalars `json:"cpu"`
-	Registers        [32]Word           `json:"registers"`
+	ThreadId  Word               `json:"threadId"`
+	ExitCode  uint8              `json:"exit"`
+	Exited    bool               `json:"exited"`
+	Cpu       mipsevm.CpuScalars `json:"cpu"`
+	Registers [32]Word           `json:"registers"`
 }
 
 func CreateEmptyThread() *ThreadState {
@@ -59,10 +52,7 @@ func CreateEmptyThread() *ThreadState {
 			LO:     0,
 			HI:     0,
 		},
-		FutexAddr:        exec.FutexEmptyAddr,
-		FutexVal:         0,
-		FutexTimeoutStep: 0,
-		Registers:        [32]Word{},
+		Registers: [32]Word{},
 	}
 }
 
@@ -72,9 +62,6 @@ func (t *ThreadState) serializeThread() []byte {
 	out = arch.ByteOrderWord.AppendWord(out, t.ThreadId)
 	out = append(out, t.ExitCode)
 	out = mipsevm.AppendBoolToWitness(out, t.Exited)
-	out = arch.ByteOrderWord.AppendWord(out, t.FutexAddr)
-	out = arch.ByteOrderWord.AppendWord(out, t.FutexVal)
-	out = binary.BigEndian.AppendUint64(out, t.FutexTimeoutStep)
 
 	out = arch.ByteOrderWord.AppendWord(out, t.Cpu.PC)
 	out = arch.ByteOrderWord.AppendWord(out, t.Cpu.NextPC)
@@ -107,15 +94,6 @@ func (t *ThreadState) Deserialize(in io.Reader) error {
 		return err
 	}
 	t.Exited = exited != 0
-	if err := binary.Read(in, binary.BigEndian, &t.FutexAddr); err != nil {
-		return err
-	}
-	if err := binary.Read(in, binary.BigEndian, &t.FutexVal); err != nil {
-		return err
-	}
-	if err := binary.Read(in, binary.BigEndian, &t.FutexTimeoutStep); err != nil {
-		return err
-	}
 	if err := binary.Read(in, binary.BigEndian, &t.Cpu.PC); err != nil {
 		return err
 	}

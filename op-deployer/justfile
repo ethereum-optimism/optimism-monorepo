@@ -8,3 +8,8 @@ calculate-artifacts-hash checksum:
     just download-artifacts {{checksum}} /tmp/artifact.tgz
     sha256sum /tmp/artifact.tgz
     rm /tmp/artifact.tgz
+
+# Sync standard versions
+sync-standard-version:
+    curl -Lo ./pkg/deployer/standard/standard-versions-mainnet.toml https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/refs/heads/main/validation/standard/standard-versions-mainnet.toml
+    curl -Lo ./pkg/deployer/standard/standard-versions-sepolia.toml https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/refs/heads/main/validation/standard/standard-versions-sepolia.toml

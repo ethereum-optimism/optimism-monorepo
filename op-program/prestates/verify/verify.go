@@ -44,11 +44,19 @@ func main() {
 		os.Exit(2)
 	}
 
+	stringCompare := func(a, b string) int {
+		if a > b {
+			return 1
+		} else if a == b {
+			return 0
+		}
+		return -1
+	}
 	sortFunc := func(a, b prestates.Release) int {
 		if a.Version > b.Version {
 			return 1
 		} else if a.Version == b.Version {
-			return 0
+			return stringCompare(string(a.Type), string(b.Type))
 		}
 		return -1
 	}
@@ -82,5 +90,5 @@ func main() {
 }
 
 func formatRelease(release prestates.Release) string {
-	return fmt.Sprintf("%-13v %s", release.Version, release.Hash)
+	return fmt.Sprintf("%-13v %s %-10v", release.Version, release.Hash, release.Type)
 }

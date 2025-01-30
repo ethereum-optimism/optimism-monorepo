@@ -16,7 +16,7 @@ import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 import { ERC20 } from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 // Libraries
-import { Constants } from "src/libraries/Constants.sol";
+import { console } from "forge-std/console.sol";
 
 // Interfaces
 import { IOptimismMintableERC20Full } from "interfaces/universal/IOptimismMintableERC20Full.sol";
@@ -33,55 +33,63 @@ contract CommonTest is Test, Setup, Events {
     FFIInterface constant ffi = FFIInterface(address(uint160(uint256(keccak256(abi.encode("optimism.ffi"))))));
 
     bool useAltDAOverride;
-    bool useLegacyContracts;
-    address customGasToken;
     bool useInteropOverride;
+
+    /// @dev This value is only used in forked tests. During forked tests, the default is to perform the upgrade before
+    ///      running the tests.
+    ///      This value should only be set to false in forked tests which are specifically testing the upgrade path
+    ///      itself, rather than simply ensuring that the tests pass after the upgrade.
+    bool useUpgradedFork = true;
 
     ERC20 L1Token;
     ERC20 BadL1Token;
     IOptimismMintableERC20Full L2Token;
     ILegacyMintableERC20Full LegacyL2Token;
     ERC20 NativeL2Token;
-    ERC20 BadL2Token;
     IOptimismMintableERC20Full RemoteL1Token;
 
     function setUp() public virtual override {
+        // Setup.setup() may switch the tests over to a newly forked network. Therefore
+        // state modifying cheatcodes must be run after Setup.setup(), otherwise the
+        // changes will not be persisted into the new network.
+        Setup.setUp();
+
         alice = makeAddr("alice");
         bob = makeAddr("bob");
         vm.deal(alice, 10000 ether);
         vm.deal(bob, 10000 ether);
 
-        Setup.setUp();
-
         // Override the config after the deploy script initialized the config
         if (useAltDAOverride) {
             deploy.cfg().setUseAltDA(true);
         }
-        // We default to fault proofs unless explicitly disabled by useLegacyContracts
-        if (!useLegacyContracts) {
-            deploy.cfg().setUseFaultProofs(true);
-        }
-        if (customGasToken != address(0)) {
-            deploy.cfg().setUseCustomGasToken(customGasToken);
-        }
         if (useInteropOverride) {
             deploy.cfg().setUseInterop(true);
         }
+        if (useUpgradedFork) {
+            deploy.cfg().setUseUpgradedFork(true);
+        }
+
+        if (isForkTest()) {
+            // Skip any test suite which uses a nonstandard configuration.
+            if (useAltDAOverride || useInteropOverride) {
+                vm.skip(true);
+            }
+        } else {
+            // Modifying these values on a fork test causes issues.
+            vm.warp(deploy.cfg().l2OutputOracleStartingTimestamp() + 1);
+            vm.roll(deploy.cfg().l2OutputOracleStartingBlockNumber() + 1);
+            vm.fee(1 gwei);
+        }
 
         vm.etch(address(ffi), vm.getDeployedCode("FFIInterface.sol:FFIInterface"));
+        vm.allowCheatcodes(address(ffi));
         vm.label(address(ffi), "FFIInterface");
 
         // Exclude contracts for the invariant tests
         excludeContract(address(ffi));
         excludeContract(address(deploy));
         excludeContract(address(deploy.cfg()));
-
-        // Make sure the base fee is non zero
-        vm.fee(1 gwei);
-
-        // Set sane initialize block numbers
-        vm.warp(deploy.cfg().l2OutputOracleStartingTimestamp() + 1);
-        vm.roll(deploy.cfg().l2OutputOracleStartingBlockNumber() + 1);
 
         // Deploy L1
         Setup.L1();
@@ -113,22 +121,19 @@ contract CommonTest is Test, Setup, Events {
         );
         vm.label(address(LegacyL2Token), "LegacyMintableERC20");
 
-        // Deploy the L2 ERC20 now
-        L2Token = IOptimismMintableERC20Full(
-            l2OptimismMintableERC20Factory.createStandardL2Token(
-                address(L1Token),
-                string(abi.encodePacked("L2-", L1Token.name())),
-                string(abi.encodePacked("L2-", L1Token.symbol()))
-            )
-        );
-
-        BadL2Token = ERC20(
-            l2OptimismMintableERC20Factory.createStandardL2Token(
-                address(1),
-                string(abi.encodePacked("L2-", L1Token.name())),
-                string(abi.encodePacked("L2-", L1Token.symbol()))
-            )
-        );
+        if (isForkTest()) {
+            console.log("CommonTest: fork test detected, skipping L2 setup");
+            L2Token = IOptimismMintableERC20Full(makeAddr("L2Token"));
+        } else {
+            // Deploy the L2 ERC20 now
+            L2Token = IOptimismMintableERC20Full(
+                l2OptimismMintableERC20Factory.createStandardL2Token(
+                    address(L1Token),
+                    string(abi.encodePacked("L2-", L1Token.name())),
+                    string(abi.encodePacked("L2-", L1Token.symbol()))
+                )
+            );
+        }
 
         NativeL2Token = new ERC20("Native L2 Token", "L2T");
 
@@ -147,6 +152,8 @@ contract CommonTest is Test, Setup, Events {
                 string(abi.encodePacked("L1-", NativeL2Token.symbol()))
             )
         );
+
+        console.log("CommonTest: SetUp complete!");
     }
 
     /// @dev Helper function that wraps `TransactionDeposited` event.
@@ -165,49 +172,35 @@ contract CommonTest is Test, Setup, Events {
         emit TransactionDeposited(_from, _to, 0, abi.encodePacked(_mint, _value, _gasLimit, _isCreation, _data));
     }
 
-    // @dev Advance the evm's time to meet the L2OutputOracle's requirements for proposeL2Output
-    function warpToProposeTime(uint256 _nextBlockNumber) public {
-        vm.warp(l2OutputOracle.computeL2Timestamp(_nextBlockNumber) + 1);
-    }
-
-    function enableLegacyContracts() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable fault proofs after deployment. Consider overriding `setUp`.");
+    /// @dev Checks if the system has already been deployed, based off of the heuristic that alice and bob have not been
+    ///      set by the `setUp` function yet.
+    function _checkNotDeployed(string memory _feature) internal view {
+        if (alice != address(0) && bob != address(0)) {
+            revert(
+                string.concat("CommonTest: Cannot enable ", _feature, " after deployment. Consider overriding `setUp`.")
+            );
         }
-
-        useLegacyContracts = true;
+        console.log("CommonTest: enabling", _feature);
     }
 
+    /// @dev Enables alternative data availability mode for testing
     function enableAltDA() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable altda after deployment. Consider overriding `setUp`.");
-        }
-
+        _checkNotDeployed("altda");
         useAltDAOverride = true;
     }
 
-    function enableCustomGasToken(address _token) public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable custom gas token after deployment. Consider overriding `setUp`.");
-        }
-        require(_token != Constants.ETHER);
-
-        customGasToken = _token;
+    /// @dev Enables interoperability mode for testing
+    function enableInterop() public {
+        _checkNotDeployed("interop");
+        useInteropOverride = true;
     }
 
-    function enableInterop() public {
-        // Check if the system has already been deployed, based off of the heuristic that alice and bob have not been
-        // set by the `setUp` function yet.
-        if (!(alice == address(0) && bob == address(0))) {
-            revert("CommonTest: Cannot enable interop after deployment. Consider overriding `setUp`.");
-        }
+    /// @dev Disables upgrade mode for testing. By default the fork testing env will be upgraded to the latest
+    ///      implementation. This can be used to disable the upgrade which, is useful for tests targeting the upgrade
+    ///      process itself.
+    function disableUpgradedFork() public {
+        _checkNotDeployed("non-upgraded fork");
 
-        useInteropOverride = true;
+        useUpgradedFork = false;
     }
 }

@@ -27,10 +27,6 @@ interface ISystemConfigInterop {
     function gasLimit() external view returns (uint64);
     function eip1559Denominator() external view returns (uint32);
     function eip1559Elasticity() external view returns (uint32);
-    function gasPayingToken() external view returns (address addr_, uint8 decimals_);
-    function gasPayingTokenName() external view returns (string memory name_);
-    function gasPayingTokenSymbol() external view returns (string memory symbol_);
-    function isCustomGasToken() external view returns (bool);
     function l1CrossDomainMessenger() external view returns (address addr_);
     function l1ERC721Bridge() external view returns (address addr_);
     function l1StandardBridge() external view returns (address addr_);

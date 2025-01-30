@@ -10,7 +10,6 @@ import (
 )
 
 type DeployImplementationsInput struct {
-	Salt                            common.Hash
 	WithdrawalDelaySeconds          *big.Int
 	MinProposalSizeBytes            *big.Int
 	ChallengePeriodSeconds          *big.Int
@@ -21,9 +20,9 @@ type DeployImplementationsInput struct {
 	L1ContractsRelease    string
 	SuperchainConfigProxy common.Address
 	ProtocolVersionsProxy common.Address
+	SuperchainProxyAdmin  common.Address
+	UpgradeController     common.Address
 	UseInterop            bool // if true, deploy Interop implementations
-
-	StandardVersionsToml string // contents of 'standard-versions-mainnet.toml' or 'standard-versions-sepolia.toml' file
 }
 
 func (input *DeployImplementationsInput) InputSet() bool {
@@ -42,6 +41,9 @@ type DeployImplementationsOutput struct {
 	L1StandardBridgeImpl             common.Address
 	OptimismMintableERC20FactoryImpl common.Address
 	DisputeGameFactoryImpl           common.Address
+	AnchorStateRegistryImpl          common.Address
+	SuperchainConfigImpl             common.Address
+	ProtocolVersionsImpl             common.Address
 }
 
 func (output *DeployImplementationsOutput) CheckOutput(input common.Address) error {

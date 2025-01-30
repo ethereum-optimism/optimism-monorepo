@@ -2,6 +2,7 @@ package opcm
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/ethereum-optimism/optimism/op-chain-ops/genesis"
 	"github.com/ethereum-optimism/optimism/op-chain-ops/script"
@@ -20,8 +21,9 @@ type L1Deployments struct {
 }
 
 type L2GenesisInput struct {
-	L1Deployments L1Deployments
-	L2Config      genesis.L2InitializationConfig
+	L1Deployments      L1Deployments
+	L2Config           genesis.L2InitializationConfig
+	OverrideAllocsMode string
 }
 
 type L2GenesisScript struct {
@@ -32,6 +34,15 @@ func L2Genesis(l2Host *script.Host, input *L2GenesisInput) error {
 	l2Host.SetEnvVar("L2GENESIS_L1CrossDomainMessengerProxy", input.L1Deployments.L1CrossDomainMessengerProxy.String())
 	l2Host.SetEnvVar("L2GENESIS_L1StandardBridgeProxy", input.L1Deployments.L1StandardBridgeProxy.String())
 	l2Host.SetEnvVar("L2GENESIS_L1ERC721BridgeProxy", input.L1Deployments.L1ERC721BridgeProxy.String())
+
+	var allocsMode string
+	if input.OverrideAllocsMode == "" {
+		allocsMode = string(input.L2Config.UpgradeScheduleDeployConfig.AllocMode(uint64(time.Now().Unix())))
+	} else {
+		allocsMode = input.OverrideAllocsMode
+	}
+
+	l2Host.SetEnvVar("FORK", allocsMode)
 
 	deployConfig := &genesis.DeployConfig{
 		L2InitializationConfig: input.L2Config,

@@ -85,7 +85,7 @@ var (
 	BeaconFallbackAddrs = &cli.StringSliceFlag{
 		Name:     "l1.beacon-fallbacks",
 		Aliases:  []string{"l1.beacon-archiver"},
-		Usage:    "Addresses of L1 Beacon-API compatible HTTP fallback endpoints. Used to fetch blob sidecars not availalbe at the l1.beacon (e.g. expired blobs).",
+		Usage:    "Addresses of L1 Beacon-API compatible HTTP fallback endpoints. Used to fetch blob sidecars not available at the l1.beacon (e.g. expired blobs).",
 		EnvVars:  prefixEnvVars("L1_BEACON_FALLBACKS", "L1_BEACON_ARCHIVER"),
 		Category: L1RPCCategory,
 	}
@@ -177,6 +177,13 @@ var (
 		Usage:    "Maximum number of RPC requests to bundle, e.g. during L1 blocks receipt fetching. The L1 RPC rate limit counts this as N items, but allows it to burst at once.",
 		EnvVars:  prefixEnvVars("L1_RPC_MAX_BATCH_SIZE"),
 		Value:    20,
+		Category: L1RPCCategory,
+	}
+	L1CacheSize = &cli.UintFlag{
+		Name: "l1.cache-size",
+		Usage: "Cache size for blocks, receipts and transactions. " +
+			"It's optional and a sane default of 3/2 the sequencing window size is used if this field is set to 0.",
+		EnvVars:  prefixEnvVars("L1_CACHE_SIZE"),
 		Category: L1RPCCategory,
 	}
 	L1HTTPPollInterval = &cli.DurationFlag{
@@ -423,6 +430,7 @@ var optionalFlags = []cli.Flag{
 	L1RPCMaxBatchSize,
 	L1RPCMaxConcurrency,
 	L1HTTPPollInterval,
+	L1CacheSize,
 	VerifierL1Confs,
 	SequencerEnabledFlag,
 	SequencerStoppedFlag,

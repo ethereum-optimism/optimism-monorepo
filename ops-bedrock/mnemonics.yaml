@@ -1,3 +1,0 @@
-# put our 64 test validators into the devnet genesis
-- mnemonic: "test test test test test test test test test test test junk"
-  count: 64

@@ -1,10 +1,10 @@
 package common
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
-	"path/filepath"
 	"runtime"
 	"sync"
 	"sync/atomic"
@@ -37,20 +37,27 @@ func (e *ErrorReporter) HasError() bool {
 	return e.hasErr.Load()
 }
 
-type FileProcessor func(path string) []error
+type Void struct{}
 
-func ProcessFiles(files map[string]string, processor FileProcessor) error {
+type FileProcessor[T any] func(path string) (T, []error)
+
+func ProcessFiles[T any](files map[string]string, processor FileProcessor[T]) (map[string]T, error) {
 	g := errgroup.Group{}
 	g.SetLimit(runtime.NumCPU())
 
 	reporter := NewErrorReporter()
-	for name, path := range files {
-		name, path := name, path // Capture loop variables
+	results := sync.Map{}
+
+	for _, path := range files {
+		path := path // Capture loop variables
 		g.Go(func() error {
-			if errs := processor(path); len(errs) > 0 {
+			result, errs := processor(path)
+			if len(errs) > 0 {
 				for _, err := range errs {
-					reporter.Fail("%s: %v", name, err)
+					reporter.Fail("%s: %v", path, err)
 				}
+			} else {
+				results.Store(path, result)
 			}
 			return nil
 		})
@@ -58,18 +65,26 @@ func ProcessFiles(files map[string]string, processor FileProcessor) error {
 
 	err := g.Wait()
 	if err != nil {
-		return fmt.Errorf("processing failed: %w", err)
+		return nil, fmt.Errorf("processing failed: %w", err)
 	}
 	if reporter.HasError() {
-		return fmt.Errorf("processing failed")
+		return nil, fmt.Errorf("processing failed")
 	}
-	return nil
+
+	// Convert sync.Map to regular map
+	finalResults := make(map[string]T)
+	results.Range(func(key, value interface{}) bool {
+		finalResults[key.(string)] = value.(T)
+		return true
+	})
+
+	return finalResults, nil
 }
 
-func ProcessFilesGlob(includes, excludes []string, processor FileProcessor) error {
+func ProcessFilesGlob[T any](includes, excludes []string, processor FileProcessor[T]) (map[string]T, error) {
 	files, err := FindFiles(includes, excludes)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	return ProcessFiles(files, processor)
 }
@@ -85,8 +100,7 @@ func FindFiles(includes, excludes []string) (map[string]string, error) {
 			return nil, fmt.Errorf("glob pattern error: %w", err)
 		}
 		for _, match := range matches {
-			name := filepath.Base(match)
-			included[name] = match
+			included[match] = match
 		}
 	}
 
@@ -97,7 +111,7 @@ func FindFiles(includes, excludes []string) (map[string]string, error) {
 			return nil, fmt.Errorf("glob pattern error: %w", err)
 		}
 		for _, match := range matches {
-			excluded[filepath.Base(match)] = struct{}{}
+			excluded[match] = struct{}{}
 		}
 	}
 
@@ -121,4 +135,23 @@ func ReadForgeArtifact(path string) (*solc.ForgeArtifact, error) {
 	}
 
 	return &artifact, nil
+}
+
+func WriteJSON(data interface{}, path string) error {
+	var out bytes.Buffer
+	enc := json.NewEncoder(&out)
+	enc.SetEscapeHTML(false)
+	enc.SetIndent("", "  ")
+	err := enc.Encode(data)
+	if err != nil {
+		return fmt.Errorf("failed to encode data: %w", err)
+	}
+	jsonData := out.Bytes()
+	if len(jsonData) > 0 && jsonData[len(jsonData)-1] == '\n' { // strip newline
+		jsonData = jsonData[:len(jsonData)-1]
+	}
+	if err := os.WriteFile(path, jsonData, 0644); err != nil {
+		return fmt.Errorf("failed to write file: %w", err)
+	}
+	return nil
 }

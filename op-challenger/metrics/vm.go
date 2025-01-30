@@ -17,7 +17,6 @@ type VmMetricer interface {
 	RecordVmMaxStepsBetweenLLAndSC(vmType string, val uint64)
 	RecordVmReservationInvalidationCount(vmType string, val uint64)
 	RecordVmForcedPreemptionCount(vmType string, val uint64)
-	RecordVmFailedWakeupCount(vmType string, val uint64)
 	RecordVmIdleStepCountThread0(vmType string, val uint64)
 }
 
@@ -31,7 +30,6 @@ type TypedVmMetricer interface {
 	RecordMaxStepsBetweenLLAndSC(val uint64)
 	RecordReservationInvalidationCount(val uint64)
 	RecordForcedPreemptionCount(val uint64)
-	RecordFailedWakeupCount(val uint64)
 	RecordIdleStepCountThread0(val uint64)
 }
 
@@ -44,7 +42,6 @@ type VmMetrics struct {
 	vmMaxStepsBetweenLLAndSC   *prometheus.GaugeVec
 	vmReservationInvalidations *prometheus.GaugeVec
 	vmForcedPreemptions        *prometheus.GaugeVec
-	vmFailedWakeup             *prometheus.GaugeVec
 	vmIdleStepsThread0         *prometheus.GaugeVec
 }
 
@@ -80,10 +77,6 @@ func (m *VmMetrics) RecordVmReservationInvalidationCount(vmType string, val uint
 
 func (m *VmMetrics) RecordVmForcedPreemptionCount(vmType string, val uint64) {
 	m.vmForcedPreemptions.WithLabelValues(vmType).Set(float64(val))
-}
-
-func (m *VmMetrics) RecordVmFailedWakeupCount(vmType string, val uint64) {
-	m.vmFailedWakeup.WithLabelValues(vmType).Set(float64(val))
 }
 
 func (m *VmMetrics) RecordVmIdleStepCountThread0(vmType string, val uint64) {
@@ -122,7 +115,6 @@ func NewVmMetrics(namespace string, factory metrics.Factory) *VmMetrics {
 			Name:      "vm_rmw_fail_count",
 			Help:      "Number of failed RMW instruction sequences during vm run",
 		}, []string{"vm"}),
-		// Note: vmMaxStepsBetweenLLAndSC is not complete and may miss longer ranges for failed rmw sequences.
 		vmMaxStepsBetweenLLAndSC: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
 			Name:      "vm_max_steps_between_ll_and_sc",
@@ -137,11 +129,6 @@ func NewVmMetrics(namespace string, factory metrics.Factory) *VmMetrics {
 			Namespace: namespace,
 			Name:      "vm_forced_preemptions",
 			Help:      "Number of forced preemptions during vm run",
-		}, []string{"vm"}),
-		vmFailedWakeup: factory.NewGaugeVec(prometheus.GaugeOpts{
-			Namespace: namespace,
-			Name:      "vm_failed_wakeup",
-			Help:      "Number of failed wakesups during vm run",
 		}, []string{"vm"}),
 		vmIdleStepsThread0: factory.NewGaugeVec(prometheus.GaugeOpts{
 			Namespace: namespace,
@@ -163,7 +150,6 @@ func (n NoopVmMetrics) RecordVmRmwFailCount(vmType string, val uint64)          
 func (n NoopVmMetrics) RecordVmMaxStepsBetweenLLAndSC(vmType string, val uint64)       {}
 func (n NoopVmMetrics) RecordVmReservationInvalidationCount(vmType string, val uint64) {}
 func (n NoopVmMetrics) RecordVmForcedPreemptionCount(vmType string, val uint64)        {}
-func (n NoopVmMetrics) RecordVmFailedWakeupCount(vmType string, val uint64)            {}
 func (n NoopVmMetrics) RecordVmIdleStepCountThread0(vmType string, val uint64)         {}
 
 type typedVmMetricsImpl struct {
@@ -203,10 +189,6 @@ func (m *typedVmMetricsImpl) RecordReservationInvalidationCount(val uint64) {
 
 func (m *typedVmMetricsImpl) RecordForcedPreemptionCount(val uint64) {
 	m.m.RecordVmForcedPreemptionCount(m.vmType, val)
-}
-
-func (m *typedVmMetricsImpl) RecordFailedWakeupCount(val uint64) {
-	m.m.RecordVmFailedWakeupCount(m.vmType, val)
 }
 
 func (m *typedVmMetricsImpl) RecordIdleStepCountThread0(val uint64) {

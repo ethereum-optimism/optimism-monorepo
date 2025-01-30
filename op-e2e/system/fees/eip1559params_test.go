@@ -35,7 +35,7 @@ func TestEIP1559Params(t *testing.T) {
 	// Obtain our sequencer, verifier, and transactor keypair.
 	l1Client := sys.NodeClient("l1")
 	l2Seq := sys.NodeClient("sequencer")
-	ethPrivKey := cfg.Secrets.SysCfgOwner
+	ethPrivKey := cfg.Secrets.Deployer
 
 	_, err = l2Seq.HeaderByNumber(context.Background(), big.NewInt(0))
 	require.NoError(t, err)

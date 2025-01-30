@@ -92,3 +92,42 @@ func TestSystemConfigMarshaling(t *testing.T) {
 	require.NoError(t, err)
 	require.Equal(t, `{"batcherAddr":"0x4100000000000000000000000000000000000000","overhead":"0x0405060000000000000000000000000000000000000000000000000000000000","scalar":"0x0708090000000000000000000000000000000000000000000000000000000000","gasLimit":1234}`, string(j))
 }
+
+func TestStorageKey(t *testing.T) {
+	cases := []struct {
+		unmarshaled string
+		marshaled   []byte
+	}{
+		{
+			unmarshaled: "0x",
+			marshaled:   []byte{},
+		},
+		{
+			unmarshaled: "0x0",
+			marshaled:   []byte{0},
+		},
+		{
+			unmarshaled: "0x1",
+			marshaled:   []byte{1},
+		},
+		{
+			unmarshaled: "0x01",
+			marshaled:   []byte{1},
+		},
+		{
+			unmarshaled: "0x01020304",
+			marshaled:   []byte{1, 2, 3, 4},
+		},
+		{
+			unmarshaled: "0xF01FF02",
+			marshaled:   []byte{0xF, 0x01, 0xFF, 0x02},
+		},
+	}
+
+	for _, c := range cases {
+		var key StorageKey
+		err := key.UnmarshalText([]byte(c.unmarshaled))
+		require.NoError(t, err)
+		require.Equal(t, c.marshaled, []uint8(key)[:])
+	}
+}

@@ -2,7 +2,6 @@
 * @ethereum-optimism/go-reviewers
 
 # OP Stack general
-/bedrock-devnet @ethereum-optimism/op-stack @ethereum-optimism/go-reviewers
 /op-alt-da      @ethereum-optimism/op-stack @ethereum-optimism/go-reviewers
 /op-batcher     @ethereum-optimism/op-stack @ethereum-optimism/go-reviewers
 /op-chain-ops   @ethereum-optimism/op-stack @ethereum-optimism/go-reviewers

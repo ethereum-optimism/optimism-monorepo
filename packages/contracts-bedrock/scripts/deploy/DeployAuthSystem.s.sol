@@ -86,10 +86,16 @@ contract DeployAuthSystem is Script {
 
     function etchIOContracts() public returns (DeployAuthSystemInput dasi_, DeployAuthSystemOutput daso_) {
         (dasi_, daso_) = getIOContracts();
-        vm.etch(address(dasi_), type(DeployAuthSystemInput).runtimeCode);
-        vm.etch(address(daso_), type(DeployAuthSystemOutput).runtimeCode);
-        vm.allowCheatcodes(address(dasi_));
-        vm.allowCheatcodes(address(daso_));
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(dasi_),
+            _cname: "DeployAuthSystemInput",
+            _artifactPath: "DeployAuthSystem.s.sol:DeployAuthSystemInput"
+        });
+        DeployUtils.etchLabelAndAllowCheatcodes({
+            _etchTo: address(daso_),
+            _cname: "DeployAuthSystemOutput",
+            _artifactPath: "DeployAuthSystem.s.sol:DeployAuthSystemOutput"
+        });
     }
 
     function getIOContracts() public view returns (DeployAuthSystemInput dasi_, DeployAuthSystemOutput daso_) {

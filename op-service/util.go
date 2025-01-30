@@ -12,6 +12,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/ethereum/go-ethereum/common/hexutil"
+
 	"github.com/ethereum-optimism/optimism/op-service/ctxinterrupt"
 
 	"github.com/ethereum/go-ethereum/common"
@@ -162,4 +164,9 @@ func Parse256BitChainID(in string) (common.Hash, error) {
 	}
 
 	return common.BigToHash(chainIDBig), nil
+}
+
+func U64UtilPtr(in uint64) *hexutil.Uint64 {
+	util := hexutil.Uint64(in)
+	return &util
 }

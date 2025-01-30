@@ -26,6 +26,7 @@ type BlockInfo interface {
 	GasUsed() uint64
 	GasLimit() uint64
 	ParentBeaconRoot() *common.Hash // Dencun extension
+	WithdrawalsRoot() *common.Hash  // Isthmus extension
 
 	// HeaderRLP returns the RLP of the block header as per consensus rules
 	// Returns an error if the header RLP could not be written
@@ -72,6 +73,10 @@ func (b blockInfo) ParentBeaconRoot() *common.Hash {
 	return b.Block.BeaconRoot()
 }
 
+func (b blockInfo) WithdrawalsRoot() *common.Hash {
+	return b.Header().WithdrawalsHash
+}
+
 func BlockToInfo(b *types.Block) BlockInfo {
 	return blockInfo{b}
 }
@@ -79,65 +84,91 @@ func BlockToInfo(b *types.Block) BlockInfo {
 var _ BlockInfo = (*blockInfo)(nil)
 
 // headerBlockInfo is a conversion type of types.Header turning it into a
-// BlockInfo.
-type headerBlockInfo struct{ *types.Header }
-
-func (h headerBlockInfo) ParentHash() common.Hash {
-	return h.Header.ParentHash
+// BlockInfo, but using a cached hash value.
+type headerBlockInfo struct {
+	hash   common.Hash
+	header *types.Header
 }
 
-func (h headerBlockInfo) Coinbase() common.Address {
-	return h.Header.Coinbase
+var _ BlockInfo = (*headerBlockInfo)(nil)
+
+func (h *headerBlockInfo) Hash() common.Hash {
+	return h.hash
 }
 
-func (h headerBlockInfo) Root() common.Hash {
-	return h.Header.Root
+func (h *headerBlockInfo) ParentHash() common.Hash {
+	return h.header.ParentHash
 }
 
-func (h headerBlockInfo) NumberU64() uint64 {
-	return h.Header.Number.Uint64()
+func (h *headerBlockInfo) Coinbase() common.Address {
+	return h.header.Coinbase
 }
 
-func (h headerBlockInfo) Time() uint64 {
-	return h.Header.Time
+func (h *headerBlockInfo) Root() common.Hash {
+	return h.header.Root
 }
 
-func (h headerBlockInfo) MixDigest() common.Hash {
-	return h.Header.MixDigest
+func (h *headerBlockInfo) NumberU64() uint64 {
+	return h.header.Number.Uint64()
 }
 
-func (h headerBlockInfo) BaseFee() *big.Int {
-	return h.Header.BaseFee
+func (h *headerBlockInfo) Time() uint64 {
+	return h.header.Time
 }
 
-func (h headerBlockInfo) BlobBaseFee() *big.Int {
-	if h.ExcessBlobGas == nil {
+func (h *headerBlockInfo) MixDigest() common.Hash {
+	return h.header.MixDigest
+}
+
+func (h *headerBlockInfo) BaseFee() *big.Int {
+	return h.header.BaseFee
+}
+
+func (h *headerBlockInfo) BlobBaseFee() *big.Int {
+	if h.header.ExcessBlobGas == nil {
 		return nil
 	}
-	return eip4844.CalcBlobFee(*h.ExcessBlobGas)
+	return eip4844.CalcBlobFee(*h.header.ExcessBlobGas)
 }
 
-func (h headerBlockInfo) ReceiptHash() common.Hash {
-	return h.Header.ReceiptHash
+func (h *headerBlockInfo) ReceiptHash() common.Hash {
+	return h.header.ReceiptHash
 }
 
-func (h headerBlockInfo) GasUsed() uint64 {
-	return h.Header.GasUsed
+func (h *headerBlockInfo) GasUsed() uint64 {
+	return h.header.GasUsed
 }
 
-func (h headerBlockInfo) GasLimit() uint64 {
-	return h.Header.GasLimit
+func (h *headerBlockInfo) GasLimit() uint64 {
+	return h.header.GasLimit
 }
 
-func (h headerBlockInfo) ParentBeaconRoot() *common.Hash {
-	return h.Header.ParentBeaconRoot
+func (h *headerBlockInfo) ParentBeaconRoot() *common.Hash {
+	return h.header.ParentBeaconRoot
 }
 
-func (h headerBlockInfo) HeaderRLP() ([]byte, error) {
-	return rlp.EncodeToBytes(h.Header)
+func (h *headerBlockInfo) HeaderRLP() ([]byte, error) {
+	return rlp.EncodeToBytes(h.header) // usage is rare and mostly 1-time-use, no need to cache
 }
 
-// HeaderBlockInfo returns h as a BlockInfo implementation.
+func (h headerBlockInfo) WithdrawalsRoot() *common.Hash {
+	return h.header.WithdrawalsHash
+}
+
+func (h *headerBlockInfo) MarshalJSON() ([]byte, error) {
+	return h.header.MarshalJSON()
+}
+
+func (h *headerBlockInfo) UnmarshalJSON(input []byte) error {
+	return h.header.UnmarshalJSON(input)
+}
+
+// HeaderBlockInfo returns h as a BlockInfo implementation, with pre-cached blockhash.
 func HeaderBlockInfo(h *types.Header) BlockInfo {
-	return headerBlockInfo{h}
+	return &headerBlockInfo{hash: h.Hash(), header: h}
+}
+
+// HeaderBlockInfoTrusted returns a BlockInfo, with trusted pre-cached block-hash.
+func HeaderBlockInfoTrusted(hash common.Hash, h *types.Header) BlockInfo {
+	return &headerBlockInfo{hash: hash, header: h}
 }

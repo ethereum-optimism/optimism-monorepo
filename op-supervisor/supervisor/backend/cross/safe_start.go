@@ -12,9 +12,9 @@ import (
 )
 
 type SafeStartDeps interface {
-	Check(chain types.ChainID, blockNum uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
+	Check(chain eth.ChainID, blockNum uint64, timestamp uint64, logIdx uint32, logHash common.Hash) (includedIn types.BlockSeal, err error)
 
-	CrossDerivedFrom(chainID types.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
+	CrossDerivedFrom(chainID eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 
 	DependencySet() depset.DependencySet
 }
@@ -22,7 +22,7 @@ type SafeStartDeps interface {
 // CrossSafeHazards checks if the given messages all exist and pass invariants.
 // It returns a hazard-set: if any intra-block messaging happened,
 // these hazard blocks have to be verified.
-func CrossSafeHazards(d SafeStartDeps, chainID types.ChainID, inL1DerivedFrom eth.BlockID,
+func CrossSafeHazards(d SafeStartDeps, chainID eth.ChainID, inL1DerivedFrom eth.BlockID,
 	candidate types.BlockSeal, execMsgs []*types.ExecutingMessage) (hazards map[types.ChainIndex]types.BlockSeal, err error) {
 
 	hazards = make(map[types.ChainIndex]types.BlockSeal)
@@ -61,7 +61,7 @@ func CrossSafeHazards(d SafeStartDeps, chainID types.ChainID, inL1DerivedFrom et
 		if msg.Timestamp < candidate.Timestamp {
 			// If timestamp is older: invariant ensures non-cyclic ordering relative to other messages.
 			// Check that the block that they are included in is cross-safe already.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}
@@ -80,7 +80,7 @@ func CrossSafeHazards(d SafeStartDeps, chainID types.ChainID, inL1DerivedFrom et
 			// Thus check that it was included in a local-safe block,
 			// and then proceed with transitive block checks,
 			// to ensure the local block we depend on is becoming cross-safe also.
-			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.LogIdx, msg.Hash)
+			includedIn, err := d.Check(initChainID, msg.BlockNum, msg.Timestamp, msg.LogIdx, msg.Hash)
 			if err != nil {
 				return nil, fmt.Errorf("executing msg %s failed check: %w", msg, err)
 			}

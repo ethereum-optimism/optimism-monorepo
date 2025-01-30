@@ -6,8 +6,6 @@ import { Initializable } from "@openzeppelin/contracts/proxy/utils/Initializable
 
 // Libraries
 import { GameType, OutputRoot, Claim, GameStatus, Hash } from "src/dispute/lib/Types.sol";
-import { Unauthorized } from "src/libraries/errors/CommonErrors.sol";
-import { UnregisteredGame, InvalidGameStatus } from "src/dispute/lib/Errors.sol";
 
 // Interfaces
 import { ISemver } from "interfaces/universal/ISemver.sol";
@@ -15,6 +13,7 @@ import { IFaultDisputeGame } from "interfaces/dispute/IFaultDisputeGame.sol";
 import { IDisputeGame } from "interfaces/dispute/IDisputeGame.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
+import { IOptimismPortal2 } from "interfaces/L1/IOptimismPortal2.sol";
 
 /// @custom:proxied true
 /// @title AnchorStateRegistry
@@ -23,105 +22,258 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 ///         challenged within the challenge period. By using stored anchor states, new FaultDisputeGame instances can
 ///         be initialized with a more recent starting state which reduces the amount of required offchain computation.
 contract AnchorStateRegistry is Initializable, ISemver {
-    /// @notice Describes an initial anchor state for a game type.
-    struct StartingAnchorRoot {
-        GameType gameType;
-        OutputRoot outputRoot;
-    }
-
     /// @notice Semantic version.
-    /// @custom:semver 2.0.1-beta.5
-    string public constant version = "2.0.1-beta.5";
-
-    /// @notice DisputeGameFactory address.
-    IDisputeGameFactory internal immutable DISPUTE_GAME_FACTORY;
-
-    /// @notice Returns the anchor state for the given game type.
-    mapping(GameType => OutputRoot) public anchors;
+    /// @custom:semver 2.2.0
+    string public constant version = "2.2.0";
 
     /// @notice Address of the SuperchainConfig contract.
     ISuperchainConfig public superchainConfig;
 
-    /// @param _disputeGameFactory DisputeGameFactory address.
-    constructor(IDisputeGameFactory _disputeGameFactory) {
-        DISPUTE_GAME_FACTORY = _disputeGameFactory;
+    /// @notice Address of the DisputeGameFactory contract.
+    IDisputeGameFactory public disputeGameFactory;
+
+    /// @notice Address of the OptimismPortal contract.
+    IOptimismPortal2 public portal;
+
+    /// @notice The game whose claim is currently being used as the anchor state.
+    IFaultDisputeGame public anchorGame;
+
+    /// @notice The starting anchor root.
+    OutputRoot internal startingAnchorRoot;
+
+    /// @notice Emitted when an anchor state is not updated.
+    /// @param game Game that was not used as the new anchor game.
+    event AnchorNotUpdated(IFaultDisputeGame indexed game);
+
+    /// @notice Emitted when an anchor state is updated.
+    /// @param game Game that was used as the new anchor game.
+    event AnchorUpdated(IFaultDisputeGame indexed game);
+
+    /// @notice Thrown when an unauthorized caller attempts to set the anchor state.
+    error AnchorStateRegistry_Unauthorized();
+
+    /// @notice Thrown when an invalid anchor game is provided.
+    error AnchorStateRegistry_InvalidAnchorGame();
+
+    /// @notice Thrown when the anchor root is requested, but the anchor game is blacklisted.
+    error AnchorStateRegistry_AnchorGameBlacklisted();
+
+    /// @notice Constructor to disable initializers.
+    constructor() {
         _disableInitializers();
     }
 
     /// @notice Initializes the contract.
-    /// @param _startingAnchorRoots An array of starting anchor roots.
     /// @param _superchainConfig The address of the SuperchainConfig contract.
+    /// @param _disputeGameFactory The address of the DisputeGameFactory contract.
+    /// @param _portal The address of the OptimismPortal contract.
+    /// @param _startingAnchorRoot The starting anchor root.
     function initialize(
-        StartingAnchorRoot[] memory _startingAnchorRoots,
-        ISuperchainConfig _superchainConfig
+        ISuperchainConfig _superchainConfig,
+        IDisputeGameFactory _disputeGameFactory,
+        IOptimismPortal2 _portal,
+        OutputRoot memory _startingAnchorRoot
     )
-        public
+        external
         initializer
     {
-        for (uint256 i = 0; i < _startingAnchorRoots.length; i++) {
-            StartingAnchorRoot memory startingAnchorRoot = _startingAnchorRoots[i];
-            anchors[startingAnchorRoot.gameType] = startingAnchorRoot.outputRoot;
-        }
         superchainConfig = _superchainConfig;
+        disputeGameFactory = _disputeGameFactory;
+        portal = _portal;
+        startingAnchorRoot = _startingAnchorRoot;
     }
 
-    /// @notice Returns the DisputeGameFactory address.
-    /// @return DisputeGameFactory address.
-    function disputeGameFactory() external view returns (IDisputeGameFactory) {
-        return DISPUTE_GAME_FACTORY;
+    /// @notice Returns the respected game type.
+    /// @return The respected game type.
+    function respectedGameType() public view returns (GameType) {
+        return portal.respectedGameType();
     }
 
-    /// @notice Callable by FaultDisputeGame contracts to update the anchor state. Pulls the anchor state directly from
-    ///         the FaultDisputeGame contract and stores it in the registry if the new anchor state is valid and the
-    ///         state is newer than the current anchor state.
-    function tryUpdateAnchorState() external {
+    /// @custom:legacy
+    /// @notice Returns the anchor root. Note that this is a legacy deprecated function and will
+    ///         be removed in a future release. Use getAnchorRoot() instead. Anchor roots are no
+    ///         longer stored per game type, so this function will return the same root for all
+    ///         game types.
+    function anchors(GameType /* unused */ ) external view returns (Hash, uint256) {
+        return getAnchorRoot();
+    }
+
+    /// @notice Returns the current anchor root.
+    /// @return The anchor root.
+    function getAnchorRoot() public view returns (Hash, uint256) {
+        // Return the starting anchor root if there is no anchor game.
+        if (address(anchorGame) == address(0)) {
+            return (startingAnchorRoot.root, startingAnchorRoot.l2BlockNumber);
+        }
+
+        if (isGameBlacklisted(anchorGame)) {
+            revert AnchorStateRegistry_AnchorGameBlacklisted();
+        }
+
+        // Otherwise, return the anchor root.
+        return (Hash.wrap(anchorGame.rootClaim().raw()), anchorGame.l2BlockNumber());
+    }
+
+    /// @notice Determines whether a game is registered in the DisputeGameFactory.
+    /// @param _game The game to check.
+    /// @return Whether the game is factory registered.
+    function isGameRegistered(IDisputeGame _game) public view returns (bool) {
         // Grab the game and game data.
-        IFaultDisputeGame game = IFaultDisputeGame(msg.sender);
-        (GameType gameType, Claim rootClaim, bytes memory extraData) = game.gameData();
-
-        // Grab the verified address of the game based on the game data.
-        // slither-disable-next-line unused-return
-        (IDisputeGame factoryRegisteredGame,) =
-            DISPUTE_GAME_FACTORY.games({ _gameType: gameType, _rootClaim: rootClaim, _extraData: extraData });
-
-        // Must be a valid game.
-        if (address(factoryRegisteredGame) != address(game)) revert UnregisteredGame();
-
-        // No need to update anything if the anchor state is already newer.
-        if (game.l2BlockNumber() <= anchors[gameType].l2BlockNumber) {
-            return;
-        }
-
-        // Must be a game that resolved in favor of the state.
-        if (game.status() != GameStatus.DEFENDER_WINS) {
-            return;
-        }
-
-        // Actually update the anchor state.
-        anchors[gameType] = OutputRoot({ l2BlockNumber: game.l2BlockNumber(), root: Hash.wrap(game.rootClaim().raw()) });
-    }
-
-    /// @notice Sets the anchor state given the game.
-    /// @param _game The game to set the anchor state for.
-    function setAnchorState(IFaultDisputeGame _game) external {
-        if (msg.sender != superchainConfig.guardian()) revert Unauthorized();
-
-        // Get the metadata of the game.
         (GameType gameType, Claim rootClaim, bytes memory extraData) = _game.gameData();
 
         // Grab the verified address of the game based on the game data.
-        // slither-disable-next-line unused-return
-        (IDisputeGame factoryRegisteredGame,) =
-            DISPUTE_GAME_FACTORY.games({ _gameType: gameType, _rootClaim: rootClaim, _extraData: extraData });
+        (IDisputeGame _factoryRegisteredGame,) =
+            disputeGameFactory.games({ _gameType: gameType, _rootClaim: rootClaim, _extraData: extraData });
 
-        // Must be a valid game.
-        if (address(factoryRegisteredGame) != address(_game)) revert UnregisteredGame();
+        // Return whether the game is factory registered.
+        return address(_factoryRegisteredGame) == address(_game);
+    }
 
-        // The game must have resolved in favor of the root claim.
-        if (_game.status() != GameStatus.DEFENDER_WINS) revert InvalidGameStatus();
+    /// @notice Determines whether a game is of a respected game type.
+    /// @param _game The game to check.
+    /// @return Whether the game is of a respected game type.
+    function isGameRespected(IDisputeGame _game) public view returns (bool) {
+        return _game.wasRespectedGameTypeWhenCreated();
+    }
 
-        // Update the anchor.
-        anchors[gameType] =
-            OutputRoot({ l2BlockNumber: _game.l2BlockNumber(), root: Hash.wrap(_game.rootClaim().raw()) });
+    /// @notice Determines whether a game is blacklisted.
+    /// @param _game The game to check.
+    /// @return Whether the game is blacklisted.
+    function isGameBlacklisted(IDisputeGame _game) public view returns (bool) {
+        return portal.disputeGameBlacklist(_game);
+    }
+
+    /// @notice Determines whether a game is retired.
+    /// @param _game The game to check.
+    /// @return Whether the game is retired.
+    function isGameRetired(IDisputeGame _game) public view returns (bool) {
+        // Must be created after the respectedGameTypeUpdatedAt timestamp. Note that this means all
+        // games created in the same block as the respectedGameTypeUpdatedAt timestamp are
+        // considered retired.
+        return _game.createdAt().raw() <= portal.respectedGameTypeUpdatedAt();
+    }
+
+    /// @notice Returns whether a game is resolved.
+    /// @param _game The game to check.
+    /// @return Whether the game is resolved.
+    function isGameResolved(IDisputeGame _game) public view returns (bool) {
+        return _game.resolvedAt().raw() != 0
+            && (_game.status() == GameStatus.DEFENDER_WINS || _game.status() == GameStatus.CHALLENGER_WINS);
+    }
+
+    /// @notice Returns whether a game is beyond the airgap period.
+    /// @param _game The game to check.
+    /// @return Whether the game is beyond the airgap period.
+    function isGameAirgapped(IDisputeGame _game) public view returns (bool) {
+        return block.timestamp - _game.resolvedAt().raw() > portal.disputeGameFinalityDelaySeconds();
+    }
+
+    /// @notice **READ THIS FUNCTION DOCUMENTATION CAREFULLY.**
+    ///         Determines whether a game resolved properly and the game was not subject to any
+    ///         invalidation conditions. The root claim of a proper game IS NOT guaranteed to be
+    ///         valid. The root claim of a proper game CAN BE incorrect and still be a proper game.
+    ///         DO NOT USE THIS FUNCTION ALONE TO DETERMINE IF A ROOT CLAIM IS VALID.
+    /// @dev Note that isGameProper previously checked that the game type was equal to the
+    ///      respected game type. However, it should be noted that it is possible for a game other
+    ///      than the respected game type to resolve without being invalidated. Since isGameProper
+    ///      exists to determine if a game has (or has not) been invalidated, we now allow any game
+    ///      type to be considered a proper game. We enforce checks on the game type in
+    ///      isGameClaimValid().
+    /// @param _game The game to check.
+    /// @return Whether the game is a proper game.
+    function isGameProper(IDisputeGame _game) public view returns (bool) {
+        // Must be registered in the DisputeGameFactory.
+        if (!isGameRegistered(_game)) {
+            return false;
+        }
+
+        // Must not be blacklisted.
+        if (isGameBlacklisted(_game)) {
+            return false;
+        }
+
+        // Must be created at or after the respectedGameTypeUpdatedAt timestamp.
+        if (isGameRetired(_game)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @notice Returns whether a game is finalized.
+    /// @param _game The game to check.
+    /// @return Whether the game is finalized.
+    function isGameFinalized(IDisputeGame _game) public view returns (bool) {
+        // Game must be resolved.
+        if (!isGameResolved(_game)) {
+            return false;
+        }
+
+        // Game must be beyond the airgap period.
+        if (!isGameAirgapped(_game)) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @notice Returns whether a game's root claim is valid.
+    /// @param _game The game to check.
+    /// @return Whether the game's root claim is valid.
+    function isGameClaimValid(IDisputeGame _game) public view returns (bool) {
+        // Game must be a proper game.
+        bool properGame = isGameProper(_game);
+        if (!properGame) {
+            return false;
+        }
+
+        // Must be respected.
+        bool respected = isGameRespected(_game);
+        if (!respected) {
+            return false;
+        }
+
+        // Game must be finalized.
+        bool finalized = isGameFinalized(_game);
+        if (!finalized) {
+            return false;
+        }
+
+        // Game must be resolved in favor of the defender.
+        if (_game.status() != GameStatus.DEFENDER_WINS) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /// @notice Updates the anchor game.
+    /// @param _game New candidate anchor game.
+    function setAnchorState(IDisputeGame _game) public {
+        // Convert game to FaultDisputeGame.
+        // We can't use FaultDisputeGame in the interface because this function is called from the
+        // FaultDisputeGame contract which can't import IFaultDisputeGame by convention. We should
+        // likely introduce a new interface (e.g., StateDisputeGame) that can act as a more useful
+        // version of IDisputeGame in the future.
+        IFaultDisputeGame game = IFaultDisputeGame(address(_game));
+
+        // Check if the candidate game is valid.
+        bool valid = isGameClaimValid(game);
+        if (!valid) {
+            revert AnchorStateRegistry_InvalidAnchorGame();
+        }
+
+        // Must be newer than the current anchor game.
+        // Note that this WILL block/brick if getAnchorRoot() ever reverts because the current
+        // anchor game is blacklisted. A blacklisted anchor game is *very* bad and we deliberately
+        // want to force the situation to be handled manually.
+        (, uint256 anchorL2BlockNumber) = getAnchorRoot();
+        if (game.l2BlockNumber() <= anchorL2BlockNumber) {
+            revert AnchorStateRegistry_InvalidAnchorGame();
+        }
+
+        // Update the anchor game.
+        anchorGame = game;
+        emit AnchorUpdated(game);
     }
 }

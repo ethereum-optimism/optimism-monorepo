@@ -20,7 +20,7 @@ type Word = arch.Word
 func (m *InstrumentedState) handleSyscall() error {
 	thread := m.state.GetCurrentThread()
 
-	syscallNum, a0, a1, a2, a3 := exec.GetSyscallArgs(m.state.GetRegistersRef())
+	syscallNum, a0, a1, a2 := exec.GetSyscallArgs(m.state.GetRegistersRef())
 	v0 := Word(0)
 	v1 := Word(0)
 
@@ -43,12 +43,9 @@ func (m *InstrumentedState) handleSyscall() error {
 		v0 = m.state.NextThreadId
 		v1 = 0
 		newThread := &ThreadState{
-			ThreadId:         m.state.NextThreadId,
-			ExitCode:         0,
-			Exited:           false,
-			FutexAddr:        exec.FutexEmptyAddr,
-			FutexVal:         0,
-			FutexTimeoutStep: 0,
+			ThreadId: m.state.NextThreadId,
+			ExitCode: 0,
+			Exited:   false,
 			Cpu: mipsevm.CpuScalars{
 				PC:     thread.Cpu.NextPC,
 				NextPC: thread.Cpu.NextPC + 4,
@@ -109,46 +106,28 @@ func (m *InstrumentedState) handleSyscall() error {
 		return nil
 	case arch.SysFutex:
 		// args: a0 = addr, a1 = op, a2 = val, a3 = timeout
-		effAddr := a0 & arch.AddressMask
+		// Futex value is 32-bit, so clear the lower 2 bits to get an effective address targeting a 4-byte value
+		effFutexAddr := a0 & ^Word(0x3)
 		switch a1 {
 		case exec.FutexWaitPrivate:
-			m.memoryTracker.TrackMemAccess(effAddr)
-			mem := m.state.Memory.GetWord(effAddr)
-			if mem != a2 {
+			futexVal := m.getFutexValue(effFutexAddr)
+			targetVal := uint32(a2)
+			if futexVal != targetVal {
 				v0 = exec.SysErrorSignal
 				v1 = exec.MipsEAGAIN
 			} else {
-				thread.FutexAddr = effAddr
-				thread.FutexVal = a2
-				if a3 == 0 {
-					thread.FutexTimeoutStep = exec.FutexNoTimeout
-				} else {
-					thread.FutexTimeoutStep = m.state.Step + exec.FutexTimeoutSteps
-				}
-				// Leave cpu scalars as-is. This instruction will be completed by `onWaitComplete`
+				m.syscallYield(thread)
 				return nil
 			}
 		case exec.FutexWakePrivate:
-			// Trigger a wakeup traversal
-			m.state.Wakeup = effAddr
-			// Don't indicate to the program that we've woken up a waiting thread, as there are no guarantees.
-			// The woken up thread should indicate this in userspace.
-			v0 = 0
-			v1 = 0
-			exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
-			m.preemptThread(thread)
-			m.state.TraverseRight = len(m.state.LeftThreadStack) == 0
-			m.statsTracker.trackWakeupTraversalStart()
+			m.syscallYield(thread)
 			return nil
 		default:
 			v0 = exec.SysErrorSignal
 			v1 = exec.MipsEINVAL
 		}
 	case arch.SysSchedYield, arch.SysNanosleep:
-		v0 = 0
-		v1 = 0
-		exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
-		m.preemptThread(thread)
+		m.syscallYield(thread)
 		return nil
 	case arch.SysOpen:
 		v0 = exec.SysErrorSignal
@@ -212,7 +191,7 @@ func (m *InstrumentedState) handleSyscall() error {
 	case arch.SysLseek:
 	default:
 		// These syscalls have the same values on 64-bit. So we use if-stmts here to avoid "duplicate case" compiler error for the cannon64 build
-		if arch.IsMips32 && syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek {
+		if arch.IsMips32 && (syscallNum == arch.SysFstat64 || syscallNum == arch.SysStat64 || syscallNum == arch.SysLlseek) {
 			// noop
 		} else {
 			m.Traceback()
@@ -222,6 +201,13 @@ func (m *InstrumentedState) handleSyscall() error {
 
 	exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
 	return nil
+}
+
+func (m *InstrumentedState) syscallYield(thread *ThreadState) {
+	v0 := Word(0)
+	v1 := Word(0)
+	exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
+	m.preemptThread(thread)
 }
 
 func (m *InstrumentedState) mipsStep() error {
@@ -248,56 +234,10 @@ func (m *InstrumentedState) doMipsStep() error {
 	m.state.Step += 1
 	thread := m.state.GetCurrentThread()
 
-	// During wakeup traversal, search for the first thread blocked on the wakeup address.
-	// Don't allow regular execution until we have found such a thread or else we have visited all threads.
-	if m.state.Wakeup != exec.FutexEmptyAddr {
-		// We are currently performing a wakeup traversal
-		if m.state.Wakeup == thread.FutexAddr {
-			// We found a target thread, resume normal execution and process this thread
-			m.state.Wakeup = exec.FutexEmptyAddr
-		} else {
-			// This is not the thread we're looking for, move on
-			traversingRight := m.state.TraverseRight
-			changedDirections := m.preemptThread(thread)
-			if traversingRight && changedDirections {
-				// We started the wakeup traversal walking left and we've now walked all the way right
-				// We have therefore visited all threads and can resume normal thread execution
-				m.state.Wakeup = exec.FutexEmptyAddr
-			}
-		}
-		return nil
-	}
-
 	if thread.Exited {
 		m.popThread()
 		m.stackTracker.DropThread(thread.ThreadId)
 		return nil
-	}
-
-	// check if thread is blocked on a futex
-	if thread.FutexAddr != exec.FutexEmptyAddr {
-		// if set, then check futex
-		// check timeout first
-		if m.state.Step > thread.FutexTimeoutStep {
-			// timeout! Allow execution
-			m.onWaitComplete(thread, true)
-			return nil
-		} else {
-			effAddr := thread.FutexAddr & arch.AddressMask
-			m.memoryTracker.TrackMemAccess(effAddr)
-			mem := m.state.Memory.GetWord(effAddr)
-			if thread.FutexVal == mem {
-				// still got expected value, continue sleeping, try next thread.
-				m.preemptThread(thread)
-				m.statsTracker.trackWakeupFail()
-				return nil
-			} else {
-				// wake thread up, the value at its address changed!
-				// Userspace can turn thread back to sleep if it was too sporadic.
-				m.onWaitComplete(thread, false)
-				return nil
-			}
-		}
 	}
 
 	if m.state.StepsSinceLastContextSwitch >= exec.SchedQuantum {
@@ -413,24 +353,6 @@ func (m *InstrumentedState) handleRMWOps(insn, opcode uint32) error {
 	return exec.HandleRd(m.state.getCpuRef(), m.state.GetRegistersRef(), rtReg, retVal, true)
 }
 
-func (m *InstrumentedState) onWaitComplete(thread *ThreadState, isTimedOut bool) {
-	// Note: no need to reset m.state.Wakeup.  If we're here, the Wakeup field has already been reset
-	// Clear the futex state
-	thread.FutexAddr = exec.FutexEmptyAddr
-	thread.FutexVal = 0
-	thread.FutexTimeoutStep = 0
-
-	// Complete the FUTEX_WAIT syscall
-	v0 := Word(0)
-	v1 := Word(0)
-	if isTimedOut {
-		v0 = exec.SysErrorSignal
-		v1 = exec.MipsETIMEDOUT
-	}
-	exec.HandleSyscallUpdates(&thread.Cpu, &thread.Registers, v0, v1)
-	m.statsTracker.trackWakeup()
-}
-
 func (m *InstrumentedState) preemptThread(thread *ThreadState) bool {
 	// Pop thread from the current stack and push to the other stack
 	if m.state.TraverseRight {
@@ -487,4 +409,9 @@ func (m *InstrumentedState) popThread() {
 
 func (m *InstrumentedState) lastThreadRemaining() bool {
 	return m.state.ThreadCount() == 1
+}
+
+func (m *InstrumentedState) getFutexValue(vAddr Word) uint32 {
+	subword := exec.LoadSubWord(m.state.GetMemory(), vAddr, Word(4), false, m.memoryTracker)
+	return uint32(subword)
 }

@@ -7,10 +7,11 @@ import (
 	"os"
 
 	"github.com/ethereum-optimism/optimism/op-program/verify"
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 )
 
-const opSepoliaChainID = 11155420
+var opSepoliaChainID = eth.ChainIDFromUInt64(11155420)
 
 func main() {
 	var l1RpcUrl string

@@ -8,7 +8,6 @@ import { L2StandardBridge } from "src/L2/L2StandardBridge.sol";
 import { Predeploys } from "src/libraries/Predeploys.sol";
 
 // Interfaces
-import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 import { IOptimismERC20Factory } from "interfaces/L2/IOptimismERC20Factory.sol";
 import { IMintableAndBurnableERC20 } from "interfaces/L2/IMintableAndBurnableERC20.sol";
@@ -40,9 +39,9 @@ contract L2StandardBridgeInterop is L2StandardBridge {
     event Converted(address indexed from, address indexed to, address indexed caller, uint256 amount);
 
     /// @notice Semantic version.
-    /// @custom:semver +interop-beta.5
+    /// @custom:semver +interop-beta.8
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop-beta.5");
+        return string.concat(super.version(), "+interop-beta.8");
     }
 
     /// @notice Converts `amount` of `from` token to `to` token.

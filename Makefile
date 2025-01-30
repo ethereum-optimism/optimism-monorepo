@@ -1,8 +1,6 @@
 # provide JUSTFLAGS for just-backed targets
-include ./just/flags.mk
+include ./justfiles/flags.mk
 
-COMPOSEFLAGS=-d
-ITESTS_L2_HOST=http://localhost:9545
 BEDROCK_TAGS_REMOTE?=origin
 OP_STACK_GO_BUILDER?=us-docker.pkg.dev/oplabs-tools-artifacts/images/op-stack-go:latest
 
@@ -80,7 +78,7 @@ cross-op-node: ## Builds cross-platform Docker image for op-node
 			--no-cache \
 			-f docker-bake.hcl \
 			op-node
-.PHONY: golang-docker
+.PHONY: cross-op-node
 
 contracts-bedrock-docker: ## Builds Docker image for Bedrock contracts
 	IMAGE_TAGS=$$(git rev-parse HEAD),latest \
@@ -137,12 +135,16 @@ reproducible-prestate:   ## Builds reproducible-prestate binary
 .PHONY: reproducible-prestate
 
 # Include any files required for the devnet to build and run.
-DEVNET_CANNON_PRESTATE_FILES := op-program/bin/prestate-proof.json op-program/bin/prestate.bin.gz op-program/bin/prestate-proof-mt.json op-program/bin/prestate-mt.bin.gz
+DEVNET_CANNON_PRESTATE_FILES := op-program/bin/prestate-proof.json op-program/bin/prestate.bin.gz op-program/bin/prestate-proof-mt64.json op-program/bin/prestate-mt64.bin.gz op-program/bin/prestate-interop.bin.gz
 
 
 $(DEVNET_CANNON_PRESTATE_FILES):
 	make cannon-prestate
-	make cannon-prestate-mt
+	make cannon-prestate-mt64
+	make cannon-prestate-interop
+
+cannon-prestates: cannon-prestate cannon-prestate-mt64 cannon-prestate-interop
+.PHONY: cannon-prestates
 
 cannon-prestate: op-program cannon ## Generates prestate using cannon and op-program
 	./cannon/bin/cannon load-elf --type singlethreaded-2 --path op-program/bin/op-program-client.elf --out op-program/bin/prestate.bin.gz --meta op-program/bin/meta.json
@@ -150,11 +152,17 @@ cannon-prestate: op-program cannon ## Generates prestate using cannon and op-pro
 	mv op-program/bin/0.json op-program/bin/prestate-proof.json
 .PHONY: cannon-prestate
 
-cannon-prestate-mt: op-program cannon ## Generates prestate using cannon and op-program in the multithreaded64 cannon format
-	./cannon/bin/cannon load-elf --type multithreaded64 --path op-program/bin/op-program-client64.elf --out op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json
-	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-mt.bin.gz --meta op-program/bin/meta-mt.json --proof-fmt 'op-program/bin/%d-mt.json' --output ""
-	mv op-program/bin/0-mt.json op-program/bin/prestate-proof-mt.json
-.PHONY: cannon-prestate-mt
+cannon-prestate-mt64: op-program cannon ## Generates prestate using cannon and op-program in the latest 64-bit multithreaded cannon format
+	./cannon/bin/cannon load-elf --type multithreaded64-3 --path op-program/bin/op-program-client64.elf --out op-program/bin/prestate-mt64.bin.gz --meta op-program/bin/meta-mt64.json
+	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-mt64.bin.gz --meta op-program/bin/meta-mt64.json --proof-fmt 'op-program/bin/%d-mt64.json' --output ""
+	mv op-program/bin/0-mt64.json op-program/bin/prestate-proof-mt64.json
+.PHONY: cannon-prestate-mt64
+
+cannon-prestate-interop: op-program cannon ## Generates interop prestate using cannon and op-program in the latest 64-bit multithreaded cannon format
+	./cannon/bin/cannon load-elf --type multithreaded64-3 --path op-program/bin/op-program-client-interop.elf --out op-program/bin/prestate-interop.bin.gz --meta op-program/bin/meta-interop.json
+	./cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input op-program/bin/prestate-interop.bin.gz --meta op-program/bin/meta-interop.json --proof-fmt 'op-program/bin/%d-interop.json' --output ""
+	mv op-program/bin/0-interop.json op-program/bin/prestate-proof-interop.json
+.PHONY: cannon-prestate-interop
 
 mod-tidy: ## Cleans up unused dependencies in Go modules
 	# Below GOPRIVATE line allows mod-tidy to be run immediately after
@@ -170,55 +178,9 @@ clean: ## Removes all generated files under bin/
 	cd packages/contracts-bedrock/ && forge clean
 .PHONY: clean
 
-nuke: clean devnet-clean ## Completely clean the project directory
+nuke: clean ## Completely clean the project directory
 	git clean -Xdf
 .PHONY: nuke
-
-## Prepares for running a local devnet
-pre-devnet: submodules $(DEVNET_CANNON_PRESTATE_FILES)
-	@if ! [ -x "$$(command -v eth2-testnet-genesis)" ]; then \
-		make install-eth2-testnet-genesis; \
-	fi
-.PHONY: pre-devnet
-
-devnet-up: pre-devnet ## Starts the local devnet
-	./ops/scripts/newer-file.sh .devnet/allocs-l1.json ./packages/contracts-bedrock \
-		|| make devnet-allocs-single
-	PYTHONPATH=./bedrock-devnet $(PYTHON) ./bedrock-devnet/main.py --monorepo-dir=.
-.PHONY: devnet-up
-
-devnet-down: ## Stops the local devnet
-	@(cd ./ops-bedrock && GENESIS_TIMESTAMP=$(shell date +%s) docker compose stop)
-.PHONY: devnet-down
-
-devnet-clean: ## Cleans up local devnet environment
-	rm -rf ./packages/contracts-bedrock/deployments/devnetL1
-	rm -rf ./.devnet
-	cd ./ops-bedrock && docker compose down
-	docker image ls 'ops-bedrock*' --format='{{.Repository}}' | xargs -r docker rmi
-	docker volume ls --filter name=ops-bedrock --format='{{.Name}}' | xargs -r docker volume rm
-.PHONY: devnet-clean
-
-devnet-allocs-single: pre-devnet ## Generates allocations for the local devnet
-	PYTHONPATH=./bedrock-devnet $(PYTHON) ./bedrock-devnet/main.py --monorepo-dir=. --allocs
-.PHONY: devnet-allocs-single
-
-devnet-allocs:
-	DEVNET_L2OO=true make devnet-allocs-single
-	cp -r .devnet/ .devnet-l2oo/
-	DEVNET_ALTDA=true make devnet-allocs-single
-	cp -r .devnet/ .devnet-alt-da/
-	DEVNET_ALTDA=false GENERIC_ALTDA=true make devnet-allocs-single
-	cp -r .devnet/ .devnet-alt-da-generic/
-	USE_MT_CANNON=true make devnet-allocs-single
-	cp -r .devnet/ .devnet-mt-cannon
-	make devnet-allocs-single
-	cp -r .devnet/ .devnet-standard/
-.PHONY: devnet-allocs
-
-devnet-logs: ## Displays logs for the local devnet
-	@(cd ./ops-bedrock && docker compose logs -f)
-.PHONY: devnet-logs
 
 test-unit: ## Runs unit tests for all components
 	make -C ./op-node test
@@ -234,19 +196,6 @@ semgrep: ## Runs Semgrep checks
 	SEMGREP_REPO_NAME=ethereum-optimism/optimism semgrep ci --baseline-commit=$(DEV_REF)
 .PHONY: semgrep
 
-clean-node-modules: ## Cleans up node_modules directories
-	rm -rf node_modules
-	rm -rf packages/**/node_modules
-.PHONY: clean-node-modules
-
-tag-bedrock-go-modules: ## Tags Go modules for Bedrock
-	./ops/scripts/tag-bedrock-go-modules.sh $(BEDROCK_TAGS_REMOTE) $(VERSION)
-.PHONY: tag-bedrock-go-modules
-
 update-op-geth: ## Updates the Geth version used in the project
 	./ops/scripts/update-op-geth.py
 .PHONY: update-op-geth
-
-install-eth2-testnet-genesis:
-	go install -v github.com/protolambda/eth2-testnet-genesis@v$(shell yq '.tools."go:github.com/protolambda/eth2-testnet-genesis"' mise.toml)
-.PHONY: install-eth2-testnet-genesis

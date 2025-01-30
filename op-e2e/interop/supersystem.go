@@ -11,6 +11,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum/go-ethereum/accounts/abi/bind"
@@ -106,14 +107,13 @@ type SuperSystem interface {
 	EmitData(ctx context.Context, network string, username string, data string) *types.Receipt
 	// AddDependency adds a dependency (by chain ID) to the given chain
 	AddDependency(ctx context.Context, network string, dep *big.Int) *types.Receipt
-	// ExecuteMessage calls the CrossL2Inbox executeMessage function
-	ExecuteMessage(
+	// ValidateMessage calls the CrossL2Inbox ValidateMessage function
+	ValidateMessage(
 		ctx context.Context,
 		id string,
 		sender string,
 		msgIdentifier supervisortypes.Identifier,
-		target common.Address,
-		message []byte,
+		msgHash [32]byte,
 		expectedError error,
 	) (*types.Receipt, error)
 	// Access a contract on a network by name
@@ -318,10 +318,10 @@ func (s *interopE2ESystem) newNodeForL2(
 			EnableAdmin: true,
 		},
 		InteropConfig: &interop.Config{
-			SupervisorAddr:   s.supervisor.RPC(),
+			//SupervisorAddr:   s.supervisor.RPC(),
 			RPCAddr:          "127.0.0.1",
 			RPCPort:          0,
-			RPCJwtSecretPath: "",
+			RPCJwtSecretPath: "jwt.secret",
 		},
 		P2P:                         nil, // disabled P2P setup for now
 		L1EpochPollInterval:         time.Second * 2,
@@ -486,11 +486,11 @@ func (s *interopE2ESystem) prepareSupervisor() *supervisor.SupervisorService {
 		L1RPC:       s.l1.UserRPC().RPC(),
 		Datadir:     path.Join(s.t.TempDir(), "supervisor"),
 	}
-	depSet := make(map[supervisortypes.ChainID]*depset.StaticConfigDependency)
+	depSet := make(map[eth.ChainID]*depset.StaticConfigDependency)
 
 	// Iterate over the L2 chain configs. The L2 nodes don't exist yet.
 	for _, l2Out := range s.worldOutput.L2s {
-		chainID := supervisortypes.ChainIDFromBig(l2Out.Genesis.Config.ChainID)
+		chainID := eth.ChainIDFromBig(l2Out.Genesis.Config.ChainID)
 		index, err := chainID.ToUInt32()
 		require.NoError(s.t, err)
 		depSet[chainID] = &depset.StaticConfigDependency{
@@ -733,17 +733,16 @@ func (s *interopE2ESystem) SendL2Tx(
 		newApply)
 }
 
-// ExecuteMessage calls the CrossL2Inbox executeMessage function
+// ValidateMessage calls the CrossL2Inbox ValidateMessage function
 // it uses the L2's chain ID, username key, and geth client.
-// expectedError represents the error returned by `ExecuteMessage` if it is expected.
+// expectedError represents the error returned by `ValidateMessage` if it is expected.
 // the returned err is related to `WaitMined`
-func (s *interopE2ESystem) ExecuteMessage(
+func (s *interopE2ESystem) ValidateMessage(
 	ctx context.Context,
 	id string,
 	sender string,
 	msgIdentifier supervisortypes.Identifier,
-	target common.Address,
-	message []byte,
+	msgHash [32]byte,
 	expectedError error,
 ) (*types.Receipt, error) {
 	secret := s.UserKey(id, sender)
@@ -762,14 +761,14 @@ func (s *interopE2ESystem) ExecuteMessage(
 		Timestamp:   new(big.Int).SetUint64(msgIdentifier.Timestamp),
 		ChainId:     msgIdentifier.ChainID.ToBig(),
 	}
-	tx, err := contract.InboxTransactor.ExecuteMessage(auth, identifier, target, message)
+	tx, err := contract.InboxTransactor.ValidateMessage(auth, identifier, msgHash)
 	if expectedError != nil {
 		require.ErrorContains(s.t, err, expectedError.Error())
 		return nil, err
 	} else {
 		require.NoError(s.t, err)
 	}
-	s.logger.Info("Executing message", "tx", tx.Hash(), "to", tx.To(), "target", target, "data", hexutil.Bytes(tx.Data()))
+	s.logger.Info("Validating message", "tx", tx.Hash(), "to", tx.To(), "data", hexutil.Bytes(tx.Data()))
 	return bind.WaitMined(ctx, s.L2GethClient(id), tx)
 }
 

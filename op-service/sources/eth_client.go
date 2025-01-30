@@ -10,6 +10,7 @@
 package sources
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -151,7 +152,7 @@ func NewEthClient(client client.RPC, log log.Logger, metrics caching.Metrics, co
 func (s *EthClient) SubscribeNewHead(ctx context.Context, ch chan<- *types.Header) (ethereum.Subscription, error) {
 	// Note that *types.Header does not cache the block hash unlike *HeaderInfo, it always recomputes.
 	// Inefficient if used poorly, but no trust issue.
-	return s.client.EthSubscribe(ctx, ch, "newHeads")
+	return s.client.Subscribe(ctx, "eth", ch, "newHeads")
 }
 
 // rpcBlockID is an internal type to enforce header and block call results match the requested identifier
@@ -355,7 +356,7 @@ func (s *EthClient) GetProof(ctx context.Context, address common.Address, storag
 		return nil, fmt.Errorf("missing storage proof data, got %d proof entries but requested %d storage keys", len(getProofResponse.StorageProof), len(storage))
 	}
 	for i, key := range storage {
-		if key != common.BigToHash(getProofResponse.StorageProof[i].Key.ToInt()) {
+		if !bytes.Equal(key[:], getProofResponse.StorageProof[i].Key) {
 			return nil, fmt.Errorf("unexpected storage proof key difference for entry %d: got %s but requested %s", i, getProofResponse.StorageProof[i].Key.String(), key)
 		}
 	}

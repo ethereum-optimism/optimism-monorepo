@@ -15,8 +15,8 @@ endif
 
 .DEFAULT_GOAL := cannon
 
-# The MIPS64 r1 opcodes not supported by cannon. This list does not include coprocess-specific opcodes.
-UNSUPPORTED_OPCODES := (dclo|dclz)
+# The MIPS64 r2 opcodes not supported by cannon. This list does not include coprocess-specific and trap opcodes.
+UNSUPPORTED_OPCODES := (dclo|dclz|madd|maddu|seb|seh|wsbh|dsbh|dshd|ins|dins|dinsm|dinsu|ext|dext|dextu|dextm|rotr|drotr|drotr32|rotrv|drotrv|break|sdbbp|pref)
 
 CANNON32_FUZZTIME := 10s
 CANNON64_FUZZTIME := 20s
@@ -31,13 +31,14 @@ cannon64-impl:
 # It should build the individual versions of cannons and copy them into place in hte multicannon/embeds directory
 # Ideally, preserve backwards compatibility with this behaviour but if it needs to change, build-legacy-cannons.sh will
 # need to be updated to account for different behaviours in different versions.
+# Each embed is suffixed with the latest `StateVersion` number corresponding to the target VM and architecture.
 cannon-embeds: cannon32-impl cannon64-impl
-	# singlethreaded-v2
+	# 32-bit singlethreaded vm
 	@cp bin/cannon32-impl ./multicannon/embeds/cannon-2
-	# multithreaded
-	@cp bin/cannon32-impl ./multicannon/embeds/cannon-1
-	# 64-bit multithreaded
-	@cp bin/cannon64-impl ./multicannon/embeds/cannon-3
+	# 32-bit multithreaded vm
+	@cp bin/cannon32-impl ./multicannon/embeds/cannon-5
+	# 64-bit multithreaded vm
+	@cp bin/cannon64-impl ./multicannon/embeds/cannon-6
 
 cannon: cannon-embeds
 	env GO111MODULE=on GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -v $(LDFLAGS) -o ./bin/cannon ./multicannon/
@@ -49,7 +50,7 @@ elf:
 	make -C ./testdata/example elf
 
 sanitize-program:
-	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
+	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $$3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
 		echo "guest program is sanitized for unsupported instructions"; \
 	else \
 		echo "found unsupported instructions in the guest program"; \

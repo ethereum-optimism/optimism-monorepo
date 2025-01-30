@@ -76,9 +76,9 @@ func (l *lazyRPC) BatchCallContext(ctx context.Context, b []rpc.BatchElem) error
 	return l.inner.BatchCallContext(ctx, b)
 }
 
-func (l *lazyRPC) EthSubscribe(ctx context.Context, channel any, args ...any) (ethereum.Subscription, error) {
+func (l *lazyRPC) Subscribe(ctx context.Context, namespace string, channel any, args ...any) (ethereum.Subscription, error) {
 	if err := l.dial(ctx); err != nil {
 		return nil, err
 	}
-	return l.inner.EthSubscribe(ctx, channel, args...)
+	return l.inner.Subscribe(ctx, namespace, channel, args...)
 }

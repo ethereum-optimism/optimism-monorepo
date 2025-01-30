@@ -94,72 +94,90 @@ flowchart TD
     CrossSafe--Dependencies are irreversible-->Finalized
 ```
 
-### Verification flow
+### Control flow
 
-Warning: the data flow design is actively changing, see [design-doc 171].
+Op-nodes, or any compatible consensus-layer L2 node can interact with op-supervisor in two modes:
 
-[design-doc 171]: https://github.com/ethereum-optimism/design-docs/pull/171
+#### Managed Mode
 
-Op-nodes, or any compatible consensus-layer L2 node, interact with the op-supervisor, to:
+In managed mode, nodes cede control over aspects of the derivation process to the supervisor, which maintains the node's sync status.
+This is done to give the supervisor a clear picture of the data across multiple chains, and to ensure the supervisor can recover/reset as needed.
 
-- share the "local" data with the supervisor
-- view the "cross" safety once the supervisor has sufficient information
+Managed nodes can be thought of integral to the supervisor. There must be *at least* one managed node per chain connected
+to a supervisor for it to supply accurate data.
 
+The Supervisor subscribes to events from the op-node in order to react appropriately.
+In turn, op-supervisor sends signals to the op-node to manage its derivation pipeline or maintain databases:
+
+| op-node event | op-supervisor control |
+|-------|---------|
+| When new unsafe blocks are added  | Supervisor fetches receipts for database indexing |
+| When a new safe block is derived from an L1 block | Supervisor records the L1:L2 derivation information to the database |
+| When an L1 block is fully derived | Supervisor provides the next L1 block |
+| When the node resets is derivation pipeline | Supervisor provides a reset signal targeting blocks known in the database |
+
+Additionally, the supervisor sends control signals to the op-node triggered by *database updates* in order to inform the node of cross-safety levels:
+| database event | op-supervisor control |
+|-------|---------|
+| New cross-unsafe head  | Supervisor sends the head to the node, where it is recorded as the cross-unsafe head |
+| New cross-safe head  | Supervisor sends the head to the node, where it is recorded as the cross-safe head |
+| New finalized head  | Supervisor sends the head to the node, where it is recorded as the finalized head |
+
+Nodes in managed mode *do not* discover their own L1 blocks.
+Instead, the supervisor watches the L1 and sends the block hash to the node, which is used instead of L1 traversal.
+In this way, all managed nodes are guaranteed to share the same L1 chain, and their data can be aggregated consistently.
+
+#### Standard Mode
+(Standard mode is in development)
+
+In standard mode, an `op-node` continues to handle derivation and L1 discovery as it would without a supervisor.
+However, it calls out to the supervisor periodically to update its cross-heads. Standard nodes do not affect the supervisor's data in any way.
+
+In this way, standard nodes can optimistically follow cross-safety without requiring the larger infrastructure of multiple nodes and a supervisor.
+
+### Data Flow Visualization
+
+#### Initialization and Derivation Updates
 ```mermaid
 sequenceDiagram
 autonumber
 
-participant opgethA as op-geth A
-participant opnodeA as op-node A
-participant opsup as op-supervisor
-participant opnodeB as op-node B
+participant super as op-supervisor
+participant node as op-node (managed)
+participant geth as op-geth
 
-Note over opnodeA: on new block
+super ->> node: RPC connection established
+super ->> node: Initialize databases
+node -->> super: Initial block data for database
 
-opnodeA ->> opgethA: engine process unsafe block
-opgethA -->> opnodeA: engine processed unsafe block
-opnodeA ->> opsup: update Local unsafe
-opnodeB ->> opsup: update Local unsafe (maybe)
-opsup ->> opgethA: Fetch receipts
-opgethA -->> opsup: receipts
+Note over super: A new L1 block is found
 
-opsup ->> opsup: cross-unsafe worker
+super ->> node: Provide L1 [block ref]
+node ->> geth: Derive block from [block ref]
 
-Note left of opnodeA: (changing - delay unsafeView call)
+geth -->> node: New safe block derived
+node ->> super: New safe block
+Note over super: New safe block recorded
 
-opnodeA ->> opsup: unsafeView
-opsup -->> opnodeA: cross unsafe
-opnodeA ->> opnodeA: reorg if we need to
-opnodeA ->> opnodeA: backtrack unsafe if we need to
-
-Note over opnodeA: on derived block
-
-opnodeA ->> opsup: update Local safe
-opnodeB ->> opsup: update Local safe (maybe)
-opsup ->> opsup: cross-safe worker
-
-Note left of opnodeA: (changing - delay safeView call)
-
-opnodeA ->> opsup: safeView
-opsup -->> opnodeA: cross safe
-
-opnodeA ->> opnodeA: reorg if we need to
-opnodeA ->> opnodeA: backtrack safe if we need to
-
-opnodeA->>opgethA: engine forkchoice-update of safe block
-
-Note over opnodeA: on finalized L1
-
-opnodeA->>opsup: finalized L1
-opsup-->>opnodeA: finalized L2
-
-opnodeA->>opgethA: engine forkchoice-update of finalized block
+node ->> super: L1 Exhausted
+super ->> node: Next L1 Provided
 ```
 
-Implementers note: the op-supervisor needs "local" data
-from the chains before being able to provide "cross" verified updated views.
-The op-node is not currently notified when the "cross" verified view changes,
-and thus relies on a revisit of the op-supervisor to determine change.
+#### Indexing Updates
+```mermaid
+sequenceDiagram
+autonumber
+
+participant super as op-supervisor
+participant node as op-node (managed)
+participant p2p as p2p
+
+p2p ->> node: New unsafe block from gossip network
+node ->> super: New unsafe block
+
+super ->> node: Fetch Receipts
+Note over super: Index log events for unsafe block
+```
 
 ### Databases
 
@@ -271,7 +289,7 @@ Full support for chain reorgs (detecting them, and resolving them) is the
 next priority after the above architecture and data changes.
 
 Further background on the design-choices of op-supervisor can be found in the
-[superchain backend desgin-doc](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md).
+[superchain backend design-doc](https://github.com/ethereum-optimism/design-docs/blob/main/protocol/superchain-backend.md).
 
 ## Design principles
 
@@ -296,4 +314,4 @@ while allowing regular single-chain functionality to proceed.
 
 - `op-e2e/interop`: Go interop system-tests, focused on offchain aspects of services to run end to end.
 - `op-e2e/actions/interop`: Go interop action-tests, focused on onchain aspects such as safety and state-transition.
-- `interop-devnet`: docker-compose to run interoperable chains locally.
+- `kurtosis-devnet/interop.yaml`: Kurtosis configuration to run interoperable chains locally.

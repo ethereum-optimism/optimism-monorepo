@@ -1,4 +1,4 @@
-FROM golang:1.22.7-alpine3.20 as builder
+FROM golang:1.22.7-alpine3.20 AS builder
 
 RUN apk add --no-cache make gcc musl-dev linux-headers git jq bash
 
@@ -34,31 +34,36 @@ RUN --mount=type=cache,target=/root/.cache/go-build cd op-program && make op-pro
 
 # Run the op-program-client.elf binary directly through cannon's load-elf subcommand.
 RUN /app/cannon/bin/cannon load-elf --type singlethreaded-2 --path /app/op-program/bin/op-program-client.elf --out /app/op-program/bin/prestate.bin.gz --meta "/app/op-program/bin/meta.json"
-RUN /app/cannon/bin/cannon load-elf --type multithreaded --path /app/op-program/bin/op-program-client.elf --out /app/op-program/bin/prestate-mt.bin.gz --meta "/app/op-program/bin/meta-mt.json"
-RUN /app/cannon/bin/cannon load-elf --type multithreaded64 --path /app/op-program/bin/op-program-client64.elf --out /app/op-program/bin/prestate-mt64.bin.gz --meta "/app/op-program/bin/meta-mt64.json"
+RUN /app/cannon/bin/cannon load-elf --type multithreaded64-3 --path /app/op-program/bin/op-program-client64.elf --out /app/op-program/bin/prestate-mt64.bin.gz --meta "/app/op-program/bin/meta-mt64.json"
+RUN /app/cannon/bin/cannon load-elf --type multithreaded64-3 --path /app/op-program/bin/op-program-client-interop.elf --out /app/op-program/bin/prestate-interop.bin.gz --meta "/app/op-program/bin/meta-interop.json"
 
 # Generate the prestate proof containing the absolute pre-state hash.
 RUN /app/cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input /app/op-program/bin/prestate.bin.gz --meta "" --proof-fmt '/app/op-program/bin/%d.json' --output ""
 RUN mv /app/op-program/bin/0.json /app/op-program/bin/prestate-proof.json
 
-RUN /app/cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input /app/op-program/bin/prestate-mt.bin.gz --meta "" --proof-fmt '/app/op-program/bin/%d-mt.json' --output ""
-RUN mv /app/op-program/bin/0-mt.json /app/op-program/bin/prestate-proof-mt.json
-
 RUN /app/cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input /app/op-program/bin/prestate-mt64.bin.gz --meta "" --proof-fmt '/app/op-program/bin/%d-mt64.json' --output ""
 RUN mv /app/op-program/bin/0-mt64.json /app/op-program/bin/prestate-proof-mt64.json
+
+RUN /app/cannon/bin/cannon run --proof-at '=0' --stop-at '=1' --input /app/op-program/bin/prestate-interop.bin.gz --meta "" --proof-fmt '/app/op-program/bin/%d-interop.json' --output ""
+RUN mv /app/op-program/bin/0-interop.json /app/op-program/bin/prestate-proof-interop.json
 
 # Exports files to the specified output location.
 # Writing files to host requires buildkit to be enabled.
 # e.g. `BUILDKIT=1 docker build ...`
+FROM scratch AS export-stage-proofs
+COPY --from=builder /app/op-program/bin/prestate-proof.json .
+COPY --from=builder /app/op-program/bin/prestate-proof-mt64.json .
+COPY --from=builder /app/op-program/bin/prestate-proof-interop.json .
+
 FROM scratch AS export-stage
 COPY --from=builder /app/op-program/bin/op-program-client.elf .
 COPY --from=builder /app/op-program/bin/op-program-client64.elf .
 COPY --from=builder /app/op-program/bin/meta.json .
 COPY --from=builder /app/op-program/bin/prestate.bin.gz .
 COPY --from=builder /app/op-program/bin/prestate-proof.json .
-COPY --from=builder /app/op-program/bin/meta-mt.json .
-COPY --from=builder /app/op-program/bin/prestate-mt.bin.gz .
-COPY --from=builder /app/op-program/bin/prestate-proof-mt.json .
 COPY --from=builder /app/op-program/bin/meta-mt64.json .
 COPY --from=builder /app/op-program/bin/prestate-mt64.bin.gz .
 COPY --from=builder /app/op-program/bin/prestate-proof-mt64.json .
+COPY --from=builder /app/op-program/bin/meta-interop.json .
+COPY --from=builder /app/op-program/bin/prestate-interop.bin.gz .
+COPY --from=builder /app/op-program/bin/prestate-proof-interop.json .

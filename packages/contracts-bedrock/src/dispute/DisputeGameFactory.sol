@@ -49,8 +49,8 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
     }
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.4
-    string public constant version = "1.0.1-beta.4";
+    /// @custom:semver 1.0.1
+    string public constant version = "1.0.1";
 
     /// @notice `gameImpls` is a mapping that maps `GameType`s to their respective
     ///         `IDisputeGame` implementations.
@@ -69,12 +69,12 @@ contract DisputeGameFactory is OwnableUpgradeable, ISemver {
 
     /// @notice Constructs a new DisputeGameFactory contract.
     constructor() OwnableUpgradeable() {
-        initialize(address(0));
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
     /// @param _owner The owner of the contract.
-    function initialize(address _owner) public initializer {
+    function initialize(address _owner) external initializer {
         __Ownable_init();
         _transferOwnership(_owner);
     }

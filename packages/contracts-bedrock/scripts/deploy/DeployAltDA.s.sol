@@ -178,7 +178,7 @@ contract DeployAltDA is Script {
         address admin = proxy.admin();
         require(admin == address(_dai.proxyAdmin()), "DACP-10");
 
-        DeployUtils.assertInitialized({ _contractAddress: address(proxy), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(proxy), _isProxy: true, _slot: 0, _offset: 0 });
 
         vm.prank(address(0));
         address impl = proxy.implementation();
@@ -194,6 +194,6 @@ contract DeployAltDA is Script {
 
     function assertValidDataAvailabilityChallengeImpl(DeployAltDAOutput _dao) public view {
         IDataAvailabilityChallenge dac = _dao.dataAvailabilityChallengeImpl();
-        DeployUtils.assertInitialized({ _contractAddress: address(dac), _slot: 0, _offset: 0 });
+        DeployUtils.assertInitialized({ _contractAddress: address(dac), _isProxy: false, _slot: 0, _offset: 0 });
     }
 }

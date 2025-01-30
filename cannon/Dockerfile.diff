@@ -1,4 +1,4 @@
-FROM golang:1.22.7-alpine3.20 as builder
+FROM golang:1.22.7-alpine3.20 AS builder
 
 RUN apk add --no-cache make bash
 
@@ -25,7 +25,7 @@ ARG TARGETOS TARGETARCH
 
 FROM --platform=$BUILDPLATFORM us-docker.pkg.dev/oplabs-tools-artifacts/images/cannon:v1.1.0-alpha.4 AS cannon-v2
 
-FROM --platform=$BUILDPLATFORM builder as cannon-verify
+FROM --platform=$BUILDPLATFORM builder AS cannon-verify
 COPY --from=cannon-v2 /usr/local/bin/cannon /usr/local/bin/cannon-v2
 # verify the latest singlethreaded VM behavior against cannon-v2
 RUN cd cannon && make diff-singlethreaded-2-cannon -e OTHER_CANNON=/usr/local/bin/cannon-v2

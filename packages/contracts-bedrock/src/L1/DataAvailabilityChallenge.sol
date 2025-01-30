@@ -95,8 +95,8 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     event BalanceChanged(address account, uint256 balance);
 
     /// @notice Semantic version.
-    /// @custom:semver 1.0.1-beta.4
-    string public constant version = "1.0.1-beta.4";
+    /// @custom:semver 1.0.1
+    string public constant version = "1.0.1";
 
     /// @notice The fixed cost of resolving a challenge.
     /// @dev The value is estimated by measuring the cost of resolving with `bytes(0)`
@@ -129,17 +129,9 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
     /// @notice A mapping from challenged block numbers to challenged commitments to challenges.
     mapping(uint256 => mapping(bytes => Challenge)) internal challenges;
 
-    /// @notice Constructs the DataAvailabilityChallenge contract. Cannot set
-    ///         the owner to `address(0)` due to the Ownable contract's
-    ///         implementation, so set it to `address(0xdEaD)`.
+    /// @notice Constructs the DataAvailabilityChallenge contract.
     constructor() OwnableUpgradeable() {
-        initialize({
-            _owner: address(0xdEaD),
-            _challengeWindow: 0,
-            _resolveWindow: 0,
-            _bondSize: 0,
-            _resolverRefundPercentage: 0
-        });
+        _disableInitializers();
     }
 
     /// @notice Initializes the contract.
@@ -154,7 +146,7 @@ contract DataAvailabilityChallenge is OwnableUpgradeable, ISemver {
         uint256 _bondSize,
         uint256 _resolverRefundPercentage
     )
-        public
+        external
         initializer
     {
         __Ownable_init();

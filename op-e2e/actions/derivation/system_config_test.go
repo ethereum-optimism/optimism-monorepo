@@ -98,19 +98,19 @@ func BatcherKeyRotation(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	sysCfgContract, err := bindings.NewSystemConfig(sd.RollupCfg.L1SystemConfigAddress, miner.EthClient())
 	require.NoError(t, err)
 
-	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.SysCfgOwner, sd.RollupCfg.L1ChainID)
+	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.Deployer, sd.RollupCfg.L1ChainID)
 	require.NoError(t, err)
 
 	owner, err := sysCfgContract.Owner(&bind.CallOpts{})
 	require.NoError(t, err)
-	require.Equal(t, dp.Addresses.SysCfgOwner, owner, "system config owner mismatch")
+	require.Equal(t, dp.Addresses.Deployer, owner, "system config owner mismatch")
 
 	// Change the batch sender key to Bob!
 	tx, err := sysCfgContract.SetBatcherHash(sysCfgOwner, eth.AddressAsLeftPaddedHash(dp.Addresses.Bob))
 	require.NoError(t, err)
 	t.Logf("batcher changes in L1 tx %s", tx.Hash())
 	miner.ActL1StartBlock(12)(t)
-	miner.ActL1IncludeTx(dp.Addresses.SysCfgOwner)(t)
+	miner.ActL1IncludeTx(dp.Addresses.Deployer)(t)
 	miner.ActL1EndBlock(t)
 
 	receipt, err := miner.EthClient().TransactionReceipt(t.Ctx(), tx.Hash())
@@ -289,7 +289,7 @@ func GPOParamsChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	sysCfgContract, err := bindings.NewSystemConfig(sd.RollupCfg.L1SystemConfigAddress, miner.EthClient())
 	require.NoError(t, err)
 
-	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.SysCfgOwner, sd.RollupCfg.L1ChainID)
+	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.Deployer, sd.RollupCfg.L1ChainID)
 	require.NoError(t, err)
 
 	// overhead changes from 2100 (default) to 1000
@@ -300,7 +300,7 @@ func GPOParamsChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 
 	// include the GPO change tx in L1
 	miner.ActL1StartBlock(12)(t)
-	miner.ActL1IncludeTx(dp.Addresses.SysCfgOwner)(t)
+	miner.ActL1IncludeTx(dp.Addresses.Deployer)(t)
 	miner.ActL1EndBlock(t)
 	basefeeGPOUpdate := miner.L1Chain().CurrentBlock().BaseFee
 
@@ -384,7 +384,7 @@ func GasLimitChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 	sysCfgContract, err := bindings.NewSystemConfig(sd.RollupCfg.L1SystemConfigAddress, miner.EthClient())
 	require.NoError(t, err)
 
-	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.SysCfgOwner, sd.RollupCfg.L1ChainID)
+	sysCfgOwner, err := bind.NewKeyedTransactorWithChainID(dp.Secrets.Deployer, sd.RollupCfg.L1ChainID)
 	require.NoError(t, err)
 
 	_, err = sysCfgContract.SetGasLimit(sysCfgOwner, oldGasLimit*3)
@@ -392,7 +392,7 @@ func GasLimitChange(gt *testing.T, deltaTimeOffset *hexutil.Uint64) {
 
 	// include the gaslimit update on L1
 	miner.ActL1StartBlock(12)(t)
-	miner.ActL1IncludeTx(dp.Addresses.SysCfgOwner)(t)
+	miner.ActL1IncludeTx(dp.Addresses.Deployer)(t)
 	miner.ActL1EndBlock(t)
 
 	// build to latest L1, excluding the block that adopts the L1 block with the gaslimit change

@@ -1,4 +1,4 @@
-import '../just/go.just'
+import '../justfiles/go.just'
 
 # Build ldflags string
 _VERSION_META_STR := if VERSION_META != "" { "+" + VERSION_META } else { "" }
@@ -34,8 +34,3 @@ fuzz:
         "FuzzAliasing" \
         "FuzzVersionedNonce" \
     | parallel -j {{PARALLEL_JOBS}} {{just_executable()}} fuzz_task {}
-
-# Sync standard versions
-sync-standard-version:
-    curl -Lo ./deployer/opcm/standard-versions-mainnet.toml https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/refs/heads/main/validation/standard/standard-versions-mainnet.toml
-    curl -Lo ./deployer/opcm/standard-versions-sepolia.toml https://raw.githubusercontent.com/ethereum-optimism/superchain-registry/refs/heads/main/validation/standard/standard-versions-sepolia.toml

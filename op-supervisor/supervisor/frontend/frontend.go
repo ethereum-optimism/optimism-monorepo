@@ -6,6 +6,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
+	"github.com/ethereum/go-ethereum/common/hexutil"
 )
 
 type AdminBackend interface {
@@ -17,22 +18,18 @@ type AdminBackend interface {
 type QueryBackend interface {
 	CheckMessage(identifier types.Identifier, payloadHash common.Hash) (types.SafetyLevel, error)
 	CheckMessages(messages []types.Message, minSafety types.SafetyLevel) error
-	CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
-	UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error)
-	SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error)
-	Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error)
+	CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
+	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error)
+	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	FinalizedL1() eth.BlockRef
-}
-
-type UpdatesBackend interface {
-	UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error
-	UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error
+	SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error)
+	AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error)
 }
 
 type Backend interface {
 	AdminBackend
 	QueryBackend
-	UpdatesBackend
 }
 
 type QueryFrontend struct {
@@ -55,15 +52,15 @@ func (q *QueryFrontend) CheckMessages(
 	return q.Supervisor.CheckMessages(messages, minSafety)
 }
 
-func (q *QueryFrontend) UnsafeView(ctx context.Context, chainID types.ChainID, unsafe types.ReferenceView) (types.ReferenceView, error) {
-	return q.Supervisor.UnsafeView(ctx, chainID, unsafe)
+func (q *QueryFrontend) LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
+	return q.Supervisor.LocalUnsafe(ctx, chainID)
 }
 
-func (q *QueryFrontend) SafeView(ctx context.Context, chainID types.ChainID, safe types.ReferenceView) (types.ReferenceView, error) {
-	return q.Supervisor.SafeView(ctx, chainID, safe)
+func (q *QueryFrontend) CrossSafe(ctx context.Context, chainID eth.ChainID) (types.DerivedIDPair, error) {
+	return q.Supervisor.CrossSafe(ctx, chainID)
 }
 
-func (q *QueryFrontend) Finalized(ctx context.Context, chainID types.ChainID) (eth.BlockID, error) {
+func (q *QueryFrontend) Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error) {
 	return q.Supervisor.Finalized(ctx, chainID)
 }
 
@@ -71,8 +68,16 @@ func (q *QueryFrontend) FinalizedL1() eth.BlockRef {
 	return q.Supervisor.FinalizedL1()
 }
 
-func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID types.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
+func (q *QueryFrontend) CrossDerivedFrom(ctx context.Context, chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error) {
 	return q.Supervisor.CrossDerivedFrom(ctx, chainID, derived)
+}
+
+func (q *QueryFrontend) SuperRootAtTimestamp(ctx context.Context, timestamp hexutil.Uint64) (eth.SuperRootResponse, error) {
+	return q.Supervisor.SuperRootAtTimestamp(ctx, timestamp)
+}
+
+func (q *QueryFrontend) AllSafeDerivedAt(ctx context.Context, derivedFrom eth.BlockID) (derived map[eth.ChainID]eth.BlockID, err error) {
+	return q.Supervisor.AllSafeDerivedAt(ctx, derivedFrom)
 }
 
 type AdminFrontend struct {
@@ -94,18 +99,4 @@ func (a *AdminFrontend) Stop(ctx context.Context) error {
 // AddL2RPC adds a new L2 chain to the supervisor backend
 func (a *AdminFrontend) AddL2RPC(ctx context.Context, rpc string, jwtSecret eth.Bytes32) error {
 	return a.Supervisor.AddL2RPC(ctx, rpc, jwtSecret)
-}
-
-type UpdatesFrontend struct {
-	Supervisor UpdatesBackend
-}
-
-var _ UpdatesBackend = (*UpdatesFrontend)(nil)
-
-func (u *UpdatesFrontend) UpdateLocalUnsafe(ctx context.Context, chainID types.ChainID, head eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalUnsafe(ctx, chainID, head)
-}
-
-func (u *UpdatesFrontend) UpdateLocalSafe(ctx context.Context, chainID types.ChainID, derivedFrom eth.BlockRef, lastDerived eth.BlockRef) error {
-	return u.Supervisor.UpdateLocalSafe(ctx, chainID, derivedFrom, lastDerived)
 }

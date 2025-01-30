@@ -964,7 +964,7 @@ func TestEVM_HelloProgram(t *testing.T) {
 					break
 				}
 				insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
-				if i%10_000 == 0 { // avoid spamming test logs, we are executing many steps
+				if i%100_000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
 
@@ -1012,7 +1012,7 @@ func TestEVM_ClaimProgram(t *testing.T) {
 				}
 
 				insn := testutil.GetInstruction(state.GetMemory(), state.GetPC())
-				if i%10_000 == 0 { // avoid spamming test logs, we are executing many steps
+				if i%1_000_000 == 0 { // avoid spamming test logs, we are executing many steps
 					t.Logf("step: %4d pc: 0x%08x insn: 0x%08x", state.GetStep(), state.GetPC(), insn)
 				}
 
@@ -1020,6 +1020,7 @@ func TestEVM_ClaimProgram(t *testing.T) {
 				require.NoError(t, err)
 				validator.ValidateEVM(t, stepWitness, curStep, goVm)
 			}
+			t.Logf("Completed in %d steps", state.GetStep())
 
 			require.True(t, state.GetExited(), "must complete program")
 			require.Equal(t, uint8(0), state.GetExitCode(), "exit with 0")

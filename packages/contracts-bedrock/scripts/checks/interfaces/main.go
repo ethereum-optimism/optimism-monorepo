@@ -7,21 +7,18 @@ import (
 	"log"
 	"os"
 	"path/filepath"
-	"runtime"
-	"sort"
+	"regexp"
 	"strings"
-	"sync"
-	"sync/atomic"
 
-	"github.com/google/go-cmp/cmp"
+	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
 )
 
 var excludeContracts = []string{
 	// External dependencies
-	"IERC20", "IERC721", "IERC721Enumerable", "IERC721Upgradeable", "IERC721Metadata",
+	"IERC20", "IERC721", "IERC5267", "IERC721Enumerable", "IERC721Upgradeable", "IERC721Metadata",
 	"IERC165", "IERC165Upgradeable", "ERC721TokenReceiver", "ERC1155TokenReceiver",
 	"ERC777TokensRecipient", "Guard", "IProxy", "Vm", "VmSafe", "IMulticall3",
-	"IERC721TokenReceiver", "IProxyCreationCallback", "IBeacon",
+	"IERC721TokenReceiver", "IProxyCreationCallback", "IBeacon", "IEIP712",
 
 	// EAS
 	"IEAS", "ISchemaResolver", "ISchemaRegistry",
@@ -52,116 +49,66 @@ type Artifact struct {
 }
 
 func main() {
-	if err := run(); err != nil {
-		writeStderr("an error occurred: %v", err)
+	if _, err := common.ProcessFilesGlob(
+		[]string{"forge-artifacts/**/*.json"},
+		[]string{},
+		processFile,
+	); err != nil {
+		fmt.Printf("error: %v\n", err)
 		os.Exit(1)
 	}
 }
 
-func writeStderr(msg string, args ...any) {
-	_, _ = fmt.Fprintf(os.Stderr, msg+"\n", args...)
-}
-
-func run() error {
+func processFile(artifactPath string) (*common.Void, []error) {
 	cwd, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("failed to get current working directory: %w", err)
+		return nil, []error{fmt.Errorf("failed to get current working directory: %w", err)}
 	}
-
 	artifactsDir := filepath.Join(cwd, "forge-artifacts")
 
-	artifactFiles, err := glob(artifactsDir, ".json")
-	if err != nil {
-		return fmt.Errorf("failed to get artifact files: %w", err)
-	}
+	contractName := strings.Split(filepath.Base(artifactPath), ".")[0]
 
-	// Remove duplicates from artifactFiles
-	uniqueArtifacts := make(map[string]string)
-	for contractName, artifactPath := range artifactFiles {
-		baseName := strings.Split(contractName, ".")[0]
-		uniqueArtifacts[baseName] = artifactPath
-	}
-
-	var hasErr int32
-	var outMtx sync.Mutex
-	fail := func(msg string, args ...any) {
-		outMtx.Lock()
-		writeStderr("❌  "+msg, args...)
-		outMtx.Unlock()
-		atomic.StoreInt32(&hasErr, 1)
-	}
-
-	sem := make(chan struct{}, runtime.NumCPU())
-	for contractName, artifactPath := range uniqueArtifacts {
-		contractName := contractName
-		artifactPath := artifactPath
-
-		sem <- struct{}{}
-
-		go func() {
-			defer func() {
-				<-sem
-			}()
-
-			if err := processArtifact(contractName, artifactPath, artifactsDir, fail); err != nil {
-				fail("%s: %v", contractName, err)
-			}
-		}()
-	}
-
-	for i := 0; i < cap(sem); i++ {
-		sem <- struct{}{}
-	}
-
-	if atomic.LoadInt32(&hasErr) == 1 {
-		return errors.New("interface check failed, see logs above")
-	}
-
-	return nil
-}
-
-func processArtifact(contractName, artifactPath, artifactsDir string, fail func(string, ...any)) error {
 	if isExcluded(contractName) {
-		return nil
+		return nil, nil
 	}
 
 	artifact, err := readArtifact(artifactPath)
 	if err != nil {
-		return fmt.Errorf("failed to read artifact: %w", err)
+		return nil, []error{fmt.Errorf("failed to read artifact: %w", err)}
 	}
 
 	contractDef := getContractDefinition(artifact, contractName)
 	if contractDef == nil {
-		return nil // Skip processing if contract definition is not found
+		return nil, nil // Skip processing if contract definition is not found
 	}
 
 	if contractDef.ContractKind != "interface" {
-		return nil
+		return nil, nil
 	}
 
 	if !strings.HasPrefix(contractName, "I") {
-		fail("%s: Interface does not start with 'I'", contractName)
+		return nil, []error{fmt.Errorf("%s: Interface does not start with 'I'", contractName)}
 	}
 
 	semver, err := getContractSemver(artifact)
 	if err != nil {
-		return err
+		return nil, []error{fmt.Errorf("failed to get contract semver: %w", err)}
 	}
 
 	if semver != "solidity^0.8.0" {
-		fail("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)
+		return nil, []error{fmt.Errorf("%s: Interface does not have correct compiler version (MUST be exactly solidity ^0.8.0)", contractName)}
 	}
 
 	contractBasename := contractName[1:]
 	correspondingContractFile := filepath.Join(artifactsDir, contractBasename+".sol", contractBasename+".json")
 
 	if _, err := os.Stat(correspondingContractFile); errors.Is(err, os.ErrNotExist) {
-		return nil
+		return nil, nil
 	}
 
 	contractArtifact, err := readArtifact(correspondingContractFile)
 	if err != nil {
-		return fmt.Errorf("failed to read corresponding contract artifact: %w", err)
+		return nil, []error{fmt.Errorf("failed to read corresponding contract artifact: %w", err)}
 	}
 
 	interfaceABI := artifact.ABI
@@ -169,23 +116,23 @@ func processArtifact(contractName, artifactPath, artifactsDir string, fail func(
 
 	normalizedInterfaceABI, err := normalizeABI(interfaceABI)
 	if err != nil {
-		return fmt.Errorf("failed to normalize interface ABI: %w", err)
+		return nil, []error{fmt.Errorf("failed to normalize interface ABI: %w", err)}
 	}
 
 	normalizedContractABI, err := normalizeABI(contractABI)
 	if err != nil {
-		return fmt.Errorf("failed to normalize contract ABI: %w", err)
+		return nil, []error{fmt.Errorf("failed to normalize contract ABI: %w", err)}
 	}
 
 	match, err := compareABIs(normalizedInterfaceABI, normalizedContractABI)
 	if err != nil {
-		return fmt.Errorf("failed to compare ABIs: %w", err)
+		return nil, []error{fmt.Errorf("failed to compare ABIs: %w", err)}
 	}
 	if !match {
-		fail("%s: Differences found in ABI between interface and actual contract", contractName)
+		return nil, []error{fmt.Errorf("differences found")}
 	}
 
-	return nil
+	return nil, nil
 }
 
 func readArtifact(path string) (*Artifact, error) {
@@ -274,60 +221,143 @@ func normalizeABIItem(item map[string]interface{}) {
 }
 
 func normalizeInternalType(internalType string) string {
-	internalType = strings.ReplaceAll(internalType, "contract I", "contract ")
-	internalType = strings.ReplaceAll(internalType, "enum I", "enum ")
-	internalType = strings.ReplaceAll(internalType, "struct I", "struct ")
+	// Helper function to add 'I' prefix for non-interface types
+	addIPrefix := func(match string) string {
+		// Skip if it's already an interface pattern (I followed by uppercase)
+		if len(match) > 1 && match[0] == 'I' && match[1] >= 'A' && match[1] <= 'Z' {
+			return match
+		}
+		return "I" + match
+	}
+
+	// Replace patterns like "contract Something" with "contract ISomething"
+	internalType = regexp.MustCompile(`(contract|struct|enum)\s+([^I]\w+|I[a-z]\w*)`).
+		ReplaceAllStringFunc(internalType, func(s string) string {
+			parts := strings.SplitN(s, " ", 2)
+			return parts[0] + " " + addIPrefix(parts[1])
+		})
+
 	return internalType
 }
 
 func compareABIs(abi1, abi2 json.RawMessage) (bool, error) {
-	var data1, data2 []map[string]interface{}
+	var interfaceABI, contractABI []map[string]interface{}
 
-	if err := json.Unmarshal(abi1, &data1); err != nil {
-		return false, fmt.Errorf("error unmarshalling first ABI: %w", err)
+	if err := json.Unmarshal(abi1, &interfaceABI); err != nil {
+		return false, fmt.Errorf("error unmarshalling interface ABI: %w", err)
 	}
 
-	if err := json.Unmarshal(abi2, &data2); err != nil {
-		return false, fmt.Errorf("error unmarshalling second ABI: %w", err)
+	if err := json.Unmarshal(abi2, &contractABI); err != nil {
+		return false, fmt.Errorf("error unmarshalling contract ABI: %w", err)
 	}
 
-	// Sort the ABI data
-	sort.Slice(data1, func(i, j int) bool {
-		return abiItemLess(data1[i], data1[j])
-	})
-	sort.Slice(data2, func(i, j int) bool {
-		return abiItemLess(data2[i], data2[j])
-	})
+	// Create maps for easier lookup
+	interfaceItems := make(map[string]map[string]interface{})
+	contractItems := make(map[string]map[string]interface{})
 
-	// Compare using go-cmp
-	diff := cmp.Diff(data1, data2)
-	if diff != "" {
-		log.Printf("ABI diff: %s", diff)
-		return false, nil
-	}
-	return true, nil
-}
-
-func abiItemLess(a, b map[string]interface{}) bool {
-	aType := getString(a, "type")
-	bType := getString(b, "type")
-
-	if aType != bType {
-		return aType < bType
+	// Helper to create a unique key for each ABI item
+	makeKey := func(item map[string]interface{}) string {
+		itemType := getString(item, "type")
+		itemName := getString(item, "name")
+		inputs, _ := json.Marshal(item["inputs"])
+		outputs, _ := json.Marshal(item["outputs"])
+		return fmt.Sprintf("%s_%s_%s_%s", itemType, itemName, inputs, outputs)
 	}
 
-	aName := getString(a, "name")
-	bName := getString(b, "name")
-	return aName < bName
-}
+	// Build lookup maps
+	for _, item := range interfaceABI {
+		key := makeKey(item)
+		interfaceItems[key] = item
+	}
+	for _, item := range contractABI {
+		key := makeKey(item)
+		contractItems[key] = item
+	}
 
-func getString(m map[string]interface{}, key string) string {
-	if v, ok := m[key]; ok {
-		if s, ok := v.(string); ok {
-			return s
+	// Check for missing items in both directions
+	isMatch := true
+
+	// Check interface items exist in contract
+	for key, item := range interfaceItems {
+		if _, exists := contractItems[key]; !exists {
+			itemType := getString(item, "type")
+			signature := formatABIItem(item)
+			log.Printf("REMOVE %s from interface: %s", itemType, signature)
+			isMatch = false
 		}
 	}
-	return ""
+
+	// Check contract items exist in interface
+	for key, item := range contractItems {
+		if _, exists := interfaceItems[key]; !exists {
+			itemType := getString(item, "type")
+			signature := formatABIItem(item)
+			log.Printf("ADD %s to interface: %s", itemType, signature)
+			isMatch = false
+		}
+	}
+
+	return isMatch, nil
+}
+
+// Helper function to format ABI item into a readable signature
+func formatABIItem(item map[string]interface{}) string {
+	itemType := getString(item, "type")
+	itemName := getString(item, "name")
+
+	// Format inputs
+	inputs, _ := item["inputs"].([]interface{})
+	inputStr := make([]string, 0, len(inputs))
+	for _, input := range inputs {
+		if inputMap, ok := input.(map[string]interface{}); ok {
+			internalType := getString(inputMap, "internalType")
+			paramType := internalType
+			if parts := strings.Fields(internalType); len(parts) == 2 {
+				paramType = parts[1]
+			}
+			paramName := getString(inputMap, "name")
+			if paramName != "" {
+				inputStr = append(inputStr, fmt.Sprintf("%s %s", paramType, paramName))
+			} else {
+				inputStr = append(inputStr, paramType)
+			}
+		}
+	}
+
+	// Format outputs
+	outputs, _ := item["outputs"].([]interface{})
+	outputStr := make([]string, 0, len(outputs))
+	for _, output := range outputs {
+		if outputMap, ok := output.(map[string]interface{}); ok {
+			internalType := getString(outputMap, "internalType")
+			paramType := internalType
+			if parts := strings.Fields(internalType); len(parts) == 2 {
+				paramType = parts[1]
+			}
+			paramName := getString(outputMap, "name")
+			if paramName != "" {
+				outputStr = append(outputStr, fmt.Sprintf("%s %s", paramType, paramName))
+			} else {
+				outputStr = append(outputStr, paramType)
+			}
+		}
+	}
+
+	// Build the signature based on the item type
+	switch itemType {
+	case "function":
+		returnStr := ""
+		if len(outputStr) > 0 {
+			returnStr = fmt.Sprintf(" returns (%s)", strings.Join(outputStr, ", "))
+		}
+		return fmt.Sprintf("function %s(%s)%s", itemName, strings.Join(inputStr, ", "), returnStr)
+	case "event":
+		return fmt.Sprintf("event %s(%s)", itemName, strings.Join(inputStr, ", "))
+	case "constructor":
+		return fmt.Sprintf("constructor(%s)", strings.Join(inputStr, ", "))
+	default:
+		return fmt.Sprintf("%s %s(%s)", itemType, itemName, strings.Join(inputStr, ", "))
+	}
 }
 
 func isExcluded(contractName string) bool {
@@ -339,16 +369,12 @@ func isExcluded(contractName string) bool {
 	return false
 }
 
-func glob(dir string, ext string) (map[string]string, error) {
-	out := make(map[string]string)
-	err := filepath.Walk(dir, func(path string, info os.FileInfo, err error) error {
-		if !info.IsDir() && filepath.Ext(path) == ext {
-			out[strings.TrimSuffix(filepath.Base(path), ext)] = path
+// getString safely retrieves a string value from a map[string]interface{}
+func getString(m map[string]interface{}, key string) string {
+	if val, ok := m[key]; ok {
+		if str, ok := val.(string); ok {
+			return str
 		}
-		return nil
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to walk directory: %w", err)
 	}
-	return out, nil
+	return ""
 }

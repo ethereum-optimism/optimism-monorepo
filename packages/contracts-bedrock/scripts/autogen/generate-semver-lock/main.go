@@ -5,124 +5,112 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"regexp"
+	"sort"
 	"strings"
 
+	"github.com/ethereum-optimism/optimism/packages/contracts-bedrock/scripts/checks/common"
 	"github.com/ethereum/go-ethereum/crypto"
 )
 
 const semverLockFile = "snapshots/semver-lock.json"
 
-func main() {
-	if err := run(); err != nil {
-		panic(err)
-	}
+type SemverLockOutput struct {
+	InitCodeHash   string `json:"initCodeHash"`
+	SourceCodeHash string `json:"sourceCodeHash"`
 }
 
-func run() error {
-	// Find semver files
-	// Execute grep command to find files with @custom:semver
-	var cmd = exec.Command("bash", "-c", "grep -rl '@custom:semver' src | jq -Rs 'split(\"\n\") | map(select(length > 0))'")
-	cmdOutput, err := cmd.Output()
+type SemverLockResult struct {
+	SemverLockOutput
+	SourceFilePath string
+}
+
+func main() {
+	results, err := common.ProcessFilesGlob(
+		[]string{"forge-artifacts/**/*.json"},
+		[]string{},
+		processFile,
+	)
 	if err != nil {
-		return err
+		fmt.Printf("error: %v\n", err)
+		os.Exit(1)
 	}
 
-	// Parse the JSON array of files
-	var files []string
-	if err := json.Unmarshal(cmdOutput, &files); err != nil {
-		return fmt.Errorf("failed to parse JSON output: %w", err)
+	// Create the output map
+	output := make(map[string]SemverLockOutput)
+	for _, result := range results {
+		if result == nil {
+			continue
+		}
+		output[result.SourceFilePath] = result.SemverLockOutput
 	}
 
-	// Hash and write to JSON file
-	// Map to store our JSON output
-	output := make(map[string]map[string]string)
-
-	// regex to extract contract name from file path
-	re := regexp.MustCompile(`src/.*/(.+)\.sol`)
-
-	// Get artifacts directory
-	cmd = exec.Command("forge", "config", "--json")
-	out, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("failed to get forge config: %w", err)
+	// Get and sort the keys
+	keys := make([]string, 0, len(output))
+	for k := range output {
+		keys = append(keys, k)
 	}
-	var config struct {
-		Out string `json:"out"`
-	}
-	if err := json.Unmarshal(out, &config); err != nil {
-		return fmt.Errorf("failed to parse forge config: %w", err)
-	}
+	sort.Strings(keys)
 
-	for _, file := range files {
-		// Read file contents
-		fileContents, err := os.ReadFile(file)
-		if err != nil {
-			return fmt.Errorf("failed to read file %s: %w", file, err)
-		}
-
-		// Extract contract name from file path using regex
-		matches := re.FindStringSubmatch(file)
-		if len(matches) < 2 {
-			return fmt.Errorf("invalid file path format: %s", file)
-		}
-		contractName := matches[1]
-
-		// Get artifact files
-		artifactDir := filepath.Join(config.Out, contractName+".sol")
-		files, err := os.ReadDir(artifactDir)
-		if err != nil {
-			return fmt.Errorf("failed to read artifact directory: %w", err)
-		}
-		if len(files) == 0 {
-			return fmt.Errorf("no artifacts found for %s", contractName)
-		}
-
-		// Read initcode from artifact
-		artifactPath := filepath.Join(artifactDir, files[0].Name())
-		artifact, err := os.ReadFile(artifactPath)
-		if err != nil {
-			return fmt.Errorf("failed to read initcode: %w", err)
-		}
-		artifactJson := json.RawMessage(artifact)
-		var artifactObj struct {
-			Bytecode struct {
-				Object string `json:"object"`
-			} `json:"bytecode"`
-		}
-		if err := json.Unmarshal(artifactJson, &artifactObj); err != nil {
-			return fmt.Errorf("failed to parse artifact: %w", err)
-		}
-
-		// convert the hex bytecode to a uint8 array / bytes
-		initCodeBytes, err := hex.DecodeString(strings.TrimPrefix(artifactObj.Bytecode.Object, "0x"))
-		if err != nil {
-			return fmt.Errorf("failed to decode hex: %w", err)
-		}
-
-		// Calculate hashes using Keccak256
-		var sourceCode = []byte(strings.TrimSuffix(string(fileContents), "\n"))
-		initCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(initCodeBytes))
-		sourceCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(sourceCode))
-
-		// Store in output map
-		output[file] = map[string]string{
-			"initCodeHash":   initCodeHash,
-			"sourceCodeHash": sourceCodeHash,
-		}
+	// Create a sorted map for output
+	sortedOutput := make(map[string]SemverLockOutput)
+	for _, k := range keys {
+		sortedOutput[k] = output[k]
 	}
 
 	// Write to JSON file
-	jsonData, err := json.MarshalIndent(output, "", "  ")
+	jsonData, err := json.MarshalIndent(sortedOutput, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal JSON: %w", err)
+		panic(err)
 	}
 	if err := os.WriteFile(semverLockFile, jsonData, 0644); err != nil {
-		return fmt.Errorf("failed to write semver lock file: %w", err)
+		panic(err)
 	}
 
 	fmt.Printf("Wrote semver lock file to \"%s\".\n", semverLockFile)
-	return nil
+}
+
+func processFile(file string) (*SemverLockResult, []error) {
+	artifact, err := common.ReadForgeArtifact(file)
+	if err != nil {
+		return nil, []error{fmt.Errorf("failed to read artifact: %w", err)}
+	}
+
+	// Only apply to files in the src directory.
+	sourceFilePath := artifact.Ast.AbsolutePath
+	if !strings.HasPrefix(sourceFilePath, "src/") {
+		return nil, nil
+	}
+
+	// Check if the contract uses semver.
+	semverRegex := regexp.MustCompile(`custom:semver`)
+	semver := semverRegex.FindStringSubmatch(artifact.RawMetadata)
+	if len(semver) == 0 {
+		return nil, nil
+	}
+
+	// Extract the init code from the artifact.
+	initCodeBytes, err := hex.DecodeString(strings.TrimPrefix(artifact.Bytecode.Object, "0x"))
+	if err != nil {
+		return nil, []error{fmt.Errorf("failed to decode hex: %w", err)}
+	}
+
+	// Extract the source contents from the AST.
+	sourceCode, err := os.ReadFile(sourceFilePath)
+	if err != nil {
+		return nil, []error{fmt.Errorf("failed to read source file: %w", err)}
+	}
+
+	// Calculate hashes using Keccak256
+	trimmedSourceCode := []byte(strings.TrimSuffix(string(sourceCode), "\n"))
+	initCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(initCodeBytes))
+	sourceCodeHash := fmt.Sprintf("0x%x", crypto.Keccak256Hash(trimmedSourceCode))
+
+	return &SemverLockResult{
+		SourceFilePath: sourceFilePath,
+		SemverLockOutput: SemverLockOutput{
+			InitCodeHash:   initCodeHash,
+			SourceCodeHash: sourceCodeHash,
+		},
+	}, nil
 }

@@ -13,7 +13,6 @@ import { ProxyAdmin } from "src/universal/ProxyAdmin.sol";
 import { Proxy } from "src/universal/Proxy.sol";
 import { Faucet } from "src/periphery/faucet/Faucet.sol";
 import { Drippie } from "src/periphery/drippie/Drippie.sol";
-import { CheckGelatoLow } from "src/periphery/drippie/dripchecks/CheckGelatoLow.sol";
 import { CheckBalanceLow } from "src/periphery/drippie/dripchecks/CheckBalanceLow.sol";
 import { CheckTrue } from "src/periphery/drippie/dripchecks/CheckTrue.sol";
 import { CheckSecrets } from "src/periphery/drippie/dripchecks/CheckSecrets.sol";
@@ -23,16 +22,22 @@ import { EIP1967Helper } from "test/mocks/EIP1967Helper.sol";
 
 /// @title DeployPeriphery
 /// @notice Script used to deploy periphery contracts.
-contract DeployPeriphery is Script, Artifacts {
+contract DeployPeriphery is Script {
     /// @notice Error emitted when an address mismatch is detected.
     error AddressMismatch(string, address, address);
 
     /// @notice Deployment configuration.
     PeripheryDeployConfig cfg;
 
+    Artifacts public constant artifacts =
+        Artifacts(address(uint160(uint256(keccak256(abi.encode("optimism.artifacts"))))));
+
     /// @notice Sets up the deployment script.
-    function setUp() public override {
-        Artifacts.setUp();
+    function setUp() public {
+        vm.allowCheatcodes(address(artifacts));
+        vm.etch(address(artifacts), vm.getDeployedCode("Artifacts.s.sol:Artifacts"));
+        artifacts.setUp();
+
         cfg = new PeripheryDeployConfig(Config.deployConfigPath());
         console.log("Config path: %s", Config.deployConfigPath());
     }
@@ -45,7 +50,6 @@ contract DeployPeriphery is Script, Artifacts {
         if (cfg.deployDripchecks()) {
             deployCheckTrue();
             deployCheckBalanceLow();
-            deployCheckGelatoLow();
             deployCheckSecrets();
         }
 
@@ -86,7 +90,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         ProxyAdmin admin = ProxyAdmin(addr_);
-        require(admin.owner() == msg.sender);
+        require(admin.owner() == msg.sender, "DeployPeriphery: ProxyAdmin owner mismatch");
     }
 
     /// @notice Deploy FaucetProxy.
@@ -94,11 +98,14 @@ contract DeployPeriphery is Script, Artifacts {
         addr_ = _deployCreate2({
             _name: "FaucetProxy",
             _creationCode: type(Proxy).creationCode,
-            _constructorParams: abi.encode(mustGetAddress("ProxyAdmin"))
+            _constructorParams: abi.encode(artifacts.mustGetAddress("ProxyAdmin"))
         });
 
         Proxy proxy = Proxy(payable(addr_));
-        require(EIP1967Helper.getAdmin(address(proxy)) == mustGetAddress("ProxyAdmin"));
+        require(
+            EIP1967Helper.getAdmin(address(proxy)) == artifacts.mustGetAddress("ProxyAdmin"),
+            "DeployPeriphery: FaucetProxy admin mismatch"
+        );
     }
 
     /// @notice Deploy the Faucet contract.
@@ -110,7 +117,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Faucet faucet = Faucet(payable(addr_));
-        require(faucet.ADMIN() == cfg.faucetAdmin());
+        require(faucet.ADMIN() == cfg.faucetAdmin(), "DeployPeriphery: Faucet admin mismatch");
     }
 
     /// @notice Deploy the Drippie contract.
@@ -122,7 +129,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Drippie drippie = Drippie(payable(addr_));
-        require(drippie.owner() == cfg.faucetDrippieOwner());
+        require(drippie.owner() == cfg.faucetDrippieOwner(), "DeployPeriphery: FaucetDrippie owner mismatch");
     }
 
     /// @notice Deploy the Drippie contract for standard operations.
@@ -134,7 +141,7 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         Drippie drippie = Drippie(payable(addr_));
-        require(drippie.owner() == cfg.operationsDrippieOwner());
+        require(drippie.owner() == cfg.operationsDrippieOwner(), "DeployPeriphery: OperationsDrippie owner mismatch");
     }
 
     /// @notice Deploy On-Chain Authentication Module.
@@ -146,7 +153,9 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         AdminFaucetAuthModule module = AdminFaucetAuthModule(addr_);
-        require(module.ADMIN() == cfg.faucetOnchainAuthModuleAdmin());
+        require(
+            module.ADMIN() == cfg.faucetOnchainAuthModuleAdmin(), "DeployPeriphery: OnChainAuthModule admin mismatch"
+        );
     }
 
     /// @notice Deploy Off-Chain Authentication Module.
@@ -158,7 +167,9 @@ contract DeployPeriphery is Script, Artifacts {
         });
 
         AdminFaucetAuthModule module = AdminFaucetAuthModule(addr_);
-        require(module.ADMIN() == cfg.faucetOffchainAuthModuleAdmin());
+        require(
+            module.ADMIN() == cfg.faucetOffchainAuthModuleAdmin(), "DeployPeriphery: OffChainAuthModule admin mismatch"
+        );
     }
 
     /// @notice Deploy CheckTrue contract.
@@ -179,15 +190,6 @@ contract DeployPeriphery is Script, Artifacts {
         });
     }
 
-    /// @notice Deploy CheckGelatoLow contract.
-    function deployCheckGelatoLow() public broadcast returns (address addr_) {
-        addr_ = _deployCreate2({
-            _name: "CheckGelatoLow",
-            _creationCode: type(CheckGelatoLow).creationCode,
-            _constructorParams: hex""
-        });
-    }
-
     /// @notice Deploy CheckSecrets contract.
     function deployCheckSecrets() public broadcast returns (address addr_) {
         addr_ = _deployCreate2({
@@ -199,9 +201,9 @@ contract DeployPeriphery is Script, Artifacts {
 
     /// @notice Initialize the Faucet.
     function initializeFaucet() public broadcast {
-        ProxyAdmin proxyAdmin = ProxyAdmin(mustGetAddress("ProxyAdmin"));
-        address faucetProxy = mustGetAddress("FaucetProxy");
-        address faucet = mustGetAddress("Faucet");
+        ProxyAdmin proxyAdmin = ProxyAdmin(artifacts.mustGetAddress("ProxyAdmin"));
+        address faucetProxy = artifacts.mustGetAddress("FaucetProxy");
+        address faucet = artifacts.mustGetAddress("Faucet");
         address implementationAddress = proxyAdmin.getProxyImplementation(faucetProxy);
         if (implementationAddress == faucet) {
             console.log("Faucet proxy implementation already set");
@@ -209,13 +211,16 @@ contract DeployPeriphery is Script, Artifacts {
             proxyAdmin.upgrade({ _proxy: payable(faucetProxy), _implementation: faucet });
         }
 
-        require(Faucet(payable(faucetProxy)).ADMIN() == Faucet(payable(faucet)).ADMIN());
+        require(
+            Faucet(payable(faucetProxy)).ADMIN() == Faucet(payable(faucet)).ADMIN(),
+            "DeployPeriphery: Faucet admin mismatch"
+        );
     }
 
     /// @notice Installs the OnChain AuthModule on the Faucet contract.
     function installOnChainAuthModule() public broadcast {
         _installAuthModule({
-            _faucet: Faucet(mustGetAddress("FaucetProxy")),
+            _faucet: Faucet(artifacts.mustGetAddress("FaucetProxy")),
             _name: "OnChainAuthModule",
             _config: Faucet.ModuleConfig({
                 name: "OnChainAuthModule",
@@ -229,7 +234,7 @@ contract DeployPeriphery is Script, Artifacts {
     /// @notice Installs the OffChain AuthModule on the Faucet contract.
     function installOffChainAuthModule() public broadcast {
         _installAuthModule({
-            _faucet: Faucet(mustGetAddress("FaucetProxy")),
+            _faucet: Faucet(artifacts.mustGetAddress("FaucetProxy")),
             _name: "OffChainAuthModule",
             _config: Faucet.ModuleConfig({
                 name: "OffChainAuthModule",
@@ -242,7 +247,7 @@ contract DeployPeriphery is Script, Artifacts {
 
     /// @notice Installs all of the auth modules in the faucet contract.
     function installFaucetAuthModulesConfigs() public {
-        Faucet faucet = Faucet(mustGetAddress("FaucetProxy"));
+        Faucet faucet = Faucet(artifacts.mustGetAddress("FaucetProxy"));
         console.log("Installing auth modules at %s", address(faucet));
         installOnChainAuthModule();
         installOffChainAuthModule();
@@ -266,9 +271,9 @@ contract DeployPeriphery is Script, Artifacts {
         address preComputedAddress = vm.computeCreate2Address(salt, keccak256(initCode));
         if (preComputedAddress.code.length > 0) {
             console.log("%s already deployed at %s", _name, preComputedAddress);
-            address savedAddress = getAddress(_name);
+            address savedAddress = artifacts.getAddress(_name);
             if (savedAddress == address(0)) {
-                save(_name, preComputedAddress);
+                artifacts.save(_name, preComputedAddress);
             } else if (savedAddress != preComputedAddress) {
                 revert AddressMismatch(_name, preComputedAddress, savedAddress);
             }
@@ -278,7 +283,7 @@ contract DeployPeriphery is Script, Artifacts {
                 addr_ := create2(0, add(initCode, 0x20), mload(initCode), salt)
             }
             require(addr_ != address(0), "DeployPeriphery: deployment failed");
-            save(_name, addr_);
+            artifacts.save(_name, addr_);
             console.log("%s deployed at %s", _name, addr_);
         }
     }
@@ -288,7 +293,7 @@ contract DeployPeriphery is Script, Artifacts {
     /// @param _name The name of the auth module.
     /// @param _config The configuration of the auth module.
     function _installAuthModule(Faucet _faucet, string memory _name, Faucet.ModuleConfig memory _config) internal {
-        AdminFaucetAuthModule module = AdminFaucetAuthModule(mustGetAddress(_name));
+        AdminFaucetAuthModule module = AdminFaucetAuthModule(artifacts.mustGetAddress(_name));
         if (_faucet.isModuleEnabled(module)) {
             console.log("%s already installed.", _name);
         } else {

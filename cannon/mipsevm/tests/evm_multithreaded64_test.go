@@ -482,3 +482,26 @@ func TestEVM_UnsupportedSyscall64(t *testing.T) {
 
 	testUnsupportedSyscall(t, unsupportedSyscalls)
 }
+
+// Asserts the undefined syscall handling on cannon64 triggers a VM panic
+func TestEVM_UndefinedSyscall(t *testing.T) {
+	// These syscalls all have the same value. We enumerate them here anyways for completeness.
+	undefinedSyscalls := map[string]uint64{
+		"SysFstat64": arch.SysFstat64,
+		"SysStat64":  arch.SysStat64,
+		"SysLlseek":  arch.SysLlseek,
+	}
+	for name, val := range undefinedSyscalls {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+			goVm, state, contracts := setup(t, int(val), nil)
+			testutil.StoreInstruction(state.Memory, state.GetPC(), syscallInsn)
+			state.GetRegistersRef()[2] = Word(val) // Set syscall number
+			proofData := multiThreadedProofGenerator(t, state)
+
+			require.Panics(t, func() { _, _ = goVm.Step(true) })
+			errorMessage := "unimplemented syscall"
+			testutil.AssertEVMReverts(t, state, contracts, nil, proofData, testutil.CreateErrorStringMatcher(errorMessage))
+		})
+	}
+}

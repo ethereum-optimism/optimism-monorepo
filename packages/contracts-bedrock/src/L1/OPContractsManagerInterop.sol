@@ -10,16 +10,32 @@ import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 import { ISystemConfigInterop } from "interfaces/L1/ISystemConfigInterop.sol";
+import { IProxyAdmin } from "interfaces/universal/IProxyAdmin.sol";
 
 contract OPContractsManagerInterop is OPContractsManager {
+    /// @custom:semver +interop
+    function version() public pure override returns (string memory) {
+        return string.concat(super.version(), "+interop");
+    }
+
     constructor(
         ISuperchainConfig _superchainConfig,
         IProtocolVersions _protocolVersions,
+        IProxyAdmin _superchainProxyAdmin,
         string memory _l1ContractsRelease,
         Blueprints memory _blueprints,
-        Implementations memory _implementations
+        Implementations memory _implementations,
+        address _upgradeController
     )
-        OPContractsManager(_superchainConfig, _protocolVersions, _l1ContractsRelease, _blueprints, _implementations)
+        OPContractsManager(
+            _superchainConfig,
+            _protocolVersions,
+            _superchainProxyAdmin,
+            _l1ContractsRelease,
+            _blueprints,
+            _implementations,
+            _upgradeController
+        )
     { }
 
     // The `SystemConfigInterop` contract has an extra `address _dependencyManager` argument
@@ -34,9 +50,8 @@ contract OPContractsManagerInterop is OPContractsManager {
         override
         returns (bytes memory)
     {
-        bytes4 selector = ISystemConfigInterop.initialize.selector;
         (IResourceMetering.ResourceConfig memory referenceResourceConfig, ISystemConfig.Addresses memory opChainAddrs) =
-            defaultSystemConfigParams(selector, _input, _output);
+            defaultSystemConfigParams(_input, _output);
 
         // TODO For now we assume that the dependency manager is the same as system config owner.
         // This is currently undefined since it's not part of the standard config, so we may need
@@ -45,18 +60,20 @@ contract OPContractsManagerInterop is OPContractsManager {
         // we will make the change described in https://github.com/ethereum-optimism/optimism/issues/11783.
         address dependencyManager = address(_input.roles.systemConfigOwner);
 
-        return abi.encodeWithSelector(
-            selector,
-            _input.roles.systemConfigOwner,
-            _input.basefeeScalar,
-            _input.blobBasefeeScalar,
-            bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
-            _input.gasLimit,
-            _input.roles.unsafeBlockSigner,
-            referenceResourceConfig,
-            chainIdToBatchInboxAddress(_input.l2ChainId),
-            opChainAddrs,
-            dependencyManager
+        return abi.encodeCall(
+            ISystemConfigInterop.initialize,
+            (
+                _input.roles.systemConfigOwner,
+                _input.basefeeScalar,
+                _input.blobBasefeeScalar,
+                bytes32(uint256(uint160(_input.roles.batcher))), // batcherHash
+                _input.gasLimit,
+                _input.roles.unsafeBlockSigner,
+                referenceResourceConfig,
+                chainIdToBatchInboxAddress(_input.l2ChainId),
+                opChainAddrs,
+                dependencyManager
+            )
         );
     }
 }

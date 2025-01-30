@@ -4,11 +4,13 @@ package testutil
 
 import (
 	"bytes"
+	"fmt"
 	"testing"
 
 	"github.com/stretchr/testify/require"
 
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/arch"
+	"github.com/ethereum-optimism/optimism/cannon/mipsevm/exec"
 	"github.com/ethereum-optimism/optimism/cannon/mipsevm/memory"
 )
 
@@ -40,6 +42,20 @@ func SetMemoryUint64(t require.TestingT, mem *memory.Memory, addr Word, value ui
 	effAddr := addr & arch.AddressMask
 	actual := mem.GetWord(effAddr)
 	require.Equal(t, Word(value), actual)
+}
+
+// RandomizeWordAndSetUint32 writes a uint32 value and randomizes the rest of the Word containing the uint32 in memory
+func RandomizeWordAndSetUint32(mem *memory.Memory, addr Word, val uint32, randomizeWordSeed int64) {
+	if addr&0x3 != 0 {
+		panic(fmt.Errorf("unaligned memory access: %x", addr))
+	}
+
+	// Randomize the Word containing the target uint32 - only makes a difference for 64-bit architectures
+	rand := NewRandHelper(randomizeWordSeed)
+	wordAddr := addr & arch.AddressMask
+	mem.SetWord(wordAddr, rand.Word())
+
+	exec.StoreSubWord(mem, addr, 4, Word(val), new(exec.NoopMemoryTracker))
 }
 
 // ToSignedInteger converts the unsigend Word to a SignedInteger.

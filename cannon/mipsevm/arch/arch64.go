@@ -6,23 +6,15 @@ package arch
 import "encoding/binary"
 
 type (
-	// Word differs from the tradditional meaning in MIPS. The type represents the *maximum* architecture specific access length and value sizes
+	// Word differs from the traditional meaning in MIPS. The type represents the *maximum* architecture specific access length and value sizes
 	Word = uint64
 	// SignedInteger specifies the maximum signed integer type used for arithmetic.
 	SignedInteger = int64
 )
 
 const (
-	IsMips32      = false
-	WordSize      = 64
-	WordSizeBytes = WordSize >> 3
-	PageAddrSize  = 12
-	PageKeySize   = WordSize - PageAddrSize
-
-	MemProofLeafCount = 60
-	MemProofSize      = MemProofLeafCount * 32
-
 	AddressMask = 0xFFFFFFFFFFFFFFF8
+	WordSize    = 64
 	ExtMask     = 0x7
 
 	// Ensure virtual address is limited to 48-bits as many user programs assume such to implement packed pointers

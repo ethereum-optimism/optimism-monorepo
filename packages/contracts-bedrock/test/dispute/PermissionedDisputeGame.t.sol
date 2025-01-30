@@ -2,7 +2,6 @@
 pragma solidity ^0.8.15;
 
 // Testing
-import { Test } from "forge-std/Test.sol";
 import { DisputeGameFactory_Init } from "test/dispute/DisputeGameFactory.t.sol";
 import { AlphabetVM } from "test/mocks/AlphabetVM.sol";
 
@@ -38,8 +37,13 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
     event Move(uint256 indexed parentIndex, Claim indexed pivot, address indexed claimant);
 
     function init(Claim rootClaim, Claim absolutePrestate, uint256 l2BlockNumber) public {
-        // Set the time to a realistic date.
-        vm.warp(1690906994);
+        if (isForkTest()) {
+            // Fund the proposer on this fork.
+            vm.deal(PROPOSER, 100 ether);
+        } else {
+            // Set the time to a realistic date.
+            vm.warp(1690906994);
+        }
 
         // Set the extra data for the game creation
         extraData = abi.encode(l2BlockNumber);
@@ -89,10 +93,18 @@ contract PermissionedDisputeGame_Init is DisputeGameFactory_Init {
         );
         // Register the game implementation with the factory.
         disputeGameFactory.setImplementation(GAME_TYPE, gameImpl);
+
         // Create a new game.
+        uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
+        vm.mockCall(
+            address(anchorStateRegistry),
+            abi.encodeCall(anchorStateRegistry.anchors, (GAME_TYPE)),
+            abi.encode(rootClaim, 0)
+        );
         vm.prank(PROPOSER, PROPOSER);
-        gameProxy =
-            IPermissionedDisputeGame(payable(address(disputeGameFactory.create(GAME_TYPE, rootClaim, extraData))));
+        gameProxy = IPermissionedDisputeGame(
+            payable(address(disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, rootClaim, extraData)))
+        );
 
         // Check immutables
         assertEq(gameProxy.proposer(), PROPOSER);
@@ -129,22 +141,31 @@ contract PermissionedDisputeGame_Test is PermissionedDisputeGame_Init {
         absolutePrestate = _changeClaimStatus(Claim.wrap(keccak256(absolutePrestateData)), VMStatuses.UNFINISHED);
 
         super.setUp();
+
         super.init({ rootClaim: ROOT_CLAIM, absolutePrestate: absolutePrestate, l2BlockNumber: 0x10 });
+    }
+
+    /// @dev Tests that the game's version function returns a string.
+    function test_version_works() public view {
+        assertTrue(bytes(gameProxy.version()).length > 0);
     }
 
     /// @dev Tests that the proposer can create a permissioned dispute game.
     function test_createGame_proposer_succeeds() public {
+        uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
         vm.prank(PROPOSER, PROPOSER);
-        disputeGameFactory.create(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
     }
 
     /// @dev Tests that the permissioned game cannot be created by any address other than the proposer.
     function testFuzz_createGame_notProposer_reverts(address _p) public {
         vm.assume(_p != PROPOSER);
 
+        uint256 bondAmount = disputeGameFactory.initBonds(GAME_TYPE);
+        vm.deal(_p, bondAmount);
         vm.prank(_p, _p);
         vm.expectRevert(BadAuth.selector);
-        disputeGameFactory.create(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
+        disputeGameFactory.create{ value: bondAmount }(GAME_TYPE, ROOT_CLAIM, abi.encode(0x420));
     }
 
     /// @dev Tests that the challenger can participate in a permissioned dispute game.

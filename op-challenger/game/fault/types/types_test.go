@@ -60,3 +60,21 @@ func TestIsRootPosition(t *testing.T) {
 		})
 	}
 }
+
+func TestKnownGameTypeForEveryTraceType(t *testing.T) {
+	for _, traceType := range TraceTypes {
+		traceType := traceType
+		t.Run(traceType.String(), func(t *testing.T) {
+			require.NotEqual(t, UnknownGameType, traceType.GameType())
+		})
+	}
+}
+
+func TestKnownStringForUtilisedGameType(t *testing.T) {
+	for _, traceType := range TraceTypes {
+		traceType := traceType
+		t.Run(traceType.String(), func(t *testing.T) {
+			require.NotContains(t, traceType.GameType().String(), "invalid")
+		})
+	}
+}

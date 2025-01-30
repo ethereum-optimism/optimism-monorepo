@@ -118,6 +118,9 @@ contract OptimismPortal2_Invariant_Harness is CommonTest {
             latestBlockhash: bytes32(uint256(0))
         });
 
+        // Warp forward in time to ensure that the game is created after the retirement timestamp.
+        vm.warp(optimismPortal2.respectedGameTypeUpdatedAt() + 1 seconds);
+
         // Create a dispute game with the output root we've proposed.
         _proposedBlockNumber = 0xFF;
         IFaultDisputeGame game = IFaultDisputeGame(

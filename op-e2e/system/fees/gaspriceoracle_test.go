@@ -40,7 +40,7 @@ func TestGasPriceOracleFeeUpdates(t *testing.T) {
 	l1Client := sys.NodeClient("l1")
 	l2Seq := sys.NodeClient("sequencer")
 	// l2Verif := sys.NodeClient("verifier")
-	ethPrivKey := cfg.Secrets.SysCfgOwner
+	ethPrivKey := cfg.Secrets.Deployer
 
 	// Bind to the SystemConfig & GasPriceOracle contracts
 	sysconfig, err := legacybindings.NewSystemConfig(cfg.L1Deployments.SystemConfigProxy, l1Client)

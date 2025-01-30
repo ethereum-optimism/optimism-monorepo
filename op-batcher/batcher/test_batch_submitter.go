@@ -27,7 +27,7 @@ func (l *TestBatchSubmitter) JamTxPool(ctx context.Context) error {
 	}
 	var candidate *txmgr.TxCandidate
 	var err error
-	cc := l.state.cfgProvider.ChannelConfig()
+	cc := l.channelMgr.cfgProvider.ChannelConfig()
 	if cc.UseBlobs {
 		candidate = l.calldataTxCandidate([]byte{})
 	} else if candidate, err = l.blobTxCandidate(emptyTxData); err != nil {

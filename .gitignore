@@ -4,6 +4,8 @@ results
 temp
 coverage.json
 **/lcov.info
+**/lcov-upgrade.info
+**/lcov-all.info
 
 yarn-error.log
 .yarn/*

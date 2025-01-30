@@ -27,19 +27,20 @@ const (
 	HDPathFlagName     = "hd-path"
 	PrivateKeyFlagName = "private-key"
 	// TxMgr Flags (new + legacy + some shared flags)
-	NumConfirmationsFlagName          = "num-confirmations"
-	SafeAbortNonceTooLowCountFlagName = "safe-abort-nonce-too-low-count"
-	FeeLimitMultiplierFlagName        = "fee-limit-multiplier"
-	FeeLimitThresholdFlagName         = "txmgr.fee-limit-threshold"
-	MinBaseFeeFlagName                = "txmgr.min-basefee"
-	MaxBaseFeeFlagName                = "txmgr.max-basefee"
-	MinTipCapFlagName                 = "txmgr.min-tip-cap"
-	MaxTipCapFlagName                 = "txmgr.max-tip-cap"
-	ResubmissionTimeoutFlagName       = "resubmission-timeout"
-	NetworkTimeoutFlagName            = "network-timeout"
-	TxSendTimeoutFlagName             = "txmgr.send-timeout"
-	TxNotInMempoolTimeoutFlagName     = "txmgr.not-in-mempool-timeout"
-	ReceiptQueryIntervalFlagName      = "txmgr.receipt-query-interval"
+	NumConfirmationsFlagName           = "num-confirmations"
+	SafeAbortNonceTooLowCountFlagName  = "safe-abort-nonce-too-low-count"
+	FeeLimitMultiplierFlagName         = "fee-limit-multiplier"
+	FeeLimitThresholdFlagName          = "txmgr.fee-limit-threshold"
+	MinBaseFeeFlagName                 = "txmgr.min-basefee"
+	MaxBaseFeeFlagName                 = "txmgr.max-basefee"
+	MinTipCapFlagName                  = "txmgr.min-tip-cap"
+	MaxTipCapFlagName                  = "txmgr.max-tip-cap"
+	ResubmissionTimeoutFlagName        = "resubmission-timeout"
+	NetworkTimeoutFlagName             = "network-timeout"
+	TxSendTimeoutFlagName              = "txmgr.send-timeout"
+	TxNotInMempoolTimeoutFlagName      = "txmgr.not-in-mempool-timeout"
+	ReceiptQueryIntervalFlagName       = "txmgr.receipt-query-interval"
+	AlreadyPublishedCustomErrsFlagName = "txmgr.already-published-custom-errs"
 )
 
 var (
@@ -203,30 +204,36 @@ func CLIFlagsWithDefaults(envPrefix string, defaults DefaultFlagValues) []cli.Fl
 			Value:   defaults.ReceiptQueryInterval,
 			EnvVars: prefixEnvVars("TXMGR_RECEIPT_QUERY_INTERVAL"),
 		},
+		&cli.StringSliceFlag{
+			Name:    AlreadyPublishedCustomErrsFlagName,
+			Usage:   "List of custom RPC error messages that indicate that a transaction has already been published.",
+			EnvVars: prefixEnvVars("TXMGR_ALREADY_PUBLISHED_CUSTOM_ERRS"),
+		},
 	}, opsigner.CLIFlags(envPrefix, "")...)
 }
 
 type CLIConfig struct {
-	L1RPCURL                  string
-	Mnemonic                  string
-	HDPath                    string
-	SequencerHDPath           string
-	L2OutputHDPath            string
-	PrivateKey                string
-	SignerCLIConfig           opsigner.CLIConfig
-	NumConfirmations          uint64
-	SafeAbortNonceTooLowCount uint64
-	FeeLimitMultiplier        uint64
-	FeeLimitThresholdGwei     float64
-	MinBaseFeeGwei            float64
-	MinTipCapGwei             float64
-	MaxBaseFeeGwei            float64
-	MaxTipCapGwei             float64
-	ResubmissionTimeout       time.Duration
-	ReceiptQueryInterval      time.Duration
-	NetworkTimeout            time.Duration
-	TxSendTimeout             time.Duration
-	TxNotInMempoolTimeout     time.Duration
+	L1RPCURL                   string
+	Mnemonic                   string
+	HDPath                     string
+	SequencerHDPath            string
+	L2OutputHDPath             string
+	PrivateKey                 string
+	SignerCLIConfig            opsigner.CLIConfig
+	NumConfirmations           uint64
+	SafeAbortNonceTooLowCount  uint64
+	FeeLimitMultiplier         uint64
+	FeeLimitThresholdGwei      float64
+	MinBaseFeeGwei             float64
+	MinTipCapGwei              float64
+	MaxBaseFeeGwei             float64
+	MaxTipCapGwei              float64
+	ResubmissionTimeout        time.Duration
+	ReceiptQueryInterval       time.Duration
+	NetworkTimeout             time.Duration
+	TxSendTimeout              time.Duration
+	TxNotInMempoolTimeout      time.Duration
+	AlreadyPublishedCustomErrs []string
 }
 
 func NewCLIConfig(l1RPCURL string, defaults DefaultFlagValues) CLIConfig {
@@ -284,26 +291,27 @@ func (m CLIConfig) Check() error {
 
 func ReadCLIConfig(ctx *cli.Context) CLIConfig {
 	return CLIConfig{
-		L1RPCURL:                  ctx.String(L1RPCFlagName),
-		Mnemonic:                  ctx.String(MnemonicFlagName),
-		HDPath:                    ctx.String(HDPathFlagName),
-		SequencerHDPath:           ctx.String(SequencerHDPathFlag.Name),
-		L2OutputHDPath:            ctx.String(L2OutputHDPathFlag.Name),
-		PrivateKey:                ctx.String(PrivateKeyFlagName),
-		SignerCLIConfig:           opsigner.ReadCLIConfig(ctx),
-		NumConfirmations:          ctx.Uint64(NumConfirmationsFlagName),
-		SafeAbortNonceTooLowCount: ctx.Uint64(SafeAbortNonceTooLowCountFlagName),
-		FeeLimitMultiplier:        ctx.Uint64(FeeLimitMultiplierFlagName),
-		FeeLimitThresholdGwei:     ctx.Float64(FeeLimitThresholdFlagName),
-		MinBaseFeeGwei:            ctx.Float64(MinBaseFeeFlagName),
-		MaxBaseFeeGwei:            ctx.Float64(MaxBaseFeeFlagName),
-		MinTipCapGwei:             ctx.Float64(MinTipCapFlagName),
-		MaxTipCapGwei:             ctx.Float64(MaxTipCapFlagName),
-		ResubmissionTimeout:       ctx.Duration(ResubmissionTimeoutFlagName),
-		ReceiptQueryInterval:      ctx.Duration(ReceiptQueryIntervalFlagName),
-		NetworkTimeout:            ctx.Duration(NetworkTimeoutFlagName),
-		TxSendTimeout:             ctx.Duration(TxSendTimeoutFlagName),
-		TxNotInMempoolTimeout:     ctx.Duration(TxNotInMempoolTimeoutFlagName),
+		L1RPCURL:                   ctx.String(L1RPCFlagName),
+		Mnemonic:                   ctx.String(MnemonicFlagName),
+		HDPath:                     ctx.String(HDPathFlagName),
+		SequencerHDPath:            ctx.String(SequencerHDPathFlag.Name),
+		L2OutputHDPath:             ctx.String(L2OutputHDPathFlag.Name),
+		PrivateKey:                 ctx.String(PrivateKeyFlagName),
+		SignerCLIConfig:            opsigner.ReadCLIConfig(ctx),
+		NumConfirmations:           ctx.Uint64(NumConfirmationsFlagName),
+		SafeAbortNonceTooLowCount:  ctx.Uint64(SafeAbortNonceTooLowCountFlagName),
+		FeeLimitMultiplier:         ctx.Uint64(FeeLimitMultiplierFlagName),
+		FeeLimitThresholdGwei:      ctx.Float64(FeeLimitThresholdFlagName),
+		MinBaseFeeGwei:             ctx.Float64(MinBaseFeeFlagName),
+		MaxBaseFeeGwei:             ctx.Float64(MaxBaseFeeFlagName),
+		MinTipCapGwei:              ctx.Float64(MinTipCapFlagName),
+		MaxTipCapGwei:              ctx.Float64(MaxTipCapFlagName),
+		ResubmissionTimeout:        ctx.Duration(ResubmissionTimeoutFlagName),
+		ReceiptQueryInterval:       ctx.Duration(ReceiptQueryIntervalFlagName),
+		NetworkTimeout:             ctx.Duration(NetworkTimeoutFlagName),
+		TxSendTimeout:              ctx.Duration(TxSendTimeoutFlagName),
+		TxNotInMempoolTimeout:      ctx.Duration(TxNotInMempoolTimeoutFlagName),
+		AlreadyPublishedCustomErrs: ctx.StringSlice(AlreadyPublishedCustomErrsFlagName),
 	}
 }
 
@@ -372,16 +380,18 @@ func NewConfig(cfg CLIConfig, l log.Logger) (*Config, error) {
 	}
 
 	res := Config{
-		Backend:                   l1,
-		ChainID:                   chainID,
-		TxSendTimeout:             cfg.TxSendTimeout,
-		TxNotInMempoolTimeout:     cfg.TxNotInMempoolTimeout,
-		NetworkTimeout:            cfg.NetworkTimeout,
-		ReceiptQueryInterval:      cfg.ReceiptQueryInterval,
-		NumConfirmations:          cfg.NumConfirmations,
-		SafeAbortNonceTooLowCount: cfg.SafeAbortNonceTooLowCount,
-		Signer:                    signerFactory(chainID),
-		From:                      from,
+		Backend: l1,
+		ChainID: chainID,
+		Signer:  signerFactory(chainID),
+		From:    from,
+
+		TxSendTimeout:              cfg.TxSendTimeout,
+		TxNotInMempoolTimeout:      cfg.TxNotInMempoolTimeout,
+		NetworkTimeout:             cfg.NetworkTimeout,
+		ReceiptQueryInterval:       cfg.ReceiptQueryInterval,
+		NumConfirmations:           cfg.NumConfirmations,
+		SafeAbortNonceTooLowCount:  cfg.SafeAbortNonceTooLowCount,
+		AlreadyPublishedCustomErrs: cfg.AlreadyPublishedCustomErrs,
 	}
 
 	res.ResubmissionTimeout.Store(int64(cfg.ResubmissionTimeout))
@@ -461,6 +471,10 @@ type Config struct {
 	// GasPriceEstimatorFn is used to estimate the gas price for a transaction.
 	// If nil, DefaultGasPriceEstimatorFn is used.
 	GasPriceEstimatorFn GasPriceEstimatorFn
+
+	// List of custom RPC error messages that indicate that a transaction has
+	// already been published.
+	AlreadyPublishedCustomErrs []string
 }
 
 func (m *Config) Check() error {

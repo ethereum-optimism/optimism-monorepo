@@ -34,7 +34,7 @@ func (f *VMFlag) Flags() []cli.Flag {
 	defaultEnvVar := opservice.FlagNameToEnvVarName(f.name, f.envVarPrefix)
 	flags = append(flags, f.flagCreator(f.name, []string{defaultEnvVar}, ""))
 	for _, vm := range f.vms {
-		name := f.flagName(vm)
+		name := f.TraceSpecificFlagName(vm)
 		envVar := opservice.FlagNameToEnvVarName(name, f.envVarPrefix)
 		flags = append(flags, f.flagCreator(name, []string{envVar}, fmt.Sprintf("(%v trace type only)", vm)))
 	}
@@ -46,25 +46,37 @@ func (f *VMFlag) DefaultName() string {
 }
 
 func (f *VMFlag) IsSet(ctx *cli.Context, vm types.TraceType) bool {
-	return ctx.IsSet(f.flagName(vm)) || ctx.IsSet(f.name)
+	return ctx.IsSet(f.TraceSpecificFlagName(vm)) || ctx.IsSet(f.name)
 }
 
 func (f *VMFlag) String(ctx *cli.Context, vm types.TraceType) string {
-	val := ctx.String(f.flagName(vm))
+	val := ctx.String(f.TraceSpecificFlagName(vm))
 	if val == "" {
 		val = ctx.String(f.name)
 	}
 	return val
 }
 
+func (f *VMFlag) StringSlice(ctx *cli.Context, vm types.TraceType) []string {
+	val := ctx.StringSlice(f.TraceSpecificFlagName(vm))
+	if len(val) == 0 {
+		val = ctx.StringSlice(f.name)
+	}
+	return val
+}
+
 func (f *VMFlag) SourceFlagName(ctx *cli.Context, vm types.TraceType) string {
-	vmFlag := f.flagName(vm)
+	vmFlag := f.TraceSpecificFlagName(vm)
 	if ctx.IsSet(vmFlag) {
 		return vmFlag
 	}
 	return f.name
 }
 
-func (f *VMFlag) flagName(vm types.TraceType) string {
+func (f *VMFlag) EitherFlagName(vm types.TraceType) string {
+	return fmt.Sprintf("%s/%s", f.DefaultName(), f.TraceSpecificFlagName(vm))
+}
+
+func (f *VMFlag) TraceSpecificFlagName(vm types.TraceType) string {
 	return fmt.Sprintf("%v-%v", vm, f.name)
 }

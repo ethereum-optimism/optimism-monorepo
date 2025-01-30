@@ -3,6 +3,7 @@ package syncnode
 import (
 	"context"
 
+	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/common"
 	gethtypes "github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/log"
@@ -23,16 +24,34 @@ type SyncNodeSetup interface {
 type SyncSource interface {
 	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
 	FetchReceipts(ctx context.Context, blockHash common.Hash) (gethtypes.Receipts, error)
-	ChainID(ctx context.Context) (types.ChainID, error)
+	ChainID(ctx context.Context) (eth.ChainID, error)
+	OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
+	PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error)
+	L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error)
 	// String identifies the sync source
 	String() string
 }
 
 type SyncControl interface {
-	TryDeriveNext(ctx context.Context, ref eth.BlockRef) (eth.BlockRef, error)
+	SubscribeEvents(ctx context.Context, c chan *types.ManagedEvent) (ethereum.Subscription, error)
+	PullEvent(ctx context.Context) (*types.ManagedEvent, error)
+
+	UpdateCrossUnsafe(ctx context.Context, id eth.BlockID) error
+	UpdateCrossSafe(ctx context.Context, derived eth.BlockID, derivedFrom eth.BlockID) error
+	UpdateFinalized(ctx context.Context, id eth.BlockID) error
+
+	InvalidateBlock(ctx context.Context, seal types.BlockSeal) error
+
+	Reset(ctx context.Context, unsafe, safe, finalized eth.BlockID) error
+	ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error
+	AnchorPoint(ctx context.Context) (types.DerivedBlockRefPair, error)
 }
 
 type SyncNode interface {
 	SyncSource
 	SyncControl
+}
+
+type Node interface {
+	PullEvents(ctx context.Context) (pulledAny bool, err error)
 }

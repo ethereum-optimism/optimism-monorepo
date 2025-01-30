@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 import { IStandardBridge } from "interfaces/universal/IStandardBridge.sol";
 import { ICrossDomainMessenger } from "interfaces/universal/ICrossDomainMessenger.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
-import { ISystemConfig } from "interfaces/L1/ISystemConfig.sol";
 
 interface IL1StandardBridge is IStandardBridge {
     event ERC20DepositInitiated(
@@ -64,13 +63,11 @@ interface IL1StandardBridge is IStandardBridge {
         payable;
     function initialize(
         ICrossDomainMessenger _messenger,
-        ISuperchainConfig _superchainConfig,
-        ISystemConfig _systemConfig
+        ISuperchainConfig _superchainConfig
     )
         external;
     function l2TokenBridge() external view returns (address);
     function superchainConfig() external view returns (ISuperchainConfig);
-    function systemConfig() external view returns (ISystemConfig);
     function version() external view returns (string memory);
 
     function __constructor__() external;

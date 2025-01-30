@@ -476,6 +476,6 @@ func (bs *BatcherService) ThrottlingTestDriver() *TestBatchSubmitter {
 	tbs := &TestBatchSubmitter{
 		BatchSubmitter: bs.driver,
 	}
-	tbs.BatchSubmitter.state.metr = new(metrics.ThrottlingMetrics)
+	tbs.BatchSubmitter.channelMgr.metr = new(metrics.ThrottlingMetrics)
 	return tbs
 }

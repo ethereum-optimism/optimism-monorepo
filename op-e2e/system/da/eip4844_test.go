@@ -92,6 +92,7 @@ func testSystem4844E2E(t *testing.T, multiBlob bool, daType batcherFlags.DataAva
 		}
 	}()
 
+	cfg.DisableProposer = true // disable L2 output submission for this test
 	sys, err := cfg.Start(t, action)
 	require.NoError(t, err, "Error starting up system")
 
@@ -306,7 +307,7 @@ func TestBatcherAutoDA(t *testing.T) {
 			b, err := l1Client.BlockByNumber(ctx, nil)
 			require.NoError(t, err)
 			for _, tx := range b.Transactions() {
-				if tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
+				if tx.To() == nil || tx.To().Cmp(cfg.DeployConfig.BatchInboxAddress) != 0 {
 					continue
 				}
 				if typ := tx.Type(); typ == txType {

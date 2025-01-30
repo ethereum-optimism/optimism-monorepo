@@ -15,7 +15,7 @@ contract ExtendedPause_Test is CommonTest {
 
         // validate the paused state
         assertTrue(superchainConfig.paused());
-        assertTrue(optimismPortal.paused());
+        assertTrue(optimismPortal2.paused());
         assertTrue(l1CrossDomainMessenger.paused());
         assertTrue(l1StandardBridge.paused());
         assertTrue(l1ERC721Bridge.paused());
@@ -31,7 +31,7 @@ contract ExtendedPause_Test is CommonTest {
 
         // validate the unpaused state
         assertFalse(superchainConfig.paused());
-        assertFalse(optimismPortal.paused());
+        assertFalse(optimismPortal2.paused());
         assertFalse(l1CrossDomainMessenger.paused());
         assertFalse(l1StandardBridge.paused());
         assertFalse(l1ERC721Bridge.paused());

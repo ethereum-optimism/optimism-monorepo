@@ -12,6 +12,11 @@ import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
 contract SuperchainConfig_Init_Test is CommonTest {
+    function setUp() public virtual override {
+        super.setUp();
+        skipIfForkTest("SuperchainConfig_Init_Test: cannot test initialization on forked network");
+    }
+
     /// @dev Tests that initialization sets the correct values. These are defined in CommonTest.sol.
     function test_initialize_unpaused_succeeds() external view {
         assertFalse(superchainConfig.paused());

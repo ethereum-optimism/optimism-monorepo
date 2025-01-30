@@ -110,7 +110,13 @@
       }
     ],
     "name": "relayMessage",
-    "outputs": [],
+    "outputs": [
+      {
+        "internalType": "bytes",
+        "name": "returnData_",
+        "type": "bytes"
+      }
+    ],
     "stateMutability": "payable",
     "type": "function"
   },

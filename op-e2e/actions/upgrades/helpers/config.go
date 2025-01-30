@@ -43,4 +43,13 @@ func ApplyDeltaTimeOffset(dp *e2eutils.DeployParams, deltaTimeOffset *hexutil.Ui
 			dp.DeployConfig.L2GenesisHoloceneTimeOffset = deltaTimeOffset
 		}
 	}
+
+	// configure Isthmus to not be before Delta accidentally
+	if dp.DeployConfig.L2GenesisIsthmusTimeOffset != nil {
+		if deltaTimeOffset == nil {
+			dp.DeployConfig.L2GenesisIsthmusTimeOffset = nil
+		} else if *dp.DeployConfig.L2GenesisIsthmusTimeOffset < *deltaTimeOffset {
+			dp.DeployConfig.L2GenesisIsthmusTimeOffset = deltaTimeOffset
+		}
+	}
 }

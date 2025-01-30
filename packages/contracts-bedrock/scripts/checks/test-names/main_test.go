@@ -218,13 +218,15 @@ func TestExtractTestNames(t *testing.T) {
 		{
 			name: "valid test contract",
 			artifact: &solc.ForgeArtifact{
-				Abi: abi.ABI{
-					Methods: map[string]abi.Method{
-						"IS_TEST":                  {Name: "IS_TEST"},
-						"test_something_succeeds":  {Name: "test_something_succeeds"},
-						"test_other_fails":         {Name: "test_other_fails"},
-						"not_a_test":               {Name: "not_a_test"},
-						"testFuzz_something_works": {Name: "testFuzz_something_works"},
+				Abi: solc.AbiType{
+					Parsed: abi.ABI{
+						Methods: map[string]abi.Method{
+							"IS_TEST":                  {Name: "IS_TEST"},
+							"test_something_succeeds":  {Name: "test_something_succeeds"},
+							"test_other_fails":         {Name: "test_other_fails"},
+							"not_a_test":               {Name: "not_a_test"},
+							"testFuzz_something_works": {Name: "testFuzz_something_works"},
+						},
 					},
 				},
 			},
@@ -237,10 +239,12 @@ func TestExtractTestNames(t *testing.T) {
 		{
 			name: "non-test contract",
 			artifact: &solc.ForgeArtifact{
-				Abi: abi.ABI{
-					Methods: map[string]abi.Method{
-						"test_something_succeeds": {Name: "test_something_succeeds"},
-						"not_a_test":              {Name: "not_a_test"},
+				Abi: solc.AbiType{
+					Parsed: abi.ABI{
+						Methods: map[string]abi.Method{
+							"test_something_succeeds": {Name: "test_something_succeeds"},
+							"not_a_test":              {Name: "not_a_test"},
+						},
 					},
 				},
 			},
@@ -249,8 +253,10 @@ func TestExtractTestNames(t *testing.T) {
 		{
 			name: "empty contract",
 			artifact: &solc.ForgeArtifact{
-				Abi: abi.ABI{
-					Methods: map[string]abi.Method{},
+				Abi: solc.AbiType{
+					Parsed: abi.ABI{
+						Methods: map[string]abi.Method{},
+					},
 				},
 			},
 			want: nil,
@@ -258,11 +264,13 @@ func TestExtractTestNames(t *testing.T) {
 		{
 			name: "test contract with no test methods",
 			artifact: &solc.ForgeArtifact{
-				Abi: abi.ABI{
-					Methods: map[string]abi.Method{
-						"IS_TEST":        {Name: "IS_TEST"},
-						"not_a_test":     {Name: "not_a_test"},
-						"another_method": {Name: "another_method"},
+				Abi: solc.AbiType{
+					Parsed: abi.ABI{
+						Methods: map[string]abi.Method{
+							"IS_TEST":        {Name: "IS_TEST"},
+							"not_a_test":     {Name: "not_a_test"},
+							"another_method": {Name: "another_method"},
+						},
 					},
 				},
 			},

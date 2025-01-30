@@ -13,6 +13,15 @@ snapshots = 'notarealpath' # workaround for foundry#9477
 optimizer = true
 optimizer_runs = 999999
 
+additional_compiler_profiles = [
+  { name = "dispute", optimizer_runs = 5000 },
+]
+compilation_restrictions = [
+  { paths = "src/dispute/FaultDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/dispute/PermissionedDisputeGame.sol", optimizer_runs = 5000 },
+  { paths = "src/L1/OPContractsManager.sol", optimizer_runs = 5000 },
+]
+
 extra_output = ['devdoc', 'userdoc', 'metadata', 'storageLayout']
 bytecode_hash = 'none'
 ast = true
@@ -30,7 +39,6 @@ remappings = [
   'ds-test/=lib/forge-std/lib/ds-test/src',
   'safe-contracts/=lib/safe-contracts/contracts',
   'kontrol-cheatcodes/=lib/kontrol-cheatcodes/src',
-  'gelato/=lib/automate/contracts',
   'interfaces/=interfaces'
 ]
 
@@ -45,6 +53,7 @@ fs_permissions = [
   { access='read-write', path='./.testdata/' },
   { access='read', path='./kout-deployment' },
   { access='read', path='./test/fixtures' },
+  { access='read', path='./lib/superchain-registry/superchain/configs/' },
 ]
 
 # 5159 error code is selfdestruct error code
@@ -84,6 +93,7 @@ depth = 32
 
 [profile.cicoverage]
 optimizer = false
+compilation_restrictions = []
 
 [profile.cicoverage.fuzz]
 runs = 1
@@ -111,6 +121,8 @@ timeout = 300
 
 [profile.lite]
 optimizer = false
+compilation_restrictions = []
+
 
 ################################################################
 #                         PROFILE: KONTROL                     #

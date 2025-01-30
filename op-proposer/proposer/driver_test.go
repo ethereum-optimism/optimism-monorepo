@@ -42,9 +42,9 @@ type StubDGFContract struct {
 	hasProposedCount int
 }
 
-func (m *StubDGFContract) HasProposedSince(_ context.Context, _ common.Address, _ time.Time, _ uint32) (bool, time.Time, error) {
+func (m *StubDGFContract) HasProposedSince(_ context.Context, _ common.Address, _ time.Time, _ uint32) (bool, time.Time, common.Hash, error) {
 	m.hasProposedCount++
-	return false, time.Unix(1000, 0), nil
+	return false, time.Unix(1000, 0), common.Hash{0xdd}, nil
 }
 
 func (m *StubDGFContract) ProposalTx(_ context.Context, _ uint32, _ common.Hash, _ uint64) (txmgr.TxCandidate, error) {

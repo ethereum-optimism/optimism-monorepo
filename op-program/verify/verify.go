@@ -43,7 +43,7 @@ type Runner struct {
 	runInProcess bool
 }
 
-func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl string, dataDir string, network string, chainID uint64, runInProcess bool) (*Runner, error) {
+func NewRunner(l1RpcUrl string, l1RpcKind string, l1BeaconUrl string, l2RpcUrl string, dataDir string, network string, chainID eth.ChainID, runInProcess bool) (*Runner, error) {
 	ctx := context.Background()
 	logCfg := oplog.DefaultCLIConfig()
 	logCfg.Level = log.LevelDebug
@@ -209,14 +209,14 @@ func (r *Runner) run(ctx context.Context, l1Head common.Hash, agreedBlockInfo et
 	fmt.Printf("Configuration: %s\n", argsStr)
 
 	if r.runInProcess {
-		offlineCfg := config.NewConfig(
+		offlineCfg := config.NewSingleChainConfig(
 			r.rollupCfg, r.chainCfg, l1Head, agreedBlockInfo.Hash(), agreedOutputRoot, claimedOutputRoot, claimedBlockInfo.NumberU64())
 		offlineCfg.DataDir = r.dataDir
 
 		onlineCfg := *offlineCfg
 		onlineCfg.L1URL = r.l1RpcUrl
 		onlineCfg.L1BeaconURL = r.l1BeaconUrl
-		onlineCfg.L2URL = r.l2RpcUrl
+		onlineCfg.L2URLs = []string{r.l2RpcUrl}
 		if r.l1RpcKind != "" {
 			onlineCfg.L1RPCKind = sources.RPCProviderKind(r.l1RpcKind)
 		}
