@@ -724,6 +724,7 @@ func TestNewPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestNewPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.NewPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
 	}
@@ -767,6 +768,7 @@ func TestGetPayloadVersion(t *testing.T) {
 		test := test
 		t.Run(fmt.Sprintf("TestGetPayloadVersion_%s", test.name), func(t *testing.T) {
 			config.EcotoneTime = &test.ecotoneTime
+			config.IsthmusTime = &test.isthmusTime
 			assert.Equal(t, config.GetPayloadVersion(test.payloadTime), test.expectedMethod)
 		})
 	}
