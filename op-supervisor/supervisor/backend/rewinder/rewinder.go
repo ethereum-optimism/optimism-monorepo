@@ -76,8 +76,8 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	case superevents.RewindAllChainsEvent:
 		r.syncNodes.Range(func(chainID eth.ChainID, source syncNode) bool {
 			r.emitter.Emit(superevents.RewindChainEvent{
-				ChainID:  chainID,
-				BadBlock: x.BadBlock,
+				ChainID:        chainID,
+				BadBlockHeight: x.BadBlock.Number,
 			})
 			return true
 		})
@@ -91,20 +91,23 @@ func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source syncNode) {
 	r.syncNodes.Set(chainID, source)
 }
 
-// handleEventRewindChain handles the rewind chain event by attempting to rewind the local and cross databases
-// for the given chain for both safety level.
+// handleEventRewindChain is the main entrypoint into a rewind call.
+// It attempts to rewind the local and cross databases for the given chain for both safety levels.
+// It returns an error if the rewind fails for either safety level.
+// For each safety level, it will check between the bad block's parent and the finalized head
+// until it finds a match and then will rewind to that point.
 func (r *Rewinder) handleEventRewindChain(ev superevents.RewindChainEvent) error {
-	if err := r.attemptRewindSafe(ev.ChainID, ev.BadBlock); err != nil {
+	if err := r.attemptRewindSafe(ev.ChainID, ev.BadBlockHeight); err != nil {
 		return fmt.Errorf("failed to rewind safe chain %s: %w", ev.ChainID, err)
 	}
-	if err := r.attemptRewindUnsafe(ev.ChainID, ev.BadBlock); err != nil {
+	if err := r.attemptRewindUnsafe(ev.ChainID, ev.BadBlockHeight); err != nil {
 		return fmt.Errorf("failed to rewind unsafe chain %s: %w", ev.ChainID, err)
 	}
 	return nil
 }
 
 // attemptRewind attempts to rewind the local and cross databases for the given chain and controller
-func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlock eth.BlockID, ctrl rewindController) error {
+func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctrl rewindController) error {
 	// First get the finalized head
 	finalizedHead, err := r.db.Finalized(chainID)
 	if err != nil {
@@ -113,13 +116,14 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlock eth.BlockID, ctrl
 	}
 
 	// If the bad block's parent is before the finalized head then stop
-	if badBlock.Number-1 < finalizedHead.Number {
-		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", badBlock.Number-1, "finalized", finalizedHead.Number)
+	parentHeight := badBlockHeight - 1
+	if parentHeight < finalizedHead.Number {
+		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", parentHeight, "finalized", finalizedHead.Number)
 		return nil
 	}
 
 	// Find the latest common newHead between the parent and the finalized head
-	newHead, err := r.findLatestCommonAncestor(chainID, badBlock.Number-1, finalizedHead)
+	newHead, err := r.findLatestCommonAncestor(chainID, parentHeight, finalizedHead)
 	if err != nil {
 		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
 	}
@@ -152,8 +156,8 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlock eth.BlockID, ctrl
 }
 
 // attemptRewindUnsafe attempts to rewind the local and cross databases for unsafe blocks.
-func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlock eth.BlockID) error {
-	return r.attemptRewind(chainID, badBlock, rewindController{
+func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlockHeight uint64) error {
+	return r.attemptRewind(chainID, badBlockHeight, rewindController{
 		isSafe:      false,
 		getLocal:    r.db.LocalUnsafe,
 		getCross:    r.db.CrossUnsafe,
@@ -163,8 +167,8 @@ func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlock eth.BlockID
 }
 
 // attemptRewindSafe attempts to rewind the local and cross databases for safe blocks.
-func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlock eth.BlockID) error {
-	return r.attemptRewind(chainID, badBlock, rewindController{
+func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlockHeight uint64) error {
+	return r.attemptRewind(chainID, badBlockHeight, rewindController{
 		isSafe:      true,
 		getLocal:    derivedFromPairGetter(r.db.LocalSafe),
 		getCross:    derivedFromPairGetter(r.db.CrossSafe),

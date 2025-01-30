@@ -56,8 +56,8 @@ func TestRewindLocalUnsafe(t *testing.T) {
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-		ChainID:  chainID,
-		BadBlock: block2A.ID(),
+		ChainID:        chainID,
+		BadBlockHeight: block2A.Number,
 	}))
 
 	// Verify the reorg happened
@@ -125,8 +125,8 @@ func TestRewindCrossUnsafe(t *testing.T) {
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-		ChainID:  chainID,
-		BadBlock: block2A.ID(),
+		ChainID:        chainID,
+		BadBlockHeight: block2A.Number,
 	}))
 
 	// Verify we rewound to block1
@@ -182,8 +182,8 @@ func TestRewindLocalSafe(t *testing.T) {
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-		ChainID:  chainID,
-		BadBlock: block2A.ID(),
+		ChainID:        chainID,
+		BadBlockHeight: block2A.Number,
 	}))
 
 	// Verify the reorg happened
@@ -239,8 +239,8 @@ func TestRewindCrossSafe(t *testing.T) {
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-		ChainID:  chainID,
-		BadBlock: block2A.ID(),
+		ChainID:        chainID,
+		BadBlockHeight: block2A.Number,
 	}))
 
 	// Verify we rewound to block1
@@ -323,8 +323,8 @@ func TestRewindLongChain(t *testing.T) {
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
 	require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-		ChainID:  chainID,
-		BadBlock: blocks[96].ID(),
+		ChainID:        chainID,
+		BadBlockHeight: blocks[96].Number,
 	}))
 
 	// Verify we rewound to block 95
@@ -367,8 +367,8 @@ func TestRewindMultiChain(t *testing.T) {
 	// Rewind both chains
 	for chainID := range s.chains {
 		require.NoError(t, i.handleEventRewindChain(superevents.RewindChainEvent{
-			ChainID:  chainID,
-			BadBlock: block2A.ID(),
+			ChainID:        chainID,
+			BadBlockHeight: block2A.Number,
 		}))
 	}
 

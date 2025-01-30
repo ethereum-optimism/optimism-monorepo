@@ -138,8 +138,8 @@ func (ev InvalidateLocalSafeEvent) String() string {
 }
 
 type RewindChainEvent struct {
-	ChainID  eth.ChainID
-	BadBlock eth.BlockID
+	ChainID        eth.ChainID
+	BadBlockHeight uint64
 }
 
 func (ev RewindChainEvent) String() string {
