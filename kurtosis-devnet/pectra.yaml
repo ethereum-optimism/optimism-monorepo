@@ -56,9 +56,9 @@ optimism_package:
         builder_port: ""
       additional_services: []
   op_contract_deployer_params:
-    # image: {{ localDockerImage "op-deployer" }}
-    # l1_artifacts_locator: {{ localContractArtifacts "l1" }}
-    # l2_artifacts_locator: {{ localContractArtifacts "l2" }}
+    image: {{ localDockerImage "op-deployer" }}
+    l1_artifacts_locator: {{ localContractArtifacts "l1" }}
+    l2_artifacts_locator: {{ localContractArtifacts "l2" }}
     global_deploy_overrides:
       faultGameAbsolutePrestate: {{ localPrestate.Hashes.prestate }}
   global_log_level: "info"
