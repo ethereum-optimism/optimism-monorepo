@@ -203,7 +203,6 @@ func (su *SupervisorBackend) initResources(ctx context.Context, cfg *config.Conf
 		chainProcessor := processors.NewChainProcessor(su.sysContext, su.logger, chainID, logProcessor, su.chainDBs)
 		su.eventSys.Register(fmt.Sprintf("events-%s", chainID), chainProcessor, eventOpts)
 		su.chainProcessors.Set(chainID, chainProcessor)
-		// su.invalidator.RegisterChain(chainID, chainProcessor)
 	}
 	// initialize sync sources
 	for _, chainID := range chains {
