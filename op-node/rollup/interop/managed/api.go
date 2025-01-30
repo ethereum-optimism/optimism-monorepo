@@ -67,6 +67,10 @@ func (ib *InteropAPI) PendingOutputV0AtTimestamp(ctx context.Context, timestamp 
 	return ib.backend.PendingOutputV0AtTimestamp(ctx, timestamp)
 }
 
+func (ib *InteropAPI) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	return ib.backend.L2BlockRefByTimestamp(ctx, timestamp)
+}
+
 func (ib *InteropAPI) ProvideL1(ctx context.Context, nextL1 eth.BlockRef) error {
 	return ib.backend.ProvideL1(ctx, nextL1)
 }

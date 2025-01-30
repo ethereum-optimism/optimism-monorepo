@@ -15,6 +15,7 @@ import (
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
+	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
 )
@@ -32,7 +33,7 @@ func BuildDepositOnlyBlock(
 	l1Oracle l1.Oracle,
 	l2Oracle l2.Oracle,
 ) (common.Hash, eth.Bytes32, error) {
-	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, common.Hash(agreedL2OutputRoot))
+	engineBackend, err := l2.NewOracleBackedL2Chain(logger, l2Oracle, l1Oracle, l2Cfg, common.Hash(agreedL2OutputRoot), memorydb.New())
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to create oracle-backed L2 chain: %w", err)
 	}
@@ -69,6 +70,20 @@ func BuildDepositOnlyBlock(
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get payload: %w", err)
 	}
+
+	// Sync the engine's view so we can fetch the latest output root
+	result, err = l2Source.ForkchoiceUpdate(context.Background(), &eth.ForkchoiceState{
+		HeadBlockHash:      payload.ExecutionPayload.BlockHash,
+		SafeBlockHash:      payload.ExecutionPayload.BlockHash,
+		FinalizedBlockHash: payload.ExecutionPayload.BlockHash,
+	}, nil)
+	if err != nil {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", err)
+	}
+	if result.PayloadStatus.Status != eth.ExecutionValid {
+		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to update forkchoice state (no build): %w", eth.ForkchoiceUpdateErr(result.PayloadStatus))
+	}
+
 	blockHash, outputRoot, err := l2Source.L2OutputRoot(uint64(payload.ExecutionPayload.BlockNumber))
 	if err != nil {
 		return common.Hash{}, eth.Bytes32{}, fmt.Errorf("failed to get L2 output root: %w", err)
@@ -77,7 +92,7 @@ func BuildDepositOnlyBlock(
 }
 
 func getL2Output(logger log.Logger, cfg *rollup.Config, l2Cfg *params.ChainConfig, l2Oracle l2.Oracle, l1Oracle l1.Oracle, block *types.Block) (*eth.OutputV0, error) {
-	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block)
+	backend := l2.NewOracleBackedL2ChainFromHead(logger, l2Oracle, l1Oracle, l2Cfg, block, memorydb.New())
 	engine := l2.NewOracleEngine(cfg, logger, backend)
 	output, err := engine.L2OutputAtBlockHash(block.Hash())
 	if err != nil {
@@ -118,8 +133,8 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 	}
 	if cfg.IsHolocene(block.Time()) {
 		d, e := eip1559.DecodeHoloceneExtraData(block.Extra())
-		eip1559Params := eip1559.EncodeHolocene1559Params(d, e)
-		copy(attrs.EIP1559Params[:], eip1559Params)
+		eip1559Params := eth.Bytes8(eip1559.EncodeHolocene1559Params(d, e))
+		attrs.EIP1559Params = &eip1559Params
 	}
 	return attrs, nil
 }

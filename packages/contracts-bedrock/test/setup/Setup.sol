@@ -183,6 +183,14 @@ contract Setup {
         }
     }
 
+    /// @dev Skips tests when running against a forked production network using the superchain ops repo.
+    function skipIfOpsRepoTest(string memory message) public {
+        if (forkLive.useOpsRepo()) {
+            vm.skip(true);
+            console.log(string.concat("Skipping ops repo test: ", message));
+        }
+    }
+
     /// @dev Returns early when running against a forked production network. Useful for allowing a portion of a test
     ///      to run.
     function returnIfForkTest(string memory message) public view {

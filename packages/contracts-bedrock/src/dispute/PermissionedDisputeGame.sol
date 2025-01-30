@@ -31,6 +31,12 @@ contract PermissionedDisputeGame is FaultDisputeGame {
         _;
     }
 
+    /// @notice Semantic version.
+    /// @custom:semver 1.4.0
+    function version() public pure override returns (string memory) {
+        return "1.4.0";
+    }
+
     /// @param _params Parameters for creating a new FaultDisputeGame.
     /// @param _proposer Address that is allowed to create instances of this contract.
     /// @param _challenger Address that is allowed to challenge instances of this contract.

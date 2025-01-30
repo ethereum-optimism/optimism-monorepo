@@ -389,6 +389,11 @@ contract FaultDisputeGame_Test is FaultDisputeGame_Init {
         });
     }
 
+    /// @dev Tests that the game's version function returns a string.
+    function test_version_works() public view {
+        assertTrue(bytes(gameProxy.version()).length > 0);
+    }
+
     /// @dev Tests that the game's root claim is set correctly.
     function test_rootClaim_succeeds() public view {
         assertEq(gameProxy.rootClaim().raw(), ROOT_CLAIM.raw());

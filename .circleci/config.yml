@@ -606,6 +606,20 @@ jobs:
             docker pull $image_name || exit 1
             docker run $image_name <<parameters.op_component>> --version || exit 1
 
+  contracts-bedrock-frozen-code:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    steps:
+      - checkout
+      - attach_workspace: { at: "." }
+      - install-contracts-dependencies
+      - check-changed:
+          patterns: contracts-bedrock
+      - run:
+          name: Check frozen files
+          command: just check-frozen-code
+          working_directory: packages/contracts-bedrock
+
   contracts-bedrock-tests:
     machine: true
     resource_class: ethereum-optimism/latitude-1
@@ -683,19 +697,72 @@ jobs:
           name: Lint forge test names
           command: just lint-forge-tests-check-no-build
           working_directory: packages/contracts-bedrock
-      - when:
-          condition:
-            equal: ["<<parameters.test_command>>", "coverage"]
-          steps:
-            - codecov/upload:
-                disable_search: true
-                files: ./packages/contracts-bedrock/lcov.info
-                flags: contracts-bedrock-tests
       - save_cache:
           name: Save Go build cache
           key: golang-build-cache-contracts-bedrock-tests-{{ checksum "go.sum" }}
           paths:
             - "/root/.cache/go-build"
+      - notify-failures-on-develop
+
+  contracts-bedrock-coverage:
+    machine: true
+    resource_class: ethereum-optimism/latitude-1
+    parameters:
+      test_flags:
+        description: Additional flags to pass to the test command
+        type: string
+        default: ""
+      test_timeout:
+        description: Timeout for running tests
+        type: string
+        default: 15m
+      test_profile:
+        description: Profile to use for testing
+        type: string
+        default: ci
+    steps:
+      - checkout
+      - attach_workspace: { at: "." }
+      - install-contracts-dependencies
+      - check-changed:
+          patterns: contracts-bedrock,op-node
+      - run:
+          name: Print dependencies
+          command: just dep-status
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Print forge version
+          command: forge --version
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Pull artifacts
+          command: bash scripts/ops/pull-artifacts.sh
+          working_directory: packages/contracts-bedrock
+      - run:
+          name: Install lcov
+          command: |
+            sudo apt-get update
+            sudo apt-get install -y lcov
+      - run:
+          name: Run coverage tests
+          command: just coverage-lcov-all <<parameters.test_flags>>
+          environment:
+            FOUNDRY_PROFILE: <<parameters.test_profile>>
+            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
+          working_directory: packages/contracts-bedrock
+          no_output_timeout: <<parameters.test_timeout>>
+      - run:
+          name: Print failed test traces
+          command: just test-rerun
+          environment:
+            FOUNDRY_PROFILE: <<parameters.test_profile>>
+            ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
+          working_directory: packages/contracts-bedrock
+          when: on_fail
+      - codecov/upload:
+          disable_search: true
+          files: ./packages/contracts-bedrock/lcov-all.info
+          flags: contracts-bedrock-tests
       - notify-failures-on-develop
 
   contracts-bedrock-tests-upgrade:
@@ -733,6 +800,8 @@ jobs:
           name: Run tests
           command: just test-upgrade
           environment:
+            FOUNDRY_FUZZ_SEED: 42424242
+            FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
@@ -741,6 +810,8 @@ jobs:
           name: Print failed test traces
           command: just test-upgrade-rerun
           environment:
+            FOUNDRY_FUZZ_SEED: 42424242
+            FOUNDRY_FUZZ_RUNS: 1
             FOUNDRY_PROFILE: ci
             ETH_RPC_URL: https://ci-mainnet-l1-archive.optimism.io
           working_directory: packages/contracts-bedrock
@@ -901,6 +972,13 @@ jobs:
           command: make op-program-client
           working_directory: op-program
       - run:
+          name: build op-program-host
+          command: make op-program-host
+          working_directory: op-program
+      - run:
+          name: build cannon
+          command: make cannon
+      - run:
           name: run tests
           no_output_timeout: <<parameters.no_output_timeout>>
           command: |
@@ -1018,24 +1096,22 @@ jobs:
           command: |
             # Use the actual hash for tags (hash can be found by reading releases.json)
             PRESTATE_HASH=$(jq -r .pre ./op-program/bin/prestate-proof.json)
-            PRESTATE_MT_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-mt.json)
+            PRESTATE_MT64_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-mt64.json)
             PRESTATE_INTEROP_HASH=$(jq -r .pre ./op-program/bin/prestate-proof-interop.json)
 
             BRANCH_NAME=$(echo "<< pipeline.git.branch >>" | tr '/' '-')
-            echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
+            echo "Publishing ${PRESTATE_HASH}, ${PRESTATE_MT64_HASH}, ${PRESTATE_INTEROP_HASH} as ${BRANCH_NAME}"
             if [[ "" != "<< pipeline.git.branch >>" ]]
             then
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}"
               PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
             fi
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
-            gsutil cp ./op-program/bin/prestate-mt.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt.bin.gz"
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
       - notify-failures-on-develop:
@@ -1317,12 +1393,9 @@ workflows:
           test_list: git diff origin/develop...HEAD --name-only --diff-filter=AM -- './test/**/*.t.sol' | sed 's|packages/contracts-bedrock/||'
           test_timeout: 1h
           test_profile: ciheavy
-      - contracts-bedrock-tests:
+      - contracts-bedrock-coverage:
           # Generate coverage reports.
           name: contracts-bedrock-coverage
-          test_list: find test -name "*.t.sol"
-          test_command: coverage
-          test_flags: --report lcov
           test_timeout: 1h
           test_profile: cicoverage
           # need this requires to ensure that all FFI JSONs exist
@@ -1333,6 +1406,9 @@ workflows:
       - contracts-bedrock-checks:
           requires:
             - contracts-bedrock-build
+      - contracts-bedrock-frozen-code:
+          requires:
+            - contracts-bedrock-checks
       - diff-asterisc-bytecode
       - semgrep-scan:
           name: semgrep-scan-local
@@ -1365,6 +1441,7 @@ workflows:
           requires: ["contracts-bedrock-build"]
       - go-tests:
           packages: |
+            op-alt-da
             op-batcher
             op-chain-ops
             op-node
@@ -1624,7 +1701,7 @@ workflows:
           resource_class: ethereum-optimism/latitude-fps-1
           environment_overrides: |
             export OP_E2E_CANNON_ENABLED="true"
-            export PARALLEL=8
+            export PARALLEL=24
           packages: |
             op-e2e/faultproofs
           context:

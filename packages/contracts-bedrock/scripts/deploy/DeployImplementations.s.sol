@@ -5,10 +5,13 @@ import { Script } from "forge-std/Script.sol";
 
 import { LibString } from "@solady/utils/LibString.sol";
 
+// Libraries
+import { Chains } from "scripts/libraries/Chains.sol";
+
+// Interfaces
 import { IResourceMetering } from "interfaces/L1/IResourceMetering.sol";
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
-
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
@@ -753,6 +756,14 @@ contract DeployImplementations is Script {
     function deployMipsSingleton(DeployImplementationsInput _dii, DeployImplementationsOutput _dio) public virtual {
         uint256 mipsVersion = _dii.mipsVersion();
         IPreimageOracle preimageOracle = IPreimageOracle(address(_dio.preimageOracleSingleton()));
+
+        // We want to ensure that the OPCM for upgrade 13 is deployed with Mips64 on production networks.
+        if (mipsVersion == 1) {
+            if (block.chainid == Chains.Mainnet || block.chainid == Chains.Sepolia) {
+                revert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
+            }
+        }
+
         vm.broadcast(msg.sender);
         IMIPS singleton = IMIPS(
             DeployUtils.createDeterministic({

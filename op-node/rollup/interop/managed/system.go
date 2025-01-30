@@ -327,11 +327,7 @@ func (m *ManagedMode) ChainID(ctx context.Context) (eth.ChainID, error) {
 }
 
 func (m *ManagedMode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
-	num, err := m.cfg.TargetBlockNumber(timestamp)
-	if err != nil {
-		return nil, err
-	}
-	ref, err := m.l2.L2BlockRefByNumber(ctx, num)
+	ref, err := m.L2BlockRefByTimestamp(ctx, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -339,11 +335,7 @@ func (m *ManagedMode) OutputV0AtTimestamp(ctx context.Context, timestamp uint64)
 }
 
 func (m *ManagedMode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp uint64) (*eth.OutputV0, error) {
-	num, err := m.cfg.TargetBlockNumber(timestamp)
-	if err != nil {
-		return nil, err
-	}
-	ref, err := m.l2.L2BlockRefByNumber(ctx, num)
+	ref, err := m.L2BlockRefByTimestamp(ctx, timestamp)
 	if err != nil {
 		return nil, err
 	}
@@ -351,4 +343,12 @@ func (m *ManagedMode) PendingOutputV0AtTimestamp(ctx context.Context, timestamp 
 	// block contained in the optimistic block deposited transaction - https://github.com/ethereum-optimism/specs/pull/489
 	// For now, we use the output at timestamp as-if it didn't contain invalid messages for happy path testing.
 	return m.l2.OutputV0AtBlock(ctx, ref.Hash)
+}
+
+func (m *ManagedMode) L2BlockRefByTimestamp(ctx context.Context, timestamp uint64) (eth.L2BlockRef, error) {
+	num, err := m.cfg.TargetBlockNumber(timestamp)
+	if err != nil {
+		return eth.L2BlockRef{}, err
+	}
+	return m.l2.L2BlockRefByNumber(ctx, num)
 }
