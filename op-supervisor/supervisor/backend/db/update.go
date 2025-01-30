@@ -168,15 +168,6 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	if !ok {
 		return fmt.Errorf("cannot find local-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
 	}
-	crossSafeDB, ok := db.crossDBs.Get(chainID)
-	if !ok {
-		return fmt.Errorf("cannot find cross-safe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
-	}
-
-	// Invalidate the cross-safe data.
-	if err := crossSafeDB.RewindAndInvalidate(candidate); err != nil {
-		return fmt.Errorf("failed to invalidate entry in cross-safe DB: %w", err)
-	}
 
 	// Now invalidate the local-safe data.
 	// We insert a marker, so we don't build on top of the invalidated block, until it is replaced.
@@ -205,8 +196,6 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	return nil
 }
 
-// }
-
 // RewindLocalUnsafe removes all local-unsafe blocks after the given new head.
 func (db *ChainsDB) RewindLocalUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	// Get database to invalidate data in.
@@ -229,6 +218,7 @@ func (db *ChainsDB) RewindLocalUnsafe(chainID eth.ChainID, newHead types.BlockSe
 	return nil
 }
 
+// RewindCrossUnsafe removes all cross-unsafe blocks after the given new head.
 func (db *ChainsDB) RewindCrossUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	crossDB, ok := db.crossUnsafe.Get(chainID)
 	if !ok {
@@ -240,12 +230,12 @@ func (db *ChainsDB) RewindCrossUnsafe(chainID eth.ChainID, newHead types.BlockSe
 
 	if crossDB.Value.Number > newHead.Number {
 		crossDB.Value = newHead
-		db.logger.Info("rewound cross-unsafe", "chain", chainID, "newHead", newHead)
 	}
 
 	return nil
 }
 
+// RewindLocalSafe removes all local-safe blocks after the given new head.
 func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	localSafeDB, ok := db.localDBs.Get(chainID)
 	if !ok {
@@ -267,6 +257,7 @@ func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal
 	return nil
 }
 
+// RewindCrossSafe removes all cross-safe blocks after the given new head.
 func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	crossSafeDB, ok := db.crossDBs.Get(chainID)
 	if !ok {
