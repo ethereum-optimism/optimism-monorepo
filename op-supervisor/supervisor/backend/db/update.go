@@ -207,7 +207,7 @@ func (db *ChainsDB) RewindLocalUnsafe(chainID eth.ChainID, newHead types.BlockSe
 	// If the new head is before the current head then rewind it
 	currentHead, ok := eventsDB.LatestSealedBlock()
 	if !ok {
-		return fmt.Errorf("cannot find local-unsafe head of chain %s: %w", chainID, types.ErrUnknownChain)
+		return fmt.Errorf("cannot find local-unsafe head of chain %s: %w", chainID, types.ErrFuture)
 	}
 	if newHead.Number <= currentHead.Number {
 		if err := eventsDB.Rewind(newHead.ID()); err != nil {
@@ -245,7 +245,7 @@ func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal
 	// If the new head is before the current head then rewind it
 	currentHeadPair, err := localSafeDB.Latest()
 	if err != nil {
-		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+		return fmt.Errorf("cannot find local-safe head of chain %s: %w", chainID, err)
 	}
 	currentHead := currentHeadPair.Derived
 	if newHead.Number <= currentHead.Number {
@@ -267,7 +267,7 @@ func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, newHead types.BlockSeal
 	// If the new head is before the current head then rewind it
 	currentHeadPair, err := crossSafeDB.Latest()
 	if err != nil {
-		return fmt.Errorf("cannot find cross-safe head of chain %s: %w", chainID, types.ErrUnknownChain)
+		return fmt.Errorf("cannot find cross-safe head of chain %s: %w", chainID, err)
 	}
 	currentHead := currentHeadPair.Derived
 	if newHead.Number <= currentHead.Number {
