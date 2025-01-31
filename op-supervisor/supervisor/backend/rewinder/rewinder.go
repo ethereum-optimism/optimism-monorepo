@@ -2,6 +2,7 @@ package rewinder
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -23,6 +24,8 @@ type l2Node interface {
 
 type rewinderDB interface {
 	LastDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
+	PreviousDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
+	CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
 
 	LocalUnsafe(eth.ChainID) (types.BlockSeal, error)
 	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
@@ -81,7 +84,7 @@ func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source l2Node) {
 func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 	r.syncNodes.Range(func(chainID eth.ChainID, source l2Node) bool {
 		if err := r.rewindL1ChainIfReorged(chainID, ev.IncomingBlock); err != nil {
-			r.log.Error("failed to rewind L1 event for chain %s: %w", chainID, err)
+			r.log.Error("failed to rewind L1 data:", "chain", chainID, "err", err)
 		}
 		return true
 	})
@@ -137,25 +140,74 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
 // rewindL1ChainIfReorged rewinds the L1 chain for the given chain ID if a reorg is detected
 // It checks the local-safe head against the canonical L1 block at the same height
 func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockID) error {
-	// First check CrossSafe DB for reorg
-	foundReorg, err := r.checkCrossSafeForReorg(chainID, newTip)
+	// Get the current CrossSafe head and its L1 block
+	crossSafe, err := r.db.CrossSafe(chainID)
 	if err != nil {
-		return fmt.Errorf("failed to check cross-safe for reorg for chain %s: %w", chainID, err)
+		return fmt.Errorf("failed to get cross safe for chain %s: %w", chainID, err)
 	}
-	if !foundReorg {
+	crossSafeL1, err := r.db.CrossDerivedFromBlockRef(chainID, crossSafe.Derived.ID())
+	if err != nil {
+		return fmt.Errorf("failed to get cross safe L1 block for chain %s: %w", chainID, err)
+	}
+
+	// If we're still on the canonical chain, nothing to do
+	if crossSafeL1.Hash == newTip.Hash {
 		return nil
 	}
 
-	// We have a reorg so find the latest common L1 block and its last derived L2 block
+	// Get the finalized block as our lower bound
 	finalized, err := r.db.Finalized(chainID)
 	if err != nil {
-		return fmt.Errorf("failed to get finalized for chain %s: %w", chainID, err)
+		return fmt.Errorf("failed to get finalized block for chain %s: %w", chainID, err)
 	}
-	commonAncestor, err := r.findLatestCommonAncestorL1(chainID, newTip.Number, finalized)
+	finalizedL1, err := r.db.CrossDerivedFromBlockRef(chainID, finalized.ID())
 	if err != nil {
-		return fmt.Errorf("failed to find latest common ancestor for chain %s: %w", chainID, err)
+		return fmt.Errorf("failed to get finalized L1 block for chain %s: %w", chainID, err)
 	}
-	crossSafeDerived, err := r.db.LastDerivedFrom(chainID, commonAncestor.ID())
+
+	// Find the common ancestor by walking back through L1 blocks
+	commonL1Ancestor := finalizedL1.ID()
+	currentL1 := crossSafeL1.ID()
+	for currentL1.Number >= finalizedL1.Number {
+		// Get the canonical L1 block at this height from the node
+		remoteL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), currentL1.Number)
+		if err != nil {
+			return fmt.Errorf("failed to get L1 block at height %d: %w", currentL1.Number, err)
+		}
+
+		// If hashes match, we found the common ancestor
+		if remoteL1.Hash == currentL1.Hash {
+			commonL1Ancestor = currentL1
+			break
+		}
+
+		// Get the previous L1 block from our DB
+		prevDerivedFrom, err := r.db.PreviousDerivedFrom(chainID, currentL1)
+		if err != nil {
+			// If we hit the first block, use it as common ancestor
+			if errors.Is(err, types.ErrPreviousToFirst) {
+				// Still need to verify this block is canonical
+				remoteFirst, err := r.l1Node.L1BlockRefByNumber(context.Background(), currentL1.Number)
+				if err != nil {
+					return fmt.Errorf("failed to get first L1 block: %w", err)
+				}
+				if remoteFirst.Hash == currentL1.Hash {
+					commonL1Ancestor = currentL1
+				} else {
+					// First block isn't canonical, use finalized
+					commonL1Ancestor = finalizedL1.ID()
+				}
+				break
+			}
+			return fmt.Errorf("failed to get previous L1 block: %w", err)
+		}
+
+		// Move to the parent
+		currentL1 = prevDerivedFrom.ID()
+	}
+
+	// Get the last L2 block derived from the common ancestor
+	crossSafeDerived, err := r.db.LastDerivedFrom(chainID, commonL1Ancestor)
 	if err != nil {
 		return fmt.Errorf("failed to get derived from for chain %s: %w", chainID, err)
 	}
@@ -176,6 +228,11 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		return fmt.Errorf("failed to rewind local-safe for chain %s: %w", chainID, err)
 	}
 
+	// Rewind logs DB to match
+	if err := r.db.RewindLogs(chainID, localSafeDerived); err != nil {
+		return fmt.Errorf("failed to rewind logs for chain %s: %w", chainID, err)
+	}
+
 	// Emit rewound event for sync node
 	r.emitter.Emit(superevents.ChainRewoundEvent{
 		ChainID: chainID,
@@ -183,79 +240,20 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	return nil
 }
 
-// checkCrossSafeForReorg checks if the CrossSafe DB needs to be rewound due to an L1 reorg
-// It returns whether a reorg was found and the common ancestor block if one was found
-func (r *Rewinder) checkCrossSafeForReorg(chainID eth.ChainID, newTip eth.BlockID) (bool, error) {
-	// Get the L1 block of the cross-safe head
-	crossSafe, err := r.db.CrossSafe(chainID)
-	if err != nil {
-		return false, fmt.Errorf("failed to get cross safe for chain %s: %w", chainID, err)
-	}
-	crossSafeL1 := crossSafe.DerivedFrom.ID()
-
-	// Get the L1 block that's currently at our cross-safe height
-	candidateBlock := newTip
-	if newTip.Number != crossSafeL1.Number {
-		candidateBlockRef, err := r.l1Node.L1BlockRefByNumber(context.Background(), crossSafeL1.Number)
-		if err != nil {
-			return false, fmt.Errorf("failed to get L1 block at cross-safe height for chain %s: %w", chainID, err)
-		}
-		candidateBlock = candidateBlockRef.ID()
-	}
-
-	// If the hashes match then we're still on the canonical chain and don't need to rewind
-	if candidateBlock.Hash == crossSafeL1.Hash {
-		return false, nil
-	}
-
-	return true, nil
-}
-
 // checkLocalSafeForReorg checks if the LocalSafe DB needs to be rewound due to an L1 reorg
 // It takes the common ancestor found during the CrossSafe reorg check as a starting point
-func (r *Rewinder) checkLocalSafeForReorg(chainID eth.ChainID, commonAncestor types.BlockSeal) (types.BlockSeal, error) {
+func (r *Rewinder) checkLocalSafeForReorg(chainID eth.ChainID, commonL2Ancestor types.BlockSeal) (types.BlockSeal, error) {
 	// Get the L1 block of the local-safe head
 	localSafe, err := r.db.LocalSafe(chainID)
 	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("failed to get local safe for chain %s: %w", chainID, err)
-	}
-
-	// Get the last L2 block derived from the common ancestor
-	derived, err := r.db.LastDerivedFrom(chainID, commonAncestor.ID())
-	if err != nil {
-		return types.BlockSeal{}, fmt.Errorf("failed to get derived from for chain %s: %w", chainID, err)
+		return types.BlockSeal{}, fmt.Errorf("failed to get local safe: %w", err)
 	}
 
 	// If the local-safe head is ahead of the derived block, we need to rewind to the derived block
-	if localSafe.Derived.Number > derived.Number {
-		return derived, nil
+	if localSafe.Derived.Number > commonL2Ancestor.Number {
+		return commonL2Ancestor, nil
 	}
 
 	// Otherwise we can keep the local-safe head
 	return localSafe.Derived, nil
-}
-
-func (r *Rewinder) findLatestCommonAncestorL1(chainID eth.ChainID, maxBlock uint64, minBlock types.BlockSeal) (types.BlockSeal, error) {
-	r.log.Info("searching for L1 common ancestor", "chain", chainID, "maxBlock", maxBlock, "minBlock", minBlock.Number)
-	minHeight := int64(minBlock.Number)
-	for height := int64(maxBlock); height >= minHeight; height-- {
-		// Load the L1 block at this height from the node and the local db
-		remoteRef, err := r.l1Node.L1BlockRefByNumber(context.Background(), uint64(height))
-		if err != nil {
-			return types.BlockSeal{}, err
-		}
-		localRef, err := r.db.FindSealedBlock(chainID, uint64(height))
-		if err != nil {
-			return types.BlockSeal{}, err
-		}
-
-		// If the block is the same then we've found the common ancestor
-		if localRef.Hash == remoteRef.Hash {
-			return localRef, nil
-		}
-	}
-
-	// If we didn't find a common ancestor then return the min block
-	r.log.Warn("no common L1 ancestor found for chain %s, rewinding to the minimum block", chainID)
-	return minBlock, nil
 }
