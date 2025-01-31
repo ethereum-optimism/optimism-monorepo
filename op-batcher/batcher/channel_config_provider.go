@@ -77,7 +77,7 @@ func (dec *DynamicEthChannelConfig) ChannelConfig(isPectra bool) ChannelConfig {
 		computeSingleBlobTxCost(numBlobsPerTx, baseFee, tipCap, blobBaseFee)
 
 	// Now we compare the absolute cost per tx divided by the number of bytes per tx:
-	blobDataBytesPerTx := big.NewInt(eth.MaxBlobDataSize * int64(dec.blobConfig.TargetNumFrames))
+	blobDataBytesPerTx := big.NewInt(eth.MaxBlobDataSize * int64(numBlobsPerTx))
 
 	// The following will compare blobCost(a)/blobDataBytes(x) > calldataCost(b)/calldataBytes(y):
 	ay := new(big.Int).Mul(blobCost, big.NewInt(int64(calldataBytesPerTx)))

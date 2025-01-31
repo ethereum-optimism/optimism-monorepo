@@ -83,14 +83,14 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 			name:        "close-cheaper-blobs-l1-pectra",
 			tipCap:      1e3,
 			baseFee:     1e6,
-			blobBaseFee: 390e5, // because of amortized fixed 21000 tx cost, blobs are still cheaper here...
+			blobBaseFee: 398e5, // this value just under the equilibrium point for 3 blobs
 			isL1Pectra:  true,
 		},
 		{
 			name:         "close-cheaper-calldata-l1-pectra",
 			tipCap:       1e3,
 			baseFee:      1e6,
-			blobBaseFee:  410e5, // ...but then increasing the fee just a tiny bit makes blobs more expensive
+			blobBaseFee:  399e5, // this value just over the equilibrium point for 3 blobs
 			wantCalldata: true,
 			isL1Pectra:   true,
 		},
