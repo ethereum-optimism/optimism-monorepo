@@ -586,6 +586,145 @@ func TestRewindL2WalkBack(t *testing.T) {
 	s.verifyHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
 }
 
+// TestRewindL1PastCrossSafe tests that when an L1 reorg occurs at a height higher than
+// the CrossSafe head, only LocalSafe is rewound and CrossSafe remains untouched.
+func TestRewindL1PastCrossSafe(t *testing.T) {
+	s := setupTestChain(t)
+	defer s.Close()
+
+	chainID := eth.ChainID{1}
+	chain := s.chains[chainID]
+
+	// Create blocks: genesis -> block1 -> block2 -> block3A/3B
+	genesis := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1110"),
+		Number:         0,
+		ParentHash:     common.Hash{},
+		Time:           1000,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa0"), Number: 0},
+		SequenceNumber: 0,
+	}
+	block1 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1111"),
+		Number:         1,
+		ParentHash:     genesis.Hash,
+		Time:           1001,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa1"), Number: 1},
+		SequenceNumber: 1,
+	}
+	block2 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1112"),
+		Number:         2,
+		ParentHash:     block1.Hash,
+		Time:           1002,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa2"), Number: 2},
+		SequenceNumber: 2,
+	}
+	block3A := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1113a"),
+		Number:         3,
+		ParentHash:     block2.Hash,
+		Time:           1003,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa3"), Number: 3},
+		SequenceNumber: 3,
+	}
+	block3B := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1113b"),
+		Number:         3,
+		ParentHash:     block2.Hash,
+		Time:           1003,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xbbb3"), Number: 3},
+		SequenceNumber: 3,
+	}
+
+	// Setup sync node with all blocks
+	chain.setupSyncNodeBlocks(genesis, block1, block2, block3A, block3B)
+
+	// Setup L1 blocks - initially we have the A chain
+	l1Genesis := eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   899,
+	}
+	l1Block1 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa1"),
+		Number:     1,
+		Time:       900,
+		ParentHash: l1Genesis.Hash,
+	}
+	l1Block2 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa2"),
+		Number:     2,
+		Time:       901,
+		ParentHash: l1Block1.Hash,
+	}
+	l1Block3A := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa3"),
+		Number:     3,
+		Time:       902,
+		ParentHash: l1Block2.Hash,
+	}
+
+	// Setup the L1 node with initial chain
+	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
+	chain.l1Node.blocks[l1Block1.Number] = l1Block1
+	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	chain.l1Node.blocks[l1Block3A.Number] = l1Block3A
+
+	// Seal all blocks
+	s.sealBlocks(chainID, genesis, block1, block2, block3A)
+
+	// Create rewinder with all dependencies
+	i := New(s.logger, s.chainsDB, chain.l1Node)
+	i.AttachEmitter(&mockEmitter{})
+
+	// Make genesis block derived from l1Genesis and make it safe
+	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+	// Set l1Genesis as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Genesis,
+	})
+
+	// Make block1 local-safe and cross-safe
+	s.makeBlockSafe(chainID, block1, l1Block1, true)
+
+	// Make block2 local-safe and cross-safe
+	s.makeBlockSafe(chainID, block2, l1Block2, true)
+
+	// Make block3A only local-safe (not cross-safe)
+	s.makeBlockSafe(chainID, block3A, l1Block3A, false)
+
+	// Verify initial state
+	s.verifyHead(chainID, block3A.ID(), "should have set block3A as latest sealed block")
+	s.verifyCrossSafe(chainID, block2, "block2 should be cross-safe")
+
+	// Now simulate L1 reorg by replacing l1Block3A with l1Block3B
+	l1Block3B := eth.BlockRef{
+		Hash:       common.HexToHash("0xbbb3"),
+		Number:     3,
+		Time:       902,
+		ParentHash: l1Block2.Hash,
+	}
+	chain.l1Node.blocks[l1Block3B.Number] = l1Block3B
+
+	// Trigger L1 reorg
+	i.OnEvent(superevents.RewindL1Event{
+		IncomingBlock: l1Block3B.ID(),
+	})
+
+	// Verify we rewound LocalSafe to block2 since it's derived from l1Block2 which is still canonical
+	s.verifyHead(chainID, block2.ID(), "should have rewound to block2")
+	// Verify CrossSafe is still at block2 and wasn't rewound
+	s.verifyCrossSafe(chainID, block2, "block2 should still be cross-safe")
+
+	// Add block3B
+	s.sealBlocks(chainID, block3B)
+
+	// Verify we're now on the new chain
+	s.verifyHead(chainID, block3B.ID(), "should be on block3B")
+}
+
 type testSetup struct {
 	t        *testing.T
 	logger   log.Logger
