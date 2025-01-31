@@ -1507,6 +1507,8 @@ workflows:
                 - op-supervisor
                 - cannon
       - cannon-prestate-quick
+      - publish-cannon-prestates:
+          requires: cannon-prestate-quick
       - sanitize-op-program:
           requires:
             - cannon-prestate-quick
