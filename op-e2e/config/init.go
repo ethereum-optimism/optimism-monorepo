@@ -48,10 +48,11 @@ const (
 type AllocType string
 
 const (
-	AllocTypeStandard AllocType = "standard"
-	AllocTypeAltDA    AllocType = "alt-da"
-	AllocTypeL2OO     AllocType = "l2oo"
-	AllocTypeMTCannon AllocType = "mt-cannon"
+	AllocTypeStandard     AllocType = "standard"
+	AllocTypeAltDA        AllocType = "alt-da"
+	AllocTypeAltDAGeneric AllocType = "alt-da-generic"
+	AllocTypeL2OO         AllocType = "l2oo"
+	AllocTypeMTCannon     AllocType = "mt-cannon"
 
 	DefaultAllocType = AllocTypeStandard
 )
@@ -65,14 +66,14 @@ func (a AllocType) Check() error {
 
 func (a AllocType) UsesProofs() bool {
 	switch a {
-	case AllocTypeStandard, AllocTypeMTCannon, AllocTypeAltDA:
+	case AllocTypeStandard, AllocTypeMTCannon, AllocTypeAltDA, AllocTypeAltDAGeneric:
 		return true
 	default:
 		return false
 	}
 }
 
-var allocTypes = []AllocType{AllocTypeStandard, AllocTypeAltDA, AllocTypeL2OO, AllocTypeMTCannon}
+var allocTypes = []AllocType{AllocTypeStandard, AllocTypeAltDA, AllocTypeAltDAGeneric, AllocTypeL2OO, AllocTypeMTCannon}
 
 var (
 	// All of the following variables are set in the init function

@@ -102,8 +102,12 @@ func (c CLIConfig) Check() error {
 	return nil
 }
 
-func (c CLIConfig) NewDAClient() *DAClient {
-	return &DAClient{url: c.DAServerURL, verify: c.VerifyOnRead, precompute: !c.GenericDA, getTimeout: c.GetTimeout, putTimeout: c.PutTimeout}
+func (c CLIConfig) NewDAClient() (*DAClient, error) {
+	err := c.Check()
+	if err != nil {
+		return nil, err
+	}
+	return &DAClient{url: c.DAServerURL, verify: c.VerifyOnRead, precompute: !c.GenericDA, getTimeout: c.GetTimeout, putTimeout: c.PutTimeout}, nil
 }
 
 func ReadCLIConfig(c *cli.Context) CLIConfig {

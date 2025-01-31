@@ -1117,7 +1117,7 @@ func (d *L1Deployments) Check(deployConfig *DeployConfig) error {
 			(name == "OptimismPortal" || name == "L2OutputOracle" || name == "L2OutputOracleProxy") {
 			continue
 		}
-		if !deployConfig.UseAltDA &&
+		if (!deployConfig.UseAltDA || deployConfig.DACommitmentType == altda.GenericCommitmentString) &&
 			(name == "DataAvailabilityChallenge" ||
 				name == "DataAvailabilityChallengeProxy") {
 			continue

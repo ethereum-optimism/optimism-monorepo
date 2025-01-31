@@ -2,7 +2,9 @@ package altda
 
 import (
 	"context"
+	"encoding/binary"
 	"errors"
+	"fmt"
 	"io"
 	"net/http"
 	"sync"
@@ -16,22 +18,53 @@ import (
 )
 
 // MockDAClient mocks a DA storage provider to avoid running an HTTP DA server
-// in unit tests.
+// in unit tests. MockDAClient is goroutine-safe.
 type MockDAClient struct {
-	CommitmentType CommitmentType
-	store          ethdb.KeyValueStore
-	log            log.Logger
+	mu                     sync.Mutex
+	CommitmentType         CommitmentType
+	GenericCommitmentCount uint16 // next generic commitment (use counting commitment instead of hash to help with testing)
+	store                  ethdb.KeyValueStore
+	StoreCount             int
+	log                    log.Logger
+	dropEveryNthPut        uint // 0 means nothing gets dropped, 1 means every put errors, etc.
+	setInputRequestCount   uint // number of put requests received, irrespective of whether they were successful
 }
 
 func NewMockDAClient(log log.Logger) *MockDAClient {
 	return &MockDAClient{
 		CommitmentType: Keccak256CommitmentType,
 		store:          memorydb.New(),
+		StoreCount:     0,
 		log:            log,
 	}
 }
 
+// NewCountingGenericCommitmentMockDAClient creates a MockDAClient that uses counting commitments.
+// It's commitments are big-endian encoded uint16s of 0, 1, 2, etc. instead of actual hash or altda-layer related commitments.
+// Used for testing to make sure we receive commitments in order following Holocene strict ordering rules.
+func NewCountingGenericCommitmentMockDAClient(log log.Logger) *MockDAClient {
+	return &MockDAClient{
+		CommitmentType:         GenericCommitmentType,
+		GenericCommitmentCount: 0,
+		store:                  memorydb.New(),
+		StoreCount:             0,
+		log:                    log,
+	}
+}
+
+// Fakes a da server that drops/errors on every Nth put request.
+// Useful for testing the batcher's error handling.
+// 0 means nothing gets dropped, 1 means every put errors, etc.
+func (c *MockDAClient) DropEveryNthPut(n uint) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.dropEveryNthPut = n
+}
+
 func (c *MockDAClient) GetInput(ctx context.Context, key CommitmentData) ([]byte, error) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log.Debug("Getting input", "key", key)
 	bytes, err := c.store.Get(key.Encode())
 	if err != nil {
 		return nil, ErrNotFound
@@ -40,12 +73,42 @@ func (c *MockDAClient) GetInput(ctx context.Context, key CommitmentData) ([]byte
 }
 
 func (c *MockDAClient) SetInput(ctx context.Context, data []byte) (CommitmentData, error) {
-	key := NewCommitmentData(c.CommitmentType, data)
-	return key, c.store.Put(key.Encode(), data)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.setInputRequestCount++
+	var key CommitmentData
+	if c.CommitmentType == GenericCommitmentType {
+		countCommitment := make([]byte, 2)
+		binary.BigEndian.PutUint16(countCommitment, c.GenericCommitmentCount)
+		key = NewGenericCommitment(countCommitment)
+	} else {
+		key = NewKeccak256Commitment(data)
+	}
+	var action string = "put"
+	if c.dropEveryNthPut > 0 && c.setInputRequestCount%c.dropEveryNthPut == 0 {
+		action = "dropped"
+	}
+	c.log.Debug("Setting input", "action", action, "key", key, "data", fmt.Sprintf("%x", data))
+	if action == "dropped" {
+		return nil, errors.New("put dropped")
+	}
+	err := c.store.Put(key.Encode(), data)
+	if err == nil {
+		c.GenericCommitmentCount++
+		c.StoreCount++
+	}
+	return key, err
 }
 
 func (c *MockDAClient) DeleteData(key []byte) error {
-	return c.store.Delete(key)
+	c.mu.Lock()
+	defer c.mu.Unlock()
+	c.log.Debug("Deleting data", "key", key)
+	err := c.store.Delete(key)
+	if err == nil {
+		c.StoreCount--
+	}
+	return err
 }
 
 type DAErrFaker struct {
@@ -111,6 +174,12 @@ type FakeDAServer struct {
 	*DAServer
 	putRequestLatency time.Duration
 	getRequestLatency time.Duration
+	// outOfOrderResponses is a flag that, when set, causes the server to send responses out of order.
+	// It will only respond to pairs of request, returning the second response first, and waiting 1 second before sending the first response.
+	// This is used to test the batcher's ability to handle out of order responses, while still ensuring holocene's strict ordering rules.
+	outOfOrderResponses bool
+	oooMu               sync.Mutex
+	oooWaitChan         chan struct{}
 }
 
 func NewFakeDAServer(host string, port int, log log.Logger) *FakeDAServer {
@@ -130,6 +199,21 @@ func (s *FakeDAServer) HandleGet(w http.ResponseWriter, r *http.Request) {
 
 func (s *FakeDAServer) HandlePut(w http.ResponseWriter, r *http.Request) {
 	time.Sleep(s.putRequestLatency)
+	if s.outOfOrderResponses {
+		s.oooMu.Lock()
+		if s.oooWaitChan == nil {
+			s.log.Info("Received put request while in out-of-order mode, waiting for next request")
+			s.oooWaitChan = make(chan struct{})
+			s.oooMu.Unlock()
+			<-s.oooWaitChan
+			time.Sleep(1 * time.Second)
+		} else {
+			s.log.Info("Received second put request in out-of-order mode, responding to this one first, then the first one")
+			close(s.oooWaitChan)
+			s.oooWaitChan = nil
+			s.oooMu.Unlock()
+		}
+	}
 	s.DAServer.HandlePut(w, r)
 }
 
@@ -147,11 +231,21 @@ func (s *FakeDAServer) Start() error {
 }
 
 func (s *FakeDAServer) SetPutRequestLatency(latency time.Duration) {
+	s.log.Info("Setting put request latency", "latency", latency)
 	s.putRequestLatency = latency
 }
 
 func (s *FakeDAServer) SetGetRequestLatency(latency time.Duration) {
+	s.log.Info("Setting get request latency", "latency", latency)
 	s.getRequestLatency = latency
+}
+
+// When ooo=true, causes the server to send responses out of order.
+// It will only respond to pairs of request, returning the second response first, and waiting 1 second before sending the first response.
+// This is used to test the batcher's ability to handle out of order responses, while still ensuring holocene's strict ordering rules.
+func (s *FakeDAServer) SetOutOfOrderResponses(ooo bool) {
+	s.log.Info("Setting out of order responses", "ooo", ooo)
+	s.outOfOrderResponses = ooo
 }
 
 type MemStore struct {

@@ -6,6 +6,7 @@ import (
 	"io"
 	"math"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
@@ -53,7 +54,7 @@ type channelManager struct {
 	currentChannel *channel
 	// channels to read frame data from, for writing batches onchain
 	channelQueue []*channel
-	// used to lookup channels by tx ID upon tx success / failure
+	// used to lookup channels by tx ID upon altda and tx success / failure
 	txChannels map[string]*channel
 }
 
@@ -88,6 +89,34 @@ func (s *channelManager) Clear(l1OriginLastSubmittedChannel eth.BlockID) {
 
 func (s *channelManager) pendingBlocks() int {
 	return s.blocks.Len() - s.blockCursor
+}
+
+func (s *channelManager) CacheAltDACommitment(txData txData, commitment altda.CommitmentData) {
+	if len(txData.frames) == 0 {
+		panic("no frames in txData")
+	}
+	firstFrame, lastFrame := txData.frames[0], txData.frames[len(txData.frames)-1]
+	if firstFrame.id.chID != lastFrame.id.chID {
+		// The current implementation caches commitments inside channels,
+		// so it assumes that a txData only contains frames from a single channel.
+		// If this ever panics (hopefully in tests...) it shouldn't be too hard to fix.
+		panic("commitment spans multiple channels")
+	}
+	if channel, ok := s.txChannels[txData.ID().String()]; ok {
+		channel.CacheAltDACommitment(txData, commitment)
+	} else {
+		s.log.Warn("Trying to cache altda commitment for txData from unknown channel. Probably some state reset (from reorg?) happened.", "id", txData.ID())
+	}
+}
+
+func (s *channelManager) AltDASubmissionFailed(_id txID) {
+	id := _id.String()
+	if channel, ok := s.txChannels[id]; ok {
+		delete(s.txChannels, id)
+		channel.AltDASubmissionFailed(id)
+	} else {
+		s.log.Warn("transaction from unknown channel marked as failed", "id", id)
+	}
 }
 
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
@@ -181,6 +210,20 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 	return tx, nil
 }
 
+func (s *channelManager) getNextAltDACommitment() (txData, bool) {
+	for _, channel := range s.channelQueue {
+		// if all frames have already been sent to altda, skip this channel
+		if int(channel.altDAFrameCursor) == channel.channelBuilder.TotalFrames() {
+			continue
+		}
+		if txData, ok := channel.NextAltDACommitment(); ok {
+			return txData, true
+		}
+		break // We need to send the commitments in order, so we can't skip to the next channel
+	}
+	return emptyTxData, false
+}
+
 // TxData returns the next tx data that should be submitted to L1.
 //
 // If the current channel is
@@ -191,6 +234,10 @@ func (s *channelManager) nextTxData(channel *channel) (txData, error) {
 // When switching DA type, the channelManager state will be rebuilt
 // with a new ChannelConfig.
 func (s *channelManager) TxData(l1Head eth.BlockID) (txData, error) {
+	// if any altda commitment is ready, return it
+	if txdata, ok := s.getNextAltDACommitment(); ok {
+		return txdata, nil
+	}
 	channel, err := s.getReadyChannel(l1Head)
 	if err != nil {
 		return emptyTxData, err
@@ -248,7 +295,7 @@ func (s *channelManager) getReadyChannel(l1Head eth.BlockID) (*channel, error) {
 	}
 
 	dataPending := firstWithTxData != nil
-	s.log.Debug("Requested tx data", "l1Head", l1Head, "txdata_pending", dataPending, "blocks_pending", s.blocks.Len())
+	s.log.Debug("Requested tx data", "l1Head", l1Head, "txdata_pending", dataPending, "blocks_pending", s.pendingBlocks())
 
 	// Short circuit if there is pending tx data or the channel manager is closed
 	if dataPending {

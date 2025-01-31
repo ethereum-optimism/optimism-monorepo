@@ -79,6 +79,10 @@ type RollupClient interface {
 	SyncStatus(ctx context.Context) (*eth.SyncStatus, error)
 }
 
+type AltDAClient interface {
+	SetInput(ctx context.Context, data []byte) (altda.CommitmentData, error)
+}
+
 // DriverSetup is the collection of input/output interfaces and configuration that the driver operates on.
 type DriverSetup struct {
 	Log               log.Logger
@@ -89,7 +93,7 @@ type DriverSetup struct {
 	L1Client          L1Client
 	EndpointProvider  dial.L2EndpointProvider
 	ChannelConfig     ChannelConfigProvider
-	AltDA             *altda.DAClient
+	AltDA             AltDAClient
 	ChannelOutFactory ChannelOutFactory
 }
 
@@ -707,6 +711,12 @@ func (l *BatchSubmitter) publishTxToL1(ctx context.Context, queue *txmgr.Queue[t
 	}
 	l.Metr.RecordLatestL1Block(l1tip)
 
+	// In AltDA mode, before pulling data out of the state, we make sure
+	// that the daGroup has not reached the maximum number of goroutines.
+	// This is to prevent blocking the main event loop when submitting the data to the DA Provider.
+	if l.Config.UseAltDA && !daGroup.TryGo(func() error { return nil }) {
+		return io.EOF
+	}
 	// Collect next transaction data. This pulls data out of the channel, so we need to make sure
 	// to put it back if ever da or txmgr requests fail, by calling l.recordFailedDARequest/recordFailedTx.
 	l.channelMgrMutex.Lock()
@@ -766,8 +776,9 @@ func (l *BatchSubmitter) cancelBlockingTx(queue *txmgr.Queue[txRef], receiptsCh 
 	l.sendTx(txData{}, true, candidate, queue, receiptsCh)
 }
 
-// publishToAltDAAndL1 posts the txdata to the DA Provider and then sends the commitment to L1.
-func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[txRef], receiptsCh chan txmgr.TxReceipt[txRef], daGroup *errgroup.Group) {
+// publishToAltDAAndStoreCommitment posts the txdata to the DA Provider and stores the returned commitment
+// in the state. The commitment will later be sent to the L1 while making sure to follow holocene's strict ordering rules.
+func (l *BatchSubmitter) publishToAltDAAndStoreCommitment(txdata txData, daGroup *errgroup.Group) {
 	// sanity checks
 	if nf := len(txdata.frames); nf != 1 {
 		l.Log.Crit("Unexpected number of frames in calldata tx", "num_frames", nf)
@@ -778,7 +789,7 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 
 	// when posting txdata to an external DA Provider, we use a goroutine to avoid blocking the main loop
 	// since it may take a while for the request to return.
-	goroutineSpawned := daGroup.TryGo(func() error {
+	daGroup.Go(func() error {
 		// TODO: probably shouldn't be using the global shutdownCtx here, see https://go.dev/blog/context-and-structs
 		// but sendTransaction receives l.killCtx as an argument, which currently is only canceled after waiting for the main loop
 		// to exit, which would wait on this DA call to finish, which would take a long time.
@@ -797,17 +808,12 @@ func (l *BatchSubmitter) publishToAltDAAndL1(txdata txData, queue *txmgr.Queue[t
 			}
 			return nil
 		}
-		l.Log.Info("Set altda input", "commitment", comm, "tx", txdata.ID())
-		candidate := l.calldataTxCandidate(comm.TxData())
-		l.sendTx(txdata, false, candidate, queue, receiptsCh)
+		l.Log.Info("Sent txdata to altda layer and received commitment", "commitment", comm, "tx", txdata.ID())
+		l.channelMgrMutex.Lock()
+		l.channelMgr.CacheAltDACommitment(txdata, comm)
+		l.channelMgrMutex.Unlock()
 		return nil
 	})
-	if !goroutineSpawned {
-		// We couldn't start the goroutine because the errgroup.Group limit
-		// is already reached. Since we can't send the txdata, we have to
-		// return it for later processing. We use nil error to skip error logging.
-		l.recordFailedDARequest(txdata.ID(), nil)
-	}
 }
 
 // sendTransaction creates & queues for sending a transaction to the batch inbox address with the given `txData`.
@@ -818,7 +824,15 @@ func (l *BatchSubmitter) sendTransaction(txdata txData, queue *txmgr.Queue[txRef
 
 	// if Alt DA is enabled we post the txdata to the DA Provider and replace it with the commitment.
 	if l.Config.UseAltDA {
-		l.publishToAltDAAndL1(txdata, queue, receiptsCh, daGroup)
+		if txdata.altDACommitment == nil {
+			l.publishToAltDAAndStoreCommitment(txdata, daGroup)
+		} else {
+			// This means the txdata was already sent to the DA Provider and we have the commitment
+			// so we can send the commitment to the L1
+			l.Log.Info("Sending altda commitment to L1", "commitment", txdata.altDACommitment, "tx", txdata.ID())
+			candidate := l.calldataTxCandidate(txdata.altDACommitment.TxData())
+			l.sendTx(txdata, false, candidate, queue, receiptsCh)
+		}
 		// we return nil to allow publishStateToL1 to keep processing the next txdata
 		return nil
 	}
@@ -897,7 +911,7 @@ func (l *BatchSubmitter) recordFailedDARequest(id txID, err error) {
 	if err != nil {
 		l.Log.Warn("DA request failed", logFields(id, err)...)
 	}
-	l.channelMgr.TxFailed(id)
+	l.channelMgr.AltDASubmissionFailed(id)
 }
 
 func (l *BatchSubmitter) recordFailedTx(id txID, err error) {

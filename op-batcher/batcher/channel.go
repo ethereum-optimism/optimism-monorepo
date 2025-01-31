@@ -3,6 +3,7 @@ package batcher
 import (
 	"math"
 
+	altda "github.com/ethereum-optimism/optimism/op-alt-da"
 	"github.com/ethereum-optimism/optimism/op-batcher/metrics"
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
 	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
@@ -20,7 +21,16 @@ type channel struct {
 
 	// pending channel builder
 	channelBuilder *ChannelBuilder
-	// Set of unconfirmed txID -> tx data. For tx resubmission
+	// Temporary cache for altDACommitments that are received potentially out of order from the da layer.
+	// Map: first frameNumber in txData -> txData (that contains an altDACommitment)
+	// Once the txData containing altDANextFrame is received, it will be pulled out of the
+	// channel on the next driver iteration, and sent to L1.
+	altDACommitments map[uint16]txData
+	// Points to the next frame number to send to L1 in order to maintain holocene strict ordering rules.
+	// When altDACommitments[altDAFrameCursor] is non-nil, it will be sent to L1.
+	altDAFrameCursor uint16
+	// Set of unconfirmed txID -> tx data. For tx resubmission.
+	// Also used for altda for the entirity of the submission (data -> commitment -> tx).
 	pendingTransactions map[string]txData
 	// Set of confirmed txID -> inclusion block. For determining if the channel is timed out
 	confirmedTransactions map[string]eth.BlockID
@@ -38,10 +48,41 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 		metr:                  metr,
 		cfg:                   cfg,
 		channelBuilder:        cb,
+		altDACommitments:      make(map[uint16]txData),
 		pendingTransactions:   make(map[string]txData),
 		confirmedTransactions: make(map[string]eth.BlockID),
 		minInclusionBlock:     math.MaxUint64,
 	}
+}
+
+func (s *channel) CacheAltDACommitment(txData txData, commitment altda.CommitmentData) {
+	if commitment == nil {
+		panic("expected non-nil commitment")
+	}
+	if len(txData.frames) == 0 {
+		panic("expected txData to have frames")
+	}
+	txData.altDACommitment = commitment
+	s.log.Debug("caching altDA commitment", "frame", txData.frames[0].id.frameNumber, "commitment", commitment.String())
+	s.altDACommitments[txData.frames[0].id.frameNumber] = txData
+}
+
+func (s *channel) rewindAltDAFrameCursor(txData txData) {
+	if len(txData.frames) == 0 {
+		panic("expected txData to have frames")
+	}
+	s.altDAFrameCursor = txData.frames[0].id.frameNumber
+}
+
+func (s *channel) AltDASubmissionFailed(id string) {
+	// We coopt TxFailed to rewind the frame cursor.
+	// This will force a resubmit of all the following frames as well,
+	// even if they had already successfully been submitted and their commitment cached.
+	// Ideally we'd have another way but for simplicity and to not tangle the altda code
+	// too much with the non altda code, we reuse the FrameCursor feature.
+	// TODO: is there a better abstraction for altda channels? FrameCursors are not well suited
+	//       since frames do not have to be sent in order to the altda, only their commitment does.
+	s.TxFailed(id)
 }
 
 // TxFailed records a transaction as failed. It will attempt to resubmit the data
@@ -49,10 +90,18 @@ func newChannel(log log.Logger, metr metrics.Metricer, cfg ChannelConfig, rollup
 func (c *channel) TxFailed(id string) {
 	if data, ok := c.pendingTransactions[id]; ok {
 		c.log.Trace("marked transaction as failed", "id", id)
-		// Rewind to the first frame of the failed tx
-		// -- the frames are ordered, and we want to send them
-		// all again.
-		c.channelBuilder.RewindFrameCursor(data.Frames()[0])
+		if data.altDACommitment != nil {
+			// In altDA mode, we don't want to rewind the channelBuilder's frameCursor
+			// because that will lead to resubmitting the same data to the da layer.
+			// We simply need to rewind the altDAFrameCursor to the first frame of the failed txData,
+			// to force a resubmit of the cached altDACommitment.
+			c.rewindAltDAFrameCursor(data)
+		} else {
+			// Rewind to the first frame of the failed tx
+			// -- the frames are ordered, and we want to send them
+			// all again.
+			c.channelBuilder.RewindFrameCursor(data.Frames()[0])
+		}
 		delete(c.pendingTransactions, id)
 	} else {
 		c.log.Warn("unknown transaction marked as failed", "id", id)
@@ -89,7 +138,16 @@ func (c *channel) TxConfirmed(id string, inclusionBlock eth.BlockID) bool {
 	// and then reset this state so it can try to build a new channel.
 	if c.isTimedOut() {
 		c.metr.RecordChannelTimedOut(c.ID())
-		c.log.Warn("Channel timed out", "id", c.ID(), "min_inclusion_block", c.minInclusionBlock, "max_inclusion_block", c.maxInclusionBlock)
+		var chanFirstL2BlockNum, chanLastL2BlockNum uint64
+		if c.channelBuilder.blocks.Len() > 0 {
+			chanFirstL2Block, _ := c.channelBuilder.blocks.Peek()
+			chanLastL2Block, _ := c.channelBuilder.blocks.PeekN(c.channelBuilder.blocks.Len() - 1)
+			chanFirstL2BlockNum = chanFirstL2Block.NumberU64()
+			chanLastL2BlockNum = chanLastL2Block.NumberU64()
+		}
+		c.log.Warn("Channel timed out", "id", c.ID(),
+			"min_l1_inclusion_block", c.minInclusionBlock, "max_l1_inclusion_block", c.maxInclusionBlock,
+			"first_l2_block", chanFirstL2BlockNum, "last_l2_block", chanLastL2BlockNum)
 		return true
 	}
 
@@ -122,6 +180,25 @@ func (c *channel) NoneSubmitted() bool {
 
 func (c *channel) ID() derive.ChannelID {
 	return c.channelBuilder.ID()
+}
+
+func (c *channel) NextAltDACommitment() (txData, bool) {
+	if txData, ok := c.altDACommitments[c.altDAFrameCursor]; ok {
+		if txData.altDACommitment == nil {
+			panic("expected altDACommitment to be non-nil")
+		}
+		if len(txData.frames) == 0 {
+			panic("expected txData to have frames")
+		}
+		// update altDANextFrame to the first frame of the next txData
+		lastFrame := txData.frames[len(txData.frames)-1]
+		c.altDAFrameCursor = lastFrame.id.frameNumber + 1
+		// We also store it in pendingTransactions so that TxFailed can know
+		// that this tx's altDA commitment was already cached.
+		c.pendingTransactions[txData.ID().String()] = txData
+		return txData, true
+	}
+	return txData{}, false
 }
 
 // NextTxData dequeues the next frames from the channel and returns them encoded in a tx data packet.
