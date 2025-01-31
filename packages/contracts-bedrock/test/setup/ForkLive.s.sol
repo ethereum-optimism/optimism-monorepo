@@ -61,6 +61,8 @@ contract ForkLive is Deployer, SafeTestTools {
     ///      4. If the environment variable wasn't set, deploy the updated OPCM and implementations of the contracts.
     ///      5. Upgrade the system using the OPCM.upgrade() function if useUpgradedFork is true.
     function run() public {
+        _initializeSafeTools();
+
         string memory superchainOpsAllocsPath = vm.envOr("SUPERCHAIN_OPS_ALLOCS_PATH", string(""));
 
         useOpsRepo = bytes(superchainOpsAllocsPath).length > 0;
@@ -184,7 +186,7 @@ contract ForkLive is Deployer, SafeTestTools {
         });
 
         // Create a Safe with 3 owners and a threshold of 2
-        (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("notProxyAdminOwnerTest", 3);
+        (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("ForkLive", 3);
         SafeInstance memory safeInstance = _setupSafe(keys, 2);
 
         // set the owner of the proxy admin and dispute game factory to the safe
@@ -204,7 +206,7 @@ contract ForkLive is Deployer, SafeTestTools {
             to: address(opcm),
             value: 0,
             data: abi.encodeCall(IOPContractsManager.upgrade, (opChains)),
-            operation: Enum.Operation.Call
+            operation: Enum.Operation.DelegateCall
         });
 
         // set the owner of the proxy admin and dispute game factory to the original owner
