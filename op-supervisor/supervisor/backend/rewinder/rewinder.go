@@ -243,11 +243,6 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 		}
 	}
 
-	// Rewind logs DB to match LocalSafe
-	if err := r.db.RewindLogs(chainID, localSafeDerived); err != nil {
-		return fmt.Errorf("failed to rewind logs for chain %s: %w", chainID, err)
-	}
-
 	// Emit rewound event for sync node
 	r.emitter.Emit(superevents.ChainRewoundEvent{
 		ChainID: chainID,

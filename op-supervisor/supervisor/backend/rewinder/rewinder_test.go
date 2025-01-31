@@ -79,8 +79,7 @@ func TestRewindL1(t *testing.T) {
 	s.makeBlockSafe(chainID, block2A, l1Block2A, true)
 
 	// Verify block2A is the latest sealed block and is cross-safe
-	s.verifyHead(chainID, block2A.ID(), "should have set block2A as latest sealed block")
-	s.verifyCrossSafe(chainID, block2A, "block2A should be cross-safe")
+	s.verifyHeads(chainID, block2A.ID(), "should have set block2A as latest sealed block")
 
 	// Now simulate L1 reorg by replacing l1Block2A with l1Block2B
 	l1Block2B := eth.BlockRef{
@@ -97,14 +96,7 @@ func TestRewindL1(t *testing.T) {
 	})
 
 	// Verify we rewound to block1 since it's derived from l1Block1A which is still canonical
-	s.verifyHead(chainID, block1.ID(), "should have rewound to block1")
-	s.verifyCrossSafe(chainID, block1, "block1 should still be cross-safe")
-
-	// Add block2B
-	s.sealBlocks(chainID, block2B)
-
-	// Verify we're now on the new chain
-	s.verifyHead(chainID, block2B.ID(), "should be on block2B")
+	s.verifyHeads(chainID, block1.ID(), "should have rewound to block1")
 }
 
 // TestRewindL2 tests handling of L2 reorgs via LocalDerivedEvent by checking that:
@@ -158,8 +150,8 @@ func TestRewindL2(t *testing.T) {
 	s.sealBlocks(chainID, block2A)
 
 	// Verify block2A is the latest sealed block but not safe
-	s.verifyHead(chainID, block2A.ID(), "should have set block2A as latest sealed block")
-	s.verifyCrossSafe(chainID, block1, "block1 should be cross-safe")
+	s.verifyLogsHead(chainID, block2A.ID(), "should have set block2A as latest sealed block")
+	s.verifyCrossSafe(chainID, block1.ID(), "block1 should be cross-safe")
 
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
@@ -185,14 +177,14 @@ func TestRewindL2(t *testing.T) {
 	})
 
 	// Verify we rewound to block1 since block2B doesn't match our unsafe block2A
-	s.verifyHead(chainID, block1.ID(), "should have rewound to block1")
-	s.verifyCrossSafe(chainID, block1, "block1 should still be cross-safe")
+	s.verifyLogsHead(chainID, block1.ID(), "should have rewound to block1")
+	s.verifyCrossSafe(chainID, block1.ID(), "block1 should still be cross-safe")
 
 	// Add block2B
 	s.sealBlocks(chainID, block2B)
 
 	// Verify we're now on the new chain
-	s.verifyHead(chainID, block2B.ID(), "should be on block2B")
+	s.verifyLogsHead(chainID, block2B.ID(), "should be on block2B")
 }
 
 // TestNoRewindNeeded tests that no rewind occurs when:
@@ -262,8 +254,8 @@ func TestNoRewindNeeded(t *testing.T) {
 	})
 
 	// Verify no rewind occurred
-	s.verifyHead(chainID, block2A.ID(), "should still be on block2A")
-	s.verifyCrossSafe(chainID, block2A, "block2A should still be cross-safe")
+	s.verifyLogsHead(chainID, block2A.ID(), "should still be on block2A")
+	s.verifyCrossSafe(chainID, block2A.ID(), "block2A should still be cross-safe")
 
 	// Trigger LocalDerived check with same L2 block - should not rewind
 	i.OnEvent(superevents.LocalDerivedEvent{
@@ -285,8 +277,8 @@ func TestNoRewindNeeded(t *testing.T) {
 	})
 
 	// Verify no rewind occurred
-	s.verifyHead(chainID, block2A.ID(), "should still be on block2A")
-	s.verifyCrossSafe(chainID, block2A, "block2A should still be cross-safe")
+	s.verifyLogsHead(chainID, block2A.ID(), "should still be on block2A")
+	s.verifyCrossSafe(chainID, block2A.ID(), "block2A should still be cross-safe")
 }
 
 // TestRewindLongChain syncs a long chain and rewinds many blocks.
@@ -387,7 +379,7 @@ func TestRewindLongChain(t *testing.T) {
 	})
 
 	// Verify we rewound to block 95
-	s.verifyHead(chainID, blocks[95].ID(), "should have rewound to block 95")
+	s.verifyLogsHead(chainID, blocks[95].ID(), "should have rewound to block 95")
 }
 
 // TestRewindMultiChain syncs two chains and rewinds both
@@ -462,8 +454,8 @@ func TestRewindMultiChain(t *testing.T) {
 
 	// Verify both chains rewound to block1 and maintained proper state
 	for chainID := range s.chains {
-		s.verifyHead(chainID, block1.ID(), fmt.Sprintf("chain %v should have rewound to block1", chainID))
-		s.verifyCrossSafe(chainID, block1, fmt.Sprintf("chain %v block1 should be cross-safe", chainID))
+		s.verifyLogsHead(chainID, block1.ID(), fmt.Sprintf("chain %v should have rewound to block1", chainID))
+		s.verifyCrossSafe(chainID, block1.ID(), fmt.Sprintf("chain %v block1 should be cross-safe", chainID))
 	}
 }
 
@@ -573,7 +565,7 @@ func TestRewindL2WalkBack(t *testing.T) {
 	})
 
 	// Verify we rewound to block3 since it's the common ancestor
-	s.verifyHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
+	s.verifyLogsHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
 }
 
 // TestRewindL1PastCrossSafe tests that when an L1 reorg occurs at a height higher than
@@ -686,8 +678,8 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 	s.makeBlockSafe(chainID, block3A, l1Block3A, false)
 
 	// Verify initial state
-	s.verifyHead(chainID, block3A.ID(), "should have set block3A as latest sealed block")
-	s.verifyCrossSafe(chainID, block2, "block2 should be cross-safe")
+	s.verifyLogsHead(chainID, block3A.ID(), "should have set block3A as latest sealed block")
+	s.verifyCrossSafe(chainID, block2.ID(), "block2 should be cross-safe")
 
 	// Now simulate L1 reorg by replacing l1Block3A with l1Block3B
 	l1Block3B := eth.BlockRef{
@@ -704,15 +696,7 @@ func TestRewindL1PastCrossSafe(t *testing.T) {
 	})
 
 	// Verify we rewound LocalSafe to block2 since it's derived from l1Block2 which is still canonical
-	s.verifyHead(chainID, block2.ID(), "should have rewound to block2")
-	// Verify CrossSafe is still at block2 and wasn't rewound
-	s.verifyCrossSafe(chainID, block2, "block2 should still be cross-safe")
-
-	// Add block3B
-	s.sealBlocks(chainID, block3B)
-
-	// Verify we're now on the new chain
-	s.verifyHead(chainID, block3B.ID(), "should be on block3B")
+	s.verifyHeads(chainID, block2.ID(), "should have rewound to block2")
 }
 
 type testSetup struct {
@@ -848,16 +832,27 @@ func (s *testSetup) makeBlockSafe(chainID eth.ChainID, block eth.L2BlockRef, l1B
 	}
 }
 
-func (s *testSetup) verifyHead(chainID eth.ChainID, expectedHead eth.BlockID, msg string) {
+func (s *testSetup) verifyHeads(chainID eth.ChainID, expectedHead eth.BlockID, msg string) {
+	s.verifyLocalSafe(chainID, expectedHead, msg)
+	s.verifyCrossSafe(chainID, expectedHead, msg)
+}
+
+func (s *testSetup) verifyLocalSafe(chainID eth.ChainID, expectedHead eth.BlockID, msg string) {
+	localSafe, err := s.chainsDB.LocalSafe(chainID)
+	require.NoError(s.t, err)
+	require.Equal(s.t, expectedHead.Hash, localSafe.Derived.Hash, msg)
+}
+
+func (s *testSetup) verifyCrossSafe(chainID eth.ChainID, expectedHead eth.BlockID, msg string) {
+	crossSafe, err := s.chainsDB.CrossSafe(chainID)
+	require.NoError(s.t, err)
+	require.Equal(s.t, expectedHead.Hash, crossSafe.Derived.Hash, msg)
+}
+
+func (s *testSetup) verifyLogsHead(chainID eth.ChainID, expectedHead eth.BlockID, msg string) {
 	head, ok := s.chains[chainID].logDB.LatestSealedBlock()
 	require.True(s.t, ok)
 	require.Equal(s.t, expectedHead, head, msg)
-}
-
-func (s *testSetup) verifyCrossSafe(chainID eth.ChainID, block eth.L2BlockRef, msg string) {
-	crossSafe, err := s.chainsDB.CrossSafe(chainID)
-	require.NoError(s.t, err)
-	require.Equal(s.t, block.Hash, crossSafe.Derived.Hash, msg)
 }
 
 func (s *testSetup) sealBlocks(chainID eth.ChainID, blocks ...eth.L2BlockRef) {
