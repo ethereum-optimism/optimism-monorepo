@@ -196,45 +196,6 @@ func (db *ChainsDB) InvalidateLocalSafe(chainID eth.ChainID, candidate types.Der
 	return nil
 }
 
-// RewindLocalUnsafe removes all local-unsafe blocks after the given new head.
-func (db *ChainsDB) RewindLocalUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
-	// Get database to invalidate data in.
-	eventsDB, ok := db.logDBs.Get(chainID)
-	if !ok {
-		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
-	}
-
-	// If the new head is before the current head then rewind it
-	currentHead, ok := eventsDB.LatestSealedBlock()
-	if !ok {
-		return fmt.Errorf("cannot find local-unsafe head of chain %s: %w", chainID, types.ErrFuture)
-	}
-	if newHead.Number <= currentHead.Number {
-		if err := eventsDB.Rewind(newHead.ID()); err != nil {
-			return fmt.Errorf("failed to rewind local-unsafe of chain %s: %w", chainID, err)
-		}
-	}
-
-	return nil
-}
-
-// RewindCrossUnsafe removes all cross-unsafe blocks after the given new head.
-func (db *ChainsDB) RewindCrossUnsafe(chainID eth.ChainID, newHead types.BlockSeal) error {
-	crossDB, ok := db.crossUnsafe.Get(chainID)
-	if !ok {
-		return fmt.Errorf("cannot find cross-unsafe DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
-	}
-
-	crossDB.Lock()
-	defer crossDB.Unlock()
-
-	if crossDB.Value.Number > newHead.Number {
-		crossDB.Value = newHead
-	}
-
-	return nil
-}
-
 // RewindLocalSafe removes all local-safe blocks after the given new head.
 func (db *ChainsDB) RewindLocalSafe(chainID eth.ChainID, newHead types.BlockSeal) error {
 	localSafeDB, ok := db.localDBs.Get(chainID)
