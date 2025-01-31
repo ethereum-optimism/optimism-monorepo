@@ -1,6 +1,9 @@
 version: 2.1
 
 parameters:
+  default_docker_image:
+    type: string
+    default: cimg/base:2024.01
   base_image:
     type: string
     default: default
@@ -401,7 +404,7 @@ jobs:
 
   check-kontrol-build:
     docker:
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
       - checkout-with-mise
@@ -616,7 +619,7 @@ jobs:
   # Verify newly published images (built on AMD machine) will run on ARM
   check-cross-platform:
     docker:
-      - image: cimg/base:current
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: arm.medium
     parameters:
       registry:
@@ -1125,7 +1128,7 @@ jobs:
 
   cannon-prestate:
     docker:
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
       - checkout-with-mise
       - setup_remote_docker
@@ -1176,8 +1179,8 @@ jobs:
           mentions: "@proofs-team"
 
   preimage-reproducibility:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
       - checkout-with-mise
       - setup_remote_docker
@@ -1186,8 +1189,8 @@ jobs:
           mentions: "@proofs-team"
 
   cannon-stf-verify:
-    machine: true
-    resource_class: ethereum-optimism/latitude-1
+    docker:
+      - image: <<pipeline.parameters.default_docker_image>>
     steps:
       - checkout-with-mise
       - setup_remote_docker
@@ -1249,7 +1252,7 @@ jobs:
       # Use a smaller base image to avoid pulling the huge ci-builder
       # image which is not needed for this job and sometimes misses
       # the cache.
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: medium
     steps:
       - run: echo Done
@@ -1303,7 +1306,7 @@ jobs:
 
   kontrol-tests:
     docker:
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: xlarge
     steps:
       - checkout-with-mise
@@ -1370,7 +1373,7 @@ jobs:
         default: .goreleaser.yaml
         type: string
     docker:
-      - image: cimg/base:2024.01
+      - image: <<pipeline.parameters.default_docker_image>>
     resource_class: large
     steps:
       - setup_remote_docker
