@@ -332,6 +332,9 @@ func (cfg *Config) Check() error {
 	if err := checkFork(cfg.GraniteTime, cfg.HoloceneTime, Granite, Holocene); err != nil {
 		return err
 	}
+	if err := checkFork(cfg.HoloceneTime, cfg.IsthmusTime, Holocene, Isthmus); err != nil {
+		return err
+	}
 
 	return nil
 }

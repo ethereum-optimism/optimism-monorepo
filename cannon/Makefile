@@ -50,7 +50,8 @@ elf:
 	make -C ./testdata/example elf
 
 sanitize-program:
-	@if ! { mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM | awk '{print $$3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
+	mips-linux-gnu-objdump -d -j .text $$GUEST_PROGRAM > ./bin/dump.txt
+	@if ! { cat ./bin/dump.txt | awk '{print $$3}' | grep -Ew -m1 "$(UNSUPPORTED_OPCODES)"; }; then \
 		echo "guest program is sanitized for unsupported instructions"; \
 	else \
 		echo "found unsupported instructions in the guest program"; \

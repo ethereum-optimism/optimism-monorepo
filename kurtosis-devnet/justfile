@@ -73,9 +73,6 @@ devnet-test DEVNET *TEST:
 
 # Devnet recipes
 
-# Mini devnet
-mini-devnet: (devnet "mini.yaml")
-
 # Simple devnet
 simple-devnet: (devnet "simple.yaml")
 

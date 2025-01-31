@@ -35,7 +35,7 @@ func TestPayloadByHash(t *testing.T) {
 		block := stub.head
 		payload, err := engine.PayloadByHash(ctx, block.Hash())
 		require.NoError(t, err)
-		expected, err := eth.BlockAsPayload(block, engine.backend.Config().ShanghaiTime)
+		expected, err := eth.BlockAsPayload(block, engine.backend.Config())
 		require.NoError(t, err)
 		require.Equal(t, &eth.ExecutionPayloadEnvelope{ExecutionPayload: expected}, payload)
 	})
@@ -57,7 +57,7 @@ func TestPayloadByNumber(t *testing.T) {
 		block := stub.head
 		payload, err := engine.PayloadByNumber(ctx, block.NumberU64())
 		require.NoError(t, err)
-		expected, err := eth.BlockAsPayload(block, engine.backend.Config().ShanghaiTime)
+		expected, err := eth.BlockAsPayload(block, engine.backend.Config())
 		require.NoError(t, err)
 		require.Equal(t, &eth.ExecutionPayloadEnvelope{ExecutionPayload: expected}, payload)
 	})
@@ -130,7 +130,7 @@ func TestSystemConfigByL2Hash(t *testing.T) {
 	engine, stub := createOracleEngine(t)
 
 	t.Run("KnownBlock", func(t *testing.T) {
-		payload, err := eth.BlockAsPayload(stub.safe, engine.backend.Config().ShanghaiTime)
+		payload, err := eth.BlockAsPayload(stub.safe, engine.backend.Config())
 		require.NoError(t, err)
 		expected, err := derive.PayloadToSystemConfig(engine.rollupCfg, payload)
 		require.NoError(t, err)
@@ -217,6 +217,10 @@ func (s *stubEngineBackend) GetBlockByHash(hash common.Hash) *types.Block {
 
 func (s *stubEngineBackend) GetCanonicalHash(n uint64) common.Hash {
 	return s.canonical[n]
+}
+
+func (s *stubEngineBackend) GetReceiptsByBlockHash(hash common.Hash) types.Receipts {
+	panic("unsupported")
 }
 
 func (s *stubEngineBackend) GetBlock(hash common.Hash, number uint64) *types.Block {

@@ -233,6 +233,11 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
         safeInstance = _setupSafe(keys, 8);
 
         // Set the new Safe as the owner of the ProxyAdmin
+        skipIfOpsRepoTest(
+            "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
+        );
+
+        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         vm.prank(proxyAdmin.owner());
@@ -340,7 +345,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
         // the correct anchor state and has the mips64impl.
         IPermissionedDisputeGame pdg =
             IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
-        assertEq(ISemver(address(pdg)).version(), "1.4.0-beta.1");
+        assertEq(ISemver(address(pdg)).version(), "1.4.0");
         assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
         assertEq(address(pdg.vm()), impls.mips64Impl);
 
@@ -350,7 +355,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
             IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
-            assertEq(ISemver(address(fdg)).version(), "1.4.0-beta.1");
+            assertEq(ISemver(address(fdg)).version(), "1.4.0");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
             assertEq(address(fdg.vm()), impls.mips64Impl);
         }

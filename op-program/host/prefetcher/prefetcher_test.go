@@ -630,12 +630,12 @@ func TestFetchL2BlockData(t *testing.T) {
 		l2Client := l2Clients.sources[defaultChainID]
 		rng := rand.New(rand.NewSource(123))
 		block, _ := testutils.RandomBlock(rng, 10)
-		disputedBlockHash := common.Hash{0xab}
+		disputedBlock, _ := testutils.RandomBlock(rng, 10)
 
 		isCanonical := clientErrs[len(clientErrs)-1] == nil
 
 		for _, clientErr := range clientErrs {
-			l2Client.ExpectInfoAndTxsByHash(disputedBlockHash, eth.BlockToInfo(nil), nil, clientErr)
+			l2Client.ExpectInfoAndTxsByHash(disputedBlock.Hash(), eth.BlockToInfo(nil), nil, clientErr)
 		}
 		if !isCanonical {
 			l2Client.ExpectInfoAndTxsByHash(block.Hash(), eth.BlockToInfo(block), block.Transactions(), nil)
@@ -645,9 +645,17 @@ func TestFetchL2BlockData(t *testing.T) {
 		prefetcher.executor = &mockExecutor{}
 		hint := l2.L2BlockDataHint{
 			AgreedBlockHash: block.Hash(),
-			BlockHash:       disputedBlockHash,
+			BlockHash:       disputedBlock.Hash(),
 			ChainID:         chainID,
 		}.Hint()
+
+		if !isCanonical {
+			// Simulate program execution by writing block preimage to the kv store
+			disputedBlockRLP, err := rlp.EncodeToBytes(disputedBlock.Header())
+			require.NoError(t, err)
+			err = prefetcher.kvStore.Put(preimage.Keccak256Key(disputedBlock.Hash()).PreimageKey(), disputedBlockRLP)
+			require.NoError(t, err)
+		}
 
 		require.NoError(t, prefetcher.Hint(hint))
 		if isCanonical {
@@ -658,7 +666,7 @@ func TestFetchL2BlockData(t *testing.T) {
 			require.Equal(t, prefetcher.executor.(*mockExecutor).chainID, chainID)
 		}
 
-		data, err := prefetcher.kvStore.Get(BlockDataKey(disputedBlockHash).Key())
+		data, err := prefetcher.kvStore.Get(BlockDataKey(disputedBlock.Hash()).Key())
 		require.NoError(t, err)
 		require.Equal(t, data, []byte{1})
 
@@ -989,7 +997,7 @@ type mockExecutor struct {
 }
 
 func (m *mockExecutor) RunProgram(
-	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID) error {
+	ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID, db l2.KeyValueStore) error {
 	m.invoked = true
 	m.blockNumber = blockNumber
 	m.chainID = chainID

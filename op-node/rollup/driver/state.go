@@ -343,6 +343,8 @@ func (s *SyncDeriver) OnEvent(ev event.Event) bool {
 		s.Emitter.Emit(StepReqEvent{ResetBackoff: true})
 	case engine.SafeDerivedEvent:
 		s.onSafeDerivedBlock(x)
+	case derive.ProvideL1Traversal:
+		s.Emitter.Emit(StepReqEvent{})
 	default:
 		return false
 	}

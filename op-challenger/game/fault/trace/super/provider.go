@@ -76,12 +76,20 @@ func (s *SuperTraceProvider) GetPreimageBytes(ctx context.Context, pos types.Pos
 		if err != nil {
 			return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
 		}
+		if root.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+			return InvalidTransition, nil
+		}
 		return responseToSuper(root).Marshal(), nil
 	}
 	// Fetch the super root at the next timestamp since we are part way through the transition to it
 	prevRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(timestamp))
 	if err != nil {
 		return nil, fmt.Errorf("failed to retrieve super root at timestamp %v: %w", timestamp, err)
+	}
+	if prevRoot.CrossSafeDerivedFrom.Number > s.l1Head.Number {
+		// The previous root was not safe at the game L1 head so we must have already transitioned to the invalid hash
+		// prior to this step and it then repeats forever.
+		return InvalidTransition, nil
 	}
 	nextTimestamp := timestamp + 1
 	nextRoot, err := s.rootProvider.SuperRootAtTimestamp(ctx, hexutil.Uint64(nextTimestamp))
