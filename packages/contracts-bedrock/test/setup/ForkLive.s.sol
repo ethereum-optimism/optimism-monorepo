@@ -10,6 +10,9 @@ import { DelegateCaller } from "test/mocks/Callers.sol";
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
 import { Deploy } from "scripts/deploy/Deploy.s.sol";
+import { SafeTestTools, SafeTestLib, SafeInstance } from "test/safe-tools/SafeTestTools.sol";
+import { Enum } from "safe-contracts/common/Enum.sol";
+import { ForgeArtifacts } from "scripts/libraries/ForgeArtifacts.sol";
 
 // Libraries
 import { GameTypes, Claim } from "src/dispute/lib/Types.sol";
@@ -34,8 +37,9 @@ import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.so
 ///         Therefore this script can only be run against a fork of a production network which is listed in the
 ///         superchain-registry.
 ///         This contract must not have constructor logic because it is set into state using `etch`.
-contract ForkLive is Deployer {
+contract ForkLive is Deployer, SafeTestTools {
     using stdToml for string;
+    using SafeTestLib for SafeInstance;
 
     bool public useOpsRepo;
 
@@ -170,8 +174,8 @@ contract ForkLive is Deployer {
         ISystemConfig systemConfig = ISystemConfig(artifacts.mustGetAddress("SystemConfigProxy"));
         IProxyAdmin proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
 
-        address upgrader = proxyAdmin.owner();
-        vm.label(upgrader, "ProxyAdmin Owner");
+        address owner = proxyAdmin.owner();
+        vm.label(owner, "ProxyAdmin Owner");
 
         IOPContractsManager.OpChainConfig[] memory opChains = new IOPContractsManager.OpChainConfig[](1);
         opChains[0] = IOPContractsManager.OpChainConfig({
@@ -180,10 +184,41 @@ contract ForkLive is Deployer {
             absolutePrestate: Claim.wrap(bytes32(keccak256("absolutePrestate")))
         });
 
-        // TODO Migrate from DelegateCaller to a Safe to reduce risk of mocks not properly
-        // reflecting the production system.
-        vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChains)));
+        // Create a Safe with 3 owners and a threshold of 2
+        (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("notProxyAdminOwnerTest", 3);
+        SafeInstance memory safeInstance = _setupSafe(keys, 2);
+
+        // set the owner of the proxy admin and dispute game factory to the safe
+        vm.store(
+            address(proxyAdmin),
+            bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot),
+            bytes32(uint256(uint160(address(safeInstance.safe))))
+        );
+        vm.store(
+            artifacts.mustGetAddress("DisputeGameFactoryProxy"),
+            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
+            bytes32(uint256(uint160(address(safeInstance.safe))))
+        );
+
+        // upgrade the contracts
+        safeInstance.execTransaction({
+            to: address(opcm),
+            value: 0,
+            data: abi.encodeCall(IOPContractsManager.upgrade, (opChains)),
+            operation: Enum.Operation.Call
+        });
+
+        // set the owner of the proxy admin and dispute game factory to the original owner
+        vm.store(
+            address(proxyAdmin),
+            bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot),
+            bytes32(uint256(uint160(owner)))
+        );
+        vm.store(
+            artifacts.mustGetAddress("DisputeGameFactoryProxy"),
+            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
+            bytes32(uint256(uint160(owner)))
+        );
 
         console.log("ForkLive: Saving newly deployed contracts");
         // A new ASR and new dispute games were deployed, so we need to update them
