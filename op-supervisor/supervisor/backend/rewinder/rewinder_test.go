@@ -71,11 +71,6 @@ func TestRewindL1(t *testing.T) {
 	// Make genesis block derived from l1Block0 and make it safe
 	s.makeBlockSafe(chainID, genesis, l1Block0, true)
 
-	// Set l1Block0 as finalized
-	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
-		FinalizedL1: l1Block0,
-	})
-
 	// Make block1 local-safe and cross-safe using l1Block1A
 	s.makeBlockSafe(chainID, block1, l1Block1A, true)
 
@@ -155,11 +150,6 @@ func TestRewindL2(t *testing.T) {
 
 	// Make genesis safe and derived from L1 genesis
 	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
-
-	// Set genesis L1 block as finalized
-	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
-		FinalizedL1: l1Genesis,
-	})
 
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
