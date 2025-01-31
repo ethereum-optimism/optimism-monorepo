@@ -131,15 +131,15 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctr
 		}
 	}
 
-	// If the bad block's parent is before the finalized head then stop
-	parentHeight := badBlockHeight - 1
-	if parentHeight < minBlock.Number {
-		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", parentHeight, "minBlock", minBlock.Number)
+	// If the badBlock target would remove our min block, return early.
+	// The min block content is assumed to be irreversible for this safety level.
+	if badBlockHeight <= minBlock.Number {
+		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", badBlockHeight, "minBlock", minBlock.Number)
 		return nil
 	}
 
 	// Find the latest common newHead between the parent and the finalized head
-	newHead, err := r.findLatestCommonAncestor(chainID, parentHeight, minBlock)
+	newHead, err := r.findLatestCommonAncestor(chainID, badBlockHeight-1, minBlock)
 	if err != nil {
 		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
 	}
