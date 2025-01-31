@@ -71,5 +71,5 @@ func RunProgram(logger log.Logger, preimageOracle io.ReadWriter, preimageHinter 
 	}
 	bootInfo := boot.NewBootstrapClient(pClient).BootInfo()
 	derivationOptions := tasks.DerivationOptions{StoreBlockData: cfg.StoreBlockData}
-	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB, derivationOptions)
+	return RunPreInteropProgram(logger, bootInfo, l1PreimageOracle, l2PreimageOracle, cfg.DB, derivationOptions, !cfg.SkipValidation)
 }

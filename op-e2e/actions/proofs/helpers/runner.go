@@ -124,5 +124,12 @@ func CreateInprocessPrefetcher(
 	require.NoError(t, err, "failed to create L2 client")
 
 	executor := host.MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, fixtureInputs.L2ChainID, sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+	var l2Head common.Hash
+	var agreedPrestate []byte
+	if cfg.InteropEnabled() {
+		agreedPrestate = cfg.InteropInputs.AgreedPrestate
+	} else {
+		l2Head = cfg.PreInteropInputs.L2Head
+	}
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, fixtureInputs.L2ChainID, sources, kv, executor, l2Head, agreedPrestate), nil
 }

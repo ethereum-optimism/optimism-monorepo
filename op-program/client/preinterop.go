@@ -17,6 +17,7 @@ func RunPreInteropProgram(
 	l2PreimageOracle *l2.CachingOracle,
 	db l2.KeyValueStore,
 	opts tasks.DerivationOptions,
+	validateClaim bool,
 ) error {
 	logger.Info("Program Bootstrapped", "bootInfo", bootInfo)
 	result, err := tasks.RunDerivation(
@@ -34,5 +35,8 @@ func RunPreInteropProgram(
 	if err != nil {
 		return err
 	}
-	return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
+	if validateClaim {
+		return claim.ValidateClaim(logger, eth.Bytes32(bootInfo.L2Claim), result.OutputRoot)
+	}
+	return nil
 }

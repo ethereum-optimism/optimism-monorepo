@@ -16,7 +16,7 @@ import (
 
 type ProgramExecutor interface {
 	// RunProgram derives the block at the specified blockNumber
-	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID, db l2.KeyValueStore) error
+	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, l2Head common.Hash, agreedOutputRoot common.Hash, blockNumber uint64, chainID eth.ChainID, db l2.KeyValueStore) error
 }
 
 // nativeReExecuteBlock is a helper function that re-executes a block natively.
@@ -56,8 +56,15 @@ func (p *Prefetcher) nativeReExecuteBlock(
 	if err != nil {
 		return err
 	}
-	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64())
-	if err = p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID, hostcommon.NewL2KeyValueStore(p.kvStore)); err != nil {
+	l2Head := header.Hash()
+	output, err := source.OutputByRoot(ctx, l2Head)
+	if err != nil {
+		return fmt.Errorf("failed to fetch L2 output root for block %v: %w", l2Head, err)
+	}
+	agreedOutputRoot := common.Hash(eth.OutputRoot(output))
+
+	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64(), "l2_head", l2Head, "agreed_output_root", agreedOutputRoot)
+	if err = p.executor.RunProgram(ctx, p, l2Head, agreedOutputRoot, header.NumberU64()+1, chainID, hostcommon.NewL2KeyValueStore(p.kvStore)); err != nil {
 		return err
 	}
 

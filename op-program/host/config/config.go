@@ -45,11 +45,44 @@ var (
 	ErrNoExecInServerMode    = errors.New("exec command must not be set when in server mode")
 	ErrInvalidDataFormat     = errors.New("invalid data format")
 	ErrMissingAgreedPrestate = errors.New("missing agreed prestate")
+	ErrMissingInputs         = errors.New("must have either interop or pre-interop inputs")
+	ErrInvalidInputs         = errors.New("cannot have both interop and pre-interop inputs")
+	ErrInvalidGameTimestamp  = errors.New("invalid game timestamp")
 )
 
+type PreInteropInputs struct {
+	// L2Head is the l2 block hash contained in the L2 Output referenced by the L2OutputRoot
+	L2Head common.Hash
+	// L2OutputRoot is the agreed L2 output root to start derivation from
+	L2OutputRoot common.Hash
+	// L2ClaimBlockNumber is the block number the claimed L2 output root is from
+	// Must be above 0 and to be a valid claim needs to be above the L2Head block.
+	L2ClaimBlockNumber uint64
+	L2ChainID          eth.ChainID
+}
+
+type InteropInputs struct {
+	// AgreedPrestate is the preimage of the agreed prestate claim.
+	AgreedPrestate []byte
+	// AgreedPrestateRoot is the root of the agreed prestate claim.
+	AgreedPrestateRoot common.Hash
+	// GameTimestamp is the superchain root timestamp
+	GameTimestamp uint64
+}
+
+type GenericInputs struct {
+	// L1Head is the block hash of the L1 chain head block
+	L1Head common.Hash
+	// L2Claim is the claimed L2 root to verify
+	L2Claim common.Hash
+}
+
 type Config struct {
-	L2ChainID eth.ChainID // TODO: Forbid for interop
-	Rollups   []*rollup.Config
+	GenericInputs
+	PreInteropInputs *PreInteropInputs
+	InteropInputs    *InteropInputs
+
+	Rollups []*rollup.Config
 	// DataDir is the directory to read/write pre-image data from/to.
 	// If not set, an in-memory key-value store is used and fetching data must be enabled
 	DataDir string
@@ -57,17 +90,11 @@ type Config struct {
 	// DataFormat specifies the format to use for on-disk storage. Only applies when DataDir is set.
 	DataFormat types.DataFormat
 
-	// L1Head is the block hash of the L1 chain head block
-	L1Head      common.Hash
 	L1URL       string
 	L1BeaconURL string
 	L1TrustRPC  bool
 	L1RPCKind   sources.RPCProviderKind
 
-	// L2Head is the l2 block hash contained in the L2 Output referenced by the L2OutputRoot for pre-interop mode
-	L2Head common.Hash // TODO: Forbid for interop
-	// L2OutputRoot is the agreed L2 output root to start derivation from
-	L2OutputRoot common.Hash
 	// L2URLs are the URLs of the L2 nodes to fetch L2 data from, these are the canonical URL for L2 data
 	// These URLs are used as a fallback for L2ExperimentalURL if the experimental URL fails or cannot retrieve the desired data
 	// Must have one L2URL for each chain in Rollups
@@ -75,12 +102,6 @@ type Config struct {
 	// L2ExperimentalURLs are the URLs of the L2 nodes (non hash db archival node, for example, reth archival node) to fetch L2 data from
 	// Must have one url for each chain in Rollups
 	L2ExperimentalURLs []string
-	// L2Claim is the claimed L2 output root to verify
-	L2Claim common.Hash
-	// L2ClaimBlockNumber is the block number the claimed L2 output root is from
-	// Must be above 0 and to be a valid claim needs to be above the L2Head block.
-	// For interop this is the superchain root timestamp
-	L2ClaimBlockNumber uint64
 	// L2ChainConfigs are the op-geth chain config for the L2 execution engines
 	// Must have one chain config for each rollup config
 	L2ChainConfigs []*params.ChainConfig
@@ -91,16 +112,65 @@ type Config struct {
 	// ServerMode indicates that the program should run in pre-image server mode and wait for requests.
 	// No client program is run.
 	ServerMode bool
-
-	// InteropEnabled enables interop fault proof rules when running the client in-process
-	InteropEnabled bool
-	// AgreedPrestate is the preimage of the agreed prestate claim. Required for interop.
-	AgreedPrestate []byte
 }
 
-func (c *Config) Check() error {
-	if !c.InteropEnabled && c.L2ChainID == (eth.ChainID{}) {
+func (c *Config) InteropEnabled() bool {
+	return c.InteropInputs != nil
+}
+
+func (c *Config) checkInteropInputs() error {
+	if c.InteropInputs == nil {
+		return nil
+	}
+	if c.InteropInputs.GameTimestamp == 0 {
+		return ErrInvalidGameTimestamp
+	}
+	if len(c.InteropInputs.AgreedPrestate) == 0 {
+		return ErrMissingAgreedPrestate
+	}
+	if crypto.Keccak256Hash(c.InteropInputs.AgreedPrestate) != c.InteropInputs.AgreedPrestateRoot {
+		return fmt.Errorf("%w: must be preimage of agreed prestate root", ErrInvalidAgreedPrestate)
+	}
+	return nil
+}
+
+func (c *Config) checkPreInteropInputs() error {
+	if c.PreInteropInputs == nil {
+		return nil
+	}
+	if c.PreInteropInputs.L2ChainID == (eth.ChainID{}) {
 		return ErrMissingL2ChainID
+	}
+	if c.PreInteropInputs.L2Head == (common.Hash{}) {
+		return ErrInvalidL2Head
+	}
+	if c.PreInteropInputs.L2ClaimBlockNumber == 0 {
+		return ErrInvalidL2ClaimBlock
+	}
+	if c.PreInteropInputs.L2OutputRoot == (common.Hash{}) {
+		return ErrInvalidL2OutputRoot
+	}
+	return nil
+}
+
+func (c *Config) CheckInputs() error {
+	if c.InteropInputs == nil && c.PreInteropInputs == nil {
+		return ErrMissingInputs
+	}
+	if c.InteropInputs != nil && c.PreInteropInputs != nil {
+		return ErrInvalidInputs
+	}
+	if c.GenericInputs.L1Head == (common.Hash{}) {
+		return ErrInvalidL1Head
+	}
+	if c.GenericInputs.L2Claim == (common.Hash{}) {
+		return ErrInvalidL2Claim
+	}
+	if err := c.checkInteropInputs(); err != nil {
+		return err
+	}
+	if err := c.checkPreInteropInputs(); err != nil {
+		return err
 	}
 	if len(c.Rollups) == 0 {
 		return ErrNoL2Chains
@@ -109,18 +179,6 @@ func (c *Config) Check() error {
 		if err := rollupCfg.Check(); err != nil {
 			return fmt.Errorf("invalid rollup config for chain %v: %w", rollupCfg.L2ChainID, err)
 		}
-	}
-	if c.L1Head == (common.Hash{}) {
-		return ErrInvalidL1Head
-	}
-	if c.L2Head == (common.Hash{}) {
-		return ErrInvalidL2Head
-	}
-	if c.L2OutputRoot == (common.Hash{}) {
-		return ErrInvalidL2OutputRoot
-	}
-	if c.L2ClaimBlockNumber == 0 {
-		return ErrInvalidL2ClaimBlock
 	}
 	if len(c.L2ChainConfigs) == 0 {
 		return ErrMissingL2Genesis
@@ -152,6 +210,13 @@ func (c *Config) Check() error {
 	if (c.L1URL != "") != (len(c.L2URLs) > 0) {
 		return ErrL1AndL2Inconsistent
 	}
+	return nil
+}
+
+func (c *Config) Check() error {
+	if err := c.CheckInputs(); err != nil {
+		return err
+	}
 	if !c.FetchingEnabled() && c.DataDir == "" {
 		return ErrDataDirRequired
 	}
@@ -160,14 +225,6 @@ func (c *Config) Check() error {
 	}
 	if c.DataDir != "" && !slices.Contains(types.SupportedDataFormats, c.DataFormat) {
 		return ErrInvalidDataFormat
-	}
-	if c.InteropEnabled {
-		if len(c.AgreedPrestate) == 0 {
-			return ErrMissingAgreedPrestate
-		}
-		if crypto.Keccak256Hash(c.AgreedPrestate) != c.L2OutputRoot {
-			return fmt.Errorf("%w: must be preimage of L2 output root", ErrInvalidAgreedPrestate)
-		}
 	}
 	return nil
 }
@@ -199,11 +256,11 @@ func NewSingleChainConfig(
 		l2OutputRoot,
 		l2Claim,
 		l2ClaimBlockNum)
-	cfg.L2ChainID = l2ChainID
+	cfg.PreInteropInputs.L2ChainID = l2ChainID
 	return cfg
 }
 
-// NewConfig creates a Config with all optional values set to the CLI default value
+// NewConfig creates a pre-interop Config with all optional values set to the CLI default value
 func NewConfig(
 	rollupCfgs []*rollup.Config,
 	l2ChainConfigs []*params.ChainConfig,
@@ -213,16 +270,43 @@ func NewConfig(
 	l2Claim common.Hash,
 	l2ClaimBlockNum uint64,
 ) *Config {
-	return &Config{
-		Rollups:            rollupCfgs,
-		L2ChainConfigs:     l2ChainConfigs,
-		L1Head:             l1Head,
+	inputs := &PreInteropInputs{
 		L2Head:             l2Head,
 		L2OutputRoot:       l2OutputRoot,
-		L2Claim:            l2Claim,
 		L2ClaimBlockNumber: l2ClaimBlockNum,
-		L1RPCKind:          sources.RPCKindStandard,
-		DataFormat:         types.DataFormatDirectory,
+	}
+	return &Config{
+		GenericInputs:    GenericInputs{L1Head: l1Head, L2Claim: l2Claim},
+		PreInteropInputs: inputs,
+		Rollups:          rollupCfgs,
+		L2ChainConfigs:   l2ChainConfigs,
+		L1RPCKind:        sources.RPCKindStandard,
+		DataFormat:       types.DataFormatDirectory,
+	}
+}
+
+// NewInteropConfig creates an interop Config with all optional values set to the CLI default value
+func NewInteropConfig(
+	rollupCfgs []*rollup.Config,
+	l2ChainConfigs []*params.ChainConfig,
+	l1Head common.Hash,
+	agreedPrestateRoot common.Hash,
+	agreedPrestate []byte,
+	l2Claim common.Hash,
+	gameTimestamp uint64,
+) *Config {
+	inputs := &InteropInputs{
+		AgreedPrestateRoot: agreedPrestateRoot,
+		AgreedPrestate:     agreedPrestate,
+		GameTimestamp:      gameTimestamp,
+	}
+	return &Config{
+		GenericInputs:  GenericInputs{L1Head: l1Head, L2Claim: l2Claim},
+		InteropInputs:  inputs,
+		Rollups:        rollupCfgs,
+		L2ChainConfigs: l2ChainConfigs,
+		L1RPCKind:      sources.RPCKindStandard,
+		DataFormat:     types.DataFormatDirectory,
 	}
 }
 
@@ -248,7 +332,8 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		if len(agreedPrestate) == 0 {
 			return nil, ErrInvalidAgreedPrestate
 		}
-		l2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
+		//l2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
+		return nil, errors.New("l2.agreed-prestate is not yet supported")
 	}
 	if l2OutputRoot == (common.Hash{}) {
 		return nil, ErrInvalidL2OutputRoot
@@ -327,19 +412,19 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		return nil, fmt.Errorf("invalid %w: %v", ErrInvalidDataFormat, dbFormat)
 	}
 	return &Config{
-		L2ChainID:          l2ChainID,
+		GenericInputs: GenericInputs{L1Head: l1Head, L2Claim: l2Claim},
+		PreInteropInputs: &PreInteropInputs{
+			L2Head:             l2Head,
+			L2OutputRoot:       l2OutputRoot,
+			L2ChainID:          l2ChainID,
+			L2ClaimBlockNumber: l2ClaimBlockNum,
+		},
 		Rollups:            rollupCfgs,
 		DataDir:            ctx.String(flags.DataDir.Name),
 		DataFormat:         dbFormat,
 		L2URLs:             ctx.StringSlice(flags.L2NodeAddr.Name),
 		L2ExperimentalURLs: ctx.StringSlice(flags.L2NodeExperimentalAddr.Name),
 		L2ChainConfigs:     l2ChainConfigs,
-		L2Head:             l2Head,
-		L2OutputRoot:       l2OutputRoot,
-		AgreedPrestate:     agreedPrestate,
-		L2Claim:            l2Claim,
-		L2ClaimBlockNumber: l2ClaimBlockNum,
-		L1Head:             l1Head,
 		L1URL:              ctx.String(flags.L1NodeAddr.Name),
 		L1BeaconURL:        ctx.String(flags.L1BeaconAddr.Name),
 		L1TrustRPC:         ctx.Bool(flags.L1TrustRPC.Name),

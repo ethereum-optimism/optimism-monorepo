@@ -214,11 +214,12 @@ func NewOpProgramCfg(
 		chainConfigs = append(chainConfigs, source.ChainConfig)
 	}
 
-	dfault := config.NewConfig(rollupConfigs, chainConfigs, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
-	dfault.L2ChainID = boot.CustomChainIDIndicator
+	var dfault *config.Config
 	if fi.InteropEnabled {
-		dfault.AgreedPrestate = fi.AgreedPrestate
+		dfault = config.NewInteropConfig(rollupConfigs, chainConfigs, fi.L1Head, fi.L2OutputRoot, fi.AgreedPrestate, fi.L2Claim, fi.L2BlockNumber)
+	} else {
+		dfault = config.NewConfig(rollupConfigs, chainConfigs, fi.L1Head, fi.L2Head, fi.L2OutputRoot, fi.L2Claim, fi.L2BlockNumber)
+		dfault.PreInteropInputs.L2ChainID = boot.CustomChainIDIndicator
 	}
-	dfault.InteropEnabled = fi.InteropEnabled
 	return dfault
 }

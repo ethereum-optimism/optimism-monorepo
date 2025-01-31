@@ -102,7 +102,14 @@ func makeDefaultPrefetcher(ctx context.Context, logger log.Logger, kv kvstore.KV
 	}
 
 	executor := MakeProgramExecutor(logger, cfg)
-	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, eth.ChainIDFromBig(cfg.Rollups[0].L2ChainID), sources, kv, executor, cfg.L2Head, cfg.AgreedPrestate), nil
+	var l2Head common.Hash
+	var agreedPrestate []byte
+	if cfg.InteropEnabled() {
+		agreedPrestate = cfg.InteropInputs.AgreedPrestate
+	} else {
+		l2Head = cfg.PreInteropInputs.L2Head
+	}
+	return prefetcher.NewPrefetcher(logger, l1Cl, l1BlobFetcher, eth.ChainIDFromBig(cfg.Rollups[0].L2ChainID), sources, kv, executor, l2Head, agreedPrestate), nil
 }
 
 type programExecutor struct {
@@ -113,21 +120,19 @@ type programExecutor struct {
 func (p *programExecutor) RunProgram(
 	ctx context.Context,
 	prefetcher hostcommon.Prefetcher,
+	l2Head common.Hash,
+	agreedOutputRoot common.Hash,
 	blockNum uint64,
 	chainID eth.ChainID,
 	db l2.KeyValueStore,
 ) error {
-	newCfg := *p.cfg
-	newCfg.ExecCmd = "" // ensure we run the program in the same process
-	newCfg.L2ClaimBlockNumber = blockNum
-	newCfg.InteropEnabled = false
 	// Leave the newCfg.L2ChainID as is. It may be set to the customChainID for testing.
 	// newCfg.L2ChainConfigs and newCfg.Rollups will be reconfigured to the specified chainID for the program execution.
 
 	// Since the ProgramExecutor can be used for interop with custom chain configs, we need to
 	// restrict the host's chain configuration to a single chain.
 	var l2ChainConfig *params.ChainConfig
-	for _, c := range newCfg.L2ChainConfigs {
+	for _, c := range p.cfg.L2ChainConfigs {
 		if eth.ChainIDFromBig(c.ChainID).Cmp(chainID) == 0 {
 			l2ChainConfig = c
 			break
@@ -137,7 +142,7 @@ func (p *programExecutor) RunProgram(
 		return fmt.Errorf("could not find L2 chain config in the host for chain ID %v", chainID)
 	}
 	var rollupConfig *rollup.Config
-	for _, c := range newCfg.Rollups {
+	for _, c := range p.cfg.Rollups {
 		if eth.ChainIDFromBig(c.L2ChainID).Cmp(chainID) == 0 {
 			rollupConfig = c
 			break
@@ -146,8 +151,21 @@ func (p *programExecutor) RunProgram(
 	if rollupConfig == nil {
 		return fmt.Errorf("could not find rollup config in the host for chain ID %v", chainID)
 	}
-	newCfg.L2ChainConfigs = []*params.ChainConfig{l2ChainConfig}
-	newCfg.Rollups = []*rollup.Config{rollupConfig}
+
+	cfg := config.NewSingleChainConfig(
+		rollupConfig,
+		l2ChainConfig,
+		p.cfg.L1Head,
+		l2Head,
+		agreedOutputRoot,
+		// the claim is irrelevant since we skip validation. But it must be non-empty for the config check
+		common.Hash{0xaa},
+		blockNum,
+	)
+	// Since we're using the "self" prefetcher, do not configure RPC URLs
+	if err := cfg.CheckInputs(); err != nil {
+		return fmt.Errorf("bug: invalid config: %w", err)
+	}
 
 	withPrefetcher := hostcommon.WithPrefetcher(
 		func(context.Context, log.Logger, kvstore.KV, *config.Config) (hostcommon.Prefetcher, error) {
@@ -157,7 +175,7 @@ func (p *programExecutor) RunProgram(
 	return hostcommon.FaultProofProgram(
 		ctx,
 		p.logger,
-		&newCfg,
+		cfg,
 		withPrefetcher,
 		hostcommon.WithSkipValidation(true),
 		hostcommon.WithDB(db),

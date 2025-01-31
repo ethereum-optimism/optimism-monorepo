@@ -65,6 +65,9 @@ func WithStoreBlockData(store bool) ProgramOpt {
 
 // FaultProofProgram is the programmatic entry-point for the fault proof program
 func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Config, opts ...ProgramOpt) error {
+	if err := cfg.CheckInputs(); err != nil {
+		return err
+	}
 	programConfig := &programCfg{
 		db: memorydb.New(),
 	}
@@ -138,7 +141,7 @@ func FaultProofProgram(ctx context.Context, logger log.Logger, cfg *config.Confi
 		if programConfig.skipValidation {
 			clientCfg.SkipValidation = true
 		}
-		clientCfg.InteropEnabled = cfg.InteropEnabled
+		clientCfg.InteropEnabled = cfg.InteropEnabled()
 		clientCfg.DB = programConfig.db
 		clientCfg.StoreBlockData = programConfig.storeBlockData
 		return cl.RunProgram(logger, pClientRW, hClientRW, clientCfg)
