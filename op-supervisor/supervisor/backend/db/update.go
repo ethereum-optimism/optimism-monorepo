@@ -277,6 +277,19 @@ func (db *ChainsDB) RewindCrossSafe(chainID eth.ChainID, newHead types.BlockSeal
 	return nil
 }
 
+func (db *ChainsDB) RewindLogs(chainID eth.ChainID, newHead types.BlockSeal) error {
+	eventsDB, ok := db.logDBs.Get(chainID)
+	if !ok {
+		return fmt.Errorf("cannot find events DB of chain %s for invalidation: %w", chainID, types.ErrUnknownChain)
+	}
+
+	if err := eventsDB.Rewind(newHead.ID()); err != nil {
+		return fmt.Errorf("failed to rewind logs of chain %s: %w", chainID, err)
+	}
+
+	return nil
+}
+
 func (db *ChainsDB) ResetCrossUnsafeIfNewerThan(chainID eth.ChainID, number uint64) error {
 	crossUnsafe, ok := db.crossUnsafe.Get(chainID)
 	if !ok {

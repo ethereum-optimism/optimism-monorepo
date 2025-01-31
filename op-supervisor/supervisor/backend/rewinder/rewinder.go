@@ -30,6 +30,7 @@ type rewinderDB interface {
 	RewindCrossUnsafe(eth.ChainID, types.BlockSeal) error
 	RewindLocalSafe(eth.ChainID, types.BlockSeal) error
 	RewindCrossSafe(eth.ChainID, types.BlockSeal) error
+	RewindLogs(chainID eth.ChainID, newHead types.BlockSeal) error
 
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
@@ -88,6 +89,9 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	case superevents.RewindL1Event:
 		r.handleRewindL1Event(x)
 		return true
+	case superevents.LocalDerivedEvent:
+		r.handleLocalDerivedEvent(x)
+		return true
 	default:
 		return false
 	}
@@ -112,6 +116,53 @@ func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 			r.log.Error("failed to rewind L1 event for chain %s: %w", chainID, err)
 		}
 		return true
+	})
+}
+
+// handleLocalDerivedEvent checks if the newly derived block matches what we have in our unsafe DB
+// If it doesn't match, we need to rewind the logs DB to the common ancestor between
+// the LocalUnsafe head and the new LocalSafe block
+func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
+	derived := ev.Derived.Derived
+
+	// Get the current unsafe head
+	unsafeHead, err := r.db.LocalUnsafe(ev.ChainID)
+	if err != nil {
+		r.log.Error("failed to get unsafe head", "chain", ev.ChainID, "err", err)
+		return
+	}
+
+	// If the unsafe head is before the derived block, nothing to do
+	if unsafeHead.Number < derived.Number {
+		return
+	}
+
+	// Get the block at the derived height from our unsafe chain
+	unsafeAtDerived, err := r.db.FindSealedBlock(ev.ChainID, derived.Number)
+	if err != nil {
+		r.log.Error("failed to get unsafe block at derived height", "chain", ev.ChainID, "height", derived.Number, "err", err)
+		return
+	}
+
+	// If the block hashes match, our unsafe chain is still valid
+	if unsafeAtDerived.Hash == derived.Hash {
+		return
+	}
+
+	// The new LocalSafe block is different than what we had so rewind to its parent
+	unsafeParent := types.BlockSeal{
+		Number: derived.Number - 1,
+		Hash:   derived.ParentHash,
+	}
+
+	if err := r.db.RewindLogs(ev.ChainID, unsafeParent); err != nil {
+		r.log.Error("failed to rewind logs DB", "chain", ev.ChainID, "err", err)
+		return
+	}
+
+	// Emit event to trigger node reset with new heads
+	r.emitter.Emit(superevents.ChainRewoundEvent{
+		ChainID: ev.ChainID,
 	})
 }
 
