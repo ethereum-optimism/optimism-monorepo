@@ -34,6 +34,8 @@ type rewinderDB interface {
 
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
+
+	LocalDerivedFrom(chain eth.ChainID, derived eth.BlockID) (derivedFrom types.BlockSeal, err error)
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -62,7 +64,7 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	case superevents.RewindL1Event:
 		r.handleRewindL1Event(x)
 		return true
-	case superevents.LocalDerivedEvent:
+	case superevents.LocalDerivedDoneEvent:
 		r.handleLocalDerivedEvent(x)
 		return true
 	default:
@@ -84,7 +86,7 @@ func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 // handleLocalDerivedEvent checks if the newly derived block matches what we have in our unsafe DB
 // If it doesn't match, we need to rewind the logs DB to the common ancestor between
 // the LocalUnsafe head and the new LocalSafe block
-func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
+func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedDoneEvent) {
 	// Get the block at the derived height from our unsafe chain
 	newSafeHead := ev.Derived.Derived
 	unsafeVersion, err := r.db.FindSealedBlock(ev.ChainID, newSafeHead.Number)
@@ -110,26 +112,31 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
 			return
 		}
 	}
+	var target types.BlockSeal
 	for height := int64(newSafeHead.Number - 1); height >= int64(finalized.Number); height-- {
 		// Get the block at this height
-		block, err := r.db.FindSealedBlock(ev.ChainID, uint64(height))
+		target, err = r.db.FindSealedBlock(ev.ChainID, uint64(height))
 		if err != nil {
 			r.log.Error("failed to get sealed block", "chain", ev.ChainID, "height", height, "err", err)
 			return
 		}
 
-		// Try to rewind and stop if it succeeds
-		err = r.db.RewindLogs(ev.ChainID, block)
-		if err == nil {
-			break
+		_, err := r.db.LocalDerivedFrom(ev.ChainID, target.ID())
+		if err != nil {
+			if errors.Is(err, types.ErrConflict) || errors.Is(err, types.ErrFuture) {
+				continue
+			}
+
+			r.log.Error("failed to get derived from block", "chain", ev.ChainID, "block", target.ID(), "err", err)
+			return
 		}
 
-		// If it failed with a data conflict try the next block
-		if errors.Is(err, types.ErrConflict) {
-			continue
-		}
+		break
+	}
 
-		// If it failed with any other error, log and return
+	// Try to rewind and stop if it succeeds
+	err = r.db.RewindLogs(ev.ChainID, target)
+	if err != nil {
 		r.log.Error("failed to rewind logs DB", "chain", ev.ChainID, "err", err)
 		return
 	}
