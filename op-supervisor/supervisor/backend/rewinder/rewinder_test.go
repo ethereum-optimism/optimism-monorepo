@@ -222,14 +222,15 @@ func TestNoRewindNeeded(t *testing.T) {
 
 	// Setup L1 blocks
 	l1Block1 := eth.BlockRef{
-		Hash:   common.HexToHash("0xaaa1"),
-		Number: 1,
-		Time:   900,
+		Hash:       common.HexToHash("0xaaa1"),
+		Number:     1,
+		Time:       1001,
+		ParentHash: common.HexToHash("0xaaa0"),
 	}
 	l1Block2 := eth.BlockRef{
 		Hash:       common.HexToHash("0xaaa2"),
 		Number:     2,
-		Time:       901,
+		Time:       1002,
 		ParentHash: l1Block1.Hash,
 	}
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
@@ -242,7 +243,7 @@ func TestNoRewindNeeded(t *testing.T) {
 	s.makeBlockSafe(chainID, genesis, eth.BlockRef{
 		Hash:   common.HexToHash("0xaaa0"),
 		Number: 0,
-		Time:   899,
+		Time:   1000,
 	}, true)
 
 	// Set genesis L1 block as finalized
@@ -250,7 +251,7 @@ func TestNoRewindNeeded(t *testing.T) {
 		FinalizedL1: eth.BlockRef{
 			Hash:   common.HexToHash("0xaaa0"),
 			Number: 0,
-			Time:   899,
+			Time:   1000,
 		},
 	})
 
