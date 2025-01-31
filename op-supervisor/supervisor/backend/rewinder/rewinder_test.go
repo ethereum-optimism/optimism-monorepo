@@ -464,112 +464,139 @@ func TestRewindMultiChain(t *testing.T) {
 
 // TestRewindL2WalkBack tests that during an L2 reorg, we correctly walk back
 // parent-by-parent until finding a common ancestor when the first rewind attempt fails.
-// func TestRewindL2WalkBack(t *testing.T) {
-// 	s := setupTestChain(t)
-// 	defer s.Close()
+func TestRewindL2WalkBack(t *testing.T) {
+	s := setupTestChain(t)
+	defer s.Close()
+	chainID := eth.ChainID{1}
+	chain := s.chains[chainID]
+	// Create a chain of blocks: genesis -> block1 -> block2 -> block3 -> block4A
+	genesis := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1110"),
+		Number:         0,
+		ParentHash:     common.Hash{},
+		Time:           1000,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa0"), Number: 0},
+		SequenceNumber: 0,
+	}
+	block1 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1111"),
+		Number:         1,
+		ParentHash:     genesis.Hash,
+		Time:           1001,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa1"), Number: 1},
+		SequenceNumber: 1,
+	}
+	block2 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1112"),
+		Number:         2,
+		ParentHash:     block1.Hash,
+		Time:           1002,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa2"), Number: 2},
+		SequenceNumber: 2,
+	}
+	block3 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1113"),
+		Number:         3,
+		ParentHash:     block2.Hash,
+		Time:           1003,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa3"), Number: 3},
+		SequenceNumber: 3,
+	}
+	block4A := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1114a"),
+		Number:         4,
+		ParentHash:     block3.Hash,
+		Time:           1004,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
+		SequenceNumber: 4,
+	}
+	// Create a divergent block4B that will trigger the reorg
+	block4B := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1114b"),
+		Number:         4,
+		ParentHash:     block3.Hash,
+		Time:           1004,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
+		SequenceNumber: 4,
+	}
+	// Setup sync node with all blocks
+	chain.setupSyncNodeBlocks(genesis, block1, block2, block3, block4A, block4B)
+	// Setup L1 blocks
+	l1Genesis := eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   900,
+	}
+	l1Block1 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa1"),
+		Number:     1,
+		Time:       901,
+		ParentHash: l1Genesis.Hash,
+	}
+	l1Block2 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa2"),
+		Number:     2,
+		Time:       902,
+		ParentHash: l1Block1.Hash,
+	}
+	l1Block3 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa3"),
+		Number:     3,
+		Time:       903,
+		ParentHash: l1Block2.Hash,
+	}
+	l1Block4 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa4"),
+		Number:     4,
+		Time:       904,
+		ParentHash: l1Block3.Hash,
+	}
+	// Add L1 blocks to node
+	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
+	chain.l1Node.blocks[l1Block1.Number] = l1Block1
+	chain.l1Node.blocks[l1Block2.Number] = l1Block2
+	chain.l1Node.blocks[l1Block3.Number] = l1Block3
+	chain.l1Node.blocks[l1Block4.Number] = l1Block4
 
-// 	chainID := eth.ChainID{1}
-// 	chain := s.chains[chainID]
+	// Seal all blocks in the original chain
+	s.sealBlocks(chainID, genesis, block1, block2, block3, block4A)
 
-// 	// Create a chain of blocks: genesis -> block1 -> block2 -> block3 -> block4A
-// 	genesis := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1110"),
-// 		Number:         0,
-// 		ParentHash:     common.Hash{},
-// 		Time:           1000,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa0"), Number: 0},
-// 		SequenceNumber: 0,
-// 	}
-// 	block1 := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1111"),
-// 		Number:         1,
-// 		ParentHash:     genesis.Hash,
-// 		Time:           1001,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa1"), Number: 1},
-// 		SequenceNumber: 1,
-// 	}
-// 	block2 := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1112"),
-// 		Number:         2,
-// 		ParentHash:     block1.Hash,
-// 		Time:           1002,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa2"), Number: 2},
-// 		SequenceNumber: 2,
-// 	}
-// 	block3 := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1113"),
-// 		Number:         3,
-// 		ParentHash:     block2.Hash,
-// 		Time:           1003,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa3"), Number: 3},
-// 		SequenceNumber: 3,
-// 	}
-// 	block4A := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1114a"),
-// 		Number:         4,
-// 		ParentHash:     block3.Hash,
-// 		Time:           1004,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
-// 		SequenceNumber: 4,
-// 	}
+	// Make genesis safe and derived from L1 genesis
+	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
 
-// 	// Create a divergent block4B that will trigger the reorg
-// 	block4B := eth.L2BlockRef{
-// 		Hash:           common.HexToHash("0x1114b"),
-// 		Number:         4,
-// 		ParentHash:     block3.Hash,
-// 		Time:           1004,
-// 		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
-// 		SequenceNumber: 4,
-// 	}
+	// Set genesis L1 block as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Genesis,
+	})
 
-// 	// Setup sync node with all blocks
-// 	chain.setupSyncNodeBlocks(genesis, block1, block2, block3, block4A, block4B)
+	// Make blocks up to block3 safe
+	s.makeBlockSafe(chainID, block1, l1Block1, true)
+	s.makeBlockSafe(chainID, block2, l1Block2, true)
+	s.makeBlockSafe(chainID, block3, l1Block3, true)
 
-// 	// Setup L1 blocks
-// 	l1Genesis := eth.BlockRef{
-// 		Hash:   common.HexToHash("0xaaa0"),
-// 		Number: 0,
-// 		Time:   899,
-// 	}
-// 	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
-
-// 	// Seal all blocks in the original chain
-// 	s.sealBlocks(chainID, genesis, block1, block2, block3, block4A)
-
-// 	// Make genesis safe and derived from L1 genesis
-// 	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
-
-// 	// Set genesis L1 block as finalized
-// 	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
-// 		FinalizedL1: l1Genesis,
-// 	})
-
-// 	// Create rewinder with all dependencies
-// 	i := New(s.logger, s.chainsDB, chain.l1Node)
-// 	i.AttachEmitter(&mockEmitter{})
-
-// 	// Trigger LocalDerived event with block4B
-// 	i.OnEvent(superevents.LocalDerivedDoneEvent{
-// 		ChainID: chainID,
-// 		Derived: types.DerivedBlockRefPair{
-// 			DerivedFrom: eth.BlockRef{
-// 				Hash:   block4B.L1Origin.Hash,
-// 				Number: block4B.L1Origin.Number,
-// 				Time:   1004,
-// 			},
-// 			Derived: eth.BlockRef{
-// 				Hash:       block4B.Hash,
-// 				Number:     block4B.Number,
-// 				Time:       block4B.Time,
-// 				ParentHash: block4B.ParentHash,
-// 			},
-// 		},
-// 	})
-
-// 	// Verify we rewound to block3 since it's the common ancestor
-// 	s.verifyLogsHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
-// }
+	// Create rewinder with all dependencies
+	i := New(s.logger, s.chainsDB, chain.l1Node)
+	i.AttachEmitter(&mockEmitter{})
+	// Trigger LocalDerived event with block4B
+	i.OnEvent(superevents.LocalDerivedDoneEvent{
+		ChainID: chainID,
+		Derived: types.DerivedBlockRefPair{
+			DerivedFrom: eth.BlockRef{
+				Hash:   block4B.L1Origin.Hash,
+				Number: block4B.L1Origin.Number,
+				Time:   1004,
+			},
+			Derived: eth.BlockRef{
+				Hash:       block4B.Hash,
+				Number:     block4B.Number,
+				Time:       block4B.Time,
+				ParentHash: block4B.ParentHash,
+			},
+		},
+	})
+	// Verify we rewound to block3 since it's the common ancestor
+	s.verifyLogsHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
+}
 
 // TestRewindL1PastCrossSafe tests that when an L1 reorg occurs at a height higher than
 // the CrossSafe head, only LocalSafe is rewound and CrossSafe remains untouched.
