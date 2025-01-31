@@ -21,11 +21,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-// TestRewindL1Reorg tests handling of L1 reorgs by checking that:
+// TestRewindL1 tests handling of L1 reorgs by checking that:
 // 1. Only safe data is rewound
 // 2. Unsafe data remains intact
 // 3. The rewind point is determined by finding the common L1 ancestor
-func TestRewindL1Reorg(t *testing.T) {
+func TestRewindL1(t *testing.T) {
 	s := setupTestChain(t)
 	defer s.Close()
 
@@ -113,11 +113,11 @@ func TestRewindL1Reorg(t *testing.T) {
 	s.verifyHead(chainID, block2B.ID(), "should be on block2B")
 }
 
-// TestRewindL2ViaLocalDerived tests handling of L2 reorgs via LocalDerivedEvent by checking that:
-// 1. Only unsafe data is rewound when there's a mismatch
+// TestRewindL2 tests handling of L2 reorgs via LocalDerivedEvent by checking that:
+// 1. Only unsafe data is rewound
 // 2. Safe data remains intact
 // 3. The rewind point is determined by the parent of the mismatched block
-func TestRewindL2ViaLocalDerived(t *testing.T) {
+func TestRewindL2(t *testing.T) {
 	s := setupTestChain(t)
 	defer s.Close()
 
@@ -481,6 +481,116 @@ func TestRewindMultiChain(t *testing.T) {
 		s.verifyHead(chainID, block1.ID(), fmt.Sprintf("chain %v should have rewound to block1", chainID))
 		s.verifyCrossSafe(chainID, block1, fmt.Sprintf("chain %v block1 should be cross-safe", chainID))
 	}
+}
+
+// TestRewindL2WalkBack tests that during an L2 reorg, we correctly walk back
+// parent-by-parent until finding a common ancestor when the first rewind attempt fails.
+func TestRewindL2WalkBack(t *testing.T) {
+	s := setupTestChain(t)
+	defer s.Close()
+
+	chainID := eth.ChainID{1}
+	chain := s.chains[chainID]
+
+	// Create a chain of blocks: genesis -> block1 -> block2 -> block3 -> block4A
+	genesis := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1110"),
+		Number:         0,
+		ParentHash:     common.Hash{},
+		Time:           1000,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa0"), Number: 0},
+		SequenceNumber: 0,
+	}
+	block1 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1111"),
+		Number:         1,
+		ParentHash:     genesis.Hash,
+		Time:           1001,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa1"), Number: 1},
+		SequenceNumber: 1,
+	}
+	block2 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1112"),
+		Number:         2,
+		ParentHash:     block1.Hash,
+		Time:           1002,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa2"), Number: 2},
+		SequenceNumber: 2,
+	}
+	block3 := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1113"),
+		Number:         3,
+		ParentHash:     block2.Hash,
+		Time:           1003,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa3"), Number: 3},
+		SequenceNumber: 3,
+	}
+	block4A := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1114a"),
+		Number:         4,
+		ParentHash:     block3.Hash,
+		Time:           1004,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
+		SequenceNumber: 4,
+	}
+
+	// Create a divergent block4B that will trigger the reorg
+	block4B := eth.L2BlockRef{
+		Hash:           common.HexToHash("0x1114b"),
+		Number:         4,
+		ParentHash:     block3.Hash,
+		Time:           1004,
+		L1Origin:       eth.BlockID{Hash: common.HexToHash("0xaaa4"), Number: 4},
+		SequenceNumber: 4,
+	}
+
+	// Setup sync node with all blocks
+	chain.setupSyncNodeBlocks(genesis, block1, block2, block3, block4A, block4B)
+
+	// Setup L1 blocks
+	l1Genesis := eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   899,
+	}
+	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
+
+	// Seal all blocks in the original chain
+	s.sealBlocks(chainID, genesis, block1, block2, block3, block4A)
+
+	// Make genesis safe and derived from L1 genesis
+	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+	// Set genesis L1 block as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Genesis,
+	})
+
+	// Create rewinder with all dependencies
+	i := New(s.logger, s.chainsDB, chain.l1Node)
+	i.AttachEmitter(&mockEmitter{})
+	i.AttachSyncNode(chainID, chain.syncNode)
+
+	// Trigger LocalDerived event with block4B
+	i.OnEvent(superevents.LocalDerivedEvent{
+		ChainID: chainID,
+		Derived: types.DerivedBlockRefPair{
+			DerivedFrom: eth.BlockRef{
+				Hash:   block4B.L1Origin.Hash,
+				Number: block4B.L1Origin.Number,
+				Time:   1004,
+			},
+			Derived: eth.BlockRef{
+				Hash:       block4B.Hash,
+				Number:     block4B.Number,
+				Time:       block4B.Time,
+				ParentHash: block4B.ParentHash,
+			},
+		},
+	})
+
+	// Verify we rewound to block3 since it's the common ancestor
+	s.verifyHead(chainID, block3.ID(), "should have rewound to block3 (common ancestor)")
 }
 
 type testSetup struct {
