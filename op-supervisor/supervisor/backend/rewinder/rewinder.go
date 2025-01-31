@@ -142,10 +142,7 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	if err != nil {
 		return fmt.Errorf("failed to get local safe for chain %s: %w", chainID, err)
 	}
-	localSafeL1, err := r.db.CrossDerivedFromBlockRef(chainID, localSafe.Derived.ID())
-	if err != nil {
-		return fmt.Errorf("failed to get local safe L1 block for chain %s: %w", chainID, err)
-	}
+	localSafeL1 := localSafe.DerivedFrom
 
 	// Get the canonical L1 block at our local head's height
 	canonicalL1, err := r.l1Node.L1BlockRefByNumber(context.Background(), localSafeL1.Number)
