@@ -5,7 +5,6 @@ import { console2 as console } from "forge-std/console2.sol";
 
 // Testing
 import { stdToml } from "forge-std/StdToml.sol";
-import { DelegateCaller } from "test/mocks/Callers.sol";
 
 // Scripts
 import { Deployer } from "scripts/deploy/Deployer.sol";
