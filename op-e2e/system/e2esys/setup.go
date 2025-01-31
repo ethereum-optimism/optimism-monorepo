@@ -234,6 +234,7 @@ func GraniteSystemConfig(t *testing.T, graniteTimeOffset *hexutil.Uint64, opts .
 
 func HoloceneSystemConfig(t *testing.T, holoceneTimeOffset *hexutil.Uint64, opts ...SystemConfigOpt) SystemConfig {
 	cfg := GraniteSystemConfig(t, &genesisTime, opts...)
+	cfg.DeployConfig.L1PragueTimeOffset = &genesisTime
 	cfg.DeployConfig.L2GenesisHoloceneTimeOffset = holoceneTimeOffset
 	return cfg
 }
