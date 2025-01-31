@@ -94,47 +94,53 @@ func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
 // If it doesn't match, we need to rewind the logs DB to the common ancestor between
 // the LocalUnsafe head and the new LocalSafe block
 func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
-	derived := ev.Derived.Derived
-
-	// Get the current unsafe head
-	unsafeHead, err := r.db.LocalUnsafe(ev.ChainID)
-	if err != nil {
-		r.log.Error("failed to get unsafe head", "chain", ev.ChainID, "err", err)
-		return
-	}
-
-	// If the unsafe head is before the derived block, nothing to do
-	if unsafeHead.Number < derived.Number {
-		return
-	}
-
 	// Get the block at the derived height from our unsafe chain
-	unsafeAtDerived, err := r.db.FindSealedBlock(ev.ChainID, derived.Number)
+	newSafeHead := ev.Derived.Derived
+	unsafeVersion, err := r.db.FindSealedBlock(ev.ChainID, newSafeHead.Number)
 	if err != nil {
-		r.log.Error("failed to get unsafe block at derived height", "chain", ev.ChainID, "height", derived.Number, "err", err)
+		r.log.Error("failed to get unsafe block at derived height", "chain", ev.ChainID, "height", newSafeHead.Number, "err", err)
 		return
 	}
 
 	// If the block hashes match, our unsafe chain is still valid
-	if unsafeAtDerived.Hash == derived.Hash {
+	if unsafeVersion.Hash == newSafeHead.Hash {
 		return
 	}
 
-	// The new LocalSafe block is different than what we had so rewind to its parent
-	unsafeParent := types.BlockSeal{
-		Number: derived.Number - 1,
-		Hash:   derived.ParentHash,
+	// Try rewinding the logs DB to the parent of the new safe head
+	// If it fails with a data conflict walk back through the chain
+	// until we find a common ancestor or reach the finalized block
+	finalized, err := r.db.Finalized(ev.ChainID)
+	if err != nil {
+		r.log.Error("failed to get finalized block", "chain", ev.ChainID, "err", err)
+		return
 	}
+	for height := int64(newSafeHead.Number - 1); height >= int64(finalized.Number); height-- {
+		// Get the block at this height
+		block, err := r.db.FindSealedBlock(ev.ChainID, uint64(height))
+		if err != nil {
+			r.log.Error("failed to get sealed block", "chain", ev.ChainID, "height", height, "err", err)
+			return
+		}
 
-	if err := r.db.RewindLogs(ev.ChainID, unsafeParent); err != nil {
+		// Try to rewind and stop if it succeeds
+		err = r.db.RewindLogs(ev.ChainID, block)
+		if err == nil {
+			break
+		}
+
+		// If it failed with a data conflict try the next block
+		if errors.Is(err, types.ErrConflict) {
+			continue
+		}
+
+		// If it failed with any other error, log and return
 		r.log.Error("failed to rewind logs DB", "chain", ev.ChainID, "err", err)
 		return
 	}
 
 	// Emit event to trigger node reset with new heads
-	r.emitter.Emit(superevents.ChainRewoundEvent{
-		ChainID: ev.ChainID,
-	})
+	r.emitter.Emit(superevents.ChainRewoundEvent{ChainID: ev.ChainID})
 }
 
 // rewindL1ChainIfReorged rewinds the L1 chain for the given chain ID if a reorg is detected

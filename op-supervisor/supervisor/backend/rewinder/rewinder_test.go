@@ -130,15 +130,37 @@ func TestRewindL2ViaLocalDerived(t *testing.T) {
 	chain.setupSyncNodeBlocks(genesis, block1, block2A, block2B)
 
 	// Setup L1 blocks
-	l1Block1 := eth.BlockRef{
-		Hash:   common.HexToHash("0xaaa1"),
-		Number: 1,
-		Time:   900,
+	l1Genesis := eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   899,
 	}
+	l1Block1 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa1"),
+		Number:     1,
+		Time:       900,
+		ParentHash: l1Genesis.Hash,
+	}
+	l1Block2 := eth.BlockRef{
+		Hash:       common.HexToHash("0xaaa2"),
+		Number:     2,
+		Time:       901,
+		ParentHash: l1Block1.Hash,
+	}
+	chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
 	chain.l1Node.blocks[l1Block1.Number] = l1Block1
+	chain.l1Node.blocks[l1Block2.Number] = l1Block2
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
+
+	// Make genesis safe and derived from L1 genesis
+	s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+	// Set genesis L1 block as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Genesis,
+	})
 
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
@@ -217,6 +239,22 @@ func TestNoRewindNeeded(t *testing.T) {
 
 	// Seal genesis and block1
 	s.sealBlocks(chainID, genesis, block1)
+
+	// Make genesis safe and derived from L1 genesis
+	s.makeBlockSafe(chainID, genesis, eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   899,
+	}, true)
+
+	// Set genesis L1 block as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: eth.BlockRef{
+			Hash:   common.HexToHash("0xaaa0"),
+			Number: 0,
+			Time:   899,
+		},
+	})
 
 	// Make block1 local-safe and cross-safe
 	s.makeBlockSafe(chainID, block1, l1Block1, true)
@@ -313,8 +351,16 @@ func TestRewindLongChain(t *testing.T) {
 		s.sealBlocks(chainID, block)
 	}
 
+	// Make genesis safe and derived from L1 genesis
+	s.makeBlockSafe(chainID, blocks[0], l1Blocks[0], true)
+
+	// Set genesis L1 block as finalized
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Blocks[0],
+	})
+
 	// Make blocks up to 95 safe
-	for i := uint64(0); i <= 95; i++ {
+	for i := uint64(1); i <= 95; i++ {
 		l1Index := i / 10
 		s.makeBlockSafe(chainID, blocks[i], l1Blocks[l1Index], true)
 	}
@@ -368,22 +414,39 @@ func TestRewindMultiChain(t *testing.T) {
 	genesis, block1, block2A, block2B := createTestBlocks()
 
 	// Setup L1 block
+	l1Genesis := eth.BlockRef{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+		Time:   899,
+	}
 	l1Block1 := eth.BlockRef{
-		Hash:   common.HexToHash("0xaaa1"),
-		Number: 1,
-		Time:   900,
+		Hash:       common.HexToHash("0xaaa1"),
+		Number:     1,
+		Time:       900,
+		ParentHash: l1Genesis.Hash,
 	}
 
 	// Setup both chains
 	for chainID, chain := range s.chains {
 		// Setup nodes
 		chain.setupSyncNodeBlocks(genesis, block1, block2A, block2B)
+		chain.l1Node.blocks[l1Genesis.Number] = l1Genesis
 		chain.l1Node.blocks[l1Block1.Number] = l1Block1
 
 		// Setup initial chain
 		s.sealBlocks(chainID, genesis, block1, block2A)
+
+		// Make genesis safe and derived from L1 genesis
+		s.makeBlockSafe(chainID, genesis, l1Genesis, true)
+
+		// Make block1 local-safe and cross-safe
 		s.makeBlockSafe(chainID, block1, l1Block1, true)
 	}
+
+	// Set genesis as finalized for all chains
+	s.chainsDB.OnEvent(superevents.FinalizedL1RequestEvent{
+		FinalizedL1: l1Genesis,
+	})
 
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, s.chains[chain1ID].l1Node)
@@ -577,51 +640,56 @@ func setupTestChain(t *testing.T) *testSetup {
 }
 
 func createTestBlocks() (genesis, block1, block2A, block2B eth.L2BlockRef) {
+	l1Genesis := eth.BlockID{
+		Hash:   common.HexToHash("0xaaa0"),
+		Number: 0,
+	}
+	l1Block1 := eth.BlockID{
+		Hash:   common.HexToHash("0xaaa1"),
+		Number: 1,
+	}
+	l1Block2A := eth.BlockID{
+		Hash:   common.HexToHash("0xaaa2"),
+		Number: 2,
+	}
+	l1Block2B := eth.BlockID{
+		Hash:   common.HexToHash("0xbbb2"),
+		Number: 2,
+	}
+
 	genesis = eth.L2BlockRef{
-		Hash:       common.HexToHash("0x1110"),
-		Number:     0,
-		ParentHash: common.Hash{},
-		Time:       1000,
-		L1Origin: eth.BlockID{
-			Hash:   common.HexToHash("0xaaa0"),
-			Number: 0,
-		},
+		Hash:           common.HexToHash("0x1110"),
+		Number:         0,
+		ParentHash:     common.Hash{},
+		Time:           1000,
+		L1Origin:       l1Genesis,
 		SequenceNumber: 0,
 	}
 
 	block1 = eth.L2BlockRef{
-		Hash:       common.HexToHash("0x1111"),
-		Number:     1,
-		ParentHash: genesis.Hash,
-		Time:       1001,
-		L1Origin: eth.BlockID{
-			Hash:   common.HexToHash("0xaaa1"),
-			Number: 1,
-		},
+		Hash:           common.HexToHash("0x1111"),
+		Number:         1,
+		ParentHash:     genesis.Hash,
+		Time:           1001,
+		L1Origin:       l1Block1,
 		SequenceNumber: 1,
 	}
 
 	block2A = eth.L2BlockRef{
-		Hash:       common.HexToHash("0x222a"),
-		Number:     2,
-		ParentHash: block1.Hash,
-		Time:       1002,
-		L1Origin: eth.BlockID{
-			Hash:   common.HexToHash("0xaaa2"),
-			Number: 2,
-		},
+		Hash:           common.HexToHash("0x222a"),
+		Number:         2,
+		ParentHash:     block1.Hash,
+		Time:           1002,
+		L1Origin:       l1Block2A,
 		SequenceNumber: 2,
 	}
 
 	block2B = eth.L2BlockRef{
-		Hash:       common.HexToHash("0x222b"),
-		Number:     2,
-		ParentHash: block1.Hash,
-		Time:       1002,
-		L1Origin: eth.BlockID{
-			Hash:   common.HexToHash("0xbbb2"),
-			Number: 2,
-		},
+		Hash:           common.HexToHash("0x222b"),
+		Number:         2,
+		ParentHash:     block1.Hash,
+		Time:           1002,
+		L1Origin:       l1Block2B,
 		SequenceNumber: 2,
 	}
 
