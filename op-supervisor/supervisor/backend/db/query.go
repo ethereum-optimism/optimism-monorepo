@@ -198,7 +198,7 @@ func (db *ChainsDB) FinalizedL1() eth.BlockRef {
 func (db *ChainsDB) Finalized(chainID eth.ChainID) (types.BlockSeal, error) {
 	finalizedL1 := db.finalizedL1.Get()
 	if finalizedL1 == (eth.L1BlockRef{}) {
-		return types.BlockSeal{}, fmt.Errorf("no finalized L1 signal, cannot determine L2 finality of chain %s yet", chainID)
+		return types.BlockSeal{}, fmt.Errorf("no finalized L1 signal, cannot determine L2 finality of chain %s yet: %w", chainID, types.ErrFuture)
 	}
 
 	// compare the finalized L1 block with the last derived block in the cross DB

@@ -363,8 +363,12 @@ func (m *ManagedNode) sendReset() {
 	}
 	f, err := m.backend.Finalized(ctx, m.chainID)
 	if err != nil {
-		m.log.Warn("Failed to retrieve finalized", "err", err)
-		return
+		if errors.Is(err, types.ErrFuture) {
+			f = eth.BlockID{Number: 0}
+		} else {
+			m.log.Warn("Failed to retrieve finalized", "err", err)
+			return
+		}
 	}
 
 	if err := m.Node.Reset(ctx, u, s.Derived, f); err != nil {

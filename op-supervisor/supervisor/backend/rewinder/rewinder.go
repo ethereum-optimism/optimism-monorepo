@@ -103,8 +103,12 @@ func (r *Rewinder) handleLocalDerivedEvent(ev superevents.LocalDerivedEvent) {
 	// until we find a common ancestor or reach the finalized block
 	finalized, err := r.db.Finalized(ev.ChainID)
 	if err != nil {
-		r.log.Error("failed to get finalized block", "chain", ev.ChainID, "err", err)
-		return
+		if errors.Is(err, types.ErrFuture) {
+			finalized = types.BlockSeal{Number: 0}
+		} else {
+			r.log.Error("failed to get finalized block", "chain", ev.ChainID, "err", err)
+			return
+		}
 	}
 	for height := int64(newSafeHead.Number - 1); height >= int64(finalized.Number); height-- {
 		// Get the block at this height
@@ -158,7 +162,15 @@ func (r *Rewinder) rewindL1ChainIfReorged(chainID eth.ChainID, newTip eth.BlockI
 	// Get the finalized block as our lower bound
 	finalized, err := r.db.Finalized(chainID)
 	if err != nil {
-		return fmt.Errorf("failed to get finalized block for chain %s: %w", chainID, err)
+		// If we don't have a finalized block, use the genesis block
+		if errors.Is(err, types.ErrFuture) {
+			finalized, err = r.db.FindSealedBlock(chainID, 0)
+			if err != nil {
+				return fmt.Errorf("failed to get index 0 block for chain %s: %w", chainID, err)
+			}
+		} else {
+			return fmt.Errorf("failed to get finalized block for chain %s: %w", chainID, err)
+		}
 	}
 	finalizedL1, err := r.db.CrossDerivedFromBlockRef(chainID, finalized.ID())
 	if err != nil {
