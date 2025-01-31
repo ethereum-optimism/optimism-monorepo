@@ -137,15 +137,6 @@ func (ev InvalidateLocalSafeEvent) String() string {
 	return "invalidate-local-safe"
 }
 
-type RewindL2ChainEvent struct {
-	ChainID        eth.ChainID
-	BadBlockHeight uint64
-}
-
-func (ev RewindL2ChainEvent) String() string {
-	return "rewind-chain"
-}
-
 type RewindL1Event struct {
 	IncomingBlock eth.BlockID
 }

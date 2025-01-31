@@ -116,10 +116,6 @@ func (s *ChainProcessor) onRequest(target uint64) {
 			s.log.Warn("No RPC source configured, cannot process new blocks")
 		} else {
 			s.log.Error("Failed to process new block", "err", err)
-			s.emitter.Emit(superevents.RewindL2ChainEvent{
-				ChainID:        s.chain,
-				BadBlockHeight: target,
-			})
 		}
 	} else if x := s.nextNum(); x <= target {
 		s.log.Debug("Continuing with next block", "target", target, "next", x)

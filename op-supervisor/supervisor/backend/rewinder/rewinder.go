@@ -2,7 +2,6 @@ package rewinder
 
 import (
 	"context"
-	"errors"
 	"fmt"
 
 	"github.com/ethereum/go-ethereum/log"
@@ -18,45 +17,23 @@ type l1Node interface {
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
+type l2Node interface {
+	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
+}
+
 type rewinderDB interface {
 	LastDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
 
 	LocalUnsafe(eth.ChainID) (types.BlockSeal, error)
-	CrossUnsafe(eth.ChainID) (types.BlockSeal, error)
 	LocalSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 	CrossSafe(eth.ChainID) (types.DerivedBlockSealPair, error)
 
-	RewindLocalUnsafe(eth.ChainID, types.BlockSeal) error
-	RewindCrossUnsafe(eth.ChainID, types.BlockSeal) error
 	RewindLocalSafe(eth.ChainID, types.BlockSeal) error
 	RewindCrossSafe(eth.ChainID, types.BlockSeal) error
 	RewindLogs(chainID eth.ChainID, newHead types.BlockSeal) error
 
 	FindSealedBlock(eth.ChainID, uint64) (types.BlockSeal, error)
 	Finalized(eth.ChainID) (types.BlockSeal, error)
-}
-
-type syncNode interface {
-	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
-}
-
-// controller holds the methods for a rewind operation
-type controller struct {
-	isSafe bool
-
-	getMinBlock func(eth.ChainID) (types.BlockSeal, error)
-	getLocal    func(eth.ChainID) (types.BlockSeal, error)
-	getCross    func(eth.ChainID) (types.BlockSeal, error)
-
-	rewindLocal func(eth.ChainID, types.BlockSeal) error
-	rewindCross func(eth.ChainID, types.BlockSeal) error
-}
-
-func (rc controller) safetyStr() string {
-	if rc.isSafe {
-		return "safe"
-	}
-	return "unsafe"
 }
 
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
@@ -66,7 +43,7 @@ type Rewinder struct {
 	emitter   event.Emitter
 	db        rewinderDB
 	l1Node    l1Node
-	syncNodes locks.RWMap[eth.ChainID, syncNode]
+	syncNodes locks.RWMap[eth.ChainID, l2Node]
 }
 
 func New(log log.Logger, db rewinderDB, l1Node l1Node) *Rewinder {
@@ -83,9 +60,6 @@ func (r *Rewinder) AttachEmitter(em event.Emitter) {
 
 func (r *Rewinder) OnEvent(ev event.Event) bool {
 	switch x := ev.(type) {
-	case superevents.RewindL2ChainEvent:
-		r.handleRewindL2ChainEvent(x)
-		return true
 	case superevents.RewindL1Event:
 		r.handleRewindL1Event(x)
 		return true
@@ -97,21 +71,15 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	}
 }
 
-func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source syncNode) {
+func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source l2Node) {
 	r.syncNodes.Set(chainID, source)
-}
-
-func (r *Rewinder) handleRewindL2ChainEvent(ev superevents.RewindL2ChainEvent) {
-	if err := r.rewindBothChainsL2(ev); err != nil {
-		r.log.Error("failed to rewind chain %s: %w", ev.ChainID, err)
-	}
 }
 
 // handleRewindL1Event iterates known chains and checks each one for a reorg
 // If a reorg is detected, it will rewind the chain to the latest common ancestor
 // between the local-safe head and the finalized head.
 func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
-	r.syncNodes.Range(func(chainID eth.ChainID, source syncNode) bool {
+	r.syncNodes.Range(func(chainID eth.ChainID, source l2Node) bool {
 		if err := r.rewindL1ChainIfReorged(chainID, ev.IncomingBlock); err != nil {
 			r.log.Error("failed to rewind L1 event for chain %s: %w", chainID, err)
 		}
@@ -267,65 +235,6 @@ func (r *Rewinder) checkLocalSafeForReorg(chainID eth.ChainID, commonAncestor ty
 	return localSafe.Derived, nil
 }
 
-// rewindTo rewinds the given chain to the given head unconditionally
-// It's generic over both Safe and Unsafe rewinds and handles both local and cross databases
-func (r *Rewinder) rewindTo(chainID eth.ChainID, newHead types.BlockSeal, ctrl controller) error {
-	// Rewind the local db if it's newer than the newHead
-	localHead, err := ctrl.getLocal(chainID)
-	if err != nil {
-		return err
-	}
-
-	// If the newHead is after our local head then there's nothing to do
-	if newHead.Number >= localHead.Number {
-		return nil
-	}
-
-	// Rewind the local db
-	r.log.Info("rewinding local", "safety", ctrl.safetyStr(), "chain", chainID, "newHead", newHead.Number)
-	if err := ctrl.rewindLocal(chainID, newHead); err != nil {
-		return fmt.Errorf("failed to rewind local for chain %s: %w", chainID, err)
-	}
-
-	// If the newHead is before our cross head then rewind the cross db
-	crossHead, err := ctrl.getCross(chainID)
-	if err != nil {
-		return fmt.Errorf("failed to get cross for chain %s: %w", chainID, err)
-	}
-	if crossHead.Number >= newHead.Number {
-		r.log.Info("rewinding cross", "safety", ctrl.safetyStr(), "chain", chainID, "newHead", newHead.Number)
-		if err := ctrl.rewindCross(chainID, newHead); err != nil {
-			return fmt.Errorf("failed to rewind cross for chain %s: %w", chainID, err)
-		}
-	}
-
-	return nil
-}
-
-func (r *Rewinder) controllerSafe() controller {
-	return controller{
-		isSafe:      true,
-		getMinBlock: r.db.Finalized,
-		getLocal:    pairToSealGetter(r.db.LocalSafe),
-		getCross:    pairToSealGetter(r.db.CrossSafe),
-		rewindLocal: r.db.RewindLocalSafe,
-		rewindCross: r.db.RewindCrossSafe,
-	}
-}
-
-func (r *Rewinder) controllerUnsafe() controller {
-	return controller{
-		isSafe: false,
-
-		// use local safe as earliest block for rewinding the unsafe chain
-		getMinBlock: pairToSealGetter(r.db.LocalSafe),
-		getLocal:    r.db.LocalUnsafe,
-		getCross:    r.db.CrossUnsafe,
-		rewindLocal: r.db.RewindLocalUnsafe,
-		rewindCross: r.db.RewindCrossUnsafe,
-	}
-}
-
 func (r *Rewinder) findLatestCommonAncestorL1(chainID eth.ChainID, maxBlock uint64, minBlock types.BlockSeal) (types.BlockSeal, error) {
 	r.log.Info("searching for L1 common ancestor", "chain", chainID, "maxBlock", maxBlock, "minBlock", minBlock.Number)
 	minHeight := int64(minBlock.Number)
@@ -348,110 +257,5 @@ func (r *Rewinder) findLatestCommonAncestorL1(chainID eth.ChainID, maxBlock uint
 
 	// If we didn't find a common ancestor then return the min block
 	r.log.Warn("no common L1 ancestor found for chain %s, rewinding to the minimum block", chainID)
-	return minBlock, nil
-}
-
-// pairToSealGetter wraps a DerivedBlockSealPair getter and makes it a BlockSeal getter
-// by returning the derived block seal from the pair instead of the pair itself.
-// This allows us to utilize pair getters in our rewind interface that requires seal getters.
-func pairToSealGetter(fn func(eth.ChainID) (types.DerivedBlockSealPair, error)) func(eth.ChainID) (types.BlockSeal, error) {
-	return func(chainID eth.ChainID) (types.BlockSeal, error) {
-		pair, err := fn(chainID)
-		if err != nil {
-			return types.BlockSeal{}, err
-		}
-		return pair.Derived, nil
-	}
-}
-
-//
-// OLD
-//
-
-// rewindBothChainsL2 is the main entrypoint into a rewind call.
-// It attempts to rewind the local and cross databases for the given chain for both safety levels.
-// It returns an error if the rewind fails for either safety level.
-// For each safety level, it will check between the bad block's parent and the finalized head
-// until it finds a match and then will rewind to that point.
-func (r *Rewinder) rewindBothChainsL2(ev superevents.RewindL2ChainEvent) error {
-	if err := r.attemptRewindL2Safe(ev.ChainID, ev.BadBlockHeight); err != nil {
-		return fmt.Errorf("failed to rewind safe chain %s: %w", ev.ChainID, err)
-	}
-	if err := r.attemptRewindL2Unsafe(ev.ChainID, ev.BadBlockHeight); err != nil {
-		return fmt.Errorf("failed to rewind unsafe chain %s: %w", ev.ChainID, err)
-	}
-	return nil
-}
-
-// attemptRewindL2 attempts to rewind the local and cross databases for the given chain and safety level
-func (r *Rewinder) attemptRewindL2(chainID eth.ChainID, badBlockHeight uint64, ctrl controller) error {
-	// First get the minimum block we can rewind to
-	minBlock, err := ctrl.getMinBlock(chainID)
-	if err != nil {
-		if errors.Is(err, types.ErrFuture) {
-			minBlock = types.BlockSeal{}
-		} else {
-			return fmt.Errorf("failed to get finalized head for chain %s: %w", chainID, err)
-		}
-	}
-
-	// If the badBlock target would remove our min block, return early.
-	// The min block content is assumed to be irreversible for this safety level.
-	if badBlockHeight <= minBlock.Number {
-		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", badBlockHeight, "minBlock", minBlock.Number)
-		return nil
-	}
-
-	// Find the latest common newHead between the parent and the min block
-	newHead, err := r.findLatestCommonAncestor(chainID, badBlockHeight-1, minBlock)
-	if err != nil {
-		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
-	}
-
-	// Rewind to the common ancestor
-	return r.rewindTo(chainID, newHead, ctrl)
-}
-
-// attemptRewindL2Unsafe attempts to rewind unsafe blocks
-func (r *Rewinder) attemptRewindL2Unsafe(chainID eth.ChainID, badBlockHeight uint64) error {
-	return r.attemptRewindL2(chainID, badBlockHeight, r.controllerUnsafe())
-}
-
-// attemptRewindL2Safe attempts to rewind safe blocks
-func (r *Rewinder) attemptRewindL2Safe(chainID eth.ChainID, badBlockHeight uint64) error {
-	return r.attemptRewindL2(chainID, badBlockHeight, r.controllerSafe())
-}
-
-// findLatestCommonAncestor finds the latest common ancestor between the startBlock and the finalizedBlock
-// by searching for the last block that exists in both the local db and the L2 node.
-// If no common ancestor is found then the finalized head is returned.
-func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, maxBlock uint64, minBlock types.BlockSeal) (types.BlockSeal, error) {
-	syncNode, ok := r.syncNodes.Get(chainID)
-	if !ok {
-		return types.BlockSeal{}, fmt.Errorf("sync node not found for chain %s", chainID)
-	}
-
-	// Linear search from max block down to min block
-	r.log.Info("searching for common ancestor", "chain", chainID, "local", maxBlock, "finalized", minBlock.Number)
-	minHeight := int64(minBlock.Number)
-	for height := int64(maxBlock); height >= minHeight; height-- {
-		// Load the block at this height from the node and the local db
-		remoteRef, err := syncNode.BlockRefByNumber(context.Background(), uint64(height))
-		if err != nil {
-			return types.BlockSeal{}, err
-		}
-		localRef, err := r.db.FindSealedBlock(chainID, uint64(height))
-		if err != nil {
-			return types.BlockSeal{}, err
-		}
-
-		// If the block is the same then we've found the common ancestor
-		if localRef.Hash == remoteRef.Hash {
-			return localRef, nil
-		}
-	}
-
-	// If we didn't find a common ancestor then return the min block
-	r.log.Warn("no common ancestor found for chain %s, rewinding to the minimum block", chainID)
 	return minBlock, nil
 }
