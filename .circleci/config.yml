@@ -1116,14 +1116,14 @@ jobs:
               PRESTATE_MT64_HASH="${BRANCH_NAME}-mt64"
               PRESTATE_INTEROP_HASH="${BRANCH_NAME}-interop"
             fi
-#            gsutil cp ./op-program/bin/prestate.bin.gz \
-#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
-#
-#            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
-#
-#            gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
+            gsutil cp ./op-program/bin/prestate.bin.gz \
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+
+            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+
+            gsutil cp ./op-program/bin/prestate-interop.bin.gz \
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
@@ -1510,11 +1510,6 @@ workflows:
                 - op-supervisor
                 - cannon
       - cannon-prestate-quick
-      - publish-cannon-prestates:
-          requires:
-            - cannon-prestate-quick
-          context:
-            - oplabs-network-optimism-io-bucket
       - sanitize-op-program:
           requires:
             - cannon-prestate-quick
