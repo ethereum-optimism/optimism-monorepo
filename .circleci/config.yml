@@ -1038,7 +1038,9 @@ jobs:
           command: make op-program
       - run:
           name: Sanitize op-program client
-          command: make -f cannon/Makefile sanitize-program GUEST_PROGRAM=op-program/bin/op-program-client.elf
+          command: make sanitize-program GUEST_PROGRAM=../op-program/bin/op-program-client.elf
+          working_directory: cannon
+
 
   cannon-prestate-quick:
     machine: true
