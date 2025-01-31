@@ -202,16 +202,16 @@ func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlockHeight uint64)
 // findLatestCommonAncestor finds the latest common ancestor between the startBlock and the finalizedBlock
 // by searching for the last block that exists in both the local db and the L2 node.
 // If no common ancestor is found then the finalized head is returned.
-func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, startBlock uint64, finalizedBlock types.BlockSeal) (types.BlockSeal, error) {
+func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, maxBlock uint64, minBlock types.BlockSeal) (types.BlockSeal, error) {
 	syncNode, ok := r.syncNodes.Get(chainID)
 	if !ok {
 		return types.BlockSeal{}, fmt.Errorf("sync node not found for chain %s", chainID)
 	}
 
-	// Linear search from local height down to finalized height
-	r.log.Info("searching for common ancestor", "chain", chainID, "local", startBlock, "finalized", finalizedBlock.Number)
-	finalizedHeight := int64(finalizedBlock.Number)
-	for height := int64(startBlock); height >= finalizedHeight; height-- {
+	// Linear search from max block down to min block
+	r.log.Info("searching for common ancestor", "chain", chainID, "local", maxBlock, "finalized", minBlock.Number)
+	finalizedHeight := int64(minBlock.Number)
+	for height := int64(maxBlock); height >= finalizedHeight; height-- {
 		// Load the block at this height from the node and the local db
 		remoteRef, err := syncNode.BlockRefByNumber(context.Background(), uint64(height))
 		if err != nil {
@@ -229,7 +229,8 @@ func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, startBlock uint
 	}
 
 	// If we didn't find a common ancestor then return the finalized head
-	return finalizedBlock, nil
+	r.log.Warn("no common ancestor found for chain %s, rewinding to the minimum block", chainID)
+	return minBlock, nil
 }
 
 // pairToSealGetter wraps a DerivedBlockSealPair getter and makes it a BlockSeal getter
