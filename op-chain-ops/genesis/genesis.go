@@ -69,6 +69,7 @@ func NewL2Genesis(config *DeployConfig, l1StartHeader *types.Header) (*core.Gene
 		FjordTime:               config.FjordTime(l1StartTime),
 		GraniteTime:             config.GraniteTime(l1StartTime),
 		HoloceneTime:            config.HoloceneTime(l1StartTime),
+		PragueTime:              config.IsthmusTime(l1StartTime),
 		IsthmusTime:             config.IsthmusTime(l1StartTime),
 		PragueTime:              config.IsthmusTime(l1StartTime),
 		InteropTime:             config.InteropTime(l1StartTime),
@@ -143,6 +144,7 @@ func NewL1Genesis(config *DeployConfig) (*core.Genesis, error) {
 		GrayGlacierBlock:    big.NewInt(0),
 		ShanghaiTime:        u64ptr(0),
 		CancunTime:          u64ptr(0),
+		PragueTime:          u64ptr(0),
 		// To enable post-Merge consensus at genesis
 		MergeNetsplitBlock:      big.NewInt(0),
 		TerminalTotalDifficulty: big.NewInt(0),
