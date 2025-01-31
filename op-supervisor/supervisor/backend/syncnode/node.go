@@ -25,6 +25,7 @@ import (
 type backend interface {
 	LocalSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	LocalUnsafe(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
+	CrossSafe(ctx context.Context, chainID eth.ChainID) (pair types.DerivedIDPair, err error)
 	SafeDerivedAt(ctx context.Context, chainID eth.ChainID, derivedFrom eth.BlockID) (derived eth.BlockID, err error)
 	Finalized(ctx context.Context, chainID eth.ChainID) (eth.BlockID, error)
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
@@ -355,9 +356,9 @@ func (m *ManagedNode) sendReset() {
 		m.log.Warn("Failed to retrieve local-unsafe", "err", err)
 		return
 	}
-	s, err := m.backend.LocalSafe(ctx, m.chainID)
+	s, err := m.backend.CrossSafe(ctx, m.chainID)
 	if err != nil {
-		m.log.Warn("Failed to retrieve local-safe", "err", err)
+		m.log.Warn("Failed to retrieve cross-safe", "err", err)
 		return
 	}
 	f, err := m.backend.Finalized(ctx, m.chainID)
