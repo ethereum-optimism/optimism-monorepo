@@ -35,12 +35,14 @@ type syncNode interface {
 
 // rewindController holds the methods for a rewind operation
 type rewindController struct {
-	isSafe       bool
-	getFinalized func(eth.ChainID) (types.BlockSeal, error)
-	getLocal     func(eth.ChainID) (types.BlockSeal, error)
-	getCross     func(eth.ChainID) (types.BlockSeal, error)
-	rewindLocal  func(eth.ChainID, types.BlockSeal) error
-	rewindCross  func(eth.ChainID, types.BlockSeal) error
+	isSafe bool
+
+	getMinBlock func(eth.ChainID) (types.BlockSeal, error)
+	getLocal    func(eth.ChainID) (types.BlockSeal, error)
+	getCross    func(eth.ChainID) (types.BlockSeal, error)
+
+	rewindLocal func(eth.ChainID, types.BlockSeal) error
+	rewindCross func(eth.ChainID, types.BlockSeal) error
 }
 
 func (rc rewindController) safetyStr() string {
@@ -119,11 +121,11 @@ func (r *Rewinder) rewindChain(ev superevents.RewindChainEvent) error {
 
 // attemptRewind attempts to rewind the local and cross databases for the given chain and safety level
 func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctrl rewindController) error {
-	// First get the finalized head
-	finalizedHead, err := ctrl.getFinalized(chainID)
+	// First get the minimum block we can rewind to
+	minBlock, err := ctrl.getMinBlock(chainID)
 	if err != nil {
 		if errors.Is(err, types.ErrFuture) {
-			finalizedHead = types.BlockSeal{}
+			minBlock = types.BlockSeal{}
 		} else {
 			return fmt.Errorf("failed to get finalized head for chain %s: %w", chainID, err)
 		}
@@ -131,13 +133,13 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctr
 
 	// If the bad block's parent is before the finalized head then stop
 	parentHeight := badBlockHeight - 1
-	if parentHeight < finalizedHead.Number {
-		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", parentHeight, "finalized", finalizedHead.Number)
+	if parentHeight < minBlock.Number {
+		r.log.Warn("requested head is not ahead of finalized head", "chain", chainID, "requested", parentHeight, "minBlock", minBlock.Number)
 		return nil
 	}
 
 	// Find the latest common newHead between the parent and the finalized head
-	newHead, err := r.findLatestCommonAncestor(chainID, parentHeight, finalizedHead)
+	newHead, err := r.findLatestCommonAncestor(chainID, parentHeight, minBlock)
 	if err != nil {
 		return fmt.Errorf("failed to find common ancestor for chain %s: %w", chainID, err)
 	}
@@ -172,24 +174,28 @@ func (r *Rewinder) attemptRewind(chainID eth.ChainID, badBlockHeight uint64, ctr
 // attemptRewindUnsafe attempts to rewind unsafe blocks
 func (r *Rewinder) attemptRewindUnsafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
-		isSafe:       false,
-		getFinalized: derivedFromPairGetter(r.db.LocalSafe),
-		getLocal:     r.db.LocalUnsafe,
-		getCross:     r.db.CrossUnsafe,
-		rewindLocal:  r.db.RewindLocalUnsafe,
-		rewindCross:  r.db.RewindCrossUnsafe,
+		isSafe: false,
+
+		// use local safe as earliest block for rewinding the unsafe chain
+		getMinBlock: pairToSealGetter(r.db.LocalSafe),
+		getLocal:    r.db.LocalUnsafe,
+		getCross:    r.db.CrossUnsafe,
+		rewindLocal: r.db.RewindLocalUnsafe,
+		rewindCross: r.db.RewindCrossUnsafe,
 	})
 }
 
 // attemptRewindSafe attempts to rewind safe blocks
 func (r *Rewinder) attemptRewindSafe(chainID eth.ChainID, badBlockHeight uint64) error {
 	return r.attemptRewind(chainID, badBlockHeight, rewindController{
-		isSafe:       true,
-		getFinalized: r.db.Finalized,
-		getLocal:     derivedFromPairGetter(r.db.LocalSafe),
-		getCross:     derivedFromPairGetter(r.db.CrossSafe),
-		rewindLocal:  r.db.RewindLocalSafe,
-		rewindCross:  r.db.RewindCrossSafe,
+		isSafe: true,
+
+		// use finalized as earliest block for rewinding the safe chain
+		getMinBlock: r.db.Finalized,
+		getLocal:    pairToSealGetter(r.db.LocalSafe),
+		getCross:    pairToSealGetter(r.db.CrossSafe),
+		rewindLocal: r.db.RewindLocalSafe,
+		rewindCross: r.db.RewindCrossSafe,
 	})
 }
 
@@ -226,9 +232,10 @@ func (r *Rewinder) findLatestCommonAncestor(chainID eth.ChainID, startBlock uint
 	return finalizedBlock, nil
 }
 
-// derivedFromPairGetter wraps a (chainID) -> (types.DerivedBlockSealPair) function
-// and returns the derived block seal from the pair instead of the pair itself.
-func derivedFromPairGetter(fn func(eth.ChainID) (types.DerivedBlockSealPair, error)) func(eth.ChainID) (types.BlockSeal, error) {
+// pairToSealGetter wraps a DerivedBlockSealPair getter and makes it a BlockSeal getter
+// by returning the derived block seal from the pair instead of the pair itself.
+// This allows us to utilize pair getters in our rewind interface that requires seal getters.
+func pairToSealGetter(fn func(eth.ChainID) (types.DerivedBlockSealPair, error)) func(eth.ChainID) (types.BlockSeal, error) {
 	return func(chainID eth.ChainID) (types.BlockSeal, error) {
 		pair, err := fn(chainID)
 		if err != nil {
