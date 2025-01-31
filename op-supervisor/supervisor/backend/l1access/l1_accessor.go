@@ -160,7 +160,7 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 	// Stop if the block is the same or older than the tip
-	if ref.Number == p.tip.Number && ref.Hash == p.tip.Hash {
+	if ref.Hash == p.tip.Hash {
 		p.log.Info("Latest L1 block signal is the same as the tip", "ref", ref)
 		return
 	}
