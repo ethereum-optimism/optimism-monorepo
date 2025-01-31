@@ -128,6 +128,11 @@ var (
 		Usage:   "Protocol versions proxy.",
 		EnvVars: deployer.PrefixEnvVar("PROTOCOL_VERSIONS_PROXY"),
 	}
+	UpgradeControllerFlag = &cli.StringFlag{
+		Name:    "upgrade-controller",
+		Usage:   "Upgrade controller.",
+		EnvVars: deployer.PrefixEnvVar("UPGRADE_CONTROLLER"),
+	}
 	UseInteropFlag = &cli.BoolFlag{
 		Name:    "use-interop",
 		Usage:   "If true, deploy Interop implementations.",
@@ -149,6 +154,7 @@ var ImplementationsFlags = []cli.Flag{
 	DisputeGameFinalityDelaySecondsFlag,
 	SuperchainConfigProxyFlag,
 	ProtocolVersionsProxyFlag,
+	UpgradeControllerFlag,
 	UseInteropFlag,
 }
 

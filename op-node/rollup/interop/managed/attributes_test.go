@@ -14,7 +14,6 @@ import (
 	"github.com/ethereum/go-ethereum/core/types"
 	"github.com/ethereum/go-ethereum/crypto"
 
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/testutils"
 )
@@ -118,7 +117,7 @@ func TestInvalidatedBlockTx(t *testing.T) {
 		signer := types.LatestSignerForChainID(big.NewInt(0))
 		sender, err := signer.Sender(tx)
 		require.NoError(t, err)
-		require.Equal(t, derive.L1InfoDepositerAddress, sender, "from")
+		require.Equal(t, OptimisticBlockDepositSenderAddress, sender, "from")
 		require.Equal(t, common.Address{}, *tx.To(), "to")
 		require.Equal(t, "0", tx.Mint().String(), "mint")
 		require.Equal(t, "0", tx.Value().String(), "value")

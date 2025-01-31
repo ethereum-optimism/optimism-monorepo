@@ -520,6 +520,9 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 	})
 	chainInfos := make([]eth.ChainRootInfo, len(chains))
 	superRootChains := make([]eth.ChainIDAndOutput, len(chains))
+
+	var crossSafeDerivedFrom eth.BlockID
+
 	for i, chainID := range chains {
 		src, ok := su.syncSources.Get(chainID)
 		if !ok {
@@ -541,15 +544,28 @@ func (su *SupervisorBackend) SuperRootAtTimestamp(ctx context.Context, timestamp
 			Pending:   pending.Marshal(),
 		}
 		superRootChains[i] = eth.ChainIDAndOutput{ChainID: chainID, Output: canonicalRoot}
+
+		ref, err := src.L2BlockRefByTimestamp(ctx, uint64(timestamp))
+		if err != nil {
+			return eth.SuperRootResponse{}, err
+		}
+		derivedFrom, err := su.chainDBs.CrossDerivedFrom(chainID, ref.ID())
+		if err != nil {
+			return eth.SuperRootResponse{}, err
+		}
+		if crossSafeDerivedFrom.Number == 0 || crossSafeDerivedFrom.Number < derivedFrom.Number {
+			crossSafeDerivedFrom = derivedFrom.ID()
+		}
 	}
 	superRoot := eth.SuperRoot(&eth.SuperV1{
 		Timestamp: uint64(timestamp),
 		Chains:    superRootChains,
 	})
 	return eth.SuperRootResponse{
-		Timestamp: uint64(timestamp),
-		SuperRoot: superRoot,
-		Chains:    chainInfos,
+		CrossSafeDerivedFrom: crossSafeDerivedFrom,
+		Timestamp:            uint64(timestamp),
+		SuperRoot:            superRoot,
+		Chains:               chainInfos,
 	}, nil
 }
 

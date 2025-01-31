@@ -3,7 +3,10 @@ package prefetcher
 import (
 	"context"
 	"errors"
+	"fmt"
 
+	preimage "github.com/ethereum-optimism/optimism/op-preimage"
+	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	hostcommon "github.com/ethereum-optimism/optimism/op-program/host/common"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum-optimism/optimism/op-service/retry"
@@ -13,7 +16,7 @@ import (
 
 type ProgramExecutor interface {
 	// RunProgram derives the block at the specified blockNumber
-	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID) error
+	RunProgram(ctx context.Context, prefetcher hostcommon.Prefetcher, blockNumber uint64, chainID eth.ChainID, db l2.KeyValueStore) error
 }
 
 // nativeReExecuteBlock is a helper function that re-executes a block natively.
@@ -54,5 +57,13 @@ func (p *Prefetcher) nativeReExecuteBlock(
 		return err
 	}
 	p.logger.Info("Re-executing block", "block_hash", blockHash, "block_number", header.NumberU64())
-	return p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID)
+	if err = p.executor.RunProgram(ctx, p, header.NumberU64()+1, chainID, hostcommon.NewL2KeyValueStore(p.kvStore)); err != nil {
+		return err
+	}
+
+	// Sanity check that the program execution created the requested block
+	if _, err := p.kvStore.Get(preimage.Keccak256Key(blockHash).PreimageKey()); err != nil {
+		return fmt.Errorf("cannot find block %v in storage after re-execution", blockHash)
+	}
+	return nil
 }

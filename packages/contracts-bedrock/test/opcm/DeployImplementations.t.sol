@@ -1,15 +1,19 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+// Testing
 import { Test, stdStorage, StdStorage } from "forge-std/Test.sol";
-import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
 
+// Libraries
+import { DeployUtils } from "scripts/libraries/DeployUtils.sol";
+import { Chains } from "scripts/libraries/Chains.sol";
+
+// Interfaces
 import { IDelayedWETH } from "interfaces/dispute/IDelayedWETH.sol";
 import { IPreimageOracle } from "interfaces/cannon/IPreimageOracle.sol";
 import { IMIPS } from "interfaces/cannon/IMIPS.sol";
 import { IDisputeGameFactory } from "interfaces/dispute/IDisputeGameFactory.sol";
 import { IAnchorStateRegistry } from "interfaces/dispute/IAnchorStateRegistry.sol";
-
 import { ISuperchainConfig } from "interfaces/L1/ISuperchainConfig.sol";
 import { IProtocolVersions } from "interfaces/L1/IProtocolVersions.sol";
 import { IOPContractsManager } from "interfaces/L1/IOPContractsManager.sol";
@@ -398,7 +402,7 @@ contract DeployImplementations_Test is Test {
         dio.checkOutput(dii);
     }
 
-    function testFuzz_run_largeChallengePeriodSeconds_reverts(uint256 _challengePeriodSeconds) public {
+    function setDefaults() internal {
         // Set the defaults.
         dii.set(dii.withdrawalDelaySeconds.selector, withdrawalDelaySeconds);
         dii.set(dii.minProposalSizeBytes.selector, minProposalSizeBytes);
@@ -411,7 +415,10 @@ contract DeployImplementations_Test is Test {
         dii.set(dii.superchainConfigProxy.selector, address(superchainConfigProxy));
         dii.set(dii.protocolVersionsProxy.selector, address(protocolVersionsProxy));
         dii.set(dii.superchainProxyAdmin.selector, address(superchainProxyAdmin));
+    }
 
+    function testFuzz_run_largeChallengePeriodSeconds_reverts(uint256 _challengePeriodSeconds) public {
+        setDefaults();
         // Set the challenge period to a value that is too large, using vm.store because the setter
         // method won't allow it.
         challengePeriodSeconds = bound(_challengePeriodSeconds, uint256(type(uint64).max) + 1, type(uint256).max);
@@ -420,6 +427,19 @@ contract DeployImplementations_Test is Test {
         vm.store(address(dii), bytes32(slot), bytes32(challengePeriodSeconds));
 
         vm.expectRevert("DeployImplementationsInput: challengePeriodSeconds too large");
+        deployImplementations.run(dii, dio);
+    }
+
+    function test_run_deployMipsV1OnMainnetOrSepolia_reverts() public {
+        setDefaults();
+        dii.set(dii.mipsVersion.selector, 1);
+
+        vm.chainId(Chains.Mainnet);
+        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
+        deployImplementations.run(dii, dio);
+
+        vm.chainId(Chains.Sepolia);
+        vm.expectRevert("DeployImplementations: Mips V1 should not be deployed on Mainnet or Sepolia");
         deployImplementations.run(dii, dio);
     }
 }

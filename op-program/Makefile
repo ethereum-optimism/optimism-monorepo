@@ -51,8 +51,6 @@ reproducible-prestate:
 	@docker build --output ./bin/ --progress plain -f Dockerfile.repro ../
 	@echo "Cannon Absolute prestate hash: "
 	@cat ./bin/prestate-proof.json | jq -r .pre
-	@echo "MT-Cannon Absolute prestate hash: "
-	@cat ./bin/prestate-proof-mt.json | jq -r .pre
 	@echo "Cannon64 Absolute prestate hash: "
 	@cat ./bin/prestate-proof-mt64.json | jq -r .pre
 	@echo "CannonInterop Absolute prestate hash: "

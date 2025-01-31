@@ -78,10 +78,19 @@ func blocksTopicV3(cfg *rollup.Config) string {
 	return fmt.Sprintf("/optimism/%s/2/blocks", cfg.L2ChainID.String())
 }
 
+func blocksTopicV4(cfg *rollup.Config) string {
+	return fmt.Sprintf("/optimism/%s/3/blocks", cfg.L2ChainID.String())
+}
+
 // BuildSubscriptionFilter builds a simple subscription filter,
 // to help protect against peers spamming useless subscriptions.
 func BuildSubscriptionFilter(cfg *rollup.Config) pubsub.SubscriptionFilter {
-	return pubsub.NewAllowlistSubscriptionFilter(blocksTopicV1(cfg), blocksTopicV2(cfg), blocksTopicV3(cfg)) // add more topics here in the future, if any.
+	return pubsub.NewAllowlistSubscriptionFilter(
+		blocksTopicV1(cfg),
+		blocksTopicV2(cfg),
+		blocksTopicV3(cfg),
+		blocksTopicV4(cfg), // add more topics here in the future, if any.
+	)
 }
 
 var msgBufPool = sync.Pool{New: func() any {
@@ -299,8 +308,8 @@ func BuildBlocksValidator(log log.Logger, cfg *rollup.Config, runCfg GossipRunti
 		var envelope eth.ExecutionPayloadEnvelope
 
 		// [REJECT] if the block encoding is not valid
-		if blockVersion == eth.BlockV3 {
-			if err := envelope.UnmarshalSSZ(uint32(len(payloadBytes)), bytes.NewReader(payloadBytes)); err != nil {
+		if blockVersion.HasParentBeaconBlockRoot() {
+			if err := envelope.UnmarshalSSZ(blockVersion, uint32(len(payloadBytes)), bytes.NewReader(payloadBytes)); err != nil {
 				log.Warn("invalid envelope payload", "err", err, "peer", id)
 				return pubsub.ValidationReject
 			}
@@ -386,6 +395,11 @@ func BuildBlocksValidator(log log.Logger, cfg *rollup.Config, runCfg GossipRunti
 			return pubsub.ValidationReject
 		}
 
+		if blockVersion.HasWithdrawalsRoot() && payload.WithdrawalsRoot == nil {
+			log.Warn("payload is on v4 topic, but has nil withdrawals root", "bad_hash", payload.BlockHash.String())
+			return pubsub.ValidationReject
+		}
+
 		seen, ok := blockHeightLRU.Get(uint64(payload.BlockNumber))
 		if !ok {
 			seen = new(seenBlocks)
@@ -450,6 +464,7 @@ type GossipTopicInfo interface {
 	BlocksTopicV1Peers() []peer.ID
 	BlocksTopicV2Peers() []peer.ID
 	BlocksTopicV3Peers() []peer.ID
+	BlocksTopicV4Peers() []peer.ID
 }
 
 type GossipOut interface {
@@ -485,6 +500,7 @@ type publisher struct {
 	blocksV1 *blockTopic
 	blocksV2 *blockTopic
 	blocksV3 *blockTopic
+	blocksV4 *blockTopic
 
 	runCfg GossipRuntimeConfig
 }
@@ -507,7 +523,12 @@ func combinePeers(allPeers ...[]peer.ID) []peer.ID {
 }
 
 func (p *publisher) AllBlockTopicsPeers() []peer.ID {
-	return combinePeers(p.BlocksTopicV1Peers(), p.BlocksTopicV2Peers(), p.BlocksTopicV3Peers())
+	return combinePeers(
+		p.BlocksTopicV1Peers(),
+		p.BlocksTopicV2Peers(),
+		p.BlocksTopicV3Peers(),
+		p.BlocksTopicV4Peers(),
+	)
 }
 
 func (p *publisher) BlocksTopicV1Peers() []peer.ID {
@@ -520,6 +541,10 @@ func (p *publisher) BlocksTopicV2Peers() []peer.ID {
 
 func (p *publisher) BlocksTopicV3Peers() []peer.ID {
 	return p.blocksV3.topic.ListPeers()
+}
+
+func (p *publisher) BlocksTopicV4Peers() []peer.ID {
+	return p.blocksV4.topic.ListPeers()
 }
 
 func (p *publisher) PublishL2Payload(ctx context.Context, envelope *eth.ExecutionPayloadEnvelope, signer Signer) error {
@@ -554,7 +579,9 @@ func (p *publisher) PublishL2Payload(ctx context.Context, envelope *eth.Executio
 	// This also copies the data, freeing up the original buffer to go back into the pool
 	out := snappy.Encode(nil, data)
 
-	if p.cfg.IsEcotone(uint64(envelope.ExecutionPayload.Timestamp)) {
+	if p.cfg.IsIsthmus(uint64(envelope.ExecutionPayload.Timestamp)) {
+		return p.blocksV4.topic.Publish(ctx, out)
+	} else if p.cfg.IsEcotone(uint64(envelope.ExecutionPayload.Timestamp)) {
 		return p.blocksV3.topic.Publish(ctx, out)
 	} else if p.cfg.IsCanyon(uint64(envelope.ExecutionPayload.Timestamp)) {
 		return p.blocksV2.topic.Publish(ctx, out)
@@ -597,6 +624,14 @@ func JoinGossip(self peer.ID, ps *pubsub.PubSub, log log.Logger, cfg *rollup.Con
 		return nil, fmt.Errorf("failed to setup blocks v3 p2p: %w", err)
 	}
 
+	v4Logger := log.New("topic", "blocksV4")
+	blocksV4Validator := guardGossipValidator(log, logValidationResult(self, "validated blockv4", v4Logger, BuildBlocksValidator(v4Logger, cfg, runCfg, eth.BlockV4)))
+	blocksV4, err := newBlockTopic(p2pCtx, blocksTopicV4(cfg), ps, v4Logger, gossipIn, blocksV4Validator)
+	if err != nil {
+		p2pCancel()
+		return nil, fmt.Errorf("failed to setup blocks v4 p2p: %w", err)
+	}
+
 	return &publisher{
 		log:       log,
 		cfg:       cfg,
@@ -604,6 +639,7 @@ func JoinGossip(self peer.ID, ps *pubsub.PubSub, log log.Logger, cfg *rollup.Con
 		blocksV1:  blocksV1,
 		blocksV2:  blocksV2,
 		blocksV3:  blocksV3,
+		blocksV4:  blocksV4,
 		runCfg:    runCfg,
 	}, nil
 }

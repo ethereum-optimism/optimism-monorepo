@@ -113,7 +113,7 @@ func (c *Config) Check() error {
 	if c.L1Head == (common.Hash{}) {
 		return ErrInvalidL1Head
 	}
-	if c.L2Head == (common.Hash{}) {
+	if !c.InteropEnabled && c.L2Head == (common.Hash{}) {
 		return ErrInvalidL2Head
 	}
 	if c.L2OutputRoot == (common.Hash{}) {
@@ -240,6 +240,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 	}
 	var l2OutputRoot common.Hash
 	var agreedPrestate []byte
+	var interopEnabled bool
 	if ctx.IsSet(flags.L2OutputRoot.Name) {
 		l2OutputRoot = common.HexToHash(ctx.String(flags.L2OutputRoot.Name))
 	} else if ctx.IsSet(flags.L2AgreedPrestate.Name) {
@@ -249,6 +250,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 			return nil, ErrInvalidAgreedPrestate
 		}
 		l2OutputRoot = crypto.Keccak256Hash(agreedPrestate)
+		interopEnabled = true
 	}
 	if l2OutputRoot == (common.Hash{}) {
 		return nil, ErrInvalidL2OutputRoot
@@ -346,6 +348,7 @@ func NewConfigFromCLI(log log.Logger, ctx *cli.Context) (*Config, error) {
 		L1RPCKind:          sources.RPCProviderKind(ctx.String(flags.L1RPCProviderKind.Name)),
 		ExecCmd:            ctx.String(flags.Exec.Name),
 		ServerMode:         ctx.Bool(flags.Server.Name),
+		InteropEnabled:     interopEnabled,
 	}, nil
 }
 

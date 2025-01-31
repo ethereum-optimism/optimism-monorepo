@@ -83,11 +83,20 @@ func TestL1HeadRequired(t *testing.T) {
 	require.ErrorIs(t, err, ErrInvalidL1Head)
 }
 
-func TestL2HeadRequired(t *testing.T) {
-	config := validConfig()
-	config.L2Head = common.Hash{}
-	err := config.Check()
-	require.ErrorIs(t, err, ErrInvalidL2Head)
+func TestL2Head(t *testing.T) {
+	t.Run("RequiredPreInterop", func(t *testing.T) {
+		config := validConfig()
+		config.L2Head = common.Hash{}
+		err := config.Check()
+		require.ErrorIs(t, err, ErrInvalidL2Head)
+	})
+
+	t.Run("NotRequiredForInterop", func(t *testing.T) {
+		config := validInteropConfig()
+		config.L2Head = common.Hash{}
+		err := config.Check()
+		require.NoError(t, err)
+	})
 }
 
 func TestL2OutputRootRequired(t *testing.T) {

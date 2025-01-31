@@ -277,8 +277,6 @@ contract L2Genesis is Deployer {
             setL2ToL2CrossDomainMessenger(); // 23
             setSuperchainWETH(); // 24
             setETHLiquidity(); // 25
-            setOptimismSuperchainERC20Factory(); // 26
-            setOptimismSuperchainERC20Beacon(); // 27
             setSuperchainTokenBridge(); // 28
         }
     }
@@ -312,15 +310,7 @@ contract L2Genesis is Deployer {
 
     /// @notice This predeploy is following the safety invariant #1.
     function setL2StandardBridge(address payable _l1StandardBridgeProxy) public {
-        address impl;
-        if (cfg.useInterop()) {
-            string memory cname = "L2StandardBridgeInterop";
-            impl = Predeploys.predeployToCodeNamespace(Predeploys.L2_STANDARD_BRIDGE);
-            console.log("Setting %s implementation at: %s", cname, impl);
-            vm.etch(impl, vm.getDeployedCode(string.concat(cname, ".sol:", cname)));
-        } else {
-            impl = _setImplementationCode(Predeploys.L2_STANDARD_BRIDGE);
-        }
+        address impl = _setImplementationCode(Predeploys.L2_STANDARD_BRIDGE);
 
         IL2StandardBridge(payable(impl)).initialize({ _otherBridge: IStandardBridge(payable(address(0))) });
 
