@@ -63,6 +63,8 @@ func testCustomGasToken(t *testing.T, allocType config.AllocType) {
 		offset := hexutil.Uint64(0)
 		cfg.DeployConfig.L2GenesisRegolithTimeOffset = &offset
 		cfg.DeployConfig.L1CancunTimeOffset = &offset
+		cfg.DeployConfig.L1PragueTimeOffset = &offset
+
 		cfg.DeployConfig.L2GenesisCanyonTimeOffset = &offset
 		cfg.DeployConfig.L2GenesisDeltaTimeOffset = &offset
 		cfg.DeployConfig.L2GenesisEcotoneTimeOffset = &offset
