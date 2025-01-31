@@ -257,6 +257,7 @@ func TestBatcherAutoDA(t *testing.T) {
 
 	// System setup
 	cfg := e2esys.HoloceneSystemConfig(t, new(hexutil.Uint64))
+	cfg.DeployConfig.L1PragueTimeOffset = new(hexutil.Uint64) // activate prague to get higher calldata cost
 	cfg.DataAvailabilityType = batcherFlags.AutoType
 	// We set the genesis fee values and block gas limit such that calldata txs are initially cheaper,
 	// but then manipulate the fee markets over the coming L1 blocks such that blobs become cheaper again.
