@@ -282,7 +282,7 @@ func TestBatcherAutoDA(t *testing.T) {
 	require.NoError(t, err)
 	opts.Value = depAmount
 	fromAddr := cfg.Secrets.Addresses().Alice
-	const numTxs = 18
+	const numTxs = 25
 
 	// Helpers
 	mustGetFees := func() (*big.Int, *big.Int, *big.Int, float64) {
