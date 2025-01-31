@@ -7,8 +7,6 @@ import (
 	"sync"
 	"time"
 
-	"github.com/ethereum/go-ethereum/common"
-
 	"github.com/ethereum/go-ethereum"
 	"github.com/ethereum/go-ethereum/log"
 
@@ -41,10 +39,9 @@ type L1Accessor struct {
 
 	finalitySub ethereum.Subscription
 
-	// tipHeight is the height of the L1 chain tip
-	// used to block access to requests more recent than the confirmation depth
-	tipHeight uint64
-	tipHash   common.Hash
+	// tip is the L1 chain tip. Used to block access to requests more recent than
+	// the confirmation depth, and to detect reorgs
+	tip       eth.BlockID
 	latestSub ethereum.Subscription
 	confDepth uint64
 
@@ -163,17 +160,17 @@ func (p *L1Accessor) onFinalized(ctx context.Context, ref eth.L1BlockRef) {
 
 func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 	// Stop if the block is the same or older than the tip
-	if ref.Number == p.tipHeight && ref.Hash == p.tipHash {
+	if ref.Number == p.tip.Number && ref.Hash == p.tip.Hash {
 		p.log.Info("Latest L1 block signal is the same as the tip", "ref", ref)
 		return
 	}
-	if ref.Number < p.tipHeight {
+	if ref.Number < p.tip.Number {
 		p.log.Warn("L1 block is older than the tip", "ref", ref)
 		return
 	}
 
 	// Check if the block is the next one and if it is, check for a reorg
-	if ref.ParentHash != p.tipHash {
+	if ref.ParentHash != p.tip.Hash {
 		// Reorg found, signal a reorg to all chains
 		p.emitter.Emit(superevents.RewindAllChainsEvent{
 			BadBlock: ref.ID(),
@@ -182,8 +179,7 @@ func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 	}
 
 	// Update the tip
-	p.tipHeight = ref.Number
-	p.tipHash = ref.Hash
+	p.tip = ref.ID()
 	p.log.Info("Updated latest known L1 block", "ref", ref)
 }
 
@@ -194,7 +190,7 @@ func (p *L1Accessor) L1BlockRefByNumber(ctx context.Context, number uint64) (eth
 		return eth.L1BlockRef{}, errors.New("no L1 source available")
 	}
 	// block access to requests more recent than the confirmation depth
-	if number > p.tipHeight-p.confDepth {
+	if number > p.tip.Number-p.confDepth {
 		return eth.L1BlockRef{}, ethereum.NotFound
 	}
 	return p.client.L1BlockRefByNumber(ctx, number)
