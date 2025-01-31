@@ -284,7 +284,6 @@ func (su *SupervisorBackend) AttachSyncNode(ctx context.Context, src syncnode.Sy
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach sync source to node: %w", err)
 	}
-	su.rewinder.AttachSyncNode(chainID, src)
 	return su.syncNodesController.AttachNodeController(chainID, src, noSubscribe)
 }
 

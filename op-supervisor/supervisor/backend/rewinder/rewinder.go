@@ -9,7 +9,7 @@ import (
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup/event"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
-	"github.com/ethereum-optimism/optimism/op-service/locks"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 )
@@ -18,11 +18,9 @@ type l1Node interface {
 	L1BlockRefByNumber(ctx context.Context, number uint64) (eth.L1BlockRef, error)
 }
 
-type l2Node interface {
-	BlockRefByNumber(ctx context.Context, number uint64) (eth.BlockRef, error)
-}
-
 type rewinderDB interface {
+	DependencySet() depset.DependencySet
+
 	LastDerivedFrom(chainID eth.ChainID, derivedFrom eth.BlockID) (derived types.BlockSeal, err error)
 	PreviousDerivedFrom(chain eth.ChainID, derivedFrom eth.BlockID) (prevDerivedFrom types.BlockSeal, err error)
 	CrossDerivedFromBlockRef(chainID eth.ChainID, derived eth.BlockID) (derivedFrom eth.BlockRef, err error)
@@ -42,11 +40,10 @@ type rewinderDB interface {
 // Rewinder is responsible for handling the rewinding of databases to the latest common ancestor between
 // the local databases and L2 node.
 type Rewinder struct {
-	log       log.Logger
-	emitter   event.Emitter
-	db        rewinderDB
-	l1Node    l1Node
-	syncNodes locks.RWMap[eth.ChainID, l2Node]
+	log     log.Logger
+	emitter event.Emitter
+	l1Node  l1Node
+	db      rewinderDB
 }
 
 func New(log log.Logger, db rewinderDB, l1Node l1Node) *Rewinder {
@@ -74,20 +71,15 @@ func (r *Rewinder) OnEvent(ev event.Event) bool {
 	}
 }
 
-func (r *Rewinder) AttachSyncNode(chainID eth.ChainID, source l2Node) {
-	r.syncNodes.Set(chainID, source)
-}
-
 // handleRewindL1Event iterates known chains and checks each one for a reorg
 // If a reorg is detected, it will rewind the chain to the latest common ancestor
 // between the local-safe head and the finalized head.
 func (r *Rewinder) handleRewindL1Event(ev superevents.RewindL1Event) {
-	r.syncNodes.Range(func(chainID eth.ChainID, source l2Node) bool {
+	for _, chainID := range r.db.DependencySet().Chains() {
 		if err := r.rewindL1ChainIfReorged(chainID, ev.IncomingBlock); err != nil {
 			r.log.Error("failed to rewind L1 data:", "chain", chainID, "err", err)
 		}
-		return true
-	})
+	}
 }
 
 // handleLocalDerivedEvent checks if the newly derived block matches what we have in our unsafe DB

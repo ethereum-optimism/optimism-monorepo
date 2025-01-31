@@ -67,7 +67,6 @@ func TestRewindL1(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	i.AttachSyncNode(chainID, chain.syncNode)
 
 	// Make genesis block derived from l1Block0 and make it safe
 	s.makeBlockSafe(chainID, genesis, l1Block0, true)
@@ -175,7 +174,6 @@ func TestRewindL2(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	i.AttachSyncNode(chainID, chain.syncNode)
 
 	// Simulate receiving a LocalDerivedEvent for block2B
 	i.OnEvent(superevents.LocalDerivedEvent{
@@ -266,7 +264,6 @@ func TestNoRewindNeeded(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	i.AttachSyncNode(chainID, chain.syncNode)
 
 	// Trigger L1 reorg check with same L1 block - should not rewind
 	i.OnEvent(superevents.RewindL1Event{
@@ -368,7 +365,6 @@ func TestRewindLongChain(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	i.AttachSyncNode(chainID, chain.syncNode)
 
 	// Create a divergent block96B
 	block96B := eth.L2BlockRef{
@@ -451,9 +447,6 @@ func TestRewindMultiChain(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, s.chains[chain1ID].l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	for chainID, chain := range s.chains {
-		i.AttachSyncNode(chainID, chain.syncNode)
-	}
 
 	// Trigger LocalDerived events for both chains
 	for chainID := range s.chains {
@@ -569,7 +562,6 @@ func TestRewindL2WalkBack(t *testing.T) {
 	// Create rewinder with all dependencies
 	i := New(s.logger, s.chainsDB, chain.l1Node)
 	i.AttachEmitter(&mockEmitter{})
-	i.AttachSyncNode(chainID, chain.syncNode)
 
 	// Trigger LocalDerived event with block4B
 	i.OnEvent(superevents.LocalDerivedEvent{
