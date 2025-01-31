@@ -9,6 +9,7 @@ import (
 	"io"
 	"math/rand"
 	"net"
+	"net/netip"
 	"time"
 
 	decredSecp "github.com/decred/dcrd/dcrec/secp256k1/v4"
@@ -50,6 +51,73 @@ const (
 	discoveredAddrTTL      = time.Hour * 24
 	collectiveDialTimeout  = time.Second * 30
 )
+
+func resolveNodeDNS(n *enode.Node) (*enode.Node, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	foundIPs, err := net.DefaultResolver.LookupNetIP(ctx, "ip", n.Hostname())
+	if err != nil {
+		return n, err
+	}
+
+	// Check for IP updates.
+	var (
+		nodeIP4, nodeIP6   netip.Addr
+		foundIP4, foundIP6 netip.Addr
+	)
+	n.Load((*enr.IPv4Addr)(&nodeIP4))
+	n.Load((*enr.IPv6Addr)(&nodeIP6))
+	for _, ip := range foundIPs {
+		if ip.Is4() && !foundIP4.IsValid() {
+			foundIP4 = ip
+		}
+		if ip.Is6() && !foundIP6.IsValid() {
+			foundIP6 = ip
+		}
+	}
+
+	if !foundIP4.IsValid() && !foundIP6.IsValid() {
+		// Lookup failed.
+		return n, fmt.Errorf("failed to resolve DNS hostname %q", n.Hostname())
+	}
+	if foundIP4 == nodeIP4 && foundIP6 == nodeIP6 {
+		// No updates necessary.
+		return n, nil
+	}
+
+	// Update the node. Note this invalidates the ENR signature, because we use SignNull
+	// to create a modified copy. But this should be OK, since we just use the node as a
+	// dial target. And nodes will usually only have a DNS hostname if they came from a
+	// enode:// URL, which has no signature anyway. If it ever becomes a problem, the
+	// resolved IP could also be stored into dialTask instead of the node.
+	rec := n.Record()
+	if foundIP4.IsValid() {
+		rec.Set(enr.IPv4Addr(foundIP4))
+	}
+	if foundIP6.IsValid() {
+		rec.Set(enr.IPv6Addr(foundIP6))
+	}
+	rec.SetSeq(n.Seq()) // ensure seq not bumped by update
+	newNode := enode.SignNull(rec, n.ID()).WithHostname(n.Hostname())
+	return newNode, nil
+}
+
+func resolveDNSOrFilter(bootnodes []*enode.Node) []*enode.Node {
+	var resolved []*enode.Node
+	for _, n := range bootnodes {
+		if n.IP() != nil {
+			resolved = append(resolved, n)
+		} else if n.Hostname() != "" {
+			newNode, err := resolveNodeDNS(n)
+			if err != nil {
+				log.Warn("failed to resolve bootnode DNS", "node", n.ID(), "err", err)
+				continue
+			}
+			resolved = append(resolved, newNode)
+		}
+	}
+	return resolved
+}
 
 func (conf *Config) Discovery(log log.Logger, rollupCfg *rollup.Config, tcpPort uint16) (*enode.LocalNode, *discover.UDPv5, error) {
 	if conf.NoDiscovery {
@@ -96,10 +164,12 @@ func (conf *Config) Discovery(log log.Logger, rollupCfg *rollup.Config, tcpPort 
 		localNode.SetFallbackUDP(localUDPAddr.Port)
 	}
 
+	bootnodes := resolveDNSOrFilter(conf.Bootnodes)
+
 	cfg := discover.Config{
 		PrivateKey:   priv,
 		NetRestrict:  conf.NetRestrict,
-		Bootnodes:    conf.Bootnodes,
+		Bootnodes:    bootnodes,
 		Unhandled:    nil, // Not used in dv5
 		Log:          log,
 		ValidSchemes: enode.ValidSchemes,
