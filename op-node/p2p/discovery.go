@@ -53,6 +53,7 @@ const (
 )
 
 func resolveNodeDNS(n *enode.Node) (*enode.Node, error) {
+	// Adapted from https://github.com/ethereum/go-ethereum/pull/30822/files#diff-cfca27b526255b13ca472b74f49acd227e8f9cfc866d8d05093c5658db0b4eb8R444
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	foundIPs, err := net.DefaultResolver.LookupNetIP(ctx, "ip", n.Hostname())
