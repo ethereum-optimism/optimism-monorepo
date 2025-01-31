@@ -44,6 +44,7 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 		baseFee      int64
 		blobBaseFee  int64
 		wantCalldata bool
+		isL1Pectra   bool
 	}{
 		{
 			name:        "much-cheaper-blobs",
@@ -71,6 +72,36 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 			blobBaseFee:  1e9,
 			wantCalldata: true,
 		},
+		{
+			name:        "much-cheaper-blobs-l1-pectra",
+			tipCap:      1e3,
+			baseFee:     1e6,
+			blobBaseFee: 1,
+			isL1Pectra:  true,
+		},
+		{
+			name:        "close-cheaper-blobs-l1-pectra",
+			tipCap:      1e3,
+			baseFee:     1e6,
+			blobBaseFee: 390e5, // because of amortized fixed 21000 tx cost, blobs are still cheaper here...
+			isL1Pectra:  true,
+		},
+		{
+			name:         "close-cheaper-calldata-l1-pectra",
+			tipCap:       1e3,
+			baseFee:      1e6,
+			blobBaseFee:  410e5, // ...but then increasing the fee just a tiny bit makes blobs more expensive
+			wantCalldata: true,
+			isL1Pectra:   true,
+		},
+		{
+			name:         "much-cheaper-calldata-l1-pectra",
+			tipCap:       1e3,
+			baseFee:      1e6,
+			blobBaseFee:  1e9,
+			wantCalldata: true,
+			isL1Pectra:   true,
+		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
@@ -81,7 +112,7 @@ func TestDynamicEthChannelConfig_ChannelConfig(t *testing.T) {
 				blobBaseFee: tt.blobBaseFee,
 			}
 			dec := NewDynamicEthChannelConfig(lgr, 1*time.Second, gp, blobCfg, calldataCfg)
-			cc := dec.ChannelConfig(false)
+			cc := dec.ChannelConfig(tt.isL1Pectra)
 			if tt.wantCalldata {
 				require.Equal(t, cc, calldataCfg)
 				require.NotNil(t, ch.FindLog(testlog.NewMessageContainsFilter("calldata")))
