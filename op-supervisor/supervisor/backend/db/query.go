@@ -45,14 +45,12 @@ func (db *ChainsDB) LastCommonL1() (types.BlockSeal, error) {
 		if err != nil {
 			return types.BlockSeal{}, fmt.Errorf("failed to determine Last Common L1: %w", err)
 		}
-		derivedFrom := last.DerivedFrom
-		commonL1 = derivedFrom
 		// if the common block isn't yet set,
 		// or if the new common block is older than the current common block
 		// set the common block
 		if commonL1 == (types.BlockSeal{}) ||
-			derivedFrom.Number < commonL1.Number {
-			commonL1 = derivedFrom
+			last.DerivedFrom.Number < commonL1.Number {
+			commonL1 = last.DerivedFrom
 		}
 	}
 	return commonL1, nil
