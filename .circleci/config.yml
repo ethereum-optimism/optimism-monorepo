@@ -1115,14 +1115,14 @@ jobs:
               (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_MT64_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz.txt"
               (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_INTEROP_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz.txt"
             fi
-            gsutil cp ./op-program/bin/prestate.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
-
-            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
-
-            gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
+#            gsutil cp ./op-program/bin/prestate.bin.gz \
+#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+#
+#            gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
+#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+#
+#            gsutil cp ./op-program/bin/prestate-interop.bin.gz \
+#              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
