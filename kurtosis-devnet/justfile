@@ -44,7 +44,7 @@ op-wheel-image TAG='op-wheel:devnet': (_docker_build_stack TAG "op-wheel-target"
 KURTOSIS_PACKAGE := "github.com/ethpandaops/optimism-package"
 
 # Devnet template recipe
-devnet TEMPLATE_FILE DATA_FILE="" NAME="":
+devnet TEMPLATE_FILE DATA_FILE="" NAME="": mise
     #!/usr/bin/env bash
     export DEVNET_NAME={{NAME}}
     if [ -z "{{NAME}}" ]; then
@@ -62,7 +62,7 @@ devnet TEMPLATE_FILE DATA_FILE="" NAME="":
         -enclave "$ENCL_NAME" \
     && cat "tests/$ENCL_NAME.json"
 
-devnet-test DEVNET *TEST:
+devnet-test DEVNET *TEST: mise
     #!/usr/bin/env bash
     export TESTS=({{TEST}})
     # we need a timestamp in there to force kurtosis to not cache the test solely based on its name!
@@ -70,6 +70,10 @@ devnet-test DEVNET *TEST:
     kurtosis run --enclave {{DEVNET}} \
         --show-enclave-inspect=false \
         ./tests/ "$ARGS"
+
+# Ensure required tooling installed with correct versions
+mise:
+  mise install
 
 # Devnet recipes
 
