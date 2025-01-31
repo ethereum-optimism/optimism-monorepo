@@ -109,7 +109,11 @@ func (m *ManagedNode) OnEvent(ev event.Event) bool {
 			return false
 		}
 		m.resetSignal(x.Err, x.L1Ref)
-	// TODO: watch for reorg events from DB. Send a reset signal to op-node if needed
+	case superevents.ChainRewoundEvent:
+		if x.ChainID != m.chainID {
+			return false
+		}
+		m.sendReset()
 	default:
 		return false
 	}
@@ -339,6 +343,32 @@ func (m *ManagedNode) resetSignal(errSignal error, l1Ref eth.BlockRef) {
 		if err != nil {
 			m.log.Warn("Node failed to reset", "err", err)
 		}
+	}
+}
+
+func (m *ManagedNode) sendReset() {
+	ctx, cancel := context.WithTimeout(m.ctx, internalTimeout)
+	defer cancel()
+
+	u, err := m.backend.LocalUnsafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve local-unsafe", "err", err)
+		return
+	}
+	s, err := m.backend.LocalSafe(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve local-safe", "err", err)
+		return
+	}
+	f, err := m.backend.Finalized(ctx, m.chainID)
+	if err != nil {
+		m.log.Warn("Failed to retrieve finalized", "err", err)
+		return
+	}
+
+	if err := m.Node.Reset(ctx, u, s.Derived, f); err != nil {
+		m.log.Warn("Node failed to reset", "err", err)
+		return
 	}
 }
 

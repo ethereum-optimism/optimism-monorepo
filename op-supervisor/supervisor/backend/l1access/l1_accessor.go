@@ -169,11 +169,10 @@ func (p *L1Accessor) onLatest(ctx context.Context, ref eth.L1BlockRef) {
 		return
 	}
 
-	// Check if the block is the next one and if it is, check for a reorg
+	// If the incoming block is not the child of the current tip, signal a potential reorg
 	if ref.ParentHash != p.tip.Hash {
-		// Reorg found, signal a reorg to all chains
-		p.emitter.Emit(superevents.RewindAllChainsEvent{
-			BadBlock: ref.ID(),
+		p.emitter.Emit(superevents.RewindL1Event{
+			IncomingBlock: ref.ID(),
 		})
 		p.log.Info("Reorg detected", "ref", ref)
 	}

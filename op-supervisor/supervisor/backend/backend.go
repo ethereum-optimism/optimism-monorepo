@@ -128,7 +128,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		sysCancel:             sysCancel,
 		sysContext:            sysCtx,
 
-		rewinder: rewinder.New(logger, chainsDBs),
+		rewinder: rewinder.New(logger, chainsDBs, l1Accessor),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
 	eventSys.Register("rewinder", super.rewinder, event.DefaultRegisterOpts())

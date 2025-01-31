@@ -55,7 +55,7 @@ func TestRewindLocalUnsafe(t *testing.T) {
 	// Now try to reorg to block2B
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
-	require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+	require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 		ChainID:        chainID,
 		BadBlockHeight: block2A.Number,
 	}))
@@ -124,7 +124,7 @@ func TestRewindCrossUnsafe(t *testing.T) {
 	// Now try to rewind block2A
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
-	require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+	require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 		ChainID:        chainID,
 		BadBlockHeight: block2A.Number,
 	}))
@@ -181,7 +181,7 @@ func TestRewindLocalSafe(t *testing.T) {
 	// Now try to reorg to block2B
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
-	require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+	require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 		ChainID:        chainID,
 		BadBlockHeight: block2A.Number,
 	}))
@@ -238,7 +238,7 @@ func TestRewindCrossSafe(t *testing.T) {
 	// Now try to rewind block2A
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
-	require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+	require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 		ChainID:        chainID,
 		BadBlockHeight: block2A.Number,
 	}))
@@ -322,7 +322,7 @@ func TestRewindLongChain(t *testing.T) {
 	// Now try to rewind to block 95 (simulating a reorg above that)
 	i := New(s.logger, s.chainsDB)
 	i.AttachSyncNode(chainID, chain.syncNode)
-	require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+	require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 		ChainID:        chainID,
 		BadBlockHeight: blocks[96].Number,
 	}))
@@ -366,7 +366,7 @@ func TestRewindMultiChain(t *testing.T) {
 
 	// Rewind both chains
 	for chainID := range s.chains {
-		require.NoError(t, i.rewindChain(superevents.RewindChainEvent{
+		require.NoError(t, i.rewindChain(superevents.RewindL2ChainEvent{
 			ChainID:        chainID,
 			BadBlockHeight: block2A.Number,
 		}))
