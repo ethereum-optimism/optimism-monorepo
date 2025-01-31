@@ -1107,15 +1107,20 @@ jobs:
             then
               # Use the branch name for branches to provide a consistent URL
               PRESTATE_HASH="${BRANCH_NAME}"
-              PRESTATE_MT64_HASH="${BRANCH_NAME}"
-              PRESTATE_INTEROP_HASH="${BRANCH_NAME}"
+              PRESTATE_MT64_HASH="${BRANCH_NAME}-mt64"
+              PRESTATE_INTEROP_HASH="${BRANCH_NAME}-interop"
             fi
+            (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate=${PRESTATE_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz.txt"
             gsutil cp ./op-program/bin/prestate.bin.gz \
               "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_HASH}.bin.gz"
+
+            (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_MT64_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz.txt"
             gsutil cp ./op-program/bin/prestate-mt64.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}-mt64.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_MT64_HASH}.bin.gz"
+
+            (echo "Commit=<< pipeline.git.revision >>" && echo "Prestate: ${PRESTATE_INTEROP_HASH}") | gsutil cp - "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz.txt"
             gsutil cp ./op-program/bin/prestate-interop.bin.gz \
-              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}-interop.bin.gz"
+              "gs://oplabs-network-data/proofs/op-program/cannon/${PRESTATE_INTEROP_HASH}.bin.gz"
       - notify-failures-on-develop:
           mentions: "@proofs-team"
 
