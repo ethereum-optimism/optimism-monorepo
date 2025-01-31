@@ -131,6 +131,7 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		rewinder: rewinder.New(logger, chainsDBs),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
+	eventSys.Register("rewinder", super.rewinder, event.DefaultRegisterOpts())
 
 	// create node controller
 	super.syncNodesController = syncnode.NewSyncNodesController(logger, depSet, eventSys, super)
@@ -169,7 +170,6 @@ func (su *SupervisorBackend) OnEvent(ev event.Event) bool {
 
 func (su *SupervisorBackend) AttachEmitter(em event.Emitter) {
 	su.emitter = em
-	su.rewinder.AttachEmitter(em)
 }
 
 // initResources initializes all the resources, such as DBs and processors for chains.
