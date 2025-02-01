@@ -23,6 +23,10 @@ forge-build:
 forge-build-dev:
   FOUNDRY_PROFILE=lite forge build
 
+# Builds source contracts only.
+build-source:
+  forge build --skip "/**/test/**" --skip "/**/scripts/**"
+
 # Builds the contracts.
 build: lint-fix-no-fail forge-build interfaces-check-no-build
 
@@ -176,23 +180,24 @@ kontrol-summary-fp:
 kontrol-summary-full: kontrol-summary kontrol-summary-fp
 
 # Generates ABI snapshots for contracts.
-snapshots-abi-storage:
+snapshots-abi-storage-no-build:
   go run ./scripts/autogen/generate-snapshots .
+
+# Generates ABI snapshots for contracts.
+snapshots-abi-storage: build-source snapshots-abi-storage-no-build
 
 # Updates the snapshots/semver-lock.json file without building contracts.
 semver-lock-no-build:
   go run scripts/autogen/generate-semver-lock/main.go
 
 # Updates the snapshots/semver-lock.json file.
-semver-lock: build semver-lock-no-build
+semver-lock: build-source semver-lock-no-build
 
-# Generates core snapshots without building contracts. Currently just an alias for
-# snapshots-abi-storage because we no longer run Kontrol snapshots here. Run
-# kontrol-summary-full to build the Kontrol summaries if necessary.
-snapshots-no-build: snapshots-abi-storage
+# Generates core snapshots without building contracts.
+snapshots-no-build: snapshots-abi-storage-no-build semver-lock-no-build gas-snapshot-no-build
 
 # Builds contracts and then generates core snapshots.
-snapshots: build snapshots-no-build
+snapshots: build-source snapshots-no-build
 
 
 ########################################################
@@ -287,11 +292,10 @@ check-frozen-code:
 
 # Runs all checks.
 check:
-  @just gas-snapshot-check-no-build \
-  semgrep-test-validity-check \
-  unused-imports-check-no-build \
-  snapshots-check-no-build \
+  @just semgrep-test-validity-check \
   lint-check \
+  snapshots-check-no-build \
+  unused-imports-check-no-build \
   semver-diff-check-no-build \
   validate-deploy-configs \
   validate-spacers-no-build \
@@ -307,7 +311,12 @@ pre-pr: clean pre-pr-no-build
 
 # Builds, lints, and runs all checks. Sometimes a bad cache causes issues, in which case the above
 # `pre-pr` is preferred. But in most cases this will be sufficient and much faster then a full build.
-pre-pr-no-build: build-go-ffi build lint gas-snapshot-no-build snapshots-no-build semver-lock check
+# Steps:
+# - Build (dev mode) to confirm that contracts compile
+# - Lint contracts
+# - Generate snapshots
+# - Run all checks to confirm everything is good
+pre-pr-no-build: build-dev lint snapshots-no-build check
 
 # Fixes linting errors.
 lint-fix:
