@@ -42,7 +42,7 @@ func cloneFlag(f cli.Flag) (cli.Flag, error) {
 			return nil, fmt.Errorf("cannot clone Generic value: %T", typedFlag)
 		}
 	default:
-		// Other flag types are safe to re-use, although not strictly safe for concurrent use.
+		// Other flag types are safe to reuse, although not strictly safe for concurrent use.
 		// urfave v3 hopefully fixes this.
 		return f, nil
 	}
