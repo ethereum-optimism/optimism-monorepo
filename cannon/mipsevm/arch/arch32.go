@@ -6,7 +6,7 @@ package arch
 import "encoding/binary"
 
 type (
-	// Word differs from the tradditional meaning in MIPS. The type represents the *maximum* architecture specific access length and value sizes.
+	// Word differs from the traditional meaning in MIPS. The type represents the *maximum* architecture specific access length and value sizes.
 	Word = uint32
 	// SignedInteger specifies the maximum signed integer type used for arithmetic.
 	SignedInteger = int32
