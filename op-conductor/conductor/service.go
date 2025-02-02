@@ -757,7 +757,7 @@ func (oc *OpConductor) stopSequencer() error {
 
 	// Quoting (@zhwrd): StopSequencer is called after conductor loses leadership. In the event that
 	// the StopSequencer call fails, it actually has little real consequences because the sequencer
-	// cant produce a block and gossip / commit it to the raft log (requires leadership). Once
+	// can't produce a block and gossip / commit it to the raft log (requires leadership). Once
 	// conductor comes back up it will check its leader and sequencer state and attempt to stop the
 	// sequencer again. So it is "okay" to fail to stop a sequencer, the state will eventually be
 	// rectified and we won't have two active sequencers that are actually producing blocks.
