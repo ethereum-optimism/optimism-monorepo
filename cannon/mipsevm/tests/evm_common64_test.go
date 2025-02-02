@@ -28,13 +28,13 @@ func TestEVM_SingleStep_Operators64(t *testing.T) {
 
 		{name: "daddu. both 32", funct: 0x2d, isImm: false, rs: Word(0x12), rt: Word(0x20), expectRes: Word(0x32)},                                                    // daddu t0, s1, s2
 		{name: "daddu. 32-bit. expect doubleword-sized", funct: 0x2d, isImm: false, rs: Word(0x12), rt: Word(^uint32(0)), expectRes: Word(0x1_00_00_00_11)},           // daddu t0, s1, s2
-		{name: "daddu. 32-bit. expect double-word sized x", funct: 0x2d, isImm: false, rs: Word(^uint32(0)), rt: Word(0x12), expectRes: Word(0x1_00_00_00_11)},        // dadu t0, s1, s2
-		{name: "daddu. doubleword-sized, word-sized", funct: 0x2d, isImm: false, rs: Word(0x0FFFFFFF_00000012), rt: Word(0x20), expectRes: Word(0x0FFFFFFF_00000032)}, // dadu t0, s1, s2
-		{name: "daddu. overflow. rt sign bit set", funct: 0x2d, isImm: false, rs: Word(12), rt: ^Word(0), expectRes: Word(11)},                                        // dadu t0, s1, s2
-		{name: "daddu. overflow. rs sign bit set", funct: 0x2d, isImm: false, rs: ^Word(0), rt: Word(12), expectRes: Word(11)},                                        // dadu t0, s1, s2
-		{name: "daddu. doubleword-sized and word-sized", funct: 0x2d, isImm: false, rs: ^Word(20), rt: Word(4), expectRes: ^Word(16)},                                 // dadu t0, s1, s2
-		{name: "daddu. word-sized and doubleword-sized", funct: 0x2d, isImm: false, rs: Word(4), rt: ^Word(20), expectRes: ^Word(16)},                                 // dadu t0, s1, s2
-		{name: "daddu. both doubleword-sized. expect overflow", funct: 0x2d, isImm: false, rs: ^Word(10), rt: ^Word(4), expectRes: ^Word(15)},                         // dadu t0, s1, s2
+		{name: "daddu. 32-bit. expect double-word sized x", funct: 0x2d, isImm: false, rs: Word(^uint32(0)), rt: Word(0x12), expectRes: Word(0x1_00_00_00_11)},        // daddu t0, s1, s2
+		{name: "daddu. doubleword-sized, word-sized", funct: 0x2d, isImm: false, rs: Word(0x0FFFFFFF_00000012), rt: Word(0x20), expectRes: Word(0x0FFFFFFF_00000032)}, // daddu t0, s1, s2
+		{name: "daddu. overflow. rt sign bit set", funct: 0x2d, isImm: false, rs: Word(12), rt: ^Word(0), expectRes: Word(11)},                                        // daddu t0, s1, s2
+		{name: "daddu. overflow. rs sign bit set", funct: 0x2d, isImm: false, rs: ^Word(0), rt: Word(12), expectRes: Word(11)},                                        // daddu t0, s1, s2
+		{name: "daddu. doubleword-sized and word-sized", funct: 0x2d, isImm: false, rs: ^Word(20), rt: Word(4), expectRes: ^Word(16)},                                 // daddu t0, s1, s2
+		{name: "daddu. word-sized and doubleword-sized", funct: 0x2d, isImm: false, rs: Word(4), rt: ^Word(20), expectRes: ^Word(16)},                                 // daddu t0, s1, s2
+		{name: "daddu. both doubleword-sized. expect overflow", funct: 0x2d, isImm: false, rs: ^Word(10), rt: ^Word(4), expectRes: ^Word(15)},                         // daddu t0, s1, s2
 
 		{name: "daddi word-sized", opcode: 0x18, isImm: true, rs: Word(12), rt: ^Word(0), imm: uint16(20), expectRes: Word(32)},                                           // daddi t0, s1, s2
 		{name: "daddi doubleword-sized", opcode: 0x18, isImm: true, rs: Word(0x00000010_00000000), rt: ^Word(0), imm: uint16(0x20), expectRes: Word(0x00000010_00000020)}, // daddi t0, s1, s2
