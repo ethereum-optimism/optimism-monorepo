@@ -35,10 +35,10 @@ legend:
 | --- | ------------------- | ------------------------------------------------------------------------------------------ | ------ |
 | 0   | Factories           | supertoken token address does not depend on the executing chain’s chainID                  | [ ]    |
 | 1   | Factories           | supertoken token address depends on remote token, name, symbol and decimals                | [ ]    |
-| 2   | Liquidity Migration | convert() should only allow converting legacy tokens to supertoken and viceversa           | [ ]    |
+| 2   | Liquidity Migration | convert() should only allow converting legacy tokens to supertoken and vice-versa           | [ ]    |
 | 3   | Liquidity Migration | convert() only allows migrations between tokens representing the same remote asset         | [ ]    |
 | 4   | Liquidity Migration | convert() only allows migrations from tokens with the same decimals                        | [ ]    |
-| 5   | Liquidity Migration | convert() burns the same amount of legacy token that it mints of supertoken, and viceversa | [ ]    |
+| 5   | Liquidity Migration | convert() burns the same amount of legacy token that it mints of supertoken, and vice-versa | [ ]    |
 | 25  | SupERC20            | supertokens can't be reinitialized                                                         | [x]    |
 
 ## Valid state
