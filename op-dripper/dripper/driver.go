@@ -57,7 +57,7 @@ type DripExecutor struct {
 func NewDripExecutor(setup DriverSetup) (_ *DripExecutor, err error) {
 	ctx, cancel := context.WithCancel(context.Background())
 
-	// Ensure context does't leak.
+	// Ensure context doesn't leak.
 	defer func() {
 		if err != nil || recover() != nil {
 			cancel()
