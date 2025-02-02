@@ -242,7 +242,7 @@ func TestP2PFull(t *testing.T) {
 	retries := 0
 	for {
 		require.NoError(t, p2pClientA.DisconnectPeer(ctx, hostB.ID()))
-		// disconnect may take some time which we cant control from here
+		// disconnect may take some time which we can't control from here
 		// so we retry a few times increasing our wait tolerance
 		time.Sleep(time.Duration(retries) * time.Second)
 		peerDump, err = p2pClientA.Peers(ctx, false)
