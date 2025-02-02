@@ -51,7 +51,7 @@ func TestProgramDeriver(t *testing.T) {
 		require.NoError(t, p.resultError)
 	})
 	// step 3: if no attributes are generated, loop back to derive more.
-	t.Run("deriver more", func(t *testing.T) {
+	t.Run("derive, driver more", func(t *testing.T) {
 		p, m := newProgram(t, 1000)
 		m.ExpectOnce(engine.PendingSafeRequestEvent{})
 		p.OnEvent(derive.DeriverMoreEvent{})
@@ -104,8 +104,8 @@ func TestProgramDeriver(t *testing.T) {
 			require.NoError(t, p.resultError)
 		})
 	})
-	// Do not stop processing when the deriver is idle, the engine may still be busy and create further events.
-	t.Run("deriver idle", func(t *testing.T) {
+	// Do not stop processing when the derive, driver is idle, the engine may still be busy and create further events.
+	t.Run("derive, driver idle", func(t *testing.T) {
 		p, m := newProgram(t, 1000)
 		p.OnEvent(derive.DeriverIdleEvent{})
 		m.AssertExpectations(t)
