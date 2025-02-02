@@ -208,6 +208,11 @@ func (r *Runner) createGameInputs(ctx context.Context, client *sources.RollupCli
 		// This only matters if op-node is behind and hasn't processed all finalized L1 blocks yet.
 		l1Head = status.CurrentL1
 		r.log.Info("Node has not completed syncing finalized L1 block, using CurrentL1 instead", "type", traceType)
+	} else if status.FinalizedL1.Number == 0 {
+		// The node is resetting its pipeline and has set FinalizedL1 to 0, use the current L1 instead as it is the best
+		// hope of getting a non-zero L1 block
+		l1Head = status.CurrentL1
+		r.log.Warn("Node has zero finalized L1 block, using CurrentL1 instead", "type", traceType)
 	}
 	r.log.Info("Using L1 head", "head", l1Head, "type", traceType)
 	if l1Head.Number == 0 {
