@@ -232,7 +232,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
         (, uint256[] memory keys) = SafeTestLib.makeAddrsAndKeys("moduleTest", 10);
         safeInstance = _setupSafe(keys, 8);
 
-        // Set the new Safe as the owner of the ProxyAdmin
         skipIfOpsRepoTest(
             "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
         );
@@ -240,13 +239,20 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
         absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
+
+        // Set the new Safe as the owner of the ProxyAdmin
         vm.prank(proxyAdmin.owner());
         proxyAdmin.transferOwnership(address(safeInstance.safe));
 
         upgrader = address(safeInstance.safe);
         vm.label(upgrader, "ProxyAdmin Owner");
 
-        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
+        vm.store(
+            address(disputeGameFactory),
+            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
+            bytes32(uint256(uint160(address(upgrader))))
+        );
+
         opChainConfigs.push(
             IOPContractsManager.OpChainConfig({
                 systemConfigProxy: systemConfig,
@@ -364,12 +370,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
 
 contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
     function test_upgradeSuperchainAndOPChain_succeeds() public {
-        vm.store(
-            address(disputeGameFactory),
-            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
-            bytes32(uint256(uint160(address(upgrader))))
-        );
-
         // wrap runUpgradeTestAndChecks with additional checks for superchainConfig and protocolVersions
         IOPContractsManager.Implementations memory impls = opcm.implementations();
         expectEmitUpgraded(impls.superchainConfigImpl, address(superchainConfig));
@@ -382,17 +382,6 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
     }
 
     function test_upgradeOPChainOnly_succeeds() public {
-        vm.store(
-            address(proxyAdmin),
-            bytes32(ForgeArtifacts.getSlot("ProxyAdmin", "_owner").slot),
-            bytes32(uint256(uint160(upgrader)))
-        );
-        vm.store(
-            address(disputeGameFactory),
-            bytes32(ForgeArtifacts.getSlot("DisputeGameFactory", "_owner").slot),
-            bytes32(uint256(uint160(upgrader)))
-        );
-
         // Run the upgrade test and checks
         runUpgradeTestAndChecks(upgrader);
     }
