@@ -91,7 +91,7 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 		if vmConfig := provider.GetVMConfig(); vmConfig != nil && vmConfig.PrecompileOverrides != nil {
 			precompileOverrides = vmConfig.PrecompileOverrides
 		}
-		vmenv := vm.NewEVM(context, vm.TxContext{}, statedb, provider.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
+		vmenv := vm.NewEVM(context, statedb, provider.Config(), vm.Config{PrecompileOverrides: precompileOverrides})
 		return vmenv
 	}
 	if h.ParentBeaconRoot != nil {
@@ -102,11 +102,11 @@ func NewBlockProcessorFromHeader(provider BlockDataProvider, h *types.Header) (*
 			header.ExcessBlobGas = &zero
 		}
 		vmenv := mkEVM()
-		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv, statedb)
+		core.ProcessBeaconBlockRoot(*header.ParentBeaconRoot, vmenv)
 	}
 	if provider.Config().IsPrague(header.Number, header.Time) {
 		vmenv := mkEVM()
-		core.ProcessParentBlockHash(header.ParentHash, vmenv, statedb)
+		core.ProcessParentBlockHash(header.ParentHash, vmenv)
 	}
 	if provider.Config().IsIsthmus(header.Time) {
 		// set the header withdrawals root for Isthmus blocks
@@ -135,8 +135,12 @@ func (b *BlockProcessor) CheckTxWithinGasLimit(tx *types.Transaction) error {
 func (b *BlockProcessor) AddTx(tx *types.Transaction) error {
 	txIndex := len(b.transactions)
 	b.state.SetTxContext(tx.Hash(), txIndex)
-	receipt, err := core.ApplyTransaction(b.dataProvider.Config(), b.dataProvider, &b.header.Coinbase,
-		b.gasPool, b.state, b.header, tx, &b.header.GasUsed, *b.dataProvider.GetVMConfig())
+
+	context := core.NewEVMBlockContext(b.header, b.dataProvider, nil, b.dataProvider.Config(), b.state)
+	vmConfig := *b.dataProvider.GetVMConfig()
+	// TODO(#14038): reuse evm
+	evm := vm.NewEVM(context, b.state, b.dataProvider.Config(), vmConfig)
+	receipt, err := core.ApplyTransaction(evm, b.gasPool, b.state, b.header, tx, &b.header.GasUsed)
 	if err != nil {
 		return fmt.Errorf("failed to apply transaction to L2 block (tx %d): %w", txIndex, err)
 	}
@@ -158,7 +162,8 @@ func (b *BlockProcessor) Assemble() (*types.Block, types.Receipts, error) {
 }
 
 func (b *BlockProcessor) Commit() error {
-	root, err := b.state.Commit(b.header.Number.Uint64(), b.dataProvider.Config().IsEIP158(b.header.Number))
+	isCancun := b.dataProvider.Config().IsCancun(b.header.Number, b.header.Time)
+	root, err := b.state.Commit(b.header.Number.Uint64(), b.dataProvider.Config().IsEIP158(b.header.Number), isCancun)
 	if err != nil {
 		return fmt.Errorf("state write error: %w", err)
 	}

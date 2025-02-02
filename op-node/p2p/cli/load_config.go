@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"net/url"
 	"os"
 	"strings"
 
@@ -177,23 +178,30 @@ func loadDiscoveryOpts(conf *p2p.Config, ctx *cli.Context) error {
 		return fmt.Errorf("failed to open discovery db: %w", err)
 	}
 
-	bootnodes := make([]*enode.Node, 0)
 	records := strings.Split(ctx.String(flags.BootnodesName), ",")
-	for i, recordB64 := range records {
-		recordB64 = strings.TrimSpace(recordB64)
-		if recordB64 == "" { // ignore empty records
+	if len(records) == 0 {
+		records = p2p.DefaultBootnodes
+	}
+
+	for i, record := range records {
+		record = strings.TrimSpace(record)
+		if record == "" { // ignore empty records
 			continue
 		}
-		nodeRecord, err := enode.Parse(enode.ValidSchemes, recordB64)
-		if err != nil {
-			return fmt.Errorf("bootnode record %d (of %d) is invalid: %q err: %w", i, len(records), recordB64, err)
+
+		// Resolve IP addresses of old enode URLs - geth doesn't do it any more.
+		if strings.HasPrefix(record, "enode://") {
+			record, err = resolveURLIP(record, net.LookupIP)
+			if err != nil {
+				return fmt.Errorf("resolving IP of enode URL %q: %w", record, err)
+			}
 		}
-		bootnodes = append(bootnodes, nodeRecord)
-	}
-	if len(bootnodes) > 0 {
-		conf.Bootnodes = bootnodes
-	} else {
-		conf.Bootnodes = p2p.DefaultBootnodes
+
+		nodeRecord, err := enode.Parse(enode.ValidSchemes, record)
+		if err != nil {
+			return fmt.Errorf("bootnode record %d (of %d) is invalid: %q err: %w", i, len(records), record, err)
+		}
+		conf.Bootnodes = append(conf.Bootnodes, nodeRecord)
 	}
 
 	if ctx.IsSet(flags.NetRestrictName) {
@@ -205,6 +213,34 @@ func loadDiscoveryOpts(conf *p2p.Config, ctx *cli.Context) error {
 	}
 
 	return nil
+}
+
+func resolveURLIP(rawurl string, lookupIP func(name string) ([]net.IP, error)) (string, error) {
+	u, err := url.Parse(rawurl)
+	if err != nil {
+		return "", fmt.Errorf("parsing URL %q: %w", rawurl, err)
+	}
+	ip := net.ParseIP(u.Hostname())
+	if ip == nil {
+		ips, err := lookupIP(u.Hostname())
+		if err != nil {
+			return "", fmt.Errorf("looking up IP for hostname %q: %w", u.Hostname(), err)
+		}
+		ip = ips[0]
+	}
+
+	// Ensure the IP is 4 bytes long for IPv4 addresses.
+	if ipv4 := ip.To4(); ipv4 != nil {
+		ip = ipv4
+	}
+
+	// reassemble
+	port := u.Port()
+	u.Host = ip.String()
+	if port != "" {
+		u.Host += ":" + port
+	}
+	return u.String(), nil
 }
 
 func loadLibp2pOpts(conf *p2p.Config, ctx *cli.Context) error {
@@ -289,7 +325,7 @@ func loadNetworkPrivKey(ctx *cli.Context) (*crypto.Secp256k1PrivateKey, error) {
 	if keyPath == "" {
 		return nil, errors.New("no p2p private key path specified, cannot auto-generate key without path")
 	}
-	f, err := os.OpenFile(keyPath, os.O_RDONLY, 0600)
+	f, err := os.OpenFile(keyPath, os.O_RDONLY, 0o600)
 	if os.IsNotExist(err) {
 		p, _, err := crypto.GenerateSecp256k1Key(rand.Reader)
 		if err != nil {
@@ -299,7 +335,7 @@ func loadNetworkPrivKey(ctx *cli.Context) (*crypto.Secp256k1PrivateKey, error) {
 		if err != nil {
 			return nil, fmt.Errorf("failed to encode new p2p priv key: %w", err)
 		}
-		f, err := os.OpenFile(keyPath, os.O_CREATE|os.O_WRONLY, 0600)
+		f, err := os.OpenFile(keyPath, os.O_CREATE|os.O_WRONLY, 0o600)
 		if err != nil {
 			return nil, fmt.Errorf("failed to store new p2p priv key: %w", err)
 		}

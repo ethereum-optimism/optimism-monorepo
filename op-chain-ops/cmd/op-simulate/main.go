@@ -158,7 +158,6 @@ func fetchPrestate(ctx context.Context, cl *rpc.Client, dir string, txHash commo
 			DisableStack:     true,
 			DisableStorage:   true,
 			EnableReturnData: false,
-			Debug:            false,
 			Limit:            0,
 			Overrides:        nil,
 		},
@@ -269,7 +268,7 @@ func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
 	}
 
 	// load prestate data into memory db state
-	_, err = state.Commit(header.Number.Uint64()-1, true)
+	_, err = state.Commit(header.Number.Uint64()-1, true, conf.IsCancun(header.Number, header.Time))
 	if err != nil {
 		return fmt.Errorf("failed to write state data to underlying DB: %w", err)
 	}
@@ -297,7 +296,10 @@ func simulate(ctx context.Context, logger log.Logger, conf *params.ChainConfig,
 
 	// run the transaction
 	start := time.Now()
-	receipt, err := core.ApplyTransaction(conf, cCtx, &sender, &gp, state, header, tx, &usedGas, vmConfig)
+	// nil block-author, since it defaults to header.coinbase
+	blockCtx := core.NewEVMBlockContext(header, cCtx, nil, conf, state)
+	evm := vm.NewEVM(blockCtx, state, conf, vmConfig)
+	receipt, err := core.ApplyTransaction(evm, &gp, state, header, tx, &usedGas)
 	if err != nil {
 		return fmt.Errorf("failed to apply tx: %w", err)
 	}
