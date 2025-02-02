@@ -111,4 +111,4 @@ Consider extending the current e2e test suite to cover execution from Docker ima
 [acknowledged]: https://img.shields.io/badge/-ACKNOWLEDGED-blue "ACKNOWLEDGED"
 [disputed]: https://img.shields.io/badge/-DISPUTED-lightgrey "DISPUTED"
 [reported]: https://img.shields.io/badge/-REPORTED-lightblue "REPORTED"
-[partiallyfixed]: https://img.shields.io/badge/-PARTIALLY_FIXED-lightgreen "PARTIALLTY FIXED"
+[partiallyfixed]: https://img.shields.io/badge/-PARTIALLY_FIXED-lightgreen "PARTIALLY FIXED"
