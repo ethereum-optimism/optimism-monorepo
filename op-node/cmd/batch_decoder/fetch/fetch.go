@@ -103,9 +103,9 @@ func fetchBatchesPerBlock(ctx context.Context, client *ethclient.Client, beacon 
 				invalidBatchCount += 1
 				validSender = false
 			}
-			var datas []hexutil.Bytes
+			var data []hexutil.Bytes
 			if tx.Type() != types.BlobTxType {
-				datas = append(datas, tx.Data())
+				data = append(data, tx.Data())
 				// no need to increment blobIndex because no blobs
 			} else {
 				if beacon == nil {
@@ -136,14 +136,14 @@ func fetchBatchesPerBlock(ctx context.Context, client *ethclient.Client, beacon 
 					if err != nil {
 						log.Fatal(fmt.Errorf("failed to parse blobs: %w", err))
 					}
-					datas = append(datas, data)
+					data = append(data, data)
 				}
 			}
 			var frameErrors []string
 			var frames []derive.Frame
 			var validFrames []bool
 			validBatch := true
-			for _, data := range datas {
+			for _, data := range data {
 				validFrame := true
 				frameError := ""
 				framesPerData, err := derive.ParseFrames(data)
