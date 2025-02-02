@@ -47,7 +47,7 @@ type Channel struct {
 	highestL1InclusionBlock eth.L1BlockRef
 }
 
-// NewChannel creates a new channel with the given id and openening block. If requireInOrder is
+// NewChannel creates a new channel with the given id and opening block. If requireInOrder is
 // true, frames must be added in order.
 func NewChannel(id ChannelID, openBlock eth.L1BlockRef, requireInOrder bool) *Channel {
 	return &Channel{
