@@ -62,10 +62,10 @@ func TestInterop_IsolatedChains(t *testing.T) {
 
 		// check the balance of Bob
 		bobAddr := s2.Address(chainA, "Bob")
-		clientA := s2.L2GethClient(chainA)
+		client := s2.L2GethClient(chainA)
 		ctx, cancel := context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		bobBalance, err := clientA.BalanceAt(ctx, bobAddr, nil)
+		bobBalance, err := client.BalanceAt(ctx, bobAddr, nil)
 		require.NoError(t, err)
 		expectedBalance, _ := big.NewInt(0).SetString("10000000000000000000000000", 10)
 		require.Equal(t, expectedBalance, bobBalance)
@@ -85,7 +85,7 @@ func TestInterop_IsolatedChains(t *testing.T) {
 		// check the balance of Bob after the tx
 		ctx, cancel = context.WithTimeout(context.Background(), 1*time.Second)
 		defer cancel()
-		bobBalance, err = clientA.BalanceAt(ctx, bobAddr, nil)
+		bobBalance, err = client.BalanceAt(ctx, bobAddr, nil)
 		require.NoError(t, err)
 		expectedBalance, _ = big.NewInt(0).SetString("10000000000000000001000000", 10)
 		require.Equal(t, expectedBalance, bobBalance)
@@ -151,13 +151,13 @@ func TestInterop_EmitLogs(t *testing.T) {
 		go emitOn(chainB)
 		emitParallel.Wait()
 
-		clientA := s2.L2GethClient(chainA)
+		client := s2.L2GethClient(chainA)
 		clientB := s2.L2GethClient(chainB)
 		// check that the logs are emitted on chain A
 		qA := ethereum.FilterQuery{
 			Addresses: []common.Address{EmitterA},
 		}
-		logsA, err := clientA.FilterLogs(context.Background(), qA)
+		logsA, err := client.FilterLogs(context.Background(), qA)
 		require.NoError(t, err)
 		require.Len(t, logsA, numEmits)
 
