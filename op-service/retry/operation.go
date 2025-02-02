@@ -51,7 +51,7 @@ func Do[T any](ctx context.Context, maxAttempts int, strategy Strategy, op func(
 	return ret, err
 }
 
-// Do0 is similar to Do and Do2, execept that `op` only returns an error
+// Do0 is similar to Do and Do2, except that `op` only returns an error
 func Do0(ctx context.Context, maxAttempts int, strategy Strategy, op func() error) error {
 	var err error
 	if maxAttempts < 1 {
