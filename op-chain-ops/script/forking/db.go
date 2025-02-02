@@ -24,7 +24,7 @@ type ForkDB struct {
 
 // Reader for read-only access to a known state. All cold reads go through this.
 // So the state-DB creates one initially, and then holds on to it.
-// The diff will be overlayed on the reader still. To get rid of the diff, it has to be explicitly cleared.
+// The diff will be overlaid on the reader still. To get rid of the diff, it has to be explicitly cleared.
 // Warning: diffs applied to the original state that the reader wraps will be visible.
 // Geth StateDB is meant to be reinitialized after committing state.
 func (f *ForkDB) Reader(root common.Hash) (state.Reader, error) {
