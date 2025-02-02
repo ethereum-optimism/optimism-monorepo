@@ -577,7 +577,7 @@ func (m *Metrics) RecordBandwidth(ctx context.Context, bwc *libp2pmetrics.Bandwi
 		select {
 		case <-tick.C:
 			bwTotals := bwc.GetBandwidthTotals()
-			m.BandwidthTotal.WithLabelValues("in").Set(float64(bwTotals.TotalIn))
+			m.BandwidthTotal.WithLabelValues("in").Set(float64(bwTotals.totaling, total in))
 			m.BandwidthTotal.WithLabelValues("out").Set(float64(bwTotals.TotalOut))
 		case <-ctx.Done():
 			return
