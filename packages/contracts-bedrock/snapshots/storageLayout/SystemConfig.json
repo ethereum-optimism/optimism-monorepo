@@ -96,5 +96,19 @@
     "offset": 4,
     "slot": "106",
     "type": "uint32"
+  },
+  {
+    "bytes": "4",
+    "label": "operatorFeeScalar",
+    "offset": 8,
+    "slot": "106",
+    "type": "uint32"
+  },
+  {
+    "bytes": "8",
+    "label": "operatorFeeConstant",
+    "offset": 12,
+    "slot": "106",
+    "type": "uint64"
   }
 ]
