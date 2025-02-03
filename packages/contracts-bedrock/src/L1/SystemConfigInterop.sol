@@ -67,7 +67,7 @@ contract SystemConfigInterop is SystemConfig {
 
     /// @custom:semver +interop
     function version() public pure override returns (string memory) {
-        return string.concat(super.version(), "+interop");
+        return string.concat(super.version(), "+interop-beta.1");
     }
 
     /// @notice Adds a chain to the interop dependency set. Can only be called by the dependency manager.
