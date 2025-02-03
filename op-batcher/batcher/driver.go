@@ -521,7 +521,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 	defer ticker.Stop()
 
 	updateParams := func(pendingBytes int64) {
-		ctx, cancel := context.WithTimeout(l.shutdownCtx, l.Config.NetworkTimeout)
+		ctx, cancel := context.WithTimeout(ctx, l.Config.NetworkTimeout)
 		defer cancel()
 		cl, err := l.EndpointProvider.EthClient(ctx)
 		if err != nil {
@@ -542,9 +542,14 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 			success bool
 			rpcErr  rpc.Error
 		)
-		if err := cl.Client().CallContext(
+		err := cl.Client().CallContext(
 			ctx, &success, SetMaxDASizeMethod, hexutil.Uint64(maxTxSize), hexutil.Uint64(maxBlockSize),
-		); errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()).IsGenericRPCError() {
+		)
+		if errors.Is(ctx.Err(), context.Canceled) {
+			l.Log.Info("DA throttling loop cancelled")
+			return
+		}
+		if  errors.As(err, &rpcErr) && eth.ErrorCode(rpcErr.ErrorCode()).IsGenericRPCError() {
 			l.Log.Error("SetMaxDASize rpc unavailable or broken, shutting down. Either enable it or disable throttling.", "err", err)
 			// We'd probably hit this error right after startup, so a short shutdown duration should suffice.
 			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
@@ -555,14 +560,13 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 				_ = l.StopBatchSubmitting(ctx)
 			}()
 			return
-		} else if err != nil {
+		}  else if err != nil {
 			l.Log.Error("SetMaxDASize rpc failed, retrying.", "err", err)
 			return
 		}
 		if !success {
 			l.Log.Error("Result of SetMaxDASize was false, retrying.")
 		}
-	}
 
 	cachedPendingBytes := int64(0)
 	for {
