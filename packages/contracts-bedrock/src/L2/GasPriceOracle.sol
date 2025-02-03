@@ -29,8 +29,8 @@ contract GasPriceOracle is ISemver {
     uint256 public constant DECIMALS = 6;
 
     /// @notice Semantic version.
-    /// @custom:semver 1.3.1-beta.4
-    string public constant version = "1.3.1-beta.4";
+    /// @custom:semver 1.3.1-beta.5
+    string public constant version = "1.3.1-beta.5";
 
     /// @notice This is the intercept value for the linear regression used to estimate the final size of the
     ///         compressed transaction.
@@ -49,6 +49,9 @@ contract GasPriceOracle is ISemver {
 
     /// @notice Indicates whether the network has gone through the Fjord upgrade.
     bool public isFjord;
+
+    /// @notice Indicates whether the network has gone through the Isthmus upgrade.
+    bool public isIsthmus;
 
     /// @notice Computes the L1 portion of the fee based on the size of the rlp encoded input
     ///         transaction, the current L1 base fee, and the various dynamic parameters.
@@ -98,6 +101,17 @@ contract GasPriceOracle is ISemver {
         require(isEcotone, "GasPriceOracle: Fjord can only be activated after Ecotone");
         require(isFjord == false, "GasPriceOracle: Fjord already active");
         isFjord = true;
+    }
+
+    /// @notice Set chain to be Isthmus chain (callable by depositor account)
+    function setIsthmus() external {
+        require(
+            msg.sender == Constants.DEPOSITOR_ACCOUNT,
+            "GasPriceOracle: only the depositor account can set isIsthmus flag"
+        );
+        require(isFjord, "GasPriceOracle: Isthmus can only be activated after Fjord");
+        require(isIsthmus == false, "GasPriceOracle: Isthmus already active");
+        isIsthmus = true;
     }
 
     /// @notice Retrieves the current gas price (base fee).
@@ -177,6 +191,15 @@ contract GasPriceOracle is ISemver {
             return l1GasUsed;
         }
         return l1GasUsed + IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).l1FeeOverhead();
+    }
+
+    function getOperatorFee(uint256 _gasUsed) public view returns (uint256) {
+        if (!isIsthmus) {
+            return 0;
+        }
+
+        return (_gasUsed * IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeScalar() / 1e6)
+            + IL1Block(Predeploys.L1_BLOCK_ATTRIBUTES).operatorFeeConstant();
     }
 
     /// @notice Computation of the L1 portion of the fee for Bedrock.
