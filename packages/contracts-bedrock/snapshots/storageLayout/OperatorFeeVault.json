@@ -1,0 +1,16 @@
+[
+  {
+    "bytes": "32",
+    "label": "totalProcessed",
+    "offset": 0,
+    "slot": "0",
+    "type": "uint256"
+  },
+  {
+    "bytes": "1536",
+    "label": "__gap",
+    "offset": 0,
+    "slot": "1",
+    "type": "uint256[48]"
+  }
+]
