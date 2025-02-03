@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: MIT
 pragma solidity 0.8.15;
 
+import { console2 as console } from "forge-std/console2.sol";
+
 // Libraries
 import { Blueprint } from "src/libraries/Blueprint.sol";
 import { Constants } from "src/libraries/Constants.sol";
@@ -471,6 +473,8 @@ contract OPContractsManager is ISemver {
 
         for (uint256 i = 0; i < _opChainConfigs.length; i++) {
             // After Upgrade 13, we will be able to use systemConfigProxy.getAddresses() here.
+            console.log('systemConfigProxy:', address(_opChainConfigs[i].systemConfigProxy));
+            console.log('systemConfigProxy.optimismPortal():', address(_opChainConfigs[i].systemConfigProxy.optimismPortal()));
             ISystemConfig.Addresses memory opChainAddrs = ISystemConfig.Addresses({
                 l1CrossDomainMessenger: _opChainConfigs[i].systemConfigProxy.l1CrossDomainMessenger(),
                 l1ERC721Bridge: _opChainConfigs[i].systemConfigProxy.l1ERC721Bridge(),
