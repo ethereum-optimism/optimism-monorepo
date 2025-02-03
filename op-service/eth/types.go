@@ -479,6 +479,8 @@ type SystemConfig struct {
 	// value will be 0 if Holocene is not active, or if derivation has yet to
 	// process any EIP_1559_PARAMS system config update events.
 	EIP1559Params Bytes8 `json:"eip1559Params"`
+	// OperatorFeeParams identifies the operator fee parameters.
+	OperatorFeeParams Bytes32 `json:"operatorFeeParams"`
 	// More fields can be added for future SystemConfig versions.
 
 	// MarshalPreHolocene indicates whether or not this struct should be
@@ -587,6 +589,32 @@ func CheckEcotoneL1SystemConfigScalar(scalar [32]byte) error {
 		// ignore the event if it's an unknown scalar format
 		return fmt.Errorf("unrecognized scalar version: %d", versionByte)
 	}
+}
+
+type OperatorFeeParams struct {
+	Scalar   uint32
+	Constant uint64
+}
+
+func (sysCfg *SystemConfig) OperatorFee() OperatorFeeParams {
+	return DecodeOperatorFeeParams(sysCfg.OperatorFeeParams)
+}
+
+// DecodeScalar decodes the operatorFeeScalar and operatorFeeConstant from a 32-byte scalar value.
+// It uses the first byte to determine the scalar format.
+func DecodeOperatorFeeParams(scalar [32]byte) OperatorFeeParams {
+	return OperatorFeeParams{
+		Scalar:   binary.BigEndian.Uint32(scalar[20:24]),
+		Constant: binary.BigEndian.Uint64(scalar[24:32]),
+	}
+}
+
+// EncodeOperatorFeeParams encodes the OperatorFeeParams into a 32-byte value
+func EncodeOperatorFeeParams(params OperatorFeeParams) (scalar [32]byte) {
+
+	binary.BigEndian.PutUint32(scalar[20:24], params.Scalar)
+	binary.BigEndian.PutUint64(scalar[24:32], params.Constant)
+	return
 }
 
 type Bytes48 [48]byte

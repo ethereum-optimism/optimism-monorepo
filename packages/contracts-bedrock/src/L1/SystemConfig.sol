@@ -28,7 +28,8 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
         FEE_SCALARS,
         GAS_LIMIT,
         UNSAFE_BLOCK_SIGNER,
-        EIP_1559_PARAMS
+        EIP_1559_PARAMS,
+        OPERATOR_FEE_PARAMS
     }
 
     /// @notice Struct representing the addresses of L1 system contracts. These should be the
@@ -121,6 +122,12 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
 
     /// @notice The EIP-1559 elasticity multiplier.
     uint32 public eip1559Elasticity;
+
+    /// @notice The operator fee scalar.
+    uint32 public operatorFeeScalar;
+
+    /// @notice The operator fee constant.
+    uint64 public operatorFeeConstant;
 
     /// @notice Emitted when configuration is updated.
     /// @param version    SystemConfig version.
@@ -373,6 +380,18 @@ contract SystemConfig is OwnableUpgradeable, ISemver {
 
         bytes memory data = abi.encode(uint256(_denominator) << 32 | uint64(_elasticity));
         emit ConfigUpdate(VERSION, UpdateType.EIP_1559_PARAMS, data);
+    }
+
+    function setOperatorFeeScalars(uint32 _operatorFeeScalar, uint64 _operatorFeeConstant) external onlyOwner {
+        _setOperatorFeeScalars(_operatorFeeScalar, _operatorFeeConstant);
+    }
+
+    function _setOperatorFeeScalars(uint32 _operatorFeeScalar, uint64 _operatorFeeConstant) internal {
+        operatorFeeScalar = _operatorFeeScalar;
+        operatorFeeConstant = _operatorFeeConstant;
+
+        bytes memory data = abi.encode(uint256(_operatorFeeScalar) << 64 | _operatorFeeConstant);
+        emit ConfigUpdate(VERSION, UpdateType.OPERATOR_FEE_PARAMS, data);
     }
 
     /// @notice Sets the start block in a backwards compatible way. Proxies
