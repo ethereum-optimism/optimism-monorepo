@@ -426,11 +426,10 @@ func (l *BatchSubmitter) syncAndPrune(syncStatus *eth.SyncStatus) *inclusiveBloc
 // -  drives the creation of channels and frames
 // -  sends transactions to the DA layer
 func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxReceipt[txRef], receiptsLoopCancel, throttlingLoopCancel context.CancelFunc) {
-	defer l.wg.Done()
-	defer receiptsLoopCancel()
-	defer throttlingLoopCancel()
 
-	queue := txmgr.NewQueue[txRef](l.killCtx, l.Txmgr, l.Config.MaxPendingTransactions)
+	queueCtx, queueCancel := context.WithCancel(l.killCtx)
+
+	queue := txmgr.NewQueue[txRef](queueCtx, l.Txmgr, l.Config.MaxPendingTransactions)
 	daGroup := &errgroup.Group{}
 	// errgroup with limit of 0 means no goroutine is able to run concurrently,
 	// so we only set the limit if it is greater than 0.
@@ -476,9 +475,15 @@ func (l *BatchSubmitter) mainLoop(ctx context.Context, receiptsCh chan txmgr.TxR
 			l.publishStateToL1(queue, receiptsCh, daGroup, l.Config.PollInterval)
 
 		case <-ctx.Done():
+			queueCancel()
 			if err := queue.Wait(); err != nil {
-				l.Log.Error("error waiting for transactions to complete", "err", err)
+				if !errors.Is(err, context.Canceled) {
+					l.Log.Error("error waiting for transactions to complete", "err", err)
+				}
 			}
+			throttlingLoopCancel()
+			receiptsLoopCancel()
+			l.wg.Done()
 			l.Log.Warn("main loop returning")
 			return
 		}
@@ -569,7 +574,7 @@ func (l *BatchSubmitter) throttlingLoop(ctx context.Context) {
 		if !success {
 			l.Log.Error("Result of SetMaxDASize was false, retrying.")
 		}
-		}
+	}
 
 	cachedPendingBytes := int64(0)
 	for {
