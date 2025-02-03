@@ -2,19 +2,16 @@ package tasks
 
 import (
 	"context"
-	"encoding/binary"
 	"fmt"
-	"math/big"
 
 	"github.com/ethereum-optimism/optimism/op-node/rollup"
-	"github.com/ethereum-optimism/optimism/op-node/rollup/derive"
+	"github.com/ethereum-optimism/optimism/op-node/rollup/interop/managed"
 	"github.com/ethereum-optimism/optimism/op-program/client/l1"
 	"github.com/ethereum-optimism/optimism/op-program/client/l2"
 	"github.com/ethereum-optimism/optimism/op-service/eth"
 	"github.com/ethereum/go-ethereum/common"
 	"github.com/ethereum/go-ethereum/consensus/misc/eip1559"
 	"github.com/ethereum/go-ethereum/core/types"
-	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/ethdb/memorydb"
 	"github.com/ethereum/go-ethereum/log"
 	"github.com/ethereum/go-ethereum/params"
@@ -114,12 +111,12 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 			deposits = append(deposits, txdata)
 		}
 	}
-	depositedTx := createBlockDepositedTx(output)
-	depositedTxData, err := depositedTx.MarshalBinary()
+	invalidatedBlockTx := managed.InvalidatedBlockSourceDepositTx(output.Marshal())
+	invalidatedBlockTxData, err := invalidatedBlockTx.MarshalBinary()
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal deposited tx: %w", err)
 	}
-	deposits = append(deposits, depositedTxData)
+	deposits = append(deposits, invalidatedBlockTxData)
 
 	attrs := &eth.PayloadAttributes{
 		Timestamp:             eth.Uint64Quantity(block.Time()),
@@ -137,30 +134,4 @@ func blockToDepositsOnlyAttributes(cfg *rollup.Config, block *types.Block, outpu
 		attrs.EIP1559Params = &eip1559Params
 	}
 	return attrs, nil
-}
-
-func createBlockDepositedTx(output *eth.OutputV0) *types.Transaction {
-	// TODO(#14013): refactor this with block replacement helpers introduced in https://github.com/ethereum-optimism/optimism/pull/13645
-	outputRoot := eth.OutputRoot(output)
-	outputRootPreimage := output.Marshal()
-
-	sourceHash := createBlockDepositedSourceHash(outputRoot)
-	return types.NewTx(&types.DepositTx{
-		SourceHash:          sourceHash,
-		From:                derive.L1InfoDepositerAddress,
-		To:                  &common.Address{}, // to the zero address, no EVM execution.
-		Mint:                big.NewInt(0),
-		Value:               big.NewInt(0),
-		Gas:                 36_000,
-		IsSystemTransaction: false,
-		Data:                outputRootPreimage,
-	})
-}
-
-func createBlockDepositedSourceHash(outputRoot eth.Bytes32) common.Hash {
-	domain := uint64(4)
-	var domainInput [32 * 2]byte
-	binary.BigEndian.PutUint64(domainInput[32-8:32], domain)
-	copy(domainInput[32:], outputRoot[:])
-	return crypto.Keccak256Hash(domainInput[:])
 }
