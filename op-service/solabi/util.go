@@ -16,6 +16,7 @@ import (
 var (
 	addressEmptyPadding [12]byte = [12]byte{}
 	uint64EmptyPadding  [24]byte = [24]byte{}
+	uint8EmptyPadding   [31]byte = [31]byte{}
 )
 
 func ReadSignature(r io.Reader) ([]byte, error) {
@@ -125,6 +126,16 @@ func WriteUint256(w io.Writer, n *big.Int) error {
 
 func WriteUint64(w io.Writer, n uint64) error {
 	if _, err := w.Write(uint64EmptyPadding[:]); err != nil {
+		return err
+	}
+	if err := binary.Write(w, binary.BigEndian, n); err != nil {
+		return err
+	}
+	return nil
+}
+
+func WriteUint8(w io.Writer, n uint8) error {
+	if _, err := w.Write(uint8EmptyPadding[:]); err != nil {
 		return err
 	}
 	if err := binary.Write(w, binary.BigEndian, n); err != nil {
