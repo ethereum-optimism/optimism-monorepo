@@ -339,6 +339,8 @@ contract DeployOPChain_TestBase is Test {
     uint256 disputeSplitDepth = 30;
     uint64 disputeClockExtension = Duration.unwrap(Duration.wrap(3 hours));
     uint64 disputeMaxClockDuration = Duration.unwrap(Duration.wrap(3.5 days));
+    uint32 operatorFeeScalar = 5;
+    uint64 operatorFeeConstant = 200;
 
     function setUp() public virtual {
         // Configure and deploy Superchain contracts
