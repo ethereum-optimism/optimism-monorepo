@@ -49,7 +49,6 @@ FROZEN_FILES=(
   "src/L1/L1CrossDomainMessenger.sol"
   "src/L1/L1ERC721Bridge.sol"
   "src/L1/L1StandardBridge.sol"
-  "src/L1/OPContractsManager.sol"
   "src/L1/OptimismPortal2.sol"
   "src/L1/ProtocolVersions.sol"
   "src/L1/SuperchainConfig.sol"
