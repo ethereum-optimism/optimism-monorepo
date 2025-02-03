@@ -317,6 +317,10 @@ contract OPContractsManager_Upgrade_Harness is CommonTest, SafeTestTools {
         vm.expectEmit(address(_delegateCaller));
         emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
+        // If the `_delegateCaller` input is the `upgrader`, because that is a `Safe` we delegatecall via the
+        // `safeTestTools` lib.
+        // Otherwise, we etch the code of a simple delegatecall contract into the address
+        // and use that to delegatecall the opcm upgrade function.
         if (_delegateCaller == upgrader) {
             safeInstance.execTransaction({
                 to: address(opcm),
