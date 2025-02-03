@@ -67,6 +67,13 @@ func TestEcotoneScalars(t *testing.T) {
 	}
 }
 
+func TestOperatorFeeScalars(t *testing.T) {
+	sysConfig := SystemConfig{OperatorFeeParams: Bytes32{0: 0, 20: 4, 29: 3}}
+	params := sysConfig.OperatorFee()
+	require.Equal(t, uint32(0x4000000), params.Scalar)
+	require.Equal(t, uint64(0x30000), params.Constant)
+}
+
 func FuzzEncodeScalar(f *testing.F) {
 	f.Fuzz(func(t *testing.T, blobBaseFeeScalar uint32, baseFeeScalar uint32) {
 		encoded := EncodeScalar(EcotoneScalars{BlobBaseFeeScalar: blobBaseFeeScalar, BaseFeeScalar: baseFeeScalar})
@@ -77,18 +84,28 @@ func FuzzEncodeScalar(f *testing.F) {
 	})
 }
 
+func FuzzEncodeOperatorFeeParams(f *testing.F) {
+	f.Fuzz(func(t *testing.T, scalar uint32, constant uint64) {
+		encoded := EncodeOperatorFeeParams(OperatorFeeParams{Scalar: scalar, Constant: constant})
+		scalars := DecodeOperatorFeeParams(encoded)
+		require.Equal(t, scalar, scalars.Scalar)
+		require.Equal(t, constant, scalars.Constant)
+	})
+}
+
 func TestSystemConfigMarshaling(t *testing.T) {
 	sysConfig := SystemConfig{
-		BatcherAddr: common.Address{'A'},
-		Overhead:    Bytes32{0x4, 0x5, 0x6},
-		Scalar:      Bytes32{0x7, 0x8, 0x9},
-		GasLimit:    1234,
+		BatcherAddr:       common.Address{'A'},
+		Overhead:          Bytes32{0x4, 0x5, 0x6},
+		Scalar:            Bytes32{0x7, 0x8, 0x9},
+		OperatorFeeParams: Bytes32{0x1, 0x2, 0x3},
+		GasLimit:          1234,
 		// Leave EIP1559 params empty to prove that the
 		// zero value is sent.
 	}
 	j, err := json.Marshal(sysConfig)
 	require.NoError(t, err)
-	require.Equal(t, `{"batcherAddr":"0x4100000000000000000000000000000000000000","overhead":"0x0405060000000000000000000000000000000000000000000000000000000000","scalar":"0x0708090000000000000000000000000000000000000000000000000000000000","gasLimit":1234,"eip1559Params":"0x0000000000000000"}`, string(j))
+	require.Equal(t, `{"batcherAddr":"0x4100000000000000000000000000000000000000","overhead":"0x0405060000000000000000000000000000000000000000000000000000000000","scalar":"0x0708090000000000000000000000000000000000000000000000000000000000","gasLimit":1234,"eip1559Params":"0x0000000000000000","operatorFeeParams":"0x0102030000000000000000000000000000000000000000000000000000000000"}`, string(j))
 	sysConfig.MarshalPreHolocene = true
 	j, err = json.Marshal(sysConfig)
 	require.NoError(t, err)
