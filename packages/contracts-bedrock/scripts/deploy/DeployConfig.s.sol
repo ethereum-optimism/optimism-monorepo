@@ -50,6 +50,9 @@ contract DeployConfig is Script {
     address public l1FeeVaultRecipient;
     uint256 public l1FeeVaultMinimumWithdrawalAmount;
     uint256 public l1FeeVaultWithdrawalNetwork;
+    address public operatorFeeVaultRecipient;
+    uint256 public operatorFeeVaultMinimumWithdrawalAmount;
+    uint256 public operatorFeeVaultWithdrawalNetwork;
     address public sequencerFeeVaultRecipient;
     uint256 public sequencerFeeVaultMinimumWithdrawalAmount;
     uint256 public sequencerFeeVaultWithdrawalNetwork;
@@ -59,6 +62,8 @@ contract DeployConfig is Script {
     uint256 public l2GenesisBlockGasLimit;
     uint32 public basefeeScalar;
     uint32 public blobbasefeeScalar;
+    uint32 public operatorFeeScalar;
+    uint64 public operatorFeeConstant;
     bool public enableGovernance;
     uint256 public eip1559Denominator;
     uint256 public eip1559Elasticity;
@@ -128,6 +133,9 @@ contract DeployConfig is Script {
         l1FeeVaultRecipient = stdJson.readAddress(_json, "$.l1FeeVaultRecipient");
         l1FeeVaultMinimumWithdrawalAmount = stdJson.readUint(_json, "$.l1FeeVaultMinimumWithdrawalAmount");
         l1FeeVaultWithdrawalNetwork = stdJson.readUint(_json, "$.l1FeeVaultWithdrawalNetwork");
+        operatorFeeVaultRecipient = stdJson.readAddress(_json, "$.operatorFeeVaultRecipient");
+        operatorFeeVaultMinimumWithdrawalAmount = stdJson.readUint(_json, "$.operatorFeeVaultMinimumWithdrawalAmount");
+        operatorFeeVaultWithdrawalNetwork = stdJson.readUint(_json, "$.operatorFeeVaultWithdrawalNetwork");
         sequencerFeeVaultRecipient = stdJson.readAddress(_json, "$.sequencerFeeVaultRecipient");
         sequencerFeeVaultMinimumWithdrawalAmount = stdJson.readUint(_json, "$.sequencerFeeVaultMinimumWithdrawalAmount");
         sequencerFeeVaultWithdrawalNetwork = stdJson.readUint(_json, "$.sequencerFeeVaultWithdrawalNetwork");
@@ -137,6 +145,8 @@ contract DeployConfig is Script {
         l2GenesisBlockGasLimit = stdJson.readUint(_json, "$.l2GenesisBlockGasLimit");
         basefeeScalar = uint32(_readOr(_json, "$.gasPriceOracleBaseFeeScalar", 1368));
         blobbasefeeScalar = uint32(_readOr(_json, "$.gasPriceOracleBlobBaseFeeScalar", 810949));
+        operatorFeeScalar = uint32(_readOr(_json, "$.gasPriceOracleOperatorFeeScalar", 0));
+        operatorFeeConstant = uint64(_readOr(_json, "$.gasPriceOracleOperatorFeeConstant", 0));
 
         enableGovernance = _readOr(_json, "$.enableGovernance", false);
         eip1559Denominator = stdJson.readUint(_json, "$.eip1559Denominator");

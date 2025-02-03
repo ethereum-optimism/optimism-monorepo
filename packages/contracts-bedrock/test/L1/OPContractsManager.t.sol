@@ -105,6 +105,9 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
         doi.set(doi.disputeSplitDepth.selector, disputeSplitDepth);
         doi.set(doi.disputeClockExtension.selector, disputeClockExtension);
         doi.set(doi.disputeMaxClockDuration.selector, disputeMaxClockDuration);
+
+        doi.set(doi.operatorFeeScalar.selector, operatorFeeScalar);
+        doi.set(doi.operatorFeeConstant.selector, operatorFeeConstant);
     }
 
     // This helper function is used to convert the input struct type defined in DeployOPChain.s.sol
@@ -134,7 +137,9 @@ contract OPContractsManager_Deploy_Test is DeployOPChain_TestBase {
             disputeMaxGameDepth: _doi.disputeMaxGameDepth(),
             disputeSplitDepth: _doi.disputeSplitDepth(),
             disputeClockExtension: _doi.disputeClockExtension(),
-            disputeMaxClockDuration: _doi.disputeMaxClockDuration()
+            disputeMaxClockDuration: _doi.disputeMaxClockDuration(),
+            operatorFeeScalar: _doi.operatorFeeScalar(),
+            operatorFeeConstant: _doi.operatorFeeConstant()
         });
     }
 
@@ -667,7 +672,9 @@ contract OPContractsManager_AddGameType_Test is Test {
                 disputeMaxGameDepth: 73,
                 disputeSplitDepth: 30,
                 disputeClockExtension: Duration.wrap(10800),
-                disputeMaxClockDuration: Duration.wrap(302400)
+                disputeMaxClockDuration: Duration.wrap(302400),
+                operatorFeeScalar: 0,
+                operatorFeeConstant: 0
             })
         );
     }
