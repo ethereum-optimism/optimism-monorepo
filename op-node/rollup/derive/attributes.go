@@ -124,6 +124,14 @@ func (ba *FetchingAttributesBuilder) PreparePayloadAttributes(ctx context.Contex
 		upgradeTxs = append(upgradeTxs, fjord...)
 	}
 
+	if ba.rollupCfg.IsIsthmusActivationBlock(nextL2Time) {
+		isthmus, err := IsthmusNetworkUpgradeTransactions()
+		if err != nil {
+			return nil, NewCriticalError(fmt.Errorf("failed to build isthmus network upgrade txs: %w", err))
+		}
+		upgradeTxs = append(upgradeTxs, isthmus...)
+	}
+
 	l1InfoTx, err := L1InfoDepositBytes(ba.rollupCfg, sysConfig, seqNumber, l1Info, nextL2Time)
 	if err != nil {
 		return nil, NewCriticalError(fmt.Errorf("failed to create l1InfoTx: %w", err))
