@@ -76,15 +76,18 @@ cat << EOL > tmp_config.json
   "proxyAdminOwner": "$GS_ADMIN_ADDRESS",
   "baseFeeVaultRecipient": "$GS_ADMIN_ADDRESS",
   "l1FeeVaultRecipient": "$GS_ADMIN_ADDRESS",
+  "operatorFeeVaultRecipient": "$GS_ADMIN_ADDRESS",
   "sequencerFeeVaultRecipient": "$GS_ADMIN_ADDRESS",
   "finalSystemOwner": "$GS_ADMIN_ADDRESS",
   "superchainConfigGuardian": "$GS_ADMIN_ADDRESS",
 
   "baseFeeVaultMinimumWithdrawalAmount": "0x8ac7230489e80000",
   "l1FeeVaultMinimumWithdrawalAmount": "0x8ac7230489e80000",
+  "operatorFeeVaultMinimumWithdrawalAmount": "0x8ac7230489e80000",
   "sequencerFeeVaultMinimumWithdrawalAmount": "0x8ac7230489e80000",
   "baseFeeVaultWithdrawalNetwork": 0,
   "l1FeeVaultWithdrawalNetwork": 0,
+  "operatorFeeVaultWithdrawalNetwork": 0,
   "sequencerFeeVaultWithdrawalNetwork": 0,
 
   "gasPriceOracleOverhead": 0,
