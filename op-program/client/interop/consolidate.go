@@ -15,6 +15,7 @@ import (
 	supervisortypes "github.com/ethereum-optimism/optimism/op-supervisor/supervisor/types"
 	"github.com/ethereum/go-ethereum/common"
 	ethtypes "github.com/ethereum/go-ethereum/core/types"
+	"github.com/ethereum/go-ethereum/crypto"
 	"github.com/ethereum/go-ethereum/log"
 )
 
@@ -203,11 +204,33 @@ func (d *consolidateCheckDeps) Contains(chain eth.ChainID, query supervisortypes
 	if err != nil {
 		return supervisortypes.BlockSeal{}, err
 	}
-	return supervisortypes.BlockSeal{
-		Hash:      block.Hash(),
-		Number:    block.NumberU64(),
-		Timestamp: block.Time(),
-	}, nil
+	_, receipts := d.oracle.ReceiptsByBlockHash(block.Hash(), chain)
+	var current uint32
+	for _, receipt := range receipts {
+		for i, log := range receipt.Logs {
+			if current+uint32(i) == query.LogIdx {
+				msgHash := logToMessageHash(log)
+				if msgHash != query.LogHash {
+					return supervisortypes.BlockSeal{}, fmt.Errorf("payload hash mismatch: %s != %s: %w", msgHash, query.LogHash, supervisortypes.ErrConflict)
+				} else if block.Time() != query.Timestamp {
+					return supervisortypes.BlockSeal{}, fmt.Errorf("block timestamp mismatch: %d != %d: %w", block.Time(), query.Timestamp, supervisortypes.ErrConflict)
+				} else {
+					return supervisortypes.BlockSeal{
+						Hash:      block.Hash(),
+						Number:    block.NumberU64(),
+						Timestamp: block.Time(),
+					}, nil
+				}
+			}
+		}
+		current += uint32(len(receipt.Logs))
+	}
+	return supervisortypes.BlockSeal{}, fmt.Errorf("log not found")
+}
+
+func logToMessageHash(l *ethtypes.Log) common.Hash {
+	payloadHash := crypto.Keccak256Hash(supervisortypes.LogToMessagePayload(l))
+	return supervisortypes.PayloadHashToLogHash(payloadHash, l.Address)
 }
 
 func (d *consolidateCheckDeps) IsCrossUnsafe(chainID eth.ChainID, block eth.BlockID) error {
