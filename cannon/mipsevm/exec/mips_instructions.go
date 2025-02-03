@@ -21,7 +21,7 @@ const (
 	RegRA = 31
 
 	// Masks
-	U32_MASK = 0xFFffFFff
+	U32Mask = 0xFFffFFff
 )
 
 func GetInstructionDetails(pc Word, memory *memory.Memory) (insn, opcode, fun uint32) {
@@ -209,7 +209,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 		switch fun {
 		case 0x00: // sll
 			shiftAmt := (insn >> 6) & 0x1F
-			return SignExtend((rt<<shiftAmt)&U32_MASK, 32)
+			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
 		case 0x02: // srl
 			return SignExtend((rt&0xFFFFFFFF)>>((insn>>6)&0x1F), 32)
 		case 0x03: // sra
@@ -217,7 +217,7 @@ func ExecuteMipsInstruction(insn uint32, opcode uint32, fun uint32, rs, rt, mem 
 			return SignExtend((rt&0xFFFFFFFF)>>shamt, 32-shamt)
 		case 0x04: // sllv
 			shiftAmt := rs & 0x1F
-			return SignExtend((rt<<shiftAmt)&U32_MASK, 32)
+			return SignExtend((rt<<shiftAmt)&U32Mask, 32)
 		case 0x06: // srlv
 			return SignExtend((rt&0xFFFFFFFF)>>(rs&0x1F), 32)
 		case 0x07: // srav
