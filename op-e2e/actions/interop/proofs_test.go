@@ -572,7 +572,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      end.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        false,
-			skipProgram:        true,
 			skipChallenger:     true,
 		},
 		{
@@ -581,7 +580,6 @@ func TestInteropFaultProofsInvalidBlock(gt *testing.T) {
 			disputedClaim:      crossSafeSuperRootEnd.Marshal(),
 			disputedTraceIndex: 1023,
 			expectValid:        true,
-			skipProgram:        true,
 			skipChallenger:     true,
 		},
 		{
