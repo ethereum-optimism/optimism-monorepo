@@ -259,7 +259,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         emit Upgraded(impl);
     }
 
-    function runUpgradeTestAndChecks(address _delegateCaller, bool _superchainUpgrade) public {
+    function runUpgradeTestAndChecks(address _delegateCaller) public {
         vm.etch(_delegateCaller, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         IOPContractsManager.Implementations memory impls = opcm.implementations();
@@ -301,7 +301,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.expectEmit(address(_delegateCaller));
         emit Upgraded(l2ChainId, opChainConfigs[0].systemConfigProxy, address(_delegateCaller));
 
-        superchainProxyAdmin = _superchainUpgrade ? superchainProxyAdmin : IProxyAdmin(address(0));
         DelegateCaller(_delegateCaller).dcForward(
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
@@ -350,7 +349,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         expectEmitUpgraded(impls.superchainConfigImpl, address(superchainConfig));
         expectEmitUpgraded(impls.protocolVersionsImpl, address(protocolVersions));
 
-        runUpgradeTestAndChecks(upgrader, true);
+        runUpgradeTestAndChecks(upgrader);
 
         assertEq(impls.superchainConfigImpl, EIP1967Helper.getImplementation(address(superchainConfig)));
         assertEq(impls.protocolVersionsImpl, EIP1967Helper.getImplementation(address(protocolVersions)));
@@ -358,7 +357,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
 
     function test_upgradeOPChainOnly_succeeds() public {
         // Run the upgrade test and checks
-        runUpgradeTestAndChecks(upgrader, false);
+        runUpgradeTestAndChecks(upgrader);
     }
 
     function test_isRcFalseAfterCalledByUpgrader_works() public {
@@ -366,7 +365,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         bytes memory releaseBytes = bytes(opcm.l1ContractsRelease());
         assertEq(Bytes.slice(releaseBytes, releaseBytes.length - 3, 3), "-rc", "release should end with '-rc'");
 
-        runUpgradeTestAndChecks(upgrader, false);
+        runUpgradeTestAndChecks(upgrader);
 
         assertFalse(opcm.isRC(), "isRC should be false");
         releaseBytes = bytes(opcm.l1ContractsRelease());
@@ -402,7 +401,7 @@ contract OPContractsManager_Upgrade_Test is OPContractsManager_Upgrade_Harness {
         );
 
         // Run the upgrade test and checks
-        runUpgradeTestAndChecks(_nonUpgradeController, false);
+        runUpgradeTestAndChecks(_nonUpgradeController);
     }
 }
 
