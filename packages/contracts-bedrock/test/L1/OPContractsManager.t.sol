@@ -212,7 +212,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
     IProxyAdmin superchainProxyAdmin;
     address upgrader;
     IOPContractsManager.OpChainConfig[] opChainConfigs;
-    Claim absolutePrestate;
 
     function setUp() public virtual override {
         super.disableUpgradedFork();
@@ -226,7 +225,6 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
             "OPContractsManager_Upgrade_Harness: cannot test upgrade on superchain ops repo upgrade tests"
         );
 
-        absolutePrestate = Claim.wrap(bytes32(keccak256("absolutePrestate")));
         proxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(systemConfig)));
         superchainProxyAdmin = IProxyAdmin(EIP1967Helper.getAdmin(address(superchainConfig)));
         upgrader = proxyAdmin.owner();
@@ -236,11 +234,7 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         vm.etch(upgrader, vm.getDeployedCode("test/mocks/Callers.sol:DelegateCaller"));
 
         opChainConfigs.push(
-            IOPContractsManager.OpChainConfig({
-                systemConfigProxy: systemConfig,
-                proxyAdmin: proxyAdmin,
-                absolutePrestate: absolutePrestate
-            })
+            IOPContractsManager.OpChainConfig({ systemConfigProxy: systemConfig, proxyAdmin: proxyAdmin })
         );
 
         // Retrieve the l2ChainId, which was read from the superchain-registry, and saved in Artifacts
@@ -323,22 +317,22 @@ contract OPContractsManager_Upgrade_Harness is CommonTest {
         assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWETHPermissionedGameProxy)));
 
         // Check that the PermissionedDisputeGame is upgraded to the expected version, references
-        // the correct anchor state and has the mips64impl.
+        // the correct anchor state and has the mipsImpl.
         IPermissionedDisputeGame pdg =
             IPermissionedDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.PERMISSIONED_CANNON)));
         assertEq(ISemver(address(pdg)).version(), "1.4.0");
         assertEq(address(pdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
-        assertEq(address(pdg.vm()), impls.mips64Impl);
+        assertEq(address(pdg.vm()), impls.mipsImpl);
 
         if (address(delayedWeth) != address(0)) {
             // Check that the PermissionlessDisputeGame is upgraded to the expected version, references
-            // the correct anchor state and has the mips64impl.
+            // the correct anchor state and has the mipsImpl.
             assertEq(impls.delayedWETHImpl, EIP1967Helper.getImplementation(address(delayedWeth)));
             // Check that the PermissionlessDisputeGame is upgraded to the expected version
             IFaultDisputeGame fdg = IFaultDisputeGame(address(disputeGameFactory.gameImpls(GameTypes.CANNON)));
             assertEq(ISemver(address(fdg)).version(), "1.4.0");
             assertEq(address(fdg.anchorStateRegistry()), address(newAnchorStateRegistryProxy));
-            assertEq(address(fdg.vm()), impls.mips64Impl);
+            assertEq(address(fdg.vm()), impls.mipsImpl);
         }
     }
 }
@@ -453,12 +447,6 @@ contract OPContractsManager_Upgrade_TestFails is OPContractsManager_Upgrade_Harn
             address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs))
         );
     }
-
-    function test_upgrade_absolutePrestateNotSet_reverts() public {
-        opChainConfigs[0].absolutePrestate = Claim.wrap(bytes32(0));
-        vm.expectRevert(IOPContractsManager.PrestateNotSet.selector);
-        DelegateCaller(upgrader).dcForward(address(opcm), abi.encodeCall(IOPContractsManager.upgrade, (opChainConfigs)));
-    }
 }
 
 contract OPContractsManager_SetRC_Test is OPContractsManager_Upgrade_Harness {
@@ -533,7 +521,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             disputeGameFactoryImpl: DeployUtils.create1("DisputeGameFactory"),
             anchorStateRegistryImpl: DeployUtils.create1("AnchorStateRegistry"),
             delayedWETHImpl: DeployUtils.create1("DelayedWETH", abi.encode(3)),
-            mips64Impl: DeployUtils.create1("MIPS64", abi.encode(oracle))
+            mipsImpl: DeployUtils.create1("MIPS64", abi.encode(oracle))
         });
 
         vm.etch(address(superchainConfigProxy), hex"01");
@@ -696,7 +684,7 @@ contract OPContractsManager_AddGameType_Test is Test {
             disputeClockExtension: Duration.wrap(10800),
             disputeMaxClockDuration: Duration.wrap(302400),
             initialBond: 1 ether,
-            vm: IBigStepper(address(opcm.implementations().mips64Impl)),
+            vm: IBigStepper(address(opcm.implementations().mipsImpl)),
             permissioned: permissioned
         });
     }
