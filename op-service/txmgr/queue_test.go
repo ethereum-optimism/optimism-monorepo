@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"slices"
 	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -263,4 +264,45 @@ func TestQueue_Send(t *testing.T) {
 			}
 		})
 	}
+}
+
+// Simple test that we can call q.Send() up to the maxPending limit without blocking.
+func TestMaxPending(t *testing.T) {
+	backend := newMockBackendWithNonce(newGasPricer(3))
+
+	txs := sync.Map{}
+	active := atomic.Bool{}
+	sendTx := func(ctx context.Context, tx *types.Transaction) error {
+		if active.Load() {
+			txs.Store(tx.Hash(), tx)
+			t.Log("sendTx", tx.Nonce())
+		}
+		return nil
+	}
+	backend.setTxSender(sendTx)
+
+	conf := configWithNumConfs(1)
+	mgr := &SimpleTxManager{
+		chainID: conf.ChainID,
+		name:    "TEST",
+		cfg:     conf,
+		backend: backend,
+		l:       testlog.Logger(t, log.LevelCrit),
+		metr:    &metrics.NoopTxMetrics{},
+	}
+
+	q := NewQueue[int](context.Background(), mgr, 5)
+
+	active.Store(true)
+	q.Send(0, TxCandidate{}, make(chan TxReceipt[int], 1))
+	q.Send(1, TxCandidate{}, make(chan TxReceipt[int], 1))
+	q.Send(2, TxCandidate{}, make(chan TxReceipt[int], 1))
+	q.Send(3, TxCandidate{}, make(chan TxReceipt[int], 1))
+	q.Send(4, TxCandidate{}, make(chan TxReceipt[int], 1))
+	active.Store(false)
+	txs.Range(func(k, v interface{}) bool {
+		backend.mine(k.(*common.Hash), v.(*types.Transaction).GasFeeCap(), nil)
+		txs.Delete(k)
+		return true
+	})å
 }
