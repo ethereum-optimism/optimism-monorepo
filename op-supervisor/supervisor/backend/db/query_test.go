@@ -62,7 +62,10 @@ func (m *mockDerivedFromStorage) PreviousDerivedFrom(derivedFrom eth.BlockID) (p
 func (m *mockDerivedFromStorage) PreviousDerived(derived eth.BlockID) (prevDerived types.BlockSeal, err error) {
 	return types.BlockSeal{}, nil
 }
-func (m *mockDerivedFromStorage) RewindToL2(derived uint64) error {
+func (m *mockDerivedFromStorage) RewindToScope(scope eth.BlockID) error {
+	return nil
+}
+func (m *mockDerivedFromStorage) RewindToFirstDerived(derived eth.BlockID) error {
 	return nil
 }
 

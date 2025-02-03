@@ -23,6 +23,7 @@ import (
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/depset"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/l1access"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/processors"
+	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/rewinder"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/superevents"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/backend/syncnode"
 	"github.com/ethereum-optimism/optimism/op-supervisor/supervisor/frontend"
@@ -66,6 +67,9 @@ type SupervisorBackend struct {
 	chainMetrics locks.RWMap[eth.ChainID, *chainMetrics]
 
 	emitter event.Emitter
+
+	// Rewinder for handling reorgs
+	rewinder *rewinder.Rewinder
 }
 
 var _ event.AttachEmitter = (*SupervisorBackend)(nil)
@@ -123,8 +127,11 @@ func NewSupervisorBackend(ctx context.Context, logger log.Logger,
 		eventSys:              eventSys,
 		sysCancel:             sysCancel,
 		sysContext:            sysCtx,
+
+		rewinder: rewinder.New(logger, chainsDBs, l1Accessor),
 	}
 	eventSys.Register("backend", super, event.DefaultRegisterOpts())
+	eventSys.Register("rewinder", super.rewinder, event.DefaultRegisterOpts())
 
 	// create node controller
 	super.syncNodesController = syncnode.NewSyncNodesController(logger, depSet, eventSys, super)

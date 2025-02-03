@@ -28,9 +28,12 @@ func AttributesToReplaceInvalidBlock(invalidatedBlock *eth.ExecutionPayloadEnvel
 		}
 	}
 	// Add the system-tx that declares the replacement.
+	if invalidatedBlock.ExecutionPayload.WithdrawalsRoot == nil {
+		panic("withdrawals-root is nil")
+	}
 	l2Output := eth.OutputV0{
 		StateRoot:                invalidatedBlock.ExecutionPayload.StateRoot,
-		MessagePasserStorageRoot: eth.Bytes32{}, // TODO: the withdrawals-root in header is needed here.
+		MessagePasserStorageRoot: eth.Bytes32(*invalidatedBlock.ExecutionPayload.WithdrawalsRoot),
 		BlockHash:                invalidatedBlock.ExecutionPayload.BlockHash,
 	}
 	outputRootPreimage := l2Output.Marshal()
